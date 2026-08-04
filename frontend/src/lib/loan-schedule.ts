@@ -847,10 +847,21 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
 
 /**
  * The annual rate (percentage) in effect on a given date: the latest row with
- * `effectiveDate <= date`, else the earliest row's rate (a date before the
- * first recorded change still amortizes at the origination rate), else the
- * fallback. Shared by the schedule table (per-row historical rate) and
- * `buildRateTimeline`'s starting rate.
+ * `effectiveDate <= date`, else `fallbackAnnualRate`. A row dated after
+ * `date` has not taken effect yet -- RateChange applies from the first
+ * payment on or after its own effective date, never earlier -- so it never
+ * supplies the rate for an earlier query, no matter how early that row sits
+ * relative to the rest of the history (REV-20260803-040: a lone future-dated
+ * row was otherwise applied retroactively to every date before it). Shared by
+ * the schedule table (per-row historical rate) and `buildRateTimeline`'s
+ * starting rate.
+ *
+ * A caller reconstructing an origination baseline from a history whose
+ * earliest recorded row lands slightly after the schedule's true start (rate
+ * detection dates that row at the first installment, which can trail the real
+ * start by a few days) must recover that row's own rate itself and pass it as
+ * `fallbackAnnualRate` -- this function does not special-case that for them.
+ * `loan-past-impact.ts` is the worked example.
  */
 export function effectiveAnnualRateOn(
   rows: RateTimelineRow[],
@@ -864,17 +875,24 @@ export function effectiveAnnualRateOn(
   if (atOrBefore.length > 0) {
     return atOrBefore[atOrBefore.length - 1].annualRate;
   }
-  return sorted[0]?.annualRate ?? fallbackAnnualRate;
+  return fallbackAnnualRate;
 }
 
 /**
  * Resolve a persisted rate history into engine inputs for a schedule that
- * starts at `scheduleStartIso`: the rate in effect at the start is the
- * latest row on or before that date (before the earliest row, the earliest
- * row's rate applies; with no rows, the fallback), the payment in effect is
- * the latest non-null payment on or before the start (before the earliest
- * row, that row's payment applies -- the origination installment), and the
- * remaining rows become steps for generateLoanSchedule.
+ * starts at `scheduleStartIso`: the rate in effect at the start is the latest
+ * row on or before that date, else `fallbackAnnualRate` (see
+ * `effectiveAnnualRateOn`); the payment in effect is the latest non-null
+ * payment on or before the start, else no override at all -- a row dated
+ * after `scheduleStartIso` has not taken effect yet, so it contributes no
+ * starting payment and stays solely in `rateChanges` until its own effective
+ * date (REV-20260803-040). The remaining rows become steps for
+ * generateLoanSchedule.
+ *
+ * A caller reconstructing an origination baseline from a history whose
+ * earliest recorded row lands slightly after the schedule's true start must
+ * recover that row's rate and payment itself and pass the rate as
+ * `fallbackAnnualRate` -- see `loan-past-impact.ts`.
  */
 export function buildRateTimeline(
   rows: RateTimelineRow[],
@@ -893,16 +911,13 @@ export function buildRateTimeline(
     scheduleStartIso,
     fallbackAnnualRate,
   );
-  // Mirror the rate's "before the earliest row, the earliest row applies"
-  // fallback for the payment: a schedule starting shortly before the first
-  // recorded row (payment_start_date precedes the first installment, which is
-  // where detection dates the initial row) still starts at the origination
-  // installment that row records. Only the earliest row is consulted -- later
-  // rows describe later rate levels and become steps anyway.
+  // The latest non-null payment on or before the start. When no row is at or
+  // before the start, the earliest (future) row has not taken effect yet, so
+  // no payment override applies -- it stays in `rateChanges` until its own
+  // date.
   const startingPaymentAmount =
     [...atOrBefore].reverse().find((row) => row.newPaymentAmount != null)
-      ?.newPaymentAmount ??
-    (atOrBefore.length === 0 ? sorted[0]?.newPaymentAmount ?? null : null);
+      ?.newPaymentAmount ?? null;
 
   const rateChanges = sorted
     .filter((row) => row.effectiveDate > scheduleStartIso)

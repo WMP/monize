@@ -496,27 +496,61 @@ describe('buildRateTimeline', () => {
     ]);
   });
 
-  it('uses the earliest row before the timeline begins', () => {
-    // Both the rate AND the payment fall back to the earliest row: it is the
-    // origination snapshot. Real case: payment_start_date (2022-04-25) precedes
-    // the initial rate row, which detection dates at the first installment
-    // (2022-05-13) -- the schedule must still start at that recorded payment.
+  it('falls back to fallbackAnnualRate and applies no payment override before the earliest row (REV-20260803-040)', () => {
+    // Neither the rate nor the payment may come from the earliest row: that
+    // row has not taken effect yet as of the schedule start, so per
+    // RateChange's "first payment on or after its effective date" contract it
+    // supplies neither -- it stays solely in `rateChanges` until its own date.
+    // A caller reconstructing an origination baseline from a history whose
+    // earliest row lands slightly after the true start must recover that
+    // row's rate/payment itself and pass the rate as fallbackAnnualRate --
+    // see `loan-past-impact.ts` -- this function does not do it for them.
     const timeline = buildRateTimeline(rows, '2020-01-01', 99);
-    expect(timeline.startingAnnualRate).toBe(5.5);
-    expect(timeline.startingPaymentAmount).toBe(2500);
+    expect(timeline.startingAnnualRate).toBe(99);
+    expect(timeline.startingPaymentAmount).toBeNull();
     expect(timeline.rateChanges).toHaveLength(3);
+    expect(timeline.rateChanges[0]).toEqual({
+      effectiveDate: '2022-01-01',
+      annualRate: 5.5,
+      paymentAmount: 2500,
+    });
   });
 
-  it('keeps the pre-history payment null when the earliest row has none', () => {
-    // Interest booked separately leaves every row's payment null (recording it
-    // would capture a principal-only figure); the fallback must not invent one
-    // from a later row, whose payment belongs to a later rate level.
+  it('keeps the pre-history payment null regardless of whether the earliest row has one', () => {
+    // No row before the schedule start ever supplies a payment override --
+    // whether or not that earliest row happens to record one -- so a row with
+    // interest booked separately (payment null) and one that does record a
+    // payment behave identically here.
     const nullFirst = [
       { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: null },
       { effectiveDate: '2024-03-01', annualRate: 4.9, newPaymentAmount: 2650 },
     ];
     const timeline = buildRateTimeline(nullFirst, '2020-01-01', 99);
     expect(timeline.startingPaymentAmount).toBeNull();
+  });
+
+  it('does not adopt a future rate row\'s payment before its effective date (REV-20260803-040)', () => {
+    // Exact scenario from the finding: a 5% loan, a rate change to 7% with a
+    // new $1200 payment effective October 1, and a timeline built for a
+    // September date -- before that lone future row. Neither the 7% rate nor
+    // the $1200 payment may apply yet; the fallback (5%) rate applies and
+    // there is no payment override, so September projects at the loan's real
+    // current installment, not the not-yet-effective one.
+    const futureOnly = [
+      { effectiveDate: '2026-10-01', annualRate: 7, newPaymentAmount: 1200 },
+    ];
+    const septemberTimeline = buildRateTimeline(futureOnly, '2026-09-15', 5);
+    expect(septemberTimeline.startingAnnualRate).toBe(5);
+    expect(septemberTimeline.startingPaymentAmount).toBeNull();
+    expect(septemberTimeline.rateChanges).toEqual([
+      { effectiveDate: '2026-10-01', annualRate: 7, paymentAmount: 1200 },
+    ]);
+
+    // On or after the effective date, the row does apply directly.
+    const octoberTimeline = buildRateTimeline(futureOnly, '2026-10-01', 5);
+    expect(octoberTimeline.startingAnnualRate).toBe(7);
+    expect(octoberTimeline.startingPaymentAmount).toBe(1200);
+    expect(octoberTimeline.rateChanges).toEqual([]);
   });
 
   it('turns the full history into steps for a schedule starting at origination', () => {
@@ -680,12 +714,26 @@ describe('effectiveAnnualRateOn', () => {
     expect(effectiveAnnualRateOn(rows, '2025-06-05', 9)).toBe(5.5);
   });
 
-  it('uses the earliest row for a date before the first change', () => {
-    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9)).toBe(1.95);
+  it('falls back to fallbackAnnualRate for a date before the first recorded change (REV-20260803-040)', () => {
+    // A row dated after the query has not taken effect yet -- it must never
+    // supply the rate retroactively, no matter how early it sits relative to
+    // the rest of the history. Before it, the fallback applies.
+    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9)).toBe(9);
   });
 
   it('falls back to the account rate when there are no rows', () => {
     expect(effectiveAnnualRateOn([], '2024-01-01', 5.5)).toBe(5.5);
+  });
+
+  it('does not apply a future rate change before its own effective date (REV-20260803-040)', () => {
+    // Exact scenario from the finding: a 5% loan with a rate change to 7%
+    // effective October 1, queried for a September date -- before the
+    // earliest (and only) recorded row. The 7% row has not taken effect yet,
+    // so the fallback (the loan's actual 5% rate) applies, not the future row.
+    const futureOnly = [{ effectiveDate: '2026-10-01', annualRate: 7 }];
+    expect(effectiveAnnualRateOn(futureOnly, '2026-09-15', 5)).toBe(5);
+    // On or after the effective date, the row does apply.
+    expect(effectiveAnnualRateOn(futureOnly, '2026-10-01', 5)).toBe(7);
   });
 });
 
