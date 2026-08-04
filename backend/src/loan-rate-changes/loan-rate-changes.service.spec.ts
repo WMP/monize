@@ -517,6 +517,121 @@ describe("LoanRateChangesService", () => {
       });
     });
 
+    // REV-20260803-028, second reopen: the rebuilt extra split copied only
+    // transferAccountId/amount/memo and dropped categoryId, so a split first
+    // recognized via the account's configured overpayment category lost that
+    // category in the payload. The *next* sync would then read back a split
+    // with no categoryId and a memo that doesn't contain "extra", so it would
+    // no longer be recognized at all -- permanently unrecoverable after one
+    // sync. Prove the fix by running two sequential syncs and asserting the
+    // categoryId survives the first rebuild.
+    it("preserves the extra split's categoryId across two sequential syncs, so category-based recognition survives a rebuild", async () => {
+      const account = makeAccount({ overpaymentCategoryId: "cat-overpayment" });
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValueOnce({
+        id: "sched-1",
+        splits: [
+          { transferAccountId: accountId, amount: -800, memo: "Principal" },
+          { categoryId: "cat-interest", amount: -1700, memo: "Interest" },
+          {
+            transferAccountId: accountId,
+            categoryId: "cat-overpayment",
+            amount: -200,
+            memo: "Additional principal",
+          },
+        ],
+      });
+
+      await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+      });
+
+      const firstUpdateArgs =
+        scheduledTransactionsService.update.mock.calls[0][2];
+      const rebuiltExtraSplit = firstUpdateArgs.splits[2];
+      expect(rebuiltExtraSplit.categoryId).toBe("cat-overpayment");
+
+      // Second synchronization: feed back exactly what the first sync's
+      // payload rebuilt (i.e. what would now be persisted), and confirm the
+      // split is still recognized and its categoryId still survives.
+      scheduledTransactionsService.findOne.mockResolvedValueOnce({
+        id: "sched-1",
+        splits: firstUpdateArgs.splits,
+      });
+
+      await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+      });
+
+      const secondUpdateArgs =
+        scheduledTransactionsService.update.mock.calls[1][2];
+      expect(secondUpdateArgs.splits).toHaveLength(3);
+      expect(secondUpdateArgs.splits[2]).toMatchObject({
+        transferAccountId: accountId,
+        categoryId: "cat-overpayment",
+        amount: -200,
+        memo: "Additional principal",
+      });
+    });
+
+    // REV-20260803-028, second reopen: `splits.find` located only the first
+    // recognized extra-principal split, so a scheduled payment with two
+    // distinct extra splits (e.g. two separately configured recurring
+    // overpayments) lost the second one entirely when the payload replaced
+    // all splits.
+    it("preserves both recognized extra-principal splits when a scheduled payment has more than one", async () => {
+      const account = makeAccount({ overpaymentCategoryId: "cat-overpayment" });
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        splits: [
+          { transferAccountId: accountId, amount: -800, memo: "Principal" },
+          { categoryId: "cat-interest", amount: -1700, memo: "Interest" },
+          {
+            transferAccountId: accountId,
+            categoryId: "cat-overpayment",
+            amount: -150,
+            memo: "Biweekly overpayment",
+          },
+          {
+            transferAccountId: accountId,
+            amount: -50,
+            memo: "Extra lump sum",
+          },
+        ],
+      });
+
+      await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+      });
+
+      const updateArgs = scheduledTransactionsService.update.mock.calls[0][2];
+      // Principal + interest + both extra splits -- four splits total, not
+      // collapsed down to only the first recognized extra split.
+      expect(updateArgs.splits).toHaveLength(4);
+      expect(updateArgs.amount).toBe(-2700);
+      expect(updateArgs.splits[2]).toMatchObject({
+        transferAccountId: accountId,
+        categoryId: "cat-overpayment",
+        amount: -150,
+        memo: "Biweekly overpayment",
+      });
+      expect(updateArgs.splits[3]).toMatchObject({
+        transferAccountId: accountId,
+        amount: -50,
+        memo: "Extra lump sum",
+      });
+    });
+
     it("leaves scalars and the scheduled payment untouched for future-dated changes", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);

@@ -23,7 +23,7 @@ import {
 } from "../accounts/mortgage-amortization.util";
 import { getPeriodsPerYear } from "../accounts/loan-amortization.util";
 import { PaymentFrequency } from "../accounts/loan-amortization.util";
-import { roundMoney } from "../common/round.util";
+import { roundMoney, sumMoney } from "../common/round.util";
 import { todayYMD, formatDateYMDLocal } from "../common/date-utils";
 
 const RATE_CHANGE_ACCOUNT_TYPES = [AccountType.LOAN, AccountType.MORTGAGE];
@@ -118,6 +118,40 @@ function isExtraPrincipalSplit(
     return true;
   }
   return memo.includes("extra");
+}
+
+/**
+ * Allocate a (possibly rate-capped) total across the amounts multiple
+ * recognized extra-principal splits originally requested, preserving each
+ * split's proportional share rather than collapsing them into one (REV-20260803-028).
+ * When the balance does not force capping, every split simply keeps what it
+ * asked for. When it does, amounts are scaled down proportionally and any
+ * rounding remainder is absorbed by the last entry, so the returned amounts
+ * always sum to exactly `total` -- required because the rebuilt payload's
+ * parent amount must equal the sum of its splits.
+ */
+function allocateCappedAmounts(requested: number[], total: number): number[] {
+  if (requested.length === 0) return [];
+  const requestedTotal = sumMoney(requested);
+  if (requestedTotal <= 0) {
+    // Nothing was actually requested (e.g. all-zero splits) -- avoid
+    // dividing by zero; the (also zero/negative-clamped) total has nothing
+    // meaningful to distribute.
+    return requested.map(() => 0);
+  }
+  if (total >= requestedTotal) {
+    // No capping needed -- every split keeps exactly what it asked for.
+    return requested.map((amount) => roundMoney(amount));
+  }
+  const scale = total / requestedTotal;
+  const allocated = requested.map((amount) => roundMoney(amount * scale));
+  const remainder = roundMoney(total - sumMoney(allocated));
+  if (remainder !== 0) {
+    allocated[allocated.length - 1] = roundMoney(
+      allocated[allocated.length - 1] + remainder,
+    );
+  }
+  return allocated;
 }
 
 @Injectable()
@@ -404,12 +438,13 @@ export class LoanRateChangesService {
 
   /**
    * Recompute the linked scheduled payment's principal/interest split from the
-   * account's current balance and rate, preserving any separate extra-principal
-   * split (recognized via `isExtraPrincipalSplit` -- the account's configured
-   * overpayment category or memo, or the legacy literal "extra" memo
-   * substring). Returns the update to apply plus a before/after preview, or
-   * null when the account has no applicable linked scheduled bill payment.
-   * Does not apply anything.
+   * account's current balance and rate, preserving every separate
+   * extra-principal split -- there can be more than one (recognized via
+   * `isExtraPrincipalSplit` -- the account's configured overpayment category
+   * or memo, or the legacy literal "extra" memo substring), along with each
+   * one's categoryId and tags. Returns the update to apply plus a before/after
+   * preview, or null when the account has no applicable linked scheduled bill
+   * payment. Does not apply anything.
    */
   async buildScheduledUpdate(
     userId: string,
@@ -472,13 +507,19 @@ export class LoanRateChangesService {
     if (interest > paymentAmount) interest = paymentAmount;
 
     const splits = scheduled.splits || [];
-    const extraSplit = splits.find(
+    // A scheduled transaction can legitimately carry more than one recognized
+    // extra-principal split (e.g. two separate recurring overpayments
+    // configured differently) -- `filter`, not `find`, so every one of them
+    // is preserved when the payload replaces all splits, not just the first
+    // (REV-20260803-028).
+    const extraSplits = splits.filter(
       (s) =>
         s.transferAccountId === account.id && isExtraPrincipalSplit(s, account),
     );
-    const requestedExtraAmount = extraSplit
-      ? Math.abs(Number(extraSplit.amount))
-      : 0;
+    const requestedExtraAmounts = extraSplits.map((s) =>
+      Math.abs(Number(s.amount)),
+    );
+    const requestedExtraTotal = sumMoney(requestedExtraAmounts);
 
     // Regular principal and extra principal are capped against the remaining
     // balance *together*, not independently -- otherwise a near-payoff balance
@@ -487,17 +528,19 @@ export class LoanRateChangesService {
     let principal = roundMoney(paymentAmount - interest);
     if (principal > balance) principal = roundMoney(balance);
     const remainingForExtra = Math.max(0, roundMoney(balance - principal));
-    const extraAmount = roundMoney(
-      Math.min(requestedExtraAmount, remainingForExtra),
+    const extraTotal = roundMoney(
+      Math.min(requestedExtraTotal, remainingForExtra),
+    );
+    const extraAmounts = allocateCappedAmounts(
+      requestedExtraAmounts,
+      extraTotal,
     );
 
     // The parent amount must equal the sum of its splits -- ScheduledTransactionsService
     // rejects the update otherwise. Derive it from the actual interest plus the
     // (possibly capped) regular and extra principal, never leave it at the
     // uncapped full contractual payment.
-    const proposedPaymentAmount = roundMoney(
-      interest + principal + extraAmount,
-    );
+    const proposedPaymentAmount = roundMoney(interest + principal + extraTotal);
 
     const payload = {
       amount: -proposedPaymentAmount,
@@ -512,15 +555,25 @@ export class LoanRateChangesService {
           amount: -interest,
           memo: "Interest",
         },
-        ...(extraSplit
-          ? [
-              {
-                transferAccountId: account.id,
-                amount: -extraAmount,
-                memo: extraSplit.memo || "Extra Principal",
-              },
-            ]
-          : []),
+        // Each recognized extra-principal split is rebuilt individually,
+        // carrying over its own categoryId (and tags) -- not just
+        // transferAccountId/amount/memo. Dropping categoryId here silently
+        // un-recognizes a split that was originally matched via the
+        // account's configured overpayment category: the next sync would no
+        // longer see a category to match against and would fall through to
+        // memo-based recognition, which fails too unless the memo happens to
+        // contain "extra" (REV-20260803-028).
+        ...extraSplits.map((extraSplit, index) => ({
+          transferAccountId: account.id,
+          ...(extraSplit.categoryId
+            ? { categoryId: extraSplit.categoryId }
+            : {}),
+          ...(extraSplit.tags && extraSplit.tags.length > 0
+            ? { tagIds: extraSplit.tags.map((tag) => tag.id) }
+            : {}),
+          amount: -extraAmounts[index],
+          memo: extraSplit.memo || "Extra Principal",
+        })),
       ],
     };
 
@@ -550,7 +603,10 @@ export class LoanRateChangesService {
         ? Math.abs(Number(interestSplit.amount))
         : null,
       proposedInterest: interest,
-      extraPrincipal: extraAmount,
+      // Summed across every recognized extra-principal split, not just one
+      // -- the preview must stay consistent with the payload, which now
+      // rebuilds every one of them (REV-20260803-028).
+      extraPrincipal: extraTotal,
     };
 
     return {
