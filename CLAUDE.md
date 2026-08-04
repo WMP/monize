@@ -106,17 +106,29 @@ Use Grep only when LSP isn't available or for text/pattern searches (comments, s
 
 After writing or editing code, check LSP diagnostics and fix errors before proceeding.
 
-### Per-user files live in a sharded folder, and the folder is what names them
+### Files on disk are sharded by an id, and which id differs
 
-Anything the server writes to disk on a user's behalf goes in
-`<base>/<ab>/<cd>/<id>/`, built from `shardedSegments` in
-`backend/src/common/shard-path.util.ts` -- attachment bytes and each user's
-automatic backups both. Do not hand-roll a second sharding scheme, and do not
-write a per-user file flat into a shared folder: automatic backup filenames
-carry only a tier and a date (`monize-backup-daily-2026-08-03.json.gz`), so a
-flat folder gave every user the same name for the same day, and whoever's cron
-ran last overwrote the rest. Two levels of two hex characters keep any one
-directory small enough for filesystems that scan linearly or over a network.
+Anything the server writes to disk goes through `shardedSegments` in
+`backend/src/common/shard-path.util.ts`, which returns `[ab, cd, id]` -- two
+levels of two hex characters, then the id. That keeps any one directory small
+enough for filesystems that scan linearly or over a network. Do not hand-roll a
+second sharding scheme.
+
+**The scheme is shared; the shard key and the shape are not.** Automatic backups
+shard by *user* id and the last segment is a directory
+(`<base>/<ab>/<cd>/<userId>/monize-backup-daily-2026-08-03.json.gz`), because the
+filename carries only a tier and a date -- a flat folder gave every user the same
+name for the same day, whoever's cron ran last overwrote the rest, and one user's
+retention pass deleted another's files. Local attachments shard by *attachment*
+id and the last segment is the file itself (`<base>/<ab>/<cd>/<attachmentId>`),
+because that id is already globally unique.
+
+So a backup's owner is recoverable from its path and **an attachment's owner is
+not** -- no user id appears in an attachment path. Attachment ownership is
+database-authoritative via its metadata row, and no cleanup, retention or
+migration tool may infer it from the filesystem. Sharding is storage
+distribution, never tenant isolation or authorization. `docs/adr/0003` has the
+reasoning and the rejected alternatives.
 
 A path built from an id must still be validated (`isShardableId`) and asserted
 to resolve inside its base before it reaches the filesystem, even when the id is

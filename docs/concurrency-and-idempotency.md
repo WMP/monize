@@ -238,12 +238,32 @@ a retry:
 | After commit, response lost | The effect happened. A blind retry duplicates it. The retry must reconcile: read the durable state and continue from it. |
 | Commit result unknown | Treat as "after commit" until proven otherwise. This is the case CONC-006 exists for. |
 
-The MNY import is the model for the first case, and it earns it structurally
-rather than by adding machinery: the entire import write is one `withScopedDb`
-transaction, so a failure leaves nothing committed and "Retry" cannot
-double-import. That is a stronger position than an idempotency key, because
-there is no key to get wrong. Prefer it wherever the whole effect fits in one
-transaction.
+Whole-effect-in-one-transaction is the strongest position available for the first
+case, because there is no key to construct wrongly -- prefer it wherever the
+effect genuinely fits in one transaction.
+
+**The trap is the word "genuinely", and the MNY import is the worked example of
+falling into it.** `writeAll` puts every business row in one `withScopedDb`
+transaction, which is real and correct. But the import is not over when that
+transaction commits: post-processing, verification, holdings verification,
+staged-file deletion and the terminal job-status update all follow it. So a
+failure lands in the *first* row of the table above only if it happened inside
+`writeAll`; a failure after that commit is squarely in the second row, and the
+import has no mechanism for it -- no data-committed checkpoint, no import-run id,
+and fresh UUIDs on every parse. A retry replays.
+
+The comment above `runImport` says "The whole write is one transaction, so a
+failure leaves nothing behind and Retry cannot double-import." Read carefully,
+the first clause describes `writeAll` and the second describes the import; the
+inference between them is where the guarantee is lost. That is CONC-007's exact
+failure mode -- a named mechanism that does not cover the scope claimed -- and it
+is worth knowing that this document asserted the same thing in an earlier
+revision, having taken the comment at its word.
+
+So before claiming this pattern: check that the transaction's boundary and the
+operation's boundary are the same boundary. If anything happens after the commit
+that the caller would consider part of the operation, the operation is in the
+second row of the table and needs reconciliation. See INV-IMPORT-002.
 
 The exchange-rate and security-price refreshes are the model for repeatable
 writes: `ON CONFLICT (from_currency, to_currency, rate_date) DO UPDATE` and
@@ -341,16 +361,23 @@ this table when a mechanism lands, not when someone judges the window small.
 | `budget-period-cron` monthly rollover | No claim. `UNIQUE(budget_id, period_start)` is the only backstop, and the loser's unique violation is caught by a per-budget `try/catch` that increments an error count -- so the losing replica's period close silently fails rather than converging. | CONC-004, CONC-006 |
 | `demo-reset.service` | Full delete-and-reseed with no lock; two concurrent runs can interleave one's delete with the other's insert. | CONC-004 |
 | Logout vs rotation | Logout's family revoke is an unlocked bulk `UPDATE`. It happens to be safe because `isRevoked = true` is idempotent and the end state is order-independent -- but this is a property of the value, not a protocol, and it stops holding the moment logout writes anything else. | CONC-003 (tolerated; document, do not copy) |
+| MNY import retry after a committed write | `writeAll`'s transaction commits before post-processing, verification, staged-file deletion and the terminal status update. A failure in that window leaves committed rows behind a retryable job, and a retry re-parses with fresh UUIDs. No checkpoint, run id, or per-record key. See INV-IMPORT-002. | CONC-006, CONC-007 |
 
-Two entries are worth reading as positive findings rather than gaps. Refresh-token
-rotation is correct and subtle: the loser blocks on the lock, then sees the
-winner's committed `isRevoked`, and takes the reuse-detection branch that revokes
-the whole family -- so a concurrent double-rotation ends in revocation rather
-than two live successors. And the MNY import job is the only workflow in the
-codebase with a complete protocol: a unique index for exclusivity, a conditional
-claim for the worker, a heartbeat with a reaper for crash recovery, and
-whole-effect-in-one-transaction for retry safety. It is also the only one with
-real two-connection tests. Those two facts are related.
+Refresh-token rotation is worth reading as a positive finding rather than a gap:
+it is correct and subtle -- the loser blocks on the lock, then sees the winner's
+committed `isRevoked`, and takes the reuse-detection branch that revokes the whole
+family, so a concurrent double-rotation ends in revocation rather than two live
+successors.
+
+The MNY import job deserves a more careful verdict than either column allows. It
+has the most complete protocol in the codebase for the races it was built to
+handle -- a partial unique index for exclusivity, a conditional claim for the
+worker, a heartbeat with a reaper for a dead worker -- and it is the only workflow
+with real two-connection tests. Those two facts are related, and the tests are why
+the `returnedRows` bug was found. What it does not have is a protocol for the
+window *after* its own write commits, which is the row added above. A workflow can
+be the best-defended one in a codebase against the failures it anticipated and
+still be undefended against the one it did not.
 
 ## 9. Test obligation
 

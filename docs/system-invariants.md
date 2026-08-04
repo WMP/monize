@@ -54,7 +54,7 @@ guessing -- see INV-AUTH-004.
 | ID | Invariant | Status |
 | --- | --- | --- |
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
-| INV-IMPORT-002 | A retry never double-imports | enforced |
+| INV-IMPORT-002 | A retry never double-imports | unenforced |
 | INV-IMPORT-003 | A category collision does not abort an import | unenforced |
 | INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | unenforced |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | unenforced |
@@ -117,24 +117,59 @@ could also reach the destructive wipe.
 ```text
 Statement           Retrying a failed import must not insert a second copy of
                     rows a previous attempt may have committed.
-Source of truth     the staged file bytes; the import's own transaction
-Enforcement         Structural: the entire import write is one withScopedDb
-                    transaction, so a failure leaves nothing committed. There is
-                    no idempotency key because there is nothing to deduplicate.
-                    runImport re-parses the staged bytes rather than trusting a
-                    serialized preview.
+Source of truth     the staged file bytes; import_jobs.status
+Enforcement         None once the business data has committed. writeAll opens its
+                    own withScopedDb transaction and commits when it returns;
+                    post-processing, verification, holdings verification, staged-
+                    file deletion and the terminal status update all run after
+                    that commit. No durable data-committed checkpoint, import-run
+                    identifier, or deterministic per-source-record key exists, and
+                    each parse pre-generates fresh row UUIDs, so nothing
+                    downstream can recognise a row as already imported.
 Concurrency scope   per user
-Retry semantics     Safe unconditionally.
-Crash semantics     A dead worker's connection drop rolls back the whole write;
-                    the reaper only has the status row to tidy.
-Failure response    The job is marked failed with retryable: true.
-Required tests      Integration: fail mid-import, retry, assert row counts.
-Status              enforced
+Retry semantics     Safe when the failure occurred inside writeAll -- nothing
+                    committed. Unsafe when the failure occurred after writeAll
+                    committed, or when the commit result is unknown.
+Crash semantics     A crash between writeAll's commit and terminal completion
+                    leaves committed accounts, transactions, investments and
+                    prices behind a job that is running or failed-retryable. The
+                    reaper marks it retryable, which is correct for the job row
+                    and wrong for the data.
+Failure response    A retry must reconcile: finalize the committed run rather than
+                    replay it, or refuse until the run's state is known.
+Required tests      Failpoint: commit writeAll, then fail before terminal
+                    completion, retry, and assert every imported row exists
+                    exactly once. A test that throws inside the import
+                    transaction does not reach this window. No such test exists.
+Status              unenforced
 ```
 
-Worth stating explicitly because it is a stronger position than an idempotency
-key: there is no key to construct wrongly. Prefer whole-effect-in-one-transaction
-wherever the effect fits.
+Worth spelling out how this looked correct. The source comment above `runImport`
+says "The whole write is one transaction, so a failure leaves nothing behind and
+Retry cannot double-import." The first clause is true of `writeAll`. The second
+does not follow from it, because the import is not finished when `writeAll`
+commits -- and the comment's scope ("the whole write") is what makes the
+inference look sound. The numbers:
+
+```text
+Source file transaction:   -25.00
+First attempt commits:     -25.00   writeAll returns, then the worker dies
+Retry re-parses, commits:  -25.00   fresh UUIDs, nothing recognises the first copy
+Resulting effect:          -50.00
+Expected effect:           -25.00
+```
+
+This entry was itself marked `enforced` in an earlier revision of this document,
+on the strength of that comment. It is the catalog's own cautionary tale: a
+status copied from a comment is not a verified status, and CONC-007 exists
+because the mechanism named has to cover the scope claimed. The mechanisms that
+would close it are a `data_committed` checkpoint written in the same transaction
+as the rows, a stable import-run id carried by every imported record, or a
+recovery path that finalizes rather than replays.
+
+Note also that a "start fresh" wipe is applied in `start`, outside the job body,
+so it does not make a retry idempotent: an append-mode import that committed and
+then failed has no wipe to save it.
 
 ### INV-IMPORT-003 -- a category collision does not abort an import
 

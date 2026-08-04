@@ -243,8 +243,9 @@ exists. Attachments have no state column; backups have a post-hoc
 success/failed string; emergency access has an ad hoc set of timestamp columns;
 AI insights and reminder emails have no state beyond a time-window read.
 
-The one complete lifecycle in the codebase belongs to the `.mny` import job, and
-although it wraps a local parse rather than a provider call, it is the template:
+The nearest thing to a lifecycle belongs to the `.mny` import job. It wraps a
+local parse rather than a provider call, and it is incomplete in one instructive
+way noted below -- but its four ingredients are the template:
 
 - `import_jobs.status` moves `pending -> running -> completed | failed`, with a
   **partial unique index** on `(user_id) WHERE status IN ('pending','running')`
@@ -261,6 +262,17 @@ None of that machinery is reused for attachments, backups, emails or insights.
 Adopting it does not require building the generic abstraction first: the four
 ingredients (a state column, a uniqueness constraint, a conditional claim, a
 reaper) are independently useful.
+
+**Where it stops short, and why that is the most useful part of the example.**
+The status column has no state between "running" and "completed" -- nothing
+records that the business data has committed. So the reaper, which correctly
+handles a worker that died *before* writing, marks a worker that died *after*
+writing as retryable too, and a retry replays committed rows (INV-IMPORT-002).
+That is precisely the gap EXT-003 describes: an effect that has happened but
+cannot be verified from durable state. A lifecycle needs a state for
+"externally done, not yet finalized", and this one has three states where it
+needs four. Any workflow copying the template should copy it with that state
+added rather than as it stands.
 
 ## 8. Gap register
 

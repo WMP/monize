@@ -100,6 +100,25 @@ different file: a new entity column. `INV-FX-001` and `INV-HOLDING-002` need
 scans for the same reason -- both are scattered across call sites, and every
 previous fix corrected one and left the others.
 
+`INV-IMPORT-002`'s load-bearing kind is a **failpoint**, and it is worth
+understanding why the other columns cannot substitute. The MNY import has real
+two-connection tests -- more than any other workflow -- and they all interleave
+*starts* and *claims*. None of them commits the business write and then fails, so
+none of them enters the window where a retry duplicates data. A suite can be
+genuinely strong at one failure mode and blind to the neighbouring one, and
+counting tests will not reveal it. The failpoint that would:
+
+```text
+1. let writeAll() commit
+2. throw immediately after, before terminal job completion
+3. retry the job against the same staged file
+4. assert every imported row exists exactly once
+5. assert the job state distinguishes committed-but-unfinalized from retryable
+```
+
+A test that throws *inside* the import transaction passes today and proves
+nothing about this.
+
 ## 4. CI ownership
 
 Every required test must be reachable by a named job. The jobs that exist in
