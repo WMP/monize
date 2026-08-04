@@ -45,10 +45,19 @@ export class BillReminderService {
     private readonly jobClaims: JobClaimService,
   ) {}
 
-  /** Release a claim a send did not use, so the next run can retry. */
-  private async releaseClaim(userId: string, claimKey: string): Promise<void> {
+  /**
+   * Release a lease a send did not use, so the next run can retry.
+   *
+   * Addressed by the lease token, not only by the work: a stalled worker must not
+   * delete a lease another replica has retaken (audit DR-RRV4-01).
+   */
+  private async releaseClaim(
+    userId: string,
+    claimKey: string,
+    leaseToken: string,
+  ): Promise<void> {
     await this.jobClaims
-      .release(JobClaimType.BillReminder, userId, claimKey)
+      .release(JobClaimType.BillReminder, userId, claimKey, leaseToken)
       .catch((error: unknown) =>
         this.logger.warn(
           `Failed to release bill-reminder claim for user ${userId}: ` +
@@ -154,6 +163,7 @@ export class BillReminderService {
         skipCount++;
         continue;
       }
+      const leaseToken = claimed;
       if (
         await this.jobClaims.wasDelivered(
           JobClaimType.BillReminder,
@@ -164,7 +174,7 @@ export class BillReminderService {
         // Already sent, durably. Hand the lease back rather than holding it for
         // its whole TTL.
         skipCount++;
-        await this.releaseClaim(userId, claimKey);
+        await this.releaseClaim(userId, claimKey, leaseToken);
         continue;
       }
 
@@ -180,7 +190,7 @@ export class BillReminderService {
         );
         if (prefs && !prefs.notificationEmail) {
           skipCount++;
-          await this.releaseClaim(userId, claimKey);
+          await this.releaseClaim(userId, claimKey, leaseToken);
           continue;
         }
 
@@ -191,7 +201,7 @@ export class BillReminderService {
         );
         if (!user || !user.email) {
           skipCount++;
-          await this.releaseClaim(userId, claimKey);
+          await this.releaseClaim(userId, claimKey, leaseToken);
           continue;
         }
 
@@ -236,6 +246,7 @@ export class BillReminderService {
           JobClaimType.BillReminder,
           userId,
           claimKey,
+          leaseToken,
         );
         sentCount++;
       } catch (error) {
@@ -243,7 +254,7 @@ export class BillReminderService {
         // exactly-once, but it must not turn a transient SMTP outage into a
         // silently skipped day -- which is what the pre-claim code got for free
         // by never recording anything.
-        await this.releaseClaim(userId, claimKey);
+        await this.releaseClaim(userId, claimKey, leaseToken);
         this.logger.error(
           `Failed to send bill reminder to user ${userId}`,
           error instanceof Error ? error.stack : error,

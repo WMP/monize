@@ -374,11 +374,25 @@ CREATE TABLE attachment_blob_tombstones (
     -- the metadata row, so metadata pointing at deleted bytes is impossible
     -- whichever of the two wins the row (audit RV4-002).
     swept_at TIMESTAMP,
+    -- How long a swept *upload intent* is kept after its object was deleted
+    -- (migration 141). The fence above is about metadata; this is about bytes. A
+    -- put that stalled past its lease can land after the sweep deleted the key, and
+    -- a process killed before its compensating delete leaves those bytes with no
+    -- tombstone to enumerate them -- unreferenced and undiscoverable (audit
+    -- RRV4-002). Keeping the row until this passes means the next hourly sweep
+    -- re-deletes the key and only then retires the row. NULL on an ordinary
+    -- deletion record, whose metadata is already gone, so nothing can write those
+    -- bytes again.
+    late_write_quarantine_until TIMESTAMP,
     attempts INTEGER NOT NULL DEFAULT 0,
     last_error TEXT
 );
 
--- The sweeper's candidate predicate: rows with no live upload lease.
+-- The sweeper's candidate predicate: rows with no live upload lease, plus the
+-- quarantined rows it has to come back to.
+CREATE INDEX idx_abt_quarantined
+    ON attachment_blob_tombstones(storage_provider, late_write_quarantine_until)
+    WHERE late_write_quarantine_until IS NOT NULL;
 CREATE INDEX idx_abt_sweepable
     ON attachment_blob_tombstones(storage_provider, deleted_at)
     WHERE upload_lease_expires_at IS NULL;
@@ -951,6 +965,13 @@ CREATE TABLE emergency_access_settings (
     message_ciphertext    TEXT,
     last_reminder_sent_at TIMESTAMP,
     granted_at            TIMESTAMP,
+    -- Which grant cycle this owner is on (migration 139). Advanced by the single
+    -- statement that transitions ungranted -> granted, so a contact's delivery
+    -- state belongs to one cycle instead of to the row: no re-arm path
+    -- (revokeAfterReturn, disable/re-enable, a manual reset) has to remember to
+    -- clear anything, which is what stopped emergency access from ever firing a
+    -- second time (audit RRV4-004).
+    grant_generation      INTEGER NOT NULL DEFAULT 1,
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT emergency_access_settings_reminder_lt_grant
@@ -966,14 +987,22 @@ CREATE TABLE emergency_access_contacts (
     claim_token_expires_at TIMESTAMP,
     claim_token_used_at    TIMESTAMP,
     claim_voided_reason    VARCHAR(20), -- 'claimed_by_other' | 'owner_revoked' | NULL
-    -- When this contact's link was actually sent (migration 134). The delivery
-    -- record, kept apart from the claim that coordinates the send: a claim
-    -- answers "may I do this now" and cannot also answer "has this been done",
-    -- because the second question has to outlive the process that asked the
-    -- first. NULL on a granted owner's contact means a link is still owed, which
-    -- is how the daily check finds a grant a killed replica never delivered
-    -- (audit FV4-004).
+    -- When the notice for `notified_grant_generation` was actually sent
+    -- (migration 134). The delivery record, kept apart from the claim that
+    -- coordinates the send: a claim answers "may I do this now" and cannot also
+    -- answer "has this been done", because the second question has to outlive the
+    -- process that asked the first. That is how the daily check finds a grant a
+    -- killed replica never delivered (audit FV4-004).
+    --
+    -- A timestamp for operators, not a predicate: migration 139 moved "is a link
+    -- still owed" onto the generation below, because this column was never reset
+    -- and therefore made emergency access fire at most once per contact row.
     claim_notified_at      TIMESTAMP,
+    -- The grant cycle whose notice this contact received (migration 139). Owed a
+    -- link whenever it differs from the owner's `grant_generation`, which is what
+    -- makes a re-armed grant owe every contact again without any reset path having
+    -- to say so (audit RRV4-004). NULL means never notified.
+    notified_grant_generation INTEGER,
     -- The undelivered credential (migration 134), AES-256-GCM under
     -- AI_ENCRYPTION_KEY. Written with the hash before the first send, re-read by a
     -- retry so it re-sends the *same* link rather than minting one that kills the
@@ -989,9 +1018,11 @@ CREATE UNIQUE INDEX idx_emergency_access_contacts_owner_email
     ON emergency_access_contacts(owner_user_id, lower(email));
 
 -- "Granted owners with a contact still owed a link", read on every daily sweep.
-CREATE INDEX idx_eac_pending_notify
+-- Partial on the never-notified case, which is every contact of a brand-new grant;
+-- the generation comparison for a resumed one falls back to the owner column.
+CREATE INDEX idx_eac_awaiting_notice
     ON emergency_access_contacts(owner_user_id)
-    WHERE claim_notified_at IS NULL;
+    WHERE notified_grant_generation IS NULL;
 
 CREATE INDEX idx_emergency_access_contacts_token_hash
     ON emergency_access_contacts(claim_token_hash)
@@ -1475,6 +1506,39 @@ CREATE TABLE import_jobs (
         CHECK (status IN ('pending', 'running', 'completed', 'failed'))
 );
 
+-- `data_committed` may only go false -> true while the job is `running`
+-- (migration 138). The application checkpoint also requires the attempt's token,
+-- but that only binds code that knows the column exists: during a rolling
+-- deployment a previous-version worker runs `UPDATE import_jobs SET
+-- data_committed = true WHERE id = $1`, naming no token, and would otherwise
+-- commit the whole file after the new reaper had already failed the job and
+-- advertised a retry (audit RRV4-001). The reaper's action is `status = 'failed'`,
+-- so this refuses exactly that commit -- to either version -- as a statement error
+-- that aborts the import transaction.
+--
+-- Deliberately not "and has a token": an old worker's normal unreaped state is
+-- `running` with a NULL token, and refusing that would break every import in
+-- flight during the rollout.
+CREATE OR REPLACE FUNCTION reject_unfenced_import_checkpoint() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+      'import job % may not record a data commit while status is %; the attempt was reaped',
+      OLD.id, NEW.status
+      USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+CREATE TRIGGER trg_import_job_fenced_checkpoint
+    BEFORE UPDATE ON import_jobs
+    FOR EACH ROW
+    WHEN (
+      NEW.data_committed
+      AND NOT OLD.data_committed
+      AND NEW.status <> 'running'
+    )
+    EXECUTE FUNCTION reject_unfenced_import_checkpoint();
+
 CREATE INDEX idx_import_jobs_user ON import_jobs(user_id);
 CREATE INDEX idx_import_jobs_staged_file ON import_jobs(staged_file_id);
 CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHERE status = 'running';
@@ -1523,7 +1587,13 @@ CREATE TABLE job_claims (
     -- decide whether the work is still owed: a claim taken before the send says
     -- only that somebody intended to send, and an intention does not survive the
     -- process holding it (audit RV4-006). A delivered row is never retaken.
-    delivered_at TIMESTAMP
+    delivered_at TIMESTAMP,
+    -- Which attempt owns the current lease (migration 140). The key above
+    -- identifies the *work*; this identifies the holder, so a worker delayed past
+    -- its own expiry cannot release a lease another replica has retaken or record a
+    -- delivery for a send that replica has not finished (audit DR-RRV4-01). NULL for
+    -- a permanent `claimOnce` row, which has no attempt to identify.
+    lease_token UUID
 );
 
 CREATE UNIQUE INDEX idx_job_claims_key ON job_claims(claim_type, user_id, claim_key);

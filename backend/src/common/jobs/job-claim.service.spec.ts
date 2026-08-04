@@ -37,6 +37,8 @@ describe("JobClaimService", () => {
   let claimsRepo: Record<string, jest.Mock>;
 
   const USER = "11111111-1111-4111-8111-111111111111";
+  /** A lease token as `claimLease` would have returned it. */
+  const LEASE = "22222222-2222-4222-8222-222222222222";
 
   beforeEach(() => {
     claimsRepo = { delete: jest.fn().mockResolvedValue({ affected: 1 }) };
@@ -102,13 +104,43 @@ describe("JobClaimService", () => {
       // expiry (a permanent delivery claim) must never be retaken at all.
       expect(sql).toContain("job_claims.expires_at IS NOT NULL");
       expect(sql).toContain("job_claims.expires_at < CURRENT_TIMESTAMP");
-      expect(params).toEqual([
+      expect(params.slice(0, 4)).toEqual([
         "ai_insight_generation",
         USER,
         "generation",
         "60000",
       ]);
-      expect(won).toBe(true);
+      // The fifth parameter is the attempt's lease token, and it is what comes
+      // back: `release` and `markDelivered` compare it, so a worker delayed past
+      // its own expiry cannot write against a lease another replica retook
+      // (audit DR-RRV4-01).
+      expect(params[4]).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+      expect(sql).toContain("lease_token = EXCLUDED.lease_token");
+      expect(won).toBe(params[4]);
+    });
+
+    it("mints a distinct token per attempt", async () => {
+      manager.query.mockResolvedValue([[{ lease_token: "x" }], 1]);
+
+      const first = await service.claimLease(
+        JobClaimType.BillReminder,
+        USER,
+        "k",
+        60_000,
+      );
+      const second = await service.claimLease(
+        JobClaimType.BillReminder,
+        USER,
+        "k",
+        60_000,
+      );
+
+      // Two attempts on the same work are two holders, so the tokens have to
+      // differ -- a shared constant would let either write against the other's
+      // lease and the column would prove nothing.
+      expect(first).not.toBe(second);
     });
 
     it("stands down when a live lease exists", async () => {
@@ -121,7 +153,7 @@ describe("JobClaimService", () => {
           "generation",
           60_000,
         ),
-      ).toBe(false);
+      ).toBeNull();
     });
 
     it("never asks for a non-positive lease", async () => {
@@ -153,14 +185,36 @@ describe("JobClaimService", () => {
    */
   describe("markDelivered", () => {
     it("records the delivery and ends the lease", async () => {
-      await service.markDelivered(JobClaimType.BillReminder, USER, "k");
+      manager.query.mockResolvedValue([[], 1]);
+
+      await service.markDelivered(JobClaimType.BillReminder, USER, "k", LEASE);
 
       const [sql, params] = manager.query.mock.calls[0];
       expect(sql).toContain("SET delivered_at = CURRENT_TIMESTAMP");
       // Nothing left to protect: from here the row's job is to say the work is
       // done, and `claimLease` refuses to retake a delivered row.
       expect(sql).toContain("expires_at = NULL");
-      expect(params).toEqual(["bill_reminder", USER, "k"]);
+      // And it is this attempt's row, not merely this work's.
+      expect(sql).toContain("lease_token = $4::uuid");
+      expect(params).toEqual(["bill_reminder", USER, "k", LEASE]);
+    });
+
+    it("records nothing and says so when the lease was retaken", async () => {
+      // The DR-RRV4-01 interleaving: this attempt stalled past its expiry, another
+      // replica retook the lease, and this one has just finished sending. Stamping
+      // `delivered_at` here would claim a delivery for the *new* holder's send, so
+      // a genuine failure there would never be retried. The work stays owed
+      // instead, and the log is what makes the re-send explicable.
+      manager.query.mockResolvedValue([[], 0]);
+      const warn = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation(() => undefined);
+
+      await service.markDelivered(JobClaimType.BillReminder, USER, "k", LEASE);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("lease was retaken"),
+      );
     });
   });
 
@@ -189,6 +243,8 @@ describe("JobClaimService", () => {
 
   describe("release", () => {
     it("deletes the claim so a failed send can be retried", async () => {
+      // No token: a `claimOnce` caller's claim *is* the fact, so there is no
+      // attempt to identify and the row is addressed by the work alone.
       await service.release(JobClaimType.MortgageReminder, USER, "k");
 
       expect(claimsRepo.delete).toHaveBeenCalledWith({
@@ -196,6 +252,19 @@ describe("JobClaimService", () => {
         userId: USER,
         claimKey: "k",
       });
+    });
+
+    it("releases only its own lease when the caller holds a token", async () => {
+      await service.release(JobClaimType.MortgageReminder, USER, "k", LEASE);
+
+      // A stalled attempt releasing by work alone would free the lease the
+      // replica now sending holds, leaving it with no exclusion at all
+      // (audit DR-RRV4-01).
+      expect(claimsRepo.delete).not.toHaveBeenCalled();
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("DELETE FROM job_claims");
+      expect(sql).toContain("lease_token = $4::uuid");
+      expect(params).toEqual(["mortgage_reminder", USER, "k", LEASE]);
     });
   });
 

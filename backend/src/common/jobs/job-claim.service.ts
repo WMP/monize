@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { randomUUID } from "crypto";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../db/scoped-db";
 import { withSystemContext } from "../db/with-context";
@@ -15,7 +16,11 @@ import { JobClaim } from "./entities/job-claim.entity";
  *
  * - `claimLease` -- an **exclusion**. Only one replica may do this now. Expires,
  *   so a replica killed mid-run does not lock the user out until someone notices;
- *   `release` returns it early.
+ *   `release` returns it early. Returns a **lease token** identifying the winning
+ *   attempt, which `markDelivered` and `release` require: the unique key names the
+ *   work, not the holder, so without the token a worker delayed past its own expiry
+ *   could delete a lease another replica had retaken, or record a delivery for a
+ *   send that replica had not finished (audit DR-RRV4-01).
  *
  * - `markDelivered` / `wasDelivered` -- the **delivery record**. Written after the
  *   side effect succeeded, re-read under the lease to decide whether the work is
@@ -93,7 +98,8 @@ export class JobClaimService {
   }
 
   /**
-   * Claim `(type, userId, key)` for `ttlMs`. True for the caller that won.
+   * Claim `(type, userId, key)` for `ttlMs`. Returns the winning attempt's lease
+   * token, or `null` for a caller that lost.
    *
    * The `DO UPDATE ... WHERE` arm is the lease: an existing row is only retaken
    * when its own expiry has passed, which is how a worker killed mid-run stops
@@ -104,28 +110,43 @@ export class JobClaimService {
    * done is never retaken however long ago it expired. Without it the expiry alone
    * would let a later run re-do delivered work -- the lease is a bound on *doing*,
    * not a statement about what has been done.
+   *
+   * The token is what makes "the lease" a thing a caller can *hold*. Retaking
+   * overwrites it, so a previous holder that comes back after its expiry can no
+   * longer write against the row: `release` and `markDelivered` both compare it
+   * (audit DR-RRV4-01).
    */
   async claimLease(
     claimType: JobClaimType,
     userId: string,
     claimKey: string,
     ttlMs: number,
-  ): Promise<boolean> {
+  ): Promise<string | null> {
+    const leaseToken = randomUUID();
     const rows = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
-        `INSERT INTO job_claims (claim_type, user_id, claim_key, expires_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval)
+        `INSERT INTO job_claims (claim_type, user_id, claim_key, expires_at, lease_token)
+         VALUES ($1, $2, $3,
+                 CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval,
+                 $5::uuid)
          ON CONFLICT (claim_type, user_id, claim_key) DO UPDATE
             SET claimed_at = CURRENT_TIMESTAMP,
-                expires_at = CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval
+                expires_at = CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval,
+                lease_token = EXCLUDED.lease_token
           WHERE job_claims.delivered_at IS NULL
             AND job_claims.expires_at IS NOT NULL
             AND job_claims.expires_at < CURRENT_TIMESTAMP
-         RETURNING id`,
-        [claimType, userId, claimKey, String(Math.max(1, Math.round(ttlMs)))],
+         RETURNING lease_token`,
+        [
+          claimType,
+          userId,
+          claimKey,
+          String(Math.max(1, Math.round(ttlMs))),
+          leaseToken,
+        ],
       ),
     );
-    return affectedRowCount(rows) > 0;
+    return affectedRowCount(rows) > 0 ? leaseToken : null;
   }
 
   /**
@@ -136,6 +157,13 @@ export class JobClaimService {
    * day's reminder -- which is the behaviour the pre-claim code had by accident
    * and which claiming first would otherwise take away.
    *
+   * `leaseToken` is required of every caller that took a lease, and refuses the
+   * delete when the row belongs to a different attempt: a worker delayed past its
+   * own expiry would otherwise remove a live lease and leave the replica actually
+   * sending with no exclusion at all (audit DR-RRV4-01). It is omitted only by
+   * `claimOnce` callers, whose claim is the fact itself and has no attempt to
+   * identify.
+   *
    * A delivered row is deliberately **not** protected from this: the only callers
    * that release are the ones that just failed or just declined, and both hold the
    * lease. A caller that has recorded a delivery has nothing to release.
@@ -144,9 +172,19 @@ export class JobClaimService {
     claimType: JobClaimType,
     userId: string,
     claimKey: string,
+    leaseToken?: string,
   ): Promise<void> {
     await withScopedDb(this.dataSource, (manager) =>
-      manager.getRepository(JobClaim).delete({ claimType, userId, claimKey }),
+      leaseToken
+        ? manager.query(
+            `DELETE FROM job_claims
+              WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
+                AND lease_token = $4::uuid`,
+            [claimType, userId, claimKey, leaseToken],
+          )
+        : manager
+            .getRepository(JobClaim)
+            .delete({ claimType, userId, claimKey }),
     );
   }
 
@@ -157,21 +195,38 @@ export class JobClaimService {
    * protect, and the row's job from here on is to say the work is done. Together
    * with `wasDelivered` this is what makes a claimed-but-unsent window recoverable
    * -- the failure the permanent `claimOnce` could not express (audit RV4-006).
+   *
+   * `lease_token` is a predicate, so this records a delivery only for the attempt
+   * that is still the holder. A worker whose lease was retaken while it was stalled
+   * writes nothing and logs it: the send it just made is real but unrecordable, so
+   * the work stays owed and the next run re-sends. That is the at-least-once side
+   * of the trade, and it is strictly better than the alternative -- stamping
+   * `delivered_at` for a send the *current* holder has not finished, which would
+   * make a genuine failure there permanent (audit DR-RRV4-01).
    */
   async markDelivered(
     claimType: JobClaimType,
     userId: string,
     claimKey: string,
+    leaseToken: string,
   ): Promise<void> {
-    await withScopedDb(this.dataSource, (manager) =>
+    const updated = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
         `UPDATE job_claims
             SET delivered_at = CURRENT_TIMESTAMP,
                 expires_at = NULL
-          WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3`,
-        [claimType, userId, claimKey],
+          WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
+            AND lease_token = $4::uuid`,
+        [claimType, userId, claimKey, leaseToken],
       ),
     );
+    if (affectedRowCount(updated) === 0) {
+      this.logger.warn(
+        `Delivery of ${claimType}/${claimKey} for user ${userId} could not be ` +
+          `recorded: the lease was retaken by another attempt. The work stays owed ` +
+          `and will be re-sent.`,
+      );
+    }
   }
 
   /**

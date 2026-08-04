@@ -23,6 +23,7 @@ import {
   cleanTables,
   createTestUserDirect,
 } from "../helpers/integration-setup";
+import { applyRlsPolicies } from "../helpers/rls-setup";
 
 /**
  * Job concurrency against a real database, because the properties that matter
@@ -79,6 +80,11 @@ describe("MnyImportJobService (integration)", () => {
     dataSource = module.get(DataSource);
     jobs = module.get(MnyImportJobService);
     staging = module.get(MnyStagingService);
+
+    // The checkpoint fence is a database trigger (migration 138), and
+    // `synchronize` creates no triggers -- so without this the mixed-version tests
+    // below would pass against a schema where nothing enforced the rule.
+    await applyRlsPolicies(dataSource);
 
     userA = (await createTestUserDirect(dataSource)).id;
     userB = (await createTestUserDirect(dataSource)).id;
@@ -619,6 +625,110 @@ describe("MnyImportJobService (integration)", () => {
       // The reaper's verdict survives both.
       expect(job!.status).toBe("failed");
       expect(job!.errorKey).toBe(JOB_STALLED_ERROR_KEY);
+    });
+
+    /**
+     * The rolling-deployment case (audit RRV4-001).
+     *
+     * The application fence binds code that knows `attempt_token` exists. A pod
+     * still running the previous release executes
+     * `UPDATE import_jobs SET data_committed = true WHERE id = $1`, naming no
+     * token, and both versions are alive at once during an ordinary deploy. So the
+     * rule has to live where they meet -- a trigger -- and this test is the *old*
+     * statement run verbatim against the migrated schema.
+     */
+    describe("a previous-version worker's unconditional checkpoint", () => {
+      /** Exactly the SQL shipped before migration 135. Do not modernise it. */
+      const legacyCheckpoint = (jobId: string) =>
+        dataSource.query(
+          `UPDATE import_jobs SET data_committed = true WHERE id = $1`,
+          [jobId],
+        );
+
+      it("is refused once the job has been reaped", async () => {
+        const jobId = await newJob();
+        await asUser(userA, () => jobs.claim(jobId));
+        await dataSource.query(
+          `UPDATE import_jobs
+              SET heartbeat_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
+            WHERE id = $1`,
+          [jobId],
+        );
+        await withSystemContext(() => jobs.reapStaleJobs());
+
+        await expect(legacyCheckpoint(jobId)).rejects.toThrow(/was reaped/i);
+
+        const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+        expect(job!.dataCommitted).toBe(false);
+      });
+
+      it("aborts the whole transaction it was part of", async () => {
+        // The old worker's checkpoint was the last statement of its import
+        // transaction too, so refusing it has to take that transaction's rows with
+        // it -- otherwise the fence only stops the bookkeeping, not the duplicate.
+        const jobId = await newJob();
+        await asUser(userA, () => jobs.claim(jobId));
+        await dataSource.query(
+          `UPDATE import_jobs
+              SET heartbeat_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
+            WHERE id = $1`,
+          [jobId],
+        );
+        await withSystemContext(() => jobs.reapStaleJobs());
+
+        const marker = "Payee written by a previous-version worker";
+        const runner = dataSource.createQueryRunner();
+        await runner.connect();
+        await runner.startTransaction();
+        try {
+          await runner.query(
+            `INSERT INTO payees (user_id, name) VALUES ($1, $2)`,
+            [userA, marker],
+          );
+          await runner.query(
+            `UPDATE import_jobs SET data_committed = true WHERE id = $1`,
+            [jobId],
+          );
+          await runner.commitTransaction();
+        } catch {
+          await runner.rollbackTransaction();
+        } finally {
+          await runner.release();
+        }
+
+        const [{ count }] = await dataSource.query(
+          `SELECT COUNT(*)::int AS count FROM payees WHERE name = $1`,
+          [marker],
+        );
+        expect(count).toBe(0);
+      });
+
+      it("still succeeds for an old worker that has not been reaped", async () => {
+        // The rule is "while running", deliberately not "and has a token": an old
+        // worker's normal unreaped state is running with a NULL token, and refusing
+        // that would break every import in flight during the rollout.
+        const jobId = await newJob();
+        await dataSource.query(
+          `UPDATE import_jobs
+              SET status = 'running', attempt_token = NULL,
+                  heartbeat_at = CURRENT_TIMESTAMP
+            WHERE id = $1`,
+          [jobId],
+        );
+
+        await expect(legacyCheckpoint(jobId)).resolves.toBeDefined();
+
+        const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+        expect(job!.dataCommitted).toBe(true);
+      });
+
+      it("is refused for a completed job as well", async () => {
+        const jobId = await newJob();
+        const token = await asUser(userA, () => jobs.claim(jobId));
+        await asUser(userA, () => jobs.complete(jobId, token!, EMPTY_RESULT));
+
+        await expect(legacyCheckpoint(jobId)).rejects.toThrow(/was reaped/i);
+      });
     });
 
     it("lets a retry claim the job and mint a token the old worker does not have", async () => {

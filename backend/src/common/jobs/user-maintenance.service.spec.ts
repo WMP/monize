@@ -11,6 +11,7 @@ import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import {
   createJobClaimMock,
   jobClaimProvider,
+  TEST_LEASE_TOKEN,
   type JobClaimMock,
 } from "../../test-helpers/job-claim-testing";
 
@@ -97,7 +98,7 @@ describe("UserMaintenanceService", () => {
       const order: string[] = [];
       jobClaims.claimLease.mockImplementation(async () => {
         order.push("claim");
-        return true;
+        return TEST_LEASE_TOKEN;
       });
       jobClaims.release.mockImplementation(async () => {
         order.push("release");
@@ -123,7 +124,7 @@ describe("UserMaintenanceService", () => {
     });
 
     it("refuses with a 409 when another operation holds the lease", async () => {
-      jobClaims.claimLease.mockResolvedValue(false);
+      jobClaims.claimLease.mockResolvedValue(null);
       const body = jest.fn();
 
       await expect(
@@ -157,6 +158,9 @@ describe("UserMaintenanceService", () => {
         JobClaimType.UserMaintenance,
         userId,
         USER_MAINTENANCE_CLAIM_KEY,
+        // With the token: a restore that outran its own lease must not release the
+        // lease whoever holds it now is relying on (audit DR-RRV4-01).
+        TEST_LEASE_TOKEN,
       );
     });
 

@@ -54,10 +54,19 @@ export class MortgageReminderService {
     private readonly jobClaims: JobClaimService,
   ) {}
 
-  /** Release a claim a send did not use, so the next run can retry. */
-  private async releaseClaim(userId: string, claimKey: string): Promise<void> {
+  /**
+   * Release a lease a send did not use, so the next run can retry.
+   *
+   * Addressed by the lease token, not only by the work: a stalled worker must not
+   * delete a lease another replica has retaken (audit DR-RRV4-01).
+   */
+  private async releaseClaim(
+    userId: string,
+    claimKey: string,
+    leaseToken: string,
+  ): Promise<void> {
     await this.jobClaims
-      .release(JobClaimType.MortgageReminder, userId, claimKey)
+      .release(JobClaimType.MortgageReminder, userId, claimKey, leaseToken)
       .catch((error: unknown) =>
         this.logger.warn(
           `Failed to release mortgage-reminder claim for user ${userId}: ` +
@@ -141,6 +150,7 @@ export class MortgageReminderService {
         skipCount++;
         continue;
       }
+      const leaseToken = claimed;
       if (
         await this.jobClaims.wasDelivered(
           JobClaimType.MortgageReminder,
@@ -151,7 +161,7 @@ export class MortgageReminderService {
         // Already sent, durably. Hand the lease back rather than holding it for
         // its whole TTL.
         skipCount++;
-        await this.releaseClaim(userId, claimKey);
+        await this.releaseClaim(userId, claimKey, leaseToken);
         continue;
       }
 
@@ -166,7 +176,7 @@ export class MortgageReminderService {
         );
         if (prefs && !prefs.notificationEmail) {
           skipCount++;
-          await this.releaseClaim(userId, claimKey);
+          await this.releaseClaim(userId, claimKey, leaseToken);
           continue;
         }
 
@@ -179,7 +189,7 @@ export class MortgageReminderService {
         );
         if (!user || !user.email) {
           skipCount++;
-          await this.releaseClaim(userId, claimKey);
+          await this.releaseClaim(userId, claimKey, leaseToken);
           continue;
         }
 
@@ -215,11 +225,12 @@ export class MortgageReminderService {
           JobClaimType.MortgageReminder,
           userId,
           claimKey,
+          leaseToken,
         );
         sentCount++;
       } catch (error) {
         // A transient SMTP failure returns the day rather than consuming it.
-        await this.releaseClaim(userId, claimKey);
+        await this.releaseClaim(userId, claimKey, leaseToken);
         this.logger.error(
           `Failed to send mortgage reminder to user ${userId}`,
           error instanceof Error ? error.stack : error,

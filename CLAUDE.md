@@ -232,6 +232,16 @@ two loses and the impossible state stays impossible. A wall-clock grace period i
 worth having on top, to keep the claim a safety net rather than a routine source of
 failures -- but it is a latency choice, never the correctness mechanism.
 
+**That claim settles what metadata may commit; it does not settle what bytes
+exist.** The external write is still in flight when the claim is taken, so it can
+land *after* the cleanup deleted the key -- and the compensating delete for that runs
+only if the writing process is still alive. Drop the record with the object and those
+bytes are unreferenced *and* unenumerable, which is the original orphan back in a
+narrower window. So the record outlives the writer: keep a claimed intent row for a
+quarantine period and re-run the external delete on each pass, retiring the row only
+once nothing can still be written at that key. `attachment_blob_tombstones
+.late_write_quarantine_until` is the worked example.
+
 **A claim is not a record that the work was done.** A claim answers "may I do this
 now" and cannot also answer "has this been done", because the second question has
 to outlive the process that asked the first. A `claimOnce` taken before an email
@@ -241,6 +251,32 @@ the delivery in its own durable column, written after the side effect and re-rea
 under the lease -- per recipient wherever a retry would re-issue a credential and
 invalidate the one already delivered. `docs/cron-jobs.md` has the rule and the
 worked examples.
+
+**And that record has to say which doing it means.** "Has this been done" is a
+question about an occasion, so a marker scoped to the *row* answers it once and
+then refuses forever: `emergency_access_contacts.claim_notified_at` was never
+cleared by any path, so emergency access fired at most once per contact for the
+lifetime of the contact -- an owner who returned from a false alarm silently had no
+safeguard, with the settings page still saying it was armed. Clearing the marker in
+each path that re-arms is the tempting fix and the wrong one; there were five of
+them across three files and a missed one is invisible. Scope the record to a
+**generation** the enabling transition advances (`grant_generation`), so nothing has
+to remember anything: whatever cleared the state left the contacts alone, and the
+next occasion's number is already past them.
+
+**A lease is held by an attempt, not by the work.** `(type, user, key)` names what
+is being done; it does not say who is doing it, so a worker delayed past its own
+expiry can release a lease another replica has retaken -- leaving the replica that
+is actually sending with no exclusion -- or record a delivery for a send that
+replica has not finished, which makes a genuine failure there permanent.
+`claimLease` returns a token; `markDelivered` and `release` require it.
+
+**A credential is only reusable while it still works.** Re-sending the token
+already issued is right, and returning it without its stored expiry is not: the
+caller then renders "valid until" from its own clock, so a delayed retry can deliver
+a link the database already refuses and record it as delivered. Return the value and
+its authoritative expiry together, and rotate when it has passed -- an expired
+credential is worth nothing to anyone, so replacing it destroys nothing.
 
 ### Derived state fired after a commit needs a way to be noticed as missing
 

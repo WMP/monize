@@ -120,6 +120,14 @@ export class AttachmentsService {
    * row before deleting the object, and the clear requires the claim to be absent:
    * one of the two loses, and it is never the case that metadata commits pointing
    * at bytes that are gone (audit RV4-002).
+   *
+   * The fence settles what *metadata* may commit. It cannot settle what bytes
+   * exist, because a put that stalled past its lease can land *after* the sweep
+   * deleted the key -- and if this process is then killed before the `catch` below,
+   * those bytes are unreferenced with no row left to enumerate them. That is why the
+   * sweeper keeps a claimed upload intent for `LATE_WRITE_QUARANTINE_MS` instead of
+   * dropping the row with the object: the record outlives the writer, so the next
+   * pass deletes the late object and only then retires the row (audit RRV4-002).
    */
   async create(
     userId: string,
@@ -258,13 +266,20 @@ export class AttachmentsService {
    * `runOutsideActiveScopedManager` because `create` may itself be called inside
    * a caller's transaction: joining it would make the intent roll back with the
    * work it exists to outlive.
+   *
+   * The conflict arm deliberately does **not** clear `swept_at`. Storage keys are
+   * per-upload UUIDs so a conflict with a swept row is not reachable today, but
+   * resurrecting one would un-fence the sweeper's claim -- and a claimed row may be
+   * inside its late-write quarantine, in which case bytes are pending deletion at
+   * that key. Refusing is the only answer that stays true if a provider ever hands
+   * out reusable keys.
    */
   private async recordUploadIntent(
     userId: string,
     storageKey: string,
   ): Promise<void> {
     if (this.storage.name === "database") return;
-    await runOutsideActiveScopedManager(() =>
+    const claimed = await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (m) =>
         m.query(
           `INSERT INTO attachment_blob_tombstones
@@ -272,8 +287,9 @@ export class AttachmentsService {
            VALUES ($1, $2, $3,
                    CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval)
            ON CONFLICT (storage_provider, storage_key)
-           DO UPDATE SET upload_lease_expires_at = EXCLUDED.upload_lease_expires_at,
-                         swept_at = NULL`,
+           DO UPDATE SET upload_lease_expires_at = EXCLUDED.upload_lease_expires_at
+             WHERE attachment_blob_tombstones.swept_at IS NULL
+           RETURNING id`,
           [
             userId,
             this.storage.name,
@@ -283,6 +299,11 @@ export class AttachmentsService {
         ),
       ),
     );
+    // An `INSERT` comes back as bare rows whatever the RETURNING, so this is
+    // `returnedRows` and not a length check on a shape nobody confirmed.
+    if (returnedRows<{ id: string }>(claimed).length === 0) {
+      throw new AttachmentObjectSweptError(storageKey);
+    }
   }
 
   /**

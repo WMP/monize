@@ -309,6 +309,9 @@ export class AiInsightsService {
           JobClaimType.AiInsightGeneration,
           userId,
           INSIGHT_GENERATION_CLAIM_KEY,
+          // By token, so a generation that outran its own lease releases nothing
+          // rather than freeing a lease another replica now holds (DR-RRV4-01).
+          leased,
         )
         .catch((error: unknown) =>
           this.logger.warn(

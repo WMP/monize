@@ -137,6 +137,23 @@ A check capable of refusing a command belongs inside the transaction that perfor
 
 Give the operation the caller's precondition as a parameter -- the expected owner, scenario or revision -- and let it refuse before writing. Return the refusal distinguishably: "no such row", "not yours" and "done" are three answers, and folding two into `null` makes the caller guess. Tests assert the rejected response **and** the stored state; see `docs/financial-calculation-contract.md` section 7.
 
+## A feature reported as enabled must have everything its critical path needs
+
+A toggle is a promise. Emergency access checked only SMTP before letting the owner
+arm it, and then the grant path grew a dependency on `AI_ENCRYPTION_KEY` -- which
+`.env.example` presents as optional and needed only for cloud AI. On an SMTP-only
+install the cron reached the encrypt, threw once per contact, delivered nothing,
+released the grant, and repeated that every day forever, while the settings page went
+on reporting the safeguard as armed (audit RRV4-003).
+
+So when a feature's delivery path acquires a new configuration dependency, two things
+move with it: the **enable** path refuses without it, with an internationalized
+message naming the variable, and the settings view exposes the readiness flag so the
+UI can say so before the user tries. Refuse only what cannot work -- turning the
+feature *off* has to stay possible on an installation that cannot arm it. And a
+per-contact `logger.error` is not a user-facing failure: if the only trace of a
+non-functioning safeguard is a log line, it is not reported at all.
+
 ## A snapshot is not a lock, and a comment is not a mechanism
 
 Every concurrency defect the Phase 4 audit confirmed had a comment above it

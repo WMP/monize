@@ -12,8 +12,14 @@ import { UserMaintenanceService } from "../common/jobs/user-maintenance.service"
  *
  * Winning by default keeps the existing behaviour of every cron spec written
  * before the claim existed. A spec that wants the *loser* path -- the one that
- * proves a second replica sends nothing -- sets `claimOnce`/`claimLease` to
- * resolve false, which is the assertion worth writing.
+ * proves a second replica sends nothing -- sets `claimOnce` to resolve false or
+ * `claimLease` to resolve `null`, which is the assertion worth writing.
+ *
+ * `claimLease` resolves a **token**, not `true`, because that is what the real
+ * method returns since DR-RRV4-01: the caller carries it into `release` and
+ * `markDelivered` so a stalled attempt cannot write against a lease another replica
+ * retook. {@link TEST_LEASE_TOKEN} is that token, so a spec can assert the value
+ * travelled rather than merely that a string did.
  *
  * `wasDelivered` defaults to false for the same reason: a lease says a replica may
  * send, and only the delivery record says one did, so the two have to be settable
@@ -26,10 +32,13 @@ export type JobClaimMock = jest.Mocked<
   >
 >;
 
+/** The lease token this double hands out, so specs can assert it was carried. */
+export const TEST_LEASE_TOKEN = "8f3a5c1e-0000-4000-8000-000000000001";
+
 export function createJobClaimMock(): JobClaimMock {
   return {
     claimOnce: jest.fn().mockResolvedValue(true),
-    claimLease: jest.fn().mockResolvedValue(true),
+    claimLease: jest.fn().mockResolvedValue(TEST_LEASE_TOKEN),
     release: jest.fn().mockResolvedValue(undefined),
     markDelivered: jest.fn().mockResolvedValue(undefined),
     // "Not yet delivered" by default, so a spec written before the delivery

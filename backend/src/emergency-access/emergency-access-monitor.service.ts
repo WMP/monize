@@ -4,6 +4,7 @@ import {
   DataSource,
   EntityTarget,
   IsNull,
+  Not,
   ObjectLiteral,
   Repository,
 } from "typeorm";
@@ -26,7 +27,7 @@ import { hashToken } from "../auth/crypto.util";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { withSystemContext } from "../common/db/with-context";
-import { affectedRowCount } from "../common/db/query-result";
+import { returnedRows } from "../common/db/query-result";
 import {
   JobClaimService,
   JobClaimType,
@@ -72,27 +73,59 @@ export class EmergencyAccessMonitorService {
   ) {}
 
   /**
-   * Move this owner from ungranted to granted, atomically. True for the one
-   * caller that won.
+   * Move this owner from ungranted to granted, atomically, and return the grant
+   * cycle the winner is now in. `null` for every caller that lost.
    *
    * `granted_at IS NULL` and `enabled = true` are predicates of the UPDATE, so
    * PostgreSQL re-evaluates them after the row lock: exactly one replica gets a
    * row back, and an owner who disabled the feature between the sweep's read and
    * here is not granted at all.
+   *
+   * `grant_generation` is advanced in the same statement, and that placement is
+   * the whole of RRV4-004. Per-contact delivery state has to be scoped to one
+   * cycle, and the alternative -- clearing each contact's marker in every path
+   * that re-arms monitoring (the owner returning, a disable/re-enable, a manual
+   * reset, a corrected address) -- is five call sites in three files whose
+   * failure mode is silent. Here there is one, it is the transition that *defines*
+   * a new cycle, and no re-arm path has to remember anything: it clears
+   * `granted_at`, and the next grant's generation is simply past whatever the
+   * contacts were notified at.
    */
-  private async claimGrant(ownerUserId: string): Promise<boolean> {
+  private async claimGrant(ownerUserId: string): Promise<number | null> {
     const updated = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
         `UPDATE emergency_access_settings
-            SET granted_at = CURRENT_TIMESTAMP
+            SET granted_at = CURRENT_TIMESTAMP,
+                grant_generation = grant_generation + 1
           WHERE owner_user_id = $1
             AND granted_at IS NULL
             AND enabled = true
-          RETURNING owner_user_id`,
+          RETURNING grant_generation`,
         [ownerUserId],
       ),
     );
-    return affectedRowCount(updated) > 0;
+    const rows = returnedRows<{ grant_generation: number }>(updated);
+    return rows.length > 0 ? Number(rows[0].grant_generation) : null;
+  }
+
+  /**
+   * The owner's current grant cycle, read fresh.
+   *
+   * The resume path (step 1b) must not advance it -- it is finishing the cycle
+   * `claimGrant` already opened -- and cannot take it from the sweep's snapshot
+   * either, because that row was read before this owner's grant was claimed,
+   * possibly by another replica. `null` when the settings row has gone.
+   */
+  private async currentGrantGeneration(
+    ownerUserId: string,
+  ): Promise<number | null> {
+    const row = await this.scoped(EmergencyAccessSettings, (repo) =>
+      repo.findOne({
+        where: { ownerUserId },
+        select: ["ownerUserId", "grantGeneration"],
+      }),
+    );
+    return row ? Number(row.grantGeneration) : null;
   }
 
   /** Hand a claimed grant back when no contact could be reached. */
@@ -184,21 +217,39 @@ export class EmergencyAccessMonitorService {
   }
 
   /**
-   * The owner's contacts that have not yet been sent a link.
+   * The owner's contacts that have not yet been sent a link **for this grant
+   * cycle**.
    *
-   * `claim_notified_at IS NULL` is the delivery record, so this answers "what is
-   * still owed" rather than "who exists" -- which is what makes a resumed grant
-   * safe. A contact who already received a link is never in this list, so a retry
-   * cannot re-issue their token and kill the link in their inbox.
+   * The delivery record is what makes a resumed grant safe: a contact who already
+   * received this cycle's link is never in the list, so a retry cannot re-issue
+   * their token and kill the link in their inbox. Scoping it to `generation` is
+   * what makes a *second* grant possible at all -- the predicate used to be
+   * `claim_notified_at IS NULL`, which no path reset, so a contact was permanently
+   * classified as notified and the safeguard fired at most once per row
+   * (audit RRV4-004).
+   *
+   * The single place both halves of the pair are read, as `markContactNotified` is
+   * the single place they are written.
    */
   private contactsAwaitingNotice(
     ownerUserId: string,
+    generation: number,
   ): Promise<EmergencyAccessContact[]> {
     return this.scoped(EmergencyAccessContact, (repo) =>
       repo.find({
-        where: { ownerUserId, claimNotifiedAt: IsNull() },
+        where: [
+          { ownerUserId, notifiedGrantGeneration: IsNull() },
+          { ownerUserId, notifiedGrantGeneration: Not(generation) },
+        ],
         order: { createdAt: "ASC" },
       }),
+    );
+  }
+
+  /** Does this owner have anyone to notify at all? Asked before a cycle opens. */
+  private countContacts(ownerUserId: string): Promise<number> {
+    return this.scoped(EmergencyAccessContact, (repo) =>
+      repo.count({ where: { ownerUserId } }),
     );
   }
 
@@ -216,6 +267,7 @@ export class EmergencyAccessMonitorService {
     contacts: EmergencyAccessContact[],
     appUrl: string,
     now: number,
+    generation: number,
   ): Promise<number> {
     const decryptedMessage = settings.messageCiphertext
       ? this.tryDecrypt(settings.messageCiphertext)
@@ -223,12 +275,18 @@ export class EmergencyAccessMonitorService {
     const ownerFullName =
       [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
       owner.email;
-    const expiresAt = new Date(now + CLAIM_TOKEN_TTL_DAYS * MS_PER_DAY);
 
     let delivered = 0;
     for (const contact of contacts) {
       try {
-        const rawToken = await this.credentialFor(contact, expiresAt);
+        // Both halves together: the email states when the link stops working, so
+        // it has to be rendered from the expiration the *database* will enforce,
+        // not from a fresh `now + 30 days` the reused credential never received
+        // (audit RRV4-005).
+        const { token: rawToken, expiresAt } = await this.credentialFor(
+          contact,
+          new Date(now),
+        );
 
         const claimUrl = `${appUrl}/emergency-access/claim?token=${rawToken}`;
         // The contact may or may not be a Monize user; localize to their own
@@ -268,7 +326,7 @@ export class EmergencyAccessMonitorService {
         // clears the credential in the same statement: once delivery is
         // acknowledged there is nothing left to re-send, so the token must not
         // outlive it.
-        await this.markContactNotified(contact.id, new Date(now));
+        await this.markContactNotified(contact.id, new Date(now), generation);
         delivered += 1;
       } catch (error) {
         this.logger.error(
@@ -302,24 +360,52 @@ export class EmergencyAccessMonitorService {
     return sentAt != null && todayKeyFrom(new Date(sentAt)) === dayKey;
   }
 
+  /**
+   * Hand the reminder lease back, addressed by the token this attempt holds.
+   *
+   * Not by `(type, owner, dayKey)` alone: that names the work rather than the
+   * holder, so a stalled attempt could delete a lease another replica had already
+   * retaken and leave the replica actually sending with no exclusion
+   * (audit DR-RRV4-01).
+   */
   private async releaseReminderLease(
     ownerUserId: string,
     dayKey: string,
+    leaseToken: string,
   ): Promise<void> {
     await this.jobClaims
-      .release(JobClaimType.EmergencyAccessReminder, ownerUserId, dayKey)
+      .release(
+        JobClaimType.EmergencyAccessReminder,
+        ownerUserId,
+        dayKey,
+        leaseToken,
+      )
       .catch(() => undefined);
   }
 
+  /**
+   * The delivery record for one contact and one grant cycle.
+   *
+   * The generation is what removes the contact from `contactsAwaitingNotice`; the
+   * timestamp is for operators. They are set in one statement so the pair cannot
+   * disagree, and the credential is cleared with them -- once delivery is
+   * acknowledged there is nothing left to re-send, so the token must not outlive
+   * it.
+   */
   private async markContactNotified(
     contactId: string,
     at: Date,
+    generation: number,
   ): Promise<void> {
     await this.scoped(EmergencyAccessContact, (repo) =>
       repo
         .createQueryBuilder()
         .update(EmergencyAccessContact)
-        .set({ claimNotifiedAt: at, claimTokenCiphertext: null })
+        .set({
+          claimNotifiedAt: at,
+          notifiedGrantGeneration: generation,
+          claimTokenCiphertext: null,
+        })
         .where("id = :id", { id: contactId })
         .execute(),
     );
@@ -343,18 +429,35 @@ export class EmergencyAccessMonitorService {
    * logged, because re-issuing invalidates whatever was delivered before, and the
    * decision to prefer a link that works over one nobody can confirm should be
    * visible rather than inferred from an empty column.
+   *
+   * Reuse is also **expiration-aware**, and the returned expiration is the stored
+   * one. Reusing a token while the caller rendered the email from a fresh
+   * `now + 30 days` produced a delivery the system recorded as successful and the
+   * claim endpoint refuses: a credential minted on day 0 and re-sent on day 31 is
+   * already dead, and one re-sent on day 10 was described as valid for 21 days
+   * longer than it is (audit RRV4-005). An expired stored token is worth nothing to
+   * anyone, so rotating it destroys no working link -- which is exactly why this is
+   * the one rotation that needs no warning.
    */
   private async credentialFor(
     contact: EmergencyAccessContact,
-    expiresAt: Date,
-  ): Promise<string> {
-    if (contact.claimTokenCiphertext && contact.claimTokenHash) {
+    now: Date,
+  ): Promise<{ token: string; expiresAt: Date }> {
+    const storedExpiresAt = contact.claimTokenExpiresAt;
+    const storedIsLive =
+      storedExpiresAt != null && storedExpiresAt.getTime() > now.getTime();
+    if (
+      contact.claimTokenCiphertext &&
+      contact.claimTokenHash &&
+      storedIsLive
+    ) {
       try {
         const stored = this.encryption.decrypt(contact.claimTokenCiphertext);
         if (hashToken(stored) === contact.claimTokenHash) {
-          // Re-send the same URL. Nothing on the row changes, so a link already
-          // delivered keeps working whatever happens to this attempt.
-          return stored;
+          // Re-send the same URL, with the expiration the database will enforce.
+          // Nothing on the row changes, so a link already delivered keeps working
+          // whatever happens to this attempt.
+          return { token: stored, expiresAt: storedExpiresAt };
         }
         this.logger.error(
           `Stored emergency-access credential for contact ${contact.id} does not ` +
@@ -367,6 +470,15 @@ export class EmergencyAccessMonitorService {
             `delivered: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+    } else if (contact.claimTokenCiphertext && contact.claimTokenHash) {
+      // Undelivered and already expired. Nobody is holding a link this replaces,
+      // so a fresh credential is the only thing that can be delivered at all.
+      this.logger.warn(
+        `Emergency-access credential for contact ${contact.id} expired before it ` +
+          `could be delivered${
+            storedExpiresAt ? ` (${storedExpiresAt.toISOString()})` : ""
+          }; issuing a new link`,
+      );
     } else if (contact.claimTokenHash) {
       // A token was issued by a version that did not keep it, so it cannot be
       // re-sent. Replacing it is deliberate: a delivered link beats one nobody can
@@ -379,6 +491,9 @@ export class EmergencyAccessMonitorService {
     }
 
     const rawToken = crypto.randomBytes(CLAIM_TOKEN_BYTES).toString("hex");
+    const expiresAt = new Date(
+      now.getTime() + CLAIM_TOKEN_TTL_DAYS * MS_PER_DAY,
+    );
     contact.claimTokenHash = hashToken(rawToken);
     contact.claimTokenExpiresAt = expiresAt;
     contact.claimTokenUsedAt = null;
@@ -387,7 +502,7 @@ export class EmergencyAccessMonitorService {
     // no recoverable token is exactly the state that forces a rotation later.
     contact.claimTokenCiphertext = this.encryption.encrypt(rawToken);
     await this.scoped(EmergencyAccessContact, (repo) => repo.save(contact));
-    return rawToken;
+    return { token: rawToken, expiresAt };
   }
 
   private async processOne(
@@ -434,8 +549,12 @@ export class EmergencyAccessMonitorService {
       settings.grantedAt === null &&
       daysSinceLogin >= settings.grantAfterDays
     ) {
-      const pending = await this.contactsAwaitingNotice(settings.ownerUserId);
-      if (pending.length === 0) return "skipped";
+      // Only "has this owner anyone to notify", not "who is owed a link": the
+      // grant cycle this is about to open is one nobody has been notified for by
+      // definition, and its number is not known until the claim below wins.
+      if ((await this.countContacts(settings.ownerUserId)) === 0) {
+        return "skipped";
+      }
 
       // Claim the ungranted -> granted transition atomically, BEFORE generating a
       // single token.
@@ -447,16 +566,22 @@ export class EmergencyAccessMonitorService {
       // delivered link is dead -- and the recipient of a dead emergency-access
       // link during a high-stakes recovery has no way to tell it from a revoked
       // one (audit P4-014). The loser now stands down before writing anything.
-      if (!(await this.claimGrant(settings.ownerUserId))) {
+      const generation = await this.claimGrant(settings.ownerUserId);
+      if (generation === null) {
         return "skipped";
       }
 
+      const pending = await this.contactsAwaitingNotice(
+        settings.ownerUserId,
+        generation,
+      );
       const delivered = await this.notifyGrantContacts(
         settings,
         noticeOwner,
         pending,
         appUrl,
         now,
+        generation,
       );
 
       // Only keep the grant if at least one contact actually received a link.
@@ -490,15 +615,24 @@ export class EmergencyAccessMonitorService {
     // (audit FV4-004).
     //
     // The recovery is derived rather than scheduled: a contact of a granted owner
-    // whose `claim_notified_at` is NULL is a link still owed, whatever caused it
-    // -- a crash, an SMTP failure that only some recipients hit, or a contact the
-    // owner added after the grant fired. Nothing has to remember to enqueue a
-    // retry, which is the property that makes it hold (docs/cron-jobs.md).
+    // not yet notified for the *current* grant cycle is a link still owed, whatever
+    // caused it -- a crash, an SMTP failure that only some recipients hit, or a
+    // contact the owner added after the grant fired. Nothing has to remember to
+    // enqueue a retry, which is the property that makes it hold (docs/cron-jobs.md).
     if (
       settings.grantedAt !== null &&
       daysSinceLogin >= settings.grantAfterDays
     ) {
-      const pending = await this.contactsAwaitingNotice(settings.ownerUserId);
+      // Read fresh, and never advanced here: this is finishing the cycle step 1
+      // opened, and the sweep's snapshot predates the claim that opened it.
+      const generation = await this.currentGrantGeneration(
+        settings.ownerUserId,
+      );
+      if (generation === null) return "skipped";
+      const pending = await this.contactsAwaitingNotice(
+        settings.ownerUserId,
+        generation,
+      );
       if (pending.length === 0) return "skipped";
 
       // A lease, so two replicas do not both resume the same grant, and a replica
@@ -520,6 +654,7 @@ export class EmergencyAccessMonitorService {
         pending,
         appUrl,
         now,
+        generation,
       );
       return delivered > 0 ? "granted" : "skipped";
     }
@@ -552,7 +687,11 @@ export class EmergencyAccessMonitorService {
         return "skipped";
       }
       if (await this.reminderAlreadySent(settings.ownerUserId, reminderKey)) {
-        await this.releaseReminderLease(settings.ownerUserId, reminderKey);
+        await this.releaseReminderLease(
+          settings.ownerUserId,
+          reminderKey,
+          reminderLease,
+        );
         return "skipped";
       }
 
@@ -607,7 +746,11 @@ export class EmergencyAccessMonitorService {
         // Hand the lease back so the next run can retry immediately rather than
         // waiting it out. Nothing was delivered, so the delivery record below is
         // deliberately not written -- that is what keeps the notice owed.
-        await this.releaseReminderLease(settings.ownerUserId, reminderKey);
+        await this.releaseReminderLease(
+          settings.ownerUserId,
+          reminderKey,
+          reminderLease,
+        );
         throw error;
       }
 
@@ -623,7 +766,11 @@ export class EmergencyAccessMonitorService {
           .where("owner_user_id = :id", { id: settings.ownerUserId })
           .execute(),
       );
-      await this.releaseReminderLease(settings.ownerUserId, reminderKey);
+      await this.releaseReminderLease(
+        settings.ownerUserId,
+        reminderKey,
+        reminderLease,
+      );
       return "reminded";
     }
 
@@ -634,6 +781,13 @@ export class EmergencyAccessMonitorService {
    * The owner signed back in after a grant had fired. Void every outstanding
    * (unclaimed) magic link, clear the grant marker so monitoring re-arms, and
    * notify the owner that access had been granted in their absence.
+   *
+   * "Re-arms" is a claim about the *next* grant, so it has to hold for the
+   * per-contact delivery state too, not only for `granted_at`. It does, and
+   * without this method saying anything about it: the next grant advances
+   * `grant_generation`, which is what makes every contact owed a link again
+   * (audit RRV4-004). This method's own contract is therefore only "void what is
+   * outstanding and clear the owner-level markers".
    */
   private async revokeAfterReturn(
     settings: EmergencyAccessSettings,
@@ -649,6 +803,10 @@ export class EmergencyAccessMonitorService {
           claimTokenExpiresAt: null,
           claimTokenUsedAt: () => "CURRENT_TIMESTAMP",
           claimVoidedReason: "owner_returned",
+          // The credential goes with the hash that made it usable. It is already
+          // worthless without one, but it is still a recoverable secret under the
+          // application key, and nothing will ever want it again (DR-RRV4-03).
+          claimTokenCiphertext: null,
         })
         .where("owner_user_id = :userId", { userId: settings.ownerUserId })
         .andWhere("claim_token_hash IS NOT NULL")

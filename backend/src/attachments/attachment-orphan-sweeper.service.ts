@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, IsNull, LessThan } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
-import { returnedRows } from "../common/db/query-result";
+import { affectedRowCount, returnedRows } from "../common/db/query-result";
 import { withSystemContext } from "../common/db/with-context";
 import { AttachmentBlobTombstone } from "./entities/attachment-blob-tombstone.entity";
 import {
@@ -37,6 +37,44 @@ export const ORPHAN_SWEEP_BATCH = 200;
  * fence above stays a safety net rather than a routine source of failed uploads.
  */
 export const SWEEP_CLAIM_NOTE = "see AttachmentsService.clearUploadIntent";
+
+/**
+ * How long a swept upload intent is kept after its object was deleted.
+ *
+ * The claim settles what *metadata* may commit; it cannot settle what bytes exist.
+ * A put that stalled past its lease can land after the sweep has already deleted
+ * the key, and a process killed before its own compensating delete leaves those
+ * bytes with nothing referencing them and no tombstone to enumerate them
+ * (audit RRV4-002). So the row outlives the writer: it is retained until this has
+ * passed, and each hourly pass re-deletes the key -- `delete` is idempotent by
+ * provider contract -- before finally retiring the row.
+ *
+ * Sized to outlast a stalled object-store call rather than to be exactly right;
+ * being generous costs one row and one no-op delete per hour.
+ */
+export const LATE_WRITE_QUARANTINE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * The `SET late_write_quarantine_until = ...` fragment used by both claims.
+ *
+ * Two properties are load-bearing, and both come from where this sits. In an
+ * UPDATE's SET list, `upload_lease_expires_at` reads the row's *old* value, so it
+ * still says whether this row was an upload intent -- which is the only thing that
+ * distinguishes it from a deletion record whose bytes nothing can write again. And
+ * `COALESCE` makes the window set once and never extended: a quarantined row is
+ * re-claimed on every pass until it is retired, and pushing the deadline forward
+ * each time would keep it forever.
+ *
+ * `msParam` is the positional index of the window length; nothing interpolated here
+ * comes from a request.
+ */
+const quarantineOnClaim = (msParam: number): string =>
+  `COALESCE(
+                  late_write_quarantine_until,
+                  CASE WHEN upload_lease_expires_at IS NOT NULL
+                       THEN CURRENT_TIMESTAMP
+                            + ($${msParam}::text || ' milliseconds')::interval
+                  END)`;
 
 /**
  * Deletes attachment bytes whose metadata is already gone.
@@ -81,7 +119,9 @@ export class AttachmentOrphanSweeper {
    */
   async sweep(): Promise<number> {
     // Candidates: no live upload lease. A row the trigger wrote has none at all;
-    // an upload intent has one until its request is done with it.
+    // an upload intent has one until its request is done with it. A row already
+    // swept has its lease cleared, so it falls into the first arm again -- which is
+    // how a quarantined intent is revisited until its window passes.
     const pending = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(AttachmentBlobTombstone).find({
         where: [
@@ -100,6 +140,7 @@ export class AttachmentOrphanSweeper {
     );
 
     let removed = 0;
+    let quarantined = 0;
     for (const tombstone of pending) {
       try {
         if (!(await this.claim(tombstone.id))) {
@@ -107,10 +148,14 @@ export class AttachmentOrphanSweeper {
           continue;
         }
         await this.storage.delete(tombstone.storageKey);
-        await withScopedDb(this.dataSource, (m) =>
-          m.getRepository(AttachmentBlobTombstone).delete({ id: tombstone.id }),
-        );
-        removed += 1;
+        if (await this.retire(tombstone.id)) {
+          removed += 1;
+        } else {
+          // An upload intent still inside its late-write window. The object is
+          // gone, but the *record* has to outlive a put that may yet land, so the
+          // row stays and the next pass deletes the key again before dropping it.
+          quarantined += 1;
+        }
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         // Recorded on the row rather than only logged: a provider that keeps
@@ -131,6 +176,15 @@ export class AttachmentOrphanSweeper {
       }
     }
 
+    if (quarantined > 0) {
+      // Said out loud rather than folded into `removed`: an operator reading
+      // "deleted 3" while 5 rows remain in the table needs the difference to be
+      // explicable from the log, not from reading this file.
+      this.logger.debug(
+        `${quarantined} swept upload intent(s) retained until their late-write window passes`,
+      );
+    }
+
     return removed;
   }
 
@@ -149,11 +203,11 @@ export class AttachmentOrphanSweeper {
       // reasoning about whether it can happen.
       if (!(await this.claimKey(storageKey))) return;
       await this.storage.delete(storageKey);
-      await withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(AttachmentBlobTombstone)
-          .delete({ storageProvider: this.storage.name, storageKey }),
-      );
+      // Conditional, like the cron's: this path normally holds a deletion record
+      // and retires it at once, but the same key can carry a swept upload intent
+      // whose late-write window has not passed, and that row has to survive the
+      // put that may still land (audit RRV4-002).
+      await this.retireKey(storageKey);
     } catch (error) {
       this.logger.warn(
         `Deferred deletion of attachment object ${storageKey} to the sweeper: ` +
@@ -176,12 +230,13 @@ export class AttachmentOrphanSweeper {
       m.query(
         `UPDATE attachment_blob_tombstones
             SET swept_at = CURRENT_TIMESTAMP,
-                upload_lease_expires_at = NULL
+                upload_lease_expires_at = NULL,
+                late_write_quarantine_until = ${quarantineOnClaim(2)}
           WHERE id = $1
             AND (upload_lease_expires_at IS NULL
                  OR upload_lease_expires_at < CURRENT_TIMESTAMP)
           RETURNING id`,
-        [id],
+        [id, String(LATE_WRITE_QUARANTINE_MS)],
       ),
     );
     return returnedRows<{ id: string }>(claimed).length > 0;
@@ -193,16 +248,56 @@ export class AttachmentOrphanSweeper {
       m.query(
         `UPDATE attachment_blob_tombstones
             SET swept_at = CURRENT_TIMESTAMP,
-                upload_lease_expires_at = NULL
+                upload_lease_expires_at = NULL,
+                late_write_quarantine_until = ${quarantineOnClaim(3)}
           WHERE storage_provider = $1
             AND storage_key = $2
             AND (upload_lease_expires_at IS NULL
                  OR upload_lease_expires_at < CURRENT_TIMESTAMP)
           RETURNING id`,
-        [this.storage.name, storageKey],
+        [this.storage.name, storageKey, String(LATE_WRITE_QUARANTINE_MS)],
       ),
     );
     return returnedRows<{ id: string }>(claimed).length > 0;
+  }
+
+  /**
+   * Drop the tombstone now that its object is gone -- unless it is a swept upload
+   * intent still inside its late-write window.
+   *
+   * A conditional DELETE rather than a read followed by one: the quarantine is the
+   * reason the row exists at this point, so whether it may go is a predicate of the
+   * statement that removes it. `false` means "kept", and the next hourly pass will
+   * re-delete the key and try again.
+   */
+  private async retire(id: string): Promise<boolean> {
+    const gone = await withScopedDb(this.dataSource, (m) =>
+      m.query(
+        `DELETE FROM attachment_blob_tombstones
+          WHERE id = $1
+            AND (late_write_quarantine_until IS NULL
+                 OR late_write_quarantine_until < CURRENT_TIMESTAMP)
+          RETURNING id`,
+        [id],
+      ),
+    );
+    return affectedRowCount(gone) > 0;
+  }
+
+  /** The same conditional retirement, addressed by key. */
+  private async retireKey(storageKey: string): Promise<boolean> {
+    const gone = await withScopedDb(this.dataSource, (m) =>
+      m.query(
+        `DELETE FROM attachment_blob_tombstones
+          WHERE storage_provider = $1
+            AND storage_key = $2
+            AND (late_write_quarantine_until IS NULL
+                 OR late_write_quarantine_until < CURRENT_TIMESTAMP)
+          RETURNING id`,
+        [this.storage.name, storageKey],
+      ),
+    );
+    return affectedRowCount(gone) > 0;
   }
 
   @Cron(CronExpression.EVERY_HOUR)

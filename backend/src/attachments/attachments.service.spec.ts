@@ -70,6 +70,8 @@ describe("AttachmentsService", () => {
   let managerQuery: jest.Mock;
   /** Whether the sweeper has claimed this upload's object out from under it. */
   let intentStillOurs: boolean;
+  /** Whether the key this upload wants is free of a swept tombstone. */
+  let keyIsFree: boolean;
   /**
    * The transaction manager every `withScopedDb` in a spec receives. Exposed
    * because the upload intent opens a *second* transaction, and a spec that wants
@@ -115,9 +117,15 @@ describe("AttachmentsService", () => {
     // sweeper (audit RV4-002). The default has to be "the intent was still mine",
     // or every upload in this file fails for the wrong reason.
     intentStillOurs = true;
+    keyIsFree = true;
     managerQuery.mockImplementation(async (sql: string) => {
       if (String(sql).includes("DELETE FROM attachment_blob_tombstones")) {
         return intentStillOurs ? [[{ id: "t1" }], 1] : [[], 0];
+      }
+      // An INSERT returns bare rows whatever its RETURNING, so the upsert's
+      // "did I get the row" is a row list and not a `[rows, count]` tuple.
+      if (String(sql).includes("INSERT INTO attachment_blob_tombstones")) {
+        return keyIsFree ? [{ id: "t1" }] : [];
       }
       return [];
     });
@@ -390,6 +398,32 @@ describe("AttachmentsService", () => {
         await expect(
           service.create("user-1", "txn-1", pngFile()),
         ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
+      });
+
+      it("refuses to reuse a key whose tombstone is already swept", async () => {
+        // Not reachable with per-upload UUID keys, and that is the reason to make
+        // the statement refuse rather than to reason about it: resurrecting a swept
+        // row would un-fence the sweeper's claim, and a claimed row may be inside
+        // its late-write quarantine with bytes still pending deletion at that key
+        // (audit RRV4-002).
+        externalStorage();
+        keyIsFree = false;
+
+        await expect(
+          service.create("user-1", "txn-1", pngFile()),
+        ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
+        // And nothing was written, so there is nothing to compensate for.
+        expect(storage.save).not.toHaveBeenCalled();
+      });
+
+      it("does not clear an existing claim when it takes the key", async () => {
+        externalStorage();
+
+        await service.create("user-1", "txn-1", pngFile());
+
+        const [sql] = intentInserts()[0];
+        expect(String(sql)).toContain("swept_at IS NULL");
+        expect(String(sql)).not.toContain("swept_at = NULL");
       });
 
       it("is not recorded at all for the database provider", async () => {

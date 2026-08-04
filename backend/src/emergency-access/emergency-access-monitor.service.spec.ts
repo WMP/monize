@@ -14,6 +14,7 @@ import { hashToken } from "../auth/crypto.util";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
   createJobClaimMock,
+  TEST_LEASE_TOKEN,
   JobClaimMock,
   jobClaimProvider,
 } from "../test-helpers/job-claim-testing";
@@ -38,52 +39,88 @@ describe("EmergencyAccessMonitorService", () => {
   let configService: Record<string, jest.Mock>;
 
   const userId = "11111111-1111-1111-1111-111111111111";
+  /**
+   * The cycle a claimed grant lands in. Not 1: a spec that only ever saw the first
+   * cycle would pass against a service that ignored the generation entirely.
+   */
+  const CURRENT_GENERATION = 4;
 
   function daysAgo(n: number): Date {
     return new Date(Date.now() - n * 24 * 60 * 60 * 1000);
   }
 
+  interface ContactFixture {
+    id: string;
+    firstName: string;
+    email: string;
+    /** Notified in the *current* cycle, unless `notifiedGeneration` says otherwise. */
+    notified?: boolean;
+    /** The cycle this contact's notice belongs to. Defaults to `CURRENT_GENERATION`. */
+    notifiedGeneration?: number;
+    /** A credential from an earlier attempt that was never confirmed sent. */
+    undeliveredToken?: string;
+    /** How long that credential is still good for, in days. Negative means expired. */
+    tokenExpiresInDays?: number;
+    /** A token issued by a version that did not keep it -- hash, no ciphertext. */
+    unrecoverableToken?: boolean;
+  }
+
   /**
-   * A contacts `find` that honours the `claimNotifiedAt IS NULL` predicate.
+   * A contacts `find` that honours the real pending predicate.
    *
-   * That predicate is the mechanism under test -- it is what makes a resumed
-   * grant skip a contact who already holds a working link -- so a spec about the
-   * resume path cannot use a `mockResolvedValue` that returns everything. Specs
-   * that do not care keep the simpler double.
+   * That predicate is the mechanism under test -- it is what makes a resumed grant
+   * skip a contact who already holds a working link, and what makes a *re-armed*
+   * grant owe every contact again -- so a spec about either cannot use a
+   * `mockResolvedValue` that returns everything. It is a generation comparison
+   * rather than "has a timestamp" since RRV4-004, so this double compares
+   * generations too: an assertion about the second cycle is worthless against a
+   * double that only knows `notified: true`.
    */
-  function contactsAre(
-    rows: {
-      id: string;
-      firstName: string;
-      email: string;
-      notified?: boolean;
-      /** A credential from an earlier attempt that was never confirmed sent. */
-      undeliveredToken?: string;
-      /** A token issued by a version that did not keep it -- hash, no ciphertext. */
-      unrecoverableToken?: boolean;
-    }[],
-  ): void {
-    contactsRepo.find.mockImplementation(
-      async (opts?: { where?: Record<string, unknown> }) => {
-        const wantsPending = "claimNotifiedAt" in (opts?.where ?? {});
-        return rows
-          .filter((row) => !wantsPending || !row.notified)
-          .map((row) => ({
-            id: row.id,
-            firstName: row.firstName,
-            email: row.email,
-            claimNotifiedAt: row.notified ? daysAgo(1) : null,
-            claimTokenHash: row.undeliveredToken
-              ? hashToken(row.undeliveredToken)
-              : row.unrecoverableToken
-                ? "a-hash-from-an-older-version"
-                : null,
-            claimTokenCiphertext: row.undeliveredToken
-              ? `enc(${row.undeliveredToken})`
+  function contactsAre(rows: ContactFixture[]): void {
+    const generationOf = (row: ContactFixture): number | null =>
+      row.notifiedGeneration ?? (row.notified ? CURRENT_GENERATION : null);
+    contactsRepo.find.mockImplementation(async (opts?: { where?: unknown }) => {
+      // The pending query passes an array of two `where` arms (never notified,
+      // or notified for a different cycle); every other read passes an object.
+      const arms = Array.isArray(opts?.where)
+        ? (opts?.where as { notifiedGrantGeneration?: { value?: number } }[])
+        : null;
+      const wanted = arms?.[1]?.notifiedGrantGeneration?.value;
+      // The pre-RRV4-004 predicate, honoured too, so a spec about the second
+      // cycle fails if the service reverts to it rather than passing silently
+      // against a double that ignores the `where` it was handed.
+      const legacyPending =
+        !arms &&
+        typeof opts?.where === "object" &&
+        opts?.where !== null &&
+        "claimNotifiedAt" in (opts.where as Record<string, unknown>);
+      return rows
+        .filter((row) => {
+          if (legacyPending) return generationOf(row) === null;
+          if (!arms) return true;
+          const gen = generationOf(row);
+          return gen === null || gen !== wanted;
+        })
+        .map((row) => ({
+          id: row.id,
+          firstName: row.firstName,
+          email: row.email,
+          claimNotifiedAt: generationOf(row) === null ? null : daysAgo(1),
+          notifiedGrantGeneration: generationOf(row),
+          claimTokenHash: row.undeliveredToken
+            ? hashToken(row.undeliveredToken)
+            : row.unrecoverableToken
+              ? "a-hash-from-an-older-version"
               : null,
-          }));
-      },
-    );
+          claimTokenExpiresAt: row.undeliveredToken
+            ? daysAgo(-(row.tokenExpiresInDays ?? 30))
+            : null,
+          claimTokenCiphertext: row.undeliveredToken
+            ? `enc(${row.undeliveredToken})`
+            : null,
+        }));
+    });
+    contactsRepo.count.mockResolvedValue(rows.length);
   }
 
   /** The claim URLs this run put in front of recipients. */
@@ -116,7 +153,7 @@ describe("EmergencyAccessMonitorService", () => {
     // queued `...Once` would otherwise leak forward -- which is invisible until a
     // spec asserts a claim was *not* taken, and then reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
-    jobClaims.claimLease.mockReset().mockResolvedValue(true);
+    jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
     jobClaims.release.mockReset().mockResolvedValue(undefined);
 
     settingsRepo = {
@@ -153,6 +190,10 @@ describe("EmergencyAccessMonitorService", () => {
     };
     contactsRepo = {
       find: jest.fn().mockResolvedValue([]),
+      // "Has this owner anyone to notify" -- asked before a cycle is opened, since
+      // the cycle about to open has by definition notified nobody. Delegates to
+      // `find` so a fixture states the roster once.
+      count: jest.fn(async () => (await contactsRepo.find({})).length),
       save: jest.fn(async (row) => row),
       createQueryBuilder: jest.fn(() => ({
         update: jest.fn().mockReturnThis(),
@@ -197,8 +238,12 @@ describe("EmergencyAccessMonitorService", () => {
     grantClaimWins = true;
     scopedManagerQuery = scoped.manager.query;
     scoped.manager.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("UPDATE emergency_access_settings")) {
-        return grantClaimWins ? [[{ owner_user_id: "claimed" }], 1] : [[], 0];
+      // Matched on the generation bump rather than on the table, so the grant
+      // claim is told apart from `releaseGrant`'s plain `granted_at = NULL`.
+      if (sql.includes("grant_generation = grant_generation + 1")) {
+        return grantClaimWins
+          ? [[{ grant_generation: CURRENT_GENERATION }], 1]
+          : [[], 0];
       }
       return [];
     });
@@ -294,7 +339,7 @@ describe("EmergencyAccessMonitorService", () => {
   });
 
   it("does not send the reminder while another replica holds the lease", async () => {
-    jobClaims.claimLease.mockResolvedValueOnce(false);
+    jobClaims.claimLease.mockResolvedValueOnce(null);
 
     await service.runDailyCheck();
 
@@ -396,6 +441,7 @@ describe("EmergencyAccessMonitorService", () => {
           lastReminderSentAt: null,
           // The claim committed; the process died before any email.
           grantedAt: daysAgo(1),
+          grantGeneration: CURRENT_GENERATION,
         },
       ]);
       usersRepo.findOne.mockResolvedValue({
@@ -456,7 +502,7 @@ describe("EmergencyAccessMonitorService", () => {
     it("takes a lease, so two replicas do not both resume it", async () => {
       grantedButUndelivered();
       contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
-      jobClaims.claimLease.mockResolvedValueOnce(false);
+      jobClaims.claimLease.mockResolvedValueOnce(null);
 
       await service.runDailyCheck();
 
@@ -688,6 +734,272 @@ describe("EmergencyAccessMonitorService", () => {
     });
   });
 
+  /**
+   * RRV4-004: the delivery record belongs to one grant cycle, not to the row.
+   *
+   * `claim_notified_at IS NULL` was the pending predicate and nothing ever set it
+   * back, so emergency access fired at most once per contact for the row's
+   * lifetime. The owner returns, `revokeAfterReturn` clears `granted_at` and logs
+   * that monitoring is re-armed, and the next grant finds nobody owed and skips --
+   * silently, with the settings page still showing the feature as armed.
+   *
+   * The fix is not "clear the marker in each re-arm path": there are five of those
+   * in three files and a missed one is invisible. It is a generation advanced by the
+   * one statement that opens a cycle, which is what these specs pin down.
+   */
+  describe("a second grant cycle", () => {
+    const inactiveOwnerWithNoGrant = (grantGeneration: number) => {
+      settingsRepo.find.mockResolvedValue([
+        {
+          ownerUserId: userId,
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+          messageCiphertext: null,
+          lastReminderSentAt: null,
+          // Re-armed: whatever cleared `granted_at` -- the owner returning, a
+          // disable/re-enable, a manual reset -- left the contacts alone.
+          grantedAt: null,
+          grantGeneration,
+        },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: userId,
+        email: "owner@example.com",
+        firstName: "Owner",
+        isActive: true,
+        lastActivityAt: daysAgo(20),
+      });
+    };
+
+    it("advances the generation in the statement that claims the grant", async () => {
+      inactiveOwnerWithNoGrant(CURRENT_GENERATION - 1);
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      // One statement, so there is no window in which a cycle is open with a
+      // generation nobody has advanced -- and no re-arm path has to remember it.
+      const claimSql = scopedManagerQuery.mock.calls
+        .map((c) => String(c[0]))
+        .find((sql) => sql.includes("UPDATE emergency_access_settings"));
+      expect(claimSql).toContain("grant_generation = grant_generation + 1");
+      expect(claimSql).toContain("granted_at IS NULL");
+      expect(claimSql).toContain("RETURNING grant_generation");
+    });
+
+    it("owes a previously notified contact a link again", async () => {
+      inactiveOwnerWithNoGrant(CURRENT_GENERATION - 1);
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          // Notified in the cycle before this one, and never reset.
+          notifiedGeneration: CURRENT_GENERATION - 1,
+        },
+      ]);
+
+      await service.runDailyCheck();
+
+      // Under the lifetime marker this was zero emails and a silent skip, for an
+      // owner whose settings page said the safeguard was armed.
+      expect(emailService.sendMail.mock.calls.map((c) => c[0])).toEqual([
+        "carol@example.com",
+      ]);
+      expect(notifiedContactIds()).toEqual(["c1"]);
+    });
+
+    it("records the delivery against the cycle it was sent for", async () => {
+      inactiveOwnerWithNoGrant(CURRENT_GENERATION - 1);
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      const stamped = contactsRepo.createQueryBuilder.mock.results
+        .flatMap((result) =>
+          result.type === "return"
+            ? (result.value as { set: jest.Mock }).set.mock.calls
+            : [],
+        )
+        .map((call) => call[0] as Record<string, unknown>);
+      // The generation is the predicate; the timestamp is for operators. One
+      // statement writes both, so they cannot disagree.
+      expect(stamped).toContainEqual(
+        expect.objectContaining({
+          notifiedGrantGeneration: CURRENT_GENERATION,
+          claimNotifiedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it("still skips a contact already notified for this cycle when resuming", async () => {
+      // The generation must not undo FV4-004: within one cycle a delivered link is
+      // still a delivered link, and re-issuing it kills what is in the inbox.
+      settingsRepo.find.mockResolvedValue([
+        {
+          ownerUserId: userId,
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+          messageCiphertext: null,
+          lastReminderSentAt: null,
+          grantedAt: daysAgo(1),
+          grantGeneration: CURRENT_GENERATION,
+        },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: userId,
+        email: "owner@example.com",
+        isActive: true,
+        lastActivityAt: daysAgo(20),
+      });
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          notifiedGeneration: CURRENT_GENERATION,
+        },
+        { id: "c2", firstName: "Dave", email: "dave@example.com" },
+      ]);
+
+      await service.runDailyCheck();
+
+      expect(emailService.sendMail.mock.calls.map((c) => c[0])).toEqual([
+        "dave@example.com",
+      ]);
+    });
+
+    it("asks only whether the owner has contacts before opening a cycle", async () => {
+      // The cycle about to open has notified nobody by definition, and its number
+      // is unknown until the claim wins -- so the pre-claim question is the roster,
+      // not the pending set. Asking the pending set instead would have to guess the
+      // generation.
+      inactiveOwnerWithNoGrant(CURRENT_GENERATION - 1);
+      contactsAre([]);
+
+      await service.runDailyCheck();
+
+      expect(contactsRepo.count).toHaveBeenCalledWith({
+        where: { ownerUserId: userId },
+      });
+      expect(
+        scopedManagerQuery.mock.calls.map((c) => String(c[0])),
+      ).not.toContain(expect.stringContaining("grant_generation"));
+      expect(emailService.sendMail).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * RRV4-005: a reused credential is only reusable while it still works.
+   *
+   * The reuse itself is right -- it is what stops a retry killing the link already
+   * in a recipient's inbox -- but it returned only the raw token while the caller
+   * rendered the email from a fresh `now + 30 days`. So the email could state an
+   * expiry the database would not honour, and a sufficiently delayed retry could
+   * send a link that was already dead and then record it as delivered.
+   */
+  describe("the expiration a reused credential is sent with", () => {
+    const grantedButUndelivered = () => {
+      settingsRepo.find.mockResolvedValue([
+        {
+          ownerUserId: userId,
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+          messageCiphertext: null,
+          lastReminderSentAt: null,
+          grantedAt: daysAgo(1),
+          grantGeneration: CURRENT_GENERATION,
+        },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: userId,
+        email: "owner@example.com",
+        isActive: true,
+        lastActivityAt: daysAgo(20),
+      });
+    };
+
+    /** The expiry date the grant email told the recipient, as `YYYY-MM-DD`. */
+    const statedExpiry = (): string | undefined =>
+      /valid until[^0-9]*(\d{4}-\d{2}-\d{2})/i.exec(
+        String(emailService.sendMail.mock.calls[0]?.[2]),
+      )?.[1] ??
+      /(\d{4}-\d{2}-\d{2})/.exec(
+        String(emailService.sendMail.mock.calls[0]?.[2]),
+      )?.[1];
+
+    const isoDay = (d: Date): string => d.toISOString().split("T")[0];
+
+    it("states the stored expiry, not thirty days from the retry", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: "a".repeat(64),
+          // Issued ten days ago with a thirty-day life: twenty days left, not
+          // thirty, and the email must not claim otherwise.
+          tokenExpiresInDays: 20,
+        },
+      ]);
+
+      await service.runDailyCheck();
+
+      expect(statedExpiry()).toBe(isoDay(daysAgo(-20)));
+      expect(statedExpiry()).not.toBe(isoDay(daysAgo(-30)));
+      // And the row is untouched, so the link in the inbox keeps working.
+      expect(contactsRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("mints a fresh credential when the stored one has expired", async () => {
+      grantedButUndelivered();
+      const dead = "b".repeat(64);
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: dead,
+          tokenExpiresInDays: -1,
+        },
+      ]);
+      const warn = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation(() => undefined);
+
+      await service.runDailyCheck();
+
+      // Sending the stored token here would deliver a link the claim endpoint
+      // refuses, and then record it as delivered -- a contact left with a dead
+      // link and no retry. Rotating destroys nothing, because an expired token is
+      // already worth nothing.
+      expect(sentClaimUrls()).not.toEqual([dead]);
+      expect(sentClaimUrls()).toHaveLength(1);
+      const saved = contactsRepo.save.mock.calls[0][0];
+      expect(saved.claimTokenHash).toBe(hashToken(sentClaimUrls()[0]));
+      expect(saved.claimTokenCiphertext).toBe(`enc(${sentClaimUrls()[0]})`);
+      expect(saved.claimTokenExpiresAt.getTime()).toBeGreaterThan(Date.now());
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("expired before it could be delivered"),
+      );
+    });
+
+    it("states the fresh expiry for a freshly minted credential", async () => {
+      grantedButUndelivered();
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      const saved = contactsRepo.save.mock.calls[0][0];
+      // Same value in the row and in the email: one function decides it.
+      expect(statedExpiry()).toBe(isoDay(saved.claimTokenExpiresAt as Date));
+    });
+  });
+
   it("stamps a contact's delivery record only after their own email is sent", async () => {
     settingsRepo.find.mockResolvedValue([
       {
@@ -760,6 +1072,9 @@ describe("EmergencyAccessMonitorService", () => {
       "emergency_access_reminder",
       userId,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      // By token: a stalled attempt must not release a lease another replica has
+      // retaken and is relying on (audit DR-RRV4-01).
+      TEST_LEASE_TOKEN,
     );
   });
 
@@ -792,6 +1107,9 @@ describe("EmergencyAccessMonitorService", () => {
       "emergency_access_reminder",
       userId,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      // By token: a stalled attempt must not release a lease another replica has
+      // retaken and is relying on (audit DR-RRV4-01).
+      TEST_LEASE_TOKEN,
     );
   });
 

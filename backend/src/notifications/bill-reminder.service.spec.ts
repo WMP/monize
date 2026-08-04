@@ -11,6 +11,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
   createJobClaimMock,
+  TEST_LEASE_TOKEN,
   JobClaimMock,
   jobClaimProvider,
 } from "../test-helpers/job-claim-testing";
@@ -34,7 +35,7 @@ describe("BillReminderService", () => {
     // `...Once` would leak forward -- invisible until a spec asserts a claim was
     // *not* taken, and then it reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
-    jobClaims.claimLease.mockReset().mockResolvedValue(true);
+    jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
     jobClaims.release.mockReset().mockResolvedValue(undefined);
     jobClaims.markDelivered.mockReset().mockResolvedValue(undefined);
     jobClaims.wasDelivered.mockReset().mockResolvedValue(false);
@@ -219,6 +220,10 @@ describe("BillReminderService", () => {
             "bill_reminder",
             userId1,
             expect.any(String),
+            // The token, so the record is written against *this* attempt's lease:
+            // a stalled worker whose lease was retaken must not stamp a delivery
+            // for the new holder's unfinished send (audit DR-RRV4-01).
+            TEST_LEASE_TOKEN,
           );
           expect(
             emailService.sendMail.mock.invocationCallOrder[0],
@@ -250,7 +255,7 @@ describe("BillReminderService", () => {
         it("sends when another holder's lease expired without delivering", async () => {
           // The recovery the permanent claim made impossible: the lease is
           // retakeable and nothing was delivered, so this replica sends.
-          jobClaims.claimLease.mockResolvedValue(true);
+          jobClaims.claimLease.mockResolvedValue(TEST_LEASE_TOKEN);
           jobClaims.wasDelivered.mockResolvedValue(false);
 
           await service.sendBillReminders();
@@ -259,7 +264,7 @@ describe("BillReminderService", () => {
         });
 
         it("does not send while another replica holds the lease", async () => {
-          jobClaims.claimLease.mockResolvedValue(false);
+          jobClaims.claimLease.mockResolvedValue(null);
 
           await service.sendBillReminders();
 

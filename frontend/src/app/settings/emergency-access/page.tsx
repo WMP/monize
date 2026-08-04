@@ -556,6 +556,17 @@ function EmergencyAccessSection() {
           </div>
         )}
 
+        {view.emailConfigured && !view.credentialEncryptionConfigured && (
+          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6">
+            <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+              {t('encryptionNotConfigured.heading')}
+            </h2>
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              {t('encryptionNotConfigured.body')}
+            </p>
+          </div>
+        )}
+
         {view.grantedAt && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
             <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">

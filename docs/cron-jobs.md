@@ -11,7 +11,7 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 | Mechanism | Use it for | Where |
 |---|---|---|
 | **Durable claim** (`JobClaimService.claimOnce`) | Work where the claim row *is* the fact and nothing leaves the database: a posted occurrence, an alert fingerprint. Permanent -- nothing retakes it -- so a failure calls `release` to hand the window back. **Not** for a send: see "A claim is not a delivery record" below. | `backend/src/common/jobs/job-claim.service.ts` |
-| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
+| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Returns a **lease token** identifying the winning attempt, which `markDelivered` and `release` require -- see "A lease is held by an attempt" below. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
 | **Conditional state transition** | A flag the job itself owns: `UPDATE ... WHERE granted_at IS NULL ... RETURNING`. The predicate is re-evaluated after the row lock, so exactly one replica gets a row. | `emergency-access-monitor.service.ts` |
 | **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `133` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
@@ -34,8 +34,8 @@ So a job that delivers something keeps two pieces of state:
   claim costs the delivery.
 - **the delivery record** -- written *after* the send succeeds, and re-read under
   the claim to decide whether the work is still owed. `last_reminder_sent_at` for
-  the reminder; `emergency_access_contacts.claim_notified_at`, per contact, for
-  the grant.
+  the reminder; `emergency_access_contacts.notified_grant_generation`, per
+  contact, for the grant.
 
 Per recipient where the retry would otherwise re-issue a credential: sending a
 second emergency-access link invalidates the first, and a dead link during a
@@ -50,6 +50,45 @@ where the claim itself *is* the record of the fact (a posted occurrence, an aler
 fingerprint). The bill and mortgage reminders were the last two sends still using
 it, and they now take a lease plus `job_claims.delivered_at` (audit RV4-006).
 
+### A delivery record is scoped to the occasion, not to the row
+
+A record that answers "has this been done" has to say **which** doing it means, or
+the first one disables every later one. `emergency_access_contacts.claim_notified_at`
+was the grant's pending predicate and no path ever cleared it, so emergency access
+fired at most once per contact row for the row's lifetime: the owner returns,
+`revokeAfterReturn` clears `granted_at`, and the next inactivity period finds nobody
+owed and grants nothing -- silently, with the settings page still reporting the
+feature as armed (audit RRV4-004).
+
+The instinct is to clear the marker wherever monitoring is re-armed. There were five
+such paths in three files, and a missed one is invisible, so the state is
+**generational** instead: `emergency_access_settings.grant_generation` is advanced by
+the single statement that transitions ungranted to granted, and a contact is owed a
+link whenever its `notified_grant_generation` differs. No re-arm path has to know
+anything -- it clears `granted_at`, and the next grant's number is simply past
+whatever the contacts hold. `claim_notified_at` survives as a timestamp for
+operators, written by the same statement, and is no longer read as a predicate.
+
+The one reset a generation cannot derive is a **corrected contact address**: the
+owner's cycle has not moved, so `updateContact` clears that contact's marker
+explicitly when the email changes.
+
+### A lease is held by an attempt
+
+`(claim_type, user_id, claim_key)` names the *work*. It does not name the holder, so
+a worker delayed past its own expiry -- a long GC pause, a stalled SMTP connect --
+could come back and write against a lease another replica had already retaken: its
+`release` deleting the live lease, leaving the replica actually sending with no
+exclusion, or its `markDelivered` recording a delivery for a send that replica had
+not finished, so a genuine failure there would never be retried (audit DR-RRV4-01).
+
+`claimLease` therefore mints a `lease_token` per attempt and returns it. Carry it
+into `markDelivered` and `release`; both compare it, and a `markDelivered` that
+matches nothing logs and records nothing, so the work stays owed and is re-sent --
+the at-least-once side of the trade, and the correct one. `release` without a token
+is still right for a `claimOnce` caller, whose claim is the fact itself and has no
+attempt to identify.
+
 ### The delivery contract, stated
 
 SMTP and PostgreSQL cannot commit together, so every send has to pick one of these
@@ -58,13 +97,21 @@ deliberately rather than end up with whichever one the code happens to implement
 | Job | Contract | Why |
 |---|---|---|
 | bill reminder, mortgage renewal | **at-least-once** | A process killed after the provider accepted but before `delivered_at` committed re-sends next run. A duplicate nudge is an annoyance; a missed mortgage renewal is not. |
-| emergency-access grant | **at-least-once, same credential** | A retry re-sends the token already issued rather than minting one: a new token invalidates the link that may already be in the recipient's inbox, and a dead emergency-access link during a recovery cannot be told from a revoked one. The raw token is held encrypted only while the notice is owed, and cleared in the statement that records delivery. |
+| emergency-access grant | **at-least-once, same credential while it is valid** | A retry re-sends the token already issued rather than minting one: a new token invalidates the link that may already be in the recipient's inbox, and a dead emergency-access link during a recovery cannot be told from a revoked one. The raw token is held encrypted only while the notice is owed, and cleared in the statement that records delivery. Reuse ends at the token's stored expiry: an expired credential is worth nothing to anyone, so it is rotated rather than delivered, and the email always states the expiry the database will enforce (audit RRV4-005). |
 | emergency-access reminder | **at-least-once** | Same shape as the bill reminder, with `last_reminder_sent_at` as the record. |
 | budget alert | **at-most-once** | The alert row's unique fingerprint is both the coordination and the record, and only a returned insert emails. A lost row is a lost alert, acceptable for a threshold notice that re-evaluates daily. |
 
 Where a job is at-least-once its content has to read correctly when it arrives
 twice. Where it is at-most-once the loss window belongs in this table rather than
 in somebody's head.
+
+One historical exception, decided rather than discovered: reminder claims written
+*before* migration 137 recorded only the intent to send, so a delivery lost in the
+old claim-before-send crash window cannot be told from one that succeeded. The
+migration backfills them as delivered, which keeps any such loss lost rather than
+re-sending to every user whose reminder did arrive. The trade and why it was taken
+in that direction are written out in `database/migrations/137_job_claim_delivery_record.sql`;
+it is bounded to rows predating that migration and does not recur.
 
 Reading the result of a guarded statement correctly is part of the mechanism, not a detail. TypeORM's shape depends on the statement's command tag rather than on its `RETURNING` clause: `UPDATE` and `DELETE` come back as the tuple `[rows, rowCount]` with or without one, and everything else -- `INSERT` included -- comes back as bare rows. On the tuple `result.length > 0` is always true, so a `length === 0` branch beside an `UPDATE ... RETURNING` is dead code. Use `affectedRowCount` / `returnedRows` from `backend/src/common/db/query-result.ts`, which are correct for every shape, and never an open-coded length check.
 
@@ -80,7 +127,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `action-history.service` | Daily 3 AM | Prune old undo/redo history | Idempotent predicate delete |
 | `ai-usage.service` | Daily 4 AM | AI usage-log cleanup | Idempotent predicate delete |
 | `ai-insights.service` | Daily 6 AM | Generate AI insights | **Durable lease** per user, plus the existing recent-insight cooldown |
-| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put. **Conditional claim** on `swept_at` before the external delete, which the uploader's intent-clear is fenced against, so metadata can never commit pointing at deleted bytes; a live `upload_lease_expires_at` also keeps the sweep off an upload that is probably still running. The provider's `delete` is idempotent |
+| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put. **Conditional claim** on `swept_at` before the external delete, which the uploader's intent-clear is fenced against, so metadata can never commit pointing at deleted bytes; a live `upload_lease_expires_at` also keeps the sweep off an upload that is probably still running. A claimed *intent* is then retained for `late_write_quarantine_until` and re-swept, because the claim settles metadata and not bytes: a put that stalled past its lease can land after the delete, and the row is the only thing that would name those bytes (audit RRV4-002). The provider's `delete` is idempotent |
 | `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | **Conditional transition**: the claim is the `next_backup_at` advance itself |
 | `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable lease** keyed on the local date plus a digest of the bills named, plus `job_claims.delivered_at` written after the send. At-least-once |
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |
@@ -89,7 +136,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
-| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` plus a per-contact `claim_notified_at` delivery record for the grant, whose credential is reused on retry rather than rotated; **durable lease** plus `last_reminder_sent_at` for the reminder |
+| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at`, which also advances `grant_generation`, plus a per-contact `notified_grant_generation` delivery record for the grant, whose credential is reused on retry while it is unexpired; **durable lease** plus `last_reminder_sent_at` for the reminder |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |

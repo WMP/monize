@@ -73,4 +73,20 @@ export class JobClaim {
    */
   @Column({ type: "timestamp", name: "delivered_at", nullable: true })
   deliveredAt: Date | null;
+
+  /**
+   * Which attempt owns the current lease.
+   *
+   * The unique key identifies the *work*; this identifies the holder. Without it
+   * `release` and `markDelivered` address the row by work alone, so a worker
+   * delayed past its own expiry can delete a lease another replica has since
+   * retaken -- leaving the replica that is actually sending with no exclusion --
+   * or record a delivery for a send that replica has not finished, so a genuine
+   * failure there is never retried (audit DR-RRV4-01).
+   *
+   * Minted per successful `claimLease`. NULL for a permanent `claimOnce` row,
+   * which has no attempt to identify: its claim is the fact itself.
+   */
+  @Column({ type: "uuid", name: "lease_token", nullable: true })
+  leaseToken: string | null;
 }

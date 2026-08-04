@@ -14,6 +14,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { EmailService } from "../notifications/email.service";
 import {
   createJobClaimMock,
+  TEST_LEASE_TOKEN,
   JobClaimMock,
   jobClaimProvider,
 } from "../test-helpers/job-claim-testing";
@@ -62,7 +63,7 @@ describe("MortgageReminderService", () => {
     // `...Once` would leak forward -- invisible until a spec asserts a claim was
     // *not* taken, and then it reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
-    jobClaims.claimLease.mockReset().mockResolvedValue(true);
+    jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
     jobClaims.release.mockReset().mockResolvedValue(undefined);
     jobClaims.markDelivered.mockReset().mockResolvedValue(undefined);
     jobClaims.wasDelivered.mockReset().mockResolvedValue(false);
@@ -200,6 +201,10 @@ describe("MortgageReminderService", () => {
           "mortgage_reminder",
           mockUser.id,
           expect.any(String),
+          // The token, so the record is written against *this* attempt's lease: a
+          // stalled worker whose lease was retaken must not stamp a delivery for
+          // the new holder's unfinished send (audit DR-RRV4-01).
+          TEST_LEASE_TOKEN,
         );
         expect(emailService.sendMail.mock.invocationCallOrder[0]).toBeLessThan(
           jobClaims.markDelivered.mock.invocationCallOrder[0],
@@ -225,7 +230,7 @@ describe("MortgageReminderService", () => {
       });
 
       it("sends when another holder's lease expired without delivering", async () => {
-        jobClaims.claimLease.mockResolvedValue(true);
+        jobClaims.claimLease.mockResolvedValue(TEST_LEASE_TOKEN);
         jobClaims.wasDelivered.mockResolvedValue(false);
 
         await service.checkMortgageRenewals();
@@ -234,7 +239,7 @@ describe("MortgageReminderService", () => {
       });
 
       it("does not send while another replica holds the lease", async () => {
-        jobClaims.claimLease.mockResolvedValue(false);
+        jobClaims.claimLease.mockResolvedValue(null);
 
         await service.checkMortgageRenewals();
 

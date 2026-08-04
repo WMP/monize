@@ -84,6 +84,30 @@ export class AttachmentBlobTombstone {
   @Column({ type: "timestamp", name: "swept_at", nullable: true })
   sweptAt: Date | null;
 
+  /**
+   * How long this row is kept after its object was deleted, when it was an upload
+   * intent rather than a deletion record.
+   *
+   * `sweptAt` settles what *metadata* may commit; it cannot settle what bytes
+   * exist, because a put that stalled past its lease can land after the sweep has
+   * already deleted the key. A process killed before its compensating delete then
+   * leaves those bytes unreferenced with no tombstone to enumerate them --
+   * undiscoverable, which for a receipt or a statement is a retention problem and
+   * not only a storage one (audit RRV4-002).
+   *
+   * So the record outlives the writer: the row is retained until this passes, the
+   * hourly sweep re-deletes the key (the provider contract makes `delete`
+   * idempotent) and only then drops the row. Set once, on the first claim of a row
+   * that had a lease, and never extended. NULL on a deletion record, whose metadata
+   * is already gone and whose key nothing can write again.
+   */
+  @Column({
+    type: "timestamp",
+    name: "late_write_quarantine_until",
+    nullable: true,
+  })
+  lateWriteQuarantineUntil: Date | null;
+
   /** Failed sweep attempts, for diagnosing a provider that keeps refusing. */
   @Column({ type: "int", name: "attempts", default: 0 })
   attempts: number;

@@ -153,6 +153,7 @@ function makeView(
 ): EmergencyAccessView {
   return {
     emailConfigured: true,
+    credentialEncryptionConfigured: true,
     enabled: false,
     grantAfterDays: 14,
     reminderAfterDays: 7,
@@ -213,6 +214,43 @@ describe('EmergencyAccessPage', () => {
         name: /Save settings/i,
       }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  /**
+   * The two configuration halves fail independently, and the second fails
+   * silently: without AI_ENCRYPTION_KEY a grant cannot store the claim link it
+   * would resend, so it delivers nothing, releases itself, and repeats every day
+   * -- while this page reported the safeguard as armed because it only knew about
+   * SMTP (audit RRV4-003).
+   */
+  it('shows the encryption-key notice when only that half is missing', async () => {
+    api.get.mockResolvedValue(
+      makeView({ credentialEncryptionConfigured: false }),
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/Encryption key required/)).toBeInTheDocument(),
+    );
+    // Not the SMTP notice: naming the wrong missing thing sends the operator to
+    // the wrong variable.
+    expect(screen.queryByText(/Email is not configured/)).toBeNull();
+    // And Save stays available, because turning the feature *off* has to remain
+    // possible on an installation that cannot arm it.
+    expect(
+      (screen.getByRole('button', {
+        name: /Save settings/i,
+      }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('shows no configuration notice when both halves are ready', async () => {
+    api.get.mockResolvedValue(makeView());
+    await renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Save settings/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Encryption key required/)).toBeNull();
+    expect(screen.queryByText(/Email is not configured/)).toBeNull();
   });
 
   it('renders metadata for a configured message without the plaintext', async () => {

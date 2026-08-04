@@ -1,0 +1,31 @@
+-- 140: a lease needs an owner, so a worker cannot act on a lease it has lost.
+--
+-- `claimLease` returned a boolean and `release`/`markDelivered` addressed the row
+-- by `(claim_type, user_id, claim_key)` alone (audit DR-RRV4-01). That identifies
+-- the *work*, not the attempt, so a worker delayed past its own expiry -- a long
+-- garbage-collection pause, a stalled SMTP connect -- can come back and write
+-- against a lease another replica has since retaken:
+--
+--   * its `release` deletes the live lease, and the replica actually sending now
+--     has no exclusion at all;
+--   * its `markDelivered` records a delivery for a send the *new* holder has not
+--     finished, so a genuine failure there is never retried.
+--
+-- Today's job set makes that interleaving rare (daily schedules, a ten-minute
+-- lease), which is why the audit filed it as a design risk rather than a defect.
+-- It stops being rare the moment `JobClaimService` is reused for anything more
+-- frequent or slower, and the failure is silent when it happens, so the token goes
+-- in now rather than being a condition on the next caller.
+--
+-- `lease_token` is minted per successful `claimLease` and required by
+-- `markDelivered`; `release` requires it whenever the caller holds one, and still
+-- accepts a bare delete for `claimOnce` callers, whose claim is the fact itself and
+-- has no attempt to identify.
+--
+-- Backfill: NULL for every existing row. A permanent `claimOnce` row has no lease
+-- to own, and an in-flight lease at deploy time simply cannot be released or marked
+-- by the process holding it -- it expires instead, which is exactly the outcome a
+-- lease exists to provide.
+
+ALTER TABLE job_claims
+    ADD COLUMN IF NOT EXISTS lease_token UUID;

@@ -273,6 +273,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "[XX-Email is not configured. Emergency access cannot be enabled until SMTP is set up.-XX]",
     "encryptionNotConfigured": "[XX-Encryption key is not configured. The free-form message cannot be stored securely until AI_ENCRYPTION_KEY is set.-XX]",
+    "encryptionRequiredToEnable": "[XX-Credential encryption is not configured. Emergency access cannot be enabled until AI_ENCRYPTION_KEY is set, because a grant has to store each contact's access link securely.-XX]",
     "contactEmailExists": "[XX-An emergency contact with this email already exists.-XX]",
     "contactNotFound": "[XX-Contact not found-XX]",
     "notConfigured": "[XX-Emergency access not configured-XX]",

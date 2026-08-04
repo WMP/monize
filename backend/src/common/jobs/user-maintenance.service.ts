@@ -120,6 +120,9 @@ export class UserMaintenanceService {
           JobClaimType.UserMaintenance,
           userId,
           USER_MAINTENANCE_CLAIM_KEY,
+          // By token, so a restore that outran its own lease does not release the
+          // one the operation now running holds (DR-RRV4-01).
+          leased,
         )
         .catch((error) =>
           // The lease expires on its own, so a failed release costs a delay, not

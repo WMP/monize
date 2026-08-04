@@ -38,18 +38,41 @@ export class EmergencyAccessContact {
   claimVoidedReason: string | null;
 
   /**
-   * When this contact's link was actually sent -- the delivery record, kept
-   * apart from the claim that coordinates the send.
+   * When the notice for {@link notifiedGrantGeneration} was actually sent -- the
+   * delivery record, kept apart from the claim that coordinates the send.
    *
    * A claim answers "may I do this now" and cannot also answer "has this been
    * done", because the second question has to outlive the process that asked
-   * the first. NULL on a granted owner's contact therefore means a link is
-   * still owed, and that is how the daily check finds a grant a killed replica
-   * never delivered -- without re-issuing a token for a contact who already
-   * holds a working link (audit FV4-004).
+   * the first. That is how the daily check finds a grant a killed replica never
+   * delivered -- without re-issuing a token for a contact who already holds a
+   * working link (audit FV4-004).
+   *
+   * A timestamp for operators, **not a predicate**. It used to be both, and
+   * because nothing ever set it back to NULL that made emergency access fire at
+   * most once per contact row for the row's lifetime (audit RRV4-004). "Is a link
+   * still owed" is now the generation comparison below; the two columns are written
+   * by one statement (`markContactNotified`) and read by one query
+   * (`contactsAwaitingNotice`), which is what keeps them from drifting apart.
    */
   @Column({ name: "claim_notified_at", type: "timestamp", nullable: true })
   claimNotifiedAt: Date | null;
+
+  /**
+   * The grant cycle whose notice this contact received; NULL for never notified.
+   *
+   * Owed a link whenever this differs from the owner's
+   * `EmergencyAccessSettings.grantGeneration`. Every path that re-arms monitoring
+   * -- the owner returning, a disable/re-enable, a manual reset -- leaves this
+   * column alone and the next grant advances the owner's generation past it, so a
+   * re-armed grant owes every contact again without any of those paths having to
+   * say so.
+   */
+  @Column({
+    name: "notified_grant_generation",
+    type: "int",
+    nullable: true,
+  })
+  notifiedGrantGeneration: number | null;
 
   /**
    * The undelivered credential -- the raw claim token, AES-256-GCM encrypted.

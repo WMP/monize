@@ -211,6 +211,7 @@ export class EmergencyAccessClaimController {
         `UPDATE emergency_access_contacts
             SET claim_token_used_at = CURRENT_TIMESTAMP,
                 claim_token_hash = NULL,
+                claim_token_ciphertext = NULL,
                 claim_voided_reason = NULL
           WHERE claim_token_hash = $1
             AND claim_token_used_at IS NULL
@@ -287,6 +288,10 @@ export class EmergencyAccessClaimController {
           claimTokenExpiresAt: null,
           claimTokenUsedAt: () => "CURRENT_TIMESTAMP",
           claimVoidedReason: "claimed_by_other",
+          // The credential goes with the hash that made it usable: worthless
+          // without one, but still a recoverable secret under the application
+          // key, and nothing will ever want it again (DR-RRV4-03).
+          claimTokenCiphertext: null,
         })
         .where("owner_user_id = :id", { id: ownerId })
         .andWhere("id <> :contactId", { contactId })

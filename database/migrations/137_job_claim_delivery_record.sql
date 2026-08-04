@@ -31,6 +31,24 @@
 -- preserves today's behaviour -- leaving them NULL would re-send every reminder
 -- claimed before the upgrade. `claimed_at` is the honest timestamp for when that
 -- decision was made.
+--
+-- What that backfill *also* preserves, and the decision taken about it
+-- (DR-RRV4-02): a reminder lost in the old claim-before-send crash window is
+-- indistinguishable from one delivered, because the old row recorded only the
+-- intent. Marking these delivered therefore keeps any such loss lost. The state is
+-- genuinely ambiguous and no predicate over these columns can resolve it without
+-- provider evidence, so the choice is between one possible duplicate per affected
+-- claim and one possible missed notice.
+--
+-- **Accepted deliberately, in this direction, once.** The alternative -- scoping the
+-- backfill by claim type or date so recent windows re-send -- trades a silent miss
+-- for a duplicate on every claim it covers, including the overwhelming majority that
+-- were delivered correctly. These are daily reminders: a duplicate is noise a user
+-- will forgive and a miss is a single day's notice, so neither outcome is severe,
+-- and the tie is broken in favour of not emailing a population of users about bills
+-- they were already told about. Every claim written *after* this migration keeps a
+-- real delivery record, so the ambiguity is bounded to rows that predate it and does
+-- not recur.
 
 ALTER TABLE job_claims
     ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;

@@ -7,6 +7,7 @@ import { getRequestContext } from "../common/request-context";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
   createJobClaimMock,
+  TEST_LEASE_TOKEN,
   jobClaimProvider,
   type JobClaimMock,
 } from "../test-helpers/job-claim-testing";
@@ -242,7 +243,7 @@ describe("DemoResetService", () => {
       // A wipe-and-reseed is the one job a duplicate run cannot repair by
       // repeating: the second replica's DELETE lands inside the first
       // replica's seed and both finish with a partial demo.
-      jobClaims.claimLease.mockResolvedValue(false);
+      jobClaims.claimLease.mockResolvedValue(null);
 
       await service.resetDemoData();
 
@@ -270,6 +271,9 @@ describe("DemoResetService", () => {
         JobClaimType.DemoReset,
         "demo-user-id",
         expect.any(String),
+        // With the token: a reset that outran its own lease must not release the
+        // one the replica now reseeding holds (audit DR-RRV4-01).
+        TEST_LEASE_TOKEN,
       );
     });
 
