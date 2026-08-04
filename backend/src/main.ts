@@ -7,7 +7,8 @@ import cookieParser from "cookie-parser";
 import * as pg from "pg";
 import { AppModule } from "./app.module";
 import {
-  MEMORY_SHARE_PER_RESTORE_UPLOAD,
+  PEAK_MULTIPLE,
+  UPLOAD_WARNING_SHARE,
   resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
 } from "./backup/backup-limits";
@@ -92,14 +93,15 @@ async function bootstrap() {
   );
   // An operator override the container cannot absorb is a killed process rather
   // than a refused request, so say it at startup instead of leaving them to infer
-  // it from a restart. Checked against the same half-share the default is derived
-  // from, so the derived default never warns about itself.
+  // it from a restart. Checked against the same share the default is derived from,
+  // in the same units the operator sets, so the derived default never warns about
+  // itself and the figure suggested is one they can paste back.
   warnIfLimitExceedsMemory(
     "BACKUP_RESTORE_LIMIT",
     backupRestoreLimit,
     (message) => bootstrapLogger.warn(message),
     undefined,
-    MEMORY_SHARE_PER_RESTORE_UPLOAD,
+    UPLOAD_WARNING_SHARE,
   );
   // Aggregate admission ahead of the parser: the per-request ceiling bounds one
   // request, and two concurrent uploads just under it exceed a container sized
@@ -107,7 +109,12 @@ async function bootstrap() {
   // reach this allocation.
   const restoreAdmission = createRestoreUploadAdmission(
     backupRestoreLimit,
-    backupRestoreLimit,
+    // The budget is one request's worth of peak -- which is the container share
+    // the wire limit was derived from -- so a large restore is effectively
+    // serialised. A restore is a rare, deliberate, destructive operation:
+    // refusing the second one costs a retry, and admitting it costs everyone the
+    // replica serves.
+    backupRestoreLimit * PEAK_MULTIPLE,
     (message) => bootstrapLogger.warn(`Restore upload refused: ${message}`),
   );
   app.use("/api/v1/backup/restore", restoreAdmission.middleware);

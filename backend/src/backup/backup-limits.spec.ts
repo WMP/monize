@@ -1,5 +1,7 @@
 import {
   MEMORY_SHARE_PER_RESTORE_UPLOAD,
+  PEAK_MULTIPLE,
+  UPLOAD_WARNING_SHARE,
   deriveDefaultLimitBytes,
   detectProcessMemoryLimitBytes,
   parseByteSize,
@@ -119,18 +121,41 @@ describe("backup size limits", () => {
    * upload. It defaulted to the string "500mb" against a 400 MiB pod.
    */
   describe("resolveRestoreUploadLimitBytes", () => {
-    it("stays under the container's memory limit by default", () => {
-      const limit = resolveRestoreUploadLimitBytes(undefined, 400 * MIB);
-      expect(limit).toBeLessThan(400 * MIB);
-      // Half rather than a quarter: a compressed upload is one buffer, not the
-      // several a buffered export holds at peak.
-      expect(limit).toBe(200 * MIB);
+    /**
+     * The wire bytes are not the cost (F3R5-002).
+     *
+     * This was half the container on the reasoning that a compressed upload is one
+     * buffer. The request that uploads it then holds the envelope, the decipher
+     * output, the concatenated plaintext, the decompressed payload, the string and
+     * the parsed graph -- so half of a 400 MiB container to the wire is
+     * PEAK_MULTIPLE times that at peak, and a single legal request could not fit
+     * the pod it was sized for.
+     */
+    it("leaves room for the peak, not just the wire bytes", () => {
+      const container = 400 * MIB;
+      const limit = resolveRestoreUploadLimitBytes(undefined, container);
+
+      // The *peak* is what has to fit the share the container allots.
+      expect(limit * PEAK_MULTIPLE).toBeLessThanOrEqual(
+        Math.floor(container * MEMORY_SHARE_PER_RESTORE_UPLOAD),
+      );
+      // And the old figure would not have: 200 MiB of wire is 600 MiB at peak on
+      // a 400 MiB pod.
+      expect(limit).toBeLessThan(200 * MIB);
     });
 
-    it("is more generous than the buffered-export ceiling", () => {
+    it("still allows a usable upload on the chart's default backend", () => {
+      // A ceiling small enough to refuse ordinary backups is an outage, not a
+      // protection. The floor in the derivation is what guarantees this.
       expect(
         resolveRestoreUploadLimitBytes(undefined, 400 * MIB),
-      ).toBeGreaterThan(deriveDefaultLimitBytes(400 * MIB));
+      ).toBeGreaterThanOrEqual(64 * MIB);
+    });
+
+    it("scales with the container rather than being fixed", () => {
+      const small = resolveRestoreUploadLimitBytes(undefined, 512 * MIB);
+      const large = resolveRestoreUploadLimitBytes(undefined, 4096 * MIB);
+      expect(large).toBeGreaterThan(small);
     });
 
     it("honours an explicit operator value", () => {
@@ -195,7 +220,7 @@ describe("backup size limits", () => {
         resolveRestoreUploadLimitBytes(undefined, container),
         onWarn,
         container,
-        MEMORY_SHARE_PER_RESTORE_UPLOAD,
+        UPLOAD_WARNING_SHARE,
       );
       expect(onWarn).not.toHaveBeenCalled();
     });
@@ -207,15 +232,17 @@ describe("backup size limits", () => {
         2048 * MIB,
         onWarn,
         400 * MIB,
-        MEMORY_SHARE_PER_RESTORE_UPLOAD,
+        UPLOAD_WARNING_SHARE,
       );
       expect(onWarn).toHaveBeenCalledTimes(1);
       const message = onWarn.mock.calls[0][0] as string;
       expect(message).toContain("BACKUP_RESTORE_LIMIT");
-      // Suggests the half-share, not the buffered quarter -- an operator told to
-      // drop to 100MiB when 200MiB is fine would either comply needlessly or
-      // stop believing the warning.
-      expect(message).toContain("200MiB");
+      // The figure suggested is in the units the operator sets -- wire bytes --
+      // and equals the derived default. Suggesting the peak share instead would
+      // tell them a number that OOM-kills the pod.
+      expect(message).toContain(
+        `${Math.round(resolveRestoreUploadLimitBytes(undefined, 400 * MIB) / MIB)}MiB`,
+      );
     });
   });
 });

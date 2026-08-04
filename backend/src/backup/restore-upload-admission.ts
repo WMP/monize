@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "http";
+import { PEAK_MULTIPLE } from "./backup-limits";
 
 /**
  * Aggregate admission for restore uploads, in front of the body parser.
@@ -11,39 +12,58 @@ import type { IncomingMessage, ServerResponse } from "http";
  * one, and the only replica is OOM-killed. Nothing further down the path can
  * refuse an allocation that has already happened.
  *
- * So the process keeps a running total of bytes it has promised to buffer, and a
- * request is admitted only if its own claim still fits. The reservation is
- * released when the response finishes, whatever the outcome.
+ * So the process keeps a running total of the bytes it has promised, and a
+ * request is admitted only if its own claim still fits.
  *
- * Three decisions worth stating, because each is a trade:
+ * ## The claim is the peak, not the wire
  *
- * - **The budget equals the per-request ceiling**, not a multiple of it. On the
- *   chart's 400 MiB backend that is ~200 MiB: one large restore proceeds, a
- *   second concurrent one is refused rather than sharing a budget neither can fit
- *   in. A restore is a rare, deliberate, destructive operation -- serialising it
- *   costs a retry, and the alternative costs every user the replica serves.
- * - **A request with no `Content-Length` reserves the whole ceiling.** Chunked
- *   encoding does not say how much is coming, and the safe assumption on an
- *   unauthenticated path is the most it is allowed to send. The browser client
- *   uploads a `Blob`, so it always sends a length; a chunked uploader is
- *   admitted, just not concurrently with another.
- * - **An over-large `Content-Length` is refused here**, before any reservation.
- *   `express.raw` would also refuse it, but only after this has promised memory
- *   on its behalf.
- * - **Only requests the parser will buffer are budgeted at all.** A CORS
- *   preflight carries no `Content-Length`, so budgeting it would claim the whole
- *   ceiling for a request that allocates nothing -- the protection becoming a way
- *   to deny the upload it protects.
+ * The first version reserved the declared `Content-Length` and nothing else, which
+ * counted the smallest of the buffers a restore holds. An encrypted 60 MiB upload
+ * is the envelope, plus `decipher.update`'s output, plus `Buffer.concat`'s new
+ * buffer, plus the decompressed payload, plus the UTF-8 string, plus the parsed
+ * object graph -- several of them live at the same moment. Three such uploads
+ * declared 180 MiB, fitted a 200 MiB budget, and could pass 540 MiB in flight.
  *
- * This closes the concurrency half of the defect. It does **not** authenticate
- * before reading the body -- an unauthenticated client can still occupy the
- * budget and get a 503 for the next one, which is a refused request rather than a
- * dead process. The remaining work (a smaller ingress limit ahead of the process,
- * a two-step restore session with an upload token, or streaming to a bounded
- * temporary file) is recorded in `docs/backup-restore-contract.md`.
+ * So a request claims `PEAK_MULTIPLE` times its wire bytes. That number is a
+ * deliberate underestimate of the true worst case and an enormous improvement on
+ * 1: it makes the budget refuse the several-smaller-uploads case, which is the one
+ * the wire-byte version admitted. The honest fix is streaming the input through
+ * decryption and gzip into a bounded temporary file or an incremental parser,
+ * which is a change to the restore pipeline rather than to this gate.
+ *
+ * ## A reservation is held until the work is done, not until the socket shuts
+ *
+ * `ServerResponse` emits `close` when the connection ends, which is not the same
+ * as the handler finishing. Releasing on `close` let a client upload a full body,
+ * let the controller enter `restoreData`, then hang up -- freeing the whole
+ * reservation while the decryption, the staging and the SQL were still running and
+ * still holding their buffers. A second large upload was then admitted beside the
+ * first, which is exactly the situation this gate exists to prevent, reachable by
+ * disconnect timing.
+ *
+ * So the reservation has a lifecycle:
+ *
+ * - **receiving** -- the body is still arriving. A `close` here means the client
+ *   went away before anything downstream took ownership, so releasing is right.
+ * - **processing** -- the body has been read, so the handler owns it. Only the
+ *   handler saying it is finished (`releaseRestoreReservation`, from a `finally`)
+ *   or the response completing (`finish`) releases it. A `close` is ignored.
+ *
+ * A request that never reaches the route -- rejected by a guard, a 404 -- still
+ * gets a response, so `finish` covers it.
+ *
+ * ## What is still not fixed
+ *
+ * An unauthenticated client can occupy the budget, because the gate necessarily
+ * runs before authentication. `receiveTimeoutMs` bounds how long: a body that has
+ * not arrived by then is refused with 408 and its reservation released, so a
+ * slow-loris holds the recovery path for a bounded interval rather than
+ * indefinitely. The real answers -- a smaller body limit at the ingress, a
+ * two-step restore session with a short-lived upload token, streaming to disk --
+ * are in `docs/backup-restore-contract.md`.
  */
 export interface RestoreUploadAdmission {
-  /** Express middleware: admits, or answers 503/413 itself. */
+  /** Express middleware: admits, or answers 503/413/408 itself. */
   middleware: (
     req: IncomingMessage,
     res: ServerResponse,
@@ -54,6 +74,14 @@ export interface RestoreUploadAdmission {
 }
 
 /**
+ * How long a body may take to arrive before its reservation is reclaimed.
+ *
+ * Only ever counted while receiving, never while the handler is working -- a
+ * timeout on processing would be the release-too-early defect with a delay.
+ */
+export const DEFAULT_RECEIVE_TIMEOUT_MS = 120_000;
+
+/**
  * The content types `express.raw` is configured to buffer on the restore route.
  *
  * The gate budgets exactly what the parser allocates, and nothing else. A CORS
@@ -62,6 +90,22 @@ export interface RestoreUploadAdmission {
  * to deny the upload it protects.
  */
 const PARSED_CONTENT_TYPES = ["application/gzip", "application/octet-stream"];
+
+/** Where the handler's release hook is stashed for the controller to find. */
+const RESERVATION = Symbol("monize.restoreUploadReservation");
+
+/**
+ * Releases the admission reservation for this request, if it holds one.
+ *
+ * Called from the restore handler's `finally`, which is the only place that knows
+ * the expensive work is over. Idempotent, and a no-op on a request that was never
+ * admitted (a unit test, another route), so a caller never has to check.
+ */
+export function releaseRestoreReservation(req: unknown): void {
+  const holder = req as Record<symbol, unknown> | null;
+  const release = holder?.[RESERVATION];
+  if (typeof release === "function") (release as () => void)();
+}
 
 /** Whether the parser downstream will actually buffer this request's body. */
 function willBuffer(req: IncomingMessage): boolean {
@@ -87,8 +131,9 @@ function contentLengthOf(req: IncomingMessage): number | null {
 
 export function createRestoreUploadAdmission(
   perRequestLimitBytes: number,
-  budgetBytes: number = perRequestLimitBytes,
+  budgetBytes: number = perRequestLimitBytes * PEAK_MULTIPLE,
   onRefusal?: (message: string) => void,
+  receiveTimeoutMs: number = DEFAULT_RECEIVE_TIMEOUT_MS,
 ): RestoreUploadAdmission {
   let reserved = 0;
 
@@ -130,14 +175,15 @@ export function createRestoreUploadAdmission(
       }
 
       // No length means no promise from the client, so budget for the most it
-      // could send.
-      const claim = declared ?? perRequestLimitBytes;
+      // could send. Then multiplied, because the wire bytes are the smallest of
+      // the buffers this request will hold.
+      const claim = (declared ?? perRequestLimitBytes) * PEAK_MULTIPLE;
 
       if (reserved + claim > budgetBytes) {
         refuse(
           res,
           503,
-          "Another restore upload is in progress. Retry in a moment.",
+          "Another restore is in progress. Retry in a moment.",
           30,
         );
         return;
@@ -149,12 +195,47 @@ export function createRestoreUploadAdmission(
         if (released) return;
         released = true;
         reserved -= claim;
+        clearTimeout(receiveDeadline);
       };
-      // Both events, because a client that disconnects mid-upload emits `close`
-      // without `finish` -- and a reservation nothing releases is a budget that
-      // shrinks to zero over the process's lifetime.
+
+      // The handler's hook. It is what turns "the socket closed" into "the work
+      // is over" -- the two are not the same, and treating them as the same is
+      // what let a disconnect free memory the restore was still using.
+      (req as unknown as Record<symbol, unknown>)[RESERVATION] = release;
+
+      // While the body is still arriving, a lost connection means nothing
+      // downstream ever took ownership, so releasing is correct. Once it has
+      // arrived, only the handler or a completed response may release.
+      let receiving = true;
+      const bodyArrived = () => {
+        receiving = false;
+        clearTimeout(receiveDeadline);
+      };
+      req.once("end", bodyArrived);
+
+      // A body that never arrives would otherwise hold its claim until the socket
+      // died, which on a trickling unauthenticated client is indefinitely. Only
+      // armed while receiving; a slow *restore* is not a stalled upload.
+      const receiveDeadline = setTimeout(() => {
+        if (!receiving) return;
+        refuse(
+          res,
+          408,
+          "Backup upload timed out before the body arrived.",
+          30,
+        );
+        release();
+        req.destroy();
+      }, receiveTimeoutMs);
+      // Do not hold the event loop open on this timer.
+      receiveDeadline.unref?.();
+
       res.once("finish", release);
-      res.once("close", release);
+      res.once("close", () => {
+        // Only while receiving. Afterwards the handler owns the body and may
+        // still be decrypting, staging or writing it.
+        if (receiving) release();
+      });
 
       next();
     },

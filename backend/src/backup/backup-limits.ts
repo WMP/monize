@@ -81,6 +81,44 @@ const MEMORY_SHARE_PER_BACKUP = 0.25;
 export const MEMORY_SHARE_PER_RESTORE_UPLOAD = 0.5;
 
 /**
+ * How many times its wire size a restore may occupy at peak.
+ *
+ * A restore does not cost what it uploads. An encrypted upload holds the envelope,
+ * `decipher.update`'s output, `Buffer.concat`'s new buffer, the decompressed
+ * payload, the UTF-8 string and the parsed object graph, and several of those are
+ * live at the same moment. So the compressed upload ceiling and the aggregate
+ * admission budget are two different numbers with this ratio between them: the
+ * *peak* gets `MEMORY_SHARE_PER_RESTORE_UPLOAD` of the container, and the wire
+ * gets that divided by this.
+ *
+ * The first version of the admission gate skipped this and budgeted wire bytes
+ * directly, which counted the smallest of those buffers -- three 60 MiB uploads
+ * declared 180 MiB, fitted a 200 MiB budget, and could pass 540 MiB in flight. The
+ * per-request ceiling had the same hole one level up: half a 400 MiB container to
+ * the wire meant 600 MiB at peak for a single legal request.
+ *
+ * Three is a floor rather than a measurement -- the true multiple depends on
+ * Node's version, the payload's entropy and the object graph's shape, so this is
+ * chosen to be defensible without one. Raising it refuses legitimate restores;
+ * treating it as 1 is the defect it replaced. The measurement wants the
+ * cgroup-constrained peak-RSS test that this environment cannot run.
+ */
+export const PEAK_MULTIPLE = 3;
+
+/**
+ * The share the upload limit's startup warning is measured against.
+ *
+ * `warnIfLimitExceedsMemory` compares the number the operator *set* -- wire bytes
+ * -- so the threshold has to be in wire bytes too: the peak share divided by the
+ * multiple, which is exactly what the default derives to. So the derived default
+ * never warns about itself, and the figure the warning suggests is one the operator
+ * can paste into `BACKUP_RESTORE_LIMIT`. Suggesting the peak share instead would
+ * hand them a number that OOM-kills the pod.
+ */
+export const UPLOAD_WARNING_SHARE =
+  MEMORY_SHARE_PER_RESTORE_UPLOAD / PEAK_MULTIPLE;
+
+/**
  * Floor and cap on a derived default.
  *
  * The floor keeps a small container (a 256 MiB dev pod) from deriving a ceiling
@@ -207,12 +245,23 @@ export function resolveByteLimit(
  * those layers ever saw -- an availability defect that no amount of care further in
  * could reach, because the allocation happened first.
  *
- * A compressed upload is one buffer rather than the several a buffered export
- * holds, so it gets a more generous share than `deriveDefaultLimitBytes`: half the
- * container, still leaving room for the decompressed payload the expanded ceiling
- * then bounds separately. `BACKUP_RESTORE_LIMIT` overrides it, and an operator who
- * sets something the container cannot absorb gets the same startup warning as the
- * other two.
+ * **The wire bytes are not the cost.** This used to be half the container on the
+ * reasoning that a compressed upload is one buffer -- but the request that
+ * uploads it then holds the envelope, the decipher output, the concatenated
+ * plaintext, the decompressed payload, the string and the parsed graph, several of
+ * them at once. Half of a 400 MiB container to the wire is `PEAK_MULTIPLE` times
+ * that at peak, so a single legal request could not fit the pod it was sized for.
+ *
+ * So the *peak* gets `MEMORY_SHARE_PER_RESTORE_UPLOAD` of the container and the
+ * wire gets that divided by `PEAK_MULTIPLE` -- about 66 MiB of compressed upload on
+ * the chart's default backend, peaking at the same 200 MiB the aggregate admission
+ * budget allows. The two numbers are derived from one share so they cannot disagree.
+ *
+ * That is a much smaller default than before, and deliberately: a compressed
+ * backup near the old figure could not be restored on the default pod at all. An
+ * operator whose users have large artifacts -- likelier now that attachment bytes
+ * travel inside them -- raises `BACKUP_RESTORE_LIMIT` *and* the pod's memory, and
+ * gets a startup warning if they do only the first.
  *
  * Returned as bytes; `express.raw` accepts a number.
  */
@@ -227,7 +276,10 @@ export function resolveRestoreUploadLimitBytes(
           MAX_DERIVED_LIMIT_BYTES,
           Math.max(
             MIN_DERIVED_LIMIT_BYTES,
-            Math.floor(memoryLimitBytes * MEMORY_SHARE_PER_RESTORE_UPLOAD),
+            Math.floor(
+              (memoryLimitBytes * MEMORY_SHARE_PER_RESTORE_UPLOAD) /
+                PEAK_MULTIPLE,
+            ),
           ),
         );
   return resolveByteLimit(raw, derived);

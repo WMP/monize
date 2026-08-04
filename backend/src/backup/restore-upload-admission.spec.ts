@@ -2,12 +2,22 @@ import { EventEmitter } from "events";
 import * as fs from "fs";
 import * as path from "path";
 import type { IncomingMessage, ServerResponse } from "http";
-import { createRestoreUploadAdmission } from "./restore-upload-admission";
+import {
+  MEMORY_SHARE_PER_RESTORE_UPLOAD,
+  PEAK_MULTIPLE,
+  resolveRestoreUploadLimitBytes,
+} from "./backup-limits";
+import {
+  DEFAULT_RECEIVE_TIMEOUT_MS,
+  createRestoreUploadAdmission,
+  releaseRestoreReservation,
+} from "./restore-upload-admission";
 
 const MIB = 1024 * 1024;
 
 /**
- * A request carrying only what the middleware reads.
+ * A request carrying only what the middleware reads, plus the `end` event that
+ * tells the gate the body has arrived.
  *
  * Method and content-type default to what a real restore upload sends, because
  * the gate budgets exactly what the parser downstream will buffer -- see the
@@ -17,10 +27,24 @@ function request(
   headers: Record<string, string | string[]> = {},
   method = "POST",
 ) {
-  return {
+  const emitter = new EventEmitter();
+  const req = Object.assign(emitter, {
     method,
     headers: { "content-type": "application/gzip", ...headers },
-  } as unknown as IncomingMessage;
+    destroyed: false,
+    destroy() {
+      req.destroyed = true;
+    },
+  });
+  return req as unknown as IncomingMessage & {
+    destroyed: boolean;
+    emit: (event: string) => boolean;
+  };
+}
+
+/** The body finished arriving, so the handler now owns it. */
+function bodyArrived(req: unknown) {
+  (req as unknown as EventEmitter).emit("end");
 }
 
 /**
@@ -64,7 +88,7 @@ describe("restore upload admission", () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(raw.statusCode).toBe(200);
-    expect(admission.reservedBytes()).toBe(150 * MIB);
+    expect(admission.reservedBytes()).toBe(150 * MIB * PEAK_MULTIPLE);
   });
 
   /**
@@ -162,7 +186,7 @@ describe("restore upload admission", () => {
     admission.middleware(request(), response().res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(admission.reservedBytes()).toBe(LIMIT);
+    expect(admission.reservedBytes()).toBe(LIMIT * PEAK_MULTIPLE);
 
     const second = response();
     const secondNext = jest.fn();
@@ -185,7 +209,7 @@ describe("restore upload admission", () => {
       response().res,
       jest.fn(),
     );
-    expect(admission.reservedBytes()).toBe(LIMIT);
+    expect(admission.reservedBytes()).toBe(LIMIT * PEAK_MULTIPLE);
   });
 
   it("refuses an over-large declared length without reserving for it", () => {
@@ -228,7 +252,11 @@ describe("restore upload admission", () => {
 
   it("reports a refusal so an operator can see the pressure", () => {
     const onRefusal = jest.fn();
-    const admission = createRestoreUploadAdmission(LIMIT, LIMIT, onRefusal);
+    const admission = createRestoreUploadAdmission(
+      LIMIT,
+      LIMIT * PEAK_MULTIPLE,
+      onRefusal,
+    );
     admission.middleware(request(), response().res, jest.fn());
     admission.middleware(request(), response().res, jest.fn());
 
@@ -249,7 +277,7 @@ describe("restore upload admission", () => {
       );
       expect(next).toHaveBeenCalledTimes(1);
     }
-    expect(admission.reservedBytes()).toBe(30 * MIB);
+    expect(admission.reservedBytes()).toBe(30 * MIB * PEAK_MULTIPLE);
   });
 
   /**
@@ -298,7 +326,7 @@ describe("restore upload admission", () => {
         response().res,
         jest.fn(),
       );
-      expect(admission.reservedBytes()).toBe(LIMIT);
+      expect(admission.reservedBytes()).toBe(LIMIT * PEAK_MULTIPLE);
     });
 
     it("reserves for the encrypted envelope's type too", () => {
@@ -314,7 +342,7 @@ describe("restore upload admission", () => {
         response().res,
         jest.fn(),
       );
-      expect(admission.reservedBytes()).toBe(50 * MIB);
+      expect(admission.reservedBytes()).toBe(50 * MIB * PEAK_MULTIPLE);
     });
 
     it("covers every type the parser is configured with (source guard)", () => {
@@ -341,7 +369,10 @@ describe("restore upload admission", () => {
   it("accepts a budget larger than one request", () => {
     // An operator with headroom can allow concurrency explicitly rather than
     // being held to one upload by a number they cannot reach.
-    const admission = createRestoreUploadAdmission(LIMIT, 2 * LIMIT);
+    const admission = createRestoreUploadAdmission(
+      LIMIT,
+      2 * LIMIT * PEAK_MULTIPLE,
+    );
     const firstNext = jest.fn();
     const secondNext = jest.fn();
     admission.middleware(
@@ -356,6 +387,252 @@ describe("restore upload admission", () => {
     );
     expect(firstNext).toHaveBeenCalledTimes(1);
     expect(secondNext).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The reservation's lifecycle (F3R5-003).
+ *
+ * `ServerResponse` emits `close` when the connection ends, which is not the same
+ * as the handler finishing. Releasing on `close` let a client upload a full body,
+ * let the controller enter `restoreData`, then hang up -- freeing the whole
+ * reservation while the decryption, the staging and the SQL were still running
+ * and still holding their buffers. A second large upload was then admitted beside
+ * the first, which is the situation the gate exists to prevent, reachable by
+ * disconnect timing.
+ */
+describe("restore upload admission lifecycle", () => {
+  const LIMIT = 200 * MIB;
+
+  /** Admit a request and hand back the pieces the assertions need. */
+  function admit(
+    admission: ReturnType<typeof createRestoreUploadAdmission>,
+    lengthMib = 190,
+  ) {
+    const req = request({ "content-length": String(lengthMib * MIB) });
+    const res = response();
+    const next = jest.fn();
+    admission.middleware(req, res.res, next);
+    return { req, res, next };
+  }
+
+  it("keeps the reservation when the client disconnects after the body arrived", () => {
+    const admission = createRestoreUploadAdmission(LIMIT);
+    const first = admit(admission);
+    expect(first.next).toHaveBeenCalledTimes(1);
+
+    // The parser finished reading; the handler owns the body from here.
+    bodyArrived(first.req);
+    first.res.raw.emit("close");
+
+    // Still held: decryption, staging and SQL are all still to come, and they
+    // hold the buffers this budget is about.
+    expect(admission.reservedBytes()).toBe(190 * MIB * PEAK_MULTIPLE);
+
+    const second = admit(admission);
+    expect(second.next).not.toHaveBeenCalled();
+    expect(second.res.raw.statusCode).toBe(503);
+  });
+
+  it("releases when the handler says the work is over", () => {
+    const admission = createRestoreUploadAdmission(LIMIT);
+    const { req, res } = admit(admission);
+    bodyArrived(req);
+    res.raw.emit("close");
+    expect(admission.reservedBytes()).toBeGreaterThan(0);
+
+    // What the controller's `finally` calls.
+    releaseRestoreReservation(req);
+    expect(admission.reservedBytes()).toBe(0);
+
+    const second = admit(admission);
+    expect(second.next).toHaveBeenCalledTimes(1);
+  });
+
+  it("still releases on disconnect while the body is arriving", () => {
+    // The other half: nothing downstream has taken ownership yet, so holding the
+    // reservation would be a budget that shrinks over the process's lifetime.
+    const admission = createRestoreUploadAdmission(LIMIT);
+    const { res } = admit(admission);
+
+    res.raw.emit("close");
+
+    expect(admission.reservedBytes()).toBe(0);
+  });
+
+  it("releases once when the handler and the response both report in", () => {
+    const admission = createRestoreUploadAdmission(LIMIT);
+    const { req, res } = admit(admission, 100);
+    bodyArrived(req);
+
+    releaseRestoreReservation(req);
+    res.raw.emit("finish");
+    res.raw.emit("close");
+
+    // Not negative: a double release would let the budget grow past the
+    // container, which is worse than not having one.
+    expect(admission.reservedBytes()).toBe(0);
+  });
+
+  it("is safe to call the release hook on a request that was never admitted", () => {
+    // The controller calls it unconditionally in a `finally`, including on a
+    // request that never went through the gate.
+    expect(() => releaseRestoreReservation(request())).not.toThrow();
+    expect(() => releaseRestoreReservation(undefined)).not.toThrow();
+    expect(() => releaseRestoreReservation({})).not.toThrow();
+  });
+});
+
+/**
+ * The peak multiple (F3R5-002).
+ *
+ * The first version reserved the declared `Content-Length` and nothing else,
+ * which counted the smallest of the buffers a restore holds. An encrypted upload
+ * is the envelope, plus the decipher output, plus the concatenated plaintext,
+ * plus the decompressed payload, plus the string, plus the parsed graph -- several
+ * live at once. Three 60 MiB uploads declared 180 MiB, fitted a 200 MiB budget,
+ * and could pass 540 MiB in flight.
+ */
+describe("restore upload admission peak budgeting", () => {
+  const LIMIT = 200 * MIB;
+
+  /** The container the chart defaults to, and the limits derived from it. */
+  const CONTAINER = 400 * MIB;
+  const WIRE_LIMIT = resolveRestoreUploadLimitBytes(undefined, CONTAINER);
+  const BUDGET = WIRE_LIMIT * PEAK_MULTIPLE;
+
+  it("keeps a single full-size upload's peak inside the container's share", () => {
+    // The arithmetic that was wrong one level up: half of a 400 MiB container to
+    // the *wire* is PEAK_MULTIPLE times that at peak, so one legal request could
+    // not fit the pod it was sized for. The wire limit is now the peak share
+    // divided by the multiple.
+    expect(BUDGET).toBeLessThanOrEqual(
+      Math.floor(CONTAINER * MEMORY_SHARE_PER_RESTORE_UPLOAD),
+    );
+
+    const admission = createRestoreUploadAdmission(WIRE_LIMIT, BUDGET);
+    const next = jest.fn();
+    admission.middleware(
+      request({ "content-length": String(WIRE_LIMIT) }),
+      response().res,
+      next,
+    );
+    // A ceiling that refuses the largest legal request would be an outage, not a
+    // protection.
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(admission.reservedBytes()).toBe(BUDGET);
+  });
+
+  it("refuses the several-small-uploads case the wire-byte version admitted", () => {
+    // The reviewer's numbers: three 60 MiB encrypted envelopes, each legal on its
+    // own, declaring 180 MiB between them. Under wire-byte accounting all three
+    // were admitted onto a 400 MiB pod and could pass 540 MiB in flight.
+    const admission = createRestoreUploadAdmission(WIRE_LIMIT, BUDGET);
+    const outcomes = [0, 1, 2].map(() => {
+      const next = jest.fn();
+      admission.middleware(
+        request({ "content-length": String(60 * MIB) }),
+        response().res,
+        next,
+      );
+      return next.mock.calls.length === 1;
+    });
+
+    expect(outcomes.filter(Boolean).length).toBeLessThan(3);
+    // Whatever was admitted, its peak fits the share.
+    expect(admission.reservedBytes()).toBeLessThanOrEqual(BUDGET);
+  });
+
+  it("counts more than the wire bytes for a single upload", () => {
+    const admission = createRestoreUploadAdmission(LIMIT);
+    admission.middleware(
+      request({ "content-length": String(60 * MIB) }),
+      response().res,
+      jest.fn(),
+    );
+
+    // The defect was reserving exactly 60 MiB for a request that will hold
+    // several times that at its peak.
+    expect(admission.reservedBytes()).toBe(60 * MIB * PEAK_MULTIPLE);
+  });
+});
+
+/**
+ * A body that never arrives (F3R5-004).
+ *
+ * The gate necessarily runs before authentication, and a chunked request declares
+ * no length, so it reserves the whole ceiling. Without a deadline an
+ * unauthenticated client could open one, trickle or withhold the body, and hold
+ * the recovery path closed for as long as the socket survived -- during exactly
+ * the incident a restore is for.
+ */
+describe("restore upload admission receive deadline", () => {
+  const LIMIT = 200 * MIB;
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("reclaims the reservation from a body that never arrives", () => {
+    const admission = createRestoreUploadAdmission(
+      LIMIT,
+      undefined,
+      undefined,
+      1000,
+    );
+    const req = request();
+    const res = response();
+    admission.middleware(req, res.res, jest.fn());
+    expect(admission.reservedBytes()).toBe(LIMIT * PEAK_MULTIPLE);
+
+    jest.advanceTimersByTime(1000);
+
+    expect(admission.reservedBytes()).toBe(0);
+    expect(res.raw.statusCode).toBe(408);
+    expect(res.headers["retry-after"]).toBe("30");
+    // The socket goes too, or the client keeps a connection it can retry on for
+    // free while holding nothing.
+    expect(req.destroyed).toBe(true);
+
+    // And the legitimate caller gets in.
+    const next = jest.fn();
+    admission.middleware(
+      request({ "content-length": String(100 * MIB) }),
+      response().res,
+      next,
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not time out a slow restore, only a slow upload", () => {
+    // The deadline is armed while receiving and disarmed when the body lands. A
+    // timeout on *processing* would be the release-too-early defect with a delay
+    // -- it would free memory the restore is still using.
+    const admission = createRestoreUploadAdmission(
+      LIMIT,
+      undefined,
+      undefined,
+      1000,
+    );
+    const req = request({ "content-length": String(100 * MIB) });
+    const res = response();
+    admission.middleware(req, res.res, jest.fn());
+
+    bodyArrived(req);
+    jest.advanceTimersByTime(60_000);
+
+    expect(admission.reservedBytes()).toBe(100 * MIB * PEAK_MULTIPLE);
+    expect(res.raw.statusCode).toBe(200);
+    expect(req.destroyed).toBe(false);
+  });
+
+  it("has a default deadline rather than waiting forever", () => {
+    const admission = createRestoreUploadAdmission(LIMIT);
+    const req = request();
+    admission.middleware(req, response().res, jest.fn());
+
+    jest.advanceTimersByTime(DEFAULT_RECEIVE_TIMEOUT_MS);
+
+    expect(admission.reservedBytes()).toBe(0);
   });
 });
 

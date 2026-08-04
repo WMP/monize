@@ -94,7 +94,7 @@ For the `database` provider the bytes were always in the artifact, base64 in
 `attachment_blobs`. For `local` and `s3` they were not: the artifact carried
 metadata, and the operator was told to restore the sidecar volume or bucket
 alongside it. Every problem below follows from that split, and the fix is to end
-it -- **the export now reads every external object and carries it in
+it — **the export now reads every external object and carries it in
 `attachment_blobs` too** (`appendExternalAttachmentBytes`), for all three export
 paths.
 
@@ -117,13 +117,13 @@ That makes the artifact self-sufficient, which has three consequences:
 What it costs, stated plainly: artifacts are larger. The plain export streams and
 is unaffected; the encrypted, automatic and support paths assemble in memory, so a
 large attachment set now meets `BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an
-error naming the ceiling and the variable -- rather than silently producing a file
+error naming the ceiling and the variable — rather than silently producing a file
 whose attachments cannot come back. An object the store cannot produce is logged
 and omitted rather than failing the export, because the ledger is the point and
 one unreadable receipt must not cost the user the whole file.
 
 **A `sha256` and a `byte_size` are still checked against the carried bytes.** Both
-sides come from the same file, so that proves consistency rather than authority --
+sides come from the same file, so that proves consistency rather than authority —
 what it catches is a corrupt or truncated artifact, which would otherwise restore a
 row whose recorded checksum does not describe its own download.
 
@@ -132,7 +132,7 @@ row whose recorded checksum does not describe its own download.
 An artifact produced before the above carries no external bytes. For those, the
 restore still reads the source object from the store, and everything below applies:
 the read is gated on the restoring user currently owning a matching row. Nothing
-here is dead code -- it is what an older file gets -- but it is no longer the path a
+here is dead code — it is what an older file gets — but it is no longer the path a
 new backup takes, and the disaster-recovery cases it cannot serve are the reason the
 bytes now travel.
 
@@ -220,7 +220,7 @@ The timing and the scope are both load-bearing:
   from a working attachment. Same rule as `AttachmentsService.remove`.
 - **Only keys the target user held**, read before the delete because afterwards
   there is nothing to read them from. Never the old keys named by the uploaded file
-  -- for the legacy path, those are the source objects it reads, and the same file
+  — for the legacy path, those are the source objects it reads, and the same file
   may be restored twice. (The original wording here said a cross-user restore
   "legitimately reads another user's objects as its source". That has not been true
   since the ownership rule above: such a read is now refused. The rule stands for
@@ -242,10 +242,10 @@ The timing and the scope are both load-bearing:
   the receipt.
 
 Operationally: for an artifact that carries its own bytes there is nothing to
-restore alongside it -- that is the point. The sidecar directory or bucket only
+restore alongside it — that is the point. The sidecar directory or bucket only
 matters for an artifact produced before the bytes travelled, and for those it must
 be restored **before or alongside** the database *and* the target must still hold
-the attachment metadata. If it does not -- a fresh instance, a deleted attachment --
+the attachment metadata. If it does not — a fresh instance, a deleted attachment —
 those bytes are not recoverable from that artifact at all, whatever order they are
 restored in, and the restore reports them in `skippedAttachments`. Take a fresh
 backup to get a self-contained one.
@@ -307,9 +307,13 @@ Three, for three different failure modes. All configurable, all fail loudly.
 
 | Setting | Bounds | Default |
 |---|---|---|
-| `BACKUP_RESTORE_LIMIT` | the compressed upload | half the container's memory limit |
-| `BACKUP_RESTORE_EXPANDED_LIMIT` | the **decompressed** payload | `1024mb` |
-| `BACKUP_EXPORT_BUFFER_LIMIT` | JSON a buffered export may accumulate | `512mb` |
+| `BACKUP_RESTORE_LIMIT` | the compressed upload | a sixth of the container's memory limit (a half, divided by `PEAK_MULTIPLE`) |
+| `BACKUP_RESTORE_EXPANDED_LIMIT` | the **decompressed** payload | a quarter of the container's memory limit |
+| `BACKUP_EXPORT_BUFFER_LIMIT` | JSON a buffered export may accumulate | a quarter of the container's memory limit |
+
+Every default is cgroup-derived, with a 64 MiB floor, a 1024 MiB cap and a 256 MiB
+fallback when there is no limit to read. There are no fixed byte defaults left; the
+`1024mb` and `512mb` this table used to name were the numbers that could not fire.
 
 The compressed limit bounds nothing about what comes out of gzip: a few hundred
 kilobytes of repeated text expands to gigabytes. Decompression is asynchronous
@@ -325,9 +329,26 @@ deliberately unbounded.
 **Every default is derived from the container's cgroup memory limit**, not fixed.
 A ceiling larger than the process it protects cannot fire — the pod is killed
 first — and all three used to be exactly that on the chart's 400 MiB backend.
-The upload limit gets half the container (one buffer) and the other two a quarter
-(several copies live at peak). An operator's explicit value always wins, and one
-too large for the container is warned about at startup.
+
+**And the wire bytes are not the cost.** The upload limit was half the container on
+the reasoning that a compressed upload is one buffer, unlike the several a buffered
+export holds. That was wrong about what happens next: the request goes on to hold
+the envelope, `decipher.update`'s output, `Buffer.concat`'s result, the decompressed
+payload, the UTF-8 string and the parsed object graph, several of them at once. Half
+of 400 MiB on the wire is `PEAK_MULTIPLE` times that at peak, so a *single* legal
+request could not fit the pod it was sized for. So the **peak** gets the half share
+and the wire gets that divided by `PEAK_MULTIPLE` — one constant, two numbers, and
+the aggregate admission budget below is the same half share, so exactly one
+full-size restore runs at a time.
+
+`PEAK_MULTIPLE = 3` is a floor, not a measurement: the real multiple depends on
+Node's version, the payload's entropy and the object graph's shape. Measuring it
+wants the cgroup peak-RSS test that has never run here.
+
+An operator's explicit value always wins, and one too large for the container is
+warned about at startup — against the same share the default came from, in the same
+units they set, so the derived default never warns about itself and the figure the
+warning suggests is one they can paste back.
 
 **The upload limit is the earliest one and therefore the only one that matters for
 an oversized request.** `express.raw` buffers the whole body before the controller,
@@ -335,27 +356,41 @@ the guards, the authentication lookup, the decryption and every service ceiling,
 a request none of those layers ever sees can still kill the process.
 
 **A per-request ceiling bounds one request, and the process has to survive two.**
-Half the container each, twice over, is more than the container: two concurrent
-uploads just under the ceiling OOM-kill the only replica, and the JWT guard and the
-`ThrottlerGuard` are both Nest guards, so neither runs until after the body is
-buffered. `createRestoreUploadAdmission` (`backup/restore-upload-admission.ts`)
-therefore runs as Express middleware **ahead of** the parser and keeps a
-process-wide total of the bytes it has promised: a request is admitted only if its
-own claim still fits, and the reservation is released on `finish` *or* `close` so a
-dropped connection does not shrink the budget permanently. The budget equals the
-per-request ceiling, so a large restore is effectively serialised — a restore is a
-rare, deliberate, destructive operation, and the cost of refusing the second one is
-a retry rather than an outage for everybody the replica serves. A request with no
-`Content-Length` reserves the whole ceiling, because chunked encoding does not say
-how much is coming and the safe assumption on a path reached before authentication
-is the most it is allowed to send.
+The JWT guard and the `ThrottlerGuard` are both Nest guards, so neither runs until
+after `express.raw` has buffered the body — nothing downstream can refuse an
+allocation that already happened. `createRestoreUploadAdmission`
+(`backend/src/backup/restore-upload-admission.ts`) therefore runs as Express
+middleware **ahead of** the parser and keeps a process-wide total of the peak bytes
+it has promised. Three properties, each of which was wrong once:
 
-That closes the concurrency half. It does **not** authenticate before reading the
-body: an unauthenticated client can still occupy the budget and make the next
-caller wait. Remaining options, none implemented, in rough order of preference: a
-smaller body limit at the ingress ahead of the process, a two-step restore session
-that issues a short-lived upload token after authorization, and streaming the
-upload to a bounded temporary file instead of the JavaScript heap.
+- **The claim is the peak, not the wire.** The first version reserved the declared
+  `Content-Length`, which counts the smallest of the buffers a restore holds. Three
+  60 MiB encrypted uploads declared 180 MiB, fitted a 200 MiB budget, and could pass
+  540 MiB in flight. A request now claims `PEAK_MULTIPLE` times its wire bytes.
+- **A reservation is held until the work is done, not until the socket shuts.**
+  `ServerResponse` emits `close` when the connection ends, which is not the handler
+  finishing. Releasing on `close` let a client upload a full body, let the controller
+  enter `restoreData`, then hang up — freeing the reservation while the decryption,
+  the staging and the SQL were still running, so a second large upload was admitted
+  beside the first. The reservation now has a lifecycle: while *receiving*, a `close`
+  releases it (nothing downstream took ownership); once the body has arrived, only
+  the handler's `finally` (`releaseRestoreReservation`) or a completed response does.
+- **A body that never arrives is reclaimed.** The gate necessarily runs before
+  authentication, and a chunked request declares no length, so it reserves the whole
+  ceiling. Without a deadline an unauthenticated client could trickle or withhold the
+  body and hold the recovery path closed for as long as the socket survived — during
+  exactly the incident a restore is for. A body that has not arrived inside
+  `DEFAULT_RECEIVE_TIMEOUT_MS` gets a 408 and its socket destroyed. The deadline is
+  armed only while receiving: a timeout on *processing* would be the
+  release-too-early defect with a delay.
+
+What is still not fixed: an unauthenticated client can occupy the budget for that
+bounded interval, so it can make a legitimate caller retry. Remaining options, none
+implemented, in rough order of preference: a smaller body limit at the ingress ahead
+of the process, a two-step restore session that issues a short-lived upload token
+after authorization, and streaming the upload through decryption and gzip into a
+bounded temporary file or an incremental parser instead of the JavaScript heap. The
+last of those is also what would replace `PEAK_MULTIPLE` with a real bound.
 
 **A budget checked after the allocation is not a budget.** The support export
 always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are

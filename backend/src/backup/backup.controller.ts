@@ -186,13 +186,21 @@ export class BackupController {
       "x-backup-password",
     );
 
-    const result = await this.backupService.restoreData(req.user.id, {
-      compressedData: body,
-      password,
-      oidcIdToken,
-      backupPassword,
-    });
-    return result;
+    try {
+      return await this.backupService.restoreData(req.user.id, {
+        compressedData: body,
+        password,
+        oidcIdToken,
+        backupPassword,
+      });
+    } finally {
+      // The upload's memory reservation is held from before the body was parsed
+      // (see `createRestoreUploadAdmission`) and only the handler knows when the
+      // expensive work is over. Releasing on the response socket closing instead
+      // freed it while decryption, staging and SQL were still running, so a
+      // second large upload could be admitted beside this one.
+      releaseRestoreReservation(req);
+    }
   }
 
   @Get("encryption")

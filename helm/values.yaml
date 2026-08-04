@@ -61,20 +61,31 @@ backend:
   # not close to it, and certainly not larger, or the pod is OOM-killed before the
   # request can be refused with a readable error.
   #
-  # Leave these unset and the backend derives about a quarter of the container's
-  # cgroup memory limit, which tracks whatever you set above. Set them when you
-  # have measured your own deployment; the backend logs a warning at startup if a
-  # value cannot protect the process it is running in.
+  # Leave these unset and the backend derives them from the container's cgroup
+  # memory limit, which tracks whatever you set above. exportBuffer and
+  # restoreExpanded derive to about a quarter of it. restoreUpload is different:
+  # it bounds *compressed wire bytes*, and the request that uploads them then
+  # holds the envelope, the decrypted plaintext, the decompressed payload, the
+  # string and the parsed object graph -- so it derives to about a sixth, which
+  # peaks at the half-share the process-wide upload admission budget allows.
+  #
+  # Set them when you have measured your own deployment; the backend logs a
+  # warning at startup if a value cannot protect the process it is running in.
   #
   # Raising resources.limits.memory without raising these gains nothing, and
   # raising these without raising the memory limit is how a backup request
   # restarts the pod.
+  #
+  # Note that a backup artifact now carries attachment bytes for every storage
+  # provider, not only the database one, so artifacts are larger than they were.
+  # A deployment whose users keep many receipts in local or S3 storage wants both
+  # a larger memory limit and a larger restoreUpload.
   backupLimits:
     # -- JSON a buffered export may accumulate (e.g. "96mb")
     exportBuffer: ""
     # -- Decompressed size a restore payload may reach (e.g. "96mb")
     restoreExpanded: ""
-    # -- Compressed upload the restore endpoint accepts (e.g. "500mb")
+    # -- Compressed upload the restore endpoint accepts (e.g. "64mb")
     restoreUpload: ""
 
   # -- Microsoft Money (.mny) import
