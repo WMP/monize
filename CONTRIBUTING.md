@@ -75,7 +75,7 @@ Some rules cannot be satisfied by one file behaving correctly. Those live in `do
 - [`docs/verification-contract.md`](docs/verification-contract.md) -- which kind of test your invariant actually requires, and why a mock is often only supporting evidence.
 - [`docs/adr/`](docs/adr/) -- why a decision was made. Add one when your change constrains code that does not exist yet.
 
-If you use the words "atomic", "single-use", "exactly once", "retryable", "cannot", "always", "complete" or "transactional" in a comment or a doc, name the mechanism that makes it true. Several comments here have claimed guarantees the code beside them did not provide, and each was believed until someone checked.
+`CLAUDE.md` states the wording rule these documents share: a guarantee must name the mechanism that makes it true. It is worth knowing before you write a comment, because several comments here have claimed a lock, an atomic increment and a joint commit that the code beside them did not implement.
 
 See [`SECURITY.md`](SECURITY.md) for how to report vulnerabilities.
 

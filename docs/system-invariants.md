@@ -38,6 +38,17 @@ Required tests      per docs/verification-contract.md
 Status              enforced | partial | unenforced
 ```
 
+Two fields a reader might expect are deliberately absent. **CI owner** lives in
+`docs/verification-contract.md` section 4 instead, so the job names appear once
+rather than in thirty entries that would drift independently of the workflow.
+**Subsystem owner** is omitted because this project does not have per-subsystem
+owners; adding a column that would read "maintainer" throughout would be
+ceremony. Reinstate either the moment it would carry real information.
+
+An entry states only what has been checked. Where a field would require a claim
+that was not verified against the source, it says so in the field rather than
+guessing -- see INV-AUTH-004.
+
 ## Index
 
 | ID | Invariant | Status |
@@ -56,6 +67,8 @@ Status              enforced | partial | unenforced
 | INV-AUTH-001 | A refresh token rotates once, or the family is revoked | enforced |
 | INV-AUTH-002 | A failed-login counter records every failure | unenforced |
 | INV-AUTH-003 | A destructive OIDC action requires a provider round trip | unenforced |
+| INV-AUTH-004 | A logout reports only what it achieved | partial |
+| INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | unenforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | unenforced |
 | INV-MCP-001 | An MCP session is bound to the credential that opened it | unenforced |
 | INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | unenforced |
@@ -353,20 +366,51 @@ Status              unenforced
 ```text
 Statement           A presented refresh token rotates once; a second presentation
                     revokes the family.
+Source of truth     refresh_tokens.is_revoked, per family_id
 Enforcement         Pessimistic write lock on the RefreshToken row by tokenHash,
                     plus family revocation on a token already revoked. The loser
                     blocks on the lock, sees the winner's committed isRevoked,
                     and takes the reuse-detection branch.
 Concurrency scope   per token family
+Retry semantics     A retried rotation of the same token is reuse, not a retry,
+                    and is treated as such by design.
+Crash semantics     A crash before commit leaves the presented token valid; a
+                    crash after leaves the successor valid. Both are consistent.
 Failure response    401, family revoked.
+Required tests      Two-connection: two concurrent rotations of one token; assert
+                    the family ends revoked rather than two live successors.
 Status              enforced
 ```
 
 Recorded as enforced because the mechanism is real and correct -- and because it
 is subtle enough that a future refactor could remove the lock without any test
-noticing. Logout's family revoke is deliberately unlocked and safe only because
-`isRevoked = true` is order-independent; that is a property of the value, not a
-protocol, and it stops holding if logout ever writes anything else.
+noticing.
+
+### INV-AUTH-004 -- a logout reports only what it achieved
+
+```text
+Statement           A logout that did not revoke the session must not be presented
+                    to the user as a completed logout.
+Source of truth     refresh_tokens.is_revoked for the family
+Enforcement         Partial and incidental. The family revoke is an unlocked bulk
+                    UPDATE, which is safe against concurrent writers only because
+                    is_revoked = true is order-independent -- a property of the
+                    value, not a protocol, and one that stops holding the moment
+                    logout writes anything else. Whether a failed revoke surfaces
+                    to the user was reported by the audit as a defect; it was not
+                    located in the current code and is unverified here.
+Concurrency scope   per token family
+Retry semantics     Safe: setting is_revoked twice is a no-op.
+Failure response    A revoke that failed must not clear the client's session
+                    silently, or the user believes they signed out and did not.
+Required tests      Integration: force the revoke to fail, assert the response is
+                    not a success.
+Status              partial
+```
+
+Split out from INV-AUTH-001 because the two are different properties that happen
+to touch the same table. Rotation is about exactly-once; this is about truthful
+reporting, and conflating them hid the fact that only the first has a mechanism.
 
 ### INV-AUTH-002 -- every failed login is counted
 
@@ -412,6 +456,31 @@ Note that the sentinel string is *asserted by tests* in both the frontend and
 backend suites. Those tests are green and protect the defect --
 `docs/verification-contract.md` section on known-wrong tests covers what to do
 with them.
+
+### INV-ACTIVITY-001 -- activity is attributed to whoever acted
+
+```text
+Statement           users.last_activity_at records the authenticated user who
+                    made the request, never the user they are acting as.
+Source of truth     the authenticated principal (req.user.realUserId)
+Enforcement         None, and the wrong value is passed. The request-context
+                    interceptor resolves both identities -- realUserId is derived
+                    as user?.realUserId ?? userId -- and then calls
+                    touchLastActivity(userId), the effective user. A delegate
+                    browsing an owner's data therefore stamps the owner's
+                    last_activity_at.
+Concurrency scope   per user
+Failure response    --
+Required tests      Integration: a delegate request updates the delegate's
+                    last_activity_at and leaves the owner's untouched.
+Status              unenforced
+```
+
+This is not a cosmetic attribution bug. Emergency-access eligibility is computed
+from `lastActivityAt` -- the whole feature is "the owner has not been seen for N
+days". A delegate with routine access keeps resetting that clock, so the grant
+that is supposed to fire never does, and the safeguard fails silently in the
+direction that withholds access from the people it exists for.
 
 ### INV-PROFILE-001 -- a profile response is an allowlist
 
@@ -611,6 +680,7 @@ Status              unenforced
 Statement           The tested commit, the published image's revision, the pushed
                     release commit and the release tag identify one source
                     revision, or a later full gate verifies the final revision.
+Source of truth     the git commit SHA
 Enforcement         Partial. The image half is right: prepare-release resolves
                     the SHA once in a job that creates no commit and threads it
                     into the build arg and the OCI revision annotation, and
@@ -619,11 +689,35 @@ Enforcement         Partial. The image half is right: prepare-release resolves
                     "[skip ci]" version-bump commit to protected main with an
                     admin PAT, nothing re-runs the gate on it, and gh release
                     create with no --target tags the branch tip.
+Concurrency scope   global -- one release at a time, not currently enforced
+Retry semantics     A re-run after a partial release may bump the version twice;
+                    nothing detects an already-published version.
+Crash semantics     A failure between the image push and the version-bump commit
+                    leaves a published image no tag refers to.
+Failure response    Refuse to tag rather than tag an unverified revision.
+Required tests      A workflow self-test asserting the bump commit's parent is the
+                    tested SHA and its diff touches only version manifests.
 Status              partial
 ```
 
 `docs/release-integrity.md` has the full rules and gap register, including the
 unconditional `--passWithNoTests` on the integration suite.
+
+## Candidates not yet admitted
+
+These were raised while assembling the catalog and are **not** entries, because
+each needs a direct reading of the source before it can be stated as an
+invariant. They are listed so the work is not lost and so nobody re-derives them
+from scratch; an unverified entry above the line would undermine every verified
+one.
+
+| Candidate | What to check |
+| --- | --- |
+| Delegation's cross-user lookups run in the caller's tenant scope | `delegation.service.ts` uses plain `withScopedDb` throughout, including `mayManageCredentials`. Inert at `RLS_MODE=off`; under `enforce` a cross-user count would see only the caller's rows. Confirm what each lookup needs before writing the rule. |
+| An export must read every table from one snapshot | Whether `backup.service.ts`'s export methods share a transaction, and whether `REPEATABLE READ` is required for a self-consistent artifact. |
+| Restore must handle self-referential FKs by insertion order | `accounts.linked_loan_account_id` and whether the strip/repair lists are hand-maintained and therefore drift-prone. |
+| `record()` must not run inside an ambient transaction | Whether a failed action-history insert can abort a caller's write, and at what log level a lost undo entry surfaces. |
+| Bootstrap must be serialized across replicas | `db-init` and `db-migrate` have no advisory lock; each pod decides from its own read of `schema_migrations`. The absence is confirmed; the required behaviour is not yet specified. |
 
 ## Using this catalog
 

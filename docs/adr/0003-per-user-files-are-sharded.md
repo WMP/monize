@@ -1,7 +1,9 @@
 # 0003. Per-user files live in a sharded directory
 
 Status: accepted
-Date: 2026-08-04
+Date: 2026-08-04 (recorded retrospectively; the decision was made when the
+flat-folder collision was fixed, and is already stated as a rule in the root
+`CLAUDE.md`)
 
 ## Context
 

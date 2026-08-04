@@ -56,6 +56,11 @@ replacement**. Change its status line to point at the successor and leave the
 reasoning intact -- the record of what was believed, and why it changed, is the
 whole value.
 
+A retrospective ADR -- one recording a decision already implemented -- is
+worth writing when the reasoning exists nowhere durable. Mark it as such on the
+`Date` line so nobody reads it as a decision taken that day. 0001 and 0003 below
+are both retrospective.
+
 ## Index
 
 | ADR | Title | Status |

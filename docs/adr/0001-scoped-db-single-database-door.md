@@ -1,7 +1,8 @@
 # 0001. `withScopedDb` is the only door to the database
 
 Status: accepted
-Date: 2026-08-04
+Date: 2026-08-04 (recorded retrospectively; the decision was made and
+implemented earlier, across RLS tasks R1-R7 and lint task L1)
 
 ## Context
 

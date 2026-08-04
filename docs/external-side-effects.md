@@ -89,9 +89,19 @@ failure)". That is EXT-004's case: true for the database provider, false for the
 two providers where it matters.
 
 **Deletion** removes the metadata row first, then the bytes, both inside the
-callback. A failing byte delete rolls the metadata delete back, so the pair stays
-consistent -- the better of the two orderings. Both `delete` implementations are
-explicitly idempotent on a missing key, so a retried delete is safe.
+callback. A failing byte delete rolls the metadata delete back, so the row and
+the bytes both survive together -- the better of the two orderings for that
+failure. Both `delete` implementations are explicitly idempotent on a missing
+key, so a retried delete is safe.
+
+It is not fully consistent, though, and the remaining window is the mirror image
+of the create case: if the byte delete succeeds and the **commit** then fails,
+the metadata delete rolls back while the bytes are already gone -- leaving a row
+that resolves to nothing. So both directions of the attachment lifecycle have a
+commit-failure window; create leaks bytes without a row, delete leaks a row
+without bytes. The second is the more visible failure, because a user sees the
+attachment and cannot open it, and INV-ATTACHMENT-001's "no metadata without
+bytes" half is what it breaches.
 
 ## 3. Backups
 
@@ -257,6 +267,7 @@ reaper) are independently useful.
 | Workflow | Missing | Rule |
 | --- | --- | --- |
 | Attachment create, local and S3 | Bytes durable before commit; no orphan detection, no reconciliation sweep, no compensation | EXT-001, EXT-003 |
+| Attachment delete, local and S3 | Bytes deleted before commit; a failed commit leaves a metadata row resolving to nothing | EXT-001 |
 | Attachment provider comment | Claims joint commit for all providers; true only of the database provider | EXT-004 |
 | Automatic backup write | Direct write to the final name -- no temp file, fsync, rename, size check or checksum; a truncated file is indistinguishable from a complete one and is promoted to weekly and monthly by `copyFileSync` | EXT-002 |
 | Backup restore validation | Version and `exportedAt` only; no payload integrity check, because nothing was recorded at write time | EXT-002 |

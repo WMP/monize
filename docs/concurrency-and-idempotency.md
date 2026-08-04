@@ -122,6 +122,24 @@ makes *every* attempt look like a winner. `returnedRows<T>()` in
 that the bug was found by the real-database concurrency spec -- not by the unit
 tests. Use the helper; never destructure a `RETURNING` result by hand.
 
+### 4 -- upsert on a natural key
+
+```sql
+INSERT INTO exchange_rates (...) VALUES (...)
+ON CONFLICT (from_currency, to_currency, rate_date) DO UPDATE SET rate = EXCLUDED.rate
+```
+
+The cheapest idempotency available, because the uniqueness is a property of the
+data rather than something invented and remembered. A repeated or concurrent
+refresh converges instead of duplicating. `security_prices` uses the same shape
+on `(security_id, price_date)`.
+
+The caveat is about reading afterwards, not writing: an operation that uses
+`ON CONFLICT DO NOTHING` and then returns a read model must re-read the
+authoritative state inside the same transaction. The request that lost the race
+would otherwise return a snapshot taken before the winner's rows existed. See
+`docs/financial-calculation-contract.md` section 6.
+
 ### 5 -- pessimistic lock
 
 ```typescript
@@ -150,6 +168,14 @@ it is "materializing a signal for this strategy". `pg_advisory_xact_lock`
 releases on commit or rollback and is cluster-wide, so unlike a Node-level mutex
 it works across replicas. Use it when the resource is a computation rather than a
 record, and always the `_xact_` variant so a crash cannot hold the lock.
+
+### 7 -- persisted idempotency key
+
+The last resort, for an effect that cannot be folded into one transaction and has
+no natural key to upsert on. It is last because it is the only mechanism on this
+list whose correctness depends on constructing the key well, and a key derived
+from the wrong thing provides no protection while looking like it does. Section 6
+below has the construction rules.
 
 A `Set` in process memory is not a substitute for any of the above. It
 coordinates one replica with itself and silently does nothing across the two or

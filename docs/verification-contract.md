@@ -81,6 +81,8 @@ adds value but proves nothing on its own. `--` means not applicable.
 | INV-AUTH-001 refresh rotation | supporting | -- | required | **required** | -- | -- | -- | optional |
 | INV-AUTH-002 login counter | supporting | -- | required | **required** | -- | -- | -- | -- |
 | INV-AUTH-003 OIDC round trip | required | -- | required | -- | -- | -- | required | required |
+| INV-AUTH-004 truthful logout | supporting | -- | required | -- | -- | **required** | -- | required |
+| INV-ACTIVITY-001 activity attribution | supporting | -- | **required** | -- | -- | -- | -- | -- |
 | INV-PROFILE-001 allowlist | required | **required** | supporting | -- | -- | -- | -- | -- |
 | INV-MCP-001 credential binding | supporting | -- | required | -- | -- | -- | -- | -- |
 | INV-CURRENCY-001 currency delete | supporting | **required** | required | required | -- | -- | -- | optional |
@@ -145,23 +147,46 @@ asserting the violation and correct them in the same change -- they are why the
 defect survived.
 ```
 
-The instances found, and worth checking for when the corresponding invariant is
-closed:
+### Located in the current suites
 
-| Asserted | Invariant it protects the violation of |
-| --- | --- |
-| A missing exchange rate resolving to 1:1 | INV-FX-001 |
-| An existing scheduled override price being overwritten | INV-OCCURRENCE-002 |
-| Additive historical stock-split replay | INV-HOLDING-002 |
-| A failed logout presented as successful | INV-AUTH-001 (logout path) |
-| Unsafe backup naming expectations | INV-BACKUP-001 |
-| `oidcIdToken: 'oidc-session-confirmed'` as a valid proof | INV-AUTH-003 |
+These were found by reading the suites, and each is cited so it can be checked
+rather than taken on trust. Correcting the invariant means correcting these in
+the same change.
 
-The last one is the clearest case: the sentinel string is asserted in both
-frontend and backend suites, so the tests do not merely tolerate the defect --
-they specify it. Any change that implements a real OIDC round trip must change
-these tests, which is exactly the friction that makes the defect look like a
-decision.
+| Test | Asserts | Protects the violation of |
+| --- | --- | --- |
+| `backend/src/net-worth/net-worth.service.spec.ts` around lines 516 and 2664 | Additive stock-split replay. The comment spells the arithmetic out: `95 - TRANSFER_OUT 5 + SPLIT 90 = 180 shares`, and a second case `BUY 100, SELL 30, TRANSFER_OUT 20, SPLIT 50 = 100 shares`. Under the correct multiplicative rule a SPLIT row of 90 applied to 90 shares is 8,100, not 180. | INV-HOLDING-002 |
+| `frontend/src/components/settings/BackupRestoreSection.test.tsx`, `frontend/src/components/settings/DangerZoneSection.test.tsx`, `backend/src/users/users.service.spec.ts`, `backend/src/backup/backup.service.spec.ts` | `oidcIdToken: 'oidc-session-confirmed'` accepted as proof of re-authentication. | INV-AUTH-003 |
+
+The second is the clearest case of the category: the sentinel string is asserted
+on both sides, so the tests do not merely tolerate the defect -- they specify it.
+Implementing a real OIDC round trip must change them, and that friction is what
+makes the defect look like a decision.
+
+The first is the more instructive one. It reads as a careful test: five actions,
+three months, arithmetic worked out in a comment. The arithmetic is simply the
+wrong rule, applied consistently. A reviewer checking whether the code matches
+the test would find that it does.
+
+### Reported but not located
+
+The audit that prompted this document also reported tests asserting a missing
+exchange rate as 1:1, an overwritten scheduled override price, a failed logout
+presented as successful, and unsafe backup naming expectations. **Searching the
+current suites did not find them.** Each is one of three things, and they are
+worth distinguishing before acting:
+
+- already corrected on `main` since the audit -- the backup-naming case is
+  probably this, since per-user sharding landed and the remaining filename
+  assertions are about the filename, which is correct; the sharding is in the
+  directory;
+- present but not matched by the searches used;
+- or never precisely located by the audit either.
+
+They are recorded here as unconfirmed rather than dropped, because a reader
+closing INV-FX-001 or INV-OCCURRENCE-002 should search once more before assuming
+no test stands in the way. They are deliberately not in the table above: a
+citation that cannot be checked is the thing this document exists to discourage.
 
 Per root `CLAUDE.md`, each corrected unit test needs a production-boundary
 companion wherever the defect depends on PostgreSQL, multiple processes,
@@ -174,6 +199,32 @@ rule most often skipped: if you changed what the code produces and nothing
 failed, either the change is a no-op or the suite had no case for it. Say which
 in the change description, and if it is the second, add the case in the same
 commit.
+
+### The scans this document requires do not exist yet
+
+Section 3 marks a source scan as load-bearing for INV-FX-001, INV-HOLDING-002,
+INV-PROFILE-001, INV-CURRENCY-001 and INV-CACHE-001. **None of them is written.**
+Each would be a handful of lines in the pattern of
+`frontend/src/test/ui-conventions.test.ts`:
+
+| Scan owed | Fails on |
+| --- | --- |
+| FX fallback | a `: 1` else-branch beside a rate lookup, or `?? amount` beside a conversion |
+| Share replay | a `SPLIT` case outside the single shared reducer |
+| Profile response | an entity column absent from the response allowlist |
+| Currency references | an FK to `currency_code` in `schema.sql` that the in-use check does not cover |
+| Cache families | a cache prefix in `src/` that declares itself neither transaction-derived nor reference data |
+
+They are not written here because each would fail immediately against `main` --
+the defects they scan for are present, which is the point of the scan. A guard
+introduced in the same change that fixes its violations is verifiable; one
+introduced alone either breaks the suite or has to be born with a
+baseline-exception list, which is a decision about how much known-wrong code to
+bless and belongs to whoever fixes the underlying invariant.
+
+That is a reason for sequencing, not an excuse. Until these exist, INV-FX-001 and
+INV-HOLDING-002 in particular are guarded only by prose, and both have already
+been fixed at one call site while siblings stayed live.
 
 The corollary for this document: a test you have never seen fail protects
 nothing. When adding a required test from section 3, run it against the
