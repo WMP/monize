@@ -5,7 +5,7 @@ import {
   PayoffComparisonChart,
   buildPayoffComparisonSeries,
 } from './PayoffComparisonChart';
-import { generateLoanSchedule } from '@/lib/loan-schedule';
+import { generateLoanSchedule, LoanScheduleResult } from '@/lib/loan-schedule';
 import { LoanPaymentEvent } from '@/lib/loan-history';
 import { captureSvgAsImage } from '@/lib/pdf-export-charts';
 
@@ -100,6 +100,33 @@ function makeProjection(extra?: number) {
     firstPaymentDate: new Date(2026, 2, 15),
     overpayments: extra ? { recurringExtra: { amount: extra } } : undefined,
   });
+}
+
+// A minimal LoanScheduleResult builder for tests that only care about which
+// months a schedule contributes and their balances (buildPayoffComparisonSeries
+// only reads row.date and row.balance).
+function makeSchedule(rows: Array<{ date: string; balance: number }>): LoanScheduleResult {
+  return {
+    rows: rows.map((r, i) => ({
+      paymentNumber: i + 1,
+      date: r.date,
+      payment: 0,
+      principal: 0,
+      interest: 0,
+      extraPrincipal: 0,
+      balance: r.balance,
+      annualRate: 5,
+      cumulativePrincipal: 0,
+      cumulativeInterest: 0,
+    })),
+    payoffDate: null,
+    totalInterest: 0,
+    totalPaid: 0,
+    totalExtraPrincipal: 0,
+    numPayments: rows.length,
+    paidOff: false,
+    finalPaymentAmount: 0,
+  };
 }
 
 describe('buildPayoffComparisonSeries', () => {
@@ -320,6 +347,84 @@ describe('buildPayoffComparisonSeries', () => {
   it('returns no projection start without projections', () => {
     const { projectionStartKey } = buildPayoffComparisonSeries(makeHistory(), null, null);
     expect(projectionStartKey).toBeNull();
+  });
+
+  // REV-20260803-016: the union of history + the full contractual schedule
+  // can contain months that only carry `originalBalance` between the last
+  // historical point and where the baseline/scenario projection actually
+  // begins. The "Today" marker (and the sampling preservation set) must skip
+  // those contractual-only months and land on the first real projection
+  // point, not the union point immediately after history.
+  it('places the projection start at the first baseline/scenario month, skipping contractual-only months', () => {
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2026-01-15',
+        principal: 450,
+        interest: 50,
+        balance: 9550,
+        cumulativePrincipal: 450,
+        cumulativeInterest: 50,
+        type: 'REGULAR',
+      },
+    ];
+    // The contractual curve keeps going February through April with no
+    // baseline/scenario data in those months.
+    const original = makeSchedule([
+      { date: '2026-01-15', balance: 9550 },
+      { date: '2026-02-15', balance: 9100 },
+      { date: '2026-03-15', balance: 8650 },
+      { date: '2026-04-15', balance: 8200 },
+    ]);
+    // The baseline projection only starts in May.
+    const baseline = makeSchedule([
+      { date: '2026-05-15', balance: 7750 },
+      { date: '2026-06-15', balance: 7300 },
+    ]);
+
+    const { points, projectionStartKey } = buildPayoffComparisonSeries(
+      history,
+      baseline,
+      null,
+      original,
+    );
+
+    // Sanity check the premise: February-April exist in the union with only
+    // originalBalance, no baseline/scenario value.
+    for (const monthKey of ['2026-02', '2026-03', '2026-04']) {
+      const point = points.find((p) => p.monthKey === monthKey);
+      expect(point?.originalBalance).toBeDefined();
+      expect(point?.baselineBalance).toBeUndefined();
+      expect(point?.scenarioBalance).toBeUndefined();
+    }
+
+    expect(projectionStartKey).toBe('2026-05');
+  });
+
+  it('finds the first projected month even with no history at all', () => {
+    // The contractual origination month (January) precedes the projection
+    // start (April) even though there is no history to stitch onto.
+    const original = makeSchedule([
+      { date: '2026-01-15', balance: 10000 },
+      { date: '2026-02-15', balance: 9550 },
+      { date: '2026-03-15', balance: 9100 },
+    ]);
+    const baseline = makeSchedule([
+      { date: '2026-04-15', balance: 8650 },
+      { date: '2026-05-15', balance: 8200 },
+    ]);
+
+    const { points, projectionStartKey } = buildPayoffComparisonSeries(
+      [],
+      baseline,
+      null,
+      original,
+    );
+
+    const january = points.find((p) => p.monthKey === '2026-01');
+    expect(january?.originalBalance).toBeDefined();
+    expect(january?.baselineBalance).toBeUndefined();
+
+    expect(projectionStartKey).toBe('2026-04');
   });
 });
 

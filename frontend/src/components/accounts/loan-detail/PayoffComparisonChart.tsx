@@ -133,6 +133,9 @@ export function buildPayoffComparisonSeries(
     -1,
   );
   let projectionStartKey: string | null = null;
+  let projectionStartIndex = -1;
+  const hasProjectionValue = (point: PayoffChartPoint) =>
+    point.baselineBalance !== undefined || point.scenarioBalance !== undefined;
   if (hasProjection && lastHistoricalIndex >= 0) {
     const lastHistorical = points[lastHistoricalIndex];
     points = points.map((point, index) =>
@@ -147,21 +150,34 @@ export function buildPayoffComparisonSeries(
           }
         : point,
     );
-    projectionStartKey = points[lastHistoricalIndex + 1]?.monthKey ?? null;
+    // The union can also hold the full contractual schedule, so the point
+    // right after history may only carry `originalBalance` for a
+    // contractual-only month. Scan forward for the first point that actually
+    // has a baseline/scenario value -- that is where the projection starts.
+    projectionStartIndex = points.findIndex(
+      (point, index) => index > lastHistoricalIndex && hasProjectionValue(point),
+    );
   } else if (hasProjection) {
-    projectionStartKey = points[0]?.monthKey ?? null;
+    // No history at all: the contractual origination month can precede the
+    // projection start too, so scan from the beginning rather than assuming
+    // points[0] is already a projected month.
+    projectionStartIndex = points.findIndex(hasProjectionValue);
   }
+  projectionStartKey =
+    projectionStartIndex >= 0 ? points[projectionStartIndex].monthKey : null;
 
   // Sample long series down to a readable number of points. Always keep the
   // endpoints and the history->projection transition (last historical point
-  // and the first projected point), so uniform sampling can't drop them and
-  // leave a visual gap at "today".
+  // and the first *actual* projected point), so uniform sampling can't drop
+  // them and leave a visual gap at "today".
   if (points.length > MAX_CHART_POINTS) {
     const step = Math.ceil(points.length / MAX_CHART_POINTS);
     const keep = new Set<number>([0, points.length - 1]);
     if (lastHistoricalIndex >= 0) {
       keep.add(lastHistoricalIndex);
-      if (lastHistoricalIndex + 1 < points.length) keep.add(lastHistoricalIndex + 1);
+    }
+    if (projectionStartIndex >= 0) {
+      keep.add(projectionStartIndex);
     }
     // Never sample away a month that had a real overpayment -- its tooltip flag
     // is the whole point of the marker.
