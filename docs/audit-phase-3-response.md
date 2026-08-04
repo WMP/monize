@@ -529,15 +529,15 @@ of absence, and it rejected the first draft for exactly that.
    concurrency and lifecycle halves are fixed (§13); the remaining options are
    ingress-level limits, an upload token, or streaming to disk, and none is on this
    branch.
-3. **F3RRR-003 / F3R5-005 / F3R6-001** — the export materialises each table (and,
+3. **F3RRR-003 / F3R5-005 / F3R6-001 / F3R7-003** — the export materialises each table (and,
    since `5a578061`, every carried attachment) before the ceiling is consulted, and
    the plain HTTP export has no ceiling at all. One cursor inside the repeatable-read
    snapshot — serialising rows, base64-encoding one attachment at a time, under a
    per-chunk budget — fixes all of it, and would also replace `PEAK_MULTIPLE` with a
    measured bound. **The single highest-value open item**, because it is what repays
    the memory cost of self-contained artifacts (§14).
-4. **DR-F3R6-002** — `PEAK_MULTIPLE` and the derived memory shares are argued from
-   allocation counting, not measured. The processing cap (F3R6-004) is designed to
+4. **DR-F3R6-002 / DR-F3R7-003** — `PEAK_MULTIPLE`, the process baseline, and the
+   derived memory shares are argued from allocation counting, not measured. The processing cap (F3R6-004) is designed to
    survive them being wrong, but settling the numbers needs the cgroup peak-RSS test
    this environment cannot run.
 4. **DR-F3RRR-001 / DR-F3R5-001** — the retention policy for source attachment
@@ -569,12 +569,12 @@ Run and green:
 | `npm run migration:lint:test` | 26 pass |
 | `npm run i18n:check` | pseudo-locale fresh |
 | `scripts/check-env-docs.mjs` | 51 env vars documented |
-| Backend unit (`TZ=UTC npm run test:unit`) | 409/410 suites, 10924 tests |
+| Backend unit (`TZ=UTC npm run test:unit`) | 409/410 suites, 10937 tests |
 | Frontend unit (`npm test`) | 626/627 files, 12270 tests |
 
 The one failing suite on each side is the i18n parity spec — `errors.json` and
 `settings.json` across the eighteen untranslated locales, item 5 above. Both totals
-are from full runs at `fd4ed827`, the current head of executable code.
+are from full runs at `d5ebbdc3`, the current head of executable code.
 
 **Not run:** the integration suites. This environment has no Docker and no
 PostgreSQL, so every `backend/test/integration/*` case — including the ones added
@@ -591,7 +591,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 40 commits that changed code, configuration or the repository's own rules,
+The 42 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -635,6 +635,8 @@ oldest first, so nothing is unaccounted for.
 | `2dcbd768` | Budget the restore's peak, and hold it until the work is done | F3R5-002, F3R5-003, F3R5-004 (bounded), DOC-F3R5-001/002 |
 | `bf2e5622` | Verify attachment bytes at export; canonicalize duplicate blob rows | F3R6-002, F3R6-003, DOC-F3R6-001/003 |
 | `fd4ed827` | Cap concurrent restore processing; stop the upload floor going unsafe | F3R6-004, F3R6-005, DOC-F3R6-002 |
+| `83ab4f6f` | Never promote or retain an incomplete backup as complete | F3R7-001, DOC-F3R7-001/002/004 |
+| `d5ebbdc3` | Budget restore slots against the resolved expanded limit and baseline | F3R7-002, DOC-F3R7-003 |
 | `fb67516b` | Budget restore uploads across the process, not per request | F3RRR-002 (concurrency half) |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
@@ -643,7 +645,7 @@ had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
 Not rows above: the commits that only change **this document**
-(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704`, `29bda3f9`, `8b829a97` and any that follow). A file cannot list its own
+(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704`, `29bda3f9`, `8b829a97`, `3c9d3f83` and any that follow). A file cannot list its own
 commit and stay accurate — amending to insert the hash changes the hash — so the
 branch log is the record for those, and every other hash in this file resolves. If
 you are checking the inventory against `git log`, that difference is the whole of
@@ -1159,3 +1161,89 @@ instead.
 - **DR-F3R6-002** -- `PEAK_MULTIPLE` and the derived shares are argued, not
   measured. The cgroup peak-RSS test the reviewer specifies is the way to settle
   them and has not run here.
+
+---
+
+## 15. The seventh-pass re-review (F3R7-001…004, DR-F3R7-001/002/003)
+
+A seventh review re-checked the branch at `3c9d3f83` and reported one HIGH, three
+MEDIUM and three design risks. It confirmed F3R6-002/003/005 fixed and the
+F3R6-004 default-concurrency scenario closed. Each new finding was verified against
+the code first.
+
+| ID | Severity | Verdict | Commit |
+|---|---|---|---|
+| F3R7-001 | HIGH | Confirmed, fixed | `83ab4f6f` |
+| F3R7-002 | MEDIUM | Confirmed, fixed | `d5ebbdc3` |
+| F3R7-003 | MEDIUM | Confirmed — **open**, = F3R5-005 | — |
+| F3R7-004 | MEDIUM | Same as P3-009 — **still open** | — |
+| DR-F3R7-001 | design risk | Accepted — queue semantics, see below | — |
+| DR-F3R7-002 | design risk | Bounded, not eliminated (pre-auth upload) | — |
+| DR-F3R7-003 | design risk | Accepted — `PEAK_MULTIPLE`/baseline unmeasured | — |
+| DOC-F3R7-001…004 | — | Fixed | `83ab4f6f`, `d5ebbdc3` |
+
+**F3R7-001 was right, and it was mine — the exact shape the last four reviews keep
+finding.** F3R5-001 made attachment bytes travel; F3R6-002 made the export *check*
+those bytes and omit the bad ones; and I stopped there, so an omission returned a
+"successful" export that auto-backup then promoted and ran retention against. A
+transient S3 error could age a complete backup out of the window while every run
+showed green. The contract's own sentence — *a backup that cannot restore an
+attachment is not a backup of it* — was true of the artifact and false of the
+status.
+
+The fix makes the status tell the truth. The buffered export returns a
+`BackupCompletenessReport`, the database provider is finally checked at export too,
+and auto-backup writes a partial artifact but never promotes or retains it, marking
+it `partial`. I chose write-but-don't-retain over fail-the-whole-backup deliberately:
+failing would let one permanently-dead attachment block every future backup of the
+ledger, while this preserves complete copies *and* keeps capturing the ledger. That
+is a product-shaped choice the review left open, and it is the one that loses the
+least.
+
+**F3R7-002 was a defect in the F3R6-004 gate — measuring the wrong expanded limit.**
+The slot count read the derived default instead of the resolved
+`BACKUP_RESTORE_EXPANDED_LIMIT`, so a 2 GiB override admitted five restores modeled
+at 1 GiB each; and it reserved nothing for the process. It now budgets against the
+resolved limit minus a baseline, and returns `0` — an honest, surfaced signal —
+when one restore does not fit, rather than forcing an unsafe slot. The gate still
+floors capacity at one so a live process can attempt a restore, and startup warns.
+
+**F3R7-003 = F3R6-001 = F3R5-005**, unchanged: the plain export still materialises
+each table and every carried attachment. It is the one architectural item I have
+declined to half-fix across three reviews, because streaming only attachments while
+large tables still materialise would buy a more convincing claim rather than a
+bound. It stays the highest-value open item; §7 tracks it.
+
+### The pattern, six rounds on
+
+| Round | What was fixed | What was left |
+|---|---|---|
+| F3R-006 | displaced bytes deleted after commit | those keys are the backup's sources |
+| F3RR-001/002 | the key is derived, not taken from the file | the id it derives from is also from the file |
+| F3RRR-001 | ownership comes from the database | the database is not there when you need a backup |
+| F3R5-001 | the bytes travel in the artifact | the export is not streamed, and does not report incompleteness |
+| F3R6-002/004 | export checks bytes; processing is capped | the check's result was not surfaced; the cap measured the wrong limit |
+| F3R7-001/002 | incompleteness is reported and acted on; the cap measures the resolved limit | the export is still not streamed; the numbers are still unmeasured |
+
+The two lessons this round adds, both already in the code as behaviour: **a check
+whose result nothing reads is half a fix** — F3R6-002 caught the bad bytes and threw
+the finding away — and **a budget must be denominated in the quantity the system
+actually enforces**, not a parallel default that can drift from it.
+
+### Open, with reasons
+
+- **F3R7-003 / F3R5-005** — stream the export (cursor + per-chunk budget + one
+  attachment at a time). Highest-value open item; repays the memory cost of
+  self-contained artifacts and would replace `PEAK_MULTIPLE` with a measured bound.
+- **F3R7-004** = P3-009, open across all seven reviews — the OIDC step-up decision.
+- **DR-F3R7-001** — the processing gate queues waiters without a cancel, timeout, or
+  bound: a client that disconnects while queued still has its restore run when the
+  slot frees. For a destructive operation that is worth a decision (fail-fast 503, or
+  bind the waiter to request-abort with a bounded queue). Not addressed this round;
+  the gate's job here was the memory bound, and adding an `AbortSignal` path through
+  `restoreData` is a separate change. Recorded so it is not lost.
+- **DR-F3R7-002** — the pre-authentication upload occupation, bounded to the receive
+  deadline, not eliminated.
+- **DR-F3R7-003** — `PEAK_MULTIPLE`, the process baseline, and the expanded share are
+  estimates. The cgroup peak-RSS test the review specifies is the way to settle them
+  and has not run here.
