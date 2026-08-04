@@ -68,10 +68,15 @@ export interface PaymentRecord {
    * a principal-only subtotal, not the full installment, even though other
    * payments in the same set may have paired successfully and carry the
    * complete amount. Left `undefined`/`false` for every record where the
-   * question does not apply: split-based interest, SPLIT-mode accounts, and
-   * accounts with no separate-interest data at all (nothing to pair against,
-   * a valid state distinct from "pairing was attempted and failed").
-   * See REV-20260803-006 (reopened).
+   * question does not apply: split-based interest, SPLIT-mode accounts
+   * (never reach this method at all), and AUTO-mode accounts with no
+   * separate-interest category configured (nothing asserts separate interest
+   * applies here, a valid state distinct from "pairing was attempted and
+   * failed"). A SEPARATE-mode account with no configured category is NOT in
+   * this unmarked set, even though its `interestCategoryId` is also null --
+   * SEPARATE is the account's own assertion that separate interest exists,
+   * so a missing category is a failed pairing attempt, not "doesn't apply."
+   * See REV-20260803-006 (reopened a sixth time for exactly this gap).
    */
   interestUnmatched?: boolean;
 }
@@ -476,8 +481,37 @@ export class LoanPaymentDetectorService {
     payments: PaymentRecord[],
     asOfDate?: string,
   ): Promise<PaymentRecord[]> {
+    if (payments.length === 0) return payments;
+
     const interestCategoryId = account.interestCategoryId;
-    if (!interestCategoryId || payments.length === 0) return payments;
+    if (!interestCategoryId) {
+      if (account.interestBookingMode !== "SEPARATE") {
+        // AUTO mode only looks for separate interest opportunistically -- with
+        // no category configured there is nothing that says this loan's
+        // interest is booked apart from the transfer, so the question
+        // genuinely doesn't apply. (SPLIT mode never reaches this method at
+        // all; the caller in detectPaymentPattern routes it around
+        // pairSeparateInterest entirely.)
+        return payments;
+      }
+      // SEPARATE mode is the account's own positive assertion that this
+      // loan's interest IS booked as separate expenses. A missing/cleared
+      // category (the category is nullable and can be cleared independently
+      // of the booking mode) means detection cannot find the interest it
+      // knows must exist -- that is "pairing attempted, implicitly, by the
+      // account's own configuration, and failed to find anything to pair
+      // against," the same state as the interestTxns.length === 0 branch
+      // below, not "the question doesn't apply." Every plain-transfer record
+      // must carry the same interestUnmatched signal that branch uses, or
+      // detectRegularAmount/buildSinglePaymentResult will vote/report a
+      // principal-only amount as if it were the complete installment. See
+      // REV-20260803-006 (reopened a sixth time for exactly this gap: a
+      // SEPARATE-mode loan with a cleared category and three $450 principal
+      // transfers reported paymentAmount: 450).
+      return payments.map((p) =>
+        p.interestAmount != null ? p : { ...p, interestUnmatched: true },
+      );
+    }
     // Nothing to fill if every payment already has split-based interest.
     if (payments.every((p) => p.interestAmount != null)) return payments;
 

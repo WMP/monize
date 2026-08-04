@@ -1961,6 +1961,62 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-006, reopened a SIXTH time. The reopen note's exact
+     * scenario: a SEPARATE-mode loan whose interestCategoryId has been
+     * cleared (it is nullable independently of the booking mode) and three
+     * imported $450 principal transfers. Before this fix,
+     * `pairSeparateInterest`'s `!interestCategoryId` early-return treated
+     * every account with no configured category the same way regardless of
+     * booking mode and returned the three records unmarked, so
+     * `detectRegularAmount` voted over them and `detectPaymentPattern`
+     * reported `paymentAmount: 450` as if that were the complete $500
+     * installment. SEPARATE mode asserts separate interest exists for this
+     * loan, so a missing category is a failed pairing attempt, not "doesn't
+     * apply" -- the correct result is null, matching the sibling
+     * "interest expected but none found at all" case directly above.
+     */
+    it("reports no payment amount for a SEPARATE-mode account with a cleared interest category and only principal transfers", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestBookingMode: "SEPARATE",
+        interestCategoryId: null,
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 450, // Principal transfer only -- interest booked separately
+        isTransfer: true,
+        isSplit: false,
+        linkedTransactionId: `linked-${i}`,
+      }));
+
+      transactionRepository.find.mockResolvedValue(loanTxns);
+      transactionRepository.findOne.mockImplementation(({ where }: any) => {
+        if (where?.id?.startsWith("linked-")) {
+          return Promise.resolve({
+            id: where.id,
+            accountId: "chequing-1",
+            amount: -450,
+            account: { name: "Checking" },
+            isSplit: false,
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      // Not $450 (principal-only subtotal) -- the cleared interest category
+      // means the $500 installment can never be established from what's
+      // available on a SEPARATE-mode loan.
+      expect(result).toBeNull();
+    });
+
+    /**
      * Confirms the fix above is scoped to "SEPARATE mode, zero successful
      * pairings" and does not regress the legitimately different state of
      * "this account has no separate interest at all" (no interestCategoryId
@@ -1971,6 +2027,43 @@ describe("LoanPaymentDetectorService", () => {
     it("still detects a normal payment amount when the account has no separate interest configured at all", async () => {
       accountsRepository.findOne.mockResolvedValue({
         ...mockLoanAccount,
+        interestCategoryId: null,
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 500,
+        isTransfer: false,
+        isSplit: false,
+        linkedTransactionId: null,
+      }));
+
+      transactionRepository.find.mockResolvedValue(loanTxns);
+      transactionRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(result).not.toBeNull();
+      expect(result!.paymentAmount).toBe(500);
+      expect(result!.paymentCount).toBe(3);
+    });
+
+    /**
+     * Explicit control (mode set to "AUTO" rather than left undefined, as
+     * the test above does) for the sixth-reopen fix: AUTO mode never
+     * asserted separate interest applies to this loan, so a missing
+     * interestCategoryId is still "the question doesn't apply" and
+     * detection must proceed exactly as before -- unmarked records, normal
+     * amount reported. This must not regress.
+     */
+    it("still detects a normal payment amount for an AUTO-mode account with no interest category configured (control)", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestBookingMode: "AUTO",
         interestCategoryId: null,
       });
 
@@ -2118,6 +2211,52 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-006, reopened a SIXTH time -- single-payment variant.
+     * Same short-circuit to `buildSinglePaymentResult` as the fifth-reopen
+     * test above, but the interest category itself is missing/cleared
+     * (`interestCategoryId: null`) rather than configured-but-unmatched.
+     * Before this fix, `pairSeparateInterest`'s `!interestCategoryId`
+     * early-return returned the sole record unchanged regardless of booking
+     * mode, so `buildSinglePaymentResult`'s `interestUnmatched` guard never
+     * saw the flag and reported the $450 principal-only transfer as the
+     * complete payment. SEPARATE mode asserts separate interest exists for
+     * this loan, so the correct answer is null, matching the sibling test
+     * above.
+     */
+    it("returns null (not the $450 principal subtotal) for a single payment on a SEPARATE-mode loan with a cleared interest category", async () => {
+      const account = {
+        id: "loan-1",
+        userId: "user-1",
+        accountType: AccountType.LOAN,
+        interestBookingMode: "SEPARATE",
+        interestCategoryId: null,
+        currentBalance: -10000,
+      } as any;
+
+      accountsRepository.findOne.mockResolvedValue(account);
+      transactionRepository.find.mockResolvedValue([
+        {
+          id: "tx-1",
+          accountId: "loan-1",
+          userId: "user-1",
+          transactionDate: "2026-01-05",
+          amount: 450,
+          isTransfer: false,
+          isSplit: false,
+          linkedTransactionId: null,
+        },
+      ]);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      // No interest category to query against at all, so the interest
+      // lookup never runs (the !interestCategoryId early-return, not the
+      // sourceIds.length === 0 branch the sibling test above exercises).
+      expect(transactionRepository.find).toHaveBeenCalledTimes(1);
+      expect(result).toBeNull();
+    });
+
+    /**
      * Control for the fix above: a single payment on an account that does
      * NOT expect separate interest (no interestCategoryId configured) must
      * still return its plain amount -- interestUnmatched never applies here,
@@ -2176,6 +2315,73 @@ describe("LoanPaymentDetectorService", () => {
       );
       expect(result).toBe(payments);
       expect(transactionRepository.find).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Control for the fix below: an AUTO-mode account (or any mode other
+     * than SEPARATE) never asserted that this loan's interest is booked
+     * separately, so a missing/cleared interestCategoryId is still "the
+     * question doesn't apply" -- must keep returning payments unchanged by
+     * reference, with no DB query attempted. This must not regress.
+     */
+    it("returns payments untouched when an AUTO-mode account has no interest category configured (control)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        {
+          id: "loan-1",
+          interestBookingMode: "AUTO",
+          interestCategoryId: null,
+        } as any,
+        payments,
+      );
+      expect(result).toBe(payments);
+      expect(transactionRepository.find).not.toHaveBeenCalled();
+    });
+
+    /**
+     * REV-20260803-006, reopened a SIXTH time. Pass 5's structural audit
+     * categorized the `!interestCategoryId` early-return as
+     * "correctly-unmarked -- the question doesn't apply" for every account
+     * with no configured category, without distinguishing booking mode.
+     * That is wrong for SEPARATE-mode accounts specifically: SEPARATE is
+     * the account's own positive assertion that this loan's interest IS
+     * booked as a separate expense, so a cleared/missing category (nullable
+     * independently of the booking mode) means detection cannot find the
+     * interest it knows must exist -- the same "pairing attempted
+     * (implicitly, by the account's own configuration) and failed to find
+     * anything" state as the interestTxns.length === 0 branch, not "doesn't
+     * apply." Every eligible record must come back marked
+     * `interestUnmatched: true`, not returned unchanged.
+     */
+    it("marks every eligible record interestUnmatched when a SEPARATE-mode account has a cleared interest category", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 450 }),
+        makePayment("2026-02-05", { amount: 450 }),
+        makePayment("2026-03-05", { amount: 450 }),
+      ];
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        {
+          id: "loan-1",
+          interestBookingMode: "SEPARATE",
+          interestCategoryId: null,
+        } as any,
+        payments,
+      );
+      // No category to query against, so no DB lookup is even attempted --
+      // matching the "skips the lookup but still marks" shape of the
+      // sourceIds.length === 0 branch elsewhere in this method.
+      expect(transactionRepository.find).not.toHaveBeenCalled();
+      expect(result.every((p) => p.interestUnmatched === true)).toBe(true);
+      // `amount` is left as the principal-only subtotal it already was --
+      // this method never invents an interest figure, it only flags that
+      // one is missing.
+      expect(result.every((p) => p.amount === 450)).toBe(true);
+      // Records are copied, not mutated in place.
+      expect(payments.every((p) => p.interestUnmatched === undefined)).toBe(
+        true,
+      );
     });
 
     /**
