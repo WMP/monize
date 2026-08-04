@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Inject,
   forwardRef,
   Logger,
@@ -1461,12 +1462,98 @@ export class ScheduledTransactionsService {
     };
   }
 
+  /**
+   * Posts the schedule's next due occurrence.
+   *
+   * The occurrence the caller means is read once, before the lock, and then
+   * checked against the locked row -- so a second poster of the *same*
+   * occurrence is refused rather than served. That guard, and the single
+   * transaction it lives in, are what stop the same bill being paid twice:
+   * `post` used to read the schedule, create the transaction, and advance
+   * `next_due_date` in three separate transactions with no lock, so two callers
+   * -- a double-clicked Pay button, or two backend replicas, every one of which
+   * runs every cron -- both read the same `next_due_date`, both created a
+   * transaction for it, and both advanced to the same new date. Two payments,
+   * one occurrence, and a schedule that looked correct afterwards.
+   *
+   * `test/integration/race-scheduled-post.integration.spec.ts` drives both
+   * posters against a real database and fails on the unlocked version.
+   */
   async post(
     userId: string,
     id: string,
     postDto?: PostScheduledTransactionDto,
   ): Promise<ScheduledTransaction | null> {
-    const scheduled = await this.findOne(userId, id);
+    const intendedOccurrence = ensureYMD(
+      (await this.findOne(userId, id)).nextDueDate,
+    );
+    return withScopedDb(this.dataSource, () =>
+      this.postOccurrence(userId, id, intendedOccurrence, postDto),
+    );
+  }
+
+  /**
+   * Takes the schedule row and refuses unless it is still due on the occurrence
+   * the caller set out to post.
+   *
+   * The lock is what makes the second caller wait rather than read stale state,
+   * and the date comparison is what makes it refuse: after the first poster
+   * commits, `next_due_date` has moved on, so the occurrence the second one was
+   * asked for no longer exists to be posted. Both halves are needed -- the lock
+   * alone would only serialize the duplicates.
+   *
+   * The locking statement selects only `id`: its job is to make the second
+   * caller wait, and the date is then read back through `findOne` so the DATE
+   * column passes through the entity's transformer. A raw select would hand back
+   * a `Date` parsed in UTC, which is how a comparison like this silently starts
+   * failing for anyone east of Greenwich.
+   */
+  private async claimOccurrence(
+    userId: string,
+    id: string,
+    intendedOccurrence: string,
+  ): Promise<ScheduledTransaction> {
+    return withScopedDb(this.dataSource, async (m) => {
+      await m.query(
+        `SELECT id FROM scheduled_transactions
+          WHERE id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [id, userId],
+      );
+
+      // Throws NotFound when the schedule is gone, which is also what a ONCE
+      // schedule posted by the other caller looks like.
+      const current = await this.findOne(userId, id);
+
+      if (ensureYMD(current.nextDueDate) !== intendedOccurrence) {
+        throw new ConflictException(
+          tr(
+            "errors.scheduled.occurrenceAlreadyPosted",
+            `The ${intendedOccurrence} occurrence of this scheduled transaction has already been posted. Reload to see the next one.`,
+            { occurrence: intendedOccurrence },
+          ),
+        );
+      }
+
+      return current;
+    });
+  }
+
+  /**
+   * The body of {@link post}, running inside one transaction that holds the
+   * schedule row.
+   */
+  private async postOccurrence(
+    userId: string,
+    id: string,
+    intendedOccurrence: string,
+    postDto?: PostScheduledTransactionDto,
+  ): Promise<ScheduledTransaction | null> {
+    const scheduled = await this.claimOccurrence(
+      userId,
+      id,
+      intendedOccurrence,
+    );
 
     const nextDueDateStr = ensureYMD(scheduled.nextDueDate);
 

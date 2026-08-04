@@ -1485,11 +1485,18 @@ describe("ScheduledTransactionsService", () => {
         .fn()
         .mockResolvedValue({ affected: 1 });
 
-      // findOne is called once at the start of post() to load the entity.
-      // It must NOT be called a second time after the row is deleted.
       await service.post(userId, stId);
 
-      expect(scheduledRepo.findOne).toHaveBeenCalledTimes(1);
+      // The invariant is about ordering, not about a count: every read of the
+      // schedule has to happen before the row is deleted, or the response is a
+      // 404 for a posting that succeeded. Asserting the count instead broke the
+      // moment `post` grew its second, locked read -- which is why this now says
+      // what it means.
+      const deleteOrder = mockQueryRunner.manager.delete.mock
+        .invocationCallOrder[0] as number;
+      const reads = scheduledRepo.findOne.mock.invocationCallOrder as number[];
+      expect(reads.length).toBeGreaterThan(0);
+      expect(Math.max(...reads)).toBeLessThan(deleteOrder);
     });
 
     it("should advance nextDueDate for recurring frequency", async () => {

@@ -59,14 +59,19 @@ const MANDATORY_SUITES = [
   "race-emergency-claim.integration.spec.ts",
   "race-refresh-token-revocation.integration.spec.ts",
   "race-account-balance.integration.spec.ts",
+  "race-scheduled-post.integration.spec.ts",
+  "race-holdings-rebuild.integration.spec.ts",
 ];
 
 /**
  * A floor, not a target. Set below the current count so ordinary churn does not
  * trip it, but far enough above zero that a discovery regression cannot slip
- * through as "well, some tests ran".
+ * through as "well, some tests ran". It also has to sit *above* the length of
+ * MANDATORY_SUITES, or that list growing quietly retires the floor -- which is
+ * what happened when the concurrency suites were added and 15 mandatory files
+ * were suddenly enough to clear a floor of 15.
  */
-const MINIMUM_SUITES = 15;
+const MINIMUM_SUITES = 20;
 
 function parseArgs(argv) {
   const dirFlag = argv.indexOf("--dir");

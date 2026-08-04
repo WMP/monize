@@ -34,6 +34,8 @@ const MANDATORY = [
   "race-emergency-claim.integration.spec.ts",
   "race-refresh-token-revocation.integration.spec.ts",
   "race-account-balance.integration.spec.ts",
+  "race-scheduled-post.integration.spec.ts",
+  "race-holdings-rebuild.integration.spec.ts",
 ];
 
 function run(dir) {
@@ -107,7 +109,8 @@ test("fails when a mandatory suite is missing", () => {
 
 test("fails when the count drops below the floor even with all mandatory suites", () => {
   withDir((dir) => {
-    // All nine mandatory suites, no filler: below MINIMUM_SUITES.
+    // Every mandatory suite and no filler: still below MINIMUM_SUITES, which is
+    // the property that keeps the floor meaningful as MANDATORY_SUITES grows.
     for (const name of MANDATORY) writeFileSync(join(dir, name), "");
     const result = run(dir);
     assert.notEqual(result.status, 0);

@@ -100,6 +100,38 @@ export class Barrier {
   }
 }
 
+/**
+ * Waits for an arbitrary condition, polled, with a timeout that names what it was
+ * waiting for.
+ *
+ * Exported because some races have to wait on a disjunction the harness cannot
+ * know about -- "the other participant has either committed or is blocked",
+ * which is the shape needed when the *presence* of the fix changes which of the
+ * two happens. The condition still has to be observable; this is not a licence
+ * to poll a wall clock.
+ */
+export async function waitUntil(
+  describe: string,
+  condition: () => Promise<boolean>,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<void> {
+  await waitFor(describe, condition, timeoutMs);
+}
+
+/** Backends of this database currently blocked waiting for a lock. */
+export async function blockedBackendCount(
+  dataSource: DataSource,
+): Promise<number> {
+  const rows: Array<{ blocked: string }> = await dataSource.query(
+    `SELECT COUNT(*)::text AS blocked
+       FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND pid <> pg_backend_pid()
+        AND wait_event_type = 'Lock'`,
+  );
+  return Number(rows[0].blocked);
+}
+
 async function waitFor(
   describe: string,
   condition: () => Promise<boolean>,
