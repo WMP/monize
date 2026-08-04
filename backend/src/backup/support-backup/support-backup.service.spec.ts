@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, PayloadTooLargeException } from "@nestjs/common";
 import { gunzipSync } from "zlib";
 import { BackupService } from "../backup.service";
 import { decryptBackup } from "../backup-crypto.util";
@@ -305,15 +305,38 @@ function fixtureTables(): Record<string, Record<string, unknown>[]> {
   };
 }
 
-function makeService(tables = fixtureTables()): SupportBackupService {
-  const backup = {
+/**
+ * The double is typed as the exact subset of `BackupService` this service reads,
+ * not `as unknown as BackupService`.
+ *
+ * That cast hid a real hole: when `generate` started consulting
+ * `exportBufferLimitBytes`, the mock had no such member, so the value was
+ * `undefined` and `size > undefined` is `false` -- the new ceiling was silently
+ * disabled in every test in this file while they all passed. A `Pick` makes tsc
+ * demand the member, so the next dependency this service grows is a compile error
+ * here rather than a guard that quietly does nothing.
+ */
+type BackupServiceDouble = Pick<
+  BackupService,
+  "collectRawExport" | "exportBufferLimitBytes"
+>;
+
+/** Generous by default so the ceiling is out of the way unless a test wants it. */
+const DEFAULT_TEST_EXPORT_LIMIT = 64 * 1024 * 1024;
+
+function makeService(
+  tables = fixtureTables(),
+  exportBufferLimitBytes = DEFAULT_TEST_EXPORT_LIMIT,
+): SupportBackupService {
+  const backup: BackupServiceDouble = {
     collectRawExport: jest.fn().mockResolvedValue({
       version: 1,
       exportedAt: "2026-07-17T00:00:00.000Z",
       tables,
     }),
-  } as unknown as BackupService;
-  return new SupportBackupService(backup);
+    exportBufferLimitBytes,
+  };
+  return new SupportBackupService(backup as BackupService);
 }
 
 /**
@@ -529,6 +552,44 @@ describe("SupportBackupService.generate", () => {
       ).rejects.toThrow(BadRequestException);
     },
   );
+
+  /**
+   * The support path holds more copies of the dataset at once than any other
+   * export -- raw tables, scoped copy, obfuscated copy, currency-rewritten copy,
+   * remapped copy, a JSON string, a Buffer of it, then the gzip output -- and it
+   * had no ceiling at all while the buffered export had one. It cannot stream,
+   * because reconciling scaled balances needs every table together, so the
+   * ceiling is the only thing between a large dataset and an OOM-killed pod that
+   * leaves no artifact and no readable error.
+   */
+  it("refuses a payload above the export ceiling", async () => {
+    const tiny = 200; // bytes -- below even the envelope
+    await expect(
+      makeService(fixtureTables(), tiny).generate(USER, {
+        multiplier: 2.5,
+        password: FIXTURE_PASSWORD,
+      }),
+    ).rejects.toThrow(PayloadTooLargeException);
+  });
+
+  it("says how large it was and how to narrow it", async () => {
+    // "Too large" with no number and no next step makes the user guess which of
+    // the three levers to pull.
+    await expect(
+      makeService(fixtureTables(), 200).generate(USER, {
+        multiplier: 2.5,
+        password: FIXTURE_PASSWORD,
+      }),
+    ).rejects.toThrow(/MiB.*limit|account selection|date range/);
+  });
+
+  it("produces the file when the payload fits", async () => {
+    const { encrypted } = await makeService(
+      fixtureTables(),
+      DEFAULT_TEST_EXPORT_LIMIT,
+    ).generate(USER, { multiplier: 2.5, password: FIXTURE_PASSWORD });
+    expect(encrypted).toBe(true);
+  });
 
   it("encrypts the file when a password is given", async () => {
     const { buffer, encrypted } = await makeService().generate(USER, {

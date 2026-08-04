@@ -49,6 +49,29 @@ spec:
               value: "100"
             - name: TZ
               value: {{ .Values.global.timezone | quote }}
+            {{- /*
+              Backup memory ceilings, set here rather than left to the backend's
+              own default so they cannot drift away from resources.limits.memory
+              above. A buffered backup holds several copies of its payload at
+              peak, so a ceiling larger than the container's limit is not a
+              ceiling: the pod is OOM-killed before the request is refused. The
+              backend derives a share of the cgroup limit when these are unset,
+              and warns when a configured value cannot protect the process.
+            */ -}}
+            {{- with .Values.backend.backupLimits }}
+            {{- with .exportBuffer }}
+            - name: BACKUP_EXPORT_BUFFER_LIMIT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .restoreExpanded }}
+            - name: BACKUP_RESTORE_EXPANDED_LIMIT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .restoreUpload }}
+            - name: BACKUP_RESTORE_LIMIT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

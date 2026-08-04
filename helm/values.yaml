@@ -51,6 +51,32 @@ backend:
     limits:
       memory: 400Mi
 
+  # -- Memory ceilings for the backup paths that cannot stream
+  #
+  # The encrypted, automatic and support exports hold a whole payload in memory
+  # (AES-GCM needs the entire plaintext for its auth tag; the support export needs
+  # every table at once to reconcile scaled balances), and a restore has to
+  # decompress and parse one. Each of those holds several copies of the data at
+  # peak, so a ceiling has to be a fraction of resources.limits.memory above --
+  # not close to it, and certainly not larger, or the pod is OOM-killed before the
+  # request can be refused with a readable error.
+  #
+  # Leave these unset and the backend derives about a quarter of the container's
+  # cgroup memory limit, which tracks whatever you set above. Set them when you
+  # have measured your own deployment; the backend logs a warning at startup if a
+  # value cannot protect the process it is running in.
+  #
+  # Raising resources.limits.memory without raising these gains nothing, and
+  # raising these without raising the memory limit is how a backup request
+  # restarts the pod.
+  backupLimits:
+    # -- JSON a buffered export may accumulate (e.g. "96mb")
+    exportBuffer: ""
+    # -- Decompressed size a restore payload may reach (e.g. "96mb")
+    restoreExpanded: ""
+    # -- Compressed upload the restore endpoint accepts (e.g. "500mb")
+    restoreUpload: ""
+
   # -- Microsoft Money (.mny) import
   mnyImport:
     # -- Largest .mny file the wizard accepts, in megabytes. A Money Plus Sunset

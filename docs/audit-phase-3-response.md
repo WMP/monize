@@ -120,11 +120,24 @@ held `xmin` for the duration, which is the price of a backup that restores.
 
 ### P3-008 — Buffered backup paths can exceed the chart's memory limit
 
-**Fixed.** `BACKUP_EXPORT_BUFFER_LIMIT` (default `512mb`) bounds the JSON a
+**Fixed, then fixed properly.** `BACKUP_EXPORT_BUFFER_LIMIT` bounds the JSON a
 buffered export may accumulate. Three paths genuinely cannot stream — AES-GCM
 needs the whole plaintext for its auth tag, and the support export holds every
 table at once to reconcile scaled balances — so they get a ceiling rather than a
 rewrite. The plain HTTP export streams and is deliberately unbounded.
+
+The first attempt defaulted it to `512mb` against the chart's `400Mi` backend, so
+the ceiling could never fire: the pod was OOM-killed first, which is the outcome it
+existed to prevent. The file's own comment named the 400 MiB figure while the
+constant below it said 512. A follow-up review (F3R-002) caught it, and the
+support export had no ceiling at all.
+
+The default is now **derived from the container's cgroup memory limit** — about a
+quarter of it, because a buffered export holds several copies of the payload at
+peak — with a floor, a cap, a fallback when no limit can be read, and a startup
+warning when a configured value is too large to protect the process. The support
+path applies the same budget. `backend.backupLimits` in the chart sets both
+explicitly beside `resources.limits.memory` so they cannot drift apart.
 
 ### P3-009 — OIDC restore accepts any non-empty string as destructive-action confirmation
 
@@ -175,8 +188,12 @@ retains DML on an ordinary user table.
 
 **Fixed, and wider than reported.** Decompression is now asynchronous (libuv
 threadpool) with `maxOutputLength`, bounded by
-`BACKUP_RESTORE_EXPANDED_LIMIT` (default `1024mb`). The compressed limit bounds
-nothing about what comes out of gzip.
+`BACKUP_RESTORE_EXPANDED_LIMIT`. The compressed limit bounds nothing about what
+comes out of gzip.
+
+The default was `1024mb`, above the chart's `400Mi` backend limit and therefore
+unable to fire (F3R-003). It is now derived from the container's memory limit, as
+described under P3-008.
 
 The audit confirmed the event-loop half for `gunzipSync` only. The same defect
 was in `backup-crypto.util.ts`: `scryptSync` at N=32768 is roughly 100 ms of CPU

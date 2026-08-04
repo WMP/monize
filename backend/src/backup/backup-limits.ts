@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+
 /**
  * Size ceilings for the backup paths that hold a whole payload in memory.
  *
@@ -13,28 +15,121 @@
  * **Buffered export.** The encrypted, automatic and support export paths cannot
  * stream: GCM needs the whole plaintext to compute its auth tag, and the support
  * export has to hold every table at once to reconcile scaled balances. They
- * accumulate rows, base64 attachment bytes, JSON strings and a gzip buffer, and
- * the Helm chart's default backend limit is 400 MiB. Thirty 10 MiB attachments
- * are ~400 MiB of base64 on their own. Without a ceiling the pod is OOM-killed
- * mid-backup, which leaves no artifact and no error the user can read.
+ * accumulate rows, base64 attachment bytes, JSON strings and a gzip buffer.
  *
- * Both are configurable, because the right number depends on the container's
- * memory limit, and both fail loudly rather than degrading.
+ * ## A ceiling above the process limit is not a ceiling
+ *
+ * These defaults were fixed numbers -- 512 MiB of export JSON, 1 GiB of expanded
+ * restore -- while the Helm chart's default backend limit is 400 MiB. So neither
+ * one could ever fire: the pod was OOM-killed first, which is the outcome the
+ * ceilings existed to prevent. The comment here even named the 400 MiB figure
+ * while the constant below it said 512.
+ *
+ * Two things follow, and both are needed:
+ *
+ *  1. **Derive the default from the process's real memory limit**, read from the
+ *     cgroup, rather than guessing a number that happens to suit one deployment.
+ *     A ceiling has to be smaller than the thing it protects, and only the
+ *     container knows how big that is.
+ *  2. **Budget for the peak, not the payload.** A JSON payload of N bytes does
+ *     not cost N. At the worst moment the per-table strings, the concatenated
+ *     buffer, the gzip output and the parsed object graph are all live, so the
+ *     limit is a fraction of available memory rather than most of it.
+ *
+ * `BACKUP_EXPORT_BUFFER_LIMIT` and `BACKUP_RESTORE_EXPANDED_LIMIT` still override
+ * everything: an operator who has measured their own deployment knows better
+ * than a ratio. The Helm chart sets them explicitly beside
+ * `resources.limits.memory` so the two cannot drift apart silently.
  */
 
 /** Bytes in a mebibyte, spelled out where the defaults are set. */
 const MIB = 1024 * 1024;
 
 /**
- * Default ceiling on a restore's decompressed payload. Generous next to any
- * real personal-finance dataset, and small enough that hitting it is a rejected
- * request rather than a dead process on a container sized for the chart's
- * defaults.
+ * Share of the container's memory limit a single buffered backup may account for.
+ *
+ * One quarter, because at the peak of a buffered export the same data is resident
+ * several times over -- per-table JSON strings, the concatenated buffer, the gzip
+ * output -- on top of the baseline the process needs to serve everything else
+ * (the chart *requests* 140 MiB of its 400 MiB limit for exactly that). A ratio
+ * rather than a measured multiplier because the multiplier depends on the dataset
+ * shape; being conservative here costs a refused oversized export, and being
+ * generous costs the process.
  */
-export const DEFAULT_RESTORE_EXPANDED_LIMIT_BYTES = 1024 * MIB;
+const MEMORY_SHARE_PER_BACKUP = 0.25;
 
-/** Default ceiling on the JSON a buffered export may accumulate. */
-export const DEFAULT_EXPORT_BUFFER_LIMIT_BYTES = 512 * MIB;
+/**
+ * Floor and cap on a derived default.
+ *
+ * The floor keeps a small container (a 256 MiB dev pod) from deriving a ceiling
+ * so low that ordinary datasets are refused -- below this, an operator should be
+ * setting the limit deliberately rather than inheriting one. The cap keeps a
+ * large container from deriving a number so high that the ceiling stops being a
+ * meaningful guard against a hostile payload.
+ */
+const MIN_DERIVED_LIMIT_BYTES = 64 * MIB;
+const MAX_DERIVED_LIMIT_BYTES = 1024 * MIB;
+
+/**
+ * Fallback when the process memory limit cannot be read -- bare metal, a
+ * development machine, an unlimited container. Deliberately modest: this is the
+ * case where nothing is known, and a ceiling that only fires on a genuinely
+ * enormous payload is still better than none.
+ */
+const UNKNOWN_MEMORY_FALLBACK_BYTES = 256 * MIB;
+
+/**
+ * The container's memory limit in bytes, or null when there is no limit to read.
+ *
+ * cgroup v2 first (`memory.max`), then v1 (`memory.limit_in_bytes`). Both report
+ * an absent limit as a sentinel -- the literal string `max` on v2, a number close
+ * to 2^63 on v1 -- and both are treated as "unknown" rather than as a very large
+ * limit, because deriving a ceiling from 8 exbibytes is the same as having none.
+ */
+export function detectProcessMemoryLimitBytes(): number | null {
+  const candidates: Array<{
+    path: string;
+    unlimited: (raw: string) => boolean;
+  }> = [
+    { path: "/sys/fs/cgroup/memory.max", unlimited: (raw) => raw === "max" },
+    {
+      path: "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+      // v1 writes a rounded PAGE_SIZE multiple of 2^63 when unconstrained.
+      unlimited: (raw) => Number(raw) > Number.MAX_SAFE_INTEGER,
+    },
+  ];
+
+  for (const { path, unlimited } of candidates) {
+    let raw: string;
+    try {
+      raw = readFileSync(path, "utf-8").trim();
+    } catch {
+      continue;
+    }
+    if (raw === "" || unlimited(raw)) continue;
+    const bytes = Number(raw);
+    if (Number.isFinite(bytes) && bytes > 0) return bytes;
+  }
+  return null;
+}
+
+/**
+ * The default ceiling for one buffered backup payload on this container.
+ *
+ * Exported as a function rather than a constant because it reads the environment
+ * the process is actually running in, and because a test needs to be able to ask
+ * the question for a hypothetical container.
+ */
+export function deriveDefaultLimitBytes(
+  memoryLimitBytes: number | null = detectProcessMemoryLimitBytes(),
+): number {
+  if (memoryLimitBytes === null) return UNKNOWN_MEMORY_FALLBACK_BYTES;
+  const share = Math.floor(memoryLimitBytes * MEMORY_SHARE_PER_BACKUP);
+  return Math.min(
+    MAX_DERIVED_LIMIT_BYTES,
+    Math.max(MIN_DERIVED_LIMIT_BYTES, share),
+  );
+}
 
 const UNITS: Record<string, number> = {
   b: 1,
@@ -78,4 +173,31 @@ export function resolveByteLimit(
     return fallback;
   }
   return parsed;
+}
+
+/**
+ * Warn when a configured ceiling cannot protect the container it runs in.
+ *
+ * An operator who sets `BACKUP_EXPORT_BUFFER_LIMIT=2gb` on a 400 MiB pod has
+ * written down an intention the runtime cannot honour, and the failure mode is a
+ * killed process rather than a rejected request -- so it is worth saying at
+ * startup rather than leaving them to infer it from a restart. Not fatal: the
+ * limit may be deliberate on a container whose real limit this cannot see.
+ */
+export function warnIfLimitExceedsMemory(
+  label: string,
+  limitBytes: number,
+  onWarn: (message: string) => void,
+  memoryLimitBytes: number | null = detectProcessMemoryLimitBytes(),
+): void {
+  if (memoryLimitBytes === null) return;
+  const safe = Math.floor(memoryLimitBytes * MEMORY_SHARE_PER_BACKUP);
+  if (limitBytes <= safe) return;
+  const mib = (bytes: number) => `${Math.round(bytes / MIB)}MiB`;
+  onWarn(
+    `${label} is ${mib(limitBytes)} but this container's memory limit is ` +
+      `${mib(memoryLimitBytes)}. A buffered backup holds several copies of its ` +
+      `payload at peak, so a request near this ceiling will be OOM-killed rather ` +
+      `than refused. Consider ${mib(safe)} or less, or raise the memory limit.`,
+  );
 }

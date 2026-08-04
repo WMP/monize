@@ -20,8 +20,8 @@ import { createHash, randomUUID } from "crypto";
 import { createGzip, gunzip, gzipSync } from "zlib";
 import { promisify } from "util";
 import {
-  DEFAULT_EXPORT_BUFFER_LIMIT_BYTES,
-  DEFAULT_RESTORE_EXPANDED_LIMIT_BYTES,
+  deriveDefaultLimitBytes,
+  warnIfLimitExceedsMemory,
   resolveByteLimit,
 } from "./backup-limits";
 
@@ -187,22 +187,40 @@ export class BackupService {
    * Read per call rather than cached in the constructor: it is consulted once
    * per restore, so the cost is nothing, and a limit that can only be observed
    * at construction time is a limit no test can vary.
+   *
+   * The default is derived from this container's memory limit, not fixed. A
+   * ceiling larger than the process it protects cannot fire -- the pod is killed
+   * first -- and that is exactly what a hardcoded 1 GiB default was on the
+   * chart's 400 MiB backend.
    */
-  private get restoreExpandedLimitBytes(): number {
-    return resolveByteLimit(
+  get restoreExpandedLimitBytes(): number {
+    return this.resolveBackupLimit(
+      "BACKUP_RESTORE_EXPANDED_LIMIT",
       process.env.BACKUP_RESTORE_EXPANDED_LIMIT,
-      DEFAULT_RESTORE_EXPANDED_LIMIT_BYTES,
-      (message) => this.logger.warn(message),
     );
   }
 
   /** Ceiling on the JSON a buffered export may accumulate. */
-  private get exportBufferLimitBytes(): number {
-    return resolveByteLimit(
+  get exportBufferLimitBytes(): number {
+    return this.resolveBackupLimit(
+      "BACKUP_EXPORT_BUFFER_LIMIT",
       process.env.BACKUP_EXPORT_BUFFER_LIMIT,
-      DEFAULT_EXPORT_BUFFER_LIMIT_BYTES,
-      (message) => this.logger.warn(message),
     );
+  }
+
+  /**
+   * One resolution path for both ceilings: the operator's value if they set one,
+   * otherwise a share of the container's memory limit, and a warning either way
+   * when the number cannot protect the process it is meant to protect.
+   */
+  private resolveBackupLimit(name: string, raw: string | undefined): number {
+    const limit = resolveByteLimit(raw, deriveDefaultLimitBytes(), (message) =>
+      this.logger.warn(message),
+    );
+    warnIfLimitExceedsMemory(name, limit, (message) =>
+      this.logger.warn(message),
+    );
+    return limit;
   }
 
   /**

@@ -106,6 +106,9 @@ ingress:
 | `backend.readinessProbe` | Readiness probe config | `/api/v1/health/ready` |
 | `backend.env.*` | Backend environment variables | See values.yaml |
 | `backend.mnyImport.MNY_IMPORT_LIMIT_MB` | Largest Microsoft Money (.mny) file the import wizard accepts | `300` |
+| `backend.backupLimits.exportBuffer` | JSON a buffered export may accumulate | derived from the memory limit |
+| `backend.backupLimits.restoreExpanded` | Decompressed size a restore payload may reach | derived from the memory limit |
+| `backend.backupLimits.restoreUpload` | Compressed upload the restore endpoint accepts | `500mb` |
 
 > **`latest` with `IfNotPresent` does not pick up new builds.** The two defaults
 > combine into a deployment that keeps whatever image the node already cached: a
@@ -119,7 +122,8 @@ ingress:
 #### Memory for Microsoft Money imports
 
 The default `backend.resources.limits.memory` of `400Mi` is sized for ordinary
-use and **cannot import a real `.mny` file** at the default 300 MB ceiling. A Money upload is buffered in
+use and **cannot import a real `.mny` file** at the default
+`MNY_IMPORT_LIMIT_MB`. A Money upload is buffered in
 memory and decrypted in place, so peak usage is roughly twice the file size on
 top of the baseline. A pod that hits its limit mid-import is OOM-killed, and the
 wizard reports the job as stalled rather than as out of memory.
@@ -135,6 +139,41 @@ Set the limit to at least `2 x MNY_IMPORT_LIMIT_MB + 200Mi`:
 Lowering `MNY_IMPORT_LIMIT_MB` is the cheaper option when the files being
 imported are small: the wizard then rejects an oversized file with a clear
 message before any memory is committed to it.
+
+#### Memory for backups and restores
+
+Three backup paths cannot stream, so each holds a whole payload in memory: the
+encrypted export and the automatic export (AES-GCM needs the entire plaintext to
+compute its auth tag), the support export (it needs every table at once to
+reconcile scaled balances), and a restore (it must decompress and parse the file
+before it can validate it).
+
+Each of those holds **several copies at peak** — per-table JSON strings, the
+concatenated buffer, the gzip output, the parsed object graph — so a ceiling has
+to be a fraction of `resources.limits.memory`, not close to it. A ceiling larger
+than the container's limit is not a ceiling at all: the pod is OOM-killed before
+the request can be refused, which leaves no artifact and no error the user can
+read, only a restart.
+
+That is not hypothetical. These defaulted to `1024mb` and `512mb` against this
+chart's `400Mi` backend, so neither could ever fire.
+
+Leave `backend.backupLimits` empty and the backend derives roughly a quarter of
+the container's cgroup memory limit, which tracks whatever you set above. Set them
+when you have measured your own deployment — the backend logs a warning at startup
+when a configured value is too large to protect the process it is running in.
+
+| `backend.resources.limits.memory` | Derived ceiling per backup |
+|---|---|
+| `256Mi` | `64Mi` (the floor) |
+| `400Mi` (default) | `100Mi` |
+| `1Gi` | `256Mi` |
+| `4Gi` | `1Gi` (the cap) |
+
+A user whose dataset exceeds the ceiling gets a readable refusal naming the size
+and the limit. For the support export they can also narrow it with an account
+selection or a date range. If real exports are being refused, raise the memory
+limit **and** the ceiling: raising either alone achieves nothing.
 
 **The frontend needs headroom too.** Every `/api/*` call is forwarded by the
 Next.js proxy, which buffers the request body before sending it on, so a `.mny`

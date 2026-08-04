@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  PayloadTooLargeException,
+} from "@nestjs/common";
 import { randomBytes, randomUUID } from "crypto";
 import { gzipSync } from "zlib";
 import { BackupService } from "../backup.service";
@@ -186,7 +190,34 @@ export class SupportBackupService {
       sections,
       ...remapped,
     };
-    const gzipped = gzipSync(Buffer.from(JSON.stringify(payload), "utf-8"));
+    // The support path holds more copies of the dataset at once than any other
+    // export -- the raw tables, the scoped copy, the obfuscated copy, the
+    // currency-rewritten copy, the remapped copy, then a JSON string, then a
+    // Buffer of it, then the gzip output -- and it had no ceiling at all. It
+    // cannot stream, because reconciling scaled balances needs every table
+    // together, so the ceiling is the only thing standing between a large
+    // dataset and an OOM-killed pod that leaves no artifact and no readable
+    // error. The same budget the buffered export uses, since the peak is worse
+    // here, not better.
+    const json = JSON.stringify(payload);
+    const limit = this.backupService.exportBufferLimitBytes;
+    const size = Buffer.byteLength(json, "utf-8");
+    if (size > limit) {
+      throw new PayloadTooLargeException(
+        tr(
+          "errors.backup.supportExportTooLarge",
+          `This support backup would be ${Math.round(size / (1024 * 1024))} MiB of JSON, ` +
+            `above the ${Math.round(limit / (1024 * 1024))} MiB limit. Narrow it with an ` +
+            `account selection or a date range, or raise BACKUP_EXPORT_BUFFER_LIMIT.`,
+          {
+            size: Math.round(size / (1024 * 1024)),
+            limit: Math.round(limit / (1024 * 1024)),
+          },
+        ),
+      );
+    }
+
+    const gzipped = gzipSync(Buffer.from(json, "utf-8"));
     // encryptBackup derives its AES-256-GCM key from the user's password
     // (scrypt), not from AI_ENCRYPTION_KEY, so a support backup encrypts fine
     // regardless of whether that env var is configured.

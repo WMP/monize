@@ -196,7 +196,8 @@
     "backupPasswordTooShort": "[XX-Backup password must be at least {{ minLength }} characters-XX]",
     "backupPasswordBreached": "[XX-This password has been found in a data breach. Please choose a different password.-XX]",
     "restoreBodyMustBeFile": "[XX-Request body must be a backup file-XX]",
-    "supportPasswordRequired": "[XX-A support backup must be encrypted: supply a password.-XX]"
+    "supportPasswordRequired": "[XX-A support backup must be encrypted: supply a password.-XX]",
+    "supportExportTooLarge": "[XX-This support backup would be {{ size }} MiB of JSON, above the {{ limit }} MiB limit. Narrow it with an account selection or a date range, or raise BACKUP_EXPORT_BUFFER_LIMIT.-XX]"
   },
   "budgets": {
     "notFound": "[XX-Budget with ID {{ id }} not found-XX]",
