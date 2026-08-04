@@ -500,4 +500,68 @@ describe("RateChangeInferenceService", () => {
     const initial = createdRows()[0];
     expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
   });
+
+  it("keeps newPaymentAmount for a split segment even when a later segment books interest separately (REV-20260803-005)", async () => {
+    // A history that starts with split $500 installments (interest as a
+    // split leg, produced by generateHistory) and later changes to a plain
+    // $450 principal transfer plus a separately categorized $50 interest
+    // expense -- a real convention change mid-loan. The rate also steps
+    // (5.5% -> 6.5%) so the two periods land in separate segments.
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 12, paymentAmount: 500 },
+      { annualRate: 6.5, payments: 12, paymentAmount: 500 },
+    ]);
+
+    const splitRecords = records.slice(0, 12);
+    // The later payments arrive from buildPaymentRecords with no split leg
+    // (interestAmount null) and an observed transfer amount that is
+    // principal-only ($450), never the $500 full installment.
+    const separateRawRecords = records.slice(12).map((r) => ({
+      ...r,
+      amount: 450,
+      interestAmount: null,
+      principalAmount: null,
+    }));
+    const rawRecords = [...splitRecords, ...separateRawRecords];
+
+    detector.buildPaymentRecords.mockResolvedValue(rawRecords);
+    // Simulate pairSeparateInterest recovering the separately booked interest
+    // for the later payments (so they still yield a rate observation) while
+    // leaving the observed `amount` at its principal-only value -- the
+    // shape this service must not mistake for a normal, full installment.
+    detector.pairSeparateInterest.mockImplementation(
+      (
+        _userId: string,
+        _account: Account,
+        consolidatedRecords: PaymentRecord[],
+      ) =>
+        Promise.resolve(
+          consolidatedRecords.map((p, i) =>
+            p.interestAmount != null
+              ? p
+              : { ...p, interestAmount: records[i].interestAmount },
+          ),
+        ),
+    );
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+
+    const result = await service.detectAndPersist(userId, accountId);
+
+    expect(result.created).toHaveLength(2);
+    const rows = createdRows();
+    const splitSegmentRow = rows.find(
+      (row) => row.effectiveDate === "2020-01-01",
+    );
+    const separateSegmentRow = rows.find(
+      (row) => row.effectiveDate === "2021-01-01",
+    );
+
+    // The split-installment segment is unaffected by the later segment's
+    // separate booking: its newPaymentAmount is still set normally.
+    expect(splitSegmentRow?.newPaymentAmount).toBe(500);
+    // The later segment's payments are principal-only subtotals, so its
+    // newPaymentAmount must be suppressed, independent of the earlier
+    // segment's (split) booking style.
+    expect(separateSegmentRow?.newPaymentAmount).toBeNull();
+  });
 });

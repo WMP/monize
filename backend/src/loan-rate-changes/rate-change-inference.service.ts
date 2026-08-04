@@ -35,6 +35,14 @@ interface RateObservation {
   annualRate: number;
   /** Total payment amount */
   paymentAmount: number;
+  /**
+   * True when this specific payment's interest came from a separately
+   * categorized expense (paired in) rather than a split leg of the payment
+   * itself. Tracked per payment -- not once for the whole history -- so a
+   * loan that changes booking style partway through is judged period by
+   * period; see REV-20260803-005.
+   */
+  interestBookedSeparately: boolean;
 }
 
 interface RateSegment {
@@ -42,6 +50,14 @@ interface RateSegment {
   medianRate: number;
   /** Mode of payment amounts within the segment */
   paymentAmount: number | null;
+  /**
+   * True when this segment contains at least one payment whose interest was
+   * booked separately -- its `paymentAmount` may be a principal-only
+   * subtotal rather than the full installment, so `newPaymentAmount` must be
+   * suppressed for this segment specifically. Does not depend on whether any
+   * other segment in the same loan's history used separate interest.
+   */
+  interestBookedSeparately: boolean;
 }
 
 export interface DetectRateChangesResult {
@@ -111,7 +127,14 @@ export class RateChangeInferenceService {
       transactions,
     );
     const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
-    const hadSplitInterest = consolidated.some((p) => p.interestAmount != null);
+    // Whether each individual payment date already carried split-leg interest
+    // *before* separate-interest pairing -- keyed per date (not collapsed to
+    // one history-wide boolean) so a loan that changes booking style partway
+    // through is judged period by period rather than by whatever happened
+    // anywhere else in its history. See REV-20260803-005.
+    const hadSplitInterestByDate = new Map<string, boolean>(
+      consolidated.map((p) => [p.date.split("T")[0], p.interestAmount != null]),
+    );
     // Recover interest booked as a separate categorized expense (not a split
     // leg) so those payments yield a rate observation instead of being dropped
     // as "no interest details". Skipped in SPLIT mode, where interest is only
@@ -124,12 +147,26 @@ export class RateChangeInferenceService {
             account,
             consolidated,
           );
-    // When interest is a separate expense, the payment amounts are principal
-    // only (not the full installment), so they must not be recorded as the
-    // rate rows' payment.
-    const interestBookedSeparately =
-      account.interestBookingMode === "SEPARATE" ||
-      (!hadSplitInterest && payments.some((p) => p.interestAmount != null));
+    // Per-payment: was *this* payment's interest booked separately (not a
+    // split leg)? An account-wide SEPARATE mode always answers yes; otherwise
+    // a payment counts only when its own date had no split-leg interest yet
+    // ended up with a known interestAmount (i.e. it was recovered by
+    // pairing). When interest is booked separately, the payment amount is a
+    // principal-only subtotal (not the full installment), so it must not be
+    // recorded as the rate row's payment for the segment(s) it falls in --
+    // independent of how any other segment in the same history books
+    // interest.
+    const separatelyBookedByDate = new Map<string, boolean>(
+      payments.map((p) => {
+        const dateKey = p.date.split("T")[0];
+        const hadSplitInterest = hadSplitInterestByDate.get(dateKey) ?? false;
+        return [
+          dateKey,
+          account.interestBookingMode === "SEPARATE" ||
+            (!hadSplitInterest && p.interestAmount != null),
+        ];
+      }),
+    );
     const balanceMap = this.detector.buildRunningBalanceMap(
       account,
       transactions,
@@ -146,6 +183,7 @@ export class RateChangeInferenceService {
       payments,
       balanceMap,
       periodsPerYear,
+      separatelyBookedByDate,
     );
 
     if (observations.length < MIN_USABLE_PAYMENTS) {
@@ -167,13 +205,7 @@ export class RateChangeInferenceService {
       );
     }
 
-    return this.persistSegments(
-      userId,
-      account,
-      segments,
-      warnings,
-      interestBookedSeparately,
-    );
+    return this.persistSegments(userId, account, segments, warnings);
   }
 
   /**
@@ -185,6 +217,7 @@ export class RateChangeInferenceService {
     payments: PaymentRecord[],
     balanceMap: Map<string, number>,
     periodsPerYear: number,
+    separatelyBookedByDate: Map<string, boolean>,
   ): RateObservation[] {
     const observations: RateObservation[] = [];
     for (const payment of payments) {
@@ -209,6 +242,7 @@ export class RateChangeInferenceService {
         date: dateKey,
         annualRate,
         paymentAmount: payment.amount,
+        interestBookedSeparately: separatelyBookedByDate.get(dateKey) ?? false,
       });
     }
     return observations;
@@ -354,6 +388,12 @@ export class RateChangeInferenceService {
         medianRate:
           Math.round(this.median(segment.map((o) => o.annualRate)) * 100) / 100,
         paymentAmount: this.modePaymentAmount(segment),
+        // Any payment in this segment booking interest separately taints the
+        // segment's paymentAmount for newPaymentAmount purposes, regardless
+        // of what earlier or later segments in the same history did.
+        interestBookedSeparately: segment.some(
+          (o) => o.interestBookedSeparately,
+        ),
       }));
   }
 
@@ -393,11 +433,6 @@ export class RateChangeInferenceService {
     account: Account,
     segments: RateSegment[],
     warnings: string[],
-    // When interest is booked separately, the observed payment amount is
-    // principal-only (not the full installment), so it must not be recorded as
-    // the row's payment -- doing so would seed the forward projection with a
-    // non-amortizing payment.
-    interestBookedSeparately: boolean,
   ): Promise<DetectRateChangesResult> {
     const created: LoanRateChange[] = [];
     let replacedCount = 0;
@@ -435,7 +470,7 @@ export class RateChangeInferenceService {
           accountId: account.id,
           effectiveDate,
           annualRate: segment.medianRate,
-          newPaymentAmount: interestBookedSeparately
+          newPaymentAmount: segment.interestBookedSeparately
             ? null
             : isFirst
               ? segment.paymentAmount != null
