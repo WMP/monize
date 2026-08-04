@@ -1,4 +1,5 @@
 import {
+  MEMORY_SHARE_PER_RESTORE_UPLOAD,
   deriveDefaultLimitBytes,
   detectProcessMemoryLimitBytes,
   parseByteSize,
@@ -176,6 +177,45 @@ describe("backup size limits", () => {
       const onWarn = jest.fn();
       warnIfLimitExceedsMemory("X", 8192 * MIB, onWarn, null);
       expect(onWarn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The upload limit is derived from half the container, and this check
+     * defaulted to a quarter -- so wiring it up as-is would have warned on every
+     * deployment about a number the code itself chose. That is why the check was
+     * missing from `main.ts` rather than merely unwired, and why the threshold is
+     * a parameter: a limit is compared against the share its own default came
+     * from.
+     */
+    it("does not warn about a limit it derived itself", () => {
+      const onWarn = jest.fn();
+      const container = 400 * MIB;
+      warnIfLimitExceedsMemory(
+        "BACKUP_RESTORE_LIMIT",
+        resolveRestoreUploadLimitBytes(undefined, container),
+        onWarn,
+        container,
+        MEMORY_SHARE_PER_RESTORE_UPLOAD,
+      );
+      expect(onWarn).not.toHaveBeenCalled();
+    });
+
+    it("still warns about an upload override the container cannot absorb", () => {
+      const onWarn = jest.fn();
+      warnIfLimitExceedsMemory(
+        "BACKUP_RESTORE_LIMIT",
+        2048 * MIB,
+        onWarn,
+        400 * MIB,
+        MEMORY_SHARE_PER_RESTORE_UPLOAD,
+      );
+      expect(onWarn).toHaveBeenCalledTimes(1);
+      const message = onWarn.mock.calls[0][0] as string;
+      expect(message).toContain("BACKUP_RESTORE_LIMIT");
+      // Suggests the half-share, not the buffered quarter -- an operator told to
+      // drop to 100MiB when 200MiB is fine would either comply needlessly or
+      // stop believing the warning.
+      expect(message).toContain("200MiB");
     });
   });
 });

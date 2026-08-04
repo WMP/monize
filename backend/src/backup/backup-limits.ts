@@ -3,19 +3,27 @@ import { readFileSync } from "fs";
 /**
  * Size ceilings for the backup paths that hold a whole payload in memory.
  *
- * Two of them, for two different failure modes.
+ * Three of them, for three different failure modes.
  *
- * **Restore decompression.** Express caps the *compressed* upload
- * (`BACKUP_RESTORE_LIMIT`, 500 MB by default), which bounds nothing about what
- * comes out of gzip: a few hundred kilobytes of repeated text expands to
- * gigabytes, and `gunzipSync` with no `maxOutputLength` allocated all of it --
- * before the version check, before the format check, before anything that could
- * refuse the request. On a single replica that is every user's backend.
+ * **The compressed upload** (`BACKUP_RESTORE_LIMIT`, `resolveRestoreUploadLimitBytes`).
+ * `express.raw` buffers the whole body onto the heap *before* the controller, the
+ * guards, the authentication lookup and every service-level ceiling, so this is
+ * the only limit that can refuse a request none of those layers ever sees. It
+ * defaulted to the literal `"500mb"` in `main.ts` on a pod the chart limits to
+ * 400 MiB.
  *
- * **Buffered export.** The encrypted, automatic and support export paths cannot
- * stream: GCM needs the whole plaintext to compute its auth tag, and the support
- * export has to hold every table at once to reconcile scaled balances. They
- * accumulate rows, base64 attachment bytes, JSON strings and a gzip buffer.
+ * **Restore decompression** (`BACKUP_RESTORE_EXPANDED_LIMIT`). Capping the
+ * compressed upload bounds nothing about what comes out of gzip: a few hundred
+ * kilobytes of repeated text expands to gigabytes, and `gunzipSync` with no
+ * `maxOutputLength` allocated all of it -- before the version check, before the
+ * format check, before anything that could refuse the request. On a single replica
+ * that is every user's backend.
+ *
+ * **Buffered export** (`BACKUP_EXPORT_BUFFER_LIMIT`). The encrypted, automatic and
+ * support export paths cannot stream: GCM needs the whole plaintext to compute its
+ * auth tag, and the support export has to hold every table at once to reconcile
+ * scaled balances. They accumulate rows, base64 attachment bytes, JSON strings and
+ * a gzip buffer.
  *
  * ## A ceiling above the process limit is not a ceiling
  *
@@ -36,10 +44,12 @@ import { readFileSync } from "fs";
  *     buffer, the gzip output and the parsed object graph are all live, so the
  *     limit is a fraction of available memory rather than most of it.
  *
- * `BACKUP_EXPORT_BUFFER_LIMIT` and `BACKUP_RESTORE_EXPANDED_LIMIT` still override
- * everything: an operator who has measured their own deployment knows better
- * than a ratio. The Helm chart sets them explicitly beside
- * `resources.limits.memory` so the two cannot drift apart silently.
+ * All three environment variables still override everything: an operator who has
+ * measured their own deployment knows better than a ratio. The Helm chart sets
+ * them explicitly beside `resources.limits.memory` so the two cannot drift apart
+ * silently, and an override the container cannot absorb gets a startup warning
+ * (`warnIfLimitExceedsMemory`) against the same share its default was derived
+ * from -- a quarter for the two buffered limits, a half for the upload.
  */
 
 /** Bytes in a mebibyte, spelled out where the defaults are set. */
@@ -57,6 +67,18 @@ const MIB = 1024 * 1024;
  * generous costs the process.
  */
 const MEMORY_SHARE_PER_BACKUP = 0.25;
+
+/**
+ * Share of the container a compressed restore upload may occupy.
+ *
+ * The same figure `resolveRestoreUploadLimitBytes` derives its default from, so
+ * the derived default can never warn about itself -- exported for the startup
+ * check, which has to compare an operator's override against the same threshold
+ * the derivation used rather than against the buffered-export quarter. Checking a
+ * half-share limit against a quarter-share threshold would have warned on every
+ * deployment, which is why this check was missing rather than merely unwired.
+ */
+export const MEMORY_SHARE_PER_RESTORE_UPLOAD = 0.5;
 
 /**
  * Floor and cap on a derived default.
@@ -203,7 +225,10 @@ export function resolveRestoreUploadLimitBytes(
       ? UNKNOWN_MEMORY_FALLBACK_BYTES
       : Math.min(
           MAX_DERIVED_LIMIT_BYTES,
-          Math.max(MIN_DERIVED_LIMIT_BYTES, Math.floor(memoryLimitBytes / 2)),
+          Math.max(
+            MIN_DERIVED_LIMIT_BYTES,
+            Math.floor(memoryLimitBytes * MEMORY_SHARE_PER_RESTORE_UPLOAD),
+          ),
         );
   return resolveByteLimit(raw, derived);
 }
@@ -222,15 +247,16 @@ export function warnIfLimitExceedsMemory(
   limitBytes: number,
   onWarn: (message: string) => void,
   memoryLimitBytes: number | null = detectProcessMemoryLimitBytes(),
+  safeShare: number = MEMORY_SHARE_PER_BACKUP,
 ): void {
   if (memoryLimitBytes === null) return;
-  const safe = Math.floor(memoryLimitBytes * MEMORY_SHARE_PER_BACKUP);
+  const safe = Math.floor(memoryLimitBytes * safeShare);
   if (limitBytes <= safe) return;
   const mib = (bytes: number) => `${Math.round(bytes / MIB)}MiB`;
   onWarn(
     `${label} is ${mib(limitBytes)} but this container's memory limit is ` +
-      `${mib(memoryLimitBytes)}. A buffered backup holds several copies of its ` +
-      `payload at peak, so a request near this ceiling will be OOM-killed rather ` +
-      `than refused. Consider ${mib(safe)} or less, or raise the memory limit.`,
+      `${mib(memoryLimitBytes)}. A request near this ceiling will be OOM-killed ` +
+      `rather than refused. Consider ${mib(safe)} or less, or raise the memory ` +
+      `limit.`,
   );
 }

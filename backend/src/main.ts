@@ -6,7 +6,11 @@ import * as express from "express";
 import cookieParser from "cookie-parser";
 import * as pg from "pg";
 import { AppModule } from "./app.module";
-import { resolveRestoreUploadLimitBytes } from "./backup/backup-limits";
+import {
+  MEMORY_SHARE_PER_RESTORE_UPLOAD,
+  resolveRestoreUploadLimitBytes,
+  warnIfLimitExceedsMemory,
+} from "./backup/backup-limits";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import { isOidcProviderPath } from "./oauth/oidc-provider-paths";
@@ -81,8 +85,20 @@ async function bootstrap() {
   // saw. No care further down the path can reach an allocation that happens
   // first.
   const backupRestoreLimit = resolveRestoreUploadLimitBytes();
-  new Logger("Bootstrap").log(
+  const bootstrapLogger = new Logger("Bootstrap");
+  bootstrapLogger.log(
     `Restore upload limit: ${Math.round(backupRestoreLimit / (1024 * 1024))}MiB`,
+  );
+  // An operator override the container cannot absorb is a killed process rather
+  // than a refused request, so say it at startup instead of leaving them to infer
+  // it from a restart. Checked against the same half-share the default is derived
+  // from, so the derived default never warns about itself.
+  warnIfLimitExceedsMemory(
+    "BACKUP_RESTORE_LIMIT",
+    backupRestoreLimit,
+    (message) => bootstrapLogger.warn(message),
+    undefined,
+    MEMORY_SHARE_PER_RESTORE_UPLOAD,
   );
   app.use(
     "/api/v1/backup/restore",
