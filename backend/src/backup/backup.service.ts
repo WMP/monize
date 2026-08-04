@@ -125,6 +125,7 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "emergency_access_contacts", // cross-user emergency-access config
   "emergency_access_settings", // cross-user emergency-access config
   "oauth_payloads", // transient OIDC state
+  "oidc_step_up_claims", // spent step-up proofs; 5-minute lifetime, auth bookkeeping
   // Import working state, not user content: the staged bytes are a decrypted
   // upload with a 24 h TTL, and a job row describes one in-flight import. Both
   // are meaningless after the fact, and the staged file would multiply a
@@ -1021,7 +1022,11 @@ export class BackupService {
       // possession of the session that was already required (P2-005). Bound to
       // "restore-backup" specifically: an artifact minted to delete data must not
       // authorize overwriting everything instead.
-      this.oidcReauth.consume(user.id, "restore-backup", input.oidcIdToken);
+      await this.oidcReauth.consume(
+        user.id,
+        "restore-backup",
+        input.oidcIdToken,
+      );
     } else if (!user.passwordHash) {
       // Local account with no password (admin-provisioned, reset not completed).
       // This fell off the end of the else-if chain and proved nothing at all.

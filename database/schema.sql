@@ -767,6 +767,22 @@ CREATE UNIQUE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX idx_refresh_tokens_family ON refresh_tokens(family_id);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 
+-- OIDC destructive step-up claims (migration 136). One row per SPENT step-up
+-- proof, so a proof authorises one destructive action across the whole
+-- deployment rather than once per Node process: `INSERT ... ON CONFLICT DO
+-- NOTHING` on the primary key is atomic, so of two concurrent restores routed to
+-- two replicas exactly one inserts and the other is refused. Transient auth
+-- bookkeeping with a five-minute lifetime; excluded from backups.
+CREATE TABLE oidc_step_up_claims (
+    jti TEXT PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL,
+    claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_oidc_step_up_claims_expires ON oidc_step_up_claims(expires_at);
+
 -- Delegate account access (Phase 1). A user (owner) can grant another user
 -- (delegate) scoped access to their data. Delegates are normal `users` rows;
 -- this defines the relationship and per-account permissions. Only can_read is
@@ -1789,6 +1805,13 @@ CREATE POLICY refresh_tokens_isolation ON refresh_tokens
       OR acting_as_user_id = (SELECT app_current_user_id())
       OR (SELECT app_bypass_rls()));
 
+-- oidc_step_up_claims (migration 136): written on the authenticated request
+-- that spends the proof, so the ordinary per-user policy applies.
+DROP POLICY IF EXISTS oidc_step_up_claims_isolation ON oidc_step_up_claims;
+CREATE POLICY oidc_step_up_claims_isolation ON oidc_step_up_claims
+  USING (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
 -- trusted_devices: uniformly real-user keyed. Every authenticated route that
 -- reads or writes it (list / revoke / revoke-all trusted devices, disable 2FA,
 -- change password) passes req.user.realUserId, and those routes ARE
@@ -2196,11 +2219,13 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 -- Verification helper (run manually; not part of the migration's effect):
 --   SELECT tablename, policyname FROM pg_policies
 --    WHERE schemaname = 'public' ORDER BY tablename;
--- Expected: 57 policies -- 26 direct + 4 real-user-keyed (112),
+-- Expected: 59 policies -- 26 direct + 4 real-user-keyed (112),
 --           15 indirect (113), 5 special (114),
 --           2 direct for the .mny import's staging + job tables (117),
 --           1 direct for security_documents (118),
---           4 direct for the GEM strategy tables (124, 125).
+--           4 direct for the GEM strategy tables (124, 125),
+--           1 owner-column for delegate net-worth exclusions (133),
+--           1 direct for the OIDC step-up claim ledger (136).
 
 -- ---------------------------------------------------------------------------
 -- Enable row-level security (migration 123).

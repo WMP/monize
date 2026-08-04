@@ -2363,9 +2363,28 @@ describe("AuthController", () => {
           },
           {
             provide: DataSource,
-            useValue: createScopedDbMocks([
-              [UserPreference, { findOne: jest.fn().mockResolvedValue(null) }],
-            ]).dataSource,
+            useValue: (() => {
+              const { manager, dataSource } = createScopedDbMocks([
+                [
+                  UserPreference,
+                  { findOne: jest.fn().mockResolvedValue(null) },
+                ],
+              ]);
+              // Stand-in for the oidc_step_up_claims ledger: the INSERT
+              // returns the row it created, so consume() can spend a jti.
+              const claimed = new Set<string>();
+              manager.query.mockImplementation(
+                async (sql: string, params?: unknown[]) => {
+                  if (!sql.includes("oidc_step_up_claims")) return [];
+                  if (sql.startsWith("DELETE")) return [];
+                  const jti = String(params?.[0]);
+                  if (claimed.has(jti)) return [];
+                  claimed.add(jti);
+                  return [{ jti }];
+                },
+              );
+              return dataSource;
+            })(),
           },
         ],
       }).compile();
@@ -2511,9 +2530,9 @@ describe("AuthController", () => {
       // In the fragment: a fragment is never sent to a server, so it stays out
       // of proxy and access logs.
       const artifact = decodeURIComponent(target.split("#reauth_token=")[1]);
-      expect(() =>
+      await expect(
         reauth.consume(REAUTH_USER, "delete-account", artifact),
-      ).not.toThrow();
+      ).resolves.toBeUndefined();
     });
 
     it.each([

@@ -21,7 +21,10 @@ import { CurrenciesService } from "../currencies/currencies.service";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { DemoModeService } from "../common/demo-mode.service";
 import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
-import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createScopedDbMocks,
+  withStepUpClaimLedger,
+} from "../test-helpers/scoped-db-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -158,6 +161,9 @@ describe("UsersService", () => {
     // Raw DELETEs return [rows, count]; isActingDelegate reads rows.length, so
     // the shared default must be an empty result set, not a 2-tuple.
     scoped.manager.query.mockResolvedValue([]);
+    // The real OidcReauthService below spends each artifact's jti in the
+    // oidc_step_up_claims ledger; answer those statements like the table does.
+    withStepUpClaimLedger(scoped.manager.query);
     mockQueryRunner.query = scoped.manager.query;
     scoped.dataSource.query = scoped.manager.query;
     mockDataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
@@ -204,7 +210,8 @@ describe("UsersService", () => {
     purpose: Parameters<OidcReauthService["issue"]>[1],
     forUser = "user-1",
   ): string {
-    return new OidcReauthService().issue(forUser, purpose);
+    // `issue` only signs; the DataSource is only touched by `consume`.
+    return new OidcReauthService(undefined as never).issue(forUser, purpose);
   }
 
   describe("findById", () => {

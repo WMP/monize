@@ -18,7 +18,10 @@ import { User } from "../users/entities/user.entity";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
 import { encryptBackup } from "./backup-crypto.util";
 import * as bcrypt from "bcryptjs";
-import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createScopedDbMocks,
+  withStepUpClaimLedger,
+} from "../test-helpers/scoped-db-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -430,7 +433,8 @@ describe("BackupService", () => {
     purpose: Parameters<OidcReauthService["issue"]>[1] = "restore-backup",
     forUser = userId,
   ): string {
-    return new OidcReauthService().issue(forUser, purpose);
+    // `issue` only signs; the DataSource is only touched by `consume`.
+    return new OidcReauthService(undefined as never).issue(forUser, purpose);
   }
 
   beforeEach(async () => {
@@ -445,6 +449,9 @@ describe("BackupService", () => {
     // pointed at the same statements.
     const scoped = createScopedDbMocks([[User, mockUserRepo as never]]);
     scoped.manager.query.mockImplementation(mockQueryHandler);
+    // The real OidcReauthService below spends each artifact's jti in the
+    // oidc_step_up_claims ledger; answer those statements like the table does.
+    withStepUpClaimLedger(scoped.manager.query);
     scoped.dataSource.query = scoped.manager.query;
     mockQueryRunner = { query: scoped.manager.query };
     mockDataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;

@@ -1,5 +1,13 @@
 import { UnauthorizedException } from "@nestjs/common";
 import * as jwt from "jsonwebtoken";
+import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
+
+jest.mock("../../common/db/scoped-db", () =>
+  jest
+    .requireActual("../../test-helpers/scoped-db-testing")
+    .scopedDbMockModule(),
+);
+
 import {
   OIDC_REAUTH_PURPOSES,
   OIDC_REAUTH_TTL_SECONDS,
@@ -12,13 +20,44 @@ const SECRET = "test-jwt-secret-at-least-thirty-two-characters";
 const USER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 
+/**
+ * A stand-in for the `oidc_step_up_claims` table: `INSERT ... ON CONFLICT DO
+ * NOTHING ... RETURNING jti` returns one row for the caller that created it and
+ * none for anyone else. Shared between service instances in the multi-replica
+ * tests below, which is the whole point of moving the ledger out of the
+ * process.
+ */
+function makeClaimStore() {
+  const rows = new Set<string>();
+  return {
+    rows,
+    query: jest.fn(async (sql: string, params?: unknown[]) => {
+      if (sql.includes("DELETE FROM oidc_step_up_claims")) return [];
+      const jti = String(params?.[0]);
+      if (rows.has(jti)) return [];
+      rows.add(jti);
+      return [{ jti }];
+    }),
+  };
+}
+
 describe("OidcReauthService", () => {
   let service: OidcReauthService;
+  let claimStore: ReturnType<typeof makeClaimStore>;
   const originalSecret = process.env.JWT_SECRET;
+
+  const buildService = (
+    store: ReturnType<typeof makeClaimStore> = claimStore,
+  ) => {
+    const { manager, dataSource } = createScopedDbMocks([]);
+    manager.query.mockImplementation(store.query);
+    return new OidcReauthService(dataSource as never);
+  };
 
   beforeEach(() => {
     process.env.JWT_SECRET = SECRET;
-    service = new OidcReauthService();
+    claimStore = makeClaimStore();
+    service = buildService();
   });
 
   afterEach(() => {
@@ -73,12 +112,12 @@ describe("OidcReauthService", () => {
   });
 
   describe("consume", () => {
-    it("accepts an artifact it issued for the same user and action", () => {
+    it("accepts an artifact it issued for the same user and action", async () => {
       const artifact = service.issue(USER, "delete-account");
 
-      expect(() =>
+      await expect(
         service.consume(USER, "delete-account", artifact),
-      ).not.toThrow();
+      ).resolves.toBeUndefined();
     });
 
     // The defect. Every one of these was accepted before: the check was
@@ -90,13 +129,13 @@ describe("OidcReauthService", () => {
       ["an empty string", ""],
       ["undefined", undefined],
       ["something JWT-shaped but unsigned", "a.b.c"],
-    ])("rejects %s", (_label, token) => {
-      expect(() =>
+    ])("rejects %s", async (_label, token) => {
+      await expect(
         service.consume(USER, "delete-account", token as string | undefined),
-      ).toThrow(UnauthorizedException);
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects an artifact signed with a different key", () => {
+    it("rejects an artifact signed with a different key", async () => {
       const forged = jwt.sign(
         {
           sub: USER,
@@ -108,12 +147,12 @@ describe("OidcReauthService", () => {
         { algorithm: "HS256", expiresIn: 300 },
       );
 
-      expect(() => service.consume(USER, "delete-account", forged)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "delete-account", forged),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects an unsigned (alg=none) artifact", () => {
+    it("rejects an unsigned (alg=none) artifact", async () => {
       // The classic JWT forgery. `algorithms: ["HS256"]` on verify is what stops
       // it, and this asserts that option is actually set.
       const unsigned = jwt.sign(
@@ -127,31 +166,31 @@ describe("OidcReauthService", () => {
         { algorithm: "none" },
       );
 
-      expect(() => service.consume(USER, "delete-account", unsigned)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "delete-account", unsigned),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects an artifact minted for a different user", () => {
+    it("rejects an artifact minted for a different user", async () => {
       const artifact = service.issue(OTHER, "delete-account");
 
-      expect(() => service.consume(USER, "delete-account", artifact)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "delete-account", artifact),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects an artifact minted for a different action", () => {
+    it("rejects an artifact minted for a different action", async () => {
       // Action binding matters most between these two: deleting data and
       // restoring a backup are both destructive, but a restore overwrites
       // everything, and a user who confirmed one did not confirm the other.
       const artifact = service.issue(USER, "delete-data");
 
-      expect(() => service.consume(USER, "restore-backup", artifact)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "restore-backup", artifact),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects an expired artifact", () => {
+    it("rejects an expired artifact", async () => {
       const stale = jwt.sign(
         {
           sub: USER,
@@ -163,12 +202,12 @@ describe("OidcReauthService", () => {
         { algorithm: "HS256", expiresIn: -1 },
       );
 
-      expect(() => service.consume(USER, "delete-account", stale)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "delete-account", stale),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects a token of another type carrying the right claims", () => {
+    it("rejects a token of another type carrying the right claims", async () => {
       // An ordinary access token has sub and a signature from the same secret.
       // Only `type` distinguishes it, and each type answers a different question.
       const accessToken = jwt.sign(
@@ -177,12 +216,12 @@ describe("OidcReauthService", () => {
         { algorithm: "HS256", expiresIn: 300 },
       );
 
-      expect(() =>
+      await expect(
         service.consume(USER, "delete-account", accessToken),
-      ).toThrow(UnauthorizedException);
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("rejects a step-up token, which is a different proof", () => {
+    it("rejects a step-up token, which is a different proof", async () => {
       const stepUp = jwt.sign(
         {
           sub: USER,
@@ -194,54 +233,110 @@ describe("OidcReauthService", () => {
         { algorithm: "HS256", expiresIn: 300 },
       );
 
-      expect(() => service.consume(USER, "emergency-access", stepUp)).toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.consume(USER, "emergency-access", stepUp),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("refuses an artifact with no jti, which cannot be spent once", () => {
+    it("refuses an artifact with no jti, which cannot be spent once", async () => {
       const noJti = jwt.sign(
         { sub: USER, type: "oidc_reauth", purpose: "delete-data" },
         SECRET,
         { algorithm: "HS256", expiresIn: 300 },
       );
 
-      expect(() => service.consume(USER, "delete-data", noJti)).toThrow(
+      await expect(service.consume(USER, "delete-data", noJti)).rejects.toThrow(
         UnauthorizedException,
       );
     });
 
-    it("spends an artifact exactly once", () => {
+    it("rejects everything invalid before touching the claim ledger", async () => {
+      // Fail before writing: a garbage token must not spend a DB round trip,
+      // and must leave no row behind.
+      await expect(
+        service.consume(USER, "delete-account", "garbage"),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(claimStore.query).not.toHaveBeenCalled();
+      expect(claimStore.rows.size).toBe(0);
+    });
+
+    it("spends an artifact exactly once", async () => {
       const artifact = service.issue(USER, "delete-data");
 
-      expect(() =>
+      await expect(
         service.consume(USER, "delete-data", artifact),
-      ).not.toThrow();
-      expect(() => service.consume(USER, "delete-data", artifact)).toThrow(
-        UnauthorizedException,
-      );
+      ).resolves.toBeUndefined();
+      await expect(
+        service.consume(USER, "delete-data", artifact),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("shares the spent set across instances", () => {
+    it("records the claim with the jti, user and purpose, atomically", async () => {
+      // INSERT ... ON CONFLICT DO NOTHING on the primary key is the mechanism
+      // that makes the claim atomic across replicas; this pins that the insert
+      // actually carries it, and that the expired-row sweep runs in the same
+      // call rather than on a timer someone has to remember.
+      const artifact = service.issue(USER, "delete-data");
+      await service.consume(USER, "delete-data", artifact);
+
+      const calls = claimStore.query.mock.calls.map((c) => String(c[0]));
+      expect(
+        calls.some((sql) =>
+          sql.includes("DELETE FROM oidc_step_up_claims WHERE expires_at"),
+        ),
+      ).toBe(true);
+      const insert = claimStore.query.mock.calls.find((c) =>
+        String(c[0]).includes("INSERT INTO oidc_step_up_claims"),
+      );
+      expect(String(insert?.[0])).toContain("ON CONFLICT (jti) DO NOTHING");
+      const params = insert?.[1] as unknown[];
+      expect(params?.[1]).toBe(USER);
+      expect(params?.[2]).toBe("delete-data");
+      expect(params?.[3]).toBeInstanceOf(Date);
+    });
+
+    it("shares the spent record across instances and replicas", async () => {
       // UsersModule provides its own instance because it cannot import
-      // AuthModule. Two independent replay counters would mean an artifact spent
-      // on /users/delete-data was still good against another consumer.
+      // AuthModule -- and on k8s each backend replica is a whole separate
+      // process whose memory never sees the others' spends. The ledger is a
+      // table, so a proof spent through one instance is spent for all of them:
+      // two instances sharing the store stand in for two replicas sharing the
+      // database.
       const artifact = service.issue(USER, "delete-data");
-      const second = new OidcReauthService();
+      const replicaB = buildService(claimStore);
 
-      expect(() =>
+      await expect(
         service.consume(USER, "delete-data", artifact),
-      ).not.toThrow();
-      expect(() => second.consume(USER, "delete-data", artifact)).toThrow(
-        UnauthorizedException,
-      );
+      ).resolves.toBeUndefined();
+      await expect(
+        replicaB.consume(USER, "delete-data", artifact),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("gives the same message whichever check failed", () => {
+    it("lets exactly one of two concurrent verifies win", async () => {
+      // The race the in-memory Map lost across replicas: both requests arrive
+      // before either records the spend. The store answers the INSERT
+      // atomically, so exactly one caller is told yes.
+      const artifact = service.issue(USER, "delete-data");
+      const replicaB = buildService(claimStore);
+
+      const outcomes = await Promise.allSettled([
+        service.consume(USER, "delete-data", artifact),
+        replicaB.consume(USER, "delete-data", artifact),
+      ]);
+
+      const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
+      const rejected = outcomes.filter((o) => o.status === "rejected");
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+    });
+
+    it("gives the same message whichever check failed", async () => {
       // Which of signature / subject / action / freshness failed is a fact about
       // the server's secrets and state, so it goes to the log, not the response.
       const messages = new Set<string>();
-      const cases: Array<() => void> = [
+      const cases: Array<() => Promise<void>> = [
         () => service.consume(USER, "delete-account", "garbage"),
         () =>
           service.consume(
@@ -258,7 +353,7 @@ describe("OidcReauthService", () => {
       ];
       for (const run of cases) {
         try {
-          run();
+          await run();
         } catch (err) {
           messages.add((err as UnauthorizedException).message);
         }

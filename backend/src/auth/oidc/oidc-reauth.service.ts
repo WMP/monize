@@ -1,6 +1,8 @@
 import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import * as jwt from "jsonwebtoken";
 import * as crypto from "crypto";
+import { DataSource } from "typeorm";
+import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
 
 /**
@@ -28,21 +30,22 @@ import { tr } from "../../i18n/translate";
  * JWT_SECRET, which is exactly the property the sentinel lacked.
  *
  * Signing goes through `jsonwebtoken` directly rather than Nest's `JwtService`
- * so this class has no injected dependencies. That is what lets `UsersModule`
- * provide it without importing `AuthModule` -- which it cannot, the two are
- * mutually dependent through `NotificationsModule` (see the module's own comment
- * about `PasswordBreachService`). The spent-id set is module-level rather than
- * per-instance for the same reason: two Nest instances of this class must not
- * mean two independent replay counters.
+ * so this class does not depend on `AuthModule`'s providers. That is what lets
+ * `UsersModule` provide it without importing `AuthModule` -- which it cannot,
+ * the two are mutually dependent through `NotificationsModule` (see the
+ * module's own comment about `PasswordBreachService`). The one injected
+ * dependency is TypeORM's `DataSource`, which the global `TypeOrmModule`
+ * resolves in every module, so re-providing this class stays cheap.
  *
- * Replay: consumed ids are held in memory. On a single replica that makes the
- * artifact strictly one-use. Across replicas it is best-effort -- an artifact
- * could be spent once per replica inside its five-minute window. That residual
- * is bounded and deliberate rather than overlooked: spending it requires the
- * session it was minted for, and that session's holder can simply run the flow
- * again, so the guarantee doing the work here is the IdP challenge, not the
- * counter. Closing it properly needs shared state (a table or a cache), which is
- * a schema decision, not a fix to smuggle into this one.
+ * Replay: a consumed `jti` is a row in `oidc_step_up_claims`, not a field in
+ * this process. A `Map` enforces single use inside one Node process, and this
+ * repo explicitly deploys with several backend replicas -- two destructive
+ * requests carrying the same artifact could be routed to different replicas,
+ * each find its own map empty, and both proceed; with N replicas the same
+ * artifact was accepted up to N times under favourable routing. `INSERT ... ON
+ * CONFLICT DO NOTHING` on the primary key is atomic across every replica:
+ * whoever inserts the row has spent the artifact, and everyone else gets zero
+ * rows back and is refused.
  */
 
 /** The actions an OIDC re-authentication artifact can be minted for. */
@@ -118,12 +121,6 @@ const PENDING_TYPE = "oidc_reauth_pending";
 const ALGORITHM = "HS256" as const;
 
 /**
- * jti -> expiry (ms). Module-level so every Nest instance of this service shares
- * one replay counter (see the class comment).
- */
-const consumedJtis = new Map<string, number>();
-
-/**
  * Resolved per call rather than cached: `JwtStrategy` already refuses to start
  * without a JWT_SECRET of at least 32 characters, so by the time any of this runs
  * the value exists -- but reading it fresh keeps this class free of construction
@@ -190,6 +187,43 @@ function flowHashMatches(presented: string, expected: string): boolean {
 @Injectable()
 export class OidcReauthService {
   private readonly logger = new Logger(OidcReauthService.name);
+
+  constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * Claim a `jti`, atomically and across every replica.
+   *
+   * Returns true only for the caller whose INSERT actually created the row.
+   * Expired rows are swept in the same call rather than by a timer -- but the
+   * sweep runs under this request's scoped context, so under `RLS_MODE=on` the
+   * isolation policy limits the DELETE to *this user's* expired rows; at
+   * `RLS_MODE=off` (the default) it removes every expired row. Single-use
+   * safety never depends on the sweep -- the primary-key conflict is what
+   * enforces it -- so an expired row belonging to a user who never steps up
+   * again is only harmless table growth, not a correctness risk. A
+   * system-context retention job is the place to bound that growth; this
+   * statement is best-effort housekeeping.
+   */
+  private async claimJti(
+    jti: string,
+    userId: string,
+    purpose: OidcReauthPurpose,
+    expiresAt: Date,
+  ): Promise<boolean> {
+    return withScopedDb(this.dataSource, async (m) => {
+      await m.query(
+        `DELETE FROM oidc_step_up_claims WHERE expires_at <= now()`,
+      );
+      const result: { jti: string }[] = await m.query(
+        `INSERT INTO oidc_step_up_claims (jti, user_id, purpose, expires_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (jti) DO NOTHING
+         RETURNING jti`,
+        [jti, userId, purpose, expiresAt],
+      );
+      return result.length > 0;
+    });
+  }
 
   /**
    * Signed marker that this user started a re-authentication for this action,
@@ -297,14 +331,16 @@ export class OidcReauthService {
    * Every rejection is the same `401` with the same message: which of the checks
    * failed is a fact about the server's secrets and state, and the caller has no
    * legitimate use for it. The reason goes to the log instead.
+   *
+   * Spending happens in `oidc_step_up_claims` *before* the caller acts on the
+   * answer, so two requests racing on one artifact cannot both be told yes --
+   * including when they land on different replicas.
    */
-  consume(
+  async consume(
     userId: string,
     purpose: OidcReauthPurpose,
     token: string | undefined,
-  ): void {
-    this.pruneConsumed();
-
+  ): Promise<void> {
     if (!isNonEmptyString(token)) {
       this.reject(userId, purpose, "no artifact presented");
     }
@@ -342,11 +378,21 @@ export class OidcReauthService {
     if (!payload!.jti) {
       this.reject(userId, purpose, "no jti, so it cannot be spent once");
     }
-    if (consumedJtis.has(payload!.jti)) {
+
+    const expiresAt = new Date(
+      payload!.exp
+        ? payload!.exp * 1000
+        : Date.now() + OIDC_REAUTH_TTL_SECONDS * 1000,
+    );
+    const claimed = await this.claimJti(
+      payload!.jti,
+      userId,
+      purpose,
+      expiresAt,
+    );
+    if (!claimed) {
       this.reject(userId, purpose, "already spent");
     }
-
-    consumedJtis.set(payload!.jti, Date.now() + OIDC_REAUTH_TTL_SECONDS * 1000);
   }
 
   private reject(
@@ -363,12 +409,5 @@ export class OidcReauthService {
         "Re-authenticate with your identity provider to confirm this action.",
       ),
     );
-  }
-
-  private pruneConsumed(): void {
-    const now = Date.now();
-    for (const [jti, expiresAt] of consumedJtis.entries()) {
-      if (expiresAt <= now) consumedJtis.delete(jti);
-    }
   }
 }
