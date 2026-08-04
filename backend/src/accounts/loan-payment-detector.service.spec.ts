@@ -2068,6 +2068,82 @@ describe("LoanPaymentDetectorService", () => {
       expect(result!.paymentAmount).toBe(450);
       expect(result!.interestCategoryId).toBeNull();
     });
+
+    /**
+     * REV-20260803-006, reopened a fifth time. With only one payment in the
+     * history, detectPaymentPattern short-circuits to buildSinglePaymentResult
+     * *before* detectRegularAmount -- and its interestUnmatched guard from
+     * passes 2-4 -- ever runs. A SEPARATE-mode loan with a configured
+     * interest category and a single unlinked/imported $450 principal
+     * transfer (no source account, so pairSeparateInterest's
+     * sourceIds.length === 0 branch marks it interestUnmatched) must not have
+     * that $450 principal-only subtotal reported as paymentAmount: the
+     * missing $50 interest means the full $500 installment was never
+     * established, so the correct answer is null ("cannot determine"), the
+     * same convention detectRegularAmount uses for the multi-payment
+     * all-unmatched case.
+     */
+    it("returns null (not the $450 principal subtotal) for a single unlinked payment on a SEPARATE-mode loan with unmatched separate interest", async () => {
+      const account = {
+        id: "loan-1",
+        userId: "user-1",
+        accountType: AccountType.LOAN,
+        interestBookingMode: "SEPARATE",
+        interestCategoryId: "cat-int",
+        currentBalance: -10000,
+      } as any;
+
+      accountsRepository.findOne.mockResolvedValue(account);
+      transactionRepository.find.mockResolvedValue([
+        {
+          id: "tx-1",
+          accountId: "loan-1",
+          userId: "user-1",
+          transactionDate: "2026-01-05",
+          amount: 450,
+          isTransfer: false,
+          isSplit: false,
+          linkedTransactionId: null,
+        },
+      ]);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      // No source account is known for the sole payment, so the interest
+      // lookup is skipped entirely (the sourceIds.length === 0 early-return)
+      // -- confirming the null result comes from the interestUnmatched
+      // guard, not from an unrelated failure to find the account.
+      expect(transactionRepository.find).toHaveBeenCalledTimes(1);
+      expect(result).toBeNull();
+    });
+
+    /**
+     * Control for the fix above: a single payment on an account that does
+     * NOT expect separate interest (no interestCategoryId configured) must
+     * still return its plain amount -- interestUnmatched never applies here,
+     * so buildSinglePaymentResult's new guard must not fire.
+     */
+    it("still returns the plain amount for a single payment when separate interest is not configured", async () => {
+      accountsRepository.findOne.mockResolvedValue(mockLoanAccount);
+
+      transactionRepository.find.mockResolvedValue([
+        {
+          id: "tx-1",
+          accountId: "loan-1",
+          userId: "user-1",
+          transactionDate: "2025-01-15",
+          amount: 500,
+          isTransfer: false,
+          isSplit: false,
+          linkedTransactionId: null,
+        },
+      ]);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(result).not.toBeNull();
+      expect(result!.paymentAmount).toBe(500);
+    });
   });
 
   describe("pairSeparateInterest", () => {

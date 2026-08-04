@@ -1371,11 +1371,29 @@ export class LoanPaymentDetectorService {
 
   /**
    * Build a result from a single payment when only one exists.
+   *
+   * `detectPaymentPattern` reaches this path instead of `detectRegularAmount`
+   * whenever there is exactly one payment, so it never goes through that
+   * function's `interestUnmatched` guard (built up across passes 2-4 of
+   * REV-20260803-006 for the >=2-payment case). Without a check here, a
+   * SEPARATE-mode loan whose sole payment is an unlinked/imported principal
+   * transfer -- `pairSeparateInterest` attempted to pair its separate
+   * interest and failed, marking it `interestUnmatched: true` -- would have
+   * that principal-only `amount` returned as `paymentAmount` directly,
+   * reporting a subtotal as the complete contractual installment. This is
+   * the exact fifth-reopen defect: the record's `amount` is not the full
+   * payment (the missing interest portion means the true installment cannot
+   * be established), so this returns `null` -- matching
+   * `detectRegularAmount`'s "cannot determine" convention for the
+   * all-unmatched case -- rather than a known-incomplete amount.
    */
   private buildSinglePaymentResult(
     account: Account,
     payment: PaymentRecord,
-  ): DetectedLoanPayment {
+  ): DetectedLoanPayment | null {
+    if (payment.interestUnmatched) {
+      return null;
+    }
     const extraAmount = payment.extraPrincipalAmount ?? 0;
     const baseAmount =
       extraAmount > 0
