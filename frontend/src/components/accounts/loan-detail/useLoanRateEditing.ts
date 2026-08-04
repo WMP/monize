@@ -50,6 +50,11 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [scheduledPreview, setScheduledPreview] =
     useState<ScheduledPaymentPreview | null>(null);
+  // REV-20260803-029: the hash binds this preview to the exact DB state the
+  // user authorised. It is passed back on confirmation so the backend can
+  // reject a stale preview (one where the rate, payment, or extra split changed
+  // after the dialog opened) rather than silently applying a different amount.
+  const [scheduledPreviewHash, setScheduledPreviewHash] = useState<string | null>(null);
   // The dialog stays open on a failure so the user can retry, which means the
   // confirm button stays live: without this the same apply could be fired
   // several times over.
@@ -122,6 +127,7 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
         // only with the user's permission -- surface the pending change.
         if (result.scheduledPaymentPreview) {
           setScheduledPreview(result.scheduledPaymentPreview);
+          setScheduledPreviewHash(result.scheduledPaymentPreviewHash ?? null);
         }
         return;
       }
@@ -166,11 +172,32 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
     // rate-change creation, so it does not come back on reload either.
     setIsApplyingScheduled(true);
     try {
-      await loanRateChangesApi.applyScheduledPayment(account.id);
+      await loanRateChangesApi.applyScheduledPayment(
+        account.id,
+        scheduledPreviewHash ?? undefined,
+      );
       toast.success(t('loanDetail.rateHistory.scheduledUpdateAppliedToast'));
       setScheduledPreview(null);
+      setScheduledPreviewHash(null);
       onChanged();
     } catch (err) {
+      // REV-20260803-029: a 409 means the scheduled-payment proposal changed
+      // after the preview was shown. The backend returns the fresh proposal so
+      // the dialog can update in-place and let the user re-authorize.
+      const errWithResponse = err as {
+        response?: { status?: number; data?: unknown };
+      };
+      if (errWithResponse.response?.status === 409) {
+        const data = errWithResponse.response.data as {
+          freshPreview?: ScheduledPaymentPreview;
+          freshPreviewHash?: string;
+        } | undefined;
+        if (data?.freshPreview) {
+          setScheduledPreview(data.freshPreview);
+          setScheduledPreviewHash(data.freshPreviewHash ?? null);
+          return;
+        }
+      }
       toast.error(
         getErrorMessage(err, t('loanDetail.rateHistory.scheduledUpdateFailed')),
       );
@@ -189,6 +216,7 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
     // covers the routes not enumerated.
     if (isApplyingScheduled) return;
     setScheduledPreview(null);
+    setScheduledPreviewHash(null);
     toast(t('loanDetail.rateHistory.scheduledUpdateSkippedToast'), { icon: 'ℹ️' });
   };
 

@@ -42,6 +42,8 @@ export interface ScheduledPaymentPreview {
 /** A created rate change plus the pending scheduled-payment change, if any. */
 export interface CreateLoanRateChangeResult extends LoanRateChange {
   scheduledPaymentPreview: ScheduledPaymentPreview | null;
+  /** SHA-256 hex hash of the preview's proposed amounts; null when there is no preview. Pass back to applyScheduledPayment to detect a stale confirmation. */
+  scheduledPaymentPreviewHash: string | null;
 }
 
 export interface CreateLoanRateChangeData {

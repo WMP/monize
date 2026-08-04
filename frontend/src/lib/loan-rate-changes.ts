@@ -47,12 +47,20 @@ export const loanRateChangesApi = {
    * Apply the pending scheduled bill-payment change after the user grants
    * permission from the rate-change confirmation prompt. Returns the applied
    * change, or null when there was nothing to sync.
+   *
+   * Pass `expectedPreviewHash` (the value returned by `create`) so the backend
+   * can reject a stale confirmation. When the proposal has changed since the
+   * preview was shown, the backend responds 409 with `freshPreview` and
+   * `freshPreviewHash` in the body so the caller can surface the updated
+   * proposal rather than silently applying a different amount.
    */
   applyScheduledPayment: async (
     accountId: string,
+    expectedPreviewHash?: string,
   ): Promise<ScheduledPaymentPreview | null> => {
     const response = await apiClient.post<ScheduledPaymentPreview | null>(
       `/accounts/${accountId}/rate-changes/apply-scheduled-payment`,
+      expectedPreviewHash !== undefined ? { expectedPreviewHash } : undefined,
     );
     invalidateAfterMutation(accountId);
     return response.data;

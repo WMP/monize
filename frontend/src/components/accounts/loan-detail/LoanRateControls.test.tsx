@@ -44,6 +44,7 @@ describe('LoanRateControls + useLoanRateEditing', () => {
         proposedInterest: 750,
         extraPrincipal: 0,
       },
+      scheduledPaymentPreviewHash: 'preview-hash-1',
     });
     (
       loanRateChangesApi.applyScheduledPayment as ReturnType<typeof vi.fn>
@@ -77,8 +78,13 @@ describe('LoanRateControls + useLoanRateEditing', () => {
     );
     fireEvent.click(screen.getByText('Update payment'));
 
+    // REV-20260803-029: the hash from the create response must be forwarded so
+    // the backend can reject a stale confirmation.
     await waitFor(() =>
-      expect(loanRateChangesApi.applyScheduledPayment).toHaveBeenCalledWith('loan-1'),
+      expect(loanRateChangesApi.applyScheduledPayment).toHaveBeenCalledWith(
+        'loan-1',
+        'preview-hash-1',
+      ),
     );
   });
 
@@ -102,6 +108,7 @@ describe('LoanRateControls + useLoanRateEditing', () => {
           proposedInterest: 750,
           extraPrincipal: 0,
         },
+        scheduledPaymentPreviewHash: 'preview-hash-1',
       });
 
       render(<Harness onChanged={vi.fn()} />);
@@ -249,6 +256,7 @@ describe('LoanRateControls + useLoanRateEditing', () => {
           proposedInterest: 750,
           extraPrincipal: 0,
         },
+        scheduledPaymentPreviewHash: 'preview-hash-1',
       });
 
       render(<CapturingHarness />);
@@ -278,6 +286,125 @@ describe('LoanRateControls + useLoanRateEditing', () => {
       await act(async () => {
         settle?.();
       });
+    });
+  });
+
+  // REV-20260803-029: the scheduled-payment confirmation was calling
+  // applyScheduledPayment without the hash returned by creation, so the
+  // backend's stale-preview check never ran.
+  describe('scheduled-payment confirmation hash (REV-20260803-029)', () => {
+    it('forwards the preview hash from creation to the confirmation API call', async () => {
+      (loanRateChangesApi.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'rc-1',
+        scheduledPaymentPreview: {
+          scheduledTransactionId: 'sched-1',
+          scheduledTransactionName: 'Mortgage',
+          currencyCode: 'CAD',
+          currentPaymentAmount: 1000,
+          proposedPaymentAmount: 1100,
+          currentPrincipal: 300,
+          proposedPrincipal: 350,
+          currentInterest: 700,
+          proposedInterest: 750,
+          extraPrincipal: 0,
+        },
+        scheduledPaymentPreviewHash: 'abc123hash',
+      });
+      (
+        loanRateChangesApi.applyScheduledPayment as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+
+      render(<Harness onChanged={vi.fn()} />);
+      fireEvent.click(screen.getByText('Add rate change'));
+      fireEvent.change(screen.getByLabelText('Effective date'), {
+        target: { value: '2024-06-01' },
+      });
+      fireEvent.change(screen.getByLabelText('New annual rate (%)'), {
+        target: { value: '5.5' },
+      });
+      fireEvent.click(screen.getByText('Save'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Update scheduled payment?')).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByText('Update payment'));
+
+      await waitFor(() =>
+        expect(loanRateChangesApi.applyScheduledPayment).toHaveBeenCalledWith(
+          'loan-1',
+          'abc123hash',
+        ),
+      );
+    });
+
+    it('refreshes the dialog with a fresh preview when the backend rejects with 409', async () => {
+      (loanRateChangesApi.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'rc-1',
+        scheduledPaymentPreview: {
+          scheduledTransactionId: 'sched-1',
+          scheduledTransactionName: 'Mortgage',
+          currencyCode: 'CAD',
+          currentPaymentAmount: 1000,
+          proposedPaymentAmount: 1100,
+          currentPrincipal: 300,
+          proposedPrincipal: 350,
+          currentInterest: 700,
+          proposedInterest: 750,
+          extraPrincipal: 0,
+        },
+        scheduledPaymentPreviewHash: 'stale-hash',
+      });
+      const freshPreview = {
+        scheduledTransactionId: 'sched-1',
+        scheduledTransactionName: 'Mortgage',
+        currencyCode: 'CAD',
+        currentPaymentAmount: 1000,
+        proposedPaymentAmount: 1200,
+        currentPrincipal: 300,
+        proposedPrincipal: 400,
+        currentInterest: 700,
+        proposedInterest: 800,
+        extraPrincipal: 0,
+      };
+      const apply = loanRateChangesApi.applyScheduledPayment as ReturnType<typeof vi.fn>;
+      // First call returns 409 with a fresh preview; second call succeeds.
+      apply.mockRejectedValueOnce({
+        response: { status: 409, data: { freshPreview, freshPreviewHash: 'fresh-hash' } },
+      });
+      apply.mockResolvedValueOnce(null);
+
+      render(<Harness onChanged={vi.fn()} />);
+      fireEvent.click(screen.getByText('Add rate change'));
+      fireEvent.change(screen.getByLabelText('Effective date'), {
+        target: { value: '2024-06-01' },
+      });
+      fireEvent.change(screen.getByLabelText('New annual rate (%)'), {
+        target: { value: '5.5' },
+      });
+      fireEvent.click(screen.getByText('Save'));
+
+      await waitFor(() =>
+        expect(screen.getByText('Update scheduled payment?')).toBeInTheDocument(),
+      );
+
+      // First confirm -- stale, gets rejected.
+      fireEvent.click(screen.getByText('Update payment'));
+      await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+      // First call was with the stale hash.
+      expect(apply).toHaveBeenNthCalledWith(1, 'loan-1', 'stale-hash');
+
+      // Dialog must still be open with the refreshed preview.
+      expect(screen.getByText('Update scheduled payment?')).toBeInTheDocument();
+
+      // Second confirm -- uses the fresh hash from the 409 response.
+      fireEvent.click(screen.getByText('Update payment'));
+      await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+      expect(apply).toHaveBeenNthCalledWith(2, 'loan-1', 'fresh-hash');
+
+      // Succeeds; dialog closes.
+      await waitFor(() =>
+        expect(screen.queryByText('Update scheduled payment?')).not.toBeInTheDocument(),
+      );
     });
   });
 
