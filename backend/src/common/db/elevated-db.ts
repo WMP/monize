@@ -34,9 +34,10 @@ import { getRlsMode } from "./rls-config";
  * process death; the explicit restore in `finally` is what stops the *rest of
  * the same transaction* from running elevated.
  *
- * Nesting is safe: only the outermost window restores the GUC, so an elevated
- * operation may call another one without the inner `finally` quietly returning
- * its caller to tenant-filtered reads halfway through.
+ * Nesting and concurrency are both safe: the window is reference-counted per
+ * connection and closes when the last caller inside it leaves, so neither a
+ * nested call nor a `Promise.all` sibling can turn the bypass off while another
+ * participant still depends on it.
  *
  * How to use it:
  *  - Wrap the smallest possible unit -- one query, ideally. Everything inside is
@@ -62,6 +63,36 @@ export const BYPASS_OFF_SQL = "SELECT set_config('app.bypass_rls', '', true)";
 export const BYPASS_READ_SQL =
   "SELECT current_setting('app.bypass_rls', true) AS bypass";
 
+/**
+ * One in-flight elevation window, and how many callers are inside it.
+ *
+ * The count is what makes *concurrent siblings* safe, and reading the GUC alone
+ * cannot: two `Promise.all` branches both probe before either sets, both read
+ * "off", both conclude they own the restore, and the first to finish turns the
+ * bypass off while the second is still working (RV-001 -- `listDelegates`
+ * mapping every delegate to an eligibility check was exactly that shape). The
+ * claim below is taken *synchronously*, before any `await`, so two entrants can
+ * never both see zero.
+ */
+interface ElevationState {
+  depth: number;
+  /** Resolves once the bypass is on, so a joiner never reads a row before it is. */
+  ready: Promise<void>;
+  /** Whether THIS window set the GUC, and therefore owes the restore. */
+  emitted: boolean;
+}
+
+/**
+ * Keyed by the transaction's connection rather than by the `EntityManager`: the
+ * GUC is transaction-local, so two managers wrapping one `QueryRunner` are one
+ * window. Weak, so a finished transaction's entry goes away with it.
+ */
+const activeElevations = new WeakMap<object, ElevationState>();
+
+function elevationKey(manager: EntityManager): object {
+  return (manager as { queryRunner?: object }).queryRunner ?? manager;
+}
+
 export async function withElevatedDb<T>(
   manager: EntityManager,
   reason: string,
@@ -75,27 +106,63 @@ export async function withElevatedDb<T>(
     return fn(manager);
   }
 
-  // Re-entrancy. One elevated operation may legitimately call another -- an
-  // owner's delegate listing asks, per delegate, whether the owner may reset
-  // that delegate's password, and both halves need the same cross-user reach.
-  // Only the OUTERMOST window may restore, or the inner one's `finally` turns
-  // the bypass off while its caller is still relying on it, and the rest of the
-  // outer operation silently reverts to tenant-filtered reads: an elevated
-  // sequence that half works is worse than one that never started. The GUC
-  // itself is the authority here rather than a flag threaded through the call,
-  // because the outer window may have been opened by code this call cannot see.
-  if (await alreadyElevated(manager)) {
-    return fn(manager);
+  const key = elevationKey(manager);
+  const joined = activeElevations.get(key);
+  if (joined) {
+    // Synchronous claim. Whether this is a nested call or a concurrent sibling
+    // makes no difference: the window stays open until the last one leaves.
+    joined.depth += 1;
+    try {
+      await joined.ready;
+      return await fn(manager);
+    } finally {
+      await releaseElevation(key, manager);
+    }
   }
 
-  await manager.query(BYPASS_ON_SQL);
+  let resolveReady!: () => void;
+  let rejectReady!: (error: unknown) => void;
+  const ready = new Promise<void>((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  // The opener does not await `ready`; without this a failed open would surface
+  // as an unhandled rejection rather than as the error it already throws.
+  ready.catch(() => undefined);
+  const state: ElevationState = { depth: 1, ready, emitted: false };
+  activeElevations.set(key, state);
+
   try {
+    // Still ask the connection, for the case the count cannot see: an outer
+    // window opened by code this call does not know about. `emitted` stays false
+    // then, so the restore below leaves that code's bypass alone.
+    if (!(await alreadyElevated(manager))) {
+      await manager.query(BYPASS_ON_SQL);
+      state.emitted = true;
+    }
+    resolveReady();
     return await fn(manager);
+  } catch (error) {
+    // A joiner must not proceed believing the window was established.
+    rejectReady(error);
+    throw error;
   } finally {
     // Restore even when `fn` threw. A caller that catches the error keeps
     // working in the same transaction, and it must not keep working elevated.
-    await manager.query(BYPASS_OFF_SQL);
+    await releaseElevation(key, manager);
   }
+}
+
+async function releaseElevation(
+  key: object,
+  manager: EntityManager,
+): Promise<void> {
+  const state = activeElevations.get(key);
+  if (!state) return;
+  state.depth -= 1;
+  if (state.depth > 0) return;
+  activeElevations.delete(key);
+  if (state.emitted) await manager.query(BYPASS_OFF_SQL);
 }
 
 async function alreadyElevated(manager: EntityManager): Promise<boolean> {

@@ -1615,6 +1615,74 @@ describe("DelegationService", () => {
       expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
     });
 
+    it("keeps every delegate's eligibility check elevated with two delegates (RV-001)", async () => {
+      // The scenario the second re-review reproduced. One delegate returns early
+      // (a claimed account), the other is shared with a second owner and so must
+      // NOT be offered a reset. With one elevation window per delegate, the early
+      // one's `finally` turned the bypass off while the shared one's delegation
+      // count was still to run -- and that count, run tenant-scoped, sees only
+      // this owner's row and answers 1 instead of 2, so the API offered a reset
+      // the reset endpoint would then correctly refuse.
+      //
+      // One delegate could never show this: the interleaving needs a sibling.
+      const manager: any = { query: bypassAwareQueryMock() };
+      installTransactionMock(manager);
+      delegatesRepo.find.mockResolvedValue([
+        {
+          id: "g1",
+          status: "active",
+          createdAt: new Date("2026-01-02"),
+          delegateUserId: "claimed",
+          grants: [],
+        },
+        {
+          id: "g2",
+          status: "active",
+          createdAt: new Date("2026-01-01"),
+          delegateUserId: "shared",
+          grants: [],
+        },
+      ]);
+      usersRepo.find.mockResolvedValue([
+        { id: "claimed", email: "c@e.f", passwordHash: "h" },
+        { id: "shared", email: "s@e.f", passwordHash: "h" },
+      ]);
+      // "claimed" has completed the /register claim path, so isDelegateOnly is
+      // false and its check returns before touching the counts.
+      usersRepo.findOne.mockImplementation(async (opts: any) =>
+        opts?.where?.id === "claimed"
+          ? { id: "claimed", isDelegateOnly: false }
+          : { id: "shared", isDelegateOnly: true, role: "user" },
+      );
+      accountsRepo.count.mockResolvedValue(0);
+
+      // Every query the shared delegate's count runs must see the bypass on.
+      const bypassAtCount: string[] = [];
+      delegatesRepo.count.mockImplementation(async (opts: any) => {
+        if (opts?.where?.ownerUserId) return 0; // owns no delegations
+        const rows = await manager.query(
+          "SELECT current_setting('app.bypass_rls', true) AS bypass",
+        );
+        bypassAtCount.push(rows[0].bypass);
+        return 2; // shared with a second owner
+      });
+
+      const res = await service.listDelegates("o1");
+
+      expect(bypassAtCount).toEqual(["on"]);
+      expect(
+        res.find((d) => d.delegate.id === "shared")!.delegate.canResetPassword,
+      ).toBe(false);
+      expect(
+        res.find((d) => d.delegate.id === "claimed")!.delegate.canResetPassword,
+      ).toBe(false);
+      // One bracket for the whole enrichment phase, not one per delegate.
+      const emitted = windows(manager);
+      expect(emitted.filter((q) => q === BYPASS_ON)).toHaveLength(1);
+      expect(emitted.filter((q) => q === BYPASS_OFF)).toHaveLength(1);
+      expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
+    });
+
     it("elevates the delegate credential write in resetDelegatePassword (FV-002)", async () => {
       // The read, the decision, the save and the session revocation are all about
       // the delegate. Under enforcement the read returned nothing and the owner

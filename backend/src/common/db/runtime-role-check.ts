@@ -43,8 +43,9 @@ export interface RuntimeRoleFacts {
    */
   ownedPoliciedTables: number;
   /**
-   * Roles this one is a member of that are themselves exempt from policies --
-   * superuser, `BYPASSRLS`, the database owner, or the owner of a policied table.
+   * Roles this one can `SET ROLE` into that are themselves exempt from policies
+   * -- superuser, `BYPASSRLS`, the database owner, or the owner of a policied
+   * table.
    *
    * Membership is not the same as holding the attribute: PostgreSQL applies it
    * only after `SET ROLE`, and nothing in this application issues one. But the
@@ -52,6 +53,11 @@ export interface RuntimeRoleFacts {
    * and a role that can reach an exempt role with one statement is -- an SQL
    * injection or a mistaken raw query gets `SET ROLE` for free. Reported by name
    * so the operator can see which grant to revoke (DR-V2).
+   *
+   * Reachability is transitive and respects each grant's SET option, because the
+   * question is "can this role become that one", not "was it granted that one
+   * directly": an `app -> platform_runtime -> owner` chain answers yes while a
+   * direct-membership join sees only the intermediate role (DR-R1).
    */
   exemptRoleMemberships: string[];
 }
@@ -74,9 +80,14 @@ SELECT current_user AS current_user_name,
            AND c.relrowsecurity
            AND c.relowner = r.oid) AS owned_policied_tables,
        (SELECT coalesce(array_agg(DISTINCT g.rolname), '{}')
-          FROM pg_auth_members m
-          JOIN pg_roles g ON g.oid = m.roleid
-         WHERE m.member = r.oid
+          FROM pg_roles g
+         WHERE g.oid <> r.oid
+           -- Reachability, not direct membership: pg_has_role follows a chain
+           -- of grants and honours each edge's SET option, so a two-hop
+           -- app -> platform -> owner chain is caught and a WITH SET FALSE edge
+           -- is not a false alarm. A join on pg_auth_members.member saw only the
+           -- first hop (DR-R1).
+           AND pg_has_role(r.oid, g.oid, 'SET')
            AND (g.rolsuper
                 OR g.rolbypassrls
                 OR g.oid = d.datdba

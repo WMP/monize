@@ -162,9 +162,10 @@ describe("withElevatedDb", () => {
         BYPASS_READ_SQL,
         BYPASS_ON_SQL,
         "OUTER BEFORE",
-        // The inner window sees the GUC already on, so it neither sets nor
-        // clears it.
-        BYPASS_READ_SQL,
+        // The inner window joins the counted one, so it neither sets nor clears
+        // the GUC -- and does not even probe it: the count already knows a window
+        // is open, and asking the connection would be a round trip spent on a
+        // question with a known answer.
         "INNER",
         "OUTER AFTER",
         BYPASS_OFF_SQL,
@@ -199,6 +200,137 @@ describe("withElevatedDb", () => {
       // Exactly one restore, and it belongs to the outer window.
       expect(queries.filter((q) => q === BYPASS_OFF_SQL)).toHaveLength(1);
       expect(queries[queries.length - 1]).toBe(BYPASS_OFF_SQL);
+    });
+
+    it("keeps the bypass on for a concurrent sibling until the last one leaves (RV-001)", async () => {
+      // Reading the GUC cannot tell two overlapping OUTER windows apart: both
+      // probe before either sets, both read "off", both conclude they own the
+      // restore, and the first to finish turns the bypass off while the second is
+      // still working. `Promise.all` over a page of delegates is exactly that
+      // shape. The window is reference-counted per connection instead.
+      process.env.RLS_MODE = "enforce";
+      const { manager, queries } = makeManager();
+      const seen: string[] = [];
+      let releaseFast!: () => void;
+      const fastMayFinish = new Promise<void>((r) => (releaseFast = r));
+
+      await Promise.all([
+        withElevatedDb(manager, "fast sibling", async (m) => {
+          await m.query("FAST");
+          releaseFast();
+        }),
+        withElevatedDb(manager, "slow sibling", async (m) => {
+          await m.query("SLOW BEFORE");
+          await fastMayFinish;
+          // The fast sibling has returned by now. Under the old ownership test
+          // this query ran tenant-filtered.
+          const rows = (await m.query(BYPASS_READ_SQL)) as Array<{
+            bypass: string;
+          }>;
+          seen.push(rows[0].bypass);
+          await m.query("SLOW AFTER");
+        }),
+      ]);
+
+      expect(seen).toEqual(["on"]);
+      // Exactly one bracket for the pair, and it closes last.
+      expect(queries.filter((q) => q === BYPASS_ON_SQL)).toHaveLength(1);
+      expect(queries.filter((q) => q === BYPASS_OFF_SQL)).toHaveLength(1);
+      expect(queries[queries.length - 1]).toBe(BYPASS_OFF_SQL);
+      expect(queries.indexOf("SLOW AFTER")).toBeLessThan(
+        queries.indexOf(BYPASS_OFF_SQL),
+      );
+    });
+
+    it("a joiner never runs before the bypass has landed", async () => {
+      // The joiner skips the flip, so it must wait for the opener's to complete
+      // rather than racing ahead of it.
+      process.env.RLS_MODE = "enforce";
+      const { manager, queries } = makeManager();
+
+      await Promise.all([
+        withElevatedDb(manager, "opener", async (m) => m.query("OPENER")),
+        withElevatedDb(manager, "joiner", async (m) => m.query("JOINER")),
+      ]);
+
+      expect(queries.indexOf(BYPASS_ON_SQL)).toBeLessThan(
+        queries.indexOf("JOINER"),
+      );
+    });
+
+    it("does not leave the window claimed when opening it throws", async () => {
+      // A failed open must not strand the count, or every later elevation on this
+      // connection would think a window was already open and never set the GUC.
+      process.env.RLS_MODE = "enforce";
+      const queries: string[] = [];
+      let failNextOn = true;
+      const manager = {
+        query: jest.fn(async (text: string) => {
+          queries.push(text);
+          if (text === BYPASS_READ_SQL) return [{ bypass: "" }];
+          if (text === BYPASS_ON_SQL && failNextOn) {
+            failNextOn = false;
+            throw new Error("connection lost");
+          }
+          return [];
+        }),
+      } as unknown as EntityManager;
+
+      await expect(
+        asUser(() => withElevatedDb(manager, "doomed", async () => undefined)),
+      ).rejects.toThrow("connection lost");
+
+      // A second attempt behaves like a first one: probe, set, restore.
+      await asUser(() =>
+        withElevatedDb(manager, "retry", async (m) => m.query("WORK")),
+      );
+
+      expect(queries.slice(2)).toEqual([
+        BYPASS_READ_SQL,
+        BYPASS_ON_SQL,
+        "WORK",
+        BYPASS_OFF_SQL,
+      ]);
+    });
+
+    it("propagates a failed open to a sibling instead of letting it run unelevated", async () => {
+      process.env.RLS_MODE = "enforce";
+      const manager = {
+        query: jest.fn(async (text: string) => {
+          if (text === BYPASS_READ_SQL) return [{ bypass: "" }];
+          if (text === BYPASS_ON_SQL) throw new Error("connection lost");
+          return [];
+        }),
+      } as unknown as EntityManager;
+      const joinerRan = jest.fn();
+
+      const results = await Promise.allSettled([
+        asUser(() => withElevatedDb(manager, "opener", async () => undefined)),
+        asUser(() =>
+          withElevatedDb(manager, "joiner", async () => joinerRan()),
+        ),
+      ]);
+
+      expect(results.every((r) => r.status === "rejected")).toBe(true);
+      expect(joinerRan).not.toHaveBeenCalled();
+    });
+
+    it("counts per connection, so two transactions do not share a window", async () => {
+      // The GUC is transaction-local. Two managers on different connections are
+      // two windows, and one finishing must not close the other's.
+      process.env.RLS_MODE = "enforce";
+      const a = makeManager();
+      const b = makeManager();
+
+      await Promise.all([
+        withElevatedDb(a.manager, "a", async (m) => m.query("A")),
+        withElevatedDb(b.manager, "b", async (m) => m.query("B")),
+      ]);
+
+      for (const { queries } of [a, b]) {
+        expect(queries.filter((q) => q === BYPASS_ON_SQL)).toHaveLength(1);
+        expect(queries.filter((q) => q === BYPASS_OFF_SQL)).toHaveLength(1);
+      }
     });
 
     it("reads the { rows } result shape as well as the array one", async () => {

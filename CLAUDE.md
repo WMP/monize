@@ -97,11 +97,16 @@ presented *now*, and a session is bound to one credential fingerprint. Matching
 the user is not enough: one user holds many tokens with different scopes, and a
 read-only token that could reuse a write session could write.
 
-**An unprivileged mode is verified, not configured.** Selecting a role name and
-supplying its password says nothing about `rolsuper`, `rolbypassrls`, or what the
-role owns -- and PostgreSQL exempts all three from every policy. Ask the
-connection what it is (`runtime-role-check.ts`) and refuse to serve traffic on a
-wrong answer.
+**An unprivileged mode is verified, not configured -- and the privilege question
+is reachability, not attributes.** Selecting a role name and supplying its
+password says nothing about `rolsuper`, `rolbypassrls`, or what the role owns --
+and PostgreSQL exempts all three from every policy. Ask the connection what it is
+(`runtime-role-check.ts`) and refuse to serve traffic on a wrong answer. Asking
+about the login role's own attributes is still not enough: a role that can
+`SET ROLE` into an exempt one is exempt in one statement, so the check uses
+`pg_has_role(..., 'SET')`, which is transitive and honours each grant's SET option.
+A join on `pg_auth_members.member` answers about the first hop only, and a two-hop
+chain through an unremarkable intermediate role passes it.
 
 **Activity belongs to the person, not to the data.** `last_activity_at` records
 the *authenticated* user (`realUserId`), never the effective owner. A delegate's
@@ -180,15 +185,22 @@ needed, enumerate every statement in the operation -- read, decide, write, and
 the side effects like revoking the sessions a credential change invalidates --
 and put them in one transaction and one window.
 
-**A helper that brackets state is re-entrant or it is a trap.** `withElevatedDb`
-turned `app.bypass_rls` off in its `finally`, so one elevated operation calling
-another returned the outer one to tenant-filtered reads halfway through -- an
-elevated sequence that half works, with no error. Only the outermost window
-restores now, decided by reading the GUC rather than by a flag threaded through
-the call, because the outer window may be opened by code the inner call cannot
-see. Any helper that saves-sets-restores shared state needs the same treatment,
-and the mock in its callers' specs has to model the state or the bracket
-assertions are fiction (`bypassAwareQueryMock`).
+**A helper that brackets state is re-entrant or it is a trap, and reading the
+state is not how you find out who owns it.** `withElevatedDb` turned
+`app.bypass_rls` off in its `finally`, so one elevated operation calling another
+returned the outer one to tenant-filtered reads halfway through. Deciding
+ownership by *reading* the GUC fixed sequential nesting and left concurrency
+broken: two `Promise.all` siblings both probe before either sets, both read
+"off", both claim the restore, and the first to finish closes the window under the
+second -- which is what `listDelegates` did, one window per delegate. The window
+is reference-counted per connection now, the claim is taken **synchronously**
+before any `await` so two entrants cannot both see zero, and it closes when the
+last caller leaves. A joiner also waits for the opener's flip rather than assuming
+it landed. Two obligations follow for any save-set-restore helper: the ownership
+test must not be a read of the thing being set, and the mock in its callers' specs
+has to model that state or the bracket assertions are fiction
+(`bypassAwareQueryMock`). And prefer one explicit outer window around a fan-out to
+N implicit ones, so the call site is correct without relying on the guarantee.
 
 **Two statements deciding one row's fate need the row locked, not just a
 transaction.** The shared-currency delete ran its all-tenant reference check and

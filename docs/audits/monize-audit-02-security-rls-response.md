@@ -9,16 +9,17 @@
 | Commits | 19 |
 | Diff | 138 files, +7678 / -2036 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Additional defects found and fixed | 15, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after independent verification (section 5A) |
+| Additional defects found and fixed | 16, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after two rounds of independent verification (sections 5A, 5B) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
 one. So this document has two halves: sections 1 to 4 answer the report item by item,
 and section 5 is what a full re-read of the 117 files the report names turned up that
 the report did not -- three passes over that file list, each finding defects the
-previous pass had missed. Section 5A answers a later independent verification review
-of this branch, which found four residual defects; all four are fixed.
+previous pass had missed. Sections 5A and 5B answer two rounds of independent
+verification of this branch: the first found four residual defects, the second found
+one that the first round's own fix introduced. All five are fixed.
 
 ## How to read the status column
 
@@ -674,7 +675,8 @@ section 8.
 
 ### DR-V2 -- role-membership escalation was not checked
 
-**Status: Fixed**, though the review classed it as unverified hardening rather than a
+**Status: Fixed** (direct grants first, then transitive reachability -- see DR-R1 in
+section 5B), though the review classed it as unverified hardening rather than a
 defect. It was worth closing on the check's own terms: the whole point of
 `runtime-role-check.ts` is that an unprivileged mode is *verified* rather than
 configured, and it verified the login role's own attributes while saying nothing about
@@ -683,6 +685,85 @@ round trip, and membership in any role that is itself exempt -- superuser, `BYPA
 the database owner, or the owner of a policied table -- is reported by name so the
 operator can see which grant to revoke. Ordinary group memberships are not reported,
 because a check that cries wolf gets ignored.
+
+## 5B. Answer to the second verification re-review
+
+A second re-review (`monize-phase2-fix-verification-re-review.md`, reviewed head
+`3af6da53`) confirmed FV-001, FV-003 and FV-004 closed, and found that the FV-002
+remediation introduced a new defect. **It is right, it was mine, and it is fixed.**
+
+### RV-001 -- concurrent sibling elevation windows
+
+**Status: Fixed.** Confirmed by independent reproduction before changing anything:
+a serialized one-connection model of the shipped algorithm produces exactly the
+trace the review reports (`READ:off, READ:off, ON, ON, A1:on, B1:on, OFF, B2:off,
+OFF`). The second sibling's last query ran tenant-filtered while its own window was
+still open.
+
+The cause is worth stating precisely, because the first fix looked like the whole
+answer and was half of it: **deciding ownership by reading the state you are about
+to set cannot distinguish two overlapping outer windows.** Reading the GUC fixed
+sequential nesting -- which is what FV-002 needed -- and said nothing about
+concurrency, and `listDelegates` mapping every delegate to an eligibility check
+created precisely the concurrent shape.
+
+Fixed at both levels, deliberately:
+
+- **The helper.** The window is reference-counted per connection (keyed on the
+  `QueryRunner`, since the GUC is transaction-local), the claim is taken
+  *synchronously* before any `await` so two entrants can never both observe zero,
+  and it closes when the last participant leaves. A joiner awaits the opener's flip
+  rather than assuming it landed, and a failed open rejects that promise so a
+  sibling cannot proceed believing the window exists. The GUC probe is kept for the
+  one thing only it can answer -- an outer window opened by code the counter cannot
+  see -- and in that case the helper records that it did not set the GUC, so it
+  never restores somebody else's.
+- **The call site**, as the review recommends: `listDelegates` now opens one
+  explicit window around the whole enrichment phase, entered after the owner-scoped
+  delegation rows are authorized. Not because the helper still needs it, but because
+  a call site should be correct without depending on that guarantee -- and one
+  elevated read of one page is the honest shape of the operation.
+
+The review's recommended regression test is implemented as specified: two delegates,
+one returning early, the other shared with a second owner; every query for the
+second delegate asserted to observe bypass `on`; `canResetPassword: false` for the
+shared delegate; and exactly one `ON` and one `OFF` for the enrichment phase. Both
+that test and the helper's sibling test fail against the previous algorithm
+(verified by reverting it). Four more helper cases came out of thinking the fix
+through rather than from the report: joiner-ordering, a failed open not stranding the
+count, a failed open propagating to the sibling, and two connections not sharing a
+window.
+
+The review's judgement on severity is also right and worth keeping in the record:
+this was **not** a cross-tenant password takeover, because `resetDelegatePassword`
+re-checks eligibility inside its own sequential elevated transaction and would have
+refused. What it was is an access-management API that could claim an authority the
+enforcing endpoint denies -- or hide a legitimate recovery action under another
+interleaving.
+
+### DR-R1 -- membership hardening saw only direct grants
+
+**Status: Fixed.** Accepted in full. `pg_auth_members.member = r.oid` answers about
+the first hop, so `monize_app -> platform_runtime -> database_owner` passed whenever
+the intermediate role was unremarkable, and the join ignored `set_option` entirely.
+Replaced with `pg_has_role(r.oid, g.oid, 'SET')`, which is transitive and evaluates
+each edge's SET option -- one predicate instead of a recursive query, and the direct
+join is removed rather than supplemented so the query holds one answer rather than
+two of differing strength. `g.oid <> r.oid` excludes the role itself, which is always
+reachable from itself.
+
+The review is right that the previous document overstated DR-V2 as fully closed. It
+was closed for direct grants only; the claim now matches the check.
+
+### On this re-review's own limits
+
+Its section 8 is accurate, and one line in it deserves an explicit answer: the test
+counts in section 7 are branch-author claims it could not reproduce, because DNS for
+GitHub was unavailable in its environment and no PostgreSQL was. That is true, and it
+cuts the same way as the Docker gap on this side -- neither party has executed the
+integration scenarios that would settle RV-001 under a real unprivileged role. Both
+its first and second recommendations are now met in unit form; the third (the same
+scenario against real PostgreSQL) remains open and is listed in section 8.
 
 ### DR-V3, DR-V4 -- unchanged
 
@@ -719,7 +800,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified, not configured | `runtime-role-check.spec.ts` |
+| An unprivileged mode is verified, and the question is SET-ROLE reachability | `runtime-role-check.spec.ts` |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |
@@ -731,7 +812,7 @@ is a scanning test.
 | Validate everything free before spending a single-use credential | `backup.service.spec.ts` |
 | A proof of a round trip names the round trip | `oidc-reauth.service.spec.ts`, `auth.controller.spec.ts` |
 | Fix the read and the write, or you have moved the failure | `delegation.service.spec.ts` |
-| A helper that brackets state is re-entrant or it is a trap | `elevated-db.spec.ts` nesting cases |
+| A helper that brackets state is re-entrant, and its ownership test is not a read of that state | `elevated-db.spec.ts` nesting + sibling cases |
 | Two statements deciding one row's fate need the row locked | `currencies.service.spec.ts` |
 | A temporary filename is unique per write, not per process | `auto-backup.service.spec.ts` |
 
@@ -743,7 +824,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10828 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10835 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -772,6 +853,7 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 | Cross-replica single use of the OIDC re-authentication artifact | Needs shared state, which is a schema decision. Documented at the call site with the reason the residual risk is small. |
 | An owner notification when an emergency-access contact is added | Would have made 5.1 visible to the victim. It is a product change (new email, new copy, new locale keys), not a security fix, so it is not on a fix branch. |
 | Real two-connection and filesystem-interleaving tests for FV-003 and FV-004 | The fixes are asserted at the unit level (lock ordering, temp-path uniqueness). Proving the race itself needs two live connections and controlled filesystem timing. |
+| The RV-001 sibling scenario under a real unprivileged PostgreSQL role | Asserted at the unit level with a serialized query mock, which is what caught it. The re-review's third closing condition; it needs a live role this environment does not have. |
 
 ## 9. Commit index
 

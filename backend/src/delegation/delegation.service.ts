@@ -701,49 +701,69 @@ export class DelegationService {
         order: { createdAt: "DESC" },
       });
 
-      const identities = await this.delegateIdentities(
+      // ONE window around the whole enrichment phase, entered after the rows
+      // above have been authorized (RV-001). Two reasons it is one rather than
+      // one per delegate:
+      //
+      //  - the reference count in `withElevatedDb` makes concurrent siblings
+      //    safe, but a caller should not need that guarantee to be correct. An
+      //    explicit outer window means every inner call can only ever observe an
+      //    already-open one, so there is no ownership question to get wrong.
+      //  - it is also the honest shape of the operation: this is one elevated
+      //    read of one page of delegates, not N unrelated elevations.
+      return withElevatedDb(
         manager,
-        delegations.map((d) => d.delegateUserId),
-      );
+        "enrich this owner's delegation list with delegate identity and reset eligibility",
+        async (elevated) => {
+          const identities = await this.delegateIdentities(
+            elevated,
+            delegations.map((d) => d.delegateUserId),
+          );
 
-      return Promise.all(
-        delegations.map(async (d) => {
-          const identity = identities.get(d.delegateUserId);
-          return {
-            id: d.id,
-            status: d.status,
-            createdAt: d.createdAt,
-            delegate: {
-              id: d.delegateUserId,
-              email: identity?.email ?? null,
-              firstName: identity?.firstName ?? null,
-              lastName: identity?.lastName ?? null,
-              hasPassword: !!identity?.passwordHash,
-              // False when the password is the delegate's own (full account or
-              // a delegate elsewhere); the owner cannot reset it.
-              canResetPassword: await this.canOwnerResetDelegatePasswordWithin(
-                manager,
-                d.delegateUserId,
-              ),
-              // Gates the Joint toggle client-side; setGrants re-checks.
-              isFullAccount: await this.isFullAccount(d.delegateUserId),
-            },
-            // isJoint must round-trip: setGrants is delete-and-recreate, so a
-            // client saving a matrix without it would silently clear the flag.
-            grants: (d.grants ?? [])
-              .filter((g) => g.canRead)
-              .map((g) => ({
-                accountId: g.accountId,
-                canRead: g.canRead,
-                canCreate: g.canCreate,
-                canEdit: g.canEdit,
-                canDelete: g.canDelete,
-                isJoint: g.isJoint,
-              })),
-            capabilities: this.toCapabilitySet(d),
-            sections: this.toSectionSet(d),
-          };
-        }),
+          return Promise.all(
+            delegations.map(async (d) => {
+              const identity = identities.get(d.delegateUserId);
+              return {
+                id: d.id,
+                status: d.status,
+                createdAt: d.createdAt,
+                delegate: {
+                  id: d.delegateUserId,
+                  email: identity?.email ?? null,
+                  firstName: identity?.firstName ?? null,
+                  lastName: identity?.lastName ?? null,
+                  hasPassword: !!identity?.passwordHash,
+                  // False when the password is the delegate's own (full account
+                  // or a delegate elsewhere); the owner cannot reset it.
+                  canResetPassword:
+                    await this.canOwnerResetDelegatePasswordWithin(
+                      elevated,
+                      d.delegateUserId,
+                    ),
+                  // Gates the Joint toggle client-side; setGrants re-checks.
+                  isFullAccount: await this.isFullAccountWithin(
+                    elevated,
+                    d.delegateUserId,
+                  ),
+                },
+                // isJoint must round-trip: setGrants is delete-and-recreate, so a
+                // client saving a matrix without it would silently clear the flag.
+                grants: (d.grants ?? [])
+                  .filter((g) => g.canRead)
+                  .map((g) => ({
+                    accountId: g.accountId,
+                    canRead: g.canRead,
+                    canCreate: g.canCreate,
+                    canEdit: g.canEdit,
+                    canDelete: g.canDelete,
+                    isJoint: g.isJoint,
+                  })),
+                capabilities: this.toCapabilitySet(d),
+                sections: this.toSectionSet(d),
+              };
+            }),
+          );
+        },
       );
     });
   }

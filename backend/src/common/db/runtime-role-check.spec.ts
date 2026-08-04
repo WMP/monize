@@ -117,12 +117,28 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
   });
 
   it("asks the database about membership rather than assuming none", () => {
-    // The previous version of this check could not have answered the question at
-    // all: pg_auth_members was not in the query.
-    expect(RUNTIME_ROLE_FACTS_SQL).toContain("pg_auth_members");
+    // The first version of this check could not have answered the question at
+    // all -- no role-membership catalog appeared in the query.
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolsuper");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolbypassrls");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid = d.datdba");
+  });
+
+  it("asks about SET-ROLE reachability, not one hop of membership (DR-R1)", () => {
+    // `pg_auth_members.member = r.oid` sees only roles granted DIRECTLY, so an
+    // app -> platform_runtime -> owner chain passed startup whenever the
+    // intermediate role was not itself exempt. `pg_has_role(..., 'SET')` is
+    // transitive and evaluates each edge's SET option, which is the actual
+    // question: can this role become that one.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain(
+      "pg_has_role(r.oid, g.oid, 'SET')",
+    );
+    // ...and the one-hop join is gone, not merely supplemented -- keeping it
+    // would leave a second, weaker answer in the same query.
+    expect(RUNTIME_ROLE_FACTS_SQL).not.toContain("m.member = r.oid");
+    // The role is always "reachable" from itself; excluding it stops the check
+    // reporting the runtime role as its own escalation path.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid <> r.oid");
   });
 });
 
