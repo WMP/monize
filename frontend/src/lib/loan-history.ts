@@ -317,16 +317,23 @@ export function deriveLoanPaymentHistory(
       lastBalance = balanceTimeline[balanceIdx].balance;
       balanceIdx++;
     }
-    if (event.principal > 0) {
-      // A principal payment already carries its post-payment balance (and
-      // agrees with the timeline entry for its own date).
-      lastBalance = event.balance;
-    } else {
+    if (event.principal === 0) {
       // Interest-only row: the debt is whatever the full signed ledger --
       // draws included -- says it is as of this date, not merely what it was
       // after the last *emitted* payment row.
       event.balance = lastBalance;
     }
+    // A principal payment keeps the balance the main walk already gave it
+    // (`event.balance`, its own immediate post-payment figure) -- but
+    // `lastBalance` itself must NOT be reset to that figure. The `while`
+    // loop above already walked every `balanceTimeline` entry through this
+    // date, in ledger order, including a same-day transaction that lands
+    // *after* this payment in the array (a draw booked later the same day):
+    // `balanceIdx` has already advanced past that entry too, so resetting
+    // `lastBalance` here discarded it permanently and left a later orphan
+    // row looking up the pre-draw balance instead (REV-20260803-034, second
+    // reopen). Leaving `lastBalance` as the timeline loop set it keeps the
+    // true end-of-day figure for whatever orphan row consults it next.
   }
   assignObservedRates(merged, periodsPerYear, rateChanges, account);
 
