@@ -3,6 +3,8 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import type { Request, Response } from "express";
 import * as crypto from "crypto";
+import { DataSource } from "typeorm";
+import { withScopedDb } from "../../common/db/scoped-db";
 
 export const OIDC_REAUTH_COOKIE = "oidc_reauth";
 
@@ -48,8 +50,12 @@ export type OidcReauthPurpose = (typeof OIDC_REAUTH_PURPOSES)[number];
  *    purpose it was requested for, and is only issued on a step-up callback.
  * 3. **One use.** Clearing the cookie clears the client's copy, not the server's
  *    record, so two requests sent before the clear both passed. A proof's `jti` is
- *    now spent server-side on first successful verification, which also closes the
- *    parallel-request replay.
+ *    now spent server-side on first successful verification. The claim is a row in
+ *    `oidc_step_up_claims`, not a field in this process: a `Map` enforces single use
+ *    inside one Node process, and on a deployment with several backend replicas two
+ *    requests carrying the same proof could be routed to different replicas and
+ *    both be told yes. `INSERT ... ON CONFLICT DO NOTHING` on the primary key is
+ *    atomic across every replica, so exactly one wins.
  */
 @Injectable()
 export class OidcReauthService {
@@ -62,21 +68,10 @@ export class OidcReauthService {
    */
   private readonly TTL_SECONDS = 5 * 60;
 
-  /**
-   * Spent `jti`s, with the moment they can be forgotten.
-   *
-   * A token outlives its use by at most `TTL_SECONDS`, so the set stays small and
-   * prunes itself. In-memory is the right scope: the proof is a cookie on one
-   * browser and a replay has to reach the same process within five minutes. With
-   * several replicas a parallel replay could land on another one -- which is why
-   * the purpose binding and the freshness check are what carry the security
-   * property, and this closes the common case rather than being the only defence.
-   */
-  private readonly spentJtis = new Map<string, number>();
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private get useSecureCookies(): boolean {
@@ -92,10 +87,33 @@ export class OidcReauthService {
     };
   }
 
-  private prune(now: number): void {
-    for (const [jti, expiresAt] of this.spentJtis) {
-      if (expiresAt <= now) this.spentJtis.delete(jti);
-    }
+  /**
+   * Claim a `jti` for this proof, atomically and across every replica.
+   *
+   * Returns true only for the caller whose INSERT actually created the row.
+   * Expired rows are swept in the same statement rather than by a timer: the
+   * table only ever holds proofs from the last few minutes, so the delete is
+   * trivial and there is nothing to schedule or forget.
+   */
+  private async claim(
+    jti: string,
+    userId: string,
+    purpose: OidcReauthPurpose,
+    expiresAt: Date,
+  ): Promise<boolean> {
+    return withScopedDb(this.dataSource, async (m) => {
+      await m.query(
+        `DELETE FROM oidc_step_up_claims WHERE expires_at <= now()`,
+      );
+      const result: { jti: string }[] = await m.query(
+        `INSERT INTO oidc_step_up_claims (jti, user_id, purpose, expires_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (jti) DO NOTHING
+         RETURNING jti`,
+        [jti, userId, purpose, expiresAt],
+      );
+      return result.length > 0;
+    });
   }
 
   /**
@@ -144,13 +162,19 @@ export class OidcReauthService {
   /**
    * True when the request carries a valid, unexpired, unspent proof belonging to
    * `userId` and issued for `purpose`. Every failure mode -- absent, malformed,
-   * expired, already spent, signed for another user, issued for another purpose,
+   * expired, already claimed, signed for another user, issued for another purpose,
    * or a token of some other type -- is a plain false.
    *
-   * Verifying **spends** the proof: one redirect buys one destructive action.
-   * `consume(res)` then clears the browser's copy.
+   * Verifying **spends** the proof, by claiming its `jti` in the shared ledger:
+   * one redirect buys one destructive action, across the whole deployment rather
+   * than once per process. `consume(res)` then clears the browser's copy, which is
+   * defence in depth and not the record.
    */
-  verify(req: Request, userId: string, purpose: OidcReauthPurpose): boolean {
+  async verify(
+    req: Request,
+    userId: string,
+    purpose: OidcReauthPurpose,
+  ): Promise<boolean> {
     const token = (req.cookies as Record<string, string> | undefined)?.[
       OIDC_REAUTH_COOKIE
     ];
@@ -178,20 +202,19 @@ export class OidcReauthService {
       }
       if (!payload.jti) return false;
 
-      const now = Date.now();
-      this.prune(now);
-      if (this.spentJtis.has(payload.jti)) {
+      // Claimed before the caller acts on the answer, so two requests racing on
+      // one proof cannot both be told yes -- including when they land on
+      // different replicas.
+      const expiresAt = new Date(
+        payload.exp ? payload.exp * 1000 : Date.now() + this.TTL_SECONDS * 1000,
+      );
+      const claimed = await this.claim(payload.jti, userId, purpose, expiresAt);
+      if (!claimed) {
         this.logger.warn(
           `OIDC re-auth proof rejected: already spent (purpose "${purpose}")`,
         );
         return false;
       }
-      // Spent before the caller acts on the answer, so two requests racing on one
-      // proof cannot both be told yes.
-      this.spentJtis.set(
-        payload.jti,
-        payload.exp ? payload.exp * 1000 : now + this.TTL_SECONDS * 1000,
-      );
       return true;
     } catch {
       // Expired or tampered with. Both mean "not proven".

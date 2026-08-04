@@ -181,7 +181,7 @@ export class MnyImportController {
         password: dto.wipePassword,
         // Wiping the existing dataset before an import is the same destructive
         // act as a restore, so it takes the same purpose-bound proof.
-        oidcReauthProven: this.oidcReauthService.verify(
+        oidcReauthProven: await this.oidcReauthService.verify(
           req,
           req.user.id,
           "backup-restore",

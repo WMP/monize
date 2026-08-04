@@ -209,9 +209,13 @@ properties are the point, and each was missing once:
   `verify(req, userId, purpose)` compares it. One generic proof authorised restore
   and account deletion alike -- and it was minted on *every* ordinary login, so
   signing in armed a full-account restore.
-- **Single use.** `verify` spends the `jti` server-side before returning true;
-  `consume(res)` only clears the browser's copy. Two requests sent before the clear
-  both used to pass.
+- **Single use, deployment-wide.** `verify` claims the `jti` in
+  `oidc_step_up_claims` (`INSERT ... ON CONFLICT DO NOTHING`) before returning true,
+  so `verify` is **async**. A process-local set only holds inside one Node process:
+  with several backend replicas, two requests carrying one proof could be routed to
+  two replicas and both be told yes. `consume(res)` clears the browser's copy and is
+  defence in depth, not the record. Expired claims are swept by the next insert, so
+  nothing has to be scheduled.
 
 Every destructive endpoint names its purpose and consumes on success. `restore` was
 the one that verified without consuming.

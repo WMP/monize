@@ -112,7 +112,7 @@ export class UsersController {
   ) {
     // An OIDC account is re-authenticated by the identity provider, and the
     // proof is the HttpOnly cookie the callback set -- not anything in `dto`.
-    const proven = this.oidcReauthService.verify(
+    const proven = await this.oidcReauthService.verify(
       req,
       req.user.id,
       "delete-account",
@@ -142,7 +142,7 @@ export class UsersController {
     @Body() dto: DeleteDataDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const proven = this.oidcReauthService.verify(
+    const proven = await this.oidcReauthService.verify(
       req,
       req.user.id,
       "delete-data",

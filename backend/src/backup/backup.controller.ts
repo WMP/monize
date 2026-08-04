@@ -167,7 +167,7 @@ export class BackupController {
 
     // Purpose-bound: an ordinary login, or a step-up started for account
     // deletion, cannot authorise replacing the dataset.
-    const oidcReauthProven = this.oidcReauthService.verify(
+    const oidcReauthProven = await this.oidcReauthService.verify(
       req,
       req.user.id,
       "backup-restore",

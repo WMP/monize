@@ -39,7 +39,7 @@ export class StepUpAuthController {
     // challenged, so its own claim to have redirected cannot be the evidence.
     // The proof is bound to the purpose the step-up was started for, so a
     // restore redirect cannot mint a delete-account token here.
-    const oidcReauthProven = this.oidcReauthService.verify(
+    const oidcReauthProven = await this.oidcReauthService.verify(
       req,
       req.user.id,
       dto.purpose,
