@@ -317,6 +317,66 @@ describe('AmortizationScheduleTable', () => {
     expect(screen.getByText('May 29, 2026')).toBeInTheDocument();
   });
 
+  it('shows a gap indicator on a grouped month when the gap falls between its own child rows (REV-20260803-013)', () => {
+    // Weekly payments Apr 24, May 1, May 8, then a jump to May 29 -- the
+    // missing May 15 and May 22 installments create a gap detected before May
+    // 29. May's three entries (May 1, May 8, May 29) group into one aggregate
+    // row whose first child (May 1) has no gap of its own, so relying on
+    // monthRows[0].precededByGap alone (the original bug) discards the gap
+    // entirely once it is inside a grouped month.
+    const row = (date: string, i: number): LoanPaymentEvent => ({
+      date,
+      principal: 200,
+      interest: 20,
+      balance: 50000 - 200 * (i + 1),
+      cumulativePrincipal: 200 * (i + 1),
+      cumulativeInterest: 20 * (i + 1),
+      type: 'REGULAR' as const,
+      annualRate: 4.5,
+    });
+    render(
+      <AmortizationScheduleTable
+        historyEvents={[
+          row('2026-04-24', 0),
+          row('2026-05-01', 1),
+          row('2026-05-08', 2),
+          row('2026-05-29', 3),
+        ]}
+        projectionRows={[]}
+        currencyCode="CAD"
+      />,
+    );
+
+    // Collapsed: May's three entries are grouped, yet a gap indicator is
+    // shown even though May 1 (the group's first row) has no gap of its own --
+    // the gap that matters here is on May 29, a later child in the same group.
+    expect(screen.getByText('3 entries')).toBeInTheDocument();
+    expect(screen.getAllByText(/No recorded payments/).length).toBeGreaterThan(0);
+
+    // Expanding places the gap band between May 8 and May 29 -- where the gap
+    // actually occurred -- not before May 1, and not merely as a vague
+    // top-level signal.
+    fireEvent.click(screen.getByRole('button', { name: /Show or hide the payments/ }));
+    const rows = screen.getAllByRole('row');
+    const may1Index = rows.findIndex((r) => r.textContent?.includes('May 1, 2026'));
+    const may8Index = rows.findIndex((r) => r.textContent?.includes('May 8, 2026'));
+    const may29Index = rows.findIndex((r) => r.textContent?.includes('May 29, 2026'));
+    // The standalone gap band (not the aggregate row, which also carries the
+    // badge's sr-only text alongside "3 entries").
+    const gapBandRows = rows.filter(
+      (r) => r.textContent?.includes('No recorded payments') && !r.textContent?.includes('entries'),
+    );
+    expect(gapBandRows).toHaveLength(1);
+    const gapIndex = rows.indexOf(gapBandRows[0]);
+
+    expect(may1Index).toBeGreaterThan(-1);
+    expect(may8Index).toBeGreaterThan(-1);
+    expect(may29Index).toBeGreaterThan(-1);
+    expect(gapIndex).toBeGreaterThan(may1Index);
+    expect(gapIndex).toBeGreaterThan(may8Index);
+    expect(gapIndex).toBeLessThan(may29Index);
+  });
+
   it('leaves a single-entry month as a plain row (no toggle)', () => {
     render(
       <AmortizationScheduleTable

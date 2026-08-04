@@ -25,6 +25,10 @@ interface ScheduleTableRowProps {
     label: string;
     expanded: boolean;
     count: number;
+    /** True when a gap in payments falls between two of this group's children. */
+    hasGap: boolean;
+    /** Accessible label describing the gap, shared with the full-width gap band. */
+    gapLabel: string;
     onToggle: () => void;
   };
 }
@@ -81,6 +85,15 @@ export function ScheduleTableRow({
             <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
               {t('loanDetail.schedule.monthEntries', { count: monthGroup.count })}
             </span>
+            {monthGroup.hasGap && (
+              <span
+                className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                title={monthGroup.gapLabel}
+              >
+                <span aria-hidden="true">!</span>
+                <span className="sr-only">{monthGroup.gapLabel}</span>
+              </span>
+            )}
           </button>
         ) : (
           <>

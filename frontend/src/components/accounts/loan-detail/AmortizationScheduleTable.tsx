@@ -33,7 +33,16 @@ interface AmortizationScheduleTableProps {
  *  always single (one per period). */
 type ScheduleUnit =
   | { kind: 'single'; row: DisplayRow }
-  | { kind: 'group'; monthKey: string; aggregate: DisplayRow; children: DisplayRow[] }
+  | {
+      kind: 'group';
+      monthKey: string;
+      aggregate: DisplayRow;
+      children: DisplayRow[];
+      // Whether a gap in payments falls between two of this group's own
+      // children (not the gap, if any, before the group's first entry --
+      // that one gets its own top-level 'gap' unit above the group).
+      hasInternalGap: boolean;
+    }
   // A gap in payments: one or more expected installments with no recorded
   // payment. Rendered as an empty "no data" band before the row after the gap.
   | { kind: 'gap'; key: string };
@@ -161,10 +170,16 @@ export function AmortizationScheduleTable({
       // The month's rate is the regular installment's observed rate, not the
       // blended figure an overpayment's interest would produce.
       const regular = monthRows.find((r) => !r.isOverpayment && r.annualRate != null);
+      // A gap before the group's first entry is already surfaced by the
+      // top-level 'gap' unit pushed above; here we only need gaps that fall
+      // between two of the group's own children, which that check misses
+      // entirely (REV-20260803-013).
+      const hasInternalGap = monthRows.slice(1).some((r) => r.precededByGap);
       historicalUnits.push({
         kind: 'group',
         monthKey,
         children: monthRows,
+        hasInternalGap,
         aggregate: {
           paymentNumber: monthRows[0].paymentNumber,
           date: `${monthKey}-01`,
@@ -395,18 +410,35 @@ export function AmortizationScheduleTable({
                           label: formatMonthLabel(`${unit.monthKey}-01`, 'MMM yyyy'),
                           expanded,
                           count: unit.children.length,
+                          hasGap: unit.hasInternalGap,
+                          gapLabel: t('loanDetail.schedule.gapRow'),
                           onToggle: () => toggleMonth(unit.monthKey),
                         }}
                       />
                       {expanded &&
                         unit.children.map((child, ci) => (
-                          <ScheduleTableRow
-                            key={`c-${unit.monthKey}-${ci}`}
-                            row={child}
-                            currencyCode={currencyCode}
-                            showExtraColumn={showExtraColumn}
-                            isChild
-                          />
+                          <Fragment key={`c-${unit.monthKey}-${ci}`}>
+                            {/* A gap before the group's own first child is
+                                already shown by the top-level 'gap' unit above
+                                the group, so only render this for a gap that
+                                falls between two children (ci > 0). */}
+                            {ci > 0 && child.precededByGap && (
+                              <tr className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300">
+                                <td
+                                  colSpan={columnCount}
+                                  className="px-4 py-2 text-center text-xs font-medium"
+                                >
+                                  {t('loanDetail.schedule.gapRow')}
+                                </td>
+                              </tr>
+                            )}
+                            <ScheduleTableRow
+                              row={child}
+                              currencyCode={currencyCode}
+                              showExtraColumn={showExtraColumn}
+                              isChild
+                            />
+                          </Fragment>
                         ))}
                     </Fragment>
                   );
