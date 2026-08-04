@@ -78,6 +78,31 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
     );
     await applyRlsPolicies(dataSource, { includeEnable: true });
 
+    // The runtime role is shared and outlives `dropSchema`, so a membership left
+    // behind by an aborted run (or by a hand-run query against this database)
+    // silently turns every "accepts" case in this file red -- or, worse, could
+    // mask a real finding by making a control look already-broken. Start from a
+    // known graph and assert it, rather than assuming one.
+    const strayMemberships: Array<{ rolname: string }> = await dataSource.query(
+      `SELECT g.rolname
+         FROM pg_auth_members m
+         JOIN pg_roles g ON g.oid = m.roleid
+         JOIN pg_roles r ON r.oid = m.member
+        WHERE r.rolname = $1`,
+      [TEST_APP_ROLE],
+    );
+    for (const { rolname } of strayMemberships) {
+      await dataSource.query(`REVOKE ${rolname} FROM ${TEST_APP_ROLE}`);
+    }
+    const remaining = await dataSource.query(
+      `SELECT count(*)::int AS n
+         FROM pg_auth_members m
+         JOIN pg_roles r ON r.oid = m.member
+        WHERE r.rolname = $1`,
+      [TEST_APP_ROLE],
+    );
+    expect(remaining[0].n).toBe(0);
+
     await dataSource.query(
       `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
        VALUES ('USD', 'US Dollar', '$', 2, true)
@@ -428,7 +453,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       const app = await appRolePool();
       try {
         const before = await readRuntimeRoleFacts(app);
-        expect(before.exemptRoleMemberships).toEqual([]);
+        expect(before.exemptReachableContexts).toEqual([]);
 
         await dataSource.query(`GRANT ${owner} TO ${intermediate}`);
         await dataSource.query(`GRANT ${intermediate} TO ${TEST_APP_ROLE}`);
@@ -436,7 +461,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         const after = await readRuntimeRoleFacts(app);
         // The OWNER is named, not just the intermediate: reachability, not the
         // first hop.
-        expect(after.exemptRoleMemberships).toContain(owner);
+        expect(after.exemptReachableContexts).toContain(owner);
         const violations = runtimeRoleViolations(after, TEST_APP_ROLE);
         expect(violations.join(" ")).toMatch(/SET ROLE/);
       } finally {
@@ -533,7 +558,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
             // The precise shape of the finding: reported through the inherited
             // arm, which `SET` reachability alone could never have seen.
             expect(facts.inheritedOwnerRoles).toContain(owner);
-            expect(facts.exemptRoleMemberships).not.toContain(owner);
+            expect(facts.exemptReachableContexts).not.toContain(owner);
           }
         } finally {
           await app.destroy();
@@ -576,6 +601,214 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       }
     });
 
+    /**
+     * RR4-001. A chain that changes mode partway: SET to an ordinary bridge, and
+     * the bridge inherits the owner.
+     *
+     * Neither predicate answered this from the runtime role -- SET to the owner is
+     * false because the bridge->owner edge is SET FALSE, USAGE to the owner is
+     * false because the app->bridge edge is INHERIT FALSE, and the bridge owns
+     * nothing in the catalog. Measured before fixing it: rls_active stays true
+     * until `SET ROLE bridge`, and then goes false with both tenants' rows
+     * visible. So a reachable context has to be judged on what IT can do.
+     */
+    let bridgeSeq = 0;
+
+    async function withBridge<T>(
+      edges: { ownerToBridge: string; bridgeToApp: string },
+      fn: (bridge: string) => Promise<T>,
+    ): Promise<T> {
+      const owner = (await dataSource.query("SELECT current_user AS u"))[0].u;
+      const bridge = `bridge_${Date.now()}_${bridgeSeq++}`;
+      await dataSource.query(`CREATE ROLE ${bridge} NOLOGIN`);
+      try {
+        await dataSource.query(
+          `GRANT ${owner} TO ${bridge} ${edges.ownerToBridge}`,
+        );
+        await dataSource.query(
+          `GRANT ${bridge} TO ${TEST_APP_ROLE} ${edges.bridgeToApp}`,
+        );
+        return await fn(bridge);
+      } finally {
+        await dataSource
+          .query(`REVOKE ${bridge} FROM ${TEST_APP_ROLE}`)
+          .catch(() => undefined);
+        await dataSource
+          .query(`REVOKE ${owner} FROM ${bridge}`)
+          .catch(() => undefined);
+        await dataSource.query(`DROP ROLE ${bridge}`);
+      }
+    }
+
+    it("refuses a SET-reachable bridge that inherits the owner (RR4-001)", async () => {
+      await withBridge(
+        {
+          ownerToBridge: "WITH INHERIT TRUE, SET FALSE",
+          bridgeToApp: "WITH INHERIT FALSE, SET TRUE",
+        },
+        async (bridge) => {
+          const app = await appRolePool();
+          try {
+            const owner = (
+              await dataSource.query("SELECT current_user AS u")
+            )[0].u;
+            // Neither direct predicate sees the owner from here. That is the
+            // finding, asserted rather than described.
+            const [reach] = await app.query(
+              `SELECT pg_has_role(current_user, $1, 'SET') AS owner_set,
+                      pg_has_role(current_user, $1, 'USAGE') AS owner_usage,
+                      pg_has_role(current_user, $2, 'SET') AS bridge_set`,
+              [owner, bridge],
+            );
+            expect(reach.owner_set).toBe(false);
+            expect(reach.owner_usage).toBe(false);
+            expect(reach.bridge_set).toBe(true);
+
+            // Before the statement the boundary is intact...
+            const [before] = await app.query(
+              "SELECT row_security_active('accounts') AS active",
+            );
+            expect(before.active).toBe(true);
+
+            // ...and one statement removes it. `SET LOCAL ROLE`, not `SET ROLE`:
+            // the plain form is SESSION-scoped, so on a one-connection pool it
+            // survives the commit and every later statement -- including the
+            // startup check below -- would run as the bridge and measure the wrong
+            // role entirely. That mistake is what made this test fail while the
+            // SQL was already correct.
+            const entered = await app.transaction(async (m) => {
+              await m.query(
+                "SELECT set_config('app.current_user_id', $1, true)",
+                [USER_A],
+              );
+              await m.query(`SET LOCAL ROLE ${bridge}`);
+              const [{ active }] = await m.query(
+                "SELECT row_security_active('accounts') AS active",
+              );
+              const [{ n }] = await m.query(
+                "SELECT count(*)::int AS n FROM accounts",
+              );
+              return { active, n };
+            });
+            expect(entered.active).toBe(false);
+            expect(entered.n).toBe(2);
+
+            // The demonstration must not have contaminated the measurement.
+            const [{ who }] = await app.query("SELECT current_user AS who");
+            expect(who).toBe(TEST_APP_ROLE);
+
+            // Which the check must now refuse, naming the bridge -- the grant an
+            // operator can actually revoke.
+            const facts = await readRuntimeRoleFacts(app);
+            expect(facts.exemptReachableContexts).toContain(bridge);
+            expect(
+              runtimeRoleViolations(facts, TEST_APP_ROLE).join(" "),
+            ).toContain("SET ROLE");
+          } finally {
+            await app.destroy();
+          }
+        },
+      );
+    });
+
+    it("refuses a mixed chain two bridges long (RR4-001)", async () => {
+      // app --SET--> bridge_a --SET--> bridge_b --INHERIT--> owner. Both
+      // pg_has_role calls are transitive, so the reachable set still contains
+      // bridge_b and the ownership question is asked of it.
+      const owner = (await dataSource.query("SELECT current_user AS u"))[0].u;
+      const a = `bridge_a_${Date.now()}`;
+      const b = `bridge_b_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${a} NOLOGIN`);
+      await dataSource.query(`CREATE ROLE ${b} NOLOGIN`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT ${owner} TO ${b} WITH INHERIT TRUE, SET FALSE`,
+        );
+        await dataSource.query(
+          `GRANT ${b} TO ${a} WITH INHERIT FALSE, SET TRUE`,
+        );
+        await dataSource.query(
+          `GRANT ${a} TO ${TEST_APP_ROLE} WITH INHERIT FALSE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.exemptReachableContexts).toContain(b);
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${a} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`REVOKE ${b} FROM ${a}`);
+        await dataSource.query(`REVOKE ${owner} FROM ${b}`);
+        await dataSource.query(`DROP ROLE ${a}`);
+        await dataSource.query(`DROP ROLE ${b}`);
+      }
+    });
+
+    it("accepts a bridge that is reachable but not exempt (RR4-001 control)", async () => {
+      // The control that stops the new predicate becoming a blanket rejection of
+      // every membership: a SET-reachable role with no exemption of its own and no
+      // inherited owner is harmless, and the tenant filter must stay on.
+      const plain = `plain_bridge_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${plain} NOLOGIN`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT ${plain} TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.exemptReachableContexts).not.toContain(plain);
+        expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
+
+        const visible = await app.transaction(async (m) => {
+          await m.query("SELECT set_config('app.current_user_id', $1, true)", [
+            USER_A,
+          ]);
+          const [{ n }] = await m.query(
+            "SELECT count(*)::int AS n FROM accounts",
+          );
+          return n;
+        });
+        expect(visible).toBe(1);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${plain} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`DROP ROLE ${plain}`);
+      }
+    });
+
+    it("accepts an unreachable bridge that inherits the owner (RR4-001 control)", async () => {
+      // The other control: the bridge inherits the owner, but the runtime role can
+      // neither become it nor inherit it, so no route exists and there is nothing
+      // to report. Rejecting here would refuse to start over a graph the
+      // connection cannot use.
+      await withBridge(
+        {
+          ownerToBridge: "WITH INHERIT TRUE, SET FALSE",
+          bridgeToApp: "WITH INHERIT FALSE, SET FALSE",
+        },
+        async (bridge) => {
+          const app = await appRolePool();
+          try {
+            const facts = await readRuntimeRoleFacts(app);
+            expect(facts.exemptReachableContexts).not.toContain(bridge);
+            expect(facts.inheritedOwnerRoles).toEqual([]);
+            expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
+
+            const [{ active }] = await app.query(
+              "SELECT row_security_active('accounts') AS active",
+            );
+            expect(active).toBe(true);
+          } finally {
+            await app.destroy();
+          }
+        },
+      );
+    });
+
     it("does not report an inherited membership in a role that owns nothing policied", async () => {
       // The negative control for the USAGE arm. Inheriting from an ordinary group
       // confers no exemption, and reporting it would train the operator to ignore
@@ -591,7 +824,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
 
         const facts = await readRuntimeRoleFacts(app);
         expect(facts.inheritedOwnerRoles).not.toContain(plain);
-        expect(facts.exemptRoleMemberships).not.toContain(plain);
+        expect(facts.exemptReachableContexts).not.toContain(plain);
         expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
       } finally {
         await app.destroy();
@@ -619,7 +852,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         const facts = await readRuntimeRoleFacts(app);
         expect(facts.inheritedOwnerRoles).not.toContain(bypasser);
         // ...and it is not SET-reachable either, so nothing is reported.
-        expect(facts.exemptRoleMemberships).not.toContain(bypasser);
+        expect(facts.exemptReachableContexts).not.toContain(bypasser);
       } finally {
         await app.destroy();
         await dataSource.query(`REVOKE ${bypasser} FROM ${TEST_APP_ROLE}`);

@@ -13,7 +13,7 @@ const SAFE: RuntimeRoleFacts = {
   hasBypassRls: false,
   ownsDatabase: false,
   ownedPoliciedTables: 0,
-  exemptRoleMemberships: [],
+  exemptReachableContexts: [],
   inheritedOwnerRoles: [],
 };
 
@@ -33,7 +33,7 @@ const SAFE_ROW = {
   has_bypass_rls: false,
   owns_database: false,
   owned_policied_tables: "0",
-  exempt_role_memberships: [],
+  exempt_reachable_contexts: [],
   inherited_owner_roles: [],
 };
 
@@ -86,7 +86,7 @@ describe("runtimeRoleViolations", () => {
         hasBypassRls: true,
         ownsDatabase: true,
         ownedPoliciedTables: 53,
-        exemptRoleMemberships: ["monize"],
+        exemptReachableContexts: ["monize"],
         inheritedOwnerRoles: ["monize"],
       },
       "monize_app",
@@ -102,7 +102,7 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     // membership in the owner (or in any BYPASSRLS role) passes every other
     // check while being one statement away from seeing every tenant.
     const violations = runtimeRoleViolations(
-      { ...SAFE, exemptRoleMemberships: ["monize", "rds_superuser"] },
+      { ...SAFE, exemptReachableContexts: ["monize", "rds_superuser"] },
       "monize_app",
     );
 
@@ -122,9 +122,9 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
   it("asks the database about membership rather than assuming none", () => {
     // The first version of this check could not have answered the question at
     // all -- no role-membership catalog appeared in the query.
-    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolsuper");
-    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolbypassrls");
-    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid = d.datdba");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("h.rolsuper");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("h.rolbypassrls");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("protected_owners");
   });
 
   it("refuses a role that inherits an owner's privileges, SET or not (RR3-001)", () => {
@@ -149,7 +149,7 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
       {
         ...SAFE,
         inheritedOwnerRoles: ["monize_owner"],
-        exemptRoleMemberships: ["some_superuser"],
+        exemptReachableContexts: ["some_superuser"],
       },
       "monize_app",
     );
@@ -159,25 +159,60 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     expect(violations[1]).toContain("SET ROLE");
   });
 
-  it("asks USAGE only about owners, never about attribute exemptions", () => {
+  it("never treats an attribute exemption as inheritable", () => {
     // `rolsuper` and `rolbypassrls` are attributes, and PostgreSQL does not
     // inherit them: verified on a live server -- a member of a BYPASSRLS role
-    // with INHERIT TRUE still has row_security_active = true. Putting them in the
-    // USAGE arm would refuse to start on a harmless group membership, and an
+    // with INHERIT TRUE still has row_security_active = true. Treating them as
+    // inheritable would refuse to start on a harmless group membership, and an
     // operator who is told to revoke a harmless grant learns to ignore the check.
     const inheritedArm = RUNTIME_ROLE_FACTS_SQL.slice(
-      RUNTIME_ROLE_FACTS_SQL.indexOf("'USAGE'"),
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AND pg_has_role(r.oid, g.oid, 'USAGE')"),
     );
     expect(inheritedArm).toContain("g.oid = d.datdba");
-    expect(inheritedArm).toContain("c2.relrowsecurity");
-    expect(inheritedArm).not.toContain("g.rolsuper");
-    expect(inheritedArm).not.toContain("g.rolbypassrls");
+    expect(inheritedArm).toContain("protected_owners");
+    expect(inheritedArm).not.toContain("rolsuper");
+    expect(inheritedArm).not.toContain("rolbypassrls");
   });
 
   it("asks both questions of the database, not one", () => {
-    expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS exempt_role_memberships");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS exempt_reachable_contexts");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS inherited_owner_roles");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("'USAGE'");
+  });
+
+  it("judges a reachable context on what IT can reach, not on the catalog (RR4-001)", () => {
+    // The composition the previous version missed. `app --SET--> bridge
+    // --INHERIT--> owner` gives SET=false and USAGE=false from app to owner, and
+    // the bridge owns nothing, so testing a candidate's DIRECT ownership found
+    // nothing while `SET ROLE bridge` reached a context that bypasses every
+    // policy. Measured on a live server: rls_active false, both tenants' rows.
+    //
+    // A source scan, because the fix is the SHAPE of the predicate: the ownership
+    // question has to be asked with the candidate as the subject, not the runtime
+    // role. `rls-elevation-and-role.integration.spec.ts` proves the behaviour.
+    const reachableArm = RUNTIME_ROLE_FACTS_SQL.slice(
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AND pg_has_role(r.oid, h.oid, 'SET')"),
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AS exempt_reachable_contexts"),
+    );
+    // The candidate is the subject of both ownership questions...
+    expect(reachableArm).toContain("pg_has_role(h.oid, d.datdba, 'USAGE')");
+    expect(reachableArm).toContain("pg_has_role(h.oid, po.oid, 'USAGE')");
+    // ...and identity comparison is gone, because owning it directly is only one
+    // of the two ways a context ends up with the owner's privileges.
+    expect(reachableArm).not.toContain("h.oid = d.datdba");
+    expect(reachableArm).not.toContain("po.oid = h.oid");
+  });
+
+  it("keeps the runtime role's own inherited ownership a direct question", () => {
+    // The other arm stays identity-based on purpose: it answers "does THIS role
+    // already have an owner's privileges", so the owner set is the thing being
+    // matched, and widening it to reachability would merge two findings with two
+    // different remedies.
+    const inheritedArm = RUNTIME_ROLE_FACTS_SQL.slice(
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AND pg_has_role(r.oid, g.oid, 'USAGE')"),
+    );
+    expect(inheritedArm).toContain("g.oid = d.datdba");
+    expect(inheritedArm).toContain("po.oid = g.oid");
   });
 
   it("asks about SET-ROLE reachability, not one hop of membership (DR-R1)", () => {
@@ -187,13 +222,14 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     // transitive and evaluates each edge's SET option, which is the actual
     // question: can this role become that one.
     expect(RUNTIME_ROLE_FACTS_SQL).toContain(
-      "pg_has_role(r.oid, g.oid, 'SET')",
+      "pg_has_role(r.oid, h.oid, 'SET')",
     );
     // ...and the one-hop join is gone, not merely supplemented -- keeping it
     // would leave a second, weaker answer in the same query.
     expect(RUNTIME_ROLE_FACTS_SQL).not.toContain("m.member = r.oid");
-    // The role is always "reachable" from itself; excluding it stops the check
-    // reporting the runtime role as its own escalation path.
+    // A role is always "reachable" from itself; excluding it in both arms stops
+    // the check reporting the runtime role as its own escalation path.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("h.oid <> r.oid");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid <> r.oid");
   });
 });
@@ -215,21 +251,21 @@ describe("readRuntimeRoleFacts", () => {
     const empty = await readRuntimeRoleFacts(
       arrayQuerier({
         ...SAFE_ROW,
-        exempt_role_memberships: "{}",
+        exempt_reachable_contexts: "{}",
         inherited_owner_roles: "{}",
       }),
     );
-    expect(empty.exemptRoleMemberships).toEqual([]);
+    expect(empty.exemptReachableContexts).toEqual([]);
     expect(empty.inheritedOwnerRoles).toEqual([]);
     expect(runtimeRoleViolations(empty, "monize_app")).toEqual([]);
 
     const filled = await readRuntimeRoleFacts(
       arrayQuerier({
         ...SAFE_ROW,
-        exempt_role_memberships: '{monize,"odd role"}',
+        exempt_reachable_contexts: '{monize,"odd role"}',
       }),
     );
-    expect(filled.exemptRoleMemberships).toEqual(["monize", "odd role"]);
+    expect(filled.exemptReachableContexts).toEqual(["monize", "odd role"]);
     expect(runtimeRoleViolations(filled, "monize_app")).toHaveLength(1);
   });
 
@@ -243,11 +279,11 @@ describe("readRuntimeRoleFacts", () => {
   });
 
   it("treats a missing membership array as no memberships", async () => {
-    const { exempt_role_memberships: _omitted, ...withoutMemberships } =
+    const { exempt_reachable_contexts: _omitted, ...withoutMemberships } =
       SAFE_ROW;
     const facts = await readRuntimeRoleFacts(arrayQuerier(withoutMemberships));
 
-    expect(facts.exemptRoleMemberships).toEqual([]);
+    expect(facts.exemptReachableContexts).toEqual([]);
   });
 
   it("reads the { rows } result shape pg returns", async () => {

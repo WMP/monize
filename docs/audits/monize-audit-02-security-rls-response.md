@@ -6,11 +6,12 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 23 |
+| Commits | 25, all non-merge; equal to GitHub's ahead count against the base |
 | Diff | 138 files, +7678 / -2036 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Additional defects found and fixed | 19, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after three verification rounds and a live-database run (sections 5A-5D) |
+| Verification heads reviewed | `a39a837b` (round 1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4) |
+| Additional defects found and fixed | 20, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after four verification rounds and a live-database run (sections 5A-5E) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -22,7 +23,8 @@ verification of this branch: the first found four residual defects, the second f
 one that the first round's own fix introduced. All five are fixed. Section 5C is what
 running the integration suites -- previously reported as unrunnable here -- found
 once a local PostgreSQL turned out to be available, and section 5D answers a third
-review round, whose one HIGH finding is fixed.
+review round, whose one HIGH finding is fixed, and section 5E a fourth, whose MEDIUM
+finding is fixed.
 
 ## How to read the status column
 
@@ -944,6 +946,84 @@ Its one substantive limitation note -- that the integration result for RV-001 is
 branch-author claim -- is the right way round: the test's *source* is verifiable by
 reading, and its *result* is not.
 
+## 5E. Answer to the fourth verification review
+
+A fourth read-only review (`monize-phase2-fix-verification-re-review-4.md`, head
+`f4ab2a4e`) confirmed RR3-001 closed for the paths it described and found that the
+fix stopped one step short. **It is right.** Reproduced on the live server before
+changing anything:
+
+```
+GRANT owner  TO bridge WITH INHERIT TRUE,  SET FALSE
+GRANT bridge TO app    WITH INHERIT FALSE, SET TRUE
+
+app -> owner  via SET   = false
+app -> owner  via USAGE = false
+app -> bridge via SET   = true      bridge owns nothing in the catalog
+before SET ROLE: rls_active = true,  visible = 1
+after  SET ROLE bridge: rls_active = false, visible = 2
+```
+
+### RR4-001 -- a mode change partway along the chain
+
+**Status: Fixed.** The previous version asked `SET` reachability and then whether
+the *candidate itself* owned something. Both halves are individually right and their
+conjunction is not: the bridge is reachable but owns nothing, the owner is not
+reachable in either mode, so nothing was reported -- and one statement lands in a
+context that inherits the owner.
+
+The fix is the review's model. Enumerate the *contexts* the connection can enter,
+and ask the ownership question with the **context** as the subject rather than the
+runtime role:
+
+```sql
+pg_has_role(r.oid, h.oid, 'SET')            -- can we enter this context
+AND (h.rolsuper OR h.rolbypassrls           -- attributes: direct, not inherited
+     OR pg_has_role(h.oid, d.datdba, 'USAGE')
+     OR EXISTS (SELECT 1 FROM protected_owners po
+                 WHERE pg_has_role(h.oid, po.oid, 'USAGE')))
+```
+
+Two details that fall out of it and are worth recording. A role is its own `SET` and
+`USAGE` member (verified), so "owns it directly" needs no separate clause -- it is
+the degenerate case of `USAGE`. And both `pg_has_role` calls stay transitive, so the
+three-role chain `app --SET--> bridge_a --SET--> bridge_b --INHERIT--> owner` is
+covered by the same predicate rather than needing another special case; there is a
+test for it.
+
+The field was renamed `exemptRoleMemberships` -> `exemptReachableContexts`, because
+it no longer holds "roles we are a member of" but "contexts that are exempt once
+entered", and a name that describes the old meaning is the kind of documentation
+that gets believed.
+
+All four cases the review specified are implemented, each asserting the database's
+own `row_security_active` and cross-tenant row count as well as the verdict:
+the mixed path (rejects), the two-bridge mixed chain (rejects), a reachable
+non-exempt bridge (accepts, and the tenant filter stays on), and an unreachable
+bridge that inherits the owner (accepts). The two rejecting cases fail against the
+previous predicate; the controls pass under both, which is what makes them controls.
+
+**One finding of my own, from writing those tests:** the first version of the mixed-
+path test failed while the SQL was already correct, because it demonstrated the
+bypass with `SET ROLE` rather than `SET LOCAL ROLE`. The plain form is
+*session*-scoped, so on a one-connection pool it survived the commit and the
+startup check that ran next measured the bridge instead of the app role. The test now
+uses `SET LOCAL ROLE` and asserts `current_user` is back before measuring. A
+demonstration that changes the thing being measured is not a demonstration.
+
+The same session also showed the suite was sensitive to leftover grants on the shared
+runtime role -- `dropSchema` does not drop roles, so an aborted run (or a hand-run
+query, which is how I found it) reddens every "accepts" case and could equally mask a
+real finding. `beforeAll` now revokes every membership of the test role and asserts
+the graph is empty before proceeding.
+
+### DOC-RR4-001 -- the commit count was not reproducible
+
+**Status: Fixed.** Fair. The header said 23 while GitHub reported 24 ahead, and the
+index stopped at `e0b64635`. The header now records the reviewed head SHA and states
+the counting convention, and the index lists every commit including the corrections
+made after each review round.
+
 ## 6. Rules added, so the next agent inherits the correction
 
 Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
@@ -961,7 +1041,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified, and reachability is two questions (`SET` and `USAGE`) | `runtime-role-check.spec.ts` + the integration membership matrix |
+| An unprivileged mode is verified; reachability is two questions and they compose | `runtime-role-check.spec.ts` + the integration membership matrix and mixed-path cases |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |
@@ -987,7 +1067,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10842 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10844 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -996,7 +1076,7 @@ Performed and green:
 - `npm run migration:lint`, `npm run i18n:check` on both sides.
 
 **Now also run** (see sections 5C and 5D): 21 integration suites / 245 tests against
-a local PostgreSQL 16.13, and all 122 migrations replayed on top of `schema.sql`. That closes
+a local PostgreSQL 16.13 (249 tests as of section 5E), and all 122 migrations replayed on top of `schema.sql`. That closes
 MT-10, MT-11 and MT-13, and adds the RV-001, FV-003 and DR-R1 scenarios both review
 rounds asked for. `scripts/verify-schema.sh` itself still needs Docker, but the
 property it checks -- every migration a no-op replayed over `schema.sql` -- was
@@ -1060,3 +1140,5 @@ two-connection scenario, which exists in
 | `eaccf1d6` | Reference-count the elevation window, and ask about SET ROLE reachability | RV-001, DR-R1 |
 | `b326ea96` | Run the integration suites for the first time, and fix what they caught | MT-10, MT-11, MT-13 |
 | `e0b64635` | Record the live-database run, and the two rules it produced | section 5C |
+| `f4ab2a4e` | Split the runtime-role check by how a privilege is reached | RR3-001, DOC-RR3-001 |
+| branch tip | Judge a reachable role context on what it can reach | RR4-001, DOC-RR4-001 |

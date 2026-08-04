@@ -43,20 +43,22 @@ export interface RuntimeRoleFacts {
    */
   ownedPoliciedTables: number;
   /**
-   * Exempt roles this one can *become* with `SET ROLE`.
+   * Role contexts this connection can *enter* with `SET ROLE` that are exempt
+   * once entered.
    *
-   * A role's exemption may be an attribute (`rolsuper`, `rolbypassrls`) or
-   * ownership. Attributes are **not** inherited -- verified: a member of a
-   * `BYPASSRLS` role with `INHERIT TRUE` still has RLS applied -- so for those the
-   * only route is `SET ROLE`, and this is the whole question. Nothing in this
-   * application issues one, but an injected statement or a mistaken raw query
-   * gets it for free, so it stays a refusal.
+   * "Exempt once entered" is the whole point, and it is what the earlier version
+   * of this field got wrong (RR4-001): a context is judged on what it can do,
+   * not on whether the catalog names it as an owner. `bridge` may own nothing
+   * while inheriting the owner, and `SET ROLE bridge` then lands in a context
+   * that bypasses every policy.
    *
-   * Transitive, and honours each grant's SET option: an
-   * `app -> platform_runtime -> owner` chain answers yes where a direct
-   * `pg_auth_members` join sees only the intermediate role (DR-R1).
+   * Nothing in this application issues `SET ROLE`, but an injected statement or a
+   * mistaken raw query gets it for free, so it stays a refusal.
+   *
+   * Transitive in both modes, so a chain of any length is covered where a direct
+   * `pg_auth_members` join sees only the first hop (DR-R1).
    */
-  exemptRoleMemberships: string[];
+  exemptReachableContexts: string[];
   /**
    * Owner roles whose privileges this role **already holds by inheritance**.
    *
@@ -80,6 +82,17 @@ export interface RuntimeRoleFacts {
  * about itself -- no elevated grant is needed to run the check.
  */
 export const RUNTIME_ROLE_FACTS_SQL = `
+WITH protected_owners AS (
+  -- The roles that own an RLS-enabled public table. Collected once: the
+  -- reachable-context arm below asks a pg_has_role question per owner per
+  -- candidate role, and there are far fewer owners than tables.
+  SELECT DISTINCT c.relowner AS oid
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind = 'r'
+     AND c.relrowsecurity
+)
 SELECT current_user AS current_user_name,
        r.rolsuper AS is_superuser,
        r.rolbypassrls AS has_bypass_rls,
@@ -91,42 +104,47 @@ SELECT current_user AS current_user_name,
            AND c.relkind = 'r'
            AND c.relrowsecurity
            AND c.relowner = r.oid) AS owned_policied_tables,
-       -- Two questions, because the two exemption classes are reached
-       -- differently. Reachability throughout, not direct membership:
-       -- pg_has_role follows a chain of grants and honours each edge's options,
-       -- so a two-hop app -> platform -> owner chain is caught where a join on
-       -- pg_auth_members.member sees only the intermediate role (DR-R1).
-       (SELECT coalesce(array_agg(DISTINCT g.rolname::text), '{}'::text[])
-          FROM pg_roles g
-         WHERE g.oid <> r.oid
-           AND pg_has_role(r.oid, g.oid, 'SET')
-           AND (g.rolsuper
-                OR g.rolbypassrls
-                OR g.oid = d.datdba
+       -- Every role CONTEXT this connection can enter, judged on what that
+       -- context can do -- not just on what the runtime role directly holds.
+       --
+       -- RR4-001: asking pg_has_role(r, g, 'SET') and then testing whether g
+       -- *directly* owns something misses a mode change partway along the chain.
+       -- app --SET--> bridge --INHERIT--> owner gives SET=false and USAGE=false
+       -- from app to owner, and bridge owns nothing itself, so both arms were
+       -- silent -- while SET ROLE bridge lands in a context that inherits the
+       -- owner and bypasses every policy. Measured: rls_active goes false and
+       -- both tenants' rows appear.
+       --
+       -- So each reachable context is asked the ownership question in its OWN
+       -- right, with USAGE (privileges, which inherit) rather than identity.
+       -- Attributes stay a direct test on the context, because they do not
+       -- inherit. Both pg_has_role calls are transitive, so a chain of any
+       -- length in either mode is covered, and a role is its own SET/USAGE member
+       -- so "owns it directly" needs no separate clause.
+       (SELECT coalesce(array_agg(DISTINCT h.rolname::text), '{}'::text[])
+          FROM pg_roles h
+         WHERE h.oid <> r.oid
+           AND pg_has_role(r.oid, h.oid, 'SET')
+           AND (h.rolsuper
+                OR h.rolbypassrls
+                OR pg_has_role(h.oid, d.datdba, 'USAGE')
                 OR EXISTS (SELECT 1
-                             FROM pg_class c2
-                             JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
-                            WHERE n2.nspname = 'public'
-                              AND c2.relkind = 'r'
-                              AND c2.relrowsecurity
-                              AND c2.relowner = g.oid)))
-         AS exempt_role_memberships,
-       -- USAGE, not SET: ownership is a privilege, and PostgreSQL's owner check
-       -- walks inheritable memberships, so an inherited owner bypasses RLS with
-       -- no SET ROLE at all (RR3-001). Attribute exemptions are deliberately NOT
-       -- in this arm -- rolsuper and rolbypassrls are not inherited.
+                             FROM protected_owners po
+                            WHERE pg_has_role(h.oid, po.oid, 'USAGE'))))
+         AS exempt_reachable_contexts,
+       -- USAGE from the runtime role itself: ownership is a privilege, and
+       -- PostgreSQL's owner check walks inheritable memberships, so an inherited
+       -- owner bypasses RLS with no SET ROLE at all (RR3-001). Reported
+       -- separately from the contexts above because it is already true rather
+       -- than one statement away, and because the remedy differs.
        (SELECT coalesce(array_agg(DISTINCT g.rolname::text), '{}'::text[])
           FROM pg_roles g
          WHERE g.oid <> r.oid
            AND pg_has_role(r.oid, g.oid, 'USAGE')
            AND (g.oid = d.datdba
                 OR EXISTS (SELECT 1
-                             FROM pg_class c2
-                             JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
-                            WHERE n2.nspname = 'public'
-                              AND c2.relkind = 'r'
-                              AND c2.relrowsecurity
-                              AND c2.relowner = g.oid)))
+                             FROM protected_owners po
+                            WHERE po.oid = g.oid)))
          AS inherited_owner_roles
   FROM pg_roles r
   JOIN pg_database d ON d.datname = current_database()
@@ -139,7 +157,7 @@ interface RawFactRow {
   has_bypass_rls?: boolean;
   owns_database?: boolean;
   owned_policied_tables?: number | string;
-  exempt_role_memberships?: string[] | string | null;
+  exempt_reachable_contexts?: string[] | string | null;
   inherited_owner_roles?: string[] | string | null;
 }
 
@@ -194,7 +212,7 @@ export async function readRuntimeRoleFacts(
     hasBypassRls: !!row.has_bypass_rls,
     ownsDatabase: !!row.owns_database,
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
-    exemptRoleMemberships: toRoleNames(row.exempt_role_memberships),
+    exemptReachableContexts: toRoleNames(row.exempt_reachable_contexts),
     inheritedOwnerRoles: toRoleNames(row.inherited_owner_roles),
   };
 }
@@ -254,11 +272,15 @@ export function runtimeRoleViolations(
         "the membership or re-grant it WITH INHERIT FALSE",
     );
   }
-  if (facts.exemptRoleMemberships.length > 0) {
+  if (facts.exemptReachableContexts.length > 0) {
     violations.push(
-      `role "${facts.currentUser}" can SET ROLE into ${facts.exemptRoleMemberships
+      `role "${facts.currentUser}" can SET ROLE into ${facts.exemptReachableContexts
         .map((r) => `"${r}"`)
-        .join(", ")}, which policies do not apply to`,
+        .join(
+          ", ",
+        )}, and policies do not apply in that context -- it holds an ` +
+        "exempt attribute, owns RLS-protected objects, or inherits a role that " +
+        "does. Revoke the grant that makes it reachable",
     );
   }
   return violations;

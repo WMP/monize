@@ -119,9 +119,19 @@ Both predicates are transitive, which a `pg_auth_members.member` join is not: a
 two-hop chain through an unremarkable intermediate role passes that. `NOINHERIT` on
 the provisioned role is worth having and is not the fix -- a per-membership
 `WITH INHERIT TRUE` overrides it, and declarative provisioning skips our SQL
-entirely. And the general lesson beyond roles: when a permission has two
-independent routes, a check that tests one of them is a check that passes in the
-case you did not think of.
+entirely.
+
+**And the routes compose, so ask the question of the destination, not of the
+caller.** Testing `SET` reachability and then whether the candidate *itself* owns
+something still misses a chain that changes mode partway:
+`app --SET--> bridge --INHERIT--> owner` gives `SET`=false and `USAGE`=false from
+`app` to `owner`, and `bridge` owns nothing in the catalog -- yet `SET ROLE bridge`
+lands in a context that inherits the owner and bypasses every policy (RR4-001,
+measured). So enumerate the *contexts* the connection can enter and ask what each
+one can reach, with the candidate as the subject of the predicate. The general
+lesson, twice learned here: when a permission has independent routes, a check that
+tests them one at a time passes in the case you did not think of -- and composing
+two routes is itself a third route.
 
 **Activity belongs to the person, not to the data.** `last_activity_at` records
 the *authenticated* user (`realUserId`), never the effective owner. A delegate's
