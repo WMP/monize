@@ -223,6 +223,62 @@ describe("Automatic backup file layout (integration)", () => {
     expect(files.some((f) => f.includes("-200000."))).toBe(true);
   });
 
+  it("keeps two same-second backups as two files, not one", async () => {
+    // RFR7-002. The filename carries the local time to the second, which is not
+    // uniqueness: two replicas firing the same hourly occurrence, or a
+    // double-submitted manual backup, computed the same temporary path *and* the
+    // same final path. Both wrote the shared temporary file and both renamed it,
+    // so two accepted backups left one file whose contents belonged to whichever
+    // write landed last -- and one of the two runs reported success for a
+    // recovery point that no longer existed.
+    //
+    // Only a real filesystem shows it. With `fs.promises` mocked the two calls
+    // are distinct and both "succeed"; it is the resulting directory that is
+    // wrong.
+    const userId = await seedUser(`same-second-${Date.now()}@example.com`);
+
+    // One frozen instant for both runs, so they cannot be told apart by time.
+    jest.useFakeTimers({
+      now: new Date("2026-04-15T09:00:00Z"),
+      doNotFake: [
+        "nextTick",
+        "setImmediate",
+        "setTimeout",
+        "setInterval",
+        "queueMicrotask",
+      ],
+    });
+    let outcomes: PromiseSettledResult<unknown>[];
+    try {
+      outcomes = await Promise.allSettled([
+        withUserContext(userId, () => service.runManualBackup(userId)),
+        withUserContext(userId, () => service.runManualBackup(userId)),
+      ]);
+    } finally {
+      jest.useRealTimers();
+    }
+
+    // Both were accepted, so both must have left a recovery point.
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(2);
+
+    const files = backupFiles().filter(
+      (f) => f.startsWith(`${userId}/`) && f.includes("-daily-"),
+    );
+    expect(files).toHaveLength(2);
+    // Distinct names and distinct contents: neither overwrote the other, and
+    // neither is a half-written file wearing a valid name.
+    expect(new Set(files).size).toBe(2);
+    expect(new Set(files.map(sha)).size).toBe(2);
+    // Both still look like daily backups, or retention would never sweep them.
+    for (const file of files) {
+      expect(file).toMatch(
+        /monize-backup-daily-2026-04-15-\d{6}(?:-\d+)?\.(json\.gz|mzbe)$/,
+      );
+    }
+    // And no shared temporary inode survived either attempt.
+    expect(backupFiles().some((f) => f.includes("partial"))).toBe(false);
+  });
+
   it("leaves no partial file behind after a successful write", async () => {
     // The write goes to a dot-prefixed temporary name and is renamed into place.
     // Anything matching that shape still on disk afterwards would be a partial

@@ -72,6 +72,16 @@ export class HoldingsService {
    * takes several at once and two of them arriving in opposite orders would
    * deadlock. Nothing else in the trade path locks an account before its cash
    * balance update, so there is no cycle with that either.
+   *
+   * **Every** entry point that reads or writes an account's holdings takes it:
+   * `createOrUpdate`, `applySplit` (and so `reverseSplit`), `adjustQuantity`,
+   * and both rebuilds. A lock only half the mutators take serializes nothing --
+   * the first round of this fix put it on `createOrUpdate` and the whole-user
+   * rebuild only, which left the `SPLIT` / `ADD_SHARES` / `REMOVE_SHARES`
+   * edit and delete paths free to interleave with a rebuild and leave holdings
+   * disagreeing with the transaction history. `race-holdings-rebuild` covers
+   * those paths specifically, because the `BUY` it originally covered went
+   * through the one mutator that did lock.
    */
   private async lockHoldingAccounts(
     m: EntityManager,
@@ -350,6 +360,7 @@ export class HoldingsService {
     }
 
     return this.inScope(manager, async (m) => {
+      await this.lockHoldingAccounts(m, [accountId]);
       const holding = await this.findByAccountAndSecurity(
         accountId,
         securityId,
@@ -403,6 +414,7 @@ export class HoldingsService {
     await this.securitiesService.findOne(userId, securityId);
 
     return this.inScope(manager, async (m) => {
+      await this.lockHoldingAccounts(m, [accountId]);
       const repo = m.getRepository(Holding);
 
       let holding = await this.findByAccountAndSecurity(
@@ -698,6 +710,11 @@ export class HoldingsService {
     asOfDate?: string,
   ): Promise<void> {
     if (accountIds.length === 0) return;
+
+    // Same lock as the whole-user rebuild, for the same reason: this runs inside
+    // the caller's transaction, so taking it here serializes this partial
+    // rebuild against every other holdings mutation on those accounts.
+    await this.lockHoldingAccounts(manager, accountIds);
 
     // Only brokerage / standalone investment accounts track holdings; the cash
     // sleeve of an investment account is excluded everywhere else, so it must be

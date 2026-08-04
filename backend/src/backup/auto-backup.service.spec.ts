@@ -27,6 +27,10 @@ jest.mock("fs", () => {
     promises: {
       stat: jest.fn(),
       writeFile: jest.fn(),
+      // Publishing links rather than renames, so that the target name being
+      // taken is an error instead of a silent overwrite. `rename` stays on the
+      // double because the weekly/monthly tier copies still use it.
+      link: jest.fn(),
       rename: jest.fn(),
       unlink: jest.fn(),
       readdir: jest.fn(),
@@ -38,9 +42,12 @@ jest.mock("fs", () => {
 const fsMock = fs as jest.Mocked<typeof fs>;
 const fsPromises = fs.promises as jest.Mocked<typeof fs.promises>;
 
-/** Mirrors the service's DAILY_FILE_PATTERN, including the optional time. */
+/**
+ * Mirrors the service's DAILY_FILE_PATTERN, including the optional time and the
+ * collision discriminator two same-second runs use.
+ */
 const DAILY_PATTERN =
-  /^monize-backup-daily-\d{4}-\d{2}-\d{2}(?:-\d{6})?\.(json\.gz|mzbe)$/;
+  /^monize-backup-daily-\d{4}-\d{2}-\d{2}(?:-\d{6}(?:-\d+)?)?\.(json\.gz|mzbe)$/;
 
 jest.mock("stream/promises", () => ({
   pipeline: jest.fn().mockResolvedValue(undefined),
@@ -159,6 +166,8 @@ describe("AutoBackupService", () => {
     (fsPromises.mkdir as unknown as jest.Mock).mockResolvedValue(undefined);
     (fsPromises.writeFile as unknown as jest.Mock).mockResolvedValue(undefined);
     (fsPromises.rename as unknown as jest.Mock).mockResolvedValue(undefined);
+    (fsPromises.link as unknown as jest.Mock).mockResolvedValue(undefined);
+    (fsPromises.unlink as unknown as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("getSettings", () => {
@@ -541,9 +550,9 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      // The bytes go to a temporary name and are renamed into place, so the
-      // destination of the rename is what the backup actually ends up as.
-      expect(fsPromises.rename).toHaveBeenCalledWith(
+      // The bytes go to a temporary name and are linked into place, so the
+      // destination of the link is what the backup actually ends up as.
+      expect(fsPromises.link).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
@@ -667,9 +676,9 @@ describe("AutoBackupService", () => {
 
       await service.handleAutoBackupCron();
 
-      // The bytes go to a temporary name and are renamed into place, so the
-      // destination of the rename is what the backup actually ends up as.
-      expect(fsPromises.rename).toHaveBeenCalledWith(
+      // The bytes go to a temporary name and are linked into place, so the
+      // destination of the link is what the backup actually ends up as.
+      expect(fsPromises.link).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
@@ -845,10 +854,10 @@ describe("AutoBackupService", () => {
       for (const instant of runInstants) {
         jest.useFakeTimers().setSystemTime(new Date(instant));
         try {
-          (fsPromises.rename as unknown as jest.Mock).mockClear();
+          (fsPromises.link as unknown as jest.Mock).mockClear();
           await service.runManualBackup(userId);
           written.push(
-            (fsPromises.rename as unknown as jest.Mock).mock
+            (fsPromises.link as unknown as jest.Mock).mock
               .calls[0][1] as string,
           );
         } finally {
@@ -934,7 +943,7 @@ describe("AutoBackupService", () => {
   });
 
   describe("a partial write never becomes a backup", () => {
-    it("writes to a temporary name and renames it into place", async () => {
+    it("writes to a temporary name and links it into place", async () => {
       const settings = createSettings({
         enabled: true,
         folderPath: "/backups",
@@ -944,31 +953,115 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      const tempPath = (fsPromises.writeFile as unknown as jest.Mock).mock.calls
-        .map((c) => c[0] as string)
-        .find((path) => path.includes("partial"))!;
-      const [renameFrom, renameTo] = (fsPromises.rename as unknown as jest.Mock)
-        .mock.calls[0] as [string, string];
+      const [tempPath, flags] = (
+        fsPromises.writeFile as unknown as jest.Mock
+      ).mock.calls.find((c) => (c[0] as string).includes("partial"))! as [
+        string,
+        unknown,
+        { flag?: string },
+      ];
+      const [linkFrom, linkTo] = (fsPromises.link as unknown as jest.Mock).mock
+        .calls[0] as [string, string];
+      void flags;
 
-      expect(tempPath).toBe(renameFrom);
+      expect(tempPath).toBe(linkFrom);
+      // Exclusive create: if the temporary name somehow exists, the open must
+      // fail rather than truncate whatever is there.
+      const writeOptions = (
+        fsPromises.writeFile as unknown as jest.Mock
+      ).mock.calls.find((c) => (c[0] as string).includes("partial"))![2] as {
+        flag?: string;
+      };
+      expect(writeOptions.flag).toBe("wx");
+      // Each run's temporary name is its own, so two writers cannot share one.
+      expect(tempPath).toMatch(
+        /\.monize-backup-partial-\d{4}-\d{2}-\d{2}-\d{6}-[0-9a-f-]{36}\./,
+      );
       // The temporary name must not look like a backup, or retention would count
       // and could delete it.
       expect(DAILY_PATTERN.test(tempPath.split("/").pop()!)).toBe(false);
-      expect(DAILY_PATTERN.test(renameTo.split("/").pop()!)).toBe(true);
+      expect(DAILY_PATTERN.test(linkTo.split("/").pop()!)).toBe(true);
     });
 
-    it("removes the temporary file when the rename fails", async () => {
+    it("removes the temporary file when publishing fails", async () => {
       const settings = createSettings({
         enabled: true,
         folderPath: "/backups",
       });
       mockSettingsRepo.findOne.mockResolvedValue(settings);
       setupExportMocks();
-      (fsPromises.rename as unknown as jest.Mock).mockRejectedValueOnce(
+      (fsPromises.link as unknown as jest.Mock).mockRejectedValueOnce(
         new Error("ENOSPC"),
       );
 
       await expect(service.runManualBackup(userId)).rejects.toThrow("ENOSPC");
+      expect(fsPromises.unlink).toHaveBeenCalledWith(
+        expect.stringContaining("partial"),
+      );
+    });
+
+    it("drops the temporary link once the backup has its real name", async () => {
+      // The payload has two names after the link; leaving ours behind would
+      // accumulate a dot-file per backup forever.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+
+      await service.runManualBackup(userId);
+
+      expect(fsPromises.unlink).toHaveBeenCalledWith(
+        expect.stringContaining("partial"),
+      );
+    });
+
+    it("names the second backup of the same second differently instead of overwriting", async () => {
+      // Two accepted backups must not become one file. `link` refuses a name
+      // that exists, so the loser takes a discriminated name -- and it still has
+      // to match the retention pattern, or it becomes a recovery point nothing
+      // ever sweeps.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      const taken = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      (fsPromises.link as unknown as jest.Mock)
+        .mockRejectedValueOnce(taken)
+        .mockResolvedValueOnce(undefined);
+
+      await service.runManualBackup(userId);
+
+      const [firstFrom, first] = (fsPromises.link as unknown as jest.Mock).mock
+        .calls[0] as [string, string];
+      const [secondFrom, second] = (fsPromises.link as unknown as jest.Mock)
+        .mock.calls[1] as [string, string];
+      // Same payload, two candidate names -- never an overwrite of the first.
+      expect(secondFrom).toBe(firstFrom);
+      expect(second).not.toBe(first);
+      expect(second).toMatch(
+        /monize-backup-daily-\d{4}-\d{2}-\d{2}-\d{6}-1\.json\.gz$/,
+      );
+      expect(DAILY_PATTERN.test(second.split("/").pop()!)).toBe(true);
+    });
+
+    it("fails rather than looping when every discriminated name is taken", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsPromises.link as unknown as jest.Mock).mockRejectedValue(
+        Object.assign(new Error("EEXIST"), { code: "EEXIST" }),
+      );
+
+      await expect(service.runManualBackup(userId)).rejects.toThrow(
+        /same second/,
+      );
       expect(fsPromises.unlink).toHaveBeenCalledWith(
         expect.stringContaining("partial"),
       );

@@ -166,6 +166,7 @@ export class ScheduledTransactionsService {
 
       let totalSuccess = 0;
       let totalError = 0;
+      let totalSuperseded = 0;
 
       for (const [tz, userIds] of userIdsByTz) {
         const today = todayInTimezone(tz);
@@ -236,11 +237,29 @@ export class ScheduledTransactionsService {
 
         for (const scheduled of dueTransactions) {
           try {
+            // The occurrence this candidate was discovered for, carried into the
+            // command as a precondition. Dropping it turned a delayed replica
+            // into an early poster of the *next* occurrence: it would re-read a
+            // date another replica had already advanced and post that instead.
+            const discoveredOccurrence = ensureYMD(scheduled.nextDueDate);
             await withUserContext(scheduled.userId, () =>
-              this.post(scheduled.userId, scheduled.id),
+              this.post(scheduled.userId, scheduled.id, {
+                expectedNextDueDate: discoveredOccurrence,
+              }),
             );
             totalSuccess++;
           } catch (error) {
+            // A conflict means another replica already posted this occurrence
+            // between our discovery and our attempt. That is the precondition
+            // doing its job, not a failure, and logging it as one would make a
+            // healthy multi-replica deployment look broken every hour.
+            if (error instanceof ConflictException) {
+              totalSuperseded++;
+              this.logger.log(
+                `Skipped "${scheduled.name}" (ID: ${scheduled.id}): occurrence already posted elsewhere`,
+              );
+              continue;
+            }
             totalError++;
             this.logger.error(
               `Failed to auto-post "${scheduled.name}" (ID: ${scheduled.id}): ${error.message}`,
@@ -251,7 +270,8 @@ export class ScheduledTransactionsService {
       }
 
       this.logger.log(
-        `Auto-post processing complete: ${totalSuccess} succeeded, ${totalError} failed`,
+        `Auto-post processing complete: ${totalSuccess} succeeded, ` +
+          `${totalSuperseded} already posted elsewhere, ${totalError} failed`,
       );
     } catch (error) {
       this.logger.error("Auto-post processing failed", error.stack);
@@ -1463,30 +1483,42 @@ export class ScheduledTransactionsService {
   }
 
   /**
-   * Posts the schedule's next due occurrence.
+   * Posts one named occurrence of a schedule.
    *
-   * The occurrence the caller means is read once, before the lock, and then
-   * checked against the locked row -- so a second poster of the *same*
-   * occurrence is refused rather than served. That guard, and the single
-   * transaction it lives in, are what stop the same bill being paid twice:
-   * `post` used to read the schedule, create the transaction, and advance
-   * `next_due_date` in three separate transactions with no lock, so two callers
-   * -- a double-clicked Pay button, or two backend replicas, every one of which
-   * runs every cron -- both read the same `next_due_date`, both created a
-   * transaction for it, and both advanced to the same new date. Two payments,
+   * **One command posts one occurrence, and the caller names which.**
+   * `postDto.expectedNextDueDate` is that name, checked against the schedule row
+   * under its lock, so a second attempt at the same occurrence is refused rather
+   * than served. Without the lock and the check, `post` read the schedule,
+   * created the transaction and advanced `next_due_date` in three separate
+   * transactions, so two callers both read the same due date, both created a
+   * transaction for it, and both advanced to the same new date: two payments,
    * one occurrence, and a schedule that looked correct afterwards.
    *
-   * `test/integration/race-scheduled-post.integration.spec.ts` drives both
-   * posters against a real database and fails on the unlocked version.
+   * Deriving the name from a fresh read instead is not equivalent, and that was
+   * the remaining half of this defect. The auto-post cron discovers a due list
+   * and then posts each row; a replica delayed behind another that already posted
+   * would re-read the *advanced* date and post the **next** occurrence early --
+   * a second payment plus a skipped period, from a worker that was asked to post
+   * April. So every caller that knows which occurrence it means sends it: the
+   * cron passes what it discovered, and the two frontend call sites pass the
+   * `nextDueDate` they are rendering.
+   *
+   * The fresh read remains the fallback for a caller that names nothing, because
+   * refusing those outright would break every existing client. Such a caller
+   * gets "post whatever is current", which is the old behaviour and the old
+   * exposure -- documented on the DTO rather than silently kept.
+   *
+   * `test/integration/race-scheduled-post.integration.spec.ts` covers both the
+   * simultaneous and the delayed-replica cases against a real database.
    */
   async post(
     userId: string,
     id: string,
     postDto?: PostScheduledTransactionDto,
   ): Promise<ScheduledTransaction | null> {
-    const intendedOccurrence = ensureYMD(
-      (await this.findOne(userId, id)).nextDueDate,
-    );
+    const intendedOccurrence = postDto?.expectedNextDueDate
+      ? ensureYMD(postDto.expectedNextDueDate)
+      : ensureYMD((await this.findOne(userId, id)).nextDueDate);
     return withScopedDb(this.dataSource, () =>
       this.postOccurrence(userId, id, intendedOccurrence, postDto),
     );

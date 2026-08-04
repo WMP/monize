@@ -58,6 +58,20 @@ class InlineSplitDto {
 
 export class PostScheduledTransactionDto {
   @ApiPropertyOptional({
+    description:
+      "The occurrence the caller intends to post, as the schedule's nextDueDate " +
+      "when the caller read it. Supplied, it is a precondition: the posting is " +
+      "refused with 409 unless the schedule is still due on that date. Omitted, " +
+      "the posting means 'whatever occurrence is current', which cannot tell a " +
+      "second attempt at one occurrence from a deliberate early posting of the " +
+      "next one -- so every caller that knows which occurrence it means should " +
+      "send it.",
+  })
+  @IsOptional()
+  @IsDateString()
+  expectedNextDueDate?: string;
+
+  @ApiPropertyOptional({
     description: "Transaction date (defaults to next due date)",
   })
   @IsOptional()

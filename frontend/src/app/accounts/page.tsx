@@ -27,6 +27,10 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
 import { showErrorToast } from '@/lib/errors';
+import {
+  brokerageMarketValue,
+  buildBrokerageMarketValues,
+} from '@/lib/brokerage-market-value';
 
 const logger = createLogger('Accounts');
 
@@ -77,21 +81,13 @@ function AccountsContent() {
   // the chat bubble), so refresh the same way as an undo/redo.
   useOnAiAction(loadAccounts);
 
-  // Build a map of brokerage account ID -> market value of holdings only.
-  // Cash balance is tracked separately via the linked INVESTMENT_CASH account
-  // to avoid double-counting in the net worth summary.
-  const brokerageMarketValues = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolioSummary) return map;
-    for (const accountHoldings of portfolioSummary.holdingsByAccount) {
-      // An account whose market value is unknown is left out of the map rather
-      // than entered as 0, matching the backend's convention that a missing
-      // key means "no market-value information" for that account.
-      if (accountHoldings.totalMarketValue === null) continue;
-      map.set(accountHoldings.accountId, accountHoldings.totalMarketValue);
-    }
-    return map;
-  }, [portfolioSummary]);
+  // Brokerage account id -> market value of its holdings, `null` when unknown.
+  // Cash sits in the linked INVESTMENT_CASH account, so counting it here would
+  // double it in the net-worth summary.
+  const brokerageMarketValues = useMemo(
+    () => buildBrokerageMarketValues(accounts, portfolioSummary),
+    [accounts, portfolioSummary],
+  );
 
   const calculateSummary = () => {
     const activeAccounts = accounts.filter((a) => !a.isClosed);
@@ -105,8 +101,17 @@ function AccountsContent() {
       // For brokerage accounts, use portfolio market value instead of currentBalance
       // For other accounts, include future-dated transactions in the balance
       const rawBalance = a.accountSubType === 'INVESTMENT_BROKERAGE'
-        ? (brokerageMarketValues.get(a.id) ?? 0)
+        ? brokerageMarketValue(brokerageMarketValues, a.id)
         : (Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0);
+      // A brokerage account whose market value is unknown -- a missing quote, a
+      // missing rate, or a portfolio request that failed -- makes the total
+      // unknown. `?? 0` here reported `500.00` as a complete Total Assets for a
+      // user who also held ten shares with no quote.
+      if (rawBalance === null) {
+        if (liabilityTypes.includes(a.accountType)) liabilitiesKnown = false;
+        else assetsKnown = false;
+        return;
+      }
       // Convert to default currency for accurate aggregation. An account whose
       // currency has no rate makes the affected total unknown -- adding only the
       // convertible ones would put a subtotal under a "Total Assets" label.

@@ -10,6 +10,7 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { Cron } from "@nestjs/schedule";
 import { promises as fs, readdirSync, unlinkSync, copyFileSync } from "fs";
+import { randomUUID } from "crypto";
 import { resolve, dirname } from "path";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 import { BackupService } from "./backup.service";
@@ -40,8 +41,13 @@ export const DEFAULT_BACKUP_CONTAINER_DIR = "/data/backups";
 // settings row and the log still reported four successful backups. The time
 // group is optional so files written before this change are still recognised,
 // retained and counted rather than orphaned.
+// The trailing `(?:-\d+)?` is the collision discriminator two same-second runs
+// use. It comes after the time and before the extension so retention still reads
+// the occurrence's date and time from groups 1-4 and sorts the file correctly;
+// without it in the pattern a second-place backup would be invisible to both the
+// count and the sweep, which is a recovery point nothing ever deletes.
 const DAILY_FILE_PATTERN =
-  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})(?:-(\d{2})(\d{2})(\d{2}))?\.(json\.gz|mzbe)$/;
+  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})(?:-(\d{2})(\d{2})(\d{2})(?:-\d+)?)?\.(json\.gz|mzbe)$/;
 const WEEKLY_FILE_PATTERN =
   /^monize-backup-weekly-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
 const MONTHLY_FILE_PATTERN =
@@ -450,35 +456,93 @@ export class AutoBackupService {
     const ext = encryptionPassword ? "mzbe" : "json.gz";
     // Date *and* local time: a sub-daily schedule produces several occurrences a
     // day, and a date-only name made them one file (see DAILY_FILE_PATTERN).
-    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}-${timeStr}.${ext}`;
-    const filepath = this.safePath(folderPath, filename);
 
     const payload = await this.backupService.exportToBuffer(
       userId,
       encryptionPassword,
     );
-    // Write to a temporary name in the same directory, then rename. `rename` is
-    // atomic within a filesystem, so a crash or a full disk part-way through
-    // leaves the temporary file behind rather than a truncated backup sitting at
-    // the real name -- which would look like a valid recovery point and fail on
-    // restore. The temporary name deliberately does not match
-    // DAILY_FILE_PATTERN, so retention neither counts nor deletes it.
+
+    // Two writers, two exclusive paths. Every backup run gets its own temporary
+    // name -- a uuid, created with `wx` so the open fails rather than truncates
+    // if that name somehow exists -- and publishes by *linking* rather than
+    // renaming, because `rename` overwrites and `link` refuses.
+    //
+    // Second-level wall-clock uniqueness is not uniqueness. Two replicas firing
+    // the same hourly occurrence, or a double-submitted manual backup, computed
+    // the same temporary path and the same final path: both wrote the shared
+    // temporary file and both renamed it, so two accepted backups produced one
+    // file whose contents belonged to whichever write happened to land last, and
+    // one of the two runs recorded a success for a recovery point that no longer
+    // existed. On a real filesystem that is silent.
+    //
+    // The policy when the final name is taken is *two recovery points*, not one:
+    // the loser appends a discriminator rather than skipping, because a backup
+    // that was accepted and then quietly discarded is the failure this is here to
+    // avoid. Retention trims the surplus on its own schedule.
     const tempPath = this.safePath(
       folderPath,
-      `.${BACKUP_FILE_PREFIX}partial-${dateStr}-${timeStr}.${ext}`,
+      `.${BACKUP_FILE_PREFIX}partial-${dateStr}-${timeStr}-${randomUUID()}.${ext}`,
     );
-    await fs.writeFile(tempPath, payload);
+    await fs.writeFile(tempPath, payload, { flag: "wx" });
+
+    let filename: string;
     try {
-      await fs.rename(tempPath, filepath);
+      filename = await this.publishExclusive(
+        tempPath,
+        folderPath,
+        `${BACKUP_FILE_PREFIX}daily-${dateStr}-${timeStr}`,
+        ext,
+      );
     } catch (error) {
       await fs.unlink(tempPath).catch(() => undefined);
       throw error;
     }
+    // The link succeeded, so the payload now has two names; drop ours. A failure
+    // here leaves a dot-prefixed file that matches no retention pattern, which is
+    // noise rather than a false recovery point.
+    await fs.unlink(tempPath).catch(() => undefined);
 
     this.logger.log(
-      `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,
+      `Backup written to ${this.safePath(folderPath, filename)}` +
+        `${encryptionPassword ? " (encrypted)" : ""}`,
     );
     return filename;
+  }
+
+  /**
+   * Links `tempPath` to `<base>.<ext>` in `folderPath`, or to
+   * `<base>-<n>.<ext>` when that name is already taken, and returns the name it
+   * used.
+   *
+   * `link` is the whole point: it fails with `EEXIST` rather than overwriting, so
+   * two writers that computed the same name cannot silently become one file.
+   * `rename` would have published both and kept whichever landed last.
+   *
+   * The loop is bounded. Reaching the end means a great many backups share one
+   * second, which is a condition worth failing on rather than looping in.
+   */
+  private async publishExclusive(
+    tempPath: string,
+    folderPath: string,
+    base: string,
+    ext: string,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const filename =
+        attempt === 0 ? `${base}.${ext}` : `${base}-${attempt}.${ext}`;
+      try {
+        await fs.link(tempPath, this.safePath(folderPath, filename));
+        return filename;
+      } catch (error) {
+        if ((error as { code?: string }).code !== "EEXIST") throw error;
+      }
+    }
+    throw new BadRequestException(
+      tr(
+        "errors.backup.tooManyBackupsThisSecond",
+        "Too many backups were written in the same second to name another one.",
+      ),
+    );
   }
 
   private copyToWeeklyIfNeeded(

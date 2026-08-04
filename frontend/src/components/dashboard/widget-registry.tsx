@@ -8,6 +8,7 @@ import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { TopMover, FavouriteSecurityQuote } from '@/types/investment';
 import { MonthlyNetWorth } from '@/types/net-worth';
 import { DelegateSectionGrants } from '@/lib/delegation';
+import type { BrokerageMarketValues } from '@/lib/brokerage-market-value';
 import { FavouriteAccounts } from './FavouriteAccounts';
 import { UpcomingBills } from './UpcomingBills';
 import { TopMovers } from './TopMovers';
@@ -86,7 +87,7 @@ export interface DashboardWidgetContext {
   topMovers: TopMover[];
   favouriteSecurities: FavouriteSecurityQuote[];
   netWorthData: MonthlyNetWorth[];
-  brokerageMarketValues: Map<string, number>;
+  brokerageMarketValues: BrokerageMarketValues;
   isLoading: boolean;
   hasInvestments: boolean;
   hasSecurities: boolean;

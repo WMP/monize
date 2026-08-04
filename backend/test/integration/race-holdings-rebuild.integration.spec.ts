@@ -283,6 +283,178 @@ describe("Holdings rebuild vs concurrent trade (integration)", () => {
     expect(beforeRepair).toEqual(afterRepair);
   });
 
+  /**
+   * The share-only paths (RFR7-003).
+   *
+   * `BUY` goes through `createOrUpdate`, which took the account lock from the
+   * first round of this fix. `ADD_SHARES`, `REMOVE_SHARES` and `SPLIT` go
+   * through `adjustQuantity` and `applySplit`, which did not -- so a delete or
+   * edit of one of those could still run straight through a rebuild and leave
+   * `holdings` disagreeing with the history it is supposed to materialize. That
+   * the original suite covered only `BUY` is exactly why it passed.
+   */
+  describe("share-only edit and delete paths", () => {
+    const addShares = (
+      security: string,
+      quantity: number,
+      date = "2026-01-10",
+    ) =>
+      withUserContext(userId, () =>
+        trades.create(userId, {
+          accountId: brokerageAccountId,
+          action: InvestmentAction.ADD_SHARES,
+          transactionDate: date,
+          securityId: security,
+          quantity,
+        } as never),
+      );
+
+    const split = (security: string, ratio: number, date = "2026-01-12") =>
+      withUserContext(userId, () =>
+        trades.create(userId, {
+          accountId: brokerageAccountId,
+          action: InvestmentAction.SPLIT,
+          transactionDate: date,
+          securityId: security,
+          quantity: ratio,
+        } as never),
+      );
+
+    /**
+     * Parks a rebuild mid-transaction, then runs `mutate` and reports whether it
+     * managed to commit while the rebuild was still inside its transaction.
+     *
+     * Same construction as the trade case: the gate holds the existing holdings
+     * rows, which parks the rebuild at its delete without parking the mutator,
+     * so the answer is decided by whether the mutator contends on the account
+     * lock the rebuild already holds.
+     */
+    async function commitsDuringRebuild(
+      mutate: () => Promise<unknown>,
+      expectedHistoryCount: number,
+    ): Promise<boolean> {
+      const gate = await RowGate.hold(
+        dataSource,
+        `SELECT id FROM holdings WHERE account_id = $1 FOR UPDATE`,
+        [brokerageAccountId],
+      );
+      try {
+        const rebuilding = raceAll<void>([
+          async () => {
+            await withUserContext(userId, () =>
+              holdings.rebuildFromTransactions(userId, "2026-01-31"),
+            );
+          },
+        ]);
+        await waitForBlockedBackends(dataSource, 1);
+
+        const mutating = raceAll<void>([
+          async () => {
+            await mutate();
+          },
+        ]);
+        await waitUntil(
+          "the mutation to commit or to block behind the rebuild",
+          async () =>
+            (await committedTradeCount()) === expectedHistoryCount ||
+            (await blockedBackendCount(dataSource)) >= 2,
+        );
+        const committed =
+          (await committedTradeCount()) === expectedHistoryCount;
+
+        await gate.release();
+        await rebuilding;
+        await mutating;
+        return committed;
+      } finally {
+        await gate.release();
+      }
+    }
+
+    it("serializes deleting an ADD_SHARES against a rebuild", async () => {
+      // The reviewer's scenario: history ends up with no share acquisition while
+      // holdings still show the shares, because the rebuild wrote a replay taken
+      // before the delete.
+      const added = await addShares(securityId, 10);
+      expect(await heldQuantity(securityId)).toBe(10);
+
+      const committedMidRebuild = await commitsDuringRebuild(
+        () => withUserContext(userId, () => trades.remove(userId, added.id)),
+        0,
+      );
+
+      expect(committedMidRebuild).toBe(false);
+      // History and holdings agree: no acquisition, no shares.
+      expect(await committedTradeCount()).toBe(0);
+      expect(await heldQuantity(securityId)).toBe(0);
+    });
+
+    it("serializes deleting a REMOVE_SHARES against a rebuild", async () => {
+      await addShares(securityId, 10);
+      const removed = await withUserContext(userId, () =>
+        trades.create(userId, {
+          accountId: brokerageAccountId,
+          action: InvestmentAction.REMOVE_SHARES,
+          transactionDate: "2026-01-11",
+          securityId,
+          quantity: 4,
+        } as never),
+      );
+      expect(await heldQuantity(securityId)).toBe(6);
+
+      const committedMidRebuild = await commitsDuringRebuild(
+        () => withUserContext(userId, () => trades.remove(userId, removed.id)),
+        1,
+      );
+
+      expect(committedMidRebuild).toBe(false);
+      // Undoing the removal puts the four shares back.
+      expect(await committedTradeCount()).toBe(1);
+      expect(await heldQuantity(securityId)).toBe(10);
+    });
+
+    it("serializes deleting a SPLIT against a rebuild", async () => {
+      // A split's quantity is a ratio, so a delete that races a rebuild can
+      // leave the materialized quantity at the post-split figure with no split
+      // in the history to justify it.
+      //
+      // Unlike the two cases above, this one and the insert case below pass with
+      // or without the lock -- the split delete is followed by a post-commit
+      // repair rebuild, and an insert creates a row the rebuild's by-id delete
+      // never sees. They are guards on the paths, not regression proofs; the
+      // ADD_SHARES and REMOVE_SHARES deletes are the proofs, and they fail with
+      // 10 phantom shares and 6-instead-of-10 respectively when the locks in
+      // `applySplit`/`adjustQuantity` are removed.
+      await addShares(securityId, 10);
+      const splitTx = await split(securityId, 2);
+      expect(await heldQuantity(securityId)).toBe(20);
+
+      const committedMidRebuild = await commitsDuringRebuild(
+        () => withUserContext(userId, () => trades.remove(userId, splitTx.id)),
+        1,
+      );
+
+      expect(committedMidRebuild).toBe(false);
+      expect(await committedTradeCount()).toBe(1);
+      expect(await heldQuantity(securityId)).toBe(10);
+    });
+
+    it("serializes adding shares against a rebuild", async () => {
+      // The insert side of the same path: `adjustQuantity` rather than
+      // `createOrUpdate`, so it needed its own lock and its own case.
+      await addShares(securityId, 10);
+
+      const committedMidRebuild = await commitsDuringRebuild(
+        () => addShares(otherSecurityId, 7, "2026-01-20"),
+        2,
+      );
+
+      expect(committedMidRebuild).toBe(false);
+      expect(await heldQuantity(securityId)).toBe(10);
+      expect(await heldQuantity(otherSecurityId)).toBe(7);
+    });
+  });
+
   it("still rebuilds correctly with no contention", async () => {
     await buy(securityId, 10);
     await buy(otherSecurityId, 4);

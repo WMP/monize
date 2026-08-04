@@ -443,7 +443,12 @@ export function ScheduledTransactionList({
     try {
       switch (action) {
         case 'post':
-          await scheduledTransactionsApi.post(transaction.id);
+          // Name the occurrence the row is showing. Without it a second click
+          // posts whatever is current by then, which after the first click is
+          // the *next* occurrence -- two payments and a skipped period.
+          await scheduledTransactionsApi.post(transaction.id, {
+            expectedNextDueDate: transaction.nextDueDate,
+          });
           toast.success(t('list.toasts.posted'));
           break;
         case 'skip':

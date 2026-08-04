@@ -9,8 +9,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { accountsApi } from '@/lib/accounts';
 import { investmentsApi } from '@/lib/investments';
 import { Account } from '@/types/account';
+import {
+  brokerageMarketValue,
+  buildBrokerageMarketValues,
+} from '@/lib/brokerage-market-value';
 import { PortfolioSummary } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useReportData } from '@/hooks/useReportData';
 import { CHART_COLOURS } from '@/lib/chart-colours';
@@ -28,6 +33,7 @@ export function AccountBalancesReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrency } = useNumberFormat();
+  const { formatCurrencyOrNa, unknownColorClass } = useMoneyDisplay();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
 
   const accountTypeLabels = useMemo<Record<string, string>>(() => ({
@@ -64,21 +70,13 @@ export function AccountBalancesReport() {
     [response],
   );
 
-  // Build a map of brokerage account ID -> market value of holdings only.
-  // Cash balance is tracked separately via the linked INVESTMENT_CASH account
-  // to avoid double-counting in the net worth summary.
-  const brokerageMarketValues = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolioSummary) return map;
-    for (const accountHoldings of portfolioSummary.holdingsByAccount) {
-      // An account whose market value is unknown is left out of the map rather
-      // than entered as 0, matching the backend's convention that a missing
-      // key means "no market-value information" for that account.
-      if (accountHoldings.totalMarketValue === null) continue;
-      map.set(accountHoldings.accountId, accountHoldings.totalMarketValue);
-    }
-    return map;
-  }, [portfolioSummary]);
+  // Brokerage account id -> holdings market value, `null` when unknown. Cash
+  // sits in the linked INVESTMENT_CASH account, so counting it here would double
+  // it in net worth.
+  const brokerageMarketValues = useMemo(
+    () => buildBrokerageMarketValues(accounts, portfolioSummary),
+    [accounts, portfolioSummary],
+  );
 
   const filteredAccounts = useMemo(() => {
     return accounts.filter((acc) => {
@@ -106,12 +104,20 @@ export function AccountBalancesReport() {
     // Sort accounts within each group by effective balance
     groups.forEach((accs) => {
       accs.sort((a, b) => {
-        const balA = a.accountSubType === 'INVESTMENT_BROKERAGE'
-          ? (brokerageMarketValues.get(a.id) ?? 0)
-          : Math.abs((Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0));
-        const balB = b.accountSubType === 'INVESTMENT_BROKERAGE'
-          ? (brokerageMarketValues.get(b.id) ?? 0)
-          : Math.abs((Number(b.currentBalance) || 0) + (Number(b.futureTransactionsSum) || 0));
+        // An unknown market value sorts last rather than as a zero: zero is a
+        // position in the ordering and unknown is not one.
+        const balOf = (acc: Account) =>
+          acc.accountSubType === 'INVESTMENT_BROKERAGE'
+            ? brokerageMarketValue(brokerageMarketValues, acc.id)
+            : Math.abs(
+                (Number(acc.currentBalance) || 0) +
+                  (Number(acc.futureTransactionsSum) || 0),
+              );
+        const balA = balOf(a);
+        const balB = balOf(b);
+        if (balA === null && balB === null) return 0;
+        if (balA === null) return 1;
+        if (balB === null) return -1;
         return balB - balA;
       });
     });
@@ -127,8 +133,15 @@ export function AccountBalancesReport() {
 
     filteredAccounts.forEach((acc) => {
       const rawBalance = acc.accountSubType === 'INVESTMENT_BROKERAGE'
-        ? (brokerageMarketValues.get(acc.id) ?? 0)
+        ? brokerageMarketValue(brokerageMarketValues, acc.id)
         : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
+      // A brokerage whose market value is unknown counts as an excluded account
+      // for the same reason an unconvertible currency does, and the notice beside
+      // the totals already says how many were left out.
+      if (rawBalance === null) {
+        unconverted += 1;
+        return;
+      }
       const convertedBalance = convertToDefault(rawBalance, acc.currencyCode);
 
       // An account whose currency has no rate is left out of the affected total
@@ -146,9 +159,9 @@ export function AccountBalancesReport() {
   }, [filteredAccounts, brokerageMarketValues, convertToDefault]);
 
   // Helper to get effective balance for an account (includes future-dated transactions)
-  const getEffectiveBalance = useCallback((acc: Account): number => {
+  const getEffectiveBalance = useCallback((acc: Account): number | null => {
     return acc.accountSubType === 'INVESTMENT_BROKERAGE'
-      ? (brokerageMarketValues.get(acc.id) ?? 0)
+      ? brokerageMarketValue(brokerageMarketValues, acc.id)
       : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
   }, [brokerageMarketValues]);
 
@@ -159,7 +172,11 @@ export function AccountBalancesReport() {
       let colorIdx = 0;
       groupedAccounts.forEach((accs, type) => {
         const total = accs.reduce((sum, acc) => {
-          const converted = convertToDefault(getEffectiveBalance(acc), acc.currencyCode);
+          // An unknown balance cannot be a slice, and cannot be a zero-width one
+          // either -- it is left out, the same as an unconvertible currency.
+          const raw = getEffectiveBalance(acc);
+          if (raw === null) return sum;
+          const converted = convertToDefault(raw, acc.currencyCode);
           return converted === null ? sum : sum + Math.abs(converted);
         }, 0);
         if (total > 0) {
@@ -175,9 +192,11 @@ export function AccountBalancesReport() {
     } else {
       const data: Array<{ name: string; value: number; color: string }> = [];
       filteredAccounts.forEach((acc, idx) => {
-        const rawConverted = convertToDefault(getEffectiveBalance(acc), acc.currencyCode);
-        // Excluded from the pie: a slice sized by an invented rate would misstate
-        // every other slice's share too.
+        const raw = getEffectiveBalance(acc);
+        const rawConverted =
+          raw === null ? null : convertToDefault(raw, acc.currencyCode);
+        // Excluded from the pie: a slice sized by an invented rate, or by a
+        // substituted zero, would misstate every other slice's share too.
         const converted = rawConverted === null ? 0 : Math.abs(rawConverted);
         if (converted > 0) {
           data.push({
@@ -229,7 +248,7 @@ export function AccountBalancesReport() {
     const rows = filteredAccounts.map(acc => [
       acc.name,
       accountTypeLabels[acc.accountType] || acc.accountType,
-      formatCurrency(getEffectiveBalance(acc), acc.currencyCode),
+      formatCurrencyOrNa(getEffectiveBalance(acc), acc.currencyCode),
     ]);
     await exportToPdf({
       title: t('accountBalances.pdfTitle'),
@@ -427,8 +446,9 @@ export function AccountBalancesReport() {
             const isLiabilityGroup = LIABILITY_TYPES.includes(type);
             const groupTotal = accs.reduce((sum, acc) => {
               const rawBalance = acc.accountSubType === 'INVESTMENT_BROKERAGE'
-                ? (brokerageMarketValues.get(acc.id) ?? 0)
+                ? brokerageMarketValue(brokerageMarketValues, acc.id)
                 : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
+              if (rawBalance === null) return sum;
               const converted = convertToDefault(rawBalance, acc.currencyCode);
               return converted === null ? sum : sum + converted;
             }, 0);
@@ -449,7 +469,7 @@ export function AccountBalancesReport() {
                   {accs.map((acc) => {
                     const isBrokerage = acc.accountSubType === 'INVESTMENT_BROKERAGE';
                     const effectiveBalance = isBrokerage
-                      ? (brokerageMarketValues.get(acc.id) ?? 0)
+                      ? brokerageMarketValue(brokerageMarketValues, acc.id)
                       : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
                     return (
                       <button
@@ -478,12 +498,25 @@ export function AccountBalancesReport() {
                           )}
                         </div>
                         <div className="text-right">
+                          {/* An unknown market value is marked, not shown as
+                              0.00 -- a brokerage row reading zero looks like an
+                              account that holds nothing. */}
                           <div className={`font-semibold ${
-                            isLiabilityGroup ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                            effectiveBalance === null
+                              ? unknownColorClass
+                              : isLiabilityGroup ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                           }`}>
-                            {formatCurrency(isLiabilityGroup ? Math.abs(effectiveBalance) : effectiveBalance, acc.currencyCode)}
+                            {formatCurrencyOrNa(
+                              effectiveBalance === null
+                                ? null
+                                : isLiabilityGroup
+                                  ? Math.abs(effectiveBalance)
+                                  : effectiveBalance,
+                              acc.currencyCode,
+                            )}
                           </div>
-                          {acc.currencyCode !== defaultCurrency &&
+                          {effectiveBalance !== null &&
+                            acc.currencyCode !== defaultCurrency &&
                             convertToDefault(Math.abs(effectiveBalance), acc.currencyCode) !== null && (
                             <div className="text-xs text-gray-400 dark:text-gray-500">
                               {'\u2248 '}{formatCurrency(convertToDefault(Math.abs(effectiveBalance), acc.currencyCode)!, defaultCurrency)}

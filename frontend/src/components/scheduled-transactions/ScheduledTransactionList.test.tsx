@@ -625,7 +625,11 @@ describe('ScheduledTransactionList', () => {
     fireEvent.click(screen.getByText('Post'));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith(transaction.id);
+      // The occurrence has to travel with the request: the server uses it as a
+      // precondition so a resubmitted post cannot pay the next period instead.
+      expect(mockPost).toHaveBeenCalledWith(transaction.id, {
+        expectedNextDueDate: transaction.nextDueDate,
+      });
     });
 
     await waitFor(() => {
