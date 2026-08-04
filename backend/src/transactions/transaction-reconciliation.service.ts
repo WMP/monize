@@ -4,7 +4,7 @@ import {
   Inject,
   forwardRef,
 } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, In } from "typeorm";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { AccountsService } from "../accounts/accounts.service";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../common/date-utils";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { expandTransferLegsForStatus } from "./transfer-status-pairing.util";
 
 @Injectable()
 export class TransactionReconciliationService {
@@ -22,6 +23,23 @@ export class TransactionReconciliationService {
     private dataSource: DataSource,
   ) {}
 
+  /**
+   * Set a transaction's status, carrying a transfer's counterpart leg with it.
+   *
+   * A status change on one leg of a transfer is a change to one economic event,
+   * and entering or leaving `VOID` moves a balance. This endpoint used to write
+   * and rebalance only the row it was handed, so voiding the source leg of a
+   * 100.00 transfer restored 100.00 to the source account while the destination
+   * leg stayed active and kept its 100.00 -- money created out of a status
+   * change, with nothing raised anywhere. The bulk-update path was corrected
+   * first; the same defect sat here, reachable from the quick status control and
+   * from any API client.
+   *
+   * The pair is resolved by `expandTransferLegsForStatus`, the same rule the bulk
+   * path uses. A leg it refuses (a split-transfer leg, or a cross-owner
+   * counterpart this caller cannot write) is rejected rather than half-applied:
+   * an HTTP error the client can act on beats a silently inconsistent pair.
+   */
   async updateStatus(
     transaction: Transaction,
     status: TransactionStatus,
@@ -32,50 +50,85 @@ export class TransactionReconciliationService {
     const oldStatus = transaction.status;
     const wasVoid = oldStatus === TransactionStatus.VOID;
     const isVoid = status === TransactionStatus.VOID;
+    const voidnessChanged = wasVoid !== isVoid;
 
     // The status change and the matching balance adjustment touch two tables
     // (transactions + accounts) and must commit atomically, otherwise a failure
     // between the two leaves the account balance out of sync with the status.
-    await withScopedDb(this.dataSource, async (m) => {
-      if (isTransactionInFuture(transaction.transactionDate)) {
-        await m.update(Transaction, transaction.id, {
-          status,
-        });
-        if (wasVoid !== isVoid) {
-          await this.accountsService.recalculateCurrentBalance(
-            transaction.accountId,
-          );
-        }
-      } else {
-        if (wasVoid && !isVoid) {
-          await this.accountsService.updateBalance(
-            transaction.accountId,
-            Number(transaction.amount),
-          );
-        } else if (!wasVoid && isVoid) {
-          await this.accountsService.updateBalance(
-            transaction.accountId,
-            -Number(transaction.amount),
-          );
-        }
-        await m.update(Transaction, transaction.id, {
-          status,
-        });
+    // The pair expansion runs inside the same transaction, so the refusal below
+    // happens before anything is written.
+    // A row that is neither a transfer leg nor a split parent has no pair to
+    // carry, so the ordinary single-transaction case costs no extra query.
+    const mayHavePair =
+      (transaction.isTransfer && !!transaction.linkedTransactionId) ||
+      transaction.isSplit === true;
+
+    const affected = await withScopedDb(this.dataSource, async (m) => {
+      const expansion = mayHavePair
+        ? await expandTransferLegsForStatus(m, userId, [transaction.id])
+        : { ids: [transaction.id], refusedIds: [], reasons: [] };
+
+      if (expansion.refusedIds.includes(transaction.id)) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.statusChangeNeedsBothLegs",
+            "This transfer's status has to change on both legs. Edit the transfer itself, or change the status on the split that owns it.",
+          ),
+        );
       }
 
-      if (
-        status === TransactionStatus.RECONCILED &&
-        oldStatus !== TransactionStatus.RECONCILED
-      ) {
-        const reconciledDate = formatDateYMDLocal(new Date());
-        await m.update(Transaction, transaction.id, {
-          reconciledDate,
-        });
+      // The legs to write. Loaded fresh inside the transaction: the counterpart's
+      // own amount, date and status decide its balance adjustment, and the
+      // caller only handed us one row.
+      const legs =
+        expansion.ids.length === 1
+          ? [transaction]
+          : await m.getRepository(Transaction).find({
+              where: { id: In(expansion.ids), userId },
+            });
+
+      for (const leg of legs) {
+        const legWasVoid = leg.status === TransactionStatus.VOID;
+        // Every leg of one transfer shares a status, so they enter and leave
+        // VOID together; a leg already in the target state simply moves nothing.
+        const legVoidnessChanged = legWasVoid !== isVoid;
+
+        if (isTransactionInFuture(leg.transactionDate)) {
+          await m.update(Transaction, leg.id, { status });
+          if (legVoidnessChanged) {
+            await this.accountsService.recalculateCurrentBalance(leg.accountId);
+          }
+        } else {
+          if (legWasVoid && !isVoid) {
+            await this.accountsService.updateBalance(
+              leg.accountId,
+              Number(leg.amount),
+            );
+          } else if (!legWasVoid && isVoid) {
+            await this.accountsService.updateBalance(
+              leg.accountId,
+              -Number(leg.amount),
+            );
+          }
+          await m.update(Transaction, leg.id, { status });
+        }
+
+        if (
+          status === TransactionStatus.RECONCILED &&
+          leg.status !== TransactionStatus.RECONCILED
+        ) {
+          const reconciledDate = formatDateYMDLocal(new Date());
+          await m.update(Transaction, leg.id, { reconciledDate });
+        }
       }
+
+      return legs;
     });
 
-    if (wasVoid !== isVoid) {
-      triggerNetWorthRecalc(transaction.accountId, userId);
+    if (voidnessChanged) {
+      for (const accountId of new Set(affected.map((leg) => leg.accountId))) {
+        triggerNetWorthRecalc(accountId, userId);
+      }
     }
 
     return findOne(userId, transaction.id);

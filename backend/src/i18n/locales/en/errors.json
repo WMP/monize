@@ -488,7 +488,8 @@
     "payeeNotFound": "Payee not found",
     "fxFieldsIncomplete": "originalAmount and originalCurrencyCode must be provided together",
     "fxRateRequired": "A positive exchange rate is required for a foreign-currency transaction",
-    "fxSignMismatch": "originalAmount and amount must have the same sign"
+    "fxSignMismatch": "originalAmount and amount must have the same sign",
+    "statusChangeNeedsBothLegs": "This transfer's status has to change on both legs. Edit the transfer itself, or change the status on the split that owns it."
   },
   "users": {
     "userNotFound": "User not found",

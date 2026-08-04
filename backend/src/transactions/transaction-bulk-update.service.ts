@@ -39,6 +39,7 @@ import {
   parseSearchTerm,
   ParsedSearchTerm,
 } from "./transaction-search-parse.util";
+import { expandTransferLegsForStatus } from "./transfer-status-pairing.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 
@@ -168,13 +169,13 @@ export class TransactionBulkUpdateService {
     await withScopedDb(this.dataSource, async (m) => {
       // Step 3: Handle balance adjustments for VOID status changes
       if (isUpdatingStatus) {
-        const expanded = await this.expandTransferLegsForStatus(
+        const expanded = await expandTransferLegsForStatus(
           m,
           userId,
           eligibleIds,
         );
         statusIds = expanded.ids;
-        statusSkipped = expanded.refused;
+        statusSkipped = expanded.refusedIds.length;
         statusSkippedReasons.push(...expanded.reasons);
 
         if (statusIds.length > 0) {
@@ -246,129 +247,6 @@ export class TransactionBulkUpdateService {
       skipped: skipped + statusSkipped,
       skippedReasons: [...skippedReasons, ...statusSkippedReasons],
     };
-  }
-
-  /**
-   * A linked transfer is one economic event, so a balance-affecting status
-   * change -- above all entering or leaving VOID -- has to land on both legs or
-   * on neither. Voiding only the source leg used to restore the source balance
-   * while the destination leg stayed active, so 1,000.00 spread across two
-   * accounts became 1,100.00.
-   *
-   * A bulk request naming one leg is therefore expanded to the pair here,
-   * inside the transaction that adjusts the balances, so no API path -- UI,
-   * MCP, assistant -- can produce the half-voided state.
-   *
-   * Three shapes, and only two of them can be paired:
-   *  - a plain transfer leg: `linkedTransactionId` is the mirror leg, so
-   *    include it.
-   *  - a split parent: each of its splits may carry a `linkedTransactionId`
-   *    pointing at a leg in another account, so include those.
-   *  - a split-transfer leg: its `linkedTransactionId` is the split PARENT,
-   *    whose status covers every other child of that split too. Changing it is
-   *    a different operation from the one asked for, so the leg is refused and
-   *    reported rather than half-applied.
-   *
-   * A cross-owner counterpart belongs to another user and this request cannot
-   * write it, so those legs are refused for the same reason.
-   */
-  private async expandTransferLegsForStatus(
-    m: EntityManager,
-    userId: string,
-    eligibleIds: string[],
-  ): Promise<{ ids: string[]; refused: number; reasons: string[] }> {
-    const repo = m.getRepository(Transaction);
-    const rows = await repo
-      .createQueryBuilder("t")
-      .select(["t.id", "t.linkedTransactionId", "t.isTransfer", "t.isSplit"])
-      .where("t.id IN (:...ids)", { ids: eligibleIds })
-      .andWhere("t.userId = :userId", { userId })
-      .getMany();
-
-    const legs = rows.filter((r) => r.isTransfer && r.linkedTransactionId);
-    const splitParentIds = rows.filter((r) => r.isSplit).map((r) => r.id);
-
-    // Legs owned by a transaction_splits row point at the split parent.
-    const owningSplits =
-      legs.length > 0
-        ? await m.find(TransactionSplit, {
-            where: { linkedTransactionId: In(legs.map((l) => l.id)) },
-            select: ["id", "linkedTransactionId"],
-          })
-        : [];
-    const splitOwnedLegIds = new Set(
-      owningSplits.map((s) => s.linkedTransactionId),
-    );
-
-    const plainLegs = legs.filter((l) => !splitOwnedLegIds.has(l.id));
-    const candidateCounterpartIds = plainLegs
-      .map((l) => l.linkedTransactionId)
-      .filter((id): id is string => id !== null);
-
-    // Only counterparts this request may actually write can be paired.
-    const writableCounterpartIds = new Set(
-      candidateCounterpartIds.length === 0
-        ? []
-        : (
-            await repo
-              .createQueryBuilder("t")
-              .select(["t.id"])
-              .where("t.id IN (:...ids)", { ids: candidateCounterpartIds })
-              .andWhere("t.userId = :userId", { userId })
-              .getMany()
-          ).map((t) => t.id),
-    );
-
-    const ids = new Set(eligibleIds);
-    const refusedIds = new Set<string>();
-
-    for (const leg of plainLegs) {
-      const counterpartId = leg.linkedTransactionId!;
-      if (writableCounterpartIds.has(counterpartId)) {
-        ids.add(counterpartId);
-      } else {
-        // Cross-owner counterpart: pairing is impossible, so refuse the leg.
-        refusedIds.add(leg.id);
-      }
-    }
-
-    for (const leg of legs) {
-      if (splitOwnedLegIds.has(leg.id)) refusedIds.add(leg.id);
-    }
-
-    // A selected split parent carries its own transfer legs with it.
-    if (splitParentIds.length > 0) {
-      const childLegs = await m.find(TransactionSplit, {
-        where: { transactionId: In(splitParentIds) },
-        select: ["id", "linkedTransactionId"],
-      });
-      const childLegIds = childLegs
-        .map((s) => s.linkedTransactionId)
-        .filter((id): id is string => id !== null);
-      if (childLegIds.length > 0) {
-        const writableChildLegIds = (
-          await repo
-            .createQueryBuilder("t")
-            .select(["t.id"])
-            .where("t.id IN (:...ids)", { ids: childLegIds })
-            .andWhere("t.userId = :userId", { userId })
-            .getMany()
-        ).map((t) => t.id);
-        for (const id of writableChildLegIds) ids.add(id);
-      }
-    }
-
-    for (const id of refusedIds) ids.delete(id);
-
-    const reasons: string[] = [];
-    if (refusedIds.size > 0) {
-      const plural = refusedIds.size !== 1 ? "s" : "";
-      reasons.push(
-        `${refusedIds.size} transfer leg${plural} skipped (a transfer's status must change on both legs; edit the transfer itself)`,
-      );
-    }
-
-    return { ids: [...ids], refused: refusedIds.size, reasons };
   }
 
   async bulkDelete(
