@@ -3060,6 +3060,56 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-022 re-review (third reopen). Loan A and loan B share
+     * interestCategoryId="cat-int" and sourceAccountId="bank-1", but loan B
+     * has no transactions on its loan account in the ±45-day window (its
+     * principal posting has not arrived yet). The source-side transfer chain
+     * therefore finds nothing pointing to loan B, otherLoanTxs is empty, and
+     * the previous code returned isAmbiguous=false -- letting loan A sum
+     * $300 ($100 its own + $200 belonging to loan B).
+     *
+     * The fix checks conflicting loans' sourceAccountId directly from account
+     * configuration before querying transactions, so a shared funding source
+     * is detected regardless of whether any transactions have been imported.
+     */
+    it("marks every record interestUnmatched when another loan shares the same source account but has no transactions yet in the window", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 450 }),
+        makePayment("2026-02-05", { amount: 450 }),
+        makePayment("2026-03-05", { amount: 500, interestAmount: 50 }),
+      ];
+
+      // Loan B shares both the interest category and the source account
+      // (bank-1), but has no transactions in the date window.
+      accountsRepository.find.mockResolvedValue([
+        { id: "loan-1", sourceAccountId: "bank-1" },
+        { id: "loan-2", sourceAccountId: "bank-1" },
+      ]);
+
+      // Transaction queries must NOT be reached -- the config-level check
+      // returns ambiguous before any transaction lookup runs.
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // No transaction-level queries were needed for ambiguity detection.
+      expect(transactionRepository.find).not.toHaveBeenCalled();
+      expect(transactionRepository.findOne).not.toHaveBeenCalled();
+      // Payments without split-based interest are ambiguous.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment that already has split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
      * Control for REV-20260803-022: when only one loan has this interest
      * category (no conflict), pairing still proceeds normally and the
      * separate interest is attributed to this loan's payments.

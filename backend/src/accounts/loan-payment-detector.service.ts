@@ -617,12 +617,26 @@ export class LoanPaymentDetectorService {
             AccountType.LINE_OF_CREDIT,
           ]),
         },
-        select: ["id"],
+        select: ["id", "sourceAccountId"],
       });
       const otherLoanIds = sameInterestAccounts
         .map((a) => a.id)
         .filter((id) => id !== account.id);
       if (otherLoanIds.length === 0) return false;
+
+      // A conflicting loan that shares our source account means any interest
+      // expense on that account is ambiguous even if that loan has no
+      // transactions in the date window yet (its principal posting may not
+      // have arrived). Check the account configuration directly before
+      // looking at transaction linkage, so this case is never missed.
+      const sourceIdSet = new Set(sourceIds);
+      const sharedSourceLoan = sameInterestAccounts.find(
+        (a) =>
+          a.id !== account.id &&
+          a.sourceAccountId != null &&
+          sourceIdSet.has(a.sourceAccountId),
+      );
+      if (sharedSourceLoan != null) return true;
 
       // Source-side transfer linkedTransactionId points to the loan-side leg.
       // If any of those loan-side legs land on a conflicting loan account,
