@@ -63,7 +63,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `action-history.service` | Daily 3 AM | Prune old undo/redo history | Idempotent predicate delete |
 | `ai-usage.service` | Daily 4 AM | AI usage-log cleanup | Idempotent predicate delete |
 | `ai-insights.service` | Daily 6 AM | Generate AI insights | **Durable lease** per user, plus the existing recent-insight cooldown |
-| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone | Tombstone rows; the provider's `delete` is idempotent |
+| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put; the provider's `delete` is idempotent, and rows younger than `ORPHAN_SWEEP_MIN_AGE_MS` are skipped so an upload in flight is not swept |
 | `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | **Conditional transition**: the claim is the `next_backup_at` advance itself |
 | `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable claim** keyed on the local date plus a digest of the bills named |
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |

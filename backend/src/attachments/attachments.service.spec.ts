@@ -6,7 +6,10 @@ import {
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { createHash } from "crypto";
-import { withScopedDb } from "../common/db/scoped-db";
+import {
+  runOutsideActiveScopedManager,
+  withScopedDb,
+} from "../common/db/scoped-db";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import {
   AttachmentsService,
@@ -28,6 +31,14 @@ jest.mock("../common/db/locks", () =>
   jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
 const mockedTenantTx = withScopedDb as jest.MockedFunction<typeof withScopedDb>;
+// The upload intent is committed on its own connection, outside whatever
+// transaction the caller may already hold (audit FV4-003). The automock returns
+// undefined, which would make every awaited call resolve to nothing, so the
+// double calls through -- whether it really got its own connection is
+// scoped-db.spec.ts's question, not this file's.
+const mockedOutsideTx = runOutsideActiveScopedManager as jest.MockedFunction<
+  typeof runOutsideActiveScopedManager
+>;
 
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01,
@@ -55,6 +66,12 @@ describe("AttachmentsService", () => {
    */
   let lockedParent: ReturnType<typeof lockedTransactionRow> | null;
   let managerQuery: jest.Mock;
+  /**
+   * The transaction manager every `withScopedDb` in a spec receives. Exposed
+   * because the upload intent opens a *second* transaction, and a spec that wants
+   * only the metadata one to fail has to say which is which.
+   */
+  let manager: EntityManager;
   let attRepo: {
     count: jest.Mock;
     create: jest.Mock;
@@ -84,13 +101,14 @@ describe("AttachmentsService", () => {
 
     // `remove` deletes with a RETURNING statement, so the manager needs `query`
     // as well as the attachment repository.
-    const manager = {
+    manager = {
       getRepository: jest.fn(() => attRepo),
       query: jest.fn().mockResolvedValue([]),
     } as unknown as EntityManager;
     managerQuery = manager.query as unknown as jest.Mock;
 
     mockedTenantTx.mockImplementation((_dataSource, fn) => fn(manager));
+    mockedOutsideTx.mockImplementation((fn) => fn());
 
     storage = {
       name: "database",
@@ -254,16 +272,95 @@ describe("AttachmentsService", () => {
         getRepository: jest.fn(() => attRepo),
         query: jest.fn(),
       } as unknown as EntityManager;
-      mockedTenantTx.mockImplementation(async (_ds, fn) => {
-        await fn(failingManager);
-        throw new Error("commit failed");
-      });
+      // Two transactions now, and only the second one fails: the upload intent is
+      // committed on its own connection first, precisely so it survives this
+      // rollback (audit FV4-003).
+      mockedTenantTx
+        .mockImplementationOnce((_ds, fn) => fn(manager))
+        .mockImplementationOnce(async (_ds, fn) => {
+          await fn(failingManager);
+          throw new Error("commit failed");
+        });
 
       await expect(
         service.create("user-1", "txn-1", pngFile()),
       ).rejects.toThrow("commit failed");
 
       expect(storage.delete).toHaveBeenCalledWith(capturedId);
+    });
+
+    /**
+     * FV4-003: the bytes had to become *discoverable*, not merely cleaned up.
+     *
+     * The old code deleted the object in a catch, which runs only if this process
+     * is still alive. Killed between the put and the commit, the bytes survived
+     * with no metadata row -- and therefore no tombstone, so the orphan sweep
+     * could not enumerate them either. An upload intent committed before the put
+     * is what makes the object findable whatever happens next.
+     */
+    describe("the upload intent", () => {
+      /** The tombstone inserts recorded across every transaction this run opened. */
+      function intentInserts(): unknown[][] {
+        return managerQuery.mock.calls.filter((call) =>
+          String(call[0]).includes("INSERT INTO attachment_blob_tombstones"),
+        );
+      }
+
+      it("is committed before a single byte is written", async () => {
+        externalStorage();
+        let queriesBeforePut = 0;
+        storage.save.mockImplementation(async () => {
+          queriesBeforePut = intentInserts().length;
+        });
+
+        await service.create("user-1", "txn-1", pngFile());
+
+        expect(queriesBeforePut).toBe(1);
+        const [sql, params] = intentInserts()[0];
+        expect(String(sql)).toContain("ON CONFLICT");
+        expect(params).toEqual(["user-1", "s3", expect.any(String)]);
+      });
+
+      it("is cleared inside the transaction that commits the metadata row", async () => {
+        externalStorage();
+
+        const saved = await service.create("user-1", "txn-1", pngFile());
+
+        // Same transaction as the metadata row, so the pair is atomic: a rollback
+        // after this point keeps the intent and the sweeper finds the object.
+        expect(attRepo.delete).toHaveBeenCalledWith({
+          storageProvider: "s3",
+          storageKey: saved.id,
+        });
+      });
+
+      it("is not recorded at all for the database provider", async () => {
+        // Its blob write joins the transaction and genuinely rolls back with the
+        // metadata row, so there is nothing to compensate for.
+        await service.create("user-1", "txn-1", pngFile());
+
+        expect(intentInserts()).toEqual([]);
+      });
+
+      it("survives a rollback whose cleanup delete also fails", async () => {
+        externalStorage();
+        storage.save.mockResolvedValue(undefined);
+        storage.delete.mockRejectedValue(new Error("s3 unreachable"));
+        mockedTenantTx
+          .mockImplementationOnce((_ds, fn) => fn(manager))
+          .mockImplementationOnce(async (_ds, fn) => {
+            await fn(manager);
+            throw new Error("commit failed");
+          });
+
+        await expect(
+          service.create("user-1", "txn-1", pngFile()),
+        ).rejects.toThrow("commit failed");
+
+        // Nothing else ran, so the intent recorded before the put is the only
+        // remaining pointer to the object -- and it is still there.
+        expect(intentInserts()).toHaveLength(1);
+      });
     });
   });
 

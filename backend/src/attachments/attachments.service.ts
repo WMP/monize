@@ -8,11 +8,15 @@ import {
   UnsupportedMediaTypeException,
 } from "@nestjs/common";
 import { createHash, randomUUID } from "crypto";
-import { DataSource } from "typeorm";
-import { withScopedDb } from "../common/db/scoped-db";
+import { DataSource, EntityManager } from "typeorm";
+import {
+  runOutsideActiveScopedManager,
+  withScopedDb,
+} from "../common/db/scoped-db";
 import { lockTransactionRow } from "../common/db/locks";
 import { returnedRows } from "../common/db/query-result";
 import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
+import { AttachmentBlobTombstone } from "./entities/attachment-blob-tombstone.entity";
 import { tr } from "../i18n/translate";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import {
@@ -66,8 +70,21 @@ export class AttachmentsService {
    * the database provider's blob write joins this transaction and genuinely
    * commits or rolls back with the metadata row, while a local filesystem write
    * or an S3 put cannot. For those, a commit failure after the object is written
-   * leaves bytes nothing references, so the catch below deletes them -- and the
-   * hourly orphan sweep is the backstop for a process that dies before it can.
+   * leaves bytes nothing references.
+   *
+   * The catch below deletes them, but a catch is not a guarantee: it runs only if
+   * this process is still alive. Killed between the put and the commit, the bytes
+   * survived with no metadata row -- and therefore no tombstone, so the orphan
+   * sweep could not find them either. Undiscoverable is the part that matters:
+   * unreferenced bytes nobody can enumerate accumulate forever and no operator
+   * can tell they are there (audit FV4-003).
+   *
+   * So an **upload intent** is committed before a single byte is written: a
+   * tombstone for the key this upload is about to use, in its own transaction, so
+   * it is durable independently of what happens next. Success deletes it *inside*
+   * the metadata transaction, which is what makes the pair atomic -- a commit
+   * drops the intent with the row that now owns the bytes, and a rollback keeps
+   * it, so the sweeper finds the object whether this process survives or not.
    */
   async create(
     userId: string,
@@ -104,6 +121,11 @@ export class AttachmentsService {
     const filename = sanitizeFilename(file.originalname);
     const sha256 = createHash("sha256").update(file.buffer).digest("hex");
     const id = randomUUID();
+
+    // Committed before the put, on its own connection: an intent that shares the
+    // metadata transaction would roll back with it and record nothing, which is
+    // the whole failure being fixed here.
+    await this.recordUploadIntent(userId, id);
 
     let objectWritten = false;
     try {
@@ -156,25 +178,99 @@ export class AttachmentsService {
         await this.storage.save(id, file.buffer);
         objectWritten = this.storage.name !== "database";
 
+        // Clearing the intent joins this transaction on purpose: it commits with
+        // the metadata row that now owns the bytes, and a rollback after this
+        // point keeps the intent, so the sweeper still finds the object.
+        await this.clearUploadIntent(m, id);
+
         return saved;
       });
     } catch (error) {
       if (objectWritten) {
-        // The transaction rolled back after the object was written. Nothing
-        // references those bytes now, so remove them; the orphan sweep cannot
-        // find them either, because there is no metadata row and therefore no
-        // tombstone.
+        // The transaction rolled back after the object was written, so nothing
+        // references those bytes. Remove them now for promptness; the intent
+        // committed above is what makes this optional rather than the only
+        // chance, so a failure here is a warning and not a leak.
         await this.storage
           .delete(id)
+          .then(() => this.clearCommittedUploadIntent(id))
           .catch((cleanupError: unknown) =>
             this.logger.warn(
               `Attachment ${id} rolled back but its stored object could not be ` +
-                `removed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+                `removed; left to the orphan sweep: ` +
+                `${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
             ),
           );
+      } else {
+        // Refused before anything was written -- the cap, a missing parent. There
+        // are no bytes at this key, so drop the intent rather than leaving the
+        // sweeper a no-op delete to discover.
+        await this.clearCommittedUploadIntent(id);
       }
       throw error;
     }
+  }
+
+  /**
+   * Record that bytes are about to be written at `storageKey`, and commit it.
+   *
+   * A tombstone means "these bytes may exist and nothing references them", which
+   * is exactly true of an upload in flight -- so the intent and the deletion
+   * record are the same row shape and the same sweeper handles both. The sweeper
+   * skips rows younger than its grace period, which is what stops it deleting an
+   * upload that is still in progress.
+   *
+   * `runOutsideActiveScopedManager` because `create` may itself be called inside
+   * a caller's transaction: joining it would make the intent roll back with the
+   * work it exists to outlive.
+   */
+  private async recordUploadIntent(
+    userId: string,
+    storageKey: string,
+  ): Promise<void> {
+    if (this.storage.name === "database") return;
+    await runOutsideActiveScopedManager(() =>
+      withScopedDb(this.dataSource, (m) =>
+        m.query(
+          `INSERT INTO attachment_blob_tombstones
+             (user_id, storage_provider, storage_key)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (storage_provider, storage_key) DO NOTHING`,
+          [userId, this.storage.name, storageKey],
+        ),
+      ),
+    );
+  }
+
+  /** Drop the intent inside the caller's transaction, so it commits with the row. */
+  private async clearUploadIntent(
+    m: EntityManager,
+    storageKey: string,
+  ): Promise<void> {
+    if (this.storage.name === "database") return;
+    await m.getRepository(AttachmentBlobTombstone).delete({
+      storageProvider: this.storage.name,
+      storageKey,
+    });
+  }
+
+  /** Drop the intent in its own transaction, when there is no work to bind it to. */
+  private async clearCommittedUploadIntent(storageKey: string): Promise<void> {
+    if (this.storage.name === "database") return;
+    await runOutsideActiveScopedManager(() =>
+      withScopedDb(this.dataSource, (m) =>
+        m.getRepository(AttachmentBlobTombstone).delete({
+          storageProvider: this.storage.name,
+          storageKey,
+        }),
+      ),
+    ).catch((error: unknown) =>
+      this.logger.warn(
+        `Could not clear the upload intent for ${storageKey}; the orphan sweep ` +
+          `will retry a no-op delete: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+      ),
+    );
   }
 
   /** List attachment metadata for one of the user's transactions (no bytes). */

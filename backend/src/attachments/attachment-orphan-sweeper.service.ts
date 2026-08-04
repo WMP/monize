@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { DataSource } from "typeorm";
+import { DataSource, LessThan } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
 import { AttachmentBlobTombstone } from "./entities/attachment-blob-tombstone.entity";
@@ -13,6 +13,21 @@ import {
 export const ORPHAN_SWEEP_BATCH = 200;
 
 /**
+ * How old a tombstone must be before the cron sweep acts on it.
+ *
+ * Load-bearing, not a politeness. A tombstone is also written as an **upload
+ * intent** before an object is put (`AttachmentsService.create`), and that row
+ * exists for as long as the upload takes. Sweeping it while the upload is still
+ * in flight would delete the bytes a metadata row is about to reference -- a
+ * committed attachment pointing at nothing, which is worse than the orphan the
+ * intent exists to prevent. The window only has to outlast one HTTP upload.
+ *
+ * The interactive path (`sweepKey`) is deliberately not delayed: its caller has
+ * already committed the metadata delete, so there is nothing left to protect.
+ */
+export const ORPHAN_SWEEP_MIN_AGE_MS = 15 * 60 * 1000;
+
+/**
  * Deletes attachment bytes whose metadata is already gone.
  *
  * This is the compensating half of the attachment lifecycle. Metadata deletion
@@ -21,6 +36,12 @@ export const ORPHAN_SWEEP_BATCH = 200;
  * transaction has committed. Ordering it that way is the point: an external
  * delete before the commit is unrecoverable if the commit then fails, while an
  * external delete after it is merely pending until the next sweep.
+ *
+ * A tombstone is also how an upload records its **intent** before writing bytes,
+ * because "these bytes may exist and nothing references them" is equally true of
+ * an upload in flight and of a metadata row that is gone. One row shape, one
+ * sweeper -- with a grace period so an upload still running is not swept out from
+ * under itself (audit FV4-003).
  *
  * A tombstone for another provider is left alone rather than deleted. Its bytes
  * are unreachable through the currently bound provider, so dropping the record
@@ -49,7 +70,13 @@ export class AttachmentOrphanSweeper {
   async sweep(): Promise<number> {
     const pending = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(AttachmentBlobTombstone).find({
-        where: { storageProvider: this.storage.name },
+        where: {
+          storageProvider: this.storage.name,
+          // Older than the grace period: a young row may be an upload still in
+          // flight, whose bytes a metadata row is about to reference. See
+          // ORPHAN_SWEEP_MIN_AGE_MS.
+          deletedAt: LessThan(new Date(Date.now() - ORPHAN_SWEEP_MIN_AGE_MS)),
+        },
         order: { deletedAt: "ASC" },
         take: ORPHAN_SWEEP_BATCH,
       }),

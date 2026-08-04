@@ -213,6 +213,26 @@ disappear through a path with no application code -- an `ON DELETE CASCADE` -- t
 record has to be written by a trigger, because that is the only thing that runs.
 `attachment_blob_tombstones` and `AttachmentOrphanSweeper` are the worked example.
 
+A **write** in the other direction needs the mirror of that: the intent recorded
+*before* the external operation, committed on its own connection so it survives
+the rollback of the work it describes, and cleared inside the transaction that
+commits the row now owning those bytes. A cleanup in a `catch` is not the record
+-- it runs only if the process is still alive, and bytes written with no metadata
+row leave nothing to enumerate them, so "we deleted it on failure" quietly means
+"undiscoverable if we died". `AttachmentsService.create` writes a tombstone as an
+upload intent for exactly this reason; the sweeper then needs a grace period,
+because a young intent may belong to an upload still in flight.
+
+**A claim is not a record that the work was done.** A claim answers "may I do this
+now" and cannot also answer "has this been done", because the second question has
+to outlive the process that asked the first. A `claimOnce` taken before an email
+is consumed by a replica that dies before sending, and the delivery is then owed
+forever with nothing able to notice. Take a **lease** for the exclusion and keep
+the delivery in its own durable column, written after the side effect and re-read
+under the lease -- per recipient wherever a retry would re-issue a credential and
+invalidate the one already delivered. `docs/cron-jobs.md` has the rule and the
+worked examples.
+
 ### Derived state fired after a commit needs a way to be noticed as missing
 
 A `setTimeout` or an unawaited promise scheduled after a write is a latency
