@@ -1289,4 +1289,67 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(sameDayRegular!.annualRate!).toBeGreaterThan(3);
     expect(sameDayRegular!.annualRate!).toBeLessThan(8);
   });
+
+  it('REV-20260803-035: attributes a same-date real interest expense to the regular payment regardless of input order', () => {
+    // An overpayment and a regular principal transfer share one date, neither
+    // carries a recorded interest split of its own, and there is exactly one
+    // real separately-booked interest expense for that date. Whichever of the
+    // two happened to be processed first used to "win" the one real charge via
+    // usedInterestDates on a first-come basis -- so which row showed the real
+    // interest (and therefore whether the regular installment's annualRate
+    // could be reconstructed at all) depended on nothing but array order, even
+    // though the *total* stayed correct (the loser fell back to 0, not a
+    // second analytic estimate, per the existing hasSeparateInterest guard).
+    // Both input orderings must resolve identically: the regular payment gets
+    // the real interest and a reconstructed rate; the overpayment gets 0 and
+    // no rate.
+    const account = makeAccount({
+      accountType: 'LOAN',
+      openingBalance: -10000,
+      currentBalance: -9760,
+      interestRate: 6,
+      paymentFrequency: 'MONTHLY',
+      overpaymentMemo: 'extra',
+    });
+    const interestTransactions = [
+      { transactionDate: '2026-05-05', amount: -40, isTransfer: false } as Transaction,
+    ];
+    const overpaymentTx = makeTransaction({
+      id: 'over',
+      transactionDate: '2026-05-05',
+      amount: 200,
+      description: 'extra principal',
+    });
+    const regularTx = makeTransaction({
+      id: 'reg',
+      transactionDate: '2026-05-05',
+      amount: 300,
+    });
+
+    function assertResolvedDeterministically(transactions: Transaction[]) {
+      const { events, cumulativeInterest } = deriveLoanPaymentHistory(
+        account,
+        transactions,
+        [],
+        interestTransactions,
+      );
+      const overpayment = events.find((e) => e.type === 'OVERPAYMENT');
+      const regular = events.find((e) => e.type === 'REGULAR');
+      expect(regular).toBeDefined();
+      expect(overpayment).toBeDefined();
+      // The real interest belongs to the regular installment, not whichever
+      // row happened to be processed first.
+      expect(regular!.interest).toBeCloseTo(40, 4);
+      expect(overpayment!.interest).toBe(0);
+      expect(regular!.annualRate).not.toBeNull();
+      expect(overpayment!.annualRate).toBeNull();
+      // The real charge is counted once, whichever row shows it.
+      expect(cumulativeInterest).toBeCloseTo(40, 4);
+    }
+
+    // Overpayment sorts first in the input array...
+    assertResolvedDeterministically([overpaymentTx, regularTx]);
+    // ...and the reverse. Both must produce the exact same result.
+    assertResolvedDeterministically([regularTx, overpaymentTx]);
+  });
 });

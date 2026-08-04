@@ -171,6 +171,21 @@ export function deriveLoanPaymentHistory(
   const hasSeparateInterest =
     separateInterestByDate.size > 0 || orphanInterest.length > 0;
   const usedInterestDates = new Set<string>();
+  // Which transaction, per date, is entitled to that date's real separate
+  // interest expense -- resolved once, up front, for the whole date group
+  // rather than left to whichever transaction classifyPayment happens to
+  // process first. Without this, an overpayment and a regular payment
+  // sharing a date raced for the one real charge on a first-come basis: the
+  // loser fell back to 0 (suppressed by hasSeparateInterest below), so the
+  // total stayed correct, but *which* row showed the real interest -- and
+  // therefore whether the regular installment's annualRate could be
+  // reconstructed from it at all -- depended on nothing but input array
+  // order (REV-20260803-035).
+  const interestOwnerByDate = resolveInterestOwnerByDate(
+    repayments,
+    account,
+    loanAccountId,
+  );
   const events: LoanPaymentEvent[] = [];
 
   // Day count for the very first row's rate, where there is no prior payment to
@@ -195,6 +210,7 @@ export function deriveLoanPaymentHistory(
         separateInterestByDate,
         usedInterestDates,
         hasSeparateInterest,
+        interestOwnerByDate,
       );
       runningBalance = Math.max(0, runningBalance - principal);
       cumulativePrincipal += principal;
@@ -235,6 +251,7 @@ export function deriveLoanPaymentHistory(
         separateInterestByDate,
         usedInterestDates,
         hasSeparateInterest,
+        interestOwnerByDate,
       );
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
@@ -431,11 +448,12 @@ export function buildLoanProjectionInput(
 /**
  * Classify a positive loan-account transaction into its interest portion and
  * row type. Interest is resolved in order: a recorded interest split of the
- * payment; else the actual separate interest expense paired to this date; else
- * an analytic estimate from the running balance and rate. An overpayment
- * (recognized by the loan's overpayment category / memo / payee) is extra
- * principal, but still shows any real interest charged alongside it (paired) --
- * never an analytic estimate.
+ * payment; else the actual separate interest expense paired to this date (only
+ * for the transaction `interestOwnerByDate` names as that date's owner -- see
+ * `resolveInterestOwnerByDate`); else an analytic estimate from the running
+ * balance and rate. An overpayment (recognized by the loan's overpayment
+ * category / memo / payee) is extra principal, but still shows any real
+ * interest charged alongside it (paired) -- never an analytic estimate.
  */
 function classifyPayment(
   transaction: Transaction,
@@ -447,11 +465,18 @@ function classifyPayment(
   separateInterestByDate: Map<string, number>,
   usedInterestDates: Set<string>,
   hasSeparateInterest: boolean,
+  interestOwnerByDate: Map<string, string>,
 ): { interest: number; type: LoanPaymentType } {
   const dateKey = transaction.transactionDate.split('T')[0];
-  // The actual interest expense paired to this date, consumed once.
+  // The actual interest expense paired to this date, consumed once. Which
+  // transaction is allowed to take it was already decided for the whole date
+  // group by `resolveInterestOwnerByDate`, so a transaction that isn't that
+  // date's designated owner gets null here regardless of processing order --
+  // it never grabs the charge just for having been processed first.
   const takeSeparateInterest = (): number | null => {
     if (usedInterestDates.has(dateKey)) return null;
+    const owner = interestOwnerByDate.get(dateKey);
+    if (owner != null && owner !== transaction.id) return null;
     const amount = separateInterestByDate.get(dateKey);
     if (amount == null || amount <= 0) return null;
     usedInterestDates.add(dateKey);
@@ -640,6 +665,82 @@ function readRecordedInterest(
   processedParentIds.add(linkedTx.id);
   const interestSplit = linkedTx.splits.find((s) => s.transferAccountId !== loanAccountId);
   return interestSplit ? Math.abs(interestSplit.amount) : 0;
+}
+
+/**
+ * Whether a transaction carries its own recorded interest split (the same
+ * condition `readRecordedInterest` checks), without the `processedParentIds`
+ * bookkeeping -- a read-only predicate safe to call from a resolution pass
+ * that runs before the main walk. A transaction sharing a parent with a
+ * sibling loan transfer still resolves via that split (one of the two reads
+ * the amount, the other reads 0 -- see `readRecordedInterest`); either way it
+ * never reaches the separate-interest pool, so both are excluded here too.
+ */
+function hasOwnRecordedInterestSplit(transaction: Transaction, loanAccountId: string): boolean {
+  const linkedTx = transaction.linkedTransaction;
+  if (!linkedTx?.splits || linkedTx.splits.length === 0) return false;
+  return linkedTx.splits.some((s) => s.transferAccountId !== loanAccountId);
+}
+
+/**
+ * Resolve, for every date with more than one candidate, which single
+ * transaction is entitled to that date's real separate interest expense --
+ * decided once for the whole group rather than left to whichever transaction
+ * `classifyPayment` happens to process first (REV-20260803-035). Only
+ * transactions that would otherwise reach the paired-interest path are
+ * considered: one with its own recorded split (`hasOwnRecordedInterestSplit`)
+ * resolves independently and never touches this pool, so it is excluded from
+ * consideration and cannot block a sibling from taking the real charge.
+ *
+ * Among the remaining candidates, a REGULAR payment (not recognized as an
+ * overpayment by the loan's overpayment category / memo / payee) is preferred
+ * over an OVERPAYMENT sharing the date: the real interest presumably accrued
+ * against the scheduled installment, not an extra optional payment. Ties
+ * within the same preference (more than one eligible REGULAR, or none and
+ * more than one eligible OVERPAYMENT) keep the input order -- genuinely
+ * ambiguous without more information, and not the case this resolves.
+ *
+ * Returns a `dateKey -> transaction.id` map; `classifyPayment` consults it so
+ * a non-owner gets null from `takeSeparateInterest` regardless of processing
+ * order, and the existing `hasSeparateInterest` fallback (0, not an analytic
+ * estimate) already covers every other row on that date.
+ */
+function resolveInterestOwnerByDate(
+  repayments: Transaction[],
+  account: Account,
+  loanAccountId: string,
+): Map<string, string> {
+  const groups = new Map<string, Transaction[]>();
+  for (const transaction of repayments) {
+    const dateKey = transaction.transactionDate.split('T')[0];
+    const group = groups.get(dateKey);
+    if (group) {
+      group.push(transaction);
+    } else {
+      groups.set(dateKey, [transaction]);
+    }
+  }
+
+  const owners = new Map<string, string>();
+  for (const [dateKey, group] of groups) {
+    const eligible = group.filter(
+      (transaction) => !hasOwnRecordedInterestSplit(transaction, loanAccountId),
+    );
+    if (eligible.length === 0) continue;
+    const regularCandidates = eligible.filter(
+      (transaction) =>
+        !isOverpayment(
+          transaction,
+          account.overpaymentCategoryId,
+          account.overpaymentMemo,
+          account.overpaymentPayeeId,
+          loanAccountId,
+        ),
+    );
+    const winner = (regularCandidates.length > 0 ? regularCandidates : eligible)[0];
+    owners.set(dateKey, winner.id);
+  }
+  return owners;
 }
 
 /**
