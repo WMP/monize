@@ -598,6 +598,60 @@ export class LoanPaymentDetectorService {
         ? asOfDate
         : naturalRangeEnd;
 
+    // REV-20260803-022: detect ambiguity when another loan with the same
+    // interest category also receives transfers from any of our source
+    // accounts. Restricting to `sourceIds` prevents bleed-in from entirely
+    // different source accounts, but two loans paid from the SAME chequing
+    // account with the SAME interest category both retrieve both sets of
+    // interest expenses. When that overlap is detected via linked-transfer
+    // evidence, reject pairing for this loan as ambiguous rather than summing
+    // interest that belongs to multiple loans.
+    const isAmbiguous = await withScopedDb(this.dataSource, async (m) => {
+      const sameInterestAccounts = await m.getRepository(Account).find({
+        where: {
+          userId,
+          interestCategoryId,
+          accountType: In([
+            AccountType.LOAN,
+            AccountType.MORTGAGE,
+            AccountType.LINE_OF_CREDIT,
+          ]),
+        },
+        select: ["id"],
+      });
+      const otherLoanIds = sameInterestAccounts
+        .map((a) => a.id)
+        .filter((id) => id !== account.id);
+      if (otherLoanIds.length === 0) return false;
+
+      // Source-side transfer linkedTransactionId points to the loan-side leg.
+      // If any of those loan-side legs land on a conflicting loan account,
+      // the source account funds both loans and interest expenses are mixed.
+      const sourceTransfers = await m.getRepository(Transaction).find({
+        where: {
+          userId,
+          accountId: In(sourceIds),
+          isTransfer: true,
+          transactionDate: Between(rangeStart, rangeEnd),
+        },
+        select: ["linkedTransactionId"],
+      });
+      const linkedIds = sourceTransfers
+        .map((t) => t.linkedTransactionId)
+        .filter((id): id is string => id != null);
+      if (linkedIds.length === 0) return false;
+
+      const conflictTx = await m.getRepository(Transaction).findOne({
+        where: { id: In(linkedIds), accountId: In(otherLoanIds) },
+      });
+      return conflictTx != null;
+    });
+    if (isAmbiguous) {
+      return payments.map((p) =>
+        p.interestAmount != null ? p : { ...p, interestUnmatched: true },
+      );
+    }
+
     const interestTxns = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Transaction).find({
         where: {

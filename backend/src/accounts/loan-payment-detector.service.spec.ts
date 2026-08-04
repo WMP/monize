@@ -2443,6 +2443,12 @@ describe("LoanPaymentDetectorService", () => {
       ...over,
     });
 
+    // Default: no conflicting loan accounts share this interest category.
+    // Tests that need conflict detection override this per-test.
+    beforeEach(() => {
+      accountsRepository.find.mockResolvedValue([]);
+    });
+
     it("returns payments untouched when the loan has no interest category", async () => {
       const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
       const result = await service.pairSeparateInterest(
@@ -2942,6 +2948,105 @@ describe("LoanPaymentDetectorService", () => {
 
       expect(result[0].interestAmount).toBeCloseTo(150, 2);
       expect(result[1].interestAmount).toBeCloseTo(140, 2);
+      expect(result[1].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * REV-20260803-022. Two loans (loan-1 and loan-2) share the same
+     * interest category ("cat-int") and are both paid from the same chequing
+     * account ("bank-1"). Before this fix, pairSeparateInterest queried all
+     * interest transactions in "bank-1" with category "cat-int" and summed
+     * them, so both loans saw both sets of interest expenses and each
+     * produced a falsely-inflated rate. After the fix, the linked-transfer
+     * check detects that "bank-1" also funds loan-2, and all payments for
+     * loan-1 are returned with interestUnmatched: true instead of a wrong sum.
+     */
+    it("marks every record interestUnmatched when the same interest category is shared with another loan paid from the same source account (REV-20260803-022)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 450 }),
+        makePayment("2026-02-05", { amount: 450 }),
+        // One payment already has split-based interest -- must be left untouched.
+        makePayment("2026-03-05", { amount: 500, interestAmount: 50 }),
+      ];
+
+      // Two loan accounts share the same interest category.
+      accountsRepository.find.mockResolvedValue([
+        { id: "loan-1" },
+        { id: "loan-2" },
+      ]);
+
+      // The source account ("bank-1") has transfers to both loans: one linked
+      // to loan-1 (this account's payment) and one linked to loan-2.
+      transactionRepository.find.mockResolvedValue([
+        { linkedTransactionId: "loan1-tx" },
+        { linkedTransactionId: "loan2-tx" },
+      ]);
+
+      // The conflict: one of the linked transactions lands on loan-2.
+      transactionRepository.findOne.mockResolvedValue({
+        id: "loan2-tx",
+        accountId: "loan-2",
+      });
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Payments without split-based interest are ambiguous -- must not carry
+      // a falsely summed interest figure.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment that already has split-based interest is left untouched --
+      // the ambiguity applies only to the separate-expense pairing path.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * Control for REV-20260803-022: when only one loan has this interest
+     * category (no conflict), pairing still proceeds normally and the
+     * separate interest is attributed to this loan's payments.
+     */
+    it("still pairs interest normally when no other loan shares the same interest category and source account", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+
+      // Only this loan has the interest category -- no conflict.
+      accountsRepository.find.mockResolvedValue([{ id: "loan-1" }]);
+
+      transactionRepository.find.mockResolvedValue([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-02-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(100, 2);
+      expect(result[1].interestAmount).toBeCloseTo(200, 2);
+      expect(result[0].interestUnmatched).toBeUndefined();
       expect(result[1].interestUnmatched).toBeUndefined();
     });
   });
