@@ -57,6 +57,7 @@ describe("LoanPaymentDetectorService", () => {
     transactionRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
+      count: jest.fn(),
       manager: {
         find: jest.fn(),
       },
@@ -3107,6 +3108,118 @@ describe("LoanPaymentDetectorService", () => {
       expect(result[2].interestUnmatched).toBeUndefined();
       // Records are copied, not mutated.
       expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * REV-20260803-022 (fourth reopen). Loan A has sourceAccountId=bank-1
+     * and interestCategoryId=cat-int; loan B has interestCategoryId=cat-int
+     * but no configured sourceAccountId and no loan-account transactions in
+     * the ±45-day window.
+     *
+     * bank-1 carries both A's $100 and B's $200 standalone cat-int expenses.
+     * The previous code returned isAmbiguous=false because:
+     *   - sharedSourceLoan check requires sourceAccountId != null (B skipped)
+     *   - otherLoanTxs for B is empty (no principal transactions posted yet)
+     *   - otherLoanTxs.some(unlinked) => false on an empty array
+     * ...so loan A summed $300. The fix counts non-transfer interest-category
+     * expenses on our source accounts; finding any while an unknown-source
+     * loan exists flags the pairing as ambiguous.
+     */
+    it("marks every record interestUnmatched when another loan has the same interest category but no configured sourceAccountId and no loan-account transactions (REV-20260803-022 fourth reopen)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 350 }),
+        makePayment("2026-02-05", { amount: 350 }),
+        makePayment("2026-03-05", { amount: 400, interestAmount: 50 }),
+      ];
+
+      // Loan B shares the interest category but has no sourceAccountId.
+      accountsRepository.find.mockResolvedValue([
+        { id: "loan-1", sourceAccountId: "bank-1" },
+        { id: "loan-2", sourceAccountId: null },
+      ]);
+
+      // No linked transfers on bank-1 pointing to either loan.
+      transactionRepository.find
+        .mockResolvedValueOnce([]) // sourceTransfers
+        .mockResolvedValueOnce([]); // otherLoanTxs for loan-2 (no activity)
+
+      // Candidate count: bank-1 has 2 non-transfer cat-int expenses ($100 A,
+      // $200 B). The fix detects > 0 candidates and flags as ambiguous.
+      transactionRepository.count.mockResolvedValue(2);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Pairing is ambiguous: loan B's interest is indistinguishable from
+      // loan A's by account+category alone. Payments without split-based
+      // interest must be marked unmatched rather than summed.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment with existing split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * Control for the fourth reopen: when the same null-sourceAccountId loan
+     * exists but there are NO interest-category expenses on our source
+     * accounts in the window, attribution is not ambiguous and pairing
+     * proceeds normally.
+     */
+    it("still pairs interest normally when a null-sourceAccountId conflicting loan exists but has no candidate expenses on our source accounts (REV-20260803-022 fourth reopen control)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+
+      // Loan B shares category but has no sourceAccountId.
+      accountsRepository.find.mockResolvedValue([
+        { id: "loan-1", sourceAccountId: "bank-1" },
+        { id: "loan-2", sourceAccountId: null },
+      ]);
+
+      transactionRepository.find
+        .mockResolvedValueOnce([]) // sourceTransfers
+        .mockResolvedValueOnce([]); // otherLoanTxs
+
+      // No candidate interest expenses on bank-1 -- nothing to confuse.
+      transactionRepository.count.mockResolvedValue(0);
+
+      // Interest transactions for the main pairing query.
+      transactionRepository.find.mockResolvedValueOnce([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-02-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // No ambiguity: pairing proceeds and attributes the interest correctly.
+      expect(result[0].interestAmount).toBeCloseTo(100, 2);
+      expect(result[1].interestAmount).toBeCloseTo(200, 2);
+      expect(result[0].interestUnmatched).toBeUndefined();
+      expect(result[1].interestUnmatched).toBeUndefined();
     });
 
     /**

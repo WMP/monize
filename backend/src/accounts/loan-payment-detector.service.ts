@@ -692,7 +692,34 @@ export class LoanPaymentDetectorService {
 
       // Any unlinked transaction on the other loan accounts means the source
       // is unknown; treat as ambiguous rather than risk summing mixed interest.
-      return otherLoanTxs.some((t) => t.linkedTransactionId == null);
+      if (otherLoanTxs.some((t) => t.linkedTransactionId == null)) return true;
+
+      // A conflicting loan with no configured sourceAccountId has an unknown
+      // funding origin: any interest-category expense on our source accounts
+      // could belong to it. If such a loan exists and the source accounts
+      // carry at least one non-transfer expense in the candidate category
+      // and window, attribution is ambiguous.
+      // (REV-20260803-022 fourth reopen: the sharedSourceLoan check above
+      // requires sourceAccountId != null, so an imported/unconfigured loan
+      // with sourceAccountId=null and no loan-account transactions was
+      // invisible to both that check and the otherLoanTxs check.)
+      const unknownSourceLoans = sameInterestAccounts.filter(
+        (a) => a.id !== account.id && a.sourceAccountId == null,
+      );
+      if (unknownSourceLoans.length > 0) {
+        const candidateCount = await m.getRepository(Transaction).count({
+          where: {
+            userId,
+            accountId: In(sourceIds),
+            categoryId: interestCategoryId,
+            isTransfer: false,
+            transactionDate: Between(rangeStart, rangeEnd),
+          },
+        });
+        if (candidateCount > 0) return true;
+      }
+
+      return false;
     });
     if (isAmbiguous) {
       return payments.map((p) =>
