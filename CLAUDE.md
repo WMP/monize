@@ -70,6 +70,22 @@ The point is that the next agent inherits the correction. A fix that lives only 
 
 **A doc that names an identifier is making a claim about the source.** Renaming or deleting a field, flag or helper means grepping `docs/` and every `CLAUDE.md` in the same commit. A document describing a model that no longer exists is worse than none: it gets read, believed, and built on. The same goes for a comment asserting that *every* call site does something -- that is a scanning test, not a comment.
 
+### The contract documents
+
+Cross-layer rules live in `docs/`, not in this file, because they are too long to state twice and too easily violated to state loosely. `docs/system-invariants.md` is the index: it lists every invariant with a stable ID, the mechanism that enforces it, and an honest status of `enforced`, `partial` or `unenforced`. An entry marked `unenforced` describes something the system currently gets wrong, with the violation cited -- that gap is the point, and editing the document does not close it.
+
+| Document | Covers |
+|---|---|
+| `docs/system-invariants.md` | The invariant catalog and its enforcement status. Name the IDs your change touches. |
+| `docs/concurrency-and-idempotency.md` | Which mechanism to use when (atomic delta, unique index, CAS, lock, advisory lock, idempotency key), lock ordering, retry semantics, and the register of values with more than one protocol. |
+| `docs/financial-semantics.md` | Signs, transfer legs, FX rate direction and precision, per-field precision, split sum rules, commission basis, split ratios. |
+| `docs/external-side-effects.md` | Per-provider lifecycle for anything PostgreSQL cannot roll back: attachments, backups, email, providers. |
+| `docs/verification-contract.md` | Which test kind each invariant requires, which CI job owns it, and the known-wrong tests that currently assert defects. |
+| `docs/release-integrity.md` | Zero-discovered-tests is a failure; the tested, imaged and tagged revisions must be one revision. |
+| `docs/adr/` | Why a decision was made, and what was rejected. Supersede, never rewrite. |
+
+Two of these say something about a guarantee's wording that applies everywhere: any use of "atomic", "single-use", "exactly once", "retryable", "cannot", "always", "complete" or "transactional" must name the mechanism that makes it true -- the transaction, the index, the conditional `UPDATE`, the verified checksum. Three comments in this codebase claimed a lock, an atomic increment and a joint commit that the code beside them did not implement, and each was believed for as long as it existed. If the mechanism cannot be named, the wording is wrong, not merely vague.
+
 ### Running the suites locally -- two ways a green branch reads as red
 
 CI runs in UTC with one Playwright worker. A local run does neither, and both differences produce failures that look like regressions and are not.
