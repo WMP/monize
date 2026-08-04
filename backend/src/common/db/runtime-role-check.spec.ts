@@ -14,6 +14,7 @@ const SAFE: RuntimeRoleFacts = {
   ownedPoliciedTables: 0,
   exemptReachableContexts: [],
   inheritedOwnerRoles: [],
+  inheritedForbiddenRoles: [],
 };
 
 /** A querier returning one row, in the `DataSource.query` array shape. */
@@ -37,6 +38,7 @@ const SAFE_ROW = {
   owned_policied_tables: "0",
   exempt_reachable_contexts: [],
   inherited_owner_roles: [],
+  inherited_forbidden_roles: [],
 };
 
 describe("runtimeRoleViolations", () => {
@@ -108,12 +110,14 @@ describe("runtimeRoleViolations", () => {
         ownedPoliciedTables: 53,
         exemptReachableContexts: ["monize"],
         inheritedOwnerRoles: ["monize"],
+        inheritedForbiddenRoles: ["pg_execute_server_program"],
       },
       "monize_app",
     );
 
-    // wrong-role + 3 attributes + owns-db + owns-tables + inherited + reachable.
-    expect(violations).toHaveLength(8);
+    // wrong-role + 3 attributes + owns-db + owns-tables + inherited-owner +
+    // inherited-forbidden + reachable.
+    expect(violations).toHaveLength(9);
   });
 });
 
@@ -147,6 +151,38 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("REPLICATION");
     expect(violations[0]).toMatch(/WAL|replication/i);
+  });
+
+  it("refuses a role that inherits a server-program membership (RR6-001)", () => {
+    // OS command execution, not an RLS matter -- so the message names the
+    // capability, not policies. Measured on a live server: a NOSUPERUSER member
+    // of pg_execute_server_program ran COPY ... TO PROGRAM and wrote a host file.
+    const violations = runtimeRoleViolations(
+      { ...SAFE, inheritedForbiddenRoles: ["pg_execute_server_program"] },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain('"pg_execute_server_program"');
+    expect(violations[0]).toMatch(/server-program|server-file/);
+    expect(violations[0]).toContain("Revoke the membership");
+    // Not an RLS diagnosis -- RR6-003 is precisely about not saying it is.
+    expect(violations[0]).not.toContain("policies do not apply");
+  });
+
+  it("gives a reachable context a truthful, non-RLS-specific reason (RR6-003)", () => {
+    // A reachable context lands here for an RLS exemption, a forbidden attribute,
+    // OR a forbidden membership. The old "policies do not apply" was false for
+    // the last two and sent operators chasing an RLS problem that was not there.
+    const violations = runtimeRoleViolations(
+      { ...SAFE, exemptReachableContexts: ["repl_bridge"] },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain("SET ROLE");
+    expect(violations[0]).toContain("privileges forbidden to the runtime role");
+    expect(violations[0]).not.toContain("policies do not apply");
   });
 
   it("accepts membership in an ordinary role, which grants no exemption", () => {
@@ -209,6 +245,23 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     expect(inheritedArm).toContain("protected_owners");
     expect(inheritedArm).not.toContain("rolsuper");
     expect(inheritedArm).not.toContain("rolbypassrls");
+  });
+
+  it("asks about forbidden predefined-role membership, direct and reachable (RR6-001)", () => {
+    // Membership, not an attribute, so provisioning cannot strip it and the
+    // parity guard is silent -- this predicate is the only defence. Both the
+    // direct-inheritance column and the reachable-context arm consult it, with
+    // USAGE (privileges inherit) exactly like the owner arms.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("forbidden_roles");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("pg_execute_server_program");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS inherited_forbidden_roles");
+    // The reachable arm asks the USAGE question of the context h, not of r.
+    const reachableArm = RUNTIME_ROLE_FACTS_SQL.slice(
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AND pg_has_role(r.oid, h.oid, 'SET')"),
+      RUNTIME_ROLE_FACTS_SQL.indexOf("AS exempt_reachable_contexts"),
+    );
+    expect(reachableArm).toContain("FROM forbidden_roles");
+    expect(reachableArm).toContain("pg_has_role(h.oid, fb.oid, 'USAGE')");
   });
 
   it("asks both questions of the database, not one", () => {
@@ -290,10 +343,12 @@ describe("readRuntimeRoleFacts", () => {
         ...SAFE_ROW,
         exempt_reachable_contexts: "{}",
         inherited_owner_roles: "{}",
+        inherited_forbidden_roles: "{}",
       }),
     );
     expect(empty.exemptReachableContexts).toEqual([]);
     expect(empty.inheritedOwnerRoles).toEqual([]);
+    expect(empty.inheritedForbiddenRoles).toEqual([]);
     expect(runtimeRoleViolations(empty, "monize_app")).toEqual([]);
 
     const filled = await readRuntimeRoleFacts(

@@ -73,6 +73,43 @@ export const FORBIDDEN_RUNTIME_ATTRIBUTES = [
   },
 ] as const;
 
+/**
+ * Predefined roles whose *membership* -- not any attribute -- grants a capability
+ * the application runtime role must never hold.
+ *
+ * These are the server-file and server-program roles: a member of
+ * `pg_execute_server_program` can `COPY ... TO/FROM PROGRAM`, running commands as
+ * the PostgreSQL OS account (RR6-001, measured -- a NOSUPERUSER role wrote a file
+ * on the host), and the file roles read or write anything that account can. They
+ * are reached the same way ownership is, so they are checked the same way:
+ *
+ * - `pg_has_role(role, forbidden, 'USAGE')` -- held now by inheritance, any depth;
+ * - reachable via `SET ROLE` into a context that has that `USAGE`.
+ *
+ * Crucially, provisioning cannot strip these: `ALTER ROLE ... NO<x>` changes
+ * *attributes*, and a membership is a `GRANT`/`REVOKE`. So the parity guard that
+ * covers `FORBIDDEN_RUNTIME_ATTRIBUTES` says nothing here, and the runtime check
+ * is the only line of defence -- which is exactly why it must exist.
+ *
+ * Deliberately a short, named allowlist of the dangerous ones rather than "every
+ * `pg_*` role": `pg_monitor` and friends are not escalation paths, and refusing
+ * to boot on a monitoring grant would train operators to ignore the check.
+ */
+export const FORBIDDEN_ROLE_MEMBERSHIPS = [
+  {
+    role: "pg_execute_server_program",
+    why: "can COPY ... TO/FROM PROGRAM, executing commands as the PostgreSQL OS account",
+  },
+  {
+    role: "pg_read_server_files",
+    why: "can read any file the PostgreSQL OS account can, bypassing database permission checks",
+  },
+  {
+    role: "pg_write_server_files",
+    why: "can write any file the PostgreSQL OS account can, bypassing database permission checks",
+  },
+] as const;
+
 export interface RuntimeRoleFacts {
   /** The role the connection is actually authenticated as. */
   currentUser: string;
@@ -123,6 +160,13 @@ export interface RuntimeRoleFacts {
    * revoking is one option, `WITH INHERIT FALSE` on the membership is the other.
    */
   inheritedOwnerRoles: string[];
+  /**
+   * Forbidden predefined roles (`FORBIDDEN_ROLE_MEMBERSHIPS`) this role holds now
+   * by inheritance -- server-program / server-file capability that is active with
+   * no `SET ROLE` (RR6-001). Reached like inherited ownership, reported
+   * separately because the remedy is `REVOKE`, not `WITH INHERIT FALSE`.
+   */
+  inheritedForbiddenRoles: string[];
 }
 
 /**
@@ -136,6 +180,16 @@ const FORBIDDEN_ATTR_DIRECT_COLUMNS = FORBIDDEN_RUNTIME_ATTRIBUTES.map(
 const FORBIDDEN_ATTR_CONTEXT_DISJUNCTION = FORBIDDEN_RUNTIME_ATTRIBUTES.map(
   (a) => `h.${a.column}`,
 ).join("\n                OR ");
+
+/**
+ * The forbidden predefined-role names as a SQL array literal. These come from
+ * our own const list, never from request input, so inlining them is safe -- and
+ * the query takes no parameters, which keeps it runnable through `psql` for the
+ * live checks.
+ */
+const FORBIDDEN_MEMBERSHIP_ARRAY = `ARRAY[${FORBIDDEN_ROLE_MEMBERSHIPS.map(
+  (m) => `'${m.role}'`,
+).join(", ")}]::text[]`;
 
 /**
  * One round trip. `pg_roles` is world-readable, `pg_database.datdba` and
@@ -153,6 +207,11 @@ WITH protected_owners AS (
    WHERE n.nspname = 'public'
      AND c.relkind = 'r'
      AND c.relrowsecurity
+),
+forbidden_roles AS (
+  -- The dangerous predefined roles that exist in this cluster. Filtering by name
+  -- means a build where one is absent simply yields fewer rows, never an error.
+  SELECT oid FROM pg_roles WHERE rolname = ANY(${FORBIDDEN_MEMBERSHIP_ARRAY})
 )
 SELECT current_user AS current_user_name,
        ${FORBIDDEN_ATTR_DIRECT_COLUMNS},
@@ -190,7 +249,14 @@ SELECT current_user AS current_user_name,
                 OR pg_has_role(h.oid, d.datdba, 'USAGE')
                 OR EXISTS (SELECT 1
                              FROM protected_owners po
-                            WHERE pg_has_role(h.oid, po.oid, 'USAGE'))))
+                            WHERE pg_has_role(h.oid, po.oid, 'USAGE'))
+                -- RR6-001: and whether the context reaches a forbidden
+                -- predefined role. SET ROLE bridge --INHERIT--> server_program
+                -- runs commands on the host; the bridge owns nothing and has no
+                -- forbidden attribute, so only this USAGE question finds it.
+                OR EXISTS (SELECT 1
+                             FROM forbidden_roles fb
+                            WHERE pg_has_role(h.oid, fb.oid, 'USAGE'))))
          AS exempt_reachable_contexts,
        -- USAGE from the runtime role itself: ownership is a privilege, and
        -- PostgreSQL's owner check walks inheritable memberships, so an inherited
@@ -205,7 +271,17 @@ SELECT current_user AS current_user_name,
                 OR EXISTS (SELECT 1
                              FROM protected_owners po
                             WHERE po.oid = g.oid)))
-         AS inherited_owner_roles
+         AS inherited_owner_roles,
+       -- Forbidden predefined roles this role holds NOW by inheritance (RR6-001).
+       -- USAGE, transitive, so a chain of INHERIT grants of any depth is caught;
+       -- the parallel to inherited_owner_roles, for the capability that is active
+       -- with no SET ROLE. Provisioning cannot strip these -- membership is a
+       -- GRANT, not an attribute -- so this predicate is the only defence.
+       (SELECT coalesce(array_agg(DISTINCT fb.rolname::text), '{}'::text[])
+          FROM pg_roles fb
+         WHERE fb.rolname = ANY(${FORBIDDEN_MEMBERSHIP_ARRAY})
+           AND pg_has_role(r.oid, fb.oid, 'USAGE'))
+         AS inherited_forbidden_roles
   FROM pg_roles r
   JOIN pg_database d ON d.datname = current_database()
  WHERE r.rolname = current_user
@@ -217,6 +293,7 @@ interface RawFactRow {
   owned_policied_tables?: number | string;
   exempt_reachable_contexts?: string[] | string | null;
   inherited_owner_roles?: string[] | string | null;
+  inherited_forbidden_roles?: string[] | string | null;
   // Plus one boolean per FORBIDDEN_RUNTIME_ATTRIBUTES column (rolsuper, ...).
   [column: string]: unknown;
 }
@@ -275,6 +352,7 @@ export async function readRuntimeRoleFacts(
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
     exemptReachableContexts: toRoleNames(row.exempt_reachable_contexts),
     inheritedOwnerRoles: toRoleNames(row.inherited_owner_roles),
+    inheritedForbiddenRoles: toRoleNames(row.inherited_forbidden_roles),
   };
 }
 
@@ -327,15 +405,31 @@ export function runtimeRoleViolations(
         "the membership or re-grant it WITH INHERIT FALSE",
     );
   }
+  if (facts.inheritedForbiddenRoles.length > 0) {
+    // Also already true, and also a REVOKE remedy -- but not an RLS matter at
+    // all, so it says what the capability is.
+    violations.push(
+      `role "${facts.currentUser}" is a member of ${facts.inheritedForbiddenRoles
+        .map((r) => `"${r}"`)
+        .join(
+          ", ",
+        )}, granting server-file or server-program capability that the ` +
+        "unprivileged runtime role must not have. Revoke the membership",
+    );
+  }
   if (facts.exemptReachableContexts.length > 0) {
+    // RR6-003: worded for every reason a reachable context lands here -- an RLS
+    // exemption, a forbidden attribute like REPLICATION, or a forbidden
+    // predefined-role membership. The old "policies do not apply" was false for
+    // the last two, and a false diagnosis wastes the operator's investigation.
     violations.push(
       `role "${facts.currentUser}" can SET ROLE into ${facts.exemptReachableContexts
         .map((r) => `"${r}"`)
         .join(
           ", ",
-        )}, and policies do not apply in that context -- it holds an ` +
-        "exempt attribute, owns RLS-protected objects, or inherits a role that " +
-        "does. Revoke the grant that makes it reachable",
+        )}, a context with privileges forbidden to the runtime role -- an ` +
+        "RLS exemption, a forbidden attribute, or a dangerous predefined-role " +
+        "membership. Revoke the grant that makes it reachable",
     );
   }
   return violations;
@@ -362,11 +456,17 @@ export async function assertRuntimeRoleSafe(
   const facts = await readRuntimeRoleFacts(querier);
   const violations = runtimeRoleViolations(facts, expectedRole);
   if (violations.length > 0) {
+    // Generated from the forbidden list so it cannot omit an attribute the check
+    // enforces -- RR6-003, where the hand-written sentence had dropped
+    // NOREPLICATION and an operator following it would rebuild an unsafe role.
+    const noAttributes = FORBIDDEN_RUNTIME_ATTRIBUTES.map(
+      (a) => `NO${a.label}`,
+    ).join(" ");
     throw new Error(
       "RLS_MODE=enforce requires an unprivileged, non-owner runtime role, " +
         `but ${violations.join("; ")}. ` +
-        "Point DATABASE_APP_USER at a role created with NOSUPERUSER " +
-        "NOCREATEDB NOCREATEROLE NOBYPASSRLS that owns no application object, " +
+        `Point DATABASE_APP_USER at a role created with ${noAttributes} that ` +
+        "owns no application object and is a member of no privileged role, " +
         "or set RLS_MODE=shadow until it is provisioned.",
     );
   }

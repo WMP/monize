@@ -6,12 +6,12 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 27+, all non-merge; equal to GitHub's ahead count against the base |
-| Diff | 143 files, +9710 / -2042 (approx; grows each revision) |
+| Commits | 28+, all non-merge; equal to GitHub's ahead count against the base |
+| Diff | 143 files, +9975 / -2042 (approx; grows each revision) |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Verification heads reviewed | `a39a837b` (1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4), `f521d0c8` (5) |
-| Additional defects found and fixed | 21, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after five verification rounds and a live-database run (sections 5A-5F) |
+| Verification heads reviewed | `a39a837b` (1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4), `f521d0c8` (5), `b15437f2` (6) |
+| Additional defects found and fixed | 24, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after six verification rounds and a live-database run (sections 5A-5G) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -24,7 +24,8 @@ one that the first round's own fix introduced. All five are fixed. Section 5C is
 running the integration suites -- previously reported as unrunnable here -- found
 once a local PostgreSQL turned out to be available, and section 5D answers a third
 review round, whose one HIGH finding is fixed; section 5E a fourth, whose MEDIUM
-finding is fixed; and section 5F a fifth, whose MEDIUM finding is fixed.
+finding is fixed; section 5F a fifth, whose MEDIUM finding is fixed; and section 5G a
+sixth, whose HIGH finding is fixed.
 
 ## How to read the status column
 
@@ -1092,6 +1093,83 @@ answered in the direction of the latter: the forbidden-attribute list is the
 definition, and it is the provisioning contract, so the two cannot diverge without a
 red test.
 
+## 5G. Answer to the sixth verification review
+
+A sixth review (`monize-phase2-fix-verification-re-review-6.md`, head `b15437f2`)
+confirmed RR5-001 closed and raised a HIGH the attribute work had walked past:
+"unprivileged" also means *membership*, and a member of a server-program predefined
+role runs host commands. Reproduced on the live server before changing anything.
+
+### RR6-001 -- server-file / server-program role membership passed the check
+
+**Status: Fixed.** Measured:
+
+```
+CREATE ROLE rr6_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS
+                    NOREPLICATION NOINHERIT;
+GRANT pg_execute_server_program TO rr6_app WITH INHERIT TRUE, SET FALSE;
+-- as rr6_app:
+COPY (SELECT 'rr6 proof') TO PROGRAM 'cat >/tmp/monize-rr6-proof';  -- COPY 1
+-- /tmp/monize-rr6-proof on the host now contains: rr6 proof
+```
+
+A `NOSUPERUSER` role executed a program on the database host, and the verifier
+reported nothing -- it read attributes and ownership, and this is neither. The fix
+is the review's: a second contract, `FORBIDDEN_ROLE_MEMBERSHIPS`
+(`pg_execute_server_program`, `pg_read_server_files`, `pg_write_server_files`),
+checked with `pg_has_role(context, forbidden, 'USAGE')` on the runtime role
+(`inheritedForbiddenRoles`, active now) and on every `SET`-reachable context (folded
+into `exemptReachableContexts`) -- exactly parallel to the two ownership arms, since
+a membership is reached the same ways ownership is.
+
+Why a second contract and not the parity guard: `ALTER ROLE ... NO<x>` changes
+attributes, and a membership is a `GRANT`, so provisioning cannot strip these and the
+guard that ties `FORBIDDEN_RUNTIME_ATTRIBUTES` to `APP_ROLE_ATTRIBUTES` says nothing
+about them. That is precisely why the membership check had to be written down as its
+own thing. It is a **named allowlist** of the dangerous predefined roles, not "every
+`pg_*` role" -- the review is right that `pg_monitor` and friends are not escalation
+paths, and refusing to boot on a monitoring grant teaches operators to ignore the
+check.
+
+The integration test does not stop at the verdict: it grants the membership, runs a
+real `COPY ... TO PROGRAM` that writes a host file, reads the file back to prove the
+capability was live, and only then asserts the check rejects. Plus a
+`SET`-reachable-bridge case and an ordinary-predefined-role control
+(`pg_read_all_settings`, accepted). Both RR6-001 cases fail against the pre-fix SQL.
+
+### RR6-002 -- the replication proof slot was persistent
+
+**Status: Fixed.** The RR5-001 test created its physical slot with
+`temporary => false` and cleaned up only in `finally`, so a `SIGKILL` between create
+and cleanup would strand a WAL-retaining slot on a shared cluster -- cluster-wide,
+untouched by `dropSchema`, the exact availability failure the test is about. Now
+`temporary => true`: it still reserves WAL while the session lives (asserted), and
+PostgreSQL drops it when the session ends. The test then asserts from a fresh
+connection that the slot is gone after the pool is destroyed, so the auto-drop is
+proven rather than assumed.
+
+### RR6-003 -- a reachable non-RLS context was diagnosed as an RLS problem
+
+**Status: Fixed.** Once `REPLICATION` and forbidden memberships could put a role in
+`exemptReachableContexts`, the message "policies do not apply in that context" was
+false for them, and the final remediation sentence still omitted `NOREPLICATION` --
+an operator following it would rebuild an unsafe role. The reachable-context message
+now says "a context with privileges forbidden to the runtime role -- an RLS
+exemption, a forbidden attribute, or a dangerous predefined-role membership", the
+inherited-membership message names the capability rather than policies, and the
+remediation attribute list is generated from `FORBIDDEN_RUNTIME_ATTRIBUTES` so it
+cannot drop an attribute the check enforces.
+
+### On the review's remaining design-risk notes
+
+"Other predefined roles need an explicit allow/deny decision" is answered by the
+allowlist being explicit and short: the dangerous three are denied by name, and
+everything else -- including monitoring roles -- is allowed by omission, which is the
+decision. If a future PostgreSQL adds another host-capability predefined role, it
+joins `FORBIDDEN_ROLE_MEMBERSHIPS`; there is no scan that would catch that
+automatically, and pretending otherwise would be worse than the honest gap. The
+post-start monitoring note remains filed with DR-04, as in 5F.
+
 ## 6. Rules added, so the next agent inherits the correction
 
 Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
@@ -1109,7 +1187,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified; reachability composes, and the forbidden-attribute contract is derived from provisioning | `runtime-role-check.spec.ts`, the integration matrix, and `app-role.spec.ts`'s parity guard |
+| An unprivileged mode is verified; reachability composes, the forbidden-attribute contract is derived from provisioning, and membership in a host-capability role is refused too | `runtime-role-check.spec.ts`, the integration matrix and RR6 cases, and `app-role.spec.ts`'s parity guard |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |
@@ -1135,7 +1213,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10849 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10852 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -1144,7 +1222,7 @@ Performed and green:
 - `npm run migration:lint`, `npm run i18n:check` on both sides.
 
 **Now also run** (see sections 5C and 5D): 21 integration suites / 245 tests against
-a local PostgreSQL 16.13 (251 tests as of section 5F), and all 122 migrations replayed on top of `schema.sql`. That closes
+a local PostgreSQL 16.13 (254 tests as of section 5G), and all 122 migrations replayed on top of `schema.sql`. That closes
 MT-10, MT-11 and MT-13, and adds the RV-001, FV-003 and DR-R1 scenarios both review
 rounds asked for. `scripts/verify-schema.sh` itself still needs Docker, but the
 property it checks -- every migration a no-op replayed over `schema.sql` -- was
@@ -1210,4 +1288,6 @@ two-connection scenario, which exists in
 | `b326ea96` | Run the integration suites for the first time, and fix what they caught | MT-10, MT-11, MT-13 |
 | `e0b64635` | Record the live-database run, and the two rules it produced | section 5C |
 | `f4ab2a4e` | Split the runtime-role check by how a privilege is reached | RR3-001, DOC-RR3-001 |
-| branch tip | Judge a reachable role context on what it can reach | RR4-001, DOC-RR4-001 |
+| — | Judge a reachable role context on what it can reach | RR4-001, DOC-RR4-001 |
+| — | Verify the whole forbidden-attribute contract at startup | RR5-001, DOC-RR5-001 |
+| branch tip | Refuse membership in host-capability predefined roles | RR6-001..003 |

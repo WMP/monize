@@ -130,6 +130,18 @@ which can create a WAL-retaining slot and take the database down -- booted clean
 (RR5-001). A forbidden-attribute list the provisioner and the verifier both read is
 the machine-checkable form of "unprivileged".
 
+And "unprivileged" is not only attributes: **membership** in a predefined role can
+grant a capability provisioning cannot strip, because `ALTER ROLE ... NO<x>` changes
+attributes and a membership is a `GRANT`. A member of `pg_execute_server_program`
+runs host commands via `COPY ... TO PROGRAM` -- measured, a `NOSUPERUSER` role wrote
+a file on the server -- and the file roles read and write host files. So
+`FORBIDDEN_ROLE_MEMBERSHIPS` is checked with the same `USAGE`-on-the-context question
+as inherited ownership, directly and through every reachable context (RR6-001). It
+is a named allowlist of the dangerous predefined roles, not "every `pg_*` role":
+refusing to boot on a `pg_monitor` grant would teach operators to ignore the check.
+The parity guard covers attributes only, since memberships have no `NO<x>` to mirror
+-- which is exactly why the membership check has to be written down deliberately.
+
 **And the routes compose, so ask the question of the destination, not of the
 caller.** Testing `SET` reachability and then whether the candidate *itself* owns
 something still misses a chain that changes mode partway:

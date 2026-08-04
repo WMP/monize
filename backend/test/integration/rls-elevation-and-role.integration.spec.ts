@@ -881,24 +881,46 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       const slot = `rr5_slot_${Date.now()}`;
       try {
         // The concrete availability failure: a slot this role creates reserves
-        // WAL and, left unadvanced, retains it until the disk fills.
+        // WAL. TEMPORARY (third arg true), because a non-temporary slot outlives
+        // the test -- a SIGKILL before the `finally` cleanup would leave it
+        // retaining WAL on a shared cluster until the disk fills, and replication
+        // slots are cluster-wide, untouched by dropSchema (RR6-002). A temporary
+        // slot still proves the capability -- it reserves WAL while the session
+        // lives -- and PostgreSQL drops it automatically when the session ends.
         const [created] = await replPool.query(
-          "SELECT slot_name FROM pg_create_physical_replication_slot($1, true, false)",
+          "SELECT slot_name FROM pg_create_physical_replication_slot($1, true, true)",
           [slot],
         );
         expect(created.slot_name).toBe(slot);
+        // Temporary and reserving WAL while the session is alive. Read on the
+        // creating connection: a temporary slot is owned by its session, so the
+        // owner pool is where it is reliably visible.
+        const [status] = await replPool.query(
+          "SELECT temporary, wal_status FROM pg_replication_slots WHERE slot_name = $1",
+          [slot],
+        );
+        expect(status?.temporary).toBe(true);
+        expect(status?.wal_status).toBe("reserved");
 
         const facts = await readRuntimeRoleFacts(replPool);
         expect(facts.directForbiddenAttributes).toContain("REPLICATION");
         const violations = runtimeRoleViolations(facts, replicator);
         expect(violations.join(" ")).toContain("REPLICATION");
       } finally {
-        await dataSource
+        // Dropping the pool ends the session, which auto-drops the temporary
+        // slot; the explicit drop is belt-and-braces for the same-session case.
+        await replPool
           .query("SELECT pg_drop_replication_slot($1)", [slot])
           .catch(() => undefined);
         await replPool.destroy();
         await dataSource.query(`DROP ROLE ${replicator}`);
       }
+      // Proven, not assumed: the temporary slot is gone once the session ended.
+      const [{ n }] = await dataSource.query(
+        "SELECT count(*)::int AS n FROM pg_replication_slots WHERE slot_name = $1",
+        [slot],
+      );
+      expect(n).toBe(0);
     });
 
     it("refuses a SET-reachable context that holds REPLICATION (RR5-001)", async () => {
@@ -922,6 +944,101 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         await app.destroy();
         await dataSource.query(`REVOKE ${replBridge} FROM ${TEST_APP_ROLE}`);
         await dataSource.query(`DROP ROLE ${replBridge}`);
+      }
+    });
+
+    it("refuses an inherited server-program membership, and proves COPY TO PROGRAM (RR6-001)", async () => {
+      // OS command execution, and provisioning cannot strip it -- membership is a
+      // GRANT, not an attribute, so the parity guard is silent and this is the
+      // only defence. First prove the capability is live: a NOSUPERUSER member of
+      // pg_execute_server_program runs a program on the host. Then that the check
+      // rejects it. INHERIT TRUE, SET FALSE -- active now, no SET ROLE, so only a
+      // USAGE question finds it.
+      await dataSource.query(
+        `GRANT pg_execute_server_program TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+      );
+      const app = await appRolePool();
+      const proof = `/tmp/monize-rr6-${Date.now()}`;
+      try {
+        // The harm, demonstrated. `COPY ... TO PROGRAM` runs as the PostgreSQL OS
+        // account; a NOSUPERUSER role could not do this without the membership.
+        await app.query(`COPY (SELECT 'rr6') TO PROGRAM 'cat > ${proof}'`);
+        const [{ proven }] = await dataSource.query(
+          `SELECT pg_read_file($1) AS proven`,
+          [proof],
+        );
+        expect(proven).toContain("rr6");
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toContain(
+          "pg_execute_server_program",
+        );
+        expect(runtimeRoleViolations(facts, TEST_APP_ROLE).join(" ")).toContain(
+          "server-program",
+        );
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_execute_server_program FROM ${TEST_APP_ROLE}`,
+        );
+        await dataSource
+          .query(`COPY (SELECT 1) TO PROGRAM 'rm -f ${proof}'`)
+          .catch(() => undefined);
+      }
+    });
+
+    it("refuses a SET-reachable bridge that inherits a server-program membership (RR6-001)", async () => {
+      // app --SET--> bridge --INHERIT--> pg_execute_server_program. The bridge
+      // owns nothing and has no forbidden attribute; only the forbidden-membership
+      // USAGE question on the reachable context finds it.
+      const bridge = `srvprog_bridge_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${bridge} NOLOGIN`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT pg_execute_server_program TO ${bridge} WITH INHERIT TRUE, SET FALSE`,
+        );
+        await dataSource.query(
+          `GRANT ${bridge} TO ${TEST_APP_ROLE} WITH INHERIT FALSE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        // Not held now (the app->bridge edge is INHERIT FALSE)...
+        expect(facts.inheritedForbiddenRoles).toEqual([]);
+        // ...but reachable, and that is a refusal.
+        expect(facts.exemptReachableContexts).toContain(bridge);
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${bridge} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(
+          `REVOKE pg_execute_server_program FROM ${bridge}`,
+        );
+        await dataSource.query(`DROP ROLE ${bridge}`);
+      }
+    });
+
+    it("accepts membership in an ordinary predefined role like pg_read_all_settings", async () => {
+      // The control that keeps the forbidden-membership list an allowlist rather
+      // than "every pg_* role": a monitoring grant confers no escalation and must
+      // not stop the app booting.
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT pg_read_all_settings TO ${TEST_APP_ROLE} WITH INHERIT TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toEqual([]);
+        expect(facts.exemptReachableContexts).toEqual([]);
+        expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_read_all_settings FROM ${TEST_APP_ROLE}`,
+        );
       }
     });
   });
