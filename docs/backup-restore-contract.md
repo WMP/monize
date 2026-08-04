@@ -220,7 +220,7 @@ Two, for two different failure modes. Both configurable, both fail loudly.
 
 | Setting | Bounds | Default |
 |---|---|---|
-| `BACKUP_RESTORE_LIMIT` | the compressed upload | `500mb` |
+| `BACKUP_RESTORE_LIMIT` | the compressed upload | half the container's memory limit |
 | `BACKUP_RESTORE_EXPANDED_LIMIT` | the **decompressed** payload | `1024mb` |
 | `BACKUP_EXPORT_BUFFER_LIMIT` | JSON a buffered export may accumulate | `512mb` |
 
@@ -234,6 +234,26 @@ The buffered ceiling exists because three paths cannot stream: AES-GCM needs the
 whole plaintext for its auth tag, and the support export holds every table at
 once to reconcile scaled balances. The plain HTTP export streams and is
 deliberately unbounded.
+
+**Every default is derived from the container's cgroup memory limit**, not fixed.
+A ceiling larger than the process it protects cannot fire — the pod is killed
+first — and all three used to be exactly that on the chart's 400 MiB backend.
+The upload limit gets half the container (one buffer) and the other two a quarter
+(several copies live at peak). An operator's explicit value always wins, and one
+too large for the container is warned about at startup.
+
+**The upload limit is the earliest one and therefore the only one that matters for
+an oversized request.** `express.raw` buffers the whole body before the controller,
+the guards, the authentication lookup, the decryption and every service ceiling, so
+a request none of those layers ever sees can still kill the process.
+
+**A budget checked after the allocation is not a budget.** The support export
+always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are
+~400 MiB of text — and `collectRawExport` loaded it anyway before any ceiling was
+consulted. It now takes a `skipTables` set, and a test asserts the support path
+passes `ALWAYS_EXCLUDED_TABLES`. Not fixed: large tables are still read whole
+rather than through a cursor, so one enormous table is bounded only by the ceiling
+that follows it.
 
 ## 7. Automatic backups on disk
 

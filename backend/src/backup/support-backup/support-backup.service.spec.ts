@@ -339,6 +339,26 @@ function makeService(
   return new SupportBackupService(backup as BackupService);
 }
 
+/** The double, so a test can inspect how the raw export was requested. */
+function makeServiceWithSpy(tables = fixtureTables()): {
+  service: SupportBackupService;
+  collectRawExport: jest.Mock;
+} {
+  const collectRawExport = jest.fn().mockResolvedValue({
+    version: 1,
+    exportedAt: "2026-07-17T00:00:00.000Z",
+    tables,
+  });
+  const backup: BackupServiceDouble = {
+    collectRawExport,
+    exportBufferLimitBytes: DEFAULT_TEST_EXPORT_LIMIT,
+  };
+  return {
+    service: new SupportBackupService(backup as BackupService),
+    collectRawExport,
+  };
+}
+
 /**
  * The password every fixture here uses. It is not optional: `generate` refuses
  * to produce an unencrypted support backup, so a helper that omitted it was
@@ -562,6 +582,46 @@ describe("SupportBackupService.generate", () => {
    * ceiling is the only thing between a large dataset and an OOM-killed pod that
    * leaves no artifact and no readable error.
    */
+  /**
+   * A budget checked after the allocation is a budget checked too late.
+   *
+   * `collectRawExport` ran every table query, including `attachment_blobs`, which
+   * is base64: thirty 10 MiB receipts are roughly 400 MiB of text -- the whole of
+   * the chart's default backend limit -- fetched, held, and then discarded, because
+   * `ALWAYS_EXCLUDED_TABLES` drops the table afterwards. No ceiling could help,
+   * because the ceiling is consulted after the load.
+   */
+  it("never asks the database for tables it always excludes", async () => {
+    const { service, collectRawExport } = makeServiceWithSpy();
+
+    await service.generate(USER, {
+      multiplier: 2.5,
+      password: FIXTURE_PASSWORD,
+    });
+
+    expect(collectRawExport).toHaveBeenCalledTimes(1);
+    const [, options] = collectRawExport.mock.calls[0];
+    expect(options?.skipTables).toBeDefined();
+    for (const table of [
+      "attachment_blobs",
+      "transaction_attachments",
+      "ai_provider_configs",
+    ]) {
+      expect(options.skipTables.has(table)).toBe(true);
+    }
+  });
+
+  it("skips the same tables for a preview", async () => {
+    // The preview shares the cache, so a preview that loaded the blobs would
+    // hand the following generate a payload it had already paid for.
+    const { service, collectRawExport } = makeServiceWithSpy();
+
+    await service.preview(USER, { multiplier: 2.5 });
+
+    const [, options] = collectRawExport.mock.calls[0];
+    expect(options?.skipTables?.has("attachment_blobs")).toBe(true);
+  });
+
   it("refuses a payload above the export ceiling", async () => {
     const tiny = 200; // bytes -- below even the envelope
     await expect(

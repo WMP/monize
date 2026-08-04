@@ -176,6 +176,39 @@ export function resolveByteLimit(
 }
 
 /**
+ * Ceiling on the *compressed* restore upload, for `express.raw`.
+ *
+ * This defaulted to the literal string `"500mb"` in `main.ts` while the chart's
+ * backend limit is 400 MiB, and `express.raw` buffers the whole body onto the heap
+ * **before** the controller, the guards, the authentication lookup, the decryption
+ * and every service-level ceiling. So the process could die on a request none of
+ * those layers ever saw -- an availability defect that no amount of care further in
+ * could reach, because the allocation happened first.
+ *
+ * A compressed upload is one buffer rather than the several a buffered export
+ * holds, so it gets a more generous share than `deriveDefaultLimitBytes`: half the
+ * container, still leaving room for the decompressed payload the expanded ceiling
+ * then bounds separately. `BACKUP_RESTORE_LIMIT` overrides it, and an operator who
+ * sets something the container cannot absorb gets the same startup warning as the
+ * other two.
+ *
+ * Returned as bytes; `express.raw` accepts a number.
+ */
+export function resolveRestoreUploadLimitBytes(
+  raw: string | undefined = process.env.BACKUP_RESTORE_LIMIT,
+  memoryLimitBytes: number | null = detectProcessMemoryLimitBytes(),
+): number {
+  const derived =
+    memoryLimitBytes === null
+      ? UNKNOWN_MEMORY_FALLBACK_BYTES
+      : Math.min(
+          MAX_DERIVED_LIMIT_BYTES,
+          Math.max(MIN_DERIVED_LIMIT_BYTES, Math.floor(memoryLimitBytes / 2)),
+        );
+  return resolveByteLimit(raw, derived);
+}
+
+/**
  * Warn when a configured ceiling cannot protect the container it runs in.
  *
  * An operator who sets `BACKUP_EXPORT_BUFFER_LIMIT=2gb` on a 400 MiB pod has

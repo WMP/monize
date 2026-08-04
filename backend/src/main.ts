@@ -6,6 +6,7 @@ import * as express from "express";
 import cookieParser from "cookie-parser";
 import * as pg from "pg";
 import { AppModule } from "./app.module";
+import { resolveRestoreUploadLimitBytes } from "./backup/backup-limits";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import { isOidcProviderPath } from "./oauth/oidc-provider-paths";
@@ -71,7 +72,18 @@ async function bootstrap() {
   //
   // The limit is configurable (BACKUP_RESTORE_LIMIT) because backups now embed
   // transaction attachment bytes and can grow well past the old 100mb ceiling.
-  const backupRestoreLimit = process.env.BACKUP_RESTORE_LIMIT || "500mb";
+  //
+  // Unset, it is derived from this container's memory limit rather than fixed.
+  // It used to default to "500mb" while the chart's backend limit is 400Mi, and
+  // `express.raw` buffers the whole body onto the heap *before* the controller,
+  // the guards, the authentication lookup, the decryption and every service-level
+  // ceiling -- so the process could die on a request none of those layers ever
+  // saw. No care further down the path can reach an allocation that happens
+  // first.
+  const backupRestoreLimit = resolveRestoreUploadLimitBytes();
+  new Logger("Bootstrap").log(
+    `Restore upload limit: ${Math.round(backupRestoreLimit / (1024 * 1024))}MiB`,
+  );
   app.use(
     "/api/v1/backup/restore",
     express.raw({

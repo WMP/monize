@@ -381,7 +381,10 @@ export class BackupService {
    * scaled balances before serializing. Returns the same version/exportedAt
    * envelope fields the file format uses.
    */
-  async collectRawExport(userId: string): Promise<{
+  async collectRawExport(
+    userId: string,
+    options: { skipTables?: ReadonlySet<string> } = {},
+  ): Promise<{
     version: number;
     exportedAt: string;
     tables: Record<string, Record<string, unknown>[]>;
@@ -389,6 +392,13 @@ export class BackupService {
     const tables: Record<string, Record<string, unknown>[]> = {};
     await this.inExportSnapshot(userId, async (read) => {
       for (const { key, sql } of this.getTableQueries()) {
+        // A caller that will discard a table must not pay to load it. The
+        // support backup always excludes `attachment_blobs`, which is base64 --
+        // thirty 10 MiB receipts are ~400 MiB of text, the whole of the chart's
+        // default backend limit, fetched and thrown away before any ceiling was
+        // consulted. Skipping the query is the only fix that helps: a budget
+        // checked after the allocation is a budget checked too late.
+        if (options.skipTables?.has(key)) continue;
         tables[key] = await read(sql);
       }
     });

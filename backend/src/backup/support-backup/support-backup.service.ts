@@ -144,7 +144,11 @@ export class SupportBackupService {
     const cached = this.rawCache.get(userId);
     if (cached && cached.expires > now) return cached.promise;
 
-    const promise = this.backupService.collectRawExport(userId);
+    // Never query what this artifact always excludes -- `attachment_blobs` above
+    // all, which is base64 and can be the largest thing in the database.
+    const promise = this.backupService.collectRawExport(userId, {
+      skipTables: ALWAYS_EXCLUDED_TABLES,
+    });
     this.rawCache.set(userId, { expires: now + RAW_EXPORT_TTL_MS, promise });
     // A failed dump must not be cached as a poisoned promise.
     promise.catch(() => this.rawCache.delete(userId));

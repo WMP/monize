@@ -3,6 +3,7 @@ import {
   detectProcessMemoryLimitBytes,
   parseByteSize,
   resolveByteLimit,
+  resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
 } from "./backup-limits";
 
@@ -107,6 +108,42 @@ describe("backup size limits", () => {
         expect(limit).toBeGreaterThan(0);
         expect(limit).toBeLessThan(Number.MAX_SAFE_INTEGER);
       }
+    });
+  });
+
+  /**
+   * `express.raw` buffers the whole body before the controller, the guards, the
+   * authentication lookup and every service ceiling, so this is the earliest and
+   * therefore the only limit that can protect the process from an oversized
+   * upload. It defaulted to the string "500mb" against a 400 MiB pod.
+   */
+  describe("resolveRestoreUploadLimitBytes", () => {
+    it("stays under the container's memory limit by default", () => {
+      const limit = resolveRestoreUploadLimitBytes(undefined, 400 * MIB);
+      expect(limit).toBeLessThan(400 * MIB);
+      // Half rather than a quarter: a compressed upload is one buffer, not the
+      // several a buffered export holds at peak.
+      expect(limit).toBe(200 * MIB);
+    });
+
+    it("is more generous than the buffered-export ceiling", () => {
+      expect(
+        resolveRestoreUploadLimitBytes(undefined, 400 * MIB),
+      ).toBeGreaterThan(deriveDefaultLimitBytes(400 * MIB));
+    });
+
+    it("honours an explicit operator value", () => {
+      expect(resolveRestoreUploadLimitBytes("64mb", 400 * MIB)).toBe(64 * MIB);
+    });
+
+    it("falls back when the container limit is unknown", () => {
+      expect(resolveRestoreUploadLimitBytes(undefined, null)).toBe(256 * MIB);
+    });
+
+    it("never derives a value below the floor", () => {
+      expect(resolveRestoreUploadLimitBytes(undefined, 64 * MIB)).toBe(
+        64 * MIB,
+      );
     });
   });
 
