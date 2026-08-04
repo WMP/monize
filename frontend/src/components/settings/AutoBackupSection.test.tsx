@@ -575,6 +575,63 @@ describe("AutoBackupSection", () => {
       const toggle = screen.getByRole("switch");
       expect(toggle).toBeDisabled();
     });
+
+    /**
+     * The first version of the banner disabled the toggle unconditionally, which
+     * is wrong in the case that matters most: storage that *used* to work. A
+     * volume unmounted or turned read-only leaves a schedule armed and failing,
+     * and the user arrives at this screen wanting to switch it off. Disabling
+     * the control in both directions leaves them looking at a setting they can
+     * see is broken and cannot change (F3RRR-005).
+     */
+    it("still lets the user switch an already-armed schedule off", async () => {
+      (
+        backupApi.getAutoBackupSettings as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        ...defaultSettings,
+        enabled: true,
+        folderPath: "/data/backups",
+      });
+      (
+        backupApi.updateAutoBackupSettings as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({ ...defaultSettings, enabled: false });
+
+      await renderAutoBackupSection();
+      await screen.findByRole("status");
+
+      const toggle = screen.getByRole("switch");
+      expect(toggle).not.toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(toggle);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText("Save Settings"));
+      });
+
+      // Off has to reach the server, not merely the local state -- the schedule
+      // runs from the stored row.
+      expect(backupApi.updateAutoBackupSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false }),
+      );
+    });
+
+    it("does not offer a backup run that has nowhere to write", async () => {
+      (
+        backupApi.getAutoBackupSettings as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        ...defaultSettings,
+        enabled: true,
+        folderPath: "/data/backups",
+      });
+
+      await renderAutoBackupSection();
+      await screen.findByRole("status");
+
+      expect(
+        screen.getByRole("button", { name: "Run Backup Now" }),
+      ).toBeDisabled();
+    });
   });
 
   describe("when the capability cannot be read", () => {

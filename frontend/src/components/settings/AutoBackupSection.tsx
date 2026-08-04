@@ -75,6 +75,11 @@ export function AutoBackupSection() {
   // Only a definite "no" disables anything. An unread capability leaves the
   // section exactly as it was, because a failed lookup is not an answer.
   const storageUnavailable = capability?.available === false;
+  // A missing folder is a reason to refuse *arming* the schedule, never a reason
+  // to trap a schedule that is already armed. A user whose backups have started
+  // failing wants to switch them off; disabling the control in both directions
+  // leaves them with a setting they can see is wrong and cannot correct.
+  const cannotArm = storageUnavailable && !enabled;
 
   const loadSettings = useCallback(async () => {
     try {
@@ -256,7 +261,7 @@ export function AutoBackupSection() {
         <label className="flex items-center gap-3 cursor-pointer">
           <ToggleSwitch
             checked={enabled}
-            disabled={storageUnavailable}
+            disabled={cannotArm}
             onChange={(v) => {
               setEnabled(v);
               markDirty();
@@ -580,7 +585,13 @@ export function AutoBackupSection() {
           {isSaving ? t("savingButton") : t("saveButton")}
         </Button>
         {settings && settings.folderPath && (
-          <Button variant="outline" onClick={handleRunNow} disabled={isRunning}>
+          <Button
+            variant="outline"
+            onClick={handleRunNow}
+            // There is nowhere to write, so this can only produce a failure the
+            // banner has already explained.
+            disabled={isRunning || storageUnavailable}
+          >
             {isRunning ? t("runningButton") : t("runNowButton")}
           </Button>
         )}
