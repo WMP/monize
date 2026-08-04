@@ -409,6 +409,41 @@ export function calculatePaymentForTerm(
   return round4((balance * periodicRate) / (1 - Math.pow(1 + periodicRate, -periods)));
 }
 
+/**
+ * Periods needed to amortize `balance` at a fixed `payment` per period and
+ * the given rate -- the inverse of `calculatePaymentForTerm`. `null` when
+ * `payment` cannot amortize the balance at all (does not cover the period's
+ * interest).
+ *
+ * Used to track how far a SHORTEN_TERM overpayment moves a `fixedEndPeriod`
+ * re-levelling target: re-levelling toward the *original* end would spread
+ * the overpayment's principal back across the untouched remaining periods
+ * and undo it. Instead the target itself shortens to whatever term the
+ * now-smaller balance actually needs at the unchanged payment
+ * (REV-20260803-042).
+ */
+export function calculateTermForPayment(
+  balance: number,
+  annualRate: number,
+  payment: number,
+  frequency: ScheduleFrequency,
+  isCanadian = false,
+  isVariableRate = false,
+): number | null {
+  if (balance <= 0) return 0;
+  if (payment <= 0) return null;
+  const periodicRate = getPeriodicRate(
+    annualRate,
+    getPeriodsPerYear(frequency),
+    isCanadian,
+    isVariableRate,
+  );
+  if (periodicRate === 0) return balance / payment;
+  const denominator = payment - balance * periodicRate;
+  if (denominator <= 0) return null; // payment doesn't cover interest; never amortizes
+  return Math.log(payment / denominator) / Math.log(1 + periodicRate);
+}
+
 /** Standard amortization payment: PMT = P * [r(1+r)^n] / [(1+r)^n - 1] */
 function solvePayment(principal: number, periodicRate: number, totalPayments: number): number {
   if (totalPayments <= 0) return 0;
@@ -655,11 +690,14 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     });
     return uncappedBaseline.paidOff ? uncappedBaseline.numPayments : null;
   })();
-  // Term to re-level toward if a rate rise would otherwise stall the payment.
-  // An explicit `rescueEndPeriod` supplies this rescue without the every-period
-  // re-levelling of `fixedEndPeriod`, so a contractual schedule keeps following
-  // its real recorded payments and only re-levels to avoid a stall.
-  const rescueEnd = reLevelEveryPeriod ?? input.rescueEndPeriod ?? lowerEnd;
+  // The fixedEndPeriod target the every-period re-level below currently holds
+  // the schedule to. Starts at the caller's `fixedEndPeriod` and is pulled in
+  // by each SHORTEN_TERM overpayment as it's processed, so re-levelling always
+  // targets the current payoff period -- never the original one a SHORTEN_TERM
+  // event has since shortened (REV-20260803-042). Read fresh each iteration
+  // (never captured in a `const` outside the loop) so the rescue fallback
+  // below also sees the latest target.
+  let currentFixedEnd = reLevelEveryPeriod;
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 
@@ -740,16 +778,15 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
       rateChangeIndex++;
     }
 
-    const interest = balance * currentPeriodicRate;
-    let principal = currentPayment - interest;
-
-    if (principal <= 0 && rescueEnd !== null) {
-      // Holding a fixed term: a rate rise can push the current installment
-      // below the interest for a period. Re-level it now, at the new rate, to
-      // amortize the remaining balance over the periods left -- so the schedule
-      // adjusts on the rate change instead of stalling.
-      const remaining = rescueEnd - paymentNumber;
-      if (remaining > 0) {
+    // Holding a fixed term (`fixedEndPeriod`): re-level the payment for THIS
+    // row right after applying the row's own rate change above, but before
+    // computing interest/principal below -- so a rate change takes effect on
+    // the same row instead of the payment staying stale for one more period
+    // (REV-20260803-043). `currentFixedEnd` is the CURRENT target (see its
+    // declaration above), not necessarily the original `fixedEndPeriod`.
+    if (currentFixedEnd !== null) {
+      const remaining = currentFixedEnd - paymentNumber;
+      if (remaining > 0 && balance > PAYOFF_EPSILON) {
         currentPayment = calculatePaymentForTerm(
           balance,
           currentAnnualRate,
@@ -758,7 +795,33 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
           isCanadian,
           isVariableRate,
         );
-        principal = currentPayment - interest;
+      }
+    }
+
+    const interest = balance * currentPeriodicRate;
+    let principal = currentPayment - interest;
+
+    if (principal <= 0) {
+      // Holding a fixed term: a rate rise can push the current installment
+      // below the interest for a period. Re-level it now, at the new rate, to
+      // amortize the remaining balance over the periods left -- so the schedule
+      // adjusts on the rate change instead of stalling. Read fresh each
+      // iteration so this fallback also targets the current (possibly already
+      // shortened) end, not a stale original one.
+      const rescueEnd = currentFixedEnd ?? input.rescueEndPeriod ?? lowerEnd;
+      if (rescueEnd !== null) {
+        const remaining = rescueEnd - paymentNumber;
+        if (remaining > 0) {
+          currentPayment = calculatePaymentForTerm(
+            balance,
+            currentAnnualRate,
+            remaining,
+            frequency,
+            isCanadian,
+            isVariableRate,
+          );
+          principal = currentPayment - interest;
+        }
       }
     }
 
@@ -776,6 +839,10 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     // Whether a LOWER_INSTALLMENT-mode overpayment landed this period, so the
     // installment is re-levelled below (SHORTEN_TERM ones leave it unchanged).
     let lowerApplied = false;
+    // Whether a SHORTEN_TERM-mode overpayment landed this period, so
+    // `currentFixedEnd` is pulled in below instead of staying at a term the
+    // overpayment has already shortened (REV-20260803-042).
+    let shortenApplied = false;
     if (
       recurringExtra &&
       recurringPerHit > 0 &&
@@ -786,7 +853,11 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
       // sparse cadence lands on the first in-window payment and every Nth after.
       if (recurringHits % recurringInterval === 0) {
         extraPrincipal += recurringPerHit;
-        if (modeOf(recurringExtra.mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
+        if (modeOf(recurringExtra.mode) === 'LOWER_INSTALLMENT') {
+          lowerApplied = true;
+        } else {
+          shortenApplied = true;
+        }
       }
       recurringHits++;
     }
@@ -794,7 +865,11 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     // before the first payment attach to row 1)
     while (lumpSumIndex < lumpSums.length && lumpSums[lumpSumIndex].date <= rowDate) {
       extraPrincipal += lumpSums[lumpSumIndex].amount;
-      if (modeOf(lumpSums[lumpSumIndex].mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
+      if (modeOf(lumpSums[lumpSumIndex].mode) === 'LOWER_INSTALLMENT') {
+        lowerApplied = true;
+      } else {
+        shortenApplied = true;
+      }
       lumpSumIndex++;
     }
     if (extraPrincipal > balance) {
@@ -808,16 +883,37 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     totalExtraPrincipal += extraPrincipal;
     paymentNumber++;
 
-    // Re-level the installment to amortize the remaining balance over the
-    // periods left to the target end. `reLevelEveryPeriod` (contractual
-    // variable-rate schedule) re-levels every period, so it also tracks rate
-    // changes; a LOWER_INSTALLMENT overpayment re-levels toward `lowerEnd`
-    // only in the period it lands, stepping the payment down while
-    // SHORTEN_TERM overpayments leave it unchanged (shortening the term).
-    const reLevelEnd =
-      reLevelEveryPeriod !== null ? reLevelEveryPeriod : lowerApplied ? lowerEnd : null;
-    if (reLevelEnd !== null) {
-      const remaining = reLevelEnd - paymentNumber;
+    // A SHORTEN_TERM overpayment keeps the installment fixed and pays off
+    // sooner; the fixed-term re-level above must not then spread that
+    // principal back across the ORIGINAL remaining periods, which would
+    // lower the payment and restore the term the overpayment just shortened.
+    // Move the target itself to whatever term the now-smaller balance
+    // actually needs at the unchanged `currentPayment`, so every later
+    // re-level -- next period's fixed-term step above, this fallback's
+    // rescue, or a later LOWER_INSTALLMENT event (which does not touch this
+    // target) -- holds the CURRENT, already-shortened end (REV-20260803-042).
+    if (currentFixedEnd !== null && shortenApplied) {
+      const termNeeded = calculateTermForPayment(
+        balance,
+        currentAnnualRate,
+        currentPayment,
+        frequency,
+        isCanadian,
+        isVariableRate,
+      );
+      if (termNeeded !== null) {
+        currentFixedEnd = paymentNumber + termNeeded;
+      }
+    }
+
+    // A LOWER_INSTALLMENT overpayment (no `fixedEndPeriod`) re-levels toward
+    // the no-overpayment payoff length `lowerEnd`, only in the period it
+    // lands -- stepping the payment down for the next period. This is a
+    // no-op whenever `fixedEndPeriod` is set: `lowerEnd` is always null then
+    // (see its declaration above), because the fixed-term re-level above
+    // already covers every period, LOWER_INSTALLMENT included.
+    if (lowerApplied && lowerEnd !== null) {
+      const remaining = lowerEnd - paymentNumber;
       if (remaining > 0 && balance > PAYOFF_EPSILON) {
         currentPayment = calculatePaymentForTerm(
           balance,

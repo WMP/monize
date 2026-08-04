@@ -472,6 +472,34 @@ describe('generateLoanSchedule rescueEndPeriod', () => {
   });
 });
 
+describe('generateLoanSchedule fixedEndPeriod re-levels on the same row a rate change lands (REV-20260803-043)', () => {
+  it('applies a rate rise to the current row instead of one row late', () => {
+    // Exact scenario from the finding: 100000 balance, 12 periods remaining
+    // (fixedEndPeriod: 12), rate rises 0% -> 12% on the very first projected
+    // payment. The stale 0%-rate payment is 100000/12 = 8333.33; the payment
+    // that actually amortizes 100000 over 12 periods at 12% is ~8884.88.
+    const result = generateLoanSchedule(
+      baseInput({
+        startingBalance: 100000,
+        annualRate: 0,
+        paymentAmount: 100000 / 12,
+        frequency: 'MONTHLY',
+        firstPaymentDate: new Date(2026, 0, 15),
+        fixedEndPeriod: 12,
+        maxPayments: 20,
+        rateChanges: [{ effectiveDate: '2026-01-15', annualRate: 12 }],
+      }),
+    );
+
+    // The row where the rate changes must already use the re-levelled
+    // payment for the NEW rate, not the stale payment computed for the old
+    // one.
+    expect(result.rows[0].annualRate).toBe(12);
+    expect(result.rows[0].payment).toBeCloseTo(8884.88, 1);
+    expect(result.rows[0].payment).not.toBeCloseTo(8333.33, 1);
+  });
+});
+
 describe('buildRateTimeline', () => {
   const rows = [
     { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: 2500 },
@@ -731,6 +759,70 @@ describe('generateLoanSchedule per-overpayment mode', () => {
     expect(mixed.finalPaymentAmount).toBeLessThan(baseline.finalPaymentAmount);
     // ...and the later SHORTEN lump ended it before the original term.
     expect(mixed.numPayments).toBeLessThan(baseline.numPayments);
+  });
+});
+
+describe('generateLoanSchedule fixedEndPeriod re-levelling tracks the current target (REV-20260803-042)', () => {
+  it('does not neutralize a SHORTEN_TERM lump sum by re-levelling toward the original fixedEndPeriod', () => {
+    // Exact scenario from the finding: 0% loan, 1200 balance, 100 payment,
+    // fixedEndPeriod 12, a 100 first-period SHORTEN_TERM lump sum. The
+    // installment must stay 100 and the loan must pay off in 11 payments --
+    // not 12 payments with a lowered installment.
+    const result = generateLoanSchedule(
+      baseInput({
+        startingBalance: 1200,
+        annualRate: 0,
+        paymentAmount: 100,
+        frequency: 'MONTHLY',
+        firstPaymentDate: new Date(2026, 0, 15),
+        fixedEndPeriod: 12,
+        maxPayments: 20,
+        overpayments: {
+          lumpSums: [{ date: '2026-01-15', amount: 100, mode: 'SHORTEN_TERM' }],
+        },
+      }),
+    );
+
+    expect(result.paidOff).toBe(true);
+    expect(result.numPayments).toBe(11);
+    expect(result.finalPaymentAmount).toBeCloseTo(100, 2);
+    for (const row of result.rows) {
+      expect(row.payment).toBeCloseTo(100, 2);
+    }
+  });
+
+  it('re-levels a later LOWER_INSTALLMENT event against the shortened target, not the stale original one', () => {
+    // A SHORTEN_TERM lump sum first pulls the fixedEndPeriod target in from
+    // 24 to 22 (its 200 removes 2 periods' worth of principal at the 100
+    // installment). A LOWER_INSTALLMENT lump sum the next period must then
+    // re-level toward that shortened 22-period target (1800 / 20 remaining =
+    // 90), not restore the original 24-period target (which would give
+    // 1800 / 22 = ~81.82 instead).
+    const result = generateLoanSchedule(
+      baseInput({
+        startingBalance: 2400,
+        annualRate: 0,
+        paymentAmount: 100,
+        frequency: 'MONTHLY',
+        firstPaymentDate: new Date(2026, 0, 15),
+        fixedEndPeriod: 24,
+        maxPayments: 40,
+        overpayments: {
+          lumpSums: [
+            { date: '2026-01-15', amount: 200, mode: 'SHORTEN_TERM' },
+            { date: '2026-02-15', amount: 200, mode: 'LOWER_INSTALLMENT' },
+          ],
+        },
+      }),
+    );
+
+    expect(result.rows[0].payment).toBeCloseTo(100, 2);
+    expect(result.rows[1].payment).toBeCloseTo(100, 2);
+    // Row 3 (index 2) is the first to reflect the re-levelled installment.
+    expect(result.rows[2].payment).toBeCloseTo(90, 2);
+    expect(result.rows[2].payment).not.toBeCloseTo(81.82, 2);
+    expect(result.paidOff).toBe(true);
+    expect(result.numPayments).toBe(22);
   });
 });
 
