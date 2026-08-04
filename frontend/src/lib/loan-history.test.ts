@@ -1473,3 +1473,27 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     assertRealInterestIsClaimed([extraTx, regularTx]);
   });
 });
+
+// REV-20260803-032: source-scan guard
+// The defect at 5ecc5b964 introduced an `originationDate` variable that dropped
+// grace-period interest expenses booked before the first loan-account transaction.
+// `scopedInterestTransactions` must never carry a lower-bound date filter; the
+// only permitted bound is the upper one applied once the loan is paid off.
+// This scan prevents any future commit from reintroducing the pattern.
+describe('REV-20260803-032: loan-history.ts has no lower-bound date filter on interest transactions', () => {
+  const loanHistorySrc = import.meta.glob('/src/lib/loan-history.ts', {
+    query: '?raw',
+    eager: true,
+    import: 'default',
+  }) as Record<string, string>;
+
+  const src = Object.values(loanHistorySrc)[0] ?? '';
+
+  it('contains no originationDate variable', () => {
+    expect(src).not.toMatch(/\boriginationDate\b/);
+  });
+
+  it('still finds scopedInterestTransactions so the rule cannot pass by accident', () => {
+    expect(src).toMatch(/\bscopedInterestTransactions\b/);
+  });
+});
