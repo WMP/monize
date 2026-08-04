@@ -6,7 +6,7 @@ import {
 import {
   LoanRateChangesService,
   toYmd,
-  hashScheduledPaymentPreview,
+  hashScheduledUpdatePayload,
 } from "./loan-rate-changes.service";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
@@ -785,10 +785,15 @@ describe("LoanRateChangesService", () => {
       // REV-20260803-029: hash must be returned so the confirmation call can
       // bind to the exact state the user authorized.
       expect(result.scheduledPaymentPreviewHash).toMatch(/^[0-9a-f]{64}$/);
-      // The hash must match what hashScheduledPaymentPreview produces for the
-      // same preview -- so the confirmation endpoint can reproduce it.
+      // The hash is over the update *payload* (what gets written), not the
+      // preview summary -- so the confirmation endpoint reproduces it from the
+      // freshly built plan's payload.
+      const plan = await service.buildScheduledUpdate(userId, account, {
+        annualRate: 4.9,
+        paymentAmount: 2500,
+      });
       expect(result.scheduledPaymentPreviewHash).toBe(
-        hashScheduledPaymentPreview(result.scheduledPaymentPreview!),
+        hashScheduledUpdatePayload(plan!.scheduledTransactionId, plan!.payload),
       );
     });
 
@@ -873,7 +878,7 @@ describe("LoanRateChangesService", () => {
     // the database without comparing to what the user was shown. If the rate,
     // payment, or extra split changed between preview and confirmation, the
     // newer (user-unauthorized) state was applied silently.
-    it("applies when the hash matches the freshly computed preview", async () => {
+    it("applies when the hash matches the freshly computed payload", async () => {
       const account = makeAccount({ interestRate: 4.9 });
       accountsRepository.findOne.mockResolvedValue(account);
       scheduledTransactionsService.findOne.mockResolvedValue({
@@ -884,21 +889,14 @@ describe("LoanRateChangesService", () => {
         splits: [],
       });
 
-      const expectedInterest =
-        Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000;
-      const previewForHashing = {
-        scheduledTransactionId: "sched-1",
-        scheduledTransactionName: "Mortgage",
-        currencyCode: "CAD",
-        currentPaymentAmount: 2500,
-        proposedPaymentAmount: 2500,
-        currentPrincipal: null,
-        proposedPrincipal: 2500 - expectedInterest,
-        currentInterest: null,
-        proposedInterest: expectedInterest,
-        extraPrincipal: 0,
-      };
-      const correctHash = hashScheduledPaymentPreview(previewForHashing);
+      // Reproduce the hash the create endpoint would have returned for this
+      // state: it is computed over the update payload, mirroring the real path
+      // (no timeline rows, so buildScheduledUpdate uses the account's scalars).
+      const plan = await service.buildScheduledUpdate(userId, account, undefined);
+      const correctHash = hashScheduledUpdatePayload(
+        plan!.scheduledTransactionId,
+        plan!.payload,
+      );
 
       const result = await service.applyScheduledPaymentSync(
         userId,
@@ -906,14 +904,16 @@ describe("LoanRateChangesService", () => {
         correctHash,
       );
 
+      const expectedInterest =
+        Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000;
       expect(scheduledTransactionsService.update).toHaveBeenCalled();
       expect(result?.proposedInterest).toBe(expectedInterest);
     });
 
-    it("rejects with ConflictException and fresh preview when the hash does not match", async () => {
+    it("rejects with ConflictException and fresh preview when the payload no longer matches the hash", async () => {
       // Simulate: user saw a preview at rate 4.9%, but by confirmation time the
-      // rate changed to 5.5% (the account default). The fresh plan will differ
-      // from the hash the user's client holds.
+      // rate changed to 5.5% (the account default). The freshly built payload
+      // will differ from the hash the user's client holds.
       const account = makeAccount({ interestRate: 5.5 });
       accountsRepository.findOne.mockResolvedValue(account);
       scheduledTransactionsService.findOne.mockResolvedValue({
@@ -924,23 +924,16 @@ describe("LoanRateChangesService", () => {
         splits: [],
       });
 
-      // Hash built for a different rate (4.9%) -- does not match the 5.5% plan
-      // the service will compute from the current DB state.
-      const staleHash = hashScheduledPaymentPreview({
-        scheduledTransactionId: "sched-1",
-        scheduledTransactionName: "Mortgage",
-        currencyCode: "CAD",
-        currentPaymentAmount: 2500,
-        proposedPaymentAmount: 2500,
-        currentPrincipal: null,
-        // 4.9% interest -- what the user saw, not what the DB now resolves to
-        proposedPrincipal:
-          2500 - Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000,
-        proposedInterest:
-          Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000,
-        currentInterest: null,
-        extraPrincipal: 0,
+      // The hash the user holds was computed for a 4.9% payload; the account now
+      // resolves to 5.5%, so the freshly built payload differs.
+      const stalePlan = await service.buildScheduledUpdate(userId, account, {
+        annualRate: 4.9,
+        paymentAmount: 2500,
       });
+      const staleHash = hashScheduledUpdatePayload(
+        stalePlan!.scheduledTransactionId,
+        stalePlan!.payload,
+      );
 
       await expect(
         service.applyScheduledPaymentSync(userId, accountId, staleHash),
@@ -966,6 +959,87 @@ describe("LoanRateChangesService", () => {
       expect(freshPreview.proposedInterest).toBe(expectedFreshInterest);
     });
 
+    // REV-20260803-029, third reopen: hashing only the preview's aggregate
+    // figures accepted a confirmation whose individual extra-principal splits
+    // had been re-divided. Two extra splits of 40 and 60 re-split as 50 and 50
+    // leave the aggregate extra total (100), the parent amount, and every
+    // preview figure unchanged -- so a preview-based hash matched and the newer
+    // 50/50 split was written without the user's authorization. Hashing the
+    // payload (which carries each split's individual amount) rejects it.
+    it("rejects when an individual extra split is re-divided but the aggregate is unchanged", async () => {
+      const account = makeAccount({ interestRate: 4.9 });
+      accountsRepository.findOne.mockResolvedValue(account);
+
+      // Preview time: two extra-principal splits of 40 and 60.
+      scheduledTransactionsService.findOne.mockResolvedValueOnce({
+        id: "sched-1",
+        name: "Mortgage",
+        currencyCode: "CAD",
+        amount: -2600,
+        splits: [
+          {
+            transferAccountId: accountId,
+            amount: -40,
+            memo: "Extra one",
+          },
+          {
+            transferAccountId: accountId,
+            amount: -60,
+            memo: "Extra two",
+          },
+        ],
+      });
+      const previewPlan = await service.buildScheduledUpdate(
+        userId,
+        account,
+        undefined,
+      );
+      const previewHash = hashScheduledUpdatePayload(
+        previewPlan!.scheduledTransactionId,
+        previewPlan!.payload,
+      );
+
+      // Confirm time: another tab re-split the same 100 as 50/50. The aggregate
+      // extra total is identical, so the preview is byte-for-byte the same.
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        name: "Mortgage",
+        currencyCode: "CAD",
+        amount: -2600,
+        splits: [
+          {
+            transferAccountId: accountId,
+            amount: -50,
+            memo: "Extra one",
+          },
+          {
+            transferAccountId: accountId,
+            amount: -50,
+            memo: "Extra two",
+          },
+        ],
+      });
+
+      // Sanity: the aggregate preview really is unchanged, so ONLY a
+      // payload-level hash can tell the two states apart.
+      const confirmPlan = await service.buildScheduledUpdate(
+        userId,
+        account,
+        undefined,
+      );
+      expect(confirmPlan!.preview.extraPrincipal).toBe(
+        previewPlan!.preview.extraPrincipal,
+      );
+      expect(confirmPlan!.preview.proposedPaymentAmount).toBe(
+        previewPlan!.preview.proposedPaymentAmount,
+      );
+
+      await expect(
+        service.applyScheduledPaymentSync(userId, accountId, previewHash),
+      ).rejects.toThrow(ConflictException);
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+    });
+
     it("applies without a hash when the caller omits expectedPreviewHash (backward-compatible)", async () => {
       const account = makeAccount({ interestRate: 4.9 });
       accountsRepository.findOne.mockResolvedValue(account);
@@ -981,40 +1055,136 @@ describe("LoanRateChangesService", () => {
     });
   });
 
-  describe("hashScheduledPaymentPreview", () => {
+  describe("hashScheduledUpdatePayload", () => {
+    const basePayload = {
+      amount: -2500,
+      splits: [
+        { transferAccountId: "acc-1", amount: -800, memo: "Principal" },
+        { categoryId: "cat-interest", amount: -1700, memo: "Interest" },
+      ],
+    };
+
     it("produces a 64-character hex SHA-256 string", () => {
-      const preview = {
-        scheduledTransactionId: "sched-1",
-        scheduledTransactionName: "Mortgage",
-        currencyCode: "CAD",
-        currentPaymentAmount: 2500,
-        proposedPaymentAmount: 2500,
-        currentPrincipal: 800,
-        proposedPrincipal: 1700,
-        currentInterest: 1700,
-        proposedInterest: 800,
-        extraPrincipal: 0,
-      };
-      const hash = hashScheduledPaymentPreview(preview);
+      const hash = hashScheduledUpdatePayload("sched-1", basePayload);
       expect(hash).toMatch(/^[0-9a-f]{64}$/);
     });
 
-    it("produces different hashes for different proposed amounts", () => {
-      const base = {
-        scheduledTransactionId: "sched-1",
-        scheduledTransactionName: null,
-        currencyCode: "CAD",
-        currentPaymentAmount: null,
-        proposedPaymentAmount: 2500,
-        currentPrincipal: null,
-        proposedPrincipal: 1700,
-        currentInterest: null,
-        proposedInterest: 800,
-        extraPrincipal: 0,
+    it("changes when the target scheduled transaction changes", () => {
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).not.toBe(
+        hashScheduledUpdatePayload("sched-2", basePayload),
+      );
+    });
+
+    it("changes when the parent amount changes", () => {
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).not.toBe(
+        hashScheduledUpdatePayload("sched-1", {
+          ...basePayload,
+          amount: -2600,
+        }),
+      );
+    });
+
+    // The family the earlier attempts missed: fields the preview does not
+    // summarise. Each of these leaves every aggregate preview figure unchanged.
+    it("changes when an individual split amount changes", () => {
+      const changed = {
+        ...basePayload,
+        splits: [
+          { transferAccountId: "acc-1", amount: -900, memo: "Principal" },
+          { categoryId: "cat-interest", amount: -1600, memo: "Interest" },
+        ],
       };
-      const changed = { ...base, proposedInterest: 900 };
-      expect(hashScheduledPaymentPreview(base)).not.toBe(
-        hashScheduledPaymentPreview(changed),
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).not.toBe(
+        hashScheduledUpdatePayload("sched-1", changed),
+      );
+    });
+
+    it("changes when a split's category changes", () => {
+      const changed = {
+        ...basePayload,
+        splits: [
+          basePayload.splits[0],
+          { categoryId: "cat-other", amount: -1700, memo: "Interest" },
+        ],
+      };
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).not.toBe(
+        hashScheduledUpdatePayload("sched-1", changed),
+      );
+    });
+
+    it("changes when a split's memo changes", () => {
+      const changed = {
+        ...basePayload,
+        splits: [
+          { transferAccountId: "acc-1", amount: -800, memo: "Overpayment" },
+          basePayload.splits[1],
+        ],
+      };
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).not.toBe(
+        hashScheduledUpdatePayload("sched-1", changed),
+      );
+    });
+
+    it("changes when a split's tags change", () => {
+      const withTags = {
+        ...basePayload,
+        splits: [
+          {
+            transferAccountId: "acc-1",
+            amount: -800,
+            memo: "Principal",
+            tagIds: ["tag-a"],
+          },
+          basePayload.splits[1],
+        ],
+      };
+      const withDifferentTags = {
+        ...withTags,
+        splits: [
+          { ...withTags.splits[0], tagIds: ["tag-a", "tag-b"] },
+          basePayload.splits[1],
+        ],
+      };
+      expect(hashScheduledUpdatePayload("sched-1", withTags)).not.toBe(
+        hashScheduledUpdatePayload("sched-1", withDifferentTags),
+      );
+    });
+
+    it("is insensitive to the order tags are returned in (equal sets hash alike)", () => {
+      const orderA = {
+        ...basePayload,
+        splits: [
+          {
+            transferAccountId: "acc-1",
+            amount: -800,
+            memo: "Principal",
+            tagIds: ["tag-a", "tag-b"],
+          },
+          basePayload.splits[1],
+        ],
+      };
+      const orderB = {
+        ...orderA,
+        splits: [
+          { ...orderA.splits[0], tagIds: ["tag-b", "tag-a"] },
+          basePayload.splits[1],
+        ],
+      };
+      expect(hashScheduledUpdatePayload("sched-1", orderA)).toBe(
+        hashScheduledUpdatePayload("sched-1", orderB),
+      );
+    });
+
+    it("is insensitive to object key order within a split", () => {
+      const reordered = {
+        amount: -2500,
+        splits: [
+          { memo: "Principal", amount: -800, transferAccountId: "acc-1" },
+          { amount: -1700, memo: "Interest", categoryId: "cat-interest" },
+        ],
+      };
+      expect(hashScheduledUpdatePayload("sched-1", basePayload)).toBe(
+        hashScheduledUpdatePayload("sched-1", reordered),
       );
     });
   });

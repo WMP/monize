@@ -51,11 +51,17 @@ describe("LoanRateChangesController", () => {
     });
   });
 
-  it("applies the pending scheduled-payment change", async () => {
-    await controller.applyScheduledPayment(req, accountId);
+  it("applies the pending scheduled-payment change, forwarding the preview hash", async () => {
+    // REV-20260803-029: the confirmation must carry the hash from creation so
+    // the service can reject a stale preview -- the controller reads it off the
+    // request body and passes it through.
+    await controller.applyScheduledPayment(req, accountId, {
+      expectedPreviewHash: "preview-hash-1",
+    });
     expect(service.applyScheduledPaymentSync).toHaveBeenCalledWith(
       "user-1",
       accountId,
+      "preview-hash-1",
     );
   });
 

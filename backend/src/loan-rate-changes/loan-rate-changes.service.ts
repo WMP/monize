@@ -52,7 +52,7 @@ export interface ScheduledPaymentPreview {
 }
 
 /** The scheduled-payment update to apply, plus its user-facing preview. */
-interface ScheduledUpdatePlan {
+export interface ScheduledUpdatePlan {
   scheduledTransactionId: string;
   payload: Parameters<ScheduledTransactionsService["update"]>[2];
   preview: ScheduledPaymentPreview;
@@ -61,27 +61,75 @@ interface ScheduledUpdatePlan {
 /** A created rate change plus the pending scheduled-payment change, if any. */
 export type CreateLoanRateChangeResult = LoanRateChange & {
   scheduledPaymentPreview: ScheduledPaymentPreview | null;
-  /** SHA-256 hex hash of the preview's proposed amounts; absent when there is no preview. */
+  /**
+   * SHA-256 hex hash binding the confirmation to the exact update that will be
+   * applied; null when there is no pending change. Pass it back to
+   * `applyScheduledPaymentSync` so a confirmation that no longer matches the
+   * current state is rejected.
+   */
   scheduledPaymentPreviewHash: string | null;
 };
 
 /**
- * Hash the proposed amounts in a preview to detect staleness at confirmation
- * time. Only the proposed fields (the amounts the user is authorizing) are
- * included -- the current* fields describe the pre-change state and have no
- * bearing on what will be applied.
+ * Deterministic JSON: object keys sorted recursively so key order never
+ * affects the hash, arrays kept in place (their order is meaningful), and
+ * `undefined` normalized to `null`. Used to fingerprint the scheduled-payment
+ * update payload.
  */
-export function hashScheduledPaymentPreview(
-  preview: ScheduledPaymentPreview,
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record).sort();
+    return `{${keys
+      .map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+/**
+ * Fingerprint the *payload* that will actually be written to the linked
+ * scheduled transaction, together with the transaction it targets -- i.e. the
+ * complete set of state a confirmation applies.
+ *
+ * This deliberately hashes the payload, NOT the preview. The preview is a
+ * lossy summary (aggregate principal/interest/extra totals), so materially
+ * different payloads collapse to the same preview: two extra-principal splits
+ * of 40/60 re-split as 50/50, the same amounts moved to a different category,
+ * tag set or memo, or the whole bill relinked to another scheduled transaction
+ * all leave every preview figure unchanged. Binding the confirmation to the
+ * payload rejects ANY divergence between what the user previewed and what would
+ * now be applied, rather than only the figures the preview happens to show
+ * (REV-20260803-029). Because the payload is exactly the argument handed to
+ * `ScheduledTransactionsService.update`, nothing that gets applied is left
+ * unhashed -- including fields added to the payload later.
+ *
+ * `tagIds` are sorted before hashing so a tag set that is equal but returned in
+ * a different order by the database does not read as a change; split order is
+ * preserved because it is deterministic and part of what is written.
+ */
+export function hashScheduledUpdatePayload(
+  scheduledTransactionId: string,
+  payload: ScheduledUpdatePlan["payload"],
 ): string {
-  const key = JSON.stringify([
-    preview.scheduledTransactionId,
-    preview.proposedPaymentAmount,
-    preview.proposedPrincipal,
-    preview.proposedInterest,
-    preview.extraPrincipal,
-  ]);
-  return createHash("sha256").update(key).digest("hex");
+  // Spread the whole payload rather than pick fields: every field it carries
+  // now, and any added later, is part of what gets written and so must be part
+  // of the fingerprint. Only tagIds are normalized (sorted), because a tag set
+  // is order-independent and the database may return it in any order.
+  const normalized = {
+    ...payload,
+    scheduledTransactionId,
+    splits: (payload.splits ?? []).map((split) => ({
+      ...split,
+      tagIds: Array.isArray(split.tagIds)
+        ? [...split.tagIds].sort()
+        : split.tagIds,
+    })),
+  };
+  return createHash("sha256").update(stableStringify(normalized)).digest("hex");
 }
 
 /** Normalize a DATE column value (string at runtime, Date in tests) to YYYY-MM-DD */
@@ -278,7 +326,7 @@ export class LoanRateChangesService {
         const plan = await this.buildScheduledUpdate(userId, account, resolved);
         scheduledPaymentPreview = plan?.preview ?? null;
         scheduledPaymentPreviewHash = plan
-          ? hashScheduledPaymentPreview(plan.preview)
+          ? hashScheduledUpdatePayload(plan.scheduledTransactionId, plan.payload)
           : null;
       } else {
         await this.syncScheduledTransaction(userId, account, resolved);
@@ -441,11 +489,12 @@ export class LoanRateChangesService {
    * Returns the applied change, or null when there is nothing to sync.
    *
    * When `expectedPreviewHash` is supplied (the hash returned alongside the
-   * preview by `create`), the freshly computed plan is hashed and compared
-   * before anything is applied. If the hashes differ -- because another tab
-   * edited the rate, payment, or extra split between preview and confirmation
-   * -- a ConflictException is thrown that carries the fresh preview and its
-   * hash so the UI can present the updated proposal for re-authorization.
+   * preview by `create`), the freshly computed plan's *payload* is hashed and
+   * compared before anything is applied. If the hashes differ -- because
+   * another tab edited the rate, payment, or any individual extra split (its
+   * amount, category, tags or memo) between preview and confirmation -- a
+   * ConflictException is thrown that carries the fresh preview and its hash so
+   * the UI can present the updated proposal for re-authorization.
    */
   async applyScheduledPaymentSync(
     userId: string,
@@ -463,7 +512,10 @@ export class LoanRateChangesService {
     );
     if (!plan) return null;
     if (expectedPreviewHash !== undefined) {
-      const freshHash = hashScheduledPaymentPreview(plan.preview);
+      const freshHash = hashScheduledUpdatePayload(
+        plan.scheduledTransactionId,
+        plan.payload,
+      );
       if (freshHash !== expectedPreviewHash) {
         throw new ConflictException({
           message: tr(
