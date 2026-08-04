@@ -824,6 +824,44 @@ describe('generateLoanSchedule fixedEndPeriod re-levelling tracks the current ta
     expect(result.paidOff).toBe(true);
     expect(result.numPayments).toBe(22);
   });
+
+  it('isolates SHORTEN_TERM from a co-occurring LOWER_INSTALLMENT amount in the SAME period (second reopen)', () => {
+    // Exact scenario from the second reopen: 0% loan, 2400 balance, 100
+    // payment, fixedEndPeriod 24, and a SINGLE period-1 lump-sum pair -- 200
+    // SHORTEN_TERM plus 200 LOWER_INSTALLMENT landing together. Isolating
+    // SHORTEN_TERM's own contribution (200) from the combined post-both
+    // balance means the target shortens to period 22 (not 20), and period
+    // 2's payment is re-levelled toward that 22-period target on the actual
+    // (LOWER_INSTALLMENT-reduced) balance of 1900: 1900 / 21 ~= 90.48 --
+    // not the stale 100 the bug produced by conflating the two.
+    const result = generateLoanSchedule(
+      baseInput({
+        startingBalance: 2400,
+        annualRate: 0,
+        paymentAmount: 100,
+        frequency: 'MONTHLY',
+        firstPaymentDate: new Date(2026, 0, 15),
+        fixedEndPeriod: 24,
+        maxPayments: 40,
+        overpayments: {
+          lumpSums: [
+            { date: '2026-01-15', amount: 200, mode: 'SHORTEN_TERM' },
+            { date: '2026-01-15', amount: 200, mode: 'LOWER_INSTALLMENT' },
+          ],
+        },
+      }),
+    );
+
+    // Period 1: unchanged installment (100), both lump sums land here.
+    expect(result.rows[0].payment).toBeCloseTo(100, 2);
+    expect(result.rows[0].balance).toBeCloseTo(1900, 2);
+    // Period 2: re-levelled toward the SHORTEN_TERM-only target of 22, on
+    // the actual (both-overpayments) balance of 1900 -- 1900 / 21 ~= 90.48.
+    expect(result.rows[1].payment).toBeCloseTo(90.48, 2);
+    // The stale-target bug instead produced a target of 20 and kept the
+    // payment at 100 -- explicitly ruled out here.
+    expect(result.rows[1].payment).not.toBeCloseTo(100, 2);
+  });
 });
 
 describe('effectiveAnnualRateOn', () => {

@@ -834,6 +834,13 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
       principal = balance;
     }
     balance = Math.max(0, balance - principal);
+    // Snapshot before this period's overpayments (recurring extra + lump
+    // sums) are applied below, so the SHORTEN_TERM-only re-level target can
+    // be recomputed from just its own contribution instead of the combined
+    // post-all-overpayments balance (REV-20260803-042, second reopen: a
+    // co-occurring LOWER_INSTALLMENT amount in the SAME period must not be
+    // counted as if it also shortened the term).
+    const balanceBeforeOverpayments = balance;
 
     let extraPrincipal = 0;
     // Whether a LOWER_INSTALLMENT-mode overpayment landed this period, so the
@@ -843,6 +850,11 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     // `currentFixedEnd` is pulled in below instead of staying at a term the
     // overpayment has already shortened (REV-20260803-042).
     let shortenApplied = false;
+    // SHORTEN_TERM's OWN contribution to this period's overpayments, tracked
+    // separately from any co-occurring LOWER_INSTALLMENT amount so the
+    // re-level target below is recomputed from SHORTEN_TERM's balance
+    // reduction alone, not the combined total (REV-20260803-042).
+    let shortenTermAmountThisPeriod = 0;
     if (
       recurringExtra &&
       recurringPerHit > 0 &&
@@ -857,6 +869,7 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
           lowerApplied = true;
         } else {
           shortenApplied = true;
+          shortenTermAmountThisPeriod += recurringPerHit;
         }
       }
       recurringHits++;
@@ -869,6 +882,7 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
         lowerApplied = true;
       } else {
         shortenApplied = true;
+        shortenTermAmountThisPeriod += lumpSums[lumpSumIndex].amount;
       }
       lumpSumIndex++;
     }
@@ -892,9 +906,17 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     // re-level -- next period's fixed-term step above, this fallback's
     // rescue, or a later LOWER_INSTALLMENT event (which does not touch this
     // target) -- holds the CURRENT, already-shortened end (REV-20260803-042).
+    //
+    // The balance fed into that recompute is `balanceBeforeOverpayments`
+    // minus ONLY the SHORTEN_TERM amount(s) from this period, never the
+    // final post-all-overpayments `balance` -- a LOWER_INSTALLMENT amount
+    // landing in the SAME period reduces the balance too, but its whole
+    // point is a smaller FUTURE INSTALLMENT, not a shorter term, so it must
+    // not be misattributed as if it had also shortened the term (second
+    // reopen of REV-20260803-042).
     if (currentFixedEnd !== null && shortenApplied) {
       const termNeeded = calculateTermForPayment(
-        balance,
+        Math.max(0, balanceBeforeOverpayments - shortenTermAmountThisPeriod),
         currentAnnualRate,
         currentPayment,
         frequency,
