@@ -21,6 +21,7 @@ import { LoanRateChangesService } from "./loan-rate-changes.service";
 import { RateChangeInferenceService } from "./rate-change-inference.service";
 import { CreateLoanRateChangeDto } from "./dto/create-loan-rate-change.dto";
 import { UpdateLoanRateChangeDto } from "./dto/update-loan-rate-change.dto";
+import { ApplyScheduledPaymentDto } from "./dto/apply-scheduled-payment.dto";
 import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
 
 @ApiTags("Loan Rate Changes")
@@ -73,17 +74,24 @@ export class LoanRateChangesController {
   @ApiOperation({
     summary: "Apply the pending scheduled-payment change for a loan account",
     description:
-      "Resyncs the account's linked scheduled bill payment to its current rate and payment. Called after the user grants permission from the rate-change confirmation prompt.",
+      "Resyncs the account's linked scheduled bill payment to its current rate and payment. Called after the user grants permission from the rate-change confirmation prompt. Supply expectedPreviewHash (from the create response) to reject the application if the proposal has changed since the preview was shown.",
   })
   @ApiResponse({ status: 201, description: "Scheduled payment synced" })
   @ApiResponse({ status: 404, description: "Account not found" })
+  @ApiResponse({
+    status: 409,
+    description:
+      "Preview has changed since it was shown; response body contains freshPreview and freshPreviewHash",
+  })
   applyScheduledPayment(
     @Request() req,
     @Param("accountId", ParseUUIDPipe) accountId: string,
+    @Body() body: ApplyScheduledPaymentDto,
   ) {
     return this.loanRateChangesService.applyScheduledPaymentSync(
       req.user.id,
       accountId,
+      body.expectedPreviewHash,
     );
   }
 

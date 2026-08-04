@@ -7,6 +7,7 @@ import {
   ConflictException,
   BadRequestException,
 } from "@nestjs/common";
+import { createHash } from "crypto";
 import { DataSource, EntityManager } from "typeorm";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -60,7 +61,28 @@ interface ScheduledUpdatePlan {
 /** A created rate change plus the pending scheduled-payment change, if any. */
 export type CreateLoanRateChangeResult = LoanRateChange & {
   scheduledPaymentPreview: ScheduledPaymentPreview | null;
+  /** SHA-256 hex hash of the preview's proposed amounts; absent when there is no preview. */
+  scheduledPaymentPreviewHash: string | null;
 };
+
+/**
+ * Hash the proposed amounts in a preview to detect staleness at confirmation
+ * time. Only the proposed fields (the amounts the user is authorizing) are
+ * included -- the current* fields describe the pre-change state and have no
+ * bearing on what will be applied.
+ */
+export function hashScheduledPaymentPreview(
+  preview: ScheduledPaymentPreview,
+): string {
+  const key = JSON.stringify([
+    preview.scheduledTransactionId,
+    preview.proposedPaymentAmount,
+    preview.proposedPrincipal,
+    preview.proposedInterest,
+    preview.extraPrincipal,
+  ]);
+  return createHash("sha256").update(key).digest("hex");
+}
 
 /** Normalize a DATE column value (string at runtime, Date in tests) to YYYY-MM-DD */
 export function toYmd(value: Date | string | null | undefined): string | null {
@@ -250,15 +272,19 @@ export class LoanRateChangesService {
     );
 
     let scheduledPaymentPreview: ScheduledPaymentPreview | null = null;
+    let scheduledPaymentPreviewHash: string | null = null;
     if (resolved) {
       if (options?.deferScheduledSync) {
         const plan = await this.buildScheduledUpdate(userId, account, resolved);
         scheduledPaymentPreview = plan?.preview ?? null;
+        scheduledPaymentPreviewHash = plan
+          ? hashScheduledPaymentPreview(plan.preview)
+          : null;
       } else {
         await this.syncScheduledTransaction(userId, account, resolved);
       }
     }
-    return { ...saved, scheduledPaymentPreview };
+    return { ...saved, scheduledPaymentPreview, scheduledPaymentPreviewHash };
   }
 
   async update(
@@ -413,10 +439,18 @@ export class LoanRateChangesService {
    * has granted permission. Recomputes from the account's current (already
    * updated) rate/payment so it matches the preview shown at rate-change time.
    * Returns the applied change, or null when there is nothing to sync.
+   *
+   * When `expectedPreviewHash` is supplied (the hash returned alongside the
+   * preview by `create`), the freshly computed plan is hashed and compared
+   * before anything is applied. If the hashes differ -- because another tab
+   * edited the rate, payment, or extra split between preview and confirmation
+   * -- a ConflictException is thrown that carries the fresh preview and its
+   * hash so the UI can present the updated proposal for re-authorization.
    */
   async applyScheduledPaymentSync(
     userId: string,
     accountId: string,
+    expectedPreviewHash?: string,
   ): Promise<ScheduledPaymentPreview | null> {
     const account = await this.verifyLoanAccount(userId, accountId);
     const resolved = await withScopedDb(this.dataSource, (m) =>
@@ -428,6 +462,19 @@ export class LoanRateChangesService {
       resolved ?? undefined,
     );
     if (!plan) return null;
+    if (expectedPreviewHash !== undefined) {
+      const freshHash = hashScheduledPaymentPreview(plan.preview);
+      if (freshHash !== expectedPreviewHash) {
+        throw new ConflictException({
+          message: tr(
+            "errors.loanRateChanges.previewStale",
+            "The scheduled-payment preview has changed since it was shown; please review the updated proposal",
+          ),
+          freshPreview: plan.preview,
+          freshPreviewHash: freshHash,
+        });
+      }
+    }
     await this.scheduledTransactionsService.update(
       userId,
       plan.scheduledTransactionId,

@@ -3,7 +3,11 @@ import {
   ConflictException,
   NotFoundException,
 } from "@nestjs/common";
-import { LoanRateChangesService, toYmd } from "./loan-rate-changes.service";
+import {
+  LoanRateChangesService,
+  toYmd,
+  hashScheduledPaymentPreview,
+} from "./loan-rate-changes.service";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { recalculateMortgageAfterRateChange } from "../accounts/mortgage-amortization.util";
@@ -778,6 +782,14 @@ describe("LoanRateChangesService", () => {
         proposedInterest: expectedInterest,
         extraPrincipal: 0,
       });
+      // REV-20260803-029: hash must be returned so the confirmation call can
+      // bind to the exact state the user authorized.
+      expect(result.scheduledPaymentPreviewHash).toMatch(/^[0-9a-f]{64}$/);
+      // The hash must match what hashScheduledPaymentPreview produces for the
+      // same preview -- so the confirmation endpoint can reproduce it.
+      expect(result.scheduledPaymentPreviewHash).toBe(
+        hashScheduledPaymentPreview(result.scheduledPaymentPreview!),
+      );
     });
 
     it("returns a null preview when deferring on an account with no linked schedule", async () => {
@@ -795,6 +807,7 @@ describe("LoanRateChangesService", () => {
       );
 
       expect(result.scheduledPaymentPreview).toBeNull();
+      expect(result.scheduledPaymentPreviewHash).toBeNull();
       expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
     });
   });
@@ -854,6 +867,155 @@ describe("LoanRateChangesService", () => {
       await expect(
         service.applyScheduledPaymentSync(userId, accountId),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    // REV-20260803-029: applyScheduledPaymentSync re-resolved the timeline from
+    // the database without comparing to what the user was shown. If the rate,
+    // payment, or extra split changed between preview and confirmation, the
+    // newer (user-unauthorized) state was applied silently.
+    it("applies when the hash matches the freshly computed preview", async () => {
+      const account = makeAccount({ interestRate: 4.9 });
+      accountsRepository.findOne.mockResolvedValue(account);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        name: "Mortgage",
+        currencyCode: "CAD",
+        amount: -2500,
+        splits: [],
+      });
+
+      const expectedInterest =
+        Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000;
+      const previewForHashing = {
+        scheduledTransactionId: "sched-1",
+        scheduledTransactionName: "Mortgage",
+        currencyCode: "CAD",
+        currentPaymentAmount: 2500,
+        proposedPaymentAmount: 2500,
+        currentPrincipal: null,
+        proposedPrincipal: 2500 - expectedInterest,
+        currentInterest: null,
+        proposedInterest: expectedInterest,
+        extraPrincipal: 0,
+      };
+      const correctHash = hashScheduledPaymentPreview(previewForHashing);
+
+      const result = await service.applyScheduledPaymentSync(
+        userId,
+        accountId,
+        correctHash,
+      );
+
+      expect(scheduledTransactionsService.update).toHaveBeenCalled();
+      expect(result?.proposedInterest).toBe(expectedInterest);
+    });
+
+    it("rejects with ConflictException and fresh preview when the hash does not match", async () => {
+      // Simulate: user saw a preview at rate 4.9%, but by confirmation time the
+      // rate changed to 5.5% (the account default). The fresh plan will differ
+      // from the hash the user's client holds.
+      const account = makeAccount({ interestRate: 5.5 });
+      accountsRepository.findOne.mockResolvedValue(account);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        name: "Mortgage",
+        currencyCode: "CAD",
+        amount: -2500,
+        splits: [],
+      });
+
+      // Hash built for a different rate (4.9%) -- does not match the 5.5% plan
+      // the service will compute from the current DB state.
+      const staleHash = hashScheduledPaymentPreview({
+        scheduledTransactionId: "sched-1",
+        scheduledTransactionName: "Mortgage",
+        currencyCode: "CAD",
+        currentPaymentAmount: 2500,
+        proposedPaymentAmount: 2500,
+        currentPrincipal: null,
+        // 4.9% interest -- what the user saw, not what the DB now resolves to
+        proposedPrincipal:
+          2500 - Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000,
+        proposedInterest:
+          Math.round(400000 * (4.9 / 100 / 12) * 10000) / 10000,
+        currentInterest: null,
+        extraPrincipal: 0,
+      });
+
+      await expect(
+        service.applyScheduledPaymentSync(userId, accountId, staleHash),
+      ).rejects.toThrow(ConflictException);
+
+      // Nothing was applied -- the user must review and re-authorize.
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+
+      // The exception body must carry the fresh preview for the UI to display.
+      let thrown: ConflictException | undefined;
+      try {
+        await service.applyScheduledPaymentSync(userId, accountId, staleHash);
+      } catch (err) {
+        thrown = err as ConflictException;
+      }
+      const body = thrown!.getResponse() as Record<string, unknown>;
+      expect(body.freshPreview).toBeDefined();
+      expect(body.freshPreviewHash).toBeDefined();
+      // The fresh preview reflects the current 5.5% rate, not 4.9%.
+      const freshPreview = body.freshPreview as { proposedInterest: number };
+      const expectedFreshInterest =
+        Math.round(400000 * (5.5 / 100 / 12) * 10000) / 10000;
+      expect(freshPreview.proposedInterest).toBe(expectedFreshInterest);
+    });
+
+    it("applies without a hash when the caller omits expectedPreviewHash (backward-compatible)", async () => {
+      const account = makeAccount({ interestRate: 4.9 });
+      accountsRepository.findOne.mockResolvedValue(account);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        splits: [],
+      });
+
+      // No hash supplied -- should apply unconditionally (legacy behaviour).
+      await service.applyScheduledPaymentSync(userId, accountId, undefined);
+
+      expect(scheduledTransactionsService.update).toHaveBeenCalled();
+    });
+  });
+
+  describe("hashScheduledPaymentPreview", () => {
+    it("produces a 64-character hex SHA-256 string", () => {
+      const preview = {
+        scheduledTransactionId: "sched-1",
+        scheduledTransactionName: "Mortgage",
+        currencyCode: "CAD",
+        currentPaymentAmount: 2500,
+        proposedPaymentAmount: 2500,
+        currentPrincipal: 800,
+        proposedPrincipal: 1700,
+        currentInterest: 1700,
+        proposedInterest: 800,
+        extraPrincipal: 0,
+      };
+      const hash = hashScheduledPaymentPreview(preview);
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it("produces different hashes for different proposed amounts", () => {
+      const base = {
+        scheduledTransactionId: "sched-1",
+        scheduledTransactionName: null,
+        currencyCode: "CAD",
+        currentPaymentAmount: null,
+        proposedPaymentAmount: 2500,
+        currentPrincipal: null,
+        proposedPrincipal: 1700,
+        currentInterest: null,
+        proposedInterest: 800,
+        extraPrincipal: 0,
+      };
+      const changed = { ...base, proposedInterest: 900 };
+      expect(hashScheduledPaymentPreview(base)).not.toBe(
+        hashScheduledPaymentPreview(changed),
+      );
     });
   });
 
