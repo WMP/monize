@@ -42,9 +42,84 @@ describe("EmergencyAccessMonitorService", () => {
     return new Date(Date.now() - n * 24 * 60 * 60 * 1000);
   }
 
+  /**
+   * A contacts `find` that honours the `claimNotifiedAt IS NULL` predicate.
+   *
+   * That predicate is the mechanism under test -- it is what makes a resumed
+   * grant skip a contact who already holds a working link -- so a spec about the
+   * resume path cannot use a `mockResolvedValue` that returns everything. Specs
+   * that do not care keep the simpler double.
+   */
+  function contactsAre(
+    rows: {
+      id: string;
+      firstName: string;
+      email: string;
+      notified?: boolean;
+    }[],
+  ): void {
+    contactsRepo.find.mockImplementation(
+      async (opts?: { where?: Record<string, unknown> }) => {
+        const wantsPending = "claimNotifiedAt" in (opts?.where ?? {});
+        return rows
+          .filter((row) => !wantsPending || !row.notified)
+          .map((row) => ({
+            id: row.id,
+            firstName: row.firstName,
+            email: row.email,
+            claimNotifiedAt: row.notified ? daysAgo(1) : null,
+          }));
+      },
+    );
+  }
+
+  /** The contact ids whose delivery record this run stamped. */
+  function notifiedContactIds(): string[] {
+    return contactsRepo.createQueryBuilder.mock.results.flatMap((result) => {
+      if (result.type !== "return") return [];
+      const builder = result.value as {
+        set: jest.Mock;
+        where: jest.Mock;
+      };
+      const stampedNotified = builder.set.mock.calls.some(
+        (call) => "claimNotifiedAt" in (call[0] ?? {}),
+      );
+      if (!stampedNotified) return [];
+      return builder.where.mock.calls
+        .map((call) => (call[1] as { id?: string } | undefined)?.id)
+        .filter((id): id is string => typeof id === "string");
+    });
+  }
+
   beforeEach(async () => {
+    // The claim double is shared across tests, so its recorded calls and any
+    // queued `...Once` would otherwise leak forward -- which is invisible until a
+    // spec asserts a claim was *not* taken, and then reads as a product bug.
+    jobClaims.claimOnce.mockReset().mockResolvedValue(true);
+    jobClaims.claimLease.mockReset().mockResolvedValue(true);
+    jobClaims.release.mockReset().mockResolvedValue(undefined);
+
     settingsRepo = {
       find: jest.fn().mockResolvedValue([]),
+      // The reminder's delivery record is re-read under the lease, because a
+      // claim says "may I send" and only `lastReminderSentAt` says "this was
+      // sent" (audit FV4-005). Served from the rows this spec's `find` returned,
+      // so a fixture that sets `lastReminderSentAt` states the committed value
+      // once rather than twice.
+      findOne: jest.fn(async (opts?: { where?: { ownerUserId?: string } }) => {
+        const wanted = opts?.where?.ownerUserId;
+        for (const result of settingsRepo.find.mock.results) {
+          if (result.type !== "return") continue;
+          const rows = (await result.value) as
+            | { ownerUserId?: string }[]
+            | undefined;
+          const hit = rows?.find(
+            (row) => wanted === undefined || row.ownerUserId === wanted,
+          );
+          if (hit) return hit;
+        }
+        return null;
+      }),
       save: jest.fn(),
       // grantedAt / lastReminderSentAt are now written with targeted UPDATEs
       // rather than by re-saving the entity the sweep read, so a concurrent
@@ -173,20 +248,28 @@ describe("EmergencyAccessMonitorService", () => {
     const [to, subject] = emailService.sendMail.mock.calls[0];
     expect(to).toBe("owner@example.com");
     expect(subject).toContain("10");
-    // The daily rule is a durable claim now, not a read-then-write of
-    // lastReminderSentAt: two replicas both passed that check and both emailed.
-    expect(jobClaims.claimOnce).toHaveBeenCalledWith(
+    // Two separate jobs: the lease excludes the other replica right now, and
+    // `lastReminderSentAt` -- written below -- is what says the day is spent. A
+    // permanent claim taken before the send was both, so a replica killed in
+    // between consumed the day and sent nothing (audit FV4-005).
+    expect(jobClaims.claimLease).toHaveBeenCalledWith(
       "emergency_access_reminder",
       userId,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      expect.any(Number),
+    );
+    expect(jobClaims.claimOnce).not.toHaveBeenCalledWith(
+      "emergency_access_reminder",
+      userId,
+      expect.anything(),
     );
     // And the timestamp is written with a targeted UPDATE, not by re-saving the
     // settings row the sweep read.
     expect(settingsRepo.createQueryBuilder).toHaveBeenCalled();
   });
 
-  it("does not send the reminder when another replica claimed the day", async () => {
-    jobClaims.claimOnce.mockResolvedValueOnce(false);
+  it("does not send the reminder while another replica holds the lease", async () => {
+    jobClaims.claimLease.mockResolvedValueOnce(false);
 
     await service.runDailyCheck();
 
@@ -267,6 +350,182 @@ describe("EmergencyAccessMonitorService", () => {
     expect(emailService.sendMail).not.toHaveBeenCalled();
   });
 
+  /**
+   * FV4-004: the crash window between the grant claim and the emails.
+   *
+   * `granted_at` used to be the claim and the grant state at once, so a replica
+   * killed in between left the account permanently marked granted with nobody
+   * holding a link -- and step 1's `granted_at IS NULL` predicate meant nothing
+   * would ever look again. The delivery record is per contact now, so the state
+   * is discoverable: a granted owner with an un-notified contact is a link owed.
+   */
+  describe("a grant that was claimed but never delivered", () => {
+    const grantedButUndelivered = () => {
+      settingsRepo.find.mockResolvedValue([
+        {
+          ownerUserId: userId,
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+          messageCiphertext: null,
+          lastReminderSentAt: null,
+          // The claim committed; the process died before any email.
+          grantedAt: daysAgo(1),
+        },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: userId,
+        email: "owner@example.com",
+        firstName: "Owner",
+        isActive: true,
+        lastActivityAt: daysAgo(20),
+      });
+    };
+
+    it("resumes delivery for the contacts still owed a link", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        { id: "c1", firstName: "Carol", email: "carol@example.com" },
+        { id: "c2", firstName: "Dave", email: "dave@example.com" },
+      ]);
+
+      await service.runDailyCheck();
+
+      expect(emailService.sendMail.mock.calls.map((c) => c[0])).toEqual([
+        "carol@example.com",
+        "dave@example.com",
+      ]);
+      expect(notifiedContactIds()).toEqual(["c1", "c2"]);
+      // The grant is already ours; it must not be re-claimed or re-set.
+      expect(
+        scopedManagerQuery.mock.calls
+          .map((c) => String(c[0]))
+          .filter((sql) => sql.includes("UPDATE emergency_access_settings")),
+      ).toEqual([]);
+    });
+
+    it("never re-issues a token for a contact who already received one", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          notified: true,
+        },
+        { id: "c2", firstName: "Dave", email: "dave@example.com" },
+      ]);
+
+      await service.runDailyCheck();
+
+      // Re-issuing Carol's token would invalidate the link already in her inbox,
+      // and a dead emergency-access link during a recovery is indistinguishable
+      // from a revoked one -- the exact P4-014 failure this must not reintroduce.
+      expect(emailService.sendMail.mock.calls.map((c) => c[0])).toEqual([
+        "dave@example.com",
+      ]);
+      expect(contactsRepo.save).toHaveBeenCalledTimes(1);
+      expect(contactsRepo.save.mock.calls[0][0].email).toBe("dave@example.com");
+    });
+
+    it("takes a lease, so two replicas do not both resume it", async () => {
+      grantedButUndelivered();
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+      jobClaims.claimLease.mockResolvedValueOnce(false);
+
+      await service.runDailyCheck();
+
+      expect(jobClaims.claimLease).toHaveBeenCalledWith(
+        "emergency_access_grant_notify",
+        userId,
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        expect.any(Number),
+      );
+      expect(emailService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when every contact has already been notified", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "c@example.com",
+          notified: true,
+        },
+      ]);
+
+      await service.runDailyCheck();
+
+      expect(emailService.sendMail).not.toHaveBeenCalled();
+      expect(jobClaims.claimLease).not.toHaveBeenCalled();
+    });
+
+    it("leaves a returning owner to the revoke path instead of resuming", async () => {
+      settingsRepo.find.mockResolvedValue([
+        {
+          ownerUserId: userId,
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+          messageCiphertext: null,
+          lastReminderSentAt: null,
+          grantedAt: daysAgo(1),
+        },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: userId,
+        email: "owner@example.com",
+        isActive: true,
+        // Signed back in: the grant is being revoked, not resumed.
+        lastActivityAt: daysAgo(1),
+      });
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      // The one email is the owner's revocation notice, not a contact's link.
+      expect(emailService.sendMail.mock.calls.map((c) => c[0])).toEqual([
+        "owner@example.com",
+      ]);
+      expect(notifiedContactIds()).toEqual([]);
+    });
+  });
+
+  it("stamps a contact's delivery record only after their own email is sent", async () => {
+    settingsRepo.find.mockResolvedValue([
+      {
+        ownerUserId: userId,
+        enabled: true,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+        messageCiphertext: null,
+        lastReminderSentAt: null,
+        grantedAt: null,
+      },
+    ]);
+    usersRepo.findOne.mockResolvedValue({
+      id: userId,
+      email: "owner@example.com",
+      isActive: true,
+      lastActivityAt: daysAgo(20),
+    });
+    contactsAre([
+      { id: "c1", firstName: "Carol", email: "carol@example.com" },
+      { id: "c2", firstName: "Dave", email: "dave@example.com" },
+    ]);
+    // Carol's send fails; Dave's succeeds.
+    emailService.sendMail
+      .mockRejectedValueOnce(new Error("smtp down"))
+      .mockResolvedValueOnce(undefined);
+
+    await service.runDailyCheck();
+
+    // Only Dave is recorded as delivered, so tomorrow's sweep still owes Carol a
+    // link -- the partial failure is recoverable rather than silent.
+    expect(notifiedContactIds()).toEqual(["c2"]);
+  });
+
   it("does not double-send the daily reminder", async () => {
     const today = new Date();
     today.setHours(12, 0, 0, 0);
@@ -290,6 +549,54 @@ describe("EmergencyAccessMonitorService", () => {
 
     await service.runDailyCheck();
     expect(emailService.sendMail).not.toHaveBeenCalled();
+    // The refusal comes from the delivery record, not the claim: this replica
+    // *won* the lease and still declined, which is what makes "once per day"
+    // survive a process death (audit FV4-005). Under a permanent pre-send claim
+    // the lease would already have been consumed by whoever died holding it.
+    expect(jobClaims.claimLease).toHaveBeenCalledWith(
+      "emergency_access_reminder",
+      userId,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      expect.any(Number),
+    );
+    // And the lease goes back immediately rather than being held for its TTL.
+    expect(jobClaims.release).toHaveBeenCalledWith(
+      "emergency_access_reminder",
+      userId,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
+  });
+
+  it("leaves the reminder owed when the send fails, and hands the lease back", async () => {
+    settingsRepo.find.mockResolvedValue([
+      {
+        ownerUserId: userId,
+        enabled: true,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+        messageCiphertext: null,
+        lastReminderSentAt: null,
+        grantedAt: null,
+      },
+    ]);
+    usersRepo.findOne.mockResolvedValue({
+      id: userId,
+      email: "owner@example.com",
+      isActive: true,
+      lastActivityAt: daysAgo(10),
+    });
+    emailService.sendMail.mockRejectedValue(new Error("smtp down"));
+
+    await service.runDailyCheck();
+
+    // Nothing was delivered, so the delivery record must not move -- that is what
+    // keeps the notice owed rather than silently spent.
+    expect(settingsRepo.createQueryBuilder).not.toHaveBeenCalled();
+    expect(jobClaims.release).toHaveBeenCalledWith(
+      "emergency_access_reminder",
+      userId,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
   });
 
   it("skips users without a last_activity_at or last_login timestamp", async () => {

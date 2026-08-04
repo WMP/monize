@@ -36,6 +36,28 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const CLAIM_TOKEN_BYTES = 32;
 const CLAIM_TOKEN_TTL_DAYS = 30;
 
+/**
+ * How long one replica holds the right to send this owner's notice.
+ *
+ * A **lease**, not a permanent claim, and that distinction is the whole of
+ * FV4-005: a permanent claim taken before the send is consumed by a replica that
+ * dies before sending, so the notice is owed forever and nothing knows. The
+ * lease only has to outlast an SMTP round trip; when it expires, whether the
+ * work is still owed is decided by the delivery record, not by the claim.
+ */
+const SEND_LEASE_MS = 10 * 60 * 1000;
+
+/**
+ * The owner fields a grant notice needs. Narrowed to a non-null `email` because
+ * `processOne` refuses an owner without one, and the notice falls back to it for
+ * a display name.
+ */
+interface GrantNoticeOwner {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}
+
 @Injectable()
 export class EmergencyAccessMonitorService {
   private readonly logger = new Logger(EmergencyAccessMonitorService.name);
@@ -161,6 +183,152 @@ export class EmergencyAccessMonitorService {
     );
   }
 
+  /**
+   * The owner's contacts that have not yet been sent a link.
+   *
+   * `claim_notified_at IS NULL` is the delivery record, so this answers "what is
+   * still owed" rather than "who exists" -- which is what makes a resumed grant
+   * safe. A contact who already received a link is never in this list, so a retry
+   * cannot re-issue their token and kill the link in their inbox.
+   */
+  private contactsAwaitingNotice(
+    ownerUserId: string,
+  ): Promise<EmergencyAccessContact[]> {
+    return this.scoped(EmergencyAccessContact, (repo) =>
+      repo.find({
+        where: { ownerUserId, claimNotifiedAt: IsNull() },
+        order: { createdAt: "ASC" },
+      }),
+    );
+  }
+
+  /**
+   * Issue a claim token to each contact still owed one and send their link.
+   *
+   * Returns how many were actually delivered. Each contact's
+   * `claim_notified_at` is stamped only after its own `sendMail` resolved, so a
+   * process killed part-way through leaves the rest owed and recoverable, and a
+   * recipient who did get a link is never sent a second token.
+   */
+  private async notifyGrantContacts(
+    settings: EmergencyAccessSettings,
+    owner: GrantNoticeOwner,
+    contacts: EmergencyAccessContact[],
+    appUrl: string,
+    now: number,
+  ): Promise<number> {
+    const decryptedMessage = settings.messageCiphertext
+      ? this.tryDecrypt(settings.messageCiphertext)
+      : null;
+    const ownerFullName =
+      [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
+      owner.email;
+    const expiresAt = new Date(now + CLAIM_TOKEN_TTL_DAYS * MS_PER_DAY);
+
+    let delivered = 0;
+    for (const contact of contacts) {
+      try {
+        const rawToken = crypto.randomBytes(CLAIM_TOKEN_BYTES).toString("hex");
+        contact.claimTokenHash = hashToken(rawToken);
+        contact.claimTokenExpiresAt = expiresAt;
+        contact.claimTokenUsedAt = null;
+        contact.claimVoidedReason = null;
+        await this.scoped(EmergencyAccessContact, (repo) => repo.save(contact));
+
+        const claimUrl = `${appUrl}/emergency-access/claim?token=${rawToken}`;
+        // The contact may or may not be a Monize user; localize to their own
+        // account language when they have one, otherwise fall back to default.
+        const contactUser = await this.scoped(User, (repo) =>
+          repo.findOne({
+            where: { email: contact.email },
+          }),
+        );
+        const lang = await withScopedDb(this.dataSource, (manager) =>
+          resolveUserEmailLocale(
+            manager.getRepository(UserPreference),
+            contactUser?.id ?? null,
+          ),
+        );
+        const t = emailTranslator(this.i18n, lang);
+        const html = emergencyAccessGrantTemplate(
+          {
+            contactFirstName: contact.firstName,
+            ownerFullName,
+            message: decryptedMessage,
+            claimUrl,
+            expiresAt,
+          },
+          t,
+        );
+        await this.emailService.sendMail(
+          contact.email,
+          t(
+            "emails.emergencyAccessGrant.subject",
+            `You have been granted emergency access to ${ownerFullName}'s Monize account`,
+            { owner: ownerFullName },
+          ),
+          html,
+        );
+        // The delivery record, written after the send and never before it. A
+        // targeted UPDATE rather than a save of the entity in hand, so a column
+        // another request changed since the read is not written back.
+        await this.markContactNotified(contact.id, new Date(now));
+        delivered += 1;
+      } catch (error) {
+        this.logger.error(
+          `Failed to issue emergency access grant for contact ${contact.id}`,
+          error instanceof Error ? error.stack : error,
+        );
+      }
+    }
+    return delivered;
+  }
+
+  /**
+   * Has this owner's reminder for `dayKey` already gone out?
+   *
+   * Read under the lease, from `last_reminder_sent_at` -- the record written
+   * after a successful send. This, not the claim, is what enforces "at most one
+   * per local day": a claim taken before the send says only that somebody
+   * intended to send, and an intention does not survive the process holding it.
+   */
+  private async reminderAlreadySent(
+    ownerUserId: string,
+    dayKey: string,
+  ): Promise<boolean> {
+    const row = await this.scoped(EmergencyAccessSettings, (repo) =>
+      repo.findOne({
+        where: { ownerUserId },
+        select: ["ownerUserId", "lastReminderSentAt"],
+      }),
+    );
+    const sentAt = row?.lastReminderSentAt;
+    return sentAt != null && todayKeyFrom(new Date(sentAt)) === dayKey;
+  }
+
+  private async releaseReminderLease(
+    ownerUserId: string,
+    dayKey: string,
+  ): Promise<void> {
+    await this.jobClaims
+      .release(JobClaimType.EmergencyAccessReminder, ownerUserId, dayKey)
+      .catch(() => undefined);
+  }
+
+  private async markContactNotified(
+    contactId: string,
+    at: Date,
+  ): Promise<void> {
+    await this.scoped(EmergencyAccessContact, (repo) =>
+      repo
+        .createQueryBuilder()
+        .update(EmergencyAccessContact)
+        .set({ claimNotifiedAt: at })
+        .where("id = :id", { id: contactId })
+        .execute(),
+    );
+  }
+
   private async processOne(
     settings: EmergencyAccessSettings,
     appUrl: string,
@@ -171,6 +339,14 @@ export class EmergencyAccessMonitorService {
       }),
     );
     if (!owner || !owner.isActive || !owner.email) return "skipped";
+    // Captured here rather than read again where it is used: TypeScript discards
+    // a narrowing of `owner.email` at the first `await` below, because the
+    // property is declared nullable and a call could have changed it.
+    const noticeOwner: GrantNoticeOwner = {
+      firstName: owner.firstName,
+      lastName: owner.lastName,
+      email: owner.email,
+    };
     // Prefer last_activity_at (touched by every authenticated request); fall
     // back to last_login for users who have not done anything since the
     // backfill migration.
@@ -197,12 +373,8 @@ export class EmergencyAccessMonitorService {
       settings.grantedAt === null &&
       daysSinceLogin >= settings.grantAfterDays
     ) {
-      const contacts = await this.scoped(EmergencyAccessContact, (repo) =>
-        repo.find({
-          where: { ownerUserId: settings.ownerUserId },
-        }),
-      );
-      if (contacts.length === 0) return "skipped";
+      const pending = await this.contactsAwaitingNotice(settings.ownerUserId);
+      if (pending.length === 0) return "skipped";
 
       // Claim the ungranted -> granted transition atomically, BEFORE generating a
       // single token.
@@ -218,76 +390,24 @@ export class EmergencyAccessMonitorService {
         return "skipped";
       }
 
-      const decryptedMessage = settings.messageCiphertext
-        ? this.tryDecrypt(settings.messageCiphertext)
-        : null;
-      const ownerFullName =
-        [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
-        owner.email;
-      const expiresAt = new Date(now + CLAIM_TOKEN_TTL_DAYS * MS_PER_DAY);
-
-      let delivered = 0;
-      for (const contact of contacts) {
-        try {
-          const rawToken = crypto
-            .randomBytes(CLAIM_TOKEN_BYTES)
-            .toString("hex");
-          contact.claimTokenHash = hashToken(rawToken);
-          contact.claimTokenExpiresAt = expiresAt;
-          contact.claimTokenUsedAt = null;
-          contact.claimVoidedReason = null;
-          await this.scoped(EmergencyAccessContact, (repo) =>
-            repo.save(contact),
-          );
-
-          const claimUrl = `${appUrl}/emergency-access/claim?token=${rawToken}`;
-          // The contact may or may not be a Monize user; localize to their own
-          // account language when they have one, otherwise fall back to default.
-          const contactUser = await this.scoped(User, (repo) =>
-            repo.findOne({
-              where: { email: contact.email },
-            }),
-          );
-          const lang = await withScopedDb(this.dataSource, (manager) =>
-            resolveUserEmailLocale(
-              manager.getRepository(UserPreference),
-              contactUser?.id ?? null,
-            ),
-          );
-          const t = emailTranslator(this.i18n, lang);
-          const html = emergencyAccessGrantTemplate(
-            {
-              contactFirstName: contact.firstName,
-              ownerFullName,
-              message: decryptedMessage,
-              claimUrl,
-              expiresAt,
-            },
-            t,
-          );
-          await this.emailService.sendMail(
-            contact.email,
-            t(
-              "emails.emergencyAccessGrant.subject",
-              `You have been granted emergency access to ${ownerFullName}'s Monize account`,
-              { owner: ownerFullName },
-            ),
-            html,
-          );
-          delivered += 1;
-        } catch (error) {
-          this.logger.error(
-            `Failed to issue emergency access grant for contact ${contact.id}`,
-            error instanceof Error ? error.stack : error,
-          );
-        }
-      }
+      const delivered = await this.notifyGrantContacts(
+        settings,
+        noticeOwner,
+        pending,
+        appUrl,
+        now,
+      );
 
       // Only keep the grant if at least one contact actually received a link.
       // Otherwise hand it back so the next run retries -- a transient SMTP
       // failure must not permanently disable the safeguard. That behaviour
       // predates the claim and has to survive it, which is what the release
       // below is for.
+      //
+      // A *partial* delivery keeps the grant and leaves the rest owed: the
+      // contacts still carrying a NULL `claim_notified_at` are picked up by
+      // step 1b below, without re-issuing a token for anyone who already holds a
+      // working link.
       if (delivered === 0) {
         this.logger.error(
           `Emergency access grant for user ${settings.ownerUserId} delivered no contact emails; releasing the grant claim for retry`,
@@ -299,22 +419,79 @@ export class EmergencyAccessMonitorService {
       return "granted";
     }
 
+    // Step 1b: a grant that was claimed but never delivered.
+    //
+    // `granted_at` used to be the claim *and* the grant state, so a replica
+    // killed between the conditional transition and the emails left an account
+    // permanently marked granted with no contact holding a link -- the safeguard
+    // silently disarmed at the moment it was supposed to fire, and step 1's
+    // `granted_at IS NULL` predicate meant nothing would ever look again
+    // (audit FV4-004).
+    //
+    // The recovery is derived rather than scheduled: a contact of a granted owner
+    // whose `claim_notified_at` is NULL is a link still owed, whatever caused it
+    // -- a crash, an SMTP failure that only some recipients hit, or a contact the
+    // owner added after the grant fired. Nothing has to remember to enqueue a
+    // retry, which is the property that makes it hold (docs/cron-jobs.md).
+    if (
+      settings.grantedAt !== null &&
+      daysSinceLogin >= settings.grantAfterDays
+    ) {
+      const pending = await this.contactsAwaitingNotice(settings.ownerUserId);
+      if (pending.length === 0) return "skipped";
+
+      // A lease, so two replicas do not both resume the same grant, and a replica
+      // killed while resuming does not block tomorrow's attempt.
+      const lease = await this.jobClaims.claimLease(
+        JobClaimType.EmergencyAccessGrantNotify,
+        settings.ownerUserId,
+        todayKeyFrom(new Date(now)),
+        SEND_LEASE_MS,
+      );
+      if (!lease) return "skipped";
+
+      this.logger.warn(
+        `Emergency access grant for user ${settings.ownerUserId} has ${pending.length} contact(s) still owed a link; resuming delivery`,
+      );
+      const delivered = await this.notifyGrantContacts(
+        settings,
+        noticeOwner,
+        pending,
+        appUrl,
+        now,
+      );
+      return delivered > 0 ? "granted" : "skipped";
+    }
+
     // Step 2: reminder cascade (only if not already granted, at most once per day)
     if (
       settings.grantedAt === null &&
       daysSinceLogin >= settings.reminderAfterDays
     ) {
-      // Same reasoning as the grant: the "at most once per day" rule was a read
-      // of `lastReminderSentAt` followed by a write after the email, so two
-      // replicas both passed it and the owner got the notice twice. The claim is
-      // the rule now, keyed on the local date.
+      // Two separate jobs, and they must not be confused for one:
+      //
+      // - The **lease** stops two replicas sending at the same moment. It was a
+      //   permanent `claimOnce`, which also made it the delivery record -- so a
+      //   replica killed between the claim and the send consumed the day and sent
+      //   nothing, and only a *handled* SMTP error released it. A lease expires,
+      //   so a dead replica costs the retry window rather than the notice
+      //   (audit FV4-005).
+      // - The **delivery record** is `last_reminder_sent_at`, moved only after a
+      //   send succeeds. Re-read here, under the lease, because that is what
+      //   makes "at most once per local day" true across a process death: a claim
+      //   answers "may I send now", not "has this been sent".
       const reminderKey = todayKeyFrom(new Date(now));
-      const claimedReminder = await this.jobClaims.claimOnce(
+      const reminderLease = await this.jobClaims.claimLease(
         JobClaimType.EmergencyAccessReminder,
         settings.ownerUserId,
         reminderKey,
+        SEND_LEASE_MS,
       );
-      if (!claimedReminder) {
+      if (!reminderLease) {
+        return "skipped";
+      }
+      if (await this.reminderAlreadySent(settings.ownerUserId, reminderKey)) {
+        await this.releaseReminderLease(settings.ownerUserId, reminderKey);
         return "skipped";
       }
 
@@ -366,20 +543,17 @@ export class EmergencyAccessMonitorService {
           html,
         );
       } catch (error) {
-        // Give the day back rather than consuming it on a failed send.
-        await this.jobClaims
-          .release(
-            JobClaimType.EmergencyAccessReminder,
-            settings.ownerUserId,
-            reminderKey,
-          )
-          .catch(() => undefined);
+        // Hand the lease back so the next run can retry immediately rather than
+        // waiting it out. Nothing was delivered, so the delivery record below is
+        // deliberately not written -- that is what keeps the notice owed.
+        await this.releaseReminderLease(settings.ownerUserId, reminderKey);
         throw error;
       }
 
-      // Targeted UPDATE, not a save of the entity read at the top of the sweep:
-      // that snapshot would write back every other column too, so an owner
-      // disabling the feature mid-sweep would find it silently re-enabled.
+      // The delivery record. Targeted UPDATE, not a save of the entity read at
+      // the top of the sweep: that snapshot would write back every other column
+      // too, so an owner disabling the feature mid-sweep would find it silently
+      // re-enabled.
       await this.scoped(EmergencyAccessSettings, (repo) =>
         repo
           .createQueryBuilder()
@@ -388,6 +562,7 @@ export class EmergencyAccessMonitorService {
           .where("owner_user_id = :id", { id: settings.ownerUserId })
           .execute(),
       );
+      await this.releaseReminderLease(settings.ownerUserId, reminderKey);
       return "reminded";
     }
 

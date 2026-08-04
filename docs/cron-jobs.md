@@ -16,6 +16,39 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 | **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `133` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
 
+### A claim is not a delivery record
+
+A claim answers "may I do this now". It cannot also answer "has this been done",
+because the second question has to outlive the process that asked the first. A
+claim taken *before* a send and treated as the record of it is consumed by a
+replica that dies before sending, and the work is then owed forever with nothing
+able to notice -- the FV4-004 and FV4-005 findings, in a grant that marked an
+account granted with nobody holding a link, and a reminder that spent the day and
+sent nothing.
+
+So a job that delivers something keeps two pieces of state:
+
+- **the claim** -- a `claimLease`, or a conditional transition. A lease, not a
+  permanent `claimOnce`, wherever a crash between claiming and sending is
+  possible: an expiring exclusion costs a retry window, a consumed permanent
+  claim costs the delivery.
+- **the delivery record** -- written *after* the send succeeds, and re-read under
+  the claim to decide whether the work is still owed. `last_reminder_sent_at` for
+  the reminder; `emergency_access_contacts.claim_notified_at`, per contact, for
+  the grant.
+
+Per recipient where the retry would otherwise re-issue a credential: sending a
+second emergency-access link invalidates the first, and a dead link during a
+recovery is indistinguishable from a revoked one. Prefer to *derive* the
+outstanding work from the delivery record -- "a granted owner with an un-notified
+contact is a link owed" -- rather than scheduling a retry, for the same reason the
+stale-snapshot sweep derives its work: nothing has to remember to enqueue
+anything.
+
+`claimOnce` remains correct where nothing is delivered outside the database, or
+where the claim itself *is* the record of the fact (a posted occurrence, an alert
+fingerprint).
+
 Reading the result of a guarded statement correctly is part of the mechanism, not a detail. TypeORM's shape depends on the statement's command tag rather than on its `RETURNING` clause: `UPDATE` and `DELETE` come back as the tuple `[rows, rowCount]` with or without one, and everything else -- `INSERT` included -- comes back as bare rows. On the tuple `result.length > 0` is always true, so a `length === 0` branch beside an `UPDATE ... RETURNING` is dead code. Use `affectedRowCount` / `returnedRows` from `backend/src/common/db/query-result.ts`, which are correct for every shape, and never an open-coded length check.
 
 Every `@Cron` handler is also an out-of-request entry point, so its body must seed its own RLS context: the cross-user fan-out under `withSystemContext`, each per-user body under `withUserContext(userId)`. See `backend/CLAUDE.md`.
@@ -39,7 +72,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
-| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` for the grant; **durable claim** per local date for the reminder |
+| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` plus a per-contact `claim_notified_at` delivery record for the grant; **durable lease** plus `last_reminder_sent_at` for the reminder |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |

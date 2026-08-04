@@ -950,12 +950,25 @@ CREATE TABLE emergency_access_contacts (
     claim_token_expires_at TIMESTAMP,
     claim_token_used_at    TIMESTAMP,
     claim_voided_reason    VARCHAR(20), -- 'claimed_by_other' | 'owner_revoked' | NULL
+    -- When this contact's link was actually sent (migration 134). The delivery
+    -- record, kept apart from the claim that coordinates the send: a claim
+    -- answers "may I do this now" and cannot also answer "has this been done",
+    -- because the second question has to outlive the process that asked the
+    -- first. NULL on a granted owner's contact means a link is still owed, which
+    -- is how the daily check finds a grant a killed replica never delivered
+    -- (audit FV4-004).
+    claim_notified_at      TIMESTAMP,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX idx_emergency_access_contacts_owner_email
     ON emergency_access_contacts(owner_user_id, lower(email));
+
+-- "Granted owners with a contact still owed a link", read on every daily sweep.
+CREATE INDEX idx_eac_pending_notify
+    ON emergency_access_contacts(owner_user_id)
+    WHERE claim_notified_at IS NULL;
 
 CREATE INDEX idx_emergency_access_contacts_token_hash
     ON emergency_access_contacts(claim_token_hash)

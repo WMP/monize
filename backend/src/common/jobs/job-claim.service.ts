@@ -15,14 +15,25 @@ import { JobClaim } from "./entities/job-claim.entity";
  * DR-04-04):
  *
  * - `claimOnce` -- a **delivery**. One bill-reminder email per user per local
- *   day, one grant email per contact. Permanent: nothing retakes it, so a
- *   second replica simply does not send. `release` exists only so a *failed*
- *   send can hand the day back instead of consuming it.
+ *   day. Permanent: nothing retakes it, so a second replica simply does not
+ *   send. `release` exists only so a *failed* send can hand the day back instead
+ *   of consuming it.
  *
  * - `claimLease` -- an **exclusion**. Only one replica may call the AI provider
  *   for a user at a time. Expires, so a replica killed mid-generation does not
  *   lock the user out until someone notices; `release` returns it early on the
  *   happy path.
+ *
+ * **Neither is a record that the work was done**, and reaching for `claimOnce` as
+ * though it were is how a delivery gets lost: the claim commits, the process
+ * dies, and the permanent row now says a send happened that never did (audit
+ * FV4-004, FV4-005). Where a crash between claiming and sending is possible, take
+ * a **lease** for the exclusion and keep the delivery in its own durable column,
+ * written after the send and re-read under the lease --
+ * `emergency_access_settings.last_reminder_sent_at` and
+ * `emergency_access_contacts.claim_notified_at` are the worked examples.
+ * `claimOnce` stays right where nothing leaves the database, or where the claim
+ * row itself *is* the fact. `docs/cron-jobs.md` has the rule.
  *
  * Both are a single statement, so the claim is the serialization point: there is
  * no window between deciding and recording. Every call must sit inside an
@@ -38,6 +49,7 @@ export const JobClaimType = {
   BillReminder: "bill_reminder",
   MortgageReminder: "mortgage_reminder",
   EmergencyAccessReminder: "emergency_access_reminder",
+  EmergencyAccessGrantNotify: "emergency_access_grant_notify",
   AiInsightGeneration: "ai_insight_generation",
   UserMaintenance: "user_maintenance",
   DemoReset: "demo_reset",
