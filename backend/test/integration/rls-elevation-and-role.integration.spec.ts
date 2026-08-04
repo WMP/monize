@@ -423,8 +423,7 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       try {
         const facts = await readRuntimeRoleFacts(app);
         expect(facts.currentUser).toBe(TEST_APP_ROLE);
-        expect(facts.isSuperuser).toBe(false);
-        expect(facts.hasBypassRls).toBe(false);
+        expect(facts.directForbiddenAttributes).toEqual([]);
         expect(facts.ownsDatabase).toBe(false);
         expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
       } finally {
@@ -857,6 +856,72 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         await app.destroy();
         await dataSource.query(`REVOKE ${bypasser} FROM ${TEST_APP_ROLE}`);
         await dataSource.query(`DROP ROLE ${bypasser}`);
+      }
+    });
+
+    it("refuses a runtime role that holds REPLICATION, and proves the slot works (RR5-001)", async () => {
+      // The forbidden attribute the verifier used not to read. First prove it is
+      // real -- a NOSUPERUSER role with REPLICATION can create a WAL-retaining
+      // physical slot -- then that the check now rejects it. The proof is what
+      // makes this more than a string assertion: PostgreSQL, not the author,
+      // decides the attribute is dangerous.
+      const replicator = `repl_role_${Date.now()}`;
+      await dataSource.query(
+        `CREATE ROLE ${replicator} LOGIN PASSWORD 'x' NOSUPERUSER NOBYPASSRLS REPLICATION`,
+      );
+      const replPool = new DataSource({
+        ...INTEGRATION_TYPEORM_OPTIONS,
+        username: replicator,
+        password: "x",
+        synchronize: false,
+        dropSchema: false,
+        extra: { max: 1 },
+      } as never);
+      await replPool.initialize();
+      const slot = `rr5_slot_${Date.now()}`;
+      try {
+        // The concrete availability failure: a slot this role creates reserves
+        // WAL and, left unadvanced, retains it until the disk fills.
+        const [created] = await replPool.query(
+          "SELECT slot_name FROM pg_create_physical_replication_slot($1, true, false)",
+          [slot],
+        );
+        expect(created.slot_name).toBe(slot);
+
+        const facts = await readRuntimeRoleFacts(replPool);
+        expect(facts.directForbiddenAttributes).toContain("REPLICATION");
+        const violations = runtimeRoleViolations(facts, replicator);
+        expect(violations.join(" ")).toContain("REPLICATION");
+      } finally {
+        await dataSource
+          .query("SELECT pg_drop_replication_slot($1)", [slot])
+          .catch(() => undefined);
+        await replPool.destroy();
+        await dataSource.query(`DROP ROLE ${replicator}`);
+      }
+    });
+
+    it("refuses a SET-reachable context that holds REPLICATION (RR5-001)", async () => {
+      // The attribute is not inherited, so it only matters in a context that can
+      // be entered -- but a reachable one is one SET ROLE from creating a slot,
+      // exactly as a reachable exempt role is one SET ROLE from bypassing RLS.
+      const replBridge = `repl_bridge_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${replBridge} NOLOGIN REPLICATION`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT ${replBridge} TO ${TEST_APP_ROLE} WITH INHERIT FALSE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.exemptReachableContexts).toContain(replBridge);
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${replBridge} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`DROP ROLE ${replBridge}`);
       }
     });
   });

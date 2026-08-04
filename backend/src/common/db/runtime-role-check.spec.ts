@@ -9,8 +9,7 @@ import { APP_ROLE_ATTRIBUTES, APP_ROLE_UPSERT_SQL } from "./app-role";
 
 const SAFE: RuntimeRoleFacts = {
   currentUser: "monize_app",
-  isSuperuser: false,
-  hasBypassRls: false,
+  directForbiddenAttributes: [],
   ownsDatabase: false,
   ownedPoliciedTables: 0,
   exemptReachableContexts: [],
@@ -29,8 +28,11 @@ const pgQuerier = (row: Record<string, unknown>) => ({
 
 const SAFE_ROW = {
   current_user_name: "monize_app",
-  is_superuser: false,
-  has_bypass_rls: false,
+  rolsuper: false,
+  rolbypassrls: false,
+  rolreplication: false,
+  rolcreaterole: false,
+  rolcreatedb: false,
   owns_database: false,
   owned_policied_tables: "0",
   exempt_reachable_contexts: [],
@@ -45,8 +47,27 @@ describe("runtimeRoleViolations", () => {
   // Each of these is a role PostgreSQL exempts from every policy, which is what
   // made a successful RLS_MODE=enforce boot compatible with zero enforcement.
   it.each([
-    ["a superuser", { isSuperuser: true }, /SUPERUSER/],
-    ["a BYPASSRLS role", { hasBypassRls: true }, /BYPASSRLS/],
+    ["a superuser", { directForbiddenAttributes: ["SUPERUSER"] }, /SUPERUSER/],
+    [
+      "a BYPASSRLS role",
+      { directForbiddenAttributes: ["BYPASSRLS"] },
+      /BYPASSRLS/,
+    ],
+    [
+      "a REPLICATION role",
+      { directForbiddenAttributes: ["REPLICATION"] },
+      /REPLICATION/,
+    ],
+    [
+      "a CREATEROLE role",
+      { directForbiddenAttributes: ["CREATEROLE"] },
+      /CREATEROLE/,
+    ],
+    [
+      "a CREATEDB role",
+      { directForbiddenAttributes: ["CREATEDB"] },
+      /CREATEDB/,
+    ],
     ["the database owner", { ownsDatabase: true }, /owns this database/],
     [
       "an owner of a policied table",
@@ -82,8 +103,7 @@ describe("runtimeRoleViolations", () => {
     const violations = runtimeRoleViolations(
       {
         currentUser: "monize",
-        isSuperuser: true,
-        hasBypassRls: true,
+        directForbiddenAttributes: ["SUPERUSER", "BYPASSRLS", "REPLICATION"],
         ownsDatabase: true,
         ownedPoliciedTables: 53,
         exemptReachableContexts: ["monize"],
@@ -92,7 +112,8 @@ describe("runtimeRoleViolations", () => {
       "monize_app",
     );
 
-    expect(violations).toHaveLength(7);
+    // wrong-role + 3 attributes + owns-db + owns-tables + inherited + reachable.
+    expect(violations).toHaveLength(8);
   });
 });
 
@@ -110,6 +131,22 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     expect(violations[0]).toContain('"monize"');
     expect(violations[0]).toContain('"rds_superuser"');
     expect(violations[0]).toContain("SET ROLE");
+  });
+
+  it("refuses a runtime role that holds REPLICATION directly (RR5-001)", () => {
+    // Not an RLS exemption, but the unprivileged-role contract forbids it: a
+    // REPLICATION role can create a WAL-retaining slot and never advance it,
+    // which is a database-wide availability failure. Provisioning strips it; the
+    // verifier used not to read it, so an externally provisioned or drifted role
+    // passed startup.
+    const violations = runtimeRoleViolations(
+      { ...SAFE, directForbiddenAttributes: ["REPLICATION"] },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain("REPLICATION");
+    expect(violations[0]).toMatch(/WAL|replication/i);
   });
 
   it("accepts membership in an ordinary role, which grants no exemption", () => {
@@ -352,10 +389,10 @@ describe("assertRuntimeRoleSafe", () => {
 
   it("refuses to start on a BYPASSRLS role and says what to do", async () => {
     await expect(
-      assertRuntimeRoleSafe(
-        arrayQuerier({ ...SAFE_ROW, has_bypass_rls: true }),
-        { mode: "enforce", appUser: "monize_app" },
-      ),
+      assertRuntimeRoleSafe(arrayQuerier({ ...SAFE_ROW, rolbypassrls: true }), {
+        mode: "enforce",
+        appUser: "monize_app",
+      }),
     ).rejects.toThrow(
       /RLS_MODE=enforce requires an unprivileged, non-owner runtime role[\s\S]*NOBYPASSRLS/,
     );

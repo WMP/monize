@@ -28,11 +28,59 @@ export interface RuntimeRoleQuerier {
   query(sql: string, params?: unknown[]): Promise<unknown>;
 }
 
+/**
+ * Role attributes the unprivileged-role contract forbids, as data.
+ *
+ * These are the `NO<x>` attributes `APP_ROLE_ATTRIBUTES` strips at provisioning
+ * (all but `NOINHERIT`, which is handled by the ownership-inheritance arms
+ * rather than as a forbidden attribute). Kept as one list so the SQL that reads
+ * them, the violation messages, and the parity guard in `app-role.spec.ts` all
+ * derive from a single source -- a `NO<x>` added to provisioning without an
+ * entry here fails that guard, which is what stops the verifier drifting behind
+ * the contract it enforces (RR5-001, where `rolreplication` was provisioned off
+ * but never checked, so a `REPLICATION` role passed startup and could hold WAL).
+ *
+ * None of these are inherited -- PostgreSQL applies role *attributes* only to the
+ * role itself and after `SET ROLE`, never through `INHERIT` -- so each is tested
+ * directly on the runtime role and on every `SET`-reachable context, and never
+ * through `USAGE`.
+ */
+export const FORBIDDEN_RUNTIME_ATTRIBUTES = [
+  {
+    column: "rolsuper",
+    label: "SUPERUSER",
+    why: "is exempt from every row-level-security policy",
+  },
+  {
+    column: "rolbypassrls",
+    label: "BYPASSRLS",
+    why: "is exempt from every row-level-security policy",
+  },
+  {
+    column: "rolreplication",
+    label: "REPLICATION",
+    why: "can create WAL-retaining replication slots and open change streams, outside the tenant model",
+  },
+  {
+    column: "rolcreaterole",
+    label: "CREATEROLE",
+    why: "can create and alter roles, a privilege-escalation surface the unprivileged runtime role must not have",
+  },
+  {
+    column: "rolcreatedb",
+    label: "CREATEDB",
+    why: "can create databases outside the tenant model",
+  },
+] as const;
+
 export interface RuntimeRoleFacts {
   /** The role the connection is actually authenticated as. */
   currentUser: string;
-  isSuperuser: boolean;
-  hasBypassRls: boolean;
+  /**
+   * Labels from `FORBIDDEN_RUNTIME_ATTRIBUTES` the runtime role holds directly,
+   * e.g. `["REPLICATION"]`. Empty for a correctly provisioned role.
+   */
+  directForbiddenAttributes: string[];
   /** True when this role owns the database it is connected to. */
   ownsDatabase: boolean;
   /**
@@ -43,14 +91,15 @@ export interface RuntimeRoleFacts {
    */
   ownedPoliciedTables: number;
   /**
-   * Role contexts this connection can *enter* with `SET ROLE` that are exempt
-   * once entered.
+   * Role contexts this connection can *enter* with `SET ROLE` that are unsafe
+   * once entered -- exempt from RLS, or holding a forbidden attribute.
    *
-   * "Exempt once entered" is the whole point, and it is what the earlier version
-   * of this field got wrong (RR4-001): a context is judged on what it can do,
-   * not on whether the catalog names it as an owner. `bridge` may own nothing
-   * while inheriting the owner, and `SET ROLE bridge` then lands in a context
-   * that bypasses every policy.
+   * "Judged on what it can do once entered" is the whole point, and it is what
+   * the earlier version got wrong (RR4-001): a context is judged on its own
+   * privileges, not on whether the catalog names it as an owner. `bridge` may
+   * own nothing while inheriting the owner, and `SET ROLE bridge` then lands in a
+   * context that bypasses every policy. It also covers a reachable context that
+   * merely holds a forbidden attribute like `REPLICATION` (RR5-001).
    *
    * Nothing in this application issues `SET ROLE`, but an injected statement or a
    * mistaken raw query gets it for free, so it stays a refusal.
@@ -77,6 +126,18 @@ export interface RuntimeRoleFacts {
 }
 
 /**
+ * Forbidden-attribute columns, as SQL fragments generated from the one list, so
+ * a new entry there reaches the query with no second edit. `r.<col> AS <col>`
+ * for the direct read, and `h.<col> OR ...` for the reachable-context test.
+ */
+const FORBIDDEN_ATTR_DIRECT_COLUMNS = FORBIDDEN_RUNTIME_ATTRIBUTES.map(
+  (a) => `r.${a.column} AS ${a.column}`,
+).join(",\n       ");
+const FORBIDDEN_ATTR_CONTEXT_DISJUNCTION = FORBIDDEN_RUNTIME_ATTRIBUTES.map(
+  (a) => `h.${a.column}`,
+).join("\n                OR ");
+
+/**
  * One round trip. `pg_roles` is world-readable, `pg_database.datdba` and
  * `pg_class.relowner` likewise, so an unprivileged role can answer all of this
  * about itself -- no elevated grant is needed to run the check.
@@ -94,8 +155,7 @@ WITH protected_owners AS (
      AND c.relrowsecurity
 )
 SELECT current_user AS current_user_name,
-       r.rolsuper AS is_superuser,
-       r.rolbypassrls AS has_bypass_rls,
+       ${FORBIDDEN_ATTR_DIRECT_COLUMNS},
        (d.datdba = r.oid) AS owns_database,
        (SELECT count(*)
           FROM pg_class c
@@ -116,17 +176,17 @@ SELECT current_user AS current_user_name,
        -- both tenants' rows appear.
        --
        -- So each reachable context is asked the ownership question in its OWN
-       -- right, with USAGE (privileges, which inherit) rather than identity.
-       -- Attributes stay a direct test on the context, because they do not
-       -- inherit. Both pg_has_role calls are transitive, so a chain of any
+       -- right, with USAGE (privileges, which inherit) rather than identity, and
+       -- the forbidden-attribute question directly, because attributes do not
+       -- inherit (RR5-001: a reachable REPLICATION context is unsafe once
+       -- entered). Both pg_has_role calls are transitive, so a chain of any
        -- length in either mode is covered, and a role is its own SET/USAGE member
        -- so "owns it directly" needs no separate clause.
        (SELECT coalesce(array_agg(DISTINCT h.rolname::text), '{}'::text[])
           FROM pg_roles h
          WHERE h.oid <> r.oid
            AND pg_has_role(r.oid, h.oid, 'SET')
-           AND (h.rolsuper
-                OR h.rolbypassrls
+           AND (${FORBIDDEN_ATTR_CONTEXT_DISJUNCTION}
                 OR pg_has_role(h.oid, d.datdba, 'USAGE')
                 OR EXISTS (SELECT 1
                              FROM protected_owners po
@@ -153,12 +213,12 @@ SELECT current_user AS current_user_name,
 
 interface RawFactRow {
   current_user_name?: string;
-  is_superuser?: boolean;
-  has_bypass_rls?: boolean;
   owns_database?: boolean;
   owned_policied_tables?: number | string;
   exempt_reachable_contexts?: string[] | string | null;
   inherited_owner_roles?: string[] | string | null;
+  // Plus one boolean per FORBIDDEN_RUNTIME_ATTRIBUTES column (rolsuper, ...).
+  [column: string]: unknown;
 }
 
 /**
@@ -208,8 +268,9 @@ export async function readRuntimeRoleFacts(
   }
   return {
     currentUser: row.current_user_name,
-    isSuperuser: !!row.is_superuser,
-    hasBypassRls: !!row.has_bypass_rls,
+    directForbiddenAttributes: FORBIDDEN_RUNTIME_ATTRIBUTES.filter(
+      (a) => !!row[a.column],
+    ).map((a) => a.label),
     ownsDatabase: !!row.owns_database,
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
     exemptReachableContexts: toRoleNames(row.exempt_reachable_contexts),
@@ -235,16 +296,10 @@ export function runtimeRoleViolations(
         `"${expectedRole}"`,
     );
   }
-  if (facts.isSuperuser) {
+  for (const label of facts.directForbiddenAttributes) {
+    const attr = FORBIDDEN_RUNTIME_ATTRIBUTES.find((a) => a.label === label);
     violations.push(
-      `role "${facts.currentUser}" is a SUPERUSER, which PostgreSQL exempts ` +
-        "from every row-level-security policy",
-    );
-  }
-  if (facts.hasBypassRls) {
-    violations.push(
-      `role "${facts.currentUser}" holds BYPASSRLS, which exempts it from ` +
-        "every row-level-security policy",
+      `role "${facts.currentUser}" holds ${label}, which ${attr?.why ?? "the unprivileged-role contract forbids"}`,
     );
   }
   if (facts.ownsDatabase) {

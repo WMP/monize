@@ -121,6 +121,15 @@ the provisioned role is worth having and is not the fix -- a per-membership
 `WITH INHERIT TRUE` overrides it, and declarative provisioning skips our SQL
 entirely.
 
+And the contract the verifier enforces is the one provisioning promises, so derive
+one from the other: every `NO<x>` in `APP_ROLE_ATTRIBUTES` (bar `NOINHERIT`, handled
+by the ownership arms) is a runtime violation, checked on the role and on every
+reachable context, and `app-role.spec.ts`'s parity guard fails when the two lists
+drift. `NOREPLICATION` was provisioned and never checked, so a `REPLICATION` role --
+which can create a WAL-retaining slot and take the database down -- booted clean
+(RR5-001). A forbidden-attribute list the provisioner and the verifier both read is
+the machine-checkable form of "unprivileged".
+
 **And the routes compose, so ask the question of the destination, not of the
 caller.** Testing `SET` reachability and then whether the candidate *itself* owns
 something still misses a chain that changes mode partway:

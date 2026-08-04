@@ -6,12 +6,12 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 25, all non-merge; equal to GitHub's ahead count against the base |
-| Diff | 143 files, +9710 / -2042 |
+| Commits | 27+, all non-merge; equal to GitHub's ahead count against the base |
+| Diff | 143 files, +9710 / -2042 (approx; grows each revision) |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Verification heads reviewed | `a39a837b` (round 1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4) |
-| Additional defects found and fixed | 20, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after four verification rounds and a live-database run (sections 5A-5E) |
+| Verification heads reviewed | `a39a837b` (1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4), `f521d0c8` (5) |
+| Additional defects found and fixed | 21, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after five verification rounds and a live-database run (sections 5A-5F) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -23,8 +23,8 @@ verification of this branch: the first found four residual defects, the second f
 one that the first round's own fix introduced. All five are fixed. Section 5C is what
 running the integration suites -- previously reported as unrunnable here -- found
 once a local PostgreSQL turned out to be available, and section 5D answers a third
-review round, whose one HIGH finding is fixed, and section 5E a fourth, whose MEDIUM
-finding is fixed.
+review round, whose one HIGH finding is fixed; section 5E a fourth, whose MEDIUM
+finding is fixed; and section 5F a fifth, whose MEDIUM finding is fixed.
 
 ## How to read the status column
 
@@ -1024,6 +1024,74 @@ index stopped at `e0b64635`. The header now records the reviewed head SHA and st
 the counting convention, and the index lists every commit including the corrections
 made after each review round.
 
+## 5F. Answer to the fifth verification review
+
+A fifth review (`monize-phase2-fix-verification-re-review-5.md`, head `f521d0c8`)
+confirmed RR4-001 closed and found a gap the ownership work had walked straight past:
+the verifier read the role's RLS-exemption attributes but not the *other* attributes
+the unprivileged-role contract forbids. Reproduced on the live server first.
+
+### RR5-001 -- a `REPLICATION` runtime role passed the check
+
+**Status: Fixed.** `APP_ROLE_ATTRIBUTES` provisions `NOREPLICATION`, but the verifier
+only ever read `rolsuper` and `rolbypassrls`, so a role that was provisioned
+externally, or drifted, or had its `ALTER` degrade to a warning could hold
+`REPLICATION` and boot clean at `RLS_MODE=enforce`. Measured:
+
+```
+CREATE ROLE rr5_app LOGIN NOSUPERUSER NOBYPASSRLS REPLICATION;
+SELECT pg_create_physical_replication_slot('monize_hold', true, false);  -- succeeds
+SELECT slot_name, wal_status FROM pg_replication_slots;                  -- monize_hold | reserved
+```
+
+A slot that role creates and never advances retains WAL until the disk fills -- a
+database-wide availability failure, from a credential the verifier is supposed to
+have refused. `REPLICATION` is not an RLS bypass, which is exactly why the
+RLS-focused check missed it; the review's framing is the right one -- the verifier
+promises an *unprivileged* role, and that is a wider contract than *RLS-exempt*.
+
+The fix makes the contract data. `FORBIDDEN_RUNTIME_ATTRIBUTES` lists every
+attribute provisioning strips (`SUPERUSER`, `BYPASSRLS`, `REPLICATION`, `CREATEROLE`,
+`CREATEDB` -- `NOINHERIT` excluded, since it is handled by the ownership arms and a
+role may legitimately hold `INHERIT`). One list feeds three places: the SQL that
+reads each attribute on the runtime role and on every reachable context (attributes
+are not inherited, so the reachable-context arm tests them directly, same as it
+already did for `rolsuper`/`rolbypassrls`); the violation messages; and a parity
+guard in `app-role.spec.ts` that fails if a `NO<x>` is provisioned without a runtime
+check, or vice versa. That guard is the actual remedy for the class -- the specific
+missing attribute was `REPLICATION`, but the reason it was missing was that nothing
+tied the two lists together.
+
+The integration test does not stop at the verdict: it creates the role, creates a
+real physical slot with it to prove the capability is live, and only then asserts the
+check rejects. PostgreSQL, not the author, establishes that the attribute is
+dangerous. A second case covers a `REPLICATION` role reached through `SET ROLE`, for
+the same reason the RR4-001 cases do.
+
+The parity guard and both integration cases fail against the pre-fix forbidden set
+(verified by reverting it to superuser/bypassrls only).
+
+### DOC-RR5-001 -- commit metadata stale at the exact head
+
+**Status: Fixed.** The count and the `branch tip` label in the index were both read
+off a moving branch. The header now carries `Branch base` and a note that the count
+is non-merge commits equal to GitHub's ahead count, the verification-heads row lists
+every reviewed SHA, and the index names commits rather than a moving label. This
+document describes a branch under active review, so its own metadata is stated as
+"current at each revision" rather than pinned to a SHA it cannot contain.
+
+### On the review's design-risk notes
+
+Two are worth an explicit position rather than silent deferral. "Startup-only
+verification can be invalidated by post-start role changes" is true and accepted: the
+check is fail-closed at boot, and continuous attribute monitoring is an operational
+control (a scheduled probe, an alert) rather than something a request-path verifier
+can provide -- it belongs with DR-04's metric, which is already open. "Define whether
+unprivileged means RLS-safe or safe against all high-impact capabilities" is now
+answered in the direction of the latter: the forbidden-attribute list is the
+definition, and it is the provisioning contract, so the two cannot diverge without a
+red test.
+
 ## 6. Rules added, so the next agent inherits the correction
 
 Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
@@ -1041,7 +1109,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified; reachability is two questions and they compose | `runtime-role-check.spec.ts` + the integration membership matrix and mixed-path cases |
+| An unprivileged mode is verified; reachability composes, and the forbidden-attribute contract is derived from provisioning | `runtime-role-check.spec.ts`, the integration matrix, and `app-role.spec.ts`'s parity guard |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |
@@ -1067,7 +1135,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10844 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10849 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -1076,7 +1144,7 @@ Performed and green:
 - `npm run migration:lint`, `npm run i18n:check` on both sides.
 
 **Now also run** (see sections 5C and 5D): 21 integration suites / 245 tests against
-a local PostgreSQL 16.13 (249 tests as of section 5E), and all 122 migrations replayed on top of `schema.sql`. That closes
+a local PostgreSQL 16.13 (251 tests as of section 5F), and all 122 migrations replayed on top of `schema.sql`. That closes
 MT-10, MT-11 and MT-13, and adds the RV-001, FV-003 and DR-R1 scenarios both review
 rounds asked for. `scripts/verify-schema.sh` itself still needs Docker, but the
 property it checks -- every migration a no-op replayed over `schema.sql` -- was
@@ -1107,7 +1175,8 @@ row below is open at the current head, and nothing closed appears.
 | The remaining 55 entity/schema FK delete-rule drifts | Baselined shrink-only (section 5C). Correcting them is an entity-wide change with its own review. |
 | Three `test/*.e2e-spec.ts` files that do not compile | Pre-existing, never run by CI, and test infrastructure rather than security (section 5C). |
 | A filesystem-interleaving test for FV-004 | The uniqueness of the temporary path is asserted; observing the ENOENT race itself needs controlled filesystem timing. |
-| Observable CI evidence on the merge candidate | Every number in section 7 is a local run. No workflow has executed against any SHA on this branch, which all three review rounds noted. |
+| Observable CI evidence on the merge candidate | Every number in section 7 is a local run. No workflow has executed against any SHA on this branch, which every review round noted. |
+| Continuous runtime-role attribute monitoring | The verifier is fail-closed at boot; an attribute granted after start is caught only on the next restart. A scheduled probe belongs with DR-04's metric. |
 
 Closed since the earlier versions of this table, recorded here so the change is not
 mistaken for an omission: MT-10, MT-11 and MT-13 (section 5C), and the FV-003
