@@ -1065,7 +1065,7 @@ control.
 |---|---|
 | Backend unit (`TZ=UTC npm run test:unit`) | **408 suites, 10,907 tests, all passing** |
 | Backend integration (real PostgreSQL 16.13) | **29 suites, 317 tests, all passing** |
-| Frontend Vitest | See the run recorded in the final commit message |
+| Frontend Vitest | **634 files, 12,413 tests, all passing** |
 | Migration idempotency lint | **125 files, passing** |
 | Backend + frontend lint, `tsc --noEmit` | Clean (one pre-existing `Combobox` warning) |
 | i18n freshness + parity, both layers | Passing (the new `errors.scheduled.occurrenceRequired` in all 18 locales) |
