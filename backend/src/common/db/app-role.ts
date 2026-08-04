@@ -143,13 +143,32 @@ END $$;
  *                        `FORCE ROW LEVEL SECURITY` is deliberately not used
  *                        (db-init, db-migrate and backup restore rely on the
  *                        owner bypass).
- *   - inherited membership in a role with any of the above.
+ *   - membership in a role with any of the above -- whether the privileges arrive
+ *     automatically or only after an explicit `SET ROLE`.
  *
- * `pg_has_role(..., 'USAGE')` is what catches the fourth: it is true for the
- * role itself and for anything it can reach through `INHERIT`, so a role granted
- * membership in an owner or a BYPASSRLS role is reported as unsafe even though
- * its own `pg_roles` row looks clean. That was the gap -- startup validated the
- * configured *name* and *password* and never asked the catalog anything.
+ * `pg_has_role(..., 'MEMBER')` is what catches the fourth. This was `'USAGE'`,
+ * which asks a narrower question: whether the other role's privileges are
+ * *immediately* available through `INHERIT`. It says nothing about whether the
+ * login can become that role on request, and role membership permits `SET ROLE`
+ * by default. So a grant of the form
+ *
+ *     GRANT monize_owner TO monize_app WITH INHERIT FALSE, SET TRUE;
+ *
+ * passed the check -- `USAGE` is false -- while `SET ROLE monize_owner` in any
+ * session succeeded and every subsequent permission check ran as the database
+ * owner. A boundary that can be stepped over on request is not a boundary.
+ *
+ * `MEMBER` is true for direct or indirect membership, which is exactly "can do
+ * `SET ROLE` to it", and it is implied by `USAGE`, so it subsumes the old check
+ * rather than replacing one gap with another. PostgreSQL 16 also offers a
+ * narrower `'SET'` privilege type that would exempt a `WITH SET FALSE, INHERIT
+ * FALSE` membership; `MEMBER` deliberately rejects that too. Being wrong in the
+ * direction of refusing to boot is recoverable in a way that silently running
+ * with policies bypassed is not, and a membership that grants neither inheritance
+ * nor role-switching has no reason to exist on a runtime login.
+ *
+ * The original gap was wider still: startup validated the configured *name* and
+ * *password* and never asked the catalog anything at all.
  */
 const RUNTIME_ROLE_SAFETY_SQL = `
 SELECT
@@ -163,18 +182,18 @@ SELECT
       JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public'
        AND c.relkind IN ('r', 'p')
-       AND pg_has_role(r.oid, c.relowner, 'USAGE')
+       AND pg_has_role(r.oid, c.relowner, 'MEMBER')
   ) AS owns_tables,
   EXISTS (
     SELECT 1 FROM pg_database d
      WHERE d.datname = $2
-       AND pg_has_role(r.oid, d.datdba, 'USAGE')
+       AND pg_has_role(r.oid, d.datdba, 'MEMBER')
   ) AS owns_database,
   EXISTS (
     SELECT 1 FROM pg_roles m
      WHERE m.rolname <> r.rolname
        AND (m.rolsuper OR m.rolbypassrls)
-       AND pg_has_role(r.oid, m.oid, 'USAGE')
+       AND pg_has_role(r.oid, m.oid, 'MEMBER')
   ) AS inherits_bypass
 FROM pg_roles r
 WHERE r.rolname = $1
@@ -246,8 +265,8 @@ export async function assertRuntimeRoleIsSafe(
   }
   if (row.inherits_bypass) {
     problems.push(
-      "it inherits membership in a SUPERUSER or BYPASSRLS role (pg_has_role reports " +
-        "the privilege as reachable)",
+      "it is a member of a SUPERUSER or BYPASSRLS role, so it can reach that " +
+        "privilege by inheritance or by SET ROLE",
     );
   }
 

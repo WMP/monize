@@ -1001,6 +1001,67 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
       }
     });
 
+    /**
+     * The membership form that `USAGE` misses.
+     *
+     * PostgreSQL role membership permits `SET ROLE` by default, and the two
+     * capabilities are separable: `WITH INHERIT FALSE` stops the privileges
+     * arriving automatically, `WITH SET TRUE` keeps the right to ask for them.
+     * `pg_has_role(..., 'USAGE')` only answers the first question, so this grant
+     * passed the safety check while `SET ROLE owner` in any session succeeded and
+     * every permission check afterwards ran as the database owner.
+     *
+     * Only a real catalog can show this: no unit double distinguishes `USAGE`
+     * from `MEMBER`, which is why the unit spec asserts the SQL text and this
+     * asserts the behaviour.
+     */
+    it("refuses a role that can SET ROLE to the owner without inheriting it", async () => {
+      const owner = (await dataSource.query("SELECT current_user AS name"))[0]
+        .name;
+      const switcher = "monize_test_switcher";
+      await dataSource.query(
+        `DO $$ BEGIN
+           IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${switcher}') THEN
+             CREATE ROLE ${switcher} LOGIN PASSWORD 'x' NOINHERIT;
+           END IF;
+         END $$;`,
+      );
+      // WITH INHERIT FALSE, SET TRUE is PostgreSQL 16 syntax; on an older server
+      // NOINHERIT on the role gives the same separation, so fall back to it
+      // rather than skipping the case.
+      try {
+        await dataSource.query(
+          `GRANT ${owner} TO ${switcher} WITH INHERIT FALSE, SET TRUE`,
+        );
+      } catch {
+        await dataSource.query(`GRANT ${owner} TO ${switcher}`);
+      }
+
+      try {
+        // First establish that the narrower predicate really does miss it --
+        // otherwise this test could pass for the wrong reason on a server whose
+        // semantics differ from the ones the fix was written against.
+        const [reach] = await dataSource.query(
+          `SELECT pg_has_role($1, $2, 'USAGE') AS usage,
+                  pg_has_role($1, $2, 'MEMBER') AS member`,
+          [switcher, owner],
+        );
+        expect(reach.member).toBe(true);
+        expect(reach.usage).toBe(false);
+
+        await expect(
+          assertRuntimeRoleIsSafe(dataSource, {
+            appUser: switcher,
+            databaseName,
+            logger: { log: () => {}, warn: () => {} },
+          }),
+        ).rejects.toThrow(/owns|member/i);
+      } finally {
+        await dataSource.query(`REVOKE ${owner} FROM ${switcher}`);
+        await dataSource.query(`DROP ROLE IF EXISTS ${switcher}`);
+      }
+    });
+
     it("refuses a role that does not exist", async () => {
       await expect(
         assertRuntimeRoleIsSafe(dataSource, {

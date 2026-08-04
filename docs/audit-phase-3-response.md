@@ -152,10 +152,17 @@ same sentinel and should be converted in the same change.
 **Fixed.** `assertRuntimeRoleIsSafe` (`backend/src/common/db/app-role.ts`) runs
 at startup under `RLS_MODE=enforce` and refuses to boot on `rolsuper`,
 `rolbypassrls`, ownership of the database or of any table in `public`, or
-inherited membership in a superuser/`BYPASSRLS` role.
-`pg_has_role(..., 'USAGE')` is what catches the last one: the role's own
-`pg_roles` row looks clean while the privilege is reachable through `INHERIT`.
+membership in a superuser/`BYPASSRLS` role.
+`pg_has_role(..., 'MEMBER')` is what catches the last one: the role's own
+`pg_roles` row looks clean while the privilege is reachable.
 Table ownership counts because `FORCE ROW LEVEL SECURITY` is deliberately unused.
+
+This first shipped with `'USAGE'`, which asks only whether the privileges arrive
+automatically through `INHERIT`. A follow-up review (F3R-004) found the gap:
+membership permits `SET ROLE` by default, so
+`GRANT owner TO app WITH INHERIT FALSE, SET TRUE` passed the check while
+`SET ROLE owner` succeeded in every session. `MEMBER` is "can `SET ROLE` to it"
+and is implied by `USAGE`, so it subsumes the original check.
 
 ### P3-011 — The runtime application role can modify `schema_migrations`
 

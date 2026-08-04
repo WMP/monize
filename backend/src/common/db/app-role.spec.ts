@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   APP_ROLE_GRANTS_SQL,
   APP_ROLE_NAME_GUC,
@@ -204,6 +206,39 @@ describe("assertRuntimeRoleIsSafe", () => {
   });
 
   /**
+   * The reachability predicate, asserted on the SQL text because no unit-level
+   * double can tell `USAGE` from `MEMBER` -- only PostgreSQL can, and the
+   * difference is a whole class of unsafe role.
+   *
+   * `USAGE` asks whether another role's privileges are *immediately* available
+   * through `INHERIT`. Role membership permits `SET ROLE` by default, so
+   * `GRANT owner TO app WITH INHERIT FALSE, SET TRUE` made `USAGE` false while
+   * `SET ROLE owner` still succeeded: the check passed a login that could become
+   * the database owner on request. `MEMBER` is "direct or indirect membership",
+   * i.e. exactly the right to `SET ROLE`, and `USAGE` implies it.
+   */
+  describe("the reachability predicate", () => {
+    const sql = readFileSync(join(__dirname, "app-role.ts"), "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+
+    it("asks about membership, not only inheritance", () => {
+      const safetyQuery =
+        /RUNTIME_ROLE_SAFETY_SQL = `([\s\S]*?)`\.trim\(\)/.exec(sql);
+      expect(safetyQuery).not.toBeNull();
+      const body = safetyQuery![1];
+
+      // Three reachability questions: table owner, database owner, powerful role.
+      const calls = body.match(/pg_has_role\([^)]*\)/g) ?? [];
+      expect(calls).toHaveLength(3);
+      for (const call of calls) {
+        expect(call).toContain("'MEMBER'");
+        expect(call).not.toContain("'USAGE'");
+      }
+    });
+  });
+
+  /**
    * Each of these exempts a role from its own policies, and startup used to
    * validate only the configured name and password -- so enforcement reported
    * itself as on while every policy was bypassed. That is worse than `off`, which
@@ -214,7 +249,7 @@ describe("assertRuntimeRoleIsSafe", () => {
     ["rolbypassrls", "BYPASSRLS"],
     ["owns_database", "owns the database"],
     ["owns_tables", "owns tables in schema public"],
-    ["inherits_bypass", "inherits membership"],
+    ["inherits_bypass", "member of a SUPERUSER or BYPASSRLS role"],
   ])("refuses to start when %s", async (flag, expectedReason) => {
     await expect(
       assertRuntimeRoleIsSafe(clientReturning({ ...safeRow, [flag]: true }), {
