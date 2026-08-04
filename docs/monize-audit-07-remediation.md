@@ -11,13 +11,14 @@
 | Branch | `claude/detailed-error-review-fixes-p8bwgy` |
 | Second source report | `monize-audit-07-remediation-review.md` (independent review of this branch at `79bfc257`) |
 | Third source report | `monize-audit-07-remediation-review.md` re-review (of this branch at `e75acd20`) |
-| Commits | 14, plus a merge of `origin/main` |
-| Files changed | 335 against the original merge base (+14359 / -2760), including the merge |
+| Fourth source report | `monize-audit-07-remediation-review_1.md` re-review (of this branch at `ebda4609`) |
+| Commits | 15, plus a merge of `origin/main` |
+| Files changed | 335+ against the original merge base, including the merge |
 | Mode | Read-write: every finding re-verified against the current tree before being acted on |
 | Suites executed | Backend unit (10,902 passing), backend integration (314 passing, real PostgreSQL 16), frontend Vitest (12,413 passing), migration lint (125), schema-drift replay, both lints, both type-checks, i18n freshness and parity - all on the post-merge tree |
 | Suites **not** executed | Playwright E2E (no browser stack), the Helm CI job (no `helm` binary) |
 
-This document covers three rounds, each answering an independent review of the
+This document covers four rounds, each answering an independent review of the
 one before, and each superseding it where they disagree:
 
 - **Sections 1-10** - the first pass against the Phase 7 audit.
@@ -27,6 +28,9 @@ one before, and each superseding it where they disagree:
   HIGH defects in code the second pass had declared done. **Read 12.8 first if you
   are about to fix something in this codebase**: all three were the same mistake,
   and it is not the one it looks like.
+- **Section 13** - the fourth pass, against a re-review that found one more HIGH
+  (the scheduled-post fix left optional at the public boundary) and one MEDIUM (a
+  deadlock the round-three locking introduced). 13.6 has the two rules it added.
 
 The branch has also been merged with `origin/main`, which had independently landed
 one of the same fixes. Section 12.5 has what that changed, including two round-two
@@ -77,7 +81,7 @@ bill that could be paid twice and a logout that could leave a usable session.
 | P7-005 | MEDIUM | Yes, on defaults | **Fixed.** Plus a test-isolation bug it exposed |
 | P7-006 | MEDIUM | Yes | **Fixed.** Flag removed, inventory guard added with its own self-test |
 | P7-007 | MEDIUM | Yes | **Partly fixed.** Provenance gate added; the release is not redesigned |
-| P7-008 | **HIGH** | Yes | **Fixed over rounds 2-3.** Harness plus all seven races; five were defects in round 2, three more found in round 3. See sections 11 and 12 |
+| P7-008 | **HIGH** | Yes | **Fixed over rounds 2-4.** Harness plus every race; five defects in round 2, three in round 3, one deadlock in round 4. See sections 11-13 |
 | P7-009 | MEDIUM | Partly - premise was wrong | **Narrowed and fixed.** The real gap was silence, not lost bytes |
 | P7-010 | MEDIUM | Yes | **Partly fixed.** Lint and render in CI; no cluster install |
 | P7-011 | LOW | 2 of 7 items | **Fixed**, and made machine-checked |
@@ -934,3 +938,164 @@ every call site cannot be satisfied by one.
 |---|---|
 | `fb56a3ea` | Close the three HIGH findings from the re-review |
 | `4e02a1e5` | Merge origin/main into the remediation branch |
+
+---
+
+## 13. Fourth round - re-review (`monize-audit-07-remediation-review.md`, re-review at `ebda4609`)
+
+The fourth review confirmed the three round-three HIGHs closed and the harness
+credible, then found **one more HIGH and one more MEDIUM** -- one a gap the
+previous rounds left in a fix they declared done, the other a defect *introduced*
+by the round-three locking. Both are now closed.
+
+The through-line from round three held again: R4-001 is round three's own
+scheduled-post fix, migrated at three call sites and left optional at the public
+boundary. R4-002 is the cost of adding a lock without checking the order every
+holder acquires it in. Neither is a new subsystem; both are the edge of a change
+already made.
+
+### Disposition of the fourth review's findings
+
+| ID | Severity | Reproduced? | Outcome |
+|---|---|---|---|
+| R4-001 | **HIGH** | Yes | **Fixed.** `expectedNextDueDate` required at the DTO and the service; no "post current" fallback |
+| R4-002 | MEDIUM | Yes | **Fixed.** Transfer create/edit/delete lock the whole account set up front, in sorted order |
+| R4-003 | MEDIUM | Yes | **Still partly fixed.** Release provenance; unchanged; see 13.3 |
+| R4-004 | MEDIUM | Yes | **Still open.** Attachment byte round trip; see 13.3 |
+| R4-005 | MEDIUM | Yes | **Still partly fixed.** Helm cluster install; see 13.3 |
+| DR4-001 | design risk | - | **Acknowledged.** Hard-link support is now a backup storage requirement; see 13.4 |
+| DR4-002 | design risk | - | **Narrowed, not eliminated.** Auto-post treats any `ConflictException` as superseded; see 13.4 |
+
+### 13.1 R4-001 - the public post endpoint is idempotent now, not just the first-party callers
+
+Round three's mistake here was the same shape as its other three: the fix reached
+the callers the test exercised (cron, list, dialog) and stopped at the public
+boundary, which no first-party caller crosses but a retry, a double-submit, or a
+third-party integration does. The reviewer's reproduction is exact: `POST
+/scheduled-transactions/:id/post` with `{}`, the server posts April and advances
+to May, the response is lost, the client retries `{}`, and the fallback reads May
+and posts it -- `-2,400.00` for a `-1,200.00` bill, next due `2026-06-15`.
+
+`expectedNextDueDate` is now **required**:
+
+- at the DTO, so the global `ValidationPipe` rejects a body without it with a
+  `400` before it reaches the service;
+- in the service, which throws rather than falling back -- the cron is an internal
+  caller that never touches the DTO, and a future internal caller that omitted the
+  field would silently reopen the hole, so the guard lives at both layers;
+- in the frontend type and API wrapper, so the compiler forces both call sites to
+  pass it and the API cannot be invoked without it.
+
+There is no "post current" path. A caller that does not know which occurrence it
+means has no business posting a payment, and the review's suggested compatibility
+escape hatch (a versioned "post current" endpoint) is deliberately not built,
+because it would be the same foot-gun under a second name.
+
+**Where the proof runs matters, and is a finding in itself.** The obvious place
+for this is an HTTP controller test -- and there are four `test/*.e2e-spec.ts`
+files that look like the pattern. But **CI runs none of them**: the backend jobs
+run `test:unit`, `test:integration` (only `test/integration/`), and `test:cov`,
+so a test in `test/` root is dead weight, and indeed `transactions.e2e-spec.ts`
+does not even compile in this environment without anyone noticing. So the proof
+is placed where CI executes it: a DTO validation spec under `src/` (runs in
+`test:unit`) asserts the required-field rejection that the ValidationPipe enforces
+on the route, and the integration suite (runs against real PostgreSQL) asserts a
+no-occurrence call is refused and writes nothing, and that a named retry is a
+`409`.
+
+### 13.2 R4-002 - the round-three lock had no order, so it deadlocked
+
+RFR7-003 gave every holdings mutator an account lock. But a security transfer
+runs two mutators -- a `TRANSFER_OUT` locking the source and a `TRANSFER_IN`
+locking the destination -- so it acquires the pair source-then-destination. A
+simultaneous reverse transfer acquires destination-then-source, and the two form
+a lock cycle PostgreSQL breaks by aborting one with `40P01`. A valid transfer
+fails for a reason invisible to the user.
+
+The single-account mutators locking themselves is correct and stays; what was
+missing is that an operation touching **two** accounts must take both before
+either. `lockAccountsForHoldings` is now public, and the transfer create, edit
+and delete paths call it with the full affected set (both legs' accounts, plus
+any account an edit reroutes to) at the top of their transaction, in the sorted
+order the helper already used for rebuilds. The per-leg locks that follow re-take
+rows already held -- a no-op -- so the up-front sorted acquisition is the order
+every transfer now shares.
+
+The race fires 16 A->B and 16 B->A transfers at once. It is a stress test, not a
+gated one, and the file says why: a deterministic deadlock needs each transaction
+paused *between* its two lock acquisitions, and `transferSecurity` has no seam
+there that a test could reach without deforming production code for the test's
+benefit. With the fix it is deterministically deadlock-free; reverting the
+up-front lock aborts **31 of 32** legs with `40P01`, which is the positive
+control.
+
+### 13.3 Still open after round four
+
+| Item | Status | Why |
+|---|---|---|
+| **R4-003 / P7-007** - release pushes an unverified SHA | **Partly fixed, unchanged** | The provenance gate constrains the bump's diff and parent; the pushed commit still is not the one the checks ran on. The fix is a release-process change (bump in a PR, full graph on that SHA), not a patch to fold into this branch |
+| **R4-004 / P7-009** - attachment byte round trip | **Open** | Still no test that seeds bytes in a local and an S3-compatible provider, exports, restores into remapped ids, downloads through the public path and compares hashes, nor injects a mid-copy failure. The highest-value item left, and the one with data loss behind it |
+| **R4-005 / P7-010** - cluster install | **Partly fixed** | Lint, renders, YAML parse, PyYAML and a release dependency are in CI. No kind/k3d install, no backup persistence through a pod replacement; the Helm job has never executed in this environment |
+| Playwright E2E | **Not run** | No browser stack here |
+| P4-008 - P4-018 | **Open** | The audit's concurrency backlog beyond the named races. The harness exists |
+| Section 7.2 "test not located" register | **Open** | 40+ items |
+
+### 13.4 The two design risks the review raised
+
+- **DR4-001 - hard links are now a backup storage requirement.** The same-second
+  fix publishes by `link`, which some network or object-backed filesystems do not
+  support even within one directory. This is not a defect on the supported
+  deployment matrix (a local PVC), but it is a real constraint, and it is recorded
+  here rather than left implicit: the automatic-backup directory must support
+  same-directory hard links. The kind/k3d persistence test (R4-005), when it
+  exists, is where that should be exercised. If a provider-neutral
+  exclusive-create is ever needed, `open(O_CREAT|O_EXCL)` on the final name is the
+  portable equivalent.
+- **DR4-002 - auto-post treats any `ConflictException` as "superseded".** The cron
+  swallows a `ConflictException` from the posting path as a benign already-posted,
+  which is correct for the occurrence-precondition conflict but would mis-classify
+  a different downstream conflict if one were ever introduced. No such conflict
+  exists on the path today, so this is narrowed to a design risk rather than a
+  finding; a dedicated superseded-occurrence error type would close it and is
+  worth doing when the posting path next changes.
+
+### 13.5 Verification status, round four (on the merge result)
+
+| Check | Result |
+|---|---|
+| Backend unit (`TZ=UTC npm run test:unit`) | **408 suites, 10,907 tests, all passing** |
+| Backend integration (real PostgreSQL 16.13) | **29 suites, 317 tests, all passing** |
+| Frontend Vitest | See the run recorded in the final commit message |
+| Migration idempotency lint | **125 files, passing** |
+| Backend + frontend lint, `tsc --noEmit` | Clean (one pre-existing `Combobox` warning) |
+| i18n freshness + parity, both layers | Passing (the new `errors.scheduled.occurrenceRequired` in all 18 locales) |
+| Playwright E2E | **Not run** - no browser stack |
+| Helm CI job | **Not executed** - no `helm` binary here |
+
+Both R4-001 and R4-002 were checked by reintroducing the defect: R4-001's
+integration test fails (two transactions, a June due date) with the fallback
+restored, and R4-002's race aborts 31 of 32 legs with the up-front lock removed.
+
+### 13.6 The rule this round adds
+
+Round three's rule was "a guard on one entry point is a guard on one entry
+point." Round four adds two corollaries, both now in `backend/CLAUDE.md`:
+
+- **A fix that migrates the callers is not a fix at the boundary.** R4-001's
+  occurrence was threaded through every first-party caller and still left the
+  public API unsafe, because the boundary a retry crosses is the DTO, not the
+  callers. When an invariant must hold for *every* caller including ones you do
+  not control, enforce it at the boundary (a required field, a validated type),
+  not by visiting the callers you can see.
+- **A lock has an order, and the order is part of the lock.** Adding
+  `FOR UPDATE` to a mutator is half a decision; the other half is what order a
+  caller that needs two of them acquires them in. Any operation taking more than
+  one account lock takes the whole set once, sorted, up front -- and a new
+  multi-account holdings path that acquires them incrementally is the R4-002
+  deadlock again.
+
+### 13.7 Commits, round four
+
+| SHA | Subject |
+|---|---|
+| `21ba81ca` | Close the two defects from the fourth review |

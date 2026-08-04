@@ -245,6 +245,34 @@ post-commit repair rebuild and a by-id delete respectively mask the defect --
 implying four proofs where there are two is how a suite starts overstating
 itself.
 
+Two corollaries the fourth Phase 7 review earned, because each was a fix that
+reached the callers it could see and stopped at the edge:
+
+- **A fix that migrates the callers is not a fix at the boundary.** Scheduled
+  posting had its occurrence precondition threaded through the cron and both
+  frontend call sites and was *still* unsafe on retry, because the boundary a
+  network retry or a third-party client crosses is the DTO, not those callers.
+  When an invariant must hold for **every** caller, including ones you do not
+  control, enforce it at the boundary -- a required DTO field, a validated type
+  -- not by visiting the call sites you happen to know. `expectedNextDueDate` is
+  required in `PostScheduledTransactionDto` and in the service, and the frontend
+  type requires it too, so no layer can omit it.
+- **A lock has an order, and the order is part of the lock.** Adding `FOR UPDATE`
+  to a mutator is half a decision; the other half is the order a caller that
+  needs two of them acquires them in. A security transfer took its source lock
+  then its destination lock, so a simultaneous reverse transfer deadlocked
+  (`40P01`). Any operation taking more than one account lock takes the whole set
+  once, sorted, up front -- `HoldingsService.lockAccountsForHoldings`. A new
+  multi-account holdings path that acquires them incrementally is that deadlock
+  again.
+
+**A test only counts where CI runs it.** The backend CI jobs run `test:unit`,
+`test:integration` (only `test/integration/`), and `test:cov`. A spec in `test/`
+root -- the `*.e2e-spec.ts` files -- runs in *none* of them, so one placed there
+is dead weight (and `transactions.e2e-spec.ts` does not even compile, unnoticed).
+Prove a controller/DTO invariant with a validator spec under `src/` or an
+integration spec under `test/integration/`, both of which CI executes.
+
 ### Fixtures are claims about production data
 
 `docs/testing-contract.md` is the shared list of adversarial inputs to choose from. A fixture is evidence only if the code that writes the real data could have written it. Before adding one, look at the producer: the query's sampling, whether the column is nullable, whether the format guarantees what the fixture assumes. A price series three points a quarter apart proves nothing about code reading daily closes, and weightings that always sum to 1 never exercise the remainder the storage format allows. `docs/financial-calculation-contract.md` section 8.3 has the full rule.
