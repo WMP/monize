@@ -14,7 +14,7 @@ import {
   UNIQUE_MASKED_TEXT_FOR_TEST,
 } from "@/backup/support-backup/support-backup-integrity";
 import { User } from "@/users/entities/user.entity";
-import { OidcService } from "@/auth/oidc/oidc.service";
+import { OidcReauthService } from "@/auth/oidc/oidc-reauth.service";
 import { AiEncryptionService } from "@/ai/ai-encryption.service";
 import {
   createTestUserDirect,
@@ -46,7 +46,9 @@ describe("Support backup (integration)", () => {
       providers: [
         BackupService,
         SupportBackupService,
-        { provide: OidcService, useValue: { enabled: false } },
+        // Real, for the reason the sibling suite gives: a mocked step-up would
+        // keep this suite green through the removal of the check it gates.
+        OidcReauthService,
         { provide: AiEncryptionService, useValue: { decrypt: () => "" } },
       ],
     }).compile();

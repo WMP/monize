@@ -79,7 +79,7 @@ SELECT current_user AS current_user_name,
            AND c.relkind = 'r'
            AND c.relrowsecurity
            AND c.relowner = r.oid) AS owned_policied_tables,
-       (SELECT coalesce(array_agg(DISTINCT g.rolname), '{}')
+       (SELECT coalesce(array_agg(DISTINCT g.rolname::text), '{}'::text[])
           FROM pg_roles g
          WHERE g.oid <> r.oid
            -- Reachability, not direct membership: pg_has_role follows a chain
@@ -110,7 +110,30 @@ interface RawFactRow {
   has_bypass_rls?: boolean;
   owns_database?: boolean;
   owned_policied_tables?: number | string;
-  exempt_role_memberships?: string[] | null;
+  exempt_role_memberships?: string[] | string | null;
+}
+
+/**
+ * `text[]` arrives as a JS array from node-postgres and as the literal
+ * `{a,b}` from anything that does not parse the OID -- and `name[]`, which
+ * `array_agg(rolname)` produces without a cast, is one of those.
+ *
+ * This is not defensive noise. The first version of this check aggregated
+ * `rolname` directly, so the field held the two-character string `"{}"`, whose
+ * `.length` is 2: every `RLS_MODE=enforce` boot refused to start, naming a
+ * membership violation that did not exist. The unit test could not see it
+ * because its mock returned the array the code wanted rather than the value the
+ * driver sends.
+ */
+function toRoleNames(value: string[] | string | null | undefined): string[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  const inner = value.trim().replace(/^\{|\}$/g, "");
+  if (inner === "") return [];
+  return inner
+    .split(",")
+    .map((name) => name.trim().replace(/^"|"$/g, ""))
+    .filter((name) => name !== "");
 }
 
 /** Normalize what `DataSource.query` / `pg.Client.query` hand back. */
@@ -141,7 +164,7 @@ export async function readRuntimeRoleFacts(
     hasBypassRls: !!row.has_bypass_rls,
     ownsDatabase: !!row.owns_database,
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
-    exemptRoleMemberships: row.exempt_role_memberships ?? [],
+    exemptRoleMemberships: toRoleNames(row.exempt_role_memberships),
   };
 }
 

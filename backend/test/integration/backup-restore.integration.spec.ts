@@ -10,7 +10,7 @@ import {
   RESTORABLE_TABLES,
 } from "@/backup/backup.service";
 import { User } from "@/users/entities/user.entity";
-import { OidcService } from "@/auth/oidc/oidc.service";
+import { OidcReauthService } from "@/auth/oidc/oidc-reauth.service";
 import { AiEncryptionService } from "@/ai/ai-encryption.service";
 import { createTestUserDirect } from "../helpers/integration-setup";
 import { applyRlsPolicies } from "../helpers/rls-setup";
@@ -78,9 +78,11 @@ describe("Backup export/restore round-trip (integration)", () => {
       ],
       providers: [
         BackupService,
-        // Local-auth users never hit OIDC verification, but the constructor
-        // requires the dependency to be resolvable.
-        { provide: OidcService, useValue: { enabled: false } },
+        // The REAL re-authentication service, not a double: it is the thing that
+        // refuses a restore without a valid artifact, and a mock here would let a
+        // future change remove that check with this suite still green. Local-auth
+        // users prove identity with their password, so these tests never mint one.
+        OidcReauthService,
         // Only consulted for backups encrypted with a stored password; the
         // round-trip tests supply the password explicitly instead.
         { provide: AiEncryptionService, useValue: { decrypt: () => "" } },

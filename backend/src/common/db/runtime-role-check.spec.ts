@@ -150,6 +150,37 @@ describe("readRuntimeRoleFacts", () => {
     expect(querier.query).toHaveBeenCalledWith(RUNTIME_ROLE_FACTS_SQL);
   });
 
+  it("reads the array literal the driver actually sends", async () => {
+    // The shape that broke enforce-mode startup. node-postgres parses text[] into
+    // a JS array and leaves an unrecognized array OID as the literal string, so
+    // `"{}"` -- length 2 -- was read as "one membership" and every boot refused.
+    // A mock returning the array the code wants cannot fail this; the string is
+    // what the driver sends.
+    const empty = await readRuntimeRoleFacts(
+      arrayQuerier({ ...SAFE_ROW, exempt_role_memberships: "{}" }),
+    );
+    expect(empty.exemptRoleMemberships).toEqual([]);
+    expect(runtimeRoleViolations(empty, "monize_app")).toEqual([]);
+
+    const filled = await readRuntimeRoleFacts(
+      arrayQuerier({
+        ...SAFE_ROW,
+        exempt_role_memberships: '{monize,"odd role"}',
+      }),
+    );
+    expect(filled.exemptRoleMemberships).toEqual(["monize", "odd role"]);
+    expect(runtimeRoleViolations(filled, "monize_app")).toHaveLength(1);
+  });
+
+  it("asks the database for a text[], not the name[] array_agg defaults to", () => {
+    // The cast is what makes the driver hand back an array at all. Without it the
+    // normalizer above is the only thing standing between a fresh deployment and
+    // a boot loop, and a guard that exists twice is cheaper than one that exists
+    // where nobody looks.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolname::text");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("'{}'::text[]");
+  });
+
   it("treats a missing membership array as no memberships", async () => {
     const { exempt_role_memberships: _omitted, ...withoutMemberships } =
       SAFE_ROW;
