@@ -135,7 +135,7 @@ export interface AutoBackupSettings {
   retentionWeekly: number;
   retentionMonthly: number;
   lastBackupAt: string | null;
-  lastBackupStatus: "success" | "failed" | null;
+  lastBackupStatus: "success" | "partial" | "failed" | null;
   lastBackupError: string | null;
   nextBackupAt: string | null;
   createdAt: string;

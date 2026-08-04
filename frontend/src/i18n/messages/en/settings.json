@@ -472,6 +472,7 @@
       "nextBackup": "Next backup",
       "error": "Error",
       "success": "Success",
+      "partial": "Partial",
       "failed": "Failed"
     },
     "saveButton": "Save Settings",

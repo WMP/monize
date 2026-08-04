@@ -26,6 +26,7 @@ import { CreateSupportBackupDto } from "./support-backup/dto/create-support-back
 import { SetBackupPasswordDto } from "./dto/backup-encryption.dto";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { tr } from "../i18n/translate";
+import { releaseRestoreReservation } from "./restore-upload-admission";
 
 // Password header values are base64-encoded by the client so leading/trailing
 // whitespace (and non-ASCII characters) survive HTTP header transport, which

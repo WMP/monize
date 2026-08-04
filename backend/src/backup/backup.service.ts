@@ -144,6 +144,29 @@ interface ExportTableQuery {
   ) => Promise<Record<string, unknown>[]>;
 }
 
+/**
+ * Whether a produced artifact backs up every attachment it names.
+ *
+ * A backup that carries an attachment's metadata row but not its bytes is not a
+ * backup of that attachment (`docs/backup-restore-contract.md` §4). External
+ * bytes can be unreadable or inconsistent at export time (a truncated or replaced
+ * object), and a database-provider blob can be missing or wrong for its metadata.
+ * The export omits those bytes rather than packaging a lie -- but then the
+ * *artifact* is incomplete, and the caller has to know, because an incomplete
+ * backup must never be promoted or retained as if it were a complete one.
+ */
+export interface BackupCompletenessReport {
+  complete: boolean;
+  /** Attachment metadata rows in the artifact. */
+  expectedAttachments: number;
+  /** Rows whose bytes are present and consistent. */
+  includedAttachments: number;
+  /** Rows whose bytes could not be included at all. */
+  missingAttachments: number;
+  /** Rows whose (database-provider) bytes contradict their own metadata. */
+  inconsistentAttachments: number;
+}
+
 interface BackupData {
   version: number;
   exportedAt: string;
@@ -280,16 +303,21 @@ export class BackupService {
 
   /**
    * Produces the full backup file as a Buffer -- gzipped JSON, optionally
-   * encrypted. Used by the auto-backup cron which needs to write to disk.
+   * encrypted -- alongside a report of whether every attachment's bytes made it
+   * in. Used by the auto-backup path, which must not promote or retain an
+   * incomplete artifact as if it were complete.
    */
   async exportToBuffer(
     userId: string,
     encryptionPassword?: string,
-  ): Promise<Buffer> {
-    const gzipped = await this.collectGzippedExport(userId);
-    return encryptionPassword
-      ? await encryptBackup(gzipped, encryptionPassword)
-      : gzipped;
+  ): Promise<{ buffer: Buffer; report: BackupCompletenessReport }> {
+    const { buffer, report } = await this.collectGzippedExport(userId);
+    return {
+      buffer: encryptionPassword
+        ? await encryptBackup(buffer, encryptionPassword)
+        : buffer,
+      report,
+    };
   }
 
   async streamExport(
@@ -305,8 +333,13 @@ export class BackupService {
     // auth tag, so we buffer JSON in memory before encrypting. Plain exports
     // stream straight through gzip to avoid OOM on very large datasets.
     if (encryptionPassword) {
-      const gzipped = await this.collectGzippedExport(userId);
-      const encrypted = await encryptBackup(gzipped, encryptionPassword);
+      const { buffer, report } = await this.collectGzippedExport(userId);
+      // A direct download cannot carry a structured partial status, and the
+      // stream has not started, so the user still gets their file -- but the
+      // incompleteness is logged rather than passing silently, unlike the
+      // auto-backup path which acts on the report.
+      this.warnIfIncompleteExport(userId, report);
+      const encrypted = await encryptBackup(buffer, encryptionPassword);
       res.write(encrypted);
       res.end();
       this.logger.log(`Backup export completed for user ${userId} (encrypted)`);
@@ -329,15 +362,18 @@ export class BackupService {
         }
       });
 
+    let attachments: Record<string, unknown>[] = [];
+    let blobs: Record<string, unknown>[] = [];
     await this.inExportSnapshot(userId, async (read) => {
       await write(
         `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
       );
 
       for (const entry of tableQueries) {
-        await write(
-          `,"${entry.key}":${JSON.stringify(await this.readTable(read, entry))}`,
-        );
+        const rows = await this.readTable(read, entry);
+        if (entry.key === "transaction_attachments") attachments = rows;
+        else if (entry.key === "attachment_blobs") blobs = rows;
+        await write(`,"${entry.key}":${JSON.stringify(rows)}`);
       }
 
       await write("}");
@@ -348,7 +384,30 @@ export class BackupService {
       gzip.end(resolve);
     });
 
+    // The stream has already gone out, so a partial cannot be signalled in the
+    // response body -- but a direct download is not promoted or retained, so the
+    // dangerous case (auto-backup displacing complete copies) is not this path.
+    // Log it so a silently incomplete download is at least visible in the record.
+    this.warnIfIncompleteExport(
+      userId,
+      this.assessAttachmentCompleteness(attachments, blobs),
+    );
     this.logger.log(`Backup export completed for user ${userId}`);
+  }
+
+  /** Logs an incomplete manual export; the auto-backup path acts on it instead. */
+  private warnIfIncompleteExport(
+    userId: string,
+    report: BackupCompletenessReport,
+  ): void {
+    if (report.complete) return;
+    this.logger.warn(
+      `Backup export for user ${userId} is incomplete: ` +
+        `${report.missingAttachments} attachment(s) could not be included and ` +
+        `${report.inconsistentAttachments} did not match their metadata, of ` +
+        `${report.expectedAttachments} total. The artifact is not a complete ` +
+        `backup of those attachments.`,
+    );
   }
 
   /**
@@ -820,7 +879,9 @@ export class BackupService {
    * rather than by the pod dying mid-write. The unencrypted HTTP export is
    * unaffected: it streams, and has no total to bound.
    */
-  private async collectGzippedExport(userId: string): Promise<Buffer> {
+  private async collectGzippedExport(
+    userId: string,
+  ): Promise<{ buffer: Buffer; report: BackupCompletenessReport }> {
     const tableQueries = this.getTableQueries();
     const parts: Buffer[] = [
       Buffer.from(
@@ -829,13 +890,17 @@ export class BackupService {
       ),
     ];
     let total = parts[0].length;
+    // Captured to judge completeness after assembly: the metadata rows and the
+    // blob rows the augment actually included.
+    let attachments: Record<string, unknown>[] = [];
+    let blobs: Record<string, unknown>[] = [];
     await this.inExportSnapshot(userId, async (read) => {
       for (const entry of tableQueries) {
         const key = entry.key;
-        const chunk = Buffer.from(
-          `,"${key}":${JSON.stringify(await this.readTable(read, entry))}`,
-          "utf-8",
-        );
+        const rows = await this.readTable(read, entry);
+        if (key === "transaction_attachments") attachments = rows;
+        else if (key === "attachment_blobs") blobs = rows;
+        const chunk = Buffer.from(`,"${key}":${JSON.stringify(rows)}`, "utf-8");
         total += chunk.length;
         if (total > this.exportBufferLimitBytes) {
           throw new BadRequestException(
@@ -850,7 +915,62 @@ export class BackupService {
       }
     });
     parts.push(Buffer.from("}", "utf-8"));
-    return gzipSync(Buffer.concat(parts));
+    return {
+      buffer: gzipSync(Buffer.concat(parts)),
+      report: this.assessAttachmentCompleteness(attachments, blobs),
+    };
+  }
+
+  /**
+   * Judges whether every attachment metadata row in the artifact has its bytes.
+   *
+   * Runs after assembly, over the two arrays actually written. A metadata row
+   * with no matching blob is *missing* -- the augment dropped an external object
+   * it could not read or that failed its checksum, or a database blob simply is
+   * not there. A database-provider blob that is present but contradicts its own
+   * metadata is *inconsistent*; external blobs were already validated when the
+   * augment carried them, so their presence is proof enough and they are not
+   * re-hashed here. Support backups exclude the attachment tables, so there are no
+   * rows and the report is trivially complete.
+   */
+  private assessAttachmentCompleteness(
+    attachments: Record<string, unknown>[],
+    blobs: Record<string, unknown>[],
+  ): BackupCompletenessReport {
+    const blobById = new Map<string, string>();
+    for (const blob of blobs ?? []) {
+      const id = String(blob.attachment_id ?? "");
+      if (id.length > 0 && typeof blob.data === "string") {
+        blobById.set(id, blob.data);
+      }
+    }
+
+    let missing = 0;
+    let inconsistent = 0;
+    for (const row of attachments ?? []) {
+      const id = String(row.id ?? "");
+      const encoded = blobById.get(id);
+      if (encoded === undefined) {
+        missing += 1;
+        continue;
+      }
+      // Only the database provider's bytes arrive here unvalidated; external ones
+      // passed `storedBytesMatchMetadata` before the augment included them.
+      if (String(row.storage_provider ?? "database") === "database") {
+        const bytes = Buffer.from(encoded, "base64");
+        if (!this.attachmentBytesConsistent(bytes, row)) inconsistent += 1;
+      }
+    }
+
+    const expected = attachments?.length ?? 0;
+    const included = expected - missing - inconsistent;
+    return {
+      complete: missing === 0 && inconsistent === 0,
+      expectedAttachments: expected,
+      includedAttachments: included,
+      missingAttachments: missing,
+      inconsistentAttachments: inconsistent,
+    };
   }
 
   async restoreData(

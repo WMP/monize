@@ -645,7 +645,7 @@ describe("BackupService", () => {
     }
 
     async function exported(): Promise<Record<string, unknown>> {
-      const buffer = await service.exportToBuffer(userId);
+      const { buffer } = await service.exportToBuffer(userId);
       return JSON.parse(gunzipSync(buffer).toString("utf-8"));
     }
 
@@ -721,19 +721,23 @@ describe("BackupService", () => {
       }>,
       objects: Record<string, Buffer>,
     ) {
+      const metadataRows = () =>
+        rows.map((row) => ({
+          id: row.id,
+          user_id: userId,
+          storage_provider: row.provider,
+          byte_size: String(row.byte_size),
+          sha256: row.sha256,
+        }));
       mockDataSource.query.mockImplementation((sql: string) => {
+        // Both the augment's metadata sweep and the `transaction_attachments`
+        // table query resolve to the same rows in production; the completeness
+        // check reads the table query, so answer both here.
         if (
           String(sql).includes("FROM transaction_attachments") &&
-          String(sql).includes("storage_provider, byte_size")
+          !String(sql).includes("attachment_blobs")
         ) {
-          return Promise.resolve(
-            rows.map((row) => ({
-              id: row.id,
-              storage_provider: row.provider,
-              byte_size: String(row.byte_size),
-              sha256: row.sha256,
-            })),
-          );
+          return Promise.resolve(metadataRows());
         }
         return mockQueryHandler(sql);
       });
@@ -817,6 +821,135 @@ describe("BackupService", () => {
       expect(result.attachment_blobs).toEqual([
         { attachment_id: A_ID, data: A_BYTES.toString("base64") },
       ]);
+    });
+
+    /**
+     * F3R7-001: omitting an attachment's bytes does not silently produce a
+     * "successful" backup. The buffer is still written -- the ledger is captured
+     * -- but the completeness report says it is not a complete backup of those
+     * attachments, and the auto-backup path uses that to refuse promotion and
+     * retention.
+     */
+    describe("completeness report", () => {
+      it("reports complete when every object is present and consistent", async () => {
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [
+            {
+              id: A_ID,
+              provider: "local",
+              byte_size: A_BYTES.length,
+              sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+            },
+          ],
+          { [A_ID]: A_BYTES },
+        );
+
+        const { report } = await service.exportToBuffer(userId);
+
+        expect(report.complete).toBe(true);
+        expect(report.expectedAttachments).toBe(1);
+        expect(report.includedAttachments).toBe(1);
+        expect(report.missingAttachments).toBe(0);
+      });
+
+      it("reports incomplete when an external object cannot be read", async () => {
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [{ id: A_ID, provider: "local", byte_size: 9, sha256: "" }],
+          {}, // the object is not in the store
+        );
+
+        const { report } = await service.exportToBuffer(userId);
+
+        expect(report.complete).toBe(false);
+        expect(report.expectedAttachments).toBe(1);
+        expect(report.includedAttachments).toBe(0);
+        expect(report.missingAttachments).toBe(1);
+      });
+
+      it("reports incomplete when an external object fails its checksum", async () => {
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [
+            {
+              id: A_ID,
+              provider: "local",
+              byte_size: A_BYTES.length,
+              sha256: createHash("sha256")
+                .update(Buffer.from("different"))
+                .digest("hex"),
+            },
+          ],
+          { [A_ID]: A_BYTES },
+        );
+
+        const { report } = await service.exportToBuffer(userId);
+
+        expect(report.complete).toBe(false);
+        expect(report.missingAttachments).toBe(1);
+      });
+
+      it("reports incomplete when a database blob is missing (F3R7-001 scenario B)", async () => {
+        // The database provider was previously not checked at export at all.
+        attachmentStorageName = "database";
+        mockDataSource.query.mockImplementation((sql: string) => {
+          if (String(sql).includes("FROM transaction_attachments WHERE")) {
+            // metadata row exists...
+            return Promise.resolve([
+              {
+                id: A_ID,
+                user_id: userId,
+                storage_provider: "database",
+                byte_size: A_BYTES.length,
+                sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+              },
+            ]);
+          }
+          // ...but the attachment_blobs join returns nothing.
+          return mockQueryHandler(sql);
+        });
+
+        const { report } = await service.exportToBuffer(userId);
+
+        expect(report.complete).toBe(false);
+        expect(report.missingAttachments).toBe(1);
+      });
+
+      it("reports incomplete when a database blob contradicts its metadata", async () => {
+        attachmentStorageName = "database";
+        mockDataSource.query.mockImplementation((sql: string) => {
+          if (
+            String(sql).includes("FROM transaction_attachments WHERE") &&
+            !String(sql).includes("attachment_blobs")
+          ) {
+            return Promise.resolve([
+              {
+                id: A_ID,
+                user_id: userId,
+                storage_provider: "database",
+                byte_size: A_BYTES.length,
+                sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+              },
+            ]);
+          }
+          if (String(sql).includes("FROM attachment_blobs")) {
+            // A blob whose bytes are not what the metadata records.
+            return Promise.resolve([
+              {
+                attachment_id: A_ID,
+                data: Buffer.from("wrong bytes").toString("base64"),
+              },
+            ]);
+          }
+          return mockQueryHandler(sql);
+        });
+
+        const { report } = await service.exportToBuffer(userId);
+
+        expect(report.complete).toBe(false);
+        expect(report.inconsistentAttachments).toBe(1);
+      });
     });
 
     it("carries them in the streaming export too", async () => {
@@ -964,7 +1097,7 @@ describe("BackupService", () => {
   describe("exportToBuffer", () => {
     it("returns gzipped JSON for unencrypted exports", async () => {
       mockDataSource.query.mockResolvedValue([]);
-      const buf = await service.exportToBuffer(userId);
+      const { buffer: buf } = await service.exportToBuffer(userId);
       // gzip magic 1f 8b
       expect(buf[0]).toBe(0x1f);
       expect(buf[1]).toBe(0x8b);
@@ -972,7 +1105,7 @@ describe("BackupService", () => {
 
     it("returns an encrypted envelope when a password is provided", async () => {
       mockDataSource.query.mockResolvedValue([]);
-      const buf = await service.exportToBuffer(userId, "pw");
+      const { buffer: buf } = await service.exportToBuffer(userId, "pw");
       expect(buf.subarray(0, 4).toString("ascii")).toBe("MZBE");
     });
   });
@@ -2921,7 +3054,7 @@ describe("BackupService", () => {
         return Promise.resolve([]);
       });
 
-      const buf = await service.exportToBuffer(userId);
+      const { buffer: buf } = await service.exportToBuffer(userId);
       const json = JSON.parse(gunzipSync(buf).toString("utf-8"));
 
       expect(json.institutions).toEqual(mockInstitutions);

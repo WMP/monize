@@ -337,7 +337,7 @@ describe("Backup export/restore round-trip (integration)", () => {
       ]);
     });
 
-    const buffer = await withUserContext(userA.id, () =>
+    const { buffer } = await withUserContext(userA.id, () =>
       service.exportToBuffer(userA.id),
     );
 
@@ -554,7 +554,7 @@ describe("Backup export/restore round-trip (integration)", () => {
     });
     await seedUserData(userA.id);
 
-    const encrypted = await withUserContext(userA.id, () =>
+    const { buffer: encrypted } = await withUserContext(userA.id, () =>
       service.exportToBuffer(userA.id, "backup-secret"),
     );
 
@@ -579,7 +579,7 @@ describe("Backup export/restore round-trip (integration)", () => {
     });
     await seedUserData(userA.id);
 
-    const encrypted = await withUserContext(userA.id, () =>
+    const { buffer: encrypted } = await withUserContext(userA.id, () =>
       service.exportToBuffer(userA.id, "backup-secret"),
     );
 
@@ -635,7 +635,7 @@ describe("Backup export/restore round-trip (integration)", () => {
           [assetId, userA.id, assetName, loanId],
         );
 
-        const backup = await withUserContext(userA.id, () =>
+        const { buffer: backup } = await withUserContext(userA.id, () =>
           service.exportToBuffer(userA.id),
         );
 
@@ -703,7 +703,7 @@ describe("Backup export/restore round-trip (integration)", () => {
       [randomUUID(), userB.id],
     );
 
-    const backup = await withUserContext(userB.id, () =>
+    const { buffer: backup } = await withUserContext(userB.id, () =>
       service.exportToBuffer(userB.id),
     );
 
@@ -753,7 +753,7 @@ describe("Backup export/restore round-trip (integration)", () => {
       email: "auth-b@example.com",
     });
     await seedUserData(userA.id);
-    const buffer = await withUserContext(userA.id, () =>
+    const { buffer } = await withUserContext(userA.id, () =>
       service.exportToBuffer(userA.id),
     );
 

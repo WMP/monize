@@ -472,6 +472,7 @@
       "nextBackup": "[XX-Next backup-XX]",
       "error": "[XX-Error-XX]",
       "success": "[XX-Success-XX]",
+      "partial": "[XX-Partial-XX]",
       "failed": "[XX-Failed-XX]"
     },
     "saveButton": "[XX-Save Settings-XX]",

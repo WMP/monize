@@ -541,6 +541,11 @@ export function AutoBackupSection() {
                       {t("status.success")}
                     </span>
                   )}
+                  {settings.lastBackupStatus === "partial" && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                      {t("status.partial")}
+                    </span>
+                  )}
                   {settings.lastBackupStatus === "failed" && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                       {t("status.failed")}
@@ -549,7 +554,8 @@ export function AutoBackupSection() {
                 </dd>
               </div>
             )}
-            {settings.lastBackupStatus === "failed" &&
+            {(settings.lastBackupStatus === "failed" ||
+              settings.lastBackupStatus === "partial") &&
               settings.lastBackupError && (
                 <div className="flex justify-between">
                   <dt className="text-gray-600 dark:text-gray-400">

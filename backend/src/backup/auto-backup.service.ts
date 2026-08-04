@@ -27,7 +27,7 @@ import {
   resolveAllowedRoots,
 } from "./backup-paths";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
-import { BackupService } from "./backup.service";
+import { BackupService, BackupCompletenessReport } from "./backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
 import { User } from "../users/entities/user.entity";
 import { DemoModeService } from "../common/demo-mode.service";
@@ -531,14 +531,17 @@ export class AutoBackupService {
 
     const userFolder = await this.resolveUserFolder(userId, settings.folderPath);
     const timezone = settings.timezone || "UTC";
-    const filename = await this.exportToFile(userId, userFolder, timezone);
-    await this.copyToWeeklyIfNeeded(userFolder, filename, timezone);
-    await this.copyToMonthlyIfNeeded(userFolder, filename, timezone);
-    this.enforceRetention(userFolder, settings.folderPath, settings);
+    const { filename, report } = await this.exportToFile(
+      userId,
+      userFolder,
+      timezone,
+    );
+    // A partial artifact is written (the ledger is captured) but never promoted
+    // or retained: promotion and retention delete, and an incomplete backup must
+    // not displace or age out a complete one.
+    await this.applyBackupOutcome(settings, userFolder, filename, report, timezone);
 
     settings.lastBackupAt = new Date();
-    settings.lastBackupStatus = "success";
-    settings.lastBackupError = null;
     if (settings.enabled) {
       settings.nextBackupAt = this.calculateNextBackupAt(
         settings.frequency as AutoBackupFrequency,
@@ -549,7 +552,48 @@ export class AutoBackupService {
     }
     await this.scoped(AutoBackupSettings, (repo) => repo.save(settings));
 
-    return { message: "Backup completed successfully", filename };
+    return {
+      message: report.complete
+        ? "Backup completed successfully"
+        : "Backup written, but some attachments could not be included; it was not promoted or used for retention",
+      filename,
+    };
+  }
+
+  /**
+   * Records the backup's outcome and runs promotion + retention only when the
+   * artifact is complete.
+   *
+   * `success` promotes weekly/monthly copies and enforces retention. `partial`
+   * does neither: the daily artifact stays on disk so the ledger is backed up,
+   * but nothing that deletes a complete copy runs. A later complete backup
+   * resumes normal promotion and retention. This is the invariant that a backup
+   * shown as successful is a backup that can be restored in full (F3R7-001).
+   */
+  private async applyBackupOutcome(
+    settings: AutoBackupSettings,
+    folder: string,
+    filename: string,
+    report: BackupCompletenessReport,
+    timezone: string,
+  ): Promise<void> {
+    if (report.complete) {
+      await this.copyToWeeklyIfNeeded(folder, filename, timezone);
+      await this.copyToMonthlyIfNeeded(folder, filename, timezone);
+      this.enforceRetention(folder, settings.folderPath, settings);
+      settings.lastBackupStatus = "success";
+      settings.lastBackupError = null;
+      return;
+    }
+    settings.lastBackupStatus = "partial";
+    settings.lastBackupError =
+      `${report.missingAttachments} attachment(s) could not be included and ` +
+      `${report.inconsistentAttachments} did not match their metadata, of ` +
+      `${report.expectedAttachments} total. This artifact was written but not ` +
+      `promoted or used for retention, so complete backups are preserved.`;
+    this.logger.warn(
+      `Auto-backup for user ${settings.userId} is partial: ${settings.lastBackupError}`,
+    );
   }
 
   @Cron("0 * * * *")
@@ -582,16 +626,21 @@ export class AutoBackupService {
         const timezone = settings.timezone || "UTC";
         // RLS (task C2): the export reads this user's entire dataset, and the
         // settings write below is that user's row -- both under a user context.
-        const filename = await withUserContext(settings.userId, () =>
-          this.exportToFile(settings.userId, userFolder, timezone),
+        const { filename, report } = await withUserContext(
+          settings.userId,
+          () => this.exportToFile(settings.userId, userFolder, timezone),
         );
-        await this.copyToWeeklyIfNeeded(userFolder, filename, timezone);
-        await this.copyToMonthlyIfNeeded(userFolder, filename, timezone);
-        this.enforceRetention(userFolder, settings.folderPath, settings);
+        // Promotion and retention run only for a complete artifact; a partial is
+        // written but never allowed to displace a complete copy (F3R7-001).
+        await this.applyBackupOutcome(
+          settings,
+          userFolder,
+          filename,
+          report,
+          timezone,
+        );
 
         settings.lastBackupAt = now;
-        settings.lastBackupStatus = "success";
-        settings.lastBackupError = null;
         settings.nextBackupAt = this.calculateNextBackupAt(
           settings.frequency as AutoBackupFrequency,
           settings.backupTime,
@@ -603,7 +652,7 @@ export class AutoBackupService {
         );
 
         this.logger.log(
-          `Auto-backup completed for user ${settings.userId}: ${filename}`,
+          `Auto-backup ${report.complete ? "completed" : "written (partial)"} for user ${settings.userId}: ${filename}`,
         );
       } catch (error) {
         this.logger.error(
@@ -744,7 +793,7 @@ export class AutoBackupService {
     userId: string,
     userFolder: string,
     timezone: string,
-  ): Promise<string> {
+  ): Promise<{ filename: string; report: BackupCompletenessReport }> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),
     );
@@ -789,19 +838,19 @@ export class AutoBackupService {
       );
     }
 
-    const payload = await this.backupService.exportToBuffer(
+    const { buffer, report } = await this.backupService.exportToBuffer(
       userId,
       encryptionPassword,
     );
     // Temp file, fsync, rename: `fs.writeFile` truncated the final name first,
     // so a kill or an ENOSPC mid-write left a partial artifact with a valid
     // extension that sorted newest and that retention counted.
-    await writeFileAtomic(filepath, payload);
+    await writeFileAtomic(filepath, buffer);
 
     this.logger.log(
       `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,
     );
-    return filename;
+    return { filename, report };
   }
 
   private async copyToWeeklyIfNeeded(

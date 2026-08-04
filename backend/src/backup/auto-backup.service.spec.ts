@@ -161,9 +161,19 @@ describe("AutoBackupService", () => {
     };
 
     mockBackupService = {
-      exportToBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from("gzipped-export")),
+      // The service now returns the buffer alongside a completeness report; the
+      // default double reports a complete backup so promotion and retention run
+      // exactly as before. The "partial backup" describe overrides it.
+      exportToBuffer: jest.fn().mockResolvedValue({
+        buffer: Buffer.from("gzipped-export"),
+        report: {
+          complete: true,
+          expectedAttachments: 0,
+          includedAttachments: 0,
+          missingAttachments: 0,
+          inconsistentAttachments: 0,
+        },
+      }),
     };
 
     mockBackupEncryption = {
@@ -1122,6 +1132,168 @@ describe("AutoBackupService", () => {
           lastBackupError: expect.any(String),
           nextBackupAt: expect.any(Date),
         }),
+      );
+    });
+  });
+
+  /**
+   * F3R7-001: an incomplete backup is written (the ledger is captured) but never
+   * promoted or used for retention, so it cannot displace or age out a complete
+   * copy, and its status is `partial` rather than `success`.
+   */
+  describe("a partial backup (some attachment bytes could not be included)", () => {
+    beforeEach(() => {
+      mockBackupService.exportToBuffer.mockResolvedValue({
+        buffer: Buffer.from("gzipped-export"),
+        report: {
+          complete: false,
+          expectedAttachments: 3,
+          includedAttachments: 2,
+          missingAttachments: 1,
+          inconsistentAttachments: 0,
+        },
+      });
+    });
+
+    async function seed(names: string[]): Promise<void> {
+      await fs.mkdir(folderFor(), { recursive: true });
+      for (const name of names) {
+        await fs.writeFile(join(folderFor(), name), "x");
+      }
+    }
+
+    it("records `partial` status, not success, and explains why", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: root }),
+      );
+
+      const result = await service.runManualBackup(userId);
+
+      expect(mockSettingsRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ lastBackupStatus: "partial" }),
+      );
+      const calls = mockSettingsRepo.save.mock.calls;
+      const saved = calls[calls.length - 1][0];
+      expect(saved.lastBackupError).toMatch(/attachment/i);
+      expect(result.message).toMatch(/not promoted|not.*retention|attachment/i);
+    });
+
+    it("still writes the daily artifact so the ledger is captured", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: root }),
+      );
+
+      const result = await service.runManualBackup(userId);
+
+      expect(
+        await fs.readFile(join(folderFor(), result.filename), "utf-8"),
+      ).toBe("gzipped-export");
+    });
+
+    it("does not run retention, so complete copies past the window survive", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({
+          enabled: true,
+          folderPath: root,
+          retentionDaily: 1,
+          retentionWeekly: 0,
+          retentionMonthly: 0,
+        }),
+      );
+      // Three complete dailies already on disk, retention set to keep 1.
+      await seed([
+        "monize-backup-daily-2026-04-01.json.gz",
+        "monize-backup-daily-2026-04-02.json.gz",
+        "monize-backup-daily-2026-04-03.json.gz",
+      ]);
+
+      await service.runManualBackup(userId);
+
+      // A complete backup would have deleted the two oldest; a partial must not.
+      const remaining = await listBackups(folderFor());
+      expect(remaining).toContain("monize-backup-daily-2026-04-01.json.gz");
+      expect(remaining).toContain("monize-backup-daily-2026-04-02.json.gz");
+      expect(remaining).toContain("monize-backup-daily-2026-04-03.json.gz");
+    });
+
+    it("does not promote a partial to weekly or monthly", async () => {
+      // Day 7 would normally trigger a weekly promotion.
+      jest.useFakeTimers().setSystemTime(new Date("2026-04-07T12:00:00Z"));
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: root }),
+      );
+
+      await service.runManualBackup(userId);
+
+      const remaining = await listBackups(folderFor());
+      expect(remaining.some((n) => n.includes("weekly"))).toBe(false);
+      expect(remaining.some((n) => n.includes("monthly"))).toBe(false);
+      jest.useRealTimers();
+    });
+
+    it("the cron records partial and preserves complete copies too", async () => {
+      mockSettingsRepo.find.mockResolvedValue([
+        createSettings({
+          enabled: true,
+          folderPath: root,
+          retentionDaily: 1,
+          retentionWeekly: 0,
+          retentionMonthly: 0,
+          nextBackupAt: new Date("2000-01-01"),
+        }),
+      ]);
+      await seed([
+        "monize-backup-daily-2026-04-01.json.gz",
+        "monize-backup-daily-2026-04-02.json.gz",
+      ]);
+
+      await service.handleAutoBackupCron();
+
+      expect(mockSettingsRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ lastBackupStatus: "partial" }),
+      );
+      const remaining = await listBackups(folderFor());
+      expect(remaining).toContain("monize-backup-daily-2026-04-01.json.gz");
+      expect(remaining).toContain("monize-backup-daily-2026-04-02.json.gz");
+    });
+
+    it("a later complete backup resumes normal promotion and retention", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({
+          enabled: true,
+          folderPath: root,
+          retentionDaily: 1,
+          retentionWeekly: 0,
+          retentionMonthly: 0,
+        }),
+      );
+      await seed([
+        "monize-backup-daily-2026-04-01.json.gz",
+        "monize-backup-daily-2026-04-02.json.gz",
+      ]);
+      // First run partial: everything preserved.
+      await service.runManualBackup(userId);
+      expect(await listBackups(folderFor())).toContain(
+        "monize-backup-daily-2026-04-01.json.gz",
+      );
+
+      // Storage recovers; the next backup is complete and retention runs.
+      mockBackupService.exportToBuffer.mockResolvedValue({
+        buffer: Buffer.from("gzipped-export"),
+        report: {
+          complete: true,
+          expectedAttachments: 3,
+          includedAttachments: 3,
+          missingAttachments: 0,
+          inconsistentAttachments: 0,
+        },
+      });
+      await service.runManualBackup(userId);
+
+      const remaining = await listBackups(folderFor());
+      expect(remaining).not.toContain("monize-backup-daily-2026-04-01.json.gz");
+      expect(mockSettingsRepo.save).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lastBackupStatus: "success" }),
       );
     });
   });

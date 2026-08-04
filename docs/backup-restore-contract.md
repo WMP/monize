@@ -114,18 +114,34 @@ That makes the artifact self-sufficient, which has three consequences:
   keeps them and `storage_provider` is rewritten to match. Both directions used to
   be an unrestorable skip.
 
-What it costs, stated plainly: artifacts are larger. The plain export streams and
-is unaffected; the encrypted, automatic and support paths assemble in memory, so a
-large attachment set now meets `BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an
-error naming the ceiling and the variable — rather than silently producing a file
-whose attachments cannot come back. An object the store cannot produce is logged
-and omitted rather than failing the export, because the ledger is the point and
-one unreadable receipt must not cost the user the whole file.
+What it costs, stated plainly: artifacts are larger, and this method accumulates
+every carried object in memory before serialising. The encrypted, automatic and
+support paths assemble in memory anyway, so a large attachment set meets
+`BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an error naming the ceiling. **The
+plain export is not exempt** — it was billed as the streaming path, but it
+materialises each table and every carried attachment too, and it has no ceiling, so
+a large attachment set can exceed the pod there. Bounding it is the cursor work
+below (§6, still open).
 
-**A `sha256` and a `byte_size` are still checked against the carried bytes.** Both
-sides come from the same file, so that proves consistency rather than authority —
-what it catches is a corrupt or truncated artifact, which would otherwise restore a
-row whose recorded checksum does not describe its own download.
+**An omitted or inconsistent object does not silently pass as a complete backup
+(F3R7-001).** An object the store cannot produce is logged and omitted — the ledger
+is the point, and one unreadable receipt must not cost the user the whole file — but
+the artifact is then **incomplete**, and the export says so. Every buffered export
+returns a `BackupCompletenessReport`: how many attachment rows were expected, how
+many had their bytes, how many were missing or (for the database provider,
+`assessAttachmentCompleteness`) inconsistent with their metadata. The auto-backup
+path acts on it — a partial artifact is written so the ledger is captured, but it is
+**never promoted to weekly/monthly and never used for retention**, so it cannot
+displace or age out a complete copy, and its status is `partial`, not `success`. A
+later complete backup resumes normal promotion and retention. This is the invariant
+that a backup shown as successful is one that restores in full.
+
+**A `sha256` and a `byte_size` are checked against the carried bytes**, at both
+ends. At export, the store is compared against the database (`storedBytesMatchMetadata`),
+so a source object that was truncated or replaced is caught before it is packaged.
+At restore, the carried bytes are compared against their own metadata
+(`carriedBytesMatchMetadata`) — same file both sides, so that proves consistency
+rather than authority, catching a corrupt or truncated artifact.
 
 ### The legacy path, and why it is still ownership-gated
 
@@ -409,12 +425,24 @@ size, so a request's *processing* peak — decompressed payload, string, parsed 
 on their small claims and then hold ~400 MiB between them. So restore *processing*
 is capped separately: `restoreProcessingGate`
 (`backend/src/backup/restore-processing-gate.ts`) admits only as many concurrent
-restores as fit the container at `PEAK_MULTIPLE` × the expanded share, which on the
-default pod is one — a second restore waits for the first rather than decompressing
-beside it. The service acquires a slot before decompression and releases it in a
-`finally`. The cap is robust to `PEAK_MULTIPLE` being an estimate: serialising to
-one is safe under any true multiple, as long as one restore fits, which the limits
-above already have to guarantee.
+restores as fit the container. The service acquires a slot before decompression and
+releases it in a `finally`, and on the default pod the count is one — a second
+restore waits rather than decompressing beside the first.
+
+The slot count budgets against the numbers that actually cost (F3R7-002): each
+restore's peak is `PEAK_MULTIPLE` × the **resolved** `BACKUP_RESTORE_EXPANDED_LIMIT`
+`gunzip` enforces — so an operator override is accounted for, where the earlier
+version modeled every restore at the derived default and admitted five 2 GiB
+restores on a 16 GiB pod — and the ordinary process baseline
+(`restoreProcessBaselineBytes`) is subtracted before dividing. When one modeled
+restore does not fit at all, the count is `0`: the gate still floors capacity at
+one, because a running process must be able to attempt a restore, but startup warns
+that a restore may exceed memory and names the levers (raise the container limit, or
+lower `BACKUP_RESTORE_EXPANDED_LIMIT`). The cap is robust to `PEAK_MULTIPLE` being an
+estimate — serialising to one is safe under any true multiple *as long as one
+restore fits*, which is exactly the condition the warning surfaces when it does not.
+The baseline and the multiple are both estimates, not measurements; settling them
+needs the cgroup peak-RSS test that has never run here.
 
 **A budget checked after the allocation is not a budget.** The support export
 always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are
