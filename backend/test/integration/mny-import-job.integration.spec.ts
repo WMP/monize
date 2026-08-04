@@ -8,14 +8,14 @@ import { ImportJob } from "@/import/mny/entities/import-job.entity";
 import { ImportStagedFile } from "@/import/mny/entities/import-staged-file.entity";
 import {
   JOB_STALLED_ERROR_KEY,
+  MnyJobFencedError,
   MnyImportJobService,
-  MnyImportSlotLostError,
 } from "@/import/mny/mny-import-job.service";
 import { MnyStagingService } from "@/import/mny/mny-staging.service";
 import { MnyPasswordIncorrectError } from "@/import/mny/mny-errors";
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "@/import/mny/model/mny-import-options";
 import { MnyImportResult } from "@/import/mny/model/mny-import-job";
-import { withUserContext } from "@/common/db/with-context";
+import { withSystemContext, withUserContext } from "@/common/db/with-context";
 import { withScopedDb } from "@/common/db/scoped-db";
 
 import {
@@ -351,6 +351,8 @@ describe("MnyImportJobService (integration)", () => {
       ]);
 
       expect(outcomes.filter(Boolean)).toHaveLength(1);
+      // The winner gets this attempt's fencing token; the loser gets null.
+      expect(outcomes.filter(Boolean)[0]).toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it("has one winner across four concurrent workers", async () => {
@@ -365,20 +367,22 @@ describe("MnyImportJobService (integration)", () => {
 
     it("stamps the row running with a heartbeat", async () => {
       const jobId = await newJob();
-      await asUser(userA, () => jobs.claim(jobId));
+      const token = await asUser(userA, () => jobs.claim(jobId));
 
       const job = await asUser(userA, () => jobs.findOne(userA, jobId));
       expect(job!.status).toBe("running");
       expect(job!.startedAt).not.toBeNull();
       expect(job!.heartbeatAt).not.toBeNull();
+      expect(job!.attemptToken).toBe(token);
     });
 
     it("refuses a job that already completed", async () => {
       const jobId = await newJob();
       await asUser(userA, () => jobs.claim(jobId));
-      await asUser(userA, () => jobs.complete(jobId, EMPTY_RESULT));
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await asUser(userA, () => jobs.complete(jobId, token!, EMPTY_RESULT));
 
-      expect(await asUser(userA, () => jobs.claim(jobId))).toBe(false);
+      expect(await asUser(userA, () => jobs.claim(jobId))).toBeNull();
     });
   });
 
@@ -387,11 +391,11 @@ describe("MnyImportJobService (integration)", () => {
       // The reason runOutsideActiveScopedManager exists: a progress write inside
       // the import's transaction would be invisible until commit.
       const jobId = await newJob();
-      await asUser(userA, () => jobs.claim(jobId));
+      const token = await asUser(userA, () => jobs.claim(jobId));
 
       await asUser(userA, () =>
         withScopedDb(dataSource, async () => {
-          await jobs.reportProgress(jobId, {
+          await jobs.reportProgress(jobId, token!, {
             phase: "transactions",
             processed: 250,
             total: 1000,
@@ -413,7 +417,7 @@ describe("MnyImportJobService (integration)", () => {
       const jobId = await newJob();
 
       await asUser(userA, () =>
-        jobs.reportProgress(jobId, {
+        jobs.reportProgress(jobId, "9f1b7c2e-0000-4000-8000-abcdefabcdef", {
           phase: "preparing",
           processed: 0,
           total: 0,
@@ -422,153 +426,6 @@ describe("MnyImportJobService (integration)", () => {
 
       const job = await asUser(userA, () => jobs.findOne(userA, jobId));
       expect(job!.progress).toBeNull();
-    });
-  });
-
-  /**
-   * The slot lease, against real transactions.
-   *
-   * The one-active-job index stops a *new* start from racing. It does not stop a
-   * job that already claimed its slot from losing it mid-flight, and two things
-   * do exactly that: the migration that retires pre-existing duplicates on a
-   * database that raced before the index existed, and `reapStaleJobs` failing a
-   * `running` job whose heartbeat lapsed. Every backend container runs migrations
-   * at start-up and the Helm StatefulSet rolls pods one at a time, so a new pod
-   * can retire a job an old pod is still importing.
-   *
-   * What made that dangerous was where the status was checked. `complete()` runs
-   * *after* the body, so the financial rows are committed by the time anything
-   * notices -- a retired duplicate could still double a user's history. The lease
-   * check runs as the last statement of the writing transaction instead, so the
-   * refusal rolls those rows back.
-   */
-  describe("assertStillHoldsSlot", () => {
-    /** A table the body can write into, standing in for the imported rows. */
-    const writeMarker = (manager: EntityManager, jobId: string) =>
-      manager.query(
-        `UPDATE import_jobs SET error_detail = 'wrote-financial-rows' WHERE id = $1`,
-        [jobId],
-      );
-
-    const detailOf = async (jobId: string): Promise<string | null> => {
-      const rows = await asUser(userA, () =>
-        withScopedDb(dataSource, (manager) =>
-          manager.query(`SELECT error_detail FROM import_jobs WHERE id = $1`, [
-            jobId,
-          ]),
-        ),
-      );
-      return rows[0]?.error_detail ?? null;
-    };
-
-    it("passes while the job is running", async () => {
-      const jobId = await newJob();
-      await asUser(userA, () => jobs.claim(jobId));
-
-      await expect(
-        asUser(userA, () =>
-          withScopedDb(dataSource, (manager) =>
-            jobs.assertStillHoldsSlot(manager, jobId),
-          ),
-        ),
-      ).resolves.toBeUndefined();
-    });
-
-    it("rolls the body's writes back when the job was retired mid-flight", async () => {
-      const jobId = await newJob();
-      await asUser(userA, () => jobs.claim(jobId));
-
-      // Retire it the way migration 135 does, from outside the body's transaction.
-      await asUser(userA, () =>
-        withScopedDb(dataSource, (manager) =>
-          manager.query(
-            `UPDATE import_jobs SET status = 'failed', error_key = $2,
-                    retryable = true WHERE id = $1`,
-            [jobId, JOB_STALLED_ERROR_KEY],
-          ),
-        ),
-      );
-
-      await expect(
-        asUser(userA, () =>
-          withScopedDb(dataSource, async (manager) => {
-            await writeMarker(manager, jobId);
-            await jobs.assertStillHoldsSlot(manager, jobId);
-          }),
-        ),
-      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
-
-      // The whole transaction rolled back, so the write is gone. Before the lease
-      // check existed this was the point at which imported rows were committed.
-      expect(await detailOf(jobId)).toBeNull();
-    });
-
-    it("refuses a job that is still pending -- it never claimed the slot", async () => {
-      const jobId = await newJob();
-
-      await expect(
-        asUser(userA, () =>
-          withScopedDb(dataSource, (manager) =>
-            jobs.assertStillHoldsSlot(manager, jobId),
-          ),
-        ),
-      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
-    });
-
-    it("refuses a job row that no longer exists", async () => {
-      // Distinguishable from "not yours": both are a lost slot, and neither may
-      // let the body commit.
-      await expect(
-        asUser(userA, () =>
-          withScopedDb(dataSource, (manager) =>
-            jobs.assertStillHoldsSlot(
-              manager,
-              "00000000-0000-0000-0000-000000000000",
-            ),
-          ),
-        ),
-      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
-    });
-
-    it("does not resurrect a retired job through complete()", async () => {
-      // The second line of defence: `complete` carries AND status = 'running',
-      // so a row the migration marked failed cannot later read as completed.
-      const jobId = await newJob();
-      await asUser(userA, () => jobs.claim(jobId));
-      await asUser(userA, () => jobs.fail(jobId, "x", "retired", true));
-
-      await asUser(userA, () => jobs.complete(jobId, EMPTY_RESULT));
-
-      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
-      expect(job!.status).toBe("failed");
-      expect(job!.result).toBeNull();
-    });
-
-    it("leaves the retiring party's explanation on the row", async () => {
-      // A lost slot must not overwrite error_key with the generic failure key:
-      // the row already says why it was retired.
-      const jobId = await newJob();
-
-      const ran = await asUser(userA, () =>
-        jobs.runClaimed(userA, jobId, async (context) => {
-          await asUser(userA, () =>
-            withScopedDb(dataSource, (manager) =>
-              manager.query(
-                `UPDATE import_jobs SET status = 'failed', error_key = $2,
-                        retryable = true WHERE id = $1`,
-                [context.jobId, JOB_STALLED_ERROR_KEY],
-              ),
-            ),
-          );
-          throw new MnyImportSlotLostError(context.jobId, "failed");
-        }),
-      );
-
-      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
-      expect(ran).toBe(true);
-      expect(job!.status).toBe("failed");
-      expect(job!.errorKey).toBe(JOB_STALLED_ERROR_KEY);
-      expect(job!.retryable).toBe(true);
     });
   });
 
@@ -643,15 +500,169 @@ describe("MnyImportJobService (integration)", () => {
     });
   });
 
+  /**
+   * The fence, on two real connections (audit RV4-001).
+   *
+   * Everything here is a property of PostgreSQL rather than of the service: the
+   * reaper's UPDATE and the worker's checkpoint contend for one row on separate
+   * connections, and which of them loses has to be decided by the database. A
+   * mocked manager cannot answer that, which is why this test exists here.
+   */
+  describe("fencing a worker the reaper gave up on", () => {
+    /** Make the row look stale to the reaper without waiting five minutes. */
+    const backdateHeartbeat = (jobId: string) =>
+      dataSource.query(
+        `UPDATE import_jobs
+            SET heartbeat_at = CURRENT_TIMESTAMP - INTERVAL '1 hour'
+          WHERE id = $1`,
+        [jobId],
+      );
+
+    it("refuses the commit checkpoint once the job has been reaped", async () => {
+      const jobId = await newJob();
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await backdateHeartbeat(jobId);
+
+      await withSystemContext(() => jobs.reapStaleJobs());
+
+      // The worker wakes up inside its import transaction and tries to check
+      // point. Before the token this was an unconditional UPDATE and the whole
+      // file committed behind the reaper's back.
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, (m) =>
+            jobs.markDataCommitted(m, jobId, token!),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(MnyJobFencedError);
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      expect(job!.status).toBe("failed");
+      expect(job!.dataCommitted).toBe(false);
+      expect(job!.attemptToken).toBeNull();
+      // Nothing was committed, so a retry is genuinely safe.
+      expect(job!.retryable).toBe(true);
+    });
+
+    it("rolls back the whole import transaction when the checkpoint is refused", async () => {
+      const jobId = await newJob();
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await backdateHeartbeat(jobId);
+      await withSystemContext(() => jobs.reapStaleJobs());
+
+      // A stand-in for the import's own writes -- a payee is exactly the kind of
+      // row the importer inserts. Whatever the worker wrote in this transaction
+      // must disappear with the refused checkpoint, which only holds because the
+      // checkpoint is deliberately the transaction's last statement.
+      const marker = "Payee written by a reaped worker";
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, async (m) => {
+            await m.query(
+              `INSERT INTO payees (user_id, name) VALUES ($1, $2)`,
+              [userA, marker],
+            );
+            await jobs.markDataCommitted(m, jobId, token!);
+          }),
+        ),
+      ).rejects.toBeInstanceOf(MnyJobFencedError);
+
+      const [{ count }] = await dataSource.query(
+        `SELECT COUNT(*)::int AS count FROM payees WHERE name = $1`,
+        [marker],
+      );
+      expect(count).toBe(0);
+    });
+
+    it("still checkpoints for the worker that does own the job", async () => {
+      const jobId = await newJob();
+      const token = await asUser(userA, () => jobs.claim(jobId));
+
+      await asUser(userA, () =>
+        withScopedDb(dataSource, (m) =>
+          jobs.markDataCommitted(m, jobId, token!),
+        ),
+      );
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      expect(job!.dataCommitted).toBe(true);
+    });
+
+    it("refuses a stale worker's heartbeat, so the reap cannot be undone", async () => {
+      const jobId = await newJob();
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await backdateHeartbeat(jobId);
+      await withSystemContext(() => jobs.reapStaleJobs());
+
+      await asUser(userA, () => jobs.heartbeat(jobId, token!));
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      expect(job!.status).toBe("failed");
+    });
+
+    it("refuses a fenced worker's terminal writes", async () => {
+      const jobId = await newJob();
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await backdateHeartbeat(jobId);
+      await withSystemContext(() => jobs.reapStaleJobs());
+
+      expect(
+        await asUser(userA, () => jobs.complete(jobId, token!, EMPTY_RESULT)),
+      ).toBe(false);
+      expect(
+        await asUser(userA, () =>
+          jobs.fail(jobId, "someOtherKey", "detail", true, token!),
+        ),
+      ).toBe(false);
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      // The reaper's verdict survives both.
+      expect(job!.status).toBe("failed");
+      expect(job!.errorKey).toBe(JOB_STALLED_ERROR_KEY);
+    });
+
+    it("lets a retry claim the job and mint a token the old worker does not have", async () => {
+      const jobId = await newJob();
+      const staleToken = await asUser(userA, () => jobs.claim(jobId));
+      await backdateHeartbeat(jobId);
+      await withSystemContext(() => jobs.reapStaleJobs());
+
+      // The retry is a fresh job over the same staged bytes, exactly as the UI
+      // offers it.
+      const retryId = await newJob();
+      const retryToken = await asUser(userA, () => jobs.claim(retryId));
+      expect(retryToken).not.toBe(staleToken);
+
+      await asUser(userA, () =>
+        withScopedDb(dataSource, (m) =>
+          jobs.markDataCommitted(m, retryId, retryToken!),
+        ),
+      );
+
+      // Only the retry's data is accounted for; the old worker cannot add to it.
+      expect(
+        (await asUser(userA, () => jobs.findOne(userA, retryId)))!
+          .dataCommitted,
+      ).toBe(true);
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, (m) =>
+            jobs.markDataCommitted(m, jobId, staleToken!),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(MnyJobFencedError);
+    });
+  });
+
   describe("hasActiveJob", () => {
     it("is true for a pending job and false once it finished", async () => {
       const jobId = await newJob();
       expect(await asUser(userA, () => jobs.hasActiveJob(userA))).toBe(true);
 
-      await asUser(userA, () => jobs.claim(jobId));
+      const token = await asUser(userA, () => jobs.claim(jobId));
       expect(await asUser(userA, () => jobs.hasActiveJob(userA))).toBe(true);
 
-      await asUser(userA, () => jobs.complete(jobId, EMPTY_RESULT));
+      await asUser(userA, () => jobs.complete(jobId, token!, EMPTY_RESULT));
       expect(await asUser(userA, () => jobs.hasActiveJob(userA))).toBe(false);
     });
 

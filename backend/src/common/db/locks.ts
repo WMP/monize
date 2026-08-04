@@ -38,6 +38,20 @@ import { EntityManager } from "typeorm";
  * `lockHoldingScope` and `lockAccountsForBalanceWrite` both sort; a caller that
  * needs both takes the advisory one first.
  *
+ * **For `transactions` rows there is one more rule, and it is by role rather than
+ * by id: a split parent is locked before any of its legs.** Ascending-id order
+ * cannot be the whole answer here, because a caller cannot know a leg id until it
+ * has read the split -- `removeSplit` necessarily locks the parent and only then
+ * the leg. A batch that sorted parent and leg together would take them in the
+ * opposite order whenever the leg's UUID sorts first, and two requests in
+ * opposite orders is a `40P01` for both (audit RV4-005). With the parent always
+ * first it becomes the serialization point: any two paths touching the same
+ * parent's legs have already queued behind it, so their order among the legs
+ * cannot matter. Legs are still batched ascending, which covers the paths that
+ * lock several with no parent involved -- the two legs of an ordinary transfer,
+ * including the cross-owner pair, where each side names its own leg and so must
+ * sort rather than start from the one it was given.
+ *
  * Every helper takes an `EntityManager` and must be called inside a
  * `withScopedDb` callback -- `pg_advisory_xact_lock` and `FOR UPDATE` are both
  * released by the enclosing transaction, which is the point: there is no

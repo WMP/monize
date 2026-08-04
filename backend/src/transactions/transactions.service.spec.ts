@@ -5568,11 +5568,14 @@ describe("TransactionsService", () => {
         amount: 60,
       };
 
-      // The access check reads the named leg; the parent and the sibling
-      // counterpart are no longer read individually -- one ordered
-      // `lockTransactionRows` covers all three (audit FV4-002), and the batch
-      // reader is served from what the repository would return.
-      transactionsRepository.findOne.mockResolvedValueOnce(linkedTx);
+      // The access check reads the named leg; the split parent is then locked on
+      // its own, *before* its legs, because a batch sorting parent and legs
+      // together would take them in the opposite order from `removeSplit`
+      // whenever a leg's UUID sorts first (audit RV4-005). The sibling legs come
+      // through the batch reader.
+      transactionsRepository.findOne
+        .mockResolvedValueOnce(linkedTx)
+        .mockResolvedValueOnce(parentTx);
       transactionsRepository.find.mockResolvedValue([
         parentTx,
         anotherLinkedTx,

@@ -257,6 +257,10 @@ describe("MnyImportService", () => {
   const context: JobRunContext = {
     jobId: "job-1",
     userId: "user-1",
+    // The attempt's fencing token: the commit checkpoint presents it, and a
+    // mismatch rolls the import back rather than committing behind the reaper's
+    // back (audit RV4-001).
+    attemptToken: "9f1b7c2e-0000-4000-8000-abcdefabcdef",
     reportProgress: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -273,13 +277,12 @@ describe("MnyImportService", () => {
       discard: jest.fn().mockResolvedValue(undefined),
       runClaimed: jest.fn().mockResolvedValue(true),
       fail: jest.fn().mockResolvedValue(undefined),
-      // The lease check the write transaction ends with. Resolving means "still
-      // holds the slot"; the refusal path is a property of real transactions and
-      // is asserted in test/integration/mny-import-job.integration.spec.ts.
-      assertStillHoldsSlot: jest.fn().mockResolvedValue(undefined),
       // Written INSIDE the import transaction, so it commits with the rows it
       // describes: a failure after that commit must not be offered as a retry
-      // that re-imports the whole file (audit P4-002).
+      // that re-imports the whole file (audit P4-002). The refusal path -- a
+      // fenced checkpoint matching zero rows -- is a property of real
+      // transactions and is asserted in
+      // test/integration/mny-import-job.integration.spec.ts.
       markDataCommitted: jest.fn().mockResolvedValue(undefined),
     };
     postProcessing = { run: jest.fn().mockResolvedValue(undefined) };
@@ -618,6 +621,7 @@ describe("MnyImportService", () => {
       expect(jobs.markDataCommitted).toHaveBeenCalledWith(
         expect.anything(),
         "job-1",
+        context.attemptToken,
       );
       // Inside the transaction, before it commits -- which is what makes the
       // checkpoint land with the rows rather than after them.

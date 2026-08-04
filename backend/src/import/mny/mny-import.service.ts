@@ -604,7 +604,11 @@ export class MnyImportService {
       // from a failure before any of it was written. `fail()` reads this flag,
       // so such a run is no longer offered as a retry that would insert the
       // whole file again (audit P4-002).
-      await this.jobs.markDataCommitted(manager, context.jobId);
+      await this.jobs.markDataCommitted(
+        manager,
+        context.jobId,
+        context.attemptToken,
+      );
 
       const result = {
         accountIdByKey: accounts.idByKey,
@@ -625,14 +629,6 @@ export class MnyImportService {
           ...investments.affectedAccountIds,
         ]),
       };
-
-      // Last statement before commit: if this job no longer holds the user's
-      // import slot -- retired by the one-active-job migration on a database that
-      // raced before the index existed, or reaped as stale -- throwing here rolls
-      // every row above back. Checking the status anywhere else, including in
-      // `complete()`, happens after these rows are already committed, which is
-      // how a retired duplicate could still double a user's financial history.
-      await this.jobs.assertStillHoldsSlot(manager, context.jobId);
 
       return result;
     });

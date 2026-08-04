@@ -872,10 +872,20 @@ export class TransactionTransferService {
     };
 
     if (access === "connected" && counterpart) {
+      // Ascending id order, not "counterpart then mine".
+      //
+      // Either owner can start this, and each request names its *own* leg -- so
+      // taking the counterpart first meant the two sides locked the same pair in
+      // opposite orders, which is a PostgreSQL 40P01 for both (audit RV4-005).
+      // Sorting by id is what makes the order the same whoever asks.
+      const ordered = [counterpart, ownLeg].sort((a, b) =>
+        a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+      );
       await withSystemContext(() =>
         withScopedDb(this.dataSource, async (m) => {
-          await removeLeg(m, counterpart);
-          await removeLeg(m, ownLeg);
+          for (const leg of ordered) {
+            await removeLeg(m, leg);
+          }
         }),
       );
       this.triggerNetWorthRecalc(counterpart.accountId, counterpart.userId);
@@ -895,6 +905,21 @@ export class TransactionTransferService {
     const userId = transaction.userId;
     const parentTransactionId = parentSplit.transactionId;
 
+    // The split parent first, on its own, and only then its legs.
+    //
+    // A single sorted batch over parent-plus-legs looks tidier and deadlocks:
+    // `TransactionSplitService.removeSplit` cannot know a leg id before it has
+    // read the split, so it necessarily locks the parent and *then* the leg. A
+    // batch that sorts the two together takes them in id order instead, which is
+    // the opposite order whenever the leg's UUID sorts first -- and two requests
+    // in opposite orders is a PostgreSQL 40P01 for both (audit RV4-005).
+    //
+    // So the ordering rule is by *role*, not by id: parent before legs, legs
+    // among themselves ascending. The parent lock is then the serialization
+    // point -- any two paths touching the same parent's legs have already
+    // queued behind it, so their leg order cannot matter. See common/db/locks.ts.
+    const parent = await lockTransactionRow(m, parentTransactionId, userId);
+
     const allSplits = await m.find(TransactionSplit, {
       where: { transactionId: parentTransactionId },
     });
@@ -902,20 +927,16 @@ export class TransactionTransferService {
       .map((split) => split.linkedTransactionId)
       .filter((id): id is string => Boolean(id) && id !== transactionId);
 
-    // One ordered lock over every ledger row this removal reverses: the split
-    // parent, its other transfer counterparts, and the leg the request named.
-    // Locking each row as it is reached is what lets two removals interleave and
-    // each reverse the same amount; the batch helper sorts, which is also the
-    // deadlock guard (see common/db/locks.ts). Every reversal below then derives
-    // its amount from the locked row and only fires when this call is the one
-    // that removed it (audit FV4-002).
+    // Now the legs, in one ascending batch. Locking each as it is reached is what
+    // let two removals interleave and each reverse the same amount; every reversal
+    // below derives its amount from the locked row and only fires when this call
+    // is the one that removed it (audit FV4-002).
     const locked = await lockTransactionRows(
       m,
-      [parentTransactionId, ...siblingLegIds, transaction.id],
+      [...siblingLegIds, transaction.id],
       userId,
     );
 
-    const parent = locked.get(parentTransactionId);
     if (parent) {
       for (const legId of siblingLegIds) {
         const leg = locked.get(legId);

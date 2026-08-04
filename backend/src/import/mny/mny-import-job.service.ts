@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, EntityManager, QueryFailedError } from "typeorm";
 import { tr } from "../../i18n/translate";
@@ -25,11 +26,22 @@ import { MnyImportOptions } from "./model/mny-import-options";
  * polls the row.
  *
  * Three things make that safe on Kubernetes, where every replica runs the same
- * code: the insert is guarded by a partial unique index, so two *requests*
- * racing to start an import produce one job; the claim is atomic, so two pods
- * racing over that one job produce one winner; and a running job heartbeats, so
- * a job whose pod died is reaped into `failed` + retryable instead of appearing
- * to run forever.
+ * code, and it takes all three -- the first two were once described as sufficient
+ * and were not:
+ *
+ * 1. **The claim is atomic**, so two pods racing to start the same job produce
+ *    one winner.
+ * 2. **A running job heartbeats**, so a job whose pod died is reaped into
+ *    `failed` instead of appearing to run forever -- retryable only when
+ *    `data_committed` says nothing was written.
+ * 3. **The claim mints an `attempt_token` and every worker write requires it.**
+ *    Reaping alone decides that a worker is dead; it does not *stop* it. The
+ *    heartbeat runs on its own connection while the import transaction runs on
+ *    another, so a worker can be blocked past the stale threshold, be written
+ *    off, and then wake up. Its commit checkpoint is a fenced compare-and-set on
+ *    the token, and a zero-row result throws -- rolling the import back rather
+ *    than committing the whole file behind the reaper's back, beside a job row
+ *    inviting a retry that would import it again (audit RV4-001).
  */
 
 /** A job with no heartbeat for this long is presumed dead. */
@@ -52,20 +64,6 @@ export const JOB_COMMITTED_STALLED_ERROR_KEY = "mnyJobStalledAfterCommit";
 
 /** i18n key for a failure with no more specific parse error. */
 export const JOB_FAILED_ERROR_KEY = "mnyImportFailed";
-
-/**
- * Thrown when a job discovers, inside its own write transaction, that it no
- * longer holds its user's import slot. Not a parse failure: retrying is exactly
- * the right thing to offer, since the staged bytes are untouched.
- */
-export class MnyImportSlotLostError extends Error {
-  constructor(jobId: string, status: string) {
-    super(
-      `Import job ${jobId} no longer holds the import slot (status ${status})`,
-    );
-    this.name = "MnyImportSlotLostError";
-  }
-}
 
 /** PostgreSQL SQLSTATE for a unique violation. */
 const UNIQUE_VIOLATION = "23505";
@@ -105,8 +103,33 @@ export function importAlreadyRunningException(): ConflictException {
 export interface JobRunContext {
   readonly jobId: string;
   readonly userId: string;
+  /**
+   * This attempt's fencing token, minted by `claim()`.
+   *
+   * The body must present it when it writes the commit checkpoint. It is the
+   * only thing that distinguishes "this worker still owns the job" from "the
+   * reaper gave the job away while this worker was blocked", and those two have
+   * to be told apart *before* the import transaction commits (audit RV4-001).
+   */
+  readonly attemptToken: string;
   /** Publishes progress the poller can see immediately. */
   reportProgress(progress: MnyImportProgress): Promise<void>;
+}
+
+/**
+ * The commit checkpoint was refused because this worker no longer owns the job.
+ *
+ * Thrown from inside the import transaction, so it rolls back: the alternative is
+ * a worker the reaper already wrote off committing the whole file anyway, beside a
+ * job row advertising a retry that would import it a second time.
+ */
+export class MnyJobFencedError extends Error {
+  constructor(jobId: string) {
+    super(
+      `Import job ${jobId} is no longer owned by this worker; rolling back its import transaction`,
+    );
+    this.name = "MnyJobFencedError";
+  }
 }
 
 export type JobBody = (context: JobRunContext) => Promise<MnyImportResult>;
@@ -218,69 +241,35 @@ export class MnyImportJobService {
   }
 
   /**
-   * Verifies this job still holds its user's import slot, **inside the caller's
-   * transaction**, and locks the row so the answer cannot change before commit.
+   * Moves a job from `pending` to `running`, atomically, and mints this attempt's
+   * fencing token. Returns the token, or null when another worker claimed it.
    *
-   * `claim` protects the start of a job; this protects the end of one. A job can
-   * lose its slot after claiming it, and in both cases the row is rewritten by
-   * something that cannot stop the worker:
-   *
-   *  - the one-active-job migration retires older duplicates on a database that
-   *    raced before the index existed. Every backend container runs migrations at
-   *    start-up and the Helm StatefulSet rolls pods one at a time, so a new pod
-   *    can retire a job an *old* pod is still importing;
-   *  - `reapStaleJobs` fails a `running` job whose heartbeat lapsed -- a real
-   *    possibility for a slow import on a loaded pod, not only for a dead one.
-   *
-   * Neither changes what the worker does. Status alone therefore cannot protect
-   * the data: by the time a terminal write happens the financial rows are already
-   * committed. Calling this as the last statement of the transaction that writes
-   * them makes the refusal roll them back instead, which is the repository's
-   * standing rule -- a rejected command must not already have written.
-   *
-   * `FOR UPDATE` matters as much as the predicate: it serializes this check
-   * against a concurrent retirement, so the loser of that race sees the committed
-   * outcome rather than a snapshot taken before it.
-   *
-   * @param manager the EntityManager of the ACTIVE transaction whose writes this
-   *   is guarding -- checked in a separate transaction it guarantees nothing.
+   * The `WHERE status = 'pending'` is the concurrency control between two workers
+   * racing to start: whichever statement commits first updates one row, the other
+   * updates none. The token is the control over the *rest* of the attempt -- every
+   * subsequent write names it, so a worker whose job was reaped mid-run cannot
+   * commit, complete, or fail anything (audit RV4-001).
    */
-  async assertStillHoldsSlot(
-    manager: EntityManager,
-    jobId: string,
-  ): Promise<void> {
-    const rows: Array<{ status: string }> = await manager.query(
-      `SELECT status FROM import_jobs WHERE id = $1 FOR UPDATE`,
-      [jobId],
-    );
-    const status = rows[0]?.status ?? "missing";
-    if (status !== "running") {
-      throw new MnyImportSlotLostError(jobId, status);
-    }
-  }
-
-  /**
-   * Moves a job from `pending` to `running`, atomically.
-   *
-   * The `WHERE status = 'pending'` is the whole concurrency control: whichever
-   * statement commits first updates one row, the other updates none.
-   */
-  async claim(jobId: string): Promise<boolean> {
+  async claim(jobId: string): Promise<string | null> {
+    const attemptToken = randomUUID();
     const result = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
         `UPDATE import_jobs
             SET status = 'running',
                 started_at = CURRENT_TIMESTAMP,
                 heartbeat_at = CURRENT_TIMESTAMP,
+                attempt_token = $2,
                 error_key = NULL,
                 error_detail = NULL,
                 retryable = false
           WHERE id = $1 AND status = 'pending'
           RETURNING id`,
-        [jobId],
+        [jobId, attemptToken],
       ),
     );
-    return returnedRows<{ id: string }>(result).length > 0;
+    return returnedRows<{ id: string }>(result).length > 0
+      ? attemptToken
+      : null;
   }
 
   /**
@@ -290,29 +279,35 @@ export class MnyImportJobService {
    */
   async reportProgress(
     jobId: string,
+    attemptToken: string,
     progress: MnyImportProgress,
   ): Promise<void> {
     await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
           `UPDATE import_jobs
-              SET progress = $2::jsonb, heartbeat_at = CURRENT_TIMESTAMP
-            WHERE id = $1 AND status = 'running'`,
-          [jobId, JSON.stringify(progress)],
+              SET progress = $3::jsonb, heartbeat_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND status = 'running' AND attempt_token = $2`,
+          [jobId, attemptToken, JSON.stringify(progress)],
         ),
       ),
     );
   }
 
-  /** Proof of life for the reaper, on the same escape hatch as progress. */
-  async heartbeat(jobId: string): Promise<void> {
+  /**
+   * Proof of life for the reaper, on the same escape hatch as progress.
+   *
+   * Token-scoped like every other worker write: once the reaper has taken the job
+   * away, this worker's heartbeat must not be able to make it look alive again.
+   */
+  async heartbeat(jobId: string, attemptToken: string): Promise<void> {
     await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
           `UPDATE import_jobs
               SET heartbeat_at = CURRENT_TIMESTAMP
-            WHERE id = $1 AND status = 'running'`,
-          [jobId],
+            WHERE id = $1 AND status = 'running' AND attempt_token = $2`,
+          [jobId, attemptToken],
         ),
       ),
     );
@@ -330,11 +325,23 @@ export class MnyImportJobService {
   async markDataCommitted(
     manager: EntityManager,
     jobId: string,
+    attemptToken: string,
   ): Promise<void> {
-    await manager.query(
-      `UPDATE import_jobs SET data_committed = true WHERE id = $1`,
-      [jobId],
+    const updated = await manager.query(
+      `UPDATE import_jobs
+          SET data_committed = true
+        WHERE id = $1 AND status = 'running' AND attempt_token = $2
+        RETURNING id`,
+      [jobId, attemptToken],
     );
+    if (returnedRows<{ id: string }>(updated).length === 0) {
+      // The fence. The reaper failed this job while this worker was blocked --
+      // clearing the token and advertising a retry -- so committing now would put
+      // the whole file in the ledger beside an invitation to import it again.
+      // Throwing here rolls the import transaction back, which is only possible
+      // because this is its last statement.
+      throw new MnyJobFencedError(jobId);
+    }
   }
 
   /**
@@ -344,24 +351,28 @@ export class MnyImportJobService {
    * stalled long enough for the reaper to fail its job would otherwise wake up
    * and overwrite that terminal state with `completed`, so the row would claim
    * success for a run nobody supervised. Terminal states are monotonic.
+   *
+   * `attempt_token` narrows that further to *this* attempt, and the transition
+   * clears it: a completed job has no attempt left to fence.
    */
-  async complete(jobId: string, result: MnyImportResult): Promise<boolean> {
+  async complete(
+    jobId: string,
+    attemptToken: string,
+    result: MnyImportResult,
+  ): Promise<boolean> {
     const updated = await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
-          // `AND status = 'running'`: a job retired while its body ran must not
-          // be flipped back to completed. `assertStillHoldsSlot` normally makes
-          // this unreachable by rolling the body back first; this is the second
-          // line of defence, and it keeps the audit trail honest either way.
           `UPDATE import_jobs
               SET status = 'completed',
-                  result = $2::jsonb,
+                  result = $3::jsonb,
                   progress = NULL,
+                  attempt_token = NULL,
                   completed_at = CURRENT_TIMESTAMP,
                   retryable = false
-            WHERE id = $1 AND status = 'running'
+            WHERE id = $1 AND status = 'running' AND attempt_token = $2
             RETURNING id`,
-          [jobId, JSON.stringify(result)],
+          [jobId, attemptToken, JSON.stringify(result)],
         ),
       ),
     );
@@ -383,12 +394,19 @@ export class MnyImportJobService {
    * caller believes, because retrying it inserts every source row a second time
    * under fresh UUIDs. The caller cannot know this -- the checkpoint can be set
    * after the caller's own decision -- so the predicate lives in the statement.
+   *
+   * `attemptToken` is optional because two kinds of caller fail a job. A worker
+   * inside `runClaimed` passes its token, so a worker whose job the reaper already
+   * took cannot rewrite the terminal state it was given. The paths that fail a job
+   * *before* any worker claimed it -- staging gone, options rejected -- have no
+   * token and omit it, which is the `$5 IS NULL` arm.
    */
   async fail(
     jobId: string,
     errorKey: string,
     errorDetail: string,
     retryable: boolean,
+    attemptToken?: string,
   ): Promise<boolean> {
     const updated = await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
@@ -399,10 +417,13 @@ export class MnyImportJobService {
                   error_detail = $3,
                   retryable = ($4 AND data_committed = false),
                   progress = NULL,
+                  attempt_token = NULL,
                   completed_at = CURRENT_TIMESTAMP
-            WHERE id = $1 AND status IN ('pending', 'running')
+            WHERE id = $1
+              AND status IN ('pending', 'running')
+              AND ($5::uuid IS NULL OR attempt_token = $5::uuid)
             RETURNING id`,
-          [jobId, errorKey, errorDetail, retryable],
+          [jobId, errorKey, errorDetail, retryable, attemptToken ?? null],
         ),
       ),
     );
@@ -425,15 +446,16 @@ export class MnyImportJobService {
     jobId: string,
     body: JobBody,
   ): Promise<boolean> {
-    if (!(await this.claim(jobId))) {
+    const attemptToken = await this.claim(jobId);
+    if (!attemptToken) {
       return false;
     }
 
     // unref: a pending heartbeat must never keep the process alive at shutdown.
     const beat = setInterval(() => {
-      void withUserContext(userId, () => this.heartbeat(jobId)).catch(
-        () => undefined,
-      );
+      void withUserContext(userId, () =>
+        this.heartbeat(jobId, attemptToken),
+      ).catch(() => undefined);
     }, JOB_HEARTBEAT_INTERVAL_MS);
     beat.unref();
 
@@ -441,26 +463,35 @@ export class MnyImportJobService {
       const result = await body({
         jobId,
         userId,
-        reportProgress: (progress) => this.reportProgress(jobId, progress),
+        attemptToken,
+        reportProgress: (progress) =>
+          this.reportProgress(jobId, attemptToken, progress),
       });
-      await this.complete(jobId, result);
+      await this.complete(jobId, attemptToken, result);
       this.logger.log(`Import job ${jobId} completed`);
     } catch (error) {
       const isParseFailure = error instanceof MnyImportError;
       const detail = error instanceof Error ? error.message : String(error);
-      if (error instanceof MnyImportSlotLostError) {
-        // The row already says why, written by whatever retired it. Overwriting
-        // it here would replace that explanation with a generic failure.
-        this.logger.warn(detail);
-        return true;
-      }
+      // The token goes with it: a fenced worker must not be able to rewrite the
+      // terminal state the reaper already set, and `fail` refuses on a mismatch
+      // rather than silently overwriting it.
       await this.fail(
         jobId,
         isParseFailure ? error.code : JOB_FAILED_ERROR_KEY,
         detail,
         !isParseFailure,
+        attemptToken,
       );
-      this.logger.error(`Import job ${jobId} failed: ${detail}`);
+      if (error instanceof MnyJobFencedError) {
+        // Not the ordinary failure log: the run was abandoned by the reaper and
+        // rolled itself back, which an operator reading "import failed" would
+        // otherwise have to infer.
+        this.logger.error(
+          `Import job ${jobId} was reaped while running; its import transaction rolled back and committed nothing`,
+        );
+      } else {
+        this.logger.error(`Import job ${jobId} failed: ${detail}`);
+      }
     } finally {
       clearInterval(beat);
     }
@@ -515,6 +546,12 @@ export class MnyImportJobService {
                     END,
                     retryable = (data_committed = false),
                     progress = NULL,
+                    -- Revocation. Clearing the token is what makes this decision
+                    -- stick: the worker's own commit checkpoint names the token,
+                    -- so once it is gone that worker's import transaction refuses
+                    -- and rolls back instead of landing behind our back
+                    -- (audit RV4-001).
+                    attempt_token = NULL,
                     completed_at = CURRENT_TIMESTAMP
               WHERE (
                       status = 'running'

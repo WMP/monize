@@ -129,6 +129,18 @@ export class ImportJob {
   dataCommitted: boolean;
 
   /** Bumped by the running job; the reaper's liveness signal. */
+  /**
+   * The current attempt's identity, minted by `claim()` (migration 135).
+   *
+   * Every write the worker makes requires it, and the reaper clears it when it
+   * takes the job away -- which is what stops a worker that has already lost the
+   * job from committing anyway. `retryable` cannot express this: it describes what
+   * happened, and the question is whether the write may happen at all
+   * (audit RV4-001).
+   */
+  @Column({ type: "uuid", name: "attempt_token", nullable: true })
+  attemptToken: string | null;
+
   @Column({ type: "timestamp", name: "heartbeat_at", nullable: true })
   heartbeatAt: Date | null;
 

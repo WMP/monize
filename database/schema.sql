@@ -1434,6 +1434,12 @@ CREATE TABLE import_jobs (
     -- metadata is missing" -- two states the retryable flag used to fold into
     -- one and offer as an ordinary retry, which re-imported the file.
     data_committed BOOLEAN NOT NULL DEFAULT false,
+    -- The current attempt's identity (migration 135), minted by `claim()` and
+    -- required by every write the worker makes. The reaper clears it, which is
+    -- what stops a worker it already gave up on from committing anyway: the
+    -- import transaction's last statement is a fenced compare-and-set on this
+    -- column, and a zero-row result rolls the whole import back (audit RV4-001).
+    attempt_token UUID,
     heartbeat_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
