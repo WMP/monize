@@ -1897,6 +1897,106 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-006 (reopened a THIRD time). Three $450 principal-only
+     * transfers, but the interest-category query finds NOTHING at all --
+     * no standalone interest expense anywhere near any of the three
+     * payments (missing from the ledger entirely, or uncategorized). Before
+     * this fix, `pairSeparateInterest` returned the three records unmarked
+     * (interestTxns.length === 0 short-circuited before any record was
+     * touched), so `detectRegularAmount` could not tell this apart from "no
+     * separate interest at all" and fell back to voting over the full set,
+     * reporting the $450 principal-only subtotal as if it were the whole
+     * $500 installment. The full installment genuinely cannot be
+     * established from what's available, so `paymentAmount` must now come
+     * back null/unknown rather than $450 -- see "Missing data: a subtotal
+     * is not a total" in root CLAUDE.md.
+     */
+    it("reports no payment amount when a SEPARATE-mode account has zero paired interest across every record", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestCategoryId: "cat-int",
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 450, // Principal transfer only -- interest booked separately
+        isTransfer: true,
+        isSplit: false,
+        linkedTransactionId: `linked-${i}`,
+      }));
+
+      transactionRepository.find.mockImplementation((opts: any) => {
+        if (opts?.where?.categoryId) {
+          // No standalone interest expense anywhere near any payment --
+          // separate interest is expected (interestCategoryId is set) but
+          // none of it could be found at all.
+          return Promise.resolve([]);
+        }
+        return Promise.resolve(loanTxns);
+      });
+
+      transactionRepository.findOne.mockImplementation(({ where }: any) => {
+        if (where?.id?.startsWith("linked-")) {
+          return Promise.resolve({
+            id: where.id,
+            accountId: "chequing-1",
+            amount: -450,
+            account: { name: "Checking" },
+            isSplit: false,
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      // Not $450 (principal-only subtotal masquerading as the total) and
+      // not a DetectedLoanPayment at all -- the existing "cannot detect a
+      // pattern" convention in this function is to return null outright.
+      expect(result).toBeNull();
+    });
+
+    /**
+     * Confirms the fix above is scoped to "SEPARATE mode, zero successful
+     * pairings" and does not regress the legitimately different state of
+     * "this account has no separate interest at all" (no interestCategoryId
+     * configured, so `pairSeparateInterest` never runs its pairing logic).
+     * That case must keep reporting its normal detected amount from the
+     * loan-side transfer amounts directly.
+     */
+    it("still detects a normal payment amount when the account has no separate interest configured at all", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestCategoryId: null,
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 500,
+        isTransfer: false,
+        isSplit: false,
+        linkedTransactionId: null,
+      }));
+
+      transactionRepository.find.mockResolvedValue(loanTxns);
+      transactionRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(result).not.toBeNull();
+      expect(result!.paymentAmount).toBe(500);
+      expect(result!.paymentCount).toBe(3);
+    });
+
+    /**
      * REV-20260803-007. A SPLIT-mode account books interest only as a split
      * leg of the transfer. A payment missing that split must not acquire a
      * standalone expense from the configured interest category -- that
@@ -2204,6 +2304,34 @@ describe("LoanPaymentDetectorService", () => {
 
       expect(result[0].interestAmount).toBeCloseTo(153.63, 2);
       expect(result[1].interestAmount).toBeNull();
+    });
+
+    /**
+     * REV-20260803-006 (reopened a third time). Distinct from "no interest
+     * category configured" (returns payments untouched, above) and "no
+     * source account" (also returns payments untouched, below): here the
+     * account DOES expect separate interest and the payments DO have known
+     * source accounts, but the query for that category found nothing at
+     * all. Every record must come back marked `interestUnmatched: true` so
+     * `detectRegularAmount` can tell this apart from "not applicable" and
+     * refuse to vote over the resulting principal-only subtotals.
+     */
+    it("marks every record interestUnmatched when the interest-category query finds nothing at all", async () => {
+      const payments = [
+        makePayment("2026-01-05"),
+        makePayment("2026-02-05"),
+        makePayment("2026-03-05"),
+      ];
+      transactionRepository.find.mockResolvedValue([]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result.every((p) => p.interestUnmatched === true)).toBe(true);
+      expect(result.every((p) => p.interestAmount == null)).toBe(true);
     });
 
     it("skips the lookup when the payments have no source account", async () => {

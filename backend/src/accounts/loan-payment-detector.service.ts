@@ -490,7 +490,25 @@ export class LoanPaymentDetectorService {
         },
       }),
     );
-    if (interestTxns.length === 0) return payments;
+    if (interestTxns.length === 0) {
+      // interestCategoryId is configured (this account expects separate
+      // interest) and at least one payment has a known source account, but
+      // the query found NO separate-interest transactions at all for these
+      // accounts in the whole date range -- not "nothing to pair against"
+      // (that already returned above, at the interestCategoryId and
+      // sourceIds checks), but "we looked, and every payment's pairing
+      // attempt failed because there is nothing to pair with." Every plain-
+      // transfer record must carry the same interestUnmatched signal a
+      // partial failure would below, rather than being returned clean as if
+      // the question never applied -- otherwise detectRegularAmount cannot
+      // tell this apart from an account with no separate interest at all and
+      // will vote over principal-only amounts as if they were complete
+      // installments. See REV-20260803-006 (reopened a third time for
+      // exactly this gap).
+      return payments.map((p) =>
+        p.interestAmount != null ? p : { ...p, interestUnmatched: true },
+      );
+    }
 
     const tolerance = this.paymentPeriodToleranceDays(payments);
     const byDate = new Map<string, number>();
@@ -669,27 +687,47 @@ export class LoanPaymentDetectorService {
    * incomplete majority beat a complete minority -- three $450 principal-only
    * records outvoting one correctly-completed $500 record, even though $500
    * is the real installment (REV-20260803-006, reopened). So the vote is
-   * restricted to complete records whenever at least one exists; the full
-   * set (including unmatched ones) is only used when NONE of the records are
-   * complete, which covers both "this account has no separate interest at
-   * all" and "pairing has not run/found anything yet" -- there the
-   * unmatched, principal-only amounts are the only data available, and
-   * reporting the previous (imperfect but present) answer is preferable to
-   * reporting nothing.
+   * restricted to complete records whenever at least one exists.
+   *
+   * `completePayments` is empty in exactly two situations, and only one of
+   * them is safe to vote over:
+   *   - Every record has `interestUnmatched: undefined`/`false` -- SPLIT
+   *     mode, or a SEPARATE-mode account with no separate-interest data at
+   *     all -- is impossible here, because the filter keeps every record
+   *     when none carry the flag, so `completePayments.length` would equal
+   *     `payments.length` (which is >= 2), never 0.
+   *   - Every record has `interestUnmatched: true` -- a SEPARATE-mode
+   *     account where pairing was attempted for every payment and failed for
+   *     every one (missing data or nothing close enough to pair). There is
+   *     no complete record left to vote with, and every candidate's `amount`
+   *     is a known-principal-only subtotal, not the full installment. Voting
+   *     over it and returning the majority would report that subtotal in the
+   *     total's field -- the exact "Missing data: a subtotal is not a total"
+   *     violation root CLAUDE.md forbids -- so this returns `null`
+   *     ("cannot determine") instead, matching `detectPaymentPattern`'s
+   *     existing convention of returning `null` for every other
+   *     undetectable-pattern case (see its `if (!regularAmount) return null`
+   *     caller). Reopened a third time because a prior pass treated this
+   *     case as "no data available, so fall back and report an imperfect
+   *     answer" -- but a known-incomplete answer is not the same as no
+   *     answer, and reporting it as if it were complete is worse than
+   *     reporting nothing.
    */
   private detectRegularAmount(payments: PaymentRecord[]): number | null {
     const completePayments = payments.filter((p) => !p.interestUnmatched);
-    const candidates =
-      completePayments.length > 0 ? completePayments : payments;
+
+    if (completePayments.length === 0) {
+      return null;
+    }
 
     // A single complete record is still a fully-known installment -- it
     // outranks any number of incomplete ones in the excluded remainder, so
     // there's nothing to vote against within the trusted subset.
-    if (candidates.length === 1) {
-      return candidates[0].amount;
+    if (completePayments.length === 1) {
+      return completePayments[0].amount;
     }
 
-    return this.detectRegularAmountFromSet(candidates);
+    return this.detectRegularAmountFromSet(completePayments);
   }
 
   /**
