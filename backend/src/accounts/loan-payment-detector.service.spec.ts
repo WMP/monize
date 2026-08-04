@@ -1826,6 +1826,77 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-006 (reopened). Three $450 principal-only transfers, but
+     * only ONE has a standalone interest expense close enough to pair (the
+     * other two have no matching separate interest nearby -- e.g. not
+     * imported, not categorized, or just outside the pairing window). Before
+     * this fix, the two unmatched $450 records outvoted the one correctly
+     * completed $500 record in `detectRegularAmount`'s majority vote, so the
+     * detected `paymentAmount` was the wrong, incomplete $450 rather than the
+     * real $500 installment the paired record establishes.
+     */
+    it("does not let unmatched principal-only payments outvote a correctly-paired installment", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestCategoryId: "cat-int",
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 450, // Principal transfer only -- interest booked separately
+        isTransfer: true,
+        isSplit: false,
+        linkedTransactionId: `linked-${i}`,
+      }));
+
+      transactionRepository.find.mockImplementation((opts: any) => {
+        if (opts?.where?.categoryId) {
+          // Only the FIRST payment has a matching standalone interest
+          // expense nearby -- the other two dates have none, simulating
+          // partially imported/uncategorized interest history.
+          return Promise.resolve([
+            {
+              transactionDate: dates[0],
+              amount: -50,
+              accountId: "chequing-1",
+              categoryId: "cat-int",
+            },
+          ]);
+        }
+        return Promise.resolve(loanTxns);
+      });
+
+      transactionRepository.findOne.mockImplementation(({ where }: any) => {
+        if (where?.id?.startsWith("linked-")) {
+          return Promise.resolve({
+            id: where.id,
+            accountId: "chequing-1",
+            amount: -450,
+            account: { name: "Checking" },
+            isSplit: false,
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(result).not.toBeNull();
+      // The one paired record establishes the real $500 installment; the two
+      // unmatched $450 records must not win the majority vote against it.
+      expect(result!.paymentAmount).toBe(500);
+      // All three payments are still part of the payment schedule (the
+      // amount vote excludes the unmatched ones, but they aren't dropped
+      // from frequency/next-due-date detection just because they lack
+      // paired interest).
+      expect(result!.paymentCount).toBe(3);
+    });
+
+    /**
      * REV-20260803-007. A SPLIT-mode account books interest only as a split
      * leg of the transfer. A payment missing that split must not acquire a
      * standalone expense from the configured interest category -- that

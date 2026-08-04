@@ -61,6 +61,19 @@ export interface PaymentRecord {
   principalSplitAmounts: number[];
   interestCategoryId: string | null;
   interestCategoryName: string | null;
+  /**
+   * True when this account books interest separately (not as a split leg)
+   * and `pairSeparateInterest` looked for -- but could not find -- a nearby
+   * standalone interest expense to pair with this payment. `amount` is then
+   * a principal-only subtotal, not the full installment, even though other
+   * payments in the same set may have paired successfully and carry the
+   * complete amount. Left `undefined`/`false` for every record where the
+   * question does not apply: split-based interest, SPLIT-mode accounts, and
+   * accounts with no separate-interest data at all (nothing to pair against,
+   * a valid state distinct from "pairing was attempted and failed").
+   * See REV-20260803-006 (reopened).
+   */
+  interestUnmatched?: boolean;
 }
 
 @Injectable()
@@ -148,9 +161,28 @@ export class LoanPaymentDetectorService {
       return null;
     }
 
-    // Filter to only regular payments (within 5% of detected amount)
+    // Filter to only regular payments (within 5% of detected amount).
+    // An unmatched record's `amount` is principal-only (see
+    // PaymentRecord.interestUnmatched / REV-20260803-006), so it will never
+    // land near an interest-inclusive regularAmount on its own -- that would
+    // wrongly drop it from the payment schedule (frequency, next-due-date)
+    // on top of already being excluded from the amount vote. For comparison
+    // only (never for the reported amount), add back the average interest
+    // from records that did pair successfully, if any exist.
+    const knownInterestAmounts = payments
+      .map((p) => p.interestAmount)
+      .filter((v): v is number => v != null);
+    const avgKnownInterest =
+      knownInterestAmounts.length > 0
+        ? sumMoney(knownInterestAmounts) / knownInterestAmounts.length
+        : null;
+    const comparisonAmount = (p: PaymentRecord): number =>
+      p.interestUnmatched && avgKnownInterest != null
+        ? roundMoney(p.amount + avgKnownInterest)
+        : p.amount;
     const regularPayments = payments.filter(
-      (p) => Math.abs(p.amount - regularAmount) / regularAmount < 0.05,
+      (p) =>
+        Math.abs(comparisonAmount(p) - regularAmount) / regularAmount < 0.05,
     );
 
     if (regularPayments.length < 2) {
@@ -492,7 +524,15 @@ export class LoanPaymentDetectorService {
     return payments.map((p) => {
       if (p.interestAmount != null) return p;
       const summed = byDate.get(p.date.split("T")[0]);
-      if (summed == null || summed <= 0) return p;
+      if (summed == null || summed <= 0) {
+        // We got this far because separate-interest data exists for this
+        // account (interestTxns.length > 0 above) -- so this is not the
+        // "no separate interest at all" state, it is a specific payment we
+        // tried and failed to pair. Its `amount` remains principal-only and
+        // must not be allowed to outvote a payment whose installment is
+        // fully known (see detectRegularAmount / REV-20260803-006).
+        return { ...p, interestUnmatched: true };
+      }
       const recoveredInterest = roundMoney(summed);
       // A payment reaching this branch had no interest split leg, so `amount`
       // (built from the loan-side transfer or its linked source transaction)
@@ -621,8 +661,43 @@ export class LoanPaymentDetectorService {
   /**
    * Detect the most common payment amount (the regular payment).
    * Groups amounts within 1 cent tolerance and returns the mode.
+   *
+   * An unmatched SEPARATE-mode record (see `PaymentRecord.interestUnmatched`)
+   * carries a principal-only subtotal, not the full installment, because
+   * `pairSeparateInterest` could not find its paired interest. Letting it
+   * vote alongside records whose installment is fully known lets an
+   * incomplete majority beat a complete minority -- three $450 principal-only
+   * records outvoting one correctly-completed $500 record, even though $500
+   * is the real installment (REV-20260803-006, reopened). So the vote is
+   * restricted to complete records whenever at least one exists; the full
+   * set (including unmatched ones) is only used when NONE of the records are
+   * complete, which covers both "this account has no separate interest at
+   * all" and "pairing has not run/found anything yet" -- there the
+   * unmatched, principal-only amounts are the only data available, and
+   * reporting the previous (imperfect but present) answer is preferable to
+   * reporting nothing.
    */
   private detectRegularAmount(payments: PaymentRecord[]): number | null {
+    const completePayments = payments.filter((p) => !p.interestUnmatched);
+    const candidates =
+      completePayments.length > 0 ? completePayments : payments;
+
+    // A single complete record is still a fully-known installment -- it
+    // outranks any number of incomplete ones in the excluded remainder, so
+    // there's nothing to vote against within the trusted subset.
+    if (candidates.length === 1) {
+      return candidates[0].amount;
+    }
+
+    return this.detectRegularAmountFromSet(candidates);
+  }
+
+  /**
+   * Majority-vote / fuzzy amount detection over a specific candidate set.
+   * Extracted from `detectRegularAmount` so the caller can restrict the
+   * candidate set to complete (interest-paired, where applicable) records.
+   */
+  private detectRegularAmountFromSet(payments: PaymentRecord[]): number | null {
     // Round amounts to 2 decimal places and count occurrences
     const amountCounts = new Map<number, number>();
     for (const p of payments) {
