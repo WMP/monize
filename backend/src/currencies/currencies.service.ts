@@ -353,6 +353,28 @@ export class CurrenciesService implements OnApplicationBootstrap {
     const upperCode = code.toUpperCase();
     const currency = await this.findOne(upperCode);
 
+    // Lock the parent row before anything that depends on its liveness.
+    //
+    // Without this, the transaction boundary alone is not enough. A concurrent
+    // activation is an INSERT into `user_currency_preferences`, whose FK to
+    // `currencies(code)` is `ON DELETE CASCADE`: another user could insert and
+    // commit a preference after the global liveness check said the code was free
+    // and before the DELETE ran, and the cascade then removed the row they had
+    // just been told was saved. They got a success response and lost the setting.
+    //
+    // `FOR UPDATE` on the parent is what serialises this, and it does so through
+    // the FK machinery rather than in spite of it: an FK check takes `FOR KEY
+    // SHARE` on the parent row, which conflicts with `FOR UPDATE`. So B's insert
+    // waits, and once this transaction commits the delete, B's FK check fails
+    // with a plain violation -- a clear error instead of a silent removal.
+    //
+    // `findOne` above is a plain read and cannot carry the lock, so this is a
+    // separate statement rather than a locked variant of it: the row identity is
+    // already known, and what is needed here is the lock, not the columns.
+    await manager.query("SELECT 1 FROM currencies WHERE code = $1 FOR UPDATE", [
+      upperCode,
+    ]);
+
     // Check if in use by this user
     const inUse = await this.isInUse(userId, upperCode);
     if (inUse) {

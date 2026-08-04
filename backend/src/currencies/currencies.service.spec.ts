@@ -563,6 +563,31 @@ describe("CurrenciesService", () => {
   });
 
   describe("remove()", () => {
+    /**
+     * Route by the SQL, not by call order.
+     *
+     * These tests used positional `mockResolvedValueOnce` chains, so adding the
+     * `FOR UPDATE` lock -- a query that returns nothing and is asserted for its
+     * side effect -- broke three of them for a reason that had nothing to do with
+     * what they were testing. A fixture that has to be renumbered whenever a
+     * statement is inserted is measuring the sequence rather than the behaviour.
+     */
+    const answering = (opts: {
+      inUseByUser?: boolean;
+      inUseGlobally?: boolean;
+    }) => {
+      mockDataSource.query.mockImplementation(async (sql: string) => {
+        if (/FOR UPDATE/i.test(sql)) return [];
+        if (sql.includes("currency_codes_referenced_by_user_data")) {
+          return [{ inUse: opts.inUseByUser ?? false }];
+        }
+        if (sql.includes("currency_code_in_use_globally")) {
+          return [{ inUse: opts.inUseGlobally ?? false }];
+        }
+        return [];
+      });
+    };
+
     it("removes preference row for a currency not in use", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(mockCurrency);
       mockDataSource.query.mockResolvedValue([{ inUse: false }]);
@@ -591,11 +616,7 @@ describe("CurrenciesService", () => {
         createdByUserId: userId,
       };
       mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      // First query: isInUse returns false
-      // Second query: isInUseGlobally returns false
-      mockDataSource.query
-        .mockResolvedValueOnce([{ inUse: false }])
-        .mockResolvedValueOnce([{ inUse: false }]);
+      answering({ inUseByUser: false, inUseGlobally: false });
       mockPrefRepo.delete!.mockResolvedValue(undefined);
       mockPrefRepo.count!.mockResolvedValue(0);
       mockCurrencyRepo.remove!.mockResolvedValue(undefined);
@@ -628,9 +649,7 @@ describe("CurrenciesService", () => {
       // isInUse (this user) says no; the global check says yes -- which is the
       // only combination that can happen when another user activated the code,
       // because everything this user owns was already ruled out.
-      mockDataSource.query
-        .mockResolvedValueOnce([{ inUse: false }])
-        .mockResolvedValueOnce([{ inUse: true }]);
+      answering({ inUseByUser: false, inUseGlobally: true });
       mockPrefRepo.delete!.mockResolvedValue(undefined);
 
       await service.remove(userId, "CAD");
@@ -673,17 +692,67 @@ describe("CurrenciesService", () => {
         createdByUserId: userId,
       };
       mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      // First query: isInUse returns false
-      // Second query: isInUseGlobally returns true
-      mockDataSource.query
-        .mockResolvedValueOnce([{ inUse: false }])
-        .mockResolvedValueOnce([{ inUse: true }]);
+      answering({ inUseByUser: false, inUseGlobally: true });
       mockPrefRepo.delete!.mockResolvedValue(undefined);
       mockPrefRepo.count!.mockResolvedValue(0);
 
       await service.remove(userId, "CAD");
 
       expect(mockCurrencyRepo.remove).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The lock is the whole of F3R-005. Without it the transaction boundary is
+     * not enough: an activation is an INSERT into `user_currency_preferences`
+     * whose FK to `currencies(code)` cascades on delete, so another user could
+     * commit a preference between the global liveness check and the DELETE and
+     * have it removed by the cascade -- after being told it was saved.
+     *
+     * `FOR UPDATE` conflicts with the `FOR KEY SHARE` an FK check takes on the
+     * parent, so the concurrent insert waits and then fails cleanly. Only a
+     * two-connection integration test can show that; what this asserts is the
+     * ordering the lock has to have, which is what a later refactor would break.
+     */
+    it("locks the currency row before any liveness-dependent step", async () => {
+      const userCurrency = { ...mockCurrency, createdByUserId: userId };
+      mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
+
+      const order: string[] = [];
+      mockDataSource.query.mockImplementation(async (sql: string) => {
+        if (/FOR UPDATE/i.test(sql)) {
+          order.push("lock");
+          return [];
+        }
+        if (sql.includes("currency_codes_referenced_by_user_data")) {
+          order.push("isInUse");
+          return [{ inUse: false }];
+        }
+        if (sql.includes("currency_code_in_use_globally")) {
+          order.push("globalCheck");
+          return [{ inUse: false }];
+        }
+        return [];
+      });
+      mockPrefRepo.delete!.mockImplementation(async () => {
+        order.push("deletePreference");
+        return undefined;
+      });
+      mockCurrencyRepo.remove!.mockImplementation(async () => {
+        order.push("deleteCurrency");
+        return undefined;
+      });
+
+      await service.remove(userId, "CAD");
+
+      expect(order).toEqual([
+        "lock",
+        "isInUse",
+        "deletePreference",
+        "globalCheck",
+        "deleteCurrency",
+      ]);
+      // Specifically: nothing that depends on liveness happens before the lock.
+      expect(order.indexOf("lock")).toBe(0);
     });
 
     it("uppercases code before processing", async () => {

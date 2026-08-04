@@ -861,6 +861,112 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
     });
 
     /**
+     * The race the definer function alone does not close (F3R-005).
+     *
+     * Deleting a currency is: check whether anybody still references the code,
+     * then delete the row. `user_currency_preferences.currency_code` cascades on
+     * delete, so a preference another user inserts and commits between those two
+     * steps is removed by the cascade -- they get a success response and
+     * immediately lose the setting.
+     *
+     * `SELECT ... FOR UPDATE` on the parent is what serialises it, through the FK
+     * machinery rather than around it: an FK check takes `FOR KEY SHARE` on the
+     * parent row, which conflicts. So the concurrent insert waits, and once the
+     * deleting transaction commits, the insert fails with a plain FK violation.
+     *
+     * Two real connections, because one cannot demonstrate a lock.
+     */
+    it("makes a concurrent activation wait for the delete, then fail cleanly", async () => {
+      const CODE = "RCE";
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ($1, 'Race Points', 'R', 0, true, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [CODE, USER_A],
+      );
+
+      const other = new DataSource({
+        ...INTEGRATION_TYPEORM_OPTIONS,
+        synchronize: false,
+        dropSchema: false,
+        extra: { max: 1 },
+      } as never);
+      await other.initialize();
+
+      try {
+        let activationSettled = false;
+        let activationError: unknown;
+
+        // A: hold the lock the delete path takes, with nothing else in flight.
+        const deleter = dataSource.transaction(async (m) => {
+          await m.query("SELECT 1 FROM currencies WHERE code = $1 FOR UPDATE", [
+            CODE,
+          ]);
+
+          // B: activate the same code. Its FK check needs FOR KEY SHARE on the
+          // locked parent, so it must block rather than commit.
+          const activation = other
+            .transaction(async (n) =>
+              n.query(
+                `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+                 VALUES ($1, $2, true)`,
+                [USER_B, CODE],
+              ),
+            )
+            .then(
+              () => {
+                activationSettled = true;
+              },
+              (error) => {
+                activationSettled = true;
+                activationError = error;
+              },
+            );
+
+          // Give it real time to prove it is waiting rather than merely slow.
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          expect(activationSettled).toBe(false);
+
+          await m.query("DELETE FROM currencies WHERE code = $1", [CODE]);
+          return activation;
+        });
+
+        await deleter;
+        // Whatever the deleter returned, wait for B to settle after the commit.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        // The forbidden outcome is a committed preference the cascade removed.
+        // Either B failed, or B holds a preference for a currency that still
+        // exists -- never a success that left nothing behind.
+        expect(activationSettled).toBe(true);
+        const surviving = await dataSource.query(
+          "SELECT 1 FROM user_currency_preferences WHERE user_id = $1 AND currency_code = $2",
+          [USER_B, CODE],
+        );
+        if (activationError === undefined) {
+          expect(surviving).toHaveLength(1);
+        } else {
+          expect(surviving).toHaveLength(0);
+        }
+        // And the code really is gone, so the delete was not what lost.
+        const currency = await dataSource.query(
+          "SELECT 1 FROM currencies WHERE code = $1",
+          [CODE],
+        );
+        expect(currency).toHaveLength(0);
+      } finally {
+        await other.destroy();
+        await dataSource.query(
+          "DELETE FROM user_currency_preferences WHERE currency_code = $1",
+          [CODE],
+        );
+        await dataSource.query("DELETE FROM currencies WHERE code = $1", [
+          CODE,
+        ]);
+      }
+    });
+
+    /**
      * The per-user companion, which the delete gate asks before removing the
      * caller's activation row. `CurrenciesService.isInUse` used to spell the
      * referencing columns out itself and was missing `budgets.currency_code`, so
