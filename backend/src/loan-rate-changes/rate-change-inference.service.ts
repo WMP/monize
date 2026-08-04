@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, LessThanOrEqual } from "typeorm";
 import { tr } from "../i18n/translate";
+import { todayYMD } from "../common/date-utils";
 import { withScopedDb } from "../common/db/scoped-db";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
@@ -82,12 +83,27 @@ export class RateChangeInferenceService {
       accountId,
     );
 
-    const transactions = await withScopedDb(this.dataSource, (m) =>
+    // `account.currentBalance` never reflects future-dated transactions (see
+    // `isTransactionInFuture`), so the reconstruction this feeds --
+    // `buildRunningBalanceMap` walks backwards from `currentBalance` -- must
+    // be anchored to the same cutoff, or a future scheduled/split payment
+    // gets "undone" from today's balance and inflates every earlier balance,
+    // understating every inferred rate (and future splits can themselves
+    // become bogus observations). Voided rows moved no balance either; they
+    // are filtered in-memory rather than via the `where` because
+    // `transactions.status` is nullable and a SQL `status != 'VOID'` would
+    // also discard NULL-status rows (see loan-payment-detector.service.ts).
+    const fetchedTransactions = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Transaction).find({
-        where: { accountId, userId },
+        where: {
+          accountId,
+          userId,
+          transactionDate: LessThanOrEqual(todayYMD()),
+        },
         order: { transactionDate: "ASC" },
       }),
     );
+    const transactions = fetchedTransactions.filter((tx) => !tx.isVoid);
 
     const rawPayments = await this.detector.buildPaymentRecords(
       userId,

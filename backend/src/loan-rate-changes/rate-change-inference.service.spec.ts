@@ -1,9 +1,17 @@
 import { BadRequestException } from "@nestjs/common";
+import { FindOperator } from "typeorm";
 import { RateChangeInferenceService } from "./rate-change-inference.service";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
-import { Transaction } from "../transactions/entities/transaction.entity";
-import type { PaymentRecord } from "../accounts/loan-payment-detector.service";
+import {
+  Transaction,
+  TransactionStatus,
+} from "../transactions/entities/transaction.entity";
+import {
+  LoanPaymentDetectorService,
+  type PaymentRecord,
+} from "../accounts/loan-payment-detector.service";
+import { todayYMD } from "../common/date-utils";
 import {
   createScopedDbMocks,
   ManagerMock,
@@ -414,5 +422,82 @@ describe("RateChangeInferenceService", () => {
     expect(result.created.length).toBeGreaterThan(0);
     expect(rateChangesService.resolveCurrentTimeline).toBeUndefined();
     expect(rateChangesService.syncScheduledTransaction).toBeUndefined();
+  });
+
+  it("excludes future-dated transactions from the inference query so they cannot distort the reconstructed balance (REV-20260803-024)", async () => {
+    // A genuine monthly 5.5% history, same construction as the other tests,
+    // so each payment's interestAmount/principalAmount are real amortization
+    // splits rather than arbitrary numbers.
+    const { records } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    detector.buildPaymentRecords.mockResolvedValue(records);
+
+    // Wire the REAL (pure, no-DB) buildRunningBalanceMap in place of a canned
+    // balanceMap, so this test exercises the actual reconstruction that walks
+    // backwards from account.currentBalance through whatever `transactions`
+    // the service fetched -- the exact path the finding says was contaminated.
+    const realDetector = new LoanPaymentDetectorService({} as never);
+    detector.buildRunningBalanceMap.mockImplementation(
+      (account: Account, transactions: Transaction[]) =>
+        realDetector.buildRunningBalanceMap(account, transactions),
+    );
+
+    // The loan-side ledger only ever carries the principal leg (interest is a
+    // separate split/expense that never touches the loan account itself),
+    // matching how the real transactions the service fetches would look.
+    const pastTransactions = records.map(
+      (r, i) =>
+        ({
+          id: `past-${i}`,
+          transactionDate: r.date,
+          amount: r.principalAmount,
+          status: TransactionStatus.CLEARED,
+        }) as Transaction,
+    );
+    const finalBalance =
+      400000 - records.reduce((sum, r) => sum + (r.principalAmount ?? 0), 0);
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ currentBalance: -finalBalance }),
+    );
+
+    // A future scheduled/split payment: excluded from currentBalance (which
+    // never reflects future-dated transactions), but a large principal
+    // reduction if it leaks into the reconstruction.
+    const futureTransaction = {
+      id: "future-1",
+      transactionDate: "2099-01-01",
+      amount: 100000,
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+
+    // Stand in for the real query: honor an upper date bound when the
+    // service supplies one (the fix), otherwise behave like the pre-fix
+    // query and return every row regardless of date.
+    transactionsRepository.find.mockImplementation(
+      (options: { where?: { transactionDate?: FindOperator<string> } }) => {
+        const dateOp = options?.where?.transactionDate;
+        const all = [...pastTransactions, futureTransaction];
+        if (
+          dateOp instanceof FindOperator &&
+          dateOp.type === "lessThanOrEqual"
+        ) {
+          expect(dateOp.value).toBe(todayYMD());
+          return Promise.resolve(
+            all.filter((t) => t.transactionDate <= dateOp.value),
+          );
+        }
+        return Promise.resolve(all);
+      },
+    );
+
+    const result = await service.detectAndPersist(userId, accountId);
+
+    // Without the upper bound, the future $100,000 principal payment gets
+    // "undone" from currentBalance and inflates every earlier reconstructed
+    // balance, understating every inferred rate well below the true 5.5%.
+    expect(result.created.length).toBeGreaterThan(0);
+    const initial = createdRows()[0];
+    expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
   });
 });
