@@ -3009,6 +3009,57 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-022 re-review. Same setup as above but loan-2's principal
+     * payment is imported without transfer linkage: the source account (bank-1)
+     * has no linked transaction pointing to loan-2, and loan-2's own account
+     * record carries linkedTransactionId: null. The source-side chain therefore
+     * finds no evidence of a conflict and the old code returned isAmbiguous =
+     * false, letting loan-1 sum $300 interest ($100 its own + $200 loan-2's).
+     * The fix checks the other loan accounts directly and treats any unlinked
+     * transaction as a source-unknown record that cannot be ruled out.
+     */
+    it("marks every record interestUnmatched when another loan's payment is unlinked/imported (no linkedTransactionId on either side)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 450 }),
+        makePayment("2026-02-05", { amount: 450 }),
+        makePayment("2026-03-05", { amount: 500, interestAmount: 50 }),
+      ];
+
+      // Two loans share the same interest category.
+      accountsRepository.find.mockResolvedValue([
+        { id: "loan-1" },
+        { id: "loan-2" },
+      ]);
+
+      // The source account (bank-1) has a linked transfer only for loan-1.
+      // Loan-2's payment was imported without linkage, so bank-1 has no
+      // corresponding linked record for it.
+      transactionRepository.find
+        .mockResolvedValueOnce([{ linkedTransactionId: "loan1-tx" }])
+        .mockResolvedValueOnce([{ linkedTransactionId: null }]);
+
+      // "loan1-tx" does not land on loan-2 -- no source-side conflict found.
+      transactionRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Pairing is ambiguous: loan-2's unlinked transaction has an unknown
+      // source account, so interest on bank-1 cannot be attributed to loan-1
+      // alone. Payments without split-based interest must be marked unmatched.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment that already has split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+    });
+
+    /**
      * Control for REV-20260803-022: when only one loan has this interest
      * category (no conflict), pairing still proceeds normally and the
      * separate interest is attributed to this loan's payments.

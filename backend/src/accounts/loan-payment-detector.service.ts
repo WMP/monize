@@ -639,12 +639,46 @@ export class LoanPaymentDetectorService {
       const linkedIds = sourceTransfers
         .map((t) => t.linkedTransactionId)
         .filter((id): id is string => id != null);
-      if (linkedIds.length === 0) return false;
 
-      const conflictTx = await m.getRepository(Transaction).findOne({
-        where: { id: In(linkedIds), accountId: In(otherLoanIds) },
+      if (linkedIds.length > 0) {
+        const conflictTx = await m.getRepository(Transaction).findOne({
+          where: { id: In(linkedIds), accountId: In(otherLoanIds) },
+        });
+        if (conflictTx != null) return true;
+      }
+
+      // The source-side link chain was absent or did not resolve to another
+      // loan. Check from the loan side: another loan may have a linked
+      // transaction pointing back to one of our source accounts (reverse
+      // direction), or unlinked/imported transactions whose funding source is
+      // unknown. In either case we cannot safely attribute all interest
+      // expenses on our source accounts to this loan alone.
+      // (REV-20260803-022 re-review: the detector explicitly supports
+      // imported/unlinked payment records; source-side link evidence cannot
+      // detect them, so we check the other loan accounts directly.)
+      const otherLoanTxs = await m.getRepository(Transaction).find({
+        where: {
+          userId,
+          accountId: In(otherLoanIds),
+          transactionDate: Between(rangeStart, rangeEnd),
+        },
+        select: ["linkedTransactionId"],
       });
-      return conflictTx != null;
+
+      const otherLinkedIds = otherLoanTxs
+        .map((t) => t.linkedTransactionId)
+        .filter((id): id is string => id != null);
+
+      if (otherLinkedIds.length > 0) {
+        const reverseConflict = await m.getRepository(Transaction).findOne({
+          where: { id: In(otherLinkedIds), accountId: In(sourceIds) },
+        });
+        if (reverseConflict != null) return true;
+      }
+
+      // Any unlinked transaction on the other loan accounts means the source
+      // is unknown; treat as ambiguous rather than risk summing mixed interest.
+      return otherLoanTxs.some((t) => t.linkedTransactionId == null);
     });
     if (isAmbiguous) {
       return payments.map((p) =>
