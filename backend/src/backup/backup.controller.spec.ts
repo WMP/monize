@@ -23,6 +23,12 @@ describe("BackupController", () => {
     headers: {},
   };
 
+  /**
+   * A passthrough response, needed because restore now CONSUMES the OIDC proof:
+   * one redirect buys one restore, and clearing the cookie takes a response.
+   */
+  const res = () => ({ clearCookie: jest.fn() }) as never;
+
   beforeEach(async () => {
     mockBackupService = {
       streamExport: jest.fn().mockResolvedValue(undefined),
@@ -201,7 +207,7 @@ describe("BackupController", () => {
         },
       };
 
-      const result = await controller.restoreBackup(req);
+      const result = await controller.restoreBackup(req, res());
 
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(userId, {
         compressedData: req.body,
@@ -230,7 +236,7 @@ describe("BackupController", () => {
         },
       };
 
-      await controller.restoreBackup(req);
+      await controller.restoreBackup(req, res());
 
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(userId, {
         compressedData: req.body,
@@ -253,13 +259,55 @@ describe("BackupController", () => {
         headers: {},
       };
 
-      await controller.restoreBackup(req);
+      await controller.restoreBackup(req, res());
 
-      expect(mockOidcReauth.verify).toHaveBeenCalledWith(req, userId);
+      // Purpose-bound: a proof minted to delete the account must not authorise
+      // replacing the dataset, and one generic proof used to do both.
+      expect(mockOidcReauth.verify).toHaveBeenCalledWith(
+        req,
+        userId,
+        "backup-restore",
+      );
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ oidcReauthProven: true }),
       );
+    });
+
+    // One redirect buys one restore. `verify` spends the proof server-side; this
+    // drops the browser's copy so a second attempt fails at the door rather than
+    // after the file has been parsed. Restore was the one destructive endpoint
+    // that never consumed it -- delete-account and delete-data always did.
+    it("consumes the proof after a successful restore", async () => {
+      mockBackupService.restoreData.mockResolvedValue({
+        message: "ok",
+        restored: {},
+      });
+      mockOidcReauth.verify.mockReturnValue(true);
+      const response = res();
+
+      await controller.restoreBackup(
+        { user: { id: userId }, body: Buffer.from("gzip-data"), headers: {} },
+        response,
+      );
+
+      expect(mockOidcReauth.consume).toHaveBeenCalledWith(response);
+    });
+
+    it("does not consume anything when no proof was presented", async () => {
+      mockBackupService.restoreData.mockResolvedValue({
+        message: "ok",
+        restored: {},
+      });
+      mockOidcReauth.verify.mockReturnValue(false);
+      const response = res();
+
+      await controller.restoreBackup(
+        { user: { id: userId }, body: Buffer.from("gzip-data"), headers: {} },
+        response,
+      );
+
+      expect(mockOidcReauth.consume).not.toHaveBeenCalled();
     });
 
     it("should throw BadRequestException if body is not a buffer", async () => {
@@ -269,7 +317,7 @@ describe("BackupController", () => {
         headers: {},
       };
 
-      await expect(controller.restoreBackup(req)).rejects.toThrow(
+      await expect(controller.restoreBackup(req, res())).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -281,7 +329,7 @@ describe("BackupController", () => {
         headers: {},
       };
 
-      await expect(controller.restoreBackup(req)).rejects.toThrow(
+      await expect(controller.restoreBackup(req, res())).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -298,7 +346,7 @@ describe("BackupController", () => {
           "x-backup-password": Buffer.from("old-password").toString("base64"),
         },
       };
-      await controller.restoreBackup(req);
+      await controller.restoreBackup(req, res());
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ backupPassword: "old-password" }),
@@ -318,7 +366,7 @@ describe("BackupController", () => {
             Buffer.from(" leading space").toString("base64"),
         },
       };
-      await controller.restoreBackup(req);
+      await controller.restoreBackup(req, res());
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ password: " leading space" }),

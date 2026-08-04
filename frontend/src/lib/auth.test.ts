@@ -121,6 +121,31 @@ describe('authApi', () => {
     (window as any).location = originalLocation;
   });
 
+  // A destructive step-up is a different route from a login on purpose: the login
+  // route asks the provider for nothing and used to mint a generic destructive
+  // proof, so signing in armed a full-account restore.
+  it('initiateOidcStepUp redirects to the step-up route with the purpose', () => {
+    const originalLocation = window.location;
+    delete (window as any).location;
+    (window as any).location = { href: '' };
+    authApi.initiateOidcStepUp('backup-restore');
+    expect(window.location.href).toBe(
+      '/api/v1/auth/oidc/step-up?purpose=backup-restore',
+    );
+    (window as any).location = originalLocation;
+  });
+
+  it('initiateOidcStepUp encodes the purpose', () => {
+    const originalLocation = window.location;
+    delete (window as any).location;
+    (window as any).location = { href: '' };
+    authApi.initiateOidcStepUp('delete account');
+    expect(window.location.href).toBe(
+      '/api/v1/auth/oidc/step-up?purpose=delete%20account',
+    );
+    (window as any).location = originalLocation;
+  });
+
   it('verify2FA defaults rememberDevice to false', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { token: 'abc' } });
     await authApi.verify2FA('temp', '123456');

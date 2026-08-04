@@ -18,6 +18,7 @@ import { DelegationService } from "../delegation/delegation.service";
 import { encrypt, derivePurposeKey } from "./crypto.util";
 import { I18nService } from "nestjs-i18n";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { OIDC_STEP_UP_PURPOSE_COOKIE } from "./oidc/oidc-reauth.service";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -124,6 +125,9 @@ describe("AuthController", () => {
       issue: jest.fn(),
       verify: jest.fn().mockReturnValue(false),
       consume: jest.fn(),
+      // Defaults to "not fresh": a proof must be earned, so the honest starting
+      // point is the one that issues nothing.
+      isFreshAuthentication: jest.fn().mockReturnValue(false),
     };
     oidcService = {
       enabled: false,
@@ -1019,12 +1023,162 @@ describe("AuthController", () => {
           maxAge: 600000,
         }),
       );
+      // An ordinary login does NOT ask for a fresh authentication: that belongs to
+      // the step-up route, which is the only thing allowed to arm a destructive
+      // action.
       expect(oidcService.getAuthorizationUrl).toHaveBeenCalledWith(
         "mock-state",
         "mock-nonce",
+        { requireFreshAuthentication: false },
       );
       expect(res.redirect).toHaveBeenCalledWith(
         "https://provider.example.com/auth?state=mock-state",
+      );
+    });
+  });
+
+  // P6-RECHECK-002. The destructive proof used to be minted after every ordinary
+  // OIDC callback, and the authorization request asked the provider for nothing --
+  // so an IdP with a live SSO session answered a "reauthenticate to continue"
+  // click with no credential prompt, and a full-account restore was authorised.
+  describe("oidcStepUp", () => {
+    const prepare = () => {
+      oidcService.enabled = true;
+      (oidcService as any).generateState = jest
+        .fn()
+        .mockReturnValue("mock-state");
+      (oidcService as any).generateNonce = jest
+        .fn()
+        .mockReturnValue("mock-nonce");
+      (oidcService as any).getAuthorizationUrl = jest
+        .fn()
+        .mockReturnValue("https://provider.example.com/auth?prompt=login");
+      return mockRes();
+    };
+
+    it("asks the provider for a fresh authentication", async () => {
+      const res = prepare();
+
+      await controller.oidcStepUp("backup-restore", res as any);
+
+      expect(oidcService.getAuthorizationUrl).toHaveBeenCalledWith(
+        "mock-state",
+        "mock-nonce",
+        { requireFreshAuthentication: true },
+      );
+    });
+
+    it("records the purpose in an HttpOnly cookie the client cannot widen", async () => {
+      const res = prepare();
+
+      await controller.oidcStepUp("delete-account", res as any);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        OIDC_STEP_UP_PURPOSE_COOKIE,
+        "delete-account",
+        expect.objectContaining({ httpOnly: true }),
+      );
+    });
+
+    it("refuses a purpose it does not recognise", async () => {
+      const res = prepare();
+
+      await expect(
+        controller.oidcStepUp("delete-everything", res as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(res.redirect).not.toHaveBeenCalled();
+    });
+
+    it("refuses a missing purpose", async () => {
+      const res = prepare();
+
+      await expect(
+        controller.oidcStepUp(undefined as unknown as string, res as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // A stale purpose from an abandoned step-up must not attach itself to an
+    // ordinary login and quietly turn it into a destructive authorisation.
+    it("clears any stale purpose on an ordinary login", async () => {
+      const res = prepare();
+
+      await controller.oidcLogin(res as any);
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        OIDC_STEP_UP_PURPOSE_COOKIE,
+        expect.objectContaining({ httpOnly: true }),
+      );
+    });
+  });
+
+  describe("oidcCallback of a step-up redirect", () => {
+    const prepareCallback = (authTime: number | undefined) => {
+      (oidcService as any).handleCallback = jest.fn().mockResolvedValue({
+        access_token: "oidc-access-token",
+        sub: "oidc-sub-123",
+        auth_time: authTime,
+      });
+      (oidcService as any).getUserInfo = jest.fn().mockResolvedValue({
+        sub: "oidc-sub-123",
+        email: "oidc@example.com",
+      });
+      authService.findOrCreateOidcUser.mockResolvedValue({
+        user: { id: "user-oidc", email: "oidc@example.com" },
+      });
+      authService.generateTokenPair.mockResolvedValue({
+        accessToken: "oidc-jwt",
+        refreshToken: "oidc-refresh",
+      });
+      return {
+        res: mockRes(),
+        req: {
+          cookies: {
+            oidc_state: "valid-state",
+            oidc_nonce: "valid-nonce",
+            [OIDC_STEP_UP_PURPOSE_COOKIE]: "backup-restore",
+          },
+        } as any,
+      };
+    };
+
+    it("issues a purpose-bound proof when the IdP reports a fresh authentication", async () => {
+      oidcReauthService.isFreshAuthentication.mockReturnValue(true);
+      const { res, req } = prepareCallback(Math.floor(Date.now() / 1000));
+
+      await controller.oidcCallback({ code: "auth-code" }, req, res as any);
+
+      expect(oidcReauthService.issue).toHaveBeenCalledWith(
+        res,
+        "user-oidc",
+        "backup-restore",
+      );
+    });
+
+    // The reproduction: an IdP with a live SSO session answers immediately, so
+    // the redirect happened but no credential was re-entered.
+    it("issues nothing when the authentication was not fresh", async () => {
+      oidcReauthService.isFreshAuthentication.mockReturnValue(false);
+      const { res, req } = prepareCallback(
+        Math.floor(Date.now() / 1000) - 8000,
+      );
+
+      await controller.oidcCallback({ code: "auth-code" }, req, res as any);
+
+      expect(oidcReauthService.issue).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith(
+        expect.stringContaining("error=step_up_not_fresh"),
+      );
+    });
+
+    it("clears the purpose cookie so it cannot arm a later login", async () => {
+      oidcReauthService.isFreshAuthentication.mockReturnValue(true);
+      const { res, req } = prepareCallback(Math.floor(Date.now() / 1000));
+
+      await controller.oidcCallback({ code: "auth-code" }, req, res as any);
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        OIDC_STEP_UP_PURPOSE_COOKIE,
+        expect.objectContaining({ httpOnly: true }),
       );
     });
   });
@@ -1099,11 +1253,10 @@ describe("AuthController", () => {
       expect(res.redirect).toHaveBeenCalledWith(
         expect.stringContaining("/auth/callback?success=true"),
       );
-      // This is the only place that watched a real identity-provider
-      // authentication complete, so it is where the proof destructive OIDC
-      // flows verify comes from. Those flows used to accept the client's word
-      // for it instead (the literal string "oidc-session-confirmed").
-      expect(oidcReauthService.issue).toHaveBeenCalledWith(res, "user-oidc");
+      // An ORDINARY login issues no destructive proof. It used to mint one on
+      // every callback, so simply signing in armed a full-account restore -- the
+      // proof now comes only from `/auth/oidc/step-up`, for one named purpose.
+      expect(oidcReauthService.issue).not.toHaveBeenCalled();
       // An existing account signing in again must not be sent through the
       // first-run preferences step.
       expect(res.redirect).not.toHaveBeenCalledWith(

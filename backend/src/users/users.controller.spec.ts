@@ -199,7 +199,13 @@ describe("UsersController", () => {
 
       await controller.deleteAccount(mockReq, {}, mockRes);
 
-      expect(mockOidcReauth.verify).toHaveBeenCalledWith(mockReq, "user-1");
+      // Purpose-bound: a proof minted for a backup restore must not delete the
+      // account, and one generic proof used to authorise both.
+      expect(mockOidcReauth.verify).toHaveBeenCalledWith(
+        mockReq,
+        "user-1",
+        "delete-account",
+      );
       expect(mockUsersService.deleteAccount).toHaveBeenCalledWith(
         "user-1",
         {},

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/auth', () => ({
-  authApi: { initiateOidc: vi.fn() },
+  authApi: { initiateOidc: vi.fn(), initiateOidcStepUp: vi.fn() },
 }));
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { BackupRestoreSection } from './BackupRestoreSection';
@@ -626,7 +626,10 @@ describe('BackupRestoreSection', () => {
       fireEvent.click(screen.getByText('Restore from Backup...'));
       fireEvent.click(screen.getByText('Reauthenticate with provider'));
 
-      expect(authApi.initiateOidc).toHaveBeenCalled();
+      // The step-up route, not the login route: an ordinary login used to mint the
+      // destructive proof, and the purpose is what limits this one to a restore.
+      expect(authApi.initiateOidcStepUp).toHaveBeenCalledWith('backup-restore');
+      expect(authApi.initiateOidc).not.toHaveBeenCalled();
       expect(backupApi.restoreBackup).not.toHaveBeenCalled();
       expect(
         JSON.parse(sessionStorage.getItem('monize:oidc-reauth-intent') as string),

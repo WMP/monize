@@ -13,6 +13,7 @@ vi.mock('@/lib/user-settings', () => ({
 vi.mock('@/lib/auth', () => ({
   authApi: {
     initiateOidc: vi.fn(),
+    initiateOidcStepUp: vi.fn(),
   },
 }));
 
@@ -339,7 +340,10 @@ describe('DangerZoneSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete Data...' }));
       fireEvent.click(screen.getByRole('button', { name: 'Re-authenticate and Delete' }));
 
-      expect(authApi.initiateOidc).toHaveBeenCalled();
+      // Purpose-bound step-up, not an ordinary login: the proof it produces
+      // unlocks only this action.
+      expect(authApi.initiateOidcStepUp).toHaveBeenCalledWith('delete-data');
+      expect(authApi.initiateOidc).not.toHaveBeenCalled();
     });
 
     it('enables delete button when password is entered', () => {
@@ -379,7 +383,10 @@ describe('DangerZoneSection', () => {
       fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
       fireEvent.click(screen.getByRole('button', { name: 'Reauthenticate with provider' }));
 
-      expect(authApi.initiateOidc).toHaveBeenCalled();
+      // Purpose-bound step-up, not an ordinary login: the proof it produces
+      // unlocks only this action.
+      expect(authApi.initiateOidcStepUp).toHaveBeenCalledWith('delete-account');
+      expect(authApi.initiateOidc).not.toHaveBeenCalled();
       expect(
         JSON.parse(sessionStorage.getItem('monize:oidc-reauth-intent') as string),
       ).toMatchObject({ intent: 'delete-account' });

@@ -9,6 +9,13 @@ export interface OidcTokenResult {
   amr?: string[];
   /** "acr" (Authentication Context Class Reference) claim from the ID token. */
   acr?: string;
+  /**
+   * "auth_time" claim: when the end-user actually authenticated, in seconds since
+   * the epoch. Requested via `max_age`, and what separates a fresh credential
+   * prompt from a reused SSO session. Absent when the provider does not supply it,
+   * which the step-up flow treats as "not fresh" rather than as "fine".
+   */
+  auth_time?: number;
 }
 
 @Injectable()
@@ -64,7 +71,24 @@ export class OidcService implements OnModuleInit {
   /**
    * Generate authorization URL for OIDC login
    */
-  getAuthorizationUrl(state: string, nonce: string): string {
+  getAuthorizationUrl(
+    state: string,
+    nonce: string,
+    /**
+     * Ask the provider for a *fresh* authentication rather than accepting its
+     * existing SSO session.
+     *
+     * Used by the destructive step-up flow. Without it, an IdP holding a live
+     * session answers the redirect immediately and no credential is ever
+     * re-entered -- so a "reauthenticate to continue" button on an unattended
+     * browser authorised a full-account restore with a single click.
+     *
+     * `prompt=login` asks for the interaction; `max_age=0` makes the provider
+     * report `auth_time` so we can check it actually happened rather than trust
+     * that the parameter was honoured.
+     */
+    options: { requireFreshAuthentication?: boolean } = {},
+  ): string {
     if (!this.config) {
       throw new Error("OIDC client not initialized");
     }
@@ -74,6 +98,9 @@ export class OidcService implements OnModuleInit {
       scope: "openid profile email",
       state,
       nonce,
+      ...(options.requireFreshAuthentication
+        ? { prompt: "login", max_age: "0" }
+        : {}),
     });
 
     return url.href;
@@ -121,12 +148,18 @@ export class OidcService implements OnModuleInit {
       : undefined;
     const rawAcr = (claims as Record<string, unknown>).acr;
     const acr = typeof rawAcr === "string" ? rawAcr : undefined;
+    const rawAuthTime = (claims as Record<string, unknown>).auth_time;
+    const auth_time =
+      typeof rawAuthTime === "number" && Number.isFinite(rawAuthTime)
+        ? rawAuthTime
+        : undefined;
 
     return {
       access_token: tokens.access_token,
       sub: claims.sub,
       amr,
       acr,
+      auth_time,
     };
   }
 

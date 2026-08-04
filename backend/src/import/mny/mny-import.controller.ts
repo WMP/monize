@@ -179,7 +179,13 @@ export class MnyImportController {
       options: dto.options as Partial<MnyImportOptions> | undefined,
       wipeCredentials: {
         password: dto.wipePassword,
-        oidcReauthProven: this.oidcReauthService.verify(req, req.user.id),
+        // Wiping the existing dataset before an import is the same destructive
+        // act as a restore, so it takes the same purpose-bound proof.
+        oidcReauthProven: this.oidcReauthService.verify(
+          req,
+          req.user.id,
+          "backup-restore",
+        ),
       },
     });
     return toJobDto(job);

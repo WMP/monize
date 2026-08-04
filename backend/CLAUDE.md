@@ -192,3 +192,26 @@ Server-rendered strings (exception messages, email copy) are localized via `nest
 Cron jobs use `@Cron()` from `@nestjs/schedule` and run **in the API process** -- `ScheduleModule.forRoot()` is registered in `app.module.ts`; there is no separate scheduler process (on k8s with more than one backend replica, every replica fires every cron). For the full schedule, see `docs/cron-jobs.md` or grep `@Cron(`.
 
 Every `@Cron` handler is an out-of-request entry point, so its body must seed its own RLS context (tasks C2-C4): the cross-user fan-out under `withSystemContext`, each per-user body under `withUserContext(userId)`. A handler that reaches the DB with no ambient context throws `DB access outside request/user/system context` in every `RLS_MODE`, including `off` -- the per-module `rls-context-smoke.spec.ts` specs are the pattern for proving a cron runs clean.
+
+## A step-up proof names one action, once, and proves freshness
+
+`OidcReauthService`. An OIDC user has no Monize password, so a destructive action
+(restore, delete-account, delete-data, emergency access) is authorised by a signed
+HttpOnly cookie the callback issues -- never by anything in the request body. Three
+properties are the point, and each was missing once:
+
+- **Fresh.** Step-up goes through `/auth/oidc/step-up`, which sends `prompt=login`
+  and `max_age=0`; the callback checks the returned `auth_time` is inside the
+  window. An IdP with a live SSO session otherwise answers the redirect with no
+  credential prompt, so "reauthenticate to continue" on an unattended browser was
+  one click. An absent `auth_time` is unknown, therefore not fresh.
+- **Purpose-bound.** The proof carries the purpose the redirect was started for, and
+  `verify(req, userId, purpose)` compares it. One generic proof authorised restore
+  and account deletion alike -- and it was minted on *every* ordinary login, so
+  signing in armed a full-account restore.
+- **Single use.** `verify` spends the `jti` server-side before returning true;
+  `consume(res)` only clears the browser's copy. Two requests sent before the clear
+  both used to pass.
+
+Every destructive endpoint names its purpose and consumes on success. `restore` was
+the one that verified without consuming.

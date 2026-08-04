@@ -372,7 +372,7 @@
         "passwordRequired": "Please enter your password to confirm",
         "oidcReauthRequired": "Reauthenticate with your provider before deleting the account."
       },
-      "oidcReauthFirst": "Confirm your identity with your provider to continue.",
+      "oidcReauthFirst": "Sign in with your provider again to continue. It will ask for your credentials even if you are already signed in, and the confirmation covers deleting this account only.",
       "oidcReauthButton": "Reauthenticate with provider"
     }
   },
@@ -576,9 +576,9 @@
         "failed": "Failed to restore backup",
         "oidcReauthRequired": "Reauthenticate with your provider before restoring."
       },
-      "oidcReauthFirst": "Confirm your identity with your provider first, then choose the backup file.",
+      "oidcReauthFirst": "Sign in with your provider again first, then choose the backup file. The provider will ask for your credentials even if you are already signed in, and the confirmation covers this one restore.",
       "oidcReauthButton": "Reauthenticate with provider",
-      "oidcReauthConfirmed": "Identity confirmed. Choose the backup file to restore."
+      "oidcReauthConfirmed": "Identity confirmed for one restore. Choose the backup file — you will be asked to sign in again for any further restore."
     },
     "restoreResult": {
       "title": "Restore Complete",

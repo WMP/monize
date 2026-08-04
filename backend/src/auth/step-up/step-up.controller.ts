@@ -37,7 +37,13 @@ export class StepUpAuthController {
     // An OIDC account proves freshness with the HttpOnly cookie the callback
     // set, never with a flag in the request body: the client is the thing being
     // challenged, so its own claim to have redirected cannot be the evidence.
-    const oidcReauthProven = this.oidcReauthService.verify(req, req.user.id);
+    // The proof is bound to the purpose the step-up was started for, so a
+    // restore redirect cannot mint a delete-account token here.
+    const oidcReauthProven = this.oidcReauthService.verify(
+      req,
+      req.user.id,
+      dto.purpose,
+    );
 
     const result = await this.service.verifyAndIssue(req.user.id, dto.purpose, {
       password: dto.password,

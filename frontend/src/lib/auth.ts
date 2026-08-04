@@ -48,6 +48,20 @@ export const authApi = {
     window.location.href = '/api/v1/auth/oidc';
   },
 
+  /**
+   * Start a fresh OIDC authentication for ONE destructive action.
+   *
+   * Deliberately a different route from `initiateOidc`. An ordinary login used to
+   * mint the destructive proof, so signing in armed a full-account restore, and it
+   * asked the provider for nothing -- an IdP with a live SSO session answered
+   * immediately, so "reauthenticate to continue" on an unattended browser was a
+   * single click. The step-up route sends `prompt=login` and `max_age=0`, and the
+   * proof it produces only unlocks `purpose`.
+   */
+  initiateOidcStepUp: (purpose: string) => {
+    window.location.href = `/api/v1/auth/oidc/step-up?purpose=${encodeURIComponent(purpose)}`;
+  },
+
   forgotPassword: async (email: string): Promise<{ message: string }> => {
     const response = await apiClient.post<{ message: string }>('/auth/forgot-password', { email });
     return response.data;

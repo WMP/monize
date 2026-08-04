@@ -156,7 +156,8 @@
     "insufficientTokenScope": "Insufficient token scope. Required: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Password change required before accessing this resource",
     "invalidAuthenticatorCode": "Invalid authenticator code",
-    "incorrectPassword": "Incorrect password"
+    "incorrectPassword": "Incorrect password",
+    "oidcStepUpPurposeInvalid": "Unknown step-up purpose"
   },
   "backup": {
     "folderNotExist": "Folder does not exist: {{ safePath }}",

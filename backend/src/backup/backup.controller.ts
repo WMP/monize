@@ -136,7 +136,10 @@ export class BackupController {
   @ApiResponse({ status: 200, description: "Data restored successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 400, description: "Invalid backup format" })
-  async restoreBackup(@Request() req) {
+  async restoreBackup(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const body: unknown = req.body;
     // CodeQL js/type-confusion-through-parameter-tampering doesn't model
     // Buffer.isBuffer as a type guard. Explicit typeof / Array.isArray
@@ -162,12 +165,24 @@ export class BackupController {
       req.headers["x-backup-password"] as string | undefined,
     );
 
+    // Purpose-bound: an ordinary login, or a step-up started for account
+    // deletion, cannot authorise replacing the dataset.
+    const oidcReauthProven = this.oidcReauthService.verify(
+      req,
+      req.user.id,
+      "backup-restore",
+    );
+
     const result = await this.backupService.restoreData(req.user.id, {
       compressedData: body,
       password,
-      oidcReauthProven: this.oidcReauthService.verify(req, req.user.id),
+      oidcReauthProven,
       backupPassword,
     });
+    // One redirect buys one restore. Verifying already spent the proof
+    // server-side; this drops the browser's copy so a second attempt fails at the
+    // door rather than after the file has been parsed.
+    if (oidcReauthProven) this.oidcReauthService.consume(res);
     return result;
   }
 

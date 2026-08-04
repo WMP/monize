@@ -58,7 +58,13 @@ describe("StepUpAuthController", () => {
 
     await controller.verify(req, { purpose: "emergency-access" }, res);
 
-    expect(oidcReauth.verify).toHaveBeenCalledWith(req, "user-1");
+    // The proof is checked against the purpose being requested, so a step-up
+    // started for a restore cannot mint an emergency-access token.
+    expect(oidcReauth.verify).toHaveBeenCalledWith(
+      req,
+      "user-1",
+      "emergency-access",
+    );
     expect(service.verifyAndIssue).toHaveBeenCalledWith(
       "user-1",
       "emergency-access",

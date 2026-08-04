@@ -30,7 +30,12 @@ import { Response, Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
 import { TokenService } from "./token.service";
 import { OidcService } from "./oidc/oidc.service";
-import { OidcReauthService } from "./oidc/oidc-reauth.service";
+import {
+  OidcReauthService,
+  OIDC_REAUTH_PURPOSES,
+  OIDC_STEP_UP_PURPOSE_COOKIE,
+  type OidcReauthPurpose,
+} from "./oidc/oidc-reauth.service";
 import { EmailService } from "../notifications/email.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -397,6 +402,51 @@ export class AuthController {
       );
     }
 
+    this.beginOidcRedirect(res);
+  }
+
+  /**
+   * Start an OIDC **step-up** for one destructive action.
+   *
+   * Separate from `/auth/oidc` on purpose. An ordinary login must not arm a
+   * restore or an account deletion -- it used to mint the proof on every
+   * successful callback, so signing in was enough -- and a destructive
+   * confirmation must not be answerable from an existing SSO session, which is
+   * what `requireFreshAuthentication` asks the provider to prevent.
+   *
+   * The purpose travels in an HttpOnly cookie beside the state, so the callback
+   * knows which single action it is vouching for and the client cannot widen it.
+   */
+  @Get("oidc/step-up")
+  @UseGuards(AuthGuard("jwt"))
+  @ApiOperation({
+    summary: "Initiate a fresh OIDC authentication for one destructive action",
+  })
+  @ApiResponse({ status: 302, description: "Redirects to OIDC provider" })
+  async oidcStepUp(@Query("purpose") purpose: string, @Res() res: Response) {
+    if (!this.oidcService.enabled) {
+      throw new BadRequestException(
+        tr(
+          "errors.auth.oidcNotConfigured",
+          "OIDC authentication is not configured",
+        ),
+      );
+    }
+    if (!(OIDC_REAUTH_PURPOSES as readonly string[]).includes(purpose ?? "")) {
+      throw new BadRequestException(
+        tr("errors.auth.oidcStepUpPurposeInvalid", "Unknown step-up purpose"),
+      );
+    }
+
+    this.beginOidcRedirect(res, purpose as OidcReauthPurpose);
+  }
+
+  /**
+   * Shared redirect setup for both OIDC entry points: mint state and nonce, park
+   * them (plus the step-up purpose, when there is one) in HttpOnly cookies, and
+   * send the browser to the provider.
+   */
+  private beginOidcRedirect(res: Response, purpose?: OidcReauthPurpose): void {
     const state = this.oidcService.generateState();
     const nonce = this.oidcService.generateNonce();
 
@@ -410,8 +460,21 @@ export class AuthController {
 
     res.cookie("oidc_state", state, cookieOptions);
     res.cookie("oidc_nonce", nonce, cookieOptions);
+    if (purpose) {
+      res.cookie(OIDC_STEP_UP_PURPOSE_COOKIE, purpose, cookieOptions);
+    } else {
+      // A stale purpose from an abandoned step-up must not attach itself to an
+      // ordinary login and turn it into a destructive authorisation.
+      res.clearCookie(OIDC_STEP_UP_PURPOSE_COOKIE, {
+        httpOnly: true,
+        secure: this.useSecureCookies,
+        sameSite: "lax" as const,
+      });
+    }
 
-    const authUrl = this.oidcService.getAuthorizationUrl(state, nonce);
+    const authUrl = this.oidcService.getAuthorizationUrl(state, nonce, {
+      requireFreshAuthentication: !!purpose,
+    });
     res.redirect(authUrl);
   }
 
@@ -445,10 +508,16 @@ export class AuthController {
 
       const state = req.cookies?.["oidc_state"];
       const nonce = req.cookies?.["oidc_nonce"];
+      // Set only by `/auth/oidc/step-up`, so an ordinary login cannot produce a
+      // destructive proof however the redirect is entered.
+      const stepUpPurpose = req.cookies?.[OIDC_STEP_UP_PURPOSE_COOKIE] as
+        | OidcReauthPurpose
+        | undefined;
 
       // Clear OIDC cookies with matching options
       res.clearCookie("oidc_state", clearOidcCookieOptions);
       res.clearCookie("oidc_nonce", clearOidcCookieOptions);
+      res.clearCookie(OIDC_STEP_UP_PURPOSE_COOKIE, clearOidcCookieOptions);
 
       if (!state || !nonce) {
         throw new Error(
@@ -505,9 +574,23 @@ export class AuthController {
       this.setAuthCookies(res, accessToken, refreshToken, result.user.id);
       // This is the only place that has watched a real identity-provider
       // authentication complete, so it is the only place that can vouch for one.
-      // Destructive OIDC flows verify this proof instead of trusting the client
-      // to assert that the redirect happened.
-      this.oidcReauthService.issue(res, result.user.id);
+      // Two conditions, both necessary: the redirect was started as a step-up for
+      // a named action, and the provider says the user authenticated just now
+      // rather than handing back an existing SSO session. Issuing on every login
+      // meant simply signing in armed a full-account restore.
+      if (stepUpPurpose) {
+        if (this.oidcReauthService.isFreshAuthentication(tokenSet.auth_time)) {
+          this.oidcReauthService.issue(res, result.user.id, stepUpPurpose);
+        } else {
+          this.logger.warn(
+            `OIDC step-up for "${stepUpPurpose}" did not produce a fresh authentication (auth_time=${tokenSet.auth_time ?? "absent"}); no proof issued`,
+          );
+          res.redirect(
+            `${frontendUrl}/auth/callback?error=step_up_not_fresh&purpose=${encodeURIComponent(stepUpPurpose)}`,
+          );
+          return;
+        }
+      }
       // `welcome` tells the callback page this login provisioned the account,
       // so it shows the same language/currency step local registration ends
       // on instead of dropping the user straight on the dashboard.

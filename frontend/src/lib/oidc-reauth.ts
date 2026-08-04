@@ -8,9 +8,10 @@ import { authApi } from './auth';
  * `oidc-session-confirmed` and the server accepted any non-empty value, so the
  * UI's promise of reauthentication was decorative: a live session -- exactly what
  * an attacker at an unattended browser has -- was the whole check. The server now
- * requires the HttpOnly proof that `/auth/oidc/callback` issues, which means the
- * client's job is no longer to assert anything. It is to actually make the round
- * trip happen and then resume.
+ * requires the HttpOnly proof that the `/auth/oidc/step-up` callback issues --
+ * purpose-bound, single-use, and only when the provider reports a fresh
+ * authentication -- which means the client's job is no longer to assert anything.
+ * It is to actually make the round trip happen and then resume.
  *
  * `intent` is what to resume, not a credential: it says which panel to reopen,
  * never that anything was authorised. Authorisation lives in the cookie the
@@ -45,7 +46,10 @@ export function beginOidcReauth(
     // Without session storage the redirect still re-authenticates; the user
     // simply has to reopen the panel by hand.
   }
-  authApi.initiateOidc();
+  // The step-up route, not the login route: the purpose travels to the server so
+  // the proof it issues unlocks this action and nothing else, and the provider is
+  // asked for a genuinely fresh authentication rather than its SSO session.
+  authApi.initiateOidcStepUp(intent);
 }
 
 /**
