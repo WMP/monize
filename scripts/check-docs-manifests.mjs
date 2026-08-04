@@ -292,7 +292,7 @@ function collectScriptNames() {
  * one line -- the correction often sits a paragraph below the command.
  */
 const SUPERSEDED =
-  /superseded|no longer exists?|was removed|shipped as|renamed to|replaced by/i;
+  /superseded|no longer exists?|(?:was |now )?(?:removed|deleted|dropped|gone)|shipped as|renamed to|replaced by/i;
 const SUPERSEDED_WINDOW = 8;
 
 function checkNpmScripts(relative, lines, scripts) {
