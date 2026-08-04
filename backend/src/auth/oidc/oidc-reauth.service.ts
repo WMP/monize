@@ -91,9 +91,15 @@ export class OidcReauthService {
    * Claim a `jti` for this proof, atomically and across every replica.
    *
    * Returns true only for the caller whose INSERT actually created the row.
-   * Expired rows are swept in the same statement rather than by a timer: the
-   * table only ever holds proofs from the last few minutes, so the delete is
-   * trivial and there is nothing to schedule or forget.
+   * Expired rows are swept in the same statement rather than by a timer -- but
+   * the sweep runs under this request's scoped context, so under `RLS_MODE=on`
+   * the isolation policy limits the DELETE to *this user's* expired rows; at
+   * `RLS_MODE=off` (the default) it removes every expired row. Single-use
+   * safety never depends on the sweep -- the primary-key conflict is what
+   * enforces it -- so an expired row belonging to a user who never steps up
+   * again is only harmless table growth, not a correctness risk. A
+   * system-context retention job is the place to bound that growth (see the
+   * OIDC design-risk note); this statement is best-effort housekeeping.
    */
   private async claim(
     jti: string,

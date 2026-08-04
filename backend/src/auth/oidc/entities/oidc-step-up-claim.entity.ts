@@ -33,9 +33,14 @@ export class OidcStepUpClaim {
   claimedAt: Date;
 
   /**
-   * The proof's own `exp`; anything past it is swept by the next claim's INSERT.
-   * Indexed by `idx_oidc_step_up_claims_expires` in `schema.sql` -- the DDL is
-   * managed there, not by `synchronize`, so no `@Index()` here would create it.
+   * The proof's own `exp`; past it, the row is dead weight. The next claim's
+   * INSERT sweeps expired rows, but that DELETE runs under the caller's scoped
+   * context, so at `RLS_MODE=on` it clears only the current user's expired rows
+   * -- a user who never steps up again leaves theirs behind for a system-context
+   * retention job to reap. Single use never depends on the sweep; the primary
+   * key does. Indexed by `idx_oidc_step_up_claims_expires` in `schema.sql` --
+   * the DDL is managed there, not by `synchronize`, so no `@Index()` here would
+   * create it.
    */
   @Column({ name: "expires_at", type: "timestamptz" })
   expiresAt: Date;
