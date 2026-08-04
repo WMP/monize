@@ -150,6 +150,7 @@ export class RateChangeInferenceService {
               userId,
               account,
               consolidated,
+              todayYMD(),
             ),
             hadSplitInterestByDate,
           );
@@ -215,6 +216,13 @@ export class RateChangeInferenceService {
   }
 
   /**
+   * `pairSeparateInterest` is now called with an explicit `asOfDate` (see
+   * the call site above), so the leak this defends against is closed at
+   * its source. Retained as a second layer rather than removed: this unit
+   * suite mocks `pairSeparateInterest` directly, so its own real date
+   * bound never runs here, and this check is cheap insurance against the
+   * two implementations drifting apart in the future.
+   *
    * REV-20260803-024 (third reopen): the second pass's `hasRealEvidenceNear`
    * asked "does ANY real (today-bounded) interest expense exist within 45
    * days of THIS payment's date" -- a question about the neighbourhood, not

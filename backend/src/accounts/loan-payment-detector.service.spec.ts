@@ -2504,5 +2504,102 @@ describe("LoanPaymentDetectorService", () => {
       expect(transactionRepository.find).toHaveBeenCalledTimes(1);
       expect(result).toBeNull();
     });
+
+    /**
+     * Companion fix for REV-20260803-024 ("Future-dated loan transactions
+     * contaminate historical rate inference"). The finding was reopened three
+     * times against `rate-change-inference.service.ts`, but the actual leak
+     * traces back here: this method's separate-interest-candidate query had
+     * no upper date bound at all, so a future-dated interest expense within
+     * the 45-day window could pair to a payment regardless of "today".
+     *
+     * The mock below is functional (filters by the real `Between` bounds
+     * passed to `find`, read off the FindOperator's `.value`) rather than a
+     * fixed `mockResolvedValue`, precisely so this test exercises the actual
+     * query range this method builds -- a fixed-return mock would pass
+     * whether or not the date bound were applied, proving nothing.
+     */
+    const makeDateBoundedFindMock = (
+      rows: Array<{
+        transactionDate: string;
+        amount: number;
+        accountId: string;
+        categoryId: string;
+      }>,
+    ) =>
+      jest.fn().mockImplementation((opts: any) => {
+        const dateOp = opts.where.transactionDate;
+        const [start, end] = dateOp.value as [string, string];
+        return Promise.resolve(
+          rows.filter(
+            (r) => r.transactionDate >= start && r.transactionDate <= end,
+          ),
+        );
+      });
+
+    it("excludes a future-dated separate-interest expense when asOfDate is given, leaving that payment interestUnmatched", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+      // Jan-05 candidate is real as of asOfDate; Feb-20 is beyond asOfDate
+      // but would otherwise land within 45 days of Feb-05 and the ~16-day
+      // nearest-payment tolerance derived from these two dates.
+      transactionRepository.find = makeDateBoundedFindMock([
+        {
+          transactionDate: "2026-01-05",
+          amount: -150,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+        },
+        {
+          transactionDate: "2026-02-20",
+          amount: -140,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+        "2026-02-10",
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(150, 2);
+      // The Feb-20 expense is after asOfDate, so it never reaches the
+      // pairing step: this payment stays unmatched, not silently paired to
+      // a future transaction.
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+    });
+
+    it("still pairs a future-dated separate-interest expense when asOfDate is omitted (detectPaymentPattern's existing behavior is unaffected)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+      transactionRepository.find = makeDateBoundedFindMock([
+        {
+          transactionDate: "2026-01-05",
+          amount: -150,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+        },
+        {
+          transactionDate: "2026-02-20",
+          amount: -140,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+        },
+      ]);
+
+      // No asOfDate passed -- identical to every pre-existing call site,
+      // including detectPaymentPattern's.
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(150, 2);
+      expect(result[1].interestAmount).toBeCloseTo(140, 2);
+      expect(result[1].interestUnmatched).toBeUndefined();
+    });
   });
 });

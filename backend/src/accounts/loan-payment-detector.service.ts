@@ -453,12 +453,28 @@ export class LoanPaymentDetectorService {
    * installment rather than a principal subtotal reported as if it were the
    * whole payment -- see REV-20260803-006.
    *
+   * @param asOfDate - Optional upper bound (yyyy-MM-dd) for the separate-
+   *   interest-candidate query. When provided, no transaction dated after
+   *   `asOfDate` is considered a pairing candidate, regardless of how far
+   *   the 45-day window would otherwise reach. When omitted (the default),
+   *   the query is unbounded above, exactly as before this parameter
+   *   existed -- `detectPaymentPattern` relies on that default and must see
+   *   no behavior change. Companion fix for REV-20260803-024
+   *   ("Future-dated loan transactions contaminate historical rate
+   *   inference"): the leak that finding kept reopening on originates here,
+   *   in the unbounded upper end of this method's query window, not in
+   *   `rate-change-inference.service.ts`'s consumption of it. That file's
+   *   `detectAndPersist` is the intended caller of this parameter (passing
+   *   `todayYMD()`), but is outside this method's partition and is not
+   *   changed here.
+   *
    * Returns a new array (records are copied, not mutated).
    */
   async pairSeparateInterest(
     userId: string,
     account: Account,
     payments: PaymentRecord[],
+    asOfDate?: string,
   ): Promise<PaymentRecord[]> {
     const interestCategoryId = account.interestCategoryId;
     if (!interestCategoryId || payments.length === 0) return payments;
@@ -493,7 +509,19 @@ export class LoanPaymentDetectorService {
 
     const dateKeys = payments.map((p) => p.date.split("T")[0]).sort();
     const rangeStart = this.shiftDateKey(dateKeys[0], -45);
-    const rangeEnd = this.shiftDateKey(dateKeys[dateKeys.length - 1], 45);
+    const naturalRangeEnd = this.shiftDateKey(
+      dateKeys[dateKeys.length - 1],
+      45,
+    );
+    // ISO yyyy-MM-dd strings compare correctly lexically, so this caps the
+    // window at `asOfDate` only when it is the tighter bound -- when
+    // `asOfDate` is omitted, `rangeEnd` is exactly `naturalRangeEnd`, so the
+    // query below is byte-identical to before this parameter existed. See
+    // REV-20260803-024 (companion fix).
+    const rangeEnd =
+      asOfDate != null && asOfDate < naturalRangeEnd
+        ? asOfDate
+        : naturalRangeEnd;
 
     const interestTxns = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Transaction).find({

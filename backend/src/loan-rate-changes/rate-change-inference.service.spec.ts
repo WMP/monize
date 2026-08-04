@@ -224,6 +224,7 @@ describe("RateChangeInferenceService", () => {
       userId,
       expect.objectContaining({ id: accountId }),
       stripped,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     );
     expect(result.created.length).toBeGreaterThanOrEqual(1);
   });
