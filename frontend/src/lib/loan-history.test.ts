@@ -1472,6 +1472,62 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     assertRealInterestIsClaimed([regularTx, extraTx]);
     assertRealInterestIsClaimed([extraTx, regularTx]);
   });
+
+  it('REV-20260803-037: nets interest refunds against expenses instead of adding them (paired case)', () => {
+    // -100 expense and +20 refund on the same date → net 80, not 120.
+    // Math.abs() on both before accumulation was the defect: both became
+    // positive and the refund inflated the total instead of reducing it.
+    const account = makeAccount();
+    const transactions = [
+      makeTransaction({ transactionDate: '2026-01-15', amount: 500 }),
+    ];
+    const interestTransactions = [
+      { transactionDate: '2026-01-15', amount: -100, isTransfer: false } as Transaction,
+      { transactionDate: '2026-01-15', amount: 20, isTransfer: false } as Transaction,
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, [], interestTransactions);
+
+    expect(events[0].interest).toBeCloseTo(80, 4);
+  });
+
+  it('REV-20260803-037: a grace-period interest refund reduces cumulative interest instead of inflating it (orphan case)', () => {
+    // Each orphan transaction becomes its own row. A refund orphan (+20) must
+    // carry negative interest so it reduces the running total; Math.abs()
+    // gave it positive interest, adding to the total instead of subtracting.
+    const account = makeAccount({
+      openingBalance: -10000,
+      currentBalance: -9800,
+      paymentStartDate: '2027-01-01',
+    });
+    const transactions = [
+      makeTransaction({ transactionDate: '2027-02-01', amount: 200 }),
+    ];
+    const interestTransactions = [
+      // Grace-period expense far from any payment → orphan row.
+      { transactionDate: '2026-06-01', amount: -100, isTransfer: false } as Transaction,
+      // Grace-period refund far from any payment → orphan row.
+      { transactionDate: '2026-07-01', amount: 20, isTransfer: false } as Transaction,
+      // Paired expense for the actual payment.
+      { transactionDate: '2027-02-01', amount: -50, isTransfer: false } as Transaction,
+    ];
+
+    const { events, cumulativeInterest } = deriveLoanPaymentHistory(
+      account,
+      transactions,
+      [],
+      interestTransactions,
+    );
+
+    // The refund row must carry negative interest.
+    const refundRow = events.find((e) => e.date.startsWith('2026-07'));
+    expect(refundRow).toBeDefined();
+    expect(refundRow!.interest).toBeCloseTo(-20, 4);
+
+    // Net cumulative: 100 (grace expense) - 20 (refund) + 50 (paired) = 130.
+    // Bug: 100 + 20 + 50 = 170.
+    expect(cumulativeInterest).toBeCloseTo(130, 4);
+  });
 });
 
 // REV-20260803-032: source-scan guard

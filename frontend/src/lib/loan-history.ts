@@ -286,8 +286,9 @@ export function deriveLoanPaymentHistory(
     date: tx.transactionDate,
     principal: 0,
     // Same separately-booked interest as takeSeparateInterest above -- keep 4dp
-    // precision through the accumulation, not cents.
-    interest: Math.round(Math.abs(Number(tx.amount)) * 10000) / 10000,
+    // precision through the accumulation, not cents. Negate the signed amount
+    // (expenses are negative) so refunds produce a negative contribution.
+    interest: Math.round(-Number(tx.amount) * 10000) / 10000,
     balance: 0,
     cumulativePrincipal: 0,
     cumulativeInterest: 0,
@@ -832,8 +833,11 @@ function pairSeparateInterestByDate(
   const tolerance = paymentIntervalToleranceDays(sortedDates);
   for (const tx of interestTransactions) {
     if (tx.isTransfer) continue; // interest is never a transfer to the loan
-    const amount = Math.abs(Number(tx.amount));
-    if (!(amount > 0)) continue;
+    // Negate the signed amount: expenses are negative → positive contribution;
+    // refunds are positive → negative contribution (reduces the net).
+    const signed = Number(tx.amount);
+    if (!signed) continue; // skips 0 and NaN (same gate as the original)
+    const amount = -signed;
     const nearest =
       sortedDates.length > 0
         ? nearestDateKey(tx.transactionDate.split('T')[0], sortedDates, tolerance)
