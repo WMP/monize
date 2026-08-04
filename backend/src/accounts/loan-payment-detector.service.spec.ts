@@ -3410,6 +3410,128 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-022 (seventh reopen). Loan A has sourceAccountId=bank-1 and
+     * interestCategoryId=cat-int. Imported loan B has BOTH sourceAccountId=null
+     * and interestCategoryId=null and no loan-side transaction in the window.
+     * bank-1 carries A's $100 and B's $200 standalone cat-int expenses.
+     *
+     * B is excluded from:
+     *   - sameInterestAccounts (interestCategoryId=null != cat-int)
+     *   - sameSourceNoCategoryLoans (sourceAccountId=null, not In(sourceIds))
+     *   - differentCategorySharedSourceLoans (sourceAccountId=null)
+     *
+     * Without the fix, otherLoanIds is empty and line 700 returns
+     * isAmbiguous=false, letting A sum $300 for $100 of real interest.
+     */
+    it("marks every record interestUnmatched when another loan has both sourceAccountId=null and interestCategoryId=null (REV-20260803-022 seventh reopen)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 350 }),
+        makePayment("2026-02-05", { amount: 350 }),
+        makePayment("2026-03-05", { amount: 400, interestAmount: 50 }),
+      ];
+
+      accountsRepository.find
+        // sameInterestAccounts: only loan-1 has cat-int; loan-2 (null category) excluded.
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        // sameSourceNoCategoryLoans: loan-2 has null sourceAccountId, not In(sourceIds).
+        .mockResolvedValueOnce([])
+        // differentCategorySharedSourceLoans: loan-2 has null sourceAccountId.
+        .mockResolvedValueOnce([])
+        // nullSourceNullCategoryLoans: loan-2 has both fields null -- NEW CHECK.
+        .mockResolvedValueOnce([{ id: "loan-2" }]);
+
+      // bank-1 carries both A's $100 and B's $200 cat-int expenses.
+      transactionRepository.count.mockResolvedValue(2);
+
+      // Without the fix, isAmbiguous returns false and the code proceeds to
+      // pair: find() returns both A's $100 and B's $200, summed as $300 for
+      // loan A's 2026-01-05 payment, so interestAmount would be 300 (not null).
+      transactionRepository.find.mockResolvedValueOnce([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-01-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Pairing is ambiguous: B's expenses are indistinguishable from A's.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment with existing split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * Control for the seventh reopen: when the doubly-unconfigured loan exists
+     * but has no cat-int expenses on bank-1 in the window, attribution is not
+     * ambiguous and pairing proceeds normally.
+     */
+    it("still pairs interest normally when a null-source null-category loan exists but has no candidate expenses (REV-20260803-022 seventh reopen control)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+
+      accountsRepository.find
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "loan-2" }]);
+
+      // No cat-int expenses on bank-1 in the window -- nothing to confuse.
+      transactionRepository.count.mockResolvedValue(0);
+
+      transactionRepository.find.mockResolvedValueOnce([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-02-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(100, 2);
+      expect(result[1].interestAmount).toBeCloseTo(200, 2);
+      expect(result[0].interestUnmatched).toBeUndefined();
+      expect(result[1].interestUnmatched).toBeUndefined();
+    });
+
+    /**
      * Control for the sixth reopen: when the different-category shared-source
      * loan exists but there are no cat-int expenses on bank-1 in the window,
      * attribution is not ambiguous and pairing proceeds normally.

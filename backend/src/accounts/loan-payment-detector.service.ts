@@ -697,6 +697,41 @@ export class LoanPaymentDetectorService {
         if (candidateCount > 0) return true;
       }
 
+      // REV-20260803-022 (seventh reopen): a loan with BOTH sourceAccountId=null
+      // AND interestCategoryId=null is excluded from every check above:
+      // - sameInterestAccounts filters by interestCategoryId = account.interestCategoryId
+      // - sameSourceNoCategoryLoans filters by sourceAccountId In(sourceIds)
+      // - differentCategorySharedSourceLoans filters by sourceAccountId In(sourceIds)
+      // Its transactions can still appear on the source accounts under this loan's
+      // interest category if they were imported before the account was configured.
+      // If any such loan exists and candidate expenses are present, reject.
+      const nullSourceNullCategoryLoans = await m.getRepository(Account).find({
+        where: {
+          userId,
+          id: Not(account.id),
+          sourceAccountId: IsNull(),
+          interestCategoryId: IsNull(),
+          accountType: In([
+            AccountType.LOAN,
+            AccountType.MORTGAGE,
+            AccountType.LINE_OF_CREDIT,
+          ]),
+        },
+        select: ["id"],
+      });
+      if (nullSourceNullCategoryLoans.length > 0) {
+        const candidateCount = await m.getRepository(Transaction).count({
+          where: {
+            userId,
+            accountId: In(sourceIds),
+            categoryId: interestCategoryId,
+            isTransfer: false,
+            transactionDate: Between(rangeStart, rangeEnd),
+          },
+        });
+        if (candidateCount > 0) return true;
+      }
+
       if (otherLoanIds.length === 0) return false;
 
       // A conflicting loan that shares our source account means any interest
