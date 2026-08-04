@@ -4,6 +4,7 @@ import {
   OIDC_REAUTH_PURPOSES,
   OIDC_REAUTH_TTL_SECONDS,
   OidcReauthService,
+  isFreshAuthentication,
   isOidcReauthPurpose,
 } from "./oidc-reauth.service";
 
@@ -33,6 +34,41 @@ describe("OidcReauthService", () => {
       for (const value of ["", "delete", "DELETE-ACCOUNT", null, 7, {}]) {
         expect(isOidcReauthPurpose(value)).toBe(false);
       }
+    });
+  });
+
+  describe("isFreshAuthentication", () => {
+    const now = 1_700_000_000_000; // fixed epoch ms, so the cases are exact
+    const nowSeconds = Math.floor(now / 1000);
+
+    it("accepts an authentication from a moment ago", () => {
+      expect(isFreshAuthentication(nowSeconds - 5, now)).toBe(true);
+    });
+
+    it("accepts the whole freshness window and nothing past it", () => {
+      expect(
+        isFreshAuthentication(nowSeconds - OIDC_REAUTH_TTL_SECONDS, now),
+      ).toBe(true);
+      expect(
+        isFreshAuthentication(nowSeconds - OIDC_REAUTH_TTL_SECONDS - 1, now),
+      ).toBe(false);
+    });
+
+    it("rejects a reused SSO session from this morning", () => {
+      expect(isFreshAuthentication(nowSeconds - 6 * 3600, now)).toBe(false);
+    });
+
+    it("tolerates small clock skew ahead of us, but not a future claim", () => {
+      // The IdP's clock running up to a minute ahead is skew, not an attack.
+      expect(isFreshAuthentication(nowSeconds + 59, now)).toBe(true);
+      expect(isFreshAuthentication(nowSeconds + 61, now)).toBe(false);
+    });
+
+    it("treats an absent or malformed claim as not fresh", () => {
+      // A provider that omits auth_time has not answered the question.
+      expect(isFreshAuthentication(undefined, now)).toBe(false);
+      expect(isFreshAuthentication(Number.NaN, now)).toBe(false);
+      expect(isFreshAuthentication(Infinity, now)).toBe(false);
     });
   });
 

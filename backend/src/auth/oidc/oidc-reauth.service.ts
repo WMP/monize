@@ -68,6 +68,31 @@ export function isOidcReauthPurpose(
 /** Five minutes: long enough to finish the action, short enough to be useless later. */
 export const OIDC_REAUTH_TTL_SECONDS = 5 * 60;
 
+/**
+ * Whether the provider's asserted authentication time is inside the freshness
+ * window.
+ *
+ * The authorization request sends `prompt=login` and `max_age=0`, but a
+ * parameter is a request, not a property: providers honour them unevenly, and
+ * one holding a live SSO session can answer the redirect with no credential
+ * prompt at all. `auth_time` is the claim that reports what actually happened,
+ * so the callback checks it before minting anything -- otherwise the
+ * "re-authenticate to continue" step can be satisfied by an unattended browser
+ * whose session was simply still warm.
+ *
+ * A provider that omits the claim has not answered the question, so an absent
+ * or malformed `auth_time` is "not fresh" rather than "fine". A small negative
+ * age is clock skew between us and the IdP, not a problem.
+ */
+export function isFreshAuthentication(
+  authTime: number | undefined,
+  now = Date.now(),
+): boolean {
+  if (typeof authTime !== "number" || !Number.isFinite(authTime)) return false;
+  const ageSeconds = Math.floor(now / 1000) - authTime;
+  return ageSeconds >= -60 && ageSeconds <= OIDC_REAUTH_TTL_SECONDS;
+}
+
 const TOKEN_TYPE = "oidc_reauth";
 
 interface OidcReauthPayload {
