@@ -101,6 +101,114 @@ describe("atomic backup file writes", () => {
     });
   });
 
+  /**
+   * A short write is the one failure a real filesystem will not produce on
+   * demand, and it is the one the temp-file dance does not catch by itself:
+   * `write(2)` may accept fewer bytes than it was given and report exactly that,
+   * with no error. `writeFileAtomic` used to call `handle.write(data)` and drop
+   * the result, so a half-written payload was fsynced and renamed onto the final,
+   * newest-sorting, retention-counted name -- the truncated artifact the whole
+   * module exists to prevent.
+   *
+   * So `fs.open` is spied here and only the returned handle's `write` is
+   * substituted. The directory, the rename and the fsync stay real, because what
+   * is being asserted is still what the directory looks like afterwards.
+   */
+  describe("writeFileAtomic under a short write", () => {
+    const target = () => join(dir, "monize-backup-daily-2026-01-01.json.gz");
+    const payload = Buffer.from("0123456789ABCDEF", "utf-8");
+
+    /** Wrap the next opened handle so its `write` behaves as `impl` says. */
+    const interceptWrite = (
+      impl: (
+        handle: fs.FileHandle,
+        data: Buffer,
+        offset: number,
+        length: number,
+      ) => Promise<{ bytesWritten: number }>,
+    ) =>
+      jest.spyOn(fs, "open").mockImplementationOnce(async (...args) => {
+        const spy = jest.spyOn(fs, "open");
+        spy.mockRestore();
+        const handle = await fs.open(...(args as Parameters<typeof fs.open>));
+        const original = handle.write.bind(handle);
+        (handle as { write: unknown }).write = (
+          data: Buffer,
+          offset = 0,
+          length = data.length,
+        ) =>
+          impl(
+            { write: original } as unknown as fs.FileHandle,
+            data,
+            offset,
+            length,
+          );
+        return handle;
+      });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("keeps writing until every byte has landed", async () => {
+      // Two honest short writes: the first takes half, the second the rest.
+      let call = 0;
+      interceptWrite(async (h, data, offset, length) => {
+        call += 1;
+        const take = call === 1 ? Math.floor(length / 2) : length;
+        return h.write(data, offset, take);
+      });
+
+      await writeFileAtomic(target(), payload);
+
+      expect(await listing()).toEqual([
+        "monize-backup-daily-2026-01-01.json.gz",
+      ]);
+      expect(await fs.readFile(target())).toEqual(payload);
+      expect(call).toBeGreaterThan(1);
+    });
+
+    it("refuses to publish when the file is shorter than the payload", async () => {
+      // A `write` that reports success for bytes it did not write. Only the size
+      // the kernel reports can catch this, which is why the stat is there and
+      // not just the byte count.
+      interceptWrite(async (h, data, offset, length) => {
+        await h.write(data, offset, Math.floor(length / 2));
+        return { bytesWritten: length };
+      });
+
+      await expect(writeFileAtomic(target(), payload)).rejects.toThrow(
+        /temporary file is \d+ bytes, expected 16/,
+      );
+      // Neither a partial final artifact nor a temporary file left behind.
+      expect(await listing()).toEqual([]);
+    });
+
+    it("gives up rather than spinning when a write accepts nothing", async () => {
+      interceptWrite(async () => ({ bytesWritten: 0 }));
+
+      await expect(writeFileAtomic(target(), payload)).rejects.toThrow(
+        /Write stalled after 0 of 16 bytes/,
+      );
+      expect(await listing()).toEqual([]);
+    });
+
+    it("leaves the previous artifact in place when a write fails", async () => {
+      const previous = Buffer.from("the last good backup", "utf-8");
+      await writeFileAtomic(target(), previous);
+
+      interceptWrite(async () => ({ bytesWritten: 0 }));
+      await expect(writeFileAtomic(target(), payload)).rejects.toThrow();
+
+      // The whole point of renaming: a failed write cannot destroy what was
+      // already there.
+      expect(await fs.readFile(target())).toEqual(previous);
+      expect(await listing()).toEqual([
+        "monize-backup-daily-2026-01-01.json.gz",
+      ]);
+    });
+  });
+
   describe("copyFileAtomic", () => {
     it("promotes a daily backup to a weekly name", async () => {
       const daily = join(dir, "monize-backup-daily-2026-04-14.json.gz");

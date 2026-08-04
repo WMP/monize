@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import { constants as fsConstants, promises as fs } from "fs";
 import { basename, dirname, join } from "path";
 
 /**
@@ -75,10 +75,19 @@ export async function writeFileAtomic(
   let handle: fs.FileHandle | undefined;
   try {
     handle = await fs.open(tempPath, "wx");
-    await handle.write(data);
+    await writeFully(handle, data);
     // Before the rename, not after: a rename that lands while the data is still
     // in the page cache can survive a crash the data does not.
     await handle.sync();
+    // The size the kernel reports, not the byte count we were told. `write`
+    // returning `data.length` and the file being that long are two claims, and
+    // this is the one the reader will see.
+    const { size } = await handle.stat();
+    if (size !== data.length) {
+      throw new Error(
+        `Refusing to publish ${finalPath}: temporary file is ${size} bytes, expected ${data.length}`,
+      );
+    }
     await handle.close();
     handle = undefined;
     await fs.rename(tempPath, finalPath);
@@ -88,6 +97,36 @@ export async function writeFileAtomic(
     throw error;
   }
   await syncDirectory(dirname(finalPath));
+}
+
+/**
+ * Write every byte of `data`, however many calls that takes.
+ *
+ * `FileHandle.write` wraps one `write(2)`, which is allowed to write fewer bytes
+ * than it was given and report exactly that in `bytesWritten` -- no error, no
+ * exception. This used to be `await handle.write(data)` with the result ignored,
+ * so a short write was followed by an `fsync` and a `rename`: the final,
+ * newest-sorting, retention-counted `.json.gz` name published a truncated
+ * artifact. That is precisely the outcome the temp-file-and-rename dance exists
+ * to prevent, arrived at by a different route.
+ *
+ * Zero progress on a non-empty remainder is treated as an error rather than
+ * looped on, because a `write` that accepts nothing twice will not accept
+ * anything on the third attempt either, and spinning would hang the backup.
+ */
+async function writeFully(handle: fs.FileHandle, data: Buffer): Promise<void> {
+  let written = 0;
+  while (written < data.length) {
+    const { bytesWritten } = await handle.write(
+      data,
+      written,
+      data.length - written,
+    );
+    if (bytesWritten <= 0) {
+      throw new Error(`Write stalled after ${written} of ${data.length} bytes`);
+    }
+    written += bytesWritten;
+  }
 }
 
 /**
@@ -101,8 +140,45 @@ export async function copyFileAtomic(
   sourcePath: string,
   finalPath: string,
 ): Promise<void> {
-  const data = await fs.readFile(sourcePath);
-  await writeFileAtomic(finalPath, data);
+  const tempPath = tempPathFor(finalPath);
+  try {
+    // Streamed, not `readFile` into `writeFileAtomic`. A promotion is a copy of
+    // a whole backup, and loading one into the heap to write it straight back
+    // out put the pod's memory limit between a user and their weekly artifact
+    // for no reason -- the bytes are already on the same filesystem. `copyFile`
+    // does it in the kernel.
+    //
+    // COPYFILE_EXCL keeps the exclusive-creation property the direct write has,
+    // so two promotions cannot share a temporary file.
+    await fs.copyFile(sourcePath, tempPath, fsConstants.COPYFILE_EXCL);
+
+    // Same two obligations as the direct write, for the same reasons: the bytes
+    // must be on disk before the name points at them, and the name must not
+    // point at a shorter file than the source.
+    const [sourceStat, tempStat] = await Promise.all([
+      fs.stat(sourcePath),
+      fs.stat(tempPath),
+    ]);
+    if (tempStat.size !== sourceStat.size) {
+      throw new Error(
+        `Refusing to publish ${finalPath}: copy is ${tempStat.size} bytes, source is ${sourceStat.size}`,
+      );
+    }
+
+    let handle: fs.FileHandle | undefined;
+    try {
+      handle = await fs.open(tempPath, "r+");
+      await handle.sync();
+    } finally {
+      await handle?.close().catch(() => undefined);
+    }
+
+    await fs.rename(tempPath, finalPath);
+  } catch (error) {
+    await fs.unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
+  await syncDirectory(dirname(finalPath));
 }
 
 /** True for a name this module would have created. */
