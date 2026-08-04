@@ -215,29 +215,39 @@ export class RateChangeInferenceService {
   }
 
   /**
-   * REV-20260803-024 (second reopen): `pairSeparateInterest` queries its own
-   * candidate separate-interest expenses through `lastPaymentDate + 45
-   * days`, uncapped at today, so a future-dated scheduled/recurring expense
-   * in the loan's interest category can fall inside that tolerance window
-   * and get paired to a historical payment -- exactly the contamination the
-   * main transaction query above was bounded (`transactionDate <=
-   * todayYMD()`) to exclude. That query lives in
-   * `loan-payment-detector.service.ts` and is shared with
-   * `detectPaymentPattern`, which legitimately wants the widest possible
-   * window (it is not reconstructing a balance from `currentBalance`, so a
-   * future entry cannot distort it the same way), so the cutoff cannot be
-   * pushed into the shared query without changing behaviour for that other,
-   * unrelated caller.
+   * REV-20260803-024 (third reopen): the second pass's `hasRealEvidenceNear`
+   * asked "does ANY real (today-bounded) interest expense exist within 45
+   * days of THIS payment's date" -- a question about the neighbourhood, not
+   * about the specific pairing being verified. With payments 30 days apart
+   * and a 45-day tolerance, the genuine evidence for an *adjacent* payment
+   * (e.g. today-30) is also within 45 days of the payment under test (today)
+   * and made the check pass even though that evidence has nothing to do with
+   * whatever `pairSeparateInterest` actually paired to today's payment (a
+   * future-dated expense at today+1). A coincidence of the tolerance window
+   * being wider than the payment cadence, not genuine confirmation.
    *
-   * Instead, re-verify every interest amount `pairSeparateInterest`
-   * recovered by pairing (as opposed to a real split leg, which came off the
-   * loan-side transaction itself and was already bounded to today by the
-   * caller): unless a real, non-void, non-transfer transaction in the
-   * interest category, from one of the loan's own source accounts, dated on
-   * or before today, actually falls within the same tolerance window, the
-   * recovered interest is discarded and the payment reverts to its
-   * pre-pairing, principal-only shape -- exactly how `pairSeparateInterest`
-   * itself marks a pairing attempt that found nothing.
+   * The fix re-runs the same algorithm `pairSeparateInterest` itself uses --
+   * assign each candidate interest expense to its nearest payment date
+   * (within the same cadence-derived tolerance) and sum per date -- but over
+   * ONLY real, non-void, non-transfer, today-bounded candidates. That
+   * per-date assignment is what makes this specific: the today-30 evidence
+   * lands on the today-30 date (distance 0), not on today's (distance 30),
+   * exactly as `pairSeparateInterest`'s own `nearestPaymentDateKey` would
+   * place it. A pairing is accepted only when this today-bounded recomputation
+   * lands the same amount on the same date that `pairSeparateInterest`
+   * actually recorded -- i.e. the pairing is exactly reproducible from
+   * evidence that was real as of today. Anything the recomputation cannot
+   * reproduce (nothing landed on that date, or a smaller amount because a
+   * future-dated expense inflated the original sum) is discarded, and the
+   * payment reverts to its pre-pairing, principal-only shape -- exactly how
+   * `pairSeparateInterest` itself marks a pairing attempt that found
+   * nothing.
+   *
+   * `nearestPaymentDateKey`/`paymentPeriodToleranceDays` are re-implemented
+   * here (not imported) because they are private to
+   * `loan-payment-detector.service.ts`, which this fix's partition may not
+   * touch; keep them in lockstep with that file's originals if either
+   * changes.
    */
   private async excludeFutureLeakedInterest(
     userId: string,
@@ -283,45 +293,108 @@ export class RateChangeInferenceService {
     // pairSeparateInterest's own filtering (a voided row moved no money; a
     // transfer tagged with the interest category would be principal, not
     // interest).
-    const realDateKeys = realInterestTxns
-      .filter((tx) => !tx.isVoid && !tx.isTransfer)
-      .map((tx) => tx.transactionDate.split("T")[0]);
+    const realTxns = realInterestTxns.filter(
+      (tx) => !tx.isVoid && !tx.isTransfer,
+    );
 
-    // Same 45-day-each-direction window `pairSeparateInterest` itself
-    // queries with, so this can only reject a pairing that a today-bounded
-    // version of that same query could not have made -- never one it made
-    // correctly.
-    const TOLERANCE_DAYS = 45;
-    const hasRealEvidenceNear = (dateKey: string): boolean => {
-      const target = new Date(`${dateKey}T00:00:00Z`).getTime();
-      return realDateKeys.some((realKey) => {
-        const real = new Date(`${realKey}T00:00:00Z`).getTime();
-        return (
-          Math.abs(target - real) / (1000 * 60 * 60 * 24) <= TOLERANCE_DAYS
-        );
-      });
-    };
+    // Same cadence-derived tolerance and nearest-payment assignment
+    // `pairSeparateInterest` uses, but fed only today-bounded candidates --
+    // recomputing what that pairing would have found had the future-dated
+    // transaction never existed.
+    const dateKeys = originalPayments.map((p) => p.date.split("T")[0]);
+    const tolerance = this.paymentPeriodToleranceDays(originalPayments);
+    const todayBoundedSumByDate = new Map<string, number>();
+    for (const tx of realTxns) {
+      const txDate = tx.transactionDate.split("T")[0];
+      const nearest = this.nearestPaymentDateKey(txDate, dateKeys, tolerance);
+      if (!nearest) continue;
+      todayBoundedSumByDate.set(
+        nearest,
+        (todayBoundedSumByDate.get(nearest) || 0) + Math.abs(Number(tx.amount)),
+      );
+    }
 
     const originalByDate = new Map<string, PaymentRecord>(
       originalPayments.map((p) => [p.date.split("T")[0], p]),
     );
 
+    // Half a cent: both sides are produced by roundMoney over a sum of real
+    // ledger amounts, so a genuine match is exact; this only absorbs
+    // floating-point summation-order noise, never a materially different
+    // amount.
+    const AMOUNT_MATCH_EPSILON = 0.005;
+
     return pairedPayments.map((p) => {
       const dateKey = p.date.split("T")[0];
       if (!wasPairedByDate.get(dateKey)) return p;
-      if (hasRealEvidenceNear(dateKey)) return p;
 
-      // No transaction visible as of today corroborates this payment's
-      // recovered interest -- it can only have come from a future-dated
-      // transaction inside pairSeparateInterest's own (uncapped) tolerance
-      // window. Revert to the pre-pairing, principal-only record so it is
-      // treated exactly like a failed pairing attempt, not a rate
-      // observation.
+      const todayBoundedSum = todayBoundedSumByDate.get(dateKey);
+      const verified =
+        todayBoundedSum != null &&
+        todayBoundedSum > 0 &&
+        Math.abs(roundMoney(todayBoundedSum) - (p.interestAmount ?? 0)) <=
+          AMOUNT_MATCH_EPSILON;
+      if (verified) return p;
+
+      // A today-bounded rerun of the exact same nearest-payment matching
+      // pairSeparateInterest used does not reproduce this payment's
+      // recovered interest -- either nothing lands on this date at all, or
+      // the original sum was inflated by a future-dated transaction. Revert
+      // to the pre-pairing, principal-only record so it is treated exactly
+      // like a failed pairing attempt, not a rate observation.
       const original = originalByDate.get(dateKey);
       return original
         ? { ...original, interestUnmatched: true }
         : { ...p, interestAmount: null, interestUnmatched: true };
     });
+  }
+
+  /**
+   * Half the median payment interval, the window within which an interest
+   * transaction is considered part of a given payment (min 10 days).
+   * Mirrors `LoanPaymentDetectorService`'s private method of the same name
+   * (`loan-payment-detector.service.ts`) exactly, so the verification below
+   * uses the identical tolerance `pairSeparateInterest` used to produce the
+   * pairing it is checking.
+   */
+  private paymentPeriodToleranceDays(payments: PaymentRecord[]): number {
+    if (payments.length < 2) return 20;
+    const intervals: number[] = [];
+    for (let i = 1; i < payments.length; i++) {
+      const prev = new Date(payments[i - 1].date).getTime();
+      const curr = new Date(payments[i].date).getTime();
+      intervals.push(Math.round((curr - prev) / (1000 * 60 * 60 * 24)));
+    }
+    intervals.sort((a, b) => a - b);
+    const median = intervals[Math.floor(intervals.length / 2)];
+    return median > 0 ? Math.max(10, Math.round(median / 2)) : 20;
+  }
+
+  /**
+   * The payment date key nearest to a transaction date, or null when the
+   * closest payment is further away than the tolerance. Mirrors
+   * `LoanPaymentDetectorService`'s private method of the same name
+   * (`loan-payment-detector.service.ts`) exactly -- including ties resolving
+   * to whichever candidate is encountered first -- so a today-bounded rerun
+   * assigns evidence to payments exactly as the original pairing did.
+   */
+  private nearestPaymentDateKey(
+    dateKey: string,
+    paymentDateKeys: string[],
+    tolerance: number,
+  ): string | null {
+    const target = new Date(dateKey).getTime();
+    let best: string | null = null;
+    let bestDiff = Infinity;
+    for (const key of paymentDateKeys) {
+      const diff =
+        Math.abs(new Date(key).getTime() - target) / (1000 * 60 * 60 * 24);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = key;
+      }
+    }
+    return best != null && bestDiff <= tolerance ? best : null;
   }
 
   /**

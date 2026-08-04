@@ -574,6 +574,7 @@ describe("RateChangeInferenceService", () => {
       transactionDate: customDates[0],
       categoryId: "cat-interest",
       accountId: "src-1",
+      amount: realInterest[0],
       status: TransactionStatus.CLEARED,
     } as Transaction;
     const realInterestTxn2 = {
@@ -581,6 +582,7 @@ describe("RateChangeInferenceService", () => {
       transactionDate: customDates[1],
       categoryId: "cat-interest",
       accountId: "src-1",
+      amount: realInterest[1],
       status: TransactionStatus.CLEARED,
     } as Transaction;
     // The future-dated leak the reopened finding describes: within 45 days
@@ -591,6 +593,7 @@ describe("RateChangeInferenceService", () => {
       transactionDate: addDays(today, 10),
       categoryId: "cat-interest",
       accountId: "src-1",
+      amount: leakedInterest,
       status: TransactionStatus.CLEARED,
     } as Transaction;
 
@@ -627,6 +630,144 @@ describe("RateChangeInferenceService", () => {
     // observations remain -- below MIN_USABLE_PAYMENTS -- so detection must
     // report insufficient data rather than persist a rate inferred in part
     // from a transaction that has not happened yet.
+    await expect(service.detectAndPersist(userId, accountId)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects a future-derived pairing even when real evidence for an adjacent payment coincidentally falls within a wide tolerance window of the payment under test (REV-20260803-024, third reopen)", async () => {
+    // Payments 30 days apart: today-60, today-30, today. Genuine interest
+    // for the first two payments. The latest payment's recovered interest
+    // comes only from a future-dated expense (today+1) that
+    // pairSeparateInterest's own, uncapped-at-today window paired to it --
+    // exactly like the second-reopen scenario above. What this test isolates
+    // is the second pass's actual defect: its verification asked only "is
+    // there ANY real, today-bounded interest expense within a fixed 45-day
+    // window of THIS payment's date" rather than "is there real evidence
+    // that is actually the nearest match to THIS payment". The genuine
+    // expense for today-30 sits only 30 days from today's payment -- well
+    // inside a fixed 45-day window -- even though it is the evidence for a
+    // *different* payment (today-30's own) and has nothing to do with the
+    // future-dated expense actually paired to today's payment. A correct
+    // verification must attribute that evidence to today-30 (its true
+    // nearest payment) and find nothing left over to corroborate today's.
+    const today = todayYMD();
+    const addDays = (dateKey: string, days: number): string => {
+      const d = new Date(`${dateKey}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().split("T")[0];
+    };
+
+    const { records, balanceMap: canonicalBalanceMap } = generateHistory(
+      400000,
+      [{ annualRate: 5.5, payments: 3, paymentAmount: 2500 }],
+    );
+    const customDates = [addDays(today, -60), addDays(today, -30), today];
+    const balanceMap = new Map<string, number>();
+    const stripped: PaymentRecord[] = records.map((r, i) => {
+      const date = customDates[i];
+      balanceMap.set(date, canonicalBalanceMap.get(r.date)!);
+      return {
+        ...r,
+        date,
+        amount: r.principalAmount!,
+        interestAmount: null,
+      };
+    });
+
+    detector.buildPaymentRecords.mockResolvedValue(stripped);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ interestCategoryId: "cat-interest" }),
+    );
+
+    const realInterest = [
+      records[0].interestAmount!,
+      records[1].interestAmount!,
+    ];
+    // Stand-in for the real (buggy, pre-third-fix) pairSeparateInterest: it
+    // recovers genuine interest for the first two payments and attaches a
+    // future-derived amount to the latest one.
+    const leakedInterest = 1800;
+    detector.pairSeparateInterest.mockImplementation(
+      async (
+        _userId: string,
+        _account: Account,
+        consolidatedRecords: PaymentRecord[],
+      ) =>
+        consolidatedRecords.map((p, i) => {
+          const interestAmount = i < 2 ? realInterest[i] : leakedInterest;
+          return {
+            ...p,
+            amount: p.amount + interestAmount,
+            interestAmount,
+            interestCategoryId: "cat-interest",
+          };
+        }),
+    );
+
+    // Genuine, today-bounded interest expenses for the first two payments --
+    // each dated exactly on its own payment, so a correct nearest-match
+    // recomputation attributes it there and nowhere else.
+    const realInterestTxn1 = {
+      id: "int-1",
+      transactionDate: customDates[0],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: realInterest[0],
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    const realInterestTxn2 = {
+      id: "int-2",
+      transactionDate: customDates[1],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: realInterest[1],
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    // Never returned by the today-bounded query: this is the actual leak,
+    // dated the day after today.
+    const futureInterestTxn = {
+      id: "int-future",
+      transactionDate: addDays(today, 1),
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: leakedInterest,
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+
+    transactionsRepository.find.mockImplementation(
+      (options: {
+        where?: {
+          categoryId?: string;
+          transactionDate?: FindOperator<string>;
+        };
+      }) => {
+        if (options?.where?.categoryId) {
+          const dateOp = options.where.transactionDate;
+          const all = [realInterestTxn1, realInterestTxn2, futureInterestTxn];
+          if (
+            dateOp instanceof FindOperator &&
+            dateOp.type === "lessThanOrEqual"
+          ) {
+            expect(dateOp.value).toBe(today);
+            return Promise.resolve(
+              all.filter((t) => t.transactionDate <= dateOp.value),
+            );
+          }
+          return Promise.resolve(all);
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    // A broad "any real evidence somewhere nearby" check would wrongly
+    // validate today's payment off the today-30 evidence. The correct
+    // per-payment nearest-match recomputation leaves today's payment
+    // unverifiable, so only 2 genuine observations remain -- below
+    // MIN_USABLE_PAYMENTS -- and detection must report insufficient data
+    // rather than persist a rate inferred in part from a future transaction.
     await expect(service.detectAndPersist(userId, accountId)).rejects.toThrow(
       BadRequestException,
     );
