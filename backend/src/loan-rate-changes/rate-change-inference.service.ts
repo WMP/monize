@@ -171,11 +171,6 @@ export class RateChangeInferenceService {
     periodsPerYear: number,
   ): RateObservation[] {
     const observations: RateObservation[] = [];
-    // Day-count annualization (non-Canadian) measures each accrual over the
-    // actual gap since the last interest-bearing payment; the first falls back
-    // to the nominal period.
-    const periodDays = 365 / periodsPerYear;
-    let lastDate: string | null = null;
     for (const payment of payments) {
       if (payment.interestAmount == null || payment.interestAmount <= 0) {
         continue;
@@ -186,20 +181,11 @@ export class RateChangeInferenceService {
         continue;
       }
 
-      // A gap much longer than one interval (a payment holiday) still covers a
-      // single billing period, so cap it; a non-positive gap (same-day) falls
-      // back to the nominal period.
-      const gap =
-        lastDate !== null ? this.daysBetween(lastDate, dateKey) : periodDays;
-      const days = gap <= 0 || gap > periodDays * 1.5 ? periodDays : gap;
-      lastDate = dateKey;
-
       const periodicRate = payment.interestAmount / balanceBefore;
       const annualRate = this.annualizeRate(
         account,
         periodicRate,
         periodsPerYear,
-        days,
       );
       if (annualRate <= 0 || annualRate >= 100) continue;
 
@@ -212,33 +198,29 @@ export class RateChangeInferenceService {
     return observations;
   }
 
-  /** Whole days from `aKey` to `bKey` (both yyyy-MM-dd), timezone-safe. */
-  private daysBetween(aKey: string, bKey: string): number {
-    const a = new Date(`${aKey}T00:00:00Z`).getTime();
-    const b = new Date(`${bKey}T00:00:00Z`).getTime();
-    return Math.round((b - a) / (1000 * 60 * 60 * 24));
-  }
-
   /**
    * Annualize an observed periodic rate. This mirrors the frontend's
-   * reconstruction (`assignObservedRates`) so a detected rate matches what the
-   * schedule shows:
+   * reconstruction (`assignObservedRates`) and the amortization formulas in
+   * `loan-amortization.util.ts` / `mortgage-amortization.util.ts` -- both
+   * define the periodic rate as `annualRate / periodsPerYear` (fixed by the
+   * account's configured payment frequency), never by the calendar-day gap
+   * between payments -- so a detected rate matches what the schedule shows:
    *  - Canadian mortgage: annualize by the nominal periods per year (the
    *    lender's convention), inverting the semi-annual compounding for a
    *    fixed-rate loan;
-   *  - everything else: annualize over the actual accrual window (`x 365 /
-   *    days`), which self-corrects for month-length and payment-gap variation
-   *    rather than overshooting a fixed `x periodsPerYear`.
+   *  - everything else (ordinary loans and non-Canadian mortgages): invert
+   *    the same fixed-periods-per-year formula (`x periodsPerYear`), so a
+   *    28-day February gap and a 31-day January gap on the same monthly loan
+   *    yield the same annual rate instead of drifting with month length.
    */
   private annualizeRate(
     account: Account,
     periodicRate: number,
     periodsPerYear: number,
-    days: number,
   ): number {
     const isCanadian = account.isCanadianMortgage || false;
     if (!isCanadian) {
-      return periodicRate * (365 / days) * 100;
+      return periodicRate * periodsPerYear * 100;
     }
     return account.isVariableRate || false
       ? periodicRate * periodsPerYear * 100

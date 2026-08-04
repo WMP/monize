@@ -30,40 +30,31 @@ interface SyntheticSegment {
 function generateHistory(
   startingBalance: number,
   segments: SyntheticSegment[],
-  options: { isCanadianFixed?: boolean } = {},
+  options: { isCanadianFixed?: boolean; startYear?: number } = {},
 ): { records: PaymentRecord[]; balanceMap: Map<string, number> } {
   const records: PaymentRecord[] = [];
   const balanceMap = new Map<string, number>();
   let balance = startingBalance;
-  let year = 2020;
+  let year = options.startYear ?? 2020;
   let month = 1;
-  // The nominal monthly period the detector assumes for the first payment.
-  const periodDays = 365 / 12;
-  const daysBetween = (aKey: string, bKey: string) =>
-    Math.round(
-      (new Date(`${bKey}T00:00:00Z`).getTime() -
-        new Date(`${aKey}T00:00:00Z`).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-  let prevDate: string | null = null;
 
   for (const segment of segments) {
     for (let i = 0; i < segment.payments; i++) {
       const date = `${year}-${String(month).padStart(2, "0")}-01`;
-      // Non-Canadian detection annualizes by day count, so book interest by day
-      // count too (balance x rate x days/365); a Canadian fixed mortgage
-      // compounds semi-annually. Either way the detector recovers the quoted
-      // rate exactly.
-      const days = prevDate === null ? periodDays : daysBetween(prevDate, date);
+      // Real amortization (loan-amortization.util.ts / mortgage-amortization
+      // .util.ts) books interest as balance x periodicRate, where periodicRate
+      // is fixed by payment frequency (annualRate / periodsPerYear) -- never
+      // by the calendar-day gap since the last payment. A Canadian fixed
+      // mortgage compounds semi-annually instead. Booking it this way (rather
+      // than by day count) is what lets the detector recover the quoted rate
+      // regardless of month length.
       const interest = options.isCanadianFixed
         ? Math.round(
             balance *
               (Math.pow(1 + segment.annualRate / 100 / 2, 2 / 12) - 1) *
               100,
           ) / 100
-        : Math.round(
-            balance * (segment.annualRate / 100) * (days / 365) * 100,
-          ) / 100;
+        : Math.round(balance * (segment.annualRate / 100 / 12) * 100) / 100;
       const principal =
         Math.round((segment.paymentAmount - interest) * 100) / 100;
 
@@ -82,7 +73,6 @@ function generateHistory(
       });
 
       balance -= principal;
-      prevDate = date;
       month++;
       if (month > 12) {
         month = 1;
@@ -185,6 +175,27 @@ describe("RateChangeInferenceService", () => {
     expect(initial.effectiveDate).toBe("2020-01-01");
     expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
     expect(initial.newPaymentAmount).toBe(2500);
+  });
+
+  it("recovers a consistent annual rate for a monthly loan across 28-day and 31-day gaps (REV-20260803-004)", async () => {
+    // 2021 is not a leap year: Jan-1 -> Feb-1 is a 31-day gap and
+    // Feb-1 -> Mar-1 is a 28-day gap, on the same true 5%/12 monthly rate.
+    // A calendar-day-gap annualization (`x 365/days`) reads that as ~4.91%
+    // and ~5.43% respectively; the account's configured MONTHLY frequency
+    // must recover ~5% either way.
+    const { records, balanceMap } = generateHistory(
+      400000,
+      [{ annualRate: 5, payments: 8, paymentAmount: 3000 }],
+      { startYear: 2021 },
+    );
+    setHistory(records, balanceMap);
+
+    const result = await service.detectAndPersist(userId, accountId);
+
+    expect(result.created).toHaveLength(1);
+    const initial = createdRows()[0];
+    expect(initial.source).toBe("initial");
+    expect(Math.abs(initial.annualRate - 5)).toBeLessThanOrEqual(0.05);
   });
 
   it("recovers separately-booked interest via pairSeparateInterest so detection succeeds", async () => {
