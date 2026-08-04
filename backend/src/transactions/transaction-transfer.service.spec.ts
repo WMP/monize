@@ -1486,6 +1486,81 @@ describe("TransactionTransferService", () => {
         expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
       });
 
+      // P6-RECHECK-004. The edit form shows one status control for "the transfer"
+      // and wrote it onto both rows. CLEARED and RECONCILED are per-account
+      // statement state, so only the leg being edited receives them.
+      it("writes a CLEARED status only onto the leg being edited", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.CLEARED },
+          mockFindOne,
+        );
+
+        const toUpdate = transactionsRepository.update.mock.calls.find(
+          (c: any[]) => c[0] === "to-tx",
+        )?.[1];
+        expect(toUpdate?.status).toBeUndefined();
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "from-tx",
+          expect.objectContaining({ status: TransactionStatus.CLEARED }),
+        );
+      });
+
+      it("writes it onto the destination leg when that is the one opened", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "to-tx",
+          { status: TransactionStatus.RECONCILED },
+          mockFindOne,
+        );
+
+        const fromUpdate = transactionsRepository.update.mock.calls.find(
+          (c: any[]) => c[0] === "from-tx",
+        )?.[1];
+        expect(fromUpdate?.status).toBeUndefined();
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "to-tx",
+          expect.objectContaining({ status: TransactionStatus.RECONCILED }),
+        );
+      });
+
+      it("still writes VOID onto both legs", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.VOID },
+          mockFindOne,
+        );
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "from-tx",
+          expect.objectContaining({ status: TransactionStatus.VOID }),
+        );
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "to-tx",
+          expect.objectContaining({ status: TransactionStatus.VOID }),
+        );
+      });
+
       it("leaves balances alone for a status change that is not about VOID", async () => {
         mockFindOne
           .mockResolvedValueOnce(activeFrom)

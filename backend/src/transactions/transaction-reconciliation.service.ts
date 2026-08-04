@@ -24,16 +24,22 @@ export class TransactionReconciliationService {
   ) {}
 
   /**
-   * Set a transaction's status, carrying a transfer's counterpart leg with it.
+   * Set a transaction's status, carrying a transfer's counterpart leg with it
+   * **only when the transition crosses `VOID`**.
    *
-   * A status change on one leg of a transfer is a change to one economic event,
-   * and entering or leaving `VOID` moves a balance. This endpoint used to write
-   * and rebalance only the row it was handed, so voiding the source leg of a
-   * 100.00 transfer restored 100.00 to the source account while the destination
-   * leg stayed active and kept its 100.00 -- money created out of a status
-   * change, with nothing raised anywhere. The bulk-update path was corrected
-   * first; the same defect sat here, reachable from the quick status control and
-   * from any API client.
+   * Entering or leaving `VOID` moves a balance, so on a transfer it is one
+   * economic event and has to land on both legs. This endpoint used to write and
+   * rebalance only the row it was handed, so voiding the source leg of a 100.00
+   * transfer restored 100.00 to the source account while the destination leg
+   * stayed active and kept its 100.00.
+   *
+   * `CLEARED` and `RECONCILED` are the opposite: they record whether *this*
+   * account's statement has recognised *this* leg, and the two statements arrive
+   * separately. Pairing them would remove a transfer from the counterpart
+   * account's reconciliation candidates before its statement contained it, and
+   * stamp the source account's statement date on the destination leg -- so those
+   * stay on the row the caller named, matching `unreconcile`, `bulkReconcile` and
+   * the cross-owner path, which are all account-scoped already.
    *
    * The pair is resolved by `expandTransferLegsForStatus`, the same rule the bulk
    * path uses. A leg it refuses (a split-transfer leg, or a cross-owner
@@ -57,15 +63,18 @@ export class TransactionReconciliationService {
     // between the two leaves the account balance out of sync with the status.
     // The pair expansion runs inside the same transaction, so the refusal below
     // happens before anything is written.
-    // A row that is neither a transfer leg nor a split parent has no pair to
-    // carry, so the ordinary single-transaction case costs no extra query.
+    // Only a VOID boundary is pair-wide, and only a transfer leg or split parent
+    // has a pair at all. Marking a leg CLEARED or RECONCILED is this account's own
+    // statement state and stays on the row the caller named, so the common case
+    // also costs no extra query.
     const mayHavePair =
-      (transaction.isTransfer && !!transaction.linkedTransactionId) ||
-      transaction.isSplit === true;
+      voidnessChanged &&
+      ((transaction.isTransfer && !!transaction.linkedTransactionId) ||
+        transaction.isSplit === true);
 
     const affected = await withScopedDb(this.dataSource, async (m) => {
       const expansion = mayHavePair
-        ? await expandTransferLegsForStatus(m, userId, [transaction.id])
+        ? await expandTransferLegsForStatus(m, userId, [transaction.id], status)
         : { ids: [transaction.id], refusedIds: [], reasons: [] };
 
       if (expansion.refusedIds.includes(transaction.id)) {
@@ -89,8 +98,9 @@ export class TransactionReconciliationService {
 
       for (const leg of legs) {
         const legWasVoid = leg.status === TransactionStatus.VOID;
-        // Every leg of one transfer shares a status, so they enter and leave
-        // VOID together; a leg already in the target state simply moves nothing.
+        // Both legs of a transfer enter and leave VOID together -- that is the
+        // only reason a counterpart is in this list. A leg already in the target
+        // state simply moves nothing.
         const legVoidnessChanged = legWasVoid !== isVoid;
 
         if (isTransactionInFuture(leg.transactionDate)) {
@@ -113,7 +123,12 @@ export class TransactionReconciliationService {
           await m.update(Transaction, leg.id, { status });
         }
 
+        // Strictly the row the caller named. A reconciliation date says "this
+        // account's statement of this date recognised this leg", which is never
+        // true of a counterpart in another account -- and RECONCILED is not a
+        // pair-wide transition anyway, so `legs` holds one row here.
         if (
+          leg.id === transaction.id &&
           status === TransactionStatus.RECONCILED &&
           leg.status !== TransactionStatus.RECONCILED
         ) {

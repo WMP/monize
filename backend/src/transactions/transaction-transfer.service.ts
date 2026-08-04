@@ -1128,6 +1128,22 @@ export class TransactionTransferService {
       newFromAccount,
     );
 
+    // Status is per-leg unless the transition crosses VOID.
+    //
+    // The edit form shows one status control for "the transfer", and it used to
+    // write that status onto both rows. But CLEARED and RECONCILED record whether
+    // *this* account's statement has recognised *this* leg, and the two statements
+    // arrive separately -- copying RECONCILED onto the counterpart removes the
+    // transfer from the other account's reconciliation candidates before its
+    // statement contains it. Entering or leaving VOID is the exception: it moves
+    // both balances, so it belongs to both legs. Same rule as
+    // `expandTransferLegsForStatus`, and the same one the cross-owner path already
+    // applies when it strips `status` from a foreign leg.
+    if (!voidnessChanged) {
+      const editedIsFrom = fromTransaction.id === transactionId;
+      delete (editedIsFrom ? toUpdateData : fromUpdateData).status;
+    }
+
     // Both legs' field updates and the four possible balance adjustments
     // commit atomically.
     await withScopedDb(this.dataSource, async (m) => {

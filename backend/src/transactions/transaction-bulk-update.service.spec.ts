@@ -781,6 +781,53 @@ describe("TransactionBulkUpdateService", () => {
         expect(result.skipped).toBe(0);
       });
 
+      // P6-RECHECK-004. A bulk "mark cleared" over a list that happens to include
+      // a transfer leg must not reconcile the counterpart in another account,
+      // whose statement has not been seen. Only a VOID boundary is pair-wide.
+      it("does not pair the counterpart for a CLEARED change", async () => {
+        const sourceLeg = makeTransaction({
+          id: "leg-source",
+          accountId: "checking",
+          amount: -100,
+          isTransfer: true,
+          linkedTransactionId: "leg-dest",
+        });
+        // No counterpart query is expected at all, so none is wired.
+        const { statusUpdateQb } = wireStatusUpdate([sourceLeg], []);
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-source"],
+          status: TransactionStatus.CLEARED,
+        });
+
+        expect(statusUpdateQb.where).toHaveBeenCalledWith(
+          "id IN (:...ids)",
+          expect.objectContaining({ ids: ["leg-source"] }),
+        );
+        expect(result.updated).toBe(1);
+        expect(result.skipped).toBe(0);
+      });
+
+      it("does not refuse a split-transfer leg for a CLEARED change", async () => {
+        const splitLeg = makeTransaction({
+          id: "leg-in-target",
+          isTransfer: true,
+          linkedTransactionId: "split-parent",
+        });
+        const { statusUpdateQb } = wireStatusUpdate([splitLeg], []);
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-in-target"],
+          status: TransactionStatus.CLEARED,
+        });
+
+        expect(statusUpdateQb.set).toHaveBeenCalled();
+        expect(result.updated).toBe(1);
+        expect(result.skipped).toBe(0);
+      });
+
       it("refuses a split-transfer leg rather than changing its split parent", async () => {
         const splitLeg = makeTransaction({
           id: "leg-in-target",

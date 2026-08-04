@@ -291,3 +291,26 @@ previous backups are encrypted and silently downgrading is worse than failing).
 Cron jobs use `@Cron()` from `@nestjs/schedule` and run **in the API process** -- `ScheduleModule.forRoot()` is registered in `app.module.ts`; there is no separate scheduler process (on k8s with more than one backend replica, every replica fires every cron). For the full schedule, see `docs/cron-jobs.md` or grep `@Cron(`.
 
 Every `@Cron` handler is an out-of-request entry point, so its body must seed its own RLS context (tasks C2-C4): the cross-user fan-out under `withSystemContext`, each per-user body under `withUserContext(userId)`. A handler that reaches the DB with no ambient context throws `DB access outside request/user/system context` in every `RLS_MODE`, including `off` -- the per-module `rls-context-smoke.spec.ts` specs are the pattern for proving a cron runs clean.
+
+## A transfer's status is per-leg, except across VOID
+
+`expandTransferLegsForStatus` (`transactions/transfer-status-pairing.util.ts`) keys
+on the *transition*, not on the fact that a row is a transfer leg.
+
+- **`VOID` is economic.** Entering or leaving it moves a balance, so on a linked
+  transfer it lands on both legs or on neither, with both balance adjustments in one
+  transaction. Voiding only the source leg turned 1,000.00 across two accounts into
+  1,100.00.
+- **`CLEARED` / `RECONCILED` / `reconciledDate` are per-account.** They record
+  whether *that* account's bank statement recognised *that* leg, and the two
+  statements arrive separately -- often in different months. Pairing them removed a
+  transfer from the counterpart's reconciliation candidates before its statement
+  contained it, and stamped the source account's statement date on the destination
+  leg. `unreconcile` writes one row and `bulkReconcile` filters by `accountId`, so
+  this is the semantics the rest of the module already had.
+
+All four surfaces follow it: the single status endpoint, `markCleared`/`reconcile`
+(which delegate to it), bulk update, and the transfer edit form -- which shows one
+status control and now applies it to the leg being edited unless the transition
+crosses `VOID`. A split-owned or cross-owner leg is refused only for a `VOID`
+transition; marking it cleared needs no counterpart.
