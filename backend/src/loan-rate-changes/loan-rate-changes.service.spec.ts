@@ -265,21 +265,50 @@ describe("LoanRateChangesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it("recalculates the payment to hold remaining amortization", async () => {
+    it("rejects recalculatePayment when effectiveDate is not today", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);
 
+      // Past date
+      await expect(
+        service.create(userId, accountId, {
+          effectiveDate: "2024-06-01",
+          annualRate: 4.9,
+          recalculatePayment: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Future date
+      await expect(
+        service.create(userId, accountId, {
+          effectiveDate: "2050-01-01",
+          annualRate: 4.9,
+          recalculatePayment: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it("recalculates the payment to hold remaining amortization", async () => {
+      // paymentStartDate "2022-01-01", effectiveDate = today; remaining months
+      // computed dynamically so the test is date-independent.
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      const today = todayYMD();
+
       const result = await service.create(userId, accountId, {
-        effectiveDate: "2024-06-01",
+        effectiveDate: today,
         annualRate: 4.9,
         recalculatePayment: true,
       });
 
-      // 29 calendar months elapsed of 300
+      const [ty, tm] = today.split("-").map(Number);
+      const monthsElapsed = (ty - 2022) * 12 + (tm - 1);
       const expected = recalculateMortgageAfterRateChange(
         400000,
         4.9,
-        300 - 29,
+        300 - monthsElapsed,
         "MONTHLY",
         true,
         true,
@@ -288,13 +317,22 @@ describe("LoanRateChangesService", () => {
     });
 
     it("recalculates over the actual remaining term, not a 12-month floor, when under a year remains", async () => {
-      // paymentStartDate 2022-01-01 + 294 months = 2046-07-01, leaving 6 of
-      // the account's 300 configured amortization months.
-      const account = makeAccount();
+      // Derive a paymentStartDate such that today is exactly 294 months in,
+      // leaving 6 of the account's 300 configured amortization months.
+      const today = todayYMD();
+      const [ty, tm] = today.split("-").map(Number);
+      const startTotalMonths = ty * 12 + (tm - 1) - 294;
+      const startYear = Math.floor(startTotalMonths / 12);
+      const startMonth = (startTotalMonths % 12) + 1;
+      const paymentStartDate = `${startYear}-${String(startMonth).padStart(2, "0")}-01`;
+
+      const account = makeAccount({
+        paymentStartDate: paymentStartDate as unknown as Date,
+      });
       accountsRepository.findOne.mockResolvedValue(account);
 
       const result = await service.create(userId, accountId, {
-        effectiveDate: "2046-07-01",
+        effectiveDate: today,
         annualRate: 4.9,
         recalculatePayment: true,
       });
@@ -329,15 +367,18 @@ describe("LoanRateChangesService", () => {
       );
     });
 
-    it("rejects an effective date beyond the loan's configured amortization end", async () => {
-      // paymentStartDate 2022-01-01 + 312 months = 2048-01-01, which is 12
-      // months past the account's 300-month configured amortization.
-      const account = makeAccount();
+    it("rejects recalculation when today is beyond the loan's configured amortization end", async () => {
+      // paymentStartDate far in the past with a short amortization so today is
+      // well past the loan's end (2000-01-01 + 100 months ≈ 2008-05-01).
+      const account = makeAccount({
+        paymentStartDate: "2000-01-01" as unknown as Date,
+        amortizationMonths: 100,
+      });
       accountsRepository.findOne.mockResolvedValue(account);
 
       await expect(
         service.create(userId, accountId, {
-          effectiveDate: "2048-01-01",
+          effectiveDate: todayYMD(),
           annualRate: 4.9,
           recalculatePayment: true,
         }),

@@ -505,7 +505,8 @@
     "recalculateMortgageOnly": "[XX-Payment recalculation is only available for mortgage accounts-XX]",
     "insufficientData": "[XX-Not enough payments with interest details to detect rate changes-XX]",
     "frequencyMismatch": "[XX-Payment dates do not match the account's payment frequency; inferred rates may be less accurate-XX]",
-    "effectiveDateBeyondAmortization": "[XX-Effective date is beyond the loan's configured amortization end date-XX]"
+    "effectiveDateBeyondAmortization": "[XX-Effective date is beyond the loan's configured amortization end date-XX]",
+    "recalculateTodayOnly": "[XX-Automatic payment recalculation is only available for rate changes effective today; provide an explicit payment amount for other dates-XX]"
   },
   "strategies": {
     "accountNotFound": "[XX-Account not found-XX]",

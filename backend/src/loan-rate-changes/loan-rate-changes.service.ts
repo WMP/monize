@@ -722,12 +722,24 @@ export class LoanRateChangesService {
   /**
    * Payment that holds the remaining amortization constant at the new rate
    * (the pre-history mortgage-rate endpoint's behaviour, now opt-in).
+   *
+   * Only valid for effectiveDate = today: account.currentBalance is the
+   * balance right now, so using it for any other date produces a wrong
+   * payment (future date: balance too high; past date: balance too low).
    */
   private recalculatePaymentForRate(
     account: Account,
     annualRate: number,
     effectiveDate: string,
   ): number {
+    if (effectiveDate !== todayYMD()) {
+      throw new BadRequestException(
+        tr(
+          "errors.loanRateChanges.recalculateTodayOnly",
+          "Automatic payment recalculation is only available for rate changes effective today; provide an explicit payment amount for other dates",
+        ),
+      );
+    }
     const currentBalance = Math.abs(Number(account.currentBalance));
     const startDate = toYmd(account.paymentStartDate) ?? todayYMD();
     const monthsElapsed = monthsBetweenYmd(startDate, effectiveDate);
