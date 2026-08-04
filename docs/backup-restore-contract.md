@@ -112,6 +112,26 @@ and counted. **The count is reported as `skippedAttachments`, beside `restored`
 and never inside it**: the client sums `restored`'s values into a row total, and
 rows deliberately not written must not be counted as written.
 
+**The objects the restore displaced are deleted after it commits.** A destructive
+restore removes every `transaction_attachments` row the user had, and for `local`
+and `s3` the bytes are not in those rows — so they used to stay in the volume or
+the bucket forever, referenced by nothing. A receipt or a medical document survived
+the replacement of the account it belonged to, remained in whatever backs that
+storage up, and could never be found again because the metadata naming it was gone.
+
+The timing and the scope are both load-bearing:
+
+- **After the commit**, because bytes deleted before a transaction that then rolls
+  back leave a row promising a download that does not exist — indistinguishable
+  from a working attachment. Same rule as `AttachmentsService.remove`.
+- **Only keys the target user held**, read before the delete because afterwards
+  there is nothing to read them from. Never the old keys named by the uploaded
+  file: a cross-user restore legitimately reads another user's objects as its
+  source, and the same backup may be restored twice.
+- **Never a key the restore just staged.** Restoring a backup taken from the same
+  account re-uses ids, so a displaced key and a newly written key can be the same
+  string.
+
 Operationally: the sidecar directory or bucket must be restored **before or
 alongside** the database, not after.
 

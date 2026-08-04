@@ -1056,6 +1056,164 @@ describe("BackupService", () => {
         expect(result.skippedAttachments).toBe(1);
       });
 
+      /**
+       * The other half of the bytes-live-outside-the-database problem (F3R-006).
+       *
+       * A destructive restore deletes every `transaction_attachments` row the
+       * user had. For `local` and `s3` the bytes are not in those rows, so they
+       * used to stay in the volume or the bucket forever, referenced by nothing:
+       * a receipt or a medical document surviving the replacement of the account
+       * it belonged to, still present in whatever backs that storage up, and now
+       * impossible to find again because the metadata that named it is gone.
+       */
+      describe("objects the restore displaced", () => {
+        const EXISTING_KEY = "99999999-9999-4999-8999-999999999999";
+
+        /** The target user's current external attachments, read before the delete. */
+        const targetHolds = (...keys: string[]) => {
+          mockQueryRunner.query.mockImplementation(
+            (sql: string, params?: unknown[]) => {
+              if (
+                String(sql).includes(
+                  "SELECT storage_key FROM transaction_attachments",
+                )
+              ) {
+                return Promise.resolve(keys.map((k) => ({ storage_key: k })));
+              }
+              return mockQueryHandler(sql, params);
+            },
+          );
+        };
+
+        it("deletes the user's old external objects after a successful restore", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          targetHolds(EXISTING_KEY);
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          expect(attachmentStorage.delete).toHaveBeenCalledWith(EXISTING_KEY);
+        });
+
+        it("leaves them alone when the restore fails", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          mockQueryRunner.query.mockImplementation(
+            (sql: string, params?: unknown[]) => {
+              if (
+                String(sql).includes(
+                  "SELECT storage_key FROM transaction_attachments",
+                )
+              ) {
+                return Promise.resolve([{ storage_key: EXISTING_KEY }]);
+              }
+              if (
+                String(sql).includes('INSERT INTO "transaction_attachments"')
+              ) {
+                return Promise.reject(new Error("constraint violation"));
+              }
+              return mockQueryHandler(sql, params);
+            },
+          );
+
+          await expect(
+            service.restoreData(
+              userId,
+              makeInput({
+                password: "test",
+                data: backupWithLocalAttachment(),
+              }),
+            ),
+          ).rejects.toThrow();
+
+          // The metadata rolled back, so those bytes are still referenced.
+          // Deleting them would leave a row promising a download that is gone --
+          // which the user cannot tell from a working attachment.
+          expect(attachmentStorage.delete).not.toHaveBeenCalledWith(
+            EXISTING_KEY,
+          );
+        });
+
+        it("never deletes a key the restore just staged", async () => {
+          // Restoring a backup taken from this same account re-uses ids, so a
+          // displaced key and a newly written key can be the same string.
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          let stagedKey: string | undefined;
+          attachmentStorage.save.mockImplementation(async (key: string) => {
+            stagedKey = key;
+          });
+          // The target's current key set includes whatever gets staged, which is
+          // only knowable after the fact -- so claim both and assert on the one
+          // that matters.
+          mockQueryRunner.query.mockImplementation(
+            (sql: string, params?: unknown[]) => {
+              if (
+                String(sql).includes(
+                  "SELECT storage_key FROM transaction_attachments",
+                )
+              ) {
+                return Promise.resolve(
+                  [OLD_ID, EXISTING_KEY].map((k) => ({ storage_key: k })),
+                );
+              }
+              return mockQueryHandler(sql, params);
+            },
+          );
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          expect(stagedKey).toBeDefined();
+          expect(attachmentStorage.delete).not.toHaveBeenCalledWith(stagedKey);
+          // The genuinely displaced one still goes.
+          expect(attachmentStorage.delete).toHaveBeenCalledWith(EXISTING_KEY);
+        });
+
+        it("does not read or delete anything for the database provider", async () => {
+          // Those bytes are in `attachment_blobs` and go with the rows, inside
+          // the transaction. There is nothing outside to clean up.
+          attachmentStorageName = "database";
+          const keyQueries = () =>
+            mockQueryRunner.query.mock.calls.filter(([sql]) =>
+              String(sql).includes(
+                "SELECT storage_key FROM transaction_attachments",
+              ),
+            );
+
+          await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: backupWithLocalAttachment({ storage_provider: "database" }),
+            }),
+          );
+
+          expect(keyQueries()).toHaveLength(0);
+          expect(attachmentStorage.delete).not.toHaveBeenCalled();
+        });
+
+        it("completes the restore even when the cleanup cannot delete", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          targetHolds(EXISTING_KEY);
+          attachmentStorage.delete.mockRejectedValue(new Error("EACCES"));
+
+          // The database is already the backup's. Turning a committed restore
+          // into a failure over an orphaned object would be the wrong trade.
+          await expect(
+            service.restoreData(
+              userId,
+              makeInput({
+                password: "test",
+                data: backupWithLocalAttachment(),
+              }),
+            ),
+          ).resolves.toMatchObject({ message: "Backup restored successfully" });
+        });
+      });
+
       it("removes staged objects when the restore transaction fails", async () => {
         attachmentStorage.load.mockResolvedValue(BYTES);
         mockQueryRunner.query.mockImplementation((sql: string, params) => {

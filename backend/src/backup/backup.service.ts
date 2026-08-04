@@ -721,6 +721,13 @@ export class BackupService {
     const { stagedKeys, skipped: skippedAttachments } =
       await this.stageAttachmentObjects(data, idRemap);
 
+    // The keys this user's *current* attachments occupy, read before the delete
+    // because afterwards there is nothing left to read them from. They are
+    // deleted after a successful commit -- see `deleteDisplacedAttachmentObjects`
+    // for why that is the only safe moment and why the backup's own old keys are
+    // not in this set.
+    const displacedKeys = await this.collectExternalAttachmentKeys(userId);
+
     const restored: Record<string, number> = {};
 
     // One transaction for the whole restore, exactly as the QueryRunner block
@@ -773,15 +780,103 @@ export class BackupService {
             }
           : { message: "Backup restored successfully", restored };
       }),
-    ).catch(async (error) => {
-      this.logger.error(
-        `Backup restore failed for user ${userId}: ${error.message}`,
-      );
-      // The database rolled back; the objects staged for it did not, so remove
-      // them rather than leaving bytes nothing references.
-      await this.discardStagedAttachmentObjects(stagedKeys);
-      throw error;
-    });
+    )
+      .then(async (result) => {
+        // After the commit, never before: until it lands, the metadata that
+        // references these objects may come back with a rollback.
+        await this.deleteDisplacedAttachmentObjects(displacedKeys, stagedKeys);
+        return result;
+      })
+      .catch(async (error) => {
+        this.logger.error(
+          `Backup restore failed for user ${userId}: ${error.message}`,
+        );
+        // The database rolled back; the objects staged for it did not, so remove
+        // them rather than leaving bytes nothing references. The user's own old
+        // objects stay exactly where they are -- their metadata rolled back with
+        // everything else, so those bytes are still referenced.
+        await this.discardStagedAttachmentObjects(stagedKeys);
+        throw error;
+      });
+  }
+
+  /**
+   * Every external object key this user's attachments currently occupy.
+   *
+   * Empty for the `database` provider: its bytes live in `attachment_blobs` and
+   * go with the rows, inside the transaction.
+   */
+  private async collectExternalAttachmentKeys(
+    userId: string,
+  ): Promise<string[]> {
+    if (this.attachmentStorage.name === "database") return [];
+    const rows: Array<{ storage_key: string }> = await withScopedDb(
+      this.dataSource,
+      (manager) =>
+        manager.query(
+          `SELECT storage_key FROM transaction_attachments
+            WHERE user_id = $1 AND storage_provider = $2`,
+          [userId, this.attachmentStorage.name],
+        ),
+    );
+    return rows.map((row) => row.storage_key).filter(Boolean);
+  }
+
+  /**
+   * Remove the objects the restore displaced, after it has committed.
+   *
+   * A destructive restore deletes every `transaction_attachments` row the user
+   * had. For `local` and `s3` the bytes are not in those rows, so they used to
+   * stay in the volume or the bucket forever, referenced by nothing -- a receipt
+   * or a medical document surviving the replacement of the account it belonged
+   * to, and still present in whatever backs that storage up. The metadata was
+   * gone, so nothing could ever find them again to clean them up either.
+   *
+   * Three constraints decide when and what:
+   *
+   * - **After the commit.** Bytes deleted before it that the transaction then
+   *   rolls back leave a metadata row promising a download that does not exist,
+   *   which the user cannot distinguish from a working attachment. Orphaned bytes
+   *   cost storage; a row pointing at nothing costs trust. That is the same rule
+   *   `AttachmentsService.remove` follows.
+   * - **Only keys the target user held.** Not the old keys named by the uploaded
+   *   file: a cross-user restore on the same instance legitimately reads another
+   *   user's objects as its source, and the same backup may be restored more than
+   *   once. Deleting those would break both.
+   * - **Never a key just staged.** Restoring a backup taken from this same
+   *   account re-uses ids, so a displaced key and a newly written key can be the
+   *   same string. Deleting it would remove the bytes the restore just committed
+   *   metadata for.
+   *
+   * Best-effort per key: a storage error here must not turn a completed restore
+   * into a failure, since the database is already the backup's. It is logged.
+   */
+  private async deleteDisplacedAttachmentObjects(
+    displacedKeys: string[],
+    stagedKeys: string[],
+  ): Promise<void> {
+    if (displacedKeys.length === 0) return;
+    const staged = new Set(stagedKeys);
+    const removable = displacedKeys.filter((key) => !staged.has(key));
+    if (removable.length === 0) return;
+
+    let failures = 0;
+    for (const key of removable) {
+      try {
+        await this.attachmentStorage.delete(key);
+      } catch (error) {
+        failures += 1;
+        this.logger.warn(
+          `Could not remove displaced attachment object ${key}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+    this.logger.log(
+      `Removed ${removable.length - failures} displaced attachment object(s) after restore` +
+        (failures > 0 ? ` (${failures} could not be removed)` : ""),
+    );
   }
 
   /**
