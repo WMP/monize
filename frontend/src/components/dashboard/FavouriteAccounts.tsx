@@ -9,8 +9,6 @@ import {
   brokerageMarketValue,
   type BrokerageMarketValues,
 } from '@/lib/brokerage-market-value';
-import { usePreferencesStore } from '@/store/preferencesStore';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { accountsApi } from '@/lib/accounts';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -27,10 +25,7 @@ interface FavouriteAccountsProps {
 export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const preferences = usePreferencesStore((s) => s.preferences);
-  const { formatCurrency: formatCurrencyBase } = useNumberFormat();
   const { formatCurrencyOrNa, unknownColorClass } = useMoneyDisplay();
-  const defaultCurrency = preferences?.defaultCurrency || 'CAD';
   const [reordering, setReordering] = useState(false);
   const [localOrder, setLocalOrder] = useState<{ accounts: Account[]; order: Account[] } | null>(null);
 
@@ -53,17 +48,6 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
         ? `/investments?accountId=${account.id}`
         : `/transactions?accountId=${account.id}`,
     );
-  };
-
-  const formatCurrency = (amount: number | string | null | undefined, currency: string) => {
-    const numericAmount = Number(amount) || 0;
-    const formatted = formatCurrencyBase(numericAmount, currency);
-
-    // Only show currency code if it differs from user's default currency
-    if (currency !== defaultCurrency) {
-      return `${formatted} ${currency}`;
-    }
-    return formatted;
   };
 
   const applyReorder = useCallback(
