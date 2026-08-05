@@ -1,9 +1,16 @@
 # Audit-03 Rebase — As-Built Report (for independent verification)
 
 Written for the external reviewer that produced the audit-03 findings. Every claim is
-falsifiable against this local clone; reproduction commands included. **Scope: Steps 1–2 only**
-(rebase + conflict resolution + verification). The PR split (Step 3), PR opening (Step 4) and
-issue filing (Step 5) have NOT started — nothing was pushed, no PR or issue exists yet.
+falsifiable against this clone; reproduction commands included.
+
+**Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus six rounds of response to
+independent review. The branch **is pushed** to `WMP/monize:claude/detailed-error-review-4pbug7`.
+**Six issues are filed** in `kenlasko/monize`: the three audit-03 findings deliberately not fixed
+here — [#1069](https://github.com/kenlasko/monize/issues/1069) (F3RB-001),
+[#1070](https://github.com/kenlasko/monize/issues/1070) (F3RB-006),
+[#1071](https://github.com/kenlasko/monize/issues/1071) (F3RB-007) — and three adjacent items
+([#1064](https://github.com/kenlasko/monize/issues/1064)–[#1066](https://github.com/kenlasko/monize/issues/1066)).
+The PR split (Step 3) and PR opening (Step 4) have NOT started; no PR exists for this branch.
 
 ## 1. Target facts
 
@@ -12,18 +19,20 @@ issue filing (Step 5) have NOT started — nothing was pushed, no PR or issue ex
 | Upstream (`origin`) main used as base | `53764ced517fb9447a4c2bce631136e0825011ef` |
 | Source branch (fork ref, pre-rebase) | `fork/claude/detailed-error-review-4pbug7` = `c841ad9aebb05b616a2d0077fefc707850541344` |
 | Old merge-base | `4e48a76762a07402a5d3bc3f886fcd8e6ff5829b` (52 ahead / 92 behind) |
-| Verified executable-code SHA | `825eab8c619f03b0739ada4d7c95fbbdd390e3b4` — every check in §3 was run here |
+| Verified executable-code SHA | The head at the time §3 ran. Every SHA below is superseded whenever a review round lands; resolve the current one with `git rev-parse HEAD` and read §3's totals as belonging to it. |
 | Branch/report head SHA | one commit later: the test-strengthening + this document. A document cannot name its own commit (amending to insert the hash changes the hash), so the branch log is the record for it; `git log --oneline origin/main..HEAD \| head -1` resolves it |
-| Commits over base at report head | 58 (57 at the verified executable SHA) |
-| Review lineage | `ba0de2e37` (review 1) → `2587053f3` (review 2) → `825eab8c6` (review 3) → head; see §2.7, §2.8, §2.9 |
-| Commit composition | 52 original + migration renumber `2df6e400c` + guard-scope fix `e11bd888e` + prettier `ba0de2e37` + review-1 response `2587053f3` + review-2 response `825eab8c6` + review-2 test strengthening (head) |
+| Commits over base | 69 at the time of writing, and this document's own commit makes it 70 — a document cannot name its own commit, so `git log --oneline origin/main..HEAD \| wc -l` is the authority, not this row. |
+| Review lineage | `ba0de2e37` (review 1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 fixes (5) → +localization (6); see §2.7–§2.11 |
+| Commit composition | 52 original commits + the migration renumber, the guard-scope fix, and one commit per review round (§2.7–§2.11). `git log --oneline origin/main..HEAD` is the record. |
 | Net diff vs main | 92 files, +14819 −1700 |
 | Worktree | clean (`git status --porcelain` empty apart from untracked local `.claude/` scratch) |
 | Patch-id overlap check | `git cherry origin/main <branch> 4e48a767` → zero `-` lines; no audit-03 commit was already upstream |
 
-Reproduce ancestry: `git merge-base --is-ancestor origin/main HEAD` holds;
-`git log --oneline origin/main..HEAD` lists 58, of which `825eab8c6` is the last to change
-executable code.
+Reproduce ancestry: `git merge-base --is-ancestor origin/main HEAD` holds. Because six review
+rounds have landed since this section was first written, **every SHA in this document other than the
+base and the pre-rebase source is a historical marker, not the current head** — the branch log is the
+authority. The rows above say so where it matters rather than being restated as fixed numbers that go
+stale on the next commit, which is the defect the third review caught here (DOC-F3RB-R2-001).
 
 Related in-flight work the reviewer should know about: the **audit-02 series** (upstream PRs
 #1056–#1063 + local stacked pr/05, pr/06, pr/09) is open but unmerged. Audit-03 was rebased onto
@@ -260,7 +269,7 @@ partial-artifact comments with the F3RB-001 issue, plain-export comments with F3
 them in a rebase commit would move them away from the change that explains them. The PR split has
 them on its checklist.
 
-## 3. Verification (all on `825eab8c6`)
+## 3. Verification (all on the current head)
 
 | Check | Result |
 | --- | --- |
@@ -275,10 +284,53 @@ them on its checklist.
 | frontend `npx vitest run` | **637/637 files, 12451/12451 tests — fully green** |
 | `node scripts/check-env-docs.mjs` | 61 env vars documented |
 
-The parity failures are the branch's declared state (response doc §7 item 5): English catalogs
-complete, the 18 other locales pending the acceptance-time localization pass. **Not run** (no
-Docker/PostgreSQL/cgroup/browser in this environment): `backend/test/integration/*`,
-`scripts/verify-schema.sh`, Helm rendering, cgroup peak-RSS. First execution happens in CI.
+Locale parity was this branch's standing failure — response doc §7 item 5 declared it expected until
+the acceptance-time localization pass. That pass has now run (§2.11), so **there is no remaining
+expected failure**: both suites are green outright, which also means any future red is a real
+regression rather than something to be explained away.
+
+**Not run** (no Docker, PostgreSQL, cgroup or browser in this environment):
+`backend/test/integration/*`, `scripts/verify-schema.sh`, Helm rendering, cgroup peak-RSS, and the
+live local/S3 attachment paths. Those run for the first time in CI — and note that the integration
+suites include cases added by this branch, so their first execution is not a re-run of anything.
+
+### 2.11 Fifth and sixth rounds: the localization pass, and a false sentence in eighteen languages
+
+Both rounds found defects in fixes I had made minutes earlier. Worth stating as a pattern rather than
+twice as an incident: when correcting one dimension of a problem I narrowed onto it and stopped
+checking the neighbouring one — containment vs. the write probe in round three, one counter vs. two in
+round five, English vs. every locale in round six.
+
+**Round five, a LOW inside the F3RB-004 fix.** The incomplete-export toast read only
+`missingAttachments`, so an artifact whose single attachment failed its integrity check announced
+"0 of 1 attachment(s) could not be included" — a false number pointing at storage when the cause was
+corruption. The backend had always separated absent bytes from bytes that contradict their own
+metadata, and `includedAttachments` subtracts both, so the headline is now their sum with the
+breakdown kept for the diagnosis. The reviewer also caught a missing test: the component spec mocks
+the parsed result, so it could not catch the `X-Backup-Attachments-Inconsistent` header being ignored;
+`backupApi.test.ts` asserts that header directly now, and was verified failing with the read removed.
+
+**Round six, the localization pass.** The new warning existed only in `en` and `xx`, and the loader
+does not fall back per key — `loadNamespace` returns a full locale's own catalog when the namespace
+file exists, falling back to `en` only when the whole file is missing. A Polish user hitting an
+incomplete export therefore got a broken toast where a data-loss warning belongs. English-first is the
+right convention for copy in flux and the wrong one for messages read at the moment a backup has
+already failed, so the pass ran for all thirteen keys this branch added — four frontend, nine backend
+— with plural forms written per language, placeholder parity checked per string, and both
+interpolation styles preserved. That closed the last standing suite failure.
+
+**And the pass propagated a false sentence, which was the more serious half.** The
+skipped-attachment message told users attachment files "must be backed up and restored alongside"
+the database. That stopped being true at `5a578061` (F3R5-001): the export carries every local/S3
+object base64-encoded in `attachment_blobs` and the restore stages it back, which is exactly what
+makes an artifact restorable onto a fresh instance. Translating a false statement into eighteen
+languages is worse than leaving it in English, because it reads as deliberate. The message now says
+what a skip actually means — the artifact carried no usable bytes, because the object was missing or
+failed its checksum *at export time*, or because the artifact predates self-contained backups — and
+the same claim is corrected at its three sources: both attachment providers' docblocks
+(DOC-F3RB-R2-002/003, previously deferred to the PR split and now closed) and the
+`BACKUP_RESTORE_LIMIT` paragraph in `.env.example`, which additionally implied the limit only mattered
+for the database provider.
 
 ## 4. Points most worth adversarial review
 
@@ -399,7 +451,7 @@ pre-existing findings. These are not "known issues" to be quietly inherited — 
 | DR-F3RB-001 legacy flat retention deletes unattributable files | MEDIUM risk | PR 5's body must state the chosen policy explicitly rather than folding it into "retention reconciliation". |
 | DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | Issues (response-doc §7 items 2 and 4); [#1064](https://github.com/kenlasko/monize/issues/1064)–[#1066](https://github.com/kenlasko/monize/issues/1066) cover the adjacent items already filed. |
 | DOC-F3RB-R2-004/005 stale comments (partial safety, plain-export OOM) | Docs | **FIXED** — both corrected in the same commit that cites their issues. |
-| DOC-F3RB-R2-002/003 attachment providers claim bytes are not embedded | Docs | Still open by decision: they belong with the self-contained-artifact concern (PR 3), which is what made them false. |
+| DOC-F3RB-R2-002/003 attachment providers claim bytes are not embedded | Docs | **FIXED** — corrected together with the same false claim in the user-facing skipped-attachment message and in `.env.example` (§2.11). |
 
 ## 6. Next steps (not started)
 
