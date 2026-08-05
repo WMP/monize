@@ -399,6 +399,75 @@ export function deriveCurrentInstallment(
 }
 
 /**
+ * The first scheduled payment date strictly after `today`, derived by stepping
+ * forward from the loan's configured payment-start date at its payment cadence.
+ * Month-end dates are clamped so a Jan-31 loan lands on Feb 28/29, not Mar 3.
+ * Falls back to one frequency interval after today when no paymentStartDate is
+ * configured.
+ */
+function nextPaymentAfterToday(
+  paymentStartDate: string | null | undefined,
+  today: string,
+  frequency: ScheduleFrequency,
+): Date {
+  if (!paymentStartDate) {
+    return advanceDate(new Date(), frequency);
+  }
+  const parseLocal = (iso: string): Date => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const addMonthsClamped = (d: Date, months: number): Date => {
+    const result = new Date(d.getTime());
+    const day = result.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() + months);
+    const maxDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(day, maxDay));
+    return result;
+  };
+  const step = (d: Date): Date => {
+    switch (frequency) {
+      case 'WEEKLY':
+      case 'ACCELERATED_WEEKLY': {
+        const next = new Date(d.getTime());
+        next.setDate(next.getDate() + 7);
+        return next;
+      }
+      case 'BIWEEKLY':
+      case 'ACCELERATED_BIWEEKLY': {
+        const next = new Date(d.getTime());
+        next.setDate(next.getDate() + 14);
+        return next;
+      }
+      case 'SEMI_MONTHLY': {
+        const next = new Date(d.getTime());
+        if (next.getDate() < 15) {
+          next.setDate(15);
+        } else {
+          next.setMonth(next.getMonth() + 1);
+          next.setDate(1);
+        }
+        return next;
+      }
+      case 'QUARTERLY':
+        return addMonthsClamped(d, 3);
+      case 'YEARLY':
+        return addMonthsClamped(d, 12);
+      case 'MONTHLY':
+      default:
+        return addMonthsClamped(d, 1);
+    }
+  };
+  const todayDate = parseLocal(today);
+  let current = parseLocal(paymentStartDate);
+  while (current <= todayDate) {
+    current = step(current);
+  }
+  return current;
+}
+
+/**
  * The forward-projection input shared by the loan detail view and the loan
  * reports: a schedule that continues from today's balance at the loan's real
  * current installment. Returns null when the account cannot be projected (no
@@ -448,7 +517,7 @@ export function buildLoanProjectionInput(
     frequency,
     isCanadian,
     isVariableRate,
-    firstPaymentDate: advanceDate(new Date(), frequency),
+    firstPaymentDate: nextPaymentAfterToday(account.paymentStartDate, today, frequency),
     rateChanges: futureTimeline.rateChanges,
   };
 }

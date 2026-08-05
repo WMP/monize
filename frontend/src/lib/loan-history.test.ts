@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  buildLoanProjectionInput,
   deriveCurrentInstallment,
   deriveLoanPaymentHistory,
   fetchAllAccountTransactions,
@@ -1552,6 +1553,49 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     // Net cumulative: 100 (grace expense) - 20 (refund) + 50 (paired) = 130.
     // Bug: 100 + 20 + 50 = 170.
     expect(cumulativeInterest).toBeCloseTo(130, 4);
+  });
+});
+
+describe('buildLoanProjectionInput', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('REV-20260805-009: first payment aligns to the loan cadence, not a fixed interval from today', () => {
+    // Monthly loan due on the 1st. Today is August 5 -- advancing one month
+    // from today gives September 5, but the real next payment is September 1.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 5)); // August 5, 2026 (local time)
+    const account = makeAccount({
+      paymentStartDate: '2024-01-01',
+      paymentFrequency: 'MONTHLY',
+    });
+    const history = deriveLoanPaymentHistory(account, []);
+    const input = buildLoanProjectionInput(account, history, []);
+    expect(input).not.toBeNull();
+    const first = input!.firstPaymentDate;
+    expect(first.getFullYear()).toBe(2026);
+    expect(first.getMonth()).toBe(8); // September = index 8
+    expect(first.getDate()).toBe(1);
+  });
+
+  it('REV-20260805-009: month-end loan (Jan 31) clamps to Feb 28, not Mar 3', () => {
+    // A loan whose start date falls on the 31st. When today is February 5,
+    // the next payment should be February 28 (clamped), not March 3 as
+    // setMonth alone would produce.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 1, 5)); // February 5, 2026
+    const account = makeAccount({
+      paymentStartDate: '2024-01-31',
+      paymentFrequency: 'MONTHLY',
+    });
+    const history = deriveLoanPaymentHistory(account, []);
+    const input = buildLoanProjectionInput(account, history, []);
+    expect(input).not.toBeNull();
+    const first = input!.firstPaymentDate;
+    expect(first.getFullYear()).toBe(2026);
+    expect(first.getMonth()).toBe(1); // February = index 1, not March = 2
+    expect(first.getDate()).toBe(28); // clamped from 31 to 28
   });
 });
 
