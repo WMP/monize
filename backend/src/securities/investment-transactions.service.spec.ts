@@ -238,6 +238,7 @@ describe("InvestmentTransactionsService", () => {
     transactionsService = {};
 
     holdingsService = {
+      lockAccountsForHoldings: jest.fn().mockResolvedValue(undefined),
       updateHolding: jest.fn().mockResolvedValue(undefined),
       adjustQuantity: jest.fn().mockResolvedValue(undefined),
       applySplit: jest.fn().mockResolvedValue(undefined),

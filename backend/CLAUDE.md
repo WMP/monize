@@ -222,6 +222,73 @@ Untyped, a mock quietly becomes fiction, and the branch that reads that fiction 
 - **A shape the driver never returns.** A TypeORM insert result mocked as `{ generatedMaps: [] }` made an entire lost-the-race path testable, tested and dead: the real driver signals a conflict elsewhere, so the branch never ran in production and its tests never ran anything else.
 - **A signature that moved.** A service method growing from `Promise<boolean>` to `Promise<string | null>` leaves `mockResolvedValue(true)` behind it -- still truthy, still passing, still describing a contract nothing has any more. When you change a method's return type, grep its mocks in the same commit.
 
+### A concurrency test needs two connections, a gate, and a positive control
+
+`Promise.all` around two calls into one service instance is not a race. Both calls usually share a transaction or arrive in the same order every time, so the interleaving that breaks production is never reached -- and the test passes just as happily with the guard deleted. Every concurrency test here had that shape before `test/helpers/race-harness.ts`, which is what audit finding P7-008 recorded.
+
+Write one with three things:
+
+- **Independent connections.** Each participant runs under its own `withUserContext`, so its `withScopedDb` draws a fresh pooled connection and opens its own transaction.
+- **A `RowGate`.** It holds `FOR UPDATE` on the row every participant must touch, from its own connection, so each of them queues up *inside its own transaction* and they are all released into the contended window together. Wait for them with `waitForBlockedBackends` / `waitForIdleInTransaction` -- conditions the database will answer -- never `sleep`. Release in a `finally`; a leaked gate fails an unrelated spec later in the run.
+- **A positive control.** Reintroduce the defect and watch the test fail, then say so in the change description. `race-harness.integration.spec.ts` does this for the harness itself: an unguarded read-modify-write loses an update through the same gate the real suites use, so if that case ever starts passing, the gate has stopped gating and every suite built on it is back to being a `Promise.all`.
+
+Assert on **both** stored state and provider side effects (`expect(generateTokenPair).toHaveBeenCalledTimes(1)`), and use `raceAll` rather than `Promise.all` -- losing a race is a normal outcome and `Promise.all` throws the other results away with the first rejection.
+
+Two defect shapes worth knowing, because each was found this way and neither is visible in the code as read. A single `UPDATE ... WHERE <predicate>` cannot see a row a concurrent transaction inserted after its snapshot, so a sweep that must leave nothing behind has to re-read and go again (`TokenService.revokeUntilNoneLive`). And `repo.save(entity)` writes *every* column of whatever was loaded, so a recompute persisting a stale entity silently reverts a concurrent edit to unrelated fields -- update the column you own (`repo.update({ id }, { thatColumn })`), not the row you happen to be holding.
+
+### A guard added to one entry point is a guard on one entry point
+
+The three HIGH findings of the Phase 7 re-review were all the same mistake, and
+none of them was carelessness about the invariant -- each invariant was written
+down, and each fix shipped with a real, passing test. The carelessness was about
+**which call sites the test reached**: in every case the new test exercised the
+path the fix had just changed, which is the one path guaranteed to pass.
+
+- The account lock went into `createOrUpdate` and the whole-user rebuild. The
+  race test covered a `BUY`, which goes through `createOrUpdate`. `applySplit`,
+  `reverseSplit`, `adjustQuantity` and the partial rebuild -- every path a
+  `SPLIT`/`ADD_SHARES`/`REMOVE_SHARES` edit or delete takes -- kept no lock at
+  all, and deleting an `ADD_SHARES 10` mid-rebuild left ten phantom shares.
+- `post` gained an occurrence precondition, derived from a fresh read. Every
+  test called `post` directly, so none could see that the auto-post cron
+  discards the occurrence it discovered and a delayed replica therefore pays the
+  *next* period.
+- The backup filename gained a time component, so the sub-daily test passed. Two
+  writers in the same second still computed the same path.
+
+So when a fix adds a guard to a shared entry point, **enumerate the other entry
+points to the same state** and either cover them or say plainly which you did
+not. Grep for the state -- the table, the column, the materialized view -- not for
+the function you just edited. And prefer the guard a scan can hold over a guard
+one test can satisfy: this is the same reason `share-quantity.guard.spec.ts` and
+`ui-conventions.test.ts` exist, generalised.
+
+Where two of a fix's cases cannot fail without it and two can, say which are
+which in the test file. `race-holdings-rebuild.integration.spec.ts` marks its
+`SPLIT`-delete and insert cases as guards rather than proofs, because a
+post-commit repair rebuild and a by-id delete respectively mask the defect --
+implying four proofs where there are two is how a suite starts overstating
+itself.
+
+A corollary the fourth Phase 7 review earned, because the fix it answers
+reached the callers it could see and stopped at the edge:
+
+- **A lock has an order, and the order is part of the lock.** Adding `FOR UPDATE`
+  to a mutator is half a decision; the other half is the order a caller that
+  needs two of them acquires them in. A security transfer took its source lock
+  then its destination lock, so a simultaneous reverse transfer deadlocked
+  (`40P01`). Any operation taking more than one account lock takes the whole set
+  once, sorted, up front -- `HoldingsService.lockAccountsForHoldings`. A new
+  multi-account holdings path that acquires them incrementally is that deadlock
+  again.
+
+**A test only counts where CI runs it.** The backend CI jobs run `test:unit`,
+`test:integration` (only `test/integration/`), and `test:cov`. A spec in `test/`
+root -- the `*.e2e-spec.ts` files -- runs in *none* of them, so one placed there
+is dead weight (and `transactions.e2e-spec.ts` does not even compile, unnoticed).
+Prove a controller/DTO invariant with a validator spec under `src/` or an
+integration spec under `test/integration/`, both of which CI executes.
+
 ### Fixtures are claims about production data
 
 `docs/testing-contract.md` is the shared list of adversarial inputs to choose from. A fixture is evidence only if the code that writes the real data could have written it. Before adding one, look at the producer: the query's sampling, whether the column is nullable, whether the format guarantees what the fixture assumes. A price series three points a quarter apart proves nothing about code reading daily closes, and weightings that always sum to 1 never exercise the remainder the storage format allows. `docs/financial-calculation-contract.md` section 8.3 has the full rule.
