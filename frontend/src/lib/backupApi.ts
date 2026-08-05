@@ -191,7 +191,16 @@ export const backupApi = {
   ): Promise<{
     blob: Blob;
     complete: boolean;
+    /** Rows whose bytes are absent from the artifact entirely. */
     missingAttachments: number;
+    /**
+     * Rows whose bytes are present but contradict their own metadata, so they
+     * cannot be trusted either. A separate count because it is a different
+     * diagnosis: absent bytes point at storage, contradictory bytes at
+     * corruption -- and reporting only `missing` said "0 of 1" for an artifact
+     * with one corrupt attachment, which is a false number and the wrong lead.
+     */
+    inconsistentAttachments: number;
     expectedAttachments: number;
   }> => {
     const headers: Record<string, string> = {};
@@ -218,6 +227,9 @@ export const backupApi = {
       // than as a false alarm on every download.
       complete: header("X-Backup-Complete") !== "false",
       missingAttachments: Number(header("X-Backup-Attachments-Missing") ?? 0),
+      inconsistentAttachments: Number(
+        header("X-Backup-Attachments-Inconsistent") ?? 0,
+      ),
       expectedAttachments: Number(header("X-Backup-Attachments-Expected") ?? 0),
     };
   },

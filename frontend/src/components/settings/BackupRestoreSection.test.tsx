@@ -106,6 +106,7 @@ describe('BackupRestoreSection', () => {
       blob: mockBlob,
       complete: true,
       missingAttachments: 0,
+      inconsistentAttachments: 0,
       expectedAttachments: 0,
     });
 
@@ -135,6 +136,7 @@ describe('BackupRestoreSection', () => {
       blob: mockBlob,
       complete: false,
       missingAttachments: 2,
+      inconsistentAttachments: 0,
       expectedAttachments: 5,
     });
     const anchorEl = document.createElement('a');
@@ -168,12 +170,47 @@ describe('BackupRestoreSection', () => {
     vi.mocked(document.createElement).mockRestore();
   });
 
+  it('counts a checksum-mismatched attachment as unusable, not as zero (F3RB-R2-LOW)', async () => {
+    // Reporting only `missing` said "0 of 1 attachment(s)" for an artifact whose
+    // single attachment was corrupt: a false number, and it pointed at storage
+    // when the cause was corruption. Both modes are equally unrestorable and the
+    // backend excludes both from `includedAttachments`.
+    const mockBlob = new Blob(['{}'], { type: 'application/json' });
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: false,
+      missingAttachments: 0,
+      inconsistentAttachments: 1,
+      expectedAttachments: 1,
+    });
+    global.URL.createObjectURL = vi
+      .fn()
+      .mockReturnValue('blob:http://localhost/mock-url');
+    global.URL.revokeObjectURL = vi.fn();
+
+    await renderSection(localUser);
+    fireEvent.click(screen.getByText('Download Backup'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+    const message = (toast.error as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as string;
+    // The headline count is the unusable total, not just the absent ones...
+    expect(message).toContain('1 of 1');
+    expect(message).not.toContain('0 of 1');
+    // ...and the breakdown still says which mode it was.
+    expect(message).toContain('1 failed an integrity check');
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it('names the download using the local calendar date, not UTC', async () => {
     const mockBlob = new Blob(['{}'], { type: 'application/json' });
     (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
       blob: mockBlob,
       complete: true,
       missingAttachments: 0,
+      inconsistentAttachments: 0,
       expectedAttachments: 0,
     });
     global.URL.createObjectURL = vi
@@ -215,6 +252,7 @@ describe('BackupRestoreSection', () => {
       blob: mockBlob,
       complete: true,
       missingAttachments: 0,
+      inconsistentAttachments: 0,
       expectedAttachments: 0,
     });
     global.URL.createObjectURL = vi
@@ -614,6 +652,7 @@ describe('BackupRestoreSection', () => {
       blob: mockBlob,
       complete: true,
       missingAttachments: 0,
+      inconsistentAttachments: 0,
       expectedAttachments: 0,
     });
       const createObjectURL = vi.fn().mockReturnValue('blob:mock');

@@ -544,7 +544,7 @@
       "toasts": {
         "success": "Backup downloaded successfully",
         "failed": "Failed to create backup",
-        "incomplete": "Backup downloaded, but it is INCOMPLETE: {missing} of {total} attachment(s) could not be included. Do not treat this file as a full backup -- fix the attachment storage and export again."
+        "incomplete": "Backup downloaded, but it is INCOMPLETE: {unusable} of {total} attachment(s) could not be saved intact ({missing} missing, {inconsistent} failed an integrity check). Do not treat this file as a full backup -- fix the attachment storage and export again."
       }
     },
     "restore": {

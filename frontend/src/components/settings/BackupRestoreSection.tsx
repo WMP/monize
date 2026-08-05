@@ -124,8 +124,13 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const runExport = async (encryptionPassword?: string) => {
     setIsExporting(true);
     try {
-      const { blob, complete, missingAttachments, expectedAttachments } =
-        await backupApi.exportBackup(encryptionPassword);
+      const {
+        blob,
+        complete,
+        missingAttachments,
+        inconsistentAttachments,
+        expectedAttachments,
+      } = await backupApi.exportBackup(encryptionPassword);
       // Date the filename by the user's configured timezone preference, not UTC
       // or the browser's timezone. `toISOString()` renders in UTC (an evening
       // export in a negative-offset zone would be stamped with tomorrow), and
@@ -148,10 +153,17 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
         // attachment it named, so calling this a successful backup is how a user
         // ends up deleting the source system for an artifact that cannot restore
         // it.
+        // Both failure modes count: absent bytes and bytes that contradict their
+        // own metadata are equally unrestorable, and the backend excludes both
+        // from `includedAttachments`. Reporting only `missing` said "0 of 1" for
+        // an artifact with one corrupt attachment -- a false number pointing at
+        // the wrong cause. The breakdown keeps the diagnosis.
         toast.error(
           t('export.toasts.incomplete', {
-            missing: missingAttachments,
+            unusable: missingAttachments + inconsistentAttachments,
             total: expectedAttachments,
+            missing: missingAttachments,
+            inconsistent: inconsistentAttachments,
           }),
           { duration: 12000 },
         );
