@@ -195,7 +195,9 @@
     "backupPasswordTooShort": "Backup password must be at least {{ minLength }} characters",
     "backupPasswordBreached": "This password has been found in a data breach. Please choose a different password.",
     "restoreBodyMustBeFile": "Request body must be a backup file",
-    "reauthUnavailable": "Finish setting up your account password before restoring a backup."
+    "reauthUnavailable": "Finish setting up your account password before restoring a backup.",
+    "restoredWithMissingAttachmentBytes": "Backup restored successfully, but {{ count }} attachment(s) have no file contents in this backup. They were stored outside the database (local folder or S3), so those files must be restored from that storage separately.",
+    "tooManyBackupsThisSecond": "Too many backups were written in the same second to name another one."
   },
   "budgets": {
     "notFound": "Budget with ID {{ id }} not found",
@@ -313,7 +315,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} not found",
     "scenarioIdsMustBeArray": "scenarioIds must be an array",
-    "atLeastOneAccountRequired": "At least one accountId is required"
+    "atLeastOneAccountRequired": "At least one accountId is required",
+    "currentPortfolioValueUnavailable": "The current value of the selected accounts could not be determined, so the simulation cannot start from it. This usually means a holding has no recent price or a currency pair has no exchange rate. Enter a starting value manually, or try again once prices have refreshed."
   },
   "netWorth": {
     "invalidStartDate": "startDate must be YYYY-MM-DD",
@@ -368,7 +371,9 @@
     "splitOverrideRequiresAmount": "Amount is required when creating split override",
     "overrideNotFound": "Override with ID {{ overrideId }} not found",
     "updateSplitOverrideRequiresAmount": "Amount is required for split override",
-    "dateMustBeYMD": "date must be in YYYY-MM-DD format"
+    "dateMustBeYMD": "date must be in YYYY-MM-DD format",
+    "occurrenceAlreadyPosted": "The {{ occurrence }} occurrence of this scheduled transaction has already been posted. Reload to see the next one.",
+    "occurrenceRequired": "The occurrence to post must be named. Reload the schedule and try again."
   },
   "securities": {
     "accountMustBeInvestment": "Account must be of type INVESTMENT",

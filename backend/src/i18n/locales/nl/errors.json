@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Back-upwachtwoord moet minimaal {{ minLength }} tekens lang zijn",
     "backupPasswordBreached": "Dit wachtwoord is aangetroffen in een datalek. Kies een ander wachtwoord.",
     "restoreBodyMustBeFile": "De aanvraagtekst moet een back-upbestand zijn",
-    "reauthUnavailable": "Stel eerst het wachtwoord van je account in voordat je een back-up terugzet."
+    "reauthUnavailable": "Stel eerst het wachtwoord van je account in voordat je een back-up terugzet.",
+    "restoredWithMissingAttachmentBytes": "Back-up succesvol teruggezet, maar {{ count }} bijlage(n) hebben geen bestandsinhoud in deze back-up. Ze waren buiten de database opgeslagen (lokale map of S3), dus die bestanden moeten afzonderlijk uit die opslag worden teruggezet.",
+    "tooManyBackupsThisSecond": "Er zijn te veel back-ups in dezelfde seconde geschreven om er nog een te benoemen."
   },
   "budgets": {
     "notFound": "Budget met ID {{ id }} niet gevonden",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} niet gevonden",
     "scenarioIdsMustBeArray": "scenarioIds moet een array zijn",
-    "atLeastOneAccountRequired": "Minimaal één accountId is vereist"
+    "atLeastOneAccountRequired": "Minimaal één accountId is vereist",
+    "currentPortfolioValueUnavailable": "De huidige waarde van de geselecteerde rekeningen kon niet worden vastgesteld, dus de simulatie kan daar niet van uitgaan. Meestal betekent dit dat een positie geen recente koers heeft of dat een valutapaar geen wisselkoers heeft. Voer handmatig een startwaarde in, of probeer het opnieuw nadat de koersen zijn bijgewerkt."
   },
   "netWorth": {
     "invalidStartDate": "startDate moet JJJJ-MM-DD zijn",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Bedrag is vereist voor splitsingsoverschrijving",
     "dateMustBeYMD": "datum moet in JJJJ-MM-DD-formaat zijn",
     "fxPlainOnly": "Een andere valuta kan alleen bij een gewone geplande transactie, niet bij een splitsing, overboeking of belegging",
-    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken."
+    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken.",
+    "occurrenceAlreadyPosted": "De termijn van {{ occurrence }} van deze geplande transactie is al geboekt. Herlaad om de volgende te zien.",
+    "occurrenceRequired": "De te boeken termijn moet worden opgegeven. Herlaad het schema en probeer het opnieuw."
   },
   "securities": {
     "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",

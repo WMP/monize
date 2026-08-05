@@ -101,6 +101,7 @@ describe("ScheduledTransactionsService", () => {
   };
 
   beforeEach(async () => {
+    currentDue = "2025-02-15";
     scheduledRepo = {
       create: jest.fn().mockImplementation((data) => ({ id: stId, ...data })),
       save: jest
@@ -234,10 +235,24 @@ describe("ScheduledTransactionsService", () => {
     );
   });
 
+  // The occurrence a `post` names. `post` now *requires* it -- the fresh-read
+  // fallback that let a retry pay the next period is gone (review R4-001) -- so
+  // every test that posts has to name the occurrence the fixture is due on.
+  // `stubFindOne` records it; a direct `findOne` stub sets it explicitly.
+  let currentDue = "2025-02-15";
+
   // Helper: stub findOne to return a scheduled transaction for internal calls
   const stubFindOne = (scheduled: ScheduledTransaction) => {
     scheduledRepo.findOne.mockResolvedValue(scheduled);
+    currentDue = String(scheduled.nextDueDate).slice(0, 10);
   };
+
+  /** Post the occurrence the fixture is due on, as the real callers now must. */
+  const postDue = (
+    extra: Record<string, unknown> = {},
+    due: string = currentDue,
+  ) =>
+    service.post(userId, stId, { expectedNextDueDate: due, ...extra } as any);
 
   // ==================== create ====================
   describe("create", () => {
@@ -1078,7 +1093,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -1101,7 +1116,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1126,7 +1141,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1147,7 +1162,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1174,7 +1189,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1199,7 +1214,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1223,7 +1238,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1251,7 +1266,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1273,7 +1288,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId, { amount: -500 });
+      await postDue({ amount: -500 });
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1295,7 +1310,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1323,7 +1338,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1344,7 +1359,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId, {
+      await postDue({
         amount: -500,
         description: "inline desc",
       });
@@ -1372,7 +1387,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -1396,7 +1411,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(
         storedOverride,
@@ -1414,7 +1429,7 @@ describe("ScheduledTransactionsService", () => {
         .fn()
         .mockResolvedValue({ affected: 1 });
 
-      const result = await service.post(userId, stId);
+      const result = await postDue();
 
       expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
         ScheduledTransaction,
@@ -1436,7 +1451,7 @@ describe("ScheduledTransactionsService", () => {
         .fn()
         .mockResolvedValue({ affected: 1 });
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -1463,7 +1478,7 @@ describe("ScheduledTransactionsService", () => {
         .fn()
         .mockResolvedValue({ affected: 1 });
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(
         storedOverride,
@@ -1485,11 +1500,18 @@ describe("ScheduledTransactionsService", () => {
         .fn()
         .mockResolvedValue({ affected: 1 });
 
-      // findOne is called once at the start of post() to load the entity.
-      // It must NOT be called a second time after the row is deleted.
-      await service.post(userId, stId);
+      await postDue();
 
-      expect(scheduledRepo.findOne).toHaveBeenCalledTimes(1);
+      // The invariant is about ordering, not about a count: every read of the
+      // schedule has to happen before the row is deleted, or the response is a
+      // 404 for a posting that succeeded. Asserting the count instead broke the
+      // moment `post` grew its second, locked read -- which is why this now says
+      // what it means.
+      const deleteOrder = mockQueryRunner.manager.delete.mock
+        .invocationCallOrder[0] as number;
+      const reads = scheduledRepo.findOne.mock.invocationCallOrder as number[];
+      expect(reads.length).toBeGreaterThan(0);
+      expect(Math.max(...reads)).toBeLessThan(deleteOrder);
     });
 
     it("should advance nextDueDate for recurring frequency", async () => {
@@ -1503,7 +1525,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const updateCall = mockQueryRunner.manager.update.mock.calls.find(
         (c: any[]) => c[0] === ScheduledTransaction,
@@ -1524,7 +1546,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const updateCall = mockQueryRunner.manager.update.mock.calls.find(
         (c: any[]) => c[0] === ScheduledTransaction,
@@ -1543,7 +1565,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const updateCall = mockQueryRunner.manager.update.mock.calls.find(
         (c: any[]) => c[0] === ScheduledTransaction,
@@ -1582,7 +1604,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const payload = transactionsService.create.mock.calls[0][1];
       expect(payload.splits).toHaveLength(2);
@@ -1597,7 +1619,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId, { transactionDate: "2025-03-01" });
+      await postDue({ transactionDate: "2025-03-01" });
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -1616,7 +1638,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       // Stale override cleanup now uses queryRunner.manager.createQueryBuilder
       expect(mockQueryRunner.manager.createQueryBuilder).toHaveBeenCalled();
@@ -1664,7 +1686,7 @@ describe("ScheduledTransactionsService", () => {
       scheduledRepo.findOne.mockResolvedValueOnce(scheduled); // findOne in post return
       scheduledRepo.findOne.mockResolvedValueOnce(scheduled); // recalculate internal find
 
-      await service.post(userId, stId);
+      await postDue();
 
       // Loan account should have been looked up
       expect(accountsRepo.findOne).toHaveBeenCalled();
@@ -1678,7 +1700,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId, { referenceNumber: "CHQ-1234" });
+      await postDue({ referenceNumber: "CHQ-1234" });
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -1697,7 +1719,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId, { referenceNumber: "REF-5678" });
+      await postDue({ referenceNumber: "REF-5678" });
 
       expect(transactionsService.createTransfer).toHaveBeenCalledWith(
         userId,
@@ -1802,7 +1824,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(investmentTransactionsService.create).toHaveBeenCalledTimes(1);
       const dto = investmentTransactionsService.create.mock.calls[0][1];
@@ -1829,7 +1851,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const dto = investmentTransactionsService.create.mock.calls[0][1];
       expect(dto.fundingAccountId).toBe("acc-checking");
@@ -1848,7 +1870,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId, {
+      await postDue({
         investmentQuantity: 3,
         investmentPrice: 480,
       } as any);
@@ -1870,7 +1892,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const dto = investmentTransactionsService.create.mock.calls[0][1];
       expect(dto.action).toBe("DIVIDEND");
@@ -1891,7 +1913,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const dto = investmentTransactionsService.create.mock.calls[0][1];
       expect(dto.action).toBe("REINVEST");
@@ -1910,9 +1932,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await expect(service.post(userId, stId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(postDue()).rejects.toThrow(BadRequestException);
     });
 
     it("post() routes a DIVIDEND with stored qty+price as quantity*price", async () => {
@@ -1929,7 +1949,7 @@ describe("ScheduledTransactionsService", () => {
       overrideQb.getOne.mockResolvedValue(null);
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
 
-      await service.post(userId, stId);
+      await postDue();
 
       const dto = investmentTransactionsService.create.mock.calls[0][1];
       expect(dto.action).toBe("DIVIDEND");
@@ -2341,7 +2361,7 @@ describe("ScheduledTransactionsService", () => {
       stubNoOverride();
       mockExchangeRateService.getRateForDate.mockResolvedValue(1.4);
 
-      await service.post(userId, stId, { transactionDate: "2025-03-01" });
+      await postDue({ transactionDate: "2025-03-01" });
 
       expect(mockExchangeRateService.getRateForDate).toHaveBeenCalledWith(
         "USD",
@@ -2376,7 +2396,7 @@ describe("ScheduledTransactionsService", () => {
       stubNoOverride();
       mockExchangeRateService.getRateForDate.mockResolvedValue(1.4);
 
-      await service.post(userId, stId, { transactionDate: "2025-03-01" });
+      await postDue({ transactionDate: "2025-03-01" });
 
       // base -56, fee -1.40, total -57.40
       expect(transactionsService.create).toHaveBeenCalledWith(
@@ -2402,9 +2422,9 @@ describe("ScheduledTransactionsService", () => {
       stubNoOverride();
       mockExchangeRateService.getRateForDate.mockResolvedValue(null);
 
-      await expect(
-        service.post(userId, stId, { transactionDate: "2025-03-01" }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(postDue({ transactionDate: "2025-03-01" })).rejects.toThrow(
+        BadRequestException,
+      );
       expect(transactionsService.create).not.toHaveBeenCalled();
     });
 
@@ -2432,7 +2452,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       // The pinned total is booked as-is, and the rate is derived so the row
       // still round-trips: -60 / -40 = 1.5.
@@ -2993,6 +3013,7 @@ describe("ScheduledTransactionsService", () => {
         nextDueDate: "2025-03-15",
       });
       scheduledRepo.findOne.mockResolvedValue(scheduled);
+      currentDue = "2025-03-15";
 
       const overrideQb = mockQueryBuilder(null);
       overrideQb.getOne.mockResolvedValue({
@@ -3006,7 +3027,7 @@ describe("ScheduledTransactionsService", () => {
       overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
       accountsRepo.findOne.mockResolvedValue(null);
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
@@ -3257,7 +3278,7 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue({ affected: 1 });
       transactionsService.create.mockResolvedValue({ id: "tx-new" });
 
-      await service.post(userId, stId);
+      await postDue();
 
       expect(transactionsService.create).toHaveBeenCalledTimes(1);
       const callArg = transactionsService.create.mock.calls[0][1];
@@ -3299,7 +3320,7 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue({ affected: 1 });
       transactionsService.create.mockResolvedValue({ id: "tx-new" });
 
-      await service.post(userId, stId, {
+      await postDue({
         amount: 0,
         isSplit: true,
         splits: [
@@ -3352,7 +3373,7 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue({ affected: 1 });
       transactionsService.create.mockResolvedValue({ id: "tx-new" });
 
-      await service.post(userId, stId);
+      await postDue();
 
       const callArg = transactionsService.create.mock.calls[0][1];
       const inv = callArg.splits.find((s: any) => s.splitKind === "investment");
@@ -3397,7 +3418,7 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue({ affected: 1 });
       transactionsService.create.mockResolvedValue({ id: "tx-new" });
 
-      await service.post(userId, stId);
+      await postDue();
 
       const callArg = transactionsService.create.mock.calls[0][1];
       callArg.splits.forEach((s: any) => {

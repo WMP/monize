@@ -494,7 +494,8 @@
     "noRecent": "Brak ostatnich transakcji.",
     "noRecentForPayee": "Brak ostatnich transakcji dla tego odbiorcy.",
     "noPayee": "(brak odbiorcy)",
-    "uncategorized": "(bez kategorii)"
+    "uncategorized": "(bez kategorii)",
+    "loadFailed": "Nie udało się wczytać ostatnich transakcji."
   },
   "investmentSplit": {
     "ariaAction": "Operacja inwestycyjna",

@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "होल्डिंग",
     "pdfColCash": "नकद",
     "pdfColTotal": "कुल",
-    "pdfColGainLoss": "लाभ/हानि"
+    "pdfColGainLoss": "लाभ/हानि",
+    "na": "उपलब्ध नहीं"
   },
   "realizedGains": {
     "totalProceeds": "कुल आय",

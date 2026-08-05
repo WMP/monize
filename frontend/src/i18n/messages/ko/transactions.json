@@ -494,7 +494,8 @@
     "noRecent": "최근 거래가 없습니다.",
     "noRecentForPayee": "이 수취인의 최근 거래가 없습니다.",
     "noPayee": "(수취인 없음)",
-    "uncategorized": "(미분류)"
+    "uncategorized": "(미분류)",
+    "loadFailed": "최근 거래를 불러올 수 없습니다."
   },
   "investmentSplit": {
     "ariaAction": "투자 작업",

@@ -133,10 +133,14 @@ export class TokenService {
 
       // Replay detection: if token is revoked, a previously-rotated token was reused
       if (existingToken.isRevoked) {
-        await manager.update(
-          RefreshToken,
+        // Convergent, for the reason revokeUntilNoneLive documents: a legitimate
+        // rotation of another live row of this family can commit its replacement
+        // after this statement's snapshot, and the family must be dead when the
+        // attacker's request is refused, not nearly dead.
+        await this.revokeUntilNoneLive(
+          manager.getRepository(RefreshToken),
           { familyId: existingToken.familyId },
-          { isRevoked: true },
+          `family ${existingToken.familyId}`,
         );
         throw new UnauthorizedException(
           tr(
@@ -159,10 +163,10 @@ export class TokenService {
       });
 
       if (!user || !user.isActive) {
-        await manager.update(
-          RefreshToken,
+        await this.revokeUntilNoneLive(
+          manager.getRepository(RefreshToken),
           { familyId: existingToken.familyId },
-          { isRevoked: true },
+          `family ${existingToken.familyId}`,
         );
         throw new UnauthorizedException(
           tr(
@@ -219,9 +223,73 @@ export class TokenService {
   }
 
   async revokeTokenFamily(familyId: string): Promise<void> {
-    await this.scoped(RefreshToken, (repo) =>
-      repo.update({ familyId }, { isRevoked: true }),
+    await withScopedDb(this.dataSource, (manager) =>
+      this.revokeUntilNoneLive(
+        manager.getRepository(RefreshToken),
+        { familyId },
+        `family ${familyId}`,
+      ),
     );
+  }
+
+  /**
+   * How many times a revocation will re-look for a descendant a concurrent
+   * rotation committed underneath it. Two passes settle the ordinary race; the
+   * rest of the budget exists so a pathological one fails loudly instead of
+   * spinning.
+   */
+  private static readonly REVOKE_CONVERGENCE_PASSES = 8;
+
+  /**
+   * Revokes every token matching `criteria`, then looks again, until none is
+   * live.
+   *
+   * The second look is the whole point. A single
+   * `UPDATE ... WHERE family_id = $1` cannot revoke a rotation's replacement
+   * token, because of how the two transactions have to interleave: the rotation
+   * holds `FOR UPDATE` on the token it is replacing for its whole transaction,
+   * so the revocation's statement blocks on that row and the rotation always
+   * commits first -- meaning the replacement row was inserted *after* the
+   * revocation statement took its snapshot, and is invisible to it. The
+   * revocation then reports success, and the descendant of the token the user
+   * just logged out stays valid for its full lifetime. Reuse detection does not
+   * catch it either: nothing was reused.
+   *
+   * A second statement takes a fresh snapshot under READ COMMITTED, which is
+   * where the descendant finally becomes visible. Looping on a *read* rather
+   * than on `affected` matters: the parent row the rotation already revoked
+   * itself no longer counts as changed, so an `affected === 0` exit would stop
+   * one row short of the token that matters.
+   *
+   * `race-refresh-token-revocation.integration.spec.ts` drives exactly that
+   * interleaving, and fails on a single-pass revocation.
+   */
+  private async revokeUntilNoneLive(
+    repo: Repository<RefreshToken>,
+    criteria: { familyId: string } | { userId: string },
+    describe: string,
+  ): Promise<void> {
+    for (let pass = 1; ; pass++) {
+      // Narrowed to the live rows so a repeat pass does not restamp
+      // `updated_at` on tokens that were already revoked. That narrowing is
+      // safe here and would not be safe as an exit condition: each statement
+      // takes its own snapshot, so pass two still sees the descendant even
+      // though pass one reported no rows changed.
+      await repo.update({ ...criteria, isRevoked: false }, { isRevoked: true });
+      const live = await repo.count({
+        where: { ...criteria, isRevoked: false },
+      });
+      if (live === 0) return;
+      if (pass >= TokenService.REVOKE_CONVERGENCE_PASSES) {
+        // Never return quietly here: the caller is a logout or a reuse
+        // response, and a silent partial revocation is the security failure
+        // this method exists to prevent.
+        throw new Error(
+          `Refresh-token revocation for ${describe} did not converge: ` +
+            `${live} token(s) still live after ${pass} passes`,
+        );
+      }
+    }
   }
 
   async revokeRefreshToken(rawRefreshToken: string): Promise<void> {
@@ -238,8 +306,15 @@ export class TokenService {
   }
 
   async revokeAllUserRefreshTokens(userId: string): Promise<void> {
-    await this.scoped(RefreshToken, (repo) =>
-      repo.update({ userId, isRevoked: false }, { isRevoked: true }),
+    // Same convergence requirement as a family revocation, and reached the same
+    // way -- a rotation in flight on any of this user's families commits its
+    // replacement after this statement's snapshot.
+    await withScopedDb(this.dataSource, (manager) =>
+      this.revokeUntilNoneLive(
+        manager.getRepository(RefreshToken),
+        { userId },
+        `user ${userId}`,
+      ),
     );
   }
 

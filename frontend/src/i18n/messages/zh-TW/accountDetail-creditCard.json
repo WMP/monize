@@ -71,7 +71,8 @@
     "toastRecorded": "付款已記錄",
     "toastScheduled": "每月付款已排程",
     "toastFailed": "提交付款失敗",
-    "fillRequired": "請選擇金額、付款科目和日期"
+    "fillRequired": "請選擇金額、付款科目和日期",
+    "fundingAccountsLoadFailed": "無法載入可用於付款的帳戶。這並不表示您沒有帳戶。請在連線恢復後重試。"
   },
   "loadFailed": "載入信用卡詳情失敗"
 }

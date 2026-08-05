@@ -88,13 +88,13 @@ export function RecentTransactionsPopover({
       .catch((err) => {
         if (cancelled) return;
         logger.warn('Failed to load recent transactions', err);
-        setError('Could not load recent transactions');
+        setError(t('recentPopover.loadFailed'));
         setIsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [payeeId, payeeName, limit]);
+  }, [payeeId, payeeName, limit, t]);
 
   // Outside-click and escape
   useClickOutside([popoverRef, anchorRef], onClose, { onEscape: onClose });

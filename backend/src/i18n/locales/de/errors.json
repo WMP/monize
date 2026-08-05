@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Sicherungspasswort muss mindestens {{ minLength }} Zeichen lang sein",
     "backupPasswordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
     "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein",
-    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen."
+    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen.",
+    "restoredWithMissingAttachmentBytes": "Sicherung erfolgreich wiederhergestellt, aber {{ count }} Anhang/Anhänge enthalten in dieser Sicherung keine Dateiinhalte. Sie wurden außerhalb der Datenbank gespeichert (lokaler Ordner oder S3), daher müssen diese Dateien separat aus diesem Speicher wiederhergestellt werden.",
+    "tooManyBackupsThisSecond": "In derselben Sekunde wurden zu viele Backups geschrieben, um ein weiteres zu benennen."
   },
   "budgets": {
     "notFound": "Budget mit ID {{ id }} nicht gefunden",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Szenario {{ id }} nicht gefunden",
     "scenarioIdsMustBeArray": "scenarioIds muss ein Array sein",
-    "atLeastOneAccountRequired": "Mindestens eine accountId ist erforderlich"
+    "atLeastOneAccountRequired": "Mindestens eine accountId ist erforderlich",
+    "currentPortfolioValueUnavailable": "Der aktuelle Wert der ausgewählten Konten konnte nicht ermittelt werden, daher kann die Simulation nicht davon ausgehen. Meist fehlt für eine Position ein aktueller Kurs oder für ein Währungspaar ein Wechselkurs. Geben Sie einen Startwert manuell ein oder versuchen Sie es nach einer Kursaktualisierung erneut."
   },
   "netWorth": {
     "invalidStartDate": "startDate muss im Format YYYY-MM-DD sein",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Betrag ist für Buchungsteil-Überschreibung erforderlich",
     "dateMustBeYMD": "Datum muss im Format YYYY-MM-DD sein",
     "fxPlainOnly": "Eine abweichende Währung ist nur bei einer einfachen terminierten Buchung möglich, nicht bei einer Aufteilung, Überweisung oder Investition",
-    "fxRateUnavailable": "Für {{ from }} zu {{ to }} ist am {{ date }} kein Wechselkurs verfügbar. Geben Sie den Betrag in {{ to }} ein, um ihn zu buchen."
+    "fxRateUnavailable": "Für {{ from }} zu {{ to }} ist am {{ date }} kein Wechselkurs verfügbar. Geben Sie den Betrag in {{ to }} ein, um ihn zu buchen.",
+    "occurrenceAlreadyPosted": "Die Fälligkeit vom {{ occurrence }} dieser geplanten Transaktion wurde bereits gebucht. Laden Sie neu, um die nächste zu sehen.",
+    "occurrenceRequired": "Die zu buchende Fälligkeit muss angegeben werden. Laden Sie den Zeitplan neu und versuchen Sie es erneut."
   },
   "securities": {
     "exchangeRateUnavailable": "Wechselkurs für {{ from }} -> {{ to }} zum Transaktionsdatum konnte nicht ermittelt werden. Geben Sie einen expliziten exchangeRate an, damit die Buchung auf dem Geldkonto korrekt ist.",

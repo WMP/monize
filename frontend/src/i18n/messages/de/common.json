@@ -228,5 +228,8 @@
     "nothingToRedo": "Nichts zu wiederholen",
     "cannotRedo": "Diese Aktion kann nicht wiederholt werden",
     "redoFailed": "Wiederholen fehlgeschlagen"
-  }
+  },
+  "notAvailable": "Nicht verfügbar",
+  "notAvailableShort": "k. A.",
+  "unconvertedExcluded": "{count, plural, one {# Betrag wurde ausgelassen: für seine Währung liegt kein Wechselkurs vor.} other {# Beträge wurden ausgelassen: für ihre Währungen liegt kein Wechselkurs vor.}}"
 }

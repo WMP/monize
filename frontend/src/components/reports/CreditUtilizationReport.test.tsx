@@ -18,7 +18,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     defaultCurrency: 'CAD',
-    convert: (amount: number, from: string, to?: string) => {
+    convertOrNull: (amount: number, from: string, to?: string) => {
       const target = to ?? 'CAD';
       if (from === target) return amount;
       if (from === 'USD' && target === 'CAD') return amount * 1.365;

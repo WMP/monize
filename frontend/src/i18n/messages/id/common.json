@@ -228,5 +228,8 @@
     "nothingToRedo": "Tidak ada yang dapat diulang",
     "cannotRedo": "Tindakan ini tidak dapat diulang",
     "redoFailed": "Pengulangan gagal"
-  }
+  },
+  "notAvailable": "Tidak tersedia",
+  "notAvailableShort": "t/a",
+  "unconvertedExcluded": "{count, plural, other {# jumlah tidak disertakan: mata uangnya tidak memiliki kurs tercatat.}}"
 }

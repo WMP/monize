@@ -1,6 +1,7 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsOptional,
+  IsNotEmpty,
   IsNumber,
   IsUUID,
   IsString,
@@ -57,6 +58,22 @@ class InlineSplitDto {
 }
 
 export class PostScheduledTransactionDto {
+  @ApiProperty({
+    description:
+      "The occurrence being posted, as the schedule's nextDueDate when the " +
+      "caller read it. Required, and a precondition: the posting is refused " +
+      "with 409 unless the schedule is still due on that date. This is what " +
+      "makes the endpoint idempotent under retry -- without it, a retried " +
+      "request would post 'whatever occurrence is current', which after the " +
+      "first posting is the *next* one, so a network retry or double submit " +
+      "would pay two consecutive periods. There is deliberately no 'post " +
+      "current' fallback: a caller that does not know which occurrence it " +
+      "means has no business posting a payment.",
+  })
+  @IsDateString()
+  @IsNotEmpty()
+  expectedNextDueDate: string;
+
   @ApiPropertyOptional({
     description: "Transaction date (defaults to next due date)",
   })

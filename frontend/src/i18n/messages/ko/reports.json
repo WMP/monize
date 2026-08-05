@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "보유 항목",
     "pdfColCash": "현금",
     "pdfColTotal": "합계",
-    "pdfColGainLoss": "이익/손실"
+    "pdfColGainLoss": "이익/손실",
+    "na": "사용할 수 없음"
   },
   "realizedGains": {
     "totalProceeds": "총 매각 대금",

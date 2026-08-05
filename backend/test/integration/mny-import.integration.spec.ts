@@ -1497,5 +1497,104 @@ describe("mny writers (integration)", () => {
         expect(job.result!.securitiesCreated).toBe(30);
       });
     });
+
+    /**
+     * P4-002 / audit race 2: a retry after the first attempt has already written.
+     *
+     * The audit's concern was a retry replaying source rows a failed attempt had
+     * committed, doubling everything the first pass got through. The reason that
+     * cannot happen is a property of where the transaction boundary sits, not of
+     * anything in the retry path -- `writeAll` is a single `withScopedDb`, so a
+     * failure anywhere inside it commits nothing at all and the retry starts from
+     * an empty slate. That is easy to state and easy to break: moving one phase
+     * out of the block, or wrapping a phase in a nested transaction that swallows
+     * its own error, would make the claim false with nothing failing.
+     *
+     * So it is pinned here, by failing an import at a phase that runs *after*
+     * accounts, categories and payees have been written, and asserting the
+     * database is untouched -- then retrying and comparing against a clean run.
+     */
+    describe("retry after a mid-write failure", () => {
+      /**
+       * Fails the next import once it reaches `phase`, from inside the write
+       * transaction. `reportProgress` is called between phases and is a service
+       * method, which makes it the one seam that reaches inside `writeAll`
+       * without production code growing a hook for the test's benefit.
+       */
+      function failAtPhase(phase: string): jest.SpyInstance {
+        const real = jobs.reportProgress.bind(jobs);
+        return jest
+          .spyOn(jobs, "reportProgress")
+          .mockImplementation(async (jobId, progress) => {
+            if (progress.phase === phase) {
+              throw new Error(`injected failure at ${phase}`);
+            }
+            await real(jobId, progress);
+          });
+      }
+
+      const rowCounts = async () => ({
+        accounts: await dataSource
+          .getRepository(Account)
+          .count({ where: { userId } }),
+        categories: await dataSource
+          .getRepository(Category)
+          .count({ where: { userId } }),
+        payees: await dataSource
+          .getRepository(Payee)
+          .count({ where: { userId } }),
+        transactions: await dataSource
+          .getRepository(Transaction)
+          .count({ where: { userId } }),
+        investments: await dataSource
+          .getRepository(InvestmentTransaction)
+          .count({ where: { userId } }),
+      });
+
+      it("commits nothing when the write fails after the reference phase", async () => {
+        const spy = failAtPhase("transactions");
+        try {
+          const job = await runImport("money2002");
+
+          expect(job.status).toBe("failed");
+          expect(job.retryable).toBe(true);
+          // Retryable is only honest if the bytes are still there.
+          expect(job.stagedFileId).not.toBeNull();
+        } finally {
+          spy.mockRestore();
+        }
+
+        // Accounts, categories and payees were all written before the failure
+        // point, inside the same transaction. None of them may have survived.
+        expect(await rowCounts()).toEqual({
+          accounts: 0,
+          categories: 0,
+          payees: 0,
+          transactions: 0,
+          investments: 0,
+        });
+      });
+
+      it("retries to exactly the same state as a clean first run", async () => {
+        const clean = await runImport("money2002");
+        expect(clean.status).toBe("completed");
+        const expected = await rowCounts();
+
+        // Start over, fail once, then retry over the same bytes.
+        await cleanTables(dataSource, TABLES);
+        const spy = failAtPhase("investments");
+        try {
+          expect((await runImport("money2002")).status).toBe("failed");
+        } finally {
+          spy.mockRestore();
+        }
+        const afterFailure = await runImport("money2002");
+
+        expect(afterFailure.status).toBe("completed");
+        // Not "greater than zero": equal. A retry that replayed committed rows
+        // would double the counts, and nothing else in the suite would notice.
+        expect(await rowCounts()).toEqual(expected);
+      });
+    });
   });
 });

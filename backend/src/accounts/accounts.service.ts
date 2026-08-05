@@ -997,22 +997,6 @@ export class AccountsService {
    * to ensure the balance is always correct regardless of history.
    */
   async recalculateCurrentBalance(accountId: string): Promise<Account> {
-    const account = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).findOne({
-        where: { id: accountId },
-      }),
-    );
-
-    if (!account) {
-      throw new NotFoundException(
-        tr(
-          "errors.accounts.accountWithIdNotFound",
-          `Account with ID ${accountId} not found`,
-          { id: accountId },
-        ),
-      );
-    }
-
     const balanceSql = `SELECT COALESCE($2::NUMERIC, 0) + COALESCE(SUM(t.amount), 0) as balance
        FROM transactions t
        WHERE t.account_id = $1
@@ -1022,7 +1006,41 @@ export class AccountsService {
 
     const today = todayYMD();
 
+    // One transaction, a locked read, and a write confined to the one column
+    // this method owns. Each of the three is load-bearing, and the previous
+    // shape had none of them:
+    //
+    // - The account was read in its own transaction and the sum computed in a
+    //   second, so the opening balance the sum was added to could already be
+    //   stale -- producing a "recalculated" balance that never matched any
+    //   state the account was in.
+    // - `save(account)` writes every column of the entity that was loaded, so a
+    //   rename, a credit-limit change or an opening-balance edit committed in
+    //   between was silently reverted by a recompute that had no business
+    //   touching those fields. A recompute overwriting a user's edit is the
+    //   worst kind of lost update: nothing errors and the edit simply is not
+    //   there any more.
+    // - Without the lock two recomputes, or a recompute and an update, can
+    //   interleave freely.
+    //
+    // `race-account-balance.integration.spec.ts` fails on the old shape.
     return withScopedDb(this.dataSource, async (m) => {
+      const repo = m.getRepository(Account);
+      const account = await repo.findOne({
+        where: { id: accountId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!account) {
+        throw new NotFoundException(
+          tr(
+            "errors.accounts.accountWithIdNotFound",
+            `Account with ID ${accountId} not found`,
+            { id: accountId },
+          ),
+        );
+      }
+
       const result: { balance: string }[] = await m.query(balanceSql, [
         accountId,
         account.openingBalance,
@@ -1032,8 +1050,10 @@ export class AccountsService {
         result.length > 0
           ? roundMoney(Number(result[0].balance))
           : roundMoney(Number(account.openingBalance));
+
+      await repo.update({ id: accountId }, { currentBalance: newBalance });
       account.currentBalance = newBalance;
-      return m.getRepository(Account).save(account);
+      return account;
     });
   }
 

@@ -356,7 +356,7 @@ describe("PortfolioService", () => {
         expect(result.totalCostBasis).toBe(2025 + 4000);
 
         expect(result.totalPortfolioValue).toBe(
-          result.totalCashValue + result.totalHoldingsValue,
+          result.totalCashValue! + result.totalHoldingsValue!,
         );
       });
 
@@ -468,7 +468,7 @@ describe("PortfolioService", () => {
         expect(acct.totalCostBasis).toBeCloseTo(4000 + 2025, 2);
         expect(acct.totalMarketValue).toBeCloseTo(4750 + 2362.5, 2);
         expect(acct.totalGainLoss).toBeCloseTo(
-          acct.totalMarketValue - acct.totalCostBasis,
+          acct.totalMarketValue! - acct.totalCostBasis!,
           2,
         );
       });
@@ -822,7 +822,14 @@ describe("PortfolioService", () => {
         expect(result.totalHoldingsValue).toBeCloseTo(expectedHoldingsValue, 2);
       });
 
-      it("uses rate of 1 when neither direct nor reverse rate available", async () => {
+      it("reports an unknown total when neither direct nor reverse rate is available", async () => {
+        // This test used to assert the opposite -- that a missing pair was
+        // treated as a rate of 1, so 10 shares at 175 USD were reported as
+        // 1750 CAD. `docs/financial-calculation-contract.md` section 3 says a
+        // missing exchange rate is missing data, not a rate of 1: at a real
+        // 1.3500 the honest total is 2362.50 CAD, so the old assertion locked
+        // in an understatement of 612.50 CAD that looked like a measured
+        // figure.
         prefRepository.findOne.mockResolvedValue(mockPref);
         accountsRepository.find.mockResolvedValue([
           mockBrokerageAccount,
@@ -841,8 +848,48 @@ describe("PortfolioService", () => {
 
         const result = await service.getPortfolioSummary(userId);
 
-        // Falls back to rate of 1, so USD values treated as-is
+        expect(result.totalHoldingsValue).toBeNull();
+        expect(result.totalPortfolioValue).toBeNull();
+        // ...and the reason is nameable, not an unexplained blank.
+        expect(result.unavailableFxPairs).toContain("USD->CAD");
+        // The convertible part is still reachable, but only through a field
+        // whose name says it is a subtotal.
+        expect(result.knownHoldingsValueSubtotal).toBe(0);
+        // The unconverted source amount must never appear as the total.
+        expect(result.totalHoldingsValue).not.toBe(10 * 175);
+      });
+
+      it("returns a real total at a rate of exactly 1 for same-currency holdings", async () => {
+        // The counterpart to the case above: a same-currency conversion is a
+        // successful conversion, and must stay distinguishable from a missing
+        // pair. USD/USD is 1.0000 and the total is a number, not null.
+        prefRepository.findOne.mockResolvedValue({
+          ...mockPref,
+          defaultCurrency: "USD",
+        });
+        accountsRepository.find.mockResolvedValue([
+          mockBrokerageAccount,
+          mockCashAccount,
+        ]);
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+        securityPriceRepository.query.mockResolvedValue([
+          {
+            security_id: "sec-1",
+            close_price: "175",
+            price_date: "2026-02-07",
+          },
+        ]);
+        exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+        const result = await service.getPortfolioSummary(userId);
+
+        // The USD holding needed no conversion, so the holdings total is a
+        // real number rather than null: a same-currency pair is a successful
+        // conversion at 1.0000, not a missing rate.
         expect(result.totalHoldingsValue).toBe(10 * 175);
+        // USD->USD is never reported as unavailable -- only the CAD cash
+        // account in this fixture is, which is a separate component.
+        expect(result.unavailableFxPairs).not.toContain("USD->USD");
       });
 
       it("caches exchange rates for repeated conversions", async () => {
@@ -1396,6 +1443,8 @@ describe("PortfolioService", () => {
         cagr: null,
         holdings: [],
         holdingsByAccount: [],
+        unavailableFxPairs: [],
+        knownHoldingsValueSubtotal: 0,
         allocation: [],
       } as never);
 
@@ -1453,6 +1502,8 @@ describe("PortfolioService", () => {
             },
           ],
           holdingsByAccount: [],
+          unavailableFxPairs: [],
+          knownHoldingsValueSubtotal: 0,
           allocation: [
             {
               name: "AAPL",
@@ -1515,6 +1566,8 @@ describe("PortfolioService", () => {
         cagr: null,
         holdings: [],
         holdingsByAccount: [],
+        unavailableFxPairs: [],
+        knownHoldingsValueSubtotal: 0,
         allocation: [],
       });
 
@@ -1554,6 +1607,8 @@ describe("PortfolioService", () => {
           },
         ],
         holdingsByAccount: [],
+        unavailableFxPairs: [],
+        knownHoldingsValueSubtotal: 0,
         allocation: [],
       });
 
@@ -1609,6 +1664,8 @@ describe("PortfolioService", () => {
             netInvested: 1500,
           },
         ],
+        unavailableFxPairs: [],
+        knownHoldingsValueSubtotal: 0,
         allocation: [],
       });
 
@@ -2706,7 +2763,7 @@ describe("PortfolioService", () => {
 
       // Total Gain (portfolio - netInvested) must be negative because the
       // USD price dropped between purchase and today.
-      const totalGain = result.totalPortfolioValue - result.totalNetInvested;
+      const totalGain = result.totalPortfolioValue! - result.totalNetInvested!;
       expect(totalGain).toBeLessThan(0);
       expect(totalGain).toBeCloseTo(-200.475, 2);
     });
@@ -3821,6 +3878,8 @@ describe("PortfolioService", () => {
         cagr: null,
         holdings: [],
         holdingsByAccount: [],
+        unavailableFxPairs: [],
+        knownHoldingsValueSubtotal: 0,
         allocation: [
           {
             name: "Cash",

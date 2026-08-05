@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Le mot de passe de sauvegarde doit comporter au moins {{ minLength }} caractères",
     "backupPasswordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
     "restoreBodyMustBeFile": "Le corps de la requête doit être un fichier de sauvegarde",
-    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde."
+    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde.",
+    "restoredWithMissingAttachmentBytes": "Sauvegarde restaurée avec succès, mais {{ count }} pièce(s) jointe(s) n'ont pas de contenu de fichier dans cette sauvegarde. Elles étaient stockées en dehors de la base de données (dossier local ou S3) : ces fichiers doivent être restaurés séparément depuis ce stockage.",
+    "tooManyBackupsThisSecond": "Trop de sauvegardes ont été écrites dans la même seconde pour en nommer une autre."
   },
   "budgets": {
     "notFound": "Budget avec l'ID {{ id }} introuvable",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scénario {{ id }} introuvable",
     "scenarioIdsMustBeArray": "scenarioIds doit être un tableau",
-    "atLeastOneAccountRequired": "Au moins un accountId est requis"
+    "atLeastOneAccountRequired": "Au moins un accountId est requis",
+    "currentPortfolioValueUnavailable": "La valeur actuelle des comptes sélectionnés n'a pas pu être déterminée : la simulation ne peut donc pas en partir. En général, une position n'a pas de cours récent, ou une paire de devises n'a pas de taux de change. Saisissez une valeur de départ manuellement, ou réessayez après une actualisation des cours."
   },
   "netWorth": {
     "invalidStartDate": "startDate doit être au format YYYY-MM-DD",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Le montant est requis pour le remplacement fractionné",
     "dateMustBeYMD": "La date doit être au format YYYY-MM-DD",
     "fxPlainOnly": "Une devise différente n'est possible que sur une transaction récurrente simple, pas sur une transaction fractionnée, un virement ou un investissement",
-    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer."
+    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer.",
+    "occurrenceAlreadyPosted": "L'échéance du {{ occurrence }} de cette transaction planifiée a déjà été enregistrée. Rechargez pour voir la suivante.",
+    "occurrenceRequired": "L'échéance à enregistrer doit être précisée. Rechargez la planification et réessayez."
   },
   "securities": {
     "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",

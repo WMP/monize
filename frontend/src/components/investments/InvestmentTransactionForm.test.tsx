@@ -23,7 +23,7 @@ vi.mock('@/hooks/useExchangeRates', () => ({
     rates: [],
     rateMap: new Map(),
     isLoading: false,
-    convert: (amount: number) => amount,
+    convertOrNull: (amount: number) => amount,
     convertToDefault: (amount: number) => amount,
     refresh: vi.fn(),
     defaultCurrency: 'CAD',

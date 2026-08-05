@@ -494,7 +494,8 @@
     "noRecent": "无近期交易。",
     "noRecentForPayee": "此收款人无近期交易。",
     "noPayee": "（无收款人）",
-    "uncategorized": "（未分类）"
+    "uncategorized": "（未分类）",
+    "loadFailed": "无法加载最近的交易。"
   },
   "investmentSplit": {
     "ariaAction": "投资操作",

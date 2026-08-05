@@ -5,8 +5,13 @@ import { gainLossColor } from '@/lib/format';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Account } from '@/types/account';
+import {
+  brokerageMarketValue,
+  type BrokerageMarketValues,
+} from '@/lib/brokerage-market-value';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { accountsApi } from '@/lib/accounts';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { getOrdinal } from '@/lib/ordinal';
@@ -14,7 +19,7 @@ import { useDragReorder, DropIndicatorLine } from '@/hooks/useDragReorder';
 
 interface FavouriteAccountsProps {
   accounts: Account[];
-  brokerageMarketValues?: Map<string, number>;
+  brokerageMarketValues?: BrokerageMarketValues;
   isLoading: boolean;
   onAccountsChanged?: () => void;
 }
@@ -24,6 +29,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
   const router = useRouter();
   const preferences = usePreferencesStore((s) => s.preferences);
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
+  const { formatCurrencyOrNa, unknownColorClass } = useMoneyDisplay();
   const defaultCurrency = preferences?.defaultCurrency || 'CAD';
   const [reordering, setReordering] = useState(false);
   const [localOrder, setLocalOrder] = useState<{ accounts: Account[]; order: Account[] } | null>(null);
@@ -243,22 +249,29 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                 </div>
               </div>
               {(() => {
-                const brokerageMarketValue = account.accountSubType === 'INVESTMENT_BROKERAGE'
-                  ? brokerageMarketValues?.get(account.id)
+                const isBrokerage =
+                  account.accountSubType === 'INVESTMENT_BROKERAGE';
+                const marketValue = isBrokerage
+                  ? brokerageMarketValue(brokerageMarketValues, account.id)
                   : undefined;
-                const displayValue = brokerageMarketValue !== undefined
-                  ? brokerageMarketValue
+                // `null` is a brokerage whose value is not known -- marked, not
+                // printed as a currency-formatted zero, which would be
+                // indistinguishable from an account that really is empty.
+                const displayValue = isBrokerage
+                  ? marketValue
                   : (Number(account.currentBalance) || 0) + (Number(account.futureTransactionsSum) || 0);
                 return (
                   <div className="text-right ml-2">
                     <div
                       className={`font-semibold whitespace-nowrap ${
-                        gainLossColor(displayValue)
+                        displayValue == null
+                          ? unknownColorClass
+                          : gainLossColor(displayValue)
                       }`}
                     >
-                      {formatCurrency(displayValue, account.currencyCode)}
+                      {formatCurrencyOrNa(displayValue, account.currencyCode)}
                     </div>
-                    {brokerageMarketValue !== undefined && (
+                    {isBrokerage && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {t('favouriteAccounts.marketValue')}
                       </div>

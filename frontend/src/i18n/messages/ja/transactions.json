@@ -494,7 +494,8 @@
     "noRecent": "最近の取引はありません。",
     "noRecentForPayee": "この支払先の最近の取引はありません。",
     "noPayee": "（支払先なし）",
-    "uncategorized": "（未分類）"
+    "uncategorized": "（未分類）",
+    "loadFailed": "最近の取引を読み込めませんでした。"
   },
   "investmentSplit": {
     "ariaAction": "投資アクション",

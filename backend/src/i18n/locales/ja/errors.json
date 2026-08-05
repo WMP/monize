@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "バックアップパスワードは少なくとも {{ minLength }} 文字必要です",
     "backupPasswordBreached": "このパスワードはデータ侵害で発見されています。別のパスワードを選択してください。",
     "restoreBodyMustBeFile": "リクエストボディはバックアップファイルでなければなりません",
-    "reauthUnavailable": "バックアップを復元する前に、アカウントのパスワード設定を完了してください。"
+    "reauthUnavailable": "バックアップを復元する前に、アカウントのパスワード設定を完了してください。",
+    "restoredWithMissingAttachmentBytes": "バックアップは正常に復元されましたが、{{ count }} 件の添付ファイルにはこのバックアップ内にファイル内容が含まれていません。これらはデータベース外（ローカルフォルダーまたは S3）に保存されていたため、そのストレージから個別に復元する必要があります。",
+    "tooManyBackupsThisSecond": "同じ秒内に書き込まれたバックアップが多すぎるため、これ以上名前を付けられません。"
   },
   "budgets": {
     "notFound": "ID {{ id }} の予算が見つかりません",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "シナリオ {{ id }} が見つかりません",
     "scenarioIdsMustBeArray": "scenarioIds は配列でなければなりません",
-    "atLeastOneAccountRequired": "少なくとも1つの accountId が必要です"
+    "atLeastOneAccountRequired": "少なくとも1つの accountId が必要です",
+    "currentPortfolioValueUnavailable": "選択した口座の現在価値を確定できないため、そこからシミュレーションを開始できません。通常は、いずれかの保有銘柄に直近の価格がない、または通貨ペアの為替レートがないことを意味します。開始価値を手動で入力するか、価格を更新してから再試行してください。"
   },
   "netWorth": {
     "invalidStartDate": "startDate は YYYY-MM-DD 形式でなければなりません",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "分割上書きには金額が必要です",
     "dateMustBeYMD": "date は YYYY-MM-DD 形式でなければなりません",
     "fxPlainOnly": "別の通貨を使用できるのは通常のスケジュール取引のみで、分割、振替、投資では使用できません",
-    "fxRateUnavailable": "{{ date }} の {{ from }} から {{ to }} への為替レートが利用できません。投稿するには金額を {{ to }} で入力してください。"
+    "fxRateUnavailable": "{{ date }} の {{ from }} から {{ to }} への為替レートが利用できません。投稿するには金額を {{ to }} で入力してください。",
+    "occurrenceAlreadyPosted": "この定期取引の {{ occurrence }} 分はすでに記録されています。次の予定を表示するには再読み込みしてください。",
+    "occurrenceRequired": "記帳する回を指定する必要があります。予定を再読み込みしてやり直してください。"
   },
   "securities": {
     "exchangeRateUnavailable": "取引日における {{ from }} -> {{ to }} の為替レートを特定できませんでした。現金口座への計上が正しくなるよう、明示的な exchangeRate を指定してください。",

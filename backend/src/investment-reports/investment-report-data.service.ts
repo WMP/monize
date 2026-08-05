@@ -3,6 +3,7 @@ import { DataSource, In } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Holding } from "../securities/entities/holding.entity";
 import { Security } from "../securities/entities/security.entity";
+import { applyShareAction } from "../securities/share-quantity.util";
 import {
   InvestmentTransaction,
   InvestmentAction,
@@ -98,28 +99,22 @@ function formatSecurityType(raw: string | null): string {
     .join(" ");
 }
 
-/** Apply a transaction's quantity effect (used to reconstruct historical shares). */
+/**
+ * Apply a transaction's quantity effect (used to reconstruct historical shares).
+ *
+ * The arithmetic lives in `applyShareAction`; this used to spell the switch out,
+ * which is how `net-worth.service` came to add a split ratio instead of
+ * multiplying by it while the copies here and in `holdings.service` were right.
+ */
 function applyQuantity(
   state: { quantity: number },
   tx: InvestmentTransaction,
 ): void {
-  const quantity = Number(tx.quantity) || 0;
-  switch (tx.action) {
-    case InvestmentAction.BUY:
-    case InvestmentAction.REINVEST:
-    case InvestmentAction.TRANSFER_IN:
-    case InvestmentAction.ADD_SHARES:
-      state.quantity += quantity;
-      break;
-    case InvestmentAction.SELL:
-    case InvestmentAction.TRANSFER_OUT:
-    case InvestmentAction.REMOVE_SHARES:
-      state.quantity -= quantity;
-      break;
-    case InvestmentAction.SPLIT:
-      if (quantity > 0) state.quantity *= quantity;
-      break;
-  }
+  state.quantity = applyShareAction(
+    state.quantity,
+    tx.action,
+    Number(tx.quantity) || 0,
+  );
 }
 
 /**
@@ -605,14 +600,13 @@ export class InvestmentReportDataService {
       case InvestmentAction.CAPITAL_GAIN:
         state.income += totalAmount;
         break;
+      // Quantity-only actions: no cost-basis effect, so the shared helper
+      // carries the whole decision. A split preserves total basis by leaving
+      // `costBasis` untouched while the share count changes.
       case InvestmentAction.ADD_SHARES:
-        state.quantity += quantity;
-        break;
       case InvestmentAction.REMOVE_SHARES:
-        state.quantity -= quantity;
-        break;
       case InvestmentAction.SPLIT:
-        if (quantity > 0) state.quantity *= quantity;
+        state.quantity = applyShareAction(state.quantity, tx.action, quantity);
         break;
     }
 

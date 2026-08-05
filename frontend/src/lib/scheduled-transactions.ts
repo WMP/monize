@@ -73,10 +73,12 @@ export const scheduledTransactionsApi = {
   // Post scheduled transaction (create actual transaction and advance).
   // Returns null when the scheduled transaction was a one-time entry and was
   // deleted as part of the post.
-  post: async (id: string, data?: PostScheduledTransactionData): Promise<ScheduledTransaction | null> => {
+  // `data` is required, and `expectedNextDueDate` within it: the endpoint is
+  // idempotent only because every call names the occurrence it posts.
+  post: async (id: string, data: PostScheduledTransactionData): Promise<ScheduledTransaction | null> => {
     const response = await apiClient.post<ScheduledTransaction | null>(
       `/scheduled-transactions/${id}/post`,
-      data || {},
+      data,
     );
     invalidateCache('scheduled:');
     // Posting writes a real transaction, so every balance derived from it is

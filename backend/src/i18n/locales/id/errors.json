@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Kata sandi cadangan harus minimal {{ minLength }} karakter",
     "backupPasswordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
     "restoreBodyMustBeFile": "Isi permintaan harus berupa file cadangan",
-    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan."
+    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan.",
+    "restoredWithMissingAttachmentBytes": "Cadangan berhasil dipulihkan, tetapi {{ count }} lampiran tidak memiliki isi berkas dalam cadangan ini. Lampiran tersebut disimpan di luar basis data (folder lokal atau S3), jadi berkas itu harus dipulihkan secara terpisah dari penyimpanan tersebut.",
+    "tooManyBackupsThisSecond": "Terlalu banyak pencadangan ditulis dalam detik yang sama untuk memberi nama pencadangan lain."
   },
   "budgets": {
     "notFound": "Anggaran dengan ID {{ id }} tidak ditemukan",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Skenario {{ id }} tidak ditemukan",
     "scenarioIdsMustBeArray": "scenarioIds harus berupa array",
-    "atLeastOneAccountRequired": "Diperlukan minimal satu accountId"
+    "atLeastOneAccountRequired": "Diperlukan minimal satu accountId",
+    "currentPortfolioValueUnavailable": "Nilai saat ini dari rekening yang dipilih tidak dapat ditentukan, sehingga simulasi tidak dapat dimulai dari nilai tersebut. Biasanya ini berarti sebuah kepemilikan tidak memiliki harga terbaru atau sebuah pasangan mata uang tidak memiliki kurs. Masukkan nilai awal secara manual, atau coba lagi setelah harga diperbarui."
   },
   "netWorth": {
     "invalidStartDate": "startDate harus dalam format YYYY-MM-DD",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Jumlah diperlukan untuk penggantian terbagi",
     "dateMustBeYMD": "tanggal harus dalam format YYYY-MM-DD",
     "fxPlainOnly": "Mata uang lain hanya dapat dipakai pada transaksi terjadwal biasa, bukan pada transaksi terbagi, transfer, atau investasi",
-    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya."
+    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya.",
+    "occurrenceAlreadyPosted": "Jatuh tempo {{ occurrence }} untuk transaksi terjadwal ini sudah dibukukan. Muat ulang untuk melihat yang berikutnya.",
+    "occurrenceRequired": "Jatuh tempo yang akan dibukukan harus disebutkan. Muat ulang jadwal dan coba lagi."
   },
   "securities": {
     "exchangeRateUnavailable": "Tidak dapat menentukan nilai tukar untuk {{ from }} -> {{ to }} pada tanggal transaksi. Berikan exchangeRate eksplisit agar pencatatan ke akun kas benar.",

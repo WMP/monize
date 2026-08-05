@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Kepemilikan",
     "pdfColCash": "Tunai",
     "pdfColTotal": "Total",
-    "pdfColGainLoss": "Keuntungan/Kerugian"
+    "pdfColGainLoss": "Keuntungan/Kerugian",
+    "na": "Tidak tersedia"
   },
   "realizedGains": {
     "totalProceeds": "Total Hasil",

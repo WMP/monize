@@ -494,7 +494,8 @@
     "noRecent": "कोई हाल का लेन-देन नहीं।",
     "noRecentForPayee": "इस भुगतानकर्ता के लिए कोई हाल का लेन-देन नहीं।",
     "noPayee": "(कोई भुगतानकर्ता नहीं)",
-    "uncategorized": "(अवर्गीकृत)"
+    "uncategorized": "(अवर्गीकृत)",
+    "loadFailed": "हाल की लेन-देन लोड नहीं की जा सकीं।"
   },
   "investmentSplit": {
     "ariaAction": "निवेश क्रिया",

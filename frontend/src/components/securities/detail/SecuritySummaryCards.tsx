@@ -80,7 +80,9 @@ export function SecuritySummaryCards({
   const converted = (amount: number | null) => {
     if (!hasRate || amount === null) return undefined;
     const value = convertToDefault(amount, currency);
-    if (!isFinite(value)) return undefined;
+    // No rate for the pair: no approximate line at all, rather than one derived
+    // from a fabricated parity.
+    if (value === null || !isFinite(value)) return undefined;
     return t('cards.approx', {
       amount: formatCurrency(value, defaultCurrency),
     });

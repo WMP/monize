@@ -213,6 +213,16 @@ export interface OverrideCheckResult {
 }
 
 export interface PostScheduledTransactionData {
+  /**
+   * The occurrence being posted, as the `nextDueDate` the caller is rendering.
+   *
+   * Required, and a precondition: the server returns 409 if the schedule has
+   * moved past it. That is what makes a double-clicked Pay button or a retried
+   * request post one payment instead of two consecutive periods -- there is no
+   * "post current" fallback, so the type requires it and the API cannot be
+   * called without it.
+   */
+  expectedNextDueDate: string;
   transactionDate?: string;
   amount?: number | null;
   // Foreign-currency schedules only: the amount in the entry currency for this

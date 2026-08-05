@@ -87,17 +87,34 @@ export function InvestmentPerformanceReport() {
     if (!portfolio) return null;
     if (isSingleAccount && portfolio.holdingsByAccount.length > 0) {
       // Use per-account totals (native currency) instead of converted top-level totals
-      let totalMarketValue = 0;
+      let totalMarketValue: number | null = 0;
       let totalCashBalance = 0;
-      let totalCostBasis = 0;
+      let totalCostBasis: number | null = 0;
       for (const acct of portfolio.holdingsByAccount) {
-        totalMarketValue += acct.totalMarketValue;
         totalCashBalance += acct.cashBalance;
-        totalCostBasis += acct.totalCostBasis;
+        totalMarketValue =
+          totalMarketValue === null || acct.totalMarketValue === null
+            ? null
+            : totalMarketValue + acct.totalMarketValue;
+        totalCostBasis =
+          totalCostBasis === null || acct.totalCostBasis === null
+            ? null
+            : totalCostBasis + acct.totalCostBasis;
       }
-      const totalPortfolioValue = totalMarketValue + totalCashBalance;
-      const totalGainLoss = totalMarketValue - totalCostBasis;
-      const totalGainLossPercent = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
+      const totalPortfolioValue =
+        totalMarketValue === null ? null : totalMarketValue + totalCashBalance;
+      const totalGainLoss =
+        totalMarketValue === null || totalCostBasis === null
+          ? null
+          : totalMarketValue - totalCostBasis;
+      const totalGainLossPercent =
+        totalGainLoss === null || totalCostBasis === null
+          ? null
+          : totalCostBasis > 0
+            ? (totalGainLoss / totalCostBasis) * 100
+            : totalGainLoss === 0
+              ? 0
+              : null;
       return { totalPortfolioValue, totalCostBasis, totalGainLoss, totalGainLossPercent };
     }
     // All accounts: use the backend-converted totals (already in default currency)
@@ -109,12 +126,19 @@ export function InvestmentPerformanceReport() {
     };
   }, [portfolio, isSingleAccount]);
 
-  const fmtSummary = (value: number) => {
+  // Reuses the same "not available" string the per-holding formatter below
+  // uses, so an unknown total reads as unknown rather than as a formatted zero.
+  const fmtSummary = (value: number | null) => {
+    if (value === null) return t('investmentPerformance.na');
     if (isForeignSummary) {
       return `${formatCurrencyFull(value, summaryCurrency)} ${summaryCurrency}`;
     }
     return formatCurrencyFull(value);
   };
+
+  /** Sign prefix for a signed figure; nothing at all when it is unknown. */
+  const signPrefix = (value: number | null) =>
+    value === null ? '' : value >= 0 ? '+' : '';
 
   const fmtHolding = (value: number | null, currencyCode: string) => {
     if (value === null) return t('investmentPerformance.na');
@@ -205,8 +229,8 @@ export function InvestmentPerformanceReport() {
     const cards = summaryValues ? [
       { label: t('investmentPerformance.totalValue'), value: fmtSummary(summaryValues.totalPortfolioValue), color: '#111827' },
       { label: t('investmentPerformance.costBasis'), value: fmtSummary(summaryValues.totalCostBasis), color: '#111827' },
-      { label: t('investmentPerformance.totalGainLoss'), value: `${summaryValues.totalGainLoss >= 0 ? '+' : ''}${fmtSummary(summaryValues.totalGainLoss)}`, color: summaryValues.totalGainLoss >= 0 ? '#16a34a' : '#dc2626' },
-      { label: t('investmentPerformance.return'), value: formatPercent(summaryValues.totalGainLossPercent), color: summaryValues.totalGainLossPercent >= 0 ? '#16a34a' : '#dc2626' },
+      { label: t('investmentPerformance.totalGainLoss'), value: `${signPrefix(summaryValues.totalGainLoss)}${fmtSummary(summaryValues.totalGainLoss)}`, color: (summaryValues.totalGainLoss ?? 0) >= 0 ? '#16a34a' : '#dc2626' },
+      { label: t('investmentPerformance.return'), value: summaryValues.totalGainLossPercent === null ? t('investmentPerformance.na') : formatPercent(summaryValues.totalGainLossPercent), color: (summaryValues.totalGainLossPercent ?? 0) >= 0 ? '#16a34a' : '#dc2626' },
     ] : undefined;
 
     const headers = [t('investmentPerformance.colSecurity'), t('investmentPerformance.colShares'), t('investmentPerformance.colAvgCost'), t('investmentPerformance.colCurrentPrice'), t('investmentPerformance.colMarketValue'), t('investmentPerformance.colGainLoss'), t('investmentPerformance.colReturn')];
@@ -293,14 +317,16 @@ export function InvestmentPerformanceReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.totalGainLoss')}</div>
-          <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLoss)}`}>
-            {summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}
+          <div className={`text-xl font-bold ${summaryValues.totalGainLoss === null ? 'text-gray-400 dark:text-gray-500' : gainLossColor(summaryValues.totalGainLoss)}`}>
+            {signPrefix(summaryValues.totalGainLoss)}{fmtSummary(summaryValues.totalGainLoss)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.return')}</div>
-          <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLossPercent)}`}>
-            {formatPercent(summaryValues.totalGainLossPercent)}
+          <div className={`text-xl font-bold ${summaryValues.totalGainLossPercent === null ? 'text-gray-400 dark:text-gray-500' : gainLossColor(summaryValues.totalGainLossPercent)}`}>
+            {summaryValues.totalGainLossPercent === null
+              ? t('investmentPerformance.na')
+              : formatPercent(summaryValues.totalGainLossPercent)}
           </div>
         </div>
       </div>

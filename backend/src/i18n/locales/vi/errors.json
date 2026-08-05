@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Mật khẩu sao lưu phải có ít nhất {{ minLength }} ký tự",
     "backupPasswordBreached": "Mật khẩu này đã bị phát hiện trong một vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.",
     "restoreBodyMustBeFile": "Nội dung yêu cầu phải là tệp sao lưu",
-    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi phục hồi bản sao lưu."
+    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi phục hồi bản sao lưu.",
+    "restoredWithMissingAttachmentBytes": "Đã phục hồi bản sao lưu thành công, nhưng {{ count }} tệp đính kèm không có nội dung tệp trong bản sao lưu này. Chúng được lưu ngoài cơ sở dữ liệu (thư mục cục bộ hoặc S3), nên phải phục hồi riêng các tệp đó từ nơi lưu trữ ấy.",
+    "tooManyBackupsThisSecond": "Có quá nhiều bản sao lưu được ghi trong cùng một giây nên không thể đặt tên cho bản khác."
   },
   "budgets": {
     "notFound": "Không tìm thấy ngân sách với ID {{ id }}",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Không tìm thấy kịch bản {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds phải là một mảng",
-    "atLeastOneAccountRequired": "Cần ít nhất một accountId"
+    "atLeastOneAccountRequired": "Cần ít nhất một accountId",
+    "currentPortfolioValueUnavailable": "Không thể xác định giá trị hiện tại của các tài khoản đã chọn, nên mô phỏng không thể bắt đầu từ giá trị đó. Thường là do một khoản nắm giữ không có giá gần đây hoặc một cặp tiền tệ không có tỷ giá. Hãy nhập giá trị ban đầu thủ công, hoặc thử lại sau khi giá được cập nhật."
   },
   "netWorth": {
     "invalidStartDate": "startDate phải có định dạng YYYY-MM-DD",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Số tiền là bắt buộc cho ghi đè chia nhỏ",
     "dateMustBeYMD": "date phải có định dạng YYYY-MM-DD",
     "fxPlainOnly": "Chỉ có thể dùng đơn vị tiền tệ khác trên giao tác theo lịch thông thường, không dùng được cho giao tác chia nhỏ, chuyển tiền hoặc đầu tư",
-    "fxRateUnavailable": "Không có tỷ giá từ {{ from }} sang {{ to }} vào {{ date }}. Hãy nhập số tiền bằng {{ to }} để đăng."
+    "fxRateUnavailable": "Không có tỷ giá từ {{ from }} sang {{ to }} vào {{ date }}. Hãy nhập số tiền bằng {{ to }} để đăng.",
+    "occurrenceAlreadyPosted": "Kỳ {{ occurrence }} của giao dịch định kỳ này đã được ghi nhận. Hãy tải lại để xem kỳ tiếp theo.",
+    "occurrenceRequired": "Phải nêu rõ kỳ cần ghi nhận. Hãy tải lại lịch và thử lại."
   },
   "securities": {
     "exchangeRateUnavailable": "Không thể xác định tỷ giá hối đoái cho {{ from }} -> {{ to }} vào ngày giao dịch. Hãy cung cấp exchangeRate rõ ràng để bút toán vào tài khoản tiền mặt được chính xác.",

@@ -304,6 +304,9 @@ describe('AccountsPage', () => {
 
   it('calculates net worth correctly (assets minus liabilities)', async () => {
     mockGetAll.mockResolvedValue(mockAccounts);
+    mockGetPortfolioSummary.mockResolvedValue({
+      holdingsByAccount: [{ accountId: 'acc-5', totalMarketValue: 0 }],
+    });
     render(<AccountsPage />);
     await waitFor(() => {
       // Assets: 5000 + 10000 + 0 (brokerage) = 15000
@@ -315,6 +318,13 @@ describe('AccountsPage', () => {
 
   it('calculates total assets correctly', async () => {
     mockGetAll.mockResolvedValue(mockAccounts);
+    // The fixture includes an empty brokerage, so the portfolio has to have
+    // *loaded* and said so. Leaving the summary null used to give the same
+    // `$15000.00` by counting an unknown brokerage as zero -- the assertion
+    // passed for the wrong reason, which is what RFR7-004 was about.
+    mockGetPortfolioSummary.mockResolvedValue({
+      holdingsByAccount: [{ accountId: 'acc-5', totalMarketValue: 0 }],
+    });
     render(<AccountsPage />);
     await waitFor(() => {
       expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('$15000.00');
@@ -722,14 +732,52 @@ describe('AccountsPage', () => {
       });
     });
 
-    it('handles brokerage with no portfolio summary (falls back to 0)', async () => {
+    it('reports total assets as unknown when the portfolio summary did not load', async () => {
+      // This test used to assert `$0.00` and was named "falls back to 0". That
+      // was the defect pinned as behaviour: a failed portfolio request is not a
+      // portfolio worth nothing, and a brokerage rendered at zero makes the
+      // total look complete when an entire account is missing from it.
       mockGetAll.mockResolvedValue([
         { id: 'acc-b', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 9999, isClosed: false },
       ]);
       mockGetPortfolioSummary.mockResolvedValue(null);
       render(<AccountsPage />);
       await waitFor(() => {
-        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('$0.00');
+        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('n/a');
+      });
+    });
+
+    it('reports total assets as unknown when one holding has no quote', async () => {
+      // The reviewer's numeric example: 500.00 of cash plus a brokerage whose
+      // market value is unknown. The honest answer is "unknown", not `$500.00`
+      // presented as the whole of it -- at a later-resolved 100.00 per share on
+      // ten shares the real figure is 1,500.00, understated by two thirds.
+      mockGetAll.mockResolvedValue([
+        { id: 'acc-c', name: 'Chequing', accountType: 'CHECKING', accountSubType: null, currencyCode: 'USD', currentBalance: 500, isClosed: false },
+        { id: 'acc-b', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 0, isClosed: false },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        holdingsByAccount: [{ accountId: 'acc-b', totalMarketValue: null }],
+      });
+      render(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('n/a');
+      });
+    });
+
+    it('still totals a brokerage that genuinely holds nothing', async () => {
+      // The other half of the contract: an empty account is worth zero, and
+      // reporting that as unknown would be the opposite error.
+      mockGetAll.mockResolvedValue([
+        { id: 'acc-c', name: 'Chequing', accountType: 'CHECKING', accountSubType: null, currencyCode: 'USD', currentBalance: 500, isClosed: false },
+        { id: 'acc-b', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 0, isClosed: false },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        holdingsByAccount: [{ accountId: 'acc-b', totalMarketValue: 0 }],
+      });
+      render(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('$500.00');
       });
     });
   });

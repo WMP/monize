@@ -71,7 +71,8 @@
     "toastRecorded": "Pagamento registado",
     "toastScheduled": "Pagamento mensal agendado",
     "toastFailed": "Falha ao submeter o pagamento",
-    "fillRequired": "Escolha um montante, uma conta de pagamento e uma data"
+    "fillRequired": "Escolha um montante, uma conta de pagamento e uma data",
+    "fundingAccountsLoadFailed": "Não foi possível carregar as contas a partir das quais pode pagar. Isto não significa que não tenha nenhuma. Tente novamente quando a ligação for restabelecida."
   },
   "loadFailed": "Falha ao carregar os detalhes do cartão de crédito"
 }

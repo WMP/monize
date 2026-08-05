@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { UnconvertedNotice } from '@/components/ui/UnconvertedNotice';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { chartColors } from '@/lib/chart-colors';
@@ -61,9 +62,11 @@ export function ExpensesPieChart({
   );
 
   // Calculate spending by category
-  const chartData = useMemo(() => {
+  const { data: chartData, unconverted } = useMemo(() => {
     const categoryMap = new Map<string, { id: string; name: string; value: number; colour: string }>();
     let uncategorizedTotal = 0;
+    // Rows left out because their currency has no rate to the display currency.
+    let unconverted = 0;
 
     // Build category lookup
     const categoryLookup = new Map(categories.map((c) => [c.id, c]));
@@ -76,14 +79,27 @@ export function ExpensesPieChart({
       // Only count expenses (negative amounts)
       const txAmount = Number(tx.amount) || 0;
       if (txAmount >= 0) return;
-      const expenseAmount = Math.abs(convertToDefault(txAmount, tx.currencyCode));
+      // A transaction whose currency has no rate is excluded rather than counted
+      // at a fabricated parity, which would misstate its slice and every other
+      // slice's share of the total.
+      const convertedExpense = convertToDefault(txAmount, tx.currencyCode);
+      if (convertedExpense === null) {
+        unconverted += 1;
+        return;
+      }
+      const expenseAmount = Math.abs(convertedExpense);
 
       if (tx.isSplit && tx.splits && tx.splits.length > 0) {
         // Handle split transactions
         tx.splits.forEach((split) => {
           const splitAmt = Number(split.amount) || 0;
           if (splitAmt >= 0) return;
-          const splitAmount = Math.abs(convertToDefault(splitAmt, tx.currencyCode));
+          const convertedSplit = convertToDefault(splitAmt, tx.currencyCode);
+          if (convertedSplit === null) {
+            unconverted += 1;
+            return;
+          }
+          const splitAmount = Math.abs(convertedSplit);
           if (split.categoryId && split.category) {
             const cat = categoryLookup.get(split.categoryId) || split.category;
             const existing = categoryMap.get(split.categoryId);
@@ -158,7 +174,7 @@ export function ExpensesPieChart({
       }
     });
 
-    return data;
+    return { data, unconverted };
   }, [transactions, categories, convertToDefault, t]);
 
   const totalExpenses = chartData.reduce((sum, item) => sum + item.value, 0);
@@ -254,6 +270,7 @@ export function ExpensesPieChart({
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <UnconvertedNotice count={unconverted} className="mt-2" />
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5">
             {chartData.map((item, index) => (
               <button

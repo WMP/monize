@@ -41,7 +41,7 @@ export function CreditUtilizationAccountsWidget({
 }: CreditUtilizationAccountsWidgetProps) {
   const t = useTranslations('dashboard');
   const { formatCurrency } = useNumberFormat();
-  const { convert, defaultCurrency } = useExchangeRates();
+  const { convertOrNull, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
     CREDIT_UTILIZATION_ACCOUNTS_DEFAULT,
@@ -64,10 +64,10 @@ export function CreditUtilizationAccountsWidget({
 
   const rows = useMemo(
     () =>
-      computeCreditRows(activeAccounts, convert, displayCurrency).sort(
+      computeCreditRows(activeAccounts, convertOrNull, displayCurrency).sort(
         (a, b) => b.utilizationPercent - a.utilizationPercent,
       ),
-    [activeAccounts, convert, displayCurrency],
+    [activeAccounts, convertOrNull, displayCurrency],
   );
 
   const configControls = (
@@ -118,7 +118,13 @@ export function CreditUtilizationAccountsWidget({
                         {t('creditUtilizationAccounts.utilization')}: {row.utilizationPercent.toFixed(1)}%
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('creditUtilizationAccounts.used')}: {formatCurrency(row.used, displayCurrency)}
+                        {t('creditUtilizationAccounts.used')}:{' '}
+                        {/* The bar itself is a native-currency ratio and stays
+                            valid, but the drawn amount needs a rate to be
+                            stated in the display currency. */}
+                        {row.used === null
+                          ? t('creditUtilizationAccounts.amountUnavailable')
+                          : formatCurrency(row.used, displayCurrency)}
                       </p>
                     </ChartTooltipPanel>
                   );

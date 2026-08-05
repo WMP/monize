@@ -355,6 +355,68 @@ describe('AccountRow', () => {
       expect(screen.getByText('Market value')).toBeInTheDocument();
     });
 
+    it('marks an unknown brokerage market value instead of showing zero', () => {
+      // `null` is "not known" -- a missing quote, a missing rate, or a portfolio
+      // request that failed. Rendering it through the currency formatter gives
+      // `$0.00`, which reads as a brokerage that holds nothing.
+      const props = createDefaultProps({
+        account: createAccount({
+          accountType: 'INVESTMENT',
+          accountSubType: 'INVESTMENT_BROKERAGE',
+        }),
+        brokerageMarketValue: null,
+      });
+      renderAccountRow(props);
+
+      expect(screen.getByText('n/a')).toBeInTheDocument();
+      expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+      // Still labelled as a market value, so the row is not mistaken for a
+      // different kind of balance.
+      expect(screen.getByText('Market value')).toBeInTheDocument();
+    });
+
+    it('still shows a genuine zero market value as zero', () => {
+      // The other half: an empty brokerage is worth zero, and marking that
+      // unknown would be the opposite error.
+      const props = createDefaultProps({
+        account: createAccount({
+          accountType: 'INVESTMENT',
+          accountSubType: 'INVESTMENT_BROKERAGE',
+        }),
+        brokerageMarketValue: 0,
+      });
+      renderAccountRow(props);
+
+      expect(screen.getByText('$0.00')).toBeInTheDocument();
+      expect(screen.queryByText('n/a')).not.toBeInTheDocument();
+    });
+
+    it('does not offer Close on a brokerage whose value is unknown', () => {
+      // Closing requires a zero balance. An unknown value is not a zero one, and
+      // treating it as one would offer Close on an account that may still hold
+      // securities.
+      const account = createAccount({
+        accountType: 'INVESTMENT',
+        accountSubType: 'INVESTMENT_BROKERAGE',
+      });
+      const labels = createDefaultProps().actionLabels;
+      const handlers = {
+        onDetails: vi.fn(),
+        onEdit: vi.fn(),
+        onReconcile: vi.fn(),
+        onCloseClick: vi.fn(),
+        onReopen: vi.fn(),
+        onDeleteClick: vi.fn(),
+      };
+
+      const unknown = buildAccountActions(account, false, labels, handlers, null);
+      const empty = buildAccountActions(account, false, labels, handlers, 0);
+
+      expect(unknown.find((a) => a.key === 'close')?.disabled).toBe(true);
+      // And a brokerage that really is empty can still be closed.
+      expect(empty.find((a) => a.key === 'close')?.disabled).toBe(false);
+    });
+
     it('does not display Market value label in compact density for brokerage', () => {
       const props = createDefaultProps({
         density: 'compact',

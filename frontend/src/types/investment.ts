@@ -134,7 +134,7 @@ export interface HoldingWithMarketValue {
    * Cost basis in the holding account's currency, calculated using the
    * historical exchange rates stored on the original BUY transactions.
    */
-  costBasisAccountCurrency: number;
+  costBasisAccountCurrency: number | null;
   currentPrice: number | null;
   marketValue: number | null;
   gainLoss: number | null;
@@ -148,26 +148,43 @@ export interface AccountHoldings {
   cashAccountId: string | null;
   cashBalance: number;
   holdings: HoldingWithMarketValue[];
-  totalCostBasis: number;
-  totalMarketValue: number;
-  totalGainLoss: number;
-  totalGainLossPercent: number;
+  // `null` when a holding in this account had no price, no establishable cost
+  // basis, or no exchange rate to the account's currency.
+  totalCostBasis: number | null;
+  totalMarketValue: number | null;
+  totalGainLoss: number | null;
+  totalGainLossPercent: number | null;
   netInvested: number;
 }
 
+/**
+ * Mirrors the backend `PortfolioSummary`. Every `total*` field is `null` when
+ * any component of it is unknown -- an unpriced holding, a cost basis that
+ * could not be established, or a currency pair with no exchange rate. A `0` is
+ * a real zero (an empty portfolio is worth nothing, which is known), so the two
+ * must not be conflated when rendering: see the "An unknown value must not
+ * render as a measured zero" rule in `frontend/CLAUDE.md`.
+ */
 export interface PortfolioSummary {
-  totalCashValue: number;
-  totalHoldingsValue: number;
-  totalCostBasis: number;
-  totalNetInvested: number;
-  totalPortfolioValue: number;
-  totalGainLoss: number;
-  totalGainLossPercent: number;
+  totalCashValue: number | null;
+  totalHoldingsValue: number | null;
+  totalCostBasis: number | null;
+  totalNetInvested: number | null;
+  totalPortfolioValue: number | null;
+  totalGainLoss: number | null;
+  totalGainLossPercent: number | null;
   timeWeightedReturn: number | null;
   cagr: number | null;
   holdings: HoldingWithMarketValue[];
   holdingsByAccount: AccountHoldings[];
   allocation: AllocationItem[];  // Included to avoid duplicate API call
+  /** Currency pairs with no available rate, e.g. `["USD->CAD"]`. */
+  unavailableFxPairs?: string[];
+  /**
+   * Sum of the holdings that could be valued. Show it only under a label that
+   * says it is a partial figure -- never in place of a total.
+   */
+  knownHoldingsValueSubtotal?: number;
 }
 
 export interface AllocationItem {
@@ -182,7 +199,8 @@ export interface AllocationItem {
 
 export interface AssetAllocation {
   allocation: AllocationItem[];
-  totalValue: number;
+  /** `null` when the portfolio value could not be established. */
+  totalValue: number | null;
 }
 
 export interface InvestmentTransaction {

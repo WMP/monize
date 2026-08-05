@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Inject,
   forwardRef,
   Logger,
@@ -165,6 +166,7 @@ export class ScheduledTransactionsService {
 
       let totalSuccess = 0;
       let totalError = 0;
+      let totalSuperseded = 0;
 
       for (const [tz, userIds] of userIdsByTz) {
         const today = todayInTimezone(tz);
@@ -235,11 +237,29 @@ export class ScheduledTransactionsService {
 
         for (const scheduled of dueTransactions) {
           try {
+            // The occurrence this candidate was discovered for, carried into the
+            // command as a precondition. Dropping it turned a delayed replica
+            // into an early poster of the *next* occurrence: it would re-read a
+            // date another replica had already advanced and post that instead.
+            const discoveredOccurrence = ensureYMD(scheduled.nextDueDate);
             await withUserContext(scheduled.userId, () =>
-              this.post(scheduled.userId, scheduled.id),
+              this.post(scheduled.userId, scheduled.id, {
+                expectedNextDueDate: discoveredOccurrence,
+              }),
             );
             totalSuccess++;
           } catch (error) {
+            // A conflict means another replica already posted this occurrence
+            // between our discovery and our attempt. That is the precondition
+            // doing its job, not a failure, and logging it as one would make a
+            // healthy multi-replica deployment look broken every hour.
+            if (error instanceof ConflictException) {
+              totalSuperseded++;
+              this.logger.log(
+                `Skipped "${scheduled.name}" (ID: ${scheduled.id}): occurrence already posted elsewhere`,
+              );
+              continue;
+            }
             totalError++;
             this.logger.error(
               `Failed to auto-post "${scheduled.name}" (ID: ${scheduled.id}): ${error.message}`,
@@ -250,7 +270,8 @@ export class ScheduledTransactionsService {
       }
 
       this.logger.log(
-        `Auto-post processing complete: ${totalSuccess} succeeded, ${totalError} failed`,
+        `Auto-post processing complete: ${totalSuccess} succeeded, ` +
+          `${totalSuperseded} already posted elsewhere, ${totalError} failed`,
       );
     } catch (error) {
       this.logger.error("Auto-post processing failed", error.stack);
@@ -1461,12 +1482,120 @@ export class ScheduledTransactionsService {
     };
   }
 
+  /**
+   * Posts one named occurrence of a schedule.
+   *
+   * **One command posts one occurrence, and the caller names which.**
+   * `postDto.expectedNextDueDate` is that name, checked against the schedule row
+   * under its lock, so a second attempt at the same occurrence is refused rather
+   * than served. Without the lock and the check, `post` read the schedule,
+   * created the transaction and advanced `next_due_date` in three separate
+   * transactions, so two callers both read the same due date, both created a
+   * transaction for it, and both advanced to the same new date: two payments,
+   * one occurrence, and a schedule that looked correct afterwards.
+   *
+   * Deriving the name from a fresh read instead is not equivalent, and that was
+   * the remaining half of this defect. The auto-post cron discovers a due list
+   * and then posts each row; a replica delayed behind another that already posted
+   * would re-read the *advanced* date and post the **next** occurrence early --
+   * a second payment plus a skipped period, from a worker that was asked to post
+   * April. So every caller that knows which occurrence it means sends it: the
+   * cron passes what it discovered, and the two frontend call sites pass the
+   * `nextDueDate` they are rendering.
+   *
+   * **There is no "post current" fallback**, and that is the point: deriving the
+   * occurrence from a fresh read is exactly what made a retry post the next
+   * period. `expectedNextDueDate` is required at the public DTO, and it is
+   * required here too, because the cron is an internal caller that never touches
+   * the DTO -- a future internal caller that omitted it would silently reopen the
+   * hole. A caller that does not know which occurrence it means has no business
+   * posting a payment, so it gets a `400` rather than a guess.
+   *
+   * `test/scheduled-post.e2e-spec.ts` proves the HTTP boundary rejects a body
+   * without the field; `test/integration/race-scheduled-post.integration.spec.ts`
+   * covers the simultaneous and delayed-replica cases against a real database.
+   */
   async post(
     userId: string,
     id: string,
     postDto?: PostScheduledTransactionDto,
   ): Promise<ScheduledTransaction | null> {
-    const scheduled = await this.findOne(userId, id);
+    if (!postDto?.expectedNextDueDate) {
+      throw new BadRequestException(
+        tr(
+          "errors.scheduled.occurrenceRequired",
+          "The occurrence to post must be named. Reload the schedule and try again.",
+        ),
+      );
+    }
+    const intendedOccurrence = ensureYMD(postDto.expectedNextDueDate);
+    return withScopedDb(this.dataSource, () =>
+      this.postOccurrence(userId, id, intendedOccurrence, postDto),
+    );
+  }
+
+  /**
+   * Takes the schedule row and refuses unless it is still due on the occurrence
+   * the caller set out to post.
+   *
+   * The lock is what makes the second caller wait rather than read stale state,
+   * and the date comparison is what makes it refuse: after the first poster
+   * commits, `next_due_date` has moved on, so the occurrence the second one was
+   * asked for no longer exists to be posted. Both halves are needed -- the lock
+   * alone would only serialize the duplicates.
+   *
+   * The locking statement selects only `id`: its job is to make the second
+   * caller wait, and the date is then read back through `findOne` so the DATE
+   * column passes through the entity's transformer. A raw select would hand back
+   * a `Date` parsed in UTC, which is how a comparison like this silently starts
+   * failing for anyone east of Greenwich.
+   */
+  private async claimOccurrence(
+    userId: string,
+    id: string,
+    intendedOccurrence: string,
+  ): Promise<ScheduledTransaction> {
+    return withScopedDb(this.dataSource, async (m) => {
+      await m.query(
+        `SELECT id FROM scheduled_transactions
+          WHERE id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [id, userId],
+      );
+
+      // Throws NotFound when the schedule is gone, which is also what a ONCE
+      // schedule posted by the other caller looks like.
+      const current = await this.findOne(userId, id);
+
+      if (ensureYMD(current.nextDueDate) !== intendedOccurrence) {
+        throw new ConflictException(
+          tr(
+            "errors.scheduled.occurrenceAlreadyPosted",
+            `The ${intendedOccurrence} occurrence of this scheduled transaction has already been posted. Reload to see the next one.`,
+            { occurrence: intendedOccurrence },
+          ),
+        );
+      }
+
+      return current;
+    });
+  }
+
+  /**
+   * The body of {@link post}, running inside one transaction that holds the
+   * schedule row.
+   */
+  private async postOccurrence(
+    userId: string,
+    id: string,
+    intendedOccurrence: string,
+    postDto?: PostScheduledTransactionDto,
+  ): Promise<ScheduledTransaction | null> {
+    const scheduled = await this.claimOccurrence(
+      userId,
+      id,
+      intendedOccurrence,
+    );
 
     const nextDueDateStr = ensureYMD(scheduled.nextDueDate);
 

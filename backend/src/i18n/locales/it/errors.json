@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "La password di backup deve contenere almeno {{ minLength }} caratteri",
     "backupPasswordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
     "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup",
-    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di ripristinare un backup."
+    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di ripristinare un backup.",
+    "restoredWithMissingAttachmentBytes": "Backup ripristinato correttamente, ma {{ count }} allegato/i non hanno il contenuto del file in questo backup. Erano archiviati fuori dal database (cartella locale o S3), quindi quei file vanno ripristinati separatamente da quello spazio di archiviazione.",
+    "tooManyBackupsThisSecond": "Sono stati scritti troppi backup nello stesso secondo per poterne nominare un altro."
   },
   "budgets": {
     "notFound": "Budget con ID {{ id }} non trovato",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} non trovato",
     "scenarioIdsMustBeArray": "scenarioIds deve essere un array",
-    "atLeastOneAccountRequired": "È richiesto almeno un accountId"
+    "atLeastOneAccountRequired": "È richiesto almeno un accountId",
+    "currentPortfolioValueUnavailable": "Non è stato possibile determinare il valore attuale dei conti selezionati, quindi la simulazione non può partire da esso. Di solito significa che una posizione non ha un prezzo recente o che una coppia di valute non ha un tasso di cambio. Inserisci manualmente un valore iniziale, oppure riprova dopo un aggiornamento dei prezzi."
   },
   "netWorth": {
     "invalidStartDate": "startDate deve essere nel formato YYYY-MM-DD",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "L'importo è obbligatorio per la sostituzione suddivisa",
     "dateMustBeYMD": "la data deve essere nel formato YYYY-MM-DD",
     "fxPlainOnly": "Una valuta diversa può essere usata solo su una transazione pianificata semplice, non su una suddivisione, un trasferimento o un investimento",
-    "fxRateUnavailable": "Non è disponibile alcun tasso di cambio da {{ from }} a {{ to }} il {{ date }}. Inserisci l'importo in {{ to }} per registrarla."
+    "fxRateUnavailable": "Non è disponibile alcun tasso di cambio da {{ from }} a {{ to }} il {{ date }}. Inserisci l'importo in {{ to }} per registrarla.",
+    "occurrenceAlreadyPosted": "La scadenza del {{ occurrence }} di questa transazione pianificata è già stata registrata. Ricarica per vedere la prossima.",
+    "occurrenceRequired": "La scadenza da registrare deve essere indicata. Ricarica la pianificazione e riprova."
   },
   "securities": {
     "exchangeRateUnavailable": "Impossibile determinare un tasso di cambio per {{ from }} -> {{ to }} alla data della transazione. Fornisci un exchangeRate esplicito affinché la registrazione sul conto di liquidità sia corretta.",

@@ -71,7 +71,8 @@
     "toastRecorded": "Betaling vastgelegd",
     "toastScheduled": "Maandelijkse betaling gepland",
     "toastFailed": "Verzenden van betaling mislukt",
-    "fillRequired": "Kies een bedrag, een betaalrekening en een datum"
+    "fillRequired": "Kies een bedrag, een betaalrekening en een datum",
+    "fundingAccountsLoadFailed": "De rekeningen waarvan u kunt betalen konden niet worden geladen. Dat betekent niet dat u er geen hebt. Probeer het opnieuw zodra de verbinding is herstelbaar."
   },
   "loadFailed": "Laden van creditcardgegevens mislukt"
 }

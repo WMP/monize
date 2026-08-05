@@ -30,6 +30,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
 import { createLogger } from '@/lib/logger';
+import { buildBrokerageMarketValues } from '@/lib/brokerage-market-value';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { TourBanner } from '@/components/dashboard/TourBanner';
 
@@ -69,14 +70,12 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCustomize, setShowCustomize] = useState(false);
 
-  const brokerageMarketValues = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolioSummary) return map;
-    for (const accountHoldings of portfolioSummary.holdingsByAccount) {
-      map.set(accountHoldings.accountId, accountHoldings.totalMarketValue);
-    }
-    return map;
-  }, [portfolioSummary]);
+  // Brokerage account id -> holdings market value, `null` when unknown. Never a
+  // substituted zero: see lib/brokerage-market-value.ts.
+  const brokerageMarketValues = useMemo(
+    () => buildBrokerageMarketValues(accounts, portfolioSummary),
+    [accounts, portfolioSummary],
+  );
 
   const reloadInvestmentWidgets = useCallback(async () => {
     // Favourite securities can exist without investment accounts, so always

@@ -16,6 +16,7 @@ import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { EntityManager, In, LessThanOrEqual, DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Holding } from "./entities/holding.entity";
+import { applyShareAction, movesShares } from "./share-quantity.util";
 import {
   InvestmentTransaction,
   InvestmentAction,
@@ -52,6 +53,67 @@ export class HoldingsService {
     fn: (m: EntityManager) => Promise<T>,
   ): Promise<T> {
     return manager ? fn(manager) : withScopedDb(this.dataSource, fn);
+  }
+
+  /**
+   * Serializes holdings work for these accounts by locking their `accounts` rows
+   * for the rest of the caller's transaction.
+   *
+   * Holdings cannot serialize on themselves. A rebuild deletes every holding for
+   * an account and re-inserts from a replay, while a trade upserts one -- and the
+   * row a concurrent trade is about to create does not exist yet, so there is
+   * nothing to lock. Without a common parent to contend on, a trade committing
+   * between the rebuild's read of the transactions and its delete/insert was
+   * simply erased from holdings: the `investment_transactions` row survived, so
+   * the shares reappeared at the next rebuild and vanished again in between,
+   * which is an unusually confusing way to lose a position.
+   *
+   * The account row is that common parent. Locked in id order, because a rebuild
+   * takes several at once and two of them arriving in opposite orders would
+   * deadlock. Nothing else in the trade path locks an account before its cash
+   * balance update, so there is no cycle with that either.
+   *
+   * **Every** entry point that reads or writes an account's holdings takes it:
+   * `createOrUpdate`, `applySplit` (and so `reverseSplit`), `adjustQuantity`,
+   * and both rebuilds. A lock only half the mutators take serializes nothing --
+   * the first round of this fix put it on `createOrUpdate` and the whole-user
+   * rebuild only, which left the `SPLIT` / `ADD_SHARES` / `REMOVE_SHARES`
+   * edit and delete paths free to interleave with a rebuild and leave holdings
+   * disagreeing with the transaction history. `race-holdings-rebuild` covers
+   * those paths specifically, because the `BUY` it originally covered went
+   * through the one mutator that did lock.
+   */
+  private async lockHoldingAccounts(
+    m: EntityManager,
+    accountIds: string[],
+  ): Promise<void> {
+    if (accountIds.length === 0) return;
+    await m.query(
+      `SELECT id FROM accounts WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+      [[...accountIds].sort()],
+    );
+  }
+
+  /**
+   * Public entry to {@link lockHoldingAccounts}, for an operation that mutates
+   * holdings across **more than one** account in the same transaction.
+   *
+   * The single-account mutators lock their one account themselves, and that is
+   * enough on its own -- but not when two of them run back to back on different
+   * accounts. A security transfer creates a `TRANSFER_OUT` (locking the source)
+   * and then a `TRANSFER_IN` (locking the destination), so it acquires the pair
+   * source-then-destination; a simultaneous reverse transfer acquires the same
+   * pair destination-then-source, and the two deadlock (review R4-002). The
+   * caller must take the whole set here first, in the sorted order this uses, so
+   * every multi-account holdings operation acquires them the same way. The
+   * per-leg locks that follow re-take rows already held -- a no-op -- so the
+   * order this establishes is the one that counts.
+   */
+  async lockAccountsForHoldings(
+    m: EntityManager,
+    accountIds: string[],
+  ): Promise<void> {
+    await this.lockHoldingAccounts(m, accountIds);
   }
 
   async findAll(userId: string, accountId?: string): Promise<Holding[]> {
@@ -177,9 +239,8 @@ export class HoldingsService {
           qty -= txQty;
           break;
         case InvestmentAction.SPLIT:
-          if (txQty > 0) {
-            qty *= txQty;
-          }
+          // Ratio: total basis is preserved, only the per-share figure moves.
+          qty = applyShareAction(qty, tx.action, txQty);
           break;
         default:
           // DIVIDEND / INTEREST / CAPITAL_GAIN don't move shares.
@@ -211,6 +272,7 @@ export class HoldingsService {
     await this.securitiesService.findOne(userId, securityId);
 
     return this.inScope(manager, async (m) => {
+      await this.lockHoldingAccounts(m, [accountId]);
       const repo = m.getRepository(Holding);
 
       // Find existing holding
@@ -320,6 +382,7 @@ export class HoldingsService {
     }
 
     return this.inScope(manager, async (m) => {
+      await this.lockHoldingAccounts(m, [accountId]);
       const holding = await this.findByAccountAndSecurity(
         accountId,
         securityId,
@@ -373,6 +436,7 @@ export class HoldingsService {
     await this.securitiesService.findOne(userId, securityId);
 
     return this.inScope(manager, async (m) => {
+      await this.lockHoldingAccounts(m, [accountId]);
       const repo = m.getRepository(Holding);
 
       let holding = await this.findByAccountAndSecurity(
@@ -528,25 +592,8 @@ export class HoldingsService {
       const current = balances.get(key) || 0;
       const quantity = Number(tx.quantity) || 0;
 
-      let next = current;
-      switch (tx.action) {
-        case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST:
-        case InvestmentAction.TRANSFER_IN:
-        case InvestmentAction.ADD_SHARES:
-          next = current + quantity;
-          break;
-        case InvestmentAction.SELL:
-        case InvestmentAction.TRANSFER_OUT:
-        case InvestmentAction.REMOVE_SHARES:
-          next = current - quantity;
-          break;
-        case InvestmentAction.SPLIT:
-          next = current * quantity;
-          break;
-        default:
-          continue;
-      }
+      if (!movesShares(tx.action)) continue;
+      const next = applyShareAction(current, tx.action, quantity);
 
       if (next < -0.00000001) {
         const symbol = tx.security?.symbol || "this security";
@@ -686,6 +733,11 @@ export class HoldingsService {
   ): Promise<void> {
     if (accountIds.length === 0) return;
 
+    // Same lock as the whole-user rebuild, for the same reason: this runs inside
+    // the caller's transaction, so taking it here serializes this partial
+    // rebuild against every other holdings mutation on those accounts.
+    await this.lockHoldingAccounts(manager, accountIds);
+
     // Only brokerage / standalone investment accounts track holdings; the cash
     // sleeve of an investment account is excluded everywhere else, so it must be
     // excluded here too or its rows would be deleted but never rebuilt.
@@ -765,37 +817,51 @@ export class HoldingsService {
     holdingsUpdated: number;
     holdingsDeleted: number;
   }> {
-    // M14: Get all investment accounts (brokerage + standalone) for the user
-    const investmentAccounts = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).find({
+    const cutoff = asOfDate ?? this.serverToday();
+
+    // Rebuild holdings from transactions
+    let holdingsDeleted = 0;
+    let holdingsCreated = 0;
+
+    // One transaction for the whole rebuild, with the accounts locked before
+    // anything is read. Reading the accounts and the transactions in earlier,
+    // separate transactions and then deleting and re-inserting from that
+    // snapshot meant a trade committing in between was replaced by a replay that
+    // predated it -- the position disappeared until the next rebuild put it back.
+    // Both halves matter: the single transaction makes the read and the write
+    // agree, and the lock is what makes a concurrent trade wait rather than land
+    // in the gap. `test/integration/race-holdings-rebuild.integration.spec.ts`
+    // fails on either half alone.
+    const result = await withScopedDb(this.dataSource, async (m) => {
+      // M14: Get all investment accounts (brokerage + standalone) for the user
+      const investmentAccounts = await m.getRepository(Account).find({
         where: {
           userId,
           accountType: AccountType.INVESTMENT,
         },
-      }),
-    );
+      });
 
-    // Include brokerage accounts and standalone investment accounts (null subType)
-    const eligibleAccounts = investmentAccounts.filter(
-      (a) =>
-        a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE ||
-        !a.accountSubType,
-    );
+      // Include brokerage accounts and standalone investment accounts (null subType)
+      const eligibleAccounts = investmentAccounts.filter(
+        (a) =>
+          a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE ||
+          !a.accountSubType,
+      );
 
-    if (eligibleAccounts.length === 0) {
-      return { holdingsCreated: 0, holdingsUpdated: 0, holdingsDeleted: 0 };
-    }
+      if (eligibleAccounts.length === 0) {
+        return { holdingsCreated: 0, holdingsUpdated: 0, holdingsDeleted: 0 };
+      }
 
-    const brokerageAccountIds = eligibleAccounts.map((a) => a.id);
+      const brokerageAccountIds = eligibleAccounts.map((a) => a.id);
+      await this.lockHoldingAccounts(m, brokerageAccountIds);
 
-    // Get all investment transactions for these accounts up to the cutoff date,
-    // ordered by date. Future-dated transactions are excluded so they don't
-    // affect current holdings. Callers materializing matured transactions (the
-    // hourly cron) pass the user's timezone-correct "today" so a transfer dated
-    // today in a timezone ahead of the server isn't wrongly treated as future.
-    const cutoff = asOfDate ?? this.serverToday();
-    const transactions = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(InvestmentTransaction).find({
+      // Get all investment transactions for these accounts up to the cutoff
+      // date, ordered by date. Future-dated transactions are excluded so they
+      // don't affect current holdings. Callers materializing matured
+      // transactions (the hourly cron) pass the user's timezone-correct "today"
+      // so a transfer dated today in a timezone ahead of the server isn't
+      // wrongly treated as future.
+      const transactions = await m.getRepository(InvestmentTransaction).find({
         where: {
           userId,
           accountId: In(brokerageAccountIds),
@@ -805,18 +871,11 @@ export class HoldingsService {
           transactionDate: "ASC",
           createdAt: "ASC",
         },
-      }),
-    );
+      });
 
-    // Rebuild holdings from transactions
-    // Map: accountId -> securityId -> { quantity, totalCost }
-    const holdingsMap = this.computeHoldingsMap(transactions);
+      // Map: accountId -> securityId -> { quantity, totalCost }
+      const holdingsMap = this.computeHoldingsMap(transactions);
 
-    // Wrap delete-all + rebuild in a transaction for atomicity
-    let holdingsDeleted = 0;
-    let holdingsCreated = 0;
-
-    await withScopedDb(this.dataSource, async (m) => {
       // Delete all existing holdings for these accounts
       const existingHoldings = await m.find(Holding, {
         where: { accountId: In(brokerageAccountIds) },
@@ -850,13 +909,15 @@ export class HoldingsService {
         await holdingsRepo.save(holdingsToCreate);
       }
       holdingsCreated = holdingsToCreate.length;
+
+      return {
+        holdingsCreated,
+        holdingsUpdated: 0, // We deleted and recreated, so no updates
+        holdingsDeleted,
+      };
     });
 
-    return {
-      holdingsCreated,
-      holdingsUpdated: 0, // We deleted and recreated, so no updates
-      holdingsDeleted,
-    };
+    return result;
   }
 
   /**

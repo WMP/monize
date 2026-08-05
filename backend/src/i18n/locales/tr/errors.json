@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Yedek şifresi en az {{ minLength }} karakter olmalıdır",
     "backupPasswordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
     "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır",
-    "reauthUnavailable": "Bir yedeği geri yüklemeden önce hesap şifrenizi ayarlamayı tamamlayın."
+    "reauthUnavailable": "Bir yedeği geri yüklemeden önce hesap şifrenizi ayarlamayı tamamlayın.",
+    "restoredWithMissingAttachmentBytes": "Yedek başarıyla geri yüklendi, ancak {{ count }} ekin dosya içeriği bu yedekte yok. Bunlar veritabanı dışında (yerel klasör veya S3) saklanıyordu; bu nedenle söz konusu dosyaların o depolamadan ayrıca geri yüklenmesi gerekir.",
+    "tooManyBackupsThisSecond": "Aynı saniyede çok fazla yedek yazıldığı için bir tane daha adlandırılamıyor."
   },
   "budgets": {
     "notFound": "{{ id }} kimliğine sahip bütçe bulunamadı",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "{{ id }} senaryosu bulunamadı",
     "scenarioIdsMustBeArray": "scenarioIds bir dizi olmalıdır",
-    "atLeastOneAccountRequired": "En az bir accountId gereklidir"
+    "atLeastOneAccountRequired": "En az bir accountId gereklidir",
+    "currentPortfolioValueUnavailable": "Seçilen hesapların güncel değeri belirlenemedi, bu nedenle simülasyon bu değerden başlatılamaz. Genellikle bir varlığın güncel fiyatı ya da bir para birimi çiftinin döviz kuru bulunmadığı anlamına gelir. Başlangıç değerini elle girin veya fiyatlar yenilendikten sonra tekrar deneyin."
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-AA-GG biçiminde olmalıdır",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Bölünmüş geçersiz kılma için tutar gereklidir",
     "dateMustBeYMD": "tarih YYYY-AA-GG biçiminde olmalıdır",
     "fxPlainOnly": "Farklı bir para birimi yalnızca sade bir zamanlanmış işlemde kullanılabilir; bölünmüş işlem, transfer veya yatırımda kullanılamaz",
-    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin."
+    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin.",
+    "occurrenceAlreadyPosted": "Bu planlı işlemin {{ occurrence }} tarihli tekrarı zaten kaydedildi. Sonrakini görmek için sayfayı yenileyin.",
+    "occurrenceRequired": "Kaydedilecek tekrar belirtilmelidir. Planı yenileyip tekrar deneyin."
   },
   "securities": {
     "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",

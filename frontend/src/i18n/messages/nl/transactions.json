@@ -494,7 +494,8 @@
     "noRecent": "Geen recente transacties.",
     "noRecentForPayee": "Geen recente transacties voor deze begunstigde.",
     "noPayee": "(geen begunstigde)",
-    "uncategorized": "(zonder categorie)"
+    "uncategorized": "(zonder categorie)",
+    "loadFailed": "De recente transacties konden niet worden geladen."
   },
   "investmentSplit": {
     "ariaAction": "Beleggingsactie",

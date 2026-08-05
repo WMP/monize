@@ -43,7 +43,8 @@
     "summaryEnding": "Fin",
     "summaryLowest": "Le plus bas",
     "summaryMinBalance": "Solde min.",
-    "allAccounts": "Tous les comptes"
+    "allAccounts": "Tous les comptes",
+    "unconvertibleCurrency": "L'un des comptes sélectionnés utilise une devise sans taux de change enregistré : le solde cumulé ne peut pas être calculé. Choisissez un seul compte, ou réessayez après une actualisation des taux."
   },
   "calendar": {
     "days": {

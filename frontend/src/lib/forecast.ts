@@ -1,3 +1,4 @@
+import { sumKnown } from './partial-sum';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
@@ -241,7 +242,7 @@ export function buildForecast(
   period: ForecastPeriod,
   accountId: string | 'all',
   futureTransactions: FutureTransaction[] = [],
-  convertAmount?: (amount: number, currencyCode: string) => number,
+  convertAmount?: (amount: number, currencyCode: string) => number | null,
 ): ForecastDataPoint[] {
   // Remap scheduled investment transactions onto their funding cash account so
   // BUY/SELL/etc. show up in the cash flow forecast for INVESTMENT_CASH accounts.
@@ -277,18 +278,33 @@ export function buildForecast(
 
   // Build account currency lookup for converting transaction amounts
   const accountCurrencyMap = new Map(targetAccounts.map(a => [a.id, a.currencyCode]));
-  const conv = (amount: number, acctId: string): number => {
+  // `null` when the account's currency has no rate to the reporting currency.
+  //
+  // The `?? 0` at the two call sites below is safe *only* because the whole
+  // series is refused before reaching them: `startingBalance` is computed with
+  // `sumKnown` over the same accounts, so if any of them is unconvertible this
+  // function has already returned, and `CashFlowForecastChart` shows a notice
+  // instead of a chart. Without that guard those `?? 0`s would be the
+  // unknown-as-zero defect.
+  const conv = (amount: number, acctId: string): number | null => {
     if (!convertAmount) return amount;
     const currency = accountCurrencyMap.get(acctId);
     return currency ? convertAmount(amount, currency) : amount;
   };
 
-  const startingBalance = targetAccounts.reduce(
-    (sum, acc) => sum + (convertAmount
-      ? convertAmount(Number(acc.currentBalance), acc.currencyCode)
-      : Number(acc.currentBalance)),
-    0
+  const startingBalance = sumKnown(
+    targetAccounts.map((acc) =>
+      convertAmount
+        ? convertAmount(Number(acc.currentBalance), acc.currencyCode)
+        : Number(acc.currentBalance),
+    ),
   );
+  // Every point is a running balance from this figure, so one account that
+  // cannot be converted invalidates the whole series rather than one bar. The
+  // caller is expected to have checked convertibility first (see
+  // `CashFlowForecastChart`, which shows a distinct notice) -- returning an empty
+  // series here would read as "nothing is due".
+  if (startingBalance === null) return [];
 
   // Filter scheduled transactions by account
   // For a specific account, include transfers where this account is the destination
@@ -311,7 +327,7 @@ export function buildForecast(
     const existing = transactionsByDate.get(ft.date) || [];
     existing.push({
       name: ft.name,
-      amount: conv(ft.amount, ft.accountId),
+      amount: conv(ft.amount, ft.accountId) ?? 0,
       scheduledTransactionId: ft.id,
     });
     transactionsByDate.set(ft.date, existing);
@@ -325,7 +341,7 @@ export function buildForecast(
       const existing = transactionsByDate.get(occ.date) || [];
       existing.push({
         name: tx.name,
-        amount: conv(isInbound ? -occ.amount : occ.amount, txAccountId),
+        amount: conv(isInbound ? -occ.amount : occ.amount, txAccountId) ?? 0,
         scheduledTransactionId: tx.id,
       });
       transactionsByDate.set(occ.date, existing);

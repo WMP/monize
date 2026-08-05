@@ -1946,13 +1946,29 @@ export class ToolExecutorService {
       includeLookThrough: input.includeLookThrough === true,
     });
 
-    const sign = data.totalGainLoss >= 0 ? "+" : "";
+    // A total the portfolio could not establish is reported as unknown, with the
+    // reason, rather than formatted as a number. Flattening it to `0.00` would
+    // have the assistant tell the user their portfolio is worth nothing, which
+    // is indistinguishable from a real zero and impossible for them to check.
+    const money = (value: number | null): string =>
+      value === null ? "unknown" : value.toFixed(2);
+    const percent = (value: number | null): string =>
+      value === null ? "unknown" : `${value.toFixed(2)}%`;
+    const sign = (data.totalGainLoss ?? 0) >= 0 ? "+" : "";
+    const signed = (value: number | null): string =>
+      value === null ? "unknown" : `${sign}${value.toFixed(2)}`;
+    const unknownNote =
+      data.totalPortfolioValue === null ||
+      data.totalGainLoss === null ||
+      data.totalGainLossPercent === null
+        ? " Some figures could not be calculated: a holding has no recent price, or a currency pair has no exchange rate. Do not treat an unknown figure as zero."
+        : "";
     const lookThroughNote = data.lookThrough
       ? ` Look-through: ${data.lookThrough.byCountry.items.length} countr${data.lookThrough.byCountry.items.length === 1 ? "y" : "ies"}, ${data.lookThrough.byAssetClass.items.length} asset class${data.lookThrough.byAssetClass.items.length === 1 ? "" : "es"}.`
       : "";
     return {
       data,
-      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${data.totalPortfolioValue.toFixed(2)}, unrealized gain/loss ${sign}${data.totalGainLoss.toFixed(2)} (${sign}${data.totalGainLossPercent.toFixed(2)}%).${lookThroughNote}`,
+      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${money(data.totalPortfolioValue)}, unrealized gain/loss ${signed(data.totalGainLoss)} (${percent(data.totalGainLossPercent)}).${lookThroughNote}${unknownNote}`,
       sources: [
         {
           type: "portfolio",

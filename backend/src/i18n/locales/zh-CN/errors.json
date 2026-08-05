@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "备份密码至少需要 {{ minLength }} 个字符",
     "backupPasswordBreached": "此密码已在数据泄露中被发现。请选择其他密码。",
     "restoreBodyMustBeFile": "请求正文必须是备份文件",
-    "reauthUnavailable": "请先完成账户密码设置，然后再恢复备份。"
+    "reauthUnavailable": "请先完成账户密码设置，然后再恢复备份。",
+    "restoredWithMissingAttachmentBytes": "备份恢复成功，但其中 {{ count }} 个附件不包含文件内容。它们存储在数据库之外（本地文件夹或 S3），因此需要从该存储中单独恢复这些文件。",
+    "tooManyBackupsThisSecond": "同一秒内写入的备份过多，无法再命名一个。"
   },
   "budgets": {
     "notFound": "未找到 ID 为 {{ id }} 的预算",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "未找到情景 {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds 必须是数组",
-    "atLeastOneAccountRequired": "至少需要一个 accountId"
+    "atLeastOneAccountRequired": "至少需要一个 accountId",
+    "currentPortfolioValueUnavailable": "无法确定所选账户的当前价值，因此模拟无法以该值为起点。通常表示某个持仓没有近期价格，或某个货币对没有汇率。请手动输入起始值，或在价格刷新后重试。"
   },
   "netWorth": {
     "invalidStartDate": "startDate 必须为 YYYY-MM-DD 格式",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "拆分覆盖需要金额",
     "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式",
     "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
-    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。"
+    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。",
+    "occurrenceAlreadyPosted": "此计划交易 {{ occurrence }} 这一期已记账。请重新加载以查看下一期。",
+    "occurrenceRequired": "必须指明要记账的那一期。请重新加载计划后重试。"
   },
   "securities": {
     "exchangeRateUnavailable": "无法确定交易日 {{ from }} -> {{ to }} 的汇率。请提供明确的 exchangeRate，以便现金账户的记账正确。",

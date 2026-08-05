@@ -228,5 +228,8 @@
     "nothingToRedo": "やり直す操作がありません",
     "cannotRedo": "この操作はやり直せません",
     "redoFailed": "やり直す操作に失敗しました"
-  }
+  },
+  "notAvailable": "利用不可",
+  "notAvailableShort": "該当なし",
+  "unconvertedExcluded": "{count, plural, other {為替レートが登録されていない通貨のため、{count} 件の金額を除外しました。}}"
 }

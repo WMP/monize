@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Pozycje",
     "pdfColCash": "Gotówka",
     "pdfColTotal": "Suma",
-    "pdfColGainLoss": "Zysk/Strata"
+    "pdfColGainLoss": "Zysk/Strata",
+    "na": "Niedostępne"
   },
   "realizedGains": {
     "totalProceeds": "Łączne wpływy",

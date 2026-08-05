@@ -167,7 +167,11 @@
       "quantityRequired": "La quantità deve essere maggiore di zero",
       "priceRequired": "Il prezzo deve essere maggiore di zero",
       "totalAmountRequired": "L'importo totale è obbligatorio"
-    }
+    },
+    "applyLatestPrice": "Applica l'ultimo prezzo",
+    "descriptionPlaceholder": "Descrizione dell'eccezione...",
+    "latestPricePlaceholder": "Ultimo: {price}",
+    "latestPriceSuggestion": "Ultimo prezzo di mercato: {price}"
   },
   "form": {
     "tabs": {

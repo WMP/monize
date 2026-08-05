@@ -201,13 +201,15 @@
     "title": "Utilisasi per Akun",
     "empty": "Tidak ada akun kredit dengan batas yang ditetapkan.",
     "utilization": "Utilisasi",
-    "used": "Digunakan"
+    "used": "Digunakan",
+    "amountUnavailable": "Tidak tersedia"
   },
   "creditUtilizationTotal": {
     "title": "Total Utilisasi",
     "empty": "Tidak ada akun kredit dengan batas yang ditetapkan.",
     "used": "Digunakan",
-    "available": "Tersedia"
+    "available": "Tersedia",
+    "ratesUnavailable": "Beberapa rekening menggunakan mata uang yang tidak memiliki kurs tercatat, sehingga total limit dan jumlah terpakai tidak dapat dihitung."
   },
   "sectorWeightings": {
     "title": "Alokasi Sektor",

@@ -43,7 +43,8 @@
     "summaryEnding": "終了",
     "summaryLowest": "最低",
     "summaryMinBalance": "最低残高",
-    "allAccounts": "すべての勘定科目"
+    "allAccounts": "すべての勘定科目",
+    "unconvertibleCurrency": "選択した口座のいずれかが為替レートの登録されていない通貨を使用しているため、推移残高を算出できません。単一の口座を選ぶか、レートを更新してから再試行してください。"
   },
   "calendar": {
     "days": {

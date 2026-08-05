@@ -496,8 +496,13 @@ describe("NetWorthService", () => {
           },
           {
             securityId: "sec-1",
+            // A split's quantity is a RATIO, not a share count: this is a
+            // 2-for-1. The fixture used to store 90 here and expect 180 from
+            // 90 shares, which is exactly what an additive implementation
+            // produces -- so it could not tell the defect from correct
+            // behaviour. See share-quantity.util.spec.ts for the full matrix.
             action: InvestmentAction.SPLIT,
-            quantity: 90,
+            quantity: 2,
             transactionDate: "2024-03-05",
           },
         ]);
@@ -513,8 +518,101 @@ describe("NetWorthService", () => {
         expect(insertCalls[0][1][4]).toBe(10500);
         // Month 2 (Feb): 105 - SELL 20 + TRANSFER_IN 10 = 95 shares * 100 = 9500
         expect(insertCalls[1][1][4]).toBe(9500);
-        // Month 3 (Mar): 95 - TRANSFER_OUT 5 + SPLIT 90 = 180 shares * 100 = 18000
+        // Month 3 (Mar): 95 - TRANSFER_OUT 5 = 90, then SPLIT ratio 2.0
+        // multiplies to 180 shares * 100 = 18000. An additive replay would
+        // give 92 shares and 9200.
         expect(insertCalls[2][1][4]).toBe(18000);
+      });
+
+      it("replays a reverse split by dividing, not subtracting", async () => {
+        accountRepository.findOne.mockResolvedValue({
+          ...mockBrokerageAccount,
+        });
+        reportQuery
+          .mockResolvedValueOnce([{ earliest: null }])
+          .mockResolvedValueOnce([{ inv_earliest: "2024-01-01" }])
+          .mockResolvedValueOnce([{ month: "2024-01-01", balance: 0 }])
+          .mockResolvedValueOnce([
+            {
+              security_id: "sec-1",
+              price_date: "2024-01-15",
+              close_price: 100,
+            },
+          ]);
+
+        invTxRepository.find.mockResolvedValue([
+          {
+            securityId: "sec-1",
+            action: InvestmentAction.BUY,
+            quantity: 90,
+            transactionDate: "2024-01-05",
+          },
+          {
+            securityId: "sec-1",
+            action: InvestmentAction.SPLIT,
+            quantity: 0.5,
+            transactionDate: "2024-01-10",
+          },
+        ]);
+        securityRepository.findByIds.mockResolvedValue([
+          { id: "sec-1", symbol: "TEST", skipPriceUpdates: false },
+        ]);
+
+        await service.recalculateAccount("user-1", "brokerage-1");
+
+        const insertCalls = snapshotQuery.mock.calls.filter(
+          (call: any[]) =>
+            typeof call[0] === "string" && call[0].includes("INSERT"),
+        );
+        // 90 * 0.5 = 45 shares * 100 = 4500. Additive replay would give 90.5
+        // shares and 9050.
+        expect(insertCalls[0][1][4]).toBe(4500);
+      });
+
+      it("replays ADD_SHARES and REMOVE_SHARES", async () => {
+        accountRepository.findOne.mockResolvedValue({
+          ...mockBrokerageAccount,
+        });
+        reportQuery
+          .mockResolvedValueOnce([{ earliest: null }])
+          .mockResolvedValueOnce([{ inv_earliest: "2024-01-01" }])
+          .mockResolvedValueOnce([{ month: "2024-01-01", balance: 0 }])
+          .mockResolvedValueOnce([
+            {
+              security_id: "sec-1",
+              price_date: "2024-01-15",
+              close_price: 100,
+            },
+          ]);
+
+        invTxRepository.find.mockResolvedValue([
+          {
+            securityId: "sec-1",
+            action: InvestmentAction.ADD_SHARES,
+            quantity: 30,
+            transactionDate: "2024-01-05",
+          },
+          {
+            securityId: "sec-1",
+            action: InvestmentAction.REMOVE_SHARES,
+            quantity: 10,
+            transactionDate: "2024-01-06",
+          },
+        ]);
+        securityRepository.findByIds.mockResolvedValue([
+          { id: "sec-1", symbol: "TEST", skipPriceUpdates: false },
+        ]);
+
+        await service.recalculateAccount("user-1", "brokerage-1");
+
+        const insertCalls = snapshotQuery.mock.calls.filter(
+          (call: any[]) =>
+            typeof call[0] === "string" && call[0].includes("INSERT"),
+        );
+        // 30 - 10 = 20 shares * 100 = 2000. Before these actions were replayed
+        // at all, the snapshot reported 0 and the holding was invisible in the
+        // historical chart while the holdings page showed it.
+        expect(insertCalls[0][1][4]).toBe(2000);
       });
 
       it("uses transaction prices for skipPriceUpdates securities", async () => {
@@ -2661,7 +2759,10 @@ describe("NetWorthService", () => {
         },
       ]);
 
-      // investment transactions: BUY 100, SELL 30, TRANSFER_OUT 20, SPLIT 50 = 100 shares
+      // investment transactions: BUY 100, SELL 30, TRANSFER_OUT 20 = 50 shares,
+      // then a 2-for-1 SPLIT (ratio 2.0) doubles it to 100 shares. The fixture
+      // previously stored 50 as the split quantity and relied on it being
+      // added, which is the additive defect rather than ratio semantics.
       reportQuery.mockResolvedValueOnce([
         {
           account_id: "brok-1",
@@ -2688,7 +2789,7 @@ describe("NetWorthService", () => {
           account_id: "brok-1",
           security_id: "sec-1",
           action: "SPLIT",
-          quantity: "50",
+          quantity: "2",
           transaction_date: "2025-02-20",
         },
       ]);
@@ -2713,7 +2814,7 @@ describe("NetWorthService", () => {
         "2025-03-01",
       );
 
-      // 100 - 30 - 20 + 50 = 100 shares * $10 = $1000
+      // (100 - 30 - 20) * 2.0 = 100 shares * $10 = $1000
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1000);
     });

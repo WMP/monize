@@ -228,5 +228,8 @@
     "nothingToRedo": "Không có gì để làm lại",
     "cannotRedo": "Không thể làm lại hành động này",
     "redoFailed": "Làm lại thất bại"
-  }
+  },
+  "notAvailable": "Không có sẵn",
+  "notAvailableShort": "k/c",
+  "unconvertedExcluded": "{count, plural, other {Đã loại trừ {count} khoản: loại tiền của chúng chưa có tỷ giá.}}"
 }

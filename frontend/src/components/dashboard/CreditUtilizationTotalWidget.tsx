@@ -40,7 +40,7 @@ export function CreditUtilizationTotalWidget({
 }: CreditUtilizationTotalWidgetProps) {
   const t = useTranslations('dashboard');
   const { formatCurrency } = useNumberFormat();
-  const { convert, defaultCurrency } = useExchangeRates();
+  const { convertOrNull, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
     CREDIT_UTILIZATION_TOTAL_DEFAULT,
@@ -62,27 +62,39 @@ export function CreditUtilizationTotalWidget({
   }, [activeAccounts, defaultCurrency]);
 
   const totals = useMemo(
-    () => computeCreditTotals(computeCreditRows(activeAccounts, convert, displayCurrency)),
-    [activeAccounts, convert, displayCurrency],
+    () => computeCreditTotals(computeCreditRows(activeAccounts, convertOrNull, displayCurrency)),
+    [activeAccounts, convertOrNull, displayCurrency],
   );
 
-  const availableForPie = Math.max(totals.available, 0);
-  const pieData: TotalSlice[] = [
-    {
-      key: 'used',
-      name: t('creditUtilizationTotal.used'),
-      value: totals.used,
-      percent: totals.utilizationPercent,
-      color: utilizationColour(totals.utilizationPercent),
-    },
-    {
-      key: 'available',
-      name: t('creditUtilizationTotal.available'),
-      value: availableForPie,
-      percent: totals.limit > 0 ? (availableForPie / totals.limit) * 100 : 0,
-      color: chartColors.grid,
-    },
-  ];
+  // A donut needs every slice to be a real figure. When an account's currency
+  // has no rate to the display currency the combined limit and drawn amounts
+  // are unknown, and drawing the ring anyway would present a shape derived from
+  // an invented 1:1 conversion as a measured utilization.
+  const ratesUnavailable =
+    totals.limit === null ||
+    totals.used === null ||
+    totals.available === null ||
+    totals.utilizationPercent === null;
+
+  const availableForPie = Math.max(totals.available ?? 0, 0);
+  const pieData: TotalSlice[] = ratesUnavailable
+    ? []
+    : [
+        {
+          key: 'used',
+          name: t('creditUtilizationTotal.used'),
+          value: totals.used!,
+          percent: totals.utilizationPercent!,
+          color: utilizationColour(totals.utilizationPercent!),
+        },
+        {
+          key: 'available',
+          name: t('creditUtilizationTotal.available'),
+          value: availableForPie,
+          percent: totals.limit! > 0 ? (availableForPie / totals.limit!) * 100 : 0,
+          color: chartColors.grid,
+        },
+      ];
 
   const configControls = (
     <WidgetConfigRow label={t('widgets.accounts')}>
@@ -105,6 +117,8 @@ export function CreditUtilizationTotalWidget({
     >
       {isLoading ? (
         <div className="flex-1 min-h-[260px] animate-pulse rounded-md bg-gray-100 dark:bg-gray-700/50" />
+      ) : ratesUnavailable ? (
+        <WidgetMessage>{t('creditUtilizationTotal.ratesUnavailable')}</WidgetMessage>
       ) : totals.limit === 0 ? (
         <WidgetMessage>{t('creditUtilizationTotal.empty')}</WidgetMessage>
       ) : (
@@ -145,7 +159,7 @@ export function CreditUtilizationTotalWidget({
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {totals.utilizationPercent.toFixed(1)}%
+                {totals.utilizationPercent!.toFixed(1)}%
               </span>
             </div>
           </div>

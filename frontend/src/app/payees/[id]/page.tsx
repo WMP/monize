@@ -381,13 +381,19 @@ function PayeeDetailContent() {
   // One row per account, converted so the bars stay comparable.
   const accountPanelTotals = useMemo<GroupedTotal[]>(
     () =>
-      (detail?.accounts ?? []).map((row) => ({
-        id: row.accountId,
-        name: row.accountName,
-        currencyCode: currencyStrategy.displayCurrency,
-        total: currencyStrategy.toDisplay(row.total, row.currencyCode),
-        count: row.transactionCount,
-      })),
+      (detail?.accounts ?? [])
+        .map((row) => ({
+          id: row.accountId,
+          name: row.accountName,
+          currencyCode: currencyStrategy.displayCurrency,
+          total: currencyStrategy.toDisplay(row.total, row.currencyCode),
+          count: row.transactionCount,
+        }))
+        // An account we cannot express in the display currency is left out of the
+        // comparison bars rather than drawn at a fabricated parity. `GroupedTotal`
+        // is the server's shape and stays non-nullable; the exclusion happens
+        // here, where the conversion does.
+        .flatMap((row) => (row.total === null ? [] : [{ ...row, total: row.total }])),
     [detail?.accounts, currencyStrategy],
   );
 

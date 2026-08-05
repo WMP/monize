@@ -201,13 +201,15 @@
     "title": "Benutting per rekening",
     "empty": "Geen kredietrekeningen met een ingestelde limiet.",
     "utilization": "Benutting",
-    "used": "Gebruikt"
+    "used": "Gebruikt",
+    "amountUnavailable": "Niet beschikbaar"
   },
   "creditUtilizationTotal": {
     "title": "Totale benutting",
     "empty": "Geen kredietrekeningen met een ingestelde limiet.",
     "used": "Gebruikt",
-    "available": "Beschikbaar"
+    "available": "Beschikbaar",
+    "ratesUnavailable": "Sommige rekeningen gebruiken een valuta waarvoor geen wisselkoers bekend is, dus de gecombineerde limiet en opgenomen bedragen kunnen niet worden berekend."
   },
   "sectorWeightings": {
     "title": "Sectorallocatie",

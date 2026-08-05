@@ -215,7 +215,7 @@ export class SecurityDetailService {
           costBasis:
             holding === undefined ? null : roundMoney(holding.costBasis),
           costBasisAccountCurrency:
-            holding === undefined
+            holding?.costBasisAccountCurrency == null
               ? null
               : roundMoney(holding.costBasisAccountCurrency),
           marketValue:

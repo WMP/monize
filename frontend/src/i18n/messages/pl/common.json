@@ -228,5 +228,8 @@
     "nothingToRedo": "Nie ma nic do ponowienia",
     "cannotRedo": "Nie można ponowić tej operacji",
     "redoFailed": "Ponowienie nie powiodło się"
-  }
+  },
+  "notAvailable": "Niedostępne",
+  "notAvailableShort": "brak",
+  "unconvertedExcluded": "{count, plural, one {Pominięto # kwotę: jej waluta nie ma zapisanego kursu.} few {Pominięto # kwoty: ich waluty nie mają zapisanego kursu.} many {Pominięto # kwot: ich waluty nie mają zapisanego kursu.} other {Pominięto # kwoty: ich waluty nie mają zapisanego kursu.}}"
 }

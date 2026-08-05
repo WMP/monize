@@ -13,7 +13,7 @@ vi.mock('@/store/preferencesStore', () => ({
 
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
-    convert: (amount: number, from: string, to?: string) => {
+    convertOrNull: (amount: number, from: string, to?: string) => {
       if (!to || from === to) return amount;
       // Simple fake rate: EUR->USD = 1.1.
       if (from === 'EUR' && to === 'USD') return amount * 1.1;

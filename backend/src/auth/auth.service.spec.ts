@@ -118,6 +118,9 @@ describe("AuthService", () => {
       save: jest.fn().mockImplementation((data) => ({ ...data, id: "rt-1" })),
       findOne: jest.fn(),
       update: jest.fn(),
+      // A revocation re-reads to confirm the family is dead (TokenService's
+      // revokeUntilNoneLive), so this double has to answer that too.
+      count: jest.fn().mockResolvedValue(0),
       delete: jest.fn(),
     };
 
@@ -1153,7 +1156,7 @@ describe("AuthService", () => {
       await service.revokeRefreshToken("some-token");
 
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
-        { familyId: "family-1" },
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
       );
     });
@@ -2204,9 +2207,8 @@ describe("AuthService", () => {
         service.refreshTokens("reused-refresh-token"),
       ).rejects.toThrow("Refresh token reuse detected");
 
-      expect(manager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-replay" },
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { familyId: "family-replay", isRevoked: false },
         { isRevoked: true },
       );
     });
@@ -2250,9 +2252,8 @@ describe("AuthService", () => {
         service.refreshTokens("valid-token-inactive-user"),
       ).rejects.toThrow("User not found or inactive");
 
-      expect(manager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-inactive" },
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { familyId: "family-inactive", isRevoked: false },
         { isRevoked: true },
       );
     });
@@ -2284,9 +2285,8 @@ describe("AuthService", () => {
         "User not found or inactive",
       );
 
-      expect(manager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-gone" },
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { familyId: "family-gone", isRevoked: false },
         { isRevoked: true },
       );
     });

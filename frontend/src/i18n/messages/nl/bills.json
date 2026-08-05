@@ -43,7 +43,8 @@
     "summaryEnding": "Eindstand",
     "summaryLowest": "Laagste",
     "summaryMinBalance": "Minimumsaldo",
-    "allAccounts": "Alle rekeningen"
+    "allAccounts": "Alle rekeningen",
+    "unconvertibleCurrency": "Een van de geselecteerde rekeningen gebruikt een valuta waarvoor geen wisselkoers bekend is, dus het doorlopende saldo kan niet worden berekend. Kies één rekening, of probeer het opnieuw nadat de koersen zijn bijgewerkt."
   },
   "calendar": {
     "days": {

@@ -167,7 +167,11 @@
       "quantityRequired": "數量必須大於零",
       "priceRequired": "價格必須大於零",
       "totalAmountRequired": "總金額為必填"
-    }
+    },
+    "applyLatestPrice": "套用最新價格",
+    "descriptionPlaceholder": "覆寫說明...",
+    "latestPricePlaceholder": "最新：{price}",
+    "latestPriceSuggestion": "最新市場價格：{price}"
   },
   "form": {
     "tabs": {

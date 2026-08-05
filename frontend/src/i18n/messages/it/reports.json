@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Posizioni",
     "pdfColCash": "Contanti",
     "pdfColTotal": "Totale",
-    "pdfColGainLoss": "Guadagno/Perdita"
+    "pdfColGainLoss": "Guadagno/Perdita",
+    "na": "Non disponibile"
   },
   "realizedGains": {
     "totalProceeds": "Proventi totali",

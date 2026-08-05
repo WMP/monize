@@ -167,7 +167,11 @@
       "quantityRequired": "数量はゼロより大きい必要があります",
       "priceRequired": "価格はゼロより大きい必要があります",
       "totalAmountRequired": "合計金額は必須です"
-    }
+    },
+    "applyLatestPrice": "最新価格を適用",
+    "descriptionPlaceholder": "上書きの説明...",
+    "latestPricePlaceholder": "最新: {price}",
+    "latestPriceSuggestion": "最新の市場価格: {price}"
   },
   "form": {
     "tabs": {

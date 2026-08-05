@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Hasło kopii zapasowej musi mieć co najmniej {{ minLength }} znaków",
     "backupPasswordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
     "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej",
-    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim przywrócisz kopię zapasową."
+    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim przywrócisz kopię zapasową.",
+    "restoredWithMissingAttachmentBytes": "Kopia zapasowa przywrócona pomyślnie, ale {{ count }} załącznik(ów) nie ma w niej zawartości plików. Były przechowywane poza bazą danych (folder lokalny lub S3), więc te pliki trzeba przywrócić osobno z tego magazynu.",
+    "tooManyBackupsThisSecond": "W tej samej sekundzie zapisano zbyt wiele kopii zapasowych, aby nadać nazwę kolejnej."
   },
   "budgets": {
     "notFound": "Nie znaleziono budżetu o ID {{ id }}",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Nie znaleziono scenariusza {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds musi być tablicą",
-    "atLeastOneAccountRequired": "Wymagany jest co najmniej jeden accountId"
+    "atLeastOneAccountRequired": "Wymagany jest co najmniej jeden accountId",
+    "currentPortfolioValueUnavailable": "Nie udało się ustalić bieżącej wartości wybranych kont, więc symulacja nie może od niej wystartować. Zwykle znaczy to, że jakaś pozycja nie ma aktualnej ceny albo para walutowa nie ma kursu. Wpisz wartość początkową ręcznie lub spróbuj ponownie po odświeżeniu cen."
   },
   "netWorth": {
     "invalidStartDate": "startDate musi mieć format YYYY-MM-DD",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "Kwota jest wymagana dla nadpisania podziału",
     "dateMustBeYMD": "date musi być w formacie YYYY-MM-DD",
     "fxPlainOnly": "Innej waluty można użyć tylko w zwykłej zaplanowanej transakcji, a nie w podziale, przelewie ani inwestycji",
-    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować."
+    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować.",
+    "occurrenceAlreadyPosted": "Rata z dnia {{ occurrence }} tej transakcji zaplanowanej została już zaksięgowana. Odśwież, aby zobaczyć następną.",
+    "occurrenceRequired": "Należy wskazać ratę do zaksięgowania. Odśwież harmonogram i spróbuj ponownie."
   },
   "securities": {
     "exchangeRateUnavailable": "Nie można ustalić kursu wymiany dla {{ from }} -> {{ to }} na dzień transakcji. Podaj jawny exchangeRate, aby księgowanie na koncie gotówkowym było poprawne.",

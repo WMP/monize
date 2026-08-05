@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
     "restoreBodyMustBeFile": "請求主體必須是備份檔案",
-    "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。"
+    "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。",
+    "restoredWithMissingAttachmentBytes": "備份還原成功，但其中 {{ count }} 個附件不包含檔案內容。它們儲存在資料庫之外（本機資料夾或 S3），因此需要從該儲存空間單獨還原這些檔案。",
+    "tooManyBackupsThisSecond": "同一秒內寫入的備份過多，無法再命名一個。"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",
@@ -305,7 +307,8 @@
   "monteCarlo": {
     "scenarioNotFound": "找不到情境 {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds 必須是陣列",
-    "atLeastOneAccountRequired": "至少需要一個 accountId"
+    "atLeastOneAccountRequired": "至少需要一個 accountId",
+    "currentPortfolioValueUnavailable": "無法確定所選帳戶的目前價值，因此模擬無法以該值為起點。通常表示某個持倉沒有近期價格，或某個貨幣對沒有匯率。請手動輸入起始值，或在價格更新後重試。"
   },
   "netWorth": {
     "invalidStartDate": "startDate 必須為 YYYY-MM-DD 格式",
@@ -360,7 +363,9 @@
     "updateSplitOverrideRequiresAmount": "分割覆蓋需要金額",
     "dateMustBeYMD": "date 必須為 YYYY-MM-DD 格式",
     "fxPlainOnly": "只有一般定期交易才能使用其他貨幣，分割、轉帳和投資均不支援",
-    "fxRateUnavailable": "{{ date }} 沒有從 {{ from }} 到 {{ to }} 的可用匯率。請以 {{ to }} 輸入金額後再過帳。"
+    "fxRateUnavailable": "{{ date }} 沒有從 {{ from }} 到 {{ to }} 的可用匯率。請以 {{ to }} 輸入金額後再過帳。",
+    "occurrenceAlreadyPosted": "此排程交易 {{ occurrence }} 這一期已記帳。請重新載入以查看下一期。",
+    "occurrenceRequired": "必須指明要記帳的那一期。請重新載入排程後再試一次。"
   },
   "securities": {
     "exchangeRateUnavailable": "無法確定交易日 {{ from }} -> {{ to }} 的匯率。請提供明確的 exchangeRate，以便現金帳戶的記帳正確。",

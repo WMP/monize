@@ -34,20 +34,37 @@ export function PortfolioSummaryCard({
     if (!summary) return null;
 
     if (foreignCurrency) {
-      // Single foreign account: use raw values without conversion
+      // Single foreign account: use raw values without conversion. An account
+      // whose market value or cost basis is unknown makes the corresponding
+      // aggregate unknown -- adding only the accounts that happened to be
+      // computable would put a subtotal under a total's label.
       let cash = 0;
-      let holdings = 0;
-      let costBasis = 0;
       let netInvested = 0;
+      let holdings: number | null = 0;
+      let costBasis: number | null = 0;
       for (const acct of summary.holdingsByAccount) {
         cash += acct.cashBalance;
-        holdings += acct.totalMarketValue;
-        costBasis += acct.totalCostBasis;
         netInvested += acct.netInvested;
+        holdings =
+          holdings === null || acct.totalMarketValue === null
+            ? null
+            : holdings + acct.totalMarketValue;
+        costBasis =
+          costBasis === null || acct.totalCostBasis === null
+            ? null
+            : costBasis + acct.totalCostBasis;
       }
-      const portfolio = cash + holdings;
-      const gainLoss = holdings - costBasis;
-      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+      const portfolio = holdings === null ? null : cash + holdings;
+      const gainLoss =
+        holdings === null || costBasis === null ? null : holdings - costBasis;
+      const gainLossPercent =
+        gainLoss === null || costBasis === null
+          ? null
+          : costBasis > 0
+            ? (gainLoss / costBasis) * 100
+            : gainLoss === 0
+              ? 0
+              : null;
       return { cash, holdings, costBasis, netInvested, portfolio, gainLoss, gainLossPercent };
     }
 
@@ -66,18 +83,36 @@ export function PortfolioSummaryCard({
     if (!summary || !foreignCurrency) return null;
     let total = 0;
     for (const acct of summary.holdingsByAccount) {
-      total += convertToDefault(acct.cashBalance, acct.currencyCode);
-      total += convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      // No approximate line at all when one account's value is unknown: an
+      // approximation of a partial sum is not an approximation of the total.
+      if (acct.totalMarketValue === null) return null;
+      const cash = convertToDefault(acct.cashBalance, acct.currencyCode);
+      const market = convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      // No rate: no approximate total either.
+      if (cash === null || market === null) return null;
+      total += cash;
+      total += market;
     }
     return total;
   }, [summary, convertToDefault, foreignCurrency]);
 
-  const fmtVal = (value: number) => {
+  // An unknown figure renders as the card's existing "not available" marker,
+  // never as a formatted 0.00 -- a measured zero and a value we could not work
+  // out look identical once currency-formatted, and one of them is a lie.
+  const notAvailable = (
+    <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">
+      {t('portfolioSummary.notAvailable')}
+    </span>
+  );
+
+  const fmtVal = (value: number | null | undefined) => {
+    if (value == null) return notAvailable;
     if (foreignCurrency) return `${formatCurrency(value, foreignCurrency)} ${foreignCurrency}`;
     return formatCurrency(value);
   };
 
-  const formatPercent = (value: number) => formatSignedPercent(value);
+  const formatPercent = (value: number | null | undefined) =>
+    value == null ? notAvailable : formatSignedPercent(value);
 
   const returnColorClass = (value: number | null | undefined) => {
     if (value == null) return 'text-gray-400 dark:text-gray-500';
@@ -117,6 +152,12 @@ export function PortfolioSummaryCard({
 
   const gainLossVal = converted?.gainLoss ?? summary.totalGainLoss;
   const gainLossPercentVal = converted?.gainLossPercent ?? summary.totalGainLossPercent;
+  const portfolioVal = converted ? converted.portfolio : summary.totalPortfolioValue;
+  const netInvestedVal = converted ? converted.netInvested : summary.totalNetInvested;
+  const totalGainVal =
+    portfolioVal === null || netInvestedVal === null
+      ? null
+      : portfolioVal - netInvestedVal;
   const twr = summary.timeWeightedReturn;
   const cagrVal = summary.cagr;
 
@@ -133,7 +174,7 @@ export function PortfolioSummaryCard({
             {t('portfolioSummary.totalPortfolioValue')}
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {fmtVal(converted?.portfolio ?? summary.totalPortfolioValue)}
+            {fmtVal(portfolioVal)}
           </div>
           {foreignCurrency && defaultTotal !== null && (
             <div className="text-xs text-gray-400 dark:text-gray-500">
@@ -154,7 +195,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.holdingsValueTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {fmtVal(converted?.holdings ?? summary.totalHoldingsValue)}
+                {fmtVal(converted ? converted.holdings : summary.totalHoldingsValue)}
               </div>
             </div>
             <div>
@@ -163,7 +204,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.cashBalanceTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {fmtVal(converted?.cash ?? summary.totalCashValue)}
+                {fmtVal(converted ? converted.cash : summary.totalCashValue)}
               </div>
             </div>
             <div>
@@ -171,8 +212,8 @@ export function PortfolioSummaryCard({
                 {t('portfolioSummary.totalGain')}
                 <InfoTooltip placement="top" text={t('portfolioSummary.totalGainTooltip')} />
               </div>
-              <div className={`text-base sm:text-lg font-semibold ${returnColorClass((converted?.portfolio ?? summary.totalPortfolioValue) - (converted?.netInvested ?? summary.totalNetInvested))}`}>
-                {fmtVal((converted?.portfolio ?? summary.totalPortfolioValue) - (converted?.netInvested ?? summary.totalNetInvested))}
+              <div className={`text-base sm:text-lg font-semibold ${returnColorClass(totalGainVal)}`}>
+                {fmtVal(totalGainVal)}
               </div>
             </div>
             <div>
@@ -181,7 +222,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.netInvestedTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {fmtVal(converted?.netInvested ?? summary.totalNetInvested)}
+                {fmtVal(netInvestedVal)}
               </div>
             </div>
             <div>
@@ -190,7 +231,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.costBasisTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {fmtVal(converted?.costBasis ?? summary.totalCostBasis)}
+                {fmtVal(converted ? converted.costBasis : summary.totalCostBasis)}
               </div>
             </div>
             <div>
@@ -227,9 +268,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.twrTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(twr)}`}>
-                {twr != null ? formatPercent(twr) : (
-                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">{t('portfolioSummary.notAvailable')}</span>
-                )}
+                {formatPercent(twr)}
               </div>
             </div>
             <div>
@@ -238,9 +277,7 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.cagrTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(cagrVal)}`}>
-                {cagrVal != null ? formatPercent(cagrVal) : (
-                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">{t('portfolioSummary.notAvailable')}</span>
-                )}
+                {formatPercent(cagrVal)}
               </div>
             </div>
           </div>

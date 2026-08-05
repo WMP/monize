@@ -59,6 +59,9 @@ describe("TokenService", () => {
       save: jest.fn().mockResolvedValue(mockRefreshToken),
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      // A revocation re-reads to confirm nothing is still live, so the double
+      // has to answer that question -- see revokeUntilNoneLive.
+      count: jest.fn().mockResolvedValue(0),
       delete: jest.fn().mockResolvedValue({ affected: 0 }),
     };
 
@@ -196,13 +199,24 @@ describe("TokenService", () => {
 
   describe("refreshTokens", () => {
     let mockManager: Record<string, jest.Mock>;
+    let familyRepo: Record<string, jest.Mock>;
 
     beforeEach(() => {
+      // The in-transaction family revocations go through
+      // `manager.getRepository(RefreshToken)` rather than `manager.update`, so
+      // the double routes there and the spec asserts on it. Typed as the
+      // repository surface the service actually uses, so a signature change
+      // shows up here rather than as a passing test of a method that moved.
+      familyRepo = {
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+        count: jest.fn().mockResolvedValue(0),
+      };
       mockManager = {
         findOne: jest.fn(),
         update: jest.fn().mockResolvedValue({ affected: 1 }),
         save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
         create: jest.fn().mockImplementation((_Entity, data) => data),
+        getRepository: jest.fn(() => familyRepo),
       };
 
       dataSource.transaction.mockImplementation(async (callback) => {
@@ -311,11 +325,15 @@ describe("TokenService", () => {
         UnauthorizedException,
       );
 
-      expect(mockManager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-1" },
+      expect(familyRepo.update).toHaveBeenCalledWith(
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
       );
+      // And it confirmed the family is actually dead rather than assuming one
+      // statement was enough.
+      expect(familyRepo.count).toHaveBeenCalledWith({
+        where: { familyId: "family-1", isRevoked: false },
+      });
     });
 
     it("should throw with correct message on replay detection", async () => {
@@ -378,11 +396,15 @@ describe("TokenService", () => {
         UnauthorizedException,
       );
 
-      expect(mockManager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-1" },
+      expect(familyRepo.update).toHaveBeenCalledWith(
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
       );
+      // And it confirmed the family is actually dead rather than assuming one
+      // statement was enough.
+      expect(familyRepo.count).toHaveBeenCalledWith({
+        where: { familyId: "family-1", isRevoked: false },
+      });
     });
 
     it("should revoke family and throw when user is inactive", async () => {
@@ -403,11 +425,15 @@ describe("TokenService", () => {
         "User not found or inactive",
       );
 
-      expect(mockManager.update).toHaveBeenCalledWith(
-        RefreshToken,
-        { familyId: "family-1" },
+      expect(familyRepo.update).toHaveBeenCalledWith(
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
       );
+      // And it confirmed the family is actually dead rather than assuming one
+      // statement was enough.
+      expect(familyRepo.count).toHaveBeenCalledWith({
+        where: { familyId: "family-1", isRevoked: false },
+      });
     });
   });
 
@@ -416,8 +442,36 @@ describe("TokenService", () => {
       await service.revokeTokenFamily("family-1");
 
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
-        { familyId: "family-1" },
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
+      );
+    });
+
+    it("looks again, and revokes again, when a token is still live", async () => {
+      // The shape of the real race: a rotation committed its replacement after
+      // the first statement's snapshot, so the first pass could not see it and
+      // the second must. A single-pass revocation returns here having left a
+      // usable session behind a confirmed logout --
+      // `test/integration/race-refresh-token-revocation.integration.spec.ts`
+      // drives that against a real database; this asserts the loop exists.
+      refreshTokensRepository.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+
+      await service.revokeTokenFamily("family-1");
+
+      expect(refreshTokensRepository.update).toHaveBeenCalledTimes(2);
+      expect(refreshTokensRepository.count).toHaveBeenCalledTimes(2);
+    });
+
+    it("fails loudly rather than reporting a partial revocation", async () => {
+      // A revocation that cannot converge must not return: the caller is a
+      // logout, and "mostly logged out" is the failure this method exists to
+      // prevent.
+      refreshTokensRepository.count.mockResolvedValue(1);
+
+      await expect(service.revokeTokenFamily("family-1")).rejects.toThrow(
+        /did not converge/,
       );
     });
   });
@@ -435,7 +489,7 @@ describe("TokenService", () => {
         where: { tokenHash: "hashed-token" },
       });
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
-        { familyId: "family-1" },
+        { familyId: "family-1", isRevoked: false },
         { isRevoked: true },
       );
     });

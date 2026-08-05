@@ -35,6 +35,8 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
 import { chartColors, CHART_SERIES } from '@/lib/chart-colors';
 import { useTranslations } from 'next-intl';
+import { sumKnown, addKnown } from '@/lib/partial-sum';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
 
 type SeriesKey = 'dividends' | 'interest' | 'capitalGains';
@@ -86,6 +88,7 @@ export function DividendIncomeReport() {
   const formatChartDate = useChartDateFormat();
   const mainAccountName = useMainAccountName();
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const { notAvailableShort } = useMoneyDisplay();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   // Persisted so the report opens on the accounts the user last chose.
@@ -314,7 +317,7 @@ export function DividendIncomeReport() {
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
-  const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
+  const getTxAmount = useCallback((tx: InvestmentTransaction): number | null => {
     const amount = Math.abs(tx.totalAmount);
     if (isSingleAccount) {
       // Single account selected: native currency, no conversion needed
@@ -328,7 +331,7 @@ export function DividendIncomeReport() {
   // Backend already returns each capital gain entry in the holding account's
   // currency. Convert to the default currency for multi-account views; pass
   // through when a single account is selected.
-  const convertCapitalGain = useCallback((entry: CapitalGainEntry): number => {
+  const convertCapitalGain = useCallback((entry: CapitalGainEntry): number | null => {
     if (isSingleAccount) return entry.totalCapitalGain;
     return convertToDefault(entry.totalCapitalGain, entry.accountCurrencyCode || defaultCurrency);
   }, [isSingleAccount, defaultCurrency, convertToDefault]);
@@ -336,19 +339,20 @@ export function DividendIncomeReport() {
   // Same conversion as convertCapitalGain but applied to an arbitrary amount
   // denominated in the entry's account currency (e.g. start/end market values).
   const convertFromAccountCurrency = useCallback(
-    (amount: number, accountCurrencyCode: string | null): number => {
+    (amount: number, accountCurrencyCode: string | null): number | null => {
       if (isSingleAccount) return amount;
       return convertToDefault(amount, accountCurrencyCode || defaultCurrency);
     },
     [isSingleAccount, defaultCurrency, convertToDefault],
   );
 
-  const fmtValue = useCallback((value: number): string => {
+  const fmtValue = useCallback((value: number | null): string => {
+    if (value === null) return notAvailableShort;
     if (isForeign) {
       return `${formatCurrencyFull(value, displayCurrency)} ${displayCurrency}`;
     }
     return formatCurrencyFull(value);
-  }, [isForeign, displayCurrency, formatCurrencyFull]);
+  }, [isForeign, displayCurrency, formatCurrencyFull, notAvailableShort]);
 
   const monthlyData = useMemo((): MonthlyIncome[] => {
     const { start, end } = resolvedRange;
@@ -400,6 +404,9 @@ export function DividendIncomeReport() {
     filteredTransactions.forEach((tx) => {
       const bucket = getOrCreateBucket(parseLocalDate(tx.transactionDate));
       const contribution = getTxAmount(tx);
+      // A transaction we cannot express in the display currency is left out of
+      // the month bucket rather than added at a fabricated parity.
+      if (contribution === null) return;
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -420,18 +427,15 @@ export function DividendIncomeReport() {
       const monthDate = parseLocalDate(`${entry.month}-15`);
       const bucket = getOrCreateBucket(monthDate);
       const gain = convertCapitalGain(entry);
+      if (gain === null) return;
       bucket.capitalGains += gain;
       bucket.total += gain;
       // Start/end market values sum across securities to give a portfolio
       // mark-to-market snapshot at each month boundary.
-      bucket.startValue += convertFromAccountCurrency(
-        entry.startValue,
-        entry.accountCurrencyCode,
-      );
-      bucket.endValue += convertFromAccountCurrency(
-        entry.endValue,
-        entry.accountCurrencyCode,
-      );
+      bucket.startValue +=
+        convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode) ?? 0;
+      bucket.endValue +=
+        convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode) ?? 0;
     });
 
     return Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
@@ -465,6 +469,9 @@ export function DividendIncomeReport() {
       const txDate = parseLocalDate(tx.transactionDate);
       const bucket = getOrCreateBucket(tx.transactionDate, txDate);
       const contribution = getTxAmount(tx);
+      // Excluded rather than added at a fabricated parity -- same rule as the
+      // monthly aggregation above.
+      if (contribution === null) return;
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -487,10 +494,13 @@ export function DividendIncomeReport() {
       const txDate = parseLocalDate(entry.month);
       const bucket = getOrCreateBucket(entry.month, txDate);
       const gain = convertCapitalGain(entry);
+      if (gain === null) return;
       bucket.capitalGains += gain;
       bucket.total += gain;
-      bucket.startValue += convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode);
-      bucket.endValue += convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode);
+      bucket.startValue +=
+        convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode) ?? 0;
+      bucket.endValue +=
+        convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode) ?? 0;
     });
 
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -558,6 +568,8 @@ export function DividendIncomeReport() {
       const name = tx.security?.name || 'Unknown Security';
       const bucket = getOrCreateBucket(symbol, name);
       const contribution = getTxAmount(tx);
+      // Excluded rather than added at a fabricated parity, as above.
+      if (contribution === null) return;
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -577,6 +589,7 @@ export function DividendIncomeReport() {
       const name = entry.securityName || 'Unknown Security';
       const bucket = getOrCreateBucket(symbol, name);
       const gain = convertCapitalGain(entry);
+      if (gain === null) return;
       bucket.capitalGains += gain;
       bucket.total += gain;
     });
@@ -689,25 +702,30 @@ export function DividendIncomeReport() {
   }, [securityData, securitySort.sortField, securitySort.sortDirection]);
 
   const totals = useMemo(() => {
-    const dividends = filteredTransactions
-      .filter((t) => t.action === 'DIVIDEND')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const interest = filteredTransactions
-      .filter((t) => t.action === 'INTEREST')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const manualCapitalGains = filteredTransactions
-      .filter((t) => t.action === 'CAPITAL_GAIN')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const periodCapitalGains = filteredCapitalGains.reduce(
-      (sum, entry) => sum + convertCapitalGain(entry),
-      0,
+    // These are the report's headline figures, so an unconvertible row makes the
+    // one it belongs to unknown rather than smaller: a partial sum under a
+    // "Total dividends" label is the subtotal-as-total defect.
+    const sumConverted = (
+      rows: typeof filteredTransactions,
+    ): number | null => sumKnown(rows.map((t) => getTxAmount(t)));
+    const dividends = sumConverted(
+      filteredTransactions.filter((t) => t.action === 'DIVIDEND'),
     );
-    const totalGains = manualCapitalGains + periodCapitalGains;
+    const interest = sumConverted(
+      filteredTransactions.filter((t) => t.action === 'INTEREST'),
+    );
+    const manualCapitalGains = sumConverted(
+      filteredTransactions.filter((t) => t.action === 'CAPITAL_GAIN'),
+    );
+    const periodCapitalGains = sumKnown(
+      filteredCapitalGains.map((entry) => convertCapitalGain(entry)),
+    );
+    const totalGains = addKnown(manualCapitalGains, periodCapitalGains);
     return {
       dividends,
       interest,
       capitalGains: totalGains,
-      total: dividends + interest + totalGains,
+      total: sumKnown([dividends, interest, totalGains]),
     };
   }, [filteredTransactions, filteredCapitalGains, getTxAmount, convertCapitalGain]);
 
@@ -927,19 +945,21 @@ export function DividendIncomeReport() {
       // footer sum matches the visible columns. Start/End values are point-in-
       // time snapshots so a column sum would be meaningless — leave them blank.
       const totalRow: (string | number)[] = [t('dividendIncome.colTotal'), '', ''];
-      let grandTotal = 0;
+      // `null` in any visible series makes the grand total unknown too.
+      const grandTotalParts: (number | null)[] = [];
       if (visibleSeries.dividends) {
         totalRow.push(fmtValue(totals.dividends));
-        grandTotal += totals.dividends;
+        grandTotalParts.push(totals.dividends);
       }
       if (visibleSeries.interest) {
         totalRow.push(fmtValue(totals.interest));
-        grandTotal += totals.interest;
+        grandTotalParts.push(totals.interest);
       }
       if (visibleSeries.capitalGains) {
         totalRow.push(fmtValue(totals.capitalGains));
-        grandTotal += totals.capitalGains;
+        grandTotalParts.push(totals.capitalGains);
       }
+      const grandTotal = sumKnown(grandTotalParts);
       totalRow.push(fmtValue(grandTotal));
       tableData = { headers, rows, totalRow };
     }
@@ -950,7 +970,7 @@ export function DividendIncomeReport() {
       summaryCards: [
         { label: t('dividendIncome.summaryDividends'), value: fmtValue(totals.dividends), color: '#16a34a' },
         { label: t('dividendIncome.summaryInterest'), value: fmtValue(totals.interest), color: '#2563eb' },
-        { label: t('dividendIncome.summaryCapitalGains'), value: fmtValue(totals.capitalGains), color: totals.capitalGains < 0 ? '#dc2626' : '#9333ea' },
+        { label: t('dividendIncome.summaryCapitalGains'), value: fmtValue(totals.capitalGains), color: (totals.capitalGains ?? 0) < 0 ? '#dc2626' : '#9333ea' },
         { label: t('dividendIncome.summaryTotalIncome'), value: fmtValue(totals.total), color: '#111827' },
       ],
       chartContainer: tableData ? undefined : chartRef.current,
@@ -1029,9 +1049,9 @@ export function DividendIncomeReport() {
             {fmtValue(totals.interest)}
           </div>
         </div>
-        <div className={`rounded-lg p-4 ${totals.capitalGains < 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-purple-50 dark:bg-purple-900/20'}`}>
-          <div className={`text-sm ${totals.capitalGains < 0 ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400'}`}>{t('dividendIncome.summaryCapitalGains')}</div>
-          <div className={`text-xl font-bold ${totals.capitalGains < 0 ? 'text-red-700 dark:text-red-300' : 'text-purple-700 dark:text-purple-300'}`}>
+        <div className={`rounded-lg p-4 ${(totals.capitalGains ?? 0) < 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-purple-50 dark:bg-purple-900/20'}`}>
+          <div className={`text-sm ${(totals.capitalGains ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400'}`}>{t('dividendIncome.summaryCapitalGains')}</div>
+          <div className={`text-xl font-bold ${(totals.capitalGains ?? 0) < 0 ? 'text-red-700 dark:text-red-300' : 'text-purple-700 dark:text-purple-300'}`}>
             {fmtValue(totals.capitalGains)}
           </div>
         </div>

@@ -1129,7 +1129,8 @@
     "pdfColHoldings": "[XX-Holdings-XX]",
     "pdfColCash": "[XX-Cash-XX]",
     "pdfColTotal": "[XX-Total-XX]",
-    "pdfColGainLoss": "[XX-Gain/Loss-XX]"
+    "pdfColGainLoss": "[XX-Gain/Loss-XX]",
+    "na": "[XX-Not available-XX]"
   },
   "realizedGains": {
     "totalProceeds": "[XX-Total Proceeds-XX]",

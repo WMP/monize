@@ -201,13 +201,15 @@
     "title": "口座別使用率",
     "empty": "限度額が設定されたクレジット口座がありません。",
     "utilization": "使用率",
-    "used": "使用額"
+    "used": "使用額",
+    "amountUnavailable": "利用不可"
   },
   "creditUtilizationTotal": {
     "title": "合計使用率",
     "empty": "限度額が設定されたクレジット口座がありません。",
     "used": "使用額",
-    "available": "利用可能額"
+    "available": "利用可能額",
+    "ratesUnavailable": "一部の口座は為替レートが登録されていない通貨を使用しているため、合計限度額と利用額を算出できません。"
   },
   "sectorWeightings": {
     "title": "セクター配分",

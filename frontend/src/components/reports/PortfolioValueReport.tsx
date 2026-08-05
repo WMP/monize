@@ -213,10 +213,21 @@ export function PortfolioValueReport() {
     return formatCurrencyCompact(value);
   }, [foreignCurrency, formatCurrencyCompact]);
 
-  const fmtFull = useCallback((value: number) => {
+  // An account total the backend could not establish renders as "not
+  // available", never as a formatted 0.00 that reads like a measured balance.
+  const fmtFull = useCallback((value: number | null) => {
+    if (value === null) return t('portfolioValue.na');
     if (foreignCurrency) return `${formatCurrencyFull(value, foreignCurrency)} ${foreignCurrency}`;
     return formatCurrencyFull(value);
-  }, [foreignCurrency, formatCurrencyFull]);
+  }, [foreignCurrency, formatCurrencyFull, t]);
+
+  /** Sum that stays unknown when either side is. */
+  const addKnown = (a: number | null, b: number | null) =>
+    a === null || b === null ? null : a + b;
+
+  /** Sign prefix for a signed figure; nothing at all when it is unknown. */
+  const signPrefix = (value: number | null) =>
+    value === null ? '' : value >= 0 ? '+' : '';
 
   const fmtAxis = useCallback((value: number) => {
     if (foreignCurrency) return formatCurrencyAxis(value, foreignCurrency);
@@ -622,8 +633,8 @@ export function PortfolioValueReport() {
       acct.accountName,
       fmtFull(acct.totalMarketValue),
       fmtFull(acct.cashBalance),
-      fmtFull(acct.totalMarketValue + acct.cashBalance),
-      `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
+      fmtFull(addKnown(acct.totalMarketValue, acct.cashBalance)),
+      `${signPrefix(acct.totalGainLoss)}${fmtFull(acct.totalGainLoss)}`,
     ]) || [];
     await exportToPdf({
       title: t('portfolioValue.pdfTitle'),
@@ -1051,9 +1062,11 @@ export function PortfolioValueReport() {
               comparison = compareValues(a.cashBalance, b.cashBalance);
               break;
             case 'total':
+              // An account with an unknown total sorts to the end rather than
+              // being compared as if it were zero.
               comparison = compareValues(
-                a.totalMarketValue + a.cashBalance,
-                b.totalMarketValue + b.cashBalance,
+                addKnown(a.totalMarketValue, a.cashBalance) ?? -Infinity,
+                addKnown(b.totalMarketValue, b.cashBalance) ?? -Infinity,
               );
               break;
             case 'gainLoss':
@@ -1137,10 +1150,10 @@ export function PortfolioValueReport() {
                       {fmtFull(acct.cashBalance)}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {fmtFull(acct.totalMarketValue + acct.cashBalance)}
+                      {fmtFull(addKnown(acct.totalMarketValue, acct.cashBalance))}
                     </td>
-                    <td className={`px-4 py-3 text-right text-sm font-medium ${gainLossColor(acct.totalGainLoss)}`}>
-                      {acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}
+                    <td className={`px-4 py-3 text-right text-sm font-medium ${acct.totalGainLoss === null ? 'text-gray-400 dark:text-gray-500' : gainLossColor(acct.totalGainLoss)}`}>
+                      {signPrefix(acct.totalGainLoss)}{fmtFull(acct.totalGainLoss)}
                     </td>
                   </tr>
                 ))}

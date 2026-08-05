@@ -1529,6 +1529,18 @@ export class InvestmentTransactionsService {
     const { outId, inId } = await withScopedDb(
       this.dataSource,
       async (manager) => {
+        // Lock both accounts before touching either leg, in one deterministic
+        // order (review R4-002). The legs below each lock their own account --
+        // TRANSFER_OUT the source, TRANSFER_IN the destination -- so without this
+        // the pair is acquired source-then-destination, and a simultaneous
+        // reverse transfer acquiring destination-then-source deadlocks. Taking
+        // the whole set up front, sorted, makes every transfer acquire them the
+        // same way; the per-leg locks that follow are then no-op re-locks.
+        await this.holdingsService.lockAccountsForHoldings(manager, [
+          dto.fromAccountId,
+          dto.toAccountId,
+        ]);
+
         const transferOut = manager.create(InvestmentTransaction, {
           userId,
           accountId: dto.fromAccountId,
@@ -2610,6 +2622,20 @@ export class InvestmentTransactionsService {
     }
 
     await withScopedDb(this.dataSource, async (manager) => {
+      // Lock every account this edit could touch -- both legs' current accounts
+      // and any they are being rerouted to -- before reversing or reapplying
+      // either leg (review R4-002). Same reason as the create path: without a
+      // single up-front acquisition, two edits touching the same account pair in
+      // opposite orders deadlock.
+      await this.holdingsService.lockAccountsForHoldings(manager, [
+        editedLeg.accountId,
+        linkedLeg.accountId,
+        ...(updateDto.accountId ? [updateDto.accountId] : []),
+        ...(updateDto.destinationAccountId
+          ? [updateDto.destinationAccountId]
+          : []),
+      ]);
+
       // Reverse both legs at their original values before reapplying.
       await this.reverseTransactionEffectsInTransaction(
         manager,
@@ -3359,6 +3385,15 @@ export class InvestmentTransactionsService {
     );
 
     await withScopedDb(this.dataSource, async (manager) => {
+      // Lock both legs' accounts before reversing either (review R4-002). The
+      // reverses lock each account incrementally, so deleting A->B and deleting
+      // B->A at the same time would otherwise acquire the pair in opposite
+      // orders and deadlock. `affectedAccountIds` is exactly that set.
+      await this.holdingsService.lockAccountsForHoldings(
+        manager,
+        affectedAccountIds,
+      );
+
       // Break the mutual link before deleting so neither row's FK points at a
       // row that is about to disappear.
       for (const leg of legsToRemove) {
