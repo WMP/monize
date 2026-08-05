@@ -252,6 +252,10 @@ export function OverpaymentSimulator({
       }
     }
 
+    if (next.startDate !== '' && next.endDate !== '' && next.startDate > next.endDate) {
+      plan = null;
+    }
+
     setForm(next);
     setGoalStatus(status);
     onPlanChange(plan);

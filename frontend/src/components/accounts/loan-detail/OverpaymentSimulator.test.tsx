@@ -322,6 +322,33 @@ describe('OverpaymentSimulator', () => {
     });
   });
 
+  it('emits null when the recurring window is inverted (start after end)', async () => {
+    const { onPlanChange } = await renderSimulator();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Overpayment amount'), { target: { value: '200' } });
+      fireEvent.change(screen.getByLabelText('Starting (optional)'), { target: { value: '2027-08-01' } });
+      fireEvent.change(screen.getByLabelText('Until (optional)'), { target: { value: '2026-08-01' } });
+    });
+
+    expect(onPlanChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('emits null when the budget window is inverted (start after end)', async () => {
+    const { onPlanChange } = await renderSimulator({ projectionInput });
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '4000' } });
+      fireEvent.change(screen.getByLabelText('Starting (optional)'), { target: { value: '2027-08-01' } });
+      fireEvent.change(screen.getByLabelText('Until (optional)'), { target: { value: '2026-08-01' } });
+    });
+
+    expect(onPlanChange).toHaveBeenLastCalledWith(null);
+  });
+
   it('warns when the window is inverted (start after end)', async () => {
     await renderSimulator({ projectionInput });
 
