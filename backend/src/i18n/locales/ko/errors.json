@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "분할 재정의에는 금액이 필요합니다",
     "dateMustBeYMD": "date는 YYYY-MM-DD 형식이어야 합니다",
     "fxPlainOnly": "다른 통화는 일반 예약 거래에서만 사용할 수 있으며 분할, 이체, 투자에서는 사용할 수 없습니다",
-    "fxRateUnavailable": "{{ date }}에 {{ from }}에서 {{ to }}로의 환율을 사용할 수 없습니다. 게시하려면 금액을 {{ to }}로 입력하세요."
+    "fxRateUnavailable": "{{ date }}에 {{ from }}에서 {{ to }}로의 환율을 사용할 수 없습니다. 게시하려면 금액을 {{ to }}로 입력하세요.",
+    "occurrenceAlreadyPosted": "이 예약 거래의 {{ occurrence }} 회차는 이미 등록되었습니다. 다음 회차를 보려면 새로 고치세요.",
+    "occurrenceRequired": "기재할 회차를 지정해야 합니다. 예약을 새로 고친 후 다시 시도하세요."
   },
   "securities": {
     "exchangeRateUnavailable": "거래일의 {{ from }} -> {{ to }} 환율을 확인할 수 없습니다. 현금 계좌 기록이 정확하도록 명시적인 exchangeRate를 입력하세요.",

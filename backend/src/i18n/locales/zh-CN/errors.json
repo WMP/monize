@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "拆分覆盖需要金额",
     "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式",
     "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
-    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。"
+    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。",
+    "occurrenceAlreadyPosted": "此计划交易 {{ occurrence }} 这一期已记账。请重新加载以查看下一期。",
+    "occurrenceRequired": "必须指明要记账的那一期。请重新加载计划后重试。"
   },
   "securities": {
     "exchangeRateUnavailable": "无法确定交易日 {{ from }} -> {{ to }} 的汇率。请提供明确的 exchangeRate，以便现金账户的记账正确。",

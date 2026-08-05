@@ -55,6 +55,9 @@ export function OverrideEditorDialog({
   const t = useTranslations('scheduledTransactions');
   const tc = useTranslations('common');
   const { formatNumber } = useNumberFormat();
+  /** Locale-formatted price without the trailing zeros a 6dp format adds. */
+  const trimTrailingZeros = (price: number) =>
+    formatNumber(price, 6).replace(/0+$/, '').replace(/\.$/, '');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(overrideDate);
   const [amount, setAmount] = useState<number>(0);
@@ -203,21 +206,53 @@ export function OverrideEditorDialog({
     scheduledTransaction.investmentSecurityId,
   ]);
 
-  // When the market price arrives, overwrite the Price with the latest value
-  // and recompute the total from the existing quantity. Uses the "info from
-  // previous render" pattern to avoid violating react-hooks/set-state-in-effect.
+  /**
+   * Apply the latest market quote to the Price field and recompute the total
+   * from the current quantity.
+   */
+  const applyMarketPrice = (price: number) => {
+    const rounded = Math.round(price * 1_000_000) / 1_000_000;
+    setInvestmentPrice(rounded);
+    if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
+      const commission = Number(scheduledTransaction.investmentCommission ?? 0);
+      const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
+      const total = Number(investmentQuantity) * rounded + sign * commission;
+      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+    }
+  };
+
+  // A price already on record owns the field. Opening the editor to change the
+  // date must not silently replace it with today's quote: a stored 250.00 became
+  // 123.45 on open, so saving an unrelated field changed the transaction by
+  // -126.55 per share without the user ever choosing to. The quote is offered as
+  // an explicit action instead (see the button below).
+  //
+  // "On record" means the occurrence override *or* the base scheduled
+  // transaction. The first version of this guard only checked the override, so a
+  // brand-new date override on a schedule saved at 100.00 still had the quote
+  // applied on open -- the same silent mutation, one path over. The base
+  // schedule's price is stored financial state too: the user entered it, and
+  // this dialog is not where they asked to revalue it.
+  //
+  // Auto-fill therefore survives only where there is genuinely nothing to
+  // protect: no override price and no schedule price, which is the case the
+  // new-scheduled-transaction form is really analogous to.
+  const hasStoredPrice =
+    existingOverride?.investmentPrice != null ||
+    scheduledTransaction.investmentPrice != null;
+
+  // Uses the "info from previous render" pattern to avoid violating
+  // react-hooks/set-state-in-effect.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
-    if (isInvestmentQuantityPrice && marketPrice != null && marketPrice > 0) {
-      const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
-      setInvestmentPrice(rounded);
-      if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
-        const commission = Number(scheduledTransaction.investmentCommission ?? 0);
-        const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
-        const total = Number(investmentQuantity) * rounded + sign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
-      }
+    if (
+      isInvestmentQuantityPrice &&
+      marketPrice != null &&
+      marketPrice > 0 &&
+      !hasStoredPrice
+    ) {
+      applyMarketPrice(marketPrice);
     }
   }
 
@@ -444,12 +479,32 @@ export function OverrideEditorDialog({
                   min={0}
                   placeholder={
                     marketPrice != null
-                      ? `Latest: ${formatNumber(marketPrice, 6).replace(/0+$/, '').replace(/\.$/, '')}`
+                      ? t('overrideEditor.latestPricePlaceholder', {
+                          price: trimTrailingZeros(marketPrice),
+                        })
                       : undefined
                   }
                   value={investmentPrice === '' ? undefined : investmentPrice}
                   onChange={handleInvestmentPriceChange}
                 />
+                {marketPrice != null &&
+                  marketPrice > 0 &&
+                  Number(investmentPrice) !== marketPrice && (
+                    <div className="-mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>
+                        {t('overrideEditor.latestPriceSuggestion', {
+                          price: trimTrailingZeros(marketPrice),
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => applyMarketPrice(marketPrice)}
+                        className="text-blue-600 dark:text-blue-400 hover:underline focus:outline-none focus:underline"
+                      >
+                        {t('overrideEditor.applyLatestPrice')}
+                      </button>
+                    </div>
+                  )}
                 <CurrencyInput
                   label={t('overrideEditor.totalPriceLabel')}
                   prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
@@ -559,16 +614,16 @@ export function OverrideEditorDialog({
         )
         )}
 
-        {/* Description */}
+        {/* Description. `Input`'s own `label` prop wires the label to the field
+            with a matching id; the hand-rolled <label> that used to sit here was
+            associated with nothing, so the field had no accessible name. */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('overrideEditor.descriptionLabel')}
-          </label>
           <Input
+            label={t('overrideEditor.descriptionLabel')}
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Override description..."
+            placeholder={t('overrideEditor.descriptionPlaceholder')}
           />
         </div>
       </div>

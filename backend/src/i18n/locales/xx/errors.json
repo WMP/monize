@@ -368,7 +368,9 @@
     "splitOverrideRequiresAmount": "[XX-Amount is required when creating split override-XX]",
     "overrideNotFound": "[XX-Override with ID {{ overrideId }} not found-XX]",
     "updateSplitOverrideRequiresAmount": "[XX-Amount is required for split override-XX]",
-    "dateMustBeYMD": "[XX-date must be in YYYY-MM-DD format-XX]"
+    "dateMustBeYMD": "[XX-date must be in YYYY-MM-DD format-XX]",
+    "occurrenceAlreadyPosted": "[XX-The {{ occurrence }} occurrence of this scheduled transaction has already been posted. Reload to see the next one.-XX]",
+    "occurrenceRequired": "[XX-The occurrence to post must be named. Reload the schedule and try again.-XX]"
   },
   "securities": {
     "accountMustBeInvestment": "[XX-Account must be of type INVESTMENT-XX]",

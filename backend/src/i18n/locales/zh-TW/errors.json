@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "分割覆蓋需要金額",
     "dateMustBeYMD": "date 必須為 YYYY-MM-DD 格式",
     "fxPlainOnly": "只有一般定期交易才能使用其他貨幣，分割、轉帳和投資均不支援",
-    "fxRateUnavailable": "{{ date }} 沒有從 {{ from }} 到 {{ to }} 的可用匯率。請以 {{ to }} 輸入金額後再過帳。"
+    "fxRateUnavailable": "{{ date }} 沒有從 {{ from }} 到 {{ to }} 的可用匯率。請以 {{ to }} 輸入金額後再過帳。",
+    "occurrenceAlreadyPosted": "此排程交易 {{ occurrence }} 這一期已記帳。請重新載入以查看下一期。",
+    "occurrenceRequired": "必須指明要記帳的那一期。請重新載入排程後再試一次。"
   },
   "securities": {
     "exchangeRateUnavailable": "無法確定交易日 {{ from }} -> {{ to }} 的匯率。請提供明確的 exchangeRate，以便現金帳戶的記帳正確。",

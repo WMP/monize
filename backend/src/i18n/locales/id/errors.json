@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Jumlah diperlukan untuk penggantian terbagi",
     "dateMustBeYMD": "tanggal harus dalam format YYYY-MM-DD",
     "fxPlainOnly": "Mata uang lain hanya dapat dipakai pada transaksi terjadwal biasa, bukan pada transaksi terbagi, transfer, atau investasi",
-    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya."
+    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya.",
+    "occurrenceAlreadyPosted": "Jatuh tempo {{ occurrence }} untuk transaksi terjadwal ini sudah dibukukan. Muat ulang untuk melihat yang berikutnya.",
+    "occurrenceRequired": "Jatuh tempo yang akan dibukukan harus disebutkan. Muat ulang jadwal dan coba lagi."
   },
   "securities": {
     "exchangeRateUnavailable": "Tidak dapat menentukan nilai tukar untuk {{ from }} -> {{ to }} pada tanggal transaksi. Berikan exchangeRate eksplisit agar pencatatan ke akun kas benar.",

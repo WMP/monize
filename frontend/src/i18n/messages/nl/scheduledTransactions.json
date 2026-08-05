@@ -167,7 +167,11 @@
       "quantityRequired": "Hoeveelheid moet groter zijn dan nul",
       "priceRequired": "Koers moet groter zijn dan nul",
       "totalAmountRequired": "Totaalbedrag is verplicht"
-    }
+    },
+    "applyLatestPrice": "Laatste koers toepassen",
+    "descriptionPlaceholder": "Beschrijving van uitzondering...",
+    "latestPricePlaceholder": "Laatste: {price}",
+    "latestPriceSuggestion": "Laatste marktkoers: {price}"
   },
   "form": {
     "tabs": {

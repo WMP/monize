@@ -62,6 +62,7 @@ const MANDATORY_SUITES = [
   "race-emergency-claim.integration.spec.ts",
   "race-refresh-token-revocation.integration.spec.ts",
   "race-account-balance.integration.spec.ts",
+  "race-scheduled-post.integration.spec.ts",
   "race-holdings-rebuild.integration.spec.ts",
   "race-security-transfer.integration.spec.ts",
 ];

@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Bedrag is vereist voor splitsingsoverschrijving",
     "dateMustBeYMD": "datum moet in JJJJ-MM-DD-formaat zijn",
     "fxPlainOnly": "Een andere valuta kan alleen bij een gewone geplande transactie, niet bij een splitsing, overboeking of belegging",
-    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken."
+    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken.",
+    "occurrenceAlreadyPosted": "De termijn van {{ occurrence }} van deze geplande transactie is al geboekt. Herlaad om de volgende te zien.",
+    "occurrenceRequired": "De te boeken termijn moet worden opgegeven. Herlaad het schema en probeer het opnieuw."
   },
   "securities": {
     "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",

@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Bölünmüş geçersiz kılma için tutar gereklidir",
     "dateMustBeYMD": "tarih YYYY-AA-GG biçiminde olmalıdır",
     "fxPlainOnly": "Farklı bir para birimi yalnızca sade bir zamanlanmış işlemde kullanılabilir; bölünmüş işlem, transfer veya yatırımda kullanılamaz",
-    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin."
+    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin.",
+    "occurrenceAlreadyPosted": "Bu planlı işlemin {{ occurrence }} tarihli tekrarı zaten kaydedildi. Sonrakini görmek için sayfayı yenileyin.",
+    "occurrenceRequired": "Kaydedilecek tekrar belirtilmelidir. Planı yenileyip tekrar deneyin."
   },
   "securities": {
     "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",

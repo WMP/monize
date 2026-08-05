@@ -270,9 +270,18 @@ post-commit repair rebuild and a by-id delete respectively mask the defect --
 implying four proofs where there are two is how a suite starts overstating
 itself.
 
-A corollary the fourth Phase 7 review earned, because the fix it answers
+Two corollaries the fourth Phase 7 review earned, because each was a fix that
 reached the callers it could see and stopped at the edge:
 
+- **A fix that migrates the callers is not a fix at the boundary.** Scheduled
+  posting had its occurrence precondition threaded through the cron and both
+  frontend call sites and was *still* unsafe on retry, because the boundary a
+  network retry or a third-party client crosses is the DTO, not those callers.
+  When an invariant must hold for **every** caller, including ones you do not
+  control, enforce it at the boundary -- a required DTO field, a validated type
+  -- not by visiting the call sites you happen to know. `expectedNextDueDate` is
+  required in `PostScheduledTransactionDto` and in the service, and the frontend
+  type requires it too, so no layer can omit it.
 - **A lock has an order, and the order is part of the lock.** Adding `FOR UPDATE`
   to a mutator is half a decision; the other half is the order a caller that
   needs two of them acquires them in. A security transfer took its source lock

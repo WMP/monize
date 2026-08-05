@@ -167,7 +167,11 @@
       "quantityRequired": "Ilość musi być większa od zera",
       "priceRequired": "Cena musi być większa od zera",
       "totalAmountRequired": "Kwota łączna jest wymagana"
-    }
+    },
+    "applyLatestPrice": "Zastosuj najnowszą cenę",
+    "descriptionPlaceholder": "Opis wyjątku...",
+    "latestPricePlaceholder": "Najnowsza: {price}",
+    "latestPriceSuggestion": "Najnowsza cena rynkowa: {price}"
   },
   "form": {
     "tabs": {

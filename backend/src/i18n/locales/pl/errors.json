@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Kwota jest wymagana dla nadpisania podziału",
     "dateMustBeYMD": "date musi być w formacie YYYY-MM-DD",
     "fxPlainOnly": "Innej waluty można użyć tylko w zwykłej zaplanowanej transakcji, a nie w podziale, przelewie ani inwestycji",
-    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować."
+    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować.",
+    "occurrenceAlreadyPosted": "Rata z dnia {{ occurrence }} tej transakcji zaplanowanej została już zaksięgowana. Odśwież, aby zobaczyć następną.",
+    "occurrenceRequired": "Należy wskazać ratę do zaksięgowania. Odśwież harmonogram i spróbuj ponownie."
   },
   "securities": {
     "exchangeRateUnavailable": "Nie można ustalić kursu wymiany dla {{ from }} -> {{ to }} na dzień transakcji. Podaj jawny exchangeRate, aby księgowanie na koncie gotówkowym było poprawne.",

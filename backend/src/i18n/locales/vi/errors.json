@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Số tiền là bắt buộc cho ghi đè chia nhỏ",
     "dateMustBeYMD": "date phải có định dạng YYYY-MM-DD",
     "fxPlainOnly": "Chỉ có thể dùng đơn vị tiền tệ khác trên giao tác theo lịch thông thường, không dùng được cho giao tác chia nhỏ, chuyển tiền hoặc đầu tư",
-    "fxRateUnavailable": "Không có tỷ giá từ {{ from }} sang {{ to }} vào {{ date }}. Hãy nhập số tiền bằng {{ to }} để đăng."
+    "fxRateUnavailable": "Không có tỷ giá từ {{ from }} sang {{ to }} vào {{ date }}. Hãy nhập số tiền bằng {{ to }} để đăng.",
+    "occurrenceAlreadyPosted": "Kỳ {{ occurrence }} của giao dịch định kỳ này đã được ghi nhận. Hãy tải lại để xem kỳ tiếp theo.",
+    "occurrenceRequired": "Phải nêu rõ kỳ cần ghi nhận. Hãy tải lại lịch và thử lại."
   },
   "securities": {
     "exchangeRateUnavailable": "Không thể xác định tỷ giá hối đoái cho {{ from }} -> {{ to }} vào ngày giao dịch. Hãy cung cấp exchangeRate rõ ràng để bút toán vào tài khoản tiền mặt được chính xác.",

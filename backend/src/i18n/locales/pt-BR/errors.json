@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "O valor é obrigatório para substituição de divisão",
     "dateMustBeYMD": "date deve estar no formato YYYY-MM-DD",
     "fxPlainOnly": "Só é possível usar outra moeda em uma transação agendada simples, não em uma divisão, transferência ou investimento",
-    "fxRateUnavailable": "Não há uma taxa de câmbio disponível de {{ from }} para {{ to }} em {{ date }}. Insira o valor em {{ to }} para lançá-la."
+    "fxRateUnavailable": "Não há uma taxa de câmbio disponível de {{ from }} para {{ to }} em {{ date }}. Insira o valor em {{ to }} para lançá-la.",
+    "occurrenceAlreadyPosted": "A ocorrência de {{ occurrence }} desta transação programada já foi lançada. Recarregue para ver a próxima.",
+    "occurrenceRequired": "É preciso indicar a ocorrência a lançar. Recarregue o agendamento e tente de novo."
   },
   "securities": {
     "exchangeRateUnavailable": "Não foi possível determinar uma taxa de câmbio para {{ from }} -> {{ to }} na data da transação. Informe um exchangeRate explícito para que o lançamento na conta de caixa fique correto.",

@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "La cantidad es obligatoria para la modificación de desglose",
     "dateMustBeYMD": "la fecha debe estar en formato YYYY-MM-DD",
     "fxPlainOnly": "Solo se puede usar otra moneda en una transacción planificada simple, no en un desglose, una transferencia ni una inversión",
-    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo."
+    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo.",
+    "occurrenceAlreadyPosted": "El vencimiento del {{ occurrence }} de esta transacción programada ya se ha registrado. Actualiza para ver el siguiente.",
+    "occurrenceRequired": "Hay que indicar el vencimiento que se va a registrar. Actualiza la programación e inténtalo de nuevo."
   },
   "securities": {
     "exchangeRateUnavailable": "No se pudo determinar un tipo de cambio para {{ from }} -> {{ to }} en la fecha de la transacción. Indica un exchangeRate explícito para que el asiento en la cuenta de efectivo sea correcto.",

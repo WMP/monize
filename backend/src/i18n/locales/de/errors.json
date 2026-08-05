@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Betrag ist für Buchungsteil-Überschreibung erforderlich",
     "dateMustBeYMD": "Datum muss im Format YYYY-MM-DD sein",
     "fxPlainOnly": "Eine abweichende Währung ist nur bei einer einfachen terminierten Buchung möglich, nicht bei einer Aufteilung, Überweisung oder Investition",
-    "fxRateUnavailable": "Für {{ from }} zu {{ to }} ist am {{ date }} kein Wechselkurs verfügbar. Geben Sie den Betrag in {{ to }} ein, um ihn zu buchen."
+    "fxRateUnavailable": "Für {{ from }} zu {{ to }} ist am {{ date }} kein Wechselkurs verfügbar. Geben Sie den Betrag in {{ to }} ein, um ihn zu buchen.",
+    "occurrenceAlreadyPosted": "Die Fälligkeit vom {{ occurrence }} dieser geplanten Transaktion wurde bereits gebucht. Laden Sie neu, um die nächste zu sehen.",
+    "occurrenceRequired": "Die zu buchende Fälligkeit muss angegeben werden. Laden Sie den Zeitplan neu und versuchen Sie es erneut."
   },
   "securities": {
     "exchangeRateUnavailable": "Wechselkurs für {{ from }} -> {{ to }} zum Transaktionsdatum konnte nicht ermittelt werden. Geben Sie einen expliziten exchangeRate an, damit die Buchung auf dem Geldkonto korrekt ist.",

@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "L'importo è obbligatorio per la sostituzione suddivisa",
     "dateMustBeYMD": "la data deve essere nel formato YYYY-MM-DD",
     "fxPlainOnly": "Una valuta diversa può essere usata solo su una transazione pianificata semplice, non su una suddivisione, un trasferimento o un investimento",
-    "fxRateUnavailable": "Non è disponibile alcun tasso di cambio da {{ from }} a {{ to }} il {{ date }}. Inserisci l'importo in {{ to }} per registrarla."
+    "fxRateUnavailable": "Non è disponibile alcun tasso di cambio da {{ from }} a {{ to }} il {{ date }}. Inserisci l'importo in {{ to }} per registrarla.",
+    "occurrenceAlreadyPosted": "La scadenza del {{ occurrence }} di questa transazione pianificata è già stata registrata. Ricarica per vedere la prossima.",
+    "occurrenceRequired": "La scadenza da registrare deve essere indicata. Ricarica la pianificazione e riprova."
   },
   "securities": {
     "exchangeRateUnavailable": "Impossibile determinare un tasso di cambio per {{ from }} -> {{ to }} alla data della transazione. Fornisci un exchangeRate esplicito affinché la registrazione sul conto di liquidità sia corretta.",

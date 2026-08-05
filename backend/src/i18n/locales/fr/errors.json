@@ -360,7 +360,9 @@
     "updateSplitOverrideRequiresAmount": "Le montant est requis pour le remplacement fractionné",
     "dateMustBeYMD": "La date doit être au format YYYY-MM-DD",
     "fxPlainOnly": "Une devise différente n'est possible que sur une transaction récurrente simple, pas sur une transaction fractionnée, un virement ou un investissement",
-    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer."
+    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer.",
+    "occurrenceAlreadyPosted": "L'échéance du {{ occurrence }} de cette transaction planifiée a déjà été enregistrée. Rechargez pour voir la suivante.",
+    "occurrenceRequired": "L'échéance à enregistrer doit être précisée. Rechargez la planification et réessayez."
   },
   "securities": {
     "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",
