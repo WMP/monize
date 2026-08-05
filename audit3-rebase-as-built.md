@@ -3,7 +3,7 @@
 Written for the external reviewer that produced the audit-03 findings. Every claim is
 falsifiable against this clone; reproduction commands included.
 
-**Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus nine rounds of response to
+**Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus eleven rounds of response to
 independent review. The branch **is pushed** to `WMP/monize:claude/detailed-error-review-4pbug7`.
 **Seven issues are filed** in `kenlasko/monize`: the four audit-03 items deliberately not fixed
 here — [#1069](https://github.com/kenlasko/monize/issues/1069) (F3RB-001),
@@ -24,12 +24,12 @@ The PR split (Step 3) and PR opening (Step 4) have NOT started; no PR exists for
 | Upstream (`origin`) main used as base | `53764ced517fb9447a4c2bce631136e0825011ef` |
 | Source branch (fork ref, pre-rebase) | `fork/claude/detailed-error-review-4pbug7` = `c841ad9aebb05b616a2d0077fefc707850541344` |
 | Old merge-base | `4e48a76762a07402a5d3bc3f886fcd8e6ff5829b` (52 ahead / 92 behind) |
-| `VERIFIED_TEST_SHA` | `e8bc6e25d336755ac7a7869e23413b84b6018681` — the exact commit §3's totals were produced on. Immutable: if `git rev-parse HEAD` differs, §3 describes an ancestor, not the current tree. |
-| `REPORT_HEAD_SHA` | `e8bc6e25d336755ac7a7869e23413b84b6018681` + this document's own commit. A file cannot name its own hash, so `git log -1 --format=%H` is the authority for that one. |
-| Delta since `VERIFIED_TEST_SHA` | This document's commit alone: `git diff --name-only e8bc6e25d..HEAD` returns `audit3-rebase-as-built.md` and nothing else. The ninth round changed executable files (`restore-processing-gate.ts`, `backup.controller.ts`, a spec), so the totals below were **re-earned on that commit** rather than carried over — which is the point of keeping the two SHAs apart. |
-| Commits over base | 72 at `VERIFIED_TEST_SHA`; 73 at the head that carries this document. `git log --oneline origin/main..HEAD \| wc -l` is the authority. (An earlier row said 71 at the verified SHA -- off by one, and the ninth review caught it.) |
-| Review lineage | `ba0de2e37` (1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 (5) → +localization (6) → `dfc6f05ff` (7+8) → `e8bc6e25d` (9); see §2.7–§2.14 |
-| Commit composition | 52 original commits + the migration renumber, the guard-scope fix, and one commit per review round (§2.7–§2.11). `git log --oneline origin/main..HEAD` is the record. |
+| `VERIFIED_TEST_SHA` | `f8e05e7824fc7e7cea6f0d9b5f506926e8295118` — the exact commit §3's totals were produced on. Immutable: if `git rev-parse HEAD` differs, §3 describes an ancestor, not the current tree. |
+| `REPORT_HEAD_SHA` | `f8e05e7824fc7e7cea6f0d9b5f506926e8295118` + this document's own commit. A file cannot name its own hash, so `git log -1 --format=%H` is the authority for that one. |
+| Delta since `VERIFIED_TEST_SHA` | This document's commit alone: `git diff --name-only f8e05e782..HEAD` returns `audit3-rebase-as-built.md` and nothing else. Rounds nine and eleven both changed executable files, so the totals below were **re-earned on each** rather than carried over — which is the point of keeping the two SHAs apart. |
+| Commits over base | 74 at `VERIFIED_TEST_SHA`; 75 at the head that carries this document. Verify with `git rev-list --count`, not by hand: this row has now been off by one **twice**, both times because a round's own commits were counted before they existed. `git rev-list --count 53764ced..f8e05e782` and `..HEAD` are the two answers. |
+| Review lineage | `ba0de2e37` (1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 (5) → +localization (6) → `dfc6f05ff` (7+8) → `e8bc6e25d` (9) → `f8e05e782` (11); see §2.7–§2.15 |
+| Commit composition | 52 original commits + the migration renumber, the guard-scope fix, and the review-response commits described in §2.7–§2.15. `git log --oneline origin/main..HEAD` is the record. |
 | Net diff vs main | `git diff --stat origin/main..HEAD \| tail -1` — it has grown with each review round, so the command is the answer rather than a number that goes stale. |
 | Worktree | clean (`git status --porcelain` empty apart from untracked local `.claude/` scratch) |
 | Patch-id overlap check | `git cherry origin/main <branch> 4e48a767` → zero `-` lines; no audit-03 commit was already upstream |
@@ -279,7 +279,7 @@ point deferring the source of a statement while correcting its translations stop
 Both docblocks are fixed (§2.11), and the seventh round added the legacy artifact's ownership
 precondition to them (§2.12).
 
-## 3. Verification (all on `VERIFIED_TEST_SHA` = `e8bc6e25d336`)
+## 3. Verification (all on `VERIFIED_TEST_SHA` = `f8e05e7824fc`)
 
 | Check | Result |
 | --- | --- |
@@ -527,13 +527,39 @@ outlived it by several commits. And the restore endpoint documented only 200/401
 `restore-upload-admission` answers 413, 408 and 503 itself; an operator integrating against the
 documented contract could not know the retryable status existed.
 
-**Issue #1073 carries the same false claim** in its DR-F3RB-004 paragraph, because I wrote it from the
-comment. The local draft is corrected and a comment for the published issue is staged at
-`.claude/pending-issues/2026-08-05-comment-1073-correction.md` — publishing it is the owner's step,
-and it matters: the issue is currently the acceptance criteria for measuring this.
+**Issue #1073 still carries the same false claim** in its DR-F3RB-004 paragraph, because I wrote it
+from the comment. The source is fixed; **the published tracker is not**, and an ignored local draft is
+not publication evidence — it is invisible to anyone reading the issue, which is where the acceptance
+criteria for measuring this actually live. The correction text is staged at
+`.claude/pending-issues/2026-08-05-comment-1073-correction.md` (gitignored, so not fetchable from this
+branch); publishing it is the owner's step and this finding stays open until it is visible on #1073.
 
 Also corrected: the commit-count row said 71 at `VERIFIED_TEST_SHA` when that commit is 70 ahead —
 off by one in the very row that exists to be exact.
+
+### 2.15 Eleventh round: the guard that exempted its own file
+
+Two residual items, both documentation describing something the code does not do — and the second is
+the more instructive.
+
+The OpenAPI responses added in round nine were imprecise where it costs an integrator. A payload over
+`BACKUP_RESTORE_EXPANDED_LIMIT` answers **400**, not 413: by then the request body was already inside
+its own limit, so 413 would assert something untrue about the wire size. And the two 503s are
+different conditions — an occupied aggregate upload budget is transient and carries `Retry-After`,
+while zero modeled processing capacity persists until an operator changes configuration and carries
+none. Calling both "retryable" sends a client into a loop against a condition no retry can clear.
+Slot contention with positive capacity queues rather than answering 503, so it left the list.
+
+**The guard I added in round nine to stop this file's prose drifting missed a stale sentence a few
+lines below itself** — "the gate itself still floors capacity at one", the floor F3RB-005 removed. Two
+reasons, both now built into its shape. It scanned only the implementation, exempting the file it
+lives in, which is the blind spot every self-scanning guard has by default. And it matched "at 1"
+while the sentence said "at one": the same claim in the spelling the pattern did not cover. It now
+reads both files and assembles the forbidden phrases from fragments — which is also what stops it
+tripping on its own quotations, the problem that cost two iterations in round nine.
+
+Proven rather than assumed: reintroducing the stale sentence gives 1 failed / 18 passed, and restoring
+it gives 19/19. A guard nobody has watched fail is not evidence.
 
 ## 5. Carried into the PR split as explicit obligations
 
@@ -554,8 +580,10 @@ pre-existing findings. These are not "known issues" to be quietly inherited — 
 
 ## 6. Next steps
 
-**Done:** the rebase, six rounds of review response, the localization pass, and three issues for the
-findings deliberately not fixed here (#1069–#1071).
+**Done:** the rebase, nine review rounds' worth of response (rounds 1–11, two of which re-reported
+already-fixed items), the localization pass, and four upstream trackers for what is deliberately not
+fixed here — #1069, #1070, #1071 and #1073. **#1073 still needs its memory-safety paragraph
+corrected**; see §2.14.
 
 **Not started — the PR split (Step 3) and PR opening (Step 4).** Eight single-concern PRs per
 response-doc §9, titles `03: … (v1.15.0)`, stacked where they share `backend/src/backup/`, opened as
@@ -572,9 +600,12 @@ it is a policy choice the PR that touches retention has to state, so it is an ob
 body (§5) rather than a bug to track. Say so when opening that PR; do not let it read as covered by
 #1073, which is about the queue and the memory constants and says nothing about retention.
 
-**Each round's commits still need pushing:**
-`git push fork claude/detailed-error-review-4pbug7 --force-with-lease` — the agent cannot push or run
-`gh pr create` under this sandbox's policy, so publication is the owner's step throughout.
+**Publication state.** Earlier rounds are on `WMP/monize:claude/detailed-error-review-4pbug7`; later
+ones are not, and rather than restating which, `git log @{u}..HEAD --oneline` prints exactly the
+commits that still need `git push fork claude/detailed-error-review-4pbug7 --force-with-lease`. Note
+that round 7+8 rewrote a published commit, so the push is a force. The agent cannot push or run
+`gh pr create` under this sandbox's policy, so publication is the owner's step throughout — and the
+next unpublished external action is the #1073 correction, not the PR split.
 
 ---
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
