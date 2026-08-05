@@ -155,10 +155,15 @@ export class BackupController {
   })
   @ApiResponse({ status: 200, description: "Data restored successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
-  @ApiResponse({ status: 400, description: "Invalid backup format" })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Invalid backup format, a decompression or JSON failure, or a decompressed payload over BACKUP_RESTORE_EXPANDED_LIMIT -- the expanded ceiling answers 400, not 413, because by then the request body was within its own limit",
+  })
   @ApiResponse({
     status: 413,
-    description: "Backup exceeds the configured upload or expanded size limit",
+    description:
+      "Compressed upload exceeds BACKUP_RESTORE_LIMIT (the wire limit, checked before the body is read)",
   })
   @ApiResponse({
     status: 408,
@@ -168,7 +173,7 @@ export class BackupController {
   @ApiResponse({
     status: 503,
     description:
-      "No memory headroom to process a restore: either too many are already in flight, or this container cannot fit even one (see BACKUP_RESTORE_EXPANDED_LIMIT). Retryable.",
+      "Two different conditions, distinguishable by the header: the aggregate upload budget is occupied, which is transient and carries Retry-After; or modeled processing capacity is zero, which persists until an operator raises the container memory or lowers BACKUP_RESTORE_EXPANDED_LIMIT and carries no Retry-After. Contention for a slot while capacity is positive queues rather than answering 503.",
   })
   async restoreBackup(@Request() req) {
     const body: unknown = req.body;

@@ -182,21 +182,40 @@ describe("computeRestoreProcessingSlots", () => {
   });
 
   /**
-   * The prose half of the same finding, scanned rather than trusted: the docblock
-   * claimed the cap was "robust to the unmeasured multiple" and did not "depend on
-   * the multiple being exact", while the function below it multiplies by exactly
-   * that constant. A comment asserting a property the code lacks is the defect this
-   * audit keeps finding, so this fails on the phrasing returning.
+   * The prose half of the same finding, scanned rather than trusted: a comment
+   * asserting a property the code lacks is the defect this audit keeps finding.
+   *
+   * Two lessons are built into the shape of this guard, both from it failing to do
+   * its job the first time. It scans **this file as well as the implementation** --
+   * the previous version scanned only the source and so missed a stale zero-floor
+   * sentence sitting a few lines below itself, which is the obvious blind spot of a
+   * guard that exempts its own file. And the phrases are **assembled from
+   * fragments**, because the first version tripped on its own quotations of the
+   * wording it forbids; spelling them out means the guard cannot explain what it
+   * rejects.
+   *
+   * Digits and words are both listed: "at 1" and "at one" are the same claim, and
+   * the stale sentence used the spelling the pattern did not.
    */
-  it("does not claim independence from PEAK_MULTIPLE in its own docblock", () => {
-    const source = readFileSync(
-      join(__dirname, "restore-processing-gate.ts"),
-      "utf8",
-    );
-    expect(source).not.toMatch(/robust to the unmeasured multiple/);
-    expect(source).not.toMatch(/does not itself depend on the multiple/);
-    // And the removed floor must not come back as a description of `configure`.
-    expect(source).not.toMatch(/gate itself floors capacity at 1/);
+  it("does not reintroduce a disproved memory or zero-capacity claim", () => {
+    const files = [
+      "restore-processing-gate.ts",
+      "restore-processing-gate.spec.ts",
+    ];
+    const forbidden = [
+      ["robust to the unmeasured", "multiple"].join(" "),
+      ["does not itself depend on", "the multiple"].join(" "),
+      ["gate itself", "floors capacity at 1"].join(" "),
+      ["gate itself", "floors capacity at one"].join(" "),
+      ["gate itself still", "floors capacity at one"].join(" "),
+    ];
+
+    for (const file of files) {
+      const text = readFileSync(join(__dirname, file), "utf8");
+      for (const claim of forbidden) {
+        expect(text).not.toContain(claim);
+      }
+    }
   });
 
   it("serialises when the container limit is unknown", () => {
@@ -227,7 +246,8 @@ describe("computeRestoreProcessingSlots", () => {
   /**
    * F3R7-002 scenario B: a container where one modeled restore does not fit
    * returns 0 -- an honest signal the caller surfaces -- rather than forcing an
-   * unsafe slot. (The gate itself still floors capacity at one.)
+   * unsafe slot. `configure` preserves that zero and `acquire` refuses with a 503
+   * before the work callback runs -- there is no floor left to undo it (F3RB-005).
    */
   it("returns zero when one restore does not fit, rather than forcing one", () => {
     // 256 MiB container, ~96 MiB baseline, 3 * 64 MiB expanded peak = 192 MiB,
