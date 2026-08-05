@@ -156,6 +156,20 @@ export class BackupController {
   @ApiResponse({ status: 200, description: "Data restored successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 400, description: "Invalid backup format" })
+  @ApiResponse({
+    status: 413,
+    description: "Backup exceeds the configured upload or expanded size limit",
+  })
+  @ApiResponse({
+    status: 408,
+    description:
+      "Upload did not arrive within the receive deadline; its memory reservation was released",
+  })
+  @ApiResponse({
+    status: 503,
+    description:
+      "No memory headroom to process a restore: either too many are already in flight, or this container cannot fit even one (see BACKUP_RESTORE_EXPANDED_LIMIT). Retryable.",
+  })
   async restoreBackup(@Request() req) {
     const body: unknown = req.body;
     // CodeQL js/type-confusion-through-parameter-tampering doesn't model

@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ServiceUnavailableException } from "@nestjs/common";
-import { PEAK_MULTIPLE } from "./backup-limits";
+import {
+  PEAK_MULTIPLE,
+  resolveRestoreExpandedLimitBytes,
+  restoreProcessBaselineBytes,
+} from "./backup-limits";
 import {
   RestoreProcessingGate,
   computeRestoreProcessingSlots,
@@ -143,6 +149,54 @@ describe("computeRestoreProcessingSlots", () => {
 
   it("allows more on a much larger container", () => {
     expect(computeRestoreProcessingSlots(8192 * MIB)).toBeGreaterThan(1);
+  });
+
+  /**
+   * DOC-F3RB-R9-001. The gate bounds concurrency; it does not establish that one
+   * restore fits, because every ceiling in the chain is derived by dividing by
+   * `PEAK_MULTIPLE` and so cannot vouch for it. This pins how thin that leaves the
+   * margin, so the number is a test failure rather than a claim in a comment: on
+   * the default pod a *true* multiple only 1.3% above the assumed one puts a single
+   * admitted restore over the container.
+   */
+  it("admits one restore whose real peak can still exceed the container", () => {
+    const container = 400 * MIB;
+    const expanded = resolveRestoreExpandedLimitBytes(undefined, container);
+    const baseline = restoreProcessBaselineBytes(container);
+
+    expect(computeRestoreProcessingSlots(container)).toBe(1);
+
+    // Under the model it fits, and barely -- 4 MiB of 400.
+    const modeled = baseline + PEAK_MULTIPLE * expanded;
+    expect(modeled).toBeLessThanOrEqual(container);
+    expect((container - modeled) / container).toBeLessThan(0.05);
+
+    // The multiple at which one admitted restore stops fitting.
+    const breakEven = (container - baseline) / expanded;
+    expect(breakEven).toBeCloseTo(3.04, 2);
+    expect(breakEven).toBeGreaterThan(PEAK_MULTIPLE);
+
+    // So a workload whose real multiple is 3.1 -- above the documented floor,
+    // below anything the codebase has measured -- OOMs at one slot.
+    expect(baseline + 3.1 * expanded).toBeGreaterThan(container);
+  });
+
+  /**
+   * The prose half of the same finding, scanned rather than trusted: the docblock
+   * claimed the cap was "robust to the unmeasured multiple" and did not "depend on
+   * the multiple being exact", while the function below it multiplies by exactly
+   * that constant. A comment asserting a property the code lacks is the defect this
+   * audit keeps finding, so this fails on the phrasing returning.
+   */
+  it("does not claim independence from PEAK_MULTIPLE in its own docblock", () => {
+    const source = readFileSync(
+      join(__dirname, "restore-processing-gate.ts"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/robust to the unmeasured multiple/);
+    expect(source).not.toMatch(/does not itself depend on the multiple/);
+    // And the removed floor must not come back as a description of `configure`.
+    expect(source).not.toMatch(/gate itself floors capacity at 1/);
   });
 
   it("serialises when the container limit is unknown", () => {

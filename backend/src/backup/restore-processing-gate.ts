@@ -27,10 +27,25 @@ import {
  * finish rather than being admitted beside it. A restore is a rare, deliberate,
  * destructive operation, so serialising it costs a wait, not a feature.
  *
- * The cap is *robust to the unmeasured multiple*: whatever `PEAK_MULTIPLE`'s true
- * value, running one restore at a time is safe as long as one restore fits the
- * pod, and one restore fitting is what the upload/expanded limits already have to
- * guarantee. The gate does not itself depend on the multiple being exact.
+ * **What this gate does not do is prove that one restore fits.** It bounds
+ * concurrency, and only concurrency. An earlier version of this comment called the
+ * cap insensitive to `PEAK_MULTIPLE`'s true value, on the grounds that one restore
+ * fitting was already guaranteed by the upload and expanded limits -- circular, since
+ * `safeDerivedUploadLimit` *is* `container * share / PEAK_MULTIPLE`. Every ceiling in
+ * the chain is derived by dividing by the same unmeasured constant, so none of them
+ * can vouch for it. `computeRestoreProcessingSlots` divides by
+ * `PEAK_MULTIPLE * expandedLimit` directly.
+ *
+ * The margin that leaves is thin and worth stating in numbers. On the default
+ * 400 MiB pod: expanded limit 100 MiB, modeled peak 300 MiB, baseline 96 MiB, so
+ * one slot with 4 MiB spare -- and a *true* multiple above **3.04** puts one
+ * admitted restore over the container. On a 512 MiB or 1 GiB pod the break-even is
+ * 3.20. `PEAK_MULTIPLE = 3` is documented as a defensible floor rather than a
+ * measurement, so the honest reading is that the gate is safe *if that floor holds
+ * for the workload*, and nothing here establishes that it does. Measuring it is
+ * https://github.com/kenlasko/monize/issues/1073; until then an operator whose
+ * restore is OOM-killed at one slot is hitting this, not a bug in the gate, and the
+ * lever is a larger pod or a lower `BACKUP_RESTORE_EXPANDED_LIMIT`.
  *
  * A module singleton rather than an injectable so the service can reach it without
  * threading it through a constructor that a hundred specs build. `configure(...)`
@@ -136,9 +151,15 @@ export class RestoreProcessingGate {
  * Returns the **honest** count, which can be `0`: a configuration where one modeled
  * restore does not fit is a real condition the caller must surface, not paper over
  * by forcing a slot. `1` for an unknown limit -- "cannot tell how big the pod is"
- * reads as "one at a time". The gate itself floors capacity at 1 (a running
- * process must be able to attempt a restore), so a `0` here means "run one, and
- * warn that even one may not fit".
+ * reads as "one at a time".
+ *
+ * A `0` reaches the gate as zero and `acquire` refuses with a 503 (F3RB-005). This
+ * comment used to say the gate raised such a zero back to one, so that a `0` here
+ * meant "run one anyway and warn" -- describing the floor that F3RB-005 removed two
+ * functions above, which it outlived by several commits. Note what the honest zero
+ * means for the 128 and 256 MiB pods: both model a 192 MiB
+ * peak against a 96 MiB baseline and get zero slots, so they refuse every restore
+ * until the operator lowers `BACKUP_RESTORE_EXPANDED_LIMIT` or raises the pod.
  */
 export function computeRestoreProcessingSlots(
   memoryLimitBytes: number | null,
