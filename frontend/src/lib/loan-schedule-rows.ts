@@ -44,12 +44,14 @@ function daysBetween(aKey: string, bKey: string): number {
  */
 export function datesFollowingAGap(dateKeys: string[]): Set<string> {
   const flagged = new Set<string>();
-  const dates = [...dateKeys].sort();
+  const dates = [...new Set(dateKeys)].sort();
   if (dates.length < 3) return flagged;
   const gaps: number[] = [];
   for (let i = 1; i < dates.length; i++) gaps.push(daysBetween(dates[i - 1], dates[i]));
   const sorted = [...gaps].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
+  // Use the lower median for even-length arrays so a single large gap cannot
+  // inflate the threshold above itself and escape detection.
+  const median = sorted[Math.floor((sorted.length - 1) / 2)];
   if (!(median > 0)) return flagged;
   const threshold = median * 1.8;
   for (let i = 1; i < dates.length; i++) {
