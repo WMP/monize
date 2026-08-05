@@ -127,4 +127,36 @@ describe('LoanSummaryCards', () => {
 
     expect(screen.getByText('Paid off')).toBeInTheDocument();
   });
+
+  it('does not report a nonzero sub-cent balance as Paid off', () => {
+    // -0.0099 is nonzero at 4dp precision but was falsely caught by the old
+    // `Math.abs(balance) <= 0.01` threshold. The fix rounds to 4dp before
+    // comparing, so only a balance that is genuinely zero at database precision
+    // triggers the "Paid off" label.
+    render(
+      <LoanSummaryCards
+        account={makeAccount({ currentBalance: -0.0099 })}
+        startingBalance={10000}
+        currentInstallment={500}
+        baseline={null}
+      />,
+    );
+
+    expect(screen.queryByText('Paid off')).not.toBeInTheDocument();
+  });
+
+  it('shows Paid off for a balance that rounds to zero at 4dp', () => {
+    // -0.00004 rounds to 0 when multiplied by 10000 and passed through
+    // Math.round, so it is a genuinely zero balance at database precision.
+    render(
+      <LoanSummaryCards
+        account={makeAccount({ currentBalance: -0.00004 })}
+        startingBalance={10000}
+        currentInstallment={500}
+        baseline={null}
+      />,
+    );
+
+    expect(screen.getByText('Paid off')).toBeInTheDocument();
+  });
 });

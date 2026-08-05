@@ -86,7 +86,7 @@ export function LoanSummaryCards({
     {
       label: t('loanDetail.summary.estPayoff'),
       value:
-        Math.abs(account.currentBalance) <= 0.01
+        Math.round(Math.abs(account.currentBalance) * 10000) === 0
           ? t('loanDetail.summary.paidOff')
           : payoffLabel ?? t('loanDetail.summary.notAvailable'),
       valueClass: 'text-purple-600 dark:text-purple-400',
