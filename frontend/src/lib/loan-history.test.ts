@@ -1599,6 +1599,31 @@ describe('buildLoanProjectionInput', () => {
   });
 });
 
+// REV-20260805-009: source-scan guard
+// toISOString() returns a UTC date string, not a local calendar date. At 8 PM
+// EST (UTC-5), toISOString() gives tomorrow's date. nextPaymentAfterToday
+// parses its `today` argument as a local calendar date via parseLocal, so using
+// a UTC-derived string causes it to skip payments that haven't yet occurred
+// locally. Tests run with TZ=UTC so UTC and local are always the same -- this
+// scan catches the anti-pattern regardless of the test environment's timezone.
+describe('REV-20260805-009: loan-history.ts derives today as a local calendar date', () => {
+  const loanHistorySrc = import.meta.glob('/src/lib/loan-history.ts', {
+    query: '?raw',
+    eager: true,
+    import: 'default',
+  }) as Record<string, string>;
+
+  const src = Object.values(loanHistorySrc)[0] ?? '';
+
+  it('does not compute today via toISOString (which returns UTC, not the local calendar date)', () => {
+    expect(src).not.toMatch(/today\s*=\s*new Date\(\)\.toISOString\(\)/);
+  });
+
+  it('still contains a today variable so the guard cannot trivially pass', () => {
+    expect(src).toMatch(/\btoday\b/);
+  });
+});
+
 // REV-20260803-032: source-scan guard
 // The defect at 5ecc5b964 introduced an `originationDate` variable that dropped
 // grace-period interest expenses booked before the first loan-account transaction.

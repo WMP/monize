@@ -500,7 +500,8 @@ export function buildLoanProjectionInput(
   const isVariableRate = account.isVariableRate || false;
   // The account's scalar rate is already current; only future-dated steps from
   // the rate history bend the projection ahead.
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const futureTimeline = buildRateTimeline(rateChanges, today, account.interestRate!);
   const installment = deriveCurrentInstallment(history, account.paymentAmount!);
   const seededPayment = futureTimeline.startingPaymentAmount ?? installment;
