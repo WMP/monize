@@ -1,8 +1,8 @@
 {
   "conversation_id": null,
-  "fixer_usd_this_session": 29.9117,
-  "last_pass_at": "2026-08-05T00:26:49Z",
-  "last_seen_fix_sha": "4d3e086b4147ff45a448a62b2c152db5a8d17124",
+  "fixer_usd_this_session": 30.2036,
+  "last_pass_at": "2026-08-05T00:31:48Z",
+  "last_seen_fix_sha": "5471356a1c774094cf3078e110a5561ecd66cae8",
   "pr_877_audited": [
     "backend/src/accounts/accounts.service.ts",
     "backend/src/accounts/dto/create-account.dto.ts",
@@ -64,12 +64,20 @@
     "frontend/src/components/reports/LoanOverpaymentSimulatorReport.test.tsx",
     "frontend/src/components/reports/LoanOverpaymentSimulatorReport.tsx",
     "frontend/src/components/transactions/NormalTransactionFields.test.tsx",
+    "frontend/src/components/transactions/SplitEditor.tsx",
+    "frontend/src/components/transactions/SplitTransactionFields.test.tsx",
+    "frontend/src/components/transactions/TransactionFilterPanel.test.tsx",
+    "frontend/src/components/transactions/TransferTransactionFields.test.tsx",
+    "frontend/src/hooks/useInvestmentData.test.tsx",
+    "frontend/src/hooks/useInvestmentData.ts",
+    "frontend/src/lib/loan-past-impact.ts",
     "frontend/src/lib/loan-scenarios.ts",
+    "frontend/src/types/account.ts",
     "frontend/src/types/loan-scenario.ts"
   ],
   "pull_request": 877,
   "pull_request_base": "5e5b4df6ec9c82f1cd31dc855c340af5bfeb3aa5",
-  "pull_request_coverage": "62/72",
+  "pull_request_coverage": "70/72",
   "stop_reason": "error: git fetch --quiet --prune origin +refs/heads/*:refs/remotes/origin/* failed: ",
   "stopped_at": "2026-08-04T21:50:09Z"
 }
