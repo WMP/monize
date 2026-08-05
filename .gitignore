@@ -80,3 +80,9 @@ credentials/
 # Claude Code
 .claude/worktrees/
 .claude/settings.local.json
+# Agent scratch: issue drafts staged for a human to publish, and PR-body drafts.
+# They describe work in this repo but are not part of it, and a `git add -A` on
+# the directory has put them in a commit once already.
+.claude/pending-issues/
+.claude/pr-body-*.md
+.claude/_auto-cmd.sh

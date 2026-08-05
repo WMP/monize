@@ -33,8 +33,12 @@ export const DEFAULT_ATTACHMENT_CONTAINER_DIR = "/data/attachments";
  * `attachment_blobs` (see `appendExternalAttachmentBytes`), and a restore stages
  * it back through this provider. That is what makes a backup restorable onto a
  * fresh instance, and it means this directory does not have to be backed up
- * separately -- artifacts exported before that change do, since they carry only
- * metadata.
+ * separately. An artifact exported before that change carries only metadata, and
+ * restoring one needs more than this store: the bytes are read from the CURRENT
+ * instance and only after it confirms the user already owns a matching
+ * `transaction_attachments` row (same id, provider, size, SHA-256), so on a fresh
+ * instance every external attachment is skipped however faithfully the store was
+ * restored.
  */
 @Injectable()
 export class LocalStorageProvider implements AttachmentStorageProvider {

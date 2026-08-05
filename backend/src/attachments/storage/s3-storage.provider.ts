@@ -24,8 +24,14 @@ import { assertSafeStorageKey } from "./storage-key.util";
  * bytes live outside the database but DO travel in an application backup: the
  * export reads each object and carries it base64-encoded in `attachment_blobs`,
  * and a restore stages it back through this provider -- so the bucket does not
- * have to be backed up separately. Artifacts exported before that change carry
- * only metadata and still depend on the bucket.
+ * have to be backed up separately.
+ *
+ * An artifact exported before that change carries only metadata, and
+ * restoring one needs more than this store: the bytes are read from the CURRENT
+ * instance and only after it confirms the user already owns a matching
+ * `transaction_attachments` row (same id, provider, size, SHA-256), so on a fresh
+ * instance every external attachment is skipped however faithfully the store was
+ * restored.
  */
 @Injectable()
 export class S3StorageProvider implements AttachmentStorageProvider {

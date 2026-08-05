@@ -5,11 +5,16 @@ falsifiable against this clone; reproduction commands included.
 
 **Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus six rounds of response to
 independent review. The branch **is pushed** to `WMP/monize:claude/detailed-error-review-4pbug7`.
-**Six issues are filed** in `kenlasko/monize`: the three audit-03 findings deliberately not fixed
+**Seven issues are filed** in `kenlasko/monize`: the four audit-03 items deliberately not fixed
 here — [#1069](https://github.com/kenlasko/monize/issues/1069) (F3RB-001),
 [#1070](https://github.com/kenlasko/monize/issues/1070) (F3RB-006),
-[#1071](https://github.com/kenlasko/monize/issues/1071) (F3RB-007) — and three adjacent items
-([#1064](https://github.com/kenlasko/monize/issues/1064)–[#1066](https://github.com/kenlasko/monize/issues/1066)).
+[#1071](https://github.com/kenlasko/monize/issues/1071) (F3RB-007),
+[#1073](https://github.com/kenlasko/monize/issues/1073) (DR-F3RB-002..004, the three restore design
+risks) — plus three unrelated items filed the same day
+([#1064](https://github.com/kenlasko/monize/issues/1064) parallel-test DB contention,
+[#1065](https://github.com/kenlasko/monize/issues/1065) RLS opt-in,
+[#1066](https://github.com/kenlasko/monize/issues/1066) OAuth adapter ADR — these do **not** cover the
+restore design risks; see §5).
 The PR split (Step 3) and PR opening (Step 4) have NOT started; no PR exists for this branch.
 
 ## 1. Target facts
@@ -19,20 +24,22 @@ The PR split (Step 3) and PR opening (Step 4) have NOT started; no PR exists for
 | Upstream (`origin`) main used as base | `53764ced517fb9447a4c2bce631136e0825011ef` |
 | Source branch (fork ref, pre-rebase) | `fork/claude/detailed-error-review-4pbug7` = `c841ad9aebb05b616a2d0077fefc707850541344` |
 | Old merge-base | `4e48a76762a07402a5d3bc3f886fcd8e6ff5829b` (52 ahead / 92 behind) |
-| Verified executable-code SHA | The head at the time §3 ran. Every SHA below is superseded whenever a review round lands; resolve the current one with `git rev-parse HEAD` and read §3's totals as belonging to it. |
-| Branch/report head SHA | one commit later: the test-strengthening + this document. A document cannot name its own commit (amending to insert the hash changes the hash), so the branch log is the record for it; `git log --oneline origin/main..HEAD \| head -1` resolves it |
-| Commits over base | 69 at the time of writing, and this document's own commit makes it 70 — a document cannot name its own commit, so `git log --oneline origin/main..HEAD \| wc -l` is the authority, not this row. |
+| `VERIFIED_TEST_SHA` | `26117775eff7df4e92777d234e234002fdf87edb` — the exact commit §3's totals were produced on. Immutable: if `git rev-parse HEAD` differs, §3 describes an ancestor, not the current tree. |
+| `REPORT_HEAD_SHA` | `26117775eff7df4e92777d234e234002fdf87edb` + this document's own commit. A file cannot name its own hash, so `git log -1 --format=%H` is the authority for that one. |
+| Delta since `VERIFIED_TEST_SHA` | One commit, unable to change §3's totals, and this is the check rather than the claim: `git diff --name-only 26117775e..HEAD` returns `.env.example`, `.gitignore`, `audit3-rebase-as-built.md`, and the two attachment-provider files — comment-only hunks in the latter (`git diff 26117775e..HEAD -- backend/src` is entirely `*` lines). Any *other* path appearing there means the totals are stale and the suites have to be rerun. The attachment and backup suites were rerun anyway (25 files, 559 tests, green) because a comment-only claim is worth one cheap check. |
+| Commits over base | 71 at `VERIFIED_TEST_SHA` + this document's commit. `git log --oneline origin/main..HEAD \| wc -l` is the authority. |
 | Review lineage | `ba0de2e37` (review 1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 fixes (5) → +localization (6); see §2.7–§2.11 |
 | Commit composition | 52 original commits + the migration renumber, the guard-scope fix, and one commit per review round (§2.7–§2.11). `git log --oneline origin/main..HEAD` is the record. |
-| Net diff vs main | 92 files, +14819 −1700 |
+| Net diff vs main | `git diff --stat origin/main..HEAD \| tail -1` — it has grown with each review round, so the command is the answer rather than a number that goes stale. |
 | Worktree | clean (`git status --porcelain` empty apart from untracked local `.claude/` scratch) |
 | Patch-id overlap check | `git cherry origin/main <branch> 4e48a767` → zero `-` lines; no audit-03 commit was already upstream |
 
-Reproduce ancestry: `git merge-base --is-ancestor origin/main HEAD` holds. Because six review
-rounds have landed since this section was first written, **every SHA in this document other than the
-base and the pre-rebase source is a historical marker, not the current head** — the branch log is the
-authority. The rows above say so where it matters rather than being restated as fixed numbers that go
-stale on the next commit, which is the defect the third review caught here (DOC-F3RB-R2-001).
+Reproduce ancestry: `git merge-base --is-ancestor origin/main HEAD` holds.
+
+Two SHAs matter and they are deliberately separate. `VERIFIED_TEST_SHA` is immutable and is what §3's
+numbers belong to — an earlier draft said "read the totals as belonging to the current head", which
+would have let a later commit inherit green results it never earned. Every *other* SHA in this
+document is a historical marker from an earlier review round, not the current head.
 
 Related in-flight work the reviewer should know about: the **audit-02 series** (upstream PRs
 #1056–#1063 + local stacked pr/05, pr/06, pr/09) is open but unmerged. Audit-03 was rebased onto
@@ -260,16 +267,19 @@ changes the hash), so §1 now distinguishes the *verified executable-code SHA*, 
 §3 was actually run, from the *branch/report head*, which the branch log resolves. The same
 convention `docs/audit-phase-3-response.md` §9 uses for its own commits.
 
-**DOC-F3RB-R2-002..005 remain open by decision, not by omission** (they were DOC-F3RB-R1-002..005 in
-the previous pass): the two attachment providers still say external bytes are not embedded, the
-partial-artifact comments still overstate retention safety, and the plain-export comments still
-overstate OOM safety. Each is a comment that this branch's own later commits made false, and each
-belongs with the concern that made it false — providers with PR 3 (self-contained artifacts),
-partial-artifact comments with the F3RB-001 issue, plain-export comments with F3RB-006. Correcting
-them in a rebase commit would move them away from the change that explains them. The PR split has
-them on its checklist.
+**DOC-F3RB-R2-004/005 remain open by decision, not by omission** (they were DOC-F3RB-R1-004/005 in
+the previous pass): the partial-artifact comments still overstate retention safety and the
+plain-export comments still overstate OOM safety. Each is a comment that this branch's own later
+commits made false, and each belongs with the concern that made it false — partial-artifact comments
+with the F3RB-001 issue, plain-export comments with F3RB-006. Correcting them in a rebase commit
+would move them away from the change that explains them. The PR split has them on its checklist.
+**DOC-F3RB-R2-002/003 are no longer among them:** the same deferral covered the two attachment
+providers until the sixth round found that same false claim shipped to eighteen locales, at which
+point deferring the source of a statement while correcting its translations stopped making sense.
+Both docblocks are fixed (§2.11), and the seventh round added the legacy artifact's ownership
+precondition to them (§2.12).
 
-## 3. Verification (all on the current head)
+## 3. Verification (all on `VERIFIED_TEST_SHA` = `26117775eff7`)
 
 | Check | Result |
 | --- | --- |
@@ -436,6 +446,52 @@ cryptographic verification was removed without saying that what remains is not a
 Leaving those in place while filing the issues would have been the same defect the audit keeps
 finding — a comment asserting a property the code does not have.
 
+(§2.10 and §2.11 are out of sequence in the file: the fifth/sixth-round section was written before
+this one and inserted above it. The numbers are the rounds; the order in the file is not.)
+
+### 2.12 Seventh round: what a legacy artifact actually needs, and three risks with no issue
+
+**DOC-F3RB-R8-001, fixed.** The sixth round's correction had the modern path right and the legacy
+caveat only half right: it said a pre-`5a578061` artifact needs its sidecar directory or bucket
+restored first, which is true and **not sufficient** — the difference between a necessary and a
+sufficient condition, in a paragraph an operator reads during a database loss. `stageAttachmentObjects`
+reads those bytes from the *current* instance and only after `loadOwnedAttachmentSources` confirms
+this user already owns a `transaction_attachments` row matching the uploaded one on id, provider,
+`byte_size` and `sha256` — because the uploaded file must never decide which objects it may read. On
+a fresh instance no such rows exist, so every external attachment is skipped however faithfully the
+store was restored, and the operator learns this from a `skippedAttachments` count after the
+destructive half has already run. Said plainly now in `.env.example` and both provider docblocks:
+that artifact is restorable only onto an instance that still holds its own attachment metadata, and
+the remedy is to export a fresh self-contained backup before decommissioning the old deployment.
+`docs/backup-restore-contract.md` already carried the full condition — so this was the contract and
+the operator-facing copy disagreeing, which is the failure mode the doc rule exists to catch.
+
+**PROC-F3RB-R8-002, fixed.** The obligations table claimed #1064–#1066 tracked the three restore
+design risks. They do not: those are parallel-test DB contention, RLS being opt-in, and the OAuth
+adapter ADR, all audit-02. A wrong issue link is worse than no link, because a maintainer who opens
+it finds real work and moves on. The three risks are now
+[#1073](https://github.com/kenlasko/monize/issues/1073), filed as one issue because they interact —
+the memory constants set the gate's capacity, the capacity decides who queues, and the queue is what
+an unauthenticated upload occupies.
+
+**PROC-F3RB-R8-001, fixed.** §3's totals were attributed to "the current head", resolved by command.
+That was an overcorrection to the *previous* round's finding (a hard-coded stale SHA) and it landed
+on something worse: a later commit would silently inherit green results it never earned. §1 now
+carries an immutable `VERIFIED_TEST_SHA` plus a delta row whose command names every path changed
+since it, so "nothing that could affect the totals changed" is checkable instead of asserted.
+
+### 2.13 Eighth round: a broken sentence, and the report's last two contradictions
+
+The eighth review confirmed the three fixes above (it read the commit before them, so it re-reported
+two as open — the ownership precondition and the issue misattribution were already in `d4a554778`).
+Its surviving finding was report-internal: DOC-F3RB-R2-002..005 was still listed as open in §2.9
+while §2.11 and the obligations table recorded R2-002/003 as fixed. Narrowed to R2-004/005, with the
+reason the deferral stopped applying.
+
+Found while checking it, and not by the review: the S3 provider docblock read "so the bucket does
+not / separately" — a clause I dropped mid-sentence in the sixth round. Prose in a comment has no
+compiler, which is the argument for keeping the checkable claims in tests and the comments short.
+
 ## 5. Carried into the PR split as explicit obligations
 
 Three independent review passes closed every rebase-seam defect and left a stable set of
@@ -449,17 +505,33 @@ pre-existing findings. These are not "known issues" to be quietly inherited — 
 | F3RB-006 plain export materialises tables and attachment sets | MEDIUM | **Issue [#1070](https://github.com/kenlasko/monize/issues/1070)** — response-doc §7 item 3, "the single highest-value open item"; needs a cursor + the cgroup peak-RSS harness this environment lacks. Both false OOM-safety comments corrected. |
 | F3RB-007 OIDC restore accepts a truthy sentinel | MEDIUM | **Issue [#1071](https://github.com/kenlasko/monize/issues/1071)** — blocked by choice on audit-02 PR #1060, which builds the server-minted artifact; a second minting path here would be a divergent duplicate. Comment now names the defect. |
 | DR-F3RB-001 legacy flat retention deletes unattributable files | MEDIUM risk | PR 5's body must state the chosen policy explicitly rather than folding it into "retention reconciliation". |
-| DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | Issues (response-doc §7 items 2 and 4); [#1064](https://github.com/kenlasko/monize/issues/1064)–[#1066](https://github.com/kenlasko/monize/issues/1066) cover the adjacent items already filed. |
+| DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | **Filed as [#1073](https://github.com/kenlasko/monize/issues/1073)**, one issue for the three because they interact. An earlier version of this row claimed #1064–#1066 covered them; they do not — those are parallel-test DB contention, RLS being opt-in, and the OAuth adapter ADR. |
 | DOC-F3RB-R2-004/005 stale comments (partial safety, plain-export OOM) | Docs | **FIXED** — both corrected in the same commit that cites their issues. |
 | DOC-F3RB-R2-002/003 attachment providers claim bytes are not embedded | Docs | **FIXED** — corrected together with the same false claim in the user-facing skipped-attachment message and in `.env.example` (§2.11). |
 
-## 6. Next steps (not started)
+## 6. Next steps
 
-Split into 8 single-concern PRs per response-doc §9, titles `03: … (v1.15.0)`, stacked where
-they share `backend/src/backup/`; open as drafts (owner runs push/`gh pr create` — sandbox policy
-blocks both for the agent); file the 6 open-item issues from §7 + an i18n tracking issue. The
-owner must first push this rebased branch:
-`git push fork claude/detailed-error-review-4pbug7 --force-with-lease`.
+**Done:** the rebase, six rounds of review response, the localization pass, and three issues for the
+findings deliberately not fixed here (#1069–#1071).
+
+**Not started — the PR split (Step 3) and PR opening (Step 4).** Eight single-concern PRs per
+response-doc §9, titles `03: … (v1.15.0)`, stacked where they share `backend/src/backup/`, opened as
+drafts. Note for whoever writes those bodies: the audit-02 series' PRs all fail the repository's
+`pr-checklist` workflow, which requires a *linked* discussion or issue carrying the
+`approved-to-build` label — prose like "agreed by email" does not satisfy it, and
+`author_association: CONTRIBUTOR` gets no bypass. That has to be solved once, by the maintainer, before
+either series can merge.
+
+**Nothing left to file** from the audit-03 findings: #1069, #1070, #1071 and #1073 cover the four
+items deliberately not fixed on this branch. The one remaining risk without an issue, **DR-F3RB-001**
+(legacy flat-layout retention deleting files it cannot attribute to a user), is deliberately not one:
+it is a policy choice the PR that touches retention has to state, so it is an obligation on PR 5's
+body (§5) rather than a bug to track. Say so when opening that PR; do not let it read as covered by
+#1073, which is about the queue and the memory constants and says nothing about retention.
+
+**Each round's commits still need pushing:**
+`git push fork claude/detailed-error-review-4pbug7 --force-with-lease` — the agent cannot push or run
+`gh pr create` under this sandbox's policy, so publication is the owner's step throughout.
 
 ---
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
