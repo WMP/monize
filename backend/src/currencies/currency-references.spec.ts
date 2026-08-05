@@ -20,9 +20,9 @@ import { CURRENCY_REFERENCE_COLUMNS } from "./currency-reference-columns";
  *
  * All three now go through SQL functions -- `currency_code_in_use_globally`
  * (migration 136) for the global question, `currency_codes_referenced_by_user`
- * (134) for the per-user one. What is left to go wrong is a migration adding a
- * reference and not extending them, so that is checked here against the schema
- * rather than against a list somebody has to remember to update.
+ * (migration 137) for the per-user one. What is left to go wrong is a migration
+ * adding a reference and not extending them, so that is checked here against
+ * the schema rather than against a list somebody has to remember to update.
  */
 
 const SCHEMA_PATH = join(__dirname, "..", "..", "..", "database", "schema.sql");

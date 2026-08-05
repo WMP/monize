@@ -655,6 +655,66 @@ describe("AutoBackupService", () => {
       }
     });
 
+    it("refuses a stored root outside the permitted roots, and probes nothing there (F3RB-R1-001)", async () => {
+      // `updateSettings` only checks a stored folder's syntax unless the same
+      // call enables the schedule, and a deployment upgraded from before
+      // confinement can already hold an arbitrary path. Capability must apply
+      // the same containment the write does -- before touching the filesystem,
+      // or it leaves a probe file outside the approved volume and then reports a
+      // configuration available that `resolveUserFolder` refuses.
+      const outside = mkdtempSync(join(tmpdir(), "monize-capability-outside-"));
+      try {
+        mockSettingsRepo.findOne.mockResolvedValue(
+          createSettings({ folderPath: outside }),
+        );
+
+        const capability = await service.describeCapability(userId);
+
+        expect(capability.available).toBe(false);
+        expect(capability.reason).toContain("outside the permitted roots");
+        // Nothing may be written there, not even a deleted-immediately probe.
+        expect(readdirSync(outside)).toEqual([]);
+      } finally {
+        rmSync(outside, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses a stored root symlinked out of the permitted roots (F3RB-R1-001)", async () => {
+      const outside = mkdtempSync(join(tmpdir(), "monize-capability-target-"));
+      const link = join(root, "stored-escape");
+      try {
+        await fs.symlink(outside, link);
+        mockSettingsRepo.findOne.mockResolvedValue(
+          createSettings({ folderPath: link }),
+        );
+
+        const capability = await service.describeCapability(userId);
+
+        expect(capability.available).toBe(false);
+        expect(readdirSync(outside)).toEqual([]);
+      } finally {
+        rmSync(link, { recursive: true, force: true });
+        rmSync(outside, { recursive: true, force: true });
+      }
+    });
+
+    it("still reports an enabled-but-out-of-policy row as unavailable rather than throwing", async () => {
+      // The admin has to be able to load the page and switch such a schedule
+      // off; capability answering "no" is what the banner needs, not an error.
+      const outside = mkdtempSync(join(tmpdir(), "monize-capability-enabled-"));
+      try {
+        mockSettingsRepo.findOne.mockResolvedValue(
+          createSettings({ enabled: true, folderPath: outside }),
+        );
+
+        await expect(service.describeCapability(userId)).resolves.toMatchObject(
+          { available: false },
+        );
+      } finally {
+        rmSync(outside, { recursive: true, force: true });
+      }
+    });
+
     it("leaves no probe file behind when reporting the capability", async () => {
       await service.describeCapability(userId);
       expect(

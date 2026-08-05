@@ -372,14 +372,23 @@ export class AutoBackupService {
     const settings = await this.scoped(AutoBackupSettings, (repo) =>
       repo.findOne({ where: { userId } }),
     );
-    const root = this.resolveFolderPath(settings?.folderPath);
+    const configured = this.resolveFolderPath(settings?.folderPath);
     try {
+      // Containment BEFORE the write probe, and through the same predicate the
+      // real write uses (F3RB-R1-001). `updateSettings` only validates a stored
+      // folder's syntax unless the same call enables the schedule, and a
+      // deployment upgraded from before confinement can already hold an
+      // arbitrary path -- so a stored root may be outside BACKUP_ALLOWED_ROOTS.
+      // Probing it first would create and delete a `.monize-write-test-*` file
+      // outside the approved volume and then report a configuration available
+      // that `resolveUserFolder` refuses.
+      const root = await this.assertAllowedRoot(configured);
       await this.assertFolderWritable(root);
       return { available: true, folderPath: root };
     } catch (error) {
       return {
         available: false,
-        folderPath: root,
+        folderPath: configured,
         reason: error instanceof Error ? error.message : String(error),
       };
     }
