@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { promises as fs } from "fs";
 import { dirname, resolve, sep } from "path";
 import { tr } from "../../i18n/translate";
-import { isShardableId, shardedSegments } from "../../common/shard-path.util";
+import { shardedSegments } from "../../common/shard-path.util";
 import { AttachmentStorageProvider } from "./attachment-storage.interface";
 import { writeFileAtomic } from "../../backup/atomic-file";
 import { assertSafeStorageKey } from "./storage-key.util";

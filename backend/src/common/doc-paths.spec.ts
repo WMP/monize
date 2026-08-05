@@ -33,6 +33,9 @@ describe("docs name files that exist", () => {
 
   const SKIP_DIRS = new Set([
     ".git",
+    // Local agent workspace: untracked scratch worktrees and drafts, not
+    // repository content -- CI never has it, a contributor's clone may.
+    ".claude",
     "node_modules",
     "dist",
     "coverage",
