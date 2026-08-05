@@ -316,6 +316,51 @@ remaining open questions for a second pass:
 - [ ] Migration renumber: `136_`/`137_` idempotent, `schema.sql` consistent, no doc still says `133_currency…`.
 - [ ] Cross-series: #1061 vs `atomic-file.ts`; #1063 vs `3f0cd8379`+`4612b039b` (see §1).
 
+### 2.10 Fourth round: two of the five open findings fixed, three filed as issues
+
+The third review's own conclusion was that the rebase-seam work was done and the remainder was
+pre-existing. Reported back, that read as "only documentation changed" — fair for the two commits
+under review, and the prompt for this round: close what can honestly be closed here.
+
+**F3RB-005, fixed.** `computeRestoreProcessingSlots` can honestly return zero and the gate applied
+`Math.max(1, ...)`, so a container in which one modeled restore does not fit still admitted one —
+warning, then an OOM kill mid-restore, during a disaster recovery, and the retry does it again.
+`configure` keeps zero now and `acquire` throws 503 naming the two knobs an operator can turn. The
+constructor floor stays at one deliberately (an unconfigured gate is what every spec inherits).
+Worth recording: `it("never drops below one slot")` asserted the floor as intended, so **the suite
+was pinning the defect** — it had a case for this and the case pointed the wrong way. Replaced with
+the constructor-default case it conflated plus four for the new contract, including that the gate
+serves again after capacity is restored, so the documented remedy is itself tested.
+
+**F3RB-004, fixed.** The streaming path was the hard half: completeness was assessed after the last
+byte, so nothing could be added. It is assessed before the *first* byte now, by reading the two
+attachment tables first inside the same snapshot — which costs no extra memory, because both arrays
+were already retained to the end of the loop for exactly that assessment. The answer travels in
+headers (`X-Backup-Complete` + four counts, CORS-exposed) and in an `-INCOMPLETE` filename, because
+a header is invisible six months later on a disk and a filename is not. The bytes are still sent —
+a partial artifact beats no artifact — but the UI shows a counted error toast, not "downloaded
+successfully". Two doubles were fiction and were fixed rather than worked around: the spec's `res`
+was a bare `PassThrough` (a real express Response always has `setHeader`), and the frontend mocks
+returned a bare `Blob` the client no longer returns.
+
+**F3RB-006 → issue [#1070](https://github.com/kenlasko/monize/issues/1070); F3RB-007 → issue
+[#1071](https://github.com/kenlasko/monize/issues/1071); F3RB-001 → issue
+[#1069](https://github.com/kenlasko/monize/issues/1069).** The reasons are specific, not
+generic caution: F3RB-006 needs a cursor inside the repeatable-read snapshot plus a streaming AEAD
+container for the encrypted path, and its central claim — bounded peak RSS — cannot be verified
+without the cgroup harness this environment does not have. F3RB-007's mechanism is being built in
+audit-02 PR #1060 (`OidcReauthService`); I verified it is absent from this branch and that the local
+step-up service has the same `oidcConfirmed?: boolean` defect, so implementing it here would create
+two divergent cryptographic step-up paths in one repository. F3RB-001 changes on-disk artifact
+naming, which is the maintainer's compatibility call.
+
+**And the comments that claimed otherwise are corrected**, each now naming its issue: the partial
+artifact one read as "a partial cannot displace a complete copy"; the plain export claimed it
+"streams straight through gzip to avoid OOM on very large datasets"; the OIDC sentinel explained why
+cryptographic verification was removed without saying that what remains is not a second factor.
+Leaving those in place while filing the issues would have been the same defect the audit keeps
+finding — a comment asserting a property the code does not have.
+
 ## 5. Carried into the PR split as explicit obligations
 
 Three independent review passes closed every rebase-seam defect and left a stable set of
@@ -323,14 +368,15 @@ pre-existing findings. These are not "known issues" to be quietly inherited — 
 
 | Finding | Severity | Disposition in the split |
 | --- | --- | --- |
-| F3RB-001 partial artifacts share complete filenames and retention slots | HIGH | **Issue** (maintainer decision), draft at `.claude/pending-issues/2026-08-05-f3rb-001-partial-backup-identity.md`. The backup PR body must say it ships only F3R7-001's "skip promotion and retention for this run" half, and must not repeat the comments claiming partials cannot displace complete copies. |
-| F3RB-004 incomplete manual export reports success | MEDIUM | Issue (§7 of the response doc already carries it as open); PR 3's body states the limitation. |
-| F3RB-005 zero-fit restore forced to one slot | MEDIUM | Issue; PR 4's body states that the gate's floor is deliberate-but-unsafe at very small limits. |
-| F3RB-006 plain export materialises tables and attachment sets | MEDIUM | Issue — this is response-doc §7 item 3, "the single highest-value open item". PR 4's body must not describe the plain path as bounded. |
-| F3RB-007 OIDC restore accepts a truthy sentinel | MEDIUM | Issue — response-doc §7 item 1. Note the cross-series overlap: audit-02's PR #1060 builds exactly the purpose-bound step-up machinery this needs, so the issue should reference it as the intended mechanism. |
+| F3RB-001 partial artifacts share complete filenames and retention slots | HIGH | **Issue [#1069](https://github.com/kenlasko/monize/issues/1069)** (maintainer decision: naming change is a compatibility call). Code comment corrected to state the defect and cite it. |
+| F3RB-004 incomplete manual export reports success | MEDIUM | **FIXED** on the branch: completeness assessed before the first byte on both paths, signalled in headers, `-INCOMPLETE` filename, error toast instead of success. |
+| F3RB-005 zero-fit restore forced to one slot | MEDIUM | **FIXED** on the branch: `configure` keeps zero, `acquire` throws 503 naming both knobs. The test that pinned the old floor was replaced. |
+| F3RB-006 plain export materialises tables and attachment sets | MEDIUM | **Issue [#1070](https://github.com/kenlasko/monize/issues/1070)** — response-doc §7 item 3, "the single highest-value open item"; needs a cursor + the cgroup peak-RSS harness this environment lacks. Both false OOM-safety comments corrected. |
+| F3RB-007 OIDC restore accepts a truthy sentinel | MEDIUM | **Issue [#1071](https://github.com/kenlasko/monize/issues/1071)** — blocked by choice on audit-02 PR #1060, which builds the server-minted artifact; a second minting path here would be a divergent duplicate. Comment now names the defect. |
 | DR-F3RB-001 legacy flat retention deletes unattributable files | MEDIUM risk | PR 5's body must state the chosen policy explicitly rather than folding it into "retention reconciliation". |
-| DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | Issues (response-doc §7 items 2 and 4). |
-| DOC-F3RB-R2-002..005 stale comments | Docs | Fixed inside the PR that makes each one false (providers → PR 3; partial → the F3RB-001 issue's reference; plain export → PR 4). |
+| DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | Issues (response-doc §7 items 2 and 4); [#1064](https://github.com/kenlasko/monize/issues/1064)–[#1066](https://github.com/kenlasko/monize/issues/1066) cover the adjacent items already filed. |
+| DOC-F3RB-R2-004/005 stale comments (partial safety, plain-export OOM) | Docs | **FIXED** — both corrected in the same commit that cites their issues. |
+| DOC-F3RB-R2-002/003 attachment providers claim bytes are not embedded | Docs | Still open by decision: they belong with the self-contained-artifact concern (PR 3), which is what made them false. |
 
 ## 6. Next steps (not started)
 
