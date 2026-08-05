@@ -108,7 +108,7 @@ GUCs through `withScopedDb` and the policies compare each row's owner against th
    always resolves, so it cannot fail for a missing role. It has to be permitted, because
    `CREATE FUNCTION` grants `EXECUTE` to `PUBLIC` implicitly -- revoking that anywhere but the
    transaction that created the function leaves a window in which any role can execute a fresh
-   `SECURITY DEFINER` function. `133_currency_global_liveness.sql` is the case. This paragraph used
+   `SECURITY DEFINER` function. `136_currency_global_liveness.sql` is the case. This paragraph used
    to read as an absolute ban while that `REVOKE` was already in the tree, which is a rule nothing
    checked disagreeing with the code it governs.
 
