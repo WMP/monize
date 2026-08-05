@@ -201,13 +201,15 @@
     "title": "Wykorzystanie według konta",
     "empty": "Brak kont kredytowych z ustawionym limitem.",
     "utilization": "Wykorzystanie",
-    "used": "Wykorzystano"
+    "used": "Wykorzystano",
+    "amountUnavailable": "Niedostępne"
   },
   "creditUtilizationTotal": {
     "title": "Całkowite wykorzystanie",
     "empty": "Brak kont kredytowych z ustawionym limitem.",
     "used": "Wykorzystano",
-    "available": "Dostępne"
+    "available": "Dostępne",
+    "ratesUnavailable": "Część kont używa waluty, dla której nie ma zapisanego kursu, więc nie da się ustalić łącznego limitu ani wykorzystanych kwot."
   },
   "sectorWeightings": {
     "title": "Alokacja sektorowa",

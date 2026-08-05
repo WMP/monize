@@ -23,6 +23,7 @@ import { RealizedGainEntry } from '@/types/investment';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
@@ -71,6 +72,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-realized-gains-accounts';
 export function RealizedGainsReport() {
   const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const { notAvailableShort } = useMoneyDisplay();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -99,17 +101,20 @@ export function RealizedGainsReport() {
   // Backend returns each figure in the holding account's currency. Convert to
   // the default currency when viewing All Accounts or several accounts;
   // otherwise (a single account) pass through in its native currency.
-  const toDisplay = useCallback((amount: number, accountCurrencyCode: string | null): number => {
+  const toDisplay = useCallback((amount: number, accountCurrencyCode: string | null): number | null => {
     if (isSingleAccount) return amount;
     return convertToDefault(amount, accountCurrencyCode || defaultCurrency);
   }, [isSingleAccount, defaultCurrency, convertToDefault]);
 
-  const fmtValue = useCallback((value: number): string => {
+  // Accepts an unknown value so a row whose currency has no rate renders the
+  // shared marker rather than a formatted zero.
+  const fmtValue = useCallback((value: number | null): string => {
+    if (value === null) return notAvailableShort;
     if (isForeign) {
       return `${formatCurrencyFull(value, displayCurrency)} ${displayCurrency}`;
     }
     return formatCurrencyFull(value);
-  }, [isForeign, displayCurrency, formatCurrencyFull]);
+  }, [isForeign, displayCurrency, formatCurrencyFull, notAvailableShort]);
 
   // Fetch accounts once on mount
   useEffect(() => {
@@ -156,9 +161,16 @@ export function RealizedGainsReport() {
         map.set(symbol, bucket);
       }
 
-      bucket.totalProceeds += toDisplay(entry.proceeds, entry.accountCurrencyCode);
-      bucket.totalCostBasis += toDisplay(entry.costBasis, entry.accountCurrencyCode);
-      bucket.realizedGain += toDisplay(entry.realizedGain, entry.accountCurrencyCode);
+      // A sale we cannot express in the display currency is left out of the
+      // period bucket rather than added at a fabricated parity, and the count
+      // stays consistent with what was actually summed.
+      const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
+      const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
+      const gain = toDisplay(entry.realizedGain, entry.accountCurrencyCode);
+      if (proceeds === null || costBasis === null || gain === null) return;
+      bucket.totalProceeds += proceeds;
+      bucket.totalCostBasis += costBasis;
+      bucket.realizedGain += gain;
       bucket.transactionCount += 1;
     });
 
@@ -248,19 +260,22 @@ export function RealizedGainsReport() {
       const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
       const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
       const gain = toDisplay(entry.realizedGain, entry.accountCurrencyCode);
-      const returnPct = costBasis !== 0 ? ((gain / costBasis) * 100).toFixed(2) + '%' : '-';
+      const returnPct =
+        costBasis !== null && costBasis !== 0 && gain !== null
+          ? ((gain / costBasis) * 100).toFixed(2) + '%'
+          : '-';
       return [
         entry.symbol || 'N/A',
         format(parseLocalDate(entry.transactionDate), 'yyyy-MM-dd'),
         entry.quantity,
-        proceeds,
-        costBasis,
-        gain,
+        proceeds ?? notAvailableShort,
+        costBasis ?? notAvailableShort,
+        gain ?? notAvailableShort,
         returnPct,
       ];
     });
     return { headers, rows };
-  }, [sortedEntries, toDisplay, t]);
+  }, [sortedEntries, toDisplay, t, notAvailableShort]);
 
   const handleExportCsv = useCallback(() => {
     const { headers, rows } = getExportData();

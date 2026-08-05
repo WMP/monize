@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "परिदृश्य {{ id }} नहीं मिला",
     "scenarioIdsMustBeArray": "scenarioIds एक सरणी होनी चाहिए",
-    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है"
+    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है",
+    "currentPortfolioValueUnavailable": "चयनित खातों का वर्तमान मूल्य निर्धारित नहीं किया जा सका, इसलिए सिमुलेशन उससे शुरू नहीं हो सकता। आमतौर पर इसका अर्थ है कि किसी होल्डिंग का हाल का मूल्य नहीं है या किसी मुद्रा जोड़े की विनिमय दर नहीं है। प्रारंभिक मूल्य मैन्युअल रूप से दर्ज करें, या कीमतें ताज़ा होने पर पुनः प्रयास करें।"
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-MM-DD प्रारूप में होनी चाहिए",

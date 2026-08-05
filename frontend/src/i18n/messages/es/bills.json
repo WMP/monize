@@ -43,7 +43,8 @@
     "summaryEnding": "Final",
     "summaryLowest": "Más bajo",
     "summaryMinBalance": "Saldo mínimo",
-    "allAccounts": "Todas las cuentas"
+    "allAccounts": "Todas las cuentas",
+    "unconvertibleCurrency": "Una de las cuentas seleccionadas usa una moneda sin tipo de cambio registrado, por lo que no se puede calcular el saldo acumulado. Elige una sola cuenta o vuelve a intentarlo cuando se actualicen los tipos."
   },
   "calendar": {
     "days": {

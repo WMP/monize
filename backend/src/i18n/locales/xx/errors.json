@@ -313,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "[XX-Scenario {{ id }} not found-XX]",
     "scenarioIdsMustBeArray": "[XX-scenarioIds must be an array-XX]",
-    "atLeastOneAccountRequired": "[XX-At least one accountId is required-XX]"
+    "atLeastOneAccountRequired": "[XX-At least one accountId is required-XX]",
+    "currentPortfolioValueUnavailable": "[XX-The current value of the selected accounts could not be determined, so the simulation cannot start from it. This usually means a holding has no recent price or a currency pair has no exchange rate. Enter a starting value manually, or try again once prices have refreshed.-XX]"
   },
   "netWorth": {
     "invalidStartDate": "[XX-startDate must be YYYY-MM-DD-XX]",

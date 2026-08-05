@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Không tìm thấy kịch bản {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds phải là một mảng",
-    "atLeastOneAccountRequired": "Cần ít nhất một accountId"
+    "atLeastOneAccountRequired": "Cần ít nhất một accountId",
+    "currentPortfolioValueUnavailable": "Không thể xác định giá trị hiện tại của các tài khoản đã chọn, nên mô phỏng không thể bắt đầu từ giá trị đó. Thường là do một khoản nắm giữ không có giá gần đây hoặc một cặp tiền tệ không có tỷ giá. Hãy nhập giá trị ban đầu thủ công, hoặc thử lại sau khi giá được cập nhật."
   },
   "netWorth": {
     "invalidStartDate": "startDate phải có định dạng YYYY-MM-DD",

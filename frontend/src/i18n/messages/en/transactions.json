@@ -494,7 +494,8 @@
     "noRecent": "No recent transactions.",
     "noRecentForPayee": "No recent transactions for this payee.",
     "noPayee": "(no payee)",
-    "uncategorized": "(uncategorized)"
+    "uncategorized": "(uncategorized)",
+    "loadFailed": "Could not load recent transactions."
   },
   "investmentSplit": {
     "ariaAction": "Investment action",

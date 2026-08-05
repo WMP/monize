@@ -88,7 +88,7 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
   const t = useTranslations('settings.usage');
   const [selectedPeriod, setSelectedPeriod] = useState<number | undefined>(30);
   const [showInHomeCurrency, setShowInHomeCurrency] = useState(true);
-  const { convert } = useExchangeRates();
+  const { convertOrNull } = useExchangeRates();
   const homeCurrency =
     usePreferencesStore((state) => state.preferences?.defaultCurrency) || 'USD';
   const { formatDate } = useDateFormat();
@@ -126,10 +126,20 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
     if (showInHomeCurrency || !hasForeignCurrency) {
       let total = 0;
       for (const [currency, amount] of Object.entries(bucket)) {
-        total += convert(amount, currency, homeCurrency);
+        const converted = convertOrNull(amount, currency, homeCurrency);
+        // No rate for one of the currencies means the home-currency total
+        // cannot be stated. Fall through to the per-currency list, which is
+        // true without needing a rate, rather than printing a total that
+        // silently omits part of the spend.
+        if (converted === null) return perCurrencyList(bucket);
+        total += converted;
       }
       return currencyFormatter(homeCurrency).format(total);
     }
+    return perCurrencyList(bucket);
+  };
+
+  const perCurrencyList = (bucket: Record<string, number>): string => {
     return Object.entries(bucket)
       .filter(([, amount]) => amount > 0)
       .map(([currency, amount]) => currencyFormatter(currency).format(amount))
@@ -142,9 +152,12 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
   ): string => {
     if (cost === null || !costCurrency) return '-';
     if (showInHomeCurrency) {
-      return currencyFormatter(homeCurrency).format(
-        convert(cost, costCurrency, homeCurrency),
-      );
+      const converted = convertOrNull(cost, costCurrency, homeCurrency);
+      // Without a rate, show the original currency rather than the same number
+      // relabelled as the home currency.
+      if (converted !== null) {
+        return currencyFormatter(homeCurrency).format(converted);
+      }
     }
     return currencyFormatter(costCurrency).format(cost);
   };

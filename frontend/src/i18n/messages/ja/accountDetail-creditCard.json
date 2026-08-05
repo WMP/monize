@@ -71,7 +71,8 @@
     "toastRecorded": "支払いを記録しました",
     "toastScheduled": "毎月の支払いを予定しました",
     "toastFailed": "支払いの送信に失敗しました",
-    "fillRequired": "金額、支払元口座、日付を選択してください"
+    "fillRequired": "金額、支払元口座、日付を選択してください",
+    "fundingAccountsLoadFailed": "支払いに使用できる口座を読み込めませんでした。口座がないという意味ではありません。接続が回復してから再試行してください。"
   },
   "loadFailed": "クレジットカードの詳細の読み込みに失敗しました"
 }

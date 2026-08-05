@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "找不到情境 {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds 必須是陣列",
-    "atLeastOneAccountRequired": "至少需要一個 accountId"
+    "atLeastOneAccountRequired": "至少需要一個 accountId",
+    "currentPortfolioValueUnavailable": "無法確定所選帳戶的目前價值，因此模擬無法以該值為起點。通常表示某個持倉沒有近期價格，或某個貨幣對沒有匯率。請手動輸入起始值，或在價格更新後重試。"
   },
   "netWorth": {
     "invalidStartDate": "startDate 必須為 YYYY-MM-DD 格式",

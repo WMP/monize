@@ -494,7 +494,8 @@
     "noRecent": "Không có giao tác gần đây.",
     "noRecentForPayee": "Không có giao tác gần đây cho người nhận này.",
     "noPayee": "(không có người nhận)",
-    "uncategorized": "(chưa phân loại)"
+    "uncategorized": "(chưa phân loại)",
+    "loadFailed": "Không thể tải các giao dịch gần đây."
   },
   "investmentSplit": {
     "ariaAction": "Hành động đầu tư",

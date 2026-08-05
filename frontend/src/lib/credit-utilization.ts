@@ -1,3 +1,4 @@
+import { sumKnown } from './partial-sum';
 import { Account } from '@/types/account';
 import { chartColors } from '@/lib/chart-colors';
 
@@ -27,17 +28,21 @@ export interface CreditUtilizationRow {
   name: string;
   accountType: Account['accountType'];
   currencyCode: string;
-  limit: number;
-  used: number;
-  available: number;
+  // `null` when the account's currency has no rate to the display currency.
+  // Utilization stays a number: it is a ratio of native amounts and needs no
+  // conversion.
+  limit: number | null;
+  used: number | null;
+  available: number | null;
   utilizationPercent: number;
 }
 
 export interface CreditUtilizationTotals {
-  limit: number;
-  used: number;
-  available: number;
-  utilizationPercent: number;
+  limit: number | null;
+  used: number | null;
+  available: number | null;
+  /** `null` when the converted limit is unknown, so no ratio can be stated. */
+  utilizationPercent: number | null;
 }
 
 /**
@@ -47,7 +52,7 @@ export interface CreditUtilizationTotals {
  */
 export function computeCreditRows(
   accounts: Account[],
-  convert: (value: number, from: string, to: string) => number,
+  convert: (value: number, from: string, to: string) => number | null,
   displayCurrency: string,
 ): CreditUtilizationRow[] {
   return accounts.map((account) => {
@@ -71,13 +76,17 @@ export function computeCreditRows(
 export function computeCreditTotals(
   rows: CreditUtilizationRow[],
 ): CreditUtilizationTotals {
-  const limit = rows.reduce((sum, r) => sum + r.limit, 0);
-  const used = rows.reduce((sum, r) => sum + r.used, 0);
-  const available = rows.reduce((sum, r) => sum + r.available, 0);
+  // One account we cannot convert makes each total unknown. Summing only the
+  // convertible rows would understate the drawn credit and the limit, and the
+  // ratio between two understatements is not the utilization.
+  const limit = sumKnown(rows.map((r) => r.limit));
+  const used = sumKnown(rows.map((r) => r.used));
+  const available = sumKnown(rows.map((r) => r.available));
   return {
     limit,
     used,
     available,
-    utilizationPercent: limit > 0 ? (used / limit) * 100 : 0,
+    utilizationPercent:
+      limit === null || used === null ? null : limit > 0 ? (used / limit) * 100 : 0,
   };
 }

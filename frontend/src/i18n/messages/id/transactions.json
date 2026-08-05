@@ -494,7 +494,8 @@
     "noRecent": "Tidak ada transaksi terbaru.",
     "noRecentForPayee": "Tidak ada transaksi terbaru untuk penerima ini.",
     "noPayee": "(tidak ada penerima)",
-    "uncategorized": "(belum dikategorikan)"
+    "uncategorized": "(belum dikategorikan)",
+    "loadFailed": "Tidak dapat memuat transaksi terbaru."
   },
   "investmentSplit": {
     "ariaAction": "Aksi investasi",

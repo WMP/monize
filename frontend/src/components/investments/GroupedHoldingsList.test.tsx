@@ -32,7 +32,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
 // USD -> CAD @ 1.35 for tests that exercise cross-currency holdings
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
-    convert: (n: number, from: string, to?: string) => {
+    convertOrNull: (n: number, from: string, to?: string) => {
       if (!to || from === to) return n;
       if (from === 'USD' && to === 'CAD') return n * 1.35;
       if (from === 'CAD' && to === 'USD') return n / 1.35;

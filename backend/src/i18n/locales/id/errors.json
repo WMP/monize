@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Skenario {{ id }} tidak ditemukan",
     "scenarioIdsMustBeArray": "scenarioIds harus berupa array",
-    "atLeastOneAccountRequired": "Diperlukan minimal satu accountId"
+    "atLeastOneAccountRequired": "Diperlukan minimal satu accountId",
+    "currentPortfolioValueUnavailable": "Nilai saat ini dari rekening yang dipilih tidak dapat ditentukan, sehingga simulasi tidak dapat dimulai dari nilai tersebut. Biasanya ini berarti sebuah kepemilikan tidak memiliki harga terbaru atau sebuah pasangan mata uang tidak memiliki kurs. Masukkan nilai awal secara manual, atau coba lagi setelah harga diperbarui."
   },
   "netWorth": {
     "invalidStartDate": "startDate harus dalam format YYYY-MM-DD",

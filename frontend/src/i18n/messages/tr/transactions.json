@@ -494,7 +494,8 @@
     "noRecent": "Son işlem yok.",
     "noRecentForPayee": "Bu alacaklı için son işlem yok.",
     "noPayee": "(alacaklı yok)",
-    "uncategorized": "(kategorisiz)"
+    "uncategorized": "(kategorisiz)",
+    "loadFailed": "Son işlemler yüklenemedi."
   },
   "investmentSplit": {
     "ariaAction": "Yatırım işlemi",

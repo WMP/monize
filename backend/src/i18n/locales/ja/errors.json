@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "シナリオ {{ id }} が見つかりません",
     "scenarioIdsMustBeArray": "scenarioIds は配列でなければなりません",
-    "atLeastOneAccountRequired": "少なくとも1つの accountId が必要です"
+    "atLeastOneAccountRequired": "少なくとも1つの accountId が必要です",
+    "currentPortfolioValueUnavailable": "選択した口座の現在価値を確定できないため、そこからシミュレーションを開始できません。通常は、いずれかの保有銘柄に直近の価格がない、または通貨ペアの為替レートがないことを意味します。開始価値を手動で入力するか、価格を更新してから再試行してください。"
   },
   "netWorth": {
     "invalidStartDate": "startDate は YYYY-MM-DD 形式でなければなりません",

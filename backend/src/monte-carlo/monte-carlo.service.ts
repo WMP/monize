@@ -666,29 +666,55 @@ export class MonteCarloService {
     return yearlyReturns;
   }
 
+  /**
+   * The current value of the selected accounts, for a scenario that asked to
+   * start from it.
+   *
+   * Refuses rather than substituting a number. A simulation seeded with `0`
+   * because the portfolio value was unknown does not fail -- it produces a
+   * confident projection of nothing growing into nothing, which the user reads
+   * as a forecast. The same goes for a lookup that threw: an outage is not a
+   * portfolio worth zero. The caller asked to start from the current balance,
+   * so if that is unknown the honest answer is to say so and let them enter a
+   * starting value.
+   */
   private async computeCurrentValue(
     userId: string,
     accountIds: string[],
   ): Promise<number> {
+    let value: number | null;
     try {
       const summary = await this.portfolioService.getPortfolioSummary(
         userId,
         accountIds,
       );
-      const value = summary.totalPortfolioValue;
-      // NaN serializes to JSON null and would break the frontend form. Floats
-      // with more than 4 decimals fail the DTO's @IsNumber maxDecimalPlaces
-      // check. Clamp non-finite values to 0 and round to 4 decimal places.
-      if (!Number.isFinite(value)) return 0;
-      return roundMoney(value);
+      value = summary.totalPortfolioValue;
     } catch (err) {
       this.logger.warn(
         `Failed to compute current portfolio value for accounts ${accountIds.join(",")}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      return 0;
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.currentPortfolioValueUnavailable",
+          "The current value of the selected accounts could not be determined, so the simulation cannot start from it. This usually means a holding has no recent price or a currency pair has no exchange rate. Enter a starting value manually, or try again once prices have refreshed.",
+        ),
+      );
     }
+
+    // `null` means a total the portfolio could not establish; a non-finite
+    // number would serialize to JSON null and fail the DTO's decimal check.
+    // Neither is a value to simulate from.
+    if (value === null || !Number.isFinite(value)) {
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.currentPortfolioValueUnavailable",
+          "The current value of the selected accounts could not be determined, so the simulation cannot start from it. This usually means a holding has no recent price or a currency pair has no exchange rate. Enter a starting value manually, or try again once prices have refreshed.",
+        ),
+      );
+    }
+    return roundMoney(value);
   }
 }
 

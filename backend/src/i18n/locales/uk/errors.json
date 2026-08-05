@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Сценарій {{ id }} не знайдено",
     "scenarioIdsMustBeArray": "scenarioIds має бути масивом",
-    "atLeastOneAccountRequired": "Необхідний щонайменше один accountId"
+    "atLeastOneAccountRequired": "Необхідний щонайменше один accountId",
+    "currentPortfolioValueUnavailable": "Не вдалося визначити поточну вартість вибраних рахунків, тому симуляція не може від неї починатися. Зазвичай це означає, що якась позиція не має свіжої ціни або валютна пара не має курсу. Вкажіть початкову вартість вручну або повторіть спробу після оновлення цін."
   },
   "netWorth": {
     "invalidStartDate": "startDate має бути у форматі YYYY-MM-DD",

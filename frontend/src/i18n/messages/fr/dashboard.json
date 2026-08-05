@@ -201,13 +201,15 @@
     "title": "Utilisation du crédit par compte",
     "empty": "Aucun compte de crédit avec une limite définie.",
     "utilization": "Utilisation",
-    "used": "Utilisé"
+    "used": "Utilisé",
+    "amountUnavailable": "Non disponible"
   },
   "creditUtilizationTotal": {
     "title": "Utilisation totale du crédit",
     "empty": "Aucun compte de crédit avec une limite définie.",
     "used": "Utilisé",
-    "available": "Disponible"
+    "available": "Disponible",
+    "ratesUnavailable": "Certains comptes utilisent une devise sans taux de change enregistré : la limite globale et les montants utilisés ne peuvent pas être calculés."
   },
   "sectorWeightings": {
     "title": "Répartition sectorielle",

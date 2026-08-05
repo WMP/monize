@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { addKnown } from '@/lib/partial-sum';
 import { SummaryCardGrid, SummaryCardItem } from '@/components/accounts/shared/SummaryCardGrid';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -9,9 +10,12 @@ import type { PayeeDetail } from '@/types/payee';
 
 /** Income/expense totals reduced to the display currency. */
 export interface PayeePeriodTotals {
-  income: number;
-  expenses: number;
-  net: number;
+  // `null` when a contributing currency has no rate to the display currency:
+  // these are headline figures, so a partial sum under them would be a subtotal
+  // wearing a total's name.
+  income: number | null;
+  expenses: number | null;
+  net: number | null;
 }
 
 /** The payee's dominant detected cadence, with its latest and previous amounts. */
@@ -59,8 +63,13 @@ export function PayeeSummaryCards({
   const { stats, payee } = detail;
   const displayCurrency = currencyStrategy.displayCurrency;
 
+  // Unknown totals cannot settle "is this an income payee", so it stays false
+  // (the expense reading) rather than being guessed from a substituted zero.
   const isIncomePayee =
-    lifetimeTotals !== null && lifetimeTotals.income > lifetimeTotals.expenses;
+    lifetimeTotals !== null &&
+    lifetimeTotals.income !== null &&
+    lifetimeTotals.expenses !== null &&
+    lifetimeTotals.income > lifetimeTotals.expenses;
 
   const headlineOf = (totals: PayeePeriodTotals | null) =>
     totals === null ? null : isIncomePayee ? totals.income : totals.expenses;
@@ -78,10 +87,12 @@ export function PayeeSummaryCards({
     return t('summary.vsLastYear', { percent: formatSignedPercent(percent) });
   })();
 
-  const averageTransaction =
-    lifetimeTotals !== null && stats.transactionCount > 0
-      ? (lifetimeTotals.income + lifetimeTotals.expenses) / stats.transactionCount
-      : null;
+  const averageTransaction = (() => {
+    if (lifetimeTotals === null || stats.transactionCount <= 0) return null;
+    // Unknown in, unknown out.
+    const combined = addKnown(lifetimeTotals.income, lifetimeTotals.expenses);
+    return combined === null ? null : combined / stats.transactionCount;
+  })();
 
   const firstYear = stats.firstTransactionDate?.slice(0, 4) ?? null;
 

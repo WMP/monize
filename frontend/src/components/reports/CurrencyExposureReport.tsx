@@ -135,6 +135,10 @@ export function CurrencyExposureReport() {
       const currency = h.currencyCode;
       const nativeValue = h.marketValue ?? 0;
       const convertedValue = convertToDefault(nativeValue, currency);
+      // A currency exposure report is precisely about the currencies held, so
+      // one with no rate cannot be shown at a fabricated parity -- it is left out
+      // and every remaining share is measured over what could be converted.
+      if (convertedValue === null) return;
 
       const existing = currencyMap.get(currency) || { nativeValue: 0, convertedValue: 0, count: 0 };
       currencyMap.set(currency, {

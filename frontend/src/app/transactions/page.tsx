@@ -589,8 +589,15 @@ function TransactionsContent() {
 
     const byDate = new Map<string, number>();
     const latestByAccount = new Map<string, { date: string; balance: number; currencyCode: string }>();
+    let unconverted = 0;
     for (const row of dailyBalances) {
       const amount = isSingleCurrency ? row.balance : convertToDefault(row.balance, row.currencyCode);
+      // A currency with no rate is left out of the aggregate rather than added at
+      // a fabricated parity, which would move every point on the chart.
+      if (amount === null) {
+        unconverted += 1;
+        continue;
+      }
       byDate.set(row.date, (byDate.get(row.date) ?? 0) + amount);
 
       const existing = latestByAccount.get(row.accountId);
@@ -608,14 +615,19 @@ function TransactionsContent() {
       .map(([accountId, info]) => ({
         accountId,
         accountName: accountNameById.get(accountId) ?? 'Unknown',
-        balance: isSingleCurrency ? info.balance : convertToDefault(info.balance, info.currencyCode),
+        balance: isSingleCurrency
+          ? info.balance
+          : convertToDefault(info.balance, info.currencyCode),
       }))
+      // An account we cannot express in the chart's currency is omitted rather
+      // than drawn as a bar of a made-up size.
+      .filter((a): a is typeof a & { balance: number } => a.balance !== null)
       // Hide zero-balance accounts -- they add no information to the chart.
       // Compare at 4-decimal precision to match decimal(20,4) storage.
       .filter((a) => Math.round(a.balance * 10000) !== 0)
       .sort((a, b) => b.balance - a.balance);
 
-    return { chartBalances: aggregated, chartCurrency: displayCurrency, accountBalances: perAccount, accountCount: latestByAccount.size };
+    return { chartBalances: aggregated, chartCurrency: displayCurrency, accountBalances: perAccount, accountCount: latestByAccount.size, unconvertedBalances: unconverted };
   }, [dailyBalances, accounts, defaultCurrency, convertToDefault]);
 
   // Label appended to the Monthly Totals download filename so it reflects

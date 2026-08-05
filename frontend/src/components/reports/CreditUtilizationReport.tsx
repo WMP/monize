@@ -18,7 +18,13 @@ import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { accountsApi } from '@/lib/accounts';
 import { Account } from '@/types/account';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import {
+  computeCreditRows,
+  computeCreditTotals,
+  type CreditUtilizationRow,
+} from '@/lib/credit-utilization';
 import { useReportData } from '@/hooks/useReportData';
 import { usePersistedAccountFilter } from '@/hooks/usePersistedAccountFilter';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
@@ -52,19 +58,6 @@ function utilizationColour(percent: number): string {
   return chartColors.income;
 }
 
-interface CreditAccountRow {
-  id: string;
-  name: string;
-  accountType: Account['accountType'];
-  currencyCode: string;
-  /** Amounts in the report's display currency. */
-  limit: number;
-  used: number;
-  available: number;
-  /** Utilization is currency-independent (a ratio of native amounts). */
-  utilizationPercent: number;
-}
-
 /** One slice of the total-utilization donut: drawn vs available credit. */
 interface TotalUtilizationSlice {
   key: 'used' | 'available';
@@ -81,7 +74,8 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-credit-utilization-accounts';
 export function CreditUtilizationReport() {
   const t = useTranslations('reports');
   const { formatCurrency } = useNumberFormat();
-  const { convert, defaultCurrency } = useExchangeRates();
+  const { formatCurrencyOrNa, notAvailableShort } = useMoneyDisplay();
+  const { convertOrNull, defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
 
   const { sortField, sortDirection, handleSort } = useSortableTable<CreditUtilizationSortField>(
@@ -125,38 +119,16 @@ export function CreditUtilizationReport() {
 
   const isConverted = activeAccounts.some((a) => a.currencyCode !== displayCurrency);
 
-  const rows = useMemo<CreditAccountRow[]>(() => {
-    return activeAccounts.map((account) => {
-      const limitNative = Number(account.creditLimit) || 0;
-      // Liability balances are stored negative when money is owed (same
-      // convention as the debt reports); the magnitude is the amount drawn.
-      const usedNative = Math.abs(Number(account.currentBalance) || 0);
-      const availableNative = limitNative - usedNative;
-      const utilizationPercent = limitNative > 0 ? (usedNative / limitNative) * 100 : 0;
-      return {
-        id: account.id,
-        name: account.name,
-        accountType: account.accountType,
-        currencyCode: account.currencyCode,
-        limit: convert(limitNative, account.currencyCode, displayCurrency),
-        used: convert(usedNative, account.currencyCode, displayCurrency),
-        available: convert(availableNative, account.currencyCode, displayCurrency),
-        utilizationPercent,
-      };
-    });
-  }, [activeAccounts, convert, displayCurrency]);
+  // Both of these used to be inline copies of `computeCreditRows` /
+  // `computeCreditTotals` from `@/lib/credit-utilization`, which the dashboard
+  // widgets already call. Two copies of one calculation is how they drift; the
+  // shared pair also carries the unknown-aware totals.
+  const rows = useMemo<CreditUtilizationRow[]>(
+    () => computeCreditRows(activeAccounts, convertOrNull, displayCurrency),
+    [activeAccounts, convertOrNull, displayCurrency],
+  );
 
-  const totals = useMemo(() => {
-    const limit = rows.reduce((sum, r) => sum + r.limit, 0);
-    const used = rows.reduce((sum, r) => sum + r.used, 0);
-    const available = rows.reduce((sum, r) => sum + r.available, 0);
-    return {
-      limit,
-      used,
-      available,
-      utilizationPercent: limit > 0 ? (used / limit) * 100 : 0,
-    };
-  }, [rows]);
+  const totals = useMemo(() => computeCreditTotals(rows), [rows]);
 
   const sortedRows = useMemo(() => {
     const sorted = [...rows];
@@ -202,18 +174,18 @@ export function CreditUtilizationReport() {
     const exportRows = sortedRows.map((r) => [
       r.name,
       accountTypeLabel(r.accountType),
-      formatCurrency(r.limit, displayCurrency),
-      formatCurrency(r.used, displayCurrency),
-      formatCurrency(r.available, displayCurrency),
+      formatCurrencyOrNa(r.limit, displayCurrency),
+      formatCurrencyOrNa(r.used, displayCurrency),
+      formatCurrencyOrNa(r.available, displayCurrency),
       `${r.utilizationPercent.toFixed(1)}%`,
     ]);
     await exportToPdf({
       title: t('creditUtilization.pdfTitle'),
       summaryCards: [
-        { label: t('creditUtilization.totalLimit'), value: formatCurrency(totals.limit, displayCurrency), color: '#2563eb' },
-        { label: t('creditUtilization.totalUsed'), value: formatCurrency(totals.used, displayCurrency), color: '#dc2626' },
-        { label: t('creditUtilization.totalAvailable'), value: formatCurrency(totals.available, displayCurrency), color: '#16a34a' },
-        { label: t('creditUtilization.overallUtilization'), value: `${totals.utilizationPercent.toFixed(1)}%`, color: '#ea580c' },
+        { label: t('creditUtilization.totalLimit'), value: formatCurrencyOrNa(totals.limit, displayCurrency), color: '#2563eb' },
+        { label: t('creditUtilization.totalUsed'), value: formatCurrencyOrNa(totals.used, displayCurrency), color: '#dc2626' },
+        { label: t('creditUtilization.totalAvailable'), value: formatCurrencyOrNa(totals.available, displayCurrency), color: '#16a34a' },
+        { label: t('creditUtilization.overallUtilization'), value: totals.utilizationPercent === null ? notAvailableShort : `${totals.utilizationPercent === null ? notAvailableShort : `${totals.utilizationPercent.toFixed(1)}%`}`, color: '#ea580c' },
       ],
       chartContainer: chartRef.current,
       tableData: { headers, rows: exportRows },
@@ -256,23 +228,34 @@ export function CreditUtilizationReport() {
   // The donut shows drawn credit (coloured by the same thresholds as the bars)
   // against remaining available credit (muted). Available is clamped at zero
   // so an over-limit balance still renders as a fully used pie.
-  const availableForPie = Math.max(totals.available, 0);
-  const totalPieData: TotalUtilizationSlice[] = [
-    {
-      key: 'used',
-      name: t('creditUtilization.tooltipUsed'),
-      value: totals.used,
-      percent: totals.utilizationPercent,
-      color: utilizationColour(totals.utilizationPercent),
-    },
-    {
-      key: 'available',
-      name: t('creditUtilization.tooltipAvailable'),
-      value: availableForPie,
-      percent: totals.limit > 0 ? (availableForPie / totals.limit) * 100 : 0,
-      color: chartColors.grid,
-    },
-  ];
+  //
+  // A donut needs every slice to be a real figure, so when an account's currency
+  // has no rate the ring is not drawn at all: a shape derived from an invented
+  // parity reads as a measured utilization.
+  const totalsUnknown =
+    totals.limit === null ||
+    totals.used === null ||
+    totals.available === null ||
+    totals.utilizationPercent === null;
+  const availableForPie = Math.max(totals.available ?? 0, 0);
+  const totalPieData: TotalUtilizationSlice[] = totalsUnknown
+    ? []
+    : [
+        {
+          key: 'used',
+          name: t('creditUtilization.tooltipUsed'),
+          value: totals.used!,
+          percent: totals.utilizationPercent!,
+          color: utilizationColour(totals.utilizationPercent!),
+        },
+        {
+          key: 'available',
+          name: t('creditUtilization.tooltipAvailable'),
+          value: availableForPie,
+          percent: totals.limit! > 0 ? (availableForPie / totals.limit!) * 100 : 0,
+          color: chartColors.grid,
+        },
+      ];
 
   return (
     <div className="space-y-6">
@@ -294,25 +277,25 @@ export function CreditUtilizationReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('creditUtilization.totalLimit')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {formatCurrency(totals.limit, displayCurrency)}
+            {formatCurrencyOrNa(totals.limit, displayCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('creditUtilization.totalUsed')}</p>
           <p className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">
-            {formatCurrency(totals.used, displayCurrency)}
+            {formatCurrencyOrNa(totals.used, displayCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('creditUtilization.totalAvailable')}</p>
           <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(totals.available, displayCurrency)}
+            {formatCurrencyOrNa(totals.available, displayCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('creditUtilization.overallUtilization')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {totals.utilizationPercent.toFixed(1)}%
+            {totals.utilizationPercent === null ? notAvailableShort : `${totals.utilizationPercent.toFixed(1)}%`}
           </p>
         </div>
       </div>
@@ -352,7 +335,7 @@ export function CreditUtilizationReport() {
                     <Tooltip
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
-                        const row = payload[0].payload as CreditAccountRow;
+                        const row = payload[0].payload as CreditUtilizationRow;
                         return (
                           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{row.name}</p>
@@ -360,10 +343,10 @@ export function CreditUtilizationReport() {
                               {t('creditUtilization.tooltipUtilization')}: {row.utilizationPercent.toFixed(1)}%
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {t('creditUtilization.tooltipUsed')}: {formatCurrency(row.used, displayCurrency)}
+                              {t('creditUtilization.tooltipUsed')}: {formatCurrencyOrNa(row.used, displayCurrency)}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {t('creditUtilization.tooltipAvailable')}: {formatCurrency(row.available, displayCurrency)}
+                              {t('creditUtilization.tooltipAvailable')}: {formatCurrencyOrNa(row.available, displayCurrency)}
                             </p>
                           </div>
                         );
@@ -420,7 +403,7 @@ export function CreditUtilizationReport() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {totals.utilizationPercent.toFixed(1)}%
+                  {totals.utilizationPercent === null ? notAvailableShort : `${totals.utilizationPercent.toFixed(1)}%`}
                 </span>
               </div>
             </div>
@@ -508,13 +491,13 @@ export function CreditUtilizationReport() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.limit, displayCurrency)}
+                    {formatCurrencyOrNa(row.limit, displayCurrency)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.used, displayCurrency)}
+                    {formatCurrencyOrNa(row.used, displayCurrency)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.available, displayCurrency)}
+                    {formatCurrencyOrNa(row.available, displayCurrency)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: utilizationColour(row.utilizationPercent) }}>
                     {row.utilizationPercent.toFixed(1)}%
@@ -528,16 +511,16 @@ export function CreditUtilizationReport() {
                   {t('creditUtilization.total')}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totals.limit, displayCurrency)}
+                  {formatCurrencyOrNa(totals.limit, displayCurrency)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totals.used, displayCurrency)}
+                  {formatCurrencyOrNa(totals.used, displayCurrency)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totals.available, displayCurrency)}
+                  {formatCurrencyOrNa(totals.available, displayCurrency)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
-                  {totals.utilizationPercent.toFixed(1)}%
+                  {totals.utilizationPercent === null ? notAvailableShort : `${totals.utilizationPercent.toFixed(1)}%`}
                 </td>
               </tr>
             </tfoot>

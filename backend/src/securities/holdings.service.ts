@@ -16,6 +16,7 @@ import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { EntityManager, In, LessThanOrEqual, DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Holding } from "./entities/holding.entity";
+import { applyShareAction, movesShares } from "./share-quantity.util";
 import {
   InvestmentTransaction,
   InvestmentAction,
@@ -177,9 +178,8 @@ export class HoldingsService {
           qty -= txQty;
           break;
         case InvestmentAction.SPLIT:
-          if (txQty > 0) {
-            qty *= txQty;
-          }
+          // Ratio: total basis is preserved, only the per-share figure moves.
+          qty = applyShareAction(qty, tx.action, txQty);
           break;
         default:
           // DIVIDEND / INTEREST / CAPITAL_GAIN don't move shares.
@@ -528,25 +528,8 @@ export class HoldingsService {
       const current = balances.get(key) || 0;
       const quantity = Number(tx.quantity) || 0;
 
-      let next = current;
-      switch (tx.action) {
-        case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST:
-        case InvestmentAction.TRANSFER_IN:
-        case InvestmentAction.ADD_SHARES:
-          next = current + quantity;
-          break;
-        case InvestmentAction.SELL:
-        case InvestmentAction.TRANSFER_OUT:
-        case InvestmentAction.REMOVE_SHARES:
-          next = current - quantity;
-          break;
-        case InvestmentAction.SPLIT:
-          next = current * quantity;
-          break;
-        default:
-          continue;
-      }
+      if (!movesShares(tx.action)) continue;
+      const next = applyShareAction(current, tx.action, quantity);
 
       if (next < -0.00000001) {
         const symbol = tx.security?.symbol || "this security";

@@ -174,10 +174,47 @@
     "length": "Code must be exactly 6 digits",
     "digits": "Code must be 6 digits"
   },
-  "monthsShort": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-  "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-  "weekdaysMin": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
-  "weekdaysNarrow": ["S", "M", "T", "W", "T", "F", "S"],
+  "monthsShort": [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ],
+  "weekdaysShort": [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "weekdaysMin": [
+    "Su",
+    "Mo",
+    "Tu",
+    "We",
+    "Th",
+    "Fr",
+    "Sa"
+  ],
+  "weekdaysNarrow": [
+    "S",
+    "M",
+    "T",
+    "W",
+    "T",
+    "F",
+    "S"
+  ],
   "dateFormat": {
     "browserAuto": "Use browser locale (auto-detected as {sample})",
     "custom": "Custom..."
@@ -191,5 +228,8 @@
     "nothingToRedo": "Nothing to redo",
     "cannotRedo": "Cannot redo this action",
     "redoFailed": "Redo failed"
-  }
+  },
+  "notAvailable": "Not available",
+  "notAvailableShort": "n/a",
+  "unconvertedExcluded": "{count, plural, one {# amount was left out: its currency has no exchange rate on file.} other {# amounts were left out: their currencies have no exchange rate on file.}}"
 }

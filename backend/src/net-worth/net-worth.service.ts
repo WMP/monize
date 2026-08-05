@@ -11,11 +11,9 @@ import {
   AccountType,
   AccountSubType,
 } from "../accounts/entities/account.entity";
-import {
-  InvestmentTransaction,
-  InvestmentAction,
-} from "../securities/entities/investment-transaction.entity";
+import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Security } from "../securities/entities/security.entity";
+import { applyShareAction } from "../securities/share-quantity.util";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { convertWithRateLookup } from "../common/currency-conversion.util";
 import { formatDateYMDLocal } from "../common/date-utils";
@@ -1021,20 +1019,10 @@ export class NetWorthService {
             holdingsByAccount.set(acctId, new Map());
           const acctHoldings = holdingsByAccount.get(acctId)!;
 
-          switch (tx.action) {
-            case "BUY":
-            case "REINVEST":
-            case "TRANSFER_IN":
-              acctHoldings.set(secId, (acctHoldings.get(secId) || 0) + qty);
-              break;
-            case "SELL":
-            case "TRANSFER_OUT":
-              acctHoldings.set(secId, (acctHoldings.get(secId) || 0) - qty);
-              break;
-            case "SPLIT":
-              acctHoldings.set(secId, (acctHoldings.get(secId) || 0) + qty);
-              break;
-          }
+          acctHoldings.set(
+            secId,
+            applyShareAction(acctHoldings.get(secId) || 0, tx.action, qty),
+          );
         }
         txIdx++;
       }
@@ -1354,18 +1342,10 @@ export class NetWorthService {
         const secId = tx.security_id;
         const qty = Number(tx.quantity) || 0;
         if (secId) {
-          switch (tx.action) {
-            case "BUY":
-            case "REINVEST":
-            case "TRANSFER_IN":
-            case "SPLIT":
-              holdings.set(secId, (holdings.get(secId) || 0) + qty);
-              break;
-            case "SELL":
-            case "TRANSFER_OUT":
-              holdings.set(secId, (holdings.get(secId) || 0) - qty);
-              break;
-          }
+          holdings.set(
+            secId,
+            applyShareAction(holdings.get(secId) || 0, tx.action, qty),
+          );
         }
         txIdx++;
       }
@@ -1943,20 +1923,10 @@ export class NetWorthService {
         const qty = Number(tx.quantity) || 0;
 
         if (secId) {
-          switch (tx.action) {
-            case InvestmentAction.BUY:
-            case InvestmentAction.REINVEST:
-            case InvestmentAction.TRANSFER_IN:
-              holdings.set(secId, (holdings.get(secId) || 0) + qty);
-              break;
-            case InvestmentAction.SELL:
-            case InvestmentAction.TRANSFER_OUT:
-              holdings.set(secId, (holdings.get(secId) || 0) - qty);
-              break;
-            case InvestmentAction.SPLIT:
-              holdings.set(secId, (holdings.get(secId) || 0) + qty);
-              break;
-          }
+          holdings.set(
+            secId,
+            applyShareAction(holdings.get(secId) || 0, tx.action, qty),
+          );
         }
         txIdx++;
       }

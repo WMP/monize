@@ -201,13 +201,15 @@
     "title": "Mức sử dụng tín dụng theo tài khoản",
     "empty": "Không có tài khoản tín dụng nào được đặt hạn mức.",
     "utilization": "Mức sử dụng",
-    "used": "Đã dùng"
+    "used": "Đã dùng",
+    "amountUnavailable": "Không có sẵn"
   },
   "creditUtilizationTotal": {
     "title": "Tổng mức sử dụng tín dụng",
     "empty": "Không có tài khoản tín dụng nào được đặt hạn mức.",
     "used": "Đã dùng",
-    "available": "Khả dụng"
+    "available": "Khả dụng",
+    "ratesUnavailable": "Một số tài khoản dùng loại tiền chưa có tỷ giá, nên không thể tính tổng hạn mức và số đã sử dụng."
   },
   "sectorWeightings": {
     "title": "Phân bổ ngành",

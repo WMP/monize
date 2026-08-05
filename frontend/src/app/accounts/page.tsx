@@ -10,6 +10,8 @@ import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { AccountList } from '@/components/accounts/AccountList';
 import { AccountFormModal } from '@/components/accounts/AccountFormModal';
 import { accountsApi } from '@/lib/accounts';
+import { subtractKnown } from '@/lib/partial-sum';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { investmentsApi } from '@/lib/investments';
 import { institutionsApi } from '@/lib/institutions';
 import { countLogicalAccounts } from '@/lib/account-utils';
@@ -22,10 +24,13 @@ import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useFormModal } from '@/hooks/useFormModal';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
 import { showErrorToast } from '@/lib/errors';
+import {
+  brokerageMarketValue,
+  buildBrokerageMarketValues,
+} from '@/lib/brokerage-market-value';
 
 const logger = createLogger('Accounts');
 
@@ -46,7 +51,7 @@ function AccountsContent() {
   const formModal = useFormModal<Account>();
   const { openCreate, openEdit } = formModal;
   const { convertToDefault, defaultCurrency } = useExchangeRates();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrencyOrNa } = useMoneyDisplay();
 
   const loadAccounts = useCallback(async () => {
     setIsLoading(true);
@@ -76,32 +81,46 @@ function AccountsContent() {
   // the chat bubble), so refresh the same way as an undo/redo.
   useOnAiAction(loadAccounts);
 
-  // Build a map of brokerage account ID -> market value of holdings only.
-  // Cash balance is tracked separately via the linked INVESTMENT_CASH account
-  // to avoid double-counting in the net worth summary.
-  const brokerageMarketValues = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolioSummary) return map;
-    for (const accountHoldings of portfolioSummary.holdingsByAccount) {
-      map.set(accountHoldings.accountId, accountHoldings.totalMarketValue);
-    }
-    return map;
-  }, [portfolioSummary]);
+  // Brokerage account id -> market value of its holdings, `null` when unknown.
+  // Cash sits in the linked INVESTMENT_CASH account, so counting it here would
+  // double it in the net-worth summary.
+  const brokerageMarketValues = useMemo(
+    () => buildBrokerageMarketValues(accounts, portfolioSummary),
+    [accounts, portfolioSummary],
+  );
 
   const calculateSummary = () => {
     const activeAccounts = accounts.filter((a) => !a.isClosed);
     const liabilityTypes = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
     let totalAssets = 0;
     let totalLiabilities = 0;
+    let assetsKnown = true;
+    let liabilitiesKnown = true;
 
     activeAccounts.forEach((a) => {
       // For brokerage accounts, use portfolio market value instead of currentBalance
       // For other accounts, include future-dated transactions in the balance
       const rawBalance = a.accountSubType === 'INVESTMENT_BROKERAGE'
-        ? (brokerageMarketValues.get(a.id) ?? 0)
+        ? brokerageMarketValue(brokerageMarketValues, a.id)
         : (Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0);
-      // Convert to default currency for accurate aggregation
+      // A brokerage account whose market value is unknown -- a missing quote, a
+      // missing rate, or a portfolio request that failed -- makes the total
+      // unknown. `?? 0` here reported `500.00` as a complete Total Assets for a
+      // user who also held ten shares with no quote.
+      if (rawBalance === null) {
+        if (liabilityTypes.includes(a.accountType)) liabilitiesKnown = false;
+        else assetsKnown = false;
+        return;
+      }
+      // Convert to default currency for accurate aggregation. An account whose
+      // currency has no rate makes the affected total unknown -- adding only the
+      // convertible ones would put a subtotal under a "Total Assets" label.
       const effectiveBalance = convertToDefault(rawBalance, a.currencyCode);
+      if (effectiveBalance === null) {
+        if (liabilityTypes.includes(a.accountType)) liabilitiesKnown = false;
+        else assetsKnown = false;
+        return;
+      }
 
       if (liabilityTypes.includes(a.accountType)) {
         totalLiabilities += Math.abs(effectiveBalance);
@@ -111,8 +130,14 @@ function AccountsContent() {
     });
 
     const accountCount = countLogicalAccounts(activeAccounts);
-    const totalBalance = totalAssets - totalLiabilities;
-    return { totalBalance, totalAssets, totalLiabilities, accountCount };
+    const assets = assetsKnown ? totalAssets : null;
+    const liabilities = liabilitiesKnown ? totalLiabilities : null;
+    return {
+      totalBalance: subtractKnown(assets, liabilities),
+      totalAssets: assets,
+      totalLiabilities: liabilities,
+      accountCount,
+    };
   };
 
   const summary = calculateSummary();
@@ -142,19 +167,19 @@ function AccountsContent() {
           />
           <SummaryCard
             label={t('page.summary.netWorth')}
-            value={formatCurrency(summary.totalBalance, defaultCurrency)}
+            value={formatCurrencyOrNa(summary.totalBalance, defaultCurrency)}
             icon={SummaryIcons.money}
-            valueColor={summary.totalBalance >= 0 ? 'blue' : 'red'}
+            valueColor={(summary.totalBalance ?? 0) >= 0 ? 'blue' : 'red'}
           />
           <SummaryCard
             label={t('page.summary.totalAssets')}
-            value={formatCurrency(summary.totalAssets, defaultCurrency)}
+            value={formatCurrencyOrNa(summary.totalAssets, defaultCurrency)}
             icon={SummaryIcons.checkmark}
             valueColor="green"
           />
           <SummaryCard
             label={t('page.summary.totalLiabilities')}
-            value={formatCurrency(summary.totalLiabilities, defaultCurrency)}
+            value={formatCurrencyOrNa(summary.totalLiabilities, defaultCurrency)}
             icon={SummaryIcons.cross}
             valueColor="red"
           />

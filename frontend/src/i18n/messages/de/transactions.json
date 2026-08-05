@@ -494,7 +494,8 @@
     "noRecent": "Keine aktuellen Buchungen.",
     "noRecentForPayee": "Keine aktuellen Buchungen für diesen Zahlungsempfänger.",
     "noPayee": "(kein Zahlungsempfänger)",
-    "uncategorized": "(nicht kategorisiert)"
+    "uncategorized": "(nicht kategorisiert)",
+    "loadFailed": "Die letzten Transaktionen konnten nicht geladen werden."
   },
   "investmentSplit": {
     "ariaAction": "Investitionsaktion",

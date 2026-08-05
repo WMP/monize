@@ -494,7 +494,8 @@
     "noRecent": "Nessuna transazione recente.",
     "noRecentForPayee": "Nessuna transazione recente per questo beneficiario.",
     "noPayee": "(nessun beneficiario)",
-    "uncategorized": "(non categorizzata)"
+    "uncategorized": "(non categorizzata)",
+    "loadFailed": "Non è stato possibile caricare le transazioni recenti."
   },
   "investmentSplit": {
     "ariaAction": "Azione investimento",

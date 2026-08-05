@@ -201,13 +201,15 @@
     "title": "Hesaba Göre Kredi Kullanımı",
     "empty": "Limit belirlenmiş kredi hesabı yok.",
     "utilization": "Kullanım",
-    "used": "Kullanılan"
+    "used": "Kullanılan",
+    "amountUnavailable": "Kullanılamıyor"
   },
   "creditUtilizationTotal": {
     "title": "Toplam Kredi Kullanımı",
     "empty": "Limit belirlenmiş kredi hesabı yok.",
     "used": "Kullanılan",
-    "available": "Mevcut"
+    "available": "Mevcut",
+    "ratesUnavailable": "Bazı hesaplar kayıtlı döviz kuru bulunmayan bir para birimi kullanıyor; bu nedenle toplam limit ve kullanılan tutarlar hesaplanamıyor."
   },
   "sectorWeightings": {
     "title": "Sektör Dağılımı",

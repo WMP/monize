@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import { useTranslations } from 'next-intl';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { gainLossColor } from '@/lib/format';
 import { Account, AccountType } from '@/types/account';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
@@ -63,14 +64,20 @@ export function buildAccountActions(
   isDeletable: boolean,
   labels: AccountActionLabels,
   handlers: AccountActionHandlers,
-  brokerageMarketValue?: number,
+  brokerageMarketValue?: number | null,
 ): RowAction[] {
   // Brokerage accounts display their holdings' market value rather than the
   // cash `currentBalance` (which is usually zero), so a brokerage with
   // securities must block closure based on that market value instead.
+  //
+  // `null` means the value is not known, and an unknown value is not a zero one:
+  // treating it as zero would offer Close on an account that may still hold
+  // securities. Block closure until it is known.
+  const isBrokerage = account.accountSubType === 'INVESTMENT_BROKERAGE';
   const balanceNonZero =
-    account.accountSubType === 'INVESTMENT_BROKERAGE' && brokerageMarketValue !== undefined
-      ? Math.round(brokerageMarketValue * 10000) !== 0
+    isBrokerage && brokerageMarketValue !== undefined
+      ? brokerageMarketValue === null ||
+        Math.round(brokerageMarketValue * 10000) !== 0
       : Number(account.currentBalance) !== 0;
   // A joint row is another user's account shown natively: the account object
   // itself (edit/close/reopen/delete) and reconciliation stay owner-only. The
@@ -163,11 +170,11 @@ export interface AccountRowProps {
   // Institution the account belongs to (for the brand icon). Undefined for
   // cashflow-only accounts, which render a neutral fallback badge.
   institution?: InstitutionLogoData;
-  brokerageMarketValue: number | undefined;
+  brokerageMarketValue: number | null | undefined;
   defaultCurrency: string;
   formatCurrency: (amount: number | string | null | undefined, currency: string) => string;
   formatCurrencyBase: (value: number, currencyCode?: string) => string;
-  convertToDefault: (value: number, fromCurrency: string) => number;
+  convertToDefault: (value: number, fromCurrency: string) => number | null;
   formatAccountType: (type: AccountType) => string;
   getAccountTypeColor: (type: AccountType) => string;
   actionLabels: AccountActionLabels;
@@ -212,6 +219,7 @@ export const AccountRow = memo(function AccountRow({
   onToggleNetWorthExclusion,
 }: AccountRowProps) {
   const t = useTranslations('accounts');
+  const { notAvailableShort, unknownColorClass } = useMoneyDisplay();
   const actions = buildAccountActions(account, isDeletable, actionLabels, {
     onDetails,
     onEdit,
@@ -347,19 +355,36 @@ export const AccountRow = memo(function AccountRow({
       <td className={`${cellPadding} whitespace-nowrap text-right ${account.isClosed ? 'opacity-50' : ''}`}>
         {account.accountSubType === 'INVESTMENT_BROKERAGE' && brokerageMarketValue !== undefined ? (
           <>
-            <div className="text-sm font-medium text-green-600 dark:text-green-400">
-              {formatCurrency(brokerageMarketValue, account.currencyCode)}
+            <div
+              className={`text-sm font-medium ${
+                brokerageMarketValue === null
+                  ? unknownColorClass
+                  : 'text-green-600 dark:text-green-400'
+              }`}
+            >
+              {/* An unknown market value is marked, not printed as 0.00: a
+                  brokerage row showing a currency-formatted zero is
+                  indistinguishable from an account that really is empty. The
+                  formatter is the injected `formatCurrency` prop, so only the
+                  marker comes from the hook -- routing the known case through the
+                  hook instead would ignore the caller's formatter. */}
+              {brokerageMarketValue === null
+                ? notAvailableShort
+                : formatCurrency(brokerageMarketValue, account.currencyCode)}
             </div>
             {density === 'normal' && (
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {t('row.marketValue')}
               </div>
             )}
-            {density !== 'dense' && account.currencyCode !== defaultCurrency && (
-              <div className="text-xs text-gray-400 dark:text-gray-500">
-                {'\u2248 '}{formatCurrencyBase(convertToDefault(brokerageMarketValue, account.currencyCode), defaultCurrency)}
-              </div>
-            )}
+            {density !== 'dense' &&
+              brokerageMarketValue !== null &&
+              account.currencyCode !== defaultCurrency &&
+              convertToDefault(brokerageMarketValue, account.currencyCode) !== null && (
+                <div className="text-xs text-gray-400 dark:text-gray-500">
+                  {'\u2248 '}{formatCurrencyBase(convertToDefault(brokerageMarketValue, account.currencyCode)!, defaultCurrency)}
+                </div>
+              )}
           </>
         ) : (
           <>
@@ -374,11 +399,13 @@ export const AccountRow = memo(function AccountRow({
                   >
                     {formatCurrency(totalBalance, account.currencyCode)}
                   </div>
-                  {density !== 'dense' && account.currencyCode !== defaultCurrency && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {'\u2248 '}{formatCurrencyBase(convertToDefault(totalBalance, account.currencyCode), defaultCurrency)}
-                    </div>
-                  )}
+                  {density !== 'dense' &&
+                    account.currencyCode !== defaultCurrency &&
+                    convertToDefault(totalBalance, account.currencyCode) !== null && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        {'\u2248 '}{formatCurrencyBase(convertToDefault(totalBalance, account.currencyCode)!, defaultCurrency)}
+                      </div>
+                    )}
                 </>
               );
             })()}

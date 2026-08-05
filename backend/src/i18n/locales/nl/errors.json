@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} niet gevonden",
     "scenarioIdsMustBeArray": "scenarioIds moet een array zijn",
-    "atLeastOneAccountRequired": "Minimaal één accountId is vereist"
+    "atLeastOneAccountRequired": "Minimaal één accountId is vereist",
+    "currentPortfolioValueUnavailable": "De huidige waarde van de geselecteerde rekeningen kon niet worden vastgesteld, dus de simulatie kan daar niet van uitgaan. Meestal betekent dit dat een positie geen recente koers heeft of dat een valutapaar geen wisselkoers heeft. Voer handmatig een startwaarde in, of probeer het opnieuw nadat de koersen zijn bijgewerkt."
   },
   "netWorth": {
     "invalidStartDate": "startDate moet JJJJ-MM-DD zijn",

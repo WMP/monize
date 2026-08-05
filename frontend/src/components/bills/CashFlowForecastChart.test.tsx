@@ -78,6 +78,9 @@ const mockConvertToDefault = vi.fn((amount: number, _currency: string) => amount
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: mockConvertToDefault,
+    // The chart asks whether every contributing account can be converted before
+    // it builds a running balance; the honest default for these fixtures is yes.
+    canConvert: () => true,
     defaultCurrency: 'CAD',
   }),
 }));

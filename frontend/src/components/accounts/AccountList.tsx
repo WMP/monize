@@ -4,6 +4,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Account, AccountType } from '@/types/account';
+import {
+  brokerageMarketValue,
+  type BrokerageMarketValues,
+} from '@/lib/brokerage-market-value';
 import { Institution } from '@/types/institution';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { accountsApi } from '@/lib/accounts';
@@ -91,9 +95,9 @@ const getAccountTypeColor = (type: AccountType) => {
 interface AccountListProps {
   accounts: Account[];
   institutions?: Institution[];
-  brokerageMarketValues?: Map<string, number>;
+  brokerageMarketValues?: BrokerageMarketValues;
   defaultCurrency: string;
-  convertToDefault: (value: number, fromCurrency: string) => number;
+  convertToDefault: (value: number, fromCurrency: string) => number | null;
   onEdit: (account: Account) => void;
   onRefresh: () => void;
 }
@@ -400,10 +404,20 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
       for (const account of groupAccounts) {
         const rawBalance =
           account.accountSubType === 'INVESTMENT_BROKERAGE'
-            ? brokerageMarketValues?.get(account.id) ?? 0
+            ? brokerageMarketValue(brokerageMarketValues, account.id)
             : (Number(account.currentBalance) || 0) +
               (Number(account.futureTransactionsSum) || 0);
+        // A brokerage whose market value is unknown is excluded from its type's
+        // total, the same way an unconvertible currency is -- and for the same
+        // reason: `?? 0` would put a subtotal under a group header that reads as
+        // the whole group.
+        if (rawBalance === null) continue;
         const converted = convertToDefault(rawBalance, account.currencyCode);
+        // An account whose currency has no rate is left out of its type's total
+        // rather than counted at a fabricated parity. `AccountList` shows the
+        // per-type figure as a group header, so an excluded row is visible in the
+        // list beneath it.
+        if (converted === null) continue;
         // Accumulate in 1/10000 units to avoid floating-point drift.
         totalUnits += Math.round(converted * 10000);
       }

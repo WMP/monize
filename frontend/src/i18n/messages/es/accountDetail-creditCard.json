@@ -71,7 +71,8 @@
     "toastRecorded": "Pago registrado",
     "toastScheduled": "Pago mensual programado",
     "toastFailed": "No se pudo enviar el pago",
-    "fillRequired": "Elige un importe, una cuenta de origen y una fecha"
+    "fillRequired": "Elige un importe, una cuenta de origen y una fecha",
+    "fundingAccountsLoadFailed": "No se pudieron cargar las cuentas desde las que puedes pagar. Esto no significa que no tengas ninguna. Vuelve a intentarlo cuando se restablezca la conexión."
   },
   "loadFailed": "No se pudieron cargar los detalles de la tarjeta de crédito"
 }

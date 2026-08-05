@@ -305,7 +305,8 @@
   "monteCarlo": {
     "scenarioNotFound": "{{ id }} senaryosu bulunamadı",
     "scenarioIdsMustBeArray": "scenarioIds bir dizi olmalıdır",
-    "atLeastOneAccountRequired": "En az bir accountId gereklidir"
+    "atLeastOneAccountRequired": "En az bir accountId gereklidir",
+    "currentPortfolioValueUnavailable": "Seçilen hesapların güncel değeri belirlenemedi, bu nedenle simülasyon bu değerden başlatılamaz. Genellikle bir varlığın güncel fiyatı ya da bir para birimi çiftinin döviz kuru bulunmadığı anlamına gelir. Başlangıç değerini elle girin veya fiyatlar yenilendikten sonra tekrar deneyin."
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-AA-GG biçiminde olmalıdır",
