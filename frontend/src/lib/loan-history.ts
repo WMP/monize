@@ -399,11 +399,26 @@ export function deriveCurrentInstallment(
 }
 
 /**
- * The first scheduled payment date strictly after `today`, derived by stepping
- * forward from the loan's configured payment-start date at its payment cadence.
- * Month-end dates are clamped so a Jan-31 loan lands on Feb 28/29, not Mar 3.
+ * The first scheduled payment date strictly after `today`, anchored to the
+ * loan's configured payment-start date and its payment cadence.
+ *
+ * Month-based cadences (monthly/quarterly/yearly) re-derive every occurrence
+ * from the anchor day-of-month rather than stepping from the previous clamped
+ * result: occurrence k is `start + k*interval` months, clamped to that month's
+ * length. So a loan starting January 31 pays Feb 28, then Mar 31, then Apr 30 --
+ * the anchor stays the 31st. Stepping from each clamped occurrence instead
+ * (Jan 31 -> Feb 28 -> Mar 28) ratchets the day down permanently and lands the
+ * wrong side of a late-month rate change. Day-based cadences (weekly, biweekly,
+ * their accelerated variants) add a fixed number of days, and semi-monthly snaps
+ * onto the 1st and 15th; neither has a month end to clamp, so neither can drift.
+ *
+ * `today` must be a local calendar date (`YYYY-MM-DD`) parsed in the same local
+ * calendar as `paymentStartDate` -- never a UTC `toISOString()` slice, which is
+ * a day ahead in western time zones after ~19:00 and would treat a still-future
+ * local payment as already due.
+ *
  * Falls back to one frequency interval after today when no paymentStartDate is
- * configured.
+ * configured (there is no anchor day to advance from).
  */
 function nextPaymentAfterToday(
   paymentStartDate: string | null | undefined,
@@ -417,52 +432,55 @@ function nextPaymentAfterToday(
     const [y, m, d] = iso.split('-').map(Number);
     return new Date(y, m - 1, d);
   };
-  const addMonthsClamped = (d: Date, months: number): Date => {
-    const result = new Date(d.getTime());
-    const day = result.getDate();
-    result.setDate(1);
-    result.setMonth(result.getMonth() + months);
-    const maxDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-    result.setDate(Math.min(day, maxDay));
-    return result;
-  };
-  const step = (d: Date): Date => {
-    switch (frequency) {
-      case 'WEEKLY':
-      case 'ACCELERATED_WEEKLY': {
-        const next = new Date(d.getTime());
-        next.setDate(next.getDate() + 7);
-        return next;
-      }
-      case 'BIWEEKLY':
-      case 'ACCELERATED_BIWEEKLY': {
-        const next = new Date(d.getTime());
-        next.setDate(next.getDate() + 14);
-        return next;
-      }
-      case 'SEMI_MONTHLY': {
-        const next = new Date(d.getTime());
-        if (next.getDate() < 15) {
-          next.setDate(15);
-        } else {
-          next.setMonth(next.getMonth() + 1);
-          next.setDate(1);
-        }
-        return next;
-      }
-      case 'QUARTERLY':
-        return addMonthsClamped(d, 3);
-      case 'YEARLY':
-        return addMonthsClamped(d, 12);
-      case 'MONTHLY':
-      default:
-        return addMonthsClamped(d, 1);
-    }
-  };
   const todayDate = parseLocal(today);
-  let current = parseLocal(paymentStartDate);
+  const start = parseLocal(paymentStartDate);
+
+  // Day-based cadences add a fixed number of days; stepping from the previous
+  // occurrence never drifts because there is no month end to clamp.
+  const fixedDayStep =
+    frequency === 'WEEKLY' || frequency === 'ACCELERATED_WEEKLY'
+      ? 7
+      : frequency === 'BIWEEKLY' || frequency === 'ACCELERATED_BIWEEKLY'
+        ? 14
+        : null;
+  if (fixedDayStep != null) {
+    const current = new Date(start.getTime());
+    while (current <= todayDate) {
+      current.setDate(current.getDate() + fixedDayStep);
+    }
+    return current;
+  }
+
+  // Semi-monthly snaps onto the 1st and 15th (the schedule engine's own
+  // cadence); the target days are fixed, so this cannot drift either.
+  if (frequency === 'SEMI_MONTHLY') {
+    const current = new Date(start.getTime());
+    while (current <= todayDate) {
+      if (current.getDate() < 15) {
+        current.setDate(15);
+      } else {
+        current.setMonth(current.getMonth() + 1, 1);
+      }
+    }
+    return current;
+  }
+
+  // Month-anchored cadences: every occurrence is derived from the anchor day, so
+  // a short month clamps without moving the anchor for the months that follow.
+  const monthsPerInterval =
+    frequency === 'QUARTERLY' ? 3 : frequency === 'YEARLY' ? 12 : 1;
+  const anchorDay = start.getDate();
+  const occurrenceAt = (k: number): Date => {
+    const target = new Date(start.getFullYear(), start.getMonth() + k * monthsPerInterval, 1);
+    const maxDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(anchorDay, maxDay));
+    return target;
+  };
+  let k = 0;
+  let current = occurrenceAt(k);
   while (current <= todayDate) {
-    current = step(current);
+    k += 1;
+    current = occurrenceAt(k);
   }
   return current;
 }

@@ -1597,6 +1597,45 @@ describe('buildLoanProjectionInput', () => {
     expect(first.getMonth()).toBe(1); // February = index 1, not March = 2
     expect(first.getDate()).toBe(28); // clamped from 31 to 28
   });
+
+  it('REV-20260805-009: a Jan-31 anchor still projects Mar 31, not a drifted Mar 28', () => {
+    // The anchor day must be re-applied every month. Stepping from each clamped
+    // occurrence ratchets the day down permanently (Jan 31 -> Feb 28 -> Mar 28)
+    // and lands the wrong side of a late-March rate change. On March 5 the real
+    // next due date for a loan anchored to the 31st is March 31.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 5)); // March 5, 2026
+    const account = makeAccount({
+      paymentStartDate: '2024-01-31',
+      paymentFrequency: 'MONTHLY',
+    });
+    const history = deriveLoanPaymentHistory(account, []);
+    const input = buildLoanProjectionInput(account, history, []);
+    expect(input).not.toBeNull();
+    const first = input!.firstPaymentDate;
+    expect(first.getFullYear()).toBe(2026);
+    expect(first.getMonth()).toBe(2); // March = index 2
+    expect(first.getDate()).toBe(31); // re-derived from the anchor, not drifted to 28
+  });
+
+  it('REV-20260805-009: a Jan-31 quarterly anchor re-clamps per quarter (Jul 31, not Jul 28)', () => {
+    // Same anchor discipline for quarterly cadence. Starting Jan 31, the
+    // quarterly due dates are Jan 31, Apr 30, Jul 31, Oct 31. On June 5 the next
+    // one is Jul 31 -- a drifted stepper would ratchet down to Jul 28.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 5)); // June 5, 2026
+    const account = makeAccount({
+      paymentStartDate: '2024-01-31',
+      paymentFrequency: 'QUARTERLY',
+    });
+    const history = deriveLoanPaymentHistory(account, []);
+    const input = buildLoanProjectionInput(account, history, []);
+    expect(input).not.toBeNull();
+    const first = input!.firstPaymentDate;
+    expect(first.getFullYear()).toBe(2026);
+    expect(first.getMonth()).toBe(6); // July = index 6
+    expect(first.getDate()).toBe(31); // re-derived from the anchor, not drifted to 28
+  });
 });
 
 // REV-20260805-009: source-scan guard
