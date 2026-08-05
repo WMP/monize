@@ -198,6 +198,27 @@ describe("RateChangeInferenceService", () => {
       accountId,
       expect.anything(),
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      undefined,
+    );
+  });
+
+  it("passes the account's interestCategoryId to buildPaymentRecords so split-interest disambiguation uses the configured category (REV-20260804-001)", async () => {
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ interestCategoryId: "cat-interest" }),
+    );
+    setHistory(records, balanceMap);
+
+    await service.detectAndPersist(userId, accountId);
+
+    expect(detector.buildPaymentRecords).toHaveBeenCalledWith(
+      userId,
+      accountId,
+      expect.anything(),
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      "cat-interest",
     );
   });
 
