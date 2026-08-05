@@ -142,14 +142,13 @@ export function computePastImpact(
   // long-amortization mortgage) is not stretched onto the theoretical
   // minimum-payment curve that a fresh PMT over the configured term would draw.
   //
-  // When there is no rate history at all, the timeline has no installment to
-  // recall (REV-20260803-019) -- fall back to the account's own configured
-  // `paymentAmount`, the same real contractual figure the loan detail page
-  // uses to project forward, before reaching for the term-derived PMT. This is
-  // scoped to a genuinely empty rate history: a rate row that explicitly
-  // records a null payment (interest booked separately, so the row would only
-  // capture a principal-only figure) is a *known* absence, not a missing one,
-  // and keeps falling through to the PMT.
+  // When `timeline.startingPaymentAmount` is null -- either because there is
+  // no rate history (REV-20260803-019), or because all initial rate rows have
+  // a null `newPaymentAmount` (null means the payment was not changed at that
+  // step, not that no payment applies) -- fall back to the account's own
+  // configured `paymentAmount`, the same real contractual figure the loan
+  // detail page uses to project forward, before reaching for the term-derived
+  // PMT.
   //
   // Either recorded source is only usable when it exceeds the first period's
   // interest: a stored or history-derived figure at or below that would mean
@@ -162,8 +161,7 @@ export function computePastImpact(
       : null;
   const accountInstallment =
     account.paymentAmount != null && account.paymentAmount > 0 ? account.paymentAmount : null;
-  const recordedInstallment =
-    timeline.startingPaymentAmount ?? (rateChanges.length === 0 ? accountInstallment : null);
+  const recordedInstallment = timeline.startingPaymentAmount ?? accountInstallment;
   const useRecordedInstallment =
     recordedInstallment != null &&
     recordedInstallment >

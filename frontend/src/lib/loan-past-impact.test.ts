@@ -84,6 +84,30 @@ describe('computePastImpact', () => {
     expect(impact!.originalSchedule.numPayments).toBeLessThan(30);
   });
 
+  it('returns a payoff schedule when a null-payment rate row exists but account has an installment (REV-20260805-006)', () => {
+    // Regression for the case the first attempt missed: rate history present,
+    // but the initial row has newPaymentAmount: null (meaning the payment was
+    // not changed at that step). The account's own paymentAmount is the
+    // contractual installment and must be used to build the schedule even
+    // though rateChanges.length > 0.
+    const account = makeAccount({
+      amortizationMonths: null,
+      termMonths: null,
+      paymentAmount: 500,
+    });
+    const history = makeHistory(account, [500]);
+    const rateChanges = [{ effectiveDate: '2025-01-15', annualRate: 6, newPaymentAmount: null }];
+
+    const impact = computePastImpact(account, history, null, rateChanges);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.paidOff).toBe(true);
+    expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(500, 2);
+    // $10,000 at 6% monthly paying $500 amortizes in ~21 payments
+    expect(impact!.originalSchedule.numPayments).toBeGreaterThan(15);
+    expect(impact!.originalSchedule.numPayments).toBeLessThan(30);
+  });
+
   it('ignores principal-only payment steps in the rate history so the schedule completes', () => {
     // An old detect run left a rate row that also set a principal-only payment
     // (285). Applied mid-schedule it cannot cover interest and would stall the
@@ -320,12 +344,11 @@ describe('computePastImpact', () => {
     expect(impact.originalSchedule.numPayments).toBe(reference.numPayments);
   });
 
-  it('falls back to the term when interest is booked separately (no recorded installment)', () => {
-    // The same mortgage, but interest booked separately leaves the rate rows'
-    // payment null (see rate-change inference). With no recorded installment the
-    // contractual schedule uses the PMT over the configured term, exactly as
-    // before -- so loans that relied on that path are unaffected by the
-    // recorded-installment path above.
+  it('uses the account installment when the initial rate row records no payment change', () => {
+    // A rate row with null newPaymentAmount means the payment was not changed
+    // at that step; the account's own paymentAmount (500, the makeAccount
+    // default) is therefore the contractual installment. At 1.75% on $180,000
+    // paying $500/month the loan amortizes over ~511 months -- more than 250.
     const account = makeAccount({
       accountType: 'MORTGAGE',
       originalPrincipal: 180000,
@@ -342,7 +365,7 @@ describe('computePastImpact', () => {
     const impact = computePastImpact(account, history, null, rateChanges)!;
 
     expect(impact.originalSchedule.paidOff).toBe(true);
-    // Amortizes over ~300 months, not the ~59 the recorded installment gives.
+    expect(impact.originalSchedule.rows[0].payment).toBeCloseTo(500, 2);
     expect(impact.originalSchedule.numPayments).toBeGreaterThan(250);
   });
 
