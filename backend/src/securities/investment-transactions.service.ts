@@ -77,11 +77,19 @@ export interface LlmCapitalGainsEntry {
    * should then treat the sums as mixed and avoid currency-specific claims).
    */
   currency: string | null;
-  startValue: number;
-  endValue: number;
+  /**
+   * `null` when any row folded into this entry had an unknown boundary value --
+   * a security whose currency could not be converted into its account's. An
+   * unknown component makes the sum unknown; the partial sum is not returned
+   * under a field a caller would read as complete
+   * (docs/financial-calculation-contract.md section 1). `realizedGain` stays
+   * known: it derives from each transaction's own stored rate.
+   */
+  startValue: number | null;
+  endValue: number | null;
   realizedGain: number;
-  unrealizedGain: number;
-  totalCapitalGain: number;
+  unrealizedGain: number | null;
+  totalCapitalGain: number | null;
 }
 
 export interface LlmCapitalGainsResult {
@@ -89,8 +97,12 @@ export interface LlmCapitalGainsResult {
   endDate: string;
   totals: {
     realizedGain: number;
-    unrealizedGain: number;
-    totalCapitalGain: number;
+    /**
+     * `null` when any row in the window had an unconvertible boundary value.
+     * A total that silently omitted those rows would read as complete.
+     */
+    unrealizedGain: number | null;
+    totalCapitalGain: number | null;
   };
   groupedBy: LlmCapitalGainsGroupBy;
   entries: LlmCapitalGainsEntry[];
@@ -2455,16 +2467,26 @@ export class InvestmentTransactionsService {
       realizedScaled: number;
       unrealizedScaled: number;
       totalScaled: number;
+      /** Set when any folded row had an unconvertible boundary value. */
+      incomplete: boolean;
     }
     const buckets = new Map<string, Bucket>();
     let totalsRealizedScaled = 0;
     let totalsUnrealizedScaled = 0;
     let totalsCapitalScaled = 0;
 
+    // A row whose FX could not be resolved contributes nothing to the sums and
+    // marks them incomplete, rather than being counted as a zero-value period.
+    let totalsIncomplete = false;
+
     for (const e of filtered) {
       totalsRealizedScaled += Math.round(e.realizedGain * 10000);
-      totalsUnrealizedScaled += Math.round(e.unrealizedGain * 10000);
-      totalsCapitalScaled += Math.round(e.totalCapitalGain * 10000);
+      if (e.unrealizedGain === null || e.totalCapitalGain === null) {
+        totalsIncomplete = true;
+      } else {
+        totalsUnrealizedScaled += Math.round(e.unrealizedGain * 10000);
+        totalsCapitalScaled += Math.round(e.totalCapitalGain * 10000);
+      }
 
       let key: string;
       let seed: Pick<
@@ -2507,6 +2529,7 @@ export class InvestmentTransactionsService {
           realizedScaled: 0,
           unrealizedScaled: 0,
           totalScaled: 0,
+          incomplete: false,
         };
         buckets.set(key, b);
       }
@@ -2518,11 +2541,20 @@ export class InvestmentTransactionsService {
         b.currency = null;
       }
 
-      b.startValueScaled += Math.round(e.startValue * 10000);
-      b.endValueScaled += Math.round(e.endValue * 10000);
       b.realizedScaled += Math.round(e.realizedGain * 10000);
-      b.unrealizedScaled += Math.round(e.unrealizedGain * 10000);
-      b.totalScaled += Math.round(e.totalCapitalGain * 10000);
+      if (
+        e.startValue === null ||
+        e.endValue === null ||
+        e.unrealizedGain === null ||
+        e.totalCapitalGain === null
+      ) {
+        b.incomplete = true;
+      } else {
+        b.startValueScaled += Math.round(e.startValue * 10000);
+        b.endValueScaled += Math.round(e.endValue * 10000);
+        b.unrealizedScaled += Math.round(e.unrealizedGain * 10000);
+        b.totalScaled += Math.round(e.totalCapitalGain * 10000);
+      }
     }
 
     const MAX_ENTRIES = 100;
@@ -2533,17 +2565,26 @@ export class InvestmentTransactionsService {
         symbol: b.symbol,
         securityName: b.securityName,
         currency: b.currency ?? null,
-        startValue: roundMoney(b.startValueScaled / 10000),
-        endValue: roundMoney(b.endValueScaled / 10000),
+        startValue: b.incomplete
+          ? null
+          : roundMoney(b.startValueScaled / 10000),
+        endValue: b.incomplete ? null : roundMoney(b.endValueScaled / 10000),
         realizedGain: roundMoney(b.realizedScaled / 10000),
-        unrealizedGain: roundMoney(b.unrealizedScaled / 10000),
-        totalCapitalGain: roundMoney(b.totalScaled / 10000),
+        unrealizedGain: b.incomplete
+          ? null
+          : roundMoney(b.unrealizedScaled / 10000),
+        totalCapitalGain: b.incomplete
+          ? null
+          : roundMoney(b.totalScaled / 10000),
       }),
     );
     allEntries.sort((a, b) => {
       if (groupBy === "month")
         return (a.month ?? "").localeCompare(b.month ?? "");
-      return b.totalCapitalGain - a.totalCapitalGain;
+      // Unknown sorts last rather than as zero.
+      return (
+        (b.totalCapitalGain ?? -Infinity) - (a.totalCapitalGain ?? -Infinity)
+      );
     });
 
     return {
@@ -2551,8 +2592,12 @@ export class InvestmentTransactionsService {
       endDate: options.endDate,
       totals: {
         realizedGain: roundMoney(totalsRealizedScaled / 10000),
-        unrealizedGain: roundMoney(totalsUnrealizedScaled / 10000),
-        totalCapitalGain: roundMoney(totalsCapitalScaled / 10000),
+        unrealizedGain: totalsIncomplete
+          ? null
+          : roundMoney(totalsUnrealizedScaled / 10000),
+        totalCapitalGain: totalsIncomplete
+          ? null
+          : roundMoney(totalsCapitalScaled / 10000),
       },
       groupedBy: groupBy,
       entries: allEntries.slice(0, MAX_ENTRIES),

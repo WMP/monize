@@ -391,15 +391,18 @@ export class SectorWeightingService {
       const price = priceMap.get(holding.securityId);
       if (price == null) continue;
 
-      let marketValue = quantity * price;
-
-      // Convert to default currency
-      marketValue = await this.portfolioCalculationService.convertToDefault(
-        marketValue,
+      // `null` means no rate exists for the pair. A sector weighting is a share
+      // of a total, so counting an unconverted foreign value would misstate
+      // this sector's share and every other sector's with it (audit P5-009).
+      // Skipping is the honest option; the conversion logs the missing pair.
+      const converted = await this.portfolioCalculationService.convertToDefault(
+        quantity * price,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
       );
+      if (converted === null) continue;
+      const marketValue = converted;
 
       const sec = holding.security;
       const isStock =
@@ -647,13 +650,16 @@ export class SectorWeightingService {
       const price = priceMap.get(holding.securityId);
       if (price == null) continue;
 
-      let marketValue = quantity * price;
-      marketValue = await this.portfolioCalculationService.convertToDefault(
-        marketValue,
+      // See the note above: an unconvertible holding is skipped, not counted
+      // at its face value in the wrong currency.
+      const converted = await this.portfolioCalculationService.convertToDefault(
+        quantity * price,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
       );
+      if (converted === null) continue;
+      const marketValue = converted;
 
       const classification = classify(holding.security);
 

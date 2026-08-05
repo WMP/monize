@@ -220,11 +220,55 @@ Money is `decimal(20,4)`; an exchange rate is `NUMERIC(20,10)` (`exchange_rates.
 
 Convert with `applyFxConversion` (backend) so the account's `fxFeePercent` is folded in the same way the transaction form does; validate a foreign-currency payload with `normalizeFxEntry`, which transactions and scheduled transactions share so both accept and reject exactly the same shapes.
 
+### Rate 1 means "same currency", never "no rate found"
+
+A failed rate lookup is unknown. It is not `1`, and it is not the amount passed
+through unchanged -- four conversion paths ended in one of those two, and 1,000
+USD came out of a EUR total as 1,000 EUR: an 11% error that is numerically
+plausible, which is exactly what makes it survive review. Nothing in the response
+let a consumer tell a real 1:1 pair from an absent one.
+
+Aggregate through `FxAggregate` (`backend/src/common/fx-aggregate.ts`) rather than
+`total += convert(...)`. The accumulator cannot silently absorb a missing
+component: it names each unresolvable pair, and its `total` is `null` while
+`knownSubtotal` carries what did convert. Zero and negative rates are absent, not
+applicable. `backend/src/common/fx-fallback.guard.spec.ts` scans for a new silent
+fallback; `docs/specs/fx-conversion-completeness.md` has the invariants and the
+staged rollout of nullable response totals.
+
 ### Missing data: a subtotal is not a total (CRITICAL)
 
 A field named `total*`, `portfolioValue`, `transferValue`, `gain`, `tax`, or `estimated*` may only carry a value when **every** component of the calculation is known. Filtering out `null` components and summing the rest produces a subtotal, not a total -- if any component is unknown, the total is `null`, and the partial sum, if returned at all, goes in a separate explicitly named field (`knownMarketValueSubtotal`), never in the total's field. Never default an unknown price, cost basis, or rate to `0` (or an exchange rate to `1`) to keep a formula running, and never treat a missing period price as a 0% return.
 
 **`null` is not the safe answer either.** It means "not known", so a state that *is* known must not use it: empty accounts hold zero, move zero, realize zero and owe zero, and reporting those as unknown tells the user a settled question could not be worked out -- while making "nothing to do" indistinguishable from "cannot compute". Decide which of the two each branch is in before writing it.
+
+### A completeness flag covers every total it is documented to cover, on every surface
+
+`fxComplete` claimed to describe all of `PortfolioSummary`'s `total*` fields while
+one aggregate's missing pairs were only written to the log, so an incomplete
+`totalNetInvested` shipped under `fxComplete: true` and fed CAGR as a complete
+denominator. Union every aggregate's gaps, and derive anything downstream (a rate,
+a ratio) only when its own inputs are complete. The flag must also survive the trip
+to each consumer: the compact LLM shape dropped both fields, so the AI Assistant and
+MCP quoted the same subtotal as a settled balance the UI knew was partial -- and for
+a model, the human-readable summary line has to say so too, not just the payload.
+
+The converse is equally wrong, and appeared in the same fix: **zero needs no rate.**
+Asking for one made an empty foreign account report its currency as unresolvable and
+took the whole portfolio's totals down to "unknown".
+
+And completeness has more than one cause. `fxComplete` covered missing exchange rates
+and nothing else, so a held position with no current **price** was skipped out of the
+total with no gap recorded: a confident `totalPortfolioValue` built from the priced
+half, `fxComplete: true`, and Monte Carlo projecting from it. Track each cause
+separately (`fxComplete`, `pricesComplete`) and give consumers one flag that means
+"every component of every total is known" (`valuationComplete`), so nobody has to
+remember to check both.
+
+Nested totals need their own answer, too. A per-account total is converted into the
+*account's* currency while the top-level total is converted into the *user's* -- two
+different conversion graphs, so a portfolio can be complete at the top and
+unconvertible underneath. A global flag cannot speak for a total it did not compute.
 
 The full rules -- cost basis and tax truth table, cash, valuation, materialized-result versioning, stale quotes, backtests over incomplete history, and the required adversarial test matrix -- live in `docs/financial-calculation-contract.md` and `docs/time-series-contract.md`. Read both **before** writing or changing any financial calculation, not when a review asks about them: every rule those documents contain has been read, agreed with and broken anyway by someone who reached them afterwards. `docs/testing-contract.md` lists the adversarial inputs that have broken this codebase before -- dates, money precision, aggregation, currency conversion, ownership, concurrency -- so a test author picks from a list rather than recalling edge cases; it is explicitly not a requirement that every test use every value. A financial feature of any substance -- it computes money, materializes a derived result, or reads a time series -- starts from a short approved spec (invariants, truth tables, numerical examples, missing-data policy, test matrix), committed *before* the implementation it guides.
 

@@ -42,6 +42,29 @@ component required for that calculation is known.
   affected ids, or an `incomplete: true` flag) -- silence is what turns a
   subtotal into a lie.
 
+### 1.1 A missing exchange rate is not a rate of 1
+
+Rate `1` is reachable only when the source and destination currency codes are
+equal. There is no other branch that may produce it, and in particular a failed
+lookup may not: 1,000 USD reported into a EUR total as 1,000 EUR is an 11%
+overstatement that is *numerically plausible*, which is what makes it dangerous.
+A consumer given a bare number cannot tell a real 1:1 pair from an absent one.
+
+A conversion has three outcomes and they stay distinguishable -- converted,
+same-currency (no conversion needed), and unknown. Aggregate through `FxAggregate`
+(`backend/src/common/fx-aggregate.ts`), which cannot silently absorb a missing
+component: it records each unresolvable pair, and `total` is `null` while
+`knownSubtotal` carries what did convert. Note that an aggregate nothing was added
+to is `0`, not `null` -- an empty account holds zero.
+
+Zero and negative are not rates either, and are treated as absent rather than
+applied: multiplying by 0 reports a real holding as worthless.
+
+`docs/specs/fx-conversion-completeness.md` has the invariants, the numerical
+example table, the staged rollout of nullable response totals, and the recorded
+decision on look-ahead before the rate history begins.
+`backend/src/common/fx-fallback.guard.spec.ts` scans for a new silent fallback.
+
 ## 2. Cost basis and tax
 
 Realized result is market value minus cost basis; tax applies only to gains.

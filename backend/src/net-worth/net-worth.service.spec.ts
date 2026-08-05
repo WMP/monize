@@ -1556,8 +1556,18 @@ describe("NetWorthService", () => {
 
       const result = await service.getMonthlyNetWorth("user-1");
 
-      // Falls back to unconverted amount
-      expect(result[0].assets).toBe(1000);
+      // A missing rate is reported as a gap, NOT applied as 1:1 (audit P5-009).
+      //
+      // This assertion previously read `expect(result[0].assets).toBe(1000)`
+      // under the name "returns amount unconverted when no rate exists" -- it
+      // documented the defect as intended behaviour, which is why the defect
+      // survived. 1,000 JPY is roughly 7 USD; reporting it as 1,000 USD
+      // overstated the month by two orders of magnitude.
+      expect(result[0].fxComplete).toBe(false);
+      expect(result[0].missingRatePairs).toEqual(["JPY->USD"]);
+      // The unconvertible component is excluded from the subtotal rather than
+      // entered at face value.
+      expect(result[0].assets).toBe(0);
     });
 
     it("aggregates multiple accounts in the same month", async () => {
@@ -2208,9 +2218,9 @@ describe("NetWorthService", () => {
       expect(result).toHaveLength(2);
       // Cost basis for first month: 100*100 (BUY) - 10*105 (SELL) = 10000 - 1050 = 8950
       // (replaces market_value of 11000)
-      expect(result[0]).toEqual({ month: "2024-03-01", value: 8950 });
+      expect(result[0]).toMatchObject({ month: "2024-03-01", value: 8950 });
       // Second month uses market_value as before
-      expect(result[1]).toEqual({ month: "2024-04-01", value: 12000 });
+      expect(result[1]).toMatchObject({ month: "2024-04-01", value: 12000 });
     });
 
     it("does not adjust when snapshot month is after the account's first active month", async () => {
@@ -2428,9 +2438,14 @@ describe("NetWorthService", () => {
       // 03-01, 03-02 -> 03-02, 03-03 -> 03-03. This lines the daily series up
       // with the month-end-valued monthly snapshots.
       expect(result).toHaveLength(3);
-      expect(result[0]).toEqual({ date: "2025-03-01", value: 1000 });
-      expect(result[1]).toEqual({ date: "2025-03-02", value: 1020 });
-      expect(result[2]).toEqual({ date: "2025-03-03", value: 1010 });
+      expect(result[0]).toEqual({
+        date: "2025-03-01",
+        value: 1000,
+        fxComplete: true,
+        missingRatePairs: [],
+      });
+      expect(result[1]).toMatchObject({ date: "2025-03-02", value: 1020 });
+      expect(result[2]).toMatchObject({ date: "2025-03-03", value: 1010 });
     });
 
     it("includes cash balances from INVESTMENT_CASH accounts", async () => {
@@ -2467,8 +2482,8 @@ describe("NetWorthService", () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ date: "2025-03-01", value: 5000 });
-      expect(result[1]).toEqual({ date: "2025-03-02", value: 5100 });
+      expect(result[0]).toMatchObject({ date: "2025-03-01", value: 5000 });
+      expect(result[1]).toMatchObject({ date: "2025-03-02", value: 5100 });
     });
 
     it("resolves linked account pairs when accountIds provided", async () => {
@@ -3083,6 +3098,9 @@ describe("NetWorthService", () => {
       expect(result).toEqual({
         granularity: "monthly",
         currency: "USD",
+        // Nothing to convert is complete, not unknown.
+        fxComplete: true,
+        missingRatePairs: [],
         series: [],
         points: [],
       });

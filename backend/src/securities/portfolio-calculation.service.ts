@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { DataSource, FindOptionsWhere, In, LessThanOrEqual } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Holding } from "./entities/holding.entity";
@@ -18,6 +18,7 @@ import { parseTag } from "../tags/tag-key-value.util";
 import { formatDateYMD, formatDateYMDLocal } from "../common/date-utils";
 import { mapWithConcurrency } from "../common/concurrency.util";
 import { convertWithRateLookup } from "../common/currency-conversion.util";
+import { FxAggregate } from "../common/fx-aggregate";
 import { stripBrokerageSuffix } from "../accounts/account-name.util";
 
 // "As of now" portfolio valuations fetch a live spot rate per foreign
@@ -136,13 +137,23 @@ export interface CapitalGainEntry {
   securityCurrencyCode: string | null;
   startQuantity: number;
   endQuantity: number;
-  startValue: number;
-  endValue: number;
+  /**
+   * Period-boundary market values in the account's currency, and the gains
+   * derived from them.
+   *
+   * `null` when the security's currency could not be converted into the
+   * account's -- the position's value at each boundary is then unknown, so a
+   * gain measured between them is too. `buys`, `sells` and `realizedGain` stay
+   * known: they come from the exchange rate stored on each transaction, not
+   * from a current-rate lookup.
+   */
+  startValue: number | null;
+  endValue: number | null;
   buys: number;
   sells: number;
   realizedGain: number;
-  unrealizedGain: number;
-  totalCapitalGain: number;
+  unrealizedGain: number | null;
+  totalCapitalGain: number | null;
 }
 
 /**
@@ -288,6 +299,8 @@ function applyTxToState(
  */
 @Injectable()
 export class PortfolioCalculationService {
+  private readonly logger = new Logger(PortfolioCalculationService.name);
+
   constructor(
     private dataSource: DataSource,
     private exchangeRateService: ExchangeRateService,
@@ -298,16 +311,30 @@ export class PortfolioCalculationService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Convert an amount from one currency to another using latest exchange rates.
-   * Returns the original amount if no rate is found or currencies match.
+   * Convert an amount from one currency to another using the latest exchange
+   * rates. Returns `null` when no rate exists for the pair.
+   *
+   * `null`, not the amount unchanged: this used to fall back to `rate = 1`,
+   * which reported 1,000 USD as 1,000 EUR and gave a consumer no way to tell
+   * that from a genuine 1:1 pair (audit P5-009). Rate 1 is now reachable only
+   * when the two currency codes are equal. Callers accumulate through
+   * `FxAggregate` so a missing rate makes the total unknown rather than wrong;
+   * see `docs/specs/fx-conversion-completeness.md`.
    */
   async convertToDefault(
     amount: number,
     fromCurrency: string,
     defaultCurrency: string,
     rateCache: Map<string, number>,
-  ): Promise<number> {
+  ): Promise<number | null> {
     if (fromCurrency === defaultCurrency) return amount;
+
+    // Zero converts to zero at any rate, so it needs none. Without this an empty
+    // foreign account -- no cash, no holdings, nothing invested -- reported its
+    // own currency as an unresolvable pair and made the whole portfolio's totals
+    // "unknown", which is the other half of the contract's missing-data rule: a
+    // settled question must not be reported as one that could not be worked out.
+    if (amount === 0) return 0;
 
     const cacheKey = `${fromCurrency}->${defaultCurrency}`;
     let rate = rateCache.get(cacheKey);
@@ -316,14 +343,20 @@ export class PortfolioCalculationService {
         fromCurrency,
         defaultCurrency,
       );
-      if (directRate !== null) {
+      if (directRate !== null && directRate > 0) {
         rate = directRate;
       } else {
         const reverseRate = await this.exchangeRateService.getLatestRate(
           defaultCurrency,
           fromCurrency,
         );
-        rate = reverseRate !== null ? 1 / reverseRate : 1;
+        if (reverseRate === null || reverseRate <= 0) {
+          this.logger.warn(
+            `No exchange rate available for ${cacheKey}; the affected total is reported as unknown rather than converted 1:1`,
+          );
+          return null;
+        }
+        rate = 1 / reverseRate;
       }
       rateCache.set(cacheKey, rate);
     }
@@ -548,18 +581,39 @@ export class PortfolioCalculationService {
     effectiveBalances: Map<string, number>,
     defaultCurrency: string,
     rateCache: Map<string, number>,
-  ): Promise<number> {
-    let totalCashValue = 0;
+  ): Promise<{
+    total: number;
+    fxComplete: boolean;
+    missingRatePairs: string[];
+  }> {
+    const cash = new FxAggregate();
     for (const a of accounts) {
       const balance = effectiveBalances.get(a.id) ?? Number(a.currentBalance);
-      totalCashValue += await this.convertToDefault(
-        balance,
+      cash.add(
+        await this.convertToDefault(
+          balance,
+          a.currencyCode,
+          defaultCurrency,
+          rateCache,
+        ),
         a.currencyCode,
         defaultCurrency,
-        rateCache,
       );
     }
-    return totalCashValue;
+    // The gap is returned, not only logged. A log is invisible to the API and to
+    // every consumer downstream, so a caller had no way to tell this subtotal
+    // from a complete total -- which is how an incomplete cash figure reached a
+    // Monte Carlo starting balance (review finding FR-005).
+    if (!cash.isComplete) {
+      this.logger.warn(
+        `Cash total omits balances with no exchange rate (${cash.missingPairs.join(", ")})`,
+      );
+    }
+    return {
+      total: cash.knownSubtotal,
+      fxComplete: cash.isComplete,
+      missingRatePairs: cash.missingPairs,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -1365,18 +1419,22 @@ export class PortfolioCalculationService {
 
     // Cache FX rates: securityCurrency -> accountCurrency
     const fxCache = new Map<string, number>();
+    // `null` when the pair has no rate. This used to end `: 1`, valuing a
+    // foreign security's period start and end as though its currency were the
+    // account's (audit P5-009). Rate 1 only when the codes are equal.
     const fxRate = async (
       from: string | null,
       to: string | null,
-    ): Promise<number> => {
+    ): Promise<number | null> => {
       if (!from || !to || from === to) return 1;
       const cacheKey = `${from}->${to}`;
       const cached = fxCache.get(cacheKey);
       if (cached !== undefined) return cached;
       let rate = await this.exchangeRateService.getLatestRate(from, to);
-      if (rate === null) {
+      if (rate === null || rate <= 0) {
         const reverse = await this.exchangeRateService.getLatestRate(to, from);
-        rate = reverse !== null ? 1 / reverse : 1;
+        if (reverse === null || reverse <= 0) return null;
+        rate = 1 / reverse;
       }
       fxCache.set(cacheKey, rate);
       return rate;
@@ -1406,7 +1464,13 @@ export class PortfolioCalculationService {
         const startQuantity = state.quantity;
         const startPrice =
           this.lookupPrice(group.securityId, priceLookupStart, allPrices) ?? 0;
-        const startValue = startQuantity * startPrice * securityToAccountFx;
+        // A period whose security currency cannot be converted into the
+        // account's has no knowable start or end value; the rate is 1 only when
+        // the two currencies are the same.
+        const startValue =
+          securityToAccountFx === null
+            ? null
+            : startQuantity * startPrice * securityToAccountFx;
 
         let buys = 0;
         let sells = 0;
@@ -1465,10 +1529,19 @@ export class PortfolioCalculationService {
         const endQuantity = state.quantity;
         const endPrice =
           this.lookupPrice(group.securityId, periodEnd, allPrices) ?? 0;
-        const endValue = endQuantity * endPrice * securityToAccountFx;
+        const endValue =
+          securityToAccountFx === null
+            ? null
+            : endQuantity * endPrice * securityToAccountFx;
 
-        const totalCapitalGain = endValue - startValue + sells - buys;
-        const unrealizedGain = totalCapitalGain - realizedGain;
+        // Unknown boundary values make the capital gain unknown rather than
+        // making it equal to the cash movements.
+        const totalCapitalGain =
+          startValue === null || endValue === null
+            ? null
+            : endValue - startValue + sells - buys;
+        const unrealizedGain =
+          totalCapitalGain === null ? null : totalCapitalGain - realizedGain;
 
         const hasActivity =
           buys !== 0 ||
@@ -1480,6 +1553,8 @@ export class PortfolioCalculationService {
 
         // Suppress vanishingly small float drift to keep the chart clean.
         const round = (n: number) => (Math.abs(n) < 0.005 ? 0 : roundMoney(n));
+        const roundOrNull = (n: number | null) =>
+          n === null ? null : round(n);
 
         results.push({
           month: periodKey,
@@ -1492,13 +1567,13 @@ export class PortfolioCalculationService {
           securityCurrencyCode: group.securityCurrencyCode,
           startQuantity,
           endQuantity,
-          startValue: round(startValue),
-          endValue: round(endValue),
+          startValue: roundOrNull(startValue),
+          endValue: roundOrNull(endValue),
           buys: round(buys),
           sells: round(sells),
           realizedGain: round(realizedGain),
-          unrealizedGain: round(unrealizedGain),
-          totalCapitalGain: round(totalCapitalGain),
+          unrealizedGain: roundOrNull(unrealizedGain),
+          totalCapitalGain: roundOrNull(totalCapitalGain),
         });
       }
     }
@@ -1530,6 +1605,28 @@ export class PortfolioCalculationService {
     holdingsWithValues: HoldingWithMarketValue[];
     totalCostBasis: number;
     totalHoldingsValue: number;
+    /**
+     * False when a holding could not be converted into the reporting currency,
+     * which makes the two totals above subtotals of what did convert. A missing
+     * rate used to be applied as 1:1 (audit P5-009); see
+     * docs/specs/fx-conversion-completeness.md.
+     */
+    fxComplete: boolean;
+    missingRatePairs: string[];
+    /**
+     * False when a held position has no current price.
+     *
+     * A separate dimension from `fxComplete`, and it was missing entirely: an
+     * unpriced holding was skipped out of `holdingsValueTotal` without recording a
+     * gap, so a portfolio holding 10 priced shares and 5 unpriced ones reported a
+     * confident `totalHoldingsValue` of the priced 100 with `fxComplete: true` --
+     * a subtotal under a total's name, which section 1 of the financial
+     * calculation contract exists to forbid (recheck RR3-004). Unknown is not
+     * absent and not zero.
+     */
+    pricesComplete: boolean;
+    /** Securities held in a non-zero quantity with no current price. */
+    unpricedSecurityIds: string[];
   }> {
     let holdings: Holding[] = [];
     if (holdingsAccountIds.length > 0) {
@@ -1566,8 +1663,9 @@ export class PortfolioCalculationService {
       ),
     );
 
-    let totalCostBasis = 0;
-    let totalHoldingsValue = 0;
+    const costBasisTotal = new FxAggregate();
+    const holdingsValueTotal = new FxAggregate();
+    const unpricedSecurityIds = new Set<string>();
     const holdingsWithValues: HoldingWithMarketValue[] = [];
 
     for (const h of holdings) {
@@ -1596,7 +1694,11 @@ export class PortfolioCalculationService {
       // application's other answer for those, and it is at least an answer
       // about this holding in this currency.
       const historicalKey = `${h.accountId}:${h.securityId}`;
-      let costBasisAccountCurrency = historicalCostBasis.get(historicalKey);
+      // `null` when the holding's basis currency has no rate into the account
+      // currency: unknown, not "the same number". The row carries the null so a
+      // consumer sees an unavailable basis instead of an unconverted one.
+      let costBasisAccountCurrency: number | null | undefined =
+        historicalCostBasis.get(historicalKey);
       if (costBasisAccountCurrency === undefined) {
         costBasisAccountCurrency = await this.convertToDefault(
           costBasis,
@@ -1606,19 +1708,33 @@ export class PortfolioCalculationService {
         );
       }
 
-      totalCostBasis += await this.convertToDefault(
-        costBasisAccountCurrency,
+      costBasisTotal.add(
+        costBasisAccountCurrency === null
+          ? null
+          : await this.convertToDefault(
+              costBasisAccountCurrency,
+              accountCurrency,
+              defaultCurrency,
+              rateCache,
+            ),
         accountCurrency,
         defaultCurrency,
-        rateCache,
       );
       if (marketValue !== null) {
-        totalHoldingsValue += await this.convertToDefault(
-          marketValue,
+        holdingsValueTotal.add(
+          await this.convertToDefault(
+            marketValue,
+            holdingCurrency,
+            defaultCurrency,
+            rateCache,
+          ),
           holdingCurrency,
           defaultCurrency,
-          rateCache,
         );
+      } else {
+        // The position is held and its value is unknown. Recorded rather than
+        // silently dropped, so the total can say it is a subtotal.
+        unpricedSecurityIds.add(h.securityId);
       }
 
       holdingsWithValues.push({
@@ -1640,7 +1756,33 @@ export class PortfolioCalculationService {
       });
     }
 
-    return { holdings, holdingsWithValues, totalCostBasis, totalHoldingsValue };
+    const missingRatePairs = [
+      ...new Set([
+        ...costBasisTotal.missingPairs,
+        ...holdingsValueTotal.missingPairs,
+      ]),
+    ].sort();
+    if (missingRatePairs.length > 0) {
+      this.logger.warn(
+        `Portfolio totals omit holdings with no exchange rate (${missingRatePairs.join(", ")}); the returned totals are subtotals`,
+      );
+    }
+    if (unpricedSecurityIds.size > 0) {
+      this.logger.warn(
+        `Portfolio totals omit ${unpricedSecurityIds.size} held position(s) with no current price; the returned totals are subtotals`,
+      );
+    }
+
+    return {
+      holdings,
+      holdingsWithValues,
+      totalCostBasis: costBasisTotal.knownSubtotal,
+      totalHoldingsValue: holdingsValueTotal.knownSubtotal,
+      fxComplete: missingRatePairs.length === 0,
+      missingRatePairs,
+      pricesComplete: unpricedSecurityIds.size === 0,
+      unpricedSecurityIds: [...unpricedSecurityIds].sort(),
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -1665,6 +1807,97 @@ export class PortfolioCalculationService {
    * Group enriched holdings by account, attaching cash balances and net-invested
    * figures. Returns an array of AccountHoldings sorted by total market value.
    */
+  /**
+   * Cost basis, market value and gain for one account, in that account's own
+   * currency, with the completeness of each component.
+   *
+   * Written once and called from both the brokerage and standalone loops: the two
+   * had the identical fold with a different currency variable, and the account-level
+   * completeness fix would otherwise have gone into one of them (recheck RR3-005,
+   * and the repo's rule that a predicate deciding which row counts is written once).
+   *
+   * The gaps are returned rather than only logged. The top-level totals convert each
+   * security straight into the user's default currency, which is a *different*
+   * conversion path -- so a portfolio can be complete at the top while a JPY
+   * account's own total is missing EUR->JPY entirely, and a consumer reading the
+   * nested figure has no way to know from the global flag.
+   */
+  private async accountTotals(
+    accountHoldings: HoldingWithMarketValue[],
+    accountCurrency: string,
+    rateCache: Map<string, number>,
+  ): Promise<{
+    totalCostBasis: number;
+    totalMarketValue: number;
+    totalGainLoss: number;
+    totalGainLossPercent: number;
+    fxComplete: boolean;
+    missingRatePairs: string[];
+    pricesComplete: boolean;
+    unpricedSecurityIds: string[];
+    valuationComplete: boolean;
+  }> {
+    const costBasisAgg = new FxAggregate();
+    const marketValueAgg = new FxAggregate();
+    const unpriced = new Set<string>();
+
+    for (const h of accountHoldings) {
+      // A holding whose basis could not be denominated in this account's currency
+      // is recorded as a gap, not added as though it already were.
+      costBasisAgg.add(
+        h.costBasisAccountCurrency,
+        h.currencyCode,
+        accountCurrency,
+      );
+      // An unpriced holding is unknown, not zero: `?? 0` folded it in as free and
+      // the account total then read like a complete valuation of a position nobody
+      // could value.
+      if (h.marketValue === null) {
+        unpriced.add(h.securityId);
+        continue;
+      }
+      marketValueAgg.add(
+        await this.convertToDefault(
+          h.marketValue,
+          h.currencyCode,
+          accountCurrency,
+          rateCache,
+        ),
+        h.currencyCode,
+        accountCurrency,
+      );
+    }
+
+    const missingRatePairs = [
+      ...new Set([
+        ...costBasisAgg.missingPairs,
+        ...marketValueAgg.missingPairs,
+      ]),
+    ].sort();
+    if (missingRatePairs.length > 0) {
+      this.logger.warn(
+        `Account totals omit holdings with no exchange rate (${missingRatePairs.join(", ")}); the returned totals and gain are subtotals`,
+      );
+    }
+
+    const totalCostBasis = costBasisAgg.knownSubtotal;
+    const totalMarketValue = marketValueAgg.knownSubtotal;
+    const totalGainLoss = totalMarketValue - totalCostBasis;
+
+    return {
+      totalCostBasis,
+      totalMarketValue,
+      totalGainLoss,
+      totalGainLossPercent:
+        totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0,
+      fxComplete: missingRatePairs.length === 0,
+      missingRatePairs,
+      pricesComplete: unpriced.size === 0,
+      unpricedSecurityIds: [...unpriced].sort(),
+      valuationComplete: missingRatePairs.length === 0 && unpriced.size === 0,
+    };
+  }
+
   async buildHoldingsByAccount(
     categorised: CategorisedAccounts,
     holdingsWithValues: HoldingWithMarketValue[],
@@ -1701,21 +1934,11 @@ export class PortfolioCalculationService {
       // exchange rate from each originating transaction, while market value
       // uses the current exchange rate so unrealised gains reflect today's
       // valuation vs. the price actually paid when shares were bought.
-      const acctCurrency = brokerageAccount.currencyCode;
-      let accountCostBasis = 0;
-      let accountMarketValue = 0;
-      for (const h of accountHoldings) {
-        accountCostBasis += h.costBasisAccountCurrency;
-        accountMarketValue += await this.convertToDefault(
-          h.marketValue ?? 0,
-          h.currencyCode,
-          acctCurrency,
-          rateCache,
-        );
-      }
-      const accountGainLoss = accountMarketValue - accountCostBasis;
-      const accountGainLossPercent =
-        accountCostBasis > 0 ? (accountGainLoss / accountCostBasis) * 100 : 0;
+      const acctTotals = await this.accountTotals(
+        accountHoldings,
+        brokerageAccount.currencyCode,
+        rateCache,
+      );
 
       // Get display name (remove the localized " - Brokerage" suffix if present)
       const accountName = stripBrokerageSuffix(brokerageAccount.name);
@@ -1739,10 +1962,15 @@ export class PortfolioCalculationService {
         cashAccountId: linkedCashAccount?.id ?? null,
         cashBalance,
         holdings: this.sortHoldings(accountHoldings),
-        totalCostBasis: accountCostBasis,
-        totalMarketValue: accountMarketValue,
-        totalGainLoss: accountGainLoss,
-        totalGainLossPercent: accountGainLossPercent,
+        totalCostBasis: acctTotals.totalCostBasis,
+        totalMarketValue: acctTotals.totalMarketValue,
+        totalGainLoss: acctTotals.totalGainLoss,
+        totalGainLossPercent: acctTotals.totalGainLossPercent,
+        fxComplete: acctTotals.fxComplete,
+        missingRatePairs: acctTotals.missingRatePairs,
+        pricesComplete: acctTotals.pricesComplete,
+        unpricedSecurityIds: acctTotals.unpricedSecurityIds,
+        valuationComplete: acctTotals.valuationComplete,
         netInvested: roundMoney(accountNetInvested),
       });
     }
@@ -1754,21 +1982,11 @@ export class PortfolioCalculationService {
 
       // Calculate account totals — historical cost basis + current-rate
       // market value, same treatment as brokerage accounts above.
-      const standaloneCurrency = standaloneAccount.currencyCode;
-      let accountCostBasis = 0;
-      let accountMarketValue = 0;
-      for (const h of accountHoldings) {
-        accountCostBasis += h.costBasisAccountCurrency;
-        accountMarketValue += await this.convertToDefault(
-          h.marketValue ?? 0,
-          h.currencyCode,
-          standaloneCurrency,
-          rateCache,
-        );
-      }
-      const accountGainLoss = accountMarketValue - accountCostBasis;
-      const accountGainLossPercent =
-        accountCostBasis > 0 ? (accountGainLoss / accountCostBasis) * 100 : 0;
+      const acctTotals = await this.accountTotals(
+        accountHoldings,
+        standaloneAccount.currencyCode,
+        rateCache,
+      );
 
       const standaloneCashBalance =
         effectiveBalances.get(standaloneAccount.id) ??
@@ -1791,10 +2009,15 @@ export class PortfolioCalculationService {
         cashAccountId: standaloneAccount.id, // Cash is on this same account
         cashBalance: standaloneCashBalance,
         holdings: this.sortHoldings(accountHoldings),
-        totalCostBasis: accountCostBasis,
-        totalMarketValue: accountMarketValue,
-        totalGainLoss: accountGainLoss,
-        totalGainLossPercent: accountGainLossPercent,
+        totalCostBasis: acctTotals.totalCostBasis,
+        totalMarketValue: acctTotals.totalMarketValue,
+        totalGainLoss: acctTotals.totalGainLoss,
+        totalGainLossPercent: acctTotals.totalGainLossPercent,
+        fxComplete: acctTotals.fxComplete,
+        missingRatePairs: acctTotals.missingRatePairs,
+        pricesComplete: acctTotals.pricesComplete,
+        unpricedSecurityIds: acctTotals.unpricedSecurityIds,
+        valuationComplete: acctTotals.valuationComplete,
         netInvested: roundMoney(standaloneNetInvested),
       });
     }
@@ -1854,6 +2077,10 @@ export class PortfolioCalculationService {
         defaultCurrency,
         rateCache,
       );
+      // A holding with no rate into the reporting currency cannot be ranked
+      // against the others; omitting it is honest, entering it at 1:1 would put
+      // it in the wrong place in the list.
+      if (convertedValue === null) continue;
       const existing = consolidated.get(holding.securityId);
       if (existing) {
         existing.value += convertedValue;
@@ -2350,21 +2577,30 @@ export class PortfolioCalculationService {
     const computeValue = async (
       holdings: Map<string, number>,
     ): Promise<number> => {
-      let total = 0;
+      const value = new FxAggregate();
       for (const [secId, qty] of holdings) {
         if (qty === 0) continue;
         const price = latestPriceCache.get(secId);
         if (price != null) {
           const currency = currencyMap.get(secId) || defaultCurrency;
-          total += await this.convertToDefault(
-            qty * price,
+          value.add(
+            await this.convertToDefault(
+              qty * price,
+              currency,
+              defaultCurrency,
+              rateCache,
+            ),
             currency,
             defaultCurrency,
-            rateCache,
           );
         }
       }
-      return total;
+      if (!value.isComplete) {
+        this.logger.warn(
+          `Portfolio value omits positions with no exchange rate (${value.missingPairs.join(", ")})`,
+        );
+      }
+      return value.knownSubtotal;
     };
 
     // Helper: compute portfolio value from holdings state at a specific date
@@ -2372,21 +2608,30 @@ export class PortfolioCalculationService {
       holdings: Map<string, number>,
       date: string,
     ): Promise<number> => {
-      let total = 0;
+      const value = new FxAggregate();
       for (const [secId, qty] of holdings) {
         if (qty === 0) continue;
         const price = this.lookupPrice(secId, date, allPrices);
         if (price != null) {
           const currency = currencyMap.get(secId) || defaultCurrency;
-          total += await this.convertToDefault(
-            qty * price,
+          value.add(
+            await this.convertToDefault(
+              qty * price,
+              currency,
+              defaultCurrency,
+              rateCache,
+            ),
             currency,
             defaultCurrency,
-            rateCache,
           );
         }
       }
-      return total;
+      if (!value.isComplete) {
+        this.logger.warn(
+          `Portfolio value at ${date} omits positions with no exchange rate (${value.missingPairs.join(", ")})`,
+        );
+      }
+      return value.knownSubtotal;
     };
 
     // Forward-simulate holdings and chain sub-period returns

@@ -21,8 +21,12 @@ export interface ComputedHolding {
   symbol: string;
   securityName: string;
   currencyCode: string;
-  /** Rate to convert this holding's native monetary values to the base currency. */
-  exchangeRate: number;
+  /**
+   * Rate to convert this holding's native monetary values to the base currency,
+   * or `null` when no rate exists for the pair. `null` must not render as a
+   * measured value, and the "% of portfolio" column it feeds is unknown too.
+   */
+  exchangeRate: number | null;
   /** Every column key -> computed value (null when unavailable). */
   values: Record<string, InvestmentCellValue>;
 }
@@ -332,8 +336,10 @@ export class InvestmentReportDataService {
         baseCurrency,
         fxCache,
       );
+      // Unknown rate makes the base-currency value unknown, not equal to the
+      // native one.
       const marketValueBase =
-        marketValue !== null ? marketValue * fxRate : null;
+        marketValue !== null && fxRate !== null ? marketValue * fxRate : null;
 
       const { high: high52, low: low52 } = this.fiftyTwoWeek(prices, asOfDate);
 
@@ -371,7 +377,7 @@ export class InvestmentReportDataService {
         sales: roundToDecimals(group.state.sales, 4),
         reinvestments: roundToDecimals(group.state.reinvestments, 4),
         realizedGains: roundToDecimals(group.state.realizedGains, 4),
-        exchangeRate: roundToDecimals(fxRate, 6),
+        exchangeRate: fxRate === null ? null : roundToDecimals(fxRate, 6),
         lastUpdated: asOfRow?.date ?? null,
         fiftyTwoWeekHigh: high52,
         fiftyTwoWeekLow: low52,
@@ -780,19 +786,29 @@ export class InvestmentReportDataService {
     return result;
   }
 
+  /**
+   * Latest rate for a pair, or `null` when there is none.
+   *
+   * `null`, not 1: this used to end `rate = reverse !== null ? 1 / reverse : 1`,
+   * so a base-currency column for a security with no rate reported the foreign
+   * number as though the currencies were at par (audit P5-009, same defect as
+   * the net-worth and portfolio paths). Rate 1 is returned only when the two
+   * codes are equal.
+   */
   private async fxRate(
     from: string,
     to: string,
     cache: Map<string, number>,
-  ): Promise<number> {
+  ): Promise<number | null> {
     if (!from || !to || from === to) return 1;
     const key = `${from}->${to}`;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
     let rate = await this.exchangeRateService.getLatestRate(from, to);
-    if (rate === null) {
+    if (rate === null || rate <= 0) {
       const reverse = await this.exchangeRateService.getLatestRate(to, from);
-      rate = reverse !== null ? 1 / reverse : 1;
+      if (reverse === null || reverse <= 0) return null;
+      rate = 1 / reverse;
     }
     cache.set(key, rate);
     return rate;

@@ -337,6 +337,84 @@ describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
     expect(feb.unrealizedGain).toBe(500);
   });
 
+  it("reports unknown boundary values when the security currency cannot be converted (P5-009)", async () => {
+    // A USD security in a CAD account with no USD/CAD rate in either direction.
+    // The security's value at each month boundary is therefore unknown, so the
+    // capital gain measured between them is unknown too.
+    //
+    // The rate used to fall back to 1, which valued 100 USD shares as 100 CAD
+    // and produced a confident gain figure from an arbitrary conversion.
+    exchangeRateService.getLatestRate.mockResolvedValue(null);
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2023-12-15",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+        security: {
+          id: securityId,
+          symbol: "ABC",
+          name: "ABC Corp",
+          currencyCode: "USD",
+        },
+      } as never),
+    ]);
+    priceRepo.query.mockResolvedValue(
+      priceRows([
+        { date: "2023-12-31", price: 50 },
+        { date: "2024-01-31", price: 55 },
+      ]),
+    );
+
+    const result = await service.calculateCapitalGainsByMonth(userId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    expect(result).toHaveLength(1);
+    const jan = result[0];
+    expect(jan.startValue).toBeNull();
+    expect(jan.endValue).toBeNull();
+    expect(jan.unrealizedGain).toBeNull();
+    expect(jan.totalCapitalGain).toBeNull();
+    // Realized gain comes from each transaction's own stored rate, so it stays
+    // known -- there were no sales, and zero is the right answer for that.
+    expect(jan.realizedGain).toBe(0);
+  });
+
+  it("still computes gains when the security and account share a currency", async () => {
+    // The same-currency path must not be caught by the missing-rate handling:
+    // rate 1 is correct here because the codes are equal, and no lookup happens.
+    exchangeRateService.getLatestRate.mockResolvedValue(null);
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2023-12-15",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+    ]);
+    priceRepo.query.mockResolvedValue(
+      priceRows([
+        { date: "2023-12-31", price: 50 },
+        { date: "2024-01-31", price: 55 },
+      ]),
+    );
+
+    const result = await service.calculateCapitalGainsByMonth(userId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    expect(result[0].totalCapitalGain).toBe(500);
+    expect(result[0].startValue).toBe(5000);
+    expect(result[0].endValue).toBe(5500);
+  });
+
   it("decomposes a SELL month into realized + unrealized capital gains", async () => {
     // Hold 100 shares at avg cost $50 since Dec.
     // Feb: price goes $50 -> $60, sell 40 shares mid-month at $60 (proceeds 2400),
@@ -798,6 +876,44 @@ describe("PortfolioCalculationService.primeLiveRates", () => {
 
     expect(holdingsRepo.createQueryBuilder).not.toHaveBeenCalled();
     expect(rateCache.get("USD->CAD")).toBe(1.37);
+  });
+});
+
+describe("PortfolioCalculationService.convertToDefault", () => {
+  let service: PortfolioCalculationService;
+  let exchangeRateService: { getLatestRate: jest.Mock };
+
+  beforeEach(() => {
+    exchangeRateService = { getLatestRate: jest.fn().mockResolvedValue(null) };
+    service = buildService([], exchangeRateService);
+  });
+
+  it("returns zero for a zero amount without looking for a rate", async () => {
+    // Zero converts to zero at any rate, so it needs none. Asking for one turned
+    // an empty foreign account -- no cash, no holdings, nothing invested -- into
+    // an unresolvable pair that made the whole portfolio's totals unknown. A
+    // settled question must not be reported as one that could not be worked out.
+    const result = await service.convertToDefault(
+      0,
+      "EUR",
+      "CAD",
+      new Map<string, number>(),
+    );
+
+    expect(result).toBe(0);
+    expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
+  });
+
+  it("still reports a non-zero amount with no rate as unknown", async () => {
+    // The control: the zero shortcut must not become a general fallback.
+    const result = await service.convertToDefault(
+      100,
+      "EUR",
+      "CAD",
+      new Map<string, number>(),
+    );
+
+    expect(result).toBeNull();
   });
 });
 
