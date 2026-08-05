@@ -227,7 +227,7 @@ export class AutoBackupService {
   }
 
   /**
-* The folder one user's backup files live in: `<base>/<ab>/<cd>/<userId>`.
+   * The folder one user's backup files live in: `<base>/<ab>/<cd>/<userId>`.
    *
    * User ids are server-generated UUIDs, but they are validated before they
    * reach the filesystem all the same, and the resolved path is asserted to be
@@ -529,7 +529,10 @@ export class AutoBackupService {
       )) ?? this.defaultSettingsFor(userId);
     settings.folderPath = this.resolveFolderPath(settings.folderPath);
 
-    const userFolder = await this.resolveUserFolder(userId, settings.folderPath);
+    const userFolder = await this.resolveUserFolder(
+      userId,
+      settings.folderPath,
+    );
     const timezone = settings.timezone || "UTC";
     const { filename, report } = await this.exportToFile(
       userId,
@@ -539,7 +542,13 @@ export class AutoBackupService {
     // A partial artifact is written (the ledger is captured) but never promoted
     // or retained: promotion and retention delete, and an incomplete backup must
     // not displace or age out a complete one.
-    await this.applyBackupOutcome(settings, userFolder, filename, report, timezone);
+    await this.applyBackupOutcome(
+      settings,
+      userFolder,
+      filename,
+      report,
+      timezone,
+    );
 
     settings.lastBackupAt = new Date();
     if (settings.enabled) {

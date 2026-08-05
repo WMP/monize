@@ -1046,7 +1046,6 @@ describe("AutoBackupService", () => {
         "monize-backup-daily-2026-04-03.json.gz",
       ]);
     });
-
   });
 
   describe("handleAutoBackupCron", () => {
