@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "备份密码至少需要 {{ minLength }} 个字符",
     "backupPasswordBreached": "此密码已在数据泄露中被发现。请选择其他密码。",
     "restoreBodyMustBeFile": "请求正文必须是备份文件",
-    "reauthUnavailable": "请先完成账户密码设置，然后再恢复备份。"
+    "reauthUnavailable": "请先完成账户密码设置，然后再恢复备份。",
+    "restoredWithMissingAttachmentBytes": "备份恢复成功，但其中 {{ count }} 个附件不包含文件内容。它们存储在数据库之外（本地文件夹或 S3），因此需要从该存储中单独恢复这些文件。",
+    "tooManyBackupsThisSecond": "同一秒内写入的备份过多，无法再命名一个。"
   },
   "budgets": {
     "notFound": "未找到 ID 为 {{ id }} 的预算",

@@ -919,8 +919,43 @@ export class BackupService {
         // to avoid circular/forward reference violations.
         await this.restoreDeferredFkColumns(manager, data);
 
+        // Attachment bytes only travel with the backup for the `database`
+        // storage provider. Under `local` or `s3` they live in a mounted volume
+        // or a bucket, which the deployment must back up separately (see the
+        // notes on `LocalStorageProvider` / `S3StorageProvider`). That is a
+        // deliberate design decision, but it has a consequence the restore used
+        // to leave the user to discover on their own: the metadata rows come
+        // back and every download against them 404s.
+        //
+        // Count them and say so. Reporting nothing turns a documented
+        // limitation into what looks like data corruption found weeks later.
+        const attachmentsWithoutBytes = await this.countAttachmentsMissingBytes(
+          manager,
+          userId,
+        );
+        restored.attachmentsWithoutBytes = attachmentsWithoutBytes;
+
         this.logger.log(`Backup restore completed for user ${userId}`);
-        return { message: "Backup restored successfully", restored };
+        if (attachmentsWithoutBytes > 0) {
+          this.logger.warn(
+            `${attachmentsWithoutBytes} restored attachment(s) for user ${userId} ` +
+              `have no bytes in this backup. The backup was taken while an ` +
+              `external attachment storage provider (local/s3) was configured, ` +
+              `so the files must be restored from that volume or bucket ` +
+              `separately -- downloads will fail until they are.`,
+          );
+        }
+        return {
+          message:
+            attachmentsWithoutBytes > 0
+              ? tr(
+                  "errors.backup.restoredWithMissingAttachmentBytes",
+                  `Backup restored successfully, but ${attachmentsWithoutBytes} attachment(s) have no file contents in this backup. They were stored outside the database (local folder or S3), so those files must be restored from that storage separately.`,
+                  { count: attachmentsWithoutBytes },
+                )
+              : "Backup restored successfully",
+          restored,
+        };
       }),
     ).catch((error) => {
       this.logger.error(
@@ -1485,6 +1520,27 @@ export class BackupService {
                            WHERE up.default_currency = c.code)`,
       [userId],
     );
+  }
+
+  /**
+   * Restored attachment metadata rows that have no corresponding bytes.
+   *
+   * `attachment_blobs` only carries rows for the `database` provider, so a
+   * non-zero count here means the backup was taken under `local` or `s3` and
+   * the files have to come from that volume or bucket.
+   */
+  private async countAttachmentsMissingBytes(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<number> {
+    const rows: { count: string }[] = await manager.query(
+      `SELECT COUNT(*)::text AS count
+         FROM transaction_attachments ta
+         LEFT JOIN attachment_blobs ab ON ab.attachment_id = ta.id
+        WHERE ta.user_id = $1 AND ab.attachment_id IS NULL`,
+      [userId],
+    );
+    return Number(rows[0]?.count ?? 0);
   }
 
   private async restoreDeferredFkColumns(

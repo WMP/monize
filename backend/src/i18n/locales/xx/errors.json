@@ -195,7 +195,9 @@
     "backupPasswordTooShort": "[XX-Backup password must be at least {{ minLength }} characters-XX]",
     "backupPasswordBreached": "[XX-This password has been found in a data breach. Please choose a different password.-XX]",
     "restoreBodyMustBeFile": "[XX-Request body must be a backup file-XX]",
-    "reauthUnavailable": "[XX-Finish setting up your account password before restoring a backup.-XX]"
+    "reauthUnavailable": "[XX-Finish setting up your account password before restoring a backup.-XX]",
+    "restoredWithMissingAttachmentBytes": "[XX-Backup restored successfully, but {{ count }} attachment(s) have no file contents in this backup. They were stored outside the database (local folder or S3), so those files must be restored from that storage separately.-XX]",
+    "tooManyBackupsThisSecond": "[XX-Too many backups were written in the same second to name another one.-XX]"
   },
   "budgets": {
     "notFound": "[XX-Budget with ID {{ id }} not found-XX]",

@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "백업 비밀번호는 최소 {{ minLength }}자 이상이어야 합니다",
     "backupPasswordBreached": "이 비밀번호는 데이터 유출에서 발견되었습니다. 다른 비밀번호를 선택하세요.",
     "restoreBodyMustBeFile": "요청 본문은 백업 파일이어야 합니다",
-    "reauthUnavailable": "백업을 복원하기 전에 계정 비밀번호 설정을 완료하세요."
+    "reauthUnavailable": "백업을 복원하기 전에 계정 비밀번호 설정을 완료하세요.",
+    "restoredWithMissingAttachmentBytes": "백업을 성공적으로 복원했지만, 첨부 파일 {{ count }}개의 파일 내용이 이 백업에 없습니다. 데이터베이스 외부(로컬 폴더 또는 S3)에 저장되어 있었으므로 해당 파일은 그 저장소에서 별도로 복원해야 합니다.",
+    "tooManyBackupsThisSecond": "같은 초에 너무 많은 백업이 기록되어 추가 백업에 이름을 지정할 수 없습니다."
   },
   "budgets": {
     "notFound": "ID가 {{ id }}인 예산을 찾을 수 없습니다",

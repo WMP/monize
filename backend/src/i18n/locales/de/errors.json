@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Sicherungspasswort muss mindestens {{ minLength }} Zeichen lang sein",
     "backupPasswordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
     "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein",
-    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen."
+    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen.",
+    "restoredWithMissingAttachmentBytes": "Sicherung erfolgreich wiederhergestellt, aber {{ count }} Anhang/Anhänge enthalten in dieser Sicherung keine Dateiinhalte. Sie wurden außerhalb der Datenbank gespeichert (lokaler Ordner oder S3), daher müssen diese Dateien separat aus diesem Speicher wiederhergestellt werden.",
+    "tooManyBackupsThisSecond": "In derselben Sekunde wurden zu viele Backups geschrieben, um ein weiteres zu benennen."
   },
   "budgets": {
     "notFound": "Budget mit ID {{ id }} nicht gefunden",

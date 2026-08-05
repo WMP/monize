@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "La contraseña de copia de seguridad debe tener al menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta contraseña se encontró en una filtración de datos. Elige una contraseña diferente.",
     "restoreBodyMustBeFile": "El cuerpo de la solicitud debe ser un archivo de copia de seguridad",
-    "reauthUnavailable": "Termina de configurar la contraseña de tu cuenta antes de restaurar una copia de seguridad."
+    "reauthUnavailable": "Termina de configurar la contraseña de tu cuenta antes de restaurar una copia de seguridad.",
+    "restoredWithMissingAttachmentBytes": "Copia de seguridad restaurada correctamente, pero {{ count }} archivo(s) adjunto(s) no incluyen su contenido en esta copia. Se guardaron fuera de la base de datos (carpeta local o S3), por lo que esos archivos deben restaurarse por separado desde ese almacenamiento.",
+    "tooManyBackupsThisSecond": "Se han escrito demasiadas copias de seguridad en el mismo segundo para poder nombrar otra."
   },
   "budgets": {
     "notFound": "Presupuesto con ID {{ id }} no encontrado",

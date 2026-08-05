@@ -46,8 +46,16 @@ export const DEFAULT_BACKUP_CONTAINER_DIR = "/data/backups";
 // File extensions: .json.gz for unencrypted, .mzbe for encrypted Monize backups.
 // Retention enforcement matches both so we can clean up legacy and encrypted
 // files uniformly.
+// The optional `-HHmmss` is what makes a sub-daily schedule's occurrences
+// distinct files: `every6hours` produces four a day, and a date-only name made
+// all four the same file, so three were silently overwritten while the settings
+// row recorded each run a success. The trailing `(?:-\d+)?` is the discriminator
+// two same-second writers use; it sits after the time and before the extension so
+// retention still reads the occurrence's date from group 1 and sorts correctly.
+// A file matching neither is invisible to both the count and the sweep, which
+// would be a recovery point nothing ever deletes.
 const DAILY_FILE_PATTERN =
-  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
+  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})(?:-(\d{2})(\d{2})(\d{2})(?:-\d+)?)?\.(json\.gz|mzbe)$/;
 const WEEKLY_FILE_PATTERN =
   /^monize-backup-weekly-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
 const MONTHLY_FILE_PATTERN =
@@ -74,6 +82,27 @@ interface BackupFile {
 
 function parseDateString(ds: string): Date | null {
   const date = new Date(ds + "T00:00:00Z");
+  return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * A daily file's timestamp, including the local time when its name carries one.
+ *
+ * Retention sorts by this, so four occurrences on the same date have to be
+ * orderable by more than the date -- otherwise "keep the newest N" picks
+ * arbitrarily among them.
+ */
+function parseDailyStamp(
+  datePart: string,
+  hh?: string,
+  mm?: string,
+  ss?: string,
+): Date | null {
+  const time =
+    hh !== undefined && mm !== undefined && ss !== undefined
+      ? `${hh}:${mm}:${ss}`
+      : "00:00:00";
+  const date = new Date(`${datePart}T${time}Z`);
   return isNaN(date.getTime()) ? null : date;
 }
 
@@ -633,44 +662,110 @@ export class AutoBackupService {
     const encryptionPassword =
       resolution.status === "password" ? resolution.password : undefined;
 
-    const dateStr = this.getLocalDateString(new Date(), timezone);
+    const now = new Date();
+    const dateStr = this.getLocalDateString(now, timezone);
+    const timeStr = this.getLocalTimeString(now, timezone);
     const ext = encryptionPassword ? "mzbe" : "json.gz";
-    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}.${ext}`;
-    const filepath = this.safePath(userFolder, filename);
 
     const payload = await this.backupService.exportToBuffer(
       userId,
       encryptionPassword,
     );
-    // Write to a temporary name and rename into place. `rename` within a
-    // directory is atomic, so a reader (or a restore) never sees a half-written
-    // backup, and a crash mid-write leaves the previous good file rather than a
-    // truncated one that looks like a successful backup. Replacing our own
-    // same-day file is intended -- the collision that mattered was between
-    // different users, and the per-user directory removes it.
-    // FV-004: unique per write, not per process. `process.pid` looked unique and
-    // is not -- a manual backup and the scheduled one for the same user, day and
-    // extension collide inside a single process, and across replicas sharing a
-    // volume PIDs collide outright. The loser's `rename` then fails with ENOENT,
-    // or its own cleanup unlinks the temp file the winner is about to rename, so a
-    // legitimate backup run reports failure. Replacing our own *final* same-day
-    // file is still intended; it is the intermediate name that has to be private.
+
+    // Two writers, two exclusive paths, and never a truncated file wearing a
+    // valid name.
+    //
+    // Writing straight to the final path is not atomic: a crash or a full disk
+    // part-way through leaves a half-written backup that looks like a recovery
+    // point and fails on restore. And second-level wall-clock uniqueness is not
+    // uniqueness -- two replicas firing the same occurrence, or a
+    // double-submitted manual backup, computed the same path, so two accepted
+    // backups produced one file whose contents belonged to whichever write landed
+    // last, with one run reporting success for a recovery point that no longer
+    // existed.
+    //
+    // So: a uuid temporary name created with `wx` (fails rather than truncates),
+    // published by *linking* rather than renaming, because `link` refuses a name
+    // that exists and `rename` overwrites it. When the final name is taken the
+    // loser appends a discriminator instead of skipping -- two recovery points,
+    // never one, because a backup that was accepted and then silently discarded
+    // is the failure this is guarding against. Retention trims the surplus.
     const tempPath = this.safePath(
       userFolder,
-      `.${filename}.partial-${process.pid}-${randomUUID()}`,
+      `.${BACKUP_FILE_PREFIX}partial-${dateStr}-${timeStr}-${randomUUID()}.${ext}`,
     );
+    await fs.writeFile(tempPath, payload, { flag: "wx" });
+
+    let filename: string;
     try {
-      await fs.writeFile(tempPath, payload);
-      await fs.rename(tempPath, filepath);
+      filename = await this.publishExclusive(
+        tempPath,
+        userFolder,
+        `${BACKUP_FILE_PREFIX}daily-${dateStr}-${timeStr}`,
+        ext,
+      );
     } catch (error) {
-      await fs.unlink(tempPath).catch(() => {});
+      await fs.unlink(tempPath).catch(() => undefined);
       throw error;
     }
+    // The payload has two names now; drop ours. A failure here leaves a
+    // dot-prefixed file that matches no retention pattern -- noise, not a false
+    // recovery point.
+    await fs.unlink(tempPath).catch(() => undefined);
 
     this.logger.log(
-      `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,
+      `Backup written to ${this.safePath(userFolder, filename)}` +
+        `${encryptionPassword ? " (encrypted)" : ""}`,
     );
     return filename;
+  }
+
+  /**
+   * Links `tempPath` to `<base>.<ext>` in `folder`, or to `<base>-<n>.<ext>` when
+   * that name is already taken, and returns the name it used.
+   *
+   * `link` is the whole point: it fails with `EEXIST` rather than overwriting, so
+   * two writers that computed the same name cannot silently become one file.
+   *
+   * The loop is bounded. Reaching the end means a great many backups share one
+   * second, which is worth failing on rather than looping in.
+   */
+  private async publishExclusive(
+    tempPath: string,
+    folder: string,
+    base: string,
+    ext: string,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const filename =
+        attempt === 0 ? `${base}.${ext}` : `${base}-${attempt}.${ext}`;
+      try {
+        await fs.link(tempPath, this.safePath(folder, filename));
+        return filename;
+      } catch (error) {
+        if ((error as { code?: string }).code !== "EEXIST") throw error;
+      }
+    }
+    throw new BadRequestException(
+      tr(
+        "errors.backup.tooManyBackupsThisSecond",
+        "Too many backups were written in the same second to name another one.",
+      ),
+    );
+  }
+
+  /** Local wall-clock time as `HHmmss`, for the occurrence part of a filename. */
+  private getLocalTimeString(date: Date, timezone: string): string {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date);
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "00";
+    return `${get("hour")}${get("minute")}${get("second")}`;
   }
 
   private copyToWeeklyIfNeeded(
@@ -739,7 +834,12 @@ export class AutoBackupService {
     for (const name of entries) {
       const dailyMatch = DAILY_FILE_PATTERN.exec(name);
       if (dailyMatch) {
-        const date = parseDateString(dailyMatch[1]);
+        const date = parseDailyStamp(
+          dailyMatch[1],
+          dailyMatch[2],
+          dailyMatch[3],
+          dailyMatch[4],
+        );
         if (date) files.push({ name, dir, legacy, date, tier: "daily" });
         continue;
       }

@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Mật khẩu sao lưu phải có ít nhất {{ minLength }} ký tự",
     "backupPasswordBreached": "Mật khẩu này đã bị phát hiện trong một vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.",
     "restoreBodyMustBeFile": "Nội dung yêu cầu phải là tệp sao lưu",
-    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi phục hồi bản sao lưu."
+    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi phục hồi bản sao lưu.",
+    "restoredWithMissingAttachmentBytes": "Đã phục hồi bản sao lưu thành công, nhưng {{ count }} tệp đính kèm không có nội dung tệp trong bản sao lưu này. Chúng được lưu ngoài cơ sở dữ liệu (thư mục cục bộ hoặc S3), nên phải phục hồi riêng các tệp đó từ nơi lưu trữ ấy.",
+    "tooManyBackupsThisSecond": "Có quá nhiều bản sao lưu được ghi trong cùng một giây nên không thể đặt tên cho bản khác."
   },
   "budgets": {
     "notFound": "Không tìm thấy ngân sách với ID {{ id }}",

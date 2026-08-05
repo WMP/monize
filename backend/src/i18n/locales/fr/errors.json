@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Le mot de passe de sauvegarde doit comporter au moins {{ minLength }} caractères",
     "backupPasswordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
     "restoreBodyMustBeFile": "Le corps de la requête doit être un fichier de sauvegarde",
-    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde."
+    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde.",
+    "restoredWithMissingAttachmentBytes": "Sauvegarde restaurée avec succès, mais {{ count }} pièce(s) jointe(s) n'ont pas de contenu de fichier dans cette sauvegarde. Elles étaient stockées en dehors de la base de données (dossier local ou S3) : ces fichiers doivent être restaurés séparément depuis ce stockage.",
+    "tooManyBackupsThisSecond": "Trop de sauvegardes ont été écrites dans la même seconde pour en nommer une autre."
   },
   "budgets": {
     "notFound": "Budget avec l'ID {{ id }} introuvable",

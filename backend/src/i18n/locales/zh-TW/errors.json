@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
     "restoreBodyMustBeFile": "請求主體必須是備份檔案",
-    "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。"
+    "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。",
+    "restoredWithMissingAttachmentBytes": "備份還原成功，但其中 {{ count }} 個附件不包含檔案內容。它們儲存在資料庫之外（本機資料夾或 S3），因此需要從該儲存空間單獨還原這些檔案。",
+    "tooManyBackupsThisSecond": "同一秒內寫入的備份過多，無法再命名一個。"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",

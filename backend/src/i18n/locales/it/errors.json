@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "La password di backup deve contenere almeno {{ minLength }} caratteri",
     "backupPasswordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
     "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup",
-    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di ripristinare un backup."
+    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di ripristinare un backup.",
+    "restoredWithMissingAttachmentBytes": "Backup ripristinato correttamente, ma {{ count }} allegato/i non hanno il contenuto del file in questo backup. Erano archiviati fuori dal database (cartella locale o S3), quindi quei file vanno ripristinati separatamente da quello spazio di archiviazione.",
+    "tooManyBackupsThisSecond": "Sono stati scritti troppi backup nello stesso secondo per poterne nominare un altro."
   },
   "budgets": {
     "notFound": "Budget con ID {{ id }} non trovato",

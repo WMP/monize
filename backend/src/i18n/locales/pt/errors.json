@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "A palavra-passe de cópia de segurança deve ter pelo menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
     "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança",
-    "reauthUnavailable": "Conclua a definição da palavra-passe da sua conta antes de restaurar uma cópia de segurança."
+    "reauthUnavailable": "Conclua a definição da palavra-passe da sua conta antes de restaurar uma cópia de segurança.",
+    "restoredWithMissingAttachmentBytes": "Cópia de segurança restaurada com sucesso, mas {{ count }} anexo(s) não têm conteúdo de ficheiro nesta cópia. Estavam guardados fora da base de dados (pasta local ou S3), pelo que esses ficheiros têm de ser restaurados separadamente a partir desse armazenamento.",
+    "tooManyBackupsThisSecond": "Foram escritas demasiadas cópias de segurança no mesmo segundo para dar nome a outra."
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",

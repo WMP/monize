@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "A senha de backup deve ter pelo menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta senha foi encontrada em uma violação de dados. Escolha uma senha diferente.",
     "restoreBodyMustBeFile": "O corpo da requisição deve ser um arquivo de backup",
-    "reauthUnavailable": "Conclua a definição da senha da sua conta antes de restaurar um backup."
+    "reauthUnavailable": "Conclua a definição da senha da sua conta antes de restaurar um backup.",
+    "restoredWithMissingAttachmentBytes": "Backup restaurado com sucesso, mas {{ count }} anexo(s) não têm conteúdo de arquivo neste backup. Eles estavam armazenados fora do banco de dados (pasta local ou S3), portanto esses arquivos precisam ser restaurados separadamente desse armazenamento.",
+    "tooManyBackupsThisSecond": "Foram gravados backups demais no mesmo segundo para nomear outro."
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",

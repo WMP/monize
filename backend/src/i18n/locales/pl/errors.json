@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Hasło kopii zapasowej musi mieć co najmniej {{ minLength }} znaków",
     "backupPasswordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
     "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej",
-    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim przywrócisz kopię zapasową."
+    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim przywrócisz kopię zapasową.",
+    "restoredWithMissingAttachmentBytes": "Kopia zapasowa przywrócona pomyślnie, ale {{ count }} załącznik(ów) nie ma w niej zawartości plików. Były przechowywane poza bazą danych (folder lokalny lub S3), więc te pliki trzeba przywrócić osobno z tego magazynu.",
+    "tooManyBackupsThisSecond": "W tej samej sekundzie zapisano zbyt wiele kopii zapasowych, aby nadać nazwę kolejnej."
   },
   "budgets": {
     "notFound": "Nie znaleziono budżetu o ID {{ id }}",

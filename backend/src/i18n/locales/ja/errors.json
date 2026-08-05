@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "バックアップパスワードは少なくとも {{ minLength }} 文字必要です",
     "backupPasswordBreached": "このパスワードはデータ侵害で発見されています。別のパスワードを選択してください。",
     "restoreBodyMustBeFile": "リクエストボディはバックアップファイルでなければなりません",
-    "reauthUnavailable": "バックアップを復元する前に、アカウントのパスワード設定を完了してください。"
+    "reauthUnavailable": "バックアップを復元する前に、アカウントのパスワード設定を完了してください。",
+    "restoredWithMissingAttachmentBytes": "バックアップは正常に復元されましたが、{{ count }} 件の添付ファイルにはこのバックアップ内にファイル内容が含まれていません。これらはデータベース外（ローカルフォルダーまたは S3）に保存されていたため、そのストレージから個別に復元する必要があります。",
+    "tooManyBackupsThisSecond": "同じ秒内に書き込まれたバックアップが多すぎるため、これ以上名前を付けられません。"
   },
   "budgets": {
     "notFound": "ID {{ id }} の予算が見つかりません",

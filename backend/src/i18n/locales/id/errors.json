@@ -187,7 +187,9 @@
     "backupPasswordTooShort": "Kata sandi cadangan harus minimal {{ minLength }} karakter",
     "backupPasswordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
     "restoreBodyMustBeFile": "Isi permintaan harus berupa file cadangan",
-    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan."
+    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan.",
+    "restoredWithMissingAttachmentBytes": "Cadangan berhasil dipulihkan, tetapi {{ count }} lampiran tidak memiliki isi berkas dalam cadangan ini. Lampiran tersebut disimpan di luar basis data (folder lokal atau S3), jadi berkas itu harus dipulihkan secara terpisah dari penyimpanan tersebut.",
+    "tooManyBackupsThisSecond": "Terlalu banyak pencadangan ditulis dalam detik yang sama untuk memberi nama pencadangan lain."
   },
   "budgets": {
     "notFound": "Anggaran dengan ID {{ id }} tidak ditemukan",
