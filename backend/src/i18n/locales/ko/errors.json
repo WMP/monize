@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "백업 비밀번호는 OIDC 사용자에게만 구성할 수 있습니다. 로컬 사용자는 로그인 비밀번호를 사용합니다",
     "backupPasswordTooShort": "백업 비밀번호는 최소 {{ minLength }}자 이상이어야 합니다",
     "backupPasswordBreached": "이 비밀번호는 데이터 유출에서 발견되었습니다. 다른 비밀번호를 선택하세요.",
-    "restoreBodyMustBeFile": "요청 본문은 백업 파일이어야 합니다"
+    "restoreBodyMustBeFile": "요청 본문은 백업 파일이어야 합니다",
+    "supportPasswordRequired": "지원용 백업은 반드시 암호화해야 합니다. 비밀번호를 입력하세요.",
+    "passwordHeaderNotBase64": "{header} 헤더는 base64로 인코딩되어야 합니다.",
+    "decompressTooLarge": "백업이 너무 커서 복원할 수 없습니다: 압축을 풀면 설정된 한도 {limit}바이트를 초과합니다. 정상적인 백업이라면 BACKUP_RESTORE_EXPANDED_LIMIT를 높이세요.",
+    "exportTooLarge": "이 백업은 한 번에 생성하기에 너무 큽니다(\"{table}\" 테이블에서 {limit}바이트 초과). 암호화·자동·지원용 백업은 메모리에서 조립해야 합니다. 스트리밍 방식인 일반 내보내기를 사용하거나 BACKUP_EXPORT_BUFFER_LIMIT를 높이세요.",
+    "supportExportTooLarge": "이 지원용 백업은 JSON {{ size }} MiB로 {{ limit }} MiB 한도를 초과합니다. 계좌 선택이나 기간으로 범위를 좁히거나 BACKUP_EXPORT_BUFFER_LIMIT를 높이세요.",
+    "folderUnusable": "폴더 \"{{ path }}\"는 디렉터리로 사용할 수 없습니다({{ reason }}).",
+    "folderOutsideAllowedRoots": "백업 폴더 \"{path}\"가 허용된 루트({roots}) 밖에 있습니다. 허용하려면 BACKUP_ALLOWED_ROOTS를 설정하세요.",
+    "noBackupStorage": "이 배포에는 쓰기 가능한 백업 저장소가 없습니다: {{ safePath }}가 존재하지 않으며 생성할 수도 없습니다({{ reason }}). 해당 위치에 볼륨을 마운트한 뒤(Docker: 바인드 마운트 또는 명명된 볼륨, Kubernetes: Helm 차트의 backend.persistence.backups 설정) 다시 시도하세요.",
+    "restoreNoMemoryHeadroom": "이 배포에는 복원을 위한 메모리 여유가 없습니다: 복원 한 번의 예상 최대 사용량이 컨테이너에 맞지 않습니다. 컨테이너 메모리 한도를 높이거나 BACKUP_RESTORE_EXPANDED_LIMIT를 낮추세요."
   },
   "budgets": {
     "notFound": "ID가 {{ id }}인 예산을 찾을 수 없습니다",

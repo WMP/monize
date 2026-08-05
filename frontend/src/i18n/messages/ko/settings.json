@@ -472,7 +472,8 @@
       "nextBackup": "다음 백업",
       "error": "오류",
       "success": "성공",
-      "failed": "실패"
+      "failed": "실패",
+      "partial": "부분"
     },
     "saveButton": "설정 저장",
     "savingButton": "저장 중...",
@@ -497,6 +498,10 @@
       "every12hours": "12시간마다",
       "daily": "매일",
       "weekly": "매주"
+    },
+    "noStorage": {
+      "title": "이 배포에는 백업 저장소가 없습니다",
+      "body": "자동 백업은 {folderPath}에 기록되지만 이 배포에서는 해당 위치에 쓸 수 없습니다. 일정을 실행하려면 관리자가 먼저 해당 위치에 저장소를 마운트해야 합니다."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "백업이 성공적으로 다운로드되었습니다",
+        "incomplete": "백업을 다운로드했지만 내용이 불완전합니다: 첨부 파일 {total}개 중 {unusable}개를 온전하게 저장할 수 없었습니다({missing}개 누락, {inconsistent}개 무결성 검사 실패). 이 파일을 완전한 백업으로 취급하지 마세요. 첨부 파일 저장소를 복구한 후 다시 내보내세요.",
         "failed": "백업 생성에 실패했습니다"
       }
     },
@@ -566,7 +572,8 @@
       "title": "복원 완료",
       "description": "데이터가 성공적으로 복원되었습니다. 복원된 내용의 요약입니다:",
       "totalRecords": "전체 레코드",
-      "doneButton": "완료"
+      "doneButton": "완료",
+      "skippedAttachments": "{count, plural, other {첨부 파일 #개가 복원되지 않았습니다}}: 해당 파일을 첨부 파일 저장소에서 찾을 수 없었거나, 백업에 기록된 체크섬과 일치하지 않았습니다. 첨부 파일은 데이터베이스 외부에 저장되므로 데이터베이스와 함께 백업하고 복원해야 합니다."
     }
   },
   "sharedAccess": {

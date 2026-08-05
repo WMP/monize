@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "La password di backup è configurabile solo per gli utenti OIDC; gli utenti locali usano la password di accesso",
     "backupPasswordTooShort": "La password di backup deve contenere almeno {{ minLength }} caratteri",
     "backupPasswordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
-    "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup"
+    "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup",
+    "supportPasswordRequired": "Un backup di supporto deve essere cifrato: fornisci una password.",
+    "passwordHeaderNotBase64": "L'intestazione {header} deve essere codificata in base64.",
+    "decompressTooLarge": "Il backup è troppo grande per essere ripristinato: decompresso supera il limite configurato di {limit} byte. Aumenta BACKUP_RESTORE_EXPANDED_LIMIT se si tratta di un backup legittimo.",
+    "exportTooLarge": "Questo backup è troppo grande per essere prodotto in un unico blocco (oltre {limit} byte alla tabella \"{table}\"). I backup cifrati, automatici e di supporto devono essere assemblati in memoria; usa l'esportazione semplice, che trasmette in streaming, oppure aumenta BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportExportTooLarge": "Questo backup di supporto sarebbe di {{ size }} MiB di JSON, oltre il limite di {{ limit }} MiB. Restringilo con una selezione di conti o un intervallo di date, oppure aumenta BACKUP_EXPORT_BUFFER_LIMIT.",
+    "folderUnusable": "La cartella \"{{ path }}\" non può essere usata come directory ({{ reason }}).",
+    "folderOutsideAllowedRoots": "La cartella di backup \"{path}\" è fuori dalle radici consentite ({roots}). Imposta BACKUP_ALLOWED_ROOTS per consentirla.",
+    "noBackupStorage": "Questa installazione non ha spazio di backup scrivibile: {{ safePath }} non esiste e non può essere creato ({{ reason }}). Monta un volume lì (Docker: bind mount o volume con nome; Kubernetes: imposta backend.persistence.backups nel chart Helm) e riprova.",
+    "restoreNoMemoryHeadroom": "Questa installazione non ha margine di memoria per un ripristino: il picco stimato di un ripristino non entra nel container. Aumenta il limite di memoria del container o riduci BACKUP_RESTORE_EXPANDED_LIMIT."
   },
   "budgets": {
     "notFound": "Budget con ID {{ id }} non trovato",

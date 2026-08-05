@@ -472,7 +472,8 @@
       "nextBackup": "下次備份",
       "error": "錯誤",
       "success": "成功",
-      "failed": "失敗"
+      "failed": "失敗",
+      "partial": "不完整"
     },
     "saveButton": "儲存設定",
     "savingButton": "儲存中...",
@@ -497,6 +498,10 @@
       "every12hours": "每 12 小時",
       "daily": "每日",
       "weekly": "每週"
+    },
+    "noStorage": {
+      "title": "此部署沒有備份儲存空間",
+      "body": "自動備份將寫入 {folderPath}，但此部署無法寫入該位置。管理員需要先在該位置掛載儲存空間，排程才能執行。"
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "備份下載成功",
+        "incomplete": "備份已下載，但內容不完整：{total} 個附件中有 {unusable} 個無法完整保存（{missing} 個缺失，{inconsistent} 個未通過完整性檢查）。請勿將此檔案視為完整備份——修復附件儲存後重新匯出。",
         "failed": "建立備份失敗"
       }
     },
@@ -566,7 +572,8 @@
       "title": "還原完成",
       "description": "您的資料已成功還原。以下是已還原內容的摘要：",
       "totalRecords": "總記錄數",
-      "doneButton": "完成"
+      "doneButton": "完成",
+      "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：在附件儲存空間中找不到對應檔案，或與備份中記錄的總和檢查碼不符。附件檔案儲存於資料庫之外，因此必須與資料庫一起備份與還原。"
     }
   },
   "sharedAccess": {

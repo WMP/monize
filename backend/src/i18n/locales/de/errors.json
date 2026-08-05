@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "Sicherungspasswort ist nur für OIDC-Benutzer konfigurierbar; lokale Benutzer verwenden ihr Anmeldepasswort",
     "backupPasswordTooShort": "Sicherungspasswort muss mindestens {{ minLength }} Zeichen lang sein",
     "backupPasswordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
-    "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein"
+    "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein",
+    "supportPasswordRequired": "Ein Support-Backup muss verschlüsselt sein: Bitte ein Passwort angeben.",
+    "passwordHeaderNotBase64": "Der Header {header} muss base64-codiert sein.",
+    "decompressTooLarge": "Backup ist zu groß zum Wiederherstellen: Es entpackt sich über das konfigurierte Limit von {limit} Bytes hinaus. Erhöhe BACKUP_RESTORE_EXPANDED_LIMIT, wenn dies ein echtes Backup ist.",
+    "exportTooLarge": "Dieses Backup ist zu groß, um in einem Stück erzeugt zu werden (über {limit} Bytes bei Tabelle \"{table}\"). Verschlüsselte, automatische und Support-Backups müssen im Speicher zusammengesetzt werden; nutze den einfachen Export, der streamt, oder erhöhe BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportExportTooLarge": "Dieses Support-Backup wäre {{ size }} MiB JSON und liegt damit über dem Limit von {{ limit }} MiB. Schränke es mit einer Kontoauswahl oder einem Zeitraum ein, oder erhöhe BACKUP_EXPORT_BUFFER_LIMIT.",
+    "folderUnusable": "Ordner \"{{ path }}\" kann nicht als Verzeichnis verwendet werden ({{ reason }}).",
+    "folderOutsideAllowedRoots": "Backup-Ordner \"{path}\" liegt außerhalb der erlaubten Wurzelverzeichnisse ({roots}). Setze BACKUP_ALLOWED_ROOTS, um ihn zuzulassen.",
+    "noBackupStorage": "Diese Installation hat keinen beschreibbaren Backup-Speicher: {{ safePath }} existiert nicht und kann nicht erstellt werden ({{ reason }}). Binde dort ein Volume ein (Docker: Bind-Mount oder benanntes Volume; Kubernetes: backend.persistence.backups im Helm-Chart setzen) und versuche es erneut.",
+    "restoreNoMemoryHeadroom": "Diese Installation hat keinen Speicherspielraum für eine Wiederherstellung: Der modellierte Spitzenbedarf einer Wiederherstellung passt nicht in den Container. Erhöhe das Speicherlimit des Containers oder senke BACKUP_RESTORE_EXPANDED_LIMIT."
   },
   "budgets": {
     "notFound": "Budget mit ID {{ id }} nicht gefunden",

@@ -472,7 +472,8 @@
       "nextBackup": "Prochaine sauvegarde",
       "error": "Erreur",
       "success": "Succès",
-      "failed": "Échec"
+      "failed": "Échec",
+      "partial": "Partielle"
     },
     "saveButton": "Enregistrer les paramètres",
     "savingButton": "Enregistrement...",
@@ -497,6 +498,10 @@
       "every12hours": "Toutes les 12 heures",
       "daily": "Quotidienne",
       "weekly": "Hebdomadaire"
+    },
+    "noStorage": {
+      "title": "Cette installation n'a aucun stockage de sauvegarde",
+      "body": "Les sauvegardes automatiques seraient écrites dans {folderPath}, où cette installation ne peut pas écrire. Un administrateur doit y monter un stockage avant qu'une planification puisse s'exécuter."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Sauvegarde téléchargée avec succès",
+        "incomplete": "Sauvegarde téléchargée, mais elle est INCOMPLÈTE : {unusable} pièce(s) jointe(s) sur {total} n'ont pas pu être enregistrées intactes ({missing} manquante(s), {inconsistent} ayant échoué au contrôle d'intégrité). Ne considérez pas ce fichier comme une sauvegarde complète — corrigez le stockage des pièces jointes et exportez à nouveau.",
         "failed": "Échec de la création de la sauvegarde"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Restauration terminée",
       "description": "Vos données ont été restaurées avec succès. Voici un résumé de ce qui a été restauré :",
       "totalRecords": "Total des enregistrements",
-      "doneButton": "Terminer"
+      "doneButton": "Terminer",
+      "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : leurs fichiers n'ont pas été trouvés dans le stockage des pièces jointes, ou ne correspondaient pas à la somme de contrôle enregistrée dans la sauvegarde. Les pièces jointes sont stockées en dehors de la base de données et doivent donc être sauvegardées et restaurées avec elle."
     }
   },
   "sharedAccess": {

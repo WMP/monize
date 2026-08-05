@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "Hasło kopii zapasowej można skonfigurować tylko dla użytkowników OIDC; użytkownicy lokalni używają swojego hasła logowania",
     "backupPasswordTooShort": "Hasło kopii zapasowej musi mieć co najmniej {{ minLength }} znaków",
     "backupPasswordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
-    "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej"
+    "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej",
+    "supportPasswordRequired": "Kopia zapasowa do wsparcia musi być zaszyfrowana: podaj hasło.",
+    "passwordHeaderNotBase64": "Nagłówek {header} musi być zakodowany w base64.",
+    "decompressTooLarge": "Kopia zapasowa jest zbyt duża, aby ją przywrócić: po rozpakowaniu przekracza skonfigurowany limit {limit} bajtów. Zwiększ BACKUP_RESTORE_EXPANDED_LIMIT, jeśli to prawdziwa kopia.",
+    "exportTooLarge": "Ta kopia zapasowa jest zbyt duża, aby utworzyć ją w całości (powyżej {limit} bajtów przy tabeli \"{table}\"). Kopie zaszyfrowane, automatyczne i do wsparcia muszą być składane w pamięci; użyj zwykłego eksportu, który strumieniuje, albo zwiększ BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportExportTooLarge": "Ta kopia do wsparcia miałaby {{ size }} MiB JSON-a, powyżej limitu {{ limit }} MiB. Zawęź ją wyborem kont lub zakresem dat albo zwiększ BACKUP_EXPORT_BUFFER_LIMIT.",
+    "folderUnusable": "Folder \"{{ path }}\" nie może być użyty jako katalog ({{ reason }}).",
+    "folderOutsideAllowedRoots": "Folder kopii zapasowych \"{path}\" jest poza dozwolonymi katalogami głównymi ({roots}). Ustaw BACKUP_ALLOWED_ROOTS, aby na niego pozwolić.",
+    "noBackupStorage": "Ta instalacja nie ma zapisywalnego magazynu kopii zapasowych: {{ safePath }} nie istnieje i nie może zostać utworzony ({{ reason }}). Zamontuj tam wolumen (Docker: bind mount lub wolumen nazwany; Kubernetes: ustaw backend.persistence.backups w charcie Helm) i spróbuj ponownie.",
+    "restoreNoMemoryHeadroom": "Ta instalacja nie ma zapasu pamięci na przywracanie: modelowany szczyt jednego przywracania nie mieści się w kontenerze. Zwiększ limit pamięci kontenera albo obniż BACKUP_RESTORE_EXPANDED_LIMIT."
   },
   "budgets": {
     "notFound": "Nie znaleziono budżetu o ID {{ id }}",

@@ -472,7 +472,8 @@
       "nextBackup": "Następna kopia zapasowa",
       "error": "Błąd",
       "success": "Sukces",
-      "failed": "Niepowodzenie"
+      "failed": "Niepowodzenie",
+      "partial": "Częściowa"
     },
     "saveButton": "Zapisz ustawienia",
     "savingButton": "Zapisywanie...",
@@ -497,6 +498,10 @@
       "every12hours": "Co 12 godzin",
       "daily": "Codziennie",
       "weekly": "Co tydzień"
+    },
+    "noStorage": {
+      "title": "Ta instalacja nie ma magazynu kopii zapasowych",
+      "body": "Automatyczne kopie zapasowe byłyby zapisywane w {folderPath}, gdzie ta instalacja nie może pisać. Administrator musi zamontować tam magazyn, zanim harmonogram będzie mógł działać."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Pobrano kopię zapasową",
+        "incomplete": "Kopia zapasowa została pobrana, ale jest NIEKOMPLETNA: {unusable} z {total} załącznik(ów) nie udało się zapisać w nienaruszonym stanie ({missing} brakuje, {inconsistent} nie przeszło kontroli integralności). Nie traktuj tego pliku jako pełnej kopii zapasowej — napraw magazyn załączników i wyeksportuj ponownie.",
         "failed": "Nie udało się utworzyć kopii zapasowej"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Przywracanie zakończone",
       "description": "Twoje dane zostały pomyślnie przywrócone. Oto podsumowanie tego, co przywrócono:",
       "totalRecords": "Łączna liczba rekordów",
-      "doneButton": "Gotowe"
+      "doneButton": "Gotowe",
+      "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: ich plików nie znaleziono w magazynie załączników albo nie zgadzały się z sumą kontrolną zapisaną w kopii. Pliki załączników są przechowywane poza bazą danych, więc trzeba je archiwizować i przywracać razem z nią."
     }
   },
   "sharedAccess": {

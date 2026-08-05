@@ -472,7 +472,8 @@
       "nextBackup": "Próxima copia de seguridad",
       "error": "Error",
       "success": "Exitoso",
-      "failed": "Fallido"
+      "failed": "Fallido",
+      "partial": "Parcial"
     },
     "saveButton": "Guardar configuración",
     "savingButton": "Guardando...",
@@ -497,6 +498,10 @@
       "every12hours": "Cada 12 horas",
       "daily": "Diariamente",
       "weekly": "Semanalmente"
+    },
+    "noStorage": {
+      "title": "Esta instalación no tiene almacenamiento para copias de seguridad",
+      "body": "Las copias automáticas se escribirían en {folderPath}, donde esta instalación no puede escribir. Un administrador debe montar almacenamiento allí antes de que se pueda ejecutar una programación."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Copia de seguridad descargada correctamente",
+        "incomplete": "Copia de seguridad descargada, pero está INCOMPLETA: {unusable} de {total} archivo(s) adjunto(s) no se pudieron guardar intactos ({missing} ausentes, {inconsistent} no pasaron la comprobación de integridad). No trate este archivo como una copia completa: corrija el almacenamiento de adjuntos y vuelva a exportar.",
         "failed": "Error al crear la copia de seguridad"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Restauración completa",
       "description": "Tus datos han sido restaurados correctamente. Aquí tienes un resumen de lo que se restauró:",
       "totalRecords": "Total de registros",
-      "doneButton": "Listo"
+      "doneButton": "Listo",
+      "skippedAttachments": "{count, plural, one {# archivo adjunto no se restauró} other {# archivos adjuntos no se restauraron}}: sus ficheros no se encontraron en el almacenamiento de adjuntos, o no coincidían con la suma de comprobación registrada en la copia. Los adjuntos se guardan fuera de la base de datos, por lo que deben respaldarse y restaurarse junto con ella."
     }
   },
   "sharedAccess": {

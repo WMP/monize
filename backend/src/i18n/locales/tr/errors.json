@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "Yedek şifresi yalnızca OIDC kullanıcıları için yapılandırılabilir; yerel kullanıcılar giriş şifrelerini kullanır",
     "backupPasswordTooShort": "Yedek şifresi en az {{ minLength }} karakter olmalıdır",
     "backupPasswordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
-    "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır"
+    "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır",
+    "supportPasswordRequired": "Destek yedeği şifrelenmiş olmalıdır: bir parola girin.",
+    "passwordHeaderNotBase64": "{header} başlığı base64 ile kodlanmış olmalıdır.",
+    "decompressTooLarge": "Yedek geri yüklenemeyecek kadar büyük: açıldığında yapılandırılmış {limit} bayt sınırını aşıyor. Bu gerçek bir yedekse BACKUP_RESTORE_EXPANDED_LIMIT değerini yükseltin.",
+    "exportTooLarge": "Bu yedek tek parçada üretilemeyecek kadar büyük (\"{table}\" tablosunda {limit} baytı aşıyor). Şifrelenmiş, otomatik ve destek yedekleri bellekte birleştirilmek zorundadır; akış yapan düz dışa aktarmayı kullanın veya BACKUP_EXPORT_BUFFER_LIMIT değerini yükseltin.",
+    "supportExportTooLarge": "Bu destek yedeği {{ size }} MiB JSON olurdu ve {{ limit }} MiB sınırının üzerindedir. Hesap seçimi veya tarih aralığıyla daraltın ya da BACKUP_EXPORT_BUFFER_LIMIT değerini yükseltin.",
+    "folderUnusable": "\"{{ path }}\" klasörü dizin olarak kullanılamıyor ({{ reason }}).",
+    "folderOutsideAllowedRoots": "Yedek klasörü \"{path}\" izin verilen kök dizinlerin ({roots}) dışında. İzin vermek için BACKUP_ALLOWED_ROOTS ayarlayın.",
+    "noBackupStorage": "Bu kurulumda yazılabilir yedek deposu yok: {{ safePath }} mevcut değil ve oluşturulamıyor ({{ reason }}). Oraya bir birim bağlayın (Docker: bind mount veya adlandırılmış birim; Kubernetes: Helm grafiğinde backend.persistence.backups ayarlayın) ve yeniden deneyin.",
+    "restoreNoMemoryHeadroom": "Bu kurulumda geri yükleme için bellek payı yok: bir geri yüklemenin modellenen tepe kullanımı kapsayıcıya sığmıyor. Kapsayıcının bellek sınırını yükseltin veya BACKUP_RESTORE_EXPANDED_LIMIT değerini düşürün."
   },
   "budgets": {
     "notFound": "{{ id }} kimliğine sahip bütçe bulunamadı",

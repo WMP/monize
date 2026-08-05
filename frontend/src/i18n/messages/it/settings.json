@@ -472,7 +472,8 @@
       "nextBackup": "Prossimo backup",
       "error": "Errore",
       "success": "Riuscito",
-      "failed": "Fallito"
+      "failed": "Fallito",
+      "partial": "Parziale"
     },
     "saveButton": "Salva impostazioni",
     "savingButton": "Salvataggio...",
@@ -497,6 +498,10 @@
       "every12hours": "Ogni 12 ore",
       "daily": "Giornaliero",
       "weekly": "Settimanale"
+    },
+    "noStorage": {
+      "title": "Questa installazione non ha spazio di archiviazione per i backup",
+      "body": "I backup automatici verrebbero scritti in {folderPath}, dove questa installazione non può scrivere. Un amministratore deve montare uno spazio di archiviazione lì prima che una pianificazione possa essere eseguita."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Backup scaricato con successo",
+        "incomplete": "Backup scaricato, ma è INCOMPLETO: {unusable} allegato/i su {total} non è stato possibile salvarli integri ({missing} mancanti, {inconsistent} non hanno superato il controllo di integrità). Non considerare questo file un backup completo: correggi l'archiviazione degli allegati ed esporta di nuovo.",
         "failed": "Impossibile creare il backup"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Ripristino completato",
       "description": "I tuoi dati sono stati ripristinati con successo. Ecco un riepilogo di quanto è stato ripristinato:",
       "totalRecords": "Record totali",
-      "doneButton": "Fatto"
+      "doneButton": "Fatto",
+      "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: i loro file non sono stati trovati nell'archivio degli allegati, o non corrispondevano al checksum registrato nel backup. Gli allegati sono archiviati fuori dal database, quindi devono essere salvati e ripristinati insieme a esso."
     }
   },
   "sharedAccess": {

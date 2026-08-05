@@ -472,7 +472,8 @@
       "nextBackup": "Próximo backup",
       "error": "Erro",
       "success": "Sucesso",
-      "failed": "Falhou"
+      "failed": "Falhou",
+      "partial": "Parcial"
     },
     "saveButton": "Salvar Configurações",
     "savingButton": "Salvando...",
@@ -497,6 +498,10 @@
       "every12hours": "A cada 12 horas",
       "daily": "Diariamente",
       "weekly": "Semanalmente"
+    },
+    "noStorage": {
+      "title": "Esta instalação não tem armazenamento para backups",
+      "body": "Os backups automáticos seriam gravados em {folderPath}, onde esta instalação não consegue gravar. Um administrador precisa montar armazenamento nesse local antes que um agendamento possa ser executado."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Backup baixado com sucesso",
+        "incomplete": "Backup baixado, mas está INCOMPLETO: {unusable} de {total} anexo(s) não puderam ser salvos intactos ({missing} ausentes, {inconsistent} falharam na verificação de integridade). Não trate este arquivo como um backup completo — corrija o armazenamento de anexos e exporte novamente.",
         "failed": "Falha ao criar o backup"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Restauração Concluída",
       "description": "Seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registros",
-      "doneButton": "Concluído"
+      "doneButton": "Concluído",
+      "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: os arquivos correspondentes não foram encontrados no armazenamento de anexos, ou não coincidiam com a soma de verificação registrada no backup. Os anexos são guardados fora do banco de dados, portanto precisam ser copiados e restaurados junto com ele."
     }
   },
   "sharedAccess": {

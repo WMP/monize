@@ -472,7 +472,8 @@
       "nextBackup": "Nächstes Backup",
       "error": "Fehler",
       "success": "Erfolgreich",
-      "failed": "Fehlgeschlagen"
+      "failed": "Fehlgeschlagen",
+      "partial": "Teilweise"
     },
     "saveButton": "Einstellungen speichern",
     "savingButton": "Wird gespeichert...",
@@ -497,6 +498,10 @@
       "every12hours": "Alle 12 Stunden",
       "daily": "Täglich",
       "weekly": "Wöchentlich"
+    },
+    "noStorage": {
+      "title": "Diese Installation hat keinen Backup-Speicher",
+      "body": "Automatische Backups würden nach {folderPath} geschrieben, wohin diese Installation nicht schreiben kann. Ein Administrator muss dort Speicher einbinden, bevor ein Zeitplan laufen kann."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Backup erfolgreich heruntergeladen",
+        "incomplete": "Backup heruntergeladen, aber es ist UNVOLLSTÄNDIG: {unusable} von {total} Anhang/Anhängen konnte(n) nicht unbeschädigt gesichert werden ({missing} fehlen, {inconsistent} haben die Integritätsprüfung nicht bestanden). Behandeln Sie diese Datei nicht als vollständiges Backup — beheben Sie den Anhangsspeicher und exportieren Sie erneut.",
         "failed": "Backup konnte nicht erstellt werden"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Wiederherstellung abgeschlossen",
       "description": "Ihre Daten wurden erfolgreich wiederhergestellt. Hier eine Zusammenfassung der wiederhergestellten Daten:",
       "totalRecords": "Datensätze gesamt",
-      "doneButton": "Fertig"
+      "doneButton": "Fertig",
+      "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: ihre Dateien waren im Anhangsspeicher nicht zu finden oder stimmten nicht mit der im Backup vermerkten Prüfsumme überein. Anhangsdateien liegen außerhalb der Datenbank und müssen daher zusammen mit ihr gesichert und wiederhergestellt werden."
     }
   },
   "sharedAccess": {

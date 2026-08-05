@@ -472,7 +472,8 @@
       "nextBackup": "Sonraki yedekleme",
       "error": "Hata",
       "success": "Başarılı",
-      "failed": "Başarısız"
+      "failed": "Başarısız",
+      "partial": "Kısmi"
     },
     "saveButton": "Ayarları Kaydet",
     "savingButton": "Kaydediliyor...",
@@ -497,6 +498,10 @@
       "every12hours": "Her 12 Saatte Bir",
       "daily": "Günlük",
       "weekly": "Haftalık"
+    },
+    "noStorage": {
+      "title": "Bu kurulumda yedek deposu yok",
+      "body": "Otomatik yedekler {folderPath} konumuna yazılacaktı, ancak bu kurulum oraya yazamıyor. Bir zamanlamanın çalışabilmesi için yöneticinin oraya depolama bağlaması gerekir."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Yedekleme başarıyla indirildi",
+        "incomplete": "Yedek indirildi, ancak EKSİK: {total} ekten {unusable} tanesi bozulmadan kaydedilemedi ({missing} eksik, {inconsistent} bütünlük denetiminden geçemedi). Bu dosyayı tam bir yedek olarak değerlendirmeyin — ek depolamasını onarın ve yeniden dışa aktarın.",
         "failed": "Yedekleme oluşturulamadı"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Geri Yükleme Tamamlandı",
       "description": "Verileriniz başarıyla geri yüklendi. Geri yüklenenler hakkında özet:",
       "totalRecords": "Toplam kayıt",
-      "doneButton": "Tamam"
+      "doneButton": "Tamam",
+      "skippedAttachments": "{count, plural, other {# ek geri yüklenmedi}}: dosyaları ek depolamasında bulunamadı veya yedekte kayıtlı sağlama toplamıyla eşleşmedi. Ek dosyaları veritabanının dışında saklanır, bu nedenle onunla birlikte yedeklenip geri yüklenmelidir."
     }
   },
   "sharedAccess": {

@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "बैकअप पासवर्ड केवल OIDC उपयोगकर्ताओं के लिए कॉन्फ़िगर करने योग्य है; स्थानीय उपयोगकर्ता अपने लॉगिन पासवर्ड का उपयोग करते हैं",
     "backupPasswordTooShort": "बैकअप पासवर्ड कम से कम {{ minLength }} अक्षरों का होना चाहिए",
     "backupPasswordBreached": "यह पासवर्ड डेटा उल्लंघन में पाया गया है। कृपया एक अलग पासवर्ड चुनें।",
-    "restoreBodyMustBeFile": "अनुरोध बॉडी एक बैकअप फ़ाइल होनी चाहिए"
+    "restoreBodyMustBeFile": "अनुरोध बॉडी एक बैकअप फ़ाइल होनी चाहिए",
+    "supportPasswordRequired": "सहायता बैकअप एन्क्रिप्टेड होना चाहिए: पासवर्ड दें।",
+    "passwordHeaderNotBase64": "{header} हेडर base64 में एन्कोड होना चाहिए।",
+    "decompressTooLarge": "बैकअप पुनर्स्थापित करने के लिए बहुत बड़ा है: यह {limit} बाइट्स की कॉन्फ़िगर सीमा से आगे फैलता है। यदि यह वास्तविक बैकअप है तो BACKUP_RESTORE_EXPANDED_LIMIT बढ़ाएँ।",
+    "exportTooLarge": "यह बैकअप एक बार में तैयार करने के लिए बहुत बड़ा है (तालिका \"{table}\" पर {limit} बाइट्स से आगे)। एन्क्रिप्टेड, स्वचालित और सहायता बैकअप मेमोरी में जोड़े जाते हैं; सामान्य निर्यात का उपयोग करें, जो स्ट्रीम करता है, या BACKUP_EXPORT_BUFFER_LIMIT बढ़ाएँ।",
+    "supportExportTooLarge": "यह सहायता बैकअप {{ size }} MiB JSON होगा, जो {{ limit }} MiB की सीमा से अधिक है। खाता चयन या दिनांक सीमा से इसे छोटा करें, या BACKUP_EXPORT_BUFFER_LIMIT बढ़ाएँ।",
+    "folderUnusable": "फ़ोल्डर \"{{ path }}\" को निर्देशिका के रूप में उपयोग नहीं किया जा सकता ({{ reason }})।",
+    "folderOutsideAllowedRoots": "बैकअप फ़ोल्डर \"{path}\" अनुमत रूट ({roots}) के बाहर है। इसे अनुमति देने के लिए BACKUP_ALLOWED_ROOTS सेट करें।",
+    "noBackupStorage": "इस परिनियोजन में लिखने योग्य बैकअप संग्रहण नहीं है: {{ safePath }} मौजूद नहीं है और बनाया नहीं जा सकता ({{ reason }})। वहाँ एक वॉल्यूम माउंट करें (Docker: बाइंड माउंट या नामित वॉल्यूम; Kubernetes: Helm चार्ट में backend.persistence.backups सेट करें) और फिर प्रयास करें।",
+    "restoreNoMemoryHeadroom": "इस परिनियोजन में पुनर्स्थापना के लिए मेमोरी की गुंजाइश नहीं है: एक पुनर्स्थापना का अनुमानित शिखर कंटेनर में नहीं समाता। कंटेनर की मेमोरी सीमा बढ़ाएँ या BACKUP_RESTORE_EXPANDED_LIMIT घटाएँ।"
   },
   "budgets": {
     "notFound": "ID {{ id }} वाला बजट नहीं मिला",

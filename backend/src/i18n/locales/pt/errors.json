@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "A palavra-passe de cópia de segurança só é configurável para utilizadores OIDC; os utilizadores locais utilizam a palavra-passe de início de sessão",
     "backupPasswordTooShort": "A palavra-passe de cópia de segurança deve ter pelo menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
-    "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança"
+    "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança",
+    "supportPasswordRequired": "Um backup de suporte tem de ser cifrado: indique uma palavra-passe.",
+    "passwordHeaderNotBase64": "O cabeçalho {header} tem de estar codificado em base64.",
+    "decompressTooLarge": "O backup é demasiado grande para ser restaurado: descomprimido excede o limite configurado de {limit} bytes. Aumente BACKUP_RESTORE_EXPANDED_LIMIT se for um backup legítimo.",
+    "exportTooLarge": "Este backup é demasiado grande para ser produzido de uma só vez (acima de {limit} bytes na tabela \"{table}\"). Os backups cifrados, automáticos e de suporte têm de ser montados em memória; use a exportação simples, que transmite, ou aumente BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportExportTooLarge": "Este backup de suporte teria {{ size }} MiB de JSON, acima do limite de {{ limit }} MiB. Restrinja-o com uma seleção de contas ou um intervalo de datas, ou aumente BACKUP_EXPORT_BUFFER_LIMIT.",
+    "folderUnusable": "A pasta \"{{ path }}\" não pode ser usada como diretório ({{ reason }}).",
+    "folderOutsideAllowedRoots": "A pasta de backups \"{path}\" está fora das raízes permitidas ({roots}). Defina BACKUP_ALLOWED_ROOTS para a permitir.",
+    "noBackupStorage": "Esta instalação não tem armazenamento de backups gravável: {{ safePath }} não existe e não pode ser criado ({{ reason }}). Monte um volume nesse local (Docker: bind mount ou volume com nome; Kubernetes: defina backend.persistence.backups no chart Helm) e tente novamente.",
+    "restoreNoMemoryHeadroom": "Esta instalação não tem margem de memória para uma restauração: o pico estimado de uma restauração não cabe no contentor. Aumente o limite de memória do contentor ou reduza BACKUP_RESTORE_EXPANDED_LIMIT."
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",

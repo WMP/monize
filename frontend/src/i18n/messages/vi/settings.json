@@ -472,7 +472,8 @@
       "nextBackup": "Sao lưu tiếp theo",
       "error": "Lỗi",
       "success": "Thành công",
-      "failed": "Thất bại"
+      "failed": "Thất bại",
+      "partial": "Một phần"
     },
     "saveButton": "Lưu cài đặt",
     "savingButton": "Đang lưu...",
@@ -497,6 +498,10 @@
       "every12hours": "Mỗi 12 giờ",
       "daily": "Hàng ngày",
       "weekly": "Hàng tuần"
+    },
+    "noStorage": {
+      "title": "Bản triển khai này không có bộ lưu trữ sao lưu",
+      "body": "Bản sao lưu tự động sẽ được ghi vào {folderPath}, nơi bản triển khai này không thể ghi. Quản trị viên cần gắn bộ lưu trữ ở đó trước khi lịch trình có thể chạy."
     }
   },
   "backupRestore": {
@@ -538,6 +543,7 @@
       },
       "toasts": {
         "success": "Sao lưu đã được tải xuống thành công",
+        "incomplete": "Đã tải xuống bản sao lưu, nhưng bản này KHÔNG ĐẦY ĐỦ: {unusable} trong {total} tệp đính kèm không thể được lưu nguyên vẹn ({missing} bị thiếu, {inconsistent} không qua được kiểm tra tính toàn vẹn). Đừng coi tệp này là bản sao lưu đầy đủ — hãy sửa bộ lưu trữ tệp đính kèm và xuất lại.",
         "failed": "Không thể tạo sao lưu"
       }
     },
@@ -566,7 +572,8 @@
       "title": "Khôi phục hoàn tất",
       "description": "Dữ liệu của bạn đã được khôi phục thành công. Dưới đây là tóm tắt những gì đã được khôi phục:",
       "totalRecords": "Tổng số bản ghi",
-      "doneButton": "Xong"
+      "doneButton": "Xong",
+      "skippedAttachments": "{count, plural, other {# tệp đính kèm không được phục hồi}}: không tìm thấy tệp của chúng trong bộ lưu trữ tệp đính kèm, hoặc chúng không khớp với giá trị kiểm tra được ghi trong bản sao lưu. Tệp đính kèm được lưu ngoài cơ sở dữ liệu, nên phải sao lưu và phục hồi cùng với nó."
     }
   },
   "sharedAccess": {

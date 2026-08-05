@@ -183,7 +183,16 @@
     "backupPasswordOidcOnly": "備份密碼僅適用於 OIDC 使用者；本機使用者使用其登入密碼",
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
-    "restoreBodyMustBeFile": "請求主體必須是備份檔案"
+    "restoreBodyMustBeFile": "請求主體必須是備份檔案",
+    "supportPasswordRequired": "支援用備份必須加密：請提供密碼。",
+    "passwordHeaderNotBase64": "{header} 標頭必須使用 base64 編碼。",
+    "decompressTooLarge": "備份過大，無法還原：解壓後超出設定的 {limit} 位元組上限。若這是正常備份，請提高 BACKUP_RESTORE_EXPANDED_LIMIT。",
+    "exportTooLarge": "此備份過大，無法一次生成（在表 \"{table}\" 處超出 {limit} 位元組）。加密備份、自動備份與支援用備份必須在記憶體中組裝；請使用採用串流的一般匯出，或提高 BACKUP_EXPORT_BUFFER_LIMIT。",
+    "supportExportTooLarge": "此支援用備份將有 {{ size }} MiB 的 JSON，超過 {{ limit }} MiB 上限。請透過選擇帳戶或日期範圍縮小範圍，或提高 BACKUP_EXPORT_BUFFER_LIMIT。",
+    "folderUnusable": "資料夾 \"{{ path }}\" 無法作為目錄使用（{{ reason }}）。",
+    "folderOutsideAllowedRoots": "備份資料夾 \"{path}\" 位於允許的根目錄（{roots}）之外。請設定 BACKUP_ALLOWED_ROOTS 以允許它。",
+    "noBackupStorage": "此部署沒有可寫入的備份儲存空間：{{ safePath }} 不存在且無法建立（{{ reason }}）。請在該位置掛載卷（Docker：繫結掛載或具名卷；Kubernetes：在 Helm chart 中設定 backend.persistence.backups），然後重試。",
+    "restoreNoMemoryHeadroom": "此部署沒有用於還原的記憶體餘量：單次還原的估計峰值無法容納於容器內。請提高容器記憶體上限，或降低 BACKUP_RESTORE_EXPANDED_LIMIT。"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",
