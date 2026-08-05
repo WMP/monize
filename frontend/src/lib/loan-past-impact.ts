@@ -105,8 +105,8 @@ export function computePastImpact(
   const startDate = history.events[0]?.date || account.paymentStartDate || null;
 
   // The configured repayment period. Prefer the amortization period; fall back
-  // to the term. It is required (the loan/mortgage form collects it), so
-  // without it there is no contractual baseline to compare against.
+  // to the term. Only required for the PMT fallback; when a usable recorded
+  // installment exists the schedule can be built without it.
   const configuredTermMonths =
     account.amortizationMonths && account.amortizationMonths > 0
       ? account.amortizationMonths
@@ -118,8 +118,7 @@ export function computePastImpact(
     originalPrincipal <= 0 ||
     !startDate ||
     account.interestRate == null ||
-    !account.paymentFrequency ||
-    !configuredTermMonths
+    !account.paymentFrequency
   ) {
     return null;
   }
@@ -157,7 +156,10 @@ export function computePastImpact(
   // the loan is negatively amortizing, which this baseline does not model, so
   // it falls through to the PMT-over-term the same way an unusable rate-history
   // installment already did.
-  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
+  const configuredTermPeriods =
+    configuredTermMonths != null
+      ? Math.round((configuredTermMonths * periodsPerYear) / 12)
+      : null;
   const accountInstallment =
     account.paymentAmount != null && account.paymentAmount > 0 ? account.paymentAmount : null;
   const recordedInstallment =
@@ -173,12 +175,15 @@ export function computePastImpact(
         isVariableRate,
       );
 
+  if (!useRecordedInstallment && configuredTermMonths == null) return null;
+
+  // configuredTermMonths is non-null in the PMT path (guarded above)
   const contractualPayment = useRecordedInstallment
     ? recordedInstallment
     : calculateMortgagePaymentAmount(
         originalPrincipal,
         timeline.startingAnnualRate,
-        configuredTermMonths,
+        configuredTermMonths!,
         frequency,
         isCanadian,
         isVariableRate,
@@ -213,7 +218,9 @@ export function computePastImpact(
           // Re-level toward the configured term ONLY if a rate rise would
           // otherwise stall the payment; unlike fixedEndPeriod this never forces
           // payoff at the term, so a faster real schedule keeps its earlier one.
-          rescueEndPeriod: configuredTermPeriods,
+          // Omitted when no term is configured: the schedule runs to its natural
+          // payoff without a rescue boundary.
+          ...(configuredTermPeriods != null ? { rescueEndPeriod: configuredTermPeriods } : {}),
           maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
         }
       : {
@@ -224,15 +231,16 @@ export function computePastImpact(
           rateChanges: timeline.rateChanges.map((change) => ({ ...change, paymentAmount: null })),
           ...(isAccelerated
             ? {
-                rescueEndPeriod: configuredTermPeriods,
+                // configuredTermPeriods is non-null in the PMT path (guarded above)
+                rescueEndPeriod: configuredTermPeriods!,
                 maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
               }
             : {
-                fixedEndPeriod: configuredTermPeriods,
+                fixedEndPeriod: configuredTermPeriods!,
                 // One-period buffer so a rounding remainder on the final
                 // payment is kept.
                 maxPayments: Math.min(
-                  configuredTermPeriods + Math.ceil(periodsPerYear / 12),
+                  configuredTermPeriods! + Math.ceil(periodsPerYear / 12),
                   ORIGINAL_SCHEDULE_MAX_PAYMENTS,
                 ),
               }),

@@ -52,11 +52,36 @@ describe('computePastImpact', () => {
 
     expect(computePastImpact(makeAccount({ interestRate: null }), history)).toBeNull();
     expect(computePastImpact(makeAccount({ paymentFrequency: null }), history)).toBeNull();
-    // The repayment period is required; without a configured amortization or
-    // term there is no contractual baseline to build.
+    // No term AND no usable installment: the PMT fallback needs the term, so
+    // there is no contractual baseline to build.
     expect(
-      computePastImpact(makeAccount({ amortizationMonths: null, termMonths: null }), history),
+      computePastImpact(
+        makeAccount({ amortizationMonths: null, termMonths: null, paymentAmount: null }),
+        history,
+      ),
     ).toBeNull();
+  });
+
+  it('returns a payoff schedule for a loan with a recorded installment but no configured term (REV-20260805-006)', () => {
+    // A $10,000 LOAN at 6% with $500/month and neither amortizationMonths nor
+    // termMonths set. Before this fix the function returned null solely because
+    // the term was absent; a usable recorded installment is sufficient to
+    // determine the natural payoff schedule without it.
+    const account = makeAccount({
+      amortizationMonths: null,
+      termMonths: null,
+      paymentAmount: 500,
+    });
+    const history = makeHistory(account, [500]);
+
+    const impact = computePastImpact(account, history);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.paidOff).toBe(true);
+    expect(impact!.originalSchedule.payoffDate).not.toBeNull();
+    // $10,000 at 6% monthly paying $500 amortizes in ~21 payments
+    expect(impact!.originalSchedule.numPayments).toBeGreaterThan(15);
+    expect(impact!.originalSchedule.numPayments).toBeLessThan(30);
   });
 
   it('ignores principal-only payment steps in the rate history so the schedule completes', () => {
