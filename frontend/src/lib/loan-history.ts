@@ -381,7 +381,7 @@ export function deriveCurrentInstallment(
 ): number {
   const lastRegular = [...history.events]
     .reverse()
-    .find((event) => event.type === 'REGULAR');
+    .find((event) => event.type === 'REGULAR' && event.principal > 0);
   if (!lastRegular) return contractualPayment;
   // Sum first, then round once at 4dp (decimal(20,4) storage precision) --
   // never round principal and interest separately to cents and add the

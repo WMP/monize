@@ -469,6 +469,31 @@ describe('deriveCurrentInstallment', () => {
     expect(result).toBe(600);
   });
 
+  it('falls back to contractual payment when all REGULAR events are interest-only (REV-20260805-008)', () => {
+    // An orphan interest expense is emitted as a REGULAR event with principal 0.
+    // When no principal-bearing regular event exists, the installment must not
+    // be seeded from an interest-only row -- that would stall the projection on
+    // the first period. The contractual payment is the correct fallback here.
+    const result = deriveCurrentInstallment(
+      history([{ principal: 0, interest: 1000, type: 'REGULAR' }]),
+      2000,
+    );
+    expect(result).toBe(2000);
+  });
+
+  it('uses the last principal-bearing REGULAR event, ignoring a later interest-only tail (REV-20260805-008)', () => {
+    // When a principal-bearing regular payment exists earlier in history, use it
+    // rather than falling back to the contractual payment.
+    const result = deriveCurrentInstallment(
+      history([
+        { principal: 765, interest: 153, type: 'REGULAR' },
+        { principal: 0, interest: 1000, type: 'REGULAR' }, // interest-only orphan
+      ]),
+      2000,
+    );
+    expect(result).toBe(918); // 765 + 153
+  });
+
   it('preserves 4dp precision instead of rounding principal+interest to cents before seeding the projection (REV-20260803-036 reopen)', () => {
     // Reopened scenario: a latest regular payment with principal 100 and
     // separately-booked interest 0.0049. The event correctly retains 0.0049
