@@ -566,9 +566,15 @@ export class AutoBackupService {
       userFolder,
       timezone,
     );
-    // A partial artifact is written (the ledger is captured) but never promoted
-    // or retained: promotion and retention delete, and an incomplete backup must
-    // not displace or age out a complete one.
+    // A partial artifact skips promotion and retention *for this run*, because
+    // both of those delete.
+    //
+    // It does NOT yet get a distinct identity: the file is published under the
+    // ordinary date-only name, so a same-day partial replaces a complete
+    // artifact, and a later complete run's retention pass counts the partial as
+    // an ordinary daily backup (F3RB-001, tracked as issue #1069 -- fixing it
+    // changes on-disk naming, which is a compatibility decision). Do not read
+    // the skip below as "a partial cannot displace a complete copy".
     await this.applyBackupOutcome(
       settings,
       userFolder,

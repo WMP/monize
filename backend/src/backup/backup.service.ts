@@ -331,7 +331,13 @@ export class BackupService {
 
     // Encrypted exports require the full payload up-front to compute the GCM
     // auth tag, so we buffer JSON in memory before encrypting. Plain exports
-    // stream straight through gzip to avoid OOM on very large datasets.
+    // pipe through gzip instead, which avoids holding the whole *compressed*
+    // artifact -- but not the whole dataset: each table is still read into an
+    // array and serialised with one `JSON.stringify`, and every carried
+    // attachment is base64-encoded into one array before that. Peak memory
+    // therefore tracks dataset size, not chunk size (F3RB-006, issue #1070, whose
+    // closure needs a cursor inside the snapshot and per-attachment
+    // encoding). Do not read this path as bounded.
     if (encryptionPassword) {
       const { buffer, report } = await this.collectGzippedExport(userId);
       // Nothing has been sent yet, so the incompleteness can be *in the
@@ -347,8 +353,9 @@ export class BackupService {
 
     const tableQueries = this.getTableQueries();
 
-    // Stream JSON through gzip to the response, one table at a time, to
-    // avoid OOM and produce a smaller download.
+    // Write JSON through gzip to the response one table at a time. This bounds
+    // the compressed output and the number of tables held at once -- it does NOT
+    // bound one table, or the carried attachment set (F3RB-006).
     const gzip = createGzip();
 
     const write = (chunk: string): Promise<void> =>
@@ -1398,13 +1405,24 @@ export class BackupService {
     input: RestoreBackupInput,
   ): Promise<void> {
     if (user.authProvider === "oidc") {
-      // Re-confirm via the authenticated session, mirroring account deletion
-      // (users.service.deleteAccount). The request already passed the JWT
-      // AuthGuard, so a live OIDC session IS the re-authentication. OIDC users
-      // have no local password and cannot mint a fresh signed ID token in the
-      // browser (the login id_token lives only in backend httpOnly cookies), so
-      // the client sends a "session confirmed" sentinel. Cryptographically
-      // verifying that sentinel as an ID token here made OIDC restore impossible.
+      // KNOWN DEFECT, tracked as issue #1071 (F3RB-007). This is not a second
+      // factor: the value is chosen by the client (the frontend sends the literal
+      // "oidc-session-confirmed"), so any non-empty string satisfies it and
+      // possession of the session is the whole authorisation for replacing the
+      // user's entire dataset. There is no signature, expiry, purpose, nonce,
+      // single use or provider round trip.
+      //
+      // It is left in place deliberately rather than hardened here: the server-
+      // minted, action-bound, state-bound artifact this needs is `OidcReauthService`
+      // from PR #1060 in the audit-02 series, and building a second minting path
+      // beside it would put two divergent implementations of cryptographic step-up
+      // in one repository. #1071 records the four steps once that lands.
+      //
+      // The reason the sentinel exists at all: OIDC users have no local password
+      // and cannot mint a fresh signed ID token in the browser (the login id_token
+      // lives only in backend httpOnly cookies), so verifying this value AS an ID
+      // token made OIDC restore impossible. The answer is a fresh challenge, not a
+      // client-side assertion.
       if (!input.oidcIdToken) {
         throw new UnauthorizedException(
           tr(
