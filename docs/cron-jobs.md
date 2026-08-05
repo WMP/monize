@@ -13,7 +13,7 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 | **Durable claim** (`JobClaimService.claimOnce`) | Work where the claim row *is* the fact and nothing leaves the database: a posted occurrence, an alert fingerprint. Permanent -- nothing retakes it -- so a failure calls `release` to hand the window back. **Not** for a send: see "A claim is not a delivery record" below. | `backend/src/common/jobs/job-claim.service.ts` |
 | **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Returns a **lease token** identifying the winning attempt, which `markDelivered` and `release` require -- see "A lease is held by an attempt" below. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
 | **Conditional state transition** | A flag the job itself owns: `UPDATE ... WHERE granted_at IS NULL ... RETURNING`. The predicate is re-evaluated after the row lock, so exactly one replica gets a row. | `emergency-access-monitor.service.ts` |
-| **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `133` |
+| **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `136` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
 
 ### A claim is not a delivery record
@@ -92,7 +92,7 @@ attempt to identify.
 The token's `WHERE` clause protects new code from new code. It does nothing about a
 **previous-release** pod during a rolling deploy, whose `release`/`markDelivered`
 name the work and carry no token -- so lease ownership is also enforced in the
-database (migration 144): the new writes declare their token in the transaction-local
+database (migration 147): the new writes declare their token in the transaction-local
 `app.job_claim_lease_token` GUC, and a trigger rejects any mutation of a *live
 tokenized* lease whose token the session does not hold. The old binary never sets the
 GUC, so it cannot delete or mark a lease this deployment retook. Expired leases,
@@ -116,7 +116,7 @@ twice. Where it is at-most-once the loss window belongs in this table rather tha
 in somebody's head.
 
 One historical exception, decided rather than discovered: reminder claims written
-*before* migration 137 recorded only the intent to send, so a delivery lost in the
+*before* migration 140 recorded only the intent to send, so a delivery lost in the
 old claim-before-send crash window cannot be told from one that succeeded. The
 migration backfills them as delivered, which keeps any such loss lost rather than
 re-sending to every user whose reminder did arrive. The trade and why it was taken
@@ -137,7 +137,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `action-history.service` | Daily 3 AM | Prune old undo/redo history | Idempotent predicate delete |
 | `ai-usage.service` | Daily 4 AM | AI usage-log cleanup | Idempotent predicate delete |
 | `ai-insights.service` | Daily 6 AM | Generate AI insights | **Durable lease** per user, plus the existing recent-insight cooldown |
-| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put. **Conditional claim** on `swept_at` before the external delete, which the uploader's intent-clear is fenced against, so metadata can never commit pointing at deleted bytes; a live `upload_lease_expires_at` also keeps the sweep off an upload that is probably still running. A claimed *intent* is then retained for `late_write_quarantine_until` and re-swept, because the claim settles metadata and not bytes: a put that stalled past its lease can land after the delete, and the row is the only thing that would name those bytes (audit RRV4-002). The quarantine is DB-enforced (migration 143 triggers) so a previous-release sweeper cannot bypass it during a rollout, and the S3 provider bounds each request below the window so a put cannot land after it (V4R3-003). The provider's `delete` is idempotent |
+| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put. **Conditional claim** on `swept_at` before the external delete, which the uploader's intent-clear is fenced against, so metadata can never commit pointing at deleted bytes; a live `upload_lease_expires_at` also keeps the sweep off an upload that is probably still running. A claimed *intent* is then retained for `late_write_quarantine_until` and re-swept, because the claim settles metadata and not bytes: a put that stalled past its lease can land after the delete, and the row is the only thing that would name those bytes (audit RRV4-002). The quarantine is DB-enforced (migration 146 triggers) so a previous-release sweeper cannot bypass it during a rollout, and the S3 provider bounds each request below the window so a put cannot land after it (V4R3-003). The provider's `delete` is idempotent |
 | `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | **Conditional transition**: the claim is the `next_backup_at` advance itself |
 | `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable lease** keyed on the local date plus a digest of the bills named, plus `job_claims.delivered_at` written after the send. At-least-once |
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |
@@ -146,7 +146,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
-| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at`, which also advances `grant_generation`, plus a per-contact `notified_grant_generation` delivery record for the grant (forward-only, and a migration-142 trigger backfills a previous-release acknowledgement into the current generation so a rollout cannot rotate a delivered link), whose credential is reused on retry while it is unexpired; **durable lease** plus `last_reminder_sent_at` for the reminder. The daily check is skipped when `AI_ENCRYPTION_KEY` is absent, since grant delivery cannot encrypt a token without it (V4R3-002) |
+| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at`, which also advances `grant_generation`, plus a per-contact `notified_grant_generation` delivery record for the grant (forward-only, and a migration-145 trigger backfills a previous-release acknowledgement into the current generation so a rollout cannot rotate a delivered link), whose credential is reused on retry while it is unexpired; **durable lease** plus `last_reminder_sent_at` for the reminder. The daily check is skipped when `AI_ENCRYPTION_KEY` is absent, since grant delivery cannot encrypt a token without it (V4R3-002) |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |

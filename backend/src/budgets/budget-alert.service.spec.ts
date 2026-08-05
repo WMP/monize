@@ -203,7 +203,7 @@ describe("BudgetAlertService", () => {
 
     // Alerts are inserted with `ON CONFLICT DO NOTHING RETURNING id`, and what
     // that statement returns is what decides whether an alert is new -- the
-    // unique fingerprint from migration 133 is the de-duplication rule now, not
+    // unique fingerprint from migration 136 is the de-duplication rule now, not
     // the in-memory comparison (audit P4-015). So the double has to behave like
     // the real insert: record the row, hand back an id, and let the follow-up
     // read find it.

@@ -1,6 +1,6 @@
--- 139: emergency-access delivery state belongs to one grant cycle, not to the row.
+-- 142: emergency-access delivery state belongs to one grant cycle, not to the row.
 --
--- Migration 134 added `claim_notified_at` so a resumed grant could tell a contact
+-- Migration 137 added `claim_notified_at` so a resumed grant could tell a contact
 -- who already holds a working link from one still owed a notice. That fixed the
 -- resume, and made the marker permanent: `contactsAwaitingNotice` selected
 -- `claim_notified_at IS NULL`, and nothing ever set it back to NULL (audit
@@ -44,7 +44,7 @@
 -- link again, which is the whole point.
 --
 -- Note what is deliberately *not* inferred: a contact with a token hash but no
--- `claim_notified_at` stays NULL here, for the same reason migration 134 refused to
+-- `claim_notified_at` stays NULL here, for the same reason migration 137 refused to
 -- treat a hash as evidence of delivery.
 
 ALTER TABLE emergency_access_settings

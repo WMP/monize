@@ -251,7 +251,7 @@ cannot still be in flight when the row retires. A window with neither of those i
 best-effort guess dressed as a proof; say which one you have. And enforce the whole
 thing where both binaries meet: a nullable column a new sweeper respects is bypassed
 by a previous-release sweeper that never learned it exists, so the quarantine is a
-`BEFORE UPDATE`/`BEFORE DELETE` trigger pair (migration 143), the same shape as every
+`BEFORE UPDATE`/`BEFORE DELETE` trigger pair (migration 146), the same shape as every
 other rolling-deployment invariant here.
 
 **An invariant a migration introduces has to hold for the binary already running.**

@@ -10,7 +10,7 @@ import {
 import { applyRlsPolicies } from "../helpers/rls-setup";
 
 /**
- * Migration 133's repair phases, against a database already in the state the
+ * Migration 136's repair phases, against a database already in the state the
  * migration's own guards forbid.
  *
  * Two of the six guards are constraints over data that already exists, and both
@@ -29,14 +29,14 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
  * half-applied migration does on the next boot: a repair that is not
  * re-runnable trades a startup crash for a different startup crash.
  */
-describe("migration 133 preflight over legacy data", () => {
+describe("migration 136 preflight over legacy data", () => {
   let dataSource: DataSource;
   let userA: string;
   let userB: string;
 
   const MIGRATION = path.join(
     __dirname,
-    "../../../database/migrations/133_concurrency_integrity_guards.sql",
+    "../../../database/migrations/136_concurrency_integrity_guards.sql",
   );
 
   /** The keys the stale-job reaper uses; the migration reuses them deliberately. */
@@ -130,7 +130,7 @@ describe("migration 133 preflight over legacy data", () => {
 
   beforeAll(async () => {
     if (!fs.existsSync(MIGRATION)) {
-      throw new Error(`Migration 133 not found at ${MIGRATION}`);
+      throw new Error(`Migration 136 not found at ${MIGRATION}`);
     }
     dataSource = new DataSource(INTEGRATION_TYPEORM_OPTIONS as never);
     await dataSource.initialize();

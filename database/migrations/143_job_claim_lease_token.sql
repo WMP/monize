@@ -1,4 +1,4 @@
--- 140: a lease needs an owner, so a worker cannot act on a lease it has lost.
+-- 143: a lease needs an owner, so a worker cannot act on a lease it has lost.
 --
 -- `claimLease` returned a boolean and `release`/`markDelivered` addressed the row
 -- by `(claim_type, user_id, claim_key)` alone (audit DR-RRV4-01). That identifies
@@ -25,13 +25,13 @@
 -- This column on its own protects new code from new code (its `WHERE lease_token =`
 -- matches nothing once the lease is retaken). It does NOT stop a previous-release
 -- pod, whose `release`/`markDelivered` name the work and carry no token -- that gap
--- is closed by the migration-144 triggers, which reject an untokenized mutation of a
+-- is closed by the migration-147 triggers, which reject an untokenized mutation of a
 -- live tokenized lease. The two ship together; this column is inert against the old
 -- binary without them (audit V4R3-004, DOC-V4R3-01).
 --
 -- Backfill: NULL for every existing row. A permanent `claimOnce` row has no lease
 -- to own, and an in-flight lease at deploy time keeps whatever token it had (none
--- for a pre-140 lease); when it expires it is retaken normally.
+-- for a pre-143 lease); when it expires it is retaken normally.
 
 ALTER TABLE job_claims
     ADD COLUMN IF NOT EXISTS lease_token UUID;

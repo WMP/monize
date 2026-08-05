@@ -1,6 +1,6 @@
--- 138: the import fence, enforced by the database rather than only by the code.
+-- 141: the import fence, enforced by the database rather than only by the code.
 --
--- Migration 135 added `attempt_token` and the new worker's checkpoint requires it.
+-- Migration 138 added `attempt_token` and the new worker's checkpoint requires it.
 -- That fences a worker running *this* code. It does not fence a worker running the
 -- code from the previous release, and a Kubernetes rolling deployment has both
 -- alive at once (audit RRV4-001).

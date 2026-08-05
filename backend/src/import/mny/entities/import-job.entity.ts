@@ -45,20 +45,6 @@ export const ONE_ACTIVE_JOB_INDEX = "idx_import_jobs_one_active_per_user";
   where: "status IN ('pending', 'running')",
 })
 @Entity("import_jobs")
-/**
- * "One active import per user" declared on the model, not only in migration 133.
- *
- * The insert **is** the active-job check -- `MnyImportJobService.create` turns the
- * 23505 into the 409 -- so this index is the whole mechanism, and a schema built
- * from entity metadata without it silently loses the guarantee. That is not
- * hypothetical: the integration harness synchronizes from entities, so the spec
- * asserting that a second start is refused was passing against a database where
- * nothing could refuse it.
- */
-@Index("idx_import_jobs_one_active_per_user", ["userId"], {
-  unique: true,
-  where: "status IN ('pending', 'running')",
-})
 export class ImportJob {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -115,7 +101,7 @@ export class ImportJob {
 
   /**
    * Set inside the import transaction itself, so it commits with the rows it
-   * describes (migration 133).
+   * describes (migration 136).
    *
    * `retryable` alone could not distinguish "failed before writing anything" from
    * "the ledger is written and only the completion metadata is missing" -- a
@@ -128,9 +114,8 @@ export class ImportJob {
   @Column({ name: "data_committed", default: false })
   dataCommitted: boolean;
 
-  /** Bumped by the running job; the reaper's liveness signal. */
   /**
-   * The current attempt's identity, minted by `claim()` (migration 135).
+   * The current attempt's identity, minted by `claim()` (migration 138).
    *
    * Every write the worker makes requires it, and the reaper clears it when it
    * takes the job away -- which is what stops a worker that has already lost the
@@ -141,6 +126,7 @@ export class ImportJob {
   @Column({ type: "uuid", name: "attempt_token", nullable: true })
   attemptToken: string | null;
 
+  /** Bumped by the running job; the reaper's liveness signal. */
   @Column({ type: "timestamp", name: "heartbeat_at", nullable: true })
   heartbeatAt: Date | null;
 

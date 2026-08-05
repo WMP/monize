@@ -1,6 +1,6 @@
--- 136: an attachment upload intent gets a lease and a fence, not just an age.
+-- 139: an attachment upload intent gets a lease and a fence, not just an age.
 --
--- Migration 133 gave external attachment bytes a tombstone so a deletion could
+-- Migration 136 gave external attachment bytes a tombstone so a deletion could
 -- happen after its metadata transaction committed, and the FV4-003 fix reused the
 -- same row as an **upload intent** written before the object is put -- which is
 -- what made bytes from a crashed upload discoverable at all.

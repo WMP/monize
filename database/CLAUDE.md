@@ -108,7 +108,7 @@ When two requests may both pass a check and both act on it, the constraint belon
 in the database. Application code cannot close that window -- it can only make it
 smaller, which reads as fixed and is not.
 
-The shapes and what they became in migration `133`:
+The shapes and what they became in migration `136`:
 
 | Application shape | Database guard |
 |---|---|
@@ -122,7 +122,7 @@ Two things go with such a guard:
 
 - **A `CHECK` beside a partial unique index whose predicate names statuses.** The
   index only constrains rows matching its predicate, so a status the application
-  never intended sits outside it -- and the guard silently stops guarding. `133`
+  never intended sits outside it -- and the guard silently stops guarding. `136`
   ships `import_jobs_status_check` for exactly that reason.
 - **`COALESCE` for a nullable column in a unique index.** `NULL` never equals
   `NULL`, so the rows with a null there are precisely the ones left unprotected.
@@ -197,10 +197,10 @@ So a guard over pre-existing data ships with a repair phase immediately before
 it, in the same file, and the comment says **which row survives and what happens
 to the rest** -- that is a product decision, not a detail. Both repairs must be
 re-runnable like everything else: write them as a window function over the
-duplicates so a second apply selects nothing. Migration `133` is the worked
+duplicates so a second apply selects nothing. Migration `136` is the worked
 example (one active `import_jobs` row per user, and the `budget_alerts`
 fingerprint), and
-`backend/test/integration/migration-133-preflight.integration.spec.ts` is how it
+`backend/test/integration/migration-136-preflight.integration.spec.ts` is how it
 is proven: seed the legacy state in a real database, apply the file from disk,
 assert the guard exists and the rows were repaired. A unit test cannot see any of
 this, because the failure is PostgreSQL refusing an index.

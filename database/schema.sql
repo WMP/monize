@@ -342,7 +342,7 @@ CREATE TABLE attachment_blobs (
 );
 
 -- Attachment objects whose metadata is gone and whose bytes still need deleting
--- (migration 133).
+-- (migration 136).
 --
 -- Only the database provider keeps bytes where PostgreSQL can roll them back. A
 -- local filesystem write and an S3 put cannot join the transaction, so deleting
@@ -364,7 +364,7 @@ CREATE TABLE attachment_blob_tombstones (
     storage_key VARCHAR(255) NOT NULL,
     deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- Non-NULL marks this row as an upload still in flight and says until when
-    -- (migration 136). The sweeper skips a live lease, which is a *latency*
+    -- (migration 139). The sweeper skips a live lease, which is a *latency*
     -- mechanism: it exists so the sweep does not cause avoidable upload failures.
     -- NULL means an ordinary deletion record, swept immediately.
     upload_lease_expires_at TIMESTAMP,
@@ -375,7 +375,7 @@ CREATE TABLE attachment_blob_tombstones (
     -- whichever of the two wins the row (audit RV4-002).
     swept_at TIMESTAMP,
     -- How long a swept *upload intent* is kept after its object was deleted
-    -- (migration 141). The fence above is about metadata; this is about bytes. A
+    -- (migration 144). The fence above is about metadata; this is about bytes. A
     -- put that stalled past its lease can land after the sweep deleted the key, and
     -- a process killed before its compensating delete leaves those bytes with no
     -- tombstone to enumerate them -- unreferenced and undiscoverable (audit
@@ -427,7 +427,7 @@ CREATE TRIGGER trg_attachment_blob_tombstone
     WHEN (OLD.storage_provider <> 'database')
     EXECUTE FUNCTION record_attachment_blob_tombstone();
 
--- Late-write quarantine enforcement (migration 143). The sweeper's claim settles
+-- Late-write quarantine enforcement (migration 146). The sweeper's claim settles
 -- what metadata may commit, not what bytes exist: a put stalled past its lease can
 -- land after the key was deleted. These two triggers make the quarantine hold
 -- across a rolling deployment, where a previous-release sweeper would otherwise
@@ -705,7 +705,7 @@ CREATE INDEX idx_sched_txn_overrides_sched_txn_id ON scheduled_transaction_overr
 CREATE INDEX idx_sched_txn_overrides_date ON scheduled_transaction_overrides(override_date);
 CREATE INDEX idx_sched_txn_overrides_orig ON scheduled_transaction_overrides(scheduled_transaction_id, original_date);
 
--- Posted occurrences (migration 133). The occurrence -- not the schedule -- is
+-- Posted occurrences (migration 136). The occurrence -- not the schedule -- is
 -- the thing that must happen once, and this unique key is its name. Manual and
 -- automatic posting both insert it inside the same transaction as the money they
 -- create, so the key arbitrates between two replicas, a manual post racing the
@@ -1017,7 +1017,7 @@ CREATE TABLE emergency_access_settings (
     message_ciphertext    TEXT,
     last_reminder_sent_at TIMESTAMP,
     granted_at            TIMESTAMP,
-    -- Which grant cycle this owner is on (migration 139). Advanced by the single
+    -- Which grant cycle this owner is on (migration 142). Advanced by the single
     -- statement that transitions ungranted -> granted, so a contact's delivery
     -- state belongs to one cycle instead of to the row: no re-arm path
     -- (revokeAfterReturn, disable/re-enable, a manual reset) has to remember to
@@ -1040,22 +1040,22 @@ CREATE TABLE emergency_access_contacts (
     claim_token_used_at    TIMESTAMP,
     claim_voided_reason    VARCHAR(20), -- 'claimed_by_other' | 'owner_revoked' | NULL
     -- When the notice for `notified_grant_generation` was actually sent
-    -- (migration 134). The delivery record, kept apart from the claim that
+    -- (migration 137). The delivery record, kept apart from the claim that
     -- coordinates the send: a claim answers "may I do this now" and cannot also
     -- answer "has this been done", because the second question has to outlive the
     -- process that asked the first. That is how the daily check finds a grant a
     -- killed replica never delivered (audit FV4-004).
     --
-    -- A timestamp for operators, not a predicate: migration 139 moved "is a link
+    -- A timestamp for operators, not a predicate: migration 142 moved "is a link
     -- still owed" onto the generation below, because this column was never reset
     -- and therefore made emergency access fire at most once per contact row.
     claim_notified_at      TIMESTAMP,
-    -- The grant cycle whose notice this contact received (migration 139). Owed a
+    -- The grant cycle whose notice this contact received (migration 142). Owed a
     -- link whenever it differs from the owner's `grant_generation`, which is what
     -- makes a re-armed grant owe every contact again without any reset path having
     -- to say so (audit RRV4-004). NULL means never notified.
     notified_grant_generation INTEGER,
-    -- The undelivered credential (migration 134), AES-256-GCM under
+    -- The undelivered credential (migration 137), AES-256-GCM under
     -- AI_ENCRYPTION_KEY. Written with the hash before the first send, re-read by a
     -- retry so it re-sends the *same* link rather than minting one that kills the
     -- link already in the recipient's inbox, and cleared in the statement that
@@ -1080,7 +1080,7 @@ CREATE INDEX idx_emergency_access_contacts_token_hash
     ON emergency_access_contacts(claim_token_hash)
     WHERE claim_token_hash IS NOT NULL;
 
--- Rolling-deployment compatibility for the delivery generation (migration 142).
+-- Rolling-deployment compatibility for the delivery generation (migration 145).
 -- The previous binary acknowledges a delivered link by writing only
 -- `claim_notified_at`, leaving `notified_grant_generation` NULL -- which the new
 -- pending query would read as "still owed", rotate the token, and kill the link
@@ -1493,7 +1493,7 @@ CREATE INDEX idx_budget_alerts_user ON budget_alerts(user_id);
 CREATE INDEX idx_budget_alerts_user_unread ON budget_alerts(user_id, is_read) WHERE is_read = false;
 CREATE INDEX idx_budget_alerts_budget_period ON budget_alerts(budget_id, period_start);
 
--- The app's own de-duplication rule as a database key (migration 133).
+-- The app's own de-duplication rule as a database key (migration 136).
 -- deduplicateAlerts() drops a candidate matching an existing (alert_type,
 -- budget_category_id) unless its severity is strictly higher, so severity
 -- belongs in the key and an escalation still inserts. COALESCE because a
@@ -1567,12 +1567,12 @@ CREATE TABLE import_jobs (
     error_detail TEXT,
     retryable BOOLEAN NOT NULL DEFAULT false,
     -- Set inside the import transaction, so it commits with the rows it
-    -- describes (migration 133). Distinguishes "failed before writing anything,
+    -- describes (migration 136). Distinguishes "failed before writing anything,
     -- retry is free" from "the ledger is already written and only the completion
     -- metadata is missing" -- two states the retryable flag used to fold into
     -- one and offer as an ordinary retry, which re-imported the file.
     data_committed BOOLEAN NOT NULL DEFAULT false,
-    -- The current attempt's identity (migration 135), minted by `claim()` and
+    -- The current attempt's identity (migration 138), minted by `claim()` and
     -- required by every write the worker makes. The reaper clears it, which is
     -- what stops a worker it already gave up on from committing anyway: the
     -- import transaction's last statement is a fenced compare-and-set on this
@@ -1591,7 +1591,7 @@ CREATE TABLE import_jobs (
 );
 
 -- `data_committed` may only go false -> true while the job is `running`
--- (migration 138). The application checkpoint also requires the attempt's token,
+-- (migration 141). The application checkpoint also requires the attempt's token,
 -- but that only binds code that knows the column exists: during a rolling
 -- deployment a previous-version worker runs `UPDATE import_jobs SET
 -- data_committed = true WHERE id = $1`, naming no token, and would otherwise
@@ -1626,27 +1626,22 @@ CREATE TRIGGER trg_import_job_fenced_checkpoint
 CREATE INDEX idx_import_jobs_user ON import_jobs(user_id);
 CREATE INDEX idx_import_jobs_staged_file ON import_jobs(staged_file_id);
 CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHERE status = 'running';
--- One in-flight import per user, enforced here rather than by a read-then-insert
--- in the service: two concurrent starts would otherwise both see no active job
--- and import the same staged file twice.
-CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user ON import_jobs(user_id) WHERE status IN ('pending', 'running');
-
--- One active import per user, enforced where it cannot be raced (migration 133).
+-- One active import per user, enforced where it cannot be raced (migration 136).
 -- The key is the user because that is what the product blocks on: hasActiveJob()
 -- asks only whether this user has any pending/running job, and the 409 says "an
 -- import is already running".
 --
 -- A fresh database is trivially in this state; an upgraded one need not be, since
--- more than one active job is exactly what the pre-133 code could produce. The
+-- more than one active job is exactly what the pre-136 code could produce. The
 -- migration therefore repairs before it constrains -- see its preflight, and
--- backend/test/integration/migration-133-preflight.integration.spec.ts.
+-- backend/test/integration/migration-136-preflight.integration.spec.ts.
 CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
     ON import_jobs(user_id)
     WHERE status IN ('pending', 'running');
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Durable claims on per-user work that must happen at most once (migration 133).
+-- Durable claims on per-user work that must happen at most once (migration 136).
 --
 -- ScheduleModule lives in the API process, so every backend replica fires every
 -- cron (docs/cron-jobs.md). A guard held in process memory is therefore not a
@@ -1667,12 +1662,12 @@ CREATE TABLE job_claims (
     -- is not. NULL on a legacy permanent claim.
     expires_at TIMESTAMP,
     -- When the side effect this claim coordinates actually happened
-    -- (migration 137). Written *after* the send, and re-read under the lease to
+    -- (migration 140). Written *after* the send, and re-read under the lease to
     -- decide whether the work is still owed: a claim taken before the send says
     -- only that somebody intended to send, and an intention does not survive the
     -- process holding it (audit RV4-006). A delivered row is never retaken.
     delivered_at TIMESTAMP,
-    -- Which attempt owns the current lease (migration 140). The key above
+    -- Which attempt owns the current lease (migration 143). The key above
     -- identifies the *work*; this identifies the holder, so a worker delayed past
     -- its own expiry cannot release a lease another replica has retaken or record a
     -- delivery for a send that replica has not finished (audit DR-RRV4-01). NULL for
@@ -1683,7 +1678,7 @@ CREATE TABLE job_claims (
 CREATE UNIQUE INDEX idx_job_claims_key ON job_claims(claim_type, user_id, claim_key);
 CREATE INDEX idx_job_claims_claimed_at ON job_claims(claimed_at);
 
--- Lease-ownership enforcement (migration 144). A session mutating a *live tokenized*
+-- Lease-ownership enforcement (migration 147). A session mutating a *live tokenized*
 -- lease must own it, proven by the transaction-local `app.job_claim_lease_token`
 -- GUC the new release/markDelivered set. The previous binary never sets it, so it
 -- cannot delete or mark a lease this deployment has retaken. The WHEN clauses
@@ -2331,7 +2326,7 @@ CREATE POLICY scheduled_transaction_overrides_isolation ON scheduled_transaction
     WHERE st.id = scheduled_transaction_overrides.scheduled_transaction_id
       AND st.user_id = (SELECT app_current_user_id())));
 
--- scheduled_transaction_postings -> scheduled_transactions.user_id (migration 133)
+-- scheduled_transaction_postings -> scheduled_transactions.user_id (migration 136)
 DROP POLICY IF EXISTS scheduled_transaction_postings_isolation ON scheduled_transaction_postings;
 CREATE POLICY scheduled_transaction_postings_isolation ON scheduled_transaction_postings
   USING ((SELECT app_bypass_rls()) OR EXISTS (

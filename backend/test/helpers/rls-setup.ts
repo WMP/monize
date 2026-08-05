@@ -74,7 +74,7 @@ function stripSqlComments(sql: string): string {
  *
  * `synchronize` builds the schema from entity metadata and creates no triggers at
  * all, so every such rule is simply absent from a test database unless the harness
- * puts it there. That is not a cosmetic gap: migration 138's trigger is the only
+ * puts it there. That is not a cosmetic gap: migration 141's trigger is the only
  * thing that fences a *previous-version* import worker during a rolling deployment
  * (audit RRV4-001), and a suite that silently lacks it would report the fence as
  * working while nothing enforced it.
@@ -309,7 +309,7 @@ export async function applyRlsPolicies(
   }
 
   // 4. Behavioural triggers, which synchronize never creates either. Applied after
-  //    the policies because one of them (133's tombstone recorder) is SECURITY
+  //    the policies because one of them (136's tombstone recorder) is SECURITY
   //    DEFINER and its own migration is already in the set above; re-applying is a
   //    no-op by the idempotency rule every migration follows.
   for (const file of findTriggerMigrations()) {

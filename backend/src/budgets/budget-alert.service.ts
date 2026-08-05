@@ -329,7 +329,7 @@ export class BudgetAlertService {
     // The in-memory de-duplication above is a check-then-act, and every backend
     // replica runs this cron: two processors both read no existing OVER_BUDGET
     // alert for the period, both inserted one, and both sent the critical email
-    // (audit P4-015). The unique fingerprint from migration 133 arbitrates
+    // (audit P4-015). The unique fingerprint from migration 136 arbitrates
     // instead, and `ON CONFLICT DO NOTHING RETURNING` reports the outcome
     // honestly: the loser gets no row and therefore sends nothing.
     const savedAlerts: BudgetAlert[] = [];

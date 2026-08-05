@@ -1,6 +1,6 @@
--- 142: make emergency-access delivery generations survive a rolling deployment.
+-- 145: make emergency-access delivery generations survive a rolling deployment.
 --
--- Migration 139 scoped a contact's delivery state to a grant generation:
+-- Migration 142 scoped a contact's delivery state to a grant generation:
 -- `emergency_access_contacts.notified_grant_generation` is compared against the
 -- owner's `emergency_access_settings.grant_generation`, and a contact is owed a
 -- link whenever they differ. The new code writes both columns together.

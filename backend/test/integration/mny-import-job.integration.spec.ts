@@ -81,7 +81,7 @@ describe("MnyImportJobService (integration)", () => {
     jobs = module.get(MnyImportJobService);
     staging = module.get(MnyStagingService);
 
-    // The checkpoint fence is a database trigger (migration 138), and
+    // The checkpoint fence is a database trigger (migration 141), and
     // `synchronize` creates no triggers -- so without this the mixed-version tests
     // below would pass against a schema where nothing enforced the rule.
     await applyRlsPolicies(dataSource);
@@ -638,7 +638,7 @@ describe("MnyImportJobService (integration)", () => {
      * statement run verbatim against the migrated schema.
      */
     describe("a previous-version worker's unconditional checkpoint", () => {
-      /** Exactly the SQL shipped before migration 135. Do not modernise it. */
+      /** Exactly the SQL shipped before migration 138. Do not modernise it. */
       const legacyCheckpoint = (jobId: string) =>
         dataSource.query(
           `UPDATE import_jobs SET data_committed = true WHERE id = $1`,

@@ -1,4 +1,4 @@
--- 133: Database-enforced guards for the concurrency defects the Phase 4 audit
+-- 136: Database-enforced guards for the concurrency defects the Phase 4 audit
 -- confirmed. Each one replaces an application-level check-then-act that two
 -- replicas, two tabs or a retry could both pass.
 --
@@ -37,7 +37,7 @@
 -- guards is therefore preceded by a documented repair phase that says exactly
 -- which row survives and what happens to the rest. Both repairs are
 -- re-runnable: after the first pass their queries select nothing.
--- `backend/test/integration/migration-133-preflight.integration.spec.ts` seeds
+-- `backend/test/integration/migration-136-preflight.integration.spec.ts` seeds
 -- the legacy states and asserts the migration completes and repairs them.
 
 -- ---------------------------------------------------------------------------

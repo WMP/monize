@@ -288,7 +288,7 @@ describe("attachment bytes written after their intent was swept", () => {
     /**
      * The previous-release sweeper (audit V4R3-003): it claims the row (setting
      * swept_at, nulling the lease) and then unconditionally deletes the tombstone.
-     * Executed verbatim, so the migration-143 triggers are what have to stamp the
+     * Executed verbatim, so the migration-146 triggers are what have to stamp the
      * quarantine on its claim and reject its premature delete.
      */
     const oldSweeperClaim = (): Promise<unknown> =>

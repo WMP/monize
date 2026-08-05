@@ -1,6 +1,6 @@
--- 135: fence an import worker to the attempt it actually claimed.
+-- 138: fence an import worker to the attempt it actually claimed.
 --
--- Migration 133 made "one active import per user" a database rule and the reaper
+-- Migration 136 made "one active import per user" a database rule and the reaper
 -- honest about `data_committed`. Neither of those stops a worker that has *lost*
 -- its job from finishing anyway (audit RV4-001).
 --
