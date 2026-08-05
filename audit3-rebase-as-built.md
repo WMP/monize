@@ -343,6 +343,15 @@ successfully". Two doubles were fiction and were fixed rather than worked around
 was a bare `PassThrough` (a real express Response always has `setHeader`), and the frontend mocks
 returned a bare `Blob` the client no longer returns.
 
+**A LOW the fifth review found in the F3RB-004 fix itself, now closed.** The incomplete-export
+toast read only `missingAttachments`, so an artifact whose single attachment failed its integrity
+check announced "0 of 1 attachment(s) could not be included" — a false number pointing at storage
+when the cause was corruption. The backend had always separated absent bytes (`missing`) from bytes
+that contradict their own metadata (`inconsistent`), and `includedAttachments` subtracts both, so the
+headline is their sum with the breakdown kept for the diagnosis. The verb changed too: corrupt bytes
+*are* included, they just cannot be trusted. Verified failing with the sum reverted. Two rounds
+running, a fix of mine needed a fix — worth stating rather than smoothing over.
+
 **F3RB-006 → issue [#1070](https://github.com/kenlasko/monize/issues/1070); F3RB-007 → issue
 [#1071](https://github.com/kenlasko/monize/issues/1071); F3RB-001 → issue
 [#1069](https://github.com/kenlasko/monize/issues/1069).** The reasons are specific, not
@@ -369,7 +378,7 @@ pre-existing findings. These are not "known issues" to be quietly inherited — 
 | Finding | Severity | Disposition in the split |
 | --- | --- | --- |
 | F3RB-001 partial artifacts share complete filenames and retention slots | HIGH | **Issue [#1069](https://github.com/kenlasko/monize/issues/1069)** (maintainer decision: naming change is a compatibility call). Code comment corrected to state the defect and cite it. |
-| F3RB-004 incomplete manual export reports success | MEDIUM | **FIXED** on the branch: completeness assessed before the first byte on both paths, signalled in headers, `-INCOMPLETE` filename, error toast instead of success. |
+| F3RB-004 incomplete manual export reports success | MEDIUM | **FIXED** on the branch: completeness assessed before the first byte on both paths, signalled in headers, `-INCOMPLETE` filename, error toast instead of success. A follow-up LOW in that fix (toast counted only absent attachments, so a corrupt one read as "0 of 1") is also fixed. |
 | F3RB-005 zero-fit restore forced to one slot | MEDIUM | **FIXED** on the branch: `configure` keeps zero, `acquire` throws 503 naming both knobs. The test that pinned the old floor was replaced. |
 | F3RB-006 plain export materialises tables and attachment sets | MEDIUM | **Issue [#1070](https://github.com/kenlasko/monize/issues/1070)** — response-doc §7 item 3, "the single highest-value open item"; needs a cursor + the cgroup peak-RSS harness this environment lacks. Both false OOM-safety comments corrected. |
 | F3RB-007 OIDC restore accepts a truthy sentinel | MEDIUM | **Issue [#1071](https://github.com/kenlasko/monize/issues/1071)** — blocked by choice on audit-02 PR #1060, which builds the server-minted artifact; a second minting path here would be a divergent duplicate. Comment now names the defect. |
