@@ -160,22 +160,3 @@ export async function assertWithinAllowedRoots(
   }
   return canonical;
 }
-
-/**
- * The directory one user's backups live in.
- *
- * Server-computed from the user id, never from anything the client sends, so two
- * users on the same root cannot name the same file and retention over this
- * directory can only ever see one user's artifacts. The user id is already an
- * opaque, unguessable UUID, so it needs no further mangling -- and keeping it
- * legible is what lets an operator answer "whose backup is this?" from a volume
- * listing.
- *
- * Files already sitting directly in the root predate this and cannot be
- * attributed to anybody: their names carry no owner. They are deliberately left
- * exactly where they are. Retention only ever enumerates a per-user directory,
- * so nothing deletes them, and nothing pretends to know who they belong to.
- */
-export function userBackupDirectory(root: string, userId: string): string {
-  return resolve(root, userId);
-}

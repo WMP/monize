@@ -179,7 +179,17 @@ export class AutoBackupService {
     // inside a permitted root, so creating it needs no further decision. It is
     // sharded the same way attachment bytes are (`<root>/<ab>/<cd>/<userId>`),
     // per the repository-wide rule in the root CLAUDE.md.
-    const folder = this.userFolderPath(root, userId);
+    //
+    // Canonicalise the FINAL path before creating anything, not only the root:
+    // the sharded segments are appended lexically after the root check, so a
+    // pre-existing symlink at `<root>/<ab>`, `<root>/<ab>/<cd>` or the user
+    // directory itself would otherwise redirect every write outside the approved
+    // roots while the base still looked clean (F3RB-002). Checking before the
+    // `mkdir` matters too: creating first and rejecting afterwards still left a
+    // directory inside the symlink's target.
+    const folder = await this.assertAllowedRoot(
+      this.userFolderPath(root, userId),
+    );
     await this.assertFolderWritable(folder, { createIfMissing: true });
     return folder;
   }
@@ -349,12 +359,20 @@ export class AutoBackupService {
    * The per-user subdirectory is server-computed inside that root, so a writable
    * root is the whole of the question.
    */
-  async describeCapability(): Promise<{
+  async describeCapability(userId: string): Promise<{
     available: boolean;
     folderPath: string;
     reason?: string;
   }> {
-    const root = this.defaultFolderPath;
+    // Probe the root this admin's schedule would actually write under -- the
+    // stored folder when one is set, the deployment default otherwise. Probing
+    // only the default reported "no storage" while a configured secondary root
+    // from BACKUP_ALLOWED_ROOTS was mounted and writable, and the banner then
+    // blocked re-arming a schedule that would have worked (F3RB-003).
+    const settings = await this.scoped(AutoBackupSettings, (repo) =>
+      repo.findOne({ where: { userId } }),
+    );
+    const root = this.resolveFolderPath(settings?.folderPath);
     try {
       await this.assertFolderWritable(root);
       return { available: true, folderPath: root };

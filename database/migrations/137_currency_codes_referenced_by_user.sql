@@ -1,6 +1,6 @@
 -- Which currency codes does one user reference?
 --
--- The companion to `currency_code_in_use_globally` (migration 133), and a
+-- The companion to `currency_code_in_use_globally` (migration 136), and a
 -- separate question: that one asks whether *anybody* still holds a code, this
 -- one asks which codes a single user holds. Both enumerate the columns that
 -- reference `currencies(code)`, which is precisely the list that has drifted

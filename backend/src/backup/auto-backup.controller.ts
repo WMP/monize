@@ -97,8 +97,8 @@ export class AutoBackupController {
     summary: "Whether this deployment has writable automatic-backup storage",
   })
   @ApiResponse({ status: 200, description: "Capability reported" })
-  async getAutoBackupCapability() {
-    return this.autoBackupService.describeCapability();
+  async getAutoBackupCapability(@Request() req) {
+    return this.autoBackupService.describeCapability(req.user.id);
   }
 
   @Post("run-auto-backup")

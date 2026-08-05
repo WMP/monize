@@ -19,7 +19,7 @@ import { CURRENCY_REFERENCE_COLUMNS } from "./currency-reference-columns";
  * definition.
  *
  * All three now go through SQL functions -- `currency_code_in_use_globally`
- * (migration 133) for the global question, `currency_codes_referenced_by_user`
+ * (migration 136) for the global question, `currency_codes_referenced_by_user`
  * (134) for the per-user one. What is left to go wrong is a migration adding a
  * reference and not extending them, so that is checked here against the schema
  * rather than against a list somebody has to remember to update.
@@ -138,7 +138,7 @@ describe("currency global liveness", () => {
   });
 
   /**
-   * The per-user companion (migration 134), which the backup export uses to
+   * The per-user companion (migration 137), which the backup export uses to
    * decide which currency definitions to include. Same list of referencing
    * columns, different question -- and the export used to answer it with
    * `created_by_user_id = $1`, so a user whose accounts were denominated in

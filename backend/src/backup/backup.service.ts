@@ -633,7 +633,7 @@ export class BackupService {
         // never overwrite a definition the target already holds.
         //
         // The referencing columns live in `currency_codes_referenced_by_user`
-        // (migration 134) rather than being spelled out here: this list has
+        // (migration 137) rather than being spelled out here: this list has
         // drifted before, and currency-references.spec.ts checks the function
         // against the schema.
         key: "currencies",
@@ -2158,7 +2158,7 @@ export class BackupService {
     // inside this restore's transaction, where RLS filters every table to the
     // restoring user -- so the clauses looking for *other* users' rows could not
     // see them, and the cascade fired. `currency_code_in_use_globally`
-    // (migration 133) is SECURITY DEFINER, so the answer is global, and it runs
+    // (migration 136) is SECURITY DEFINER, so the answer is global, and it runs
     // in this transaction, so it stays atomic with the delete.
     await manager.query(
       `DELETE FROM currencies c

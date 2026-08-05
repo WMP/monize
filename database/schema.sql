@@ -2237,7 +2237,7 @@ BEGIN
 END $$;
 
 -- -------------------------------------------------------------------------
--- One global answer to "is this currency code still referenced?" (migration 133).
+-- One global answer to "is this currency code still referenced?" (migration 136).
 --
 -- `currencies` is shared reference data, and columns across most of the
 -- financial tables point at `currencies(code)`. Deleting a row any of them still
@@ -2300,7 +2300,7 @@ REVOKE ALL ON FUNCTION currency_code_in_use_globally(VARCHAR) FROM PUBLIC;
 -- -------------------------------------------------------------------------
 -- Which currency codes does one user reference?
 --
--- The companion to `currency_code_in_use_globally` (migration 133), and a
+-- The companion to `currency_code_in_use_globally` (migration 136), and a
 -- separate question: that one asks whether *anybody* still holds a code, this
 -- one asks which codes a single user holds. Both enumerate the columns that
 -- reference `currencies(code)`, which is precisely the list that has drifted

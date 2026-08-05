@@ -112,10 +112,10 @@ BEGIN
 
     -- The one SECURITY DEFINER helper the runtime needs: it answers whether a
     -- currency code is still referenced anywhere, which the tenant's own view of
-    -- the tables cannot. EXECUTE is revoked from PUBLIC by migration 133, so it
+    -- the tables cannot. EXECUTE is revoked from PUBLIC by migration 136, so it
     -- has to be granted back here -- a migration cannot name this role, which
     -- may not exist yet on a given deployment. Guarded on the function's
-    -- presence so a deployment mid-upgrade (role provisioned, migration 133 not
+    -- presence so a deployment mid-upgrade (role provisioned, migration 136 not
     -- yet applied) warns rather than failing startup.
     IF EXISTS (
       SELECT FROM pg_proc p
@@ -310,7 +310,7 @@ export interface ProvisionAppRoleOptions {
  * Called twice per startup, and the second call is the one that matters.
  * `db-init` runs before `db-migrate`, so on the boot that first applies a
  * migration creating a database object the runtime needs -- the SECURITY DEFINER
- * `currency_code_in_use_globally`, whose EXECUTE migration 133 revokes from
+ * `currency_code_in_use_globally`, whose EXECUTE migration 136 revokes from
  * PUBLIC -- the grant in `db-init` runs while that object does not yet exist and
  * silently grants nothing. Under `RLS_MODE=enforce` the runtime would then get
  * "permission denied for function" until somebody restarted the pod again. So

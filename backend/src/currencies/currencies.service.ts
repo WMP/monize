@@ -423,7 +423,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
    * left holding a budget in a currency that no longer appeared anywhere in
    * their settings -- so they could neither see it nor reactivate it. That is
    * the third time this list has been written out and been wrong, which is why
-   * it now lives in `currency_codes_referenced_by_user_data` (migration 134)
+   * it now lives in `currency_codes_referenced_by_user_data` (migration 137)
    * where `currency-references.spec.ts` can check it against the schema.
    *
    * The `_data` variant, not the composite: this runs *before* the caller's own
@@ -585,7 +585,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
    * cleared the way for the `user_currency_preferences` cascade to delete
    * another user's activation.
    *
-   * `currency_code_in_use_globally` (migration 133) is SECURITY DEFINER, so it
+   * `currency_code_in_use_globally` (migration 136) is SECURITY DEFINER, so it
    * sees every row, and it runs inside this transaction, so the answer cannot
    * go stale between the check and the delete it guards.
    */

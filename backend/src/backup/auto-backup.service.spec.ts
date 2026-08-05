@@ -618,21 +618,45 @@ describe("AutoBackupService", () => {
 
       // So a surface can say this before the user configures a frequency, a
       // time and a retention policy and presses save.
-      const capability = await svc.describeCapability();
+      const capability = await svc.describeCapability(userId);
       expect(capability.available).toBe(false);
       expect(capability.folderPath).toBe(unusable);
       expect(capability.reason).toBeTruthy();
     });
 
     it("reports the capability as available on a writable root", async () => {
-      await expect(service.describeCapability()).resolves.toEqual({
+      await expect(service.describeCapability(userId)).resolves.toEqual({
         available: true,
         folderPath: root,
       });
     });
 
+    it("probes the configured root, not only the deployment default (F3RB-003)", async () => {
+      // BACKUP_ALLOWED_ROOTS exists so an operator can mount somewhere other
+      // than /data/backups. Probing only the default reported "no storage" for
+      // a working configured root, and the banner then refused to re-arm a
+      // schedule that would have saved and run.
+      const other = mkdtempSync(join(tmpdir(), "monize-backup-other-"));
+      try {
+        const svc = await createService({
+          BACKUP_CONTAINER_DIR: join(root, "does-not-exist", "nested"),
+          BACKUP_ALLOWED_ROOTS: other,
+        });
+        mockSettingsRepo.findOne.mockResolvedValue(
+          createSettings({ folderPath: other }),
+        );
+
+        await expect(svc.describeCapability(userId)).resolves.toEqual({
+          available: true,
+          folderPath: other,
+        });
+      } finally {
+        rmSync(other, { recursive: true, force: true });
+      }
+    });
+
     it("leaves no probe file behind when reporting the capability", async () => {
-      await service.describeCapability();
+      await service.describeCapability(userId);
       expect(
         readdirSync(root).filter((n) => n.startsWith(".monize-write-test-")),
       ).toEqual([]);
@@ -729,6 +753,37 @@ describe("AutoBackupService", () => {
         rmSync(outside, { recursive: true, force: true });
       }
     });
+
+    it.each([
+      ["the user directory itself", (f: string) => f],
+      ["the first shard segment", (f: string) => join(f, "..", "..")],
+      ["the second shard segment", (f: string) => join(f, "..")],
+    ])(
+      "refuses a backup when %s is a symlink out of the permitted roots (F3RB-002)",
+      async (_label, pick) => {
+        // The root is canonicalised before the sharded segments are appended, so
+        // a symlink anywhere in `<root>/<ab>/<cd>/<userId>` used to redirect the
+        // write while the base still looked clean. The final path has to be
+        // canonicalised too.
+        const outside = mkdtempSync(join(tmpdir(), "monize-shard-target-"));
+        const linkPath = pick(folderFor());
+        try {
+          await fs.mkdir(join(linkPath, ".."), { recursive: true });
+          await fs.symlink(outside, linkPath);
+          mockSettingsRepo.findOne.mockResolvedValue(
+            createSettings({ folderPath: root }),
+          );
+
+          await expect(service.runManualBackup(userId)).rejects.toThrow(
+            BadRequestException,
+          );
+          // Nothing may reach the symlink's target.
+          expect(await listBackups(outside)).toEqual([]);
+        } finally {
+          rmSync(outside, { recursive: true, force: true });
+        }
+      },
+    );
 
     it("accepts a symlink that stays inside a permitted root", async () => {
       const real = join(root, "real");
