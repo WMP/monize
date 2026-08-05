@@ -12,14 +12,18 @@ issue filing (Step 5) have NOT started — nothing was pushed, no PR or issue ex
 | Upstream (`origin`) main used as base | `53764ced517fb9447a4c2bce631136e0825011ef` |
 | Source branch (fork ref, pre-rebase) | `fork/claude/detailed-error-review-4pbug7` = `c841ad9aebb05b616a2d0077fefc707850541344` |
 | Old merge-base | `4e48a76762a07402a5d3bc3f886fcd8e6ff5829b` (52 ahead / 92 behind) |
-| Rebased local head | `825eab8c619f03b0739ada4d7c95fbbdd390e3b4` (`ba0de2e37` at review 1, `2587053f3` at review 2; see §2.7, §2.8) |
-| Commits over main after rebase | 57 = 52 original + 5 new (migration renumber `2df6e400c`, guard-scope fix `e11bd888e`, prettier `ba0de2e37`, review-1 response `2587053f3`, review-2 response `825eab8c6`) |
+| Verified executable-code SHA | `825eab8c619f03b0739ada4d7c95fbbdd390e3b4` — every check in §3 was run here |
+| Branch/report head SHA | one commit later: the test-strengthening + this document. A document cannot name its own commit (amending to insert the hash changes the hash), so the branch log is the record for it; `git log --oneline origin/main..HEAD \| head -1` resolves it |
+| Commits over base at report head | 58 (57 at the verified executable SHA) |
+| Review lineage | `ba0de2e37` (review 1) → `2587053f3` (review 2) → `825eab8c6` (review 3) → head; see §2.7, §2.8, §2.9 |
+| Commit composition | 52 original + migration renumber `2df6e400c` + guard-scope fix `e11bd888e` + prettier `ba0de2e37` + review-1 response `2587053f3` + review-2 response `825eab8c6` + review-2 test strengthening (head) |
 | Net diff vs main | 92 files, +14819 −1700 |
 | Worktree | clean (`git status --porcelain` empty apart from untracked local `.claude/` scratch) |
 | Patch-id overlap check | `git cherry origin/main <branch> 4e48a767` → zero `-` lines; no audit-03 commit was already upstream |
 
-Reproduce ancestry: `git merge-base --is-ancestor origin/main 825eab8c6` holds;
-`git log --oneline origin/main..825eab8c6` lists the 57.
+Reproduce ancestry: `git merge-base --is-ancestor origin/main HEAD` holds;
+`git log --oneline origin/main..HEAD` lists 58, of which `825eab8c6` is the last to change
+executable code.
 
 Related in-flight work the reviewer should know about: the **audit-02 series** (upstream PRs
 #1056–#1063 + local stacked pr/05, pr/06, pr/09) is open but unmerged. Audit-03 was rebased onto
@@ -231,6 +235,31 @@ substitute a component between `assertAllowedRoot` and `writeFileAtomic`. The re
 as a design note rather than a defect in this deployment model; closing it properly needs
 `openat`-style no-follow directory handles, which is a larger change than a rebase should carry.
 
+### 2.9 Third review: all three rebase-seam defects closed
+
+The third pass confirmed **F3RB-R1-001 closed** (containment before the probe; the `writeFile` spy
+judged "materially load-bearing"; the property confirmed writable/configurable so the spy is
+technically sound), the last stale migration reference closed, and **no new executable-code defect**
+in either commit. With F3RB-002 and F3RB-003 already closed, the reviewer's own conclusion is that
+"the independent rebase-seam review itself is now closed at the implementation level" — 0 BLOCKER,
+1 HIGH, 4 MEDIUM, all of them pre-existing findings in the audited work rather than rebase seams.
+
+One item was aimed at this document and is fixed above: **DOC-F3RB-R2-001** — the target-facts table
+named `825eab8c6`/57 while the document is itself committed one commit later (58). That is a
+self-reference limit rather than an oversight (amending a file to insert its own commit's hash
+changes the hash), so §1 now distinguishes the *verified executable-code SHA*, where every check in
+§3 was actually run, from the *branch/report head*, which the branch log resolves. The same
+convention `docs/audit-phase-3-response.md` §9 uses for its own commits.
+
+**DOC-F3RB-R2-002..005 remain open by decision, not by omission** (they were DOC-F3RB-R1-002..005 in
+the previous pass): the two attachment providers still say external bytes are not embedded, the
+partial-artifact comments still overstate retention safety, and the plain-export comments still
+overstate OOM safety. Each is a comment that this branch's own later commits made false, and each
+belongs with the concern that made it false — providers with PR 3 (self-contained artifacts),
+partial-artifact comments with the F3RB-001 issue, plain-export comments with F3RB-006. Correcting
+them in a rebase commit would move them away from the change that explains them. The PR split has
+them on its checklist.
+
 ## 3. Verification (all on `825eab8c6`)
 
 | Check | Result |
@@ -287,7 +316,23 @@ remaining open questions for a second pass:
 - [ ] Migration renumber: `136_`/`137_` idempotent, `schema.sql` consistent, no doc still says `133_currency…`.
 - [ ] Cross-series: #1061 vs `atomic-file.ts`; #1063 vs `3f0cd8379`+`4612b039b` (see §1).
 
-## 5. Next steps (not started)
+## 5. Carried into the PR split as explicit obligations
+
+Three independent review passes closed every rebase-seam defect and left a stable set of
+pre-existing findings. These are not "known issues" to be quietly inherited — each has a home:
+
+| Finding | Severity | Disposition in the split |
+| --- | --- | --- |
+| F3RB-001 partial artifacts share complete filenames and retention slots | HIGH | **Issue** (maintainer decision), draft at `.claude/pending-issues/2026-08-05-f3rb-001-partial-backup-identity.md`. The backup PR body must say it ships only F3R7-001's "skip promotion and retention for this run" half, and must not repeat the comments claiming partials cannot displace complete copies. |
+| F3RB-004 incomplete manual export reports success | MEDIUM | Issue (§7 of the response doc already carries it as open); PR 3's body states the limitation. |
+| F3RB-005 zero-fit restore forced to one slot | MEDIUM | Issue; PR 4's body states that the gate's floor is deliberate-but-unsafe at very small limits. |
+| F3RB-006 plain export materialises tables and attachment sets | MEDIUM | Issue — this is response-doc §7 item 3, "the single highest-value open item". PR 4's body must not describe the plain path as bounded. |
+| F3RB-007 OIDC restore accepts a truthy sentinel | MEDIUM | Issue — response-doc §7 item 1. Note the cross-series overlap: audit-02's PR #1060 builds exactly the purpose-bound step-up machinery this needs, so the issue should reference it as the intended mechanism. |
+| DR-F3RB-001 legacy flat retention deletes unattributable files | MEDIUM risk | PR 5's body must state the chosen policy explicitly rather than folding it into "retention reconciliation". |
+| DR-F3RB-002..004 unbounded restore queue, pre-auth upload occupation, unmeasured memory constants | MEDIUM risk | Issues (response-doc §7 items 2 and 4). |
+| DOC-F3RB-R2-002..005 stale comments | Docs | Fixed inside the PR that makes each one false (providers → PR 3; partial → the F3RB-001 issue's reference; plain export → PR 4). |
+
+## 6. Next steps (not started)
 
 Split into 8 single-concern PRs per response-doc §9, titles `03: … (v1.15.0)`, stacked where
 they share `backend/src/backup/`; open as drafts (owner runs push/`gh pr create` — sandbox policy
