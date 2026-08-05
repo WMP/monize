@@ -3,7 +3,7 @@
 Written for the external reviewer that produced the audit-03 findings. Every claim is
 falsifiable against this clone; reproduction commands included.
 
-**Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus six rounds of response to
+**Scope.** Steps 1–2 (rebase + conflict resolution + verification), plus nine rounds of response to
 independent review. The branch **is pushed** to `WMP/monize:claude/detailed-error-review-4pbug7`.
 **Seven issues are filed** in `kenlasko/monize`: the four audit-03 items deliberately not fixed
 here — [#1069](https://github.com/kenlasko/monize/issues/1069) (F3RB-001),
@@ -24,11 +24,11 @@ The PR split (Step 3) and PR opening (Step 4) have NOT started; no PR exists for
 | Upstream (`origin`) main used as base | `53764ced517fb9447a4c2bce631136e0825011ef` |
 | Source branch (fork ref, pre-rebase) | `fork/claude/detailed-error-review-4pbug7` = `c841ad9aebb05b616a2d0077fefc707850541344` |
 | Old merge-base | `4e48a76762a07402a5d3bc3f886fcd8e6ff5829b` (52 ahead / 92 behind) |
-| `VERIFIED_TEST_SHA` | `26117775eff7df4e92777d234e234002fdf87edb` — the exact commit §3's totals were produced on. Immutable: if `git rev-parse HEAD` differs, §3 describes an ancestor, not the current tree. |
-| `REPORT_HEAD_SHA` | `26117775eff7df4e92777d234e234002fdf87edb` + this document's own commit. A file cannot name its own hash, so `git log -1 --format=%H` is the authority for that one. |
-| Delta since `VERIFIED_TEST_SHA` | One commit, unable to change §3's totals, and this is the check rather than the claim: `git diff --name-only 26117775e..HEAD` returns `.env.example`, `.gitignore`, `audit3-rebase-as-built.md`, and the two attachment-provider files — comment-only hunks in the latter (`git diff 26117775e..HEAD -- backend/src` is entirely `*` lines). Any *other* path appearing there means the totals are stale and the suites have to be rerun. The attachment and backup suites were rerun anyway (25 files, 559 tests, green) because a comment-only claim is worth one cheap check. |
-| Commits over base | 71 at `VERIFIED_TEST_SHA` + this document's commit. `git log --oneline origin/main..HEAD \| wc -l` is the authority. |
-| Review lineage | `ba0de2e37` (review 1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 fixes (5) → +localization (6); see §2.7–§2.11 |
+| `VERIFIED_TEST_SHA` | `e8bc6e25d336755ac7a7869e23413b84b6018681` — the exact commit §3's totals were produced on. Immutable: if `git rev-parse HEAD` differs, §3 describes an ancestor, not the current tree. |
+| `REPORT_HEAD_SHA` | `e8bc6e25d336755ac7a7869e23413b84b6018681` + this document's own commit. A file cannot name its own hash, so `git log -1 --format=%H` is the authority for that one. |
+| Delta since `VERIFIED_TEST_SHA` | This document's commit alone: `git diff --name-only e8bc6e25d..HEAD` returns `audit3-rebase-as-built.md` and nothing else. The ninth round changed executable files (`restore-processing-gate.ts`, `backup.controller.ts`, a spec), so the totals below were **re-earned on that commit** rather than carried over — which is the point of keeping the two SHAs apart. |
+| Commits over base | 72 at `VERIFIED_TEST_SHA`; 73 at the head that carries this document. `git log --oneline origin/main..HEAD \| wc -l` is the authority. (An earlier row said 71 at the verified SHA -- off by one, and the ninth review caught it.) |
+| Review lineage | `ba0de2e37` (1) → `2587053f3` (2) → `825eab8c6` (3) → `17ddf6247` (4) → +F3RB-004/005 (5) → +localization (6) → `dfc6f05ff` (7+8) → `e8bc6e25d` (9); see §2.7–§2.14 |
 | Commit composition | 52 original commits + the migration renumber, the guard-scope fix, and one commit per review round (§2.7–§2.11). `git log --oneline origin/main..HEAD` is the record. |
 | Net diff vs main | `git diff --stat origin/main..HEAD \| tail -1` — it has grown with each review round, so the command is the answer rather than a number that goes stale. |
 | Worktree | clean (`git status --porcelain` empty apart from untracked local `.claude/` scratch) |
@@ -279,20 +279,25 @@ point deferring the source of a statement while correcting its translations stop
 Both docblocks are fixed (§2.11), and the seventh round added the legacy artifact's ownership
 precondition to them (§2.12).
 
-## 3. Verification (all on `VERIFIED_TEST_SHA` = `26117775eff7`)
+## 3. Verification (all on `VERIFIED_TEST_SHA` = `e8bc6e25d336`)
 
 | Check | Result |
 | --- | --- |
-| backend `tsc --noEmit -p tsconfig.test.json` | clean |
+| backend `tsc --noEmit -p tsconfig.json` | clean |
 | backend `npm run lint` | clean |
 | backend `npm run migration:lint` | 127 files, clean |
 | backend `npm run i18n:check` | pseudo-locale fresh |
-| backend `TZ=UTC npm run test:unit` | **417/417 suites, 11201/11201 tests — fully green** (locale parity was the standing failure and the localization pass closed it) |
-| frontend `npx tsc --noEmit` | clean |
+| backend `TZ=UTC npm run test:unit` | **417/417 suites, 11203/11203 tests — fully green** (locale parity was the standing failure and the localization pass closed it; +2 tests from the ninth round's guards) |
+| frontend `npx tsc --noEmit` | clean — and unchanged since, the frontend having no file in the delta after round six (`git diff --name-only <round-6 head>..HEAD -- frontend/` is empty) |
 | frontend `npm run lint` | clean (1 pre-existing `exhaustive-deps` warning, `Combobox.tsx` — same as recorded in audit-phase-3-response §8) |
 | frontend `npm run i18n:check` | clean |
 | frontend `npx vitest run` | **637/637 files, 12451/12451 tests — fully green** |
 | `node scripts/check-env-docs.mjs` | 61 env vars documented |
+
+**Note on `npx jest` vs `npm run test:unit`.** A bare `npx jest` also picks up the integration suites
+and reports ~21 failing files against a database that is not running; CI's unit job runs `test:unit`,
+which matches `src/**/*.spec.ts` only. I made that mistake once in the ninth round and it reads exactly
+like a 292-test regression, so it is worth the sentence.
 
 Locale parity was this branch's standing failure — response doc §7 item 5 declared it expected until
 the acceptance-time localization pass. That pass has now run (§2.11), so **there is no remaining
@@ -491,6 +496,44 @@ reason the deferral stopped applying.
 Found while checking it, and not by the review: the S3 provider docblock read "so the bucket does
 not / separately" — a clause I dropped mid-sentence in the sixth round. Prose in a comment has no
 compiler, which is the argument for keeping the checkable claims in tests and the comments short.
+
+### 2.14 Ninth round: the gate does not survive its own constants being wrong
+
+The ninth review's one MEDIUM is the most substantive finding of the last four rounds, and it is a
+comment that has been in this file since the audit began. `RestoreProcessingGate`'s docblock said the
+cap was insensitive to `PEAK_MULTIPLE`'s true value, because one restore fitting was already guaranteed
+by the upload and expanded limits. **Circular:** `safeDerivedUploadLimit` *is* `container * share /
+PEAK_MULTIPLE`, and `computeRestoreProcessingSlots` divides by `PEAK_MULTIPLE * expandedLimit`. Every
+ceiling in the chain is derived by dividing by the one constant the source itself calls a defensible
+floor rather than a measurement, so none can vouch for it. The gate bounds concurrency; nothing
+establishes that one restore fits.
+
+Checking the arithmetic made it worse than the review's own example. Default 400 MiB pod: expanded
+100 MiB, modeled peak 300 MiB, baseline 96 MiB → one slot, 4 MiB spare. The true multiple at which one
+*admitted* restore stops fitting is **3.04**, not 3.2 — 1.3% above the assumed value. (3.20 on 512 MiB
+and 1 GiB pods.) A maintainer reading the old comment concludes measurement is an efficiency task and
+serial execution is already safe; both are false, and the failure lands mid-disaster-recovery.
+
+Pinned rather than reworded: a unit test asserts the 3.04 break-even and the sub-5% headroom, and a
+source scan fails if the independence-from-`PEAK_MULTIPLE` phrasing returns. The scan cost two
+iterations by tripping on my own quotation of the old wording inside the replacement comment — the
+guard working as intended, since a quoted false claim reads the same as an asserted one to anyone
+skimming.
+
+Two more found while checking that one, neither reported as findings:
+`computeRestoreProcessingSlots` still described the gate as flooring a zero capacity back to one, so a
+`0` meant "run one anyway and warn" — F3RB-005 removed that floor two functions above and the comment
+outlived it by several commits. And the restore endpoint documented only 200/401/400 while
+`restore-upload-admission` answers 413, 408 and 503 itself; an operator integrating against the
+documented contract could not know the retryable status existed.
+
+**Issue #1073 carries the same false claim** in its DR-F3RB-004 paragraph, because I wrote it from the
+comment. The local draft is corrected and a comment for the published issue is staged at
+`.claude/pending-issues/2026-08-05-comment-1073-correction.md` — publishing it is the owner's step,
+and it matters: the issue is currently the acceptance criteria for measuring this.
+
+Also corrected: the commit-count row said 71 at `VERIFIED_TEST_SHA` when that commit is 70 ahead —
+off by one in the very row that exists to be exact.
 
 ## 5. Carried into the PR split as explicit obligations
 
