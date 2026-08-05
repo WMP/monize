@@ -163,7 +163,7 @@ export class BackupController {
   @ApiResponse({
     status: 413,
     description:
-      "Compressed upload exceeds BACKUP_RESTORE_LIMIT (the wire limit, checked before the body is read)",
+      "Compressed upload exceeds BACKUP_RESTORE_LIMIT. A request declaring an oversized Content-Length is refused before its body is read; without a usable one -- absent header, chunked transfer, or a declared length under what is actually sent -- express.raw enforces the same limit while receiving, so the refusal arrives mid-transfer instead",
   })
   @ApiResponse({
     status: 408,
