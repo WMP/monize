@@ -81,6 +81,8 @@
   "pull_request": 877,
   "pull_request_base": "5e5b4df6ec9c82f1cd31dc855c340af5bfeb3aa5",
   "pull_request_coverage": "72/72",
-  "stop_reason": "error: git fetch --quiet --prune origin +refs/heads/*:refs/remotes/origin/* failed: ",
-  "stopped_at": "2026-08-04T21:50:09Z"
+  "reviewer_tokens_total": 11804063,
+  "stop_reason": "error: git fetch --quiet --prune origin +refs/heads/*:refs/remotes/origin/* failed: ssh: Could not resolve hostname github.com: No address associated with hostname\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.",
+  "stopped_at": "2026-08-05T12:43:46Z",
+  "tokens_this_session": 11804063
 }
