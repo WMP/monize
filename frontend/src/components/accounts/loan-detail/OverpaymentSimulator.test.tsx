@@ -177,6 +177,32 @@ describe('OverpaymentSimulator', () => {
     expect(screen.queryByText(/CAD 250\.50/)).not.toBeInTheDocument();
   });
 
+  it('clears the detected hint when accountId changes and the new loan has no extra', async () => {
+    // Loan A detects 250; the hint appears.
+    mockDetectLoanPayments.mockResolvedValue({ averageExtraPrincipal: 250 });
+    const onPlanChange = vi.fn();
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(
+        <OverpaymentSimulator accountId="loan-a" currencyCode="USD" onPlanChange={onPlanChange} />,
+      );
+    });
+    await waitFor(() => expect(screen.getByText('Use it')).toBeInTheDocument());
+
+    // Switch to loan B whose detection returns nothing.
+    mockDetectLoanPayments.mockResolvedValue(null);
+    await act(async () => {
+      result!.rerender(
+        <OverpaymentSimulator accountId="loan-b" currencyCode="USD" onPlanChange={onPlanChange} />,
+      );
+    });
+    // Drain the new (null-resolving) detection promise.
+    await act(async () => {});
+
+    expect(screen.queryByText('Use it')).not.toBeInTheDocument();
+    expect(screen.queryByText(/250/)).not.toBeInTheDocument();
+  });
+
   it('does not show a hint when detection finds no extra principal', async () => {
     mockDetectLoanPayments.mockResolvedValue({ averageExtraPrincipal: 0 });
     await renderSimulator();

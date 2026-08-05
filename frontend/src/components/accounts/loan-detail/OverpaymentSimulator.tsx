@@ -169,6 +169,15 @@ export function OverpaymentSimulator({
     setGoalStatus(null);
   }
 
+  // Reset detected hint synchronously when the loan changes so a prior loan's
+  // amount is never shown against the incoming loan while its detection is in
+  // flight.
+  const [detectionAccountId, setDetectionAccountId] = useState(accountId);
+  if (accountId !== detectionAccountId) {
+    setDetectionAccountId(accountId);
+    setDetectedExtra(null);
+  }
+
   // Suggest the historically detected extra principal as a starting point
   useEffect(() => {
     let cancelled = false;
