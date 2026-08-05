@@ -334,11 +334,10 @@ export class BackupService {
     // stream straight through gzip to avoid OOM on very large datasets.
     if (encryptionPassword) {
       const { buffer, report } = await this.collectGzippedExport(userId);
-      // A direct download cannot carry a structured partial status, and the
-      // stream has not started, so the user still gets their file -- but the
-      // incompleteness is logged rather than passing silently, unlike the
-      // auto-backup path which acts on the report.
+      // Nothing has been sent yet, so the incompleteness can be *in the
+      // response* rather than only in the log (F3RB-004).
       this.warnIfIncompleteExport(userId, report);
+      this.markIncompleteExport(res, report);
       const encrypted = await encryptBackup(buffer, encryptionPassword);
       res.write(encrypted);
       res.end();
@@ -351,7 +350,6 @@ export class BackupService {
     // Stream JSON through gzip to the response, one table at a time, to
     // avoid OOM and produce a smaller download.
     const gzip = createGzip();
-    gzip.pipe(res);
 
     const write = (chunk: string): Promise<void> =>
       new Promise((resolve, _reject) => {
@@ -362,17 +360,37 @@ export class BackupService {
         }
       });
 
-    let attachments: Record<string, unknown>[] = [];
-    let blobs: Record<string, unknown>[] = [];
+    const preRead = new Map<string, Record<string, unknown>[]>();
     await this.inExportSnapshot(userId, async (read) => {
+      // Read the two attachment tables BEFORE the first byte goes out, so
+      // completeness can be signalled in the response headers rather than only
+      // in the log (F3RB-004). This costs no extra memory: both arrays were
+      // already retained for the end-of-stream assessment, so the only change
+      // is the order in which they are read inside the same snapshot.
+      for (const entry of tableQueries) {
+        if (
+          entry.key === "transaction_attachments" ||
+          entry.key === "attachment_blobs"
+        ) {
+          preRead.set(entry.key, await this.readTable(read, entry));
+        }
+      }
+      const attachments = preRead.get("transaction_attachments") ?? [];
+      const blobs = preRead.get("attachment_blobs") ?? [];
+      const report = this.assessAttachmentCompleteness(attachments, blobs);
+      this.warnIfIncompleteExport(userId, report);
+      this.markIncompleteExport(res, report);
+
+      // Only now does anything reach the socket, so the headers above are still
+      // mutable.
+      gzip.pipe(res);
       await write(
         `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
       );
 
       for (const entry of tableQueries) {
-        const rows = await this.readTable(read, entry);
-        if (entry.key === "transaction_attachments") attachments = rows;
-        else if (entry.key === "attachment_blobs") blobs = rows;
+        const rows =
+          preRead.get(entry.key) ?? (await this.readTable(read, entry));
         await write(`,"${entry.key}":${JSON.stringify(rows)}`);
       }
 
@@ -384,15 +402,71 @@ export class BackupService {
       gzip.end(resolve);
     });
 
-    // The stream has already gone out, so a partial cannot be signalled in the
-    // response body -- but a direct download is not promoted or retained, so the
-    // dangerous case (auto-backup displacing complete copies) is not this path.
-    // Log it so a silently incomplete download is at least visible in the record.
-    this.warnIfIncompleteExport(
-      userId,
-      this.assessAttachmentCompleteness(attachments, blobs),
-    );
     this.logger.log(`Backup export completed for user ${userId}`);
+  }
+
+  /**
+   * Tell the client, in the response itself, that this artifact is incomplete
+   * (F3RB-004).
+   *
+   * A download that the backend knows cannot restore everything it names used to
+   * arrive as an ordinary 200 with the ordinary filename and an ordinary success
+   * toast -- so a user could delete the source system on the strength of it. The
+   * bytes are still sent, deliberately: a partial artifact is worth more than no
+   * artifact when the alternative is losing the rest too. What changes is that it
+   * cannot be mistaken for a complete one.
+   *
+   * Headers rather than the body because the body is a gzip/encrypted stream with
+   * no place to put a status, and because this must work for the streaming path
+   * where nothing can be added afterwards. `Content-Disposition` is rewritten so
+   * the file on disk carries the warning too -- a header is invisible six months
+   * later, a filename is not. Called before the first byte on both paths.
+   */
+  private markIncompleteExport(
+    res: import("express").Response,
+    report: BackupCompletenessReport,
+  ): void {
+    if (report.complete) return;
+    res.setHeader("X-Backup-Complete", "false");
+    res.setHeader(
+      "X-Backup-Attachments-Expected",
+      String(report.expectedAttachments),
+    );
+    res.setHeader(
+      "X-Backup-Attachments-Included",
+      String(report.includedAttachments),
+    );
+    res.setHeader(
+      "X-Backup-Attachments-Missing",
+      String(report.missingAttachments),
+    );
+    res.setHeader(
+      "X-Backup-Attachments-Inconsistent",
+      String(report.inconsistentAttachments),
+    );
+    // CORS: a browser cannot read a custom response header unless it is exposed.
+    res.setHeader(
+      "Access-Control-Expose-Headers",
+      [
+        "Content-Disposition",
+        "X-Backup-Complete",
+        "X-Backup-Attachments-Expected",
+        "X-Backup-Attachments-Included",
+        "X-Backup-Attachments-Missing",
+        "X-Backup-Attachments-Inconsistent",
+      ].join(", "),
+    );
+
+    const disposition = res.getHeader("Content-Disposition");
+    if (typeof disposition === "string") {
+      res.setHeader(
+        "Content-Disposition",
+        disposition.replace(
+          /filename="([^"]+?)(\.json\.gz|\.mzbe)"/,
+          'filename="$1-INCOMPLETE$2"',
+        ),
+      );
+    }
   }
 
   /** Logs an incomplete manual export; the auto-backup path acts on it instead. */

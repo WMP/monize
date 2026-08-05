@@ -102,7 +102,12 @@ describe('BackupRestoreSection', () => {
 
   it('downloads backup when export button clicked', async () => {
     const mockBlob = new Blob(['{}'], { type: 'application/json' });
-    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue(mockBlob);
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: true,
+      missingAttachments: 0,
+      expectedAttachments: 0,
+    });
 
     // Mock URL.createObjectURL and revokeObjectURL
     const mockUrl = 'blob:http://localhost/mock-url';
@@ -121,9 +126,56 @@ describe('BackupRestoreSection', () => {
     });
   });
 
+  it('does not call an incomplete export a success, and names the file INCOMPLETE (F3RB-004)', async () => {
+    // The backend knows the artifact cannot restore every attachment it names.
+    // A success toast here is how a user ends up deleting the source system for
+    // a file that cannot bring it back.
+    const mockBlob = new Blob(['{}'], { type: 'application/json' });
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: false,
+      missingAttachments: 2,
+      expectedAttachments: 5,
+    });
+    const anchorEl = document.createElement('a');
+    const clickSpy = vi.spyOn(anchorEl, 'click').mockImplementation(() => {});
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) =>
+      tag === 'a'
+        ? anchorEl
+        : (Document.prototype.createElement.call(
+            document,
+            tag,
+          ) as HTMLElement),
+    );
+    global.URL.createObjectURL = vi
+      .fn()
+      .mockReturnValue('blob:http://localhost/mock-url');
+    global.URL.revokeObjectURL = vi.fn();
+
+    await renderSection(localUser);
+    fireEvent.click(screen.getByText('Download Backup'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('INCOMPLETE'),
+        expect.anything(),
+      );
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(anchorEl.download).toContain('-INCOMPLETE.');
+    expect(clickSpy).toHaveBeenCalled();
+
+    vi.mocked(document.createElement).mockRestore();
+  });
+
   it('names the download using the local calendar date, not UTC', async () => {
     const mockBlob = new Blob(['{}'], { type: 'application/json' });
-    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue(mockBlob);
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: true,
+      missingAttachments: 0,
+      expectedAttachments: 0,
+    });
     global.URL.createObjectURL = vi
       .fn()
       .mockReturnValue('blob:http://localhost/mock-url');
@@ -159,7 +211,12 @@ describe('BackupRestoreSection', () => {
 
   it('dates the download by the timezone preference, not the browser timezone', async () => {
     const mockBlob = new Blob(['{}'], { type: 'application/json' });
-    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue(mockBlob);
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: true,
+      missingAttachments: 0,
+      expectedAttachments: 0,
+    });
     global.URL.createObjectURL = vi
       .fn()
       .mockReturnValue('blob:http://localhost/mock-url');
@@ -553,7 +610,12 @@ describe('BackupRestoreSection', () => {
         manageable: false,
       });
       const mockBlob = new Blob(['encrypted'], { type: 'application/octet-stream' });
-      (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue(mockBlob);
+      (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blob: mockBlob,
+      complete: true,
+      missingAttachments: 0,
+      expectedAttachments: 0,
+    });
       const createObjectURL = vi.fn().mockReturnValue('blob:mock');
       const revokeObjectURL = vi.fn();
       global.URL.createObjectURL = createObjectURL;

@@ -543,7 +543,8 @@
       },
       "toasts": {
         "success": "[XX-Backup downloaded successfully-XX]",
-        "failed": "[XX-Failed to create backup-XX]"
+        "failed": "[XX-Failed to create backup-XX]",
+        "incomplete": "[XX-Backup downloaded, but it is INCOMPLETE: {missing} of {total} attachment(s) could not be included. Do not treat this file as a full backup -- fix the attachment storage and export again.-XX]"
       }
     },
     "restore": {

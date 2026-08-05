@@ -176,7 +176,24 @@ async function compressGzip(data: ArrayBuffer): Promise<Blob> {
 }
 
 export const backupApi = {
-  exportBackup: async (encryptionPassword?: string): Promise<Blob> => {
+  /**
+   * The artifact, plus whether the server could actually include everything it
+   * names.
+   *
+   * The completeness answer travels in headers rather than the body, because the
+   * body is a gzip/encrypted stream (see the backend's `markIncompleteExport`).
+   * A caller that ignores `complete` will show a plain success for a download the
+   * server knows cannot restore every attachment -- which is the defect this
+   * return shape exists to make hard.
+   */
+  exportBackup: async (
+    encryptionPassword?: string,
+  ): Promise<{
+    blob: Blob;
+    complete: boolean;
+    missingAttachments: number;
+    expectedAttachments: number;
+  }> => {
     const headers: Record<string, string> = {};
     if (encryptionPassword) {
       headers["X-Export-Password"] = encodePasswordHeader(encryptionPassword);
@@ -190,7 +207,19 @@ export const backupApi = {
         headers,
       },
     );
-    return response.data;
+    const header = (name: string): string | undefined => {
+      const value = response.headers?.[name] ?? response.headers?.[name.toLowerCase()];
+      return value === undefined || value === null ? undefined : String(value);
+    };
+    return {
+      blob: response.data,
+      // Absent header means complete: only an incomplete export marks itself, so
+      // an old server or a proxy that strips the header reads as complete rather
+      // than as a false alarm on every download.
+      complete: header("X-Backup-Complete") !== "false",
+      missingAttachments: Number(header("X-Backup-Attachments-Missing") ?? 0),
+      expectedAttachments: Number(header("X-Backup-Attachments-Expected") ?? 0),
+    };
   },
 
   supportExport: async (

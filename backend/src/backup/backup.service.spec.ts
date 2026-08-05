@@ -25,6 +25,34 @@ import {
   AttachmentStorageProvider,
 } from "../attachments/storage/attachment-storage.interface";
 
+/**
+ * A `PassThrough` standing in for an express `Response`, carrying the header
+ * surface the real object always has.
+ *
+ * A bare `PassThrough` is a stream and nothing else, so a service that sets a
+ * response header -- as the export does to mark an incomplete artifact -- blew up
+ * on a double that a real Response could never be. Header calls are recorded so a
+ * test can assert them.
+ */
+function responseDouble(): {
+  res: import("express").Response;
+  chunks: Buffer[];
+  headers: Record<string, string>;
+} {
+  const stream = new PassThrough();
+  const chunks: Buffer[] = [];
+  stream.on("data", (c: Buffer) => chunks.push(c));
+  const headers: Record<string, string> = {};
+  const res = Object.assign(stream, {
+    setHeader: (name: string, value: string | number) => {
+      headers[name] = String(value);
+      return res;
+    },
+    getHeader: (name: string) => headers[name],
+  }) as unknown as import("express").Response;
+  return { res, chunks, headers };
+}
+
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
@@ -890,6 +918,92 @@ describe("BackupService", () => {
         expect(report.missingAttachments).toBe(1);
       });
 
+      it("marks an incomplete plain download in the response, before any bytes (F3RB-004)", async () => {
+        // The backend knew the artifact could not restore everything it names and
+        // still sent an ordinary 200 with the ordinary filename, so the UI showed
+        // an ordinary success -- and a user could delete the source system on the
+        // strength of it. The streaming path is the hard half: the answer has to
+        // be known before the first byte, because nothing can be added after.
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [
+            {
+              id: A_ID,
+              provider: "local",
+              byte_size: A_BYTES.length,
+              sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+            },
+          ],
+          {},
+        );
+        const { res, headers, chunks } = responseDouble();
+        res.setHeader(
+          "Content-Disposition",
+          'attachment; filename="monize-backup-2026-08-05.json.gz"',
+        );
+
+        await service.streamExport(userId, res);
+
+        expect(headers["X-Backup-Complete"]).toBe("false");
+        expect(headers["X-Backup-Attachments-Expected"]).toBe("1");
+        expect(headers["X-Backup-Attachments-Missing"]).toBe("1");
+        // The filename carries the warning too: a header is invisible six months
+        // later on a disk, a filename is not.
+        expect(headers["Content-Disposition"]).toContain("-INCOMPLETE.json.gz");
+        // The bytes are still sent: a partial artifact beats no artifact.
+        expect(Buffer.concat(chunks).length).toBeGreaterThan(0);
+      });
+
+      it("marks an incomplete encrypted download in the response (F3RB-004)", async () => {
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [
+            {
+              id: A_ID,
+              provider: "local",
+              byte_size: A_BYTES.length,
+              sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+            },
+          ],
+          {},
+        );
+        const { res, headers } = responseDouble();
+        res.setHeader(
+          "Content-Disposition",
+          'attachment; filename="monize-backup-2026-08-05.mzbe"',
+        );
+
+        await service.streamExport(userId, res, "backup-secret");
+
+        expect(headers["X-Backup-Complete"]).toBe("false");
+        expect(headers["Content-Disposition"]).toContain("-INCOMPLETE.mzbe");
+      });
+
+      it("leaves a complete download's response untouched", async () => {
+        attachmentStorageName = "local";
+        storeHoldsWithMetadata(
+          [
+            {
+              id: A_ID,
+              provider: "local",
+              byte_size: A_BYTES.length,
+              sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+            },
+          ],
+          { [A_ID]: A_BYTES },
+        );
+        const { res, headers } = responseDouble();
+        res.setHeader(
+          "Content-Disposition",
+          'attachment; filename="monize-backup-2026-08-05.json.gz"',
+        );
+
+        await service.streamExport(userId, res);
+
+        expect(headers["X-Backup-Complete"]).toBeUndefined();
+        expect(headers["Content-Disposition"]).not.toContain("INCOMPLETE");
+      });
+
       it("reports incomplete when a database blob is missing (F3R7-001 scenario B)", async () => {
         // The database provider was previously not checked at export at all.
         attachmentStorageName = "database";
@@ -1338,13 +1452,8 @@ describe("BackupService", () => {
 
         // The plain HTTP export streams through gzip and holds no total, so the
         // buffered ceiling must not apply to it.
-        const res = new PassThrough();
-        const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        await service.streamExport(
-          userId,
-          res as unknown as import("express").Response,
-        );
+        const { res, chunks } = responseDouble();
+        await service.streamExport(userId, res);
         expect(Buffer.concat(chunks).length).toBeGreaterThan(0);
       });
     });

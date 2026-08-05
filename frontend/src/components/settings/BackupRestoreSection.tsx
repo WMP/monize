@@ -124,19 +124,38 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const runExport = async (encryptionPassword?: string) => {
     setIsExporting(true);
     try {
-      const blob = await backupApi.exportBackup(encryptionPassword);
+      const { blob, complete, missingAttachments, expectedAttachments } =
+        await backupApi.exportBackup(encryptionPassword);
       // Date the filename by the user's configured timezone preference, not UTC
       // or the browser's timezone. `toISOString()` renders in UTC (an evening
       // export in a negative-offset zone would be stamped with tomorrow), and
       // the browser's own timezone can differ from the preference the user set
       // in Settings (e.g. an Australia/Sydney preference viewed from US/Eastern).
       const today = getDateStringInTimezone(resolveTimezone(timezonePref));
-      const filename = encryptionPassword
-        ? `monize-backup-${today}.mzbe`
-        : `monize-backup-${today}.json.gz`;
+      const extension = encryptionPassword ? 'mzbe' : 'json.gz';
+      // An incomplete artifact is named as one on disk, matching what the server
+      // put in Content-Disposition: a toast is gone in five seconds, a filename
+      // is still there when somebody reaches for this file in a crisis.
+      const filename = complete
+        ? `monize-backup-${today}.${extension}`
+        : `monize-backup-${today}-INCOMPLETE.${extension}`;
       downloadBlob(blob, filename);
 
-      toast.success(t('export.toasts.success'));
+      if (complete) {
+        toast.success(t('export.toasts.success'));
+      } else {
+        // Deliberately not a success toast. The server could not include every
+        // attachment it named, so calling this a successful backup is how a user
+        // ends up deleting the source system for an artifact that cannot restore
+        // it.
+        toast.error(
+          t('export.toasts.incomplete', {
+            missing: missingAttachments,
+            total: expectedAttachments,
+          }),
+          { duration: 12000 },
+        );
+      }
       setExportPasswordPrompt(false);
       setExportPassword('');
     } catch (error) {

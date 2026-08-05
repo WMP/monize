@@ -45,7 +45,7 @@ beforeEach(() => {
 describe('backupApi', () => {
   it('exportBackup posts to /backup/export with blob response type', async () => {
     const mockBlob = new Blob(['data']);
-    vi.mocked(apiClient.post).mockResolvedValue({ data: mockBlob });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: mockBlob, headers: {} });
 
     const result = await backupApi.exportBackup();
     expect(apiClient.post).toHaveBeenCalledWith('/backup/export', {}, {
@@ -53,11 +53,32 @@ describe('backupApi', () => {
       timeout: 120000,
       headers: {},
     });
-    expect(result).toBe(mockBlob);
+    expect(result.blob).toBe(mockBlob);
+    // No marker header means the server considered the artifact complete; an old
+    // server or a header-stripping proxy must not read as a false alarm.
+    expect(result.complete).toBe(true);
+  });
+
+  it('exportBackup reports an incomplete artifact from the response headers', async () => {
+    const mockBlob = new Blob(['data']);
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: mockBlob,
+      headers: {
+        'x-backup-complete': 'false',
+        'x-backup-attachments-missing': '2',
+        'x-backup-attachments-expected': '5',
+      },
+    });
+
+    const result = await backupApi.exportBackup();
+
+    expect(result.complete).toBe(false);
+    expect(result.missingAttachments).toBe(2);
+    expect(result.expectedAttachments).toBe(5);
   });
 
   it('exportBackup forwards encryption password as a base64-encoded header', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ data: new Blob() });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: new Blob(), headers: {} });
     await backupApi.exportBackup('my-pw');
     expect(apiClient.post).toHaveBeenCalledWith('/backup/export', {}, {
       responseType: 'blob',
@@ -67,7 +88,7 @@ describe('backupApi', () => {
   });
 
   it('exportBackup preserves a leading space in the password header', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ data: new Blob() });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: new Blob(), headers: {} });
     await backupApi.exportBackup(' leading-space');
     const config = vi.mocked(apiClient.post).mock.calls[0]?.[2] as
       | { headers?: Record<string, string> }
