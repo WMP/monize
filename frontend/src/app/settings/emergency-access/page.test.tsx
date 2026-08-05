@@ -224,8 +224,10 @@ describe('EmergencyAccessPage', () => {
    * SMTP (audit RRV4-003).
    */
   it('shows the encryption-key notice when only that half is missing', async () => {
+    // Currently enabled, so turning it off must remain possible on an installation
+    // that cannot arm it (audit V4R3-002) -- which is why Save stays live.
     api.get.mockResolvedValue(
-      makeView({ credentialEncryptionConfigured: false }),
+      makeView({ enabled: true, credentialEncryptionConfigured: false }),
     );
     await renderPage();
     await waitFor(() =>
@@ -234,13 +236,48 @@ describe('EmergencyAccessPage', () => {
     // Not the SMTP notice: naming the wrong missing thing sends the operator to
     // the wrong variable.
     expect(screen.queryByText(/Email is not configured/)).toBeNull();
-    // And Save stays available, because turning the feature *off* has to remain
-    // possible on an installation that cannot arm it.
     expect(
       (screen.getByRole('button', {
         name: /Save settings/i,
       }) as HTMLButtonElement).disabled,
     ).toBe(false);
+  });
+
+  it('lets the owner disable an enabled feature even when SMTP is missing', async () => {
+    // Audit V4R3-002: a missing dependency stops arming, never disabling. A feature
+    // already stored as enabled has to stay switch-off-able, or the owner cannot
+    // revoke a safeguard after SMTP was removed.
+    api.get.mockResolvedValue(
+      makeView({ enabled: true, emailConfigured: false }),
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Save settings/i }),
+      ).toBeInTheDocument(),
+    );
+    // Save stays usable, so the owner can submit enabled:false.
+    expect(
+      (screen.getByRole('button', {
+        name: /Save settings/i,
+      }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('keeps the settings controls locked when a disabled feature cannot be armed', async () => {
+    // Disabled and unarmable: there is nothing to turn off, so arming stays blocked.
+    api.get.mockResolvedValue(
+      makeView({ enabled: false, emailConfigured: false }),
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/Email is not configured/)).toBeInTheDocument(),
+    );
+    expect(
+      (screen.getByRole('button', {
+        name: /Save settings/i,
+      }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it('shows no configuration notice when both halves are ready', async () => {

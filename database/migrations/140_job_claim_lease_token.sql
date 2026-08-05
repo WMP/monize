@@ -22,10 +22,16 @@
 -- accepts a bare delete for `claimOnce` callers, whose claim is the fact itself and
 -- has no attempt to identify.
 --
+-- This column on its own protects new code from new code (its `WHERE lease_token =`
+-- matches nothing once the lease is retaken). It does NOT stop a previous-release
+-- pod, whose `release`/`markDelivered` name the work and carry no token -- that gap
+-- is closed by the migration-144 triggers, which reject an untokenized mutation of a
+-- live tokenized lease. The two ship together; this column is inert against the old
+-- binary without them (audit V4R3-004, DOC-V4R3-01).
+--
 -- Backfill: NULL for every existing row. A permanent `claimOnce` row has no lease
--- to own, and an in-flight lease at deploy time simply cannot be released or marked
--- by the process holding it -- it expires instead, which is exactly the outcome a
--- lease exists to provide.
+-- to own, and an in-flight lease at deploy time keeps whatever token it had (none
+-- for a pre-140 lease); when it expires it is retaken normally.
 
 ALTER TABLE job_claims
     ADD COLUMN IF NOT EXISTS lease_token UUID;

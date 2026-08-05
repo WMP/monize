@@ -189,7 +189,12 @@ describe("JobClaimService", () => {
 
       await service.markDelivered(JobClaimType.BillReminder, USER, "k", LEASE);
 
-      const [sql, params] = manager.query.mock.calls[0];
+      // The lease token is declared into the transaction GUC first, so the
+      // migration-144 trigger admits this write and a previous binary's cannot.
+      const [declareSql, declareParams] = manager.query.mock.calls[0];
+      expect(declareSql).toContain("set_config('app.job_claim_lease_token'");
+      expect(declareParams).toEqual([LEASE]);
+      const [sql, params] = manager.query.mock.calls[1];
       expect(sql).toContain("SET delivered_at = CURRENT_TIMESTAMP");
       // Nothing left to protect: from here the row's job is to say the work is
       // done, and `claimLease` refuses to retake a delivered row.
@@ -261,7 +266,12 @@ describe("JobClaimService", () => {
       // replica now sending holds, leaving it with no exclusion at all
       // (audit DR-RRV4-01).
       expect(claimsRepo.delete).not.toHaveBeenCalled();
-      const [sql, params] = manager.query.mock.calls[0];
+      // The token is declared into the GUC first (migration-144 trigger), then the
+      // delete filters on it too.
+      const [declareSql, declareParams] = manager.query.mock.calls[0];
+      expect(declareSql).toContain("set_config('app.job_claim_lease_token'");
+      expect(declareParams).toEqual([LEASE]);
+      const [sql, params] = manager.query.mock.calls[1];
       expect(sql).toContain("DELETE FROM job_claims");
       expect(sql).toContain("lease_token = $4::uuid");
       expect(params).toEqual(["mortgage_reminder", USER, "k", LEASE]);

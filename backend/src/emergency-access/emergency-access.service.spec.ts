@@ -333,6 +333,31 @@ describe("EmergencyAccessService", () => {
       ).rejects.toThrow(/AI_ENCRYPTION_KEY/);
     });
 
+    it("still lets the owner turn the feature off without SMTP", async () => {
+      // Disabling is the one action that must never be blocked by a missing
+      // dependency -- it is how an owner revokes a safeguard after SMTP was removed,
+      // and it voids the outstanding links (audit V4R3-002).
+      emailService.getStatus.mockReturnValue({ configured: false });
+      const stored = {
+        ownerUserId: userId,
+        enabled: true,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+        messageCiphertext: null,
+      };
+      queryRunner.manager.findOne.mockResolvedValue(stored);
+      settingsRepo.findOne.mockResolvedValue(stored);
+      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
+
+      await service.upsertSettings(userId, {
+        enabled: false,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+      });
+
+      expect(stored.enabled).toBe(false);
+    });
+
     it("still lets the owner turn the feature off without the key", async () => {
       // Otherwise an installation that lost its key could not disable a feature
       // that no longer works -- the refusal is about arming a safeguard that

@@ -833,6 +833,28 @@ describe("EmergencyAccessMonitorService", () => {
       );
     });
 
+    it("stamps the delivery forward-only, so a stale cycle cannot lower it", async () => {
+      // DR-V4R3-01: a step-1b resume that ran long while the owner re-armed must
+      // not write its older generation over a newer one and re-open a served
+      // contact. The write carries the generation as a predicate, not just a value.
+      inactiveOwnerWithNoGrant(CURRENT_GENERATION - 1);
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      const guarded = contactsRepo.createQueryBuilder.mock.results.some(
+        (result) =>
+          result.type === "return" &&
+          (result.value as { andWhere: jest.Mock }).andWhere.mock.calls.some(
+            (call) =>
+              String(call[0]).includes("notified_grant_generation") &&
+              (call[1] as { generation?: number })?.generation ===
+                CURRENT_GENERATION,
+          ),
+      );
+      expect(guarded).toBe(true);
+    });
+
     it("still skips a contact already notified for this cycle when resuming", async () => {
       // The generation must not undo FV4-004: within one cycle a delivered link is
       // still a delivered link, and re-issuing it kills what is in the inbox.
@@ -1328,7 +1350,12 @@ describe("EmergencyAccessMonitorService", () => {
     expect(html).not.toContain("border-left: 4px solid");
   });
 
-  it("emits a grant email with no message body when the key is not configured", async () => {
+  it("skips the whole sweep, sending nothing, when the encryption key is absent", async () => {
+    // The grant path encrypts each contact's claim token, so without a key
+    // `credentialFor` throws for every contact -- delivering nothing and, before
+    // the gate, spinning that failure every day for an already-enabled owner
+    // (audit V4R3-002). The check is a single early return: no per-contact storm,
+    // and the settings view's readiness flag is what tells the owner why.
     encryption.isConfigured.mockReturnValue(false);
     settingsRepo.find.mockResolvedValue([
       {
@@ -1339,6 +1366,7 @@ describe("EmergencyAccessMonitorService", () => {
         messageCiphertext: "enc(unreadable)",
         lastReminderSentAt: null,
         grantedAt: null,
+        grantGeneration: CURRENT_GENERATION - 1,
       },
     ]);
     usersRepo.findOne.mockResolvedValue({
@@ -1347,13 +1375,13 @@ describe("EmergencyAccessMonitorService", () => {
       isActive: true,
       lastActivityAt: daysAgo(20),
     });
-    contactsRepo.find.mockResolvedValue([
-      { id: "c1", firstName: "Carol", email: "carol@example.com" },
-    ]);
+    contactsAre([{ id: "c1", firstName: "Carol", email: "carol@example.com" }]);
 
     await service.runDailyCheck();
-    expect(emailService.sendMail).toHaveBeenCalledTimes(1);
-    expect(encryption.decrypt).not.toHaveBeenCalled();
+
+    expect(emailService.sendMail).not.toHaveBeenCalled();
+    // It did not even enumerate owners: the gate is before the sweep.
+    expect(usersRepo.findOne).not.toHaveBeenCalled();
   });
 
   it("uses singular phrasing in the reminder subject when daysSinceLogin === 1", async () => {

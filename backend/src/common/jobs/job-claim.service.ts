@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "crypto";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../db/scoped-db";
 import { withSystemContext } from "../db/with-context";
 import { affectedRowCount, returnedRows } from "../db/query-result";
@@ -164,6 +164,12 @@ export class JobClaimService {
    * `claimOnce` callers, whose claim is the fact itself and has no attempt to
    * identify.
    *
+   * The token goes both in the statement's `WHERE` and, via `set_config`, into the
+   * transaction-local `app.job_claim_lease_token` GUC the migration-144 trigger
+   * checks. The `WHERE` protects new code from new code; the GUC is what lets the
+   * database refuse a *previous-release* pod's untokenized delete of a live lease
+   * this deployment now holds (audit V4R3-004).
+   *
    * A delivered row is deliberately **not** protected from this: the only callers
    * that release are the ones that just failed or just declined, and both hold the
    * lease. A caller that has recorded a delivery has nothing to release.
@@ -174,17 +180,42 @@ export class JobClaimService {
     claimKey: string,
     leaseToken?: string,
   ): Promise<void> {
-    await withScopedDb(this.dataSource, (manager) =>
-      leaseToken
-        ? manager.query(
-            `DELETE FROM job_claims
-              WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
-                AND lease_token = $4::uuid`,
-            [claimType, userId, claimKey, leaseToken],
-          )
-        : manager
-            .getRepository(JobClaim)
-            .delete({ claimType, userId, claimKey }),
+    await withScopedDb(this.dataSource, async (manager) => {
+      if (!leaseToken) {
+        // A permanent `claimOnce` row: no attempt to identify, and the migration-144
+        // trigger leaves NULL-token rows alone.
+        await manager.getRepository(JobClaim).delete({
+          claimType,
+          userId,
+          claimKey,
+        });
+        return;
+      }
+      await this.declareLeaseToken(manager, leaseToken);
+      await manager.query(
+        `DELETE FROM job_claims
+          WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
+            AND lease_token = $4::uuid`,
+        [claimType, userId, claimKey, leaseToken],
+      );
+    });
+  }
+
+  /**
+   * Announce, for this transaction only, which lease this session is acting on.
+   *
+   * The migration-144 trigger compares it against a live tokenized row's own token
+   * and rejects a mismatch, so a previous-release binary -- which never sets it --
+   * cannot mutate a lease new code holds. `is_local = true` scopes it to the
+   * surrounding `withScopedDb` transaction.
+   */
+  private async declareLeaseToken(
+    manager: EntityManager,
+    leaseToken: string,
+  ): Promise<void> {
+    await manager.query(
+      `SELECT set_config('app.job_claim_lease_token', $1, true)`,
+      [leaseToken],
     );
   }
 
@@ -210,16 +241,19 @@ export class JobClaimService {
     claimKey: string,
     leaseToken: string,
   ): Promise<void> {
-    const updated = await withScopedDb(this.dataSource, (manager) =>
-      manager.query(
+    const updated = await withScopedDb(this.dataSource, async (manager) => {
+      // The GUC lets the trigger admit this write; the WHERE makes it apply only to
+      // the row this attempt still holds (audit V4R3-004, DR-RRV4-01).
+      await this.declareLeaseToken(manager, leaseToken);
+      return manager.query(
         `UPDATE job_claims
             SET delivered_at = CURRENT_TIMESTAMP,
                 expires_at = NULL
           WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
             AND lease_token = $4::uuid`,
         [claimType, userId, claimKey, leaseToken],
-      ),
-    );
+      );
+    });
     if (affectedRowCount(updated) === 0) {
       this.logger.warn(
         `Delivery of ${claimType}/${claimKey} for user ${userId} could not be ` +

@@ -283,4 +283,69 @@ describe("attachment bytes written after their intent was swept", () => {
     ).toBeLessThanOrEqual(UPLOAD_INTENT_LEASE_MS + 1000);
     expect(row.swept_at).toBeNull();
   });
+
+  describe("during a rolling deployment", () => {
+    /**
+     * The previous-release sweeper (audit V4R3-003): it claims the row (setting
+     * swept_at, nulling the lease) and then unconditionally deletes the tombstone.
+     * Executed verbatim, so the migration-143 triggers are what have to stamp the
+     * quarantine on its claim and reject its premature delete.
+     */
+    const oldSweeperClaim = (): Promise<unknown> =>
+      dataSource.query(
+        `UPDATE attachment_blob_tombstones
+            SET swept_at = CURRENT_TIMESTAMP, upload_lease_expires_at = NULL
+          WHERE storage_provider = 's3' AND storage_key = $1`,
+        [KEY],
+      );
+    const oldSweeperDelete = (): Promise<unknown> =>
+      dataSource.query(
+        `DELETE FROM attachment_blob_tombstones
+          WHERE storage_provider = 's3' AND storage_key = $1`,
+        [KEY],
+      );
+
+    it("stamps the quarantine on a previous-release sweeper's claim", async () => {
+      await withUserContext(userId, () => recordIntent(KEY));
+      await expireLease(KEY);
+
+      await oldSweeperClaim();
+
+      // The old binary does not know the column exists; the trigger filled it.
+      const [row] = await tombstones();
+      expect(row.late_write_quarantine_until).not.toBeNull();
+      expect(row.late_write_quarantine_until!.getTime()).toBeGreaterThan(
+        Date.now(),
+      );
+    });
+
+    it("rejects a previous-release sweeper's unconditional delete while quarantined", async () => {
+      await withUserContext(userId, () => recordIntent(KEY));
+      await expireLease(KEY);
+      await oldSweeperClaim();
+
+      // The old binary would delete the row here; the trigger refuses, so the
+      // record survives to name a late put.
+      await expect(oldSweeperDelete()).rejects.toThrow(/quarantine/i);
+      expect(await tombstones()).toHaveLength(1);
+
+      // Once the window passes, the same delete is allowed -- so nothing is stuck.
+      await expireQuarantine(KEY);
+      await expect(oldSweeperDelete()).resolves.toBeDefined();
+      expect(await tombstones()).toEqual([]);
+    });
+
+    it("still lets an ordinary deletion record be removed by either binary", async () => {
+      // A trigger-written tombstone has no lease, so it is not quarantined and the
+      // old sweeper's unconditional delete must still work.
+      await dataSource.query(
+        `INSERT INTO attachment_blob_tombstones (user_id, storage_provider, storage_key)
+         VALUES ($1, 's3', $2)`,
+        [userId, KEY],
+      );
+
+      await expect(oldSweeperDelete()).resolves.toBeDefined();
+      expect(await tombstones()).toEqual([]);
+    });
+  });
 });

@@ -167,6 +167,23 @@ export class EmergencyAccessMonitorService {
       );
       return;
     }
+    // A gate, not a per-contact failure. Grant delivery encrypts each contact's
+    // claim token, so without a key `credentialFor` throws for every contact,
+    // every day, delivering nothing (audit V4R3-002). An install can hold an
+    // `enabled = true` row that predates this dependency -- `upsertSettings` now
+    // refuses to *arm* the feature without the key, but says nothing about rows
+    // already armed. Skipping the whole sweep once with a warning replaces a daily
+    // storm of per-contact stack traces with one honest line; the settings view's
+    // `credentialEncryptionConfigured` flag is what surfaces the degraded state to
+    // the owner. The feature is inert here, not silently firing and failing.
+    if (!this.encryption.isConfigured()) {
+      this.logger.warn(
+        "AI_ENCRYPTION_KEY not configured; emergency access cannot issue grant " +
+          "links, so the daily check is skipped. Any enabled owner is inert until " +
+          "the key is set. Owners can still disable the feature in Settings.",
+      );
+      return;
+    }
 
     // RLS (task C4): cross-user sweep over every owner with emergency access
     // enabled; processOne reads/writes owner-keyed rows (users, the emergency-
@@ -391,6 +408,13 @@ export class EmergencyAccessMonitorService {
    * disagree, and the credential is cleared with them -- once delivery is
    * acknowledged there is nothing left to re-send, so the token must not outlive
    * it.
+   *
+   * **Forward-only.** The generation only ever advances, so this is a
+   * compare-and-set: a delayed acknowledgement from an older cycle -- a step-1b
+   * resume that ran long while the owner re-armed and a newer cycle was already
+   * delivered -- must not lower `notified_grant_generation` and re-open a contact
+   * the newer cycle has served (audit DR-V4R3-01). The predicate makes the write a
+   * no-op in that case; the send it followed is wasted, not harmful.
    */
   private async markContactNotified(
     contactId: string,
@@ -407,6 +431,10 @@ export class EmergencyAccessMonitorService {
           claimTokenCiphertext: null,
         })
         .where("id = :id", { id: contactId })
+        .andWhere(
+          "(notified_grant_generation IS NULL OR notified_grant_generation < :generation)",
+          { generation },
+        )
         .execute(),
     );
   }

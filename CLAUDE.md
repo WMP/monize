@@ -239,8 +239,32 @@ only if the writing process is still alive. Drop the record with the object and 
 bytes are unreferenced *and* unenumerable, which is the original orphan back in a
 narrower window. So the record outlives the writer: keep a claimed intent row for a
 quarantine period and re-run the external delete on each pass, retiring the row only
-once nothing can still be written at that key. `attachment_blob_tombstones
+once the external write can no longer land. `attachment_blob_tombstones
 .late_write_quarantine_until` is the worked example.
+
+**The quarantine window is a wall-clock guess, so it is not the correctness
+mechanism by itself.** Two things make it sound. The record is re-swept on every
+pass, so a late write is deleted whenever it lands, not only on the final pass; and
+the write's own deadline is bounded *below* the window -- the S3 provider sets a
+request timeout (`S3_REQUEST_TIMEOUT_MS`) far shorter than the quarantine, so a put
+cannot still be in flight when the row retires. A window with neither of those is a
+best-effort guess dressed as a proof; say which one you have. And enforce the whole
+thing where both binaries meet: a nullable column a new sweeper respects is bypassed
+by a previous-release sweeper that never learned it exists, so the quarantine is a
+`BEFORE UPDATE`/`BEFORE DELETE` trigger pair (migration 143), the same shape as every
+other rolling-deployment invariant here.
+
+**An invariant a migration introduces has to hold for the binary already running.**
+A Kubernetes rolling deploy runs the old code and the new code at once, so a rule the
+new code obeys in application logic -- a token check, a generation compare, a
+quarantine -- is simply absent from the old pod, which keeps executing its previous
+statement against the migrated schema. Adding a nullable column does not change that
+statement's behaviour (migrations 135, 139, 140, 141 each learned this). The rule has
+to be a database trigger both versions run through: the MNY checkpoint fence (138),
+the emergency-access generation backfill (142), the attachment quarantine (143), and
+the job-claim lease guard (144) are the worked examples. Before shipping a
+column-plus-application-check, ask what the *old* binary does to that column, and put
+the answer in a trigger.
 
 **A claim is not a record that the work was done.** A claim answers "may I do this
 now" and cannot also answer "has this been done", because the second question has

@@ -6,8 +6,22 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { tr } from "../../i18n/translate";
 import { AttachmentStorageProvider } from "./attachment-storage.interface";
+
+/**
+ * The longest a single S3 request may run before the SDK aborts it.
+ *
+ * This is a *correctness* bound, not a tuning knob. The orphan sweeper quarantines
+ * a swept upload intent for `LATE_WRITE_QUARANTINE_MS` (6 hours) and re-deletes the
+ * key on each pass, on the assumption that a `PutObject` cannot land after the
+ * quarantine retires the row. That assumption only holds if the put cannot still be
+ * in flight six hours later -- so the request deadline has to be comfortably shorter
+ * than the window (audit V4R3-003, DR-V4R3-03). Five minutes is far below six hours
+ * and far above any healthy upload of a <=10 MB attachment.
+ */
+export const S3_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
 /**
  * Stores attachment bytes in S3-compatible object storage. Chosen by
@@ -62,6 +76,12 @@ export class S3StorageProvider implements AttachmentStorageProvider {
       ...(accessKeyId && secretAccessKey
         ? { credentials: { accessKeyId, secretAccessKey } }
         : {}),
+      // Bound every request so a stalled PutObject cannot outlive the orphan
+      // sweeper's quarantine window and land after the tombstone is retired.
+      requestHandler: new NodeHttpHandler({
+        connectionTimeout: S3_REQUEST_TIMEOUT_MS,
+        requestTimeout: S3_REQUEST_TIMEOUT_MS,
+      }),
     });
     return this.clientInstance;
   }

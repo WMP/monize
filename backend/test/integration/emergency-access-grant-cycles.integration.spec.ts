@@ -395,4 +395,110 @@ describe("emergency access across grant cycles", () => {
       expect(view.credentialEncryptionConfigured).toBe(false);
     });
   });
+
+  it("lets the owner disable the feature even with neither dependency ready", async () => {
+    // Audit V4R3-002: a missing dependency stops arming, never disabling. Enable
+    // it, then take away both SMTP and the key, and the owner must still be able to
+    // switch it off -- which voids the outstanding links.
+    await runInactivityGrant();
+    const brokenService = new EmergencyAccessService(
+      new AiEncryptionService({
+        get: (_key: string, fallback?: string) => fallback ?? "",
+      } as unknown as ConfigService),
+      {
+        getStatus: () => ({ configured: false }),
+      } as unknown as EmailService,
+      dataSource,
+    );
+
+    await withUserContext(owner, () =>
+      brokenService.upsertSettings(owner, {
+        enabled: false,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+      }),
+    );
+
+    expect((await settingsRow()).enabled).toBe(false);
+    const contact = await contactRow();
+    expect(contact.claim_token_hash).toBeNull();
+    expect(contact.claim_token_ciphertext).toBeNull();
+  });
+
+  describe("during a rolling deployment", () => {
+    /**
+     * The previous binary's grant acknowledgement (audit V4R3-001): it writes
+     * `claim_notified_at` and clears the ciphertext, and does not know
+     * `notified_grant_generation` exists. Executed verbatim against the migrated
+     * schema, so the compatibility trigger is what has to make it land in the
+     * current cycle.
+     */
+    const oldBinaryAcknowledges = (contactId: string): Promise<unknown> =>
+      dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_notified_at = CURRENT_TIMESTAMP,
+                claim_token_ciphertext = NULL
+          WHERE id = $1`,
+        [contactId],
+      );
+
+    it("translates an old-binary acknowledgement into the current generation", async () => {
+      // A new pod claims the grant and mints token A, but the *old* pod delivers it
+      // and writes the old-style acknowledgement.
+      await lastSeenDaysAgo(30);
+      await monitor.runDailyCheck();
+      const contactId = (await contactRow()).id;
+      const tokenA = (await contactRow()).claim_token_hash;
+      const generation = (await settingsRow()).grant_generation;
+
+      // Undo only the generation-aware half of the record, leaving the row as the
+      // old binary would: notified, ciphertext cleared, generation NULL.
+      await dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_notified_at = NULL, notified_grant_generation = NULL
+          WHERE id = $1`,
+        [contactId],
+      );
+      await oldBinaryAcknowledges(contactId);
+
+      // The trigger must have stamped the current generation, so the contact is not
+      // treated as owed and token A is never rotated.
+      const after = await contactRow();
+      expect(after.notified_grant_generation).toBe(generation);
+      expect(after.claim_token_hash).toBe(tokenA);
+
+      const before = sent.length;
+      await monitor.runDailyCheck();
+      expect(sent.slice(before)).toEqual([]);
+      expect((await contactRow()).claim_token_hash).toBe(tokenA);
+    });
+
+    it("does not let a delayed older-generation acknowledgement re-open a served contact", async () => {
+      // Generation N delivered; the owner re-armed and generation N+1 delivered a
+      // fresh link; now generation N's delayed acknowledgement arrives.
+      await runInactivityGrant();
+      const first = (await settingsRow()).grant_generation;
+      await lastSeenDaysAgo(0);
+      await monitor.runDailyCheck(); // revoke + re-arm
+      const second = await runInactivityGrant();
+      expect(second.generation).toBeGreaterThan(first);
+      const servedGeneration = (await contactRow()).notified_grant_generation;
+
+      // The forward-only markContactNotified predicate, exercised directly: an
+      // update carrying the older generation must not lower the stored one.
+      await dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_notified_at = CURRENT_TIMESTAMP,
+                notified_grant_generation = $2
+          WHERE owner_user_id = $1
+            AND (notified_grant_generation IS NULL
+                 OR notified_grant_generation < $2)`,
+        [owner, first],
+      );
+
+      expect((await contactRow()).notified_grant_generation).toBe(
+        servedGeneration,
+      );
+    });
+  });
 });

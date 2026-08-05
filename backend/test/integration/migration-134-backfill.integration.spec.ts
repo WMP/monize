@@ -42,11 +42,19 @@ describe("migration 134 backfill over legacy delivery state", () => {
 
   /** Undo migration 134, so the fixture starts from a genuinely pre-134 table. */
   const removeColumns = async () => {
+    // Later migrations depend on `claim_notified_at`: the generation column (139)
+    // and its rollout-compat trigger (142). Both have to come off before the column
+    // to reach the genuinely pre-134 shape this spec seeds.
+    await dataSource.query(
+      `DROP TRIGGER IF EXISTS trg_eac_backfill_notified_generation ON emergency_access_contacts`,
+    );
     await dataSource.query(`DROP INDEX IF EXISTS idx_eac_pending_notify`);
+    await dataSource.query(`DROP INDEX IF EXISTS idx_eac_awaiting_notice`);
     await dataSource.query(
       `ALTER TABLE emergency_access_contacts
          DROP COLUMN IF EXISTS claim_notified_at,
-         DROP COLUMN IF EXISTS claim_token_ciphertext`,
+         DROP COLUMN IF EXISTS claim_token_ciphertext,
+         DROP COLUMN IF EXISTS notified_grant_generation`,
     );
   };
 

@@ -166,7 +166,14 @@ export class EmergencyAccessService {
     userId: string,
     dto: UpsertSettingsDto,
   ): Promise<SettingsView> {
-    if (!this.emailService.getStatus().configured) {
+    // Every dependency check is gated on `dto.enabled`, because a missing
+    // dependency may stop the owner *arming* the feature but must never stop them
+    // *disabling* it (audit V4R3-002). Turning it off is the one action that always
+    // has to work -- it is how an owner revokes a safeguard after SMTP was removed
+    // or the encryption key was lost, and the disable branch below voids every
+    // outstanding link. A `dto.enabled === false` request therefore skips both
+    // checks and proceeds straight to the write.
+    if (dto.enabled && !this.emailService.getStatus().configured) {
       throw new ServiceUnavailableException(
         tr(
           "errors.emergencyAccess.smtpNotConfigured",

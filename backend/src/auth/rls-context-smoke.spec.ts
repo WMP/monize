@@ -78,7 +78,9 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
     const service = new EmergencyAccessMonitorService(
       dataSource as never,
       { getStatus: jest.fn().mockReturnValue({ configured: true }) } as never,
-      {} as never,
+      // The daily check now gates on credential encryption too, before the sweep
+      // (audit V4R3-002), so this fixture has to report it configured to reach it.
+      { isConfigured: jest.fn().mockReturnValue(true) } as never,
       { get: jest.fn() } as never,
       {} as never,
       createJobClaimMock() as never,

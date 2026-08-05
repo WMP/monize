@@ -427,6 +427,58 @@ CREATE TRIGGER trg_attachment_blob_tombstone
     WHEN (OLD.storage_provider <> 'database')
     EXECUTE FUNCTION record_attachment_blob_tombstone();
 
+-- Late-write quarantine enforcement (migration 143). The sweeper's claim settles
+-- what metadata may commit, not what bytes exist: a put stalled past its lease can
+-- land after the key was deleted. These two triggers make the quarantine hold
+-- across a rolling deployment, where a previous-release sweeper would otherwise
+-- claim, delete the object, and unconditionally drop the tombstone.
+CREATE OR REPLACE FUNCTION stamp_attachment_quarantine() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.late_write_quarantine_until := COALESCE(
+        NEW.late_write_quarantine_until,
+        OLD.late_write_quarantine_until,
+        CURRENT_TIMESTAMP + INTERVAL '6 hours'
+    );
+    RETURN NEW;
+END;
+$$;
+
+-- On any sweeper's claim (swept_at NULL -> non-NULL) of a row that was an upload
+-- intent (it had a lease), stamp the quarantine if unset. Covers the previous
+-- binary's claim, which does not know the column exists.
+CREATE TRIGGER trg_abt_stamp_quarantine
+    BEFORE UPDATE ON attachment_blob_tombstones
+    FOR EACH ROW
+    WHEN (
+      NEW.swept_at IS NOT NULL
+      AND OLD.swept_at IS NULL
+      AND OLD.upload_lease_expires_at IS NOT NULL
+    )
+    EXECUTE FUNCTION stamp_attachment_quarantine();
+
+CREATE OR REPLACE FUNCTION reject_quarantined_tombstone_delete() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+      'attachment tombstone % is under late-write quarantine until %; a stalled upload may still write to this key',
+      OLD.storage_key, OLD.late_write_quarantine_until
+      USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+-- Reject deletion of a still-quarantined row. Refuses the previous binary's
+-- unconditional post-sweep DELETE; the new sweeper's retire() and the uploader's
+-- intent-clear both target only rows this excludes, so neither trips it.
+CREATE TRIGGER trg_abt_reject_quarantined_delete
+    BEFORE DELETE ON attachment_blob_tombstones
+    FOR EACH ROW
+    WHEN (
+      OLD.late_write_quarantine_until IS NOT NULL
+      AND OLD.late_write_quarantine_until > CURRENT_TIMESTAMP
+    )
+    EXECUTE FUNCTION reject_quarantined_tombstone_delete();
+
 -- Tags
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1028,6 +1080,38 @@ CREATE INDEX idx_emergency_access_contacts_token_hash
     ON emergency_access_contacts(claim_token_hash)
     WHERE claim_token_hash IS NOT NULL;
 
+-- Rolling-deployment compatibility for the delivery generation (migration 142).
+-- The previous binary acknowledges a delivered link by writing only
+-- `claim_notified_at`, leaving `notified_grant_generation` NULL -- which the new
+-- pending query would read as "still owed", rotate the token, and kill the link
+-- already delivered (audit V4R3-001). This BEFORE UPDATE trigger stamps the owner's
+-- current generation whenever an old-binary acknowledgement lands, so both binaries
+-- agree on what a delivered notice means. The new code sets the generation itself,
+-- so the trigger is a no-op for it. SECURITY DEFINER so it can read the settings row
+-- regardless of the invoking identity under RLS.
+CREATE OR REPLACE FUNCTION backfill_notified_grant_generation() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+BEGIN
+    SELECT s.grant_generation
+      INTO NEW.notified_grant_generation
+      FROM emergency_access_settings s
+     WHERE s.owner_user_id = NEW.owner_user_id;
+    -- No settings row (should not happen for a contact) leaves it NULL, which is
+    -- the pre-migration behaviour rather than a spurious generation.
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_eac_backfill_notified_generation
+    BEFORE UPDATE ON emergency_access_contacts
+    FOR EACH ROW
+    WHEN (
+      NEW.claim_notified_at IS NOT NULL
+      AND OLD.claim_notified_at IS NULL
+      AND NEW.notified_grant_generation IS NULL
+    )
+    EXECUTE FUNCTION backfill_notified_grant_generation();
+
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART
 -- timeframe_type: LAST_7_DAYS, LAST_30_DAYS, LAST_MONTH, LAST_3_MONTHS, LAST_6_MONTHS, LAST_12_MONTHS, LAST_YEAR, YEAR_TO_DATE, CUSTOM
@@ -1598,6 +1682,50 @@ CREATE TABLE job_claims (
 
 CREATE UNIQUE INDEX idx_job_claims_key ON job_claims(claim_type, user_id, claim_key);
 CREATE INDEX idx_job_claims_claimed_at ON job_claims(claimed_at);
+
+-- Lease-ownership enforcement (migration 144). A session mutating a *live tokenized*
+-- lease must own it, proven by the transaction-local `app.job_claim_lease_token`
+-- GUC the new release/markDelivered set. The previous binary never sets it, so it
+-- cannot delete or mark a lease this deployment has retaken. The WHEN clauses
+-- exclude expired rows (retakes, retention sweep), permanent claimOnce rows
+-- (NULL token) and delivered rows (NULL expiry), so only the tokenized writes and
+-- the old binary's untokenized ones ever reach the guard.
+CREATE OR REPLACE FUNCTION guard_job_claim_lease_ownership() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF COALESCE(current_setting('app.job_claim_lease_token', true), '')
+       IS DISTINCT FROM OLD.lease_token::text THEN
+        RAISE EXCEPTION
+          'job_claims lease % (%/%/%) is held by another attempt; this session does not own it',
+          OLD.lease_token, OLD.claim_type, OLD.user_id, OLD.claim_key
+          USING ERRCODE = 'raise_exception';
+    END IF;
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_job_claims_guard_delete
+    BEFORE DELETE ON job_claims
+    FOR EACH ROW
+    WHEN (
+      OLD.lease_token IS NOT NULL
+      AND OLD.expires_at IS NOT NULL
+      AND OLD.expires_at > CURRENT_TIMESTAMP
+    )
+    EXECUTE FUNCTION guard_job_claim_lease_ownership();
+
+CREATE TRIGGER trg_job_claims_guard_update
+    BEFORE UPDATE ON job_claims
+    FOR EACH ROW
+    WHEN (
+      OLD.lease_token IS NOT NULL
+      AND OLD.expires_at IS NOT NULL
+      AND OLD.expires_at > CURRENT_TIMESTAMP
+    )
+    EXECUTE FUNCTION guard_job_claim_lease_ownership();
 
 -- Trigger for tags updated_at
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
