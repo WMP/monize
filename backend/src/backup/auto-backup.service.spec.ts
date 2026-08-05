@@ -663,6 +663,11 @@ describe("AutoBackupService", () => {
       // or it leaves a probe file outside the approved volume and then reports a
       // configuration available that `resolveUserFolder` refuses.
       const outside = mkdtempSync(join(tmpdir(), "monize-capability-outside-"));
+      // Observe the real `writeFile` rather than replacing it: an empty
+      // directory afterwards is also what a probe that cleaned up after itself
+      // would leave, so the directory listing alone cannot tell "never wrote"
+      // from "wrote and unlinked". The spy can.
+      const writeFile = jest.spyOn(fs, "writeFile");
       try {
         mockSettingsRepo.findOne.mockResolvedValue(
           createSettings({ folderPath: outside }),
@@ -672,9 +677,14 @@ describe("AutoBackupService", () => {
 
         expect(capability.available).toBe(false);
         expect(capability.reason).toContain("outside the permitted roots");
-        // Nothing may be written there, not even a deleted-immediately probe.
+        expect(
+          writeFile.mock.calls.filter(([target]) =>
+            String(target).startsWith(outside),
+          ),
+        ).toEqual([]);
         expect(readdirSync(outside)).toEqual([]);
       } finally {
+        writeFile.mockRestore();
         rmSync(outside, { recursive: true, force: true });
       }
     });
