@@ -108,6 +108,53 @@ export const FORBIDDEN_ROLE_MEMBERSHIPS = [
     role: "pg_write_server_files",
     why: "can write any file the PostgreSQL OS account can, bypassing database permission checks",
   },
+  {
+    role: "pg_signal_backend",
+    why: "can cancel queries and terminate sessions of other non-superuser roles across the cluster (RR7-001)",
+  },
+  {
+    role: "pg_read_all_settings",
+    why: "can read every configuration variable, including superuser-only values such as a standby's primary_conninfo password",
+  },
+  {
+    role: "pg_read_all_data",
+    why: "holds SELECT on every table in the cluster, reaching data outside the application's own",
+  },
+  {
+    role: "pg_write_all_data",
+    why: "holds INSERT/UPDATE/DELETE on every table in the cluster, reaching data outside the application's own",
+  },
+  {
+    role: "pg_checkpoint",
+    why: "can force immediate checkpoints, which PostgreSQL states are not for normal operation",
+  },
+  {
+    role: "pg_create_subscription",
+    why: "can create logical-replication subscriptions that ingest data outside the tenant model",
+  },
+  {
+    role: "pg_monitor",
+    why: "is an umbrella granting pg_read_all_settings and other monitoring roles, so it reaches forbidden capability",
+  },
+] as const;
+
+/**
+ * The predefined roles a member may safely hold, classified deliberately rather
+ * than allowed by omission (DR-RR7-002). Together with
+ * `FORBIDDEN_ROLE_MEMBERSHIPS` this covers every PostgreSQL 16 `pg_*` role, and
+ * `rls-elevation-and-role.integration.spec.ts` fails when the live catalog holds
+ * a `pg_*` predefined role that appears in neither list -- so a future
+ * PostgreSQL's new predefined role forces a decision instead of defaulting to
+ * safe. These are monitoring or minor-availability capabilities that cross no
+ * tenant, host, or cluster-control boundary.
+ */
+export const KNOWN_SAFE_PREDEFINED_ROLES = [
+  "pg_read_all_stats",
+  "pg_stat_scan_tables",
+  "pg_use_reserved_connections",
+  // Not independently grantable; its sole implicit member is the database owner,
+  // which the ownership arm already refuses.
+  "pg_database_owner",
 ] as const;
 
 export interface RuntimeRoleFacts {
@@ -407,13 +454,18 @@ export function runtimeRoleViolations(
   }
   if (facts.inheritedForbiddenRoles.length > 0) {
     // Also already true, and also a REVOKE remedy -- but not an RLS matter at
-    // all, so it says what the capability is.
+    // all, so it names the specific capability each membership grants, drawn
+    // from the same list the query is generated from (RR7-001: the denylist now
+    // spans host-command, signalling, cluster-control and broad-data roles, so a
+    // single "server-file or server-program" sentence would misdescribe most).
+    const named = facts.inheritedForbiddenRoles
+      .map((r) => {
+        const m = FORBIDDEN_ROLE_MEMBERSHIPS.find((f) => f.role === r);
+        return m ? `"${r}" (${m.why})` : `"${r}"`;
+      })
+      .join(", ");
     violations.push(
-      `role "${facts.currentUser}" is a member of ${facts.inheritedForbiddenRoles
-        .map((r) => `"${r}"`)
-        .join(
-          ", ",
-        )}, granting server-file or server-program capability that the ` +
+      `role "${facts.currentUser}" is a member of ${named}, a capability the ` +
         "unprivileged runtime role must not have. Revoke the membership",
     );
   }

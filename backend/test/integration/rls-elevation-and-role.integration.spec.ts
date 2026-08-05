@@ -11,6 +11,8 @@ import { withScopedDb } from "@/common/db/scoped-db";
 import { withUserContext } from "@/common/db/with-context";
 import { withElevatedDb } from "@/common/db/elevated-db";
 import {
+  FORBIDDEN_ROLE_MEMBERSHIPS,
+  KNOWN_SAFE_PREDEFINED_ROLES,
   readRuntimeRoleFacts,
   runtimeRoleViolations,
 } from "@/common/db/runtime-role-check";
@@ -57,6 +59,23 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
     } as never);
     await ds.initialize();
     return ds;
+  }
+
+  /**
+   * Poll a predicate until it holds or the attempts run out. Used where the
+   * database reaches a state asynchronously after a client action -- a backend's
+   * temporary-slot cleanup on session end races the client-side pool close, so
+   * the assertion is "it becomes true", not "it is true this instant".
+   */
+  async function waitFor(
+    predicate: () => Promise<boolean>,
+    { attempts = 50, delayMs = 20 } = {},
+  ): Promise<boolean> {
+    for (let i = 0; i < attempts; i++) {
+      if (await predicate()) return true;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return predicate();
   }
 
   beforeAll(async () => {
@@ -907,20 +926,26 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         const violations = runtimeRoleViolations(facts, replicator);
         expect(violations.join(" ")).toContain("REPLICATION");
       } finally {
-        // Dropping the pool ends the session, which auto-drops the temporary
-        // slot; the explicit drop is belt-and-braces for the same-session case.
-        await replPool
-          .query("SELECT pg_drop_replication_slot($1)", [slot])
-          .catch(() => undefined);
+        // The ONLY cleanup is ending the session -- deliberately no explicit
+        // pg_drop_replication_slot (DOC-RR7-001). An earlier version dropped the
+        // slot here and then asserted absence, which proved nothing: a successful
+        // explicit drop makes the slot disappear whether or not PostgreSQL would
+        // have auto-dropped it. Removing the drop is what turns the assertion
+        // below into evidence that a temporary slot is session-scoped.
         await replPool.destroy();
-        await dataSource.query(`DROP ROLE ${replicator}`);
       }
-      // Proven, not assumed: the temporary slot is gone once the session ended.
-      const [{ n }] = await dataSource.query(
-        "SELECT count(*)::int AS n FROM pg_replication_slots WHERE slot_name = $1",
-        [slot],
-      );
-      expect(n).toBe(0);
+      // Proven from a SECOND connection, and with nothing having dropped the slot
+      // explicitly: it is gone because its session ended. Polled, because the
+      // backend's slot cleanup races the client-side pool close.
+      const slotGone = await waitFor(async () => {
+        const [{ n }] = await dataSource.query(
+          "SELECT count(*)::int AS n FROM pg_replication_slots WHERE slot_name = $1",
+          [slot],
+        );
+        return n === 0;
+      });
+      expect(slotGone).toBe(true);
+      await dataSource.query(`DROP ROLE ${replicator}`);
     });
 
     it("refuses a SET-reachable context that holds REPLICATION (RR5-001)", async () => {
@@ -973,9 +998,10 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
         expect(facts.inheritedForbiddenRoles).toContain(
           "pg_execute_server_program",
         );
-        expect(runtimeRoleViolations(facts, TEST_APP_ROLE).join(" ")).toContain(
-          "server-program",
-        );
+        const message = runtimeRoleViolations(facts, TEST_APP_ROLE).join(" ");
+        expect(message).toContain("pg_execute_server_program");
+        expect(message).toContain("COPY");
+        expect(message).toContain("Revoke the membership");
       } finally {
         await app.destroy();
         await dataSource.query(
@@ -1020,14 +1046,229 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       }
     });
 
-    it("accepts membership in an ordinary predefined role like pg_read_all_settings", async () => {
-      // The control that keeps the forbidden-membership list an allowlist rather
-      // than "every pg_* role": a monitoring grant confers no escalation and must
-      // not stop the app booting.
+    it("refuses an inherited pg_signal_backend membership, and proves it can terminate another role's session (RR7-001)", async () => {
+      // The capability that has nothing to do with RLS, no forbidden attribute,
+      // and no ownership -- so only the membership arm sees it. A member can
+      // pg_terminate_backend a session owned by ANY other non-superuser role
+      // (migrations, backups, other apps), which a bare NOSUPERUSER role cannot.
+      // Prove the capability against a live victim session, then that the check
+      // rejects it. INHERIT TRUE, SET FALSE -- active now, no SET ROLE.
+      const victim = `rr7_victim_${Date.now()}`;
+      await dataSource.query(
+        `CREATE ROLE ${victim} LOGIN PASSWORD 'x' NOSUPERUSER NOBYPASSRLS`,
+      );
+      const victimPool = new DataSource({
+        ...INTEGRATION_TYPEORM_OPTIONS,
+        username: victim,
+        password: "x",
+        synchronize: false,
+        dropSchema: false,
+        extra: { max: 1 },
+      } as never);
+      await victimPool.initialize();
+      const app = await appRolePool();
+      try {
+        const [{ pid }] = await victimPool.query(
+          "SELECT pg_backend_pid()::int AS pid",
+        );
+
+        await dataSource.query(
+          `GRANT pg_signal_backend TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+        );
+
+        // The harm, demonstrated: the app terminates a DIFFERENT role's backend.
+        // A NOSUPERUSER role without this membership gets "must be a member of
+        // pg_signal_backend" instead of a boolean.
+        const [{ terminated }] = await app.query(
+          "SELECT pg_terminate_backend($1) AS terminated",
+          [pid],
+        );
+        expect(terminated).toBe(true);
+        // ...and the victim's session really is gone from the cluster.
+        const victimGone = await waitFor(async () => {
+          const [{ n }] = await dataSource.query(
+            "SELECT count(*)::int AS n FROM pg_stat_activity WHERE pid = $1",
+            [pid],
+          );
+          return n === 0;
+        });
+        expect(victimGone).toBe(true);
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toContain("pg_signal_backend");
+        const message = runtimeRoleViolations(facts, TEST_APP_ROLE).join(" ");
+        expect(message).toContain("pg_signal_backend");
+        expect(message).toContain("terminate sessions");
+        expect(message).toContain("Revoke the membership");
+      } finally {
+        await app.destroy();
+        await victimPool.destroy().catch(() => undefined);
+        await dataSource.query(
+          `REVOKE pg_signal_backend FROM ${TEST_APP_ROLE}`,
+        );
+        await dataSource.query(`DROP ROLE IF EXISTS ${victim}`);
+      }
+    });
+
+    it("refuses a SET-only pg_signal_backend membership (RR7-001)", async () => {
+      // INHERIT FALSE, SET TRUE: not held now, but one SET ROLE away from the
+      // capability, so it is a reachable-context refusal like every other.
       const app = await appRolePool();
       try {
         await dataSource.query(
-          `GRANT pg_read_all_settings TO ${TEST_APP_ROLE} WITH INHERIT TRUE`,
+          `GRANT pg_signal_backend TO ${TEST_APP_ROLE} WITH INHERIT FALSE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toEqual([]);
+        expect(facts.exemptReachableContexts).toContain("pg_signal_backend");
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_signal_backend FROM ${TEST_APP_ROLE}`,
+        );
+      }
+    });
+
+    it("refuses a SET-reachable bridge that inherits pg_signal_backend (RR7-001)", async () => {
+      // app --SET--> bridge --INHERIT--> pg_signal_backend. The composition arm:
+      // the bridge owns nothing and has no forbidden attribute, so only the
+      // forbidden-membership USAGE question on the reachable context finds it.
+      const bridge = `signal_bridge_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${bridge} NOLOGIN`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT pg_signal_backend TO ${bridge} WITH INHERIT TRUE, SET FALSE`,
+        );
+        await dataSource.query(
+          `GRANT ${bridge} TO ${TEST_APP_ROLE} WITH INHERIT FALSE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toEqual([]);
+        expect(facts.exemptReachableContexts).toContain(bridge);
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${bridge} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`REVOKE pg_signal_backend FROM ${bridge}`);
+        await dataSource.query(`DROP ROLE ${bridge}`);
+      }
+    });
+
+    it("refuses an inherited pg_read_server_files membership, and proves it can read a host file (RR7-001)", async () => {
+      // The read half of the file-role pair. The capability the role actually
+      // grants is `COPY ... FROM '<absolute path>'` -- a bare NOSUPERUSER role is
+      // refused an absolute path outright. Write the file as the owner, then read
+      // it into a temp table as the app to demonstrate what the membership adds.
+      const proof = `/tmp/monize-rr7-read-${Date.now()}`;
+      await dataSource.query(
+        `COPY (SELECT 'rr7-read') TO PROGRAM 'cat > ${proof}'`,
+      );
+      await dataSource.query(
+        `GRANT pg_read_server_files TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+      );
+      const app = await appRolePool();
+      try {
+        const contents = await app.transaction(async (m) => {
+          await m.query("CREATE TEMP TABLE rr7_read_probe (line text)");
+          await m.query(`COPY rr7_read_probe FROM '${proof}'`);
+          const [{ line }] = await m.query("SELECT line FROM rr7_read_probe");
+          return line as string;
+        });
+        expect(contents).toContain("rr7-read");
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toContain("pg_read_server_files");
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_read_server_files FROM ${TEST_APP_ROLE}`,
+        );
+        await dataSource
+          .query(`COPY (SELECT 1) TO PROGRAM 'rm -f ${proof}'`)
+          .catch(() => undefined);
+      }
+    });
+
+    it("refuses an inherited pg_write_server_files membership, and proves it can write a host file (RR7-001)", async () => {
+      // The write half. A member can COPY ... TO an absolute path; a bare
+      // NOSUPERUSER role gets "absolute path not allowed". Write as the app, then
+      // read it back as the owner to prove the file landed on the host.
+      const proof = `/tmp/monize-rr7-write-${Date.now()}`;
+      await dataSource.query(
+        `GRANT pg_write_server_files TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+      );
+      const app = await appRolePool();
+      try {
+        await app.query(`COPY (SELECT 'rr7-write') TO '${proof}'`);
+        const [{ proven }] = await dataSource.query(
+          "SELECT pg_read_file($1) AS proven",
+          [proof],
+        );
+        expect(proven).toContain("rr7-write");
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toContain(
+          "pg_write_server_files",
+        );
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_write_server_files FROM ${TEST_APP_ROLE}`,
+        );
+        await dataSource
+          .query(`COPY (SELECT 1) TO PROGRAM 'rm -f ${proof}'`)
+          .catch(() => undefined);
+      }
+    });
+
+    it("refuses an inherited pg_read_all_settings membership (DR-RR7-001)", async () => {
+      // Reclassified from accepted to forbidden: on a standby whose
+      // primary_conninfo carries a replication password, a member can read that
+      // credential through SHOW / current_setting / pg_settings. Forbidding it is
+      // the deployment-independent control.
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT pg_read_all_settings TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedForbiddenRoles).toContain("pg_read_all_settings");
+        expect(
+          runtimeRoleViolations(facts, TEST_APP_ROLE).length,
+        ).toBeGreaterThan(0);
+      } finally {
+        await app.destroy();
+        await dataSource.query(
+          `REVOKE pg_read_all_settings FROM ${TEST_APP_ROLE}`,
+        );
+      }
+    });
+
+    it("accepts membership in a deliberately-safe predefined role like pg_read_all_stats", async () => {
+      // The control that keeps the forbidden list an allowlist rather than "every
+      // pg_* role": a role classified KNOWN_SAFE_PREDEFINED_ROLES confers no
+      // escalation and must not stop the app booting. pg_read_all_settings used to
+      // play this role and is now forbidden (DR-RR7-001), so the control moved to a
+      // genuinely inert monitoring role.
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT pg_read_all_stats TO ${TEST_APP_ROLE} WITH INHERIT TRUE`,
         );
 
         const facts = await readRuntimeRoleFacts(app);
@@ -1037,9 +1278,36 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       } finally {
         await app.destroy();
         await dataSource.query(
-          `REVOKE pg_read_all_settings FROM ${TEST_APP_ROLE}`,
+          `REVOKE pg_read_all_stats FROM ${TEST_APP_ROLE}`,
         );
       }
+    });
+
+    it("classifies every predefined role in this PostgreSQL, forbidden or safe (DR-RR7-002)", async () => {
+      // The list must not silently fall behind PostgreSQL. Every live pg_* role
+      // that is a member of `pg_read_all_stats` or otherwise a genuine predefined
+      // role has to appear in exactly one of the two documented lists, so a new
+      // PostgreSQL version's new predefined role forces a decision here instead of
+      // defaulting to safe-by-omission. Read the catalog, subtract the two lists,
+      // and require an empty remainder.
+      const rows: Array<{ rolname: string }> = await dataSource.query(
+        // Predefined roles are exactly the pinned system roles: catalog oid below
+        // the first user oid (16384) and a pg_ name.
+        `SELECT rolname FROM pg_roles
+          WHERE rolname LIKE 'pg\\_%' AND oid < 16384
+          ORDER BY rolname`,
+      );
+      const live = rows.map((r) => r.rolname);
+      expect(live.length).toBeGreaterThan(0);
+
+      const classified = new Set<string>([
+        ...FORBIDDEN_ROLE_MEMBERSHIPS.map((m) => m.role),
+        ...KNOWN_SAFE_PREDEFINED_ROLES,
+      ]);
+      const unclassified = live.filter((r) => !classified.has(r));
+      // A failure here means PostgreSQL shipped a predefined role neither list
+      // knows about -- classify it in runtime-role-check.ts before shipping.
+      expect(unclassified).toEqual([]);
     });
   });
 });

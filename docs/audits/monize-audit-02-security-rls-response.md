@@ -9,9 +9,9 @@
 | Commits | 28+, all non-merge; equal to GitHub's ahead count against the base |
 | Diff | 143 files, +9975 / -2042 (approx; grows each revision) |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Verification heads reviewed | `a39a837b` (1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4), `f521d0c8` (5), `b15437f2` (6) |
+| Verification heads reviewed | `a39a837b` (1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4), `f521d0c8` (5), `b15437f2` (6), `8f0df753` (7) |
 | Additional defects found and fixed | 24, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after six verification rounds and a live-database run (sections 5A-5G) |
+| Response date | 2026-08-03; revised 2026-08-05 after seven verification rounds and a live-database run (sections 5A-5H) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -24,8 +24,9 @@ one that the first round's own fix introduced. All five are fixed. Section 5C is
 running the integration suites -- previously reported as unrunnable here -- found
 once a local PostgreSQL turned out to be available, and section 5D answers a third
 review round, whose one HIGH finding is fixed; section 5E a fourth, whose MEDIUM
-finding is fixed; section 5F a fifth, whose MEDIUM finding is fixed; and section 5G a
-sixth, whose HIGH finding is fixed.
+finding is fixed; section 5F a fifth, whose MEDIUM finding is fixed; section 5G a
+sixth, whose HIGH finding is fixed; and section 5H a seventh, whose MEDIUM finding
+(`pg_signal_backend`, and a full classification of every predefined role) is fixed.
 
 ## How to read the status column
 
@@ -229,7 +230,7 @@ Fix, in two parts because neither alone is sufficient:
   reveal the next one on the next restart. Skipped at `off`/`shadow`, where
   connecting as the owner is the point.
 
-New file: `backend/src/common/db/runtime-role-check.ts` (+ spec, 16 cases).
+New file: `backend/src/common/db/runtime-role-check.ts` (+ spec, 38 cases).
 
 ### P2-007 -- Owner-managed delegation cannot read or create the delegate's `users` row under enforcement
 
@@ -403,7 +404,7 @@ This remains open and is listed in section 8.
 | MT-03 | Done | `user-profile.spec.ts` (9 cases) + `users.controller.spec.ts`. Reads `@Exclude()` off class-transformer metadata and scans `src/` for ad-hoc sanitizers. |
 | MT-04 | Done | `mcp-http.controller.spec.ts`: read-only token reusing a write session, replacement token after revocation, scopes re-derived per request, unbindable context refused, OAuth refresh within one grant kept alive. |
 | MT-05 | Done | `oidc-reauth.service.spec.ts` (21 cases: sentinel, `alg=none`, foreign key, wrong user, wrong action, expired, replayed, access token, step-up token, missing jti) + `backup.service.spec.ts`, `users.service.spec.ts`, `step-up.service.spec.ts`. |
-| MT-06 | Done | `runtime-role-check.spec.ts` (16 cases) + `app-role.spec.ts`. Each disqualifying attribute separately and together, both driver result shapes, the bigint-as-string count, the no-row case, and `off`/`shadow` skipping the query. |
+| MT-06 | Done | `runtime-role-check.spec.ts` (38 cases) + `app-role.spec.ts`. Each disqualifying attribute separately and together, both driver result shapes, the bigint-as-string count, the no-row case, and `off`/`shadow` skipping the query. |
 | MT-07 | Partly done | `delegation.service.spec.ts` asserts the bypass brackets at `RLS_MODE=enforce`, that every count lands inside the window, that the delegation writes fall outside it, and that a failed identity lookup no longer votes for deletion. The integration half needs a live database (section 7). |
 | MT-08 | Done | `request-context.interceptor.spec.ts`: "stamps the delegate's own row, never the owner's, while acting", "still resets the owner's own clock on the owner's own request", "throttles per authenticated user, not per acted-on owner". |
 | MT-09 | Done | `currencies.service.spec.ts`: creator and non-creator paths, system-currency path, another tenant's preference blocking the delete, and that the global probe carries no user predicate while the per-user probe still does. |
@@ -1127,15 +1128,18 @@ attributes, and a membership is a `GRANT`, so provisioning cannot strip these an
 guard that ties `FORBIDDEN_RUNTIME_ATTRIBUTES` to `APP_ROLE_ATTRIBUTES` says nothing
 about them. That is precisely why the membership check had to be written down as its
 own thing. It is a **named allowlist** of the dangerous predefined roles, not "every
-`pg_*` role" -- the review is right that `pg_monitor` and friends are not escalation
-paths, and refusing to boot on a monitoring grant teaches operators to ignore the
-check.
+`pg_*` role", so a genuinely inert monitoring grant still boots -- refusing one would
+teach operators to ignore the check. (This round named only the three server-file /
+server-program roles and treated `pg_read_all_settings` and `pg_monitor` as harmless.
+The seventh review, section 5H, showed both are escalation paths -- `pg_signal_backend`
+too -- and the denylist grew to ten with a full classification of the rest.)
 
 The integration test does not stop at the verdict: it grants the membership, runs a
 real `COPY ... TO PROGRAM` that writes a host file, reads the file back to prove the
 capability was live, and only then asserts the check rejects. Plus a
-`SET`-reachable-bridge case and an ordinary-predefined-role control
-(`pg_read_all_settings`, accepted). Both RR6-001 cases fail against the pre-fix SQL.
+`SET`-reachable-bridge case and an ordinary-predefined-role control (accepted; the
+control role became `pg_read_all_stats` in 5H once `pg_read_all_settings` was
+reclassified forbidden). Both RR6-001 cases fail against the pre-fix SQL.
 
 ### RR6-002 -- the replication proof slot was persistent
 
@@ -1145,8 +1149,11 @@ and cleanup would strand a WAL-retaining slot on a shared cluster -- cluster-wid
 untouched by `dropSchema`, the exact availability failure the test is about. Now
 `temporary => true`: it still reserves WAL while the session lives (asserted), and
 PostgreSQL drops it when the session ends. The test then asserts from a fresh
-connection that the slot is gone after the pool is destroyed, so the auto-drop is
-proven rather than assumed.
+connection that the slot is gone after the pool is destroyed. (The seventh review,
+DOC-RR7-001 in section 5H, caught that this test's `finally` still ran an explicit
+`pg_drop_replication_slot` *before* that assertion, so the "gone" it observed did not
+distinguish auto-drop from the explicit drop -- the explicit drop is now removed, and
+the assertion is real evidence.)
 
 ### RR6-003 -- a reachable non-RLS context was diagnosed as an RLS problem
 
@@ -1162,13 +1169,100 @@ cannot drop an attribute the check enforces.
 
 ### On the review's remaining design-risk notes
 
-"Other predefined roles need an explicit allow/deny decision" is answered by the
-allowlist being explicit and short: the dangerous three are denied by name, and
-everything else -- including monitoring roles -- is allowed by omission, which is the
-decision. If a future PostgreSQL adds another host-capability predefined role, it
-joins `FORBIDDEN_ROLE_MEMBERSHIPS`; there is no scan that would catch that
-automatically, and pretending otherwise would be worse than the honest gap. The
-post-start monitoring note remains filed with DR-04, as in 5F.
+The review asked for "an explicit allow/deny decision" on the other predefined roles.
+At this point 5G answered that the short denylist plus allow-by-omission *was* the
+decision, and that no scan could catch a future PostgreSQL's new role. The seventh
+review (section 5H, DR-RR7-002) was right that this is the weaker answer: "allowed by
+omission" cannot tell "judged safe" from "never considered", and the scan I said was
+impossible is not -- the live catalog enumerates every `pg_*` role, so an integration
+guard can require each to appear in `FORBIDDEN_ROLE_MEMBERSHIPS` or in an explicit
+`KNOWN_SAFE_PREDEFINED_ROLES`, and fail on any it does not. That guard now exists; the
+classification is in 5H. The post-start monitoring note remains filed with DR-04, as
+in 5F.
+
+## 5H. Answer to the seventh verification review
+
+A seventh review (`monize-phase2-fix-verification-re-review-7.md`, head `8f0df753`)
+confirmed RR6-001/002/003 closed and made the point 5G had brushed aside: the
+membership denylist protected host files and programs but accepted every other
+cluster-control capability by omission, and `pg_signal_backend` is one of them.
+Reproduced on the live server before changing anything.
+
+### RR7-001 -- `pg_signal_backend` membership passed the "unprivileged" check
+
+**Status: Fixed.** Measured:
+
+```
+CREATE ROLE rr7_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS
+                    NOREPLICATION NOINHERIT;
+CREATE ROLE rr7_victim LOGIN NOSUPERUSER NOBYPASSRLS;   -- a second, unrelated role
+GRANT pg_signal_backend TO rr7_app WITH INHERIT TRUE, SET FALSE;
+-- rr7_victim opens a session (pid V); as rr7_app:
+SELECT pg_terminate_backend(V);   -- returns t; rr7_victim's session is gone
+```
+
+A `NOSUPERUSER` role terminated a *different* non-superuser role's backend -- the
+cross-tenant availability failure the review described, reaching migrations, backups,
+and other applications sharing the cluster. `pg_signal_backend` has no forbidden
+attribute and owns nothing, so the attribute and ownership arms were both silent, and
+it was not on the three-name denylist, so the membership arm was too.
+
+The fix is the review's. `FORBIDDEN_ROLE_MEMBERSHIPS` grew from three to ten, adding
+`pg_signal_backend`, `pg_read_all_settings`, `pg_read_all_data`, `pg_write_all_data`,
+`pg_checkpoint`, `pg_create_subscription`, and the `pg_monitor` umbrella -- each with
+its own capability-specific `why`, which the violation message now quotes per role
+rather than saying "server-file or server-program" for all of them. The SQL array and
+both membership arms (`inheritedForbiddenRoles`, direct; `exemptReachableContexts`,
+reachable) are generated from the list, so all ten reached the query with no second
+edit. The live suite proves the capability against a real victim session, then the
+three grant shapes the review asked for -- direct `INHERIT TRUE SET FALSE`, SET-only,
+and an `app --SET--> bridge --INHERIT--> pg_signal_backend` mixed chain -- all
+rejected. Server read-file and write-file capability (missing tests 1 and 2) are now
+proven too, each with a real `COPY FROM`/`COPY TO` on an absolute host path.
+
+### DR-RR7-002 -- classify every predefined role, don't allow by omission
+
+**Status: Fixed.** 5G's "everything else is allowed by omission, and no scan could
+catch a new role" was wrong on both halves. `KNOWN_SAFE_PREDEFINED_ROLES`
+(`pg_read_all_stats`, `pg_stat_scan_tables`, `pg_use_reserved_connections`,
+`pg_database_owner`) now records the deliberate *safe* decisions, and together with the
+ten forbidden roles it partitions all fourteen PostgreSQL 16 predefined roles. An
+integration guard reads the live catalog (`pg_roles WHERE rolname LIKE 'pg\_%' AND oid
+< 16384`) and fails if any role appears in neither list -- so a future PostgreSQL's new
+predefined role forces a decision here instead of defaulting to safe. A unit test
+proves the two lists never overlap.
+
+### DR-RR7-001 -- `pg_read_all_settings` exposes configuration secrets
+
+**Status: Fixed by forbidding it.** The role can read every configuration variable,
+including a standby's `primary_conninfo`, which PostgreSQL documents may carry a
+replication password. Rather than document a deployment assumption that every
+superuser-only setting is non-secret, it moved to `FORBIDDEN_ROLE_MEMBERSHIPS` -- the
+deployment-independent control. The integration control role that demonstrates an
+accepted monitoring grant moved from `pg_read_all_settings` to the genuinely inert
+`pg_read_all_stats` in the same change.
+
+### RR7-002 -- the provisioning fallback warning omitted two attributes
+
+**Status: Fixed.** When the owner lacks `CREATEROLE`, `APP_ROLE_UPSERT_SQL` fails soft
+and its warning is the only instruction the operator gets for declarative
+(`managed.roles`) provisioning. It hand-listed four of the six `NO<x>` attributes and
+dropped `NOREPLICATION` and `NOINHERIT`, so an operator who followed it rebuilt a role
+that then failed enforce-mode startup on the very attributes the warning omitted. The
+list is now derived from `APP_ROLE_ATTRIBUTES` (`APP_ROLE_FORBIDDEN_ATTRIBUTE_TOKENS`),
+and `app-role.spec.ts` asserts every stripped attribute appears in the warning, so it
+cannot drift behind the contract again.
+
+### DOC-RR7-001 -- the temporary-slot auto-drop test proved nothing
+
+**Status: Fixed.** As noted against RR6-002 above: the RR5-001 replication test's
+`finally` ran an explicit `pg_drop_replication_slot` before asserting the slot was
+gone, so a successful explicit drop -- not PostgreSQL's session-end cleanup -- was what
+made the assertion pass. The explicit drop is removed; the test now ends the session by
+destroying the pool and polls a *second* connection until the slot disappears, which is
+the auto-drop actually being observed. Verified on the live server: a temporary slot
+created on one session is absent from a fresh session immediately after the creating
+session ends, with nothing having dropped it.
 
 ## 6. Rules added, so the next agent inherits the correction
 
@@ -1187,7 +1281,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified; reachability composes, the forbidden-attribute contract is derived from provisioning, and membership in a host-capability role is refused too | `runtime-role-check.spec.ts`, the integration matrix and RR6 cases, and `app-role.spec.ts`'s parity guard |
+| An unprivileged mode is verified; reachability composes, the forbidden-attribute contract is derived from provisioning, membership in a host-capability or cluster-control role is refused, every predefined role is classified forbidden-or-safe, and the operator warning is derived from the same attribute contract | `runtime-role-check.spec.ts`, the integration matrix (RR6/RR7 capability proofs + the live predefined-role classification guard), and `app-role.spec.ts`'s attribute-parity and warning-drift guards |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |

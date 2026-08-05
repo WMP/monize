@@ -143,6 +143,24 @@ describe("app-role SQL", () => {
     }
   });
 
+  it("names every stripped attribute in the insufficient-privilege warning (RR7-002)", () => {
+    // The fallback path for declarative CNPG provisioning: when the owner lacks
+    // CREATEROLE, the ALTER fails soft and this warning is the only instruction
+    // the operator gets. It hand-listed four of the six NO<x> attributes and
+    // dropped NOREPLICATION and NOINHERIT, so an operator following it into
+    // managed.roles rebuilt a role that later failed enforce-mode startup.
+    //
+    // Derived from APP_ROLE_ATTRIBUTES, so the warning cannot drift behind it.
+    const warning = APP_ROLE_UPSERT_SQL.slice(
+      APP_ROLE_UPSERT_SQL.indexOf("RAISE WARNING"),
+    );
+    const stripped = APP_ROLE_ATTRIBUTES.match(/\bNO[A-Z]+\b/g) ?? [];
+    expect(stripped.length).toBeGreaterThan(0);
+    for (const token of stripped) {
+      expect(warning).toContain(token);
+    }
+  });
+
   it("provisions the role NOINHERIT, so it does not inherit an owner by default", () => {
     // Defence in depth for RR3-001: an inherited owner bypasses RLS with no SET
     // ROLE at all. Not the fix -- a per-membership `WITH INHERIT TRUE` overrides

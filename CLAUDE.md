@@ -134,13 +134,31 @@ And "unprivileged" is not only attributes: **membership** in a predefined role c
 grant a capability provisioning cannot strip, because `ALTER ROLE ... NO<x>` changes
 attributes and a membership is a `GRANT`. A member of `pg_execute_server_program`
 runs host commands via `COPY ... TO PROGRAM` -- measured, a `NOSUPERUSER` role wrote
-a file on the server -- and the file roles read and write host files. So
+a file on the server -- the file roles read and write host files, and a member of
+`pg_signal_backend` runs `pg_terminate_backend` against any other non-superuser
+session in the cluster -- measured, a `NOSUPERUSER` role killed a second role's
+backend, which is a cross-tenant availability failure (RR7-001). So
 `FORBIDDEN_ROLE_MEMBERSHIPS` is checked with the same `USAGE`-on-the-context question
-as inherited ownership, directly and through every reachable context (RR6-001). It
-is a named allowlist of the dangerous predefined roles, not "every `pg_*` role":
-refusing to boot on a `pg_monitor` grant would teach operators to ignore the check.
-The parity guard covers attributes only, since memberships have no `NO<x>` to mirror
--- which is exactly why the membership check has to be written down deliberately.
+as inherited ownership, directly and through every reachable context (RR6-001).
+
+The list is a deliberate classification, not "every `pg_*` role" and not
+safe-by-omission: **every** predefined role is either in `FORBIDDEN_ROLE_MEMBERSHIPS`
+or in `KNOWN_SAFE_PREDEFINED_ROLES`, and the integration guard fails when the live
+catalog holds a `pg_*` role in neither -- so a new PostgreSQL version's new role
+forces a decision instead of defaulting to safe (DR-RR7-002). Forbidding is not a
+blanket prefix rule: booting still succeeds on a genuinely inert monitoring grant
+(`pg_read_all_stats`), because refusing one would teach operators to ignore the
+check -- but "inert" is a judged classification, not an assumption, which is why
+`pg_read_all_settings` moved to the forbidden side once it was seen to expose a
+standby's `primary_conninfo` password (DR-RR7-001). The parity guard covers
+attributes only, since memberships have no `NO<x>` to mirror -- which is exactly why
+the membership classification has to be written down deliberately.
+
+And the operator guidance has to match the enforced contract: the
+insufficient-privilege fallback warning names the attributes to provision from the
+same `APP_ROLE_ATTRIBUTES` string the verifier enforces, because a hand-copied list
+dropped `NOREPLICATION` and `NOINHERIT` and sent operators to rebuild a role that
+then failed startup (RR7-002).
 
 **And the routes compose, so ask the question of the destination, not of the
 caller.** Testing `SET` reachability and then whether the candidate *itself* owns

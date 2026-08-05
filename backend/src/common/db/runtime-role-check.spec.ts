@@ -1,4 +1,6 @@
 import {
+  FORBIDDEN_ROLE_MEMBERSHIPS,
+  KNOWN_SAFE_PREDEFINED_ROLES,
   RUNTIME_ROLE_FACTS_SQL,
   RuntimeRoleFacts,
   assertRuntimeRoleSafe,
@@ -164,10 +166,29 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain('"pg_execute_server_program"');
-    expect(violations[0]).toMatch(/server-program|server-file/);
+    // The message names the specific capability, drawn from the denylist entry.
+    expect(violations[0]).toContain("COPY");
     expect(violations[0]).toContain("Revoke the membership");
     // Not an RLS diagnosis -- RR6-003 is precisely about not saying it is.
     expect(violations[0]).not.toContain("policies do not apply");
+  });
+
+  it("names the specific capability for each forbidden membership (RR7-001)", () => {
+    // The denylist grew past server-file/server-program to signalling,
+    // cluster-control and broad-data roles, so the message can no longer say
+    // "server-file or server-program" -- it has to describe the role that is
+    // actually granted, from the same list the SQL is generated from.
+    const signal = runtimeRoleViolations(
+      { ...SAFE, inheritedForbiddenRoles: ["pg_signal_backend"] },
+      "monize_app",
+    );
+    expect(signal).toHaveLength(1);
+    expect(signal[0]).toContain('"pg_signal_backend"');
+    expect(signal[0]).toMatch(/terminate sessions/);
+    expect(signal[0]).toContain("Revoke the membership");
+    // It must not misdescribe a signalling role as server-file/program access.
+    expect(signal[0]).not.toContain("server-program");
+    expect(signal[0]).not.toContain("server-file");
   });
 
   it("gives a reachable context a truthful, non-RLS-specific reason (RR6-003)", () => {
@@ -321,6 +342,49 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     // the check reporting the runtime role as its own escalation path.
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("h.oid <> r.oid");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid <> r.oid");
+  });
+});
+
+describe("predefined-role classification (DR-RR7-002)", () => {
+  it("forbids pg_signal_backend membership", () => {
+    // RR7-001: a signalling member can pg_terminate_backend other non-superuser
+    // sessions across the cluster -- migrations, backups, other apps. It has no
+    // forbidden attribute and owns nothing, so only the membership arm sees it.
+    expect(FORBIDDEN_ROLE_MEMBERSHIPS.map((m) => m.role)).toContain(
+      "pg_signal_backend",
+    );
+  });
+
+  it("classifies every forbidden role with a capability-specific reason", () => {
+    for (const { role, why } of FORBIDDEN_ROLE_MEMBERSHIPS) {
+      expect(role).toMatch(/^pg_/);
+      // The reason is what the operator reads and what the violation message
+      // quotes, so an empty or placeholder one is a defect.
+      expect(why.length).toBeGreaterThan(20);
+    }
+  });
+
+  it("classifies each predefined role exactly once (no overlap, no omission gap)", () => {
+    // The two lists are a partition: a role is forbidden or deliberately safe,
+    // never both and never neither. The live integration guard proves the union
+    // equals the catalog; here we prove the lists do not contradict each other.
+    const forbidden = new Set<string>(
+      FORBIDDEN_ROLE_MEMBERSHIPS.map((m) => m.role),
+    );
+    const safe = new Set<string>(KNOWN_SAFE_PREDEFINED_ROLES);
+    for (const role of safe) {
+      expect(forbidden.has(role)).toBe(false);
+    }
+    expect(forbidden.size).toBe(FORBIDDEN_ROLE_MEMBERSHIPS.length);
+    expect(safe.size).toBe(KNOWN_SAFE_PREDEFINED_ROLES.length);
+  });
+
+  it("puts every forbidden role into the generated SQL array", () => {
+    // The SQL array is generated from the list, so a new entry reaches both the
+    // direct-inheritance and reachable-context arms with no second edit.
+    for (const { role } of FORBIDDEN_ROLE_MEMBERSHIPS) {
+      expect(RUNTIME_ROLE_FACTS_SQL).toContain(`'${role}'`);
+    }
   });
 });
 
