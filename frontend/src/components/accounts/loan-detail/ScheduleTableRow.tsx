@@ -54,7 +54,7 @@ export function ScheduleTableRow({
   const { formatDate } = useDateFormat();
 
   const existingChange = row.change;
-  const editRateHandler = !editing
+  const editRateHandler = !editing || !row.isProjected
     ? undefined
     : existingChange
       ? () => editing.openEdit(existingChange)

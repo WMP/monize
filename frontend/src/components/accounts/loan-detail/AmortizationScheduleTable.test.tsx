@@ -417,7 +417,7 @@ describe('AmortizationScheduleTable', () => {
     expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
   });
 
-  it('opens the rate-change form pre-filled when a historical rate is clicked', () => {
+  it('does not expose an edit button for historical rows even when editing is provided', () => {
     const openAddWith = vi.fn();
     const editing = { openAddWith } as unknown as LoanRateEditing;
 
@@ -430,10 +430,10 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    // The rate value is a button that opens the add form seeded with the row's
-    // date and rate -- no inline editing.
-    fireEvent.click(screen.getByLabelText(/Edit interest rate/));
-    expect(openAddWith).toHaveBeenCalledWith('2025-01-15', 5.5);
+    // Historical rates are read-only: the rate cell must render as text, not as
+    // a button, even when the editing prop is supplied (REV-20260803-017).
+    expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
+    expect(openAddWith).not.toHaveBeenCalled();
   });
 
   it('opens the rate-change form pre-filled when a projected rate is clicked', () => {
