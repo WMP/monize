@@ -199,7 +199,8 @@
     "supportPasswordRequired": "A support backup must be encrypted: supply a password.",
     "supportExportTooLarge": "This support backup would be {{ size }} MiB of JSON, above the {{ limit }} MiB limit. Narrow it with an account selection or a date range, or raise BACKUP_EXPORT_BUFFER_LIMIT.",
     "noBackupStorage": "This deployment has no writable backup storage: {{ safePath }} does not exist and cannot be created ({{ reason }}). Mount a volume there (Docker: a bind mount or named volume; Kubernetes: set backend.persistence.backups in the Helm chart) and try again.",
-    "folderUnusable": "Folder \"{{ path }}\" cannot be used as a directory ({{ reason }})."
+    "folderUnusable": "Folder \"{{ path }}\" cannot be used as a directory ({{ reason }}).",
+    "restoreNoMemoryHeadroom": "This deployment has no memory headroom for a restore: one restore's modeled peak does not fit the container. Raise the container memory limit or lower BACKUP_RESTORE_EXPANDED_LIMIT."
   },
   "budgets": {
     "notFound": "Budget with ID {{ id }} not found",

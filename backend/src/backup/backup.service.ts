@@ -993,6 +993,9 @@ export class BackupService {
     // just as well as a large one. Upload admission budgets the wire bytes and so
     // cannot bound it; this gate caps how many restores decompress at once (one,
     // on the default pod). See `restore-processing-gate.ts`.
+    // The gate refuses outright with a 503 when the memory model leaves no room
+    // for even one restore (F3RB-005), rather than letting the request proceed
+    // toward an OOM kill.
     return restoreProcessingGate.run(async () => {
       const gzippedPayload = await this.maybeDecrypt(input, user);
       const rawData = await this.decompressAndParse(gzippedPayload);

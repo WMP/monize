@@ -136,19 +136,17 @@ async function bootstrap() {
     restoreExpandedLimit,
   );
   restoreProcessingGate.configure(honestSlots);
-  bootstrapLogger.log(
-    `Concurrent restore processing slots: ${Math.max(1, honestSlots)}`,
-  );
+  bootstrapLogger.log(`Concurrent restore processing slots: ${honestSlots}`);
   if (honestSlots < 1) {
-    // A running process must still be able to attempt a restore, so the gate
-    // floors capacity at one -- but one modeled restore does not fit this
-    // container at the configured expanded limit, so a real restore may be
-    // OOM-killed. This is a configuration to fix, not a transient.
-    bootstrapLogger.warn(
+    // Zero means zero (F3RB-005): the gate refuses a restore with 503 rather
+    // than admitting one that its own model says cannot fit. Flooring to one
+    // turned a fixable misconfiguration into an OOM kill mid-restore, which is
+    // the worst moment to lose the process. This is a configuration to fix.
+    bootstrapLogger.error(
       `A single restore's modeled peak memory does not fit this container ` +
         `(limit ${Math.round((memoryLimitBytes ?? 0) / (1024 * 1024))}MiB, ` +
         `expanded limit ${Math.round(restoreExpandedLimit / (1024 * 1024))}MiB). ` +
-        `Restores will run one at a time but may still exceed memory. Raise the ` +
+        `Restores will be REFUSED with 503 until this is fixed: raise the ` +
         `container memory limit or lower BACKUP_RESTORE_EXPANDED_LIMIT.`,
     );
   }

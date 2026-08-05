@@ -1,3 +1,5 @@
+import { ServiceUnavailableException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import {
   PEAK_MULTIPLE,
   resolveRestoreExpandedLimitBytes,
@@ -44,9 +46,19 @@ export class RestoreProcessingGate {
     this.capacity = Math.max(1, Math.floor(capacity));
   }
 
-  /** Set the concurrent-processing capacity (min 1) and wake any waiters it frees. */
+  /**
+   * Set the concurrent-processing capacity and wake any waiters it frees.
+   *
+   * Zero is kept as zero (F3RB-005). It used to be floored to one, so a
+   * container in which one modeled restore does not fit still admitted one --
+   * a warning, then an OOM kill mid-restore during a disaster recovery, which
+   * is the worst moment to lose the process. An admission control that runs
+   * work its own model says cannot fit is not an admission control; `acquire`
+   * now refuses instead, and the operator gets an actionable 503 rather than a
+   * restarted pod.
+   */
   configure(capacity: number): void {
-    this.capacity = Math.max(1, Math.floor(capacity));
+    this.capacity = Math.max(0, Math.floor(capacity));
     this.drain();
   }
 
@@ -71,6 +83,19 @@ export class RestoreProcessingGate {
   }
 
   private acquire(): Promise<void> {
+    if (this.capacity < 1) {
+      // Nothing will ever free a slot, so waiting would be a hang, not a queue.
+      // 503 rather than 500: the deployment is misconfigured, a retry without
+      // changing it cannot help, and the message says which knob to turn.
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.backup.restoreNoMemoryHeadroom",
+          "This deployment has no memory headroom for a restore: one restore's " +
+            "modeled peak does not fit the container. Raise the container memory " +
+            "limit or lower BACKUP_RESTORE_EXPANDED_LIMIT.",
+        ),
+      );
+    }
     if (this.active < this.capacity) {
       this.active += 1;
       return Promise.resolve();

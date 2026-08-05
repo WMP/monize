@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from "@nestjs/common";
 import { PEAK_MULTIPLE } from "./backup-limits";
 import {
   RestoreProcessingGate,
@@ -114,12 +115,23 @@ describe("RestoreProcessingGate", () => {
     await Promise.all([p1, p2]);
   });
 
-  it("never drops below one slot", () => {
+  it("defaults an unconfigured gate to one slot, so a spec inherits a working gate", () => {
+    // The CONSTRUCTOR floor stays: an unconfigured gate (every spec that builds
+    // the service without bootstrap) must run work. It is `configure` -- the
+    // path bootstrap uses with a computed capacity -- that must respect zero.
     const gate = new RestoreProcessingGate(0);
     expect(gate.activeCount).toBe(0);
-    gate.configure(-5);
-    // Capacity floored at 1: a task still runs.
     return expect(gate.run(async () => "ran")).resolves.toBe("ran");
+  });
+
+  it("treats a negative configured capacity as zero, not as one", async () => {
+    // This test used to assert the opposite ("never drops below one slot") and
+    // was what pinned F3RB-005 in place: it made the floor look deliberate.
+    const gate = new RestoreProcessingGate(4);
+    gate.configure(-5);
+    await expect(gate.run(async () => "ran")).rejects.toThrow(
+      ServiceUnavailableException,
+    );
   });
 });
 
@@ -184,5 +196,49 @@ describe("computeRestoreProcessingSlots", () => {
       0,
     );
     expect(withBaseline).toBeLessThan(withoutBaseline);
+  });
+
+  describe("zero honest capacity (F3RB-005)", () => {
+    it("refuses rather than admitting one restore its model says cannot fit", async () => {
+      // Flooring zero to one turned a fixable misconfiguration into an OOM kill
+      // mid-restore. The refusal is a 503 the operator can act on.
+      const gate = new RestoreProcessingGate(4);
+      gate.configure(0);
+
+      await expect(gate.run(async () => "restored")).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(gate.activeCount).toBe(0);
+      expect(gate.waitingCount).toBe(0);
+    });
+
+    it("does not run the work at all", async () => {
+      const gate = new RestoreProcessingGate(1);
+      gate.configure(0);
+      const work = jest.fn().mockResolvedValue("restored");
+
+      await expect(gate.run(work)).rejects.toThrow(ServiceUnavailableException);
+      expect(work).not.toHaveBeenCalled();
+    });
+
+    it("names the two knobs an operator can turn", async () => {
+      const gate = new RestoreProcessingGate(1);
+      gate.configure(0);
+
+      await expect(gate.run(async () => 1)).rejects.toThrow(
+        /container memory limit or lower BACKUP_RESTORE_EXPANDED_LIMIT/,
+      );
+    });
+
+    it("serves again once capacity is restored", async () => {
+      // The refusal must not be sticky: fixing the limit and reconfiguring is
+      // the documented remedy, so it has to actually work.
+      const gate = new RestoreProcessingGate(1);
+      gate.configure(0);
+      await expect(gate.run(async () => 1)).rejects.toThrow();
+
+      gate.configure(2);
+      await expect(gate.run(async () => "ok")).resolves.toBe("ok");
+    });
   });
 });
