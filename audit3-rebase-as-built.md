@@ -268,11 +268,11 @@ them on its checklist.
 | backend `npm run lint` | clean |
 | backend `npm run migration:lint` | 127 files, clean |
 | backend `npm run i18n:check` | pseudo-locale fresh |
-| backend `TZ=UTC npm run test:unit` | **11157/11193; the only red suite is `locales.parity.spec.ts` (36)** |
+| backend `TZ=UTC npm run test:unit` | **417/417 suites, 11201/11201 tests — fully green** (locale parity was the standing failure and the localization pass closed it) |
 | frontend `npx tsc --noEmit` | clean |
 | frontend `npm run lint` | clean (1 pre-existing `exhaustive-deps` warning, `Combobox.tsx` — same as recorded in audit-phase-3-response §8) |
 | frontend `npm run i18n:check` | clean |
-| frontend `npx vitest run` | **12428/12446; the only red file is `messages.parity.test.ts` (18)** |
+| frontend `npx vitest run` | **637/637 files, 12451/12451 tests — fully green** |
 | `node scripts/check-env-docs.mjs` | 61 env vars documented |
 
 The parity failures are the branch's declared state (response doc §7 item 5): English catalogs
@@ -351,6 +351,20 @@ that contradict their own metadata (`inconsistent`), and `includedAttachments` s
 headline is their sum with the breakdown kept for the diagnosis. The verb changed too: corrupt bytes
 *are* included, they just cannot be trusted. Verified failing with the sum reverted. Two rounds
 running, a fix of mine needed a fix — worth stating rather than smoothing over.
+
+**A second LOW, from the sixth review: the warning existed only in English.** Confirmed in the
+loader, and the reviewer's mechanism claim was exact — `loadNamespace` returns a full locale's own
+catalog when the namespace file exists and falls back to `en` only when the *whole file* is missing,
+so a single absent key does not fall back. A Polish user hitting an incomplete export therefore got
+a broken toast where a data-loss warning belongs. The branch convention (English-first, one
+localization pass at acceptance) is right for copy in flux and wrong for this class of string: these
+are read at the moment a backup has already gone wrong, and they were settled. So the pass ran now
+for all thirteen keys the branch added — four frontend, nine backend — with per-language plural forms
+written out rather than machine-substituted, placeholder parity checked per string, and both
+interpolation styles preserved. The reviewer also correctly noted the missing HTTP-contract test: the
+component spec mocks the parsed result, so it could not catch the `X-Backup-Attachments-Inconsistent`
+header being ignored; `backupApi.test.ts` now asserts that header directly, plus the
+no-markers-means-complete default, and was verified failing with the header read removed.
 
 **F3RB-006 → issue [#1070](https://github.com/kenlasko/monize/issues/1070); F3RB-007 → issue
 [#1071](https://github.com/kenlasko/monize/issues/1071); F3RB-001 → issue
