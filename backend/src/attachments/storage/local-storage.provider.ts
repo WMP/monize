@@ -28,9 +28,13 @@ export const DEFAULT_ATTACHMENT_CONTAINER_DIR = "/data/attachments";
  * single directory -- the shared layout in `common/shard-path.util.ts`, which
  * automatic backups use for their per-user folders too.
  *
- * Bytes live outside the database, so they are not embedded in the application
- * backup; only the metadata row travels with a backup and the directory must be
- * backed up alongside it (see .env.example).
+ * Bytes live outside the database, but they DO travel in an application backup:
+ * the export reads each object and carries it base64-encoded in
+ * `attachment_blobs` (see `appendExternalAttachmentBytes`), and a restore stages
+ * it back through this provider. That is what makes a backup restorable onto a
+ * fresh instance, and it means this directory does not have to be backed up
+ * separately -- artifacts exported before that change do, since they carry only
+ * metadata.
  */
 @Injectable()
 export class LocalStorageProvider implements AttachmentStorageProvider {

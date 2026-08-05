@@ -573,7 +573,7 @@
       "description": "Vos données ont été restaurées avec succès. Voici un résumé de ce qui a été restauré :",
       "totalRecords": "Total des enregistrements",
       "doneButton": "Terminer",
-      "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : leurs fichiers n'ont pas été trouvés dans le stockage des pièces jointes, ou ne correspondaient pas à la somme de contrôle enregistrée dans la sauvegarde. Les pièces jointes sont stockées en dehors de la base de données et doivent donc être sauvegardées et restaurées avec elle."
+      "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : la sauvegarde ne contenait pas d'octets utilisables pour elles — ils manquaient ou ont échoué au contrôle de somme lors de l'export, ou le fichier est antérieur aux sauvegardes autonomes. Exportez une nouvelle sauvegarde lorsque le stockage des pièces jointes est sain."
     }
   },
   "sharedAccess": {

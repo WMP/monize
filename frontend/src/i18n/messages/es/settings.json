@@ -573,7 +573,7 @@
       "description": "Tus datos han sido restaurados correctamente. Aquí tienes un resumen de lo que se restauró:",
       "totalRecords": "Total de registros",
       "doneButton": "Listo",
-      "skippedAttachments": "{count, plural, one {# archivo adjunto no se restauró} other {# archivos adjuntos no se restauraron}}: sus ficheros no se encontraron en el almacenamiento de adjuntos, o no coincidían con la suma de comprobación registrada en la copia. Los adjuntos se guardan fuera de la base de datos, por lo que deben respaldarse y restaurarse junto con ella."
+      "skippedAttachments": "{count, plural, one {# archivo adjunto no se restauró} other {# archivos adjuntos no se restauraron}}: la copia no contenía bytes utilizables para ellos — faltaban o no pasaron su suma de comprobación al exportarla, o el fichero es anterior a las copias autocontenidas. Exporte una copia nueva cuando el almacenamiento de adjuntos esté correcto."
     }
   },
   "sharedAccess": {

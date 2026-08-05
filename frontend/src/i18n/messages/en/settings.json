@@ -572,7 +572,7 @@
       "title": "Restore Complete",
       "description": "Your data has been restored successfully. Here is a summary of what was restored:",
       "totalRecords": "Total records",
-      "skippedAttachments": "{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: their files could not be found in attachment storage, or did not match the checksum recorded in the backup. Attachment files are stored outside the database, so they must be backed up and restored alongside it.",
+      "skippedAttachments": "{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: the backup did not carry usable bytes for them — they were missing or failed their checksum when it was exported, or the file predates self-contained backups. Export a fresh backup once attachment storage is healthy to capture them.",
       "doneButton": "Done"
     }
   },

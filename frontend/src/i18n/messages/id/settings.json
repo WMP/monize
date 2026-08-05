@@ -573,7 +573,7 @@
       "description": "Data Anda telah berhasil dipulihkan. Berikut ringkasan apa yang dipulihkan:",
       "totalRecords": "Total rekaman",
       "doneButton": "Selesai",
-      "skippedAttachments": "{count, plural, other {# lampiran tidak dipulihkan}}: berkasnya tidak ditemukan di penyimpanan lampiran, atau tidak cocok dengan checksum yang dicatat dalam backup. Berkas lampiran disimpan di luar basis data, jadi harus dibackup dan dipulihkan bersamanya."
+      "skippedAttachments": "{count, plural, other {# lampiran tidak dipulihkan}}: backup tidak memuat byte yang dapat digunakan untuk lampiran tersebut — saat diekspor lampiran hilang atau gagal checksum, atau berkas dibuat sebelum backup mandiri. Ekspor backup baru setelah penyimpanan lampiran sehat."
     }
   },
   "sharedAccess": {

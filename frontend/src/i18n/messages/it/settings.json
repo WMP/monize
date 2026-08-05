@@ -573,7 +573,7 @@
       "description": "I tuoi dati sono stati ripristinati con successo. Ecco un riepilogo di quanto è stato ripristinato:",
       "totalRecords": "Record totali",
       "doneButton": "Fatto",
-      "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: i loro file non sono stati trovati nell'archivio degli allegati, o non corrispondevano al checksum registrato nel backup. Gli allegati sono archiviati fuori dal database, quindi devono essere salvati e ripristinati insieme a esso."
+      "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: il backup non conteneva byte utilizzabili per essi — erano assenti o non hanno superato il checksum al momento dell'esportazione, oppure il file precede i backup autonomi. Esporta un nuovo backup quando l'archivio degli allegati è integro."
     }
   },
   "sharedAccess": {

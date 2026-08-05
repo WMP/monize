@@ -573,7 +573,7 @@
       "description": "您的資料已成功還原。以下是已還原內容的摘要：",
       "totalRecords": "總記錄數",
       "doneButton": "完成",
-      "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：在附件儲存空間中找不到對應檔案，或與備份中記錄的總和檢查碼不符。附件檔案儲存於資料庫之外，因此必須與資料庫一起備份與還原。"
+      "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：備份中沒有可用的位元組——匯出時它們缺失或未通過總和檢查，或該檔案早於自包含備份。請在附件儲存恢復正常後重新匯出備份。"
     }
   },
   "sharedAccess": {

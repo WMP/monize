@@ -573,7 +573,7 @@
       "description": "Seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registros",
       "doneButton": "Concluído",
-      "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: os arquivos correspondentes não foram encontrados no armazenamento de anexos, ou não coincidiam com a soma de verificação registrada no backup. Os anexos são guardados fora do banco de dados, portanto precisam ser copiados e restaurados junto com ele."
+      "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — estavam ausentes ou falharam na soma de verificação na exportação, ou o arquivo é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável."
     }
   },
   "sharedAccess": {

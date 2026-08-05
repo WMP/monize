@@ -573,7 +573,7 @@
       "description": "Ihre Daten wurden erfolgreich wiederhergestellt. Hier eine Zusammenfassung der wiederhergestellten Daten:",
       "totalRecords": "Datensätze gesamt",
       "doneButton": "Fertig",
-      "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: ihre Dateien waren im Anhangsspeicher nicht zu finden oder stimmten nicht mit der im Backup vermerkten Prüfsumme überein. Anhangsdateien liegen außerhalb der Datenbank und müssen daher zusammen mit ihr gesichert und wiederhergestellt werden."
+      "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: Das Backup enthielt keine verwendbaren Bytes dafür — sie fehlten beim Export oder scheiterten an ihrer Prüfsumme, oder die Datei stammt aus der Zeit vor eigenständigen Backups. Erstelle ein neues Backup, sobald der Anhangsspeicher in Ordnung ist."
     }
   },
   "sharedAccess": {

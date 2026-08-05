@@ -20,9 +20,12 @@ import { assertSafeStorageKey } from "./storage-key.util";
  * set, otherwise from the default AWS credential chain (instance role, env, ...).
  *
  * The client is built lazily on first use so a deployment that never selects s3
- * pays nothing and never needs the bucket configured. As with the local
- * provider, bytes live outside the database and are not embedded in the
- * application backup -- the bucket must be backed up alongside it.
+ * pays nothing and never needs the bucket configured. As with the local provider,
+ * bytes live outside the database but DO travel in an application backup: the
+ * export reads each object and carries it base64-encoded in `attachment_blobs`,
+ * and a restore stages it back through this provider -- so the bucket does not
+ * have to be backed up separately. Artifacts exported before that change carry
+ * only metadata and still depend on the bucket.
  */
 @Injectable()
 export class S3StorageProvider implements AttachmentStorageProvider {

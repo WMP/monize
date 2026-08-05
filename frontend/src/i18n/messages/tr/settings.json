@@ -573,7 +573,7 @@
       "description": "Verileriniz başarıyla geri yüklendi. Geri yüklenenler hakkında özet:",
       "totalRecords": "Toplam kayıt",
       "doneButton": "Tamam",
-      "skippedAttachments": "{count, plural, other {# ek geri yüklenmedi}}: dosyaları ek depolamasında bulunamadı veya yedekte kayıtlı sağlama toplamıyla eşleşmedi. Ek dosyaları veritabanının dışında saklanır, bu nedenle onunla birlikte yedeklenip geri yüklenmelidir."
+      "skippedAttachments": "{count, plural, other {# ek geri yüklenmedi}}: yedek bunlar için kullanılabilir bayt içermiyordu — dışa aktarma sırasında eksiktiler veya sağlama toplamından geçemediler, ya da dosya kendi kendine yeten yedeklerden öncesine ait. Ek depolaması düzeldiğinde yeni bir yedek alın."
     }
   },
   "sharedAccess": {

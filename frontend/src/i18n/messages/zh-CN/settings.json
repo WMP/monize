@@ -573,7 +573,7 @@
       "description": "您的数据已成功恢复。以下是恢复内容摘要：",
       "totalRecords": "总记录数",
       "doneButton": "完成",
-      "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：在附件存储中找不到对应文件，或与备份中记录的校验和不匹配。附件文件存储在数据库之外，因此必须与数据库一起备份和恢复。"
+      "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：备份中没有可用的字节——导出时它们缺失或未通过校验和，或该文件早于自包含备份。请在附件存储恢复正常后重新导出备份。"
     }
   },
   "sharedAccess": {

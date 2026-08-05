@@ -573,7 +573,7 @@
       "description": "Jouw gegevens zijn succesvol hersteld. Hier is een overzicht van wat is hersteld:",
       "totalRecords": "Totaal records",
       "doneButton": "Gereed",
-      "skippedAttachments": "{count, plural, one {# bijlage is niet teruggezet} other {# bijlagen zijn niet teruggezet}}: hun bestanden waren niet te vinden in de bijlageopslag, of kwamen niet overeen met de checksum die in de back-up is vastgelegd. Bijlagen worden buiten de database bewaard en moeten er dus samen mee worden geback-upt en teruggezet."
+      "skippedAttachments": "{count, plural, one {# bijlage is niet teruggezet} other {# bijlagen zijn niet teruggezet}}: de back-up bevatte er geen bruikbare bytes voor — ze ontbraken of kwamen niet door hun checksum bij het exporteren, of het bestand is van vóór zelfstandige back-ups. Maak een nieuwe back-up zodra de bijlageopslag in orde is."
     }
   },
   "sharedAccess": {

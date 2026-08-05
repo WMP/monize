@@ -573,7 +573,7 @@
       "description": "Twoje dane zostały pomyślnie przywrócone. Oto podsumowanie tego, co przywrócono:",
       "totalRecords": "Łączna liczba rekordów",
       "doneButton": "Gotowe",
-      "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: ich plików nie znaleziono w magazynie załączników albo nie zgadzały się z sumą kontrolną zapisaną w kopii. Pliki załączników są przechowywane poza bazą danych, więc trzeba je archiwizować i przywracać razem z nią."
+      "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: kopia nie zawierała dla nich użytecznych bajtów — w chwili eksportu brakowało ich albo nie przeszły kontroli sumy, albo plik pochodzi z czasów przed samowystarczalnymi kopiami. Wyeksportuj nową kopię, gdy magazyn załączników będzie sprawny."
     }
   },
   "sharedAccess": {
