@@ -754,6 +754,10 @@
       "heading": "E-Mail ist nicht konfiguriert",
       "body": "Der Notfallzugang ist auf E-Mail-Zustellung angewiesen. Bitten Sie Ihren Administrator, die SMTP-Umgebungsvariablen (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) zu konfigurieren, und versuchen Sie es erneut."
     },
+    "encryptionNotConfigured": {
+      "heading": "Verschlüsselungsschlüssel erforderlich",
+      "body": "Der Notfallzugang benötigt einen auf dem Server gesetzten AI_ENCRYPTION_KEY. Eine Gewährung speichert den Zugangslink jedes Kontakts verschlüsselt, damit ein erneuter Versuch denselben Link noch einmal senden kann, und ohne diesen Schlüssel kann überhaupt kein Link gesendet werden."
+    },
     "alreadyGranted": {
       "heading": "Notfallzugang bereits gewährt",
       "description": "Ihre festgelegten Kontakte haben Magic Links erhalten, um das Konto zu übernehmen. Falls dies unbeabsichtigt war, löschen Sie den gewährten Status unten, um ausstehende Links ungültig zu machen.",

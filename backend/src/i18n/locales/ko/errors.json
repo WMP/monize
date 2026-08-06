@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "이메일이 구성되지 않았습니다. SMTP가 설정될 때까지 긴급 접근을 활성화할 수 없습니다.",
     "encryptionNotConfigured": "암호화 키가 구성되지 않았습니다. AI_ENCRYPTION_KEY가 설정될 때까지 자유 형식 메시지를 안전하게 저장할 수 없습니다.",
+    "encryptionRequiredToEnable": "자격 증명 암호화가 구성되지 않았습니다. 부여 시 각 연락처의 접근 링크를 안전하게 저장해야 하므로, AI_ENCRYPTION_KEY가 설정될 때까지 긴급 접근을 활성화할 수 없습니다.",
     "contactEmailExists": "이 이메일을 가진 긴급 연락처가 이미 존재합니다.",
     "contactNotFound": "연락처를 찾을 수 없습니다",
     "notConfigured": "긴급 접근이 구성되지 않았습니다",

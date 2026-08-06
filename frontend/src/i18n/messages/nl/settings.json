@@ -754,6 +754,10 @@
       "heading": "E-mail is niet geconfigureerd",
       "body": "Noodtoegang vereist e-mailbezorging. Vraag jouw beheerder de SMTP-omgevingsvariabelen (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) te configureren en probeer het opnieuw."
     },
+    "encryptionNotConfigured": {
+      "heading": "Versleutelingssleutel vereist",
+      "body": "Noodtoegang vereist dat AI_ENCRYPTION_KEY op de server is ingesteld. Een toekenning slaat de toegangslink van elk contact versleuteld op zodat een nieuwe poging dezelfde link opnieuw kan versturen; zonder die sleutel kan er helemaal geen link worden verstuurd."
+    },
     "alreadyGranted": {
       "heading": "Noodtoegang al verleend",
       "description": "jouw aangewezen contactpersonen hebben magische links ontvangen om het account over te nemen. Als dit niet de bedoeling was, wis dan de verleende status hieronder om openstaande links ongeldig te maken.",

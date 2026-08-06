@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "邮件未配置。在设置 SMTP 之前，无法启用紧急访问。",
     "encryptionNotConfigured": "加密密钥未配置。在设置 AI_ENCRYPTION_KEY 之前，无法安全存储自由格式留言。",
+    "encryptionRequiredToEnable": "凭据加密未配置。在设置 AI_ENCRYPTION_KEY 之前，无法启用紧急访问，因为授予访问权限时必须安全地存储每位联系人的访问链接。",
     "contactEmailExists": "此邮箱已存在紧急联系人。",
     "contactNotFound": "未找到联系人",
     "notConfigured": "紧急访问未配置",

@@ -754,6 +754,10 @@
       "heading": "O e-mail não está configurado",
       "body": "O acesso de emergência depende do envio de e-mail. Peça ao seu administrador que configure as variáveis de ambiente SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) e tente novamente."
     },
+    "encryptionNotConfigured": {
+      "heading": "Chave de criptografia necessária",
+      "body": "O acesso de emergência precisa de AI_ENCRYPTION_KEY definida no servidor. Uma concessão armazena criptografado o link de acesso de cada contato para que uma nova tentativa possa reenviar o mesmo link; sem essa chave nenhum link pode ser enviado."
+    },
     "alreadyGranted": {
       "heading": "Acesso de emergência já concedido",
       "description": "seus contatos designados receberam links mágicos para assumir a conta. Se isso não foi intencional, limpe o status de concessão abaixo para invalidar os links pendentes.",

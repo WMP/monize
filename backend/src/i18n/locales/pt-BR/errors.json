@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",
     "encryptionNotConfigured": "A chave de criptografia não está configurada. A mensagem de texto livre não pode ser armazenada de forma segura até que AI_ENCRYPTION_KEY seja definida.",
+    "encryptionRequiredToEnable": "A criptografia de credenciais não está configurada. O acesso de emergência não pode ser ativado até que AI_ENCRYPTION_KEY seja definida, porque uma concessão precisa armazenar com segurança o link de acesso de cada contato.",
     "contactEmailExists": "Já existe um contato de emergência com este e-mail.",
     "contactNotFound": "Contato não encontrado",
     "notConfigured": "Acesso de emergência não configurado",

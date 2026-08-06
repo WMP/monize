@@ -754,6 +754,10 @@
       "heading": "E-posta yapılandırılmamış",
       "body": "Acil durum erişimi e-posta teslimatına bağlıdır. Yöneticinizden SMTP ortam değişkenlerini (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) yapılandırmasını isteyin ve tekrar deneyin."
     },
+    "encryptionNotConfigured": {
+      "heading": "Şifreleme anahtarı gerekli",
+      "body": "Acil durum erişimi, sunucuda AI_ENCRYPTION_KEY ayarlanmış olmasını gerektirir. Erişim verme işlemi her kişinin erişim bağlantısını şifreli olarak saklar; böylece yeniden deneme aynı bağlantıyı tekrar gönderebilir. Bu anahtar olmadan hiçbir bağlantı gönderilemez."
+    },
     "alreadyGranted": {
       "heading": "Acil durum erişimi zaten verildi",
       "description": "belirlediğiniz kişiler hesabı devralmaları için sihirli bağlantılar aldı. Bu istenmediyse, bekleyen bağlantıları geçersiz kılmak için aşağıdan verilen durumu temizleyin.",

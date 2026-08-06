@@ -754,6 +754,10 @@
       "heading": "El correo electrónico no está configurado",
       "body": "El acceso de emergencia depende del envío de correos. Pídele a tu administrador que configure las variables de entorno SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) e inténtalo de nuevo."
     },
+    "encryptionNotConfigured": {
+      "heading": "Se requiere una clave de cifrado",
+      "body": "El acceso de emergencia necesita que AI_ENCRYPTION_KEY esté establecida en el servidor. Una concesión almacena cifrado el enlace de acceso de cada contacto para que un reintento pueda reenviar el mismo enlace; sin esa clave no se puede enviar ningún enlace."
+    },
     "alreadyGranted": {
       "heading": "Acceso de emergencia ya otorgado",
       "description": "tus contactos designados recibieron enlaces mágicos para tomar el control de la cuenta. Si esto fue involuntario, borra el estado otorgado a continuación para invalidar los enlaces pendientes.",

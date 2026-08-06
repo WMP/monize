@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail is niet geconfigureerd. Noodtoegang kan pas worden ingeschakeld als SMTP is ingesteld.",
     "encryptionNotConfigured": "Versleutelingssleutel is niet geconfigureerd. Het vrije bericht kan pas veilig worden opgeslagen als AI_ENCRYPTION_KEY is ingesteld.",
+    "encryptionRequiredToEnable": "Versleuteling van inloggegevens is niet geconfigureerd. Noodtoegang kan pas worden ingeschakeld als AI_ENCRYPTION_KEY is ingesteld, omdat een toekenning de toegangslink van elk contact veilig moet opslaan.",
     "contactEmailExists": "Er bestaat al een noodcontact met dit e-mailadres.",
     "contactNotFound": "Contact niet gevonden",
     "notConfigured": "Noodtoegang niet geconfigureerd",

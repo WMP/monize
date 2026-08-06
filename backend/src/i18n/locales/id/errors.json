@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "Email belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga SMTP dikonfigurasi.",
     "encryptionNotConfigured": "Kunci enkripsi belum dikonfigurasi. Pesan teks bebas tidak dapat disimpan dengan aman hingga AI_ENCRYPTION_KEY diatur.",
+    "encryptionRequiredToEnable": "Enkripsi kredensial belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga AI_ENCRYPTION_KEY diatur, karena pemberian akses harus menyimpan tautan akses setiap kontak dengan aman.",
     "contactEmailExists": "Kontak darurat dengan email ini sudah ada.",
     "contactNotFound": "Kontak tidak ditemukan",
     "notConfigured": "Akses darurat belum dikonfigurasi",

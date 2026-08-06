@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "メールが設定されていません。SMTPが設定されるまで緊急アクセスは有効にできません。",
     "encryptionNotConfigured": "暗号化キーが設定されていません。AI_ENCRYPTION_KEY が設定されるまでフリーフォームメッセージを安全に保存できません。",
+    "encryptionRequiredToEnable": "資格情報の暗号化が設定されていません。付与では各連絡先のアクセスリンクを安全に保存する必要があるため、AI_ENCRYPTION_KEY が設定されるまで緊急アクセスは有効にできません。",
     "contactEmailExists": "このメールアドレスの緊急連絡先はすでに存在します。",
     "contactNotFound": "連絡先が見つかりません",
     "notConfigured": "緊急アクセスが設定されていません",

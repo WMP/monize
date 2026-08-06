@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "未設定電子郵件。在設定 SMTP 之前，無法啟用緊急存取。",
     "encryptionNotConfigured": "未設定加密金鑰。在設定 AI_ENCRYPTION_KEY 之前，無法安全儲存自由格式訊息。",
+    "encryptionRequiredToEnable": "未設定憑證加密。在設定 AI_ENCRYPTION_KEY 之前，無法啟用緊急存取，因為授予存取權時必須安全地儲存每位聯絡人的存取連結。",
     "contactEmailExists": "已有使用此電子郵件的緊急聯絡人。",
     "contactNotFound": "找不到聯絡人",
     "notConfigured": "未設定緊急存取",

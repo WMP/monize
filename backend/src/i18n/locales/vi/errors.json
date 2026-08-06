@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "Email chưa được cấu hình. Không thể bật truy cập khẩn cấp cho đến khi SMTP được thiết lập.",
     "encryptionNotConfigured": "Khóa mã hóa chưa được cấu hình. Tin nhắn văn bản tự do không thể được lưu trữ an toàn cho đến khi AI_ENCRYPTION_KEY được thiết lập.",
+    "encryptionRequiredToEnable": "Mã hóa thông tin xác thực chưa được cấu hình. Không thể bật truy cập khẩn cấp cho đến khi AI_ENCRYPTION_KEY được thiết lập, vì việc cấp quyền phải lưu trữ an toàn liên kết truy cập của từng liên hệ.",
     "contactEmailExists": "Đã có liên hệ khẩn cấp với email này.",
     "contactNotFound": "Không tìm thấy liên hệ",
     "notConfigured": "Quyền truy cập khẩn cấp chưa được cấu hình",

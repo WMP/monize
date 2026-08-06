@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "E-Mail ist nicht konfiguriert. Notfallzugriff kann erst aktiviert werden, wenn SMTP eingerichtet ist.",
     "encryptionNotConfigured": "Verschlüsselungsschlüssel ist nicht konfiguriert. Die Freitextnachricht kann erst sicher gespeichert werden, wenn AI_ENCRYPTION_KEY gesetzt ist.",
+    "encryptionRequiredToEnable": "Die Verschlüsselung von Zugangsdaten ist nicht konfiguriert. Notfallzugriff kann erst aktiviert werden, wenn AI_ENCRYPTION_KEY gesetzt ist, denn eine Gewährung muss den Zugangslink jedes Kontakts sicher speichern.",
     "contactEmailExists": "Ein Notfallkontakt mit dieser E-Mail-Adresse existiert bereits.",
     "contactNotFound": "Kontakt nicht gefunden",
     "notConfigured": "Notfallzugriff nicht konfiguriert",

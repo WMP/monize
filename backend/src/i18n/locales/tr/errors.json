@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "E-posta yapılandırılmamış. SMTP kurulana kadar acil erişim etkinleştirilemiyor.",
     "encryptionNotConfigured": "Şifreleme anahtarı yapılandırılmamış. AI_ENCRYPTION_KEY ayarlanana kadar serbest biçimli mesaj güvenli şekilde saklanamıyor.",
+    "encryptionRequiredToEnable": "Kimlik bilgisi şifrelemesi yapılandırılmamış. Bir erişim verme işlemi her kişinin erişim bağlantısını güvenli şekilde saklamak zorunda olduğundan, AI_ENCRYPTION_KEY ayarlanana kadar acil erişim etkinleştirilemiyor.",
     "contactEmailExists": "Bu e-postaya sahip acil durum kişisi zaten mevcut.",
     "contactNotFound": "Kişi bulunamadı",
     "notConfigured": "Acil erişim yapılandırılmamış",

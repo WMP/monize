@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "L'e-mail n'est pas configuré. L'accès d'urgence ne peut pas être activé tant que SMTP n'est pas configuré.",
     "encryptionNotConfigured": "La clé de chiffrement n'est pas configurée. Le message libre ne peut pas être stocké de manière sécurisée tant que AI_ENCRYPTION_KEY n'est pas défini.",
+    "encryptionRequiredToEnable": "Le chiffrement des identifiants n'est pas configuré. L'accès d'urgence ne peut pas être activé tant que AI_ENCRYPTION_KEY n'est pas défini, car un octroi doit stocker de manière sécurisée le lien d'accès de chaque contact.",
     "contactEmailExists": "Un contact d'urgence avec cet e-mail existe déjà.",
     "contactNotFound": "Contact introuvable",
     "notConfigured": "Accès d'urgence non configuré",

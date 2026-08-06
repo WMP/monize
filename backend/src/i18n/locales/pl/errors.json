@@ -265,6 +265,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail nie jest skonfigurowany. Dostępu awaryjnego nie można włączyć, dopóki nie skonfigurujesz SMTP.",
     "encryptionNotConfigured": "Klucz szyfrowania nie jest skonfigurowany. Dowolna wiadomość nie może być bezpiecznie przechowywana, dopóki nie ustawisz AI_ENCRYPTION_KEY.",
+    "encryptionRequiredToEnable": "Szyfrowanie poświadczeń nie jest skonfigurowane. Dostępu awaryjnego nie można włączyć, dopóki nie ustawisz AI_ENCRYPTION_KEY, ponieważ przyznanie dostępu musi bezpiecznie przechowywać link dostępowy każdego kontaktu.",
     "contactEmailExists": "Kontakt awaryjny z tym adresem e-mail już istnieje.",
     "contactNotFound": "Nie znaleziono kontaktu",
     "notConfigured": "Dostęp awaryjny nie jest skonfigurowany",
