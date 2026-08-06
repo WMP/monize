@@ -137,6 +137,32 @@ GUC, so it cannot delete or mark a lease this deployment retook. Expired leases,
 permanent `claimOnce` rows and delivered rows are outside the trigger's WHEN, so
 retakes and the retention sweep are unaffected.
 
+### The first rollout of the claim protocol is a deployment decision
+
+The migration-139 trigger fences a binary that *mutates* `job_claims` without a
+token. The release in production before any of this **never touches the table at
+all** (REMAINING-004): its crons run with whatever coordination they had, which
+for most sends is none. No trigger can make a binary participate in a protocol it
+has never heard of, so while old and new pods overlap, exclusion is only as good
+as the durable signals the old binary already writes:
+
+- **AI insights** converge: the old pod writes the insights it generates, and the
+  new pod's 12-hour cooldown is a durable read of exactly those rows, checked
+  *before* the lease is taken. Only a simultaneous start duplicates -- the same
+  window two old replicas already have with each other today.
+- **Bill and mortgage reminders, emergency-access reminders** do not: the old
+  binary records nothing the new one can read, so during the overlap both may
+  send. That is not a regression -- it is precisely the duplicate the old release
+  produces between its own replicas every day, ending when the last old pod
+  exits, instead of never.
+
+So the exposure during the first deploy equals current main's steady state, and
+the claim protocol removes it from then on. An operator who wants zero duplicate
+sends even during that one window has two options, both outside the repository:
+deploy at an hour no cron fires (the schedule below is the list), or scale the
+old deployment to zero before rolling the new one (a drain). This is flagged in
+the PR that introduces the claims rather than decided silently here.
+
 ### The delivery contract, stated
 
 SMTP and PostgreSQL cannot commit together, so every send has to pick one of these

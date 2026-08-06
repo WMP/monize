@@ -297,10 +297,19 @@ describe("AiInsightsService", () => {
       qb.getRawOne.mockResolvedValue({ lastGenerated: now.toISOString() });
       mockInsightRepo.createQueryBuilder.mockReturnValue(qb);
 
+      const leasesBefore = jobClaims.claimLease.mock.calls.length;
       const result = await service.generateInsights(userId);
 
       expect(mockAggregatorService.computeAggregates).not.toHaveBeenCalled();
       expect(result.insights).toHaveLength(1);
+      // The cooldown fires before the lease, not after. That order is what
+      // coordinates with a previous-release pod during the claim protocol's
+      // first rollout: that binary takes no lease, but the insights it commits
+      // are visible to this durable read, so the new pod converges on them
+      // instead of generating twice (REMAINING-004). Only the simultaneous
+      // start remains uncovered, which is exactly the exposure two
+      // previous-release replicas already have with each other today.
+      expect(jobClaims.claimLease.mock.calls.length).toBe(leasesBefore);
     });
 
     it("generates insights when no recent insights exist", async () => {
