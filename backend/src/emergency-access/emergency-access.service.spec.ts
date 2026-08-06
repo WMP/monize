@@ -155,6 +155,36 @@ describe("EmergencyAccessService", () => {
       const view = await service.getView(userId);
       expect(view.emailConfigured).toBe(false);
     });
+
+    /**
+     * The two configuration halves fail independently, and the second one fails
+     * *silently* (audit RRV4-003): grant delivery stores each contact's claim token
+     * encrypted so a retry re-sends the same link, and without a key that store
+     * throws for every contact -- no email, one log line per contact, and a
+     * settings page that still reports the safeguard as armed. The view has to
+     * carry both, or the UI cannot say which one is missing.
+     */
+    it("reports credential-encryption readiness separately from SMTP", async () => {
+      settingsRepo.findOne.mockResolvedValue(null);
+      contactsRepo.find.mockResolvedValue([]);
+      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
+      encryption.isConfigured.mockReturnValue(false);
+
+      const view = await service.getView(userId);
+
+      expect(view.emailConfigured).toBe(true);
+      expect(view.credentialEncryptionConfigured).toBe(false);
+    });
+
+    it("reports credential encryption as ready when the key is present", async () => {
+      settingsRepo.findOne.mockResolvedValue(null);
+      contactsRepo.find.mockResolvedValue([]);
+      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
+
+      const view = await service.getView(userId);
+
+      expect(view.credentialEncryptionConfigured).toBe(true);
+    });
   });
 
   describe("getMessage", () => {
@@ -266,6 +296,91 @@ describe("EmergencyAccessService", () => {
           reminderAfterDays: 7,
         }),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+
+    /**
+     * `.env.example` presents `AI_ENCRYPTION_KEY` as optional, needed only for
+     * cloud AI providers, so an SMTP-only self-hosted install without it is the
+     * documented configuration rather than an edge case. Grant delivery now
+     * requires it, and the failure is invisible: `credentialFor` throws per
+     * contact, `notifyGrantContacts` reports zero deliveries, the grant is
+     * released for tomorrow, and tomorrow repeats it forever. So enabling has to
+     * be refused where the user can see it (audit RRV4-003).
+     */
+    it("refuses to enable when credential encryption is not configured", async () => {
+      encryption.isConfigured.mockReturnValue(false);
+
+      await expect(
+        service.upsertSettings(userId, {
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+        }),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      // A refused command must not already have written.
+      expect(queryRunner.manager.save).not.toHaveBeenCalled();
+    });
+
+    it("names the missing key in the refusal", async () => {
+      encryption.isConfigured.mockReturnValue(false);
+
+      await expect(
+        service.upsertSettings(userId, {
+          enabled: true,
+          grantAfterDays: 14,
+          reminderAfterDays: 7,
+        }),
+      ).rejects.toThrow(/AI_ENCRYPTION_KEY/);
+    });
+
+    it("still lets the owner turn the feature off without SMTP", async () => {
+      // Disabling is the one action that must never be blocked by a missing
+      // dependency -- it is how an owner revokes a safeguard after SMTP was removed,
+      // and it voids the outstanding links (audit V4R3-002).
+      emailService.getStatus.mockReturnValue({ configured: false });
+      const stored = {
+        ownerUserId: userId,
+        enabled: true,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+        messageCiphertext: null,
+      };
+      queryRunner.manager.findOne.mockResolvedValue(stored);
+      settingsRepo.findOne.mockResolvedValue(stored);
+      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
+
+      await service.upsertSettings(userId, {
+        enabled: false,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+      });
+
+      expect(stored.enabled).toBe(false);
+    });
+
+    it("still lets the owner turn the feature off without the key", async () => {
+      // Otherwise an installation that lost its key could not disable a feature
+      // that no longer works -- the refusal is about arming a safeguard that
+      // cannot fire, not about editing the row.
+      encryption.isConfigured.mockReturnValue(false);
+      const stored = {
+        ownerUserId: userId,
+        enabled: true,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+        messageCiphertext: null,
+      };
+      queryRunner.manager.findOne.mockResolvedValue(stored);
+      settingsRepo.findOne.mockResolvedValue(stored);
+      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
+
+      await service.upsertSettings(userId, {
+        enabled: false,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+      });
+
+      expect(stored.enabled).toBe(false);
     });
 
     it("does not touch the existing ciphertext when saving settings", async () => {

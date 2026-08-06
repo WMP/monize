@@ -13,6 +13,13 @@ export interface EmergencyAccessMessageMetadata {
 
 export interface EmergencyAccessView {
   emailConfigured: boolean;
+  /**
+   * Whether the server can encrypt a contact's claim link, which the grant path
+   * requires so a retry re-sends the same link. Separate from `emailConfigured`
+   * because they fail independently, and without it a grant silently delivers
+   * nothing -- so the page says so rather than letting the toggle look armed.
+   */
+  credentialEncryptionConfigured: boolean;
   enabled: boolean;
   grantAfterDays: number;
   reminderAfterDays: number;

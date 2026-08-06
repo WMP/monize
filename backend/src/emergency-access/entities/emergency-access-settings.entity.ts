@@ -32,6 +32,20 @@ export class EmergencyAccessSettings {
   @Column({ name: "granted_at", type: "timestamp", nullable: true })
   grantedAt: Date | null;
 
+  /**
+   * Which grant cycle this owner is on.
+   *
+   * Advanced by the one statement that transitions ungranted -> granted
+   * (`claimGrant`), so per-contact delivery state belongs to a cycle rather than
+   * to the contact row. That placement is the point: the alternative -- clearing
+   * each contact's delivery marker in every path that re-arms monitoring -- has
+   * five call sites across three files today, and a missed one disarms the
+   * safeguard silently. Nothing has to remember anything here; a contact whose
+   * `notifiedGrantGeneration` is not this number is owed a link (audit RRV4-004).
+   */
+  @Column({ name: "grant_generation", type: "int", default: 1 })
+  grantGeneration: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -8,6 +8,7 @@ import { AutoBackupSettings } from "../backup/entities/auto-backup-settings.enti
 import { EmergencyAccessSettings } from "../emergency-access/entities/emergency-access-settings.entity";
 import { getRequestContext } from "../common/request-context";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { createJobClaimMock } from "../test-helpers/job-claim-testing";
 
 /**
  * RLS smoke for the R7 modules' out-of-request entry points (task R7).
@@ -77,9 +78,12 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
     const service = new EmergencyAccessMonitorService(
       dataSource as never,
       { getStatus: jest.fn().mockReturnValue({ configured: true }) } as never,
-      {} as never,
+      // The daily check now gates on credential encryption too, before the sweep
+      // (audit V4R3-002), so this fixture has to report it configured to reach it.
+      { isConfigured: jest.fn().mockReturnValue(true) } as never,
       { get: jest.fn() } as never,
       {} as never,
+      createJobClaimMock() as never,
     );
 
     await service.runDailyCheck();
