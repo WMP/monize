@@ -375,26 +375,25 @@ describe("MnyImportService", () => {
       expect(jobs.create).not.toHaveBeenCalled();
     });
 
-    it("refuses a second concurrent import, on the insert rather than a count", async () => {
-      // The regression guard for P4-001. `hasActiveJob()` before an
-      // unconditional insert is a check-then-act: two simultaneous starts both
-      // counted zero, both inserted, and both were legitimately claimable -- one
-      // file imported twice. The partial unique index arbitrates now, so `start`
-      // does not ask first at all; the 409 comes from the insert losing.
-      jobs.create.mockRejectedValue(
-        new ConflictException("An import is already running."),
-      );
+    it("gives the friendly 409 without a doomed insert when an import is already active", async () => {
+      // The advisory pre-check. It cannot decide anything -- two requests can
+      // both read false here -- but when it does see an active job it saves the
+      // INSERT the unique index would refuse anyway.
+      jobs.hasActiveJob.mockResolvedValue(true);
 
       await expect(
         service.start("user-1", { stagedFileId: "staged-1" }),
       ).rejects.toBeInstanceOf(ConflictException);
-      expect(jobs.hasActiveJob).not.toHaveBeenCalled();
+      expect(jobs.create).not.toHaveBeenCalled();
     });
 
     it("passes the 409 through when only the insert catches the race", async () => {
-      // The advisory count sees nothing, because the other request has not
-      // committed yet; `create` refuses on the unique index instead. This is
-      // the only path that can distinguish a real concurrent start.
+      // The regression guard for P4-001. `hasActiveJob()` before an
+      // unconditional insert is a check-then-act: two simultaneous starts both
+      // counted zero, and both used to insert -- one file imported twice. The
+      // advisory count sees nothing here, because the other request has not
+      // committed yet; `create` refuses on the partial unique index instead.
+      // This is the only path that can distinguish a real concurrent start.
       jobs.create.mockRejectedValue(importAlreadyRunningException());
 
       await expect(

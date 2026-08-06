@@ -8,6 +8,7 @@ import {
 import { AttachmentOrphanSweeper } from "@/attachments/attachment-orphan-sweeper.service";
 import type { AttachmentStorageProvider } from "@/attachments/storage/attachment-storage.interface";
 import { withSystemContext, withUserContext } from "@/common/db/with-context";
+import { withScopedDb } from "@/common/db/scoped-db";
 
 import {
   INTEGRATION_TYPEORM_OPTIONS,
@@ -94,12 +95,8 @@ describe("attachment bytes written after their intent was swept", () => {
   /** A short scoped transaction, so the clear runs where `create` would run it. */
   const withScopedDbForTest = async <T>(
     fn: (manager: unknown) => Promise<T>,
-  ): Promise<T> => {
-    const { withScopedDb } = await import("@/common/db/scoped-db");
-    return withUserContext(userId, () =>
-      withScopedDb(dataSource, (m) => fn(m)),
-    );
-  };
+  ): Promise<T> =>
+    withUserContext(userId, () => withScopedDb(dataSource, (m) => fn(m)));
 
   /** Age the intent's lease past expiry, as a stalled put would. */
   const expireLease = (key: string): Promise<unknown> =>

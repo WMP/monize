@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ConflictException } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { DataSource, EntityManager } from "typeorm";
+import { DataSource } from "typeorm";
 
 import { ImportJob } from "@/import/mny/entities/import-job.entity";
 import { ImportStagedFile } from "@/import/mny/entities/import-staged-file.entity";
@@ -289,8 +289,8 @@ describe("MnyImportJobService (integration)", () => {
 
     it("allows a fresh import once the previous one completed", async () => {
       const jobId = await newJob(userA);
-      await asUser(userA, () => jobs.claim(jobId));
-      await asUser(userA, () => jobs.complete(jobId, EMPTY_RESULT));
+      const token = await asUser(userA, () => jobs.claim(jobId));
+      await asUser(userA, () => jobs.complete(jobId, token!, EMPTY_RESULT));
 
       const stagedFileId = await stage(userA);
       const next = await asUser(userA, () =>
