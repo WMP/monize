@@ -1420,6 +1420,12 @@ CREATE TABLE import_jobs (
     -- metadata is missing" -- two states the retryable flag used to fold into
     -- one and offer as an ordinary retry, which re-imported the file.
     data_committed BOOLEAN NOT NULL DEFAULT false,
+    -- The current attempt's identity (migration 142), minted by `claim()` and
+    -- required by every write the worker makes. The reaper clears it, which is
+    -- what stops a worker it already gave up on from committing anyway: the
+    -- import transaction's last statement is a fenced compare-and-set on this
+    -- column, and a zero-row result rolls the whole import back (audit RV4-001).
+    attempt_token UUID,
     heartbeat_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
@@ -1431,6 +1437,39 @@ CREATE TABLE import_jobs (
     CONSTRAINT import_jobs_status_check
         CHECK (status IN ('pending', 'running', 'completed', 'failed'))
 );
+
+-- `data_committed` may only go false -> true while the job is `running`
+-- (migration 143). The application checkpoint also requires the attempt's token,
+-- but that only binds code that knows the column exists: during a rolling
+-- deployment a previous-version worker runs `UPDATE import_jobs SET
+-- data_committed = true WHERE id = $1`, naming no token, and would otherwise
+-- commit the whole file after the new reaper had already failed the job and
+-- advertised a retry (audit RRV4-001). The reaper's action is `status = 'failed'`,
+-- so this refuses exactly that commit -- to either version -- as a statement error
+-- that aborts the import transaction.
+--
+-- Deliberately not "and has a token": an old worker's normal unreaped state is
+-- `running` with a NULL token, and refusing that would break every import in
+-- flight during the rollout.
+CREATE OR REPLACE FUNCTION reject_unfenced_import_checkpoint() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+      'import job % may not record a data commit while status is %; the attempt was reaped',
+      OLD.id, NEW.status
+      USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+CREATE TRIGGER trg_import_job_fenced_checkpoint
+    BEFORE UPDATE ON import_jobs
+    FOR EACH ROW
+    WHEN (
+      NEW.data_committed
+      AND NOT OLD.data_committed
+      AND NEW.status <> 'running'
+    )
+    EXECUTE FUNCTION reject_unfenced_import_checkpoint();
 
 CREATE INDEX idx_import_jobs_user ON import_jobs(user_id);
 CREATE INDEX idx_import_jobs_staged_file ON import_jobs(staged_file_id);

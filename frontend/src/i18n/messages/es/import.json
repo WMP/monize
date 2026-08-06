@@ -542,6 +542,7 @@
     "mnyUnsupportedVersion": "Ese archivo se creó con Money 97 o 98. Ábralo y guárdelo una vez en la edición gratuita Money Plus Sunset y después importe el resultado.",
     "mnyPasswordRequired": "Ese archivo de Money está protegido con contraseña.",
     "mnyPasswordIncorrect": "Esa contraseña no abre el archivo de Money.",
-    "mnyUnreadableDatabase": "Ese archivo de Money se descifró, pero no se pudo leer su contenido. Puede estar dañado."
+    "mnyUnreadableDatabase": "Ese archivo de Money se descifró, pero no se pudo leer su contenido. Puede estar dañado.",
+    "mnyJobStalledAfterCommit": "La importación dejó de responder después de que sus datos ya se habían escrito. Tus cuentas y transacciones están ahí, por lo que esta importación no debe repetirse: revisa tus datos e importa solo lo que falte."
   }
 }

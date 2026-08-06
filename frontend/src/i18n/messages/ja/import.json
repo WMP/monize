@@ -542,6 +542,7 @@
     "mnyUnsupportedVersion": "このファイルは Money 97 または 98 で作成されています。無償の Money Plus Sunset エディションで一度開いて保存し、その結果をインポートしてください。",
     "mnyPasswordRequired": "この Money ファイルはパスワードで保護されています。",
     "mnyPasswordIncorrect": "そのパスワードでは Money ファイルを開けません。",
-    "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。"
+    "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。",
+    "mnyJobStalledAfterCommit": "データの書き込みが完了した後にインポートが応答しなくなりました。口座と取引は登録済みのため、このインポートを再実行してはいけません。データを確認し、不足している分だけをインポートしてください。"
   }
 }

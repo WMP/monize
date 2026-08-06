@@ -542,6 +542,7 @@
     "mnyUnsupportedVersion": "That file was written by Money 97 or 98. Open and save it once in the free Money Plus Sunset edition, then import the result.",
     "mnyPasswordRequired": "That Money file is password protected.",
     "mnyPasswordIncorrect": "That password does not open the Money file.",
-    "mnyUnreadableDatabase": "That Money file was decrypted but its contents could not be read. It may be damaged."
+    "mnyUnreadableDatabase": "That Money file was decrypted but its contents could not be read. It may be damaged.",
+    "mnyJobStalledAfterCommit": "The import stopped responding after its data had already been written. Your accounts and transactions are in place, so this import must not be run again. Check your data and import only what is missing."
   }
 }

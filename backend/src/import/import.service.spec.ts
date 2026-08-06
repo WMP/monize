@@ -107,6 +107,8 @@ describe("ImportService", () => {
   let mockNetWorthService: Record<string, jest.Mock>;
   let mockSecurityPriceService: Record<string, jest.Mock>;
   let mockExchangeRateService: Record<string, jest.Mock>;
+  /** How many categories the import created via the guarded insert. */
+  let importedCategoryCount: number;
   let mockQueryRunner: {
     query: jest.Mock;
     manager: Record<string, jest.Mock>;
@@ -180,8 +182,16 @@ describe("ImportService", () => {
     mockedParseCsvHeaders.mockReset();
     mockedValidateCsvContent.mockReset();
 
+    importedCategoryCount = 0;
     mockQueryRunner = {
-      query: jest.fn(),
+      // Categories are created with `INSERT ... ON CONFLICT DO NOTHING RETURNING
+      // id` so a lost race adopts the existing row instead of aborting the whole
+      // import transaction.
+      query: jest.fn(async (sql: string) =>
+        typeof sql === "string" && sql.includes("INSERT INTO categories")
+          ? [{ id: `cat-${++importedCategoryCount}` }]
+          : [],
+      ),
       manager: {
         save: jest
           .fn()
@@ -962,27 +972,12 @@ describe("ImportService", () => {
           },
         );
 
-        let saveCount = 0;
-        mockQueryRunner.manager.save.mockImplementation(
-          (entity: Record<string, unknown>) => {
-            saveCount++;
-            if (
-              entity.name === "Food & Dining" ||
-              (entity as Record<string, unknown>).name === "Food & Dining"
-            ) {
-              return Promise.resolve({ ...entity, id: "new-cat-1" });
-            }
-            return Promise.resolve({
-              ...entity,
-              id: entity.id || `saved-${saveCount}`,
-            });
-          },
-        );
-
         const result = await service.importQifFile(userId, dto);
 
+        // The category is created by one guarded insert, and the id it returns is
+        // the one recorded in the mapping.
         expect(result.categoriesCreated).toBe(1);
-        expect(result.createdMappings!.categories["Food"]).toBe("new-cat-1");
+        expect(result.createdMappings!.categories["Food"]).toBe("cat-1");
       });
 
       it("deduplicates categories by name and parentId during creation", async () => {

@@ -129,6 +129,9 @@ describe("MnyStagingService", () => {
     it("scopes the lookup to the caller", async () => {
       await service.findInfo("user-1", "staged-1");
 
+      // Soft TTL (MR-002): metadata reads carry no `expires_at` predicate, so a
+      // started import is never refused because the clock crossed its TTL. TTL
+      // enforcement lives in the active-job-aware sweep, asserted below.
       expect(repo.findOne).toHaveBeenCalledWith({
         where: { id: "staged-1", userId: "user-1" },
       });
@@ -201,6 +204,24 @@ describe("MnyStagingService", () => {
       expect(builder.where).toHaveBeenCalledWith(
         "expires_at < CURRENT_TIMESTAMP",
       );
+    });
+
+    it("excludes staged files an active job still needs", async () => {
+      repo.createQueryBuilder.mockReturnValue(builder);
+
+      await service.sweepExpiredFiles();
+
+      const conditions = [
+        ...(builder.where as jest.Mock).mock.calls,
+        ...(builder.andWhere as jest.Mock).mock.calls,
+      ].map((call) => String(call[0]));
+      expect(conditions.join(" ")).toContain("expires_at < CURRENT_TIMESTAMP");
+      // With soft-TTL reads (MR-002), the sweep is the only TTL gate -- so it
+      // must not delete the bytes out from under a pending or running import.
+      // The FK is ON DELETE SET NULL, so without this the job survives and
+      // fails partway through with a missing-file error (audit P4-016).
+      expect(conditions.join(" ")).toContain("NOT EXISTS");
+      expect(conditions.join(" ")).toContain("'pending', 'running'");
     });
 
     it("never throws, so one bad sweep cannot kill the scheduler", async () => {

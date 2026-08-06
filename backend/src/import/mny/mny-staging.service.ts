@@ -97,8 +97,10 @@ export class MnyStagingService {
    * here, so a row past its TTL stays readable until the hourly sweep removes
    * it. That is the intended behaviour -- the TTL is a storage-reclamation
    * policy, and refusing a file mid-import because the clock crossed 24 hours
-   * would fail a job that was working. The comment used to claim the filter
-   * existed, which is a claim about code that is not there.
+   * would fail a job that was working. The sweep, not this read, is where TTL is
+   * enforced -- and it skips any file an active job still needs (see
+   * `sweepExpiredFiles`), so a started import can never have its bytes swept out
+   * from under it (audit P4-016, MR-002).
    */
   async findInfo(userId: string, id: string): Promise<StagedFileInfo | null> {
     const row = await withScopedDb(this.dataSource, (manager) =>
@@ -113,6 +115,11 @@ export class MnyStagingService {
    * The staged bytes, or null when the row is gone. `data` is `select: false`,
    * so it takes an explicit `addSelect` -- which is the point: every other query
    * in this service stays off the BYTEA column.
+   *
+   * No `expires_at` predicate, for the same reason as `findInfo`: an import that
+   * has already started must be able to load the bytes it was promised, even if
+   * the clock crossed the TTL while it ran. The active-job-aware sweep is what
+   * keeps those bytes present until the job is done.
    */
   async loadBytes(userId: string, id: string): Promise<Buffer | null> {
     const row = await withScopedDb(this.dataSource, (manager) =>
@@ -137,12 +144,18 @@ export class MnyStagingService {
   }
 
   /**
-   * Deletes every expired staged file, for every user.
+   * Deletes every expired staged file that no active job still needs.
    *
    * Idempotent by construction -- the predicate is "already expired", so two
    * replicas running the sweep at the same time simply race to delete the same
    * rows and the loser deletes nothing. Runs hourly rather than daily so a
    * cluster with one long-lived pod does not sit on a day's worth of uploads.
+   *
+   * The active-job exclusion mirrors `dropSupersededFiles`. Expiry alone would
+   * delete the bytes out from under a pending or running import -- the foreign
+   * key is ON DELETE SET NULL, so the job survives and simply fails with a
+   * missing-file error partway through a 200 MB import (audit P4-016). An import
+   * that outlives its own TTL is exactly the long one worth not restarting.
    */
   @Cron(CronExpression.EVERY_HOUR)
   async sweepExpiredFiles(): Promise<void> {
@@ -154,6 +167,13 @@ export class MnyStagingService {
             .createQueryBuilder()
             .delete()
             .where("expires_at < CURRENT_TIMESTAMP")
+            .andWhere(
+              `NOT EXISTS (
+                 SELECT 1 FROM import_jobs job
+                  WHERE job.staged_file_id = import_staged_files.id
+                    AND job.status IN ('pending', 'running')
+               )`,
+            )
             .execute();
           return result.affected ?? 0;
         }),
