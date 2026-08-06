@@ -1,0 +1,40 @@
+-- 138: fence an import worker to the attempt it actually claimed.
+--
+-- Migration 136 made "one active import per user" a database rule and the reaper
+-- honest about `data_committed`. Neither of those stops a worker that has *lost*
+-- its job from finishing anyway (audit RV4-001).
+--
+-- The reaper fails a job whose heartbeat went stale, and the heartbeat is written
+-- on its own connection while the import transaction runs on another. So a worker
+-- can be stalled or blocked long enough to be reaped, and then wake up and commit:
+-- its commit checkpoint was an unconditional `SET data_committed = true WHERE
+-- id = $1`, which does not ask whether the job is still running or still *this*
+-- worker's. The reaped job was meanwhile advertised as retryable and no longer
+-- counts as active, so the user could start a second import over the same bytes
+-- -- and both commit. One -25.00 transaction in the file becomes -50.00 in the
+-- ledger, with duplicate payees, splits, holdings and prices to match.
+--
+-- `retryable` cannot fix this: it describes what already happened, and the
+-- question here is whether the write may happen at all. That needs a fencing
+-- token -- an identity for the attempt, minted when the job is claimed, required
+-- by every write the worker makes, and revoked when the reaper takes the job away.
+--
+--   attempt_token -- the current attempt's identity. NULL while pending, set by
+--                    `claim()`, cleared by the reaper and by every terminal
+--                    transition.
+--
+-- The checkpoint becomes `... WHERE id = $1 AND status = 'running' AND
+-- attempt_token = $2 RETURNING id`, and a zero-row result throws, which rolls the
+-- whole import transaction back. That is the only place it can go: the checkpoint
+-- is the last statement in that transaction, so a refusal there is what turns
+-- "committed after being reaped" into "committed nothing".
+--
+-- Backfill: NULL for every existing row, which is correct for all of them. A
+-- pending or terminal job has no attempt to fence, and a `running` row that
+-- predates this column belongs to a worker from the old code that cannot present
+-- a token -- so its checkpoint refuses and its import rolls back. That is the
+-- conservative direction: the rollback costs a retry, where letting it through
+-- would cost a duplicated ledger.
+
+ALTER TABLE import_jobs
+    ADD COLUMN IF NOT EXISTS attempt_token UUID;

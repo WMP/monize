@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Dit bestand is gemaakt met Money 97 of 98. Open en bewaar het één keer in de gratis Money Plus Sunset-editie en importeer daarna het resultaat.",
     "mnyPasswordRequired": "Dit Money-bestand is met een wachtwoord beveiligd.",
     "mnyPasswordIncorrect": "Met dit wachtwoord kan het Money-bestand niet worden geopend.",
-    "mnyUnreadableDatabase": "Dit Money-bestand is ontsleuteld, maar de inhoud kon niet worden gelezen. Het is mogelijk beschadigd."
+    "mnyUnreadableDatabase": "Dit Money-bestand is ontsleuteld, maar de inhoud kon niet worden gelezen. Het is mogelijk beschadigd.",
+    "mnyJobStalledAfterCommit": "De import reageerde niet meer nadat de gegevens al waren weggeschreven. Je rekeningen en transacties staan er, dus deze import mag niet opnieuw worden uitgevoerd — controleer je gegevens en importeer alleen wat ontbreekt."
   }
 }

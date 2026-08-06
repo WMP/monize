@@ -11,7 +11,9 @@ import {
   JOB_HEARTBEAT_INTERVAL_MS,
   JOB_STALE_AFTER_MS,
   JOB_STALLED_ERROR_KEY,
+  JOB_COMMITTED_STALLED_ERROR_KEY,
   MnyImportJobService,
+  MnyJobFencedError,
   isActiveJobConflict,
   returnedRows,
 } from "./mny-import-job.service";
@@ -82,6 +84,9 @@ describe("returnedRows", () => {
     expect(returnedRows([[], 0])).toHaveLength(0);
   });
 });
+
+/** A stable attempt token, so a spec can assert what the fence compares. */
+const TOKEN = "9f1b7c2e-0000-4000-8000-abcdefabcdef";
 
 describe("MnyImportJobService", () => {
   let repo: Record<string, jest.Mock>;
@@ -243,25 +248,32 @@ describe("MnyImportJobService", () => {
       expect(sql(query.mock.calls[0])).toContain(
         "WHERE id = $1 AND status = 'pending'",
       );
-      expect(query.mock.calls[0][1]).toEqual(["job-1"]);
+      expect(query.mock.calls[0][1][0]).toBe("job-1");
     });
 
     it("wins when the conditional update returned the row", async () => {
       query.mockResolvedValue([[{ id: "job-1" }], 1]);
 
-      expect(await service.claim("job-1")).toBe(true);
+      // The claim mints this attempt's fencing token and hands it back; every
+      // subsequent worker write names it (audit RV4-001).
+      const token = await service.claim("job-1");
+      expect(token).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+      expect(sql(query.mock.calls[0])).toContain("attempt_token = $2");
+      expect(query.mock.calls[0][1][1]).toBe(token);
     });
 
     it("loses when another worker got there first", async () => {
       query.mockResolvedValue([[], 0]);
 
-      expect(await service.claim("job-1")).toBe(false);
+      expect(await service.claim("job-1")).toBeNull();
     });
   });
 
   describe("reportProgress", () => {
     it("publishes on its own connection, outside the import transaction", async () => {
-      await service.reportProgress("job-1", {
+      await service.reportProgress("job-1", TOKEN, {
         phase: "transactions",
         processed: 10,
         total: 100,
@@ -270,47 +282,105 @@ describe("MnyImportJobService", () => {
       // Progress written inside the import's transaction would stay invisible
       // until commit -- a frozen progress bar for the whole run.
       expect(mockedOutside).toHaveBeenCalledTimes(1);
-      expect(sql(query.mock.calls[0])).toContain("SET progress = $2::jsonb");
-      expect(query.mock.calls[0][1][1]).toBe(
+      expect(sql(query.mock.calls[0])).toContain("SET progress = $3::jsonb");
+      expect(query.mock.calls[0][1][2]).toBe(
         JSON.stringify({ phase: "transactions", processed: 10, total: 100 }),
       );
     });
 
     it("only touches a job that is still running", async () => {
-      await service.reportProgress("job-1", {
+      await service.reportProgress("job-1", TOKEN, {
         phase: "preparing",
         processed: 0,
         total: 0,
       });
 
       expect(sql(query.mock.calls[0])).toContain(
-        "WHERE id = $1 AND status = 'running'",
+        "WHERE id = $1 AND status = 'running' AND attempt_token = $2",
       );
     });
   });
 
   describe("heartbeat", () => {
     it("stamps the heartbeat outside the import transaction", async () => {
-      await service.heartbeat("job-1");
+      await service.heartbeat("job-1", TOKEN);
 
       expect(mockedOutside).toHaveBeenCalledTimes(1);
       expect(sql(query.mock.calls[0])).toContain(
         "SET heartbeat_at = CURRENT_TIMESTAMP",
       );
-      expect(query.mock.calls[0][1]).toEqual(["job-1"]);
+      // Token-scoped: a reaped worker's heartbeat must not make the job look
+      // alive again.
+      expect(sql(query.mock.calls[0])).toContain("attempt_token = $2");
+      expect(query.mock.calls[0][1]).toEqual(["job-1", TOKEN]);
+    });
+  });
+
+  /**
+   * The fence (audit RV4-001).
+   *
+   * The reaper decides a job is dead from a *separate* connection while the
+   * import transaction runs on another, so the worker can be blocked long enough
+   * to be written off and then wake up. Before the token, its checkpoint was an
+   * unconditional `SET data_committed = true WHERE id = $1`: it committed the
+   * whole file behind the reaper's back, beside a job row inviting a retry that
+   * would import it again.
+   */
+  describe("markDataCommitted", () => {
+    const manager = (): EntityManager =>
+      ({ query }) as unknown as EntityManager;
+
+    it("checkpoints only while this worker still owns the running job", async () => {
+      query.mockResolvedValue([[{ id: "job-1" }], 1]);
+
+      await service.markDataCommitted(manager(), "job-1", TOKEN);
+
+      const statement = sql(lastCall());
+      expect(statement).toContain("SET data_committed = true");
+      expect(statement).toContain(
+        "WHERE id = $1 AND status = 'running' AND attempt_token = $2",
+      );
+      expect(statement).toContain("RETURNING id");
+      expect(lastCall()[1]).toEqual(["job-1", TOKEN]);
+    });
+
+    it("throws when the reaper has already revoked this attempt", async () => {
+      // Zero rows: the job is no longer running, or its token was cleared. This
+      // is the last statement in the import transaction, so throwing here is what
+      // rolls the whole import back instead of committing it.
+      query.mockResolvedValue([[], 0]);
+
+      await expect(
+        service.markDataCommitted(manager(), "job-1", TOKEN),
+      ).rejects.toBeInstanceOf(MnyJobFencedError);
+    });
+
+    it("reads the row count rather than the result's length", async () => {
+      // `UPDATE ... RETURNING` comes back as the tuple `[rows, rowCount]`, so
+      // `result.length` is 2 whether or not anything was updated -- a length check
+      // here would make every fenced worker a winner, which is the exact bug the
+      // fence exists to prevent.
+      query.mockResolvedValue([[], 0]);
+
+      await expect(
+        service.markDataCommitted(manager(), "job-1", TOKEN),
+      ).rejects.toBeInstanceOf(MnyJobFencedError);
     });
   });
 
   describe("complete", () => {
     it("stores the result and clears progress", async () => {
-      await service.complete("job-1", {
+      await service.complete("job-1", TOKEN, {
         accountsCreated: 2,
       } as never);
 
       const statement = sql(query.mock.calls[0]);
       expect(statement).toContain("SET status = 'completed'");
       expect(statement).toContain("progress = NULL");
-      expect(query.mock.calls[0][1][1]).toBe(
+      // A completed job has no attempt left to fence.
+      expect(statement).toContain("attempt_token = NULL");
+      expect(statement).toContain("attempt_token = $2");
+      expect(query.mock.calls[0][1][2]).toBe(
         JSON.stringify({ accountsCreated: 2 }),
       );
     });
@@ -326,6 +396,9 @@ describe("MnyImportJobService", () => {
         "mnyImportFailed",
         "connection reset",
         true,
+        // No token: this caller failed the job before any worker claimed it, so
+        // the statement's `$5 IS NULL` arm applies.
+        null,
       ]);
     });
   });
@@ -369,7 +442,7 @@ describe("MnyImportJobService", () => {
       await service.runClaimed("user-1", "job-1", body);
 
       const progressCall = query.mock.calls.find((call) =>
-        sql(call).includes("SET progress = $2::jsonb"),
+        sql(call).includes("SET progress = $3::jsonb"),
       );
       expect(progressCall?.[1][0]).toBe("job-1");
     });
@@ -453,17 +526,70 @@ describe("MnyImportJobService", () => {
   });
 
   describe("reapStaleJobs", () => {
-    it("fails running jobs whose heartbeat went stale, and marks them retryable", async () => {
+    it("revokes the attempt token, so a reaped worker cannot commit", async () => {
+      await service.reapStaleJobs();
+
+      // Clearing the token is what makes the reap stick: the worker's own commit
+      // checkpoint names it, so once it is gone that worker's import transaction
+      // refuses and rolls back rather than landing behind the reaper's back
+      // (audit RV4-001). Failing the row alone never stopped the write.
+      expect(sql(query.mock.calls[0])).toContain("attempt_token = NULL");
+    });
+
+    it("fails running jobs whose heartbeat went stale", async () => {
       await service.reapStaleJobs();
 
       const statement = sql(query.mock.calls[0]);
       expect(statement).toContain("status = 'running'");
       expect(statement).toContain("heartbeat_at < CURRENT_TIMESTAMP");
-      expect(statement).toContain("retryable = true");
       expect(query.mock.calls[0][1]).toEqual([
         String(JOB_STALE_AFTER_MS),
         JOB_STALLED_ERROR_KEY,
+        JOB_COMMITTED_STALLED_ERROR_KEY,
       ]);
+    });
+
+    it("derives retryability from data_committed, not from being a reap", async () => {
+      // The regression this test previously enshrined: it asserted
+      // `retryable = true` outright. Dying between the import transaction's
+      // commit and `complete()` is exactly what the reaper exists to clean up, so
+      // hard-coding retryable there routes around the one rule that stops a
+      // retry inserting every imported row a second time (audit FV4-001).
+      await service.reapStaleJobs();
+
+      const statement = sql(query.mock.calls[0]);
+      expect(statement).toContain("retryable = (data_committed = false)");
+      expect(statement).not.toContain("retryable = true");
+    });
+
+    it("gives a committed-then-stalled job its own error key", async () => {
+      // The two states need different advice: one can be retried and the other
+      // must not be, so they cannot share a message.
+      await service.reapStaleJobs();
+
+      const statement = sql(query.mock.calls[0]);
+      expect(statement).toContain("WHEN data_committed THEN $3");
+      expect(statement).toContain("not safe to repeat");
+    });
+
+    it("reports a committed stalled job at error level, naming it", async () => {
+      // Its rows are in the database but the job never reported a result, so the
+      // user sees a failure over data that actually landed. An operator has to
+      // know which job that was.
+      query.mockResolvedValue([
+        [
+          { id: "job-1", data_committed: false },
+          { id: "job-2", data_committed: true },
+        ],
+        2,
+      ]);
+      const error = jest.spyOn(service["logger"], "error");
+
+      await service.reapStaleJobs();
+
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("job-2"));
+      expect(error.mock.calls[0][0]).toContain("NOT retryable");
+      expect(error.mock.calls[0][0]).not.toContain("job-1");
     });
 
     it("fails pending jobs no worker ever claimed, measured from creation", async () => {
@@ -477,7 +603,13 @@ describe("MnyImportJobService", () => {
     });
 
     it("logs the jobs it reaped", async () => {
-      query.mockResolvedValue([[{ id: "job-1" }, { id: "job-2" }], 2]);
+      query.mockResolvedValue([
+        [
+          { id: "job-1", data_committed: false },
+          { id: "job-2", data_committed: false },
+        ],
+        2,
+      ]);
       const warn = jest.spyOn(service["logger"], "warn");
 
       await service.reapStaleJobs();

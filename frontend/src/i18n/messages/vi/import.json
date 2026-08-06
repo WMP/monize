@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Tệp đó được tạo bởi Money 97 hoặc 98. Hãy mở và lưu tệp một lần trong bản Money Plus Sunset miễn phí, rồi nhập kết quả.",
     "mnyPasswordRequired": "Tệp Money đó được bảo vệ bằng mật khẩu.",
     "mnyPasswordIncorrect": "Mật khẩu đó không mở được tệp Money.",
-    "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng."
+    "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng.",
+    "mnyJobStalledAfterCommit": "Quá trình nhập đã ngừng phản hồi sau khi dữ liệu của nó đã được ghi. Tài khoản và giao dịch của bạn đã có, vì vậy không được chạy lại lần nhập này — hãy kiểm tra dữ liệu và chỉ nhập phần còn thiếu."
   }
 }

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
@@ -49,10 +50,18 @@ export class ImportPostProcessingService {
     const affectedIds = [...affectedAccountIds];
     if (affectedIds.length > 0) {
       try {
-        // Read the balances and write them back in one transaction: the
-        // recomputed figures must not be applied on top of rows that changed
-        // between the SELECT and the UPDATE.
+        // Read the balances and write them back in one transaction, holding the
+        // account rows from before the read.
+        //
+        // One transaction was not enough on its own: under READ COMMITTED the
+        // SELECT and the UPDATE take separate statement snapshots, so an
+        // interactive transaction that committed in between was overwritten by
+        // an absolute total that never saw it (audit P4-005). The lock is what
+        // makes "must not be applied on top of rows that changed" true rather
+        // than intended -- see the protocol note in common/db/locks.ts.
         await withScopedDb(this.dataSource, async (manager) => {
+          await lockAccountsForBalanceWrite(manager, affectedIds);
+
           const balances: { account_id: string; balance: string }[] =
             await manager.query(
               `SELECT a.id as account_id,
@@ -84,8 +93,19 @@ export class ImportPostProcessingService {
           }
         });
       } catch (err) {
-        this.logger.warn(
-          `Post-import balance recalculation failed: ${err.message}`,
+        // Not a `warn` like the backfills below it. Those reach an external
+        // price or FX provider, so a failure is somebody else's outage and the
+        // imported rows are still correct. This step is pure database work, and
+        // the balances the writers left behind are wrong until it runs: the
+        // `.mny` writer sets each account's balance absolutely from the file's
+        // own figure (`writeAccountBalances`), which counts future-dated rows
+        // this query deliberately excludes. A failure here leaves every affected
+        // account showing a balance that disagrees with its own ledger, so it is
+        // an error an operator has to see -- with the account ids, because
+        // repairing it means recalculating exactly those.
+        this.logger.error(
+          `Post-import balance recalculation failed for account(s) ${affectedIds.join(", ")}: ${err.message}`,
+          err instanceof Error ? err.stack : undefined,
         );
       }
     }

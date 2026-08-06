@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "這個檔案由 Money 97 或 98 建立。請先以免費的 Money Plus Sunset 版本開啟並儲存一次，然後匯入結果。",
     "mnyPasswordRequired": "這個 Money 檔案受密碼保護。",
     "mnyPasswordIncorrect": "這個密碼無法開啟 Money 檔案。",
-    "mnyUnreadableDatabase": "這個 Money 檔案已解密，但無法讀取其內容，檔案可能已損壞。"
+    "mnyUnreadableDatabase": "這個 Money 檔案已解密，但無法讀取其內容，檔案可能已損壞。",
+    "mnyJobStalledAfterCommit": "匯入在其資料已寫入後停止回應。您的帳戶與交易已經建立，因此不可重新執行這次匯入——請檢查資料，只匯入缺少的部分。"
   }
 }

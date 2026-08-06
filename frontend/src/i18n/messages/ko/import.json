@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "이 파일은 Money 97 또는 98로 작성되었습니다. 무료 Money Plus Sunset 버전에서 한 번 열어 저장한 뒤 그 결과를 가져오세요.",
     "mnyPasswordRequired": "이 Money 파일은 암호로 보호되어 있습니다.",
     "mnyPasswordIncorrect": "이 암호로는 Money 파일을 열 수 없습니다.",
-    "mnyUnreadableDatabase": "이 Money 파일은 복호화되었지만 내용을 읽을 수 없습니다. 손상되었을 수 있습니다."
+    "mnyUnreadableDatabase": "이 Money 파일은 복호화되었지만 내용을 읽을 수 없습니다. 손상되었을 수 있습니다.",
+    "mnyJobStalledAfterCommit": "데이터가 이미 기록된 후 가져오기가 응답을 멈췄습니다. 계좌와 거래는 등록되어 있으므로 이 가져오기를 다시 실행하면 안 됩니다. 데이터를 확인하고 누락된 항목만 가져오세요."
   }
 }
