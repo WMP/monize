@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "Adjunto no encontrado",
+    "transactionNotFound": "Transacción no encontrada",
+    "empty": "El archivo subido está vacío",
+    "fileTooLarge": "El archivo supera el tamaño máximo de {{ max }} bytes",
+    "unsupportedType": "Tipo de archivo no admitido. Tipos permitidos: {{ types }}",
+    "tooMany": "Esta transacción ya tiene el máximo de {{ max }} adjuntos"
+  },
   "accounts": {
     "accountWithIdNotFound": "Cuenta con ID {{ id }} no encontrada",
     "notInvestmentPair": "Esta cuenta no forma parte de un par de cuentas de inversión",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "La divisa \"{{ code }}\" ya está en tu lista",
+    "alreadyInListInactive": "La divisa \"{{ code }}\" ya está en tu lista, pero actualmente está inactiva. Reactívala para usarla.",
     "notFound": "Divisa \"{{ code }}\" no encontrada",
     "cannotModifySystem": "No se pueden modificar los metadatos de la divisa del sistema",
     "cannotModifyOther": "No se pueden modificar las divisas de otro usuario",
     "inUse": "La divisa \"{{ code }}\" está en uso por tus cuentas, valores u otros registros. Desactívala en su lugar.",
-    "invalidRateDate": "date debe tener el formato AAAA-MM-DD",
-    "alreadyInListInactive": "La divisa \"{{ code }}\" ya está en tu lista, pero actualmente está inactiva. Reactívala para usarla."
+    "invalidRateDate": "date debe tener el formato AAAA-MM-DD"
   },
   "delegation": {
     "delegatedAccessInvalid": "El acceso delegado ya no es válido",
@@ -348,6 +356,8 @@
     "sameSourceAndDestination": "Las cuentas de origen y destino deben ser diferentes",
     "requiresBrokerageAccount": "Las transacciones de inversión planificadas requieren una cuenta de corretaje",
     "notFound": "Transacción planificada con ID {{ id }} no encontrada",
+    "fxPlainOnly": "Solo se puede usar otra moneda en una transacción planificada simple, no en un desglose, una transferencia ni una inversión",
+    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo.",
     "investmentActionRequired": "Se requiere acción de inversión para las transacciones de inversión planificadas",
     "actionRequiresSecurity": "La acción {{ action }} requiere un valor",
     "actionRequiresPositiveQuantity": "La acción {{ action }} requiere una cantidad positiva",
@@ -358,16 +368,19 @@
     "splitOverrideRequiresAmount": "La cantidad es obligatoria al crear una modificación de desglose",
     "overrideNotFound": "Modificación con ID {{ overrideId }} no encontrada",
     "updateSplitOverrideRequiresAmount": "La cantidad es obligatoria para la modificación de desglose",
-    "dateMustBeYMD": "la fecha debe estar en formato YYYY-MM-DD",
-    "fxPlainOnly": "Solo se puede usar otra moneda en una transacción planificada simple, no en un desglose, una transferencia ni una inversión",
-    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo."
+    "dateMustBeYMD": "la fecha debe estar en formato YYYY-MM-DD"
   },
   "securities": {
-    "exchangeRateUnavailable": "No se pudo determinar un tipo de cambio para {{ from }} -> {{ to }} en la fecha de la transacción. Indica un exchangeRate explícito para que el asiento en la cuenta de efectivo sea correcto.",
     "accountMustBeInvestment": "La cuenta debe ser de tipo INVESTMENT",
     "securityIdRequired": "El ID del valor es obligatorio para las transacciones de {{ action }}",
+    "exchangeRateUnavailable": "No se pudo determinar un tipo de cambio para {{ from }} -> {{ to }} en la fecha de la transacción. Indica un exchangeRate explícito para que el asiento en la cuenta de efectivo sea correcto.",
     "splitRatioRequired": "El ratio de división (cantidad) debe ser mayor que cero",
     "acquisitionPriceRequired": "Se requiere un precio por acción mayor que cero para las transacciones {{ action }}. Utilice ADD_SHARES para las acciones adquiridas sin un coste conocido.",
+    "ambiguousSecurity": "\"{{ query }}\" coincide con varios valores: {{ list }}. Use el símbolo exacto.",
+    "allocationExceedsTotal": "Los porcentajes de asignación suman más del 100 %.",
+    "assetOptionNameRequired": "Se requiere un nombre de clase de activo.",
+    "invalidTagKey": "Se requiere una clave de etiqueta (1-100 caracteres)",
+    "securityNotFoundByQuery": "Ningún valor coincide con \"{{ query }}\". Agregue el valor primero o verifique el símbolo.",
     "cannotHoldSecurities": "{{ label }} no puede tener valores",
     "sourceDestMustDiffer": "Las cuentas de origen y destino deben ser diferentes",
     "bothAccountsMustBeInvestment": "Ambas cuentas deben ser de tipo INVESTMENT",
@@ -395,6 +408,10 @@
     "startDateBeforeEndDate": "startDate debe ser igual o anterior a endDate",
     "invalidGranularity": "granularity debe ser 'month' o 'day' si se proporciona",
     "symbolAlreadyExists": "Ya existe un valor con el símbolo {{ symbol }}",
+    "lookupQueryRequired": "Proporcione un símbolo bursátil o el nombre de un valor para buscar.",
+    "lookupNotFound": "No se encontró ningún valor que coincida con \"{{ query }}\". Comprueba el símbolo o el nombre, o especifica un mercado.",
+    "lookupAmbiguous": "\"{{ query }}\" coincide con varios valores: {{ list }}. Vuelve a ejecutar la búsqueda especificando un mercado.",
+    "lookupNoCurrency": "No se pudo determinar la moneda de \"{{ symbol }}\". Añade el valor manualmente en su lugar.",
     "notFoundById": "Valor con ID {{ id }} no encontrado",
     "notFoundBySymbol": "Valor con símbolo {{ symbol }} no encontrado",
     "cannotDeactivateWithHoldings": "No se puede desactivar un valor con posiciones activas. Vende todas las acciones primero.",
@@ -411,16 +428,7 @@
     "invalidUuid": "UUID de {{ label }} no válido: {{ id }}",
     "symbolLength": "El símbolo debe tener entre 1 y 20 caracteres",
     "symbolCharacters": "El símbolo solo puede contener letras, dígitos, puntos o guiones",
-    "ambiguousSecurity": "\"{{ query }}\" coincide con varios valores: {{ list }}. Use el símbolo exacto.",
-    "securityNotFoundByQuery": "Ningún valor coincide con \"{{ query }}\". Agregue el valor primero o verifique el símbolo.",
-    "lookupQueryRequired": "Proporcione un símbolo bursátil o el nombre de un valor para buscar.",
-    "lookupNotFound": "No se encontró ningún valor que coincida con \"{{ query }}\". Comprueba el símbolo o el nombre, o especifica un mercado.",
-    "lookupAmbiguous": "\"{{ query }}\" coincide con varios valores: {{ list }}. Vuelve a ejecutar la búsqueda especificando un mercado.",
-    "lookupNoCurrency": "No se pudo determinar la moneda de \"{{ symbol }}\". Añade el valor manualmente en su lugar.",
     "noUpdateFields": "Proporciona al menos un campo para cambiar.",
-    "allocationExceedsTotal": "Los porcentajes de asignación suman más del 100 %.",
-    "invalidTagKey": "Se requiere una clave de etiqueta (1-100 caracteres)",
-    "assetOptionNameRequired": "Se requiere un nombre de clase de activo.",
     "documentNotFound": "Documento no encontrado"
   },
   "tags": {
@@ -436,6 +444,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId debe ser un UUID válido",
     "amountFromMustBeNumber": "amountFrom debe ser un número",
     "amountToMustBeNumber": "amountTo debe ser un número",
+    "tagKeyTooLong": "tagKey no debe superar los 100 caracteres",
+    "invalidTagKeyOp": "tagKeyOp no válido: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue es obligatorio para contains / notContains",
+    "tagKeyRequired": "Se requiere una clave de etiqueta (1-100 caracteres)",
     "invalidGroupBy": "groupBy debe ser 'category' o 'payee'",
     "limitMustBePositive": "limit debe ser un número positivo",
     "recurringPayeeRequired": "payeeIds es obligatorio",
@@ -444,6 +456,13 @@
     "statementBalanceMustBeNumber": "statementBalance debe ser un número",
     "categoryNotFound": "Categoría no encontrada",
     "categoriesNotFound": "Categorías no encontradas: {{ ids }}",
+    "crossOwnerTransferLocked": "El otro lado de esta transferencia está en una cuenta a la que ya no tienes acceso. Puedes editar los detalles de esta transacción, pero su importe, fecha y cuentas están bloqueados.",
+    "crossOwnerAccountMoveLocked": "Esta transferencia involucra la cuenta de otro usuario, por lo que no se puede mover a otras cuentas.",
+    "crossOwnerVoidLocked": "Anular o des-anular esta transferencia cambia ambos lados, pero el otro lado está en una cuenta a la que ya no tienes acceso. Aún puedes cambiar el estado de conciliación de esta transacción.",
+    "transferVoidMismatch": "Los dos lados de esta transferencia no coinciden en si está anulada, así que no se puede editar con seguridad. Contacta con soporte para que reparen esta transferencia.",
+    "cannotEditTransfer": "Las transferencias no se pueden editar aquí. Edita la transferencia desde la pantalla de Transacciones.",
+    "cannotEditSplit": "Las transacciones divididas no se pueden editar aquí. Edita la división desde la pantalla de Transacciones.",
+    "noUpdateFields": "Proporciona al menos un campo para cambiar.",
     "investmentSplitRequiresPayload": "El desglose de inversión requiere un payload de inversión",
     "investmentActionNotAllowedInSplit": "La acción de inversión {{ action }} no está permitida dentro de una transacción desglosada",
     "investmentSplitCannotSetCategoryOrTransfer": "Los desgloses de inversión no pueden establecer también categoryId o transferAccountId",
@@ -467,19 +486,11 @@
     "notFoundById": "Transacción con ID {{ id }} no encontrada",
     "bulkUpdateNoFields": "Se debe proporcionar al menos un campo de actualización",
     "payeeNotFound": "Beneficiario no encontrado",
-    "crossOwnerTransferLocked": "El otro lado de esta transferencia está en una cuenta a la que ya no tienes acceso. Puedes editar los detalles de esta transacción, pero su importe, fecha y cuentas están bloqueados.",
-    "crossOwnerAccountMoveLocked": "Esta transferencia involucra la cuenta de otro usuario, por lo que no se puede mover a otras cuentas.",
-    "cannotEditTransfer": "Las transferencias no se pueden editar aquí. Edita la transferencia desde la pantalla de Transacciones.",
-    "cannotEditSplit": "Las transacciones divididas no se pueden editar aquí. Edita la división desde la pantalla de Transacciones.",
-    "noUpdateFields": "Proporciona al menos un campo para cambiar.",
-    "tagKeyTooLong": "tagKey no debe superar los 100 caracteres",
-    "invalidTagKeyOp": "tagKeyOp no válido: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue es obligatorio para contains / notContains",
-    "tagKeyRequired": "Se requiere una clave de etiqueta (1-100 caracteres)",
     "fxFieldsIncomplete": "originalAmount y originalCurrencyCode deben proporcionarse juntos",
     "fxRateRequired": "Se requiere un tipo de cambio positivo para una transacción en moneda extranjera",
     "fxSignMismatch": "originalAmount y amount deben tener el mismo signo",
-    "jointAccountMoveLocked": "Las transacciones de una cuenta compartida no se pueden mover a otra cuenta."
+    "jointAccountMoveLocked": "Las transacciones de una cuenta compartida no se pueden mover a otra cuenta.",
+    "statusChangeNeedsBothLegs": "El estado de esta transferencia debe cambiar en ambos lados. Edita la transferencia en sí, o cambia el estado en el desglose al que pertenece."
   },
   "users": {
     "userNotFound": "Usuario no encontrado",
@@ -511,14 +522,6 @@
     "recalculateMortgageOnly": "El recálculo del pago solo está disponible para cuentas de hipoteca",
     "insufficientData": "No hay suficientes pagos con detalles de intereses para detectar cambios de tasa",
     "frequencyMismatch": "Las fechas de pago no coinciden con la frecuencia de pago de la cuenta; las tasas inferidas pueden ser menos precisas"
-  },
-  "attachments": {
-    "notFound": "Adjunto no encontrado",
-    "transactionNotFound": "Transacción no encontrada",
-    "empty": "El archivo subido está vacío",
-    "fileTooLarge": "El archivo supera el tamaño máximo de {{ max }} bytes",
-    "unsupportedType": "Tipo de archivo no admitido. Tipos permitidos: {{ types }}",
-    "tooMany": "Esta transacción ya tiene el máximo de {{ max }} adjuntos"
   },
   "strategies": {
     "accountNotFound": "Cuenta no encontrada",

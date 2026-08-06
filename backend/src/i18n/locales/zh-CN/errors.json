@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "未找到附件",
+    "transactionNotFound": "未找到交易",
+    "empty": "上传的文件为空",
+    "fileTooLarge": "文件超过最大大小 {{ max }} 字节",
+    "unsupportedType": "不支持的文件类型。允许的类型：{{ types }}",
+    "tooMany": "此交易已达到最多 {{ max }} 个附件的上限"
+  },
   "accounts": {
     "accountWithIdNotFound": "未找到 ID 为 {{ id }} 的账户",
     "notInvestmentPair": "此账户不是投资账户对的一部分",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "货币\"{{ code }}\"已在您的列表中",
+    "alreadyInListInactive": "货币\"{{ code }}\"已在您的列表中，但当前处于未启用状态。请重新启用后使用。",
     "notFound": "未找到货币\"{{ code }}\"",
     "cannotModifySystem": "无法修改系统货币元数据",
     "cannotModifyOther": "无法修改其他用户的货币",
     "inUse": "货币\"{{ code }}\"正在您的账户、证券或其他记录中使用。请改为停用它。",
-    "invalidRateDate": "date 必须为 YYYY-MM-DD 格式",
-    "alreadyInListInactive": "货币\"{{ code }}\"已在您的列表中，但当前处于未启用状态。请重新启用后使用。"
+    "invalidRateDate": "date 必须为 YYYY-MM-DD 格式"
   },
   "delegation": {
     "delegatedAccessInvalid": "委托访问权限已不再有效",
@@ -348,6 +356,8 @@
     "sameSourceAndDestination": "来源账户和目标账户必须不同",
     "requiresBrokerageAccount": "计划投资交易需要经纪账户",
     "notFound": "未找到 ID 为 {{ id }} 的计划交易",
+    "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
+    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。",
     "investmentActionRequired": "计划投资交易需要投资操作",
     "actionRequiresSecurity": "操作 {{ action }} 需要证券",
     "actionRequiresPositiveQuantity": "操作 {{ action }} 需要正数量",
@@ -358,16 +368,19 @@
     "splitOverrideRequiresAmount": "创建拆分覆盖时需要金额",
     "overrideNotFound": "未找到 ID 为 {{ overrideId }} 的覆盖",
     "updateSplitOverrideRequiresAmount": "拆分覆盖需要金额",
-    "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式",
-    "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
-    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。"
+    "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式"
   },
   "securities": {
-    "exchangeRateUnavailable": "无法确定交易日 {{ from }} -> {{ to }} 的汇率。请提供明确的 exchangeRate，以便现金账户的记账正确。",
     "accountMustBeInvestment": "账户类型必须为 INVESTMENT",
     "securityIdRequired": "{{ action }} 交易需要证券 ID",
+    "exchangeRateUnavailable": "无法确定交易日 {{ from }} -> {{ to }} 的汇率。请提供明确的 exchangeRate，以便现金账户的记账正确。",
     "splitRatioRequired": "拆股比例（数量）必须大于零",
     "acquisitionPriceRequired": "{{ action }} 交易需要填写每股价格，且必须大于零。对于成本未知的股份，请使用 ADD_SHARES。",
+    "ambiguousSecurity": "\"{{ query }}\" 匹配多个证券：{{ list }}。请使用准确的股票代码。",
+    "allocationExceedsTotal": "配置百分比总和超过 100%。",
+    "assetOptionNameRequired": "需要填写资产类别名称。",
+    "invalidTagKey": "需要标签键（1-100 个字符）",
+    "securityNotFoundByQuery": "没有证券与 \"{{ query }}\" 匹配。请先添加该证券或检查股票代码。",
     "cannotHoldSecurities": "{{ label }} 不能持有证券",
     "sourceDestMustDiffer": "来源账户和目标账户必须不同",
     "bothAccountsMustBeInvestment": "两个账户类型都必须为 INVESTMENT",
@@ -395,6 +408,10 @@
     "startDateBeforeEndDate": "startDate 必须在 endDate 之前或相同",
     "invalidGranularity": "granularity 如果提供，必须为 'month' 或 'day'",
     "symbolAlreadyExists": "代码为 {{ symbol }} 的证券已存在",
+    "lookupQueryRequired": "请输入要查询的股票代码或证券名称。",
+    "lookupNotFound": "未找到与\"{{ query }}\"匹配的证券。请检查代码或名称，或指定一个交易所。",
+    "lookupAmbiguous": "\"{{ query }}\"匹配到多个证券：{{ list }}。请指定交易所后重新运行。",
+    "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。",
     "notFoundById": "未找到 ID 为 {{ id }} 的证券",
     "notFoundBySymbol": "未找到代码为 {{ symbol }} 的证券",
     "cannotDeactivateWithHoldings": "无法停用有活跃持仓的证券。请先卖出所有股份。",
@@ -411,16 +428,7 @@
     "invalidUuid": "无效的 {{ label }} UUID：{{ id }}",
     "symbolLength": "代码长度必须在 1 到 20 个字符之间",
     "symbolCharacters": "代码只能包含字母、数字、点或连字符",
-    "ambiguousSecurity": "\"{{ query }}\" 匹配多个证券：{{ list }}。请使用准确的股票代码。",
-    "securityNotFoundByQuery": "没有证券与 \"{{ query }}\" 匹配。请先添加该证券或检查股票代码。",
-    "lookupQueryRequired": "请输入要查询的股票代码或证券名称。",
-    "lookupNotFound": "未找到与\"{{ query }}\"匹配的证券。请检查代码或名称，或指定一个交易所。",
-    "lookupAmbiguous": "\"{{ query }}\"匹配到多个证券：{{ list }}。请指定交易所后重新运行。",
-    "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。",
     "noUpdateFields": "请至少提供一个要更改的字段。",
-    "allocationExceedsTotal": "配置百分比总和超过 100%。",
-    "invalidTagKey": "需要标签键（1-100 个字符）",
-    "assetOptionNameRequired": "需要填写资产类别名称。",
     "documentNotFound": "未找到该文档"
   },
   "tags": {
@@ -436,6 +444,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId 必须是有效的 UUID",
     "amountFromMustBeNumber": "amountFrom 必须是数字",
     "amountToMustBeNumber": "amountTo 必须是数字",
+    "tagKeyTooLong": "tagKey 不得超过 100 个字符",
+    "invalidTagKeyOp": "无效的 tagKeyOp：{{ op }}",
+    "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
+    "tagKeyRequired": "需要标签键（1-100 个字符）",
     "invalidGroupBy": "groupBy 必须为 'category' 或 'payee'",
     "limitMustBePositive": "limit 必须为正数",
     "recurringPayeeRequired": "payeeIds 为必填项",
@@ -444,6 +456,13 @@
     "statementBalanceMustBeNumber": "statementBalance 必须是数字",
     "categoryNotFound": "未找到分类",
     "categoriesNotFound": "未找到分类：{{ ids }}",
+    "crossOwnerTransferLocked": "此转账的另一方位于您已无法访问的账户中。您可以编辑此交易自身的详细信息，但其金额、日期和账户已锁定。",
+    "crossOwnerAccountMoveLocked": "此转账涉及其他用户的账户，因此无法移动到其他账户。",
+    "crossOwnerVoidLocked": "作废或取消作废此转账会同时更改两侧，但另一侧位于您已无权访问的账户中。您仍然可以更改此交易自身的对账状态。",
+    "transferVoidMismatch": "此转账的两侧在是否作废上不一致，因此无法安全编辑。请联系支持人员修复此转账。",
+    "cannotEditTransfer": "无法在此处编辑转账。请在交易页面中编辑该转账。",
+    "cannotEditSplit": "无法在此处编辑拆分交易。请在交易页面中编辑该拆分。",
+    "noUpdateFields": "请至少提供一个要更改的字段。",
     "investmentSplitRequiresPayload": "投资拆分项需要投资载荷",
     "investmentActionNotAllowedInSplit": "投资操作 {{ action }} 不允许在拆分交易中使用",
     "investmentSplitCannotSetCategoryOrTransfer": "投资拆分项不能同时设置 categoryId 或 transferAccountId",
@@ -467,19 +486,11 @@
     "notFoundById": "未找到 ID 为 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一个更新字段",
     "payeeNotFound": "未找到收款人",
-    "crossOwnerTransferLocked": "此转账的另一方位于您已无法访问的账户中。您可以编辑此交易自身的详细信息，但其金额、日期和账户已锁定。",
-    "crossOwnerAccountMoveLocked": "此转账涉及其他用户的账户，因此无法移动到其他账户。",
-    "cannotEditTransfer": "无法在此处编辑转账。请在交易页面中编辑该转账。",
-    "cannotEditSplit": "无法在此处编辑拆分交易。请在交易页面中编辑该拆分。",
-    "noUpdateFields": "请至少提供一个要更改的字段。",
-    "tagKeyTooLong": "tagKey 不得超过 100 个字符",
-    "invalidTagKeyOp": "无效的 tagKeyOp：{{ op }}",
-    "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
-    "tagKeyRequired": "需要标签键（1-100 个字符）",
     "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必须同时提供",
     "fxRateRequired": "外币交易需要一个正的汇率",
     "fxSignMismatch": "originalAmount 和 amount 的符号必须相同",
-    "jointAccountMoveLocked": "共享账户中的交易无法移动到其他账户。"
+    "jointAccountMoveLocked": "共享账户中的交易无法移动到其他账户。",
+    "statusChangeNeedsBothLegs": "此转账的状态必须在两侧同时更改。请编辑转账本身，或在包含它的拆分上更改状态。"
   },
   "users": {
     "userNotFound": "未找到用户",
@@ -511,14 +522,6 @@
     "recalculateMortgageOnly": "还款额重新计算仅适用于抵押贷款账户",
     "insufficientData": "带有利息明细的还款不足，无法检测利率变更",
     "frequencyMismatch": "还款日期与账户的还款频率不匹配；推算的利率可能不太准确"
-  },
-  "attachments": {
-    "notFound": "未找到附件",
-    "transactionNotFound": "未找到交易",
-    "empty": "上传的文件为空",
-    "fileTooLarge": "文件超过最大大小 {{ max }} 字节",
-    "unsupportedType": "不支持的文件类型。允许的类型：{{ types }}",
-    "tooMany": "此交易已达到最多 {{ max }} 个附件的上限"
   },
   "strategies": {
     "accountNotFound": "未找到账户",

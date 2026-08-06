@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "Pièce jointe introuvable",
+    "transactionNotFound": "Transaction introuvable",
+    "empty": "Le fichier téléversé est vide",
+    "fileTooLarge": "Le fichier dépasse la taille maximale de {{ max }} octets",
+    "unsupportedType": "Type de fichier non pris en charge. Types autorisés : {{ types }}",
+    "tooMany": "Cette transaction a déjà le maximum de {{ max }} pièces jointes"
+  },
   "accounts": {
     "accountWithIdNotFound": "Compte avec l'ID {{ id }} introuvable",
     "notInvestmentPair": "Ce compte ne fait pas partie d'une paire de comptes d'investissement",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "La devise « {{ code }} » est déjà dans votre liste",
+    "alreadyInListInactive": "La devise « {{ code }} » est déjà dans votre liste, mais est actuellement inactive. Réactivez-la pour l'utiliser.",
     "notFound": "Devise « {{ code }} » introuvable",
     "cannotModifySystem": "Impossible de modifier les métadonnées de devise système",
     "cannotModifyOther": "Impossible de modifier la devise d'un autre utilisateur",
     "inUse": "La devise « {{ code }} » est utilisée par vos comptes, titres ou autres enregistrements. Désactivez-la à la place.",
-    "invalidRateDate": "date doit être au format AAAA-MM-JJ",
-    "alreadyInListInactive": "La devise « {{ code }} » est déjà dans votre liste, mais est actuellement inactive. Réactivez-la pour l'utiliser."
+    "invalidRateDate": "date doit être au format AAAA-MM-JJ"
   },
   "delegation": {
     "delegatedAccessInvalid": "L'accès délégué n'est plus valide",
@@ -348,6 +356,8 @@
     "sameSourceAndDestination": "Les comptes source et destination doivent être différents",
     "requiresBrokerageAccount": "Les transactions d'investissement récurrentes nécessitent un compte de courtage",
     "notFound": "Transaction récurrente avec l'ID {{ id }} introuvable",
+    "fxPlainOnly": "Une devise différente n'est possible que sur une transaction récurrente simple, pas sur une transaction fractionnée, un virement ou un investissement",
+    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer.",
     "investmentActionRequired": "Une action d'investissement est requise pour les transactions d'investissement récurrentes",
     "actionRequiresSecurity": "L'action {{ action }} nécessite un titre",
     "actionRequiresPositiveQuantity": "L'action {{ action }} nécessite une quantité positive",
@@ -358,16 +368,19 @@
     "splitOverrideRequiresAmount": "Le montant est requis lors de la création d'un remplacement fractionné",
     "overrideNotFound": "Remplacement avec l'ID {{ overrideId }} introuvable",
     "updateSplitOverrideRequiresAmount": "Le montant est requis pour le remplacement fractionné",
-    "dateMustBeYMD": "La date doit être au format YYYY-MM-DD",
-    "fxPlainOnly": "Une devise différente n'est possible que sur une transaction récurrente simple, pas sur une transaction fractionnée, un virement ou un investissement",
-    "fxRateUnavailable": "Aucun taux de change n'est disponible de {{ from }} vers {{ to }} le {{ date }}. Saisissez le montant en {{ to }} pour l'enregistrer."
+    "dateMustBeYMD": "La date doit être au format YYYY-MM-DD"
   },
   "securities": {
-    "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",
     "accountMustBeInvestment": "Le compte doit être de type INVESTMENT",
     "securityIdRequired": "L'ID de titre est requis pour les transactions {{ action }}",
+    "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",
     "splitRatioRequired": "Le ratio de fractionnement (quantité) doit être supérieur à zéro",
     "acquisitionPriceRequired": "Un prix par part supérieur à zéro est requis pour les transactions {{ action }}. Utilisez ADD_SHARES pour les parts acquises sans coût connu.",
+    "ambiguousSecurity": "\"{{ query }}\" correspond à plusieurs titres : {{ list }}. Utilisez le symbole exact.",
+    "allocationExceedsTotal": "Les pourcentages de répartition dépassent 100 %.",
+    "assetOptionNameRequired": "Un nom de classe d'actifs est requis.",
+    "invalidTagKey": "Une clé d'étiquette (1 à 100 caractères) est requise",
+    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole.",
     "cannotHoldSecurities": "{{ label }} ne peut pas détenir de titres",
     "sourceDestMustDiffer": "Les comptes source et destination doivent être différents",
     "bothAccountsMustBeInvestment": "Les deux comptes doivent être de type INVESTMENT",
@@ -395,6 +408,10 @@
     "startDateBeforeEndDate": "startDate doit être antérieure ou égale à endDate",
     "invalidGranularity": "granularity doit être 'month' ou 'day' si fourni",
     "symbolAlreadyExists": "Un titre avec le symbole {{ symbol }} existe déjà",
+    "lookupQueryRequired": "Indiquez un symbole boursier ou le nom d'un titre à rechercher.",
+    "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
+    "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
+    "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place.",
     "notFoundById": "Titre avec l'ID {{ id }} introuvable",
     "notFoundBySymbol": "Titre avec le symbole {{ symbol }} introuvable",
     "cannotDeactivateWithHoldings": "Impossible de désactiver un titre avec des positions actives. Vendez d'abord toutes les actions.",
@@ -411,16 +428,7 @@
     "invalidUuid": "UUID {{ label }} invalide : {{ id }}",
     "symbolLength": "Le symbole doit comporter entre 1 et 20 caractères",
     "symbolCharacters": "Le symbole ne doit contenir que des lettres, chiffres, points ou tirets",
-    "ambiguousSecurity": "\"{{ query }}\" correspond à plusieurs titres : {{ list }}. Utilisez le symbole exact.",
-    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole.",
-    "lookupQueryRequired": "Indiquez un symbole boursier ou le nom d'un titre à rechercher.",
-    "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
-    "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
-    "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place.",
     "noUpdateFields": "Indiquez au moins un champ à modifier.",
-    "allocationExceedsTotal": "Les pourcentages de répartition dépassent 100 %.",
-    "invalidTagKey": "Une clé d'étiquette (1 à 100 caractères) est requise",
-    "assetOptionNameRequired": "Un nom de classe d'actifs est requis.",
     "documentNotFound": "Document introuvable"
   },
   "tags": {
@@ -436,6 +444,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId doit être un UUID valide",
     "amountFromMustBeNumber": "amountFrom doit être un nombre",
     "amountToMustBeNumber": "amountTo doit être un nombre",
+    "tagKeyTooLong": "tagKey ne doit pas dépasser 100 caractères",
+    "invalidTagKeyOp": "tagKeyOp non valide : {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue est requis pour contains / notContains",
+    "tagKeyRequired": "Une clé d'étiquette (1 à 100 caractères) est requise",
     "invalidGroupBy": "groupBy doit être 'category' ou 'payee'",
     "limitMustBePositive": "limit doit être un nombre positif",
     "recurringPayeeRequired": "payeeIds est requis",
@@ -444,6 +456,13 @@
     "statementBalanceMustBeNumber": "statementBalance doit être un nombre",
     "categoryNotFound": "Catégorie introuvable",
     "categoriesNotFound": "Catégories introuvables : {{ ids }}",
+    "crossOwnerTransferLocked": "L'autre côté de ce virement se trouve dans un compte auquel vous n'avez plus accès. Vous pouvez modifier les détails de cette transaction, mais son montant, sa date et ses comptes sont verrouillés.",
+    "crossOwnerAccountMoveLocked": "Ce virement implique le compte d'un autre utilisateur et ne peut donc pas être déplacé vers d'autres comptes.",
+    "crossOwnerVoidLocked": "Annuler ou rétablir ce virement modifie les deux côtés, mais l'autre côté se trouve dans un compte auquel vous n'avez plus accès. Vous pouvez toujours changer le statut de rapprochement de cette transaction.",
+    "transferVoidMismatch": "Les deux côtés de ce virement ne s'accordent pas sur son annulation ; il ne peut donc pas être modifié en toute sécurité. Contactez le support pour faire réparer ce virement.",
+    "cannotEditTransfer": "Les virements ne peuvent pas être modifiés ici. Modifiez le virement depuis l'écran Transactions.",
+    "cannotEditSplit": "Les transactions ventilées ne peuvent pas être modifiées ici. Modifiez la ventilation depuis l'écran Transactions.",
+    "noUpdateFields": "Indiquez au moins un champ à modifier.",
     "investmentSplitRequiresPayload": "Une fraction d'investissement nécessite un contenu d'investissement",
     "investmentActionNotAllowedInSplit": "L'action d'investissement {{ action }} n'est pas autorisée dans une transaction fractionnée",
     "investmentSplitCannotSetCategoryOrTransfer": "Les fractions d'investissement ne peuvent pas définir categoryId ou transferAccountId",
@@ -467,19 +486,11 @@
     "notFoundById": "Transaction avec l'ID {{ id }} introuvable",
     "bulkUpdateNoFields": "Au moins un champ de mise à jour doit être fourni",
     "payeeNotFound": "Bénéficiaire introuvable",
-    "crossOwnerTransferLocked": "L'autre côté de ce virement se trouve dans un compte auquel vous n'avez plus accès. Vous pouvez modifier les détails de cette transaction, mais son montant, sa date et ses comptes sont verrouillés.",
-    "crossOwnerAccountMoveLocked": "Ce virement implique le compte d'un autre utilisateur et ne peut donc pas être déplacé vers d'autres comptes.",
-    "cannotEditTransfer": "Les virements ne peuvent pas être modifiés ici. Modifiez le virement depuis l'écran Transactions.",
-    "cannotEditSplit": "Les transactions ventilées ne peuvent pas être modifiées ici. Modifiez la ventilation depuis l'écran Transactions.",
-    "noUpdateFields": "Indiquez au moins un champ à modifier.",
-    "tagKeyTooLong": "tagKey ne doit pas dépasser 100 caractères",
-    "invalidTagKeyOp": "tagKeyOp non valide : {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue est requis pour contains / notContains",
-    "tagKeyRequired": "Une clé d'étiquette (1 à 100 caractères) est requise",
     "fxFieldsIncomplete": "originalAmount et originalCurrencyCode doivent être fournis ensemble",
     "fxRateRequired": "Un taux de change positif est requis pour une transaction en devise étrangère",
     "fxSignMismatch": "originalAmount et amount doivent avoir le même signe",
-    "jointAccountMoveLocked": "Les transactions d'un compte partagé ne peuvent pas être déplacées vers un autre compte."
+    "jointAccountMoveLocked": "Les transactions d'un compte partagé ne peuvent pas être déplacées vers un autre compte.",
+    "statusChangeNeedsBothLegs": "Le statut de ce virement doit changer des deux côtés. Modifiez le virement lui-même, ou changez le statut sur la répartition qui le porte."
   },
   "users": {
     "userNotFound": "Utilisateur introuvable",
@@ -511,14 +522,6 @@
     "recalculateMortgageOnly": "Le recalcul du versement n'est disponible que pour les comptes de prêt hypothécaire",
     "insufficientData": "Pas assez de paiements avec des détails d'intérêts pour détecter les changements de taux",
     "frequencyMismatch": "Les dates de paiement ne correspondent pas à la fréquence de paiement du compte ; les taux déduits peuvent être moins précis"
-  },
-  "attachments": {
-    "notFound": "Pièce jointe introuvable",
-    "transactionNotFound": "Transaction introuvable",
-    "empty": "Le fichier téléversé est vide",
-    "fileTooLarge": "Le fichier dépasse la taille maximale de {{ max }} octets",
-    "unsupportedType": "Type de fichier non pris en charge. Types autorisés : {{ types }}",
-    "tooMany": "Cette transaction a déjà le maximum de {{ max }} pièces jointes"
   },
   "strategies": {
     "accountNotFound": "Compte introuvable",
