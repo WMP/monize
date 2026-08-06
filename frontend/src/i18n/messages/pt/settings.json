@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Criar cópia de suporte",
-    "howItWorks": "Produz uma cópia desidentificada da sua cópia de segurança: os nomes são mascarados (mantêm-se os dois primeiros e os dois últimos caracteres), notas/descrições/números de conta são removidos e cada montante é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juro) ficam intactos. O ficheiro é sempre cifrado com a palavra-passe abaixo e restaura-se como uma cópia normal. Protege contra exposição casual, não contra alguém que já o conhece — datas, frequências e estrutura são preservadas para que os erros continuem reproduzíveis.",
+    "howItWorks": "Produz uma cópia desidentificada da sua cópia de segurança: os nomes são mascarados (mantêm-se os dois primeiros e os dois últimos caracteres), notas/descrições/números de conta são removidos e cada montante é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juro) ficam intactos. Os códigos de moeda permanecem legíveis para que os valores possam ser interpretados — incluindo o código de qualquer moeda que tenha criado, embora o seu nome e símbolo sejam mascarados como os outros nomes. O ficheiro é sempre cifrado com a palavra-passe abaixo e restaura-se como uma cópia normal. Protege contra exposição casual, não contra alguém que já o conhece — datas, frequências e estrutura são preservadas para que os erros continuem reproduzíveis.",
     "sectionsLabel": "O que incluir",
     "sections": {
       "investments": "Investimentos (títulos, posições, preços)",

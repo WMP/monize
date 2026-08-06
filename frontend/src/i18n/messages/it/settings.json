@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Crea backup di supporto",
-    "howItWorks": "Produce una copia de-identificata del tuo backup: i nomi sono mascherati (restano i primi e gli ultimi due caratteri), note/descrizioni/numeri di conto vengono rimossi e ogni importo è moltiplicato per un unico fattore nascosto, mentre i valori pubblici (tassi di cambio, prezzi, tassi d'interesse) restano intatti. Il file è sempre cifrato con la password qui sotto e si ripristina come un backup normale. Protegge dall'esposizione casuale, non da chi ti conosce già: date, frequenze e struttura sono preservate perché i bug restino riproducibili.",
+    "howItWorks": "Produce una copia de-identificata del tuo backup: i nomi sono mascherati (restano i primi e gli ultimi due caratteri), note/descrizioni/numeri di conto vengono rimossi e ogni importo è moltiplicato per un unico fattore nascosto, mentre i valori pubblici (tassi di cambio, prezzi, tassi d'interesse) restano intatti. I codici valuta restano leggibili perché le cifre siano interpretabili — incluso il codice di una valuta creata da te, il cui nome e simbolo vengono però mascherati come gli altri nomi. Il file è sempre cifrato con la password qui sotto e si ripristina come un backup normale. Protegge dall'esposizione casuale, non da chi ti conosce già: date, frequenze e struttura sono preservate perché i bug restino riproducibili.",
     "sectionsLabel": "Cosa includere",
     "sections": {
       "investments": "Investimenti (titoli, posizioni, prezzi)",

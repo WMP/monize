@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Destek yedeği oluştur",
-    "howItWorks": "Yedeğinizin kimliksizleştirilmiş bir kopyasını üretir: adlar maskelenir (ilk ve son iki karakter kalır), notlar/açıklamalar/hesap numaraları kaldırılır ve her tutar tek bir gizli çarpanla çarpılırken kamuya açık değerler (döviz kurları, fiyatlar, faiz oranları) olduğu gibi kalır. Dosya her zaman aşağıdaki parolayla şifrelenir ve normal bir yedek gibi geri yüklenir. Bu, sıradan ifşaya karşı korur; sizi zaten tanıyan birine karşı değil — hatalar yeniden üretilebilsin diye tarihler, sıklıklar ve yapı korunur.",
+    "howItWorks": "Yedeğinizin kimliksizleştirilmiş bir kopyasını üretir: adlar maskelenir (ilk ve son iki karakter kalır), notlar/açıklamalar/hesap numaraları kaldırılır ve her tutar tek bir gizli çarpanla çarpılırken kamuya açık değerler (döviz kurları, fiyatlar, faiz oranları) olduğu gibi kalır. Para birimi kodları, rakamların yorumlanabilmesi için okunur kalır — kendi oluşturduğunuz bir para biriminin kodu dahil; ancak adı ve simgesi diğer adlar gibi maskelenir. Dosya her zaman aşağıdaki parolayla şifrelenir ve normal bir yedek gibi geri yüklenir. Bu, sıradan ifşaya karşı korur; sizi zaten tanıyan birine karşı değil — hatalar yeniden üretilebilsin diye tarihler, sıklıklar ve yapı korunur.",
     "sectionsLabel": "Neler dahil edilsin",
     "sections": {
       "investments": "Yatırımlar (menkul kıymetler, pozisyonlar, fiyatlar)",

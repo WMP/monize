@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Crear copia para soporte",
-    "howItWorks": "Genera una copia desidentificada de su copia de seguridad: los nombres se enmascaran (se conservan los dos primeros y los dos últimos caracteres), se eliminan notas/descripciones/números de cuenta y cada importe se multiplica por un único factor oculto, mientras los valores públicos (tipos de cambio, precios, tipos de interés) quedan intactos. El archivo siempre se cifra con la contraseña de abajo y se restaura como una copia normal. Protege frente a la exposición casual, no frente a alguien que ya le conoce: las fechas, frecuencias y estructura se conservan para que los errores se reproduzcan.",
+    "howItWorks": "Genera una copia desidentificada de su copia de seguridad: los nombres se enmascaran (se conservan los dos primeros y los dos últimos caracteres), se eliminan notas/descripciones/números de cuenta y cada importe se multiplica por un único factor oculto, mientras los valores públicos (tipos de cambio, precios, tipos de interés) quedan intactos. Los códigos de moneda permanecen legibles para poder interpretar las cifras — incluido el código de cualquier moneda que hayas creado tú, aunque su nombre y símbolo se enmascaran como los demás nombres. El archivo siempre se cifra con la contraseña de abajo y se restaura como una copia normal. Protege frente a la exposición casual, no frente a alguien que ya le conoce: las fechas, frecuencias y estructura se conservan para que los errores se reproduzcan.",
     "sectionsLabel": "Qué incluir",
     "sections": {
       "investments": "Inversiones (valores, posiciones, precios)",

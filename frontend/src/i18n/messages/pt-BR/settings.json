@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Criar backup de suporte",
-    "howItWorks": "Produz uma cópia desidentificada do seu backup: os nomes são mascarados (os dois primeiros e os dois últimos caracteres são mantidos), notas/descrições/números de conta são removidos e cada valor é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juros) ficam intactos. O arquivo é sempre criptografado com a senha abaixo e restaura como um backup normal. Isso protege contra exposição casual, não contra alguém que já conhece você — datas, frequências e estrutura são preservadas para que os bugs continuem reproduzíveis.",
+    "howItWorks": "Produz uma cópia desidentificada do seu backup: os nomes são mascarados (os dois primeiros e os dois últimos caracteres são mantidos), notas/descrições/números de conta são removidos e cada valor é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juros) ficam intactos. Os códigos de moeda permanecem legíveis para que os números possam ser interpretados — inclusive o código de qualquer moeda criada por você, embora seu nome e símbolo sejam mascarados como os outros nomes. O arquivo é sempre criptografado com a senha abaixo e restaura como um backup normal. Isso protege contra exposição casual, não contra alguém que já conhece você — datas, frequências e estrutura são preservadas para que os bugs continuem reproduzíveis.",
     "sectionsLabel": "O que incluir",
     "sections": {
       "investments": "Investimentos (ativos, posições, preços)",

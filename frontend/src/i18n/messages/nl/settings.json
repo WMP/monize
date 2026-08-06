@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Supportback-up maken",
-    "howItWorks": "Dit maakt een gede-identificeerde kopie van je back-up: namen worden gemaskeerd (eerste en laatste twee tekens blijven), notities/omschrijvingen/rekeningnummers worden verwijderd en elk bedrag wordt vermenigvuldigd met één verborgen factor, terwijl publieke waarden (wisselkoersen, koersen, rentetarieven) intact blijven. Het bestand wordt altijd versleuteld met het onderstaande wachtwoord en herstelt als een normale back-up. Dit beschermt tegen terloopse blootstelling, niet tegen iemand die je al kent — datums, frequenties en structuur blijven behouden zodat bugs reproduceerbaar zijn.",
+    "howItWorks": "Dit maakt een gede-identificeerde kopie van je back-up: namen worden gemaskeerd (eerste en laatste twee tekens blijven), notities/omschrijvingen/rekeningnummers worden verwijderd en elk bedrag wordt vermenigvuldigd met één verborgen factor, terwijl publieke waarden (wisselkoersen, koersen, rentetarieven) intact blijven. Valutacodes blijven leesbaar zodat de cijfers te interpreteren zijn — ook de code van een valuta die u zelf hebt aangemaakt, al worden de naam en het symbool ervan net als andere namen gemaskeerd. Het bestand wordt altijd versleuteld met het onderstaande wachtwoord en herstelt als een normale back-up. Dit beschermt tegen terloopse blootstelling, niet tegen iemand die je al kent — datums, frequenties en structuur blijven behouden zodat bugs reproduceerbaar zijn.",
     "sectionsLabel": "Wat opnemen",
     "sections": {
       "investments": "Beleggingen (effecten, posities, koersen)",

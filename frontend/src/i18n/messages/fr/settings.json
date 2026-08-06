@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Créer une sauvegarde de support",
-    "howItWorks": "Produit une copie dé-identifiée de votre sauvegarde : les noms sont masqués (les deux premiers et deux derniers caractères sont conservés), les notes/descriptions/numéros de compte sont supprimés, et chaque montant est multiplié par un facteur caché unique tandis que les valeurs publiques (taux de change, cours, taux d'intérêt) restent intactes. Le fichier est toujours chiffré avec le mot de passe ci-dessous et se restaure comme une sauvegarde normale. Cela protège d'une exposition fortuite, pas de quelqu'un qui vous connaît déjà — dates, fréquences et structure sont préservées pour que les bugs restent reproductibles.",
+    "howItWorks": "Produit une copie dé-identifiée de votre sauvegarde : les noms sont masqués (les deux premiers et deux derniers caractères sont conservés), les notes/descriptions/numéros de compte sont supprimés, et chaque montant est multiplié par un facteur caché unique tandis que les valeurs publiques (taux de change, cours, taux d'intérêt) restent intactes. Les codes de devise restent lisibles pour que les chiffres puissent être interprétés — y compris le code d'une devise que vous avez créée vous-même, dont le nom et le symbole sont toutefois masqués comme les autres noms. Le fichier est toujours chiffré avec le mot de passe ci-dessous et se restaure comme une sauvegarde normale. Cela protège d'une exposition fortuite, pas de quelqu'un qui vous connaît déjà — dates, fréquences et structure sont préservées pour que les bugs restent reproductibles.",
     "sectionsLabel": "Quoi inclure",
     "sections": {
       "investments": "Investissements (titres, positions, cours)",

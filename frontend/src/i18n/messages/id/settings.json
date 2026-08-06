@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Buat cadangan dukungan",
-    "howItWorks": "Menghasilkan salinan cadangan yang dide-identifikasi: nama disamarkan (dua karakter pertama dan terakhir dipertahankan), catatan/deskripsi/nomor rekening dihapus, dan setiap jumlah dikalikan satu faktor tersembunyi, sementara nilai publik (kurs, harga, suku bunga) tetap utuh. Berkas selalu dienkripsi dengan kata sandi di bawah dan dipulihkan seperti cadangan biasa. Ini melindungi dari paparan tak sengaja, bukan dari orang yang sudah mengenal Anda — tanggal, frekuensi, dan struktur dipertahankan agar bug tetap dapat direproduksi.",
+    "howItWorks": "Menghasilkan salinan cadangan yang dide-identifikasi: nama disamarkan (dua karakter pertama dan terakhir dipertahankan), catatan/deskripsi/nomor rekening dihapus, dan setiap jumlah dikalikan satu faktor tersembunyi, sementara nilai publik (kurs, harga, suku bunga) tetap utuh. Kode mata uang tetap terbaca agar angka-angka dapat ditafsirkan — termasuk kode mata uang yang Anda buat sendiri, meskipun nama dan simbolnya disamarkan seperti nama lainnya. Berkas selalu dienkripsi dengan kata sandi di bawah dan dipulihkan seperti cadangan biasa. Ini melindungi dari paparan tak sengaja, bukan dari orang yang sudah mengenal Anda — tanggal, frekuensi, dan struktur dipertahankan agar bug tetap dapat direproduksi.",
     "sectionsLabel": "Apa yang disertakan",
     "sections": {
       "investments": "Investasi (sekuritas, kepemilikan, harga)",

@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Support-Backup erstellen",
-    "howItWorks": "Es entsteht eine de-identifizierte Kopie Ihres Backups: Namen werden maskiert (erste und letzte zwei Zeichen bleiben), Notizen/Beschreibungen/Kontonummern werden entfernt, und jeder Betrag wird mit einem einzigen verborgenen Faktor multipliziert, während öffentliche Werte (Wechselkurse, Kurse, Zinssätze) unangetastet bleiben. Die Datei wird immer mit dem untenstehenden Passwort verschlüsselt und lässt sich wie ein normales Backup wiederherstellen. Das schützt vor beiläufiger Einsichtnahme, nicht vor jemandem, der Sie bereits kennt — Daten, Häufigkeiten und Struktur bleiben erhalten, damit Fehler reproduzierbar sind.",
+    "howItWorks": "Es entsteht eine de-identifizierte Kopie Ihres Backups: Namen werden maskiert (erste und letzte zwei Zeichen bleiben), Notizen/Beschreibungen/Kontonummern werden entfernt, und jeder Betrag wird mit einem einzigen verborgenen Faktor multipliziert, während öffentliche Werte (Wechselkurse, Kurse, Zinssätze) unangetastet bleiben. Währungscodes bleiben lesbar, damit sich die Zahlen interpretieren lassen — auch der Code einer selbst angelegten Währung, deren Name und Symbol aber wie andere Namen maskiert werden. Die Datei wird immer mit dem untenstehenden Passwort verschlüsselt und lässt sich wie ein normales Backup wiederherstellen. Das schützt vor beiläufiger Einsichtnahme, nicht vor jemandem, der Sie bereits kennt — Daten, Häufigkeiten und Struktur bleiben erhalten, damit Fehler reproduzierbar sind.",
     "sectionsLabel": "Was einschließen",
     "sections": {
       "investments": "Investitionen (Wertpapiere, Bestände, Kurse)",

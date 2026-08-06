@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Tạo bản sao lưu hỗ trợ",
-    "howItWorks": "Tạo một bản sao đã ẩn danh của bản sao lưu: tên bị che (giữ hai ký tự đầu và cuối), ghi chú/mô tả/số tài khoản bị xoá, và mọi số tiền được nhân với một hệ số ẩn duy nhất, trong khi các giá trị công khai (tỷ giá, giá, lãi suất) giữ nguyên. Tệp luôn được mã hoá bằng mật khẩu bên dưới và khôi phục như bản sao lưu bình thường. Điều này bảo vệ trước sự lộ lọt tình cờ, không phải trước người đã biết bạn — ngày tháng, tần suất và cấu trúc được giữ để lỗi vẫn tái hiện được.",
+    "howItWorks": "Tạo một bản sao đã ẩn danh của bản sao lưu: tên bị che (giữ hai ký tự đầu và cuối), ghi chú/mô tả/số tài khoản bị xoá, và mọi số tiền được nhân với một hệ số ẩn duy nhất, trong khi các giá trị công khai (tỷ giá, giá, lãi suất) giữ nguyên. Mã tiền tệ vẫn đọc được để có thể diễn giải các con số — bao gồm cả mã của bất kỳ loại tiền tệ nào bạn tự tạo, dù tên và ký hiệu của nó bị che như các tên khác. Tệp luôn được mã hoá bằng mật khẩu bên dưới và khôi phục như bản sao lưu bình thường. Điều này bảo vệ trước sự lộ lọt tình cờ, không phải trước người đã biết bạn — ngày tháng, tần suất và cấu trúc được giữ để lỗi vẫn tái hiện được.",
     "sectionsLabel": "Bao gồm những gì",
     "sections": {
       "investments": "Đầu tư (chứng khoán, nắm giữ, giá)",

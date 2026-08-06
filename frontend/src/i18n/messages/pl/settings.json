@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "Utwórz kopię dla wsparcia",
-    "howItWorks": "Powstaje zdeidentyfikowana kopia Twojego backupu: nazwy są maskowane (zostają pierwsze i ostatnie dwa znaki), notatki/opisy/numery kont są usuwane, a każda kwota jest mnożona przez jeden ukryty współczynnik, podczas gdy wartości publiczne (kursy walut, ceny, oprocentowanie) pozostają nietknięte. Plik jest zawsze szyfrowany poniższym hasłem i przywraca się jak zwykły backup. Chroni to przed przypadkową ekspozycją, ale nie przed kimś, kto już Cię zna — daty, częstotliwości i struktura są zachowane, aby błędy dało się odtworzyć.",
+    "howItWorks": "Powstaje zdeidentyfikowana kopia Twojego backupu: nazwy są maskowane (zostają pierwsze i ostatnie dwa znaki), notatki/opisy/numery kont są usuwane, a każda kwota jest mnożona przez jeden ukryty współczynnik, podczas gdy wartości publiczne (kursy walut, ceny, oprocentowanie) pozostają nietknięte. Kody walut pozostają czytelne, aby dało się interpretować liczby — w tym kod waluty utworzonej przez Ciebie, choć jej nazwa i symbol są maskowane jak inne nazwy. Plik jest zawsze szyfrowany poniższym hasłem i przywraca się jak zwykły backup. Chroni to przed przypadkową ekspozycją, ale nie przed kimś, kto już Cię zna — daty, częstotliwości i struktura są zachowane, aby błędy dało się odtworzyć.",
     "sectionsLabel": "Co dołączyć",
     "sections": {
       "investments": "Inwestycje (papiery, pozycje, ceny)",
