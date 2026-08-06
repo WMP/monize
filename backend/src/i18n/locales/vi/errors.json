@@ -530,5 +530,8 @@
     "signalNotFound": "Không tìm thấy tín hiệu chiến lược",
     "signalStrategyMismatch": "Tín hiệu đó thuộc về một chiến lược khác.",
     "strategyNotFound": "Không tìm thấy chiến lược"
+  },
+  "maintenance": {
+    "inProgress": "Mot tac vu khac dang thay the du lieu cua tai khoan nay. Hay doi hoan tat roi thu lai."
   }
 }

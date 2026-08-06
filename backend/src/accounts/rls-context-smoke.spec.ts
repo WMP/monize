@@ -14,6 +14,11 @@ import { PortfolioService } from "../securities/portfolio.service";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createJobClaimMock,
+  JobClaimMock,
+  jobClaimProvider,
+} from "../test-helpers/job-claim-testing";
 
 /**
  * RLS smoke for the accounts module's out-of-request entry points (task R1).
@@ -27,6 +32,8 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
  */
 
 describe("accounts module RLS context smoke (real withScopedDb)", () => {
+  /** Wins every claim, matching the pre-claim behaviour these specs describe. */
+  const jobClaims: JobClaimMock = createJobClaimMock();
   const OWNER_ID = "3f1f8a52-2f0e-4b6d-9a56-0d6a3f1c2b4e";
 
   it("applyDueTransactionBalances runs its withScopedDb work under the system context", async () => {
@@ -125,6 +132,7 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MortgageReminderService,
+        jobClaimProvider(jobClaims),
         { provide: DataSource, useValue: dataSource },
         {
           provide: EmailService,

@@ -530,5 +530,8 @@
     "signalNotFound": "Strateji sinyali bulunamadı",
     "signalStrategyMismatch": "Bu sinyal başka bir stratejiye ait.",
     "strategyNotFound": "Strateji bulunamadı"
+  },
+  "maintenance": {
+    "inProgress": "Baska bir islem su anda bu hesabin verilerini degistiriyor. Tamamlanmasini bekleyip yeniden deneyin."
   }
 }

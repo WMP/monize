@@ -29,6 +29,7 @@ import {
 import { collectRowIdRemap, deepRemapIds } from "./backup-id-remap.util";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 import { gemConfigFingerprint } from "../strategies/gem-signal.service";
 import { GemStrategy } from "../strategies/entities/gem-strategy.entity";
 import { GemStrategyAsset } from "../strategies/entities/gem-strategy-asset.entity";
@@ -50,6 +51,18 @@ export class BackupPasswordRequiredError extends BadRequestException {
 }
 
 const BACKUP_VERSION = 1;
+
+/**
+ * How long an export may sit idle inside its snapshot transaction before the
+ * database aborts it.
+ *
+ * The plain streaming export writes to the client between table reads, so a
+ * client that stops draining holds the snapshot open -- and a long-lived
+ * `REPEATABLE READ` transaction blocks vacuum from reclaiming dead tuples for
+ * the whole database, not just this user's tables. Bounding the idle time turns
+ * that from an operational problem into a failed download the user can retry.
+ */
+const EXPORT_IDLE_TIMEOUT_MS = 60_000;
 
 /**
  * Tables that `insertRows` is permitted to write during a restore. This is the
@@ -131,6 +144,22 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // backup's size by the size of whatever was last uploaded.
   "import_staged_files",
   "import_jobs",
+  // Cron bookkeeping, not user content: one row per already-claimed delivery or
+  // lease. Restoring them would re-suppress a reminder the restored account has
+  // not been sent, and the sweep drops them after 30 days anyway.
+  "job_claims",
+  // Deletion bookkeeping for bytes that live outside PostgreSQL. A restore
+  // replaces the attachment metadata wholesale, so a tombstone from before it
+  // describes an object no restored row references -- and the sweeper will have
+  // deleted it long before a restore lands anyway.
+  "attachment_blob_tombstones",
+  // The occurrence-claim ledger guards *concurrent* posting of the occurrence a
+  // schedule is currently due for -- two replicas, or a manual post racing the
+  // cron. A restore has no in-flight posting, and the restored schedules get new
+  // ids, so their old claims are gone by cascade and no stale row can shadow a
+  // live occurrence. What a restore does bring back is next_due_date, which
+  // already points past everything the backup had posted.
+  "scheduled_transaction_postings",
   "personal_access_tokens", // auth credentials -- never exported
   "refresh_tokens", // auth session tokens -- never exported
   "trusted_devices", // 2FA device registrations -- never exported
@@ -194,6 +223,7 @@ export class BackupService {
     private readonly dataSource: DataSource,
     private readonly aiEncryption: AiEncryptionService,
     private readonly oidcReauth: OidcReauthService,
+    private readonly maintenance: UserMaintenanceService,
   ) {}
 
   /**
@@ -284,10 +314,17 @@ export class BackupService {
       `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
     );
 
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      await write(`,"${key}":${JSON.stringify(rows)}`);
-    }
+    // One snapshot for every table, even though the writes are interleaved with
+    // the reads. Streaming is what keeps a large export off the heap, and the
+    // cost of keeping it is that the snapshot transaction lives as long as the
+    // client takes to drain -- bounded by EXPORT_IDLE_TIMEOUT_MS rather than
+    // left open indefinitely.
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of tableQueries) {
+        const rows = await read(sql, [userId]);
+        await write(`,"${key}":${JSON.stringify(rows)}`);
+      }
+    });
 
     await write("}");
 
@@ -326,9 +363,11 @@ export class BackupService {
     tables: Record<string, Record<string, unknown>[]>;
   }> {
     const tables: Record<string, Record<string, unknown>[]> = {};
-    for (const { key, sql } of this.getTableQueries()) {
-      tables[key] = await this.query(sql, [userId]);
-    }
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of this.getTableQueries()) {
+        tables[key] = await read(sql, [userId]);
+      }
+    });
     return {
       version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
@@ -568,10 +607,12 @@ export class BackupService {
     const parts: string[] = [
       `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
     ];
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      parts.push(`,"${key}":${JSON.stringify(rows)}`);
-    }
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of tableQueries) {
+        const rows = await read(sql, [userId]);
+        parts.push(`,"${key}":${JSON.stringify(rows)}`);
+      }
+    });
     parts.push("}");
     return gzipSync(Buffer.from(parts.join(""), "utf-8"));
   }
@@ -629,6 +670,23 @@ export class BackupService {
 
     const restored: Record<string, number> = {};
 
+    // A restore deletes everything the user owns and rewrites it, and it is not
+    // the only operation that does: a `.mny` import with "start fresh" and the
+    // self-service delete-my-data do too. Each is internally atomic, but two of
+    // them overlapping is not -- and the `.mny` import is not one transaction at
+    // all, so a restore landing mid-import wipes the rows its worker is still
+    // writing and the worker then writes them into the restored dataset. The
+    // lease refuses with a 409 before anything is deleted (audit DR-04-02).
+    return this.maintenance.withMaintenanceLease(userId, "backup restore", () =>
+      this.applyRestore(userId, data, restored),
+    );
+  }
+
+  private async applyRestore(
+    userId: string,
+    data: BackupData,
+    restored: Record<string, number>,
+  ): Promise<{ message: string; restored: Record<string, number> }> {
     // One transaction for the whole restore, exactly as the QueryRunner block
     // was: a half-applied restore would leave the account in a state that is
     // neither the backup nor what was there before. `preserveTimestamps` makes
@@ -936,6 +994,45 @@ export class BackupService {
   ): Promise<Record<string, unknown>[]> {
     return withScopedDb(this.dataSource, (manager) =>
       manager.query(sql, params),
+    );
+  }
+
+  /**
+   * Runs every table read of one export inside a single `REPEATABLE READ`
+   * transaction.
+   *
+   * A backup is a graph, not a bag of tables: `transactions` reference
+   * `accounts`, `transaction_splits` reference `transactions`, and the restore
+   * inserts with `ON CONFLICT DO NOTHING`. Reading each table in its own
+   * autocommit transaction -- which is what a per-call `withScopedDb` gives --
+   * lets a concurrent write land between two of those reads, so the file can
+   * hold a split whose parent transaction is absent, or a transaction whose
+   * account is absent. Restoring it does not fail: the orphan's insert is
+   * skipped and the row is silently gone, which is the worst way for a backup to
+   * be wrong.
+   *
+   * `REPEATABLE READ` takes one snapshot for the whole transaction, so every
+   * read sees the same committed state and the export is a point in time. It is
+   * read-only, so there is no serialization failure to retry.
+   */
+  private async withExportSnapshot<T>(
+    run: (
+      read: (
+        sql: string,
+        params: unknown[],
+      ) => Promise<Record<string, unknown>[]>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    return withScopedDb(
+      this.dataSource,
+      async (manager) => {
+        await manager.query(
+          "SELECT set_config('idle_in_transaction_session_timeout', $1, true)",
+          [String(EXPORT_IDLE_TIMEOUT_MS)],
+        );
+        return run((sql, params) => manager.query(sql, params));
+      },
+      "REPEATABLE READ",
     );
   }
 

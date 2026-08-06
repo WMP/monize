@@ -530,5 +530,8 @@
     "signalNotFound": "找不到策略訊號",
     "signalStrategyMismatch": "該訊號屬於另一個策略。",
     "strategyNotFound": "找不到策略"
+  },
+  "maintenance": {
+    "inProgress": "另一項作業正在取代此帳戶的資料。請等待完成後再試一次。"
   }
 }
