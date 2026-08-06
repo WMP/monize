@@ -761,6 +761,10 @@
       "heading": "[XX-Email is not configured-XX]",
       "body": "[XX-Emergency access depends on email delivery. Ask your administrator to configure the SMTP environment variables (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) and try again.-XX]"
     },
+    "encryptionNotConfigured": {
+      "heading": "[XX-Encryption key required-XX]",
+      "body": "[XX-Emergency access needs AI_ENCRYPTION_KEY set on the server. A grant stores each contact's access link encrypted so a retry can resend the same link, and without that key no link can be sent at all.-XX]"
+    },
     "alreadyGranted": {
       "heading": "[XX-Emergency access already granted-XX]",
       "description": "[XX-your designated contacts received magic links to take over the account. If this was unintended, clear the granted state below to void outstanding links.-XX]",

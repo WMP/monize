@@ -1,3 +1,10 @@
+-- database/schema.sql as of current main (7747f578d4f1b0f1ae185116cd700934cf8ee6e2,
+-- max migration 135): the exact schema an existing production install runs before
+-- this branch's migrations 136-148 are applied. The migration-path spec replays
+-- the full migrations directory on top of this, which is what db-migrate does on
+-- such an install (files <= 135 are no-ops there; 136+ do the real work).
+-- Regenerate only when the branch is rebased onto a newer main:
+--   git show <new-main-sha>:database/schema.sql > this file (below this header).
 -- Monize - Database Schema
 -- PostgreSQL Schema for Microsoft Money replacement
 
@@ -341,144 +348,6 @@ CREATE TABLE attachment_blobs (
     data BYTEA NOT NULL
 );
 
--- Attachment objects whose metadata is gone and whose bytes still need deleting
--- (migration 138).
---
--- Only the database provider keeps bytes where PostgreSQL can roll them back. A
--- local filesystem write and an S3 put cannot join the transaction, so deleting
--- the object before the metadata delete committed left metadata pointing at bytes
--- that no longer existed. And deleting a transaction removes its attachment
--- metadata by ON DELETE CASCADE with no application code running at all, so
--- those objects were never deleted.
---
--- A trigger writes the tombstone, which is why it covers every path the
--- application does not control. AttachmentOrphanSweeper deletes the object and
--- drops the row, so a crash between the two costs a retry.
---
--- user_id is ON DELETE SET NULL, not CASCADE: deleting a user is exactly when
--- their bytes most need removing, so the record must outlive them.
-CREATE TABLE attachment_blob_tombstones (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    storage_provider VARCHAR(20) NOT NULL,
-    storage_key VARCHAR(255) NOT NULL,
-    deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- Non-NULL marks this row as an upload still in flight and says until when
-    -- (migration 144). The sweeper skips a live lease, which is a *latency*
-    -- mechanism: it exists so the sweep does not cause avoidable upload failures.
-    -- NULL means an ordinary deletion record, swept immediately.
-    upload_lease_expires_at TIMESTAMP,
-    -- The sweeper's claim, set by a conditional UPDATE *before* the external
-    -- delete. This is the *correctness* mechanism: the uploader's "clear the
-    -- intent" step requires `swept_at IS NULL` inside the transaction that commits
-    -- the metadata row, so metadata pointing at deleted bytes is impossible
-    -- whichever of the two wins the row (audit RV4-002).
-    swept_at TIMESTAMP,
-    -- How long a swept *upload intent* is kept after its object was deleted
-    -- (migration 145). The fence above is about metadata; this is about bytes. A
-    -- put that stalled past its lease can land after the sweep deleted the key, and
-    -- a process killed before its compensating delete leaves those bytes with no
-    -- tombstone to enumerate them -- unreferenced and undiscoverable (audit
-    -- RRV4-002). Keeping the row until this passes means the next hourly sweep
-    -- re-deletes the key and only then retires the row. NULL on an ordinary
-    -- deletion record, whose metadata is already gone, so nothing can write those
-    -- bytes again.
-    late_write_quarantine_until TIMESTAMP,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    last_error TEXT
-);
-
--- The sweeper's candidate predicate: rows with no live upload lease, plus the
--- quarantined rows it has to come back to.
-CREATE INDEX idx_abt_quarantined
-    ON attachment_blob_tombstones(storage_provider, late_write_quarantine_until)
-    WHERE late_write_quarantine_until IS NOT NULL;
-CREATE INDEX idx_abt_sweepable
-    ON attachment_blob_tombstones(storage_provider, deleted_at)
-    WHERE upload_lease_expires_at IS NULL;
-
--- Unique, so a tombstone is idempotent: two records for one object describe the
--- same pending deletion, and the trigger can therefore be a plain
--- ON CONFLICT DO NOTHING insert with no bookkeeping of its own.
-CREATE UNIQUE INDEX idx_abt_object
-    ON attachment_blob_tombstones(storage_provider, storage_key);
-CREATE INDEX idx_abt_deleted_at ON attachment_blob_tombstones(deleted_at);
-
--- SECURITY DEFINER so the tombstone is written as the table owner: under RLS the
--- trigger would otherwise insert as the invoking role and be refused whenever the
--- deleted row's owner is not the session's identity, and a refused trigger fails
--- the DELETE itself. search_path is pinned -- a SECURITY DEFINER function that
--- resolves its tables through the caller's search_path is an escalation hole.
-CREATE OR REPLACE FUNCTION record_attachment_blob_tombstone() RETURNS TRIGGER
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    INSERT INTO attachment_blob_tombstones (user_id, storage_provider, storage_key)
-    VALUES (OLD.user_id, OLD.storage_provider, OLD.storage_key)
-    ON CONFLICT (storage_provider, storage_key) DO NOTHING;
-    RETURN OLD;
-END;
-$$;
-
--- Only for providers whose bytes live outside PostgreSQL. The database provider
--- keeps them in attachment_blobs, whose own foreign key cascades.
-CREATE TRIGGER trg_attachment_blob_tombstone
-    AFTER DELETE ON transaction_attachments
-    FOR EACH ROW
-    WHEN (OLD.storage_provider <> 'database')
-    EXECUTE FUNCTION record_attachment_blob_tombstone();
-
--- Late-write quarantine enforcement (migration 146). The sweeper's claim settles
--- what metadata may commit, not what bytes exist: a put stalled past its lease can
--- land after the key was deleted. These two triggers make the quarantine hold
--- across a rolling deployment, where a previous-release sweeper would otherwise
--- claim, delete the object, and unconditionally drop the tombstone.
-CREATE OR REPLACE FUNCTION stamp_attachment_quarantine() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN
-    NEW.late_write_quarantine_until := COALESCE(
-        NEW.late_write_quarantine_until,
-        OLD.late_write_quarantine_until,
-        CURRENT_TIMESTAMP + INTERVAL '6 hours'
-    );
-    RETURN NEW;
-END;
-$$;
-
--- On any sweeper's claim (swept_at NULL -> non-NULL) of a row that was an upload
--- intent (it had a lease), stamp the quarantine if unset. Covers the previous
--- binary's claim, which does not know the column exists.
-CREATE TRIGGER trg_abt_stamp_quarantine
-    BEFORE UPDATE ON attachment_blob_tombstones
-    FOR EACH ROW
-    WHEN (
-      NEW.swept_at IS NOT NULL
-      AND OLD.swept_at IS NULL
-      AND OLD.upload_lease_expires_at IS NOT NULL
-    )
-    EXECUTE FUNCTION stamp_attachment_quarantine();
-
-CREATE OR REPLACE FUNCTION reject_quarantined_tombstone_delete() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN
-    RAISE EXCEPTION
-      'attachment tombstone % is under late-write quarantine until %; a stalled upload may still write to this key',
-      OLD.storage_key, OLD.late_write_quarantine_until
-      USING ERRCODE = 'raise_exception';
-END;
-$$;
-
--- Reject deletion of a still-quarantined row. Refuses the previous binary's
--- unconditional post-sweep DELETE; the new sweeper's retire() and the uploader's
--- intent-clear both target only rows this excludes, so neither trips it.
-CREATE TRIGGER trg_abt_reject_quarantined_delete
-    BEFORE DELETE ON attachment_blob_tombstones
-    FOR EACH ROW
-    WHEN (
-      OLD.late_write_quarantine_until IS NOT NULL
-      AND OLD.late_write_quarantine_until > CURRENT_TIMESTAMP
-    )
-    EXECUTE FUNCTION reject_quarantined_tombstone_delete();
-
 -- Tags
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -704,23 +573,6 @@ CREATE TABLE scheduled_transaction_overrides (
 CREATE INDEX idx_sched_txn_overrides_sched_txn_id ON scheduled_transaction_overrides(scheduled_transaction_id);
 CREATE INDEX idx_sched_txn_overrides_date ON scheduled_transaction_overrides(override_date);
 CREATE INDEX idx_sched_txn_overrides_orig ON scheduled_transaction_overrides(scheduled_transaction_id, original_date);
-
--- Posted occurrences (migration 138). The occurrence -- not the schedule -- is
--- the thing that must happen once, and this unique key is its name. Manual and
--- automatic posting both insert it inside the same transaction as the money they
--- create, so the key arbitrates between two replicas, a manual post racing the
--- cron, and a retry after a crash. original_due_date is the schedule's own
--- next_due_date at posting time, not posted_date, which an override moves.
-CREATE TABLE scheduled_transaction_postings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    scheduled_transaction_id UUID NOT NULL REFERENCES scheduled_transactions(id) ON DELETE CASCADE,
-    original_due_date DATE NOT NULL,
-    posted_date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_stp_occurrence
-    ON scheduled_transaction_postings(scheduled_transaction_id, original_due_date);
 
 -- Security documents: factsheet, KIID, prospectus, annual report, tax slip,
 -- research. Real columns rather than a JSONB blob so the type, name, date and
@@ -1017,13 +869,6 @@ CREATE TABLE emergency_access_settings (
     message_ciphertext    TEXT,
     last_reminder_sent_at TIMESTAMP,
     granted_at            TIMESTAMP,
-    -- Which grant cycle this owner is on (migration 148). Advanced by the single
-    -- statement that transitions ungranted -> granted, so a contact's delivery
-    -- state belongs to one cycle instead of to the row: no re-arm path
-    -- (revokeAfterReturn, disable/re-enable, a manual reset) has to remember to
-    -- clear anything, which is what stopped emergency access from ever firing a
-    -- second time (audit RRV4-004).
-    grant_generation      INTEGER NOT NULL DEFAULT 1,
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT emergency_access_settings_reminder_lt_grant
@@ -1039,29 +884,6 @@ CREATE TABLE emergency_access_contacts (
     claim_token_expires_at TIMESTAMP,
     claim_token_used_at    TIMESTAMP,
     claim_voided_reason    VARCHAR(20), -- 'claimed_by_other' | 'owner_revoked' | NULL
-    -- When the notice for `notified_grant_generation` was actually sent
-    -- (migration 147). The delivery record, kept apart from the claim that
-    -- coordinates the send: a claim answers "may I do this now" and cannot also
-    -- answer "has this been done", because the second question has to outlive the
-    -- process that asked the first. That is how the daily check finds a grant a
-    -- killed replica never delivered (audit FV4-004).
-    --
-    -- A timestamp for operators, not a predicate: migration 148 moved "is a link
-    -- still owed" onto the generation below, because this column was never reset
-    -- and therefore made emergency access fire at most once per contact row.
-    claim_notified_at      TIMESTAMP,
-    -- The grant cycle whose notice this contact received (migration 148). Owed a
-    -- link whenever it differs from the owner's `grant_generation`, which is what
-    -- makes a re-armed grant owe every contact again without any reset path having
-    -- to say so (audit RRV4-004). NULL means never notified.
-    notified_grant_generation INTEGER,
-    -- The undelivered credential (migration 147), AES-256-GCM under
-    -- AI_ENCRYPTION_KEY. Written with the hash before the first send, re-read by a
-    -- retry so it re-sends the *same* link rather than minting one that kills the
-    -- link already in the recipient's inbox, and cleared in the statement that
-    -- records delivery. A credential at rest, so it does not outlive the delivery
-    -- it exists for (audit RV4-004).
-    claim_token_ciphertext TEXT,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1069,90 +891,9 @@ CREATE TABLE emergency_access_contacts (
 CREATE UNIQUE INDEX idx_emergency_access_contacts_owner_email
     ON emergency_access_contacts(owner_user_id, lower(email));
 
--- "Granted owners with a contact still owed a link", read on every daily sweep.
--- Partial on the never-notified case, which is every contact of a brand-new grant;
--- the generation comparison for a resumed one falls back to the owner column.
-CREATE INDEX idx_eac_awaiting_notice
-    ON emergency_access_contacts(owner_user_id)
-    WHERE notified_grant_generation IS NULL;
-
 CREATE INDEX idx_emergency_access_contacts_token_hash
     ON emergency_access_contacts(claim_token_hash)
     WHERE claim_token_hash IS NOT NULL;
-
--- Rolling-deployment compatibility for the delivery generation (migration 149).
--- The previous binary acknowledges a delivered link by writing only
--- `claim_notified_at`, leaving `notified_grant_generation` NULL -- which the new
--- pending query would read as "still owed", rotate the token, and kill the link
--- already delivered (audit V4R3-001). This BEFORE UPDATE trigger stamps the owner's
--- current generation whenever an old-binary acknowledgement lands, so both binaries
--- agree on what a delivered notice means. The new code sets the generation itself,
--- so the trigger is a no-op for it. SECURITY DEFINER so it can read the settings row
--- regardless of the invoking identity under RLS.
-CREATE OR REPLACE FUNCTION backfill_notified_grant_generation() RETURNS TRIGGER
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-BEGIN
-    SELECT s.grant_generation
-      INTO NEW.notified_grant_generation
-      FROM emergency_access_settings s
-     WHERE s.owner_user_id = NEW.owner_user_id;
-    -- No settings row (should not happen for a contact) leaves it NULL, which is
-    -- the pre-migration behaviour rather than a spurious generation.
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_eac_backfill_notified_generation
-    BEFORE UPDATE ON emergency_access_contacts
-    FOR EACH ROW
-    WHEN (
-      NEW.claim_notified_at IS NOT NULL
-      AND OLD.claim_notified_at IS NULL
-      AND NEW.notified_grant_generation IS NULL
-    )
-    EXECUTE FUNCTION backfill_notified_grant_generation();
-
--- Rolling-deployment fence for the binary that predates the delivery columns
--- (migration 150). The pre-147 release rotates `claim_token_hash` guarded only by
--- a snapshot of `granted_at`, so a stale old pod can overwrite -- and kill -- a
--- link the new protocol has already minted or delivered. The current code never
--- writes a new hash without the matching `claim_token_ciphertext` in the same
--- statement, so a rotation touching neither ciphertext nor generation is
--- legacy-shaped, and it is refused exactly when it would destroy new-protocol
--- state: an undelivered credential in flight, or a live delivered link. Hash
--- clears (revocation, consumption) and rotations over rows with no new-protocol
--- state pass through unchanged.
-CREATE OR REPLACE FUNCTION reject_legacy_emergency_token_rotation() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.claim_token_ciphertext IS NOT NULL THEN
-        RAISE EXCEPTION
-            'emergency-access contact % has an undelivered credential; a generation-blind token rotation would desync it (a newer release owns this credential cycle)',
-            OLD.id;
-    END IF;
-    IF OLD.notified_grant_generation IS NOT NULL
-       AND OLD.claim_token_hash IS NOT NULL
-       AND OLD.claim_token_used_at IS NULL
-       AND OLD.claim_token_expires_at IS NOT NULL
-       AND OLD.claim_token_expires_at >= CURRENT_TIMESTAMP THEN
-        RAISE EXCEPTION
-            'emergency-access contact % holds a live delivered link; a generation-blind token rotation would kill it (a newer release owns this credential cycle)',
-            OLD.id;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_eac_reject_legacy_token_rotation
-    BEFORE UPDATE ON emergency_access_contacts
-    FOR EACH ROW
-    WHEN (
-      NEW.claim_token_hash IS NOT NULL
-      AND NEW.claim_token_hash IS DISTINCT FROM OLD.claim_token_hash
-      AND NEW.claim_token_ciphertext IS NOT DISTINCT FROM OLD.claim_token_ciphertext
-      AND NEW.notified_grant_generation IS NOT DISTINCT FROM OLD.notified_grant_generation
-    )
-    EXECUTE FUNCTION reject_legacy_emergency_token_rotation();
 
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART
@@ -1255,6 +996,7 @@ COMMENT ON FUNCTION app_real_user_id() IS
   'RLS: authenticated user id from the app.real_user_id GUC (the delegate while acting; equals app_current_user_id() otherwise).';
 COMMENT ON FUNCTION app_bypass_rls() IS
   'RLS: true inside a withSystemContext scope, letting cross-user jobs (cron, seed, admin, pre-session auth) see every row.';
+
 -- Triggers for updated_at timestamps.
 --
 -- Honours the app.preserve_timestamps GUC so backup restore can write rows with
@@ -1534,24 +1276,6 @@ CREATE INDEX idx_budget_alerts_user ON budget_alerts(user_id);
 CREATE INDEX idx_budget_alerts_user_unread ON budget_alerts(user_id, is_read) WHERE is_read = false;
 CREATE INDEX idx_budget_alerts_budget_period ON budget_alerts(budget_id, period_start);
 
--- The app's own de-duplication rule as a database key (migration 138).
--- deduplicateAlerts() drops a candidate matching an existing (alert_type,
--- budget_category_id) unless its severity is strictly higher, so severity
--- belongs in the key and an escalation still inserts. COALESCE because a
--- budget-wide alert has a NULL category and NULL never equals NULL in a unique
--- index: without it the budget-wide alerts would be the only unguarded ones.
---
--- Duplicates predating the key are collapsed by the migration's preflight before
--- it is created, keeping whichever row the user acted on.
-CREATE UNIQUE INDEX idx_budget_alerts_fingerprint
-    ON budget_alerts(
-        budget_id,
-        period_start,
-        alert_type,
-        COALESCE(budget_category_id, '00000000-0000-0000-0000-000000000000'::uuid),
-        severity
-    );
-
 -- Triggers for budget tables updated_at
 CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_budget_categories_updated_at BEFORE UPDATE ON budget_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1607,161 +1331,22 @@ CREATE TABLE import_jobs (
     error_key VARCHAR(100),
     error_detail TEXT,
     retryable BOOLEAN NOT NULL DEFAULT false,
-    -- Set inside the import transaction, so it commits with the rows it
-    -- describes (migration 138). Distinguishes "failed before writing anything,
-    -- retry is free" from "the ledger is already written and only the completion
-    -- metadata is missing" -- two states the retryable flag used to fold into
-    -- one and offer as an ordinary retry, which re-imported the file.
-    data_committed BOOLEAN NOT NULL DEFAULT false,
-    -- The current attempt's identity (migration 142), minted by `claim()` and
-    -- required by every write the worker makes. The reaper clears it, which is
-    -- what stops a worker it already gave up on from committing anyway: the
-    -- import transaction's last statement is a fenced compare-and-set on this
-    -- column, and a zero-row result rolls the whole import back (audit RV4-001).
-    attempt_token UUID,
     heartbeat_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- Load-bearing for the partial unique index below, not cosmetic: its
-    -- predicate names two statuses, so a status the application never intended
-    -- would sit outside the predicate and let a second active job exist.
-    CONSTRAINT import_jobs_status_check
-        CHECK (status IN ('pending', 'running', 'completed', 'failed'))
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- `data_committed` may only go false -> true while the job is `running`
--- (migration 143). The application checkpoint also requires the attempt's token,
--- but that only binds code that knows the column exists: during a rolling
--- deployment a previous-version worker runs `UPDATE import_jobs SET
--- data_committed = true WHERE id = $1`, naming no token, and would otherwise
--- commit the whole file after the new reaper had already failed the job and
--- advertised a retry (audit RRV4-001). The reaper's action is `status = 'failed'`,
--- so this refuses exactly that commit -- to either version -- as a statement error
--- that aborts the import transaction.
---
--- Deliberately not "and has a token": an old worker's normal unreaped state is
--- `running` with a NULL token, and refusing that would break every import in
--- flight during the rollout.
-CREATE OR REPLACE FUNCTION reject_unfenced_import_checkpoint() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN
-    RAISE EXCEPTION
-      'import job % may not record a data commit while status is %; the attempt was reaped',
-      OLD.id, NEW.status
-      USING ERRCODE = 'raise_exception';
-END;
-$$;
-
-CREATE TRIGGER trg_import_job_fenced_checkpoint
-    BEFORE UPDATE ON import_jobs
-    FOR EACH ROW
-    WHEN (
-      NEW.data_committed
-      AND NOT OLD.data_committed
-      AND NEW.status <> 'running'
-    )
-    EXECUTE FUNCTION reject_unfenced_import_checkpoint();
 
 CREATE INDEX idx_import_jobs_user ON import_jobs(user_id);
 CREATE INDEX idx_import_jobs_staged_file ON import_jobs(staged_file_id);
 CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHERE status = 'running';
--- One active import per user, enforced where it cannot be raced (migration 138).
--- The key is the user because that is what the product blocks on: hasActiveJob()
--- asks only whether this user has any pending/running job, and the 409 says "an
--- import is already running".
---
--- A fresh database is trivially in this state; an upgraded one need not be, since
--- more than one active job is exactly what the pre-136 code could produce. The
--- migration therefore repairs before it constrains -- see its preflight, and
--- backend/test/integration/migration-138-preflight.integration.spec.ts.
-CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
-    ON import_jobs(user_id)
-    WHERE status IN ('pending', 'running');
+-- One in-flight import per user, enforced here rather than by a read-then-insert
+-- in the service: two concurrent starts would otherwise both see no active job
+-- and import the same staged file twice.
+CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user ON import_jobs(user_id) WHERE status IN ('pending', 'running');
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Durable claims on per-user work that must happen at most once (migration 138).
---
--- ScheduleModule lives in the API process, so every backend replica fires every
--- cron (docs/cron-jobs.md). A guard held in process memory is therefore not a
--- guard -- each replica has its own -- and "query for a row like the one I am
--- about to write" is a check-then-act both replicas pass. The unique key makes
--- the claim itself the atomic operation.
---
--- expires_at NULL means a permanent claim (one delivery per user per window);
--- a timestamp means a lease a later worker may retake once it has passed, so a
--- replica killed mid-run does not lock the user out.
-CREATE TABLE job_claims (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    claim_type VARCHAR(64) NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    claim_key VARCHAR(200) NOT NULL,
-    claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- The lease: present while a replica is doing the work, gone or past when it
-    -- is not. NULL on a legacy permanent claim.
-    expires_at TIMESTAMP,
-    -- When the side effect this claim coordinates actually happened
-    -- (migration 139). Written *after* the send, and re-read under the lease to
-    -- decide whether the work is still owed: a claim taken before the send says
-    -- only that somebody intended to send, and an intention does not survive the
-    -- process holding it (audit RV4-006). A delivered row is never retaken.
-    delivered_at TIMESTAMP,
-    -- Which attempt owns the current lease (migration 140). The key above
-    -- identifies the *work*; this identifies the holder, so a worker delayed past
-    -- its own expiry cannot release a lease another replica has retaken or record a
-    -- delivery for a send that replica has not finished (audit DR-RRV4-01). NULL for
-    -- a permanent `claimOnce` row, which has no attempt to identify.
-    lease_token UUID
-);
-
-CREATE UNIQUE INDEX idx_job_claims_key ON job_claims(claim_type, user_id, claim_key);
-CREATE INDEX idx_job_claims_claimed_at ON job_claims(claimed_at);
-
--- Lease-ownership enforcement (migration 141). A session mutating a *live tokenized*
--- lease must own it, proven by the transaction-local `app.job_claim_lease_token`
--- GUC the new release/markDelivered set. The previous binary never sets it, so it
--- cannot delete or mark a lease this deployment has retaken. The WHEN clauses
--- exclude expired rows (retakes, retention sweep), permanent claimOnce rows
--- (NULL token) and delivered rows (NULL expiry), so only the tokenized writes and
--- the old binary's untokenized ones ever reach the guard.
-CREATE OR REPLACE FUNCTION guard_job_claim_lease_ownership() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN
-    IF COALESCE(current_setting('app.job_claim_lease_token', true), '')
-       IS DISTINCT FROM OLD.lease_token::text THEN
-        RAISE EXCEPTION
-          'job_claims lease % (%/%/%) is held by another attempt; this session does not own it',
-          OLD.lease_token, OLD.claim_type, OLD.user_id, OLD.claim_key
-          USING ERRCODE = 'raise_exception';
-    END IF;
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_job_claims_guard_delete
-    BEFORE DELETE ON job_claims
-    FOR EACH ROW
-    WHEN (
-      OLD.lease_token IS NOT NULL
-      AND OLD.expires_at IS NOT NULL
-      AND OLD.expires_at > CURRENT_TIMESTAMP
-    )
-    EXECUTE FUNCTION guard_job_claim_lease_ownership();
-
-CREATE TRIGGER trg_job_claims_guard_update
-    BEFORE UPDATE ON job_claims
-    FOR EACH ROW
-    WHEN (
-      OLD.lease_token IS NOT NULL
-      AND OLD.expires_at IS NOT NULL
-      AND OLD.expires_at > CURRENT_TIMESTAMP
-    )
-    EXECUTE FUNCTION guard_job_claim_lease_ownership();
 
 -- Trigger for tags updated_at
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2050,7 +1635,6 @@ DECLARE
     t text;
     direct_tables text[] := ARRAY[
         'action_history',
-        'attachment_blob_tombstones',
         'ai_insights',
         'ai_provider_configs',
         'ai_usage_logs',
@@ -2068,7 +1652,6 @@ DECLARE
         'institutions',
         'investment_reports',
         'investment_transactions',
-        'job_claims',
         'loan_rate_changes',
         'loan_scenarios',
         'monte_carlo_scenarios',
@@ -2367,18 +1950,6 @@ CREATE POLICY scheduled_transaction_overrides_isolation ON scheduled_transaction
     WHERE st.id = scheduled_transaction_overrides.scheduled_transaction_id
       AND st.user_id = (SELECT app_current_user_id())));
 
--- scheduled_transaction_postings -> scheduled_transactions.user_id (migration 138)
-DROP POLICY IF EXISTS scheduled_transaction_postings_isolation ON scheduled_transaction_postings;
-CREATE POLICY scheduled_transaction_postings_isolation ON scheduled_transaction_postings
-  USING ((SELECT app_bypass_rls()) OR EXISTS (
-    SELECT 1 FROM scheduled_transactions st
-    WHERE st.id = scheduled_transaction_postings.scheduled_transaction_id
-      AND st.user_id = (SELECT app_current_user_id())))
-  WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
-    SELECT 1 FROM scheduled_transactions st
-    WHERE st.id = scheduled_transaction_postings.scheduled_transaction_id
-      AND st.user_id = (SELECT app_current_user_id())));
-
 -- ---------------------------------------------------------------------------
 -- Securities family
 --
@@ -2636,9 +2207,7 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --           15 indirect (113), 5 special (114),
 --           2 direct for the .mny import's staging + job tables (117),
 --           1 direct for security_documents (118),
---           4 direct for the GEM strategy tables (124, 125),
---           2 direct for job_claims and attachment_blob_tombstones, and
---           1 indirect for scheduled_transaction_postings (133).
+--           4 direct for the GEM strategy tables (124, 125).
 
 -- ---------------------------------------------------------------------------
 -- Enable row-level security (migration 123).
@@ -2674,163 +2243,3 @@ BEGIN
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     END LOOP;
 END $$;
-
--- -------------------------------------------------------------------------
--- One global answer to "is this currency code still referenced?" (migration 136).
---
--- `currencies` is shared reference data, and columns across most of the
--- financial tables point at `currencies(code)`. Deleting a row any of them still
--- holds either aborts with a foreign-key violation or -- for
--- `user_currency_preferences`, the one FK that cascades -- silently removes
--- another user's activation.
---
--- The two callers that used to decide this each got it wrong: the currencies
--- service enumerated only some of the columns, and the backup restore's
--- cleanup enumerated all of them but ran inside the restoring user's transaction,
--- where RLS hides the other users' rows the `NOT EXISTS` clauses were looking
--- for. So the predicate lives here and both call it.
---
--- SECURITY DEFINER is what makes it global: policies are evaluated against
--- `current_user`, which inside a definer function is this function's owner, and
--- the owner is not subject to its own policies (FORCE ROW LEVEL SECURITY is
--- deliberately unused -- see the RLS notes at the end of this file). It runs in
--- the caller's transaction, so the check and the delete it guards stay one
--- read-modify-write, which a separate system-context connection could not be.
---
--- The privilege is one VARCHAR in, one boolean out: no row contents leave the
--- function and the caller cannot influence which tables are consulted.
--- `search_path` is pinned so `public` cannot be shadowed. EXECUTE is revoked
--- from PUBLIC and re-granted to the runtime role by db-init (a GRANT naming that
--- role cannot live in SQL that runs before the role exists).
---
--- `currency-references.spec.ts` fails when a FK to `currencies(code)` is not
--- consulted below, so a migration adding one cannot leave this behind.
-CREATE OR REPLACE FUNCTION currency_code_in_use_globally(p_code VARCHAR)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM user_currency_preferences WHERE currency_code = p_code
-    UNION ALL SELECT 1 FROM exchange_rates
-      WHERE from_currency = p_code OR to_currency = p_code
-    UNION ALL SELECT 1 FROM accounts WHERE currency_code = p_code
-    UNION ALL SELECT 1 FROM transactions
-      WHERE currency_code = p_code OR original_currency_code = p_code
-    UNION ALL SELECT 1 FROM securities WHERE currency_code = p_code
-    UNION ALL SELECT 1 FROM scheduled_transactions
-      WHERE currency_code = p_code OR original_currency_code = p_code
-    UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
-    UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
-  )
-$$;
-
-COMMENT ON FUNCTION currency_code_in_use_globally(VARCHAR) IS
-  'True when any row anywhere still references currencies(code) = p_code. '
-  'SECURITY DEFINER so the answer is genuinely global rather than the calling '
-  'tenant''s view of it; runs in the caller''s transaction so the check and the '
-  'delete it guards are one read-modify-write. Must consult every FK to '
-  'currencies(code) -- enforced by currency-references.spec.ts.';
-
-REVOKE ALL ON FUNCTION currency_code_in_use_globally(VARCHAR) FROM PUBLIC;
-
--- -------------------------------------------------------------------------
--- Which currency codes does one user reference?
---
--- The companion to `currency_code_in_use_globally` (migration 136), and a
--- separate question: that one asks whether *anybody* still holds a code, this
--- one asks which codes a single user holds. Both enumerate the columns that
--- reference `currencies(code)`, which is precisely the list that has drifted
--- before, so both live in SQL beside each other and
--- `currency-references.spec.ts` checks each against the schema.
---
--- Two callers ask it in two slightly different ways, so it is two functions --
--- one list, derived twice, rather than the list written twice:
---
---   * `currency_codes_referenced_by_user_data` -- the codes this user's *data*
---     is denominated in. What the delete gate needs: deleting a currency the
---     caller still has a budget or an account in has to be refused.
---   * `currency_codes_referenced_by_user` -- the above plus the user's own
---     activation row. What the backup export needs: a currency the user
---     activated but has not spent anything in yet must still travel with the
---     backup, or the restore has a preference row pointing at a definition that
---     is not in the file.
---
--- The composite calls the data function rather than repeating its branches. The
--- delete gate could not use the composite: it runs *before* deleting the
--- caller's own preference row, so the activation it is about to remove would
--- always answer "in use" and no currency could ever be deleted.
---
--- The backup export needs this because it selected currencies by
--- `created_by_user_id`. Currencies are shared -- any user may activate a code
--- another user created -- so a user whose accounts are denominated in somebody
--- else's custom currency exported the references without the definition, and a
--- restore onto a fresh instance invented name, symbol and decimal places from a
--- fallback. A currency defined as `PTS / Family Points / * / 0 decimals` came
--- back as `PTS / PTS / PTS / 2 decimals`: the stored amounts were unchanged, but
--- a balance of 7 rendered as `PTS 7.00` instead of `*7`.
---
--- The delete gate needs it because `CurrenciesService.isInUse` was a third
--- hand-written spelling of the same list and was missing `budgets.currency_code`
--- -- so a user with a budget denominated in a custom currency was told the code
--- was not "in use by your accounts, securities, or other records", had their
--- activation deleted, and was left with a budget in a currency they could no
--- longer see or reactivate.
---
--- Both are deliberately SECURITY INVOKER, unlike their sibling in 133. They must
--- answer for the calling tenant only, and under RLS the caller's own policies
--- give exactly that -- so the ordinary rules apply and no privilege is granted.
---
--- `exchange_rates` is absent on purpose: it is global reference data with no
--- `user_id`, so it cannot contribute to a per-user answer. The guard test knows
--- this rule (a referencing table with no `user_id` column is exempt here) rather
--- than carrying an exception list.
-
--- NULLs are filtered once here rather than per branch: three of the columns are
--- nullable, and a NULL in the result set turns a caller's `NOT IN` into a
--- silently empty answer.
-CREATE OR REPLACE FUNCTION currency_codes_referenced_by_user_data(p_user_id uuid)
-RETURNS SETOF varchar
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT code FROM (
-    SELECT default_currency AS code FROM user_preferences WHERE user_id = p_user_id
-    UNION SELECT currency_code FROM accounts WHERE user_id = p_user_id
-    UNION SELECT currency_code FROM transactions WHERE user_id = p_user_id
-    UNION SELECT original_currency_code FROM transactions WHERE user_id = p_user_id
-    UNION SELECT currency_code FROM securities WHERE user_id = p_user_id
-    UNION SELECT currency_code FROM scheduled_transactions WHERE user_id = p_user_id
-    UNION SELECT original_currency_code FROM scheduled_transactions WHERE user_id = p_user_id
-    UNION SELECT currency_code FROM budgets WHERE user_id = p_user_id
-  ) referenced
-  WHERE code IS NOT NULL
-$$;
-
-COMMENT ON FUNCTION currency_codes_referenced_by_user_data(uuid) IS
-  'The currency codes one user''s data is denominated in, excluding their own '
-  'user_currency_preferences activation row. What the delete gate needs, since it '
-  'runs before removing that row. SECURITY INVOKER: the answer is meant to be the '
-  'calling tenant''s, which the caller''s own RLS policies already give. Must '
-  'consult every FK to currencies(code) whose table has a user_id -- enforced by '
-  'currency-references.spec.ts. exchange_rates is excluded: global reference data '
-  'with no owner cannot contribute to a per-user answer.';
-
-CREATE OR REPLACE FUNCTION currency_codes_referenced_by_user(p_user_id uuid)
-RETURNS SETOF varchar
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT currency_code FROM user_currency_preferences WHERE user_id = p_user_id
-  UNION SELECT referenced.code
-    FROM currency_codes_referenced_by_user_data(p_user_id) AS referenced(code)
-$$;
-
-COMMENT ON FUNCTION currency_codes_referenced_by_user(uuid) IS
-  'Every currency code one user references: the codes their data is denominated '
-  'in, plus the codes they have activated. What the backup export needs, so an '
-  'activated-but-unused currency definition still travels with the backup. '
-  'Derives from currency_codes_referenced_by_user_data rather than repeating its '
-  'branches -- that list has drifted three times.';

@@ -31,6 +31,18 @@ export interface MessageMetadata {
 
 export interface SettingsView {
   emailConfigured: boolean;
+  /**
+   * Whether the credential encryption this feature's delivery path needs is
+   * configured.
+   *
+   * Separate from `emailConfigured` because they can fail independently and the
+   * consequence of the second is silent: a grant issues a claim token, stores it
+   * encrypted so a retry can re-send the same link, and without a key that store
+   * throws for every contact -- so the notice is never delivered and nothing on
+   * screen says why (audit RRV4-003). The feature refuses to be enabled without
+   * it, and this field is what lets the UI say so before the user tries.
+   */
+  credentialEncryptionConfigured: boolean;
   enabled: boolean;
   grantAfterDays: number;
   reminderAfterDays: number;
@@ -122,6 +134,7 @@ export class EmergencyAccessService {
 
     return {
       emailConfigured,
+      credentialEncryptionConfigured: this.encryption.isConfigured(),
       enabled: settings?.enabled ?? false,
       grantAfterDays: settings?.grantAfterDays ?? 14,
       reminderAfterDays: settings?.reminderAfterDays ?? 7,
@@ -153,11 +166,32 @@ export class EmergencyAccessService {
     userId: string,
     dto: UpsertSettingsDto,
   ): Promise<SettingsView> {
-    if (!this.emailService.getStatus().configured) {
+    // Every dependency check is gated on `dto.enabled`, because a missing
+    // dependency may stop the owner *arming* the feature but must never stop them
+    // *disabling* it (audit V4R3-002). Turning it off is the one action that always
+    // has to work -- it is how an owner revokes a safeguard after SMTP was removed
+    // or the encryption key was lost, and the disable branch below voids every
+    // outstanding link. A `dto.enabled === false` request therefore skips both
+    // checks and proceeds straight to the write.
+    if (dto.enabled && !this.emailService.getStatus().configured) {
       throw new ServiceUnavailableException(
         tr(
           "errors.emergencyAccess.smtpNotConfigured",
           "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",
+        ),
+      );
+    }
+    // The grant path stores each contact's claim token encrypted, so a retry
+    // re-sends the same link instead of one that invalidates what is already in
+    // their inbox. Without a key that store throws for every contact, the notice is
+    // never delivered, and the only trace is a per-contact log line -- so a user
+    // could arm a recovery mechanism that can never fire. Refuse instead, visibly
+    // (audit RRV4-003).
+    if (dto.enabled && !this.encryption.isConfigured()) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.emergencyAccess.encryptionRequiredToEnable",
+          "Credential encryption is not configured. Emergency access cannot be enabled until AI_ENCRYPTION_KEY is set, because a grant has to store each contact's access link securely.",
         ),
       );
     }
@@ -189,6 +223,10 @@ export class EmergencyAccessService {
         row.grantedAt = null;
         row.lastReminderSentAt = null;
         // Void any outstanding magic links -- the owner has revoked the feature.
+        // The delivery markers are deliberately left alone: a re-enable does not
+        // have to reset them, because the next grant advances the owner's
+        // `grant_generation` past whatever the contacts were notified at
+        // (audit RRV4-004).
         await manager
           .createQueryBuilder()
           .update(EmergencyAccessContact)
@@ -197,6 +235,10 @@ export class EmergencyAccessService {
             claimTokenExpiresAt: null,
             claimTokenUsedAt: () => "CURRENT_TIMESTAMP",
             claimVoidedReason: "owner_revoked",
+            // The credential goes with the hash that made it usable: worthless
+            // without one, but still a recoverable secret under the application
+            // key, and nothing will ever want it again (DR-RRV4-03).
+            claimTokenCiphertext: null,
           })
           .where("owner_user_id = :userId", { userId })
           .andWhere("claim_token_hash IS NOT NULL")
@@ -309,11 +351,22 @@ export class EmergencyAccessService {
         );
       }
     }
+    const emailChanged = normalizedEmail !== contact.email.toLowerCase();
     contact.firstName = dto.firstName.trim();
     contact.email = dto.email.trim();
     // Editing email invalidates any in-flight magic link.
     contact.claimTokenHash = null;
     contact.claimTokenExpiresAt = null;
+    // And the credential it made usable (DR-RRV4-03).
+    contact.claimTokenCiphertext = null;
+    if (emailChanged) {
+      // A different address has not been notified, whatever the old one received.
+      // This is the one per-contact reset the generation cannot derive: the owner's
+      // grant cycle has not moved, so without it a grant already in flight would
+      // consider the corrected address already served (audit RRV4-004).
+      contact.claimNotifiedAt = null;
+      contact.notifiedGrantGeneration = null;
+    }
     await this.scoped(EmergencyAccessContact, (repo) => repo.save(contact));
     return this.toContactView(contact);
   }
@@ -349,6 +402,8 @@ export class EmergencyAccessService {
     settings.grantedAt = null;
     settings.lastReminderSentAt = null;
     await this.scoped(EmergencyAccessSettings, (repo) => repo.save(settings));
+    // As with a disable: the delivery markers stay, because the next grant's
+    // generation is what makes every contact owed a link again (audit RRV4-004).
     await this.scoped(EmergencyAccessContact, (repo) =>
       repo
         .createQueryBuilder()
@@ -358,6 +413,8 @@ export class EmergencyAccessService {
           claimTokenExpiresAt: null,
           claimTokenUsedAt: () => "CURRENT_TIMESTAMP",
           claimVoidedReason: "owner_revoked",
+          // The credential goes with the hash that made it usable (DR-RRV4-03).
+          claimTokenCiphertext: null,
         })
         .where("owner_user_id = :userId", { userId })
         .andWhere("claim_token_hash IS NOT NULL")

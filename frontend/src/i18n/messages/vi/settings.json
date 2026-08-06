@@ -761,6 +761,10 @@
       "heading": "Email chưa được cấu hình",
       "body": "Truy cập khẩn cấp phụ thuộc vào việc gửi email. Yêu cầu quản trị viên cấu hình các biến môi trường SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) và thử lại."
     },
+    "encryptionNotConfigured": {
+      "heading": "Cần khóa mã hóa",
+      "body": "Truy cập khẩn cấp cần AI_ENCRYPTION_KEY được thiết lập trên máy chủ. Việc cấp quyền lưu liên kết truy cập của từng liên hệ ở dạng mã hóa để lần thử lại có thể gửi lại đúng liên kết đó; không có khóa này thì hoàn toàn không thể gửi liên kết nào."
+    },
     "alreadyGranted": {
       "heading": "Quyền truy cập khẩn cấp đã được cấp",
       "description": "các liên hệ được chỉ định của bạn đã nhận được liên kết ma thuật để tiếp quản tài khoản. Nếu đây là ngoài ý muốn, hãy xóa trạng thái đã cấp bên dưới để vô hiệu hóa các liên kết đang chờ xử lý.",

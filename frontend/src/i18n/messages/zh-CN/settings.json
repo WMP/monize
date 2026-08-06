@@ -761,6 +761,10 @@
       "heading": "邮件未配置",
       "body": "紧急访问依赖邮件发送。请让管理员配置 SMTP 环境变量（SMTP_HOST、SMTP_USER、SMTP_PASSWORD）后重试。"
     },
+    "encryptionNotConfigured": {
+      "heading": "需要加密密钥",
+      "body": "紧急访问需要在服务器上设置 AI_ENCRYPTION_KEY。授予访问权限时会加密存储每位联系人的访问链接，以便重试时能重新发送同一链接；没有该密钥，任何链接都无法发送。"
+    },
     "alreadyGranted": {
       "heading": "紧急访问已授权",
       "description": "您指定的联系人已收到接管账户的魔法链接。如果这是误操作，请在下方清除已授权状态以使未完成的链接失效。",

@@ -761,6 +761,10 @@
       "heading": "L'e-mail n'est pas configuré",
       "body": "L'accès d'urgence dépend de la livraison d'e-mails. Demandez à votre administrateur de configurer les variables d'environnement SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) et réessayez."
     },
+    "encryptionNotConfigured": {
+      "heading": "Clé de chiffrement requise",
+      "body": "L'accès d'urgence nécessite que AI_ENCRYPTION_KEY soit défini sur le serveur. Un octroi stocke le lien d'accès de chaque contact sous forme chiffrée afin qu'une nouvelle tentative puisse renvoyer le même lien ; sans cette clé, aucun lien ne peut être envoyé."
+    },
     "alreadyGranted": {
       "heading": "Accès d'urgence déjà accordé",
       "description": "vos contacts désignés ont reçu des liens magiques pour prendre le contrôle du compte. Si cela n'était pas intentionnel, effacez l'état accordé ci-dessous pour annuler les liens en attente.",

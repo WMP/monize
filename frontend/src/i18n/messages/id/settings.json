@@ -761,6 +761,10 @@
       "heading": "Surel tidak dikonfigurasi",
       "body": "Akses darurat bergantung pada pengiriman surel. Minta administrator Anda untuk mengonfigurasi variabel lingkungan SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) dan coba lagi."
     },
+    "encryptionNotConfigured": {
+      "heading": "Kunci enkripsi diperlukan",
+      "body": "Akses darurat memerlukan AI_ENCRYPTION_KEY yang diatur di server. Pemberian akses menyimpan tautan akses setiap kontak secara terenkripsi agar percobaan ulang dapat mengirim ulang tautan yang sama; tanpa kunci itu tidak ada tautan yang dapat dikirim sama sekali."
+    },
     "alreadyGranted": {
       "heading": "Akses darurat sudah diberikan",
       "description": "kontak yang Anda tentukan menerima tautan ajaib untuk mengambil alih akun. Jika ini tidak disengaja, hapus status yang diberikan di bawah ini untuk membatalkan tautan yang beredar.",

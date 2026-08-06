@@ -290,6 +290,10 @@ describe("currency global liveness", () => {
     const definers = definitions.filter((d) => /SECURITY DEFINER/.test(d));
     const names = definers.map((d) => /FUNCTION\s+(\w+)/.exec(d)?.[1]).sort();
     expect(names).toEqual([
+      // Backfills an emergency-access delivery's grant generation as the table
+      // owner, so during a rolling deployment the previous binary (which does
+      // not set the column) still gets a correct value under RLS (migration 149).
+      "backfill_notified_grant_generation",
       // The global currency-liveness answer, evaluated across every tenant.
       "currency_code_in_use_globally",
       // Records an attachment-blob tombstone as the table owner, so the deletion

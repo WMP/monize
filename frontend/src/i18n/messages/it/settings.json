@@ -761,6 +761,10 @@
       "heading": "Email non configurata",
       "body": "L'accesso di emergenza dipende dalla consegna email. Chiedi all'amministratore di configurare le variabili d'ambiente SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) e riprova."
     },
+    "encryptionNotConfigured": {
+      "heading": "Chiave di cifratura richiesta",
+      "body": "L'accesso di emergenza richiede che AI_ENCRYPTION_KEY sia impostata sul server. Una concessione archivia cifrato il link di accesso di ogni contatto così che un nuovo tentativo possa reinviare lo stesso link; senza quella chiave non è possibile inviare alcun link."
+    },
     "alreadyGranted": {
       "heading": "Accesso di emergenza già concesso",
       "description": "i tuoi contatti designati hanno ricevuto magic link per prendere il controllo dell'account. Se non era intenzionale, cancella lo stato di concessione qui sotto per invalidare i link in sospeso.",

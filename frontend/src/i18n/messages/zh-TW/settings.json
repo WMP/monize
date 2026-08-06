@@ -761,6 +761,10 @@
       "heading": "電子郵件未設定",
       "body": "緊急存取依賴電子郵件傳遞。請請管理員設定 SMTP 環境變數（SMTP_HOST、SMTP_USER、SMTP_PASSWORD）後再試。"
     },
+    "encryptionNotConfigured": {
+      "heading": "需要加密金鑰",
+      "body": "緊急存取需要在伺服器上設定 AI_ENCRYPTION_KEY。授予存取權時會加密儲存每位聯絡人的存取連結，讓重試能重新傳送同一個連結；沒有該金鑰，就完全無法傳送任何連結。"
+    },
     "alreadyGranted": {
       "heading": "緊急存取已授予",
       "description": "您指定的聯絡人已收到接管帳戶的魔法連結。如果這不是您的意圖，請清除以下的授予狀態以使未完成的連結失效。",
