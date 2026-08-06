@@ -489,6 +489,7 @@
     "transferAmountNegative": "Overboekingsbedrag mag niet negatief zijn",
     "notATransfer": "Transactie is geen overboeking",
     "splitTransferLegAccountLocked": "Deze overboeking maakt deel uit van een gesplitste transactie. Wijzig de rekeningen door de splitsing op de brontransactie te bewerken.",
+    "splitTransferLegStatusLocked": "Deze overboeking maakt deel uit van een gesplitste transactie. Maak deze ongeldig of herstel deze door de gesplitste transactie waartoe deze behoort te bewerken, zodat beide zijden samen wijzigen.",
     "notFoundById": "Transactie met ID {{ id }} niet gevonden",
     "bulkUpdateNoFields": "Er moet minimaal één bijwerkveld worden opgegeven",
     "payeeNotFound": "Begunstigde niet gevonden",

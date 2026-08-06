@@ -11,6 +11,7 @@ import { PayeeAlias } from "../payees/entities/payee-alias.entity";
 import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { TransactionSplitTag } from "../tags/entities/transaction-split-tag.entity";
 import { ImportContext, updateAccountBalance } from "./import-context";
+import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { tr } from "../i18n/translate";
 
 @Injectable()
@@ -670,11 +671,12 @@ export class ImportRegularProcessorService {
         },
       });
       if (placeholderTx && placeholderTx.id !== savedTx.id) {
-        await updateAccountBalance(
-          ctx.manager,
-          ctx.accountId,
-          -Number(placeholderTx.amount),
-        );
+        // Only what the placeholder actually contributed: a VOID or future-dated
+        // one contributed nothing.
+        const delta = deletionBalanceEffect(placeholderTx).delta;
+        if (delta !== 0) {
+          await updateAccountBalance(ctx.manager, ctx.accountId, delta);
+        }
         await ctx.manager.delete(Transaction, placeholderTx.id);
         await ctx.manager.update(Transaction, existingLinkedTx.id, {
           linkedTransactionId: null,

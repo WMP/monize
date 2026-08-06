@@ -489,6 +489,7 @@
     "transferAmountNegative": "转账金额不能为负数",
     "notATransfer": "交易不是转账",
     "splitTransferLegAccountLocked": "此转账属于拆分交易的一部分。请改为在源交易中编辑拆分项以更改其账户。",
+    "splitTransferLegStatusLocked": "此转账属于拆分交易的一部分。请编辑其所属的拆分交易来作废或恢复它，使两侧一并变更。",
     "notFoundById": "未找到 ID 为 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一个更新字段",
     "payeeNotFound": "未找到收款人",

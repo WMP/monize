@@ -489,6 +489,7 @@
     "transferAmountNegative": "Số tiền chuyển không được âm",
     "notATransfer": "Giao tác không phải là chuyển tiền",
     "splitTransferLegAccountLocked": "Chuyển khoản này là một phần của giao tác chia nhỏ. Hãy thay đổi tài khoản bằng cách chỉnh sửa phần chia trên giao tác nguồn.",
+    "splitTransferLegStatusLocked": "Giao dịch chuyển tiền này là một phần của giao dịch được chia nhỏ. Hãy hủy hoặc phục hồi nó bằng cách chỉnh sửa giao dịch được chia nhỏ mà nó thuộc về, để cả hai bên thay đổi cùng nhau.",
     "notFoundById": "Không tìm thấy giao tác với ID {{ id }}",
     "bulkUpdateNoFields": "Phải cung cấp ít nhất một trường cập nhật",
     "payeeNotFound": "Không tìm thấy người nhận",

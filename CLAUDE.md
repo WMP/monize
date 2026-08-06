@@ -266,6 +266,69 @@ A field named `total*`, `portfolioValue`, `transferValue`, `gain`, `tax`, or `es
 
 **`null` is not the safe answer either.** It means "not known", so a state that *is* known must not use it: empty accounts hold zero, move zero, realize zero and owe zero, and reporting those as unknown tells the user a settled question could not be worked out -- while making "nothing to do" indistinguishable from "cannot compute". Decide which of the two each branch is in before writing it.
 
+### VOID means no balance moved -- on every path that writes one
+
+A `VOID` row records something that did not happen, and
+`recalculateCurrentBalance` excludes it. So an incremental balance update must
+agree: creating a VOID transfer moved money the next recompute silently took back;
+a status-only edit wrote VOID on both legs and left both balances carrying the
+amount; a bulk void of one leg restored the source and left the destination
+holding it; and a VOID split parent credited its transfer target while leaving an
+**active** counterpart leg. Two rows describing one movement of money share a
+status, and a reversal only reverses what was actually included.
+
+The status is part of what a row is created *with*, not something applied after.
+Three separate paths recreated a voided parent's transfer legs as ACTIVE because
+they rebuilt the rows and forgot the one argument that carries the parent's status;
+each was individually tested, for what it created rather than the state it created
+it in. When a create helper takes the parent's status, every caller passes it.
+
+And where two rows can hold *different* statuses -- a cross-owner transfer, whose
+status is deliberately per-ledger -- inclusion is decided per row. Using one leg's
+`wasVoid`/`isVoid` to gate both ledgers is right in two of the four combinations
+and silently wrong in the other two: a VOID own leg beside an active foreign one
+left the foreign balance behind its own row by the whole edit delta. Four states
+means a four-case test matrix, not a representative one.
+
+### Editing one row must not leave the pair describing two different events
+
+A split parent and the transfer legs its children created are one movement of
+money, so voiding *one* leg from the target side is refused rather than applied:
+the parent's split row and total would still record money that left the source and
+never arrived. Refuse and point at the parent -- there is already a propagation
+path from there. Only the VOID boundary is shared; reconciliation states
+(`PENDING`/`CLEARED`/`RECONCILED`) are genuinely per-ledger.
+
+A refusal like that is only worth as much as its least-guarded entry point. The
+same state was reachable through `bulkUpdate`, which expands a transfer leg to its
+counterpart but rightly declines to pull in a split *parent* -- so a bulk void hit
+the leg alone. When you refuse something on one path, grep for the bulk, AI-action
+and MCP routes to the same write in the same commit.
+
+### A deletion reverses only what the row actually contributed
+
+A `VOID` row moved no balance, and neither did a future-dated one, so deleting
+either must move none. Nine reversal sites across five services each wrote the rule
+out and four got it wrong -- two of them in the *same function* as a correct one, so
+`removeParentTransaction` guarded the deleted row and the split parent and debited
+every sibling target account. Call `deletionBalanceEffect`
+(`backend/src/common/deletion-balance.util.ts`); `deletion-balance.guard.spec.ts`
+fails on a new hand-rolled `-Number(row.amount)` reaching a balance update.
+
+That guard found two the reviews had not: one site checked VOID and forgot the date,
+which is the same bug facing the other way. Prose had already failed to hold this
+rule three times before it became a scan.
+
+### A balance change is not finished until its derived state is invalidated
+
+Writing the live balance and stopping leaves the user looking at a corrected account
+beside a stale net-worth snapshot, and it stays stale until something unrelated
+touches that account. A helper that moves an account nobody upstream knows about must
+**return** the accounts it moved -- `applyParentStatusToTransferCounterparts` returned
+`void`, so both its callers invalidated only the accounts already in their own list.
+Dispatch the recalculation after the commit, never from inside the transaction: a
+rollback must not leave a recompute queued for state that was never written.
+
 ### An account, its currency, its rate and its amount are one tuple
 
 Persist all of it or none of it. Moving a transfer's destination leg to an account
@@ -322,6 +385,12 @@ Nested totals need their own answer, too. A per-account total is converted into 
 *account's* currency while the top-level total is converted into the *user's* -- two
 different conversion graphs, so a portfolio can be complete at the top and
 unconvertible underneath. A global flag cannot speak for a total it did not compute.
+
+### The difference of two 4dp decimals is not a 4dp decimal
+
+`roundMoney` the delta, not just its operands. `newAmount - oldAmount` on two
+values that are each exactly representable to 4dp is not, and that value is what a
+balance moves by.
 
 The full rules -- cost basis and tax truth table, cash, valuation, materialized-result versioning, stale quotes, backtests over incomplete history, and the required adversarial test matrix -- live in `docs/financial-calculation-contract.md` and `docs/time-series-contract.md`. Read both **before** writing or changing any financial calculation, not when a review asks about them: every rule those documents contain has been read, agreed with and broken anyway by someone who reached them afterwards. `docs/testing-contract.md` lists the adversarial inputs that have broken this codebase before -- dates, money precision, aggregation, currency conversion, ownership, concurrency -- so a test author picks from a list rather than recalling edge cases; it is explicitly not a requirement that every test use every value. A financial feature of any substance -- it computes money, materializes a derived result, or reads a time series -- starts from a short approved spec (invariants, truth tables, numerical examples, missing-data policy, test matrix), committed *before* the implementation it guides.
 

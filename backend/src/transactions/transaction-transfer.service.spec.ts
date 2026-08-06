@@ -377,6 +377,61 @@ describe("TransactionTransferService", () => {
       expect(result.toTransaction.id).toBe("to-tx-id");
     });
 
+    it("does not move either balance when the transfer is created VOID (P5-001)", async () => {
+      // A VOID row is a record of something that did not happen. Both legs are
+      // still written, but neither may touch a balance -- exactly as an
+      // ordinary VOID transaction skips its balance update.
+      //
+      // Before this fix the pair posted -500 and +500 while both rows said
+      // VOID, and recalculateCurrentBalance (which excludes VOID rows) then
+      // silently reversed it the next time anything triggered a recompute:
+      // money appeared to move and then unmove.
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id", amount: -500 })
+        .mockResolvedValueOnce({ id: "to-tx-id", amount: 500 });
+
+      await service.createTransfer(
+        "user-1",
+        { ...baseTransferDto, status: TransactionStatus.VOID },
+        mockFindOne,
+      );
+
+      // Both ledger rows exist and are linked.
+      expect(transactionsRepository.create).toHaveBeenCalledTimes(2);
+      expect(transactionsRepository.create.mock.calls[0][0].status).toBe(
+        TransactionStatus.VOID,
+      );
+      expect(transactionsRepository.create.mock.calls[1][0].status).toBe(
+        TransactionStatus.VOID,
+      );
+
+      // Neither balance moved, by either mechanism.
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
+    });
+
+    it("still moves balances for a non-VOID status", async () => {
+      // The guard must not swallow the ordinary case.
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id", amount: -500 })
+        .mockResolvedValueOnce({ id: "to-tx-id", amount: 500 });
+
+      await service.createTransfer(
+        "user-1",
+        { ...baseTransferDto, status: TransactionStatus.RECONCILED },
+        mockFindOne,
+      );
+
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "from-account",
+        -500,
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "to-account",
+        500,
+      );
+    });
+
     it("writes both legs with the effective user's id and no system context on the same-owner path", async () => {
       mockFindOne
         .mockResolvedValueOnce({ id: "from-tx-id", amount: -500 })
@@ -1152,11 +1207,18 @@ describe("TransactionTransferService", () => {
       // concurrent edit makes those old values describe a version this write is
       // not replacing -- two updates each reversing the same pair corrupt both
       // accounts. A 409 the client can retry is the honest answer.
+      // Both legs are same-currency (USD, from their accounts), so the FX
+      // resolution the update runs before taking the lock is trivial and needs
+      // no rate lookup -- the flow reaches the concurrency (`unchanged`) check,
+      // which is what this test exercises. `currencyCode`/`account` are required
+      // because a real row always carries them and the resolver reads them.
       const fromTx = {
         id: "from-tx",
         userId: "user-1",
         accountId: "from-account",
         amount: -200,
+        currencyCode: "USD",
+        account: mockFromAccount,
         isTransfer: true,
         linkedTransactionId: "to-tx",
         exchangeRate: 1,
@@ -1167,6 +1229,8 @@ describe("TransactionTransferService", () => {
         userId: "user-1",
         accountId: "to-account",
         amount: 200,
+        currencyCode: "USD",
+        account: mockToAccount,
         isTransfer: true,
         linkedTransactionId: "from-tx",
         exchangeRate: 1,
@@ -1256,6 +1320,87 @@ describe("TransactionTransferService", () => {
         id: "from-tx",
         userId: "user-1",
       });
+    });
+
+    it("reverses no balance when deleting a VOID pair (RR3-003)", async () => {
+      // A VOID row contributed nothing, so deleting it must reverse nothing.
+      // Every reversal site in this service's delete family fired on any
+      // past-dated row regardless of status, while `bulkDelete` had the guard --
+      // which is what proved the intended behaviour. Deleting a voided 100 USD ->
+      // 90 EUR pair credited the source 100 and debited the destination 90 out of
+      // nothing.
+      const fromTx = {
+        id: "from-tx",
+        isTransfer: true,
+        linkedTransactionId: "to-tx",
+        accountId: "from-account",
+        amount: -100,
+        status: TransactionStatus.VOID,
+        transactionDate: "2026-01-15",
+      };
+      const toTx = {
+        id: "to-tx",
+        accountId: "to-account",
+        amount: 90,
+        status: TransactionStatus.VOID,
+        transactionDate: "2026-01-15",
+      };
+
+      mockFindOne.mockResolvedValue(fromTx);
+      splitsRepository.findOne.mockResolvedValue(null);
+      transactionsRepository.findOne.mockResolvedValue(toTx);
+
+      await service.removeTransfer("user-1", "from-tx", mockFindOne);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      // The rows still go: the record of an event that did not happen is deleted.
+      // Deletion is a conditional DELETE gated on what the database removed
+      // (removeLockedTransactionLeg -> m.delete), not manager.remove(entity).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "to-tx",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "from-tx",
+        userId: "user-1",
+      });
+    });
+
+    it("reverses only the included leg when one side of a pair is VOID", async () => {
+      // Cross-owner statuses are per-ledger, so a pair can be half VOID. Each row
+      // is reversed on its own inclusion, not the pair's.
+      const fromTx = {
+        id: "from-tx",
+        isTransfer: true,
+        linkedTransactionId: "to-tx",
+        accountId: "from-account",
+        amount: -100,
+        status: TransactionStatus.VOID,
+        transactionDate: "2026-01-15",
+      };
+      const toTx = {
+        id: "to-tx",
+        accountId: "to-account",
+        amount: 90,
+        status: TransactionStatus.UNRECONCILED,
+        transactionDate: "2026-01-15",
+      };
+
+      mockFindOne.mockResolvedValue(fromTx);
+      splitsRepository.findOne.mockResolvedValue(null);
+      transactionsRepository.findOne.mockResolvedValue(toTx);
+
+      await service.removeTransfer("user-1", "from-tx", mockFindOne);
+
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "to-account",
+        -90,
+      );
+      expect(accountsService.updateBalance).not.toHaveBeenCalledWith(
+        "from-account",
+        expect.anything(),
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
     });
 
     it("throws when transaction is not a transfer", async () => {
@@ -1494,6 +1639,127 @@ describe("TransactionTransferService", () => {
           mockFindOne,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    describe("VOID transitions (P5-001)", () => {
+      // `accountsOrAmountsChanged` did not include `status`, so a status-only
+      // edit wrote VOID onto both rows and left both balances carrying the
+      // money. The ledger then said no transfer had occurred while the accounts
+      // still reflected one, and the next recalculation moved 500 without any
+      // user action.
+      it("reverses both balances exactly once when voiding an active transfer", async () => {
+        const activeFrom = {
+          ...fromTransaction,
+          status: TransactionStatus.UNRECONCILED,
+        } as unknown as Transaction;
+        const activeTo = {
+          ...toTransaction,
+          status: TransactionStatus.UNRECONCILED,
+        } as unknown as Transaction;
+
+        mockFindOne
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce({
+            ...activeFrom,
+            status: TransactionStatus.VOID,
+          })
+          .mockResolvedValueOnce({
+            ...activeTo,
+            status: TransactionStatus.VOID,
+          });
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.VOID },
+          mockFindOne,
+        );
+
+        // The old pair is reversed...
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "to-account",
+          -500,
+        );
+        // ...and NOT re-applied, because the pair is now excluded. Exactly one
+        // adjustment per account: a second pair would net to zero and leave the
+        // void with no effect at all.
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+      });
+
+      it("re-applies both balances exactly once when unvoiding a transfer", async () => {
+        const voidFrom = {
+          ...fromTransaction,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+        const voidTo = {
+          ...toTransaction,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+
+        mockFindOne
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo)
+          .mockResolvedValueOnce({
+            ...voidFrom,
+            status: TransactionStatus.UNRECONCILED,
+          })
+          .mockResolvedValueOnce({
+            ...voidTo,
+            status: TransactionStatus.UNRECONCILED,
+          });
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.UNRECONCILED },
+          mockFindOne,
+        );
+
+        // No reversal: a VOID pair contributed nothing to reverse, and
+        // reversing it would have created the money the void withheld.
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          -500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "to-account",
+          500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+      });
+
+      it("does not touch balances when editing a transfer that stays VOID", async () => {
+        const voidFrom = {
+          ...fromTransaction,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+        const voidTo = {
+          ...toTransaction,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+
+        mockFindOne
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo)
+          .mockResolvedValueOnce({ ...voidFrom, amount: -750 })
+          .mockResolvedValueOnce({ ...voidTo, amount: 750 });
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { amount: 750 },
+          mockFindOne,
+        );
+
+        // Changing the amount of a void transfer changes no balance: it was
+        // excluded before and is excluded after.
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
     });
 
     it("updates amount for both sides of the transfer", async () => {
@@ -1828,6 +2094,102 @@ describe("TransactionTransferService", () => {
 
         // Refused before writing: no leg amount, no split amount, no balance.
         expect(transactionsRepository.update).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("refuses to void a split transfer leg on its own (RR2-002)", async () => {
+        // Balance handling here was gated on the amount or date changing and never
+        // looked at either row's VOID state, so a status-only void wrote VOID and
+        // left the target balance carrying the money. Applying it to this leg alone
+        // would also leave the parent's split row and total recording money that
+        // left the source and never arrived, so it is refused and pointed at the
+        // parent -- which `applyParentStatusToTransferCounterparts` propagates from.
+        splitsRepository.findOne.mockResolvedValue(parentSplit);
+        mockFindOne
+          .mockResolvedValueOnce(counterpartLeg)
+          .mockResolvedValueOnce(splitParent);
+
+        await expect(
+          service.updateTransfer(
+            "user-1",
+            "leg-tx",
+            { status: TransactionStatus.VOID } as any,
+            mockFindOne,
+          ),
+        ).rejects.toThrow(BadRequestException);
+
+        // Refused before writing: no row, no balance.
+        expect(transactionsRepository.update).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("still allows a per-ledger reconciliation status change", async () => {
+        // Only the VOID boundary is shared. CLEARED/RECONCILED are genuinely
+        // per-ledger, exactly as they are across an ownership boundary, so the
+        // refusal above must not swallow them.
+        splitsRepository.findOne.mockResolvedValue(parentSplit);
+        mockFindOne
+          .mockResolvedValueOnce(counterpartLeg)
+          .mockResolvedValueOnce(splitParent)
+          .mockResolvedValueOnce(counterpartLeg);
+
+        await service.updateTransfer(
+          "user-1",
+          "leg-tx",
+          { status: TransactionStatus.CLEARED } as any,
+          mockFindOne,
+        );
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "leg-tx",
+          expect.objectContaining({ status: TransactionStatus.CLEARED }),
+        );
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("moves no balance when the leg and its parent are already VOID (RR2-002)", async () => {
+        // Editing an already-void split transfer's amount incremented the target
+        // balance by the delta and moved the source by the parent delta, though
+        // neither row contributes to either balance.
+        const voidLeg = {
+          ...counterpartLeg,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+        const voidParent = {
+          ...splitParent,
+          status: TransactionStatus.VOID,
+        } as unknown as Transaction;
+
+        splitsRepository.findOne.mockResolvedValue(parentSplit);
+        splitsRepository.find.mockResolvedValue([
+          { id: "split-1", amount: -500 },
+        ]);
+        mockFindOne
+          .mockResolvedValueOnce(voidLeg)
+          .mockResolvedValueOnce(voidParent)
+          .mockResolvedValueOnce({ ...voidLeg, amount: 600 });
+
+        await service.updateTransfer(
+          "user-1",
+          "leg-tx",
+          { amount: 600, status: TransactionStatus.VOID } as any,
+          mockFindOne,
+        );
+
+        // The record still updates: leg amount, split mirror and parent total.
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "leg-tx",
+          expect.objectContaining({ amount: 600 }),
+        );
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "split-1",
+          expect.objectContaining({ amount: -600 }),
+        );
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "parent-tx",
+          expect.objectContaining({ amount: -600 }),
+        );
+        // No money moves, on either side.
         expect(accountsService.updateBalance).not.toHaveBeenCalled();
       });
 
@@ -3426,6 +3788,148 @@ describe("TransactionTransferService", () => {
     describe("updateTransfer (connected)", () => {
       beforeEach(connect);
 
+      it("moves only the effective user's balance when only their status changes (FR-001)", async () => {
+        // Status is per-ledger and stays off the foreign leg -- but it is not
+        // presentational for this leg's own balance. `amountsChanged` omitted
+        // status entirely, so voiding your own side of a delegated transfer wrote
+        // VOID and left the balance carrying the money. The next recompute then
+        // changed the account with no user action behind it.
+        await service.updateTransfer(
+          "user-1",
+          "own-leg",
+          { status: TransactionStatus.VOID },
+          mockFindOne,
+          actor,
+        );
+
+        // The own leg's -500 contribution is removed: +500 back to its account.
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          500,
+        );
+        // The foreign leg keeps its owner's status, so its balance is untouched.
+        expect(accountsService.updateBalance).not.toHaveBeenCalledWith(
+          "to-account",
+          expect.anything(),
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
+      });
+
+      it("restores the balance when the effective user unvoids their leg", async () => {
+        ownLeg.status = TransactionStatus.VOID;
+
+        await service.updateTransfer(
+          "user-1",
+          "own-leg",
+          { status: TransactionStatus.UNRECONCILED },
+          mockFindOne,
+          actor,
+        );
+
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          -500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
+      });
+
+      // RR2-001: cross-owner status is per-ledger, so the two legs can sit in any
+      // of the four VOID combinations. The FR-001 fix used the acting leg's state
+      // to decide both ledgers, which is right in two of the four and silently
+      // wrong in the other two.
+      describe("structural edits with asymmetric VOID states (RR2-001)", () => {
+        it("moves the foreign balance when only the acting leg is VOID", async () => {
+          ownLeg.status = TransactionStatus.VOID;
+          // The foreign leg is active and does contribute +500 to its account.
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { amount: 600 },
+            mockFindOne,
+            actor,
+          );
+
+          // Both persisted rows follow the new amount.
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "own-leg",
+            {
+              amount: -600,
+            },
+          );
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "foreign-leg",
+            { amount: 600 },
+          );
+          // The acting leg is excluded, so its account never moves.
+          expect(accountsService.updateBalance).not.toHaveBeenCalledWith(
+            "from-account",
+            expect.anything(),
+          );
+          // The foreign leg is included, so its old contribution is reversed and
+          // the new one applied. Leaving it at +500 beside a +600 active row put
+          // the balance 100 behind its own ledger, and the next full recompute
+          // moved the account with no user action behind it.
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "to-account",
+            -500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "to-account",
+            600,
+          );
+        });
+
+        it("leaves the foreign balance alone when only the foreign leg is VOID", async () => {
+          foreignLeg.status = TransactionStatus.VOID;
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { amount: 600 },
+            mockFindOne,
+            actor,
+          );
+
+          // The acting leg is included: reversed and re-applied.
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "from-account",
+            500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "from-account",
+            -600,
+          );
+          // The foreign row is excluded, so moving its account would create money
+          // the void withheld.
+          expect(accountsService.updateBalance).not.toHaveBeenCalledWith(
+            "to-account",
+            expect.anything(),
+          );
+        });
+
+        it("moves nothing when both legs are VOID", async () => {
+          ownLeg.status = TransactionStatus.VOID;
+          foreignLeg.status = TransactionStatus.VOID;
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { amount: 600 },
+            mockFindOne,
+            actor,
+          );
+
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "own-leg",
+            {
+              amount: -600,
+            },
+          );
+          expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        });
+      });
+
       it("rejects an unconserved same-currency edit (FR-004)", async () => {
         // This path computed `newToAmount` for itself, so every rule
         // resolveTransferFx enforces was reachable again through a delegated
@@ -3558,6 +4062,38 @@ describe("TransactionTransferService", () => {
 
     describe("updateTransfer (frozen)", () => {
       beforeEach(freeze);
+
+      it("moves the own balance when the frozen leg is voided (FR-001)", async () => {
+        // The frozen path treats status as an own-leg presentational field, which
+        // is right for the counterpart and wrong for the balance: VOID excludes
+        // the row from recalculateCurrentBalance and every report, so writing it
+        // without moving the balance leaves the two disagreeing.
+        await service.updateTransfer(
+          "user-1",
+          "own-leg",
+          { status: TransactionStatus.VOID },
+          mockFindOne,
+          actor,
+        );
+
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
+      });
+
+      it("does not move the balance for a non-VOID status change", async () => {
+        await service.updateTransfer(
+          "user-1",
+          "own-leg",
+          { status: TransactionStatus.CLEARED },
+          mockFindOne,
+          actor,
+        );
+
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
 
       it("allows presentational own-leg edits without touching the counterpart or balances", async () => {
         const result = await service.updateTransfer(

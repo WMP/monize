@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { TransactionSplitService } from "./transaction-split.service";
-import { Transaction } from "./entities/transaction.entity";
+import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
@@ -44,6 +44,7 @@ describe("TransactionSplitService", () => {
   let accountsService: Record<string, jest.Mock>;
   let exchangeRateService: Record<string, jest.Mock>;
   let mockDataSource: DataSourceMock;
+  let netWorthService: { triggerDebouncedRecalc: jest.Mock };
   // The withScopedDb EntityManager, kept under the legacy `mockQueryRunner.manager`
   // shape so the pre-RLS manager assertions below still read naturally.
   let mockQueryRunner: Record<string, any>;
@@ -236,7 +237,7 @@ describe("TransactionSplitService", () => {
       reverseAndRemoveEmbedded: jest.fn().mockResolvedValue(undefined),
     };
 
-    const netWorthService = {
+    netWorthService = {
       triggerDebouncedRecalc: jest.fn(),
     };
 
@@ -444,6 +445,68 @@ describe("TransactionSplitService", () => {
       expect(result[0].linkedTransactionId).toBe("linked-tx-1");
     });
 
+    it("does not move the target balance for a VOID parent, and voids the counterpart", async () => {
+      // A VOID transaction is a record of something that did not happen. Its
+      // transfer child used to credit the target account anyway and leave an
+      // ACTIVE counterpart leg behind it: the parent said nothing happened, the
+      // counterpart said it had, and every balance and report predicate excludes
+      // the void row while including the counterpart. Money from nowhere.
+      //
+      // This is the split-path twin of audit P5-001, which the audit did not
+      // reach -- `VOID` appeared nowhere in this service.
+      accountsService.findOne
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Savings",
+          currencyCode: "USD",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+
+      transactionsRepository.save.mockResolvedValueOnce({
+        id: "linked-tx-1",
+        accountId: "account-2",
+        amount: 50,
+      });
+      splitsRepository.save.mockResolvedValueOnce({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+        amount: -50,
+      });
+
+      await service.createSplits(
+        "tx-1",
+        [
+          {
+            amount: -50,
+            transferAccountId: "account-2",
+            memo: "Transfer part",
+          },
+        ],
+        "user-1",
+        "account-1",
+        new Date("2026-01-15"),
+        "Store",
+        "payee-uuid-1",
+        { parentStatus: TransactionStatus.VOID },
+      );
+
+      // The counterpart is written, and written VOID.
+      expect(transactionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: "account-2",
+          status: TransactionStatus.VOID,
+        }),
+      );
+      // And no balance moved, by either mechanism.
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
+    });
+
     it("converts a transfer child into the target account's currency", async () => {
       // Split amounts are in the PARENT account's currency. The counterpart used
       // to be created at exactly `-split.amount` with `exchangeRate: 1` while
@@ -639,6 +702,107 @@ describe("TransactionSplitService", () => {
   // The transfer-leg reversal these cases cover used to live in the
   // (now-removed) deleteTransferSplitLinkedTransactions; deleteSplitSideEffects
   // does the same work plus the investment-split reversal.
+  describe("applyParentStatusToTransferCounterparts (FR-002)", () => {
+    // A split parent and the counterparts its transfer children created are one
+    // economic event. `parentStatus` reaches a counterpart when children are
+    // created or rebuilt, but a status-only edit does not rebuild them -- so
+    // voiding a mixed category/transfer split restored the source balance and
+    // left the target holding the transferred amount under an ACTIVE counterpart.
+    const transferSplit = {
+      id: "split-1",
+      transactionId: "tx-1",
+      transferAccountId: "account-2",
+      linkedTransaction: {
+        id: "linked-tx-1",
+        userId: "user-1",
+        accountId: "account-2",
+        amount: 40,
+        status: TransactionStatus.UNRECONCILED,
+        transactionDate: "2026-01-15",
+      },
+    };
+
+    it("voids the counterpart and removes its balance contribution", async () => {
+      splitsRepository.find.mockResolvedValue([transferSplit]);
+
+      await service.applyParentStatusToTransferCounterparts(
+        mockQueryRunner.manager as never,
+        "tx-1",
+        "user-1",
+        TransactionStatus.VOID,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "linked-tx-1",
+        { status: TransactionStatus.VOID },
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-2",
+        -40,
+      );
+    });
+
+    it("restores the contribution when the parent leaves VOID", async () => {
+      splitsRepository.find.mockResolvedValue([
+        {
+          ...transferSplit,
+          linkedTransaction: {
+            ...transferSplit.linkedTransaction,
+            status: TransactionStatus.VOID,
+          },
+        },
+      ]);
+
+      await service.applyParentStatusToTransferCounterparts(
+        mockQueryRunner.manager as never,
+        "tx-1",
+        "user-1",
+        TransactionStatus.UNRECONCILED,
+      );
+
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-2",
+        40,
+      );
+    });
+
+    it("does nothing when the inclusion state does not change", async () => {
+      splitsRepository.find.mockResolvedValue([transferSplit]);
+
+      await service.applyParentStatusToTransferCounterparts(
+        mockQueryRunner.manager as never,
+        "tx-1",
+        "user-1",
+        TransactionStatus.CLEARED,
+      );
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("leaves a category child's split alone", async () => {
+      // Only transfer children have a counterpart row to carry the status to.
+      splitsRepository.find.mockResolvedValue([
+        {
+          id: "split-2",
+          transactionId: "tx-1",
+          transferAccountId: null,
+          categoryId: "cat-1",
+          linkedTransaction: null,
+        },
+      ]);
+
+      await service.applyParentStatusToTransferCounterparts(
+        mockQueryRunner.manager as never,
+        "tx-1",
+        "user-1",
+        TransactionStatus.VOID,
+      );
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+  });
+
   describe("deleteSplitSideEffects transfer legs", () => {
     it("removes linked transactions and reverses balances for transfer splits", async () => {
       const transferSplit = {
@@ -829,6 +993,46 @@ describe("TransactionSplitService", () => {
       expect(result).toHaveLength(2);
     });
 
+    it("recreates a VOID parent's transfer counterparts as VOID (FR-002 family)", async () => {
+      // Replacing the split set of a voided transaction deletes the VOID
+      // counterparts and creates fresh ones. `parentStatus` was not threaded
+      // through this path -- unlike the create and update paths in
+      // `TransactionsService` -- so the new legs came back ACTIVE and credited
+      // the target account money the source still showed as not sent. Reachable
+      // from `PUT /transactions/:id/splits`, the AI action, and the MCP tool.
+      const transaction = {
+        ...mockTransaction,
+        status: TransactionStatus.VOID,
+      } as Transaction;
+
+      splitsRepository.find.mockResolvedValue([]);
+      accountsService.findOne.mockResolvedValue({
+        id: "account-2",
+        name: "Savings",
+        currencyCode: "USD",
+      });
+
+      await service.updateSplits(
+        transaction,
+        [
+          { amount: -60, categoryId: "cat-1" },
+          { amount: -40, transferAccountId: "account-2" },
+        ],
+        "user-1",
+      );
+
+      const createdLeg = mockQueryRunner.manager.create.mock.calls.find(
+        (call: any) => call[0] === Transaction,
+      );
+      expect(createdLeg).toBeDefined();
+      expect(createdLeg[1].status).toBe(TransactionStatus.VOID);
+      // Recorded, not applied: a VOID row moves no balance.
+      expect(accountsService.updateBalance).not.toHaveBeenCalledWith(
+        "account-2",
+        40,
+      );
+    });
+
     it("throws when splits fail validation", async () => {
       const transaction = { ...mockTransaction } as Transaction;
       lockParent(transaction);
@@ -881,6 +1085,137 @@ describe("TransactionSplitService", () => {
         id: "old-linked-tx",
         userId: "user-1",
       });
+    });
+  });
+
+  describe("net-worth invalidation for target accounts (RR5-002)", () => {
+    it("createSplits reports the transfer target account to the affected set", async () => {
+      accountsService.findOne
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Savings",
+          currencyCode: "USD",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+      transactionsRepository.save.mockResolvedValueOnce({
+        id: "linked-tx-1",
+        accountId: "account-2",
+        amount: 50,
+      });
+      splitsRepository.save.mockResolvedValueOnce({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+        amount: -50,
+      });
+
+      // The counterpart lives in account-2, which the parent transaction never
+      // named -- so its net worth went stale because only the parent account was
+      // invalidated. createSplits now reports the account it touched.
+      const affected = new Set<string>();
+      await service.createSplits(
+        "tx-1",
+        [{ amount: -50, transferAccountId: "account-2", memo: "T" }],
+        "user-1",
+        "account-1",
+        new Date("2026-01-15"),
+        "Store",
+        "payee-uuid-1",
+        undefined,
+        affected,
+      );
+
+      expect(affected.has("account-2")).toBe(true);
+    });
+
+    it("addSplit invalidates the target account after commit", async () => {
+      splitsRepository.find.mockResolvedValue([]);
+      accountsService.findOne
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Savings",
+          currencyCode: "USD",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+      transactionsRepository.save.mockResolvedValueOnce({
+        id: "linked-tx-1",
+        accountId: "account-2",
+        amount: 40,
+      });
+      splitsRepository.save.mockResolvedValueOnce({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+      });
+      splitsRepository.findOne.mockResolvedValue({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+      });
+
+      await service.addSplit(
+        {
+          id: "tx-1",
+          accountId: "account-1",
+          amount: -100,
+          transactionDate: "2026-01-15",
+          status: TransactionStatus.UNRECONCILED,
+          payeeName: "Store",
+        } as never,
+        { amount: -40, transferAccountId: "account-2", memo: "T" },
+        "user-1",
+      );
+
+      expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "account-2",
+        "user-1",
+      );
+    });
+
+    it("removeSplit invalidates the target account after commit", async () => {
+      splitsRepository.findOne.mockResolvedValue({
+        id: "split-1",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+        linkedTransactionId: "linked-tx-1",
+      });
+      // Both the parent and the linked counterpart leg are locked and re-read
+      // inside the write transaction (removeLinkedLeg -> lockTransactionRow),
+      // never read through the repo mock. The counterpart's account is the one
+      // whose net worth must be invalidated after commit.
+      lockParent(
+        { id: "tx-1", accountId: "account-1", isSplit: true },
+        lockedTransactionRow({
+          id: "linked-tx-1",
+          accountId: "account-2",
+          amount: 40,
+          status: TransactionStatus.UNRECONCILED,
+          transactionDate: "2026-01-15",
+        }),
+      );
+      mockQueryRunner.manager.find.mockResolvedValue([
+        { id: "split-a", kind: "CATEGORY", categoryId: "cat-1" },
+        { id: "split-b", kind: "CATEGORY", categoryId: "cat-2" },
+      ]);
+
+      await service.removeSplit(
+        { id: "tx-1", accountId: "account-1", isSplit: true } as never,
+        "split-1",
+        "user-1",
+      );
+
+      expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "account-2",
+        "user-1",
+      );
     });
   });
 
@@ -1575,6 +1910,12 @@ describe("TransactionSplitService", () => {
         new Date("2026-03-20"),
         "Committed Payee",
         "payee-committed",
+        // The merged call also passes the parent's status option and the
+        // touched-accounts set for the post-commit net-worth fan-out. This
+        // fixture carries no status, so the option is { parentStatus: undefined };
+        // the set is incidental to what this test pins down.
+        { parentStatus: undefined },
+        expect.any(Set),
       );
     });
   });

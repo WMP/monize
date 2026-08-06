@@ -489,6 +489,7 @@
     "transferAmountNegative": "Kwota przelewu nie może być ujemna",
     "notATransfer": "Transakcja nie jest przelewem",
     "splitTransferLegAccountLocked": "Ten przelew jest częścią transakcji podzielonej. Aby zmienić jego konta, edytuj podział w transakcji źródłowej.",
+    "splitTransferLegStatusLocked": "Ten przelew jest częścią transakcji podzielonej. Anuluj go lub przywróć, edytując transakcję podzieloną, do której należy, aby obie strony zmieniły się razem.",
     "notFoundById": "Nie znaleziono transakcji o ID {{ id }}",
     "bulkUpdateNoFields": "Należy podać co najmniej jedno pole do aktualizacji",
     "payeeNotFound": "Nie znaleziono odbiorcy",

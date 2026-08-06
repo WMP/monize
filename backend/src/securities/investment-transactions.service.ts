@@ -51,6 +51,7 @@ import {
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { isTransactionInFuture } from "../common/date-utils";
+import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import {
   computeInvestmentCashImpact,
@@ -3785,10 +3786,21 @@ export class InvestmentTransactionsService {
             userId,
           });
           if ((removed.affected ?? 0) === 0) continue;
-          if (cashTx.status !== TransactionStatus.VOID) {
+          // Guarded VOID but not future-dated -- the mirror image of RR4-001,
+          // found by the scanning guard. A future-dated cash leg was never folded
+          // into the balance either, so reversing it moved money that was never
+          // there.
+          const effect = deletionBalanceEffect(cashTx);
+          if (effect.delta !== 0) {
             await this.accountsService.updateBalance(
               cashTx.accountId,
-              -cashTx.amount,
+              effect.delta,
+            );
+          }
+          if (effect.needsRecalc) {
+            await this.accountsService.recalculateCurrentBalance(
+              userId,
+              cashTx.accountId,
             );
           }
         }

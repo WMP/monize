@@ -69,6 +69,7 @@ import {
 } from "../common/bulk-create.types";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import { roundMoney } from "../common/round.util";
 import {
   assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
@@ -336,6 +337,9 @@ export class TransactionsService {
       }
     }
 
+    // Accounts a transfer/investment split touched, invalidated after commit.
+    const splitAffectedAccountIds = new Set<string>();
+
     // One transaction: the row, its splits/tags, and the balance update
     // commit or roll back together. Nested service calls (split service, tags,
     // account balances) run their own withScopedDb and join this one.
@@ -369,6 +373,13 @@ export class TransactionsService {
             new Date(createTransactionDto.transactionDate),
             resolvedPayeeName,
             resolvedPayeeId,
+            // A VOID parent's transfer counterpart must be VOID too and move no
+            // balance; without this a void split still credited the target.
+            { parentStatus: savedTransaction.status },
+            // Transfer-target and brokerage accounts this split touched, so their
+            // net-worth state is invalidated after commit -- not only the parent
+            // account (recheck RR5-002).
+            splitAffectedAccountIds,
           );
 
           // Set split-level tags (and mirror them onto any transfer counterpart)
@@ -408,6 +419,11 @@ export class TransactionsService {
       createTransactionDto.accountId,
       userId,
     );
+    for (const affected of splitAffectedAccountIds) {
+      if (affected !== createTransactionDto.accountId) {
+        this.netWorthService.triggerDebouncedRecalc(affected, userId);
+      }
+    }
 
     const result = await this.findOne(userId, savedTransactionId);
     this.recordTransactionAction(userId, result, "create");
@@ -1980,6 +1996,11 @@ export class TransactionsService {
     const transaction = await this.findOne(userId, id);
     const beforeSnapshot = this.snapshotTransaction(transaction);
     const oldAccountId = transaction.accountId;
+    // Accounts touched by split-transfer counterpart propagation, reported by the
+    // helper because this method cannot know them in advance. The authoritative
+    // old amount/date/status are read from the locked row inside the transaction
+    // below (audit P4-003), not from this pre-lock snapshot.
+    const counterpartAccountIds = new Set<string>();
 
     const { splits, tagIds, createdAt, ...updateData } = updateTransactionDto;
 
@@ -2075,7 +2096,15 @@ export class TransactionsService {
             updateData.amount ?? locked.amount,
           );
 
-          await this.splitService.deleteSplitSideEffects(id, userId);
+          // Both the delete of the old counterparts and the create of the new
+          // ones touch accounts the parent never named; route them into the
+          // set this method already invalidates after commit (recheck RR5-002).
+          for (const acc of await this.splitService.deleteSplitSideEffects(
+            id,
+            userId,
+          )) {
+            counterpartAccountIds.add(acc);
+          }
           await m.delete(TransactionSplit, {
             transactionId: id,
           });
@@ -2094,6 +2123,15 @@ export class TransactionsService {
             new Date(txDate),
             updateData.payeeName ?? locked.payeeName,
             updateData.payeeId ?? locked.payeeId,
+            // Same rule on the update path: the counterpart follows the status
+            // the parent will have after this edit. Read from the locked row,
+            // not the pre-lock snapshot (P5-001).
+            {
+              parentStatus:
+                (updateData.status as TransactionStatus | undefined) ??
+                ((locked.status ?? undefined) as TransactionStatus | undefined),
+            },
+            counterpartAccountIds,
           );
 
           // Set split-level tags (and mirror them onto any transfer counterpart)
@@ -2101,7 +2139,12 @@ export class TransactionsService {
             await this.applySplitTags(savedSplits, splits, userId);
           }
         } else if (Array.isArray(splits) && splits.length === 0) {
-          await this.splitService.deleteSplitSideEffects(id, userId);
+          for (const acc of await this.splitService.deleteSplitSideEffects(
+            id,
+            userId,
+          )) {
+            counterpartAccountIds.add(acc);
+          }
           await m.delete(TransactionSplit, {
             transactionId: id,
           });
@@ -2213,6 +2256,28 @@ export class TransactionsService {
       const newAccountId = savedTransaction.accountId;
       const newStatus = savedTransaction.status;
       const isVoid = newStatus === TransactionStatus.VOID;
+
+      // A split parent's transfer children have their own counterpart rows in
+      // other accounts. `parentStatus` reaches them when children are created or
+      // rebuilt, but a status-only edit does not rebuild them -- so voiding a
+      // mixed category/transfer split used to restore the source balance and
+      // leave the target holding the transferred amount under an ACTIVE
+      // counterpart (review finding FR-002). Inside this transaction, so the
+      // parent and every counterpart commit together.
+      if (savedTransaction.isSplit && wasVoid !== isVoid) {
+        // The accounts it moved join this update's invalidation set: a corrected
+        // live balance beside a stale net-worth snapshot is an inconsistency the
+        // user can see, and it persisted until something unrelated wrote to that
+        // account (recheck RR4-003).
+        for (const affected of await this.splitService.applyParentStatusToTransferCounterparts(
+          m,
+          id,
+          userId,
+          newStatus,
+        )) {
+          counterpartAccountIds.add(affected);
+        }
+      }
       const oldIsFuture = isTransactionInFuture(oldTransactionDate);
       const newIsFuture = isTransactionInFuture(
         savedTransaction.transactionDate,
@@ -2243,7 +2308,10 @@ export class TransactionsService {
           );
           await this.accountsService.updateBalance(newAccountId, newAmount);
         } else if (newAmount !== oldAmount) {
-          const balanceChange = newAmount - oldAmount;
+          // Rounded: the difference of two 4dp decimals is not itself a 4dp
+          // decimal in binary floating point, and this value is the amount a
+          // balance moves by.
+          const balanceChange = roundMoney(newAmount - oldAmount);
           await this.accountsService.updateBalance(newAccountId, balanceChange);
         } else if (oldTransactionDate !== savedTransaction.transactionDate) {
           // Same account, same amount, both dates in the past (anyFuture is
@@ -2268,6 +2336,17 @@ export class TransactionsService {
     if (oldAccountId !== finalTransaction.accountId) {
       this.netWorthService.triggerDebouncedRecalc(oldAccountId, userId);
     }
+    // Accounts moved by split-transfer counterpart propagation, which this method
+    // knows nothing about until the helper reports them. After the commit, so a
+    // rollback leaves nothing queued.
+    for (const affected of counterpartAccountIds) {
+      if (
+        affected !== finalTransaction.accountId &&
+        affected !== oldAccountId
+      ) {
+        this.netWorthService.triggerDebouncedRecalc(affected, userId);
+      }
+    }
 
     this.actionHistoryService.record(userId, {
       entityType: "transaction",
@@ -2291,12 +2370,16 @@ export class TransactionsService {
   async remove(userId: string, id: string): Promise<void> {
     const transaction = await this.findOne(userId, id);
     const beforeSnapshot = this.snapshotTransaction(transaction);
-    // The account the debounced net-worth recalc must fire on. Seeded from the
-    // pre-lock snapshot, then replaced by the locked row's account below: a
-    // concurrent edit could have moved the row, and the balance reversal already
-    // uses locked.accountId, so the debounce has to as well or it recomputes the
-    // wrong account's snapshots (or none).
-    let affectedAccountId = transaction.accountId;
+    // Every account this deletion moves, not only the selected row's, so the
+    // net-worth fan-out after commit invalidates all of them (recheck RR5-002).
+    // Seeded from the pre-lock snapshot; the locked row's account is added inside
+    // the transaction below, in case a concurrent edit moved the row.
+    // Seeded empty and filled from the LOCKED row (below), never the pre-lock
+    // snapshot: a concurrent edit may have moved the row to another account, and
+    // upstream's P4 fix reverses/recalcs the locked account. Seeding with the
+    // snapshot account would re-introduce the stale one into the net-worth
+    // fan-out (RR5-002 must not undo the P4-002 locked-account guarantee).
+    const affectedAccountIds = new Set<string>();
 
     // One transaction: split side effects, linked/parent cleanup, the delete
     // itself, and the balance adjustment commit or roll back together.
@@ -2332,14 +2415,29 @@ export class TransactionsService {
           ),
         );
       }
-      affectedAccountId = locked.accountId;
+      // The locked row's account joins the fan-out set: a concurrent edit could
+      // have moved the row, and the balance reversal below uses locked.accountId.
+      affectedAccountIds.add(locked.accountId);
 
       if (locked.isSplit) {
-        await this.splitService.deleteSplitSideEffects(id, userId);
+        // Transfer-target and brokerage accounts this split's cleanup moved join
+        // the set invalidated after commit (recheck RR5-002).
+        for (const acc of await this.splitService.deleteSplitSideEffects(
+          id,
+          userId,
+        )) {
+          affectedAccountIds.add(acc);
+        }
       }
 
       if (parentSplit) {
-        await this.removeParentTransaction(m, parentSplit, id, userId);
+        await this.removeParentTransaction(
+          m,
+          parentSplit,
+          id,
+          userId,
+          affectedAccountIds,
+        );
       }
 
       const deleted = await m.delete(Transaction, { id, userId });
@@ -2364,7 +2462,9 @@ export class TransactionsService {
       }
     });
 
-    this.netWorthService.triggerDebouncedRecalc(affectedAccountId, userId);
+    for (const affected of affectedAccountIds) {
+      this.netWorthService.triggerDebouncedRecalc(affected, userId);
+    }
     this.recordTransactionAction(
       userId,
       { ...transaction, ...beforeSnapshot } as Transaction,
@@ -2373,11 +2473,19 @@ export class TransactionsService {
     );
   }
 
+  /**
+   * `affectedAccountIds` collects every account this deletion touched, so the
+   * caller can invalidate the balance-derived state of all of them after the
+   * commit. It used to recalculate net worth for the deleted row's account alone,
+   * leaving a sibling target account with a corrected balance beside a stale
+   * net-worth snapshot (recheck RR4-003, on the deletion path).
+   */
   private async removeParentTransaction(
     m: EntityManager,
     parentSplit: TransactionSplit,
     linkedTransactionId: string,
     userId: string,
+    affectedAccountIds: Set<string>,
   ): Promise<void> {
     const parentTransactionId = parentSplit.transactionId;
     // Locked, like every other read whose amount becomes a balance delta.
@@ -2418,6 +2526,9 @@ export class TransactionsService {
             userId,
           });
           if ((removed.affected ?? 0) === 0) continue;
+          // Every account this deletion actually moved joins the fan-out set so
+          // its net-worth snapshot is invalidated after commit (recheck RR5-002).
+          affectedAccountIds.add(linkedAccId);
           if (linkedIsFuture) {
             await this.accountsService.recalculateCurrentBalance(
               userId,
@@ -2439,6 +2550,8 @@ export class TransactionsService {
         userId,
       });
       if ((parentRemoved.affected ?? 0) === 0) return;
+      // The parent's own account joins the fan-out set (recheck RR5-002).
+      affectedAccountIds.add(parentTransaction.accountId);
 
       if (parentTransaction.status !== TransactionStatus.VOID) {
         if (isTransactionInFuture(parentTransaction.transactionDate)) {

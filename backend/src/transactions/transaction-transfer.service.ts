@@ -566,6 +566,18 @@ export class TransactionTransferService {
         linkedTransactionId: fromId,
       });
 
+      // A VOID transfer is a ledger record of something that did not happen, so
+      // neither leg may move a balance -- exactly as an ordinary VOID
+      // transaction skips its balance update (transactions.service create()).
+      //
+      // Without this the pair posted its balances anyway while both rows said
+      // VOID, and `recalculateCurrentBalance` -- which excludes VOID rows --
+      // then silently "corrected" the accounts the next time anything triggered
+      // a recompute. Money appeared to move and then unmove (audit P5-001).
+      if (status === TransactionStatus.VOID) {
+        return { savedFromId: fromId, savedToId: toId };
+      }
+
       if (isTransactionInFuture(transactionDate)) {
         // Each leg's account is owned by ITS account's owner, which for a
         // cross-owner transfer differs from the acting user -- scope each lock
@@ -1479,10 +1491,34 @@ export class TransactionTransferService {
         );
       }
 
-      // Predicate is the resolver's `repriced` (a value change to an account,
-      // the source amount, an explicit destination amount or rate), replacing
-      // the presence-based `accountsOrAmountsChanged` (audit P5-002 / RR3-002).
-      if ((updateFx.repriced || dateChanged) && !anyFuture) {
+      // Whether each leg is included in its account's current balance, read from
+      // the LOCKED row. A status change alone flips inclusion, and it used not to
+      // be part of the balance decision at all: `accountsOrAmountsChanged` omitted
+      // `status`, so voiding an existing transfer wrote VOID onto both rows and
+      // left both balances carrying the money (audit P5-001). The concurrency
+      // guard above compares amount/account/date but not status, so the committed
+      // status is taken from `lockedFrom` rather than the pre-transaction
+      // snapshot. Mirrors the wasVoid/isVoid handling in transactions.service
+      // update().
+      const wasVoid = lockedFrom.status === TransactionStatus.VOID;
+      const isVoid =
+        updateDto.status !== undefined
+          ? updateDto.status === TransactionStatus.VOID
+          : wasVoid;
+      const voidChanged = wasVoid !== isVoid;
+
+      // Reverse the old pair only if it was actually included in the balances.
+      // A transfer that was already VOID contributed nothing to reverse, and
+      // reversing it would create the money the void was supposed to withhold.
+      // The predicate is the resolver's `repriced` (a value change to an account,
+      // the source amount, an explicit destination amount or rate), a date
+      // change, or a void transition -- replacing the presence-based
+      // `accountsOrAmountsChanged` (audit P5-002 / RR3-002 / P5-001).
+      if (
+        (updateFx.repriced || dateChanged || voidChanged) &&
+        !anyFuture &&
+        !wasVoid
+      ) {
         await this.accountsService.updateBalance(
           oldFromAccountId,
           oldFromAmount,
@@ -1513,7 +1549,7 @@ export class TransactionTransferService {
         ]);
       }
 
-      if (updateFx.repriced || dateChanged) {
+      if (updateFx.repriced || dateChanged || voidChanged) {
         if (anyFuture) {
           // Sorted: the same fixed lock order every other account-balance
           // writer uses, so two transfers touching the same pair cannot
@@ -1529,7 +1565,9 @@ export class TransactionTransferService {
           for (const accId of allAccounts) {
             await this.accountsService.recalculateCurrentBalance(userId, accId);
           }
-        } else {
+        } else if (!isVoid) {
+          // Re-apply only when the pair is included after the update. Becoming
+          // VOID means the reversal above is the whole change.
           await this.accountsService.updateBalance(
             newFromAccountId,
             -newAmount,
@@ -1657,10 +1695,45 @@ export class TransactionTransferService {
     if (updateDto.payeeName !== undefined)
       legData.payeeName = updateDto.payeeName || null;
 
+    // A status change is presentational for the *counterpart* -- per-ledger
+    // reconciliation state does not cross an ownership boundary -- but it is not
+    // presentational for this leg's own balance. `VOID` excludes a row from
+    // `recalculateCurrentBalance` and from every report, so writing it without
+    // moving the balance left the row and the account disagreeing, and the next
+    // recompute changed the account with no user action behind it.
+    const wasVoid = ownLeg.status === TransactionStatus.VOID;
+    const isVoid =
+      updateDto.status !== undefined
+        ? updateDto.status === TransactionStatus.VOID
+        : wasVoid;
+    const ownLegAmount = Number(ownLeg.amount);
+    const ownLegIsFuture = isTransactionInFuture(ownLeg.transactionDate);
+
     if (Object.keys(legData).length > 0) {
-      await withScopedDb(this.dataSource, (m) =>
-        m.update(Transaction, ownLeg.id, legData),
-      );
+      await withScopedDb(this.dataSource, async (m) => {
+        await m.update(Transaction, ownLeg.id, legData);
+
+        if (wasVoid !== isVoid) {
+          if (ownLegIsFuture) {
+            await this.accountsService.recalculateCurrentBalance(
+              effectiveUserId,
+              ownLeg.accountId,
+            );
+          } else {
+            // Becoming void removes this leg's contribution; leaving void
+            // restores it. Only this leg's account -- the counterpart keeps its
+            // own owner's status.
+            await this.accountsService.updateBalance(
+              ownLeg.accountId,
+              isVoid ? -ownLegAmount : ownLegAmount,
+            );
+          }
+        }
+      });
+
+      if (wasVoid !== isVoid) {
+        this.triggerNetWorthRecalc(ownLeg.accountId, ownLeg.userId);
+      }
     }
 
     // Return the edited leg in both slots (the split-leg pattern) so wrapper
@@ -1782,17 +1855,54 @@ export class TransactionTransferService {
       }
     }
 
+    // Status stays on the effective user's leg (it is stripped from the foreign
+    // one above), so a status change moves exactly one balance -- that leg's.
+    // `amountsChanged` omitted status entirely, so voiding your own side of a
+    // delegated transfer wrote VOID and left the balance carrying the money.
+    const ownLegWasVoid = ownLeg.status === TransactionStatus.VOID;
+    const ownLegIsVoid =
+      updateDto.status !== undefined
+        ? updateDto.status === TransactionStatus.VOID
+        : ownLegWasVoid;
+    const ownLegVoidChanged = ownLegWasVoid !== ownLegIsVoid;
+    const ownLegAmount = Number(ownLeg.amount);
+
+    // Inclusion is per leg here, unlike every same-owner path. Status is stripped
+    // from the foreign leg above, so the two rows hold independent statuses and
+    // the pair can sit in any of the four combinations. Using the acting leg's
+    // state for both -- which is what the FR-001 fix did -- gets the foreign
+    // ledger wrong in two of them (recheck RR2-001): with the own leg VOID and the
+    // foreign leg active, an amount edit reversed nothing and re-applied nothing,
+    // leaving the foreign balance stale by the whole delta while its active row
+    // carried the new amount; with the states swapped, both were reversed and
+    // re-applied, moving a foreign balance that excludes its VOID row.
+    const legVoidState = (leg: Transaction) =>
+      leg.id === ownLeg.id
+        ? { wasVoid: ownLegWasVoid, isVoid: ownLegIsVoid }
+        : {
+            // The foreign leg's status is never written by this path.
+            wasVoid: leg.status === TransactionStatus.VOID,
+            isVoid: leg.status === TransactionStatus.VOID,
+          };
+    const fromVoid = legVoidState(fromTransaction);
+    const toVoid = legVoidState(toTransaction);
+
     await withSystemContext(() =>
       withScopedDb(this.dataSource, async (m) => {
         if ((updateFx.repriced || dateChanged) && !anyFuture) {
-          await this.accountsService.updateBalance(
-            fromTransaction.accountId,
-            oldFromAmount,
-          );
-          await this.accountsService.updateBalance(
-            toTransaction.accountId,
-            -oldToAmount,
-          );
+          // Reverse each leg only if that leg was actually included.
+          if (!fromVoid.wasVoid) {
+            await this.accountsService.updateBalance(
+              fromTransaction.accountId,
+              oldFromAmount,
+            );
+          }
+          if (!toVoid.wasVoid) {
+            await this.accountsService.updateBalance(
+              toTransaction.accountId,
+              -oldToAmount,
+            );
+          }
         }
 
         if (Object.keys(fromUpdateData).length > 0) {
@@ -1820,13 +1930,32 @@ export class TransactionTransferService {
               );
             }
           } else {
-            await this.accountsService.updateBalance(
-              fromTransaction.accountId,
-              -newAmount,
+            // And re-apply each leg only if that leg is included afterwards.
+            if (!fromVoid.isVoid) {
+              await this.accountsService.updateBalance(
+                fromTransaction.accountId,
+                -newAmount,
+              );
+            }
+            if (!toVoid.isVoid) {
+              await this.accountsService.updateBalance(
+                toTransaction.accountId,
+                newToAmount,
+              );
+            }
+          }
+        } else if (ownLegVoidChanged) {
+          // A status-only change: only this leg's account moves, and only by
+          // this leg's amount.
+          if (isTransactionInFuture(ownLeg.transactionDate)) {
+            await this.accountsService.recalculateCurrentBalance(
+              effectiveUserId,
+              ownLeg.accountId,
             );
+          } else {
             await this.accountsService.updateBalance(
-              toTransaction.accountId,
-              newToAmount,
+              ownLeg.accountId,
+              ownLegIsVoid ? -ownLegAmount : ownLegAmount,
             );
           }
         }
@@ -1965,6 +2094,34 @@ export class TransactionTransferService {
       );
     }
 
+    // Whether each row is included in its account's current balance. A split
+    // parent and the legs its transfer children created are one economic event,
+    // and this path checked neither row's state: a status-only VOID on the leg
+    // wrote VOID and left the balance carrying the money, and an amount edit to an
+    // already-VOID leg moved both balances by the delta even though neither row
+    // contributes (recheck RR2-002).
+    const counterpartIsVoid = counterpart.status === TransactionStatus.VOID;
+    const parentIsVoid = parentTransaction.status === TransactionStatus.VOID;
+
+    // Crossing the VOID boundary from one leg is refused rather than applied to
+    // that leg alone: the parent's split row and total would still record money
+    // leaving the source that never arrived. Inclusion belongs to the parent
+    // event, which is why `applyParentStatusToTransferCounterparts` pushes the
+    // parent's status down to every counterpart. Reconciliation states
+    // (PENDING/CLEARED/RECONCILED) are genuinely per-ledger and pass through.
+    const requestedIsVoid =
+      updateDto.status !== undefined
+        ? updateDto.status === TransactionStatus.VOID
+        : counterpartIsVoid;
+    if (requestedIsVoid !== counterpartIsVoid) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.splitTransferLegStatusLocked",
+          "This transfer is part of a split transaction. Void or restore it by editing the split transaction it belongs to, so both sides change together.",
+        ),
+      );
+    }
+
     await this.assertCategoryOwned(userId, updateDto.categoryId);
 
     const oldCounterpartAmount = Number(counterpart.amount);
@@ -2037,7 +2194,9 @@ export class TransactionTransferService {
       }
 
       // Rebalance the counterpart's own account for an amount and/or date change.
-      if (amountChanged || dateChanged) {
+      // A VOID leg contributes nothing, so there is no delta to move -- the
+      // persisted amount still changes, the balance does not.
+      if ((amountChanged || dateChanged) && !counterpartIsVoid) {
         if (isTransactionInFuture(oldDate) || isTransactionInFuture(newDate)) {
           await this.accountsService.recalculateCurrentBalance(
             userId,
@@ -2076,16 +2235,21 @@ export class TransactionTransferService {
           amount: newParentAmount,
         });
 
-        if (isTransactionInFuture(parentTransaction.transactionDate)) {
-          await this.accountsService.recalculateCurrentBalance(
-            userId,
-            parentTransaction.accountId,
-          );
-        } else {
-          await this.accountsService.updateBalance(
-            parentTransaction.accountId,
-            roundMoney(newParentAmount - oldParentAmount),
-          );
+        // Same rule on the source side: a VOID parent is excluded from its
+        // account's balance, so re-totalling it moves the record and not the
+        // money.
+        if (!parentIsVoid) {
+          if (isTransactionInFuture(parentTransaction.transactionDate)) {
+            await this.accountsService.recalculateCurrentBalance(
+              userId,
+              parentTransaction.accountId,
+            );
+          } else {
+            await this.accountsService.updateBalance(
+              parentTransaction.accountId,
+              roundMoney(newParentAmount - oldParentAmount),
+            );
+          }
         }
       }
     });

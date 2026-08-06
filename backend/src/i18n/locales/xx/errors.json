@@ -497,6 +497,7 @@
     "transferAmountNegative": "[XX-Transfer amount must not be negative-XX]",
     "notATransfer": "[XX-Transaction is not a transfer-XX]",
     "splitTransferLegAccountLocked": "[XX-This transfer is part of a split transaction. Change its accounts by editing the split on the source transaction instead.-XX]",
+    "splitTransferLegStatusLocked": "[XX-This transfer is part of a split transaction. Void or restore it by editing the split transaction it belongs to, so both sides change together.-XX]",
     "notFoundById": "[XX-Transaction with ID {{ id }} not found-XX]",
     "bulkUpdateNoFields": "[XX-At least one update field must be provided-XX]",
     "payeeNotFound": "[XX-Payee not found-XX]",

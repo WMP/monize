@@ -5348,6 +5348,12 @@ describe("TransactionsService", () => {
         new Date("2026-03-20"),
         "Committed Payee",
         "payee-committed",
+        // The merged call also carries the committed parent's status (read off
+        // the locked row) and the touched-accounts set for the post-commit
+        // net-worth fan-out. Neither is what this test pins down, but the status
+        // is another committed-parent field so it is asserted precisely.
+        { parentStatus: TransactionStatus.UNRECONCILED },
+        expect.any(Set),
       );
     });
   });
@@ -5944,6 +5950,91 @@ describe("TransactionsService", () => {
         userId: "user-1",
       });
       expect(transactionsRepository.remove).not.toHaveBeenCalledWith(linkedTx);
+    });
+
+    it("reverses nothing when the whole VOID split is deleted (RR4-001)", async () => {
+      // `removeParentTransaction` guarded the deleted row and the split parent on
+      // status, and the sibling counterpart loop in the same function did not. So
+      // deleting one leg under a VOID split parent debited every OTHER target
+      // account by its own amount -- money out of nothing, from a plain
+      // `DELETE /transactions/:id`. Every reversal now goes through one
+      // inclusion-aware helper.
+      const linkedTx = {
+        id: "linked-tx-1",
+        userId: "user-1",
+        accountId: "account-2",
+        amount: 40,
+        status: TransactionStatus.VOID,
+        transactionDate: "2020-01-01",
+        isTransfer: true,
+        linkedTransactionId: "tx-parent",
+        splits: [],
+      };
+      splitsRepository.findOne.mockResolvedValue({
+        id: "parent-split-1",
+        transactionId: "tx-parent",
+        linkedTransactionId: "linked-tx-1",
+      });
+
+      const parentTx = {
+        id: "tx-parent",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -100,
+        status: TransactionStatus.VOID,
+        transactionDate: "2020-01-01",
+      };
+      const siblingLeg = {
+        id: "another-linked-tx",
+        accountId: "account-3",
+        amount: 30,
+        status: TransactionStatus.VOID,
+        transactionDate: "2020-01-01",
+      };
+
+      // The access check reads the named leg through the caller's findOne; the
+      // split parent is then locked on its own and the sibling legs come through
+      // the batch lock reader (both served from the repository mocks, per the
+      // merged parent-before-legs lock ordering). The splits themselves are read
+      // from the scoped manager.
+      transactionsRepository.findOne
+        .mockResolvedValueOnce(linkedTx)
+        .mockResolvedValueOnce(parentTx);
+      transactionsRepository.find.mockResolvedValue([parentTx, siblingLeg]);
+      mockQueryRunner.manager.find.mockResolvedValueOnce([
+        {
+          id: "split-1",
+          transactionId: "tx-parent",
+          linkedTransactionId: "linked-tx-1",
+          transferAccountId: "account-2",
+        },
+        {
+          id: "split-2",
+          transactionId: "tx-parent",
+          linkedTransactionId: "another-linked-tx",
+          transferAccountId: "account-3",
+        },
+      ]);
+
+      await service.removeTransfer("user-1", "linked-tx-1");
+
+      // None of the three rows contributed to a balance, so none is reversed.
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      // All of them are still removed: the record of an event that did not
+      // happen. Rows go via the conditional DELETE (removeLockedTransactionLeg
+      // -> m.delete { id, userId }), not manager.remove(entity).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "another-linked-tx",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "tx-parent",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "linked-tx-1",
+        userId: "user-1",
+      });
     });
   });
 

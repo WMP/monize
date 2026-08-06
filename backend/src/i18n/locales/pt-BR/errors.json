@@ -489,6 +489,7 @@
     "transferAmountNegative": "O valor da transferência não deve ser negativo",
     "notATransfer": "A transação não é uma transferência",
     "splitTransferLegAccountLocked": "Esta transferência faz parte de uma transação dividida. Para alterar as contas, edite a divisão na transação de origem.",
+    "splitTransferLegStatusLocked": "Esta transferência faz parte de uma transação dividida. Anule-a ou restaure-a editando a transação dividida à qual ela pertence, para que os dois lados mudem juntos.",
     "notFoundById": "Transação com ID {{ id }} não encontrada",
     "bulkUpdateNoFields": "Deve ser fornecido pelo menos um campo de atualização",
     "payeeNotFound": "Beneficiário não encontrado",
