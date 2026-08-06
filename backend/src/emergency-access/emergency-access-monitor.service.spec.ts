@@ -180,13 +180,37 @@ describe("EmergencyAccessMonitorService", () => {
       save: jest.fn(),
       // grantedAt / lastReminderSentAt are now written with targeted UPDATEs
       // rather than by re-saving the entity the sweep read, so a concurrent
-      // settings change is not reverted by a bookkeeping write.
-      createQueryBuilder: jest.fn(() => ({
-        update: jest.fn().mockReturnThis(),
-        set: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({ affected: 1 }),
-      })),
+      // settings change is not reverted by a bookkeeping write. The double
+      // applies the patch to the fixture rows the way the database would, so a
+      // later read in the same run sees the committed value -- the revocation
+      // sweep now runs before the delivery sweep, and without this the second
+      // pass would reprocess a grant the first one already cleared.
+      createQueryBuilder: jest.fn(() => {
+        let patch: Record<string, unknown> = {};
+        const qb = {
+          update: jest.fn(() => qb),
+          set: jest.fn((p: Record<string, unknown>) => {
+            patch = p;
+            return qb;
+          }),
+          where: jest.fn(() => qb),
+          execute: jest.fn(async () => {
+            for (const result of settingsRepo.find.mock.results) {
+              if (result.type !== "return") continue;
+              const rows = (await result.value) as
+                | Record<string, unknown>[]
+                | undefined;
+              for (const row of rows ?? []) {
+                for (const [key, value] of Object.entries(patch)) {
+                  row[key] = typeof value === "function" ? new Date() : value;
+                }
+              }
+            }
+            return { affected: 1 };
+          }),
+        };
+        return qb;
+      }),
     };
     contactsRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -270,11 +294,95 @@ describe("EmergencyAccessMonitorService", () => {
     service = module.get(EmergencyAccessMonitorService);
   });
 
-  it("returns immediately when SMTP is not configured", async () => {
+  it("skips delivery when SMTP is not configured, but still sweeps for revocations", async () => {
     emailService.getStatus.mockReturnValue({ configured: false });
     await service.runDailyCheck();
-    expect(settingsRepo.find).not.toHaveBeenCalled();
+    // The revocation sweep ran (it needs only the database)...
+    expect(settingsRepo.find).toHaveBeenCalledTimes(1);
+    // ...and nothing delivery-shaped happened.
+    expect(usersRepo.findOne).not.toHaveBeenCalled();
     expect(emailService.sendMail).not.toHaveBeenCalled();
+  });
+
+  it("revokes a returned owner's links even when SMTP is not configured", async () => {
+    // REMAINING-001: an already-issued 30-day link must stop working when the
+    // owner returns, whatever the delivery dependencies look like. The owner
+    // notice is best-effort -- here it fails outright -- and must not stop the
+    // revocation writes.
+    emailService.getStatus.mockReturnValue({ configured: false });
+    emailService.sendMail.mockRejectedValue(new Error("no transport"));
+    const settings = {
+      ownerUserId: userId,
+      enabled: true,
+      grantAfterDays: 14,
+      reminderAfterDays: 7,
+      messageCiphertext: null,
+      lastReminderSentAt: daysAgo(8),
+      grantedAt: daysAgo(3),
+    };
+    settingsRepo.find.mockResolvedValue([settings]);
+    usersRepo.findOne.mockResolvedValue({
+      id: userId,
+      email: "owner@example.com",
+      isActive: true,
+      lastActivityAt: daysAgo(1),
+    });
+    const execute = jest.fn().mockResolvedValue({ affected: 1 });
+    contactsRepo.createQueryBuilder.mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute,
+    });
+
+    await service.runDailyCheck();
+
+    // Links voided and monitoring re-armed, with no working SMTP anywhere.
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(settings.grantedAt).toBeNull();
+  });
+
+  it("revokes a returned owner's links even when the encryption key is absent", async () => {
+    // REMAINING-001, the other dependency: the keyless gate protects the
+    // delivery sweep, not the revocation. Revoking encrypts nothing.
+    encryption.isConfigured.mockReturnValue(false);
+    const settings = {
+      ownerUserId: userId,
+      enabled: true,
+      grantAfterDays: 14,
+      reminderAfterDays: 7,
+      messageCiphertext: null,
+      lastReminderSentAt: daysAgo(8),
+      grantedAt: daysAgo(3),
+    };
+    settingsRepo.find.mockResolvedValue([settings]);
+    usersRepo.findOne.mockResolvedValue({
+      id: userId,
+      email: "owner@example.com",
+      firstName: "Owner",
+      isActive: true,
+      lastActivityAt: daysAgo(1),
+    });
+    const execute = jest.fn().mockResolvedValue({ affected: 2 });
+    contactsRepo.createQueryBuilder.mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute,
+    });
+
+    await service.runDailyCheck();
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(settings.grantedAt).toBeNull();
+    // The owner heard about it (SMTP is fine here); no contact was enumerated
+    // for delivery, because the keyless gate still guards that sweep.
+    const [to, subject] = emailService.sendMail.mock.calls[0];
+    expect(to).toBe("owner@example.com");
+    expect(subject).toContain("while you were away");
+    expect(contactsRepo.find).not.toHaveBeenCalled();
   });
 
   // RLS (task C4): the cross-user sweep runs under a system context.
@@ -1350,7 +1458,7 @@ describe("EmergencyAccessMonitorService", () => {
     expect(html).not.toContain("border-left: 4px solid");
   });
 
-  it("skips the whole sweep, sending nothing, when the encryption key is absent", async () => {
+  it("skips the delivery sweep, sending nothing, when the encryption key is absent", async () => {
     // The grant path encrypts each contact's claim token, so without a key
     // `credentialFor` throws for every contact -- delivering nothing and, before
     // the gate, spinning that failure every day for an already-enabled owner
@@ -1380,8 +1488,10 @@ describe("EmergencyAccessMonitorService", () => {
     await service.runDailyCheck();
 
     expect(emailService.sendMail).not.toHaveBeenCalled();
-    // It did not even enumerate owners: the gate is before the sweep.
+    // No grant work happened: the revocation sweep skipped the ungranted row
+    // without loading its owner, and the keyless gate stopped everything else.
     expect(usersRepo.findOne).not.toHaveBeenCalled();
+    expect(contactsRepo.find).not.toHaveBeenCalled();
   });
 
   it("uses singular phrasing in the reminder subject when daysSinceLogin === 1", async () => {

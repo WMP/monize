@@ -161,9 +161,19 @@ export class EmergencyAccessMonitorService {
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async runDailyCheck(): Promise<void> {
+    // Revocation runs FIRST, before any delivery dependency is consulted.
+    // Voiding an outstanding link needs only the database, and an owner who has
+    // returned is exposed for every day it waits: an already-issued 30-day link
+    // stayed claimable on an install whose SMTP or encryption key had gone away,
+    // because the whole sweep -- revocation included -- sat behind those gates
+    // (stack review REMAINING-001). The owner notice inside `revokeAfterReturn`
+    // is best-effort and survives a missing SMTP config; the revocation writes do
+    // not depend on it.
+    await withSystemContext(() => this.revokeReturnedOwners());
+
     if (!this.emailService.getStatus().configured) {
       this.logger.debug(
-        "SMTP not configured, skipping emergency access checks",
+        "SMTP not configured, skipping emergency access delivery checks",
       );
       return;
     }
@@ -190,6 +200,54 @@ export class EmergencyAccessMonitorService {
     // access tables) for many users, so the whole sweep runs under a system
     // context. Inert at RLS_MODE=off -- only seeds AsyncLocalStorage.
     return withSystemContext(() => this.runDailyCheckWithinContext());
+  }
+
+  /**
+   * Void outstanding links for every granted owner who is active again.
+   *
+   * Deliberately independent of the delivery sweep and of its SMTP/encryption
+   * gates: revocation is pure database work plus a best-effort notice, so it must
+   * keep happening on a degraded install where nothing can be *delivered*
+   * (stack review REMAINING-001). `processOne` keeps its own returned-owner check
+   * as a second line of defence for owners who return mid-sweep.
+   */
+  private async revokeReturnedOwners(): Promise<void> {
+    const granted = await this.scoped(EmergencyAccessSettings, (repo) =>
+      repo.find({ where: { enabled: true, grantedAt: Not(IsNull()) } }),
+    );
+    if (granted.length === 0) return;
+
+    const appUrl = this.configService.get<string>(
+      "PUBLIC_APP_URL",
+      "http://localhost:3000",
+    );
+    for (const settings of granted) {
+      // The find above already filters on it; re-checked per row so a row
+      // whose grant was cleared between the read and this iteration is left
+      // alone rather than reprocessed.
+      if (settings.grantedAt === null) continue;
+      try {
+        const owner = await this.scoped(User, (repo) =>
+          repo.findOne({ where: { id: settings.ownerUserId } }),
+        );
+        // No email requirement here, unlike the delivery sweep: a revocation is
+        // owed to the account, not to an inbox.
+        if (!owner || !owner.isActive) continue;
+        const lastSeen = owner.lastActivityAt ?? owner.lastLogin;
+        if (!lastSeen) continue;
+        const daysSinceLogin = Math.floor(
+          (Date.now() - lastSeen.getTime()) / MS_PER_DAY,
+        );
+        if (daysSinceLogin < settings.grantAfterDays) {
+          await this.revokeAfterReturn(settings, owner, appUrl);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Emergency access revocation failed for user ${settings.ownerUserId}`,
+          error instanceof Error ? error.stack : error,
+        );
+      }
+    }
   }
 
   private async runDailyCheckWithinContext(): Promise<void> {

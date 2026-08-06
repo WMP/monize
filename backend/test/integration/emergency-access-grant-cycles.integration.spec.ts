@@ -4,6 +4,7 @@ import { DataSource } from "typeorm";
 
 import { AiEncryptionService } from "@/ai/ai-encryption.service";
 import { hashToken } from "@/auth/crypto.util";
+import { returnedRows } from "@/common/db/query-result";
 import { withUserContext } from "@/common/db/with-context";
 import { JobClaimService } from "@/common/jobs/job-claim.service";
 import { EmergencyAccessMonitorService } from "@/emergency-access/emergency-access-monitor.service";
@@ -423,6 +424,58 @@ describe("emergency access across grant cycles", () => {
     const contact = await contactRow();
     expect(contact.claim_token_hash).toBeNull();
     expect(contact.claim_token_ciphertext).toBeNull();
+  });
+
+  it("revokes on return and kills the delivered link even with SMTP and the key gone", async () => {
+    // Revocation is a security invariant, not a delivery: it needs neither SMTP
+    // nor the encryption key, so it must run before either gate. A monitor that
+    // returned at the first missing dependency left a returned owner's
+    // outstanding claim link live on exactly the degraded install that could not
+    // re-notify anyone about it.
+    const { token } = await runInactivityGrant();
+
+    const degradedMonitor = new EmergencyAccessMonitorService(
+      dataSource,
+      {
+        getStatus: () => ({ configured: false }),
+        sendMail: async () => {
+          throw new Error("SMTP is down");
+        },
+      } as unknown as EmailService,
+      new AiEncryptionService({
+        get: (_key: string, fallback?: string) => fallback ?? "",
+      } as unknown as ConfigService),
+      configDouble,
+      i18nDouble,
+      new JobClaimService(dataSource),
+    );
+
+    // The owner signs back in; only the degraded binary is running.
+    await lastSeenDaysAgo(0);
+    await degradedMonitor.runDailyCheck();
+
+    const contact = await contactRow();
+    expect(contact.claim_token_hash).toBeNull();
+    expect(contact.claim_token_used_at).not.toBeNull();
+    expect(contact.claim_token_ciphertext).toBeNull();
+    expect((await settingsRow()).granted_at).toBeNull();
+
+    // The proof that matters: the claim controller's consume statement, replayed
+    // verbatim against the delivered token, finds no row to honour.
+    const consumed: unknown = await dataSource.query(
+      `UPDATE emergency_access_contacts
+          SET claim_token_used_at = CURRENT_TIMESTAMP,
+              claim_token_hash = NULL,
+              claim_token_ciphertext = NULL,
+              claim_voided_reason = NULL
+        WHERE claim_token_hash = $1
+          AND claim_token_used_at IS NULL
+          AND claim_token_expires_at IS NOT NULL
+          AND claim_token_expires_at >= CURRENT_TIMESTAMP
+        RETURNING id, owner_user_id`,
+      [hashToken(token)],
+    );
+    expect(returnedRows(consumed)).toEqual([]);
   });
 
   describe("during a rolling deployment", () => {
