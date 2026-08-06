@@ -48,9 +48,9 @@
     "netInvested": "淨投入金額",
     "netInvestedTooltip": "存入投資科目的淨額，即總投入減去提款，不含投資獲利、股利或利息。",
     "costBasis": "成本基礎",
-    "costBasisTooltip": "您取得投資時支付的總金額，包含買入價格及交易手續費，用於計算損益。",
+    "costBasisTooltip": "目前持倉的取得成本，由交易歷史重建：買入價格加上每次買入收取的佣金，各自按支付該筆交易時的匯率換算。以您的顯示貨幣顯示。用於計算損益。",
     "gainLoss": "獲利/虧損",
-    "gainLossTooltip": "目前持倉的未實現損益：市值減去成本基礎，不含已實現獲利或已收取的收益。",
+    "gainLossTooltip": "目前持倉的未實現損益：按今日價格計算的市值減去上面的成本基礎。不包括過去賣出已實現的收益，也不包括已收到的股息和利息。",
     "returns": "報酬",
     "simpleReturn": "簡單報酬率",
     "simpleReturnTooltip": "持倉的總百分比損益，計算方式為（市值 − 成本基礎）÷ 成本基礎，不考慮投入或提款的時間點。",
@@ -67,18 +67,18 @@
     "cash": "現金",
     "untagged": "無標籤",
     "noTagData": "沒有可顯示的帶標籤持倉。為你的證券新增標籤即可按標籤查看曝險。",
+    "noKeyData": "沒有持倉包含此標籤鍵的值。將證券標記為 key:value（例如 country:usa）以檢視此細分。",
     "noCountryData": "無國家/地區配置資料。",
+    "keySelectorLabel": "用於彙總的標籤鍵",
     "otherCountries": "其他國家/地區",
     "otherAssetClasses": "其他資產類別",
     "groupBy": {
       "security": "按證券",
       "tag": "按標籤",
-      "country": "依國家/地區",
       "tagKey": "依鍵",
+      "country": "依國家/地區",
       "assetClass": "按資產類別"
-    },
-    "noKeyData": "沒有持倉包含此標籤鍵的值。將證券標記為 key:value（例如 country:usa）以檢視此細分。",
-    "keySelectorLabel": "用於彙總的標籤鍵"
+    }
   },
   "holdingsList": {
     "title": "持倉",
@@ -106,8 +106,10 @@
     "avgCostColumn": "平均成本",
     "priceColumn": "價格",
     "costBasisColumn": "成本基礎",
+    "costBasisColumnTooltip": "數量乘以每股平均成本，以證券自身貨幣計。買入佣金不計入平均成本，因此該數字可能低於上面的投資組合成本基礎——後者由交易歷史重建並包含佣金。",
     "mktValueColumn": "市值",
     "gainLossColumn": "獲利/虧損",
+    "gainLossColumnTooltip": "市值減去本列的成本基礎，因此採用同樣不含佣金的平均成本。",
     "portfolioPercentColumn": "% 投組"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "僅有 {available} 股可供移轉",
     "toastSplitRatioRequired": "分割比例必須大於零",
     "toastPairedLegError": "無法載入配對移轉腳；請重新開啟後再試",
-    "toastSaveFailed": "儲存交易失敗"
+    "toastSaveFailed": "儲存交易失敗",
+    "exchangeRateUnresolved": "沒有 {from} 兌 {to} 的匯率。請在儲存前輸入匯率或換算後的總額。",
+    "toastExchangeRateRequired": "在儲存跨貨幣交易前請輸入匯率。",
+    "notAvailable": "無法使用"
   },
   "newTransactionButton": {
     "label": "+ 新增交易",

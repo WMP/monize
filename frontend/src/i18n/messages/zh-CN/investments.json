@@ -48,9 +48,9 @@
     "netInvested": "净投入金额",
     "netInvestedTooltip": "您存入投资账户的净金额，即总投入减去提取金额，不含投资收益、股息或利息。",
     "costBasis": "成本基础",
-    "costBasisTooltip": "您最初购买投资所支付的总金额，包括购买价格和交易费用。用于计算盈亏。",
+    "costBasisTooltip": "当前持仓的取得成本，由交易历史重建：买入价格加上每次买入收取的佣金，各自按支付该笔交易时的汇率换算。以您的显示货币显示。用于计算盈亏。",
     "gainLoss": "盈亏",
-    "gainLossTooltip": "当前持仓的未实现盈亏：市值减去成本基础。不包括过去销售的已实现收益或已获得的收入。",
+    "gainLossTooltip": "当前持仓的未实现盈亏：按今日价格计算的市值减去上面的成本基础。不包括过去卖出已实现的收益，也不包括已收到的股息和利息。",
     "returns": "回报率",
     "simpleReturn": "简单回报率",
     "simpleReturnTooltip": "持仓的总百分比盈亏，计算公式为（市值 - 成本基础）÷ 成本基础。不考虑投入或提取资金的时间。",
@@ -67,18 +67,18 @@
     "cash": "现金",
     "untagged": "无标签",
     "noTagData": "没有可显示的带标签持仓。为你的证券添加标签即可按标签查看敞口。",
+    "noKeyData": "没有持仓包含此标签键的值。将证券标记为 key:value（例如 country:usa）以查看此细分。",
     "noCountryData": "暂无国家/地区配置数据。",
+    "keySelectorLabel": "用于汇总的标签键",
     "otherCountries": "其他国家/地区",
     "otherAssetClasses": "其他资产类别",
     "groupBy": {
       "security": "按证券",
       "tag": "按标签",
-      "country": "按国家/地区",
       "tagKey": "按键",
+      "country": "按国家/地区",
       "assetClass": "按资产类别"
-    },
-    "noKeyData": "没有持仓包含此标签键的值。将证券标记为 key:value（例如 country:usa）以查看此细分。",
-    "keySelectorLabel": "用于汇总的标签键"
+    }
   },
   "holdingsList": {
     "title": "持仓",
@@ -106,8 +106,10 @@
     "avgCostColumn": "平均成本",
     "priceColumn": "价格",
     "costBasisColumn": "成本基础",
+    "costBasisColumnTooltip": "数量乘以每股平均成本，以证券自身货币计。买入佣金不计入平均成本，因此该数字可能低于上面的投资组合成本基础——后者由交易历史重建并包含佣金。",
     "mktValueColumn": "市值",
     "gainLossColumn": "盈亏",
+    "gainLossColumnTooltip": "市值减去本行的成本基础，因此采用同样不含佣金的平均成本。",
     "portfolioPercentColumn": "% 组合"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "仅有 {available} 股可供转移",
     "toastSplitRatioRequired": "拆股比例必须大于零",
     "toastPairedLegError": "无法加载配对转移记录，请重新打开后重试",
-    "toastSaveFailed": "保存交易失败"
+    "toastSaveFailed": "保存交易失败",
+    "exchangeRateUnresolved": "没有 {from} 兑 {to} 的汇率。请在保存前输入汇率或换算后的总额。",
+    "toastExchangeRateRequired": "在保存跨货币交易前请输入汇率。",
+    "notAvailable": "不可用"
   },
   "newTransactionButton": {
     "label": "+ 新建交易",

@@ -48,9 +48,9 @@
     "netInvested": "Đã đầu tư ròng",
     "netInvestedTooltip": "Số tiền ròng của bạn đã nạp vào tài khoản đầu tư. Đây là tổng đóng góp trừ đi rút tiền, không tính lãi đầu tư, cổ tức hoặc lãi kiếm được.",
     "costBasis": "Cơ sở chi phí",
-    "costBasisTooltip": "Tổng số tiền bạn đã trả ban đầu để mua các khoản đầu tư, bao gồm giá mua và phí giao dịch. Dùng để tính lãi lỗ của bạn.",
+    "costBasisTooltip": "Chi phí để có được các vị thế hiện tại, được dựng lại từ lịch sử giao tác: giá mua cộng hoa hồng tính trên mỗi lần mua, mỗi khoản được quy đổi theo tỷ giá của giao dịch đã thanh toán nó. Hiển thị bằng đồng tiền hiển thị của bạn. Dùng để tính lãi lỗ.",
     "gainLoss": "Lãi/Lỗ",
-    "gainLossTooltip": "Lãi lỗ chưa thực hiện trên các khoản nắm giữ hiện tại: Giá trị thị trường trừ Cơ sở chi phí. Không bao gồm lãi đã thực hiện từ các lần bán trước hoặc thu nhập nhận được.",
+    "gainLossTooltip": "Lãi hoặc lỗ chưa thực hiện của các vị thế hiện tại: giá trị thị trường theo giá hôm nay trừ cơ sở chi phí ở trên. Không bao gồm lãi đã thực hiện từ các lần bán trước, cũng như cổ tức và lãi suất đã nhận.",
     "returns": "Lợi nhuận",
     "simpleReturn": "Lợi nhuận đơn giản",
     "simpleReturnTooltip": "Tổng phần trăm lãi lỗ trên các khoản nắm giữ, tính bằng (Giá trị thị trường − Cơ sở chi phí) ÷ Cơ sở chi phí. Không tính đến thời điểm đóng góp hoặc rút tiền.",
@@ -67,18 +67,18 @@
     "cash": "Tiền mặt",
     "untagged": "Chưa gắn thẻ",
     "noTagData": "Không có khoản nắm giữ nào được gắn thẻ. Thêm thẻ cho chứng khoán của bạn để xem mức độ tiếp xúc theo thẻ.",
+    "noKeyData": "Không có khoản nắm giữ nào có giá trị cho khóa thẻ này. Gắn thẻ chứng khoán dạng khóa:giá_trị (ví dụ: country:usa) để xem phân tích này.",
     "noCountryData": "Không có dữ liệu phân bổ theo quốc gia.",
+    "keySelectorLabel": "Khóa thẻ để tổng hợp",
     "otherCountries": "Quốc gia khác",
     "otherAssetClasses": "Loại tài sản khác",
     "groupBy": {
       "security": "Theo chứng khoán",
       "tag": "Theo thẻ",
-      "country": "Theo quốc gia",
       "tagKey": "Theo khóa",
+      "country": "Theo quốc gia",
       "assetClass": "Theo loại tài sản"
-    },
-    "noKeyData": "Không có khoản nắm giữ nào có giá trị cho khóa thẻ này. Gắn thẻ chứng khoán dạng khóa:giá_trị (ví dụ: country:usa) để xem phân tích này.",
-    "keySelectorLabel": "Khóa thẻ để tổng hợp"
+    }
   },
   "holdingsList": {
     "title": "Nắm giữ",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Giá TB",
     "priceColumn": "Giá",
     "costBasisColumn": "Cơ sở chi phí",
+    "costBasisColumnTooltip": "Số lượng nhân chi phí bình quân mỗi cổ phiếu, bằng chính đồng tiền của chứng khoán. Hoa hồng mua không tính vào chi phí bình quân, nên con số này có thể thấp hơn Cơ sở chi phí danh mục ở trên — vốn được dựng lại từ lịch sử giao tác có bao gồm hoa hồng.",
     "mktValueColumn": "Giá trị TT",
     "gainLossColumn": "Lãi/Lỗ",
+    "gainLossColumnTooltip": "Giá trị thị trường trừ cơ sở chi phí ở dòng này, nên theo cùng chi phí bình quân không gồm hoa hồng.",
     "portfolioPercentColumn": "% Danh mục"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Chỉ có {available} cổ phiếu sẵn có để chuyển",
     "toastSplitRatioRequired": "Tỷ lệ tách phải lớn hơn zero",
     "toastPairedLegError": "Không thể tải lần chuyển khoản ghép đôi; mở lại và thử lại",
-    "toastSaveFailed": "Lưu giao dịch thất bại"
+    "toastSaveFailed": "Lưu giao dịch thất bại",
+    "exchangeRateUnresolved": "Không có tỷ giá {from} sang {to}. Nhập tỷ giá, hoặc tổng đã quy đổi, trước khi lưu.",
+    "toastExchangeRateRequired": "Nhập tỷ giá trước khi lưu một giao dịch giữa hai loại tiền tệ.",
+    "notAvailable": "Không có sẵn"
   },
   "newTransactionButton": {
     "label": "+ Giao dịch mới",

@@ -48,9 +48,9 @@
     "netInvested": "純投資額",
     "netInvestedTooltip": "投資口座に預け入れた純額。総拠出額から引き出しを差し引いたもので、投資損益、配当、獲得利息は除きます。",
     "costBasis": "取得原価",
-    "costBasisTooltip": "取引手数料を含む、投資の購入に支払った総額。損益計算に使用されます。",
+    "costBasisTooltip": "現在の保有を取得するのにかかった費用を取引履歴から再構築したものです。購入価格に各購入時の手数料を加え、それぞれをその取引を支払ったときのレートで換算しています。表示通貨で表示され、損益の計算に使われます。",
     "gainLoss": "損益",
-    "gainLossTooltip": "現在保有の未実現損益：市場価値マイナス取得原価。過去の売却による実現損益や受取収益は含みません。",
+    "gainLossTooltip": "現在の保有の未実現損益：本日価格での時価総額から上の取得原価を差し引いたものです。過去の売却による実現益や、受け取った配当・利息は含みません。",
     "returns": "リターン",
     "simpleReturn": "単純リターン",
     "simpleReturnTooltip": "（市場価値 - 取得原価）÷ 取得原価で計算した保有の総損益パーセンテージ。拠出や引き出しのタイミングは考慮しません。",
@@ -67,18 +67,18 @@
     "cash": "現金",
     "untagged": "タグなし",
     "noTagData": "表示できるタグ付き保有銘柄がありません。タグ別のエクスポージャーを表示するには、銘柄にタグを追加してください。",
+    "noKeyData": "このタグキーの値を持つ保有銘柄がありません。この内訳を表示するには、銘柄を key:value（例: country:usa）としてタグ付けしてください。",
     "noCountryData": "国別配分データがありません。",
+    "keySelectorLabel": "集計するタグキー",
     "otherCountries": "その他の国",
     "otherAssetClasses": "その他の資産クラス",
     "groupBy": {
       "security": "銘柄別",
       "tag": "タグ別",
-      "country": "国別",
       "tagKey": "キー別",
+      "country": "国別",
       "assetClass": "資産クラス別"
-    },
-    "noKeyData": "このタグキーの値を持つ保有銘柄がありません。この内訳を表示するには、銘柄を key:value（例: country:usa）としてタグ付けしてください。",
-    "keySelectorLabel": "集計するタグキー"
+    }
   },
   "holdingsList": {
     "title": "保有銘柄",
@@ -106,8 +106,10 @@
     "avgCostColumn": "平均取得原価",
     "priceColumn": "価格",
     "costBasisColumn": "取得原価",
+    "costBasisColumnTooltip": "数量 × 1株あたり平均取得単価（証券自体の通貨建て）です。購入手数料は平均取得単価に含まれないため、この数値は上のポートフォリオの取得原価（手数料込みで取引履歴から再構築）より低くなることがあります。",
     "mktValueColumn": "市場価値",
     "gainLossColumn": "損益",
+    "gainLossColumnTooltip": "時価からこの行の取得原価を差し引いたもので、同じ手数料抜きの平均取得単価に従います。",
     "portfolioPercentColumn": "% ポート"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "振替可能な株式は {available} 株のみです",
     "toastSplitRatioRequired": "分割比率はゼロより大きくなければなりません",
     "toastPairedLegError": "ペアの振替部分を読み込めませんでした。再開して再試行してください",
-    "toastSaveFailed": "取引の保存に失敗しました"
+    "toastSaveFailed": "取引の保存に失敗しました",
+    "exchangeRateUnresolved": "{from} から {to} へのレートがありません。保存する前にレートか換算後の合計を入力してください。",
+    "toastExchangeRateRequired": "通貨をまたぐ取引を保存する前に為替レートを入力してください。",
+    "notAvailable": "利用不可"
   },
   "newTransactionButton": {
     "label": "+ 新規取引",
