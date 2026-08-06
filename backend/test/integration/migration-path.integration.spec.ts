@@ -3,10 +3,7 @@ import * as path from "path";
 import { DataSource } from "typeorm";
 
 import { withUserContext } from "@/common/db/with-context";
-import {
-  JobClaimService,
-  JobClaimType,
-} from "@/common/jobs/job-claim.service";
+import { JobClaimService, JobClaimType } from "@/common/jobs/job-claim.service";
 
 import {
   INTEGRATION_TYPEORM_OPTIONS,
@@ -69,7 +66,9 @@ describe("production migration path (pre-Phase4 schema + migrations)", () => {
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       try {
-        await db.query(fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8"));
+        await db.query(
+          fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8"),
+        );
       } catch (error) {
         throw new Error(
           `migration ${file} failed against the pre-Phase4 schema: ${
