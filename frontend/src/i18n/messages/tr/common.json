@@ -228,5 +228,9 @@
     "nothingToRedo": "Yeniden yapılacak işlem yok",
     "cannotRedo": "Bu işlem yeniden yapılamaz",
     "redoFailed": "Yeniden yapma başarısız"
+  },
+  "partialTotal": {
+    "srSuffix": "(kısmi toplam)",
+    "explanation": "Kısmi toplam: {count, plural, one {# tutar} other {# tutar}} {displayCurrency} para birimine çevrilemedi çünkü {currencies} için kur yok. Gösterilen rakam bunları içermez."
   }
 }

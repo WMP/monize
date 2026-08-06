@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "अटैचमेंट नहीं मिला",
+    "transactionNotFound": "लेन-देन नहीं मिला",
+    "empty": "अपलोड की गई फ़ाइल खाली है",
+    "fileTooLarge": "फ़ाइल {{ max }} बाइट्स की अधिकतम सीमा से अधिक है",
+    "unsupportedType": "असमर्थित फ़ाइल प्रकार। अनुमत प्रकार: {{ types }}",
+    "tooMany": "इस लेन-देन में पहले से ही अधिकतम {{ max }} अटैचमेंट हैं"
+  },
   "accounts": {
     "accountWithIdNotFound": "ID {{ id }} वाला खाता नहीं मिला",
     "notInvestmentPair": "यह खाता किसी निवेश खाता युगल का हिस्सा नहीं है",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "मुद्रा \"{{ code }}\" पहले से आपकी सूची में है",
+    "alreadyInListInactive": "मुद्रा \"{{ code }}\" पहले से आपकी सूची में है, लेकिन वर्तमान में निष्क्रिय है। इसका उपयोग करने के लिए इसे पुनः सक्रिय करें।",
     "notFound": "मुद्रा \"{{ code }}\" नहीं मिली",
     "cannotModifySystem": "सिस्टम मुद्रा मेटाडेटा संशोधित नहीं किया जा सकता",
     "cannotModifyOther": "किसी अन्य उपयोगकर्ता की मुद्रा संशोधित नहीं की जा सकती",
     "inUse": "मुद्रा \"{{ code }}\" आपके खातों, प्रतिभूतियों या अन्य अभिलेखों में उपयोग में है। इसके बजाय इसे निष्क्रिय करें।",
-    "invalidRateDate": "date YYYY-MM-DD प्रारूप में होना चाहिए",
-    "alreadyInListInactive": "मुद्रा \"{{ code }}\" पहले से आपकी सूची में है, लेकिन वर्तमान में निष्क्रिय है। इसका उपयोग करने के लिए इसे पुनः सक्रिय करें।"
+    "invalidRateDate": "date YYYY-MM-DD प्रारूप में होना चाहिए"
   },
   "delegation": {
     "delegatedAccessInvalid": "प्रत्यायोजित एक्सेस अब मान्य नहीं है",
@@ -305,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "परिदृश्य {{ id }} नहीं मिला",
     "scenarioIdsMustBeArray": "scenarioIds एक सरणी होनी चाहिए",
-    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है"
+    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है",
+    "currentBalanceUnavailable": "आपके खातों का मूल्यांकन अभी नहीं हो सका, इसलिए वर्तमान शेष से शुरू होने वाला सिमुलेशन नहीं चलाया जा सकता। पुनः प्रयास करें, या एक प्रारंभिक मान दर्ज करें।"
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-MM-DD प्रारूप में होनी चाहिए",
@@ -348,6 +357,8 @@
     "sameSourceAndDestination": "स्रोत और गंतव्य खाते अलग होने चाहिए",
     "requiresBrokerageAccount": "अनुसूचित निवेश लेनदेन के लिए ब्रोकरेज खाता आवश्यक है",
     "notFound": "ID {{ id }} वाला अनुसूचित लेनदेन नहीं मिला",
+    "fxPlainOnly": "अलग मुद्रा केवल सामान्य अनुसूचित लेनदेन पर उपयोग की जा सकती है, विभाजन, स्थानांतरण या निवेश पर नहीं",
+    "fxRateUnavailable": "{{ date }} को {{ from }} से {{ to }} के लिए कोई विनिमय दर उपलब्ध नहीं है। इसे पोस्ट करने के लिए राशि {{ to }} में दर्ज करें।",
     "investmentActionRequired": "अनुसूचित निवेश लेनदेन के लिए निवेश क्रिया आवश्यक है",
     "actionRequiresSecurity": "क्रिया {{ action }} के लिए एक प्रतिभूति आवश्यक है",
     "actionRequiresPositiveQuantity": "क्रिया {{ action }} के लिए एक सकारात्मक मात्रा आवश्यक है",
@@ -358,16 +369,19 @@
     "splitOverrideRequiresAmount": "विभाजन ओवरराइड बनाते समय राशि आवश्यक है",
     "overrideNotFound": "ID {{ overrideId }} वाला ओवरराइड नहीं मिला",
     "updateSplitOverrideRequiresAmount": "विभाजन ओवरराइड के लिए राशि आवश्यक है",
-    "dateMustBeYMD": "तिथि YYYY-MM-DD प्रारूप में होनी चाहिए",
-    "fxPlainOnly": "अलग मुद्रा केवल सामान्य अनुसूचित लेनदेन पर उपयोग की जा सकती है, विभाजन, स्थानांतरण या निवेश पर नहीं",
-    "fxRateUnavailable": "{{ date }} को {{ from }} से {{ to }} के लिए कोई विनिमय दर उपलब्ध नहीं है। इसे पोस्ट करने के लिए राशि {{ to }} में दर्ज करें।"
+    "dateMustBeYMD": "तिथि YYYY-MM-DD प्रारूप में होनी चाहिए"
   },
   "securities": {
-    "exchangeRateUnavailable": "लेन-देन की तारीख पर {{ from }} -> {{ to }} के लिए विनिमय दर निर्धारित नहीं की जा सकी। नकद खाते में सही प्रविष्टि के लिए स्पष्ट exchangeRate दें।",
     "accountMustBeInvestment": "खाता INVESTMENT प्रकार का होना चाहिए",
     "securityIdRequired": "{{ action }} लेनदेन के लिए प्रतिभूति ID आवश्यक है",
+    "exchangeRateUnavailable": "लेन-देन की तारीख पर {{ from }} -> {{ to }} के लिए विनिमय दर निर्धारित नहीं की जा सकी। नकद खाते में सही प्रविष्टि के लिए स्पष्ट exchangeRate दें।",
     "splitRatioRequired": "विभाजन अनुपात (मात्रा) शून्य से अधिक होना चाहिए",
     "acquisitionPriceRequired": "{{ action }} लेनदेन के लिए प्रति शेयर मूल्य आवश्यक है और यह शून्य से अधिक होना चाहिए। जिन शेयरों की लागत ज्ञात नहीं है, उनके लिए ADD_SHARES का उपयोग करें।",
+    "ambiguousSecurity": "\"{{ query }}\" कई प्रतिभूतियों से मेल खाता है: {{ list }}. सटीक टिकर प्रतीक का उपयोग करें।",
+    "allocationExceedsTotal": "आवंटन प्रतिशत का योग 100% से अधिक है।",
+    "assetOptionNameRequired": "एसेट क्लास का नाम आवश्यक है।",
+    "invalidTagKey": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
+    "securityNotFoundByQuery": "कोई प्रतिभूति \"{{ query }}\" से मेल नहीं खाती। पहले प्रतिभूति जोड़ें या टिकर प्रतीक जांचें।",
     "cannotHoldSecurities": "{{ label }} प्रतिभूतियाँ नहीं रख सकता",
     "sourceDestMustDiffer": "स्रोत और गंतव्य खाते अलग होने चाहिए",
     "bothAccountsMustBeInvestment": "दोनों खाते INVESTMENT प्रकार के होने चाहिए",
@@ -395,6 +409,10 @@
     "startDateBeforeEndDate": "startDate, endDate के बराबर या उससे पहले होनी चाहिए",
     "invalidGranularity": "यदि प्रदान की गई है तो granularity 'month' या 'day' होनी चाहिए",
     "symbolAlreadyExists": "प्रतीक {{ symbol }} वाली प्रतिभूति पहले से मौजूद है",
+    "lookupQueryRequired": "खोजने के लिए एक टिकर प्रतीक या प्रतिभूति नाम दर्ज करें।",
+    "lookupNotFound": "\"{{ query }}\" से मेल खाती कोई प्रतिभूति नहीं मिली। प्रतीक या नाम जांचें, या कोई एक्सचेंज निर्दिष्ट करें।",
+    "lookupAmbiguous": "\"{{ query }}\" कई प्रतिभूतियों से मेल खाता है: {{ list }}। किसी एक्सचेंज को निर्दिष्ट करते हुए पुनः चलाएँ।",
+    "lookupNoCurrency": "\"{{ symbol }}\" के लिए मुद्रा निर्धारित नहीं की जा सकी। इसके बजाय प्रतिभूति को मैन्युअल रूप से जोड़ें।",
     "notFoundById": "ID {{ id }} वाली प्रतिभूति नहीं मिली",
     "notFoundBySymbol": "प्रतीक {{ symbol }} वाली प्रतिभूति नहीं मिली",
     "cannotDeactivateWithHoldings": "सक्रिय होल्डिंग वाली प्रतिभूति को निष्क्रिय नहीं किया जा सकता। कृपया पहले सभी शेयर बेच दें।",
@@ -411,16 +429,7 @@
     "invalidUuid": "अमान्य {{ label }} UUID: {{ id }}",
     "symbolLength": "प्रतीक 1 से 20 अक्षरों के बीच होना चाहिए",
     "symbolCharacters": "प्रतीक में केवल अक्षर, अंक, बिंदु या डैश होने चाहिए",
-    "ambiguousSecurity": "\"{{ query }}\" कई प्रतिभूतियों से मेल खाता है: {{ list }}. सटीक टिकर प्रतीक का उपयोग करें।",
-    "securityNotFoundByQuery": "कोई प्रतिभूति \"{{ query }}\" से मेल नहीं खाती। पहले प्रतिभूति जोड़ें या टिकर प्रतीक जांचें।",
-    "lookupQueryRequired": "खोजने के लिए एक टिकर प्रतीक या प्रतिभूति नाम दर्ज करें।",
-    "lookupNotFound": "\"{{ query }}\" से मेल खाती कोई प्रतिभूति नहीं मिली। प्रतीक या नाम जांचें, या कोई एक्सचेंज निर्दिष्ट करें।",
-    "lookupAmbiguous": "\"{{ query }}\" कई प्रतिभूतियों से मेल खाता है: {{ list }}। किसी एक्सचेंज को निर्दिष्ट करते हुए पुनः चलाएँ।",
-    "lookupNoCurrency": "\"{{ symbol }}\" के लिए मुद्रा निर्धारित नहीं की जा सकी। इसके बजाय प्रतिभूति को मैन्युअल रूप से जोड़ें।",
     "noUpdateFields": "बदलने के लिए कम से कम एक फ़ील्ड प्रदान करें।",
-    "allocationExceedsTotal": "आवंटन प्रतिशत का योग 100% से अधिक है।",
-    "invalidTagKey": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
-    "assetOptionNameRequired": "एसेट क्लास का नाम आवश्यक है।",
     "documentNotFound": "दस्तावेज़ नहीं मिला"
   },
   "tags": {
@@ -436,6 +445,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId एक मान्य UUID होना चाहिए",
     "amountFromMustBeNumber": "amountFrom एक संख्या होनी चाहिए",
     "amountToMustBeNumber": "amountTo एक संख्या होनी चाहिए",
+    "tagKeyTooLong": "tagKey 100 अक्षरों से अधिक नहीं होना चाहिए",
+    "invalidTagKeyOp": "अमान्य tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "contains / notContains के लिए tagKeyValue आवश्यक है",
+    "tagKeyRequired": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
     "invalidGroupBy": "groupBy 'category' या 'payee' होना चाहिए",
     "limitMustBePositive": "limit एक धनात्मक संख्या होनी चाहिए",
     "recurringPayeeRequired": "payeeIds आवश्यक है",
@@ -444,6 +457,11 @@
     "statementBalanceMustBeNumber": "statementBalance एक संख्या होनी चाहिए",
     "categoryNotFound": "श्रेणी नहीं मिली",
     "categoriesNotFound": "श्रेणियाँ नहीं मिलीं: {{ ids }}",
+    "crossOwnerTransferLocked": "इस ट्रांसफर का दूसरा पक्ष ऐसे खाते में है जिस तक अब आपकी पहुंच नहीं है। आप इस लेन-देन के अपने विवरण संपादित कर सकते हैं, लेकिन इसकी राशि, तारीख और खाते लॉक हैं।",
+    "crossOwnerAccountMoveLocked": "इस ट्रांसफर में किसी अन्य उपयोगकर्ता का खाता शामिल है, इसलिए इसे अन्य खातों में स्थानांतरित नहीं किया जा सकता।",
+    "cannotEditTransfer": "ट्रांसफर यहां संपादित नहीं किए जा सकते। ट्रांसफर को लेन-देन स्क्रीन से संपादित करें।",
+    "cannotEditSplit": "विभाजित लेन-देन यहां संपादित नहीं किए जा सकते। विभाजन को लेन-देन स्क्रीन से संपादित करें।",
+    "noUpdateFields": "बदलने के लिए कम से कम एक फ़ील्ड प्रदान करें।",
     "investmentSplitRequiresPayload": "निवेश विभाजन के लिए एक निवेश पेलोड आवश्यक है",
     "investmentActionNotAllowedInSplit": "निवेश क्रिया {{ action }} विभाजित लेनदेन के अंदर अनुमत नहीं है",
     "investmentSplitCannotSetCategoryOrTransfer": "निवेश विभाजन categoryId या transferAccountId भी सेट नहीं कर सकते",
@@ -467,15 +485,6 @@
     "notFoundById": "ID {{ id }} वाला लेनदेन नहीं मिला",
     "bulkUpdateNoFields": "कम से कम एक अपडेट फ़ील्ड प्रदान की जानी चाहिए",
     "payeeNotFound": "भुगतानकर्ता नहीं मिला",
-    "crossOwnerTransferLocked": "इस ट्रांसफर का दूसरा पक्ष ऐसे खाते में है जिस तक अब आपकी पहुंच नहीं है। आप इस लेन-देन के अपने विवरण संपादित कर सकते हैं, लेकिन इसकी राशि, तारीख और खाते लॉक हैं।",
-    "crossOwnerAccountMoveLocked": "इस ट्रांसफर में किसी अन्य उपयोगकर्ता का खाता शामिल है, इसलिए इसे अन्य खातों में स्थानांतरित नहीं किया जा सकता।",
-    "cannotEditTransfer": "ट्रांसफर यहां संपादित नहीं किए जा सकते। ट्रांसफर को लेन-देन स्क्रीन से संपादित करें।",
-    "cannotEditSplit": "विभाजित लेन-देन यहां संपादित नहीं किए जा सकते। विभाजन को लेन-देन स्क्रीन से संपादित करें।",
-    "noUpdateFields": "बदलने के लिए कम से कम एक फ़ील्ड प्रदान करें।",
-    "tagKeyTooLong": "tagKey 100 अक्षरों से अधिक नहीं होना चाहिए",
-    "invalidTagKeyOp": "अमान्य tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "contains / notContains के लिए tagKeyValue आवश्यक है",
-    "tagKeyRequired": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
     "fxFieldsIncomplete": "originalAmount और originalCurrencyCode एक साथ दिए जाने चाहिए",
     "fxRateRequired": "विदेशी मुद्रा लेनदेन के लिए एक धनात्मक विनिमय दर आवश्यक है",
     "fxSignMismatch": "originalAmount और amount का चिह्न समान होना चाहिए",
@@ -511,14 +520,6 @@
     "recalculateMortgageOnly": "किस्त की पुनर्गणना केवल बंधक खातों के लिए उपलब्ध है",
     "insufficientData": "दर परिवर्तनों का पता लगाने के लिए ब्याज विवरण वाले पर्याप्त भुगतान नहीं हैं",
     "frequencyMismatch": "भुगतान तिथियाँ खाते की भुगतान आवृत्ति से मेल नहीं खातीं; अनुमानित दरें कम सटीक हो सकती हैं"
-  },
-  "attachments": {
-    "notFound": "अटैचमेंट नहीं मिला",
-    "transactionNotFound": "लेन-देन नहीं मिला",
-    "empty": "अपलोड की गई फ़ाइल खाली है",
-    "fileTooLarge": "फ़ाइल {{ max }} बाइट्स की अधिकतम सीमा से अधिक है",
-    "unsupportedType": "असमर्थित फ़ाइल प्रकार। अनुमत प्रकार: {{ types }}",
-    "tooMany": "इस लेन-देन में पहले से ही अधिकतम {{ max }} अटैचमेंट हैं"
   },
   "strategies": {
     "accountNotFound": "खाता नहीं मिला",

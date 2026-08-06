@@ -59,7 +59,8 @@
     "twrTooltip": "Para ekleyip çıkardığınız zamandan bağımsız olarak yatırımlarınızın ne kadar iyi performans gösterdiğini ölçer. Nakit akışı zamanlamasının etkisini ortadan kaldırarak saf yatırım performansını gösterir.",
     "cagr": "BYOB",
     "cagrTooltip": "Bileşik Yıllık Ortalama Büyüme. Net Yatırım ile mevcut portföy değeri arasına dayalı yıllık getiriniz, büyüme her yıl mükemmel şekilde sabit olmuş gibi.",
-    "notAvailable": "Yok"
+    "notAvailable": "Yok",
+    "unpricedHoldings": "Kısmi değerleme: {count, plural, one {# pozisyonun} other {# pozisyonun}} güncel fiyatı yok ({symbols}); aşağıdaki değerler bunları içermez."
   },
   "assetAllocation": {
     "title": "Varlık Dağılımı",
@@ -67,18 +68,18 @@
     "cash": "Nakit",
     "untagged": "Etiketsiz",
     "noTagData": "Gösterilecek etiketli pozisyon yok. Etikete göre dağılımı görmek için menkul kıymetlerinize etiket ekleyin.",
+    "noKeyData": "Bu etiket anahtarı için değeri olan varlık yok. Bu dökümü görmek için menkul kıymetleri anahtar:değer (örn. country:usa) olarak etiketleyin.",
     "noCountryData": "Ülke dağılımı verisi mevcut değil.",
+    "keySelectorLabel": "Toplanacak etiket anahtarı",
     "otherCountries": "Diğer ülkeler",
     "otherAssetClasses": "Diğer varlık sınıfları",
     "groupBy": {
       "security": "Menkul kıymete göre",
       "tag": "Etikete göre",
-      "country": "Ülkeye göre",
       "tagKey": "Anahtara göre",
+      "country": "Ülkeye göre",
       "assetClass": "Varlık sınıfına göre"
-    },
-    "noKeyData": "Bu etiket anahtarı için değeri olan varlık yok. Bu dökümü görmek için menkul kıymetleri anahtar:değer (örn. country:usa) olarak etiketleyin.",
-    "keySelectorLabel": "Toplanacak etiket anahtarı"
+    }
   },
   "holdingsList": {
     "title": "Pozisyonlar",

@@ -139,9 +139,6 @@
     "defaultMessage": "रिपोर्ट डेटा लोड करने में विफल। कृपया पुनः प्रयास करें।",
     "retry": "पुनः प्रयास करें"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "किसी भी खाते में विदेशी लेन-देन शुल्क कॉन्फ़िगर नहीं किया गया है। किसी खाते पर शुल्क प्रतिशत सेट करें ताकि उसकी विदेशी मुद्रा फीस यहाँ ट्रैक की जा सके।"
-  },
   "accountBalances": {
     "totalAssets": "कुल संपत्ति",
     "totalLiabilities": "कुल देनदारियाँ",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "उपयोग",
     "tooltipUsed": "उपयोग",
     "tooltipAvailable": "उपलब्ध",
-    "pdfTitle": "क्रेडिट उपयोग"
+    "pdfTitle": "क्रेडिट उपयोग",
+    "noRate": "कोई दर नहीं"
   },
   "currencyExposure": {
     "empty": "कोई निवेश होल्डिंग नहीं मिली। मुद्रा एक्सपोज़र देखने के लिए प्रतिभूतियाँ जोड़ें।",
@@ -571,20 +569,20 @@
     "topRegion": "शीर्ष क्षेत्र",
     "viewByRegion": "क्षेत्र के अनुसार",
     "viewByExchange": "एक्सचेंज के अनुसार",
+    "viewByCountry": "देश के अनुसार",
     "regionalAllocation": "क्षेत्रीय आवंटन",
     "exchangeAllocation": "एक्सचेंज आवंटन",
+    "countryAllocation": "देश आवंटन (लुक-थ्रू)",
+    "countryLookThroughNote": "देश एक्सपोज़र प्रत्येक सिक्योरिटी पर सेट किए गए मैन्युअल देश आवंटन का उपयोग करके ETF और फंड के भीतर तक देखता है। अलग-अलग स्टॉक को उनके लिस्टिंग एक्सचेंज के अनुसार रखा जाता है; अवर्गीकृत को \"अन्य\" के रूप में दिखाया जाता है।",
     "colRegion": "क्षेत्र",
     "colExchange": "एक्सचेंज",
     "colCountry": "देश",
     "colHoldings": "होल्डिंग",
     "colMarketValue": "बाजार मूल्य",
     "colPortfolioPct": "% पोर्टफोलियो",
+    "other": "अन्य",
     "total": "कुल",
-    "holdingCount": "{count, plural, one {# होल्डिंग} other {# होल्डिंग}}",
-    "viewByCountry": "देश के अनुसार",
-    "countryAllocation": "देश आवंटन (लुक-थ्रू)",
-    "countryLookThroughNote": "देश एक्सपोज़र प्रत्येक सिक्योरिटी पर सेट किए गए मैन्युअल देश आवंटन का उपयोग करके ETF और फंड के भीतर तक देखता है। अलग-अलग स्टॉक को उनके लिस्टिंग एक्सचेंज के अनुसार रखा जाता है; अवर्गीकृत को \"अन्य\" के रूप में दिखाया जाता है।",
-    "other": "अन्य"
+    "holdingCount": "{count, plural, one {# होल्डिंग} other {# होल्डिंग}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "स्वास्थ्य स्कोर इतिहास",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "10वाँ प्रतिशतक",
     "tooltipRecurring": "आवर्ती · वर्ष {startYear}–{endYear}",
     "tooltipRecurringOpen": "आवर्ती · वर्ष {startYear}+",
-    "tooltipInflated": " (मुद्रास्फीति-समायोजित)"
+    "tooltipInflated": " (मुद्रास्फीति-समायोजित)",
+    "currentBalanceUnavailable": "आपके खातों का मूल्यांकन अभी नहीं हो सका, इसलिए सिमुलेशन वर्तमान शेष से शुरू नहीं हो सकता। पुनः प्रयास करें, या “वर्तमान शेष का उपयोग करें” बंद करके एक प्रारंभिक मान दर्ज करें।"
   },
   "monteCarloResults": {
     "colYear": "वर्ष",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "आय",
     "csvColCostBasis": "लागत आधार",
     "csvColGainLoss": "लाभ/हानि",
-    "csvColReturn": "रिटर्न %"
+    "csvColReturn": "रिटर्न %",
+    "csvNoRate": "कोई दर नहीं"
   },
   "recurringExpenses": {
     "recurringExpenses": "आवर्ती व्यय",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "कुल पोर्टफोलियो",
     "pdfAssetTypes": "संपत्ति प्रकार",
     "pdfTotalHoldings": "कुल होल्डिंग",
-    "pdfLargestType": "सबसे बड़ा प्रकार"
+    "pdfLargestType": "सबसे बड़ा प्रकार",
+    "unavailable": "अनुपलब्ध"
   },
   "spendingAnomalies": {
     "highPriority": "उच्च प्राथमिकता",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "ऋण खाता चुनें",
     "viewTransactions": "लेन-देन देखें",
     "empty": "कोई ऋण, बंधक या क्रेडिट लाइन खाता नहीं मिला।"
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "किसी भी खाते में विदेशी लेन-देन शुल्क कॉन्फ़िगर नहीं किया गया है। किसी खाते पर शुल्क प्रतिशत सेट करें ताकि उसकी विदेशी मुद्रा फीस यहाँ ट्रैक की जा सके।"
   }
 }

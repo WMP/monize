@@ -228,5 +228,9 @@
     "nothingToRedo": "Tidak ada yang dapat diulang",
     "cannotRedo": "Tindakan ini tidak dapat diulang",
     "redoFailed": "Pengulangan gagal"
+  },
+  "partialTotal": {
+    "srSuffix": "(total sebagian)",
+    "explanation": "Total sebagian: {count, plural, one {# jumlah} other {# jumlah}} tidak dapat dikonversi ke {displayCurrency} karena tidak ada kurs untuk {currencies}. Angka yang ditampilkan tidak menyertakannya."
   }
 }

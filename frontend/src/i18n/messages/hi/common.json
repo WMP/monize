@@ -228,5 +228,9 @@
     "nothingToRedo": "फिर से करने के लिए कुछ नहीं",
     "cannotRedo": "यह क्रिया फिर से नहीं की जा सकती",
     "redoFailed": "फिर से करने में विफल"
+  },
+  "partialTotal": {
+    "srSuffix": "(आंशिक योग)",
+    "explanation": "आंशिक योग: {count, plural, one {# राशि} other {# राशियाँ}} {displayCurrency} में परिवर्तित नहीं हो सकीं क्योंकि {currencies} के लिए कोई दर उपलब्ध नहीं है। दिखाया गया आँकड़ा उन्हें शामिल नहीं करता।"
   }
 }

@@ -59,7 +59,8 @@
     "twrTooltip": "Mengukur seberapa baik kinerja investasi Anda terlepas dari kapan Anda menambah atau menarik uang. Menghilangkan dampak waktu arus kas untuk menampilkan kinerja investasi murni.",
     "cagr": "CAGR",
     "cagrTooltip": "Tingkat Pertumbuhan Tahunan Majemuk. Imbal hasil tahunan Anda berdasarkan Net Diinvestasikan vs. nilai portofolio saat ini, seolah-olah pertumbuhan telah steady setiap tahun.",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "unpricedHoldings": "Penilaian sebagian: {count, plural, one {# posisi} other {# posisi}} tidak memiliki harga saat ini ({symbols}), jadi nilai di bawah tidak menyertakannya."
   },
   "assetAllocation": {
     "title": "Alokasi Aset",
@@ -67,18 +68,18 @@
     "cash": "Tunai",
     "untagged": "Tanpa tag",
     "noTagData": "Tidak ada kepemilikan bertag untuk ditampilkan. Tambahkan tag ke sekuritas Anda untuk melihat eksposur berdasarkan tag.",
+    "noKeyData": "Tidak ada kepemilikan yang memiliki nilai untuk kunci tag ini. Beri tag sekuritas sebagai key:value (mis. country:usa) untuk melihat rincian ini.",
     "noCountryData": "Tidak ada data alokasi negara tersedia.",
+    "keySelectorLabel": "Kunci tag untuk diagregasi",
     "otherCountries": "Negara lainnya",
     "otherAssetClasses": "Kelas aset lainnya",
     "groupBy": {
       "security": "Berdasarkan sekuritas",
       "tag": "Berdasarkan tag",
-      "country": "Berdasarkan negara",
       "tagKey": "Menurut kunci",
+      "country": "Berdasarkan negara",
       "assetClass": "Menurut kelas aset"
-    },
-    "noKeyData": "Tidak ada kepemilikan yang memiliki nilai untuk kunci tag ini. Beri tag sekuritas sebagai key:value (mis. country:usa) untuk melihat rincian ini.",
-    "keySelectorLabel": "Kunci tag untuk diagregasi"
+    }
   },
   "holdingsList": {
     "title": "Kepemilikan",

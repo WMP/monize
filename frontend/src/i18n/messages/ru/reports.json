@@ -139,9 +139,6 @@
     "defaultMessage": "Не удалось загрузить данные отчёта. Повторите попытку.",
     "retry": "Повторить"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "Ни для одного счёта не настроена комиссия за зарубежные операции. Задайте процент комиссии на счёте, чтобы отслеживать здесь его комиссии в иностранной валюте."
-  },
   "accountBalances": {
     "totalAssets": "Всего активов",
     "totalLiabilities": "Всего обязательств",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "Использование",
     "tooltipUsed": "Использовано",
     "tooltipAvailable": "Доступно",
-    "pdfTitle": "Использование кредита"
+    "pdfTitle": "Использование кредита",
+    "noRate": "Нет курса"
   },
   "currencyExposure": {
     "empty": "Инвестиционные активы не найдены. Добавьте ценные бумаги для просмотра валютной экспозиции.",
@@ -571,20 +569,20 @@
     "topRegion": "Главный регион",
     "viewByRegion": "По регионам",
     "viewByExchange": "По биржам",
+    "viewByCountry": "По странам",
     "regionalAllocation": "Региональное распределение",
     "exchangeAllocation": "Биржевое распределение",
+    "countryAllocation": "Распределение по странам (сквозной анализ)",
+    "countryLookThroughNote": "Страновая экспозиция учитывает состав ETF и фондов на основе ручного распределения по странам, заданного для каждой бумаги. Отдельные акции относятся к стране по бирже листинга; неклассифицированное отображается как «Прочее».",
     "colRegion": "Регион",
     "colExchange": "Биржа",
     "colCountry": "Страна",
     "colHoldings": "Активы",
     "colMarketValue": "Рыночная стоимость",
     "colPortfolioPct": "% портфеля",
+    "other": "Прочее",
     "total": "Итого",
-    "holdingCount": "{count, plural, one {# актив} other {# активов}}",
-    "viewByCountry": "По странам",
-    "countryAllocation": "Распределение по странам (сквозной анализ)",
-    "countryLookThroughNote": "Страновая экспозиция учитывает состав ETF и фондов на основе ручного распределения по странам, заданного для каждой бумаги. Отдельные акции относятся к стране по бирже листинга; неклассифицированное отображается как «Прочее».",
-    "other": "Прочее"
+    "holdingCount": "{count, plural, one {# актив} other {# активов}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "История оценки здоровья",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "10-й процентиль",
     "tooltipRecurring": "Регулярный · год {startYear}–{endYear}",
     "tooltipRecurringOpen": "Регулярный · год {startYear}+",
-    "tooltipInflated": " (с учётом инфляции)"
+    "tooltipInflated": " (с учётом инфляции)",
+    "currentBalanceUnavailable": "Не удалось оценить ваши счета прямо сейчас, поэтому симуляция не может начаться с текущего баланса. Повторите попытку или отключите «Использовать текущий баланс» и введите начальное значение."
   },
   "monteCarloResults": {
     "colYear": "Год",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "Выручка",
     "csvColCostBasis": "Стоимость приобретения",
     "csvColGainLoss": "Прибыль/убыток",
-    "csvColReturn": "Доходность %"
+    "csvColReturn": "Доходность %",
+    "csvNoRate": "Нет курса"
   },
   "recurringExpenses": {
     "recurringExpenses": "Регулярные расходы",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "Всего портфель",
     "pdfAssetTypes": "Типы активов",
     "pdfTotalHoldings": "Всего активов",
-    "pdfLargestType": "Крупнейший тип"
+    "pdfLargestType": "Крупнейший тип",
+    "unavailable": "Недоступно"
   },
   "spendingAnomalies": {
     "highPriority": "Высокий приоритет",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "Выберите кредитный счёт",
     "viewTransactions": "Показать операции",
     "empty": "Счета кредитов, ипотек или кредитных линий не найдены."
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "Ни для одного счёта не настроена комиссия за зарубежные операции. Задайте процент комиссии на счёте, чтобы отслеживать здесь его комиссии в иностранной валюте."
   }
 }

@@ -228,5 +228,9 @@
     "nothingToRedo": "没有可重做的操作",
     "cannotRedo": "无法重做此操作",
     "redoFailed": "重做失败"
+  },
+  "partialTotal": {
+    "srSuffix": "（部分合计）",
+    "explanation": "部分合计：{count, plural, one {# 笔金额} other {# 笔金额}}因 {currencies} 没有汇率而无法换算为 {displayCurrency}。所示数字不包含这些金额。"
   }
 }

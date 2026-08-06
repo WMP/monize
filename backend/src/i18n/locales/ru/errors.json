@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "Вложение не найдено",
+    "transactionNotFound": "Проводка не найдена",
+    "empty": "Загруженный файл пуст",
+    "fileTooLarge": "Файл превышает максимальный размер {{ max }} байт",
+    "unsupportedType": "Неподдерживаемый тип файла. Разрешённые типы: {{ types }}",
+    "tooMany": "У этой проводки уже максимальное число вложений — {{ max }}"
+  },
   "accounts": {
     "accountWithIdNotFound": "Счёт с ID {{ id }} не найден",
     "notInvestmentPair": "Этот счёт не является частью инвестиционной пары счетов",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "Валюта \"{{ code }}\" уже в вашем списке",
+    "alreadyInListInactive": "Валюта \"{{ code }}\" уже в вашем списке, но сейчас неактивна. Активируйте её, чтобы использовать.",
     "notFound": "Валюта \"{{ code }}\" не найдена",
     "cannotModifySystem": "Невозможно изменить системные метаданные валюты",
     "cannotModifyOther": "Невозможно изменить валюту другого пользователя",
     "inUse": "Валюта \"{{ code }}\" используется в ваших счетах, ценных бумагах или других записях. Деактивируйте её вместо удаления.",
-    "invalidRateDate": "date должна быть в формате ГГГГ-ММ-ДД",
-    "alreadyInListInactive": "Валюта \"{{ code }}\" уже в вашем списке, но сейчас неактивна. Активируйте её, чтобы использовать."
+    "invalidRateDate": "date должна быть в формате ГГГГ-ММ-ДД"
   },
   "delegation": {
     "delegatedAccessInvalid": "Делегированный доступ больше не действителен",
@@ -305,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Сценарий {{ id }} не найден",
     "scenarioIdsMustBeArray": "scenarioIds должен быть массивом",
-    "atLeastOneAccountRequired": "Требуется хотя бы один accountId"
+    "atLeastOneAccountRequired": "Требуется хотя бы один accountId",
+    "currentBalanceUnavailable": "Не удалось оценить ваши счета прямо сейчас, поэтому симуляцию от текущего баланса запустить нельзя. Повторите попытку или введите начальное значение."
   },
   "netWorth": {
     "invalidStartDate": "startDate должна быть в формате ГГГГ-ММ-ДД",
@@ -348,6 +357,8 @@
     "sameSourceAndDestination": "Исходный и целевой счета должны быть разными",
     "requiresBrokerageAccount": "Плановые инвестиционные проводки требуют брокерский счёт",
     "notFound": "Плановая проводка с ID {{ id }} не найдена",
+    "fxPlainOnly": "Другую валюту можно использовать только в обычной плановой проводке, но не в разделении, переводе или инвестиционной",
+    "fxRateUnavailable": "На {{ date }} курс обмена {{ from }} в {{ to }} недоступен. Введите сумму в {{ to }}, чтобы провести её.",
     "investmentActionRequired": "Для плановых инвестиционных проводок необходимо инвестиционное действие",
     "actionRequiresSecurity": "Действие {{ action }} требует ценную бумагу",
     "actionRequiresPositiveQuantity": "Действие {{ action }} требует положительное количество",
@@ -358,16 +369,19 @@
     "splitOverrideRequiresAmount": "При создании переопределения разделения необходима сумма",
     "overrideNotFound": "Переопределение с ID {{ overrideId }} не найдено",
     "updateSplitOverrideRequiresAmount": "Для переопределения разделения необходима сумма",
-    "dateMustBeYMD": "дата должна быть в формате ГГГГ-ММ-ДД",
-    "fxPlainOnly": "Другую валюту можно использовать только в обычной плановой проводке, но не в разделении, переводе или инвестиционной",
-    "fxRateUnavailable": "На {{ date }} курс обмена {{ from }} в {{ to }} недоступен. Введите сумму в {{ to }}, чтобы провести её."
+    "dateMustBeYMD": "дата должна быть в формате ГГГГ-ММ-ДД"
   },
   "securities": {
-    "exchangeRateUnavailable": "Не удалось определить обменный курс для {{ from }} -> {{ to }} на дату транзакции. Укажите явный exchangeRate, чтобы проводка по денежному счёту была корректной.",
     "accountMustBeInvestment": "Счёт должен быть типа INVESTMENT",
     "securityIdRequired": "ID ценной бумаги обязателен для проводок {{ action }}",
+    "exchangeRateUnavailable": "Не удалось определить обменный курс для {{ from }} -> {{ to }} на дату транзакции. Укажите явный exchangeRate, чтобы проводка по денежному счёту была корректной.",
     "splitRatioRequired": "Коэффициент дробления (количество) должен быть больше нуля",
     "acquisitionPriceRequired": "Для операций {{ action }} требуется цена за единицу больше нуля. Для бумаг, приобретённых без известной стоимости, используйте ADD_SHARES.",
+    "ambiguousSecurity": "\"{{ query }}\" соответствует нескольким ценным бумагам: {{ list }}. Используйте точный тикер.",
+    "allocationExceedsTotal": "Сумма процентов распределения превышает 100%.",
+    "assetOptionNameRequired": "Требуется название класса активов.",
+    "invalidTagKey": "Требуется ключ тега (1–100 символов)",
+    "securityNotFoundByQuery": "Ни одна ценная бумага не соответствует \"{{ query }}\". Сначала добавьте ценную бумагу или проверьте тикер.",
     "cannotHoldSecurities": "{{ label }} не может хранить ценные бумаги",
     "sourceDestMustDiffer": "Исходный и целевой счета должны быть разными",
     "bothAccountsMustBeInvestment": "Оба счёта должны быть типа INVESTMENT",
@@ -395,6 +409,10 @@
     "startDateBeforeEndDate": "startDate должна быть не позднее endDate",
     "invalidGranularity": "granularity должна быть 'month' или 'day', если указана",
     "symbolAlreadyExists": "Ценная бумага с символом {{ symbol }} уже существует",
+    "lookupQueryRequired": "Укажите тикер или название ценной бумаги для поиска.",
+    "lookupNotFound": "Не найдено ценных бумаг, соответствующих «{{ query }}». Проверьте символ или название либо укажите биржу.",
+    "lookupAmbiguous": "«{{ query }}» соответствует нескольким ценным бумагам: {{ list }}. Повторите запрос, указав биржу.",
+    "lookupNoCurrency": "Не удалось определить валюту для «{{ symbol }}». Добавьте ценную бумагу вручную.",
     "notFoundById": "Ценная бумага с ID {{ id }} не найдена",
     "notFoundBySymbol": "Ценная бумага с символом {{ symbol }} не найдена",
     "cannotDeactivateWithHoldings": "Невозможно деактивировать ценную бумагу с активными позициями. Пожалуйста, сначала продайте все акции.",
@@ -411,16 +429,7 @@
     "invalidUuid": "Недопустимый UUID {{ label }}: {{ id }}",
     "symbolLength": "Символ должен содержать от 1 до 20 символов",
     "symbolCharacters": "Символ должен содержать только буквы, цифры, точки или дефисы",
-    "ambiguousSecurity": "\"{{ query }}\" соответствует нескольким ценным бумагам: {{ list }}. Используйте точный тикер.",
-    "securityNotFoundByQuery": "Ни одна ценная бумага не соответствует \"{{ query }}\". Сначала добавьте ценную бумагу или проверьте тикер.",
-    "lookupQueryRequired": "Укажите тикер или название ценной бумаги для поиска.",
-    "lookupNotFound": "Не найдено ценных бумаг, соответствующих «{{ query }}». Проверьте символ или название либо укажите биржу.",
-    "lookupAmbiguous": "«{{ query }}» соответствует нескольким ценным бумагам: {{ list }}. Повторите запрос, указав биржу.",
-    "lookupNoCurrency": "Не удалось определить валюту для «{{ symbol }}». Добавьте ценную бумагу вручную.",
     "noUpdateFields": "Укажите хотя бы одно поле для изменения.",
-    "allocationExceedsTotal": "Сумма процентов распределения превышает 100%.",
-    "invalidTagKey": "Требуется ключ тега (1–100 символов)",
-    "assetOptionNameRequired": "Требуется название класса активов.",
     "documentNotFound": "Документ не найден"
   },
   "tags": {
@@ -436,6 +445,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId должен быть действительным UUID",
     "amountFromMustBeNumber": "amountFrom должен быть числом",
     "amountToMustBeNumber": "amountTo должен быть числом",
+    "tagKeyTooLong": "tagKey не должен превышать 100 символов",
+    "invalidTagKeyOp": "Недопустимый tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue обязателен для contains / notContains",
+    "tagKeyRequired": "Требуется ключ тега (1–100 символов)",
     "invalidGroupBy": "groupBy должен быть 'category' или 'payee'",
     "limitMustBePositive": "limit должен быть положительным числом",
     "recurringPayeeRequired": "payeeIds обязателен",
@@ -444,6 +457,11 @@
     "statementBalanceMustBeNumber": "statementBalance должен быть числом",
     "categoryNotFound": "Категория не найдена",
     "categoriesNotFound": "Категории не найдены: {{ ids }}",
+    "crossOwnerTransferLocked": "Вторая сторона этого перевода находится на счёте, к которому у вас больше нет доступа. Вы можете редактировать детали этой транзакции, но её сумма, дата и счета заблокированы.",
+    "crossOwnerAccountMoveLocked": "Этот перевод затрагивает счёт другого пользователя, поэтому его нельзя перенести на другие счета.",
+    "cannotEditTransfer": "Переводы нельзя редактировать здесь. Измените перевод на экране «Транзакции».",
+    "cannotEditSplit": "Разделённые транзакции нельзя редактировать здесь. Измените разделение на экране «Транзакции».",
+    "noUpdateFields": "Укажите хотя бы одно поле для изменения.",
     "investmentSplitRequiresPayload": "Инвестиционное разделение требует инвестиционные данные",
     "investmentActionNotAllowedInSplit": "Инвестиционное действие {{ action }} не разрешено внутри разделённой проводки",
     "investmentSplitCannotSetCategoryOrTransfer": "Инвестиционные разделения не могут также устанавливать categoryId или transferAccountId",
@@ -467,15 +485,6 @@
     "notFoundById": "Проводка с ID {{ id }} не найдена",
     "bulkUpdateNoFields": "Должно быть указано хотя бы одно поле для обновления",
     "payeeNotFound": "Получатель не найден",
-    "crossOwnerTransferLocked": "Вторая сторона этого перевода находится на счёте, к которому у вас больше нет доступа. Вы можете редактировать детали этой транзакции, но её сумма, дата и счета заблокированы.",
-    "crossOwnerAccountMoveLocked": "Этот перевод затрагивает счёт другого пользователя, поэтому его нельзя перенести на другие счета.",
-    "cannotEditTransfer": "Переводы нельзя редактировать здесь. Измените перевод на экране «Транзакции».",
-    "cannotEditSplit": "Разделённые транзакции нельзя редактировать здесь. Измените разделение на экране «Транзакции».",
-    "noUpdateFields": "Укажите хотя бы одно поле для изменения.",
-    "tagKeyTooLong": "tagKey не должен превышать 100 символов",
-    "invalidTagKeyOp": "Недопустимый tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue обязателен для contains / notContains",
-    "tagKeyRequired": "Требуется ключ тега (1–100 символов)",
     "fxFieldsIncomplete": "originalAmount и originalCurrencyCode должны указываться вместе",
     "fxRateRequired": "Для операции в иностранной валюте требуется положительный курс обмена",
     "fxSignMismatch": "originalAmount и amount должны иметь одинаковый знак",
@@ -511,14 +520,6 @@
     "recalculateMortgageOnly": "Пересчёт платежа доступен только для ипотечных счетов",
     "insufficientData": "Недостаточно платежей с данными о процентах для определения изменений ставки",
     "frequencyMismatch": "Даты платежей не соответствуют периодичности платежей по счёту; выведенные ставки могут быть менее точными"
-  },
-  "attachments": {
-    "notFound": "Вложение не найдено",
-    "transactionNotFound": "Проводка не найдена",
-    "empty": "Загруженный файл пуст",
-    "fileTooLarge": "Файл превышает максимальный размер {{ max }} байт",
-    "unsupportedType": "Неподдерживаемый тип файла. Разрешённые типы: {{ types }}",
-    "tooMany": "У этой проводки уже максимальное число вложений — {{ max }}"
   },
   "strategies": {
     "accountNotFound": "Счёт не найден",

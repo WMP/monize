@@ -228,5 +228,9 @@
     "nothingToRedo": "Niets om opnieuw te doen",
     "cannotRedo": "Deze actie kan niet opnieuw worden gedaan",
     "redoFailed": "Opnieuw doen mislukt"
+  },
+  "partialTotal": {
+    "srSuffix": "(deeltotaal)",
+    "explanation": "Deeltotaal: {count, plural, one {# bedrag kon} other {# bedragen konden}} niet worden omgerekend naar {displayCurrency} omdat er geen koers beschikbaar is voor {currencies}. Het getoonde cijfer laat ze buiten beschouwing."
   }
 }

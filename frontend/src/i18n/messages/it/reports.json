@@ -139,9 +139,6 @@
     "defaultMessage": "Caricamento dati del report non riuscito. Riprova.",
     "retry": "Riprova"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "Nessun conto ha una commissione per transazioni estere configurata. Imposta una percentuale di commissione su un conto per monitorare qui le sue commissioni in valuta estera."
-  },
   "accountBalances": {
     "totalAssets": "Totale attività",
     "totalLiabilities": "Totale passività",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "Utilizzo",
     "tooltipUsed": "Utilizzato",
     "tooltipAvailable": "Disponibile",
-    "pdfTitle": "Utilizzo del credito"
+    "pdfTitle": "Utilizzo del credito",
+    "noRate": "Nessun tasso"
   },
   "currencyExposure": {
     "empty": "Nessuna posizione in investimenti trovata. Aggiungi titoli per vedere l'esposizione valutaria.",
@@ -571,20 +569,20 @@
     "topRegion": "Regione principale",
     "viewByRegion": "Per regione",
     "viewByExchange": "Per borsa",
+    "viewByCountry": "Per paese",
     "regionalAllocation": "Allocazione regionale",
     "exchangeAllocation": "Allocazione per borsa",
+    "countryAllocation": "Allocazione per paese (look-through)",
+    "countryLookThroughNote": "L'esposizione per paese analizza in trasparenza ETF e fondi usando l'allocazione per paese impostata manualmente su ciascun titolo. Le singole azioni sono assegnate in base alla borsa di quotazione; ciò che non è classificato è mostrato come «Altro».",
     "colRegion": "Regione",
     "colExchange": "Borsa",
     "colCountry": "Paese",
     "colHoldings": "Posizioni",
     "colMarketValue": "Valore di mercato",
     "colPortfolioPct": "% del portafoglio",
+    "other": "Altro",
     "total": "Totale",
-    "holdingCount": "{count, plural, one {# posizione} other {# posizioni}}",
-    "viewByCountry": "Per paese",
-    "countryAllocation": "Allocazione per paese (look-through)",
-    "countryLookThroughNote": "L'esposizione per paese analizza in trasparenza ETF e fondi usando l'allocazione per paese impostata manualmente su ciascun titolo. Le singole azioni sono assegnate in base alla borsa di quotazione; ciò che non è classificato è mostrato come «Altro».",
-    "other": "Altro"
+    "holdingCount": "{count, plural, one {# posizione} other {# posizioni}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "Storico punteggio salute",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "10° percentile",
     "tooltipRecurring": "Ricorrente · anno {startYear}–{endYear}",
     "tooltipRecurringOpen": "Ricorrente · anno {startYear}+",
-    "tooltipInflated": " (indicizzato)"
+    "tooltipInflated": " (indicizzato)",
+    "currentBalanceUnavailable": "Non è stato possibile valutare i tuoi conti in questo momento, quindi la simulazione non può partire dal saldo attuale. Riprova, oppure disattiva “Usa saldo attuale” e inserisci un valore iniziale."
   },
   "monteCarloResults": {
     "colYear": "Anno",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "Proventi",
     "csvColCostBasis": "Costo di acquisto",
     "csvColGainLoss": "Guadagno/Perdita",
-    "csvColReturn": "Rendimento %"
+    "csvColReturn": "Rendimento %",
+    "csvNoRate": "Nessun tasso"
   },
   "recurringExpenses": {
     "recurringExpenses": "Spese ricorrenti",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "Portafoglio totale",
     "pdfAssetTypes": "Tipi di asset",
     "pdfTotalHoldings": "Posizioni totali",
-    "pdfLargestType": "Tipo principale"
+    "pdfLargestType": "Tipo principale",
+    "unavailable": "Non disponibile"
   },
   "spendingAnomalies": {
     "highPriority": "Alta priorità",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "Seleziona conto di prestito",
     "viewTransactions": "Vedi transazioni",
     "empty": "Nessun conto di prestito, mutuo o linea di credito trovato."
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "Nessun conto ha una commissione per transazioni estere configurata. Imposta una percentuale di commissione su un conto per monitorare qui le sue commissioni in valuta estera."
   }
 }

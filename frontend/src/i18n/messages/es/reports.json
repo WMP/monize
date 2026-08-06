@@ -139,9 +139,6 @@
     "defaultMessage": "Error al cargar los datos del informe. Por favor, inténtalo de nuevo.",
     "retry": "Intentar de nuevo"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "Ninguna cuenta tiene configurada una comisión por transacción extranjera. Establece un porcentaje de comisión en una cuenta para rastrear aquí sus comisiones en moneda extranjera."
-  },
   "accountBalances": {
     "totalAssets": "Total de activos",
     "totalLiabilities": "Total de pasivos",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "Utilización",
     "tooltipUsed": "Utilizado",
     "tooltipAvailable": "Disponible",
-    "pdfTitle": "Utilización del crédito"
+    "pdfTitle": "Utilización del crédito",
+    "noRate": "Sin tipo"
   },
   "currencyExposure": {
     "empty": "No se encontraron posiciones de inversión. Agrega valores para ver la exposición a divisas.",
@@ -571,20 +569,20 @@
     "topRegion": "Región principal",
     "viewByRegion": "Por región",
     "viewByExchange": "Por bolsa",
+    "viewByCountry": "Por país",
     "regionalAllocation": "Asignación regional",
     "exchangeAllocation": "Asignación por bolsa",
+    "countryAllocation": "Asignación por país (transparencia)",
+    "countryLookThroughNote": "La exposición por país analiza por transparencia los ETF y fondos usando la asignación por país introducida manualmente en cada valor. Las acciones individuales se asignan según el mercado de cotización; lo no clasificado se muestra como «Otros».",
     "colRegion": "Región",
     "colExchange": "Bolsa",
     "colCountry": "País",
     "colHoldings": "Posiciones",
     "colMarketValue": "Valor de mercado",
     "colPortfolioPct": "% de la cartera",
+    "other": "Otros",
     "total": "Total",
-    "holdingCount": "{count, plural, one {# posición} other {# posiciones}}",
-    "viewByCountry": "Por país",
-    "countryAllocation": "Asignación por país (transparencia)",
-    "countryLookThroughNote": "La exposición por país analiza por transparencia los ETF y fondos usando la asignación por país introducida manualmente en cada valor. Las acciones individuales se asignan según el mercado de cotización; lo no clasificado se muestra como «Otros».",
-    "other": "Otros"
+    "holdingCount": "{count, plural, one {# posición} other {# posiciones}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "Historial de puntuación de salud",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "Percentil 10",
     "tooltipRecurring": "Recurrente · año {startYear}–{endYear}",
     "tooltipRecurringOpen": "Recurrente · año {startYear}+",
-    "tooltipInflated": " (ajustado por inflación)"
+    "tooltipInflated": " (ajustado por inflación)",
+    "currentBalanceUnavailable": "Tus cuentas no pudieron valorarse en este momento, así que la simulación no puede partir del saldo actual. Reintenta, o desactiva “Usar saldo actual” e introduce un valor inicial."
   },
   "monteCarloResults": {
     "colYear": "Año",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "Ingresos por ventas",
     "csvColCostBasis": "Base de costo",
     "csvColGainLoss": "Ganancia/pérdida",
-    "csvColReturn": "Retorno %"
+    "csvColReturn": "Retorno %",
+    "csvNoRate": "Sin tipo"
   },
   "recurringExpenses": {
     "recurringExpenses": "Gastos recurrentes",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "Total de la cartera",
     "pdfAssetTypes": "Tipos de activos",
     "pdfTotalHoldings": "Total de posiciones",
-    "pdfLargestType": "Tipo más grande"
+    "pdfLargestType": "Tipo más grande",
+    "unavailable": "No disponible"
   },
   "spendingAnomalies": {
     "highPriority": "Prioridad alta",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "Seleccionar cuenta de préstamo",
     "viewTransactions": "Ver transacciones",
     "empty": "No se encontraron cuentas de préstamo, hipoteca o línea de crédito."
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "Ninguna cuenta tiene configurada una comisión por transacción extranjera. Establece un porcentaje de comisión en una cuenta para rastrear aquí sus comisiones en moneda extranjera."
   }
 }

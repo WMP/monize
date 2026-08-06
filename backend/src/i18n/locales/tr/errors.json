@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "Ek bulunamadı",
+    "transactionNotFound": "İşlem bulunamadı",
+    "empty": "Yüklenen dosya boş",
+    "fileTooLarge": "Dosya, {{ max }} baytlık maksimum boyutu aşıyor",
+    "unsupportedType": "Desteklenmeyen dosya türü. İzin verilen türler: {{ types }}",
+    "tooMany": "Bu işlemde zaten en fazla {{ max }} ek var"
+  },
   "accounts": {
     "accountWithIdNotFound": "{{ id }} kimliğine sahip hesap bulunamadı",
     "notInvestmentPair": "Bu hesap bir yatırım hesabı çiftinin parçası değil",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "\"{{ code }}\" para birimi zaten listenizde mevcut",
+    "alreadyInListInactive": "\"{{ code }}\" para birimi zaten listenizde mevcut ancak şu anda etkin değil. Kullanmak için yeniden etkinleştirin.",
     "notFound": "\"{{ code }}\" para birimi bulunamadı",
     "cannotModifySystem": "Sistem para birimi meta verileri değiştirilemez",
     "cannotModifyOther": "Başka bir kullanıcının para birimi değiştirilemez",
     "inUse": "\"{{ code }}\" para birimi hesaplarınız, menkul kıymetleriniz veya diğer kayıtlarınız tarafından kullanılıyor. Bunun yerine devre dışı bırakın.",
-    "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır",
-    "alreadyInListInactive": "\"{{ code }}\" para birimi zaten listenizde mevcut ancak şu anda etkin değil. Kullanmak için yeniden etkinleştirin."
+    "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır"
   },
   "delegation": {
     "delegatedAccessInvalid": "Delege erişimi artık geçerli değil",
@@ -305,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "{{ id }} senaryosu bulunamadı",
     "scenarioIdsMustBeArray": "scenarioIds bir dizi olmalıdır",
-    "atLeastOneAccountRequired": "En az bir accountId gereklidir"
+    "atLeastOneAccountRequired": "En az bir accountId gereklidir",
+    "currentBalanceUnavailable": "Hesaplarınız şu anda değerlenemedi; bu yüzden mevcut bakiyeden başlayan bir simülasyon çalıştırılamıyor. Tekrar deneyin veya bir başlangıç değeri girin."
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-AA-GG biçiminde olmalıdır",
@@ -348,6 +357,8 @@
     "sameSourceAndDestination": "Kaynak ve hedef hesaplar farklı olmalıdır",
     "requiresBrokerageAccount": "Zamanlanmış yatırım işlemleri için aracı kurum hesabı gereklidir",
     "notFound": "{{ id }} kimliğine sahip zamanlanmış işlem bulunamadı",
+    "fxPlainOnly": "Farklı bir para birimi yalnızca sade bir zamanlanmış işlemde kullanılabilir; bölünmüş işlem, transfer veya yatırımda kullanılamaz",
+    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin.",
     "investmentActionRequired": "Zamanlanmış yatırım işlemleri için yatırım eylemi gereklidir",
     "actionRequiresSecurity": "{{ action }} eylemi için menkul kıymet gereklidir",
     "actionRequiresPositiveQuantity": "{{ action }} eylemi için pozitif miktar gereklidir",
@@ -358,16 +369,19 @@
     "splitOverrideRequiresAmount": "Bölünmüş geçersiz kılma oluştururken tutar gereklidir",
     "overrideNotFound": "{{ overrideId }} kimliğine sahip geçersiz kılma bulunamadı",
     "updateSplitOverrideRequiresAmount": "Bölünmüş geçersiz kılma için tutar gereklidir",
-    "dateMustBeYMD": "tarih YYYY-AA-GG biçiminde olmalıdır",
-    "fxPlainOnly": "Farklı bir para birimi yalnızca sade bir zamanlanmış işlemde kullanılabilir; bölünmüş işlem, transfer veya yatırımda kullanılamaz",
-    "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin."
+    "dateMustBeYMD": "tarih YYYY-AA-GG biçiminde olmalıdır"
   },
   "securities": {
-    "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",
     "accountMustBeInvestment": "Hesap YATIRİM türünde olmalıdır",
     "securityIdRequired": "{{ action }} işlemleri için menkul kıymet kimliği gereklidir",
+    "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",
     "splitRatioRequired": "Bölünme oranı (miktar) sıfırdan büyük olmalıdır",
     "acquisitionPriceRequired": "{{ action }} işlemleri için sıfırdan büyük bir birim fiyat gereklidir. Maliyeti bilinmeyen paylar için ADD_SHARES kullanın.",
+    "ambiguousSecurity": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Tam ticker sembolünü kullanın.",
+    "allocationExceedsTotal": "Tahsis yüzdeleri toplamı %100'ü aşıyor.",
+    "assetOptionNameRequired": "Varlık sınıfı adı gerekli.",
+    "invalidTagKey": "Bir etiket anahtarı (1-100 karakter) gereklidir",
+    "securityNotFoundByQuery": "\"{{ query }}\" ile eşleşen menkul kıymet yok. Önce menkul kıymeti ekleyin veya ticker sembolünü kontrol edin.",
     "cannotHoldSecurities": "{{ label }} menkul kıymet tutamaz",
     "sourceDestMustDiffer": "Kaynak ve hedef hesaplar farklı olmalıdır",
     "bothAccountsMustBeInvestment": "Her iki hesap da YATIRİM türünde olmalıdır",
@@ -395,6 +409,10 @@
     "startDateBeforeEndDate": "startDate, endDate tarihinde veya öncesinde olmalıdır",
     "invalidGranularity": "granularity, belirtilirse 'month' veya 'day' olmalıdır",
     "symbolAlreadyExists": "{{ symbol }} sembolüne sahip menkul kıymet zaten mevcut",
+    "lookupQueryRequired": "Aranacak bir hisse sembolü veya menkul kıymet adı girin.",
+    "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
+    "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
+    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
     "notFoundById": "{{ id }} kimliğine sahip menkul kıymet bulunamadı",
     "notFoundBySymbol": "{{ symbol }} sembolüne sahip menkul kıymet bulunamadı",
     "cannotDeactivateWithHoldings": "Aktif pozisyonları olan menkul kıymet devre dışı bırakılamaz. Lütfen önce tüm hisseleri satın.",
@@ -411,16 +429,7 @@
     "invalidUuid": "Geçersiz {{ label }} UUID'si: {{ id }}",
     "symbolLength": "Sembol 1 ile 20 karakter arasında olmalıdır",
     "symbolCharacters": "Sembol yalnızca harf, rakam, nokta veya tire içerebilir",
-    "ambiguousSecurity": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Tam ticker sembolünü kullanın.",
-    "securityNotFoundByQuery": "\"{{ query }}\" ile eşleşen menkul kıymet yok. Önce menkul kıymeti ekleyin veya ticker sembolünü kontrol edin.",
-    "lookupQueryRequired": "Aranacak bir hisse sembolü veya menkul kıymet adı girin.",
-    "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
-    "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
-    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
     "noUpdateFields": "Değiştirmek için en az bir alan girin.",
-    "allocationExceedsTotal": "Tahsis yüzdeleri toplamı %100'ü aşıyor.",
-    "invalidTagKey": "Bir etiket anahtarı (1-100 karakter) gereklidir",
-    "assetOptionNameRequired": "Varlık sınıfı adı gerekli.",
     "documentNotFound": "Belge bulunamadı"
   },
   "tags": {
@@ -436,6 +445,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId geçerli bir UUID olmalıdır",
     "amountFromMustBeNumber": "amountFrom bir sayı olmalıdır",
     "amountToMustBeNumber": "amountTo bir sayı olmalıdır",
+    "tagKeyTooLong": "tagKey 100 karakteri aşmamalıdır",
+    "invalidTagKeyOp": "Geçersiz tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "contains / notContains için tagKeyValue gereklidir",
+    "tagKeyRequired": "Bir etiket anahtarı (1-100 karakter) gereklidir",
     "invalidGroupBy": "groupBy 'category' veya 'payee' olmalıdır",
     "limitMustBePositive": "limit pozitif bir sayı olmalıdır",
     "recurringPayeeRequired": "payeeIds zorunludur",
@@ -444,6 +457,11 @@
     "statementBalanceMustBeNumber": "statementBalance bir sayı olmalıdır",
     "categoryNotFound": "Kategori bulunamadı",
     "categoriesNotFound": "Kategoriler bulunamadı: {{ ids }}",
+    "crossOwnerTransferLocked": "Bu transferin diğer tarafı artık erişiminiz olmayan bir hesapta. Bu işlemin kendi ayrıntılarını düzenleyebilirsiniz, ancak tutarı, tarihi ve hesapları kilitlidir.",
+    "crossOwnerAccountMoveLocked": "Bu transfer başka bir kullanıcının hesabını içerdiğinden farklı hesaplara taşınamaz.",
+    "cannotEditTransfer": "Transferler burada düzenlenemez. Transferi İşlemler ekranından düzenleyin.",
+    "cannotEditSplit": "Bölünmüş işlemler burada düzenlenemez. Bölmeyi İşlemler ekranından düzenleyin.",
+    "noUpdateFields": "Değiştirmek için en az bir alan girin.",
     "investmentSplitRequiresPayload": "Yatırım bölümü için yatırım yükü gereklidir",
     "investmentActionNotAllowedInSplit": "{{ action }} yatırım eylemi bölünmüş işlem içinde kullanılamaz",
     "investmentSplitCannotSetCategoryOrTransfer": "Yatırım bölümleri aynı zamanda categoryId veya transferAccountId ayarlayamaz",
@@ -467,15 +485,6 @@
     "notFoundById": "{{ id }} kimliğine sahip işlem bulunamadı",
     "bulkUpdateNoFields": "En az bir güncelleme alanı sağlanmalıdır",
     "payeeNotFound": "Alacaklı bulunamadı",
-    "crossOwnerTransferLocked": "Bu transferin diğer tarafı artık erişiminiz olmayan bir hesapta. Bu işlemin kendi ayrıntılarını düzenleyebilirsiniz, ancak tutarı, tarihi ve hesapları kilitlidir.",
-    "crossOwnerAccountMoveLocked": "Bu transfer başka bir kullanıcının hesabını içerdiğinden farklı hesaplara taşınamaz.",
-    "cannotEditTransfer": "Transferler burada düzenlenemez. Transferi İşlemler ekranından düzenleyin.",
-    "cannotEditSplit": "Bölünmüş işlemler burada düzenlenemez. Bölmeyi İşlemler ekranından düzenleyin.",
-    "noUpdateFields": "Değiştirmek için en az bir alan girin.",
-    "tagKeyTooLong": "tagKey 100 karakteri aşmamalıdır",
-    "invalidTagKeyOp": "Geçersiz tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "contains / notContains için tagKeyValue gereklidir",
-    "tagKeyRequired": "Bir etiket anahtarı (1-100 karakter) gereklidir",
     "fxFieldsIncomplete": "originalAmount ve originalCurrencyCode birlikte sağlanmalıdır",
     "fxRateRequired": "Yabancı para birimi işlemi için pozitif bir döviz kuru gereklidir",
     "fxSignMismatch": "originalAmount ve amount aynı işarete sahip olmalıdır",
@@ -511,14 +520,6 @@
     "recalculateMortgageOnly": "Taksit yeniden hesaplaması yalnızca ipotek hesapları için kullanılabilir",
     "insufficientData": "Faiz değişikliklerini algılamak için faiz ayrıntıları olan yeterli ödeme yok",
     "frequencyMismatch": "Ödeme tarihleri hesabın ödeme sıklığıyla eşleşmiyor; çıkarsanan oranlar daha az doğru olabilir"
-  },
-  "attachments": {
-    "notFound": "Ek bulunamadı",
-    "transactionNotFound": "İşlem bulunamadı",
-    "empty": "Yüklenen dosya boş",
-    "fileTooLarge": "Dosya, {{ max }} baytlık maksimum boyutu aşıyor",
-    "unsupportedType": "Desteklenmeyen dosya türü. İzin verilen türler: {{ types }}",
-    "tooMany": "Bu işlemde zaten en fazla {{ max }} ek var"
   },
   "strategies": {
     "accountNotFound": "Hesap bulunamadı",

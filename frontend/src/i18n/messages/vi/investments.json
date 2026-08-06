@@ -59,7 +59,8 @@
     "twrTooltip": "Đo lường hiệu quả đầu tư bất kể thời điểm bạn thêm hoặc rút tiền. Loại bỏ tác động của thời điểm dòng tiền để cho thấy hiệu suất đầu tư thuần túy.",
     "cagr": "CAGR",
     "cagrTooltip": "Tỷ lệ tăng trưởng kép hàng năm. Lợi nhuận hàng năm của bạn dựa trên Đã đầu tư ròng so với giá trị danh mục hiện tại, như thể tăng trưởng hoàn toàn đều đặn mỗi năm.",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "unpricedHoldings": "Định giá một phần: {count, plural, one {# vị thế} other {# vị thế}} không có giá hiện tại ({symbols}), nên các giá trị bên dưới không bao gồm chúng."
   },
   "assetAllocation": {
     "title": "Phân bổ tài sản",
@@ -67,18 +68,18 @@
     "cash": "Tiền mặt",
     "untagged": "Chưa gắn thẻ",
     "noTagData": "Không có khoản nắm giữ nào được gắn thẻ. Thêm thẻ cho chứng khoán của bạn để xem mức độ tiếp xúc theo thẻ.",
+    "noKeyData": "Không có khoản nắm giữ nào có giá trị cho khóa thẻ này. Gắn thẻ chứng khoán dạng khóa:giá_trị (ví dụ: country:usa) để xem phân tích này.",
     "noCountryData": "Không có dữ liệu phân bổ theo quốc gia.",
+    "keySelectorLabel": "Khóa thẻ để tổng hợp",
     "otherCountries": "Quốc gia khác",
     "otherAssetClasses": "Loại tài sản khác",
     "groupBy": {
       "security": "Theo chứng khoán",
       "tag": "Theo thẻ",
-      "country": "Theo quốc gia",
       "tagKey": "Theo khóa",
+      "country": "Theo quốc gia",
       "assetClass": "Theo loại tài sản"
-    },
-    "noKeyData": "Không có khoản nắm giữ nào có giá trị cho khóa thẻ này. Gắn thẻ chứng khoán dạng khóa:giá_trị (ví dụ: country:usa) để xem phân tích này.",
-    "keySelectorLabel": "Khóa thẻ để tổng hợp"
+    }
   },
   "holdingsList": {
     "title": "Nắm giữ",

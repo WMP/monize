@@ -59,7 +59,8 @@
     "twrTooltip": "Misura le performance degli investimenti indipendentemente da quando hai aggiunto o prelevato denaro. Elimina l'impatto dei flussi di cassa per mostrare le performance pure degli investimenti.",
     "cagr": "CAGR",
     "cagrTooltip": "Tasso di crescita annuo composto. Il tuo rendimento annualizzato basato su investito netto vs. valore corrente del portafoglio, come se la crescita fosse stata perfettamente costante ogni anno.",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "unpricedHoldings": "Valutazione parziale: {count, plural, one {# posizione non ha} other {# posizioni non hanno}} un prezzo corrente ({symbols}), quindi i valori qui sotto {count, plural, one {la escludono} other {le escludono}}."
   },
   "assetAllocation": {
     "title": "Allocazione attività",
@@ -67,18 +68,18 @@
     "cash": "Cassa",
     "untagged": "Senza etichette",
     "noTagData": "Nessuna posizione con etichetta da mostrare. Aggiungi etichette ai tuoi titoli per vedere l'esposizione per etichetta.",
+    "noKeyData": "Nessuna posizione ha un valore per questa chiave tag. Etichetta i titoli come key:value (es. country:usa) per vedere questa ripartizione.",
     "noCountryData": "Nessun dato di allocazione per paese disponibile.",
+    "keySelectorLabel": "Chiave tag da aggregare",
     "otherCountries": "Altri paesi",
     "otherAssetClasses": "Altre classi di attivo",
     "groupBy": {
       "security": "Per titolo",
       "tag": "Per etichetta",
-      "country": "Per paese",
       "tagKey": "Per chiave",
+      "country": "Per paese",
       "assetClass": "Per classe di attivo"
-    },
-    "noKeyData": "Nessuna posizione ha un valore per questa chiave tag. Etichetta i titoli come key:value (es. country:usa) per vedere questa ripartizione.",
-    "keySelectorLabel": "Chiave tag da aggregare"
+    }
   },
   "holdingsList": {
     "title": "Posizioni",

@@ -228,5 +228,9 @@
     "nothingToRedo": "Nichts zu wiederholen",
     "cannotRedo": "Diese Aktion kann nicht wiederholt werden",
     "redoFailed": "Wiederholen fehlgeschlagen"
+  },
+  "partialTotal": {
+    "srSuffix": "(Teilsumme)",
+    "explanation": "Teilsumme: {count, plural, one {# Betrag konnte} other {# Beträge konnten}} nicht nach {displayCurrency} umgerechnet werden, weil für {currencies} kein Kurs verfügbar ist. Die angezeigte Zahl schließt sie aus."
   }
 }

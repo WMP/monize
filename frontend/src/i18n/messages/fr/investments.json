@@ -59,7 +59,8 @@
     "twrTooltip": "Mesure la performance de vos investissements indépendamment des moments où vous avez ajouté ou retiré des fonds. Élimine l'impact du calendrier des flux de trésorerie pour montrer la performance pure des investissements.",
     "cagr": "TCAC",
     "cagrTooltip": "Taux de croissance annuel composé. Votre rendement annualisé basé sur le montant net investi par rapport à la valeur actuelle du portefeuille, comme si la croissance avait été parfaitement régulière chaque année.",
-    "notAvailable": "N/D"
+    "notAvailable": "N/D",
+    "unpricedHoldings": "Valorisation partielle : {count, plural, one {# position n'a} other {# positions n'ont}} pas de prix actuel ({symbols}) ; les valeurs ci-dessous {count, plural, one {l'excluent} other {les excluent}}."
   },
   "assetAllocation": {
     "title": "Répartition des actifs",
@@ -67,18 +68,18 @@
     "cash": "Trésorerie",
     "untagged": "Sans étiquette",
     "noTagData": "Aucune position étiquetée à afficher. Ajoutez des étiquettes à vos titres pour voir la répartition par étiquette.",
+    "noKeyData": "Aucune position ne comporte de valeur pour cette clé d'étiquette. Étiquetez les titres au format clé:valeur (p. ex. country:usa) pour voir cette répartition.",
     "noCountryData": "Aucune donnée de répartition par pays disponible.",
+    "keySelectorLabel": "Clé d'étiquette à agréger",
     "otherCountries": "Autres pays",
     "otherAssetClasses": "Autres classes d'actifs",
     "groupBy": {
       "security": "Par titre",
       "tag": "Par étiquette",
-      "country": "Par pays",
       "tagKey": "Par clé",
+      "country": "Par pays",
       "assetClass": "Par classe d'actifs"
-    },
-    "noKeyData": "Aucune position ne comporte de valeur pour cette clé d'étiquette. Étiquetez les titres au format clé:valeur (p. ex. country:usa) pour voir cette répartition.",
-    "keySelectorLabel": "Clé d'étiquette à agréger"
+    }
   },
   "holdingsList": {
     "title": "Positions",

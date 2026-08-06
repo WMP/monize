@@ -1,4 +1,12 @@
 {
+  "attachments": {
+    "notFound": "Bijlage niet gevonden",
+    "transactionNotFound": "Transactie niet gevonden",
+    "empty": "Geüpload bestand is leeg",
+    "fileTooLarge": "Bestand overschrijdt de maximale grootte van {{ max }} bytes",
+    "unsupportedType": "Niet-ondersteund bestandstype. Toegestane types: {{ types }}",
+    "tooMany": "Deze transactie heeft al het maximum van {{ max }} bijlagen"
+  },
   "accounts": {
     "accountWithIdNotFound": "Rekening met ID {{ id }} niet gevonden",
     "notInvestmentPair": "Deze rekening maakt geen deel uit van een beleggingsrekeningpaar",
@@ -227,12 +235,12 @@
   },
   "currencies": {
     "alreadyInList": "Valuta \"{{ code }}\" staat al in je lijst",
+    "alreadyInListInactive": "Valuta \"{{ code }}\" staat al in je lijst, maar is momenteel inactief. Activeer deze opnieuw om te gebruiken.",
     "notFound": "Valuta \"{{ code }}\" niet gevonden",
     "cannotModifySystem": "Kan systeemvalutametadata niet wijzigen",
     "cannotModifyOther": "Kan de valuta van een andere gebruiker niet wijzigen",
     "inUse": "Valuta \"{{ code }}\" is in gebruik door je rekeningen, waardepapieren of andere records. Deactiveer deze in plaats daarvan.",
-    "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben",
-    "alreadyInListInactive": "Valuta \"{{ code }}\" staat al in je lijst, maar is momenteel inactief. Activeer deze opnieuw om te gebruiken."
+    "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben"
   },
   "delegation": {
     "delegatedAccessInvalid": "Gedelegeerde toegang is niet meer geldig",
@@ -305,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} niet gevonden",
     "scenarioIdsMustBeArray": "scenarioIds moet een array zijn",
-    "atLeastOneAccountRequired": "Minimaal één accountId is vereist"
+    "atLeastOneAccountRequired": "Minimaal één accountId is vereist",
+    "currentBalanceUnavailable": "Uw rekeningen konden op dit moment niet worden gewaardeerd, dus een simulatie vanaf het huidige saldo kan niet worden gestart. Probeer het opnieuw, of voer een startwaarde in."
   },
   "netWorth": {
     "invalidStartDate": "startDate moet JJJJ-MM-DD zijn",
@@ -348,6 +357,8 @@
     "sameSourceAndDestination": "Bron- en doelrekeningen moeten verschillend zijn",
     "requiresBrokerageAccount": "Geplande beleggingstransacties vereisen een brokerage-rekening",
     "notFound": "Geplande transactie met ID {{ id }} niet gevonden",
+    "fxPlainOnly": "Een andere valuta kan alleen bij een gewone geplande transactie, niet bij een splitsing, overboeking of belegging",
+    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken.",
     "investmentActionRequired": "Beleggingsactie is vereist voor geplande beleggingstransacties",
     "actionRequiresSecurity": "Actie {{ action }} vereist een waardepapier",
     "actionRequiresPositiveQuantity": "Actie {{ action }} vereist een positieve hoeveelheid",
@@ -358,16 +369,19 @@
     "splitOverrideRequiresAmount": "Bedrag is vereist bij het aanmaken van een splitsingsoverschrijving",
     "overrideNotFound": "Overschrijving met ID {{ overrideId }} niet gevonden",
     "updateSplitOverrideRequiresAmount": "Bedrag is vereist voor splitsingsoverschrijving",
-    "dateMustBeYMD": "datum moet in JJJJ-MM-DD-formaat zijn",
-    "fxPlainOnly": "Een andere valuta kan alleen bij een gewone geplande transactie, niet bij een splitsing, overboeking of belegging",
-    "fxRateUnavailable": "Er is voor {{ date }} geen wisselkoers beschikbaar voor {{ from }} naar {{ to }}. Voer het bedrag in {{ to }} in om te boeken."
+    "dateMustBeYMD": "datum moet in JJJJ-MM-DD-formaat zijn"
   },
   "securities": {
-    "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",
     "accountMustBeInvestment": "Rekening moet van het type INVESTMENT zijn",
     "securityIdRequired": "Waardepapier-ID is vereist voor {{ action }}-transacties",
+    "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",
     "splitRatioRequired": "Splitsingsverhouding (hoeveelheid) moet groter zijn dan nul",
     "acquisitionPriceRequired": "Voor {{ action }}-transacties is een prijs per aandeel groter dan nul vereist. Gebruik ADD_SHARES voor aandelen die zonder bekende kostprijs zijn verworven.",
+    "ambiguousSecurity": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Gebruik het exacte tickersymbool.",
+    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%.",
+    "assetOptionNameRequired": "Een naam voor de beleggingscategorie is verplicht.",
+    "invalidTagKey": "Een tagsleutel (1-100 tekens) is vereist",
+    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool.",
     "cannotHoldSecurities": "{{ label }} kan geen waardepapieren aanhouden",
     "sourceDestMustDiffer": "Bron- en doelrekeningen moeten verschillend zijn",
     "bothAccountsMustBeInvestment": "Beide rekeningen moeten van het type INVESTMENT zijn",
@@ -395,6 +409,10 @@
     "startDateBeforeEndDate": "startDate moet op of voor endDate liggen",
     "invalidGranularity": "granulariteit moet 'month' of 'day' zijn indien opgegeven",
     "symbolAlreadyExists": "Waardepapier met symbool {{ symbol }} bestaat al",
+    "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
+    "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
+    "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
+    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
     "notFoundById": "Waardepapier met ID {{ id }} niet gevonden",
     "notFoundBySymbol": "Waardepapier met symbool {{ symbol }} niet gevonden",
     "cannotDeactivateWithHoldings": "Kan waardepapier met actieve posities niet deactiveren. Verkoop eerst alle aandelen.",
@@ -411,16 +429,7 @@
     "invalidUuid": "Ongeldige {{ label }} UUID: {{ id }}",
     "symbolLength": "Symbool moet tussen 1 en 20 tekens lang zijn",
     "symbolCharacters": "Symbool mag alleen letters, cijfers, punten of koppeltekens bevatten",
-    "ambiguousSecurity": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Gebruik het exacte tickersymbool.",
-    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool.",
-    "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
-    "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
-    "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
-    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
     "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
-    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%.",
-    "invalidTagKey": "Een tagsleutel (1-100 tekens) is vereist",
-    "assetOptionNameRequired": "Een naam voor de beleggingscategorie is verplicht.",
     "documentNotFound": "Document niet gevonden"
   },
   "tags": {
@@ -436,6 +445,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId moet een geldige UUID zijn",
     "amountFromMustBeNumber": "amountFrom moet een getal zijn",
     "amountToMustBeNumber": "amountTo moet een getal zijn",
+    "tagKeyTooLong": "tagKey mag niet langer zijn dan 100 tekens",
+    "invalidTagKeyOp": "Ongeldige tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue is vereist voor contains / notContains",
+    "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist",
     "invalidGroupBy": "groupBy moet 'category' of 'payee' zijn",
     "limitMustBePositive": "limit moet een positief getal zijn",
     "recurringPayeeRequired": "payeeIds is verplicht",
@@ -444,6 +457,11 @@
     "statementBalanceMustBeNumber": "statementBalance moet een getal zijn",
     "categoryNotFound": "Categorie niet gevonden",
     "categoriesNotFound": "Categorieën niet gevonden: {{ ids }}",
+    "crossOwnerTransferLocked": "De andere kant van deze overboeking staat op een rekening waartoe je geen toegang meer hebt. Je kunt de details van deze transactie bewerken, maar het bedrag, de datum en de rekeningen zijn vergrendeld.",
+    "crossOwnerAccountMoveLocked": "Bij deze overboeking is de rekening van een andere gebruiker betrokken, dus deze kan niet naar andere rekeningen worden verplaatst.",
+    "cannotEditTransfer": "Overboekingen kunnen hier niet worden bewerkt. Bewerk de overboeking via het scherm Transacties.",
+    "cannotEditSplit": "Gesplitste transacties kunnen hier niet worden bewerkt. Bewerk de splitsing via het scherm Transacties.",
+    "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
     "investmentSplitRequiresPayload": "Beleggingssplitsing vereist een beleggingspayload",
     "investmentActionNotAllowedInSplit": "Beleggingsactie {{ action }} is niet toegestaan in een splitsingstransactie",
     "investmentSplitCannotSetCategoryOrTransfer": "Beleggingssplitsingen kunnen niet tegelijk categoryId of transferAccountId instellen",
@@ -467,15 +485,6 @@
     "notFoundById": "Transactie met ID {{ id }} niet gevonden",
     "bulkUpdateNoFields": "Er moet minimaal één bijwerkveld worden opgegeven",
     "payeeNotFound": "Begunstigde niet gevonden",
-    "crossOwnerTransferLocked": "De andere kant van deze overboeking staat op een rekening waartoe je geen toegang meer hebt. Je kunt de details van deze transactie bewerken, maar het bedrag, de datum en de rekeningen zijn vergrendeld.",
-    "crossOwnerAccountMoveLocked": "Bij deze overboeking is de rekening van een andere gebruiker betrokken, dus deze kan niet naar andere rekeningen worden verplaatst.",
-    "cannotEditTransfer": "Overboekingen kunnen hier niet worden bewerkt. Bewerk de overboeking via het scherm Transacties.",
-    "cannotEditSplit": "Gesplitste transacties kunnen hier niet worden bewerkt. Bewerk de splitsing via het scherm Transacties.",
-    "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
-    "tagKeyTooLong": "tagKey mag niet langer zijn dan 100 tekens",
-    "invalidTagKeyOp": "Ongeldige tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue is vereist voor contains / notContains",
-    "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist",
     "fxFieldsIncomplete": "originalAmount en originalCurrencyCode moeten samen worden opgegeven",
     "fxRateRequired": "Een positieve wisselkoers is vereist voor een transactie in vreemde valuta",
     "fxSignMismatch": "originalAmount en amount moeten hetzelfde teken hebben",
@@ -511,14 +520,6 @@
     "recalculateMortgageOnly": "Herberekening van de betaling is alleen beschikbaar voor hypotheekrekeningen",
     "insufficientData": "Niet genoeg betalingen met rentegegevens om renteveranderingen te detecteren",
     "frequencyMismatch": "Betaaldatums komen niet overeen met de betalingsfrequentie van de rekening; afgeleide rentepercentages zijn mogelijk minder nauwkeurig"
-  },
-  "attachments": {
-    "notFound": "Bijlage niet gevonden",
-    "transactionNotFound": "Transactie niet gevonden",
-    "empty": "Geüpload bestand is leeg",
-    "fileTooLarge": "Bestand overschrijdt de maximale grootte van {{ max }} bytes",
-    "unsupportedType": "Niet-ondersteund bestandstype. Toegestane types: {{ types }}",
-    "tooMany": "Deze transactie heeft al het maximum van {{ max }} bijlagen"
   },
   "strategies": {
     "accountNotFound": "Rekening niet gevonden",

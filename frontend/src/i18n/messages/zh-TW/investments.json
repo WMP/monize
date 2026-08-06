@@ -59,7 +59,8 @@
     "twrTooltip": "衡量您的投資表現，不受資金進出時間的影響，排除現金流時機以呈現純粹的投資績效。",
     "cagr": "CAGR",
     "cagrTooltip": "複合年均成長率。以淨投入金額對比目前投資組合價值計算的年化報酬率，假設每年增長均勻穩定。",
-    "notAvailable": "不適用"
+    "notAvailable": "不適用",
+    "unpricedHoldings": "部分估值：{count, plural, one {# 項持倉} other {# 項持倉}}沒有目前價格（{symbols}），以下數值不包含這些持倉。"
   },
   "assetAllocation": {
     "title": "資產配置",
@@ -67,18 +68,18 @@
     "cash": "現金",
     "untagged": "無標籤",
     "noTagData": "沒有可顯示的帶標籤持倉。為你的證券新增標籤即可按標籤查看曝險。",
+    "noKeyData": "沒有持倉包含此標籤鍵的值。將證券標記為 key:value（例如 country:usa）以檢視此細分。",
     "noCountryData": "無國家/地區配置資料。",
+    "keySelectorLabel": "用於彙總的標籤鍵",
     "otherCountries": "其他國家/地區",
     "otherAssetClasses": "其他資產類別",
     "groupBy": {
       "security": "按證券",
       "tag": "按標籤",
-      "country": "依國家/地區",
       "tagKey": "依鍵",
+      "country": "依國家/地區",
       "assetClass": "按資產類別"
-    },
-    "noKeyData": "沒有持倉包含此標籤鍵的值。將證券標記為 key:value（例如 country:usa）以檢視此細分。",
-    "keySelectorLabel": "用於彙總的標籤鍵"
+    }
   },
   "holdingsList": {
     "title": "持倉",

@@ -139,9 +139,6 @@
     "defaultMessage": "Gagal memuat data laporan. Silakan coba lagi.",
     "retry": "Coba lagi"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "Tidak ada akun yang memiliki biaya transaksi luar negeri yang dikonfigurasi. Tetapkan persentase biaya pada akun untuk melacak biaya mata uang asingnya di sini."
-  },
   "accountBalances": {
     "totalAssets": "Total Aset",
     "totalLiabilities": "Total Liabilitas",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "Utilisasi",
     "tooltipUsed": "Digunakan",
     "tooltipAvailable": "Tersedia",
-    "pdfTitle": "Utilisasi Kredit"
+    "pdfTitle": "Utilisasi Kredit",
+    "noRate": "Tidak ada kurs"
   },
   "currencyExposure": {
     "empty": "Tidak ada kepemilikan investasi ditemukan. Tambah keamanan dokumen untuk melihat eksposur mata uang.",
@@ -571,20 +569,20 @@
     "topRegion": "Wilayah Teratas",
     "viewByRegion": "Per Wilayah",
     "viewByExchange": "Per Bursa",
+    "viewByCountry": "Berdasarkan Negara",
     "regionalAllocation": "Alokasi Regional",
     "exchangeAllocation": "Alokasi Bursa",
+    "countryAllocation": "Alokasi Negara (look-through)",
+    "countryLookThroughNote": "Eksposur negara menelaah ETF dan reksa dana menggunakan alokasi negara manual yang diatur pada setiap sekuritas. Saham individu ditempatkan berdasarkan bursa pencatatannya; yang tidak terklasifikasi ditampilkan sebagai \"Lainnya\".",
     "colRegion": "Wilayah",
     "colExchange": "Bursa",
     "colCountry": "Negara",
     "colHoldings": "Kepemilikan",
     "colMarketValue": "Nilai Pasar",
     "colPortfolioPct": "% dari Portofolio",
+    "other": "Lainnya",
     "total": "Total",
-    "holdingCount": "{count, plural, one {# kepemilikan} other {# kepemilikan}}",
-    "viewByCountry": "Berdasarkan Negara",
-    "countryAllocation": "Alokasi Negara (look-through)",
-    "countryLookThroughNote": "Eksposur negara menelaah ETF dan reksa dana menggunakan alokasi negara manual yang diatur pada setiap sekuritas. Saham individu ditempatkan berdasarkan bursa pencatatannya; yang tidak terklasifikasi ditampilkan sebagai \"Lainnya\".",
-    "other": "Lainnya"
+    "holdingCount": "{count, plural, one {# kepemilikan} other {# kepemilikan}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "Riwayat Skor Kesehatan",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "Persentil ke-10",
     "tooltipRecurring": "Berulang · tahun {startYear}–{endYear}",
     "tooltipRecurringOpen": "Berulang · tahun {startYear}+",
-    "tooltipInflated": " (diinflasikan)"
+    "tooltipInflated": " (diinflasikan)",
+    "currentBalanceUnavailable": "Akun Anda tidak dapat dinilai saat ini, jadi simulasi tidak dapat dimulai dari saldo saat ini. Coba lagi, atau matikan “Gunakan saldo saat ini” dan masukkan nilai awal."
   },
   "monteCarloResults": {
     "colYear": "Tahun",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "Hasil",
     "csvColCostBasis": "Dasar Biaya",
     "csvColGainLoss": "Keuntungan/Kerugian",
-    "csvColReturn": "Imbal Hasil %"
+    "csvColReturn": "Imbal Hasil %",
+    "csvNoRate": "Tidak ada kurs"
   },
   "recurringExpenses": {
     "recurringExpenses": "Pengeluaran Berulang",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "Total Portofolio",
     "pdfAssetTypes": "Tipe Aset",
     "pdfTotalHoldings": "Total Kepemilikan",
-    "pdfLargestType": "Tipe Terbesar"
+    "pdfLargestType": "Tipe Terbesar",
+    "unavailable": "Tidak tersedia"
   },
   "spendingAnomalies": {
     "highPriority": "Prioritas Tinggi",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "Pilih Akun Pinjaman",
     "viewTransactions": "Lihat Transaksi",
     "empty": "Tidak ada akun pinjaman, hipotek, atau jalur kredit yang ditemukan."
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "Tidak ada akun yang memiliki biaya transaksi luar negeri yang dikonfigurasi. Tetapkan persentase biaya pada akun untuk melacak biaya mata uang asingnya di sini."
   }
 }

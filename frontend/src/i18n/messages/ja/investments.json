@@ -59,7 +59,8 @@
     "twrTooltip": "資金の追加・引き出し時期に関係なく、投資のパフォーマンスを測定します。キャッシュフローのタイミングの影響を排除して純粋な投資パフォーマンスを示します。",
     "cagr": "CAGR",
     "cagrTooltip": "年平均成長率。成長が毎年完全に安定しているかのように、純投資額対現在のポートフォリオ価値に基づいた年率リターン。",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "unpricedHoldings": "部分評価：{count, plural, one {# 件の保有} other {# 件の保有}}に現在価格がありません（{symbols}）。以下の値はそれらを除きます。"
   },
   "assetAllocation": {
     "title": "資産配分",
@@ -67,18 +68,18 @@
     "cash": "現金",
     "untagged": "タグなし",
     "noTagData": "表示できるタグ付き保有銘柄がありません。タグ別のエクスポージャーを表示するには、銘柄にタグを追加してください。",
+    "noKeyData": "このタグキーの値を持つ保有銘柄がありません。この内訳を表示するには、銘柄を key:value（例: country:usa）としてタグ付けしてください。",
     "noCountryData": "国別配分データがありません。",
+    "keySelectorLabel": "集計するタグキー",
     "otherCountries": "その他の国",
     "otherAssetClasses": "その他の資産クラス",
     "groupBy": {
       "security": "銘柄別",
       "tag": "タグ別",
-      "country": "国別",
       "tagKey": "キー別",
+      "country": "国別",
       "assetClass": "資産クラス別"
-    },
-    "noKeyData": "このタグキーの値を持つ保有銘柄がありません。この内訳を表示するには、銘柄を key:value（例: country:usa）としてタグ付けしてください。",
-    "keySelectorLabel": "集計するタグキー"
+    }
   },
   "holdingsList": {
     "title": "保有銘柄",

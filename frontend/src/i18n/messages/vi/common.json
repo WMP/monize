@@ -228,5 +228,9 @@
     "nothingToRedo": "Không có gì để làm lại",
     "cannotRedo": "Không thể làm lại hành động này",
     "redoFailed": "Làm lại thất bại"
+  },
+  "partialTotal": {
+    "srSuffix": "(tổng một phần)",
+    "explanation": "Tổng một phần: {count, plural, one {# khoản tiền} other {# khoản tiền}} không thể quy đổi sang {displayCurrency} vì không có tỷ giá cho {currencies}. Con số hiển thị không bao gồm chúng."
   }
 }

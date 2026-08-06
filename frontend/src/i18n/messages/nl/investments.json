@@ -59,7 +59,8 @@
     "twrTooltip": "Meet hoe goed jouw beleggingen presteerden, ongeacht wanneer je geld toevoegde of verwijderde. Elimineert de invloed van kasstroomtiming om puur beleggingsrendement te tonen.",
     "cagr": "CAGR",
     "cagrTooltip": "Samengesteld jaarlijks groeipercentage. Jouw geannualiseerd rendement op basis van netto belegd versus huidige portefeuillewaarde, alsof de groei elk jaar precies gelijkmatig was.",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "unpricedHoldings": "Gedeeltelijke waardering: {count, plural, one {# positie heeft} other {# posities hebben}} geen actuele prijs ({symbols}); de waarden hieronder laten {count, plural, one {die} other {ze}} buiten beschouwing."
   },
   "assetAllocation": {
     "title": "Activaspreiding",
@@ -67,18 +68,18 @@
     "cash": "Kas",
     "untagged": "Zonder labels",
     "noTagData": "Geen gelabelde posities om te tonen. Voeg labels toe aan je effecten om de verdeling per label te zien.",
+    "noKeyData": "Geen posities hebben een waarde voor deze tagsleutel. Tag effecten als key:value (bijv. country:usa) om deze verdeling te zien.",
     "noCountryData": "Geen landenspreidingsgegevens beschikbaar.",
+    "keySelectorLabel": "Tagsleutel om te aggregeren",
     "otherCountries": "Overige landen",
     "otherAssetClasses": "Overige beleggingscategorieën",
     "groupBy": {
       "security": "Per effect",
       "tag": "Per label",
-      "country": "Per land",
       "tagKey": "Op sleutel",
+      "country": "Per land",
       "assetClass": "Op beleggingscategorie"
-    },
-    "noKeyData": "Geen posities hebben een waarde voor deze tagsleutel. Tag effecten als key:value (bijv. country:usa) om deze verdeling te zien.",
-    "keySelectorLabel": "Tagsleutel om te aggregeren"
+    }
   },
   "holdingsList": {
     "title": "Posities",

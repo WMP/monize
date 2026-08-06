@@ -139,9 +139,6 @@
     "defaultMessage": "Nie udało się załadować danych raportu. Spróbuj ponownie.",
     "retry": "Spróbuj ponownie"
   },
-  "foreignCurrencyFees": {
-    "noEligibleAccounts": "Żadne konto nie ma skonfigurowanej opłaty za transakcje zagraniczne. Ustaw procent opłaty na koncie, aby śledzić tutaj jego opłaty za transakcje w obcej walucie."
-  },
   "accountBalances": {
     "totalAssets": "Aktywa razem",
     "totalLiabilities": "Zobowiązania razem",
@@ -328,7 +325,8 @@
     "tooltipUtilization": "Wykorzystanie",
     "tooltipUsed": "Wykorzystano",
     "tooltipAvailable": "Dostępne",
-    "pdfTitle": "Wykorzystanie kredytu"
+    "pdfTitle": "Wykorzystanie kredytu",
+    "noRate": "Brak kursu"
   },
   "currencyExposure": {
     "empty": "Nie znaleziono pozycji inwestycyjnych. Dodaj papiery wartościowe, aby zobaczyć ekspozycję walutową.",
@@ -571,20 +569,20 @@
     "topRegion": "Główny region",
     "viewByRegion": "Wg regionu",
     "viewByExchange": "Wg giełdy",
+    "viewByCountry": "Według kraju",
     "regionalAllocation": "Alokacja regionalna",
     "exchangeAllocation": "Alokacja wg giełd",
+    "countryAllocation": "Alokacja krajowa (prześwietlenie)",
+    "countryLookThroughNote": "Ekspozycja krajowa prześwietla ETF-y i fundusze na podstawie ręcznej alokacji krajowej ustawionej dla każdego papieru. Pojedyncze akcje są przypisywane według giełdy notowań; pozycje niesklasyfikowane są wyświetlane jako „Pozostałe”.",
     "colRegion": "Region",
     "colExchange": "Giełda",
     "colCountry": "Kraj",
     "colHoldings": "Pozycje",
     "colMarketValue": "Wartość rynkowa",
     "colPortfolioPct": "% portfela",
+    "other": "Pozostałe",
     "total": "Suma",
-    "holdingCount": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}}",
-    "viewByCountry": "Według kraju",
-    "countryAllocation": "Alokacja krajowa (prześwietlenie)",
-    "countryLookThroughNote": "Ekspozycja krajowa prześwietla ETF-y i fundusze na podstawie ręcznej alokacji krajowej ustawionej dla każdego papieru. Pojedyncze akcje są przypisywane według giełdy notowań; pozycje niesklasyfikowane są wyświetlane jako „Pozostałe”.",
-    "other": "Pozostałe"
+    "holdingCount": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}}"
   },
   "healthScoreHistory": {
     "pdfTitle": "Historia wskaźnika kondycji",
@@ -955,7 +953,8 @@
     "tooltipRow10th": "10. percentyl",
     "tooltipRecurring": "Cykliczny · rok {startYear}–{endYear}",
     "tooltipRecurringOpen": "Cykliczny · rok {startYear}+",
-    "tooltipInflated": " (indeksowane inflacją)"
+    "tooltipInflated": " (indeksowane inflacją)",
+    "currentBalanceUnavailable": "Nie udało się teraz wycenić Twoich kont, więc symulacja nie może zacząć od bieżącego salda. Ponów próbę lub wyłącz „Użyj bieżącego salda” i podaj wartość początkową."
   },
   "monteCarloResults": {
     "colYear": "Rok",
@@ -1163,7 +1162,8 @@
     "csvColProceeds": "Wpływy",
     "csvColCostBasis": "Koszt nabycia",
     "csvColGainLoss": "Zysk/Strata",
-    "csvColReturn": "Zwrot %"
+    "csvColReturn": "Zwrot %",
+    "csvNoRate": "Brak kursu"
   },
   "recurringExpenses": {
     "recurringExpenses": "Wydatki cykliczne",
@@ -1354,7 +1354,8 @@
     "pdfTotalPortfolio": "Cały portfel",
     "pdfAssetTypes": "Typy aktywów",
     "pdfTotalHoldings": "Łączna liczba pozycji",
-    "pdfLargestType": "Największy typ"
+    "pdfLargestType": "Największy typ",
+    "unavailable": "Niedostępne"
   },
   "spendingAnomalies": {
     "highPriority": "Wysoki priorytet",
@@ -1678,5 +1679,8 @@
     "labelSelectAccount": "Wybierz konto kredytu",
     "viewTransactions": "Zobacz transakcje",
     "empty": "Nie znaleziono kont kredytów, hipotek ani linii kredytowych."
+  },
+  "foreignCurrencyFees": {
+    "noEligibleAccounts": "Żadne konto nie ma skonfigurowanej opłaty za transakcje zagraniczne. Ustaw procent opłaty na koncie, aby śledzić tutaj jego opłaty za transakcje w obcej walucie."
   }
 }

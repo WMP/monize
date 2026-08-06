@@ -228,5 +228,9 @@
     "nothingToRedo": "Nada que rehacer",
     "cannotRedo": "No se puede rehacer esta acción",
     "redoFailed": "Error al rehacer"
+  },
+  "partialTotal": {
+    "srSuffix": "(total parcial)",
+    "explanation": "Total parcial: {count, plural, one {# importe no pudo} other {# importes no pudieron}} convertirse a {displayCurrency} porque no hay tipo disponible para {currencies}. La cifra mostrada los excluye."
   }
 }
