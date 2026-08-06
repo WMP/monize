@@ -42,11 +42,16 @@ describe("migration 145 backfill over legacy delivery state", () => {
 
   /** Undo migration 145, so the fixture starts from a genuinely pre-145 table. */
   const removeColumns = async () => {
-    // Later migrations depend on `claim_notified_at`: the generation column (139)
-    // and its rollout-compat trigger (142). Both have to come off before the column
-    // to reach the genuinely pre-145 shape this spec seeds.
+    // Later migrations depend on the 145 columns: the generation column (146),
+    // its rollout-compat trigger (147), and the legacy-rotation fence (148),
+    // whose WHEN clause references `claim_token_ciphertext`. All have to come
+    // off before the columns to reach the genuinely pre-145 shape this spec
+    // seeds -- a pre-145 database has none of them either.
     await dataSource.query(
       `DROP TRIGGER IF EXISTS trg_eac_backfill_notified_generation ON emergency_access_contacts`,
+    );
+    await dataSource.query(
+      `DROP TRIGGER IF EXISTS trg_eac_reject_legacy_token_rotation ON emergency_access_contacts`,
     );
     await dataSource.query(`DROP INDEX IF EXISTS idx_eac_pending_notify`);
     await dataSource.query(`DROP INDEX IF EXISTS idx_eac_awaiting_notice`);
