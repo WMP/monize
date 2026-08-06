@@ -1,7 +1,7 @@
--- 146: enforce the attachment late-write quarantine in the database, so a
+-- 144: enforce the attachment late-write quarantine in the database, so a
 -- previous-release sweeper cannot bypass it during a rolling deployment.
 --
--- Migration 144 added `late_write_quarantine_until` and the new sweeper retains a
+-- Migration 143 added `late_write_quarantine_until` and the new sweeper retains a
 -- swept upload intent until it passes, re-deleting the key each hour. That closed
 -- the process-death window for the *new* code. It did nothing for a previous-release
 -- pod, whose sweeper is (audit V4R3-003):
@@ -13,7 +13,7 @@
 -- Step 3 is unconditional. During a rollout the old pod can therefore claim a row,
 -- delete the object, and drop the tombstone -- and a put that stalled past its lease
 -- can still land afterwards, leaving bytes nothing references and no row names. The
--- new column alone does not stop that, exactly as migration 138's nullable column
+-- new column alone does not stop that, exactly as migration 140's nullable column
 -- did not stop the old MNY checkpoint; the fix has to live where both binaries meet.
 --
 -- Two triggers do that:

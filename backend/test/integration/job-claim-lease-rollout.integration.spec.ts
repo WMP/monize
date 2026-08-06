@@ -13,7 +13,7 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
 /**
  * Lease ownership across a rolling deployment (audit V4R3-004).
  *
- * Migration 143 gave a lease a `lease_token` and the new `release`/`markDelivered`
+ * Migration 138 gave a lease a `lease_token` and the new `release`/`markDelivered`
  * filter on it, which protects new code from new code. The previous binary names
  * the work and not the holder:
  *
@@ -21,7 +21,7 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
  *     UPDATE job_claims SET delivered_at=now(), expires_at=NULL WHERE <same key>
  *
  * so during a rollout a stalled old pod can delete or mark a lease a new pod has
- * retaken. Migration 147's triggers make a live tokenized lease mutable only by the
+ * retaken. Migration 139's triggers make a live tokenized lease mutable only by the
  * session that declares its token in `app.job_claim_lease_token`. This exercises the
  * literal previous-release statements against the migrated schema -- which a mocked
  * repository cannot do, because the property is the interaction between an

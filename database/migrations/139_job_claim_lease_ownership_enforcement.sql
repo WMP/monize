@@ -1,7 +1,7 @@
--- 147: enforce lease ownership in the database, so a previous-release pod cannot
+-- 139: enforce lease ownership in the database, so a previous-release pod cannot
 -- release or mark a lease that a new pod has retaken during a rolling deployment.
 --
--- Migration 143 added `job_claims.lease_token`; the new `release()` and
+-- Migration 138 added `job_claims.lease_token`; the new `release()` and
 -- `markDelivered()` filter on it, so a stalled new-code attempt whose lease was
 -- retaken matches zero rows and writes nothing. That protects new code from new
 -- code. It does not protect a new-code lease from the *previous* binary, whose
@@ -15,7 +15,7 @@
 -- row by work key, leaving the replica actually sending with no exclusion, or its
 -- old `markDelivered()` stamps a delivery for a send B has not finished. The nullable
 -- column cannot stop those statements, exactly as it could not for the MNY checkpoint
--- (migration 138 -> 141) or the attachment quarantine (144 -> 146). The rule lives
+-- (migration 140 -> 141) or the attachment quarantine (143 -> 144). The rule lives
 -- where both binaries meet: a session that mutates a *live tokenized* lease must own
 -- it.
 --

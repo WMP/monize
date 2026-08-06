@@ -165,7 +165,7 @@ export class JobClaimService {
    * identify.
    *
    * The token goes both in the statement's `WHERE` and, via `set_config`, into the
-   * transaction-local `app.job_claim_lease_token` GUC the migration-147 trigger
+   * transaction-local `app.job_claim_lease_token` GUC the migration-139 trigger
    * checks. The `WHERE` protects new code from new code; the GUC is what lets the
    * database refuse a *previous-release* pod's untokenized delete of a live lease
    * this deployment now holds (audit V4R3-004).
@@ -182,7 +182,7 @@ export class JobClaimService {
   ): Promise<void> {
     await withScopedDb(this.dataSource, async (manager) => {
       if (!leaseToken) {
-        // A permanent `claimOnce` row: no attempt to identify, and the migration-147
+        // A permanent `claimOnce` row: no attempt to identify, and the migration-139
         // trigger leaves NULL-token rows alone.
         await manager.getRepository(JobClaim).delete({
           claimType,
@@ -204,7 +204,7 @@ export class JobClaimService {
   /**
    * Announce, for this transaction only, which lease this session is acting on.
    *
-   * The migration-147 trigger compares it against a live tokenized row's own token
+   * The migration-139 trigger compares it against a live tokenized row's own token
    * and rejects a mismatch, so a previous-release binary -- which never sets it --
    * cannot mutate a lease new code holds. `is_local = true` scopes it to the
    * surrounding `withScopedDb` transaction.

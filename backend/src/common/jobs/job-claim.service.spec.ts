@@ -190,7 +190,7 @@ describe("JobClaimService", () => {
       await service.markDelivered(JobClaimType.BillReminder, USER, "k", LEASE);
 
       // The lease token is declared into the transaction GUC first, so the
-      // migration-147 trigger admits this write and a previous binary's cannot.
+      // migration-139 trigger admits this write and a previous binary's cannot.
       const [declareSql, declareParams] = manager.query.mock.calls[0];
       expect(declareSql).toContain("set_config('app.job_claim_lease_token'");
       expect(declareParams).toEqual([LEASE]);
@@ -266,7 +266,7 @@ describe("JobClaimService", () => {
       // replica now sending holds, leaving it with no exclusion at all
       // (audit DR-RRV4-01).
       expect(claimsRepo.delete).not.toHaveBeenCalled();
-      // The token is declared into the GUC first (migration-147 trigger), then the
+      // The token is declared into the GUC first (migration-139 trigger), then the
       // delete filters on it too.
       const [declareSql, declareParams] = manager.query.mock.calls[0];
       expect(declareSql).toContain("set_config('app.job_claim_lease_token'");

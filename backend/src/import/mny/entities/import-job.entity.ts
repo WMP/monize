@@ -115,7 +115,7 @@ export class ImportJob {
   dataCommitted: boolean;
 
   /**
-   * The current attempt's identity, minted by `claim()` (migration 138).
+   * The current attempt's identity, minted by `claim()` (migration 140).
    *
    * Every write the worker makes requires it, and the reaper clears it when it
    * takes the job away -- which is what stops a worker that has already lost the

@@ -10,7 +10,7 @@ import {
 import { applyRlsPolicies } from "../helpers/rls-setup";
 
 /**
- * Migration 137's backfill, against the states the *previous* implementation
+ * Migration 145's backfill, against the states the *previous* implementation
  * could actually leave behind (audit RV4-003).
  *
  * The point of the fixture is the ordering the old code used: it persisted
@@ -28,23 +28,23 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
  * concludes from production-shaped rows, so the fixture is a real database and the
  * migration is read from disk.
  */
-describe("migration 137 backfill over legacy delivery state", () => {
+describe("migration 145 backfill over legacy delivery state", () => {
   let dataSource: DataSource;
   let owner: string;
 
   const MIGRATION = path.join(
     __dirname,
-    "../../../database/migrations/137_emergency_access_delivery_state.sql",
+    "../../../database/migrations/145_emergency_access_delivery_state.sql",
   );
 
   const applyMigration = () =>
     dataSource.query(fs.readFileSync(MIGRATION, "utf8"));
 
-  /** Undo migration 137, so the fixture starts from a genuinely pre-137 table. */
+  /** Undo migration 145, so the fixture starts from a genuinely pre-145 table. */
   const removeColumns = async () => {
     // Later migrations depend on `claim_notified_at`: the generation column (139)
     // and its rollout-compat trigger (142). Both have to come off before the column
-    // to reach the genuinely pre-137 shape this spec seeds.
+    // to reach the genuinely pre-145 shape this spec seeds.
     await dataSource.query(
       `DROP TRIGGER IF EXISTS trg_eac_backfill_notified_generation ON emergency_access_contacts`,
     );
@@ -86,7 +86,7 @@ describe("migration 137 backfill over legacy delivery state", () => {
 
   beforeAll(async () => {
     if (!fs.existsSync(MIGRATION)) {
-      throw new Error(`Migration 137 not found at ${MIGRATION}`);
+      throw new Error(`Migration 145 not found at ${MIGRATION}`);
     }
     dataSource = new DataSource(INTEGRATION_TYPEORM_OPTIONS as never);
     await dataSource.initialize();

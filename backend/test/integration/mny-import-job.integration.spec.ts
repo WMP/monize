@@ -638,7 +638,7 @@ describe("MnyImportJobService (integration)", () => {
      * statement run verbatim against the migrated schema.
      */
     describe("a previous-version worker's unconditional checkpoint", () => {
-      /** Exactly the SQL shipped before migration 138. Do not modernise it. */
+      /** Exactly the SQL shipped before migration 140. Do not modernise it. */
       const legacyCheckpoint = (jobId: string) =>
         dataSource.query(
           `UPDATE import_jobs SET data_committed = true WHERE id = $1`,

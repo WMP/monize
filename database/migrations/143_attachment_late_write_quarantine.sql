@@ -1,6 +1,6 @@
--- 144: a swept upload intent is kept until a late put can no longer land.
+-- 143: a swept upload intent is kept until a late put can no longer land.
 --
--- Migration 139 gave the sweeper a claim (`swept_at`) that the uploader's "clear
+-- Migration 142 gave the sweeper a claim (`swept_at`) that the uploader's "clear
 -- the intent" step is fenced against, so metadata can never commit for bytes that
 -- have been deleted. That is a statement about *metadata*, and RRV4-002 is about
 -- *bytes*:
