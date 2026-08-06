@@ -116,7 +116,7 @@ export class UserMaintenanceService {
       return await fn();
     } finally {
       await this.jobClaims
-        .release(
+        .releaseLease(
           JobClaimType.UserMaintenance,
           userId,
           USER_MAINTENANCE_CLAIM_KEY,

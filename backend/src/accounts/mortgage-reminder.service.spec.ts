@@ -64,7 +64,7 @@ describe("MortgageReminderService", () => {
     // *not* taken, and then it reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
     jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
-    jobClaims.release.mockReset().mockResolvedValue(undefined);
+    jobClaims.releaseLease.mockReset().mockResolvedValue(undefined);
     jobClaims.markDelivered.mockReset().mockResolvedValue(undefined);
     jobClaims.wasDelivered.mockReset().mockResolvedValue(false);
 
@@ -217,7 +217,7 @@ describe("MortgageReminderService", () => {
         await service.checkMortgageRenewals();
 
         expect(jobClaims.markDelivered).not.toHaveBeenCalled();
-        expect(jobClaims.release).toHaveBeenCalled();
+        expect(jobClaims.releaseLease).toHaveBeenCalled();
       });
 
       it("stands down when the work is already recorded as delivered", async () => {
@@ -226,7 +226,7 @@ describe("MortgageReminderService", () => {
         await service.checkMortgageRenewals();
 
         expect(emailService.sendMail).not.toHaveBeenCalled();
-        expect(jobClaims.release).toHaveBeenCalled();
+        expect(jobClaims.releaseLease).toHaveBeenCalled();
       });
 
       it("sends when another holder's lease expired without delivering", async () => {

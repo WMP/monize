@@ -151,7 +151,7 @@ describe("job-claim lease ownership during a rolling deployment", () => {
       service.claimOnce(JobClaimType.DemoIntraday, userId, KEY),
     );
     await withUserContext(userId, () =>
-      service.release(JobClaimType.DemoIntraday, userId, KEY),
+      service.releasePermanentClaim(JobClaimType.DemoIntraday, userId, KEY),
     );
     expect(await claim()).toHaveLength(0);
   });

@@ -100,7 +100,7 @@ describe("UserMaintenanceService", () => {
         order.push("claim");
         return TEST_LEASE_TOKEN;
       });
-      jobClaims.release.mockImplementation(async () => {
+      jobClaims.releaseLease.mockImplementation(async () => {
         order.push("release");
       });
 
@@ -154,7 +154,7 @@ describe("UserMaintenanceService", () => {
         }),
       ).rejects.toThrow("restore failed");
 
-      expect(jobClaims.release).toHaveBeenCalledWith(
+      expect(jobClaims.releaseLease).toHaveBeenCalledWith(
         JobClaimType.UserMaintenance,
         userId,
         USER_MAINTENANCE_CLAIM_KEY,
@@ -167,7 +167,7 @@ describe("UserMaintenanceService", () => {
     it("does not fail a completed operation because the release failed", async () => {
       // The lease expires anyway, so a failed release costs a delay -- turning a
       // finished restore into an error would be the worse outcome.
-      jobClaims.release.mockRejectedValue(new Error("connection reset"));
+      jobClaims.releaseLease.mockRejectedValue(new Error("connection reset"));
 
       await expect(
         service.withMaintenanceLease(userId, "restore", async () => "done"),

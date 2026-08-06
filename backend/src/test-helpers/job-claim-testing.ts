@@ -28,7 +28,12 @@ import { UserMaintenanceService } from "../common/jobs/user-maintenance.service"
 export type JobClaimMock = jest.Mocked<
   Pick<
     JobClaimService,
-    "claimOnce" | "claimLease" | "release" | "markDelivered" | "wasDelivered"
+    | "claimOnce"
+    | "claimLease"
+    | "releaseLease"
+    | "releasePermanentClaim"
+    | "markDelivered"
+    | "wasDelivered"
   >
 >;
 
@@ -39,7 +44,8 @@ export function createJobClaimMock(): JobClaimMock {
   return {
     claimOnce: jest.fn().mockResolvedValue(true),
     claimLease: jest.fn().mockResolvedValue(TEST_LEASE_TOKEN),
-    release: jest.fn().mockResolvedValue(undefined),
+    releaseLease: jest.fn().mockResolvedValue(undefined),
+    releasePermanentClaim: jest.fn().mockResolvedValue(undefined),
     markDelivered: jest.fn().mockResolvedValue(undefined),
     // "Not yet delivered" by default, so a spec written before the delivery
     // record still exercises the send. A spec about the *recovery* -- the lease

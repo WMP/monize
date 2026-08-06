@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "crypto";
-import { DataSource, EntityManager } from "typeorm";
+import { DataSource, EntityManager, IsNull } from "typeorm";
 import { withScopedDb } from "../db/scoped-db";
 import { withSystemContext } from "../db/with-context";
 import { affectedRowCount, returnedRows } from "../db/query-result";
@@ -16,8 +16,8 @@ import { JobClaim } from "./entities/job-claim.entity";
  *
  * - `claimLease` -- an **exclusion**. Only one replica may do this now. Expires,
  *   so a replica killed mid-run does not lock the user out until someone notices;
- *   `release` returns it early. Returns a **lease token** identifying the winning
- *   attempt, which `markDelivered` and `release` require: the unique key names the
+ *   `releaseLease` returns it early. Returns a **lease token** identifying the
+ *   winning attempt, which `markDelivered` and `releaseLease` require: the unique key names the
  *   work, not the holder, so without the token a worker delayed past its own expiry
  *   could delete a lease another replica had retaken, or record a delivery for a
  *   send that replica had not finished (audit DR-RRV4-01).
@@ -28,7 +28,7 @@ import { JobClaim } from "./entities/job-claim.entity";
  *
  * - `claimOnce` -- a permanent claim, for work where the claim row itself *is* the
  *   fact and nothing leaves the database: a posted occurrence, an alert
- *   fingerprint. `release` hands it back on failure.
+ *   fingerprint. `releasePermanentClaim` hands it back on failure.
  *
  * **A claim is not a record that the work was done**, and reaching for `claimOnce`
  * as though it were is how a delivery gets lost: the claim commits, the process
@@ -150,19 +150,21 @@ export class JobClaimService {
   }
 
   /**
-   * Give a claim back.
+   * Give a lease back, as the attempt that holds it.
    *
    * On the happy path this ends a lease early. After a failure it un-consumes a
    * delivery, so a transient SMTP outage costs a retry rather than the whole
    * day's reminder -- which is the behaviour the pre-claim code had by accident
    * and which claiming first would otherwise take away.
    *
-   * `leaseToken` is required of every caller that took a lease, and refuses the
-   * delete when the row belongs to a different attempt: a worker delayed past its
-   * own expiry would otherwise remove a live lease and leave the replica actually
-   * sending with no exclusion at all (audit DR-RRV4-01). It is omitted only by
-   * `claimOnce` callers, whose claim is the fact itself and has no attempt to
-   * identify.
+   * `leaseToken` is **required by the signature**: it refuses the delete when the
+   * row belongs to a different attempt, because a worker delayed past its own
+   * expiry would otherwise remove a live lease and leave the replica actually
+   * sending with no exclusion at all (audit DR-RRV4-01). A permanent `claimOnce`
+   * row, which has no attempt to identify, goes through
+   * `releasePermanentClaim` instead -- two methods, so the compiler decides
+   * which contract a call site is under rather than an optional argument
+   * silently bypassing the ownership predicate (stack review, DR-04).
    *
    * The token goes both in the statement's `WHERE` and, via `set_config`, into the
    * transaction-local `app.job_claim_lease_token` GUC the migration-139 trigger
@@ -174,23 +176,13 @@ export class JobClaimService {
    * that release are the ones that just failed or just declined, and both hold the
    * lease. A caller that has recorded a delivery has nothing to release.
    */
-  async release(
+  async releaseLease(
     claimType: JobClaimType,
     userId: string,
     claimKey: string,
-    leaseToken?: string,
+    leaseToken: string,
   ): Promise<void> {
     await withScopedDb(this.dataSource, async (manager) => {
-      if (!leaseToken) {
-        // A permanent `claimOnce` row: no attempt to identify, and the migration-139
-        // trigger leaves NULL-token rows alone.
-        await manager.getRepository(JobClaim).delete({
-          claimType,
-          userId,
-          claimKey,
-        });
-        return;
-      }
       await this.declareLeaseToken(manager, leaseToken);
       await manager.query(
         `DELETE FROM job_claims
@@ -198,6 +190,34 @@ export class JobClaimService {
             AND lease_token = $4::uuid`,
         [claimType, userId, claimKey, leaseToken],
       );
+    });
+  }
+
+  /**
+   * Give back a permanent `claimOnce` claim.
+   *
+   * Its own method rather than an optional-token arm of `releaseLease`: a lease
+   * caller that forgot its token would otherwise compile, silently skip the
+   * ownership predicate and the GUC the migration-139 trigger checks, and delete
+   * whatever attempt currently holds the row. The compiler now refuses that call
+   * shape outright. A permanent claim has no attempt to identify -- the trigger
+   * leaves NULL-token rows alone -- so this is the only untokenized delete.
+   */
+  async releasePermanentClaim(
+    claimType: JobClaimType,
+    userId: string,
+    claimKey: string,
+  ): Promise<void> {
+    await withScopedDb(this.dataSource, async (manager) => {
+      // `IsNull()` is part of the contract, not decoration: it makes this method
+      // structurally incapable of deleting a tokenized lease, even if a caller
+      // reaches it with a lease's work key by mistake.
+      await manager.getRepository(JobClaim).delete({
+        claimType,
+        userId,
+        claimKey,
+        leaseToken: IsNull(),
+      });
     });
   }
 

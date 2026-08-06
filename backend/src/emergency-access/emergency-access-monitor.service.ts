@@ -391,7 +391,7 @@ export class EmergencyAccessMonitorService {
     leaseToken: string,
   ): Promise<void> {
     await this.jobClaims
-      .release(
+      .releaseLease(
         JobClaimType.EmergencyAccessReminder,
         ownerUserId,
         dayKey,

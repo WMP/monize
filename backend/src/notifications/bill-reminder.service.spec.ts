@@ -36,7 +36,7 @@ describe("BillReminderService", () => {
     // *not* taken, and then it reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
     jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
-    jobClaims.release.mockReset().mockResolvedValue(undefined);
+    jobClaims.releaseLease.mockReset().mockResolvedValue(undefined);
     jobClaims.markDelivered.mockReset().mockResolvedValue(undefined);
     jobClaims.wasDelivered.mockReset().mockResolvedValue(false);
 
@@ -238,7 +238,7 @@ describe("BillReminderService", () => {
           // The notice stays owed, and the lease goes back so the next run can
           // retry immediately.
           expect(jobClaims.markDelivered).not.toHaveBeenCalled();
-          expect(jobClaims.release).toHaveBeenCalled();
+          expect(jobClaims.releaseLease).toHaveBeenCalled();
         });
 
         it("stands down when the work is already recorded as delivered", async () => {
@@ -249,7 +249,7 @@ describe("BillReminderService", () => {
           await service.sendBillReminders();
 
           expect(emailService.sendMail).not.toHaveBeenCalled();
-          expect(jobClaims.release).toHaveBeenCalled();
+          expect(jobClaims.releaseLease).toHaveBeenCalled();
         });
 
         it("sends when another holder's lease expired without delivering", async () => {

@@ -1,4 +1,4 @@
-import { DataSource } from "typeorm";
+import { DataSource, IsNull } from "typeorm";
 import {
   JOB_CLAIM_RETENTION_DAYS,
   JobClaimService,
@@ -247,20 +247,22 @@ describe("JobClaimService", () => {
   });
 
   describe("release", () => {
-    it("deletes the claim so a failed send can be retried", async () => {
+    it("deletes a permanent claim so a failed send can be retried", async () => {
       // No token: a `claimOnce` caller's claim *is* the fact, so there is no
-      // attempt to identify and the row is addressed by the work alone.
-      await service.release(JobClaimType.MortgageReminder, USER, "k");
+      // attempt to identify and the row is addressed by the work alone -- and
+      // the IS NULL predicate keeps this method off tokenized leases entirely.
+      await service.releasePermanentClaim(JobClaimType.MortgageReminder, USER, "k");
 
       expect(claimsRepo.delete).toHaveBeenCalledWith({
         claimType: "mortgage_reminder",
         userId: USER,
         claimKey: "k",
+        leaseToken: IsNull(),
       });
     });
 
     it("releases only its own lease when the caller holds a token", async () => {
-      await service.release(JobClaimType.MortgageReminder, USER, "k", LEASE);
+      await service.releaseLease(JobClaimType.MortgageReminder, USER, "k", LEASE);
 
       // A stalled attempt releasing by work alone would free the lease the
       // replica now sending holds, leaving it with no exclusion at all

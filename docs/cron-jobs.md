@@ -10,8 +10,8 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 
 | Mechanism | Use it for | Where |
 |---|---|---|
-| **Durable claim** (`JobClaimService.claimOnce`) | Work where the claim row *is* the fact and nothing leaves the database: a posted occurrence, an alert fingerprint. Permanent -- nothing retakes it -- so a failure calls `release` to hand the window back. **Not** for a send: see "A claim is not a delivery record" below. | `backend/src/common/jobs/job-claim.service.ts` |
-| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Returns a **lease token** identifying the winning attempt, which `markDelivered` and `release` require -- see "A lease is held by an attempt" below. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
+| **Durable claim** (`JobClaimService.claimOnce`) | Work where the claim row *is* the fact and nothing leaves the database: a posted occurrence, an alert fingerprint. Permanent -- nothing retakes it -- so a failure calls `releasePermanentClaim` to hand the window back. **Not** for a send: see "A claim is not a delivery record" below. | `backend/src/common/jobs/job-claim.service.ts` |
+| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Returns a **lease token** identifying the winning attempt, which `markDelivered` and `releaseLease` require -- see "A lease is held by an attempt" below. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
 | **Conditional state transition** | A flag the job itself owns: `UPDATE ... WHERE granted_at IS NULL ... RETURNING`. The predicate is re-evaluated after the row lock, so exactly one replica gets a row. | `emergency-access-monitor.service.ts` |
 | **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `136` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
@@ -83,14 +83,16 @@ exclusion, or its `markDelivered` recording a delivery for a send that replica h
 not finished, so a genuine failure there would never be retried (audit DR-RRV4-01).
 
 `claimLease` therefore mints a `lease_token` per attempt and returns it. Carry it
-into `markDelivered` and `release`; both compare it, and a `markDelivered` that
-matches nothing logs and records nothing, so the work stays owed and is re-sent --
-the at-least-once side of the trade, and the correct one. `release` without a token
-is still right for a `claimOnce` caller, whose claim is the fact itself and has no
-attempt to identify.
+into `markDelivered` and `releaseLease`; both compare it, and a `markDelivered`
+that matches nothing logs and records nothing, so the work stays owed and is
+re-sent -- the at-least-once side of the trade, and the correct one. A permanent
+`claimOnce` row, whose claim is the fact itself and has no attempt to identify,
+goes back through `releasePermanentClaim` -- a separate method, so the compiler
+refuses a lease caller that forgot its token instead of letting it silently
+bypass the ownership predicate.
 
 The token's `WHERE` clause protects new code from new code. It does nothing about a
-**previous-release** pod during a rolling deploy, whose `release`/`markDelivered`
+**previous-release** pod during a rolling deploy, whose untokenized release/`markDelivered`
 name the work and carry no token -- so lease ownership is also enforced in the
 database (migration 139): the new writes declare their token in the transaction-local
 `app.job_claim_lease_token` GUC, and a trigger rejects any mutation of a *live

@@ -66,7 +66,7 @@ export class MortgageReminderService {
     leaseToken: string,
   ): Promise<void> {
     await this.jobClaims
-      .release(JobClaimType.MortgageReminder, userId, claimKey, leaseToken)
+      .releaseLease(JobClaimType.MortgageReminder, userId, claimKey, leaseToken)
       .catch((error: unknown) =>
         this.logger.warn(
           `Failed to release mortgage-reminder claim for user ${userId}: ` +

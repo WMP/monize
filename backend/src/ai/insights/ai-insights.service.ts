@@ -305,7 +305,7 @@ export class AiInsightsService {
     } finally {
       this.generatingUsers.delete(userId);
       await this.jobClaims
-        .release(
+        .releaseLease(
           JobClaimType.AiInsightGeneration,
           userId,
           INSIGHT_GENERATION_CLAIM_KEY,

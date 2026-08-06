@@ -57,7 +57,7 @@ export class BillReminderService {
     leaseToken: string,
   ): Promise<void> {
     await this.jobClaims
-      .release(JobClaimType.BillReminder, userId, claimKey, leaseToken)
+      .releaseLease(JobClaimType.BillReminder, userId, claimKey, leaseToken)
       .catch((error: unknown) =>
         this.logger.warn(
           `Failed to release bill-reminder claim for user ${userId}: ` +

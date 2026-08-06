@@ -90,7 +90,7 @@ export class DemoResetService {
         await this.jobClaims
           // By token: a reset that outran its lease must not free the one the
           // replica now reseeding holds (DR-RRV4-01).
-          .release(
+          .releaseLease(
             JobClaimType.DemoReset,
             demoUserId,
             DEMO_RESET_CLAIM_KEY,

@@ -267,7 +267,7 @@ describe("DemoResetService", () => {
 
       await service.resetDemoData();
 
-      expect(jobClaims.release).toHaveBeenCalledWith(
+      expect(jobClaims.releaseLease).toHaveBeenCalledWith(
         JobClaimType.DemoReset,
         "demo-user-id",
         expect.any(String),

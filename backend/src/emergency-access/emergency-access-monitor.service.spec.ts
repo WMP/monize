@@ -154,7 +154,7 @@ describe("EmergencyAccessMonitorService", () => {
     // spec asserts a claim was *not* taken, and then reads as a product bug.
     jobClaims.claimOnce.mockReset().mockResolvedValue(true);
     jobClaims.claimLease.mockReset().mockResolvedValue(TEST_LEASE_TOKEN);
-    jobClaims.release.mockReset().mockResolvedValue(undefined);
+    jobClaims.releaseLease.mockReset().mockResolvedValue(undefined);
 
     settingsRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -1090,7 +1090,7 @@ describe("EmergencyAccessMonitorService", () => {
       expect.any(Number),
     );
     // And the lease goes back immediately rather than being held for its TTL.
-    expect(jobClaims.release).toHaveBeenCalledWith(
+    expect(jobClaims.releaseLease).toHaveBeenCalledWith(
       "emergency_access_reminder",
       userId,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
@@ -1125,7 +1125,7 @@ describe("EmergencyAccessMonitorService", () => {
     // Nothing was delivered, so the delivery record must not move -- that is what
     // keeps the notice owed rather than silently spent.
     expect(settingsRepo.createQueryBuilder).not.toHaveBeenCalled();
-    expect(jobClaims.release).toHaveBeenCalledWith(
+    expect(jobClaims.releaseLease).toHaveBeenCalledWith(
       "emergency_access_reminder",
       userId,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
