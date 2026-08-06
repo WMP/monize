@@ -137,6 +137,110 @@ A check capable of refusing a command belongs inside the transaction that perfor
 
 Give the operation the caller's precondition as a parameter -- the expected owner, scenario or revision -- and let it refuse before writing. Return the refusal distinguishably: "no such row", "not yours" and "done" are three answers, and folding two into `null` makes the caller guess. Tests assert the rejected response **and** the stored state; see `docs/financial-calculation-contract.md` section 7.
 
+## A feature reported as enabled must have everything its critical path needs
+
+A toggle is a promise. Emergency access checked only SMTP before letting the owner
+arm it, and then the grant path grew a dependency on `AI_ENCRYPTION_KEY` -- which
+`.env.example` presents as optional and needed only for cloud AI. On an SMTP-only
+install the cron reached the encrypt, threw once per contact, delivered nothing,
+released the grant, and repeated that every day forever, while the settings page went
+on reporting the safeguard as armed (audit RRV4-003).
+
+So when a feature's delivery path acquires a new configuration dependency, two things
+move with it: the **enable** path refuses without it, with an internationalized
+message naming the variable, and the settings view exposes the readiness flag so the
+UI can say so before the user tries. Refuse only what cannot work -- turning the
+feature *off* has to stay possible on an installation that cannot arm it. And a
+per-contact `logger.error` is not a user-facing failure: if the only trace of a
+non-functioning safeguard is a log line, it is not reported at all.
+
+## A snapshot is not a lock, and a comment is not a mechanism
+
+Every concurrency defect the Phase 4 audit confirmed had a comment above it
+asserting the safety it did not have: "atomically increment failed attempts" over
+`user.failedLoginAttempts + 1`; "re-validates under lock" over a `findOne` with no
+lock option; "a failure leaves nothing behind and Retry cannot double-import" over
+a transaction that committed before finalization; "returns null for expired files"
+over a query filtering only by id.
+
+So when you write that a thing is atomic, locked, single-use or idempotent, the
+next line has to be the mechanism that makes it so -- a predicate in the
+statement, a lock taken before the read, a unique key -- and if you cannot point
+at one, the comment is the bug. The root `CLAUDE.md` has the protocol; this is the
+habit that keeps it honest.
+
+## Deleting a ledger row and reversing its balance is one function, not four lines
+
+`removeLockedTransactionLeg` (`src/transactions/remove-transaction-leg.ts`) is the
+only sanctioned way to delete a `transactions` row that contributed to
+`accounts.current_balance`. Never open-code the sequence, and never reach for
+`manager.remove(entity)` on such a row: `remove` deletes by primary key and
+reports nothing, so two concurrent removals each reverse the amount while one row
+goes away. The helper deletes with `m.delete(Transaction, { id, userId })`, reads
+`affected`, and reverses only when this call is the one that removed the row --
+also skipping a `VOID` row, which contributed nothing, and recomputing rather than
+delta-ing a future-dated one.
+
+The row also has to be **locked and re-read** first
+(`lockTransactionRow` / `lockTransactionRows`), because the amount reversed must
+be the amount the delete removes, not whatever a snapshot held. This exact shape
+survived three separate fixes and reappeared a fourth time in split removal
+(audit FV4-002), so it is now a scanning test:
+`common/db/derived-state-writers.guard.spec.ts` fails on any new file that calls
+`accountsService.updateBalance` beside a bare `remove()` of a transaction-shaped
+row.
+
+**A row a request builds *from* the parent needs the locked parent's fields too.**
+A split's transfer counterpart and its embedded investment rows carry the parent's
+account, date and payee. Passing the caller's pre-lock copy of those writes rows
+describing a parent that has already moved -- silently, with nothing to reconcile
+against. `LockedTransactionRow` therefore carries `payeeId`/`payeeName` alongside
+`accountId` and `transactionDate`: take every fallback from it, and re-validate
+the split sum against `locked.amount` even when the request does not change the
+amount.
+
+## `repo.save(loadedEntity)` writes the columns you did not touch
+
+`save` on an entity read a moment ago looks like "update this field". It is not.
+TypeORM re-reads the row inside `save` and writes every column that differs from
+the entity in hand — and the entity still holds whatever the *other* columns
+looked like when it was read. A column another request has changed since then
+therefore reads as a deliberate change back, and is written back. No error, no
+log, nothing in the diff to see.
+
+That matters wherever one row is written from more than one place, and
+`user_preferences` is the worst case: the Settings form, a dismissed tour, a
+"What's New" acknowledgement, an update banner and enabling 2FA all write the
+same row. Dismiss a tour in one tab while switching the theme in another and the
+theme used to revert.
+
+So write the columns you mean: `patchUserPreferences` /
+`ensureUserPreferencesRow` (`src/users/user-preference-writer.ts`) for that
+table, and a `createQueryBuilder().update().set({...})` for anything else shared.
+Reach for `repo.save` when you own the whole row — a fresh insert, or an entity
+nothing else writes concurrently. And materialize a missing row with
+`ON CONFLICT DO NOTHING` rather than "read, and insert if absent": inside a
+transaction a unique violation cannot be caught and recovered from, it aborts the
+transaction, so the loser of that race fails a whole request over a cosmetic
+write.
+
+## An identity, once a transaction is open, is not yours to change
+
+`withScopedDb` emits the identity GUCs as the transaction's first statements and
+never again. A nested call joins that transaction, so wrapping the inner call in
+a different context -- `withSystemContext` for a bit of cross-user work, another
+user's `withUserContext`, `withPreserveTimestamps` bolted on after the fact --
+does not change what the database enforces. It changes only what the code
+believes, and the two disagreeing produces no error: zero rows under
+enforcement, correct results at `RLS_MODE=off`, so the mistake survives review
+and CI and appears when an operator flips modes.
+
+So `withScopedDb` refuses that nesting outright, naming both identities. If a
+genuinely separate identity is needed inside an open transaction, that is
+`runOutsideActiveScopedManager` -- a second connection, chosen deliberately,
+with the atomicity trade-off visible at the call site rather than hidden in a
+GUC nobody re-read.
+
 ## A predicate that decides which row counts is written once
 
 When "is this row the one we mean" takes more than one clause -- current
