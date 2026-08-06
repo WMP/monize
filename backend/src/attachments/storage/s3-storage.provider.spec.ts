@@ -1,5 +1,11 @@
 const mockSend = jest.fn();
 
+jest.mock("@smithy/node-http-handler", () => ({
+  NodeHttpHandler: jest
+    .fn()
+    .mockImplementation((cfg) => ({ kind: "handler", cfg })),
+}));
+
 jest.mock("@aws-sdk/client-s3", () => ({
   S3Client: jest.fn().mockImplementation((cfg) => ({ send: mockSend, cfg })),
   PutObjectCommand: jest.fn().mockImplementation((input) => ({
@@ -33,6 +39,25 @@ describe("S3StorageProvider", () => {
   it("has the s3 name", () => {
     const provider = new S3StorageProvider(configFor({}));
     expect(provider.name).toBe("s3");
+  });
+
+  it("bounds every request below the sweeper's quarantine window", async () => {
+    const provider = new S3StorageProvider(
+      configFor({ ATTACHMENT_S3_BUCKET: "my-bucket" }),
+    );
+    mockSend.mockResolvedValue({});
+    await provider.save("abc", Buffer.from("data"));
+
+    // A PutObject that could hang for hours would outlive the tombstone the sweeper
+    // retires after its quarantine, recreating the undiscoverable-orphan window
+    // (audit V4R3-003). The request handler's timeout is the enforced bound that
+    // makes the six-hour quarantine sufficient.
+    const cfg = (S3Client as unknown as jest.Mock).mock.calls[0][0];
+    expect(cfg.requestHandler).toBeDefined();
+    expect(cfg.requestHandler.cfg.requestTimeout).toBe(5 * 60 * 1000);
+    expect(cfg.requestHandler.cfg.requestTimeout).toBeLessThan(
+      6 * 60 * 60 * 1000,
+    );
   });
 
   it("puts bytes under bucket and key on save", async () => {
