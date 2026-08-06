@@ -39,6 +39,10 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
     manager.query
       .mockResolvedValueOnce([{ user_id: OWNER_ID, timezone: "UTC" }])
       .mockResolvedValueOnce([{ account_id: "a1" }])
+      // ...which is then locked FOR UPDATE before the ledger is read, so the
+      // absolute balance write cannot overwrite a delta that commits in between
+      // (audit P4-005).
+      .mockResolvedValueOnce([{ id: "a1" }])
       .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }])
       .mockResolvedValueOnce(undefined);
 
@@ -72,6 +76,16 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
           c[0].includes("UPDATE accounts SET current_balance"),
       ),
     ).toBe(true);
+    // And the accounts were locked before the balances were read.
+    const lockIndex = manager.query.mock.calls.findIndex(
+      (c) => typeof c[0] === "string" && c[0].includes("FOR UPDATE"),
+    );
+    const sumIndex = manager.query.mock.calls.findIndex(
+      (c) =>
+        typeof c[0] === "string" && c[0].includes("COALESCE(SUM(t.amount)"),
+    );
+    expect(lockIndex).toBeGreaterThanOrEqual(0);
+    expect(lockIndex).toBeLessThan(sumIndex);
   });
 
   it("checkMortgageRenewals runs fan-out and per-user reads under their contexts", async () => {

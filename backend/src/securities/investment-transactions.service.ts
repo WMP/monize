@@ -8,8 +8,9 @@ import {
   forwardRef,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
-import { DataSource, EntityManager, In } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
 import {
   InvestmentTransaction,
   InvestmentAction,
@@ -600,21 +601,33 @@ export class InvestmentTransactionsService {
   ): Promise<void> {
     if (!transactionId) return;
 
-    const cashTransaction = await manager.findOne(Transaction, {
-      where: { id: transactionId, userId },
-    });
+    // Locked, and the reversal gated on the row the database actually removed:
+    // reversing an amount whose row is already gone is the double-delete
+    // corruption in P4-003.
+    const cashTransaction = await lockTransactionRow(
+      manager,
+      transactionId,
+      userId,
+    );
 
     if (cashTransaction) {
+      const removed = await manager.delete(Transaction, {
+        id: transactionId,
+        userId,
+      });
+      if ((removed.affected ?? 0) === 0) return;
       // Only un-apply the balance if the cash transaction had been live --
       // a future-dated cash entry was never folded into currentBalance, so
-      // there's nothing to reverse.
-      if (!isTransactionInFuture(cashTransaction.transactionDate)) {
+      // there's nothing to reverse. Nor was a VOID one.
+      if (
+        !isTransactionInFuture(cashTransaction.transactionDate) &&
+        cashTransaction.status !== TransactionStatus.VOID
+      ) {
         await this.accountsService.updateBalance(
           cashTransaction.accountId,
-          -Number(cashTransaction.amount),
+          -cashTransaction.amount,
         );
       }
-      await manager.remove(cashTransaction);
     }
   }
 
@@ -2048,9 +2061,15 @@ export class InvestmentTransactionsService {
       amount: newSplitAmount,
     });
 
-    const parentTransaction = await manager.findOne(Transaction, {
-      where: { id: split.transactionId, userId },
-    });
+    // Locked: the delta below reverses `oldParentAmount`, so it has to be the
+    // version this write replaces. Two concurrent edits to the same parent's
+    // splits would otherwise each apply a delta derived from the same stale
+    // amount (audit P4-003).
+    const parentTransaction = await lockTransactionRow(
+      manager,
+      split.transactionId,
+      userId,
+    );
     if (!parentTransaction) {
       throw new NotFoundException(
         tr(
@@ -2069,7 +2088,7 @@ export class InvestmentTransactionsService {
         s.id === splitId ? newSplitAmount : Number(s.amount),
       ),
     );
-    const oldParentAmount = Number(parentTransaction.amount);
+    const oldParentAmount = parentTransaction.amount;
     const delta = roundMoney(newParentAmount - oldParentAmount);
 
     await manager.update(Transaction, parentTransaction.id, {
@@ -3687,21 +3706,25 @@ export class InvestmentTransactionsService {
         .filter((id): id is string => !!id);
 
       if (linkedCashTxIds.length > 0) {
-        const cashTransactions = await manager.find(Transaction, {
-          where: { id: In(linkedCashTxIds) },
-        });
+        // Locked in ascending id order before their amounts become reversals.
+        const cashTransactions = await lockTransactionRows(
+          manager,
+          linkedCashTxIds,
+          userId,
+        );
 
-        for (const cashTx of cashTransactions) {
+        for (const cashTx of cashTransactions.values()) {
+          const removed = await manager.delete(Transaction, {
+            id: cashTx.id,
+            userId,
+          });
+          if ((removed.affected ?? 0) === 0) continue;
           if (cashTx.status !== TransactionStatus.VOID) {
             await this.accountsService.updateBalance(
               cashTx.accountId,
-              -Number(cashTx.amount),
+              -cashTx.amount,
             );
           }
-        }
-
-        if (cashTransactions.length > 0) {
-          await manager.remove(cashTransactions);
         }
       }
 

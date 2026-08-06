@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   Inject,
+  NotFoundException,
   forwardRef,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
@@ -13,6 +14,14 @@ import {
 } from "../common/date-utils";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRow } from "../common/db/locks";
+
+/** What a transition resolver returns, or it throws to refuse the transition. */
+interface ResolvedTransition {
+  readonly status: TransactionStatus;
+  /** Wipe `reconciled_date`, for the transition that undoes a reconciliation. */
+  readonly clearReconciledDate?: boolean;
+}
 
 @Injectable()
 export class TransactionReconciliationService {
@@ -22,151 +31,197 @@ export class TransactionReconciliationService {
     private dataSource: DataSource,
   ) {}
 
-  async updateStatus(
-    transaction: Transaction,
-    status: TransactionStatus,
+  /**
+   * Apply one status transition as a compare-and-set against the row's own
+   * committed status.
+   *
+   * Every guard these entry points apply -- "not already reconciled", "not
+   * void", "must currently be reconciled" -- is a decision about the *current*
+   * status, and so is the balance adjustment: crossing into or out of `VOID` is
+   * the only transition that moves money. Reading that status from a snapshot
+   * loaded before the transaction made both wrong at once. A request holding a
+   * `RECONCILED` snapshot could unreconcile a row another request had since
+   * voided: `wasVoid` computed from the snapshot said false, `isVoid` said
+   * false, so no balance adjustment ran -- while the row went from VOID back to
+   * CLEARED, putting its amount back in the ledger with nothing putting it back
+   * in the balance.
+   *
+   * So the resolver runs here, inside the transaction, against the locked row.
+   * `oldStatus` is the version this write actually replaces, and a guard that
+   * refuses does so before anything is written.
+   */
+  private async applyStatusTransition(
     userId: string,
-    triggerNetWorthRecalc: (accountId: string, userId: string) => void,
-    findOne: (userId: string, id: string) => Promise<Transaction>,
-  ): Promise<Transaction> {
-    const oldStatus = transaction.status;
-    const wasVoid = oldStatus === TransactionStatus.VOID;
-    const isVoid = status === TransactionStatus.VOID;
+    transactionId: string,
+    resolve: (current: TransactionStatus) => ResolvedTransition,
+  ): Promise<{ accountId: string; balanceMoved: boolean }> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const locked = await lockTransactionRow(m, transactionId, userId);
+      if (!locked) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transactionId} not found`,
+            { id: transactionId },
+          ),
+        );
+      }
 
-    // The status change and the matching balance adjustment touch two tables
-    // (transactions + accounts) and must commit atomically, otherwise a failure
-    // between the two leaves the account balance out of sync with the status.
-    await withScopedDb(this.dataSource, async (m) => {
-      if (isTransactionInFuture(transaction.transactionDate)) {
-        await m.update(Transaction, transaction.id, {
-          status,
-        });
-        if (wasVoid !== isVoid) {
+      const oldStatus = locked.status as TransactionStatus;
+      const { status, clearReconciledDate } = resolve(oldStatus);
+
+      const wasVoid = oldStatus === TransactionStatus.VOID;
+      const isVoid = status === TransactionStatus.VOID;
+      const balanceMoved = wasVoid !== isVoid;
+
+      const fields: Partial<Transaction> = { status };
+      if (
+        status === TransactionStatus.RECONCILED &&
+        oldStatus !== TransactionStatus.RECONCILED
+      ) {
+        fields.reconciledDate = formatDateYMDLocal(new Date());
+      } else if (clearReconciledDate) {
+        fields.reconciledDate = null;
+      }
+
+      if (isTransactionInFuture(locked.transactionDate)) {
+        await m.update(Transaction, transactionId, fields);
+        if (balanceMoved) {
           await this.accountsService.recalculateCurrentBalance(
-            transaction.accountId,
+            locked.accountId,
           );
         }
       } else {
         if (wasVoid && !isVoid) {
           await this.accountsService.updateBalance(
-            transaction.accountId,
-            Number(transaction.amount),
+            locked.accountId,
+            locked.amount,
           );
         } else if (!wasVoid && isVoid) {
           await this.accountsService.updateBalance(
-            transaction.accountId,
-            -Number(transaction.amount),
+            locked.accountId,
+            -locked.amount,
           );
         }
-        await m.update(Transaction, transaction.id, {
-          status,
-        });
+        await m.update(Transaction, transactionId, fields);
       }
 
-      if (
-        status === TransactionStatus.RECONCILED &&
-        oldStatus !== TransactionStatus.RECONCILED
-      ) {
-        const reconciledDate = formatDateYMDLocal(new Date());
-        await m.update(Transaction, transaction.id, {
-          reconciledDate,
-        });
-      }
+      return { accountId: locked.accountId, balanceMoved };
     });
+  }
 
-    if (wasVoid !== isVoid) {
-      triggerNetWorthRecalc(transaction.accountId, userId);
+  async updateStatus(
+    userId: string,
+    transactionId: string,
+    status: TransactionStatus,
+    triggerNetWorthRecalc: (accountId: string, userId: string) => void,
+    findOne: (userId: string, id: string) => Promise<Transaction>,
+  ): Promise<Transaction> {
+    const { accountId, balanceMoved } = await this.applyStatusTransition(
+      userId,
+      transactionId,
+      () => ({ status }),
+    );
+
+    if (balanceMoved) {
+      triggerNetWorthRecalc(accountId, userId);
     }
 
-    return findOne(userId, transaction.id);
+    return findOne(userId, transactionId);
   }
 
   async markCleared(
-    transaction: Transaction,
-    isCleared: boolean,
     userId: string,
+    transactionId: string,
+    isCleared: boolean,
     triggerNetWorthRecalc: (accountId: string, userId: string) => void,
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<Transaction> {
-    if (
-      transaction.status === TransactionStatus.RECONCILED ||
-      transaction.status === TransactionStatus.VOID
-    ) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.cannotChangeClearedStatusOfReconciledOrVoid",
-          "Cannot change cleared status of reconciled or void transactions",
-        ),
-      );
+    const { accountId, balanceMoved } = await this.applyStatusTransition(
+      userId,
+      transactionId,
+      (current) => {
+        if (
+          current === TransactionStatus.RECONCILED ||
+          current === TransactionStatus.VOID
+        ) {
+          throw new BadRequestException(
+            tr(
+              "errors.transactions.cannotChangeClearedStatusOfReconciledOrVoid",
+              "Cannot change cleared status of reconciled or void transactions",
+            ),
+          );
+        }
+        return {
+          status: isCleared
+            ? TransactionStatus.CLEARED
+            : TransactionStatus.UNRECONCILED,
+        };
+      },
+    );
+
+    if (balanceMoved) {
+      triggerNetWorthRecalc(accountId, userId);
     }
 
-    const newStatus = isCleared
-      ? TransactionStatus.CLEARED
-      : TransactionStatus.UNRECONCILED;
-    return this.updateStatus(
-      transaction,
-      newStatus,
-      userId,
-      triggerNetWorthRecalc,
-      findOne,
-    );
+    return findOne(userId, transactionId);
   }
 
   async reconcile(
-    transaction: Transaction,
     userId: string,
+    transactionId: string,
     triggerNetWorthRecalc: (accountId: string, userId: string) => void,
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<Transaction> {
-    if (transaction.status === TransactionStatus.RECONCILED) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.alreadyReconciled",
-          "Transaction is already reconciled",
-        ),
-      );
-    }
-
-    if (transaction.status === TransactionStatus.VOID) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.cannotReconcileVoid",
-          "Cannot reconcile a void transaction",
-        ),
-      );
-    }
-
-    return this.updateStatus(
-      transaction,
-      TransactionStatus.RECONCILED,
+    const { accountId, balanceMoved } = await this.applyStatusTransition(
       userId,
-      triggerNetWorthRecalc,
-      findOne,
+      transactionId,
+      (current) => {
+        if (current === TransactionStatus.RECONCILED) {
+          throw new BadRequestException(
+            tr(
+              "errors.transactions.alreadyReconciled",
+              "Transaction is already reconciled",
+            ),
+          );
+        }
+        if (current === TransactionStatus.VOID) {
+          throw new BadRequestException(
+            tr(
+              "errors.transactions.cannotReconcileVoid",
+              "Cannot reconcile a void transaction",
+            ),
+          );
+        }
+        return { status: TransactionStatus.RECONCILED };
+      },
     );
+
+    if (balanceMoved) {
+      triggerNetWorthRecalc(accountId, userId);
+    }
+
+    return findOne(userId, transactionId);
   }
 
   async unreconcile(
-    transaction: Transaction,
     userId: string,
+    transactionId: string,
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<Transaction> {
-    if (transaction.status !== TransactionStatus.RECONCILED) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.notReconciled",
-          "Transaction is not reconciled",
-        ),
-      );
-    }
+    await this.applyStatusTransition(userId, transactionId, (current) => {
+      if (current !== TransactionStatus.RECONCILED) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.notReconciled",
+            "Transaction is not reconciled",
+          ),
+        );
+      }
+      return { status: TransactionStatus.CLEARED, clearReconciledDate: true };
+    });
 
-    await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Transaction).update(transaction.id, {
-        status: TransactionStatus.CLEARED,
-        reconciledDate: null,
-      }),
-    );
-
-    return findOne(userId, transaction.id);
+    return findOne(userId, transactionId);
   }
 
   async getReconciliationData(
@@ -261,12 +316,17 @@ export class TransactionReconciliationService {
     }
 
     return withScopedDb(this.dataSource, async (m) => {
+      // Locked in ascending id order and re-checked here: the VOID exclusion
+      // below is a refusal, so it has to be evaluated against the status this
+      // statement is about to overwrite, not against one read a moment earlier.
       const transactions = await m
         .getRepository(Transaction)
         .createQueryBuilder("transaction")
         .where("transaction.id IN (:...ids)", { ids: transactionIds })
         .andWhere("transaction.userId = :userId", { userId })
         .andWhere("transaction.accountId = :accountId", { accountId })
+        .orderBy("transaction.id", "ASC")
+        .setLock("pessimistic_write")
         .getMany();
 
       if (transactions.length !== transactionIds.length) {

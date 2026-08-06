@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { NotFoundException, ConflictException } from "@nestjs/common";
+import { NotFoundException, ConflictException, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { ActionHistoryService } from "./action-history.service";
@@ -70,6 +70,37 @@ describe("ActionHistoryService", () => {
   });
 
   describe("record", () => {
+    it("reports a failed recording as an error naming what cannot be undone", async () => {
+      // Recording is best-effort so it cannot fail the user's operation, but the
+      // operation succeeded and its undo entry did not -- the user will look for
+      // an undo that is not there, so this is not a `warn` (DR-04-03).
+      const errorSpy = jest
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation();
+      const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      mockRepository.delete.mockResolvedValue({ affected: 0 });
+      mockRepository.create.mockReturnValue(mockAction);
+      mockRepository.save.mockRejectedValue(new Error("DB down"));
+
+      const result = await service.record(userId, {
+        entityType: "transaction",
+        entityId: "tx-77",
+        action: "delete",
+        description: "Deleted a transaction",
+      });
+
+      expect(result).toBeNull();
+      const message = String(errorSpy.mock.calls[0][0]);
+      expect(message).toContain("delete");
+      expect(message).toContain("transaction");
+      expect(message).toContain("tx-77");
+      expect(message).toContain("DB down");
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
     it("should record an action", async () => {
       mockRepository.delete.mockResolvedValue({ affected: 0 });
       mockRepository.create.mockReturnValue(mockAction);
@@ -1448,8 +1479,11 @@ describe("ActionHistoryService", () => {
       mockQueryRunner.manager.findOne.mockResolvedValueOnce(mockInvTx);
       mockQueryRunner.manager.remove.mockResolvedValue(undefined);
       mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
-      // rebuildHoldings: DELETE returns void, SELECT returns investment transactions
+      // rebuildHoldings takes the shared holdings lock first -- a rebuild replays
+      // investment_transactions and replaces what it derives from them, so the
+      // trade it must not lose is an insert no holdings row locks (P4-006).
       mockQueryRunner.query
+        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
         .mockResolvedValueOnce(undefined) // DELETE FROM holdings
         .mockResolvedValueOnce([
           {

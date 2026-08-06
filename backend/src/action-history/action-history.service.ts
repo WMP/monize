@@ -21,6 +21,10 @@ import { Budget } from "../budgets/entities/budget.entity";
 import { CustomReport } from "../reports/entities/custom-report.entity";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import {
+  lockAccountsForBalanceWrite,
+  lockHoldingScope,
+} from "../common/db/locks";
 
 export interface RecordActionParams {
   entityType: string;
@@ -279,9 +283,21 @@ export class ActionHistoryService {
 
       return saved;
     } catch (error) {
-      // Recording is best-effort -- never fail the original operation
-      this.logger.warn(
-        `Failed to record action history: ${error instanceof Error ? error.message : String(error)}`,
+      // Best-effort by design: recording an undo entry must never fail the
+      // operation the user actually asked for, and every caller invokes this
+      // AFTER its own transaction committed (a source-scan guard in
+      // common/db/derived-state-writers.guard.spec.ts keeps it that way -- called
+      // inside a transaction, this swallow would hide the abort and the caller's
+      // next statement would die with 25P02).
+      //
+      // But `error`, not `warn`: the operation succeeded and its undo entry did
+      // not, so the user will look for an undo that is not there. Name the entity
+      // so the gap can be tied to what happened.
+      this.logger.error(
+        `Failed to record action history for ${params.action} on ${params.entityType} ${params.entityId} (the operation itself succeeded; it cannot be undone): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
       );
       return null;
     }
@@ -1241,6 +1257,16 @@ export class ActionHistoryService {
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
+    // Lock the account before reading the ledger, like every other absolute
+    // balance writer.
+    //
+    // This is the same protocol boundary as AccountsService.recalculateCurrentBalance
+    // (audit P4-005): the SELECT and the UPDATE below are separate statement
+    // snapshots under READ COMMITTED, so without the lock an ordinary
+    // transaction committing between them is overwritten by a total that never
+    // saw it -- and an undo is precisely when a user is watching the balance.
+    await lockAccountsForBalanceWrite(manager, [accountId]);
+
     // Use the same recalculation logic as AccountsService
     const result = await manager.query(
       `SELECT a.opening_balance, COALESCE(SUM(t.amount), 0) as tx_sum
@@ -1273,6 +1299,12 @@ export class ActionHistoryService {
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
+    // Same lock namespace every holdings writer takes, before the ledger is
+    // read. A rebuild replays investment_transactions and replaces the holdings
+    // derived from them, so what it must not lose is a *trade* -- an insert no
+    // holdings row locks (audit P4-006).
+    await lockHoldingScope(manager, [accountId]);
+
     // Delete existing holdings for this account
     await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [
       accountId,

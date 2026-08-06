@@ -11,6 +11,11 @@ import { NetWorthService } from "../net-worth/net-worth.service";
 import { TagsService } from "../tags/tags.service";
 import { BulkUpdateDto, BulkDeleteDto } from "./dto/bulk-update.dto";
 import { Brackets, DataSource } from "typeorm";
+import { lockTransactionRows } from "../common/db/locks";
+import {
+  lockedTransactionRow,
+  stubLockedTransactions,
+} from "../test-helpers/locks-testing";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -18,6 +23,14 @@ import {
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
+);
+
+// Balance deltas are derived from rows locked inside the write transaction, not
+// from the pre-read: a row a concurrent request already deleted must not get a
+// reversal (audit P4-003). The double below feeds those readers from the same
+// fixtures the pre-read returns.
+jest.mock("../common/db/locks", () =>
+  jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
 
 jest.mock("../common/date-utils", () => ({
@@ -41,10 +54,20 @@ describe("TransactionBulkUpdateService", () => {
 
   const userId = "user-1";
 
+  /**
+   * Every transaction a test builds, by id.
+   *
+   * The locked readers are served from this, so a test that builds its fixtures
+   * with `makeTransaction` automatically has them as the *committed* rows the
+   * write transaction locks -- which is what the pre-transaction read used to be
+   * trusted for. A test that wants the rows to disagree calls `stageLocked`.
+   */
+  let builtTransactions: Map<string, Transaction>;
+
   const makeTransaction = (
     overrides: Partial<Transaction> = {},
   ): Transaction => {
-    return {
+    const built = {
       id: "tx-1",
       userId,
       accountId: "account-1",
@@ -71,6 +94,36 @@ describe("TransactionBulkUpdateService", () => {
       updatedAt: new Date("2026-01-15"),
       ...overrides,
     } as Transaction;
+    builtTransactions.set(built.id, built);
+    stageLocked([...builtTransactions.values()]);
+    return built;
+  };
+
+  /**
+   * Stage `transactions` as the rows the write transaction locks.
+   *
+   * Both bulk paths derive their balance deltas from these, not from the read
+   * that happened before the transaction opened -- a row another request deleted
+   * in the meantime is simply absent and gets no reversal.
+   */
+  const stageLocked = (transactions: Transaction[]): void => {
+    stubLockedTransactions(
+      {
+        lockTransactionRow: jest.fn(),
+        lockTransactionRows: lockTransactionRows as jest.Mock,
+      },
+      transactions.map((t) =>
+        lockedTransactionRow({
+          id: t.id,
+          accountId: t.accountId,
+          amount: Number(t.amount),
+          transactionDate: String(t.transactionDate),
+          status: t.status,
+          isSplit: t.isSplit,
+          linkedTransactionId: t.linkedTransactionId ?? null,
+        }),
+      ),
+    );
   };
 
   const createMockQueryBuilder = (
@@ -92,6 +145,7 @@ describe("TransactionBulkUpdateService", () => {
   });
 
   beforeEach(async () => {
+    builtTransactions = new Map();
     transactionsRepository = {
       createQueryBuilder: jest.fn().mockImplementation(() =>
         createMockQueryBuilder({
@@ -1297,6 +1351,50 @@ describe("TransactionBulkUpdateService", () => {
       await service.bulkDelete(userId, dto);
 
       expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-1", -100);
+    });
+
+    it("does not reverse a row a concurrent request already deleted", async () => {
+      // The regression guard for P4-003's double-delete: opening 100.00 and one
+      // -10.00 row removed twice left the stored balance 10.00 above the ledger,
+      // because both requests reversed an amount only one of them removed. The
+      // reversal now comes from the locked row set, so a row that is gone by
+      // then contributes nothing.
+      const tx1 = makeTransaction({
+        id: "tx-1",
+        accountId: "acc-1",
+        amount: 100,
+      });
+
+      const resolveQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([{ id: "tx-1" }]),
+      });
+      const detailsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([tx1]),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(detailsQb);
+
+      const deleteQb = createMockQueryBuilder({
+        delete: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 0 }),
+      });
+      mockManagerCreateQueryBuilder.mockReturnValueOnce(deleteQb);
+
+      // The pre-read found it; the lock did not.
+      stageLocked([]);
+
+      const result = await service.bulkDelete(userId, {
+        mode: "ids",
+        transactionIds: ["tx-1"],
+      });
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      // And the count reports what the database removed, not what the pre-read
+      // hoped to remove.
+      expect(result.deleted).toBe(0);
     });
 
     it("does not adjust balance for VOID transactions", async () => {

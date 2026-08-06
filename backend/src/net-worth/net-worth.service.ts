@@ -1,10 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, In, LessThanOrEqual } from "typeorm";
 import {
   runOutsideActiveScopedManager,
   withScopedDb,
 } from "../common/db/scoped-db";
-import { withUserContext } from "../common/db/with-context";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { MonthlyAccountBalance } from "./entities/monthly-account-balance.entity";
 import {
   Account,
@@ -85,6 +87,18 @@ export class NetWorthService {
   >();
   private static readonly RECALC_DEBOUNCE_MS = 2000;
 
+  /**
+   * How stale a snapshot may be, relative to its account's last change, before
+   * the sweep recomputes it.
+   *
+   * Comfortably longer than the debounce plus a slow recalc, so the sweep does
+   * not race the timer that is about to do the same work.
+   */
+  private static readonly STALE_SNAPSHOT_GRACE_MS = 10 * 60 * 1000;
+
+  /** Accounts recomputed per sweep, so a broken deployment cannot melt the pool. */
+  private static readonly STALE_SWEEP_BATCH = 200;
+
   constructor(private dataSource: DataSource) {}
 
   /**
@@ -97,7 +111,17 @@ export class NetWorthService {
     return withScopedDb(this.dataSource, (m) => m.query(sql, params));
   }
 
-  /** Debounced trigger for recalculating a single account's net worth snapshots. */
+  /**
+   * Debounced trigger for recalculating a single account's net worth snapshots.
+   *
+   * The timer lives in this process's memory, so it is a latency optimization and
+   * nothing more: a pod killed in the two seconds before it fires, or a recalc
+   * that throws, loses the work with only a `warn` to show for it, and the
+   * snapshots then disagree with the ledger until something else happens to
+   * touch the account (audit DR-04-03). `sweepStaleSnapshots` is what makes that
+   * recoverable -- it finds the disagreement in the data rather than needing a
+   * queue entry that the same crash would have lost.
+   */
   triggerDebouncedRecalc(accountId: string, userId: string): void {
     const key = `${userId}:${accountId}`;
     const existing = this.recalcTimers.get(key);
@@ -128,13 +152,121 @@ export class NetWorthService {
   }
 
   async recalculateAccount(userId: string, accountId: string): Promise<void> {
-    const account = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).findOne({
-        where: { id: accountId, userId },
-      }),
-    );
-    if (!account) return;
+    await withScopedDb(this.dataSource, async (m) => {
+      // The lock first, then every read the snapshots are derived from, then the
+      // delete-and-reinsert -- all in this transaction.
+      //
+      // Previously the monthly sums were read in one autocommit transaction and
+      // written in another. Under READ COMMITTED that is two statement snapshots:
+      // a transaction committing between them produced snapshots that did not
+      // include it, permanently, until something else triggered a recalc. Two
+      // concurrent recalcs of the same account were worse -- whichever wrote
+      // second won, and it might be the one that read first, so the newer data
+      // lost. Same protocol as every other absolute recomputation here: advisory
+      // and row locks before the read they protect (see common/db/locks.ts).
+      await lockAccountsForBalanceWrite(m, [accountId]);
 
+      const account = await m.getRepository(Account).findOne({
+        where: { id: accountId, userId },
+      });
+      if (!account) return;
+
+      await this.recalculateLockedAccount(userId, account);
+    });
+  }
+
+  /**
+   * Recompute snapshots that no longer agree with their account.
+   *
+   * The debounce timer is process memory, so every way it can be lost -- a pod
+   * killed inside the two-second window, a recalc that throws, a rolling deploy
+   * -- leaves snapshots that disagree with the ledger and nothing that will ever
+   * notice. A durable work queue would not help: the crash that loses the timer
+   * loses the enqueue too, unless the enqueue joins the caller's transaction, and
+   * then every write path has to know about net worth.
+   *
+   * So the staleness is *derived* rather than recorded. Every write that can
+   * change a snapshot also moves the account's `current_balance` in the same
+   * transaction, so `accounts.updated_at` is a timestamp the account itself keeps
+   * -- and the snapshots are a delete-and-reinsert, so their `updated_at` is when
+   * they were last computed. An account whose row is newer than its own snapshots
+   * by more than the grace period was missed.
+   *
+   * This is the idempotent-predicate mechanism from `docs/cron-jobs.md`: two
+   * replicas racing the sweep recompute the same accounts from scratch, under the
+   * per-account lock, and the loser's work is simply redundant. Accounts with no
+   * snapshots at all are deliberately not swept -- there is nothing to compare
+   * against, and including them would recompute every empty account forever.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async sweepStaleSnapshots(): Promise<void> {
+    try {
+      const stale = await withSystemContext(() =>
+        withScopedDb(this.dataSource, (m) =>
+          m.query(
+            `SELECT a.user_id, a.id AS account_id
+               FROM accounts a
+               JOIN (
+                 SELECT account_id, MAX(updated_at) AS computed_at
+                   FROM monthly_account_balances
+                  GROUP BY account_id
+               ) s ON s.account_id = a.id
+              WHERE a.updated_at > s.computed_at + ($1::text || ' milliseconds')::interval
+              ORDER BY a.updated_at
+              LIMIT $2`,
+            [
+              String(NetWorthService.STALE_SNAPSHOT_GRACE_MS),
+              NetWorthService.STALE_SWEEP_BATCH,
+            ],
+          ),
+        ),
+      );
+
+      if (stale.length === 0) return;
+
+      this.logger.log(
+        `Recomputing ${stale.length} account(s) whose net-worth snapshots fell behind`,
+      );
+      if (stale.length === NetWorthService.STALE_SWEEP_BATCH) {
+        // Say so rather than letting a truncated pass read as "all caught up".
+        this.logger.warn(
+          `Stale snapshot sweep hit its batch limit of ${NetWorthService.STALE_SWEEP_BATCH}; more remain for the next pass`,
+        );
+      }
+
+      for (const row of stale as Array<{
+        user_id: string;
+        account_id: string;
+      }>) {
+        try {
+          await withUserContext(row.user_id, () =>
+            this.recalculateAccount(row.user_id, row.account_id),
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Stale snapshot recompute failed for account ${row.account_id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Stale snapshot sweep failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  /**
+   * Dispatch for an account whose row is already locked inside the ambient
+   * transaction. The two branches' own `withScopedDb`/`scopedQuery` calls join it.
+   */
+  private async recalculateLockedAccount(
+    userId: string,
+    account: Account,
+  ): Promise<void> {
     if (this.isBrokerageOrStandaloneInvestment(account)) {
       await this.recalculateBrokerageAccount(userId, account);
     } else {
@@ -152,11 +284,10 @@ export class NetWorthService {
     await Promise.all(
       accounts.map(async (account) => {
         try {
-          if (this.isBrokerageOrStandaloneInvestment(account)) {
-            await this.recalculateBrokerageAccount(userId, account);
-          } else {
-            await this.recalculateRegularAccount(userId, account);
-          }
+          // One locked transaction per account, exactly as the single-account
+          // path: a full-user rebuild racing an ordinary edit must not write a
+          // snapshot derived from rows that changed while it was reading.
+          await this.recalculateAccount(userId, account.id);
         } catch (err) {
           this.logger.warn(
             `Failed to recalculate account ${account.id}: ${err.message}`,

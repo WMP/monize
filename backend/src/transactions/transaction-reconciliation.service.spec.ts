@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { TransactionReconciliationService } from "./transaction-reconciliation.service";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { AccountsService } from "../accounts/accounts.service";
@@ -9,9 +9,21 @@ import {
   createScopedDbMocks,
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
+import { lockTransactionRow } from "../common/db/locks";
+import {
+  lockedTransactionRow,
+  stubLockedTransactions,
+} from "../test-helpers/locks-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
+);
+
+// The status a guard refuses on and the status a balance delta is derived from
+// are the same value, read under the write's own lock. A spec says what the
+// committed row holds; see test-helpers/locks-testing.
+jest.mock("../common/db/locks", () =>
+  jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
 
 jest.mock("../common/date-utils", () => ({
@@ -66,6 +78,37 @@ describe("TransactionReconciliationService", () => {
     } as Transaction;
   };
 
+  /**
+   * Build a transaction AND stage it as the row the service locks.
+   *
+   * The service takes an id and re-reads the row inside its own transaction, so
+   * a spec has to say what the committed row holds. Doing it here rather than at
+   * each call site keeps every existing scenario describing the same thing: the
+   * committed row is the one the test built.
+   */
+  const stageTransaction = (
+    overrides: Partial<Transaction> = {},
+  ): Transaction => {
+    const transaction = makeTransaction(overrides);
+    stubLockedTransactions(
+      {
+        lockTransactionRow: lockTransactionRow as jest.Mock,
+        lockTransactionRows: jest.fn(),
+      },
+      [
+        lockedTransactionRow({
+          id: transaction.id,
+          accountId: transaction.accountId,
+          amount: Number(transaction.amount),
+          transactionDate: String(transaction.transactionDate),
+          status: transaction.status,
+          isSplit: transaction.isSplit,
+        }),
+      ],
+    );
+    return transaction;
+  };
+
   beforeEach(async () => {
     mockedIsTransactionInFuture.mockReturnValue(false);
 
@@ -114,7 +157,7 @@ describe("TransactionReconciliationService", () => {
 
   describe("updateStatus", () => {
     it("updates status from UNRECONCILED to CLEARED without balance change", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
       const updatedTx = makeTransaction({
@@ -123,9 +166,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.updateStatus(
-        transaction,
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -140,7 +183,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("adds balance back when transitioning from VOID to non-VOID", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
         amount: 250,
       });
@@ -151,9 +194,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -166,7 +209,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("subtracts balance when transitioning from non-VOID to VOID", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
         amount: 300,
       });
@@ -177,9 +220,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -192,7 +235,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not change balance when staying VOID", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
       });
       mockFindOne.mockResolvedValue(
@@ -200,9 +243,9 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -212,7 +255,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not trigger net worth recalc when VOID status does not change", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
       mockFindOne.mockResolvedValue(
@@ -220,9 +263,9 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -234,7 +277,7 @@ describe("TransactionReconciliationService", () => {
       const now = new Date(2026, 1, 10);
       jest.useFakeTimers({ now });
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
       });
       mockFindOne.mockResolvedValue(
@@ -242,17 +285,17 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.RECONCILED,
         userId,
+        transaction.id,
+        TransactionStatus.RECONCILED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
 
+      // One UPDATE, not two: the status and the reconciled date are the same
+      // transition, applied together under the row lock.
       expect(transactionsRepository.update).toHaveBeenCalledWith("tx-1", {
         status: TransactionStatus.RECONCILED,
-      });
-      expect(transactionsRepository.update).toHaveBeenCalledWith("tx-1", {
         reconciledDate: "2026-02-10",
       });
 
@@ -260,16 +303,16 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not set reconciledDate when already RECONCILED", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
         reconciledDate: "2026-01-01",
       });
       mockFindOne.mockResolvedValue(transaction);
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.RECONCILED,
         userId,
+        transaction.id,
+        TransactionStatus.RECONCILED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -282,7 +325,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not set reconciledDate when transitioning to a non-RECONCILED status", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
       mockFindOne.mockResolvedValue(
@@ -290,9 +333,9 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -305,7 +348,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("handles negative transaction amounts correctly for VOID transitions", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
         amount: -75.5,
       });
@@ -314,9 +357,9 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -334,10 +377,11 @@ describe("TransactionReconciliationService", () => {
       });
       mockFindOne.mockResolvedValue(updatedTx);
 
+      const transaction = stageTransaction();
       const result = await service.updateStatus(
-        makeTransaction(),
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -346,7 +390,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("commits the status change and balance update in a single transaction", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
         amount: 250,
       });
@@ -355,9 +399,9 @@ describe("TransactionReconciliationService", () => {
       );
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -367,7 +411,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("rolls back and does not commit when the balance update fails", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
         amount: 250,
       });
@@ -377,9 +421,9 @@ describe("TransactionReconciliationService", () => {
 
       await expect(
         service.updateStatus(
-          transaction,
-          TransactionStatus.CLEARED,
           userId,
+          transaction.id,
+          TransactionStatus.CLEARED,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -393,7 +437,7 @@ describe("TransactionReconciliationService", () => {
 
   describe("markCleared", () => {
     it("marks an UNRECONCILED transaction as CLEARED", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
       const updatedTx = makeTransaction({
@@ -402,9 +446,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.markCleared(
-        transaction,
-        true,
         userId,
+        transaction.id,
+        true,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -416,7 +460,7 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("marks a CLEARED transaction as UNRECONCILED when isCleared is false", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
       });
       const updatedTx = makeTransaction({
@@ -425,9 +469,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.markCleared(
-        transaction,
-        false,
         userId,
+        transaction.id,
+        false,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -439,24 +483,24 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("throws when transaction is RECONCILED", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
       });
 
       await expect(
         service.markCleared(
-          transaction,
-          true,
           userId,
+          transaction.id,
+          true,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
       ).rejects.toThrow(BadRequestException);
       await expect(
         service.markCleared(
-          transaction,
-          true,
           userId,
+          transaction.id,
+          true,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -466,24 +510,24 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("throws when transaction is VOID", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
       });
 
       await expect(
         service.markCleared(
-          transaction,
-          false,
           userId,
+          transaction.id,
+          false,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
       ).rejects.toThrow(BadRequestException);
       await expect(
         service.markCleared(
-          transaction,
-          false,
           userId,
+          transaction.id,
+          false,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -493,15 +537,15 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not call updateStatus when validation fails", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
       });
 
       await expect(
         service.markCleared(
-          transaction,
-          true,
           userId,
+          transaction.id,
+          true,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -516,7 +560,7 @@ describe("TransactionReconciliationService", () => {
     it("reconciles an UNRECONCILED transaction", async () => {
       jest.useFakeTimers({ now: new Date(2026, 0, 20) });
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
       const updatedTx = makeTransaction({
@@ -526,14 +570,17 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.reconcile(
-        transaction,
         userId,
+        transaction.id,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
 
+      // One UPDATE, not two: the status and the reconciled date are the same
+      // transition, applied together under the row lock.
       expect(transactionsRepository.update).toHaveBeenCalledWith("tx-1", {
         status: TransactionStatus.RECONCILED,
+        reconciledDate: "2026-01-20",
       });
       expect(result).toEqual(updatedTx);
 
@@ -543,7 +590,7 @@ describe("TransactionReconciliationService", () => {
     it("reconciles a CLEARED transaction", async () => {
       jest.useFakeTimers({ now: new Date(2026, 0, 20) });
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
       });
       const updatedTx = makeTransaction({
@@ -552,14 +599,17 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.reconcile(
-        transaction,
         userId,
+        transaction.id,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
 
+      // One UPDATE, not two: the status and the reconciled date are the same
+      // transition, applied together under the row lock.
       expect(transactionsRepository.update).toHaveBeenCalledWith("tx-1", {
         status: TransactionStatus.RECONCILED,
+        reconciledDate: "2026-01-20",
       });
       expect(result).toEqual(updatedTx);
 
@@ -567,22 +617,22 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("throws when transaction is already RECONCILED", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
       });
 
       await expect(
         service.reconcile(
-          transaction,
           userId,
+          transaction.id,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
       ).rejects.toThrow(BadRequestException);
       await expect(
         service.reconcile(
-          transaction,
           userId,
+          transaction.id,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -590,22 +640,22 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("throws when transaction is VOID", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
       });
 
       await expect(
         service.reconcile(
-          transaction,
           userId,
+          transaction.id,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
       ).rejects.toThrow(BadRequestException);
       await expect(
         service.reconcile(
-          transaction,
           userId,
+          transaction.id,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -613,14 +663,14 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("does not call repository when validation fails", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
       });
 
       await expect(
         service.reconcile(
-          transaction,
           userId,
+          transaction.id,
           mockTriggerNetWorthRecalc,
           mockFindOne,
         ),
@@ -632,7 +682,7 @@ describe("TransactionReconciliationService", () => {
 
   describe("unreconcile", () => {
     it("sets status to CLEARED and clears reconciledDate", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.RECONCILED,
         reconciledDate: "2026-01-15",
       });
@@ -643,8 +693,8 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.unreconcile(
-        transaction,
         userId,
+        transaction.id,
         mockFindOne,
       );
 
@@ -657,51 +707,51 @@ describe("TransactionReconciliationService", () => {
     });
 
     it("throws when transaction is not RECONCILED (UNRECONCILED)", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
       });
 
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow("Transaction is not reconciled");
     });
 
     it("throws when transaction is not RECONCILED (CLEARED)", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
       });
 
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow("Transaction is not reconciled");
     });
 
     it("throws when transaction is not RECONCILED (VOID)", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
       });
 
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow("Transaction is not reconciled");
     });
 
     it("does not call repository when validation fails", async () => {
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
       });
 
       await expect(
-        service.unreconcile(transaction, userId, mockFindOne),
+        service.unreconcile(userId, transaction.id, mockFindOne),
       ).rejects.toThrow(BadRequestException);
 
       expect(transactionsRepository.update).not.toHaveBeenCalled();
@@ -852,6 +902,85 @@ describe("TransactionReconciliationService", () => {
     });
   });
 
+  describe("compare-and-set against the committed status", () => {
+    /**
+     * The regression guard for the class of bug the id-taking signature exists to
+     * prevent. Each of these hands the service a scenario where the caller's view
+     * of the status is stale, and asserts the *committed* status decides.
+     */
+    it("refuses to unreconcile a row another request has voided", async () => {
+      // Caller believed RECONCILED; the committed row is VOID. Before the locked
+      // re-read, `wasVoid` came from the snapshot and said false, so no balance
+      // adjustment ran -- while the status went VOID -> CLEARED, putting the
+      // amount back in the ledger with nothing putting it back in the balance.
+      stageTransaction({ status: TransactionStatus.VOID, amount: 250 });
+
+      await expect(
+        service.unreconcile(userId, "tx-1", mockFindOne),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("refuses to change cleared status on a row another request has voided", async () => {
+      stageTransaction({ status: TransactionStatus.VOID, amount: 250 });
+
+      await expect(
+        service.markCleared(
+          userId,
+          "tx-1",
+          true,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("derives the un-void balance delta from the locked row's amount", async () => {
+      // The amount that goes back into the balance is the committed one, not one
+      // the caller read before another request edited it.
+      stageTransaction({ status: TransactionStatus.VOID, amount: 250 });
+      mockFindOne.mockResolvedValue(makeTransaction());
+
+      await service.updateStatus(
+        userId,
+        "tx-1",
+        TransactionStatus.CLEARED,
+        mockTriggerNetWorthRecalc,
+        mockFindOne,
+      );
+
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        accountId,
+        250,
+      );
+    });
+
+    it("throws NotFound when the row is gone by the time it is locked", async () => {
+      stubLockedTransactions(
+        {
+          lockTransactionRow: lockTransactionRow as jest.Mock,
+          lockTransactionRows: jest.fn(),
+        },
+        [],
+      );
+
+      await expect(
+        service.updateStatus(
+          userId,
+          "tx-1",
+          TransactionStatus.CLEARED,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
   describe("bulkReconcile", () => {
     let mockQueryBuilder: Record<string, jest.Mock>;
 
@@ -861,6 +990,11 @@ describe("TransactionReconciliationService", () => {
         andWhere: jest.fn().mockReturnThis(),
         update: jest.fn().mockReturnThis(),
         set: jest.fn().mockReturnThis(),
+        // The VOID exclusion is a refusal, so the rows are locked in ascending
+        // id order and re-checked against the status this statement is about to
+        // overwrite.
+        orderBy: jest.fn().mockReturnThis(),
+        setLock: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([]),
         execute: jest.fn().mockResolvedValue({ affected: 0 }),
       };
@@ -993,7 +1127,7 @@ describe("TransactionReconciliationService", () => {
     it("does NOT call updateBalance when voiding a future-dated transaction", async () => {
       mockedIsTransactionInFuture.mockReturnValue(true);
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.CLEARED,
         amount: 300,
         transactionDate: "2027-06-15",
@@ -1006,9 +1140,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -1024,7 +1158,7 @@ describe("TransactionReconciliationService", () => {
     it("does NOT call updateBalance when unvoiding a future-dated transaction", async () => {
       mockedIsTransactionInFuture.mockReturnValue(true);
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.VOID,
         amount: 250,
         transactionDate: "2027-06-15",
@@ -1037,9 +1171,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       await service.updateStatus(
-        transaction,
-        TransactionStatus.CLEARED,
         userId,
+        transaction.id,
+        TransactionStatus.CLEARED,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
@@ -1055,7 +1189,7 @@ describe("TransactionReconciliationService", () => {
     it("still updates the status even for future-dated transactions", async () => {
       mockedIsTransactionInFuture.mockReturnValue(true);
 
-      const transaction = makeTransaction({
+      const transaction = stageTransaction({
         status: TransactionStatus.UNRECONCILED,
         amount: -75.5,
         transactionDate: "2027-06-15",
@@ -1068,9 +1202,9 @@ describe("TransactionReconciliationService", () => {
       mockFindOne.mockResolvedValue(updatedTx);
 
       const result = await service.updateStatus(
-        transaction,
-        TransactionStatus.VOID,
         userId,
+        transaction.id,
+        TransactionStatus.VOID,
         mockTriggerNetWorthRecalc,
         mockFindOne,
       );
