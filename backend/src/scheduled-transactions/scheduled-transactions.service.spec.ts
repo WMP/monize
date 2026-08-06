@@ -1114,6 +1114,35 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).not.toHaveBeenCalled();
     });
 
+    it("does not send currency codes, leaving the transfer service to derive them (P5-002)", async () => {
+      // A schedule stores only its source currency. Sending that as
+      // `fromCurrencyCode` with no target currency, rate or destination amount
+      // is what made a cross-currency scheduled transfer post at 1:1 with the
+      // destination row labelled in the source's currency.
+      //
+      // Sending the stored code and nothing else is also fragile the other way:
+      // if the account's currency has since changed, the stored code is stale
+      // and the posting would now be rejected. The accounts are the authority,
+      // so neither code is sent at all.
+      const scheduled = makeScheduled({
+        isTransfer: true,
+        transferAccountId: "acc-2",
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder(null);
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+      accountsRepo.findOne.mockResolvedValue(null);
+
+      await service.post(userId, stId);
+
+      const dto = transactionsService.createTransfer.mock.calls[0][1];
+      expect(dto).not.toHaveProperty("fromCurrencyCode");
+      expect(dto).not.toHaveProperty("toCurrencyCode");
+      expect(dto).not.toHaveProperty("exchangeRate");
+      expect(dto).not.toHaveProperty("toAmount");
+    });
+
     it("forwards the schedule's category to createTransfer (#743)", async () => {
       const scheduled = makeScheduled({
         isTransfer: true,

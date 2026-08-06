@@ -65,6 +65,32 @@ example table, the staged rollout of nullable response totals, and the recorded
 decision on look-ahead before the rate history begins.
 `backend/src/common/fx-fallback.guard.spec.ts` scans for a new silent fallback.
 
+### 1.2 A currency code is a fact about an account, not a request field
+
+A transaction's `amount` and `currencyCode` are the account-currency pair; a
+foreign entry lives in `originalAmount` / `originalCurrencyCode` /
+`exchangeRate`, which is what shows a mismatched primary code is not an
+alternative supported shape. Derive the code from the account and reject a
+request that names a different one -- `assertTransactionCurrencyMatchesAccount`
+(`backend/src/common/fx-entry.util.ts`) is the single check.
+
+The same holds for both sides of a transfer, and for a transfer's destination
+amount:
+
+- Same currency on both sides: the destination amount equals the source amount.
+  No rate and no fee can make a same-currency transfer unequal, so an explicit
+  destination amount that disagrees is a rejection, not an override.
+- Different currencies: an explicit destination amount is honoured (a bank's real
+  settlement figure legitimately differs from spot by fees) and its implied rate
+  is stored; otherwise the rate is resolved server-side and a pair with no
+  determinable rate is refused rather than posted at par.
+- A preview resolves the rate the same way the commit does. A preview showing a
+  figure the commit will not post is the same defect as a wrong figure.
+
+A caller that stores only one side's currency -- a scheduled transaction -- sends
+neither code and lets the service derive both. Sending a stored code risks it
+having gone stale, which now fails the posting rather than corrupting it.
+
 ## 2. Cost basis and tax
 
 Realized result is market value minus cost basis; tax applies only to gains.

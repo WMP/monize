@@ -236,11 +236,64 @@ applicable. `backend/src/common/fx-fallback.guard.spec.ts` scans for a new silen
 fallback; `docs/specs/fx-conversion-completeness.md` has the invariants and the
 staged rollout of nullable response totals.
 
+### A currency code is derived from the account, not accepted from the request
+
+`amount` and `currencyCode` on a transaction are the account-currency pair --
+foreign entry belongs in `originalAmount`/`originalCurrencyCode`/`exchangeRate`.
+Nothing checked it, so `amount=100, currencyCode=USD` against a EUR account moved
+the balance 100 EUR and stored a row reporting 100 USD; both fields persist, so it
+survived into every report and every backup. Derive with
+`assertTransactionCurrencyMatchesAccount` (`backend/src/common/fx-entry.util.ts`),
+which rejects a mismatch.
+
+A transfer is the same rule twice, plus conservation: two same-currency accounts
+must move the same amount (no rate or fee can make that unequal, so an explicit
+destination amount that disagrees is a rejection, not an override), and a
+cross-currency pair resolves its rate server-side or refuses. A caller holding
+only one side's currency -- a scheduled transaction -- sends neither code.
+
+### A preview computes what the commit will do, through the same code
+
+A preview that resolves a rate as `?? 1` while the commit resolves a real one has
+the user approve one figure and receive another. This has happened twice: an
+investment preview multiplied cash impact by a zero rate the commit then treated
+as 1, and a transfer preview passed the source amount through for a
+cross-currency pair. Call the same resolver from both.
+
 ### Missing data: a subtotal is not a total (CRITICAL)
 
 A field named `total*`, `portfolioValue`, `transferValue`, `gain`, `tax`, or `estimated*` may only carry a value when **every** component of the calculation is known. Filtering out `null` components and summing the rest produces a subtotal, not a total -- if any component is unknown, the total is `null`, and the partial sum, if returned at all, goes in a separate explicitly named field (`knownMarketValueSubtotal`), never in the total's field. Never default an unknown price, cost basis, or rate to `0` (or an exchange rate to `1`) to keep a formula running, and never treat a missing period price as a 0% return.
 
 **`null` is not the safe answer either.** It means "not known", so a state that *is* known must not use it: empty accounts hold zero, move zero, realize zero and owe zero, and reporting those as unknown tells the user a settled question could not be worked out -- while making "nothing to do" indistinguishable from "cannot compute". Decide which of the two each branch is in before writing it.
+
+### An account, its currency, its rate and its amount are one tuple
+
+Persist all of it or none of it. Moving a transfer's destination leg to an account
+in another currency wrote the account, the currency and the newly resolved rate,
+and left the old destination *number* behind -- 90 GBP at 0.80 against a 100 USD
+source, with the balance already moved by 80, so the next recompute changed the
+account by the difference with no user action behind it. Key the write on "did this
+edit re-price the transfer", never on which request fields happened to be present.
+
+### A change is a value difference, not a field being present
+
+The transfer form resends the current accounts, amount and rate on every save, so
+`updateDto.amount !== undefined` does not mean the amount changed. Keying repricing
+off presence made an idempotent full-form payload restate a settled 90 EUR
+destination as 80 and move the balance with it -- from a request whose only real edit
+was a description. Compare against what the row holds. This is the same mistake as
+using one leg's state for both ledgers: asking a question the data can answer instead
+of the one that matters.
+
+### A presentation-only edit does not re-resolve a rate
+
+Renaming a transfer's description re-resolved FX and stored today's rate beside an
+unchanged destination amount, making the row internally inconsistent -- and refused
+the rename outright when the pair had no current rate, though the transfer already
+held a valid settlement. Resolve only when the financial structure changes: either
+account, the source amount, an explicit destination amount, an explicit rate. A
+date correction is not a re-pricing; the rate a transfer settled at is a fact about
+the transfer.
 
 ### A completeness flag covers every total it is documented to cover, on every surface
 

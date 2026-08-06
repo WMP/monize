@@ -232,7 +232,8 @@
     "demoModeRestricted": "Diese Aktion ist im Demo-Modus nicht verfügbar.",
     "serviceNotReady": "Dienst nicht bereit",
     "oauthProviderNotInitialized": "OAuth-Anbieter nicht initialisiert",
-    "invalidCurrencyCode": "Ungültiger Währungscode: {{ code }}"
+    "invalidCurrencyCode": "Ungültiger Währungscode: {{ code }}",
+    "splitSignMismatch": "Aufteilungsbeträge müssen dasselbe Vorzeichen wie der Transaktionsbetrag ({{ roundedAmount }}) haben"
   },
   "currencies": {
     "alreadyInList": "Währung \"{{ code }}\" ist bereits in Ihrer Liste",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Ein Name für die Anlageklasse ist erforderlich.",
     "documentNotFound": "Dokument nicht gefunden",
     "selectionNotFound": "Eine oder mehrere der ausgewählten Wertpapiere wurden nicht gefunden",
-    "comparisonSelectionEmpty": "Wählen Sie mindestens ein Wertpapier oder einen Marktindex zum Vergleich aus"
+    "comparisonSelectionEmpty": "Wählen Sie mindestens ein Wertpapier oder einen Marktindex zum Vergleich aus",
+    "exchangeRateNotPositive": "Der Wechselkurs muss größer als null sein"
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount und originalCurrencyCode müssen zusammen angegeben werden",
     "fxRateRequired": "Für eine Fremdwährungstransaktion ist ein positiver Wechselkurs erforderlich",
     "fxSignMismatch": "originalAmount und amount müssen dasselbe Vorzeichen haben",
-    "jointAccountMoveLocked": "Buchungen in einem geteilten Konto können nicht in ein anderes Konto verschoben werden."
+    "jointAccountMoveLocked": "Buchungen in einem geteilten Konto können nicht in ein anderes Konto verschoben werden.",
+    "currencyMustMatchAccount": "Transaktionswährung {{ supplied }} muss der Kontowährung {{ account }} entsprechen. Verwenden Sie originalAmount und originalCurrencyCode für eine Fremdwährungsbuchung.",
+    "transferSameCurrencyMustConserve": "Eine Übertragung zwischen zwei {{ currency }}-Konten muss auf beiden Seiten denselben Betrag bewegen",
+    "transferSameCurrencyRateMustBeOne": "Eine Übertragung zwischen zwei {{ currency }}-Konten kann keinen Wechselkurs außer 1 haben",
+    "transferRateUnavailable": "Für {{ from }} -> {{ to }} konnte kein Wechselkurs ermittelt werden. Geben Sie einen exchangeRate oder einen Zielbetrag an, damit die Übertragung korrekt gebucht wird.",
+    "transferAmountsMustAgreeOnZero": "Eine Übertragung muss auf beiden Seiten einen Betrag ungleich null bewegen oder auf beiden Seiten null",
+    "transferImpliedRateInvalid": "Der Zielbetrag ergibt im Verhältnis zum Ausgangsbetrag einen unbrauchbaren Wechselkurs"
   },
   "users": {
     "userNotFound": "Benutzer nicht gefunden",

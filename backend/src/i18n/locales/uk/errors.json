@@ -232,7 +232,8 @@
     "demoModeRestricted": "Ця дія недоступна в демонстраційному режимі.",
     "serviceNotReady": "Служба не готова",
     "oauthProviderNotInitialized": "Постачальника OAuth не ініціалізовано",
-    "invalidCurrencyCode": "Недійсний код валюти: {{ code }}"
+    "invalidCurrencyCode": "Недійсний код валюти: {{ code }}",
+    "splitSignMismatch": "Суми розподілу повинні мати той самий знак, що й сума операції ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "Валюта «{{ code }}» вже є у вашому списку",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Потрібна назва класу активів.",
     "documentNotFound": "Документ не знайдено",
     "selectionNotFound": "Один або кілька вибраних паперів не знайдено",
-    "comparisonSelectionEmpty": "Виберіть щонайменше один папір або ринковий індекс для порівняння"
+    "comparisonSelectionEmpty": "Виберіть щонайменше один папір або ринковий індекс для порівняння",
+    "exchangeRateNotPositive": "Курс обміну має бути більшим за нуль"
   },
   "tags": {
     "notFound": "Тег з ідентифікатором {{ id }} не знайдено",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount і originalCurrencyCode потрібно вказувати разом",
     "fxRateRequired": "Для операції в іноземній валюті потрібен додатний курс обміну",
     "fxSignMismatch": "originalAmount і amount повинні мати однаковий знак",
-    "jointAccountMoveLocked": "Транзакції спільного рахунку не можна перемістити на інший рахунок."
+    "jointAccountMoveLocked": "Транзакції спільного рахунку не можна перемістити на інший рахунок.",
+    "currencyMustMatchAccount": "Валюта операції {{ supplied }} має відповідати валюті рахунку {{ account }}. Для запису в іноземній валюті використовуйте originalAmount і originalCurrencyCode.",
+    "transferSameCurrencyMustConserve": "Переказ між двома рахунками в {{ currency }} має переміщувати однакову суму з обох боків",
+    "transferSameCurrencyRateMustBeOne": "Переказ між двома рахунками в {{ currency }} не може мати курс, відмінний від 1",
+    "transferRateUnavailable": "Не вдалося визначити курс для {{ from }} -> {{ to }}. Укажіть exchangeRate або суму зарахування, щоб переказ було проведено правильно.",
+    "transferAmountsMustAgreeOnZero": "Переказ має переміщувати ненульову суму з обох сторін або нуль з обох сторін",
+    "transferImpliedRateInvalid": "Сума зарахування дає непридатний курс обміну щодо суми списання"
   },
   "users": {
     "userNotFound": "Користувача не знайдено",

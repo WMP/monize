@@ -1642,7 +1642,12 @@ export class ScheduledTransactionsService {
         toAccountId: scheduled.transferAccountId,
         amount: Math.abs(finalAmount),
         transactionDate: postDate,
-        fromCurrencyCode: scheduled.currencyCode,
+        // Currency codes are deliberately not sent: the transfer service derives
+        // both from the accounts. A schedule stores only its source currency, so
+        // supplying that and nothing else is what made a cross-currency
+        // scheduled transfer post at 1:1 with the destination row mislabelled
+        // (audit P5-002). Sending a stored code that has since gone stale would
+        // now fail the posting instead, which is no better.
         description: finalDescription || undefined,
         referenceNumber: postDto?.referenceNumber || undefined,
         payeeId: scheduled.payeeId || undefined,

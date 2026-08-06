@@ -232,7 +232,8 @@
     "demoModeRestricted": "यह क्रिया डेमो मोड में उपलब्ध नहीं है।",
     "serviceNotReady": "सेवा तैयार नहीं है",
     "oauthProviderNotInitialized": "OAuth प्रदाता प्रारंभ नहीं किया गया",
-    "invalidCurrencyCode": "अमान्य मुद्रा कोड: {{ code }}"
+    "invalidCurrencyCode": "अमान्य मुद्रा कोड: {{ code }}",
+    "splitSignMismatch": "विभाजन राशियों का चिह्न लेन-देन राशि ({{ roundedAmount }}) के समान होना चाहिए"
   },
   "currencies": {
     "alreadyInList": "मुद्रा \"{{ code }}\" पहले से आपकी सूची में है",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "एसेट क्लास का नाम आवश्यक है।",
     "documentNotFound": "दस्तावेज़ नहीं मिला",
     "selectionNotFound": "चयनित प्रतिभूतियों में से एक या अधिक नहीं मिलीं",
-    "comparisonSelectionEmpty": "तुलना के लिए कम से कम एक प्रतिभूति या बाज़ार सूचकांक चुनें"
+    "comparisonSelectionEmpty": "तुलना के लिए कम से कम एक प्रतिभूति या बाज़ार सूचकांक चुनें",
+    "exchangeRateNotPositive": "विनिमय दर शून्य से अधिक होनी चाहिए"
   },
   "tags": {
     "notFound": "ID {{ id }} वाला टैग नहीं मिला",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount और originalCurrencyCode एक साथ दिए जाने चाहिए",
     "fxRateRequired": "विदेशी मुद्रा लेनदेन के लिए एक धनात्मक विनिमय दर आवश्यक है",
     "fxSignMismatch": "originalAmount और amount का चिह्न समान होना चाहिए",
-    "jointAccountMoveLocked": "साझा खाते के लेनदेन किसी अन्य खाते में नहीं ले जाए जा सकते।"
+    "jointAccountMoveLocked": "साझा खाते के लेनदेन किसी अन्य खाते में नहीं ले जाए जा सकते।",
+    "currencyMustMatchAccount": "लेन-देन मुद्रा {{ supplied }} खाते की मुद्रा {{ account }} से मेल खानी चाहिए। विदेशी मुद्रा प्रविष्टि के लिए originalAmount और originalCurrencyCode का उपयोग करें।",
+    "transferSameCurrencyMustConserve": "दो {{ currency }} खातों के बीच स्थानांतरण में दोनों ओर समान राशि होनी चाहिए",
+    "transferSameCurrencyRateMustBeOne": "दो {{ currency }} खातों के बीच स्थानांतरण में 1 के अलावा कोई विनिमय दर नहीं हो सकती",
+    "transferRateUnavailable": "{{ from }} -> {{ to }} के लिए विनिमय दर निर्धारित नहीं की जा सकी। स्थानांतरण सही तरीके से दर्ज करने के लिए exchangeRate या गंतव्य राशि दें।",
+    "transferAmountsMustAgreeOnZero": "स्थानांतरण को दोनों ओर शून्य से भिन्न राशि ले जानी चाहिए, या दोनों ओर शून्य",
+    "transferImpliedRateInvalid": "गंतव्य राशि स्रोत राशि की तुलना में अनुपयोगी विनिमय दर दर्शाती है"
   },
   "users": {
     "userNotFound": "उपयोगकर्ता नहीं मिला",

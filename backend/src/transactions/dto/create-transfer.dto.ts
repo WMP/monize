@@ -38,15 +38,17 @@ export class CreateTransferDto {
   @Max(999999999999)
   amount: number;
 
-  @ApiProperty({
-    description: "Currency code of source account (e.g., CAD, USD)",
+  @ApiPropertyOptional({
+    description:
+      "Currency code of the source account. Optional: the server derives both currency codes from the accounts themselves. When supplied it must match the source account's currency, or the request is rejected.",
   })
+  @IsOptional()
   @IsCurrencyCode()
-  fromCurrencyCode: string;
+  fromCurrencyCode?: string;
 
   @ApiPropertyOptional({
     description:
-      "Currency code of destination account (defaults to fromCurrencyCode)",
+      "Currency code of the destination account. Optional and derived from the account, as above.",
   })
   @IsOptional()
   @IsCurrencyCode()

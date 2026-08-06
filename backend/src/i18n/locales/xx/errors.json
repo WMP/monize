@@ -240,7 +240,8 @@
     "demoModeRestricted": "[XX-This action is not available in demo mode.-XX]",
     "serviceNotReady": "[XX-Service not ready-XX]",
     "oauthProviderNotInitialized": "[XX-OAuth provider not initialized-XX]",
-    "invalidCurrencyCode": "[XX-Invalid currency code: {{ code }}-XX]"
+    "invalidCurrencyCode": "[XX-Invalid currency code: {{ code }}-XX]",
+    "splitSignMismatch": "[XX-Split amounts must have the same sign as the transaction amount ({{ roundedAmount }})-XX]"
   },
   "currencies": {
     "alreadyInList": "[XX-Currency \"{{ code }}\" is already in your list-XX]",
@@ -442,7 +443,8 @@
     "noUpdateFields": "[XX-Provide at least one field to change.-XX]",
     "documentNotFound": "[XX-Document not found-XX]",
     "selectionNotFound": "[XX-One or more of the selected securities could not be found-XX]",
-    "comparisonSelectionEmpty": "[XX-Select at least one security or market index to compare-XX]"
+    "comparisonSelectionEmpty": "[XX-Select at least one security or market index to compare-XX]",
+    "exchangeRateNotPositive": "[XX-Exchange rate must be greater than zero-XX]"
   },
   "tags": {
     "notFound": "[XX-Tag with ID {{ id }} not found-XX]",
@@ -501,7 +503,13 @@
     "fxFieldsIncomplete": "[XX-originalAmount and originalCurrencyCode must be provided together-XX]",
     "fxRateRequired": "[XX-A positive exchange rate is required for a foreign-currency transaction-XX]",
     "fxSignMismatch": "[XX-originalAmount and amount must have the same sign-XX]",
-    "jointAccountMoveLocked": "[XX-Transactions in a shared account cannot be moved to another account.-XX]"
+    "jointAccountMoveLocked": "[XX-Transactions in a shared account cannot be moved to another account.-XX]",
+    "currencyMustMatchAccount": "[XX-Transaction currency {{ supplied }} must match the account currency {{ account }}. Use originalAmount and originalCurrencyCode for a foreign-currency entry.-XX]",
+    "transferSameCurrencyMustConserve": "[XX-A transfer between two {{ currency }} accounts must move the same amount on both sides-XX]",
+    "transferSameCurrencyRateMustBeOne": "[XX-A transfer between two {{ currency }} accounts cannot have an exchange rate other than 1-XX]",
+    "transferRateUnavailable": "[XX-Could not determine an exchange rate for {{ from }} -> {{ to }}. Supply an exchangeRate or a destination amount so the transfer posts correctly.-XX]",
+    "transferAmountsMustAgreeOnZero": "[XX-A transfer must move a non-zero amount on both sides, or zero on both-XX]",
+    "transferImpliedRateInvalid": "[XX-The destination amount implies an unusable exchange rate against the source amount-XX]"
   },
   "users": {
     "userNotFound": "[XX-User not found-XX]",

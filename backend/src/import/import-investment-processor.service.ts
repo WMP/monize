@@ -11,11 +11,66 @@ import {
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
 import { ImportContext, updateAccountBalance } from "./import-context";
-import { roundToDecimals } from "../common/round.util";
+import { roundMoney, roundToDecimals } from "../common/round.util";
+import { roundFxRate } from "../common/fx-entry.util";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 
 @Injectable()
 export class ImportInvestmentProcessorService {
   private readonly logger = new Logger(ImportInvestmentProcessorService.name);
+
+  constructor(private readonly exchangeRateService: ExchangeRateService) {}
+
+  /**
+   * A trade's cash effect, expressed in the CASH ACCOUNT's currency.
+   *
+   * `totalAmount` on an imported investment row is denominated in the security's
+   * currency. It used to be written straight onto the cash transaction with
+   * `exchangeRate: 1`, the row labelled with the *security's* currency, and the
+   * cash account's balance moved by that raw number -- so a 1,000 USD purchase
+   * settled from a CAD account took 1,000 CAD out and left a USD-labelled row
+   * sitting in a CAD account. Both halves of audit P5-003, plus the silent 1:1 of
+   * P5-009, in a path the audit could not execute.
+   *
+   * QIF and OFX carry no exchange rate, so the rate is resolved from stored
+   * history. Returns `null` when the pair cannot be resolved: a cash posting that
+   * cannot be denominated is worse than an absent one the user is warned about,
+   * because it silently moves a real balance by the wrong number.
+   */
+  private async resolveCashAmountInAccountCurrency(
+    amount: number,
+    securityCurrencyCode: string | null,
+    cashAccountCurrencyCode: string,
+    transactionDate: string | Date,
+  ): Promise<{ amount: number; exchangeRate: number } | null> {
+    if (
+      !securityCurrencyCode ||
+      securityCurrencyCode === cashAccountCurrencyCode
+    ) {
+      return { amount: roundMoney(amount), exchangeRate: 1 };
+    }
+
+    const dateStr =
+      typeof transactionDate === "string"
+        ? transactionDate.substring(0, 10)
+        : transactionDate.toISOString().substring(0, 10);
+
+    let rate = await this.exchangeRateService.getRateForDate(
+      securityCurrencyCode,
+      cashAccountCurrencyCode,
+      dateStr,
+    );
+    if (rate === null) {
+      rate = await this.exchangeRateService.getLatestRate(
+        securityCurrencyCode,
+        cashAccountCurrencyCode,
+      );
+    }
+    if (rate === null || !(Number(rate) > 0)) return null;
+
+    const exchangeRate = roundFxRate(Number(rate));
+    return { amount: roundMoney(amount * exchangeRate), exchangeRate };
+  }
 
   async processTransaction(ctx: ImportContext, qifTx: any): Promise<void> {
     // XIn/XOut are cash-only transfers between the investment account and
@@ -388,7 +443,7 @@ export class ImportInvestmentProcessorService {
       return;
     }
 
-    const cashAmount =
+    const cashAmountInSecurityCurrency =
       action === InvestmentAction.BUY ? -totalAmount : totalAmount;
 
     let securitySymbol = "Unknown";
@@ -424,13 +479,35 @@ export class ImportInvestmentProcessorService {
 
     const isCrossAccountTransfer = cashAccountId !== ctx.accountId;
 
+    // The cash leg lives in the cash account, so it is denominated there.
+    const converted = await this.resolveCashAmountInAccountCurrency(
+      cashAmountInSecurityCurrency,
+      securityCurrency,
+      cashAccountCurrency,
+      investmentTx.transactionDate,
+    );
+    if (converted === null) {
+      const pair = `${securityCurrency} -> ${cashAccountCurrency}`;
+      const message = `No exchange rate for ${pair}: the cash effect of ${actionLabel} ${securitySymbol} was not posted. Import an exchange rate for that pair and re-import, or record the cash movement manually.`;
+      ctx.importResult.warnings = [
+        ...(ctx.importResult.warnings ?? []),
+        message,
+      ];
+      this.logger.warn(message);
+      // The trade itself is still recorded -- quantities and cost are valid --
+      // but no balance is moved by a number in the wrong currency.
+      await ctx.manager.save(investmentTx);
+      return;
+    }
+    const cashAmount = converted.amount;
+
     const cashTx = new Transaction();
     cashTx.userId = ctx.userId;
     cashTx.accountId = cashAccountId;
     cashTx.transactionDate = investmentTx.transactionDate;
     cashTx.amount = cashAmount;
-    cashTx.currencyCode = securityCurrency || cashAccountCurrency;
-    cashTx.exchangeRate = 1;
+    cashTx.currencyCode = cashAccountCurrency;
+    cashTx.exchangeRate = converted.exchangeRate;
     cashTx.payeeName = payeeName;
     cashTx.payeeId = null;
     cashTx.description = investmentTx.description;
@@ -447,8 +524,8 @@ export class ImportInvestmentProcessorService {
       brokerageTx.accountId = ctx.accountId;
       brokerageTx.transactionDate = investmentTx.transactionDate;
       brokerageTx.amount = -cashAmount;
-      brokerageTx.currencyCode = securityCurrency || ctx.account.currencyCode;
-      brokerageTx.exchangeRate = 1;
+      brokerageTx.currencyCode = ctx.account.currencyCode;
+      brokerageTx.exchangeRate = converted.exchangeRate;
       brokerageTx.payeeName = payeeName;
       brokerageTx.payeeId = null;
       brokerageTx.description = investmentTx.description;

@@ -232,7 +232,8 @@
     "demoModeRestricted": "Hành động này không khả dụng trong chế độ trình diễn.",
     "serviceNotReady": "Dịch vụ chưa sẵn sàng",
     "oauthProviderNotInitialized": "Nhà cung cấp OAuth chưa được khởi tạo",
-    "invalidCurrencyCode": "Mã tiền tệ không hợp lệ: {{ code }}"
+    "invalidCurrencyCode": "Mã tiền tệ không hợp lệ: {{ code }}",
+    "splitSignMismatch": "Số tiền phân chia phải có cùng dấu với số tiền giao dịch ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "Tiền tệ \"{{ code }}\" đã có trong danh sách của bạn",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Cần có tên loại tài sản.",
     "documentNotFound": "Không tìm thấy tài liệu",
     "selectionNotFound": "Không tìm thấy một hoặc nhiều chứng khoán đã chọn",
-    "comparisonSelectionEmpty": "Chọn ít nhất một chứng khoán hoặc chỉ số thị trường để so sánh"
+    "comparisonSelectionEmpty": "Chọn ít nhất một chứng khoán hoặc chỉ số thị trường để so sánh",
+    "exchangeRateNotPositive": "Tỷ giá phải lớn hơn không"
   },
   "tags": {
     "notFound": "Không tìm thấy thẻ với ID {{ id }}",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount và originalCurrencyCode phải được cung cấp cùng nhau",
     "fxRateRequired": "Cần một tỷ giá hối đoái dương cho giao dịch bằng ngoại tệ",
     "fxSignMismatch": "originalAmount và amount phải cùng dấu",
-    "jointAccountMoveLocked": "Không thể chuyển giao dịch trong tài khoản được chia sẻ sang tài khoản khác."
+    "jointAccountMoveLocked": "Không thể chuyển giao dịch trong tài khoản được chia sẻ sang tài khoản khác.",
+    "currencyMustMatchAccount": "Tiền tệ giao dịch {{ supplied }} phải khớp với tiền tệ của tài khoản {{ account }}. Hãy dùng originalAmount và originalCurrencyCode cho bút toán ngoại tệ.",
+    "transferSameCurrencyMustConserve": "Giao dịch chuyển khoản giữa hai tài khoản {{ currency }} phải chuyển cùng một số tiền ở cả hai bên",
+    "transferSameCurrencyRateMustBeOne": "Giao dịch chuyển khoản giữa hai tài khoản {{ currency }} không thể có tỷ giá khác 1",
+    "transferRateUnavailable": "Không thể xác định tỷ giá cho {{ from }} -> {{ to }}. Hãy cung cấp exchangeRate hoặc số tiền đích để giao dịch chuyển khoản được ghi nhận chính xác.",
+    "transferAmountsMustAgreeOnZero": "Giao dịch chuyển tiền phải di chuyển một số tiền khác không ở cả hai bên, hoặc bằng không ở cả hai bên",
+    "transferImpliedRateInvalid": "Số tiền đích ngụ ý một tỷ giá không thể sử dụng so với số tiền nguồn"
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

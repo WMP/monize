@@ -232,7 +232,8 @@
     "demoModeRestricted": "Deze actie is niet beschikbaar in de demomodus.",
     "serviceNotReady": "Service niet gereed",
     "oauthProviderNotInitialized": "OAuth-provider niet geïnitialiseerd",
-    "invalidCurrencyCode": "Ongeldige valutacode: {{ code }}"
+    "invalidCurrencyCode": "Ongeldige valutacode: {{ code }}",
+    "splitSignMismatch": "Splitsingsbedragen moeten hetzelfde teken hebben als het transactiebedrag ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "Valuta \"{{ code }}\" staat al in je lijst",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Een naam voor de beleggingscategorie is verplicht.",
     "documentNotFound": "Document niet gevonden",
     "selectionNotFound": "Een of meer van de geselecteerde effecten zijn niet gevonden",
-    "comparisonSelectionEmpty": "Selecteer minstens één effect of marktindex om te vergelijken"
+    "comparisonSelectionEmpty": "Selecteer minstens één effect of marktindex om te vergelijken",
+    "exchangeRateNotPositive": "De wisselkoers moet groter zijn dan nul"
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount en originalCurrencyCode moeten samen worden opgegeven",
     "fxRateRequired": "Een positieve wisselkoers is vereist voor een transactie in vreemde valuta",
     "fxSignMismatch": "originalAmount en amount moeten hetzelfde teken hebben",
-    "jointAccountMoveLocked": "Transacties in een gedeelde rekening kunnen niet naar een andere rekening worden verplaatst."
+    "jointAccountMoveLocked": "Transacties in een gedeelde rekening kunnen niet naar een andere rekening worden verplaatst.",
+    "currencyMustMatchAccount": "Transactievaluta {{ supplied }} moet overeenkomen met de rekeningvaluta {{ account }}. Gebruik originalAmount en originalCurrencyCode voor een invoer in vreemde valuta.",
+    "transferSameCurrencyMustConserve": "Een overboeking tussen twee {{ currency }}-rekeningen moet aan beide zijden hetzelfde bedrag verplaatsen",
+    "transferSameCurrencyRateMustBeOne": "Een overboeking tussen twee {{ currency }}-rekeningen kan geen andere wisselkoers dan 1 hebben",
+    "transferRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }}. Geef een exchangeRate of een doelbedrag op zodat de overboeking correct wordt geboekt.",
+    "transferAmountsMustAgreeOnZero": "Een overboeking moet aan beide zijden een bedrag anders dan nul verplaatsen, of nul aan beide zijden",
+    "transferImpliedRateInvalid": "Het bestemmingsbedrag impliceert een onbruikbare wisselkoers ten opzichte van het bronbedrag"
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

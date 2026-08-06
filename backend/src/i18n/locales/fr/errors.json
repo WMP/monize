@@ -232,7 +232,8 @@
     "demoModeRestricted": "Cette action n'est pas disponible en mode démo.",
     "serviceNotReady": "Service non prêt",
     "oauthProviderNotInitialized": "Fournisseur OAuth non initialisé",
-    "invalidCurrencyCode": "Code de devise non valide : {{ code }}"
+    "invalidCurrencyCode": "Code de devise non valide : {{ code }}",
+    "splitSignMismatch": "Les montants des ventilations doivent avoir le même signe que le montant de la transaction ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "La devise « {{ code }} » est déjà dans votre liste",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Un nom de classe d'actifs est requis.",
     "documentNotFound": "Document introuvable",
     "selectionNotFound": "Un ou plusieurs des titres sélectionnés sont introuvables",
-    "comparisonSelectionEmpty": "Sélectionnez au moins un titre ou un indice de marché à comparer"
+    "comparisonSelectionEmpty": "Sélectionnez au moins un titre ou un indice de marché à comparer",
+    "exchangeRateNotPositive": "Le taux de change doit être supérieur à zéro"
   },
   "tags": {
     "notFound": "Étiquette avec l'ID {{ id }} introuvable",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount et originalCurrencyCode doivent être fournis ensemble",
     "fxRateRequired": "Un taux de change positif est requis pour une transaction en devise étrangère",
     "fxSignMismatch": "originalAmount et amount doivent avoir le même signe",
-    "jointAccountMoveLocked": "Les transactions d'un compte partagé ne peuvent pas être déplacées vers un autre compte."
+    "jointAccountMoveLocked": "Les transactions d'un compte partagé ne peuvent pas être déplacées vers un autre compte.",
+    "currencyMustMatchAccount": "La devise de la transaction {{ supplied }} doit correspondre à la devise du compte {{ account }}. Utilisez originalAmount et originalCurrencyCode pour une saisie en devise étrangère.",
+    "transferSameCurrencyMustConserve": "Un transfert entre deux comptes en {{ currency }} doit déplacer le même montant des deux côtés",
+    "transferSameCurrencyRateMustBeOne": "Un transfert entre deux comptes en {{ currency }} ne peut pas avoir un taux de change autre que 1",
+    "transferRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }}. Fournissez un exchangeRate ou un montant de destination pour que le transfert soit enregistré correctement.",
+    "transferAmountsMustAgreeOnZero": "Un transfert doit déplacer un montant non nul des deux côtés, ou zéro des deux côtés",
+    "transferImpliedRateInvalid": "Le montant de destination implique un taux de change inutilisable par rapport au montant source"
   },
   "users": {
     "userNotFound": "Utilisateur introuvable",

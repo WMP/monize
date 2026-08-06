@@ -12,6 +12,7 @@ import { ImportResultDto } from "./dto/import.dto";
 
 describe("ImportInvestmentProcessorService", () => {
   let service: ImportInvestmentProcessorService;
+  let exchangeRateService: Record<string, jest.Mock>;
 
   const userId = "user-1";
   const accountId = "acc-1";
@@ -86,7 +87,17 @@ describe("ImportInvestmentProcessorService", () => {
   };
 
   beforeEach(() => {
-    service = new ImportInvestmentProcessorService();
+    // The importer resolves a rate when a security's currency differs from the
+    // cash account's rather than posting the security-currency number at par
+    // (audit P5-003/P5-009 in the import path). Same-currency trades never reach
+    // the lookup, which is every fixture here unless it says otherwise.
+    exchangeRateService = {
+      getRateForDate: jest.fn().mockResolvedValue(null),
+      getLatestRate: jest.fn().mockResolvedValue(null),
+    };
+    service = new ImportInvestmentProcessorService(
+      exchangeRateService as never,
+    );
   });
 
   describe("processTransaction", () => {
@@ -120,6 +131,96 @@ describe("ImportInvestmentProcessorService", () => {
       expect(firstSaveArg.commission).toBe(9.99);
       // BUY: totalAmount = quantity * price + commission
       expect(firstSaveArg.totalAmount).toBe(1509.99);
+    });
+
+    describe("foreign-security cash posting (P5-003 / P5-009 in the import path)", () => {
+      // `totalAmount` on an imported row is in the SECURITY's currency. It used
+      // to be written straight onto the cash transaction with `exchangeRate: 1`,
+      // the row labelled with the security's currency, and the cash account's
+      // balance moved by that raw number -- so a 1,000 USD purchase settled from
+      // a CAD account took 1,000 CAD out and left a USD-labelled row sitting in a
+      // CAD account.
+      const usdSecurityInCadAccount = (ctx: ReturnType<typeof makeContext>) => {
+        managerOf(ctx).findOne.mockImplementation((entity: any, opts: any) => {
+          if (entity === Security && opts?.where?.id === "sec-1") {
+            return Promise.resolve({
+              id: "sec-1",
+              symbol: "AAPL",
+              currencyCode: "USD",
+            });
+          }
+          return Promise.resolve(null);
+        });
+      };
+
+      const buyQif = {
+        action: "Buy",
+        security: "Apple Inc",
+        quantity: 10,
+        price: 100,
+        commission: 0,
+        date: "2025-01-15",
+      };
+
+      it("converts the cash effect into the cash account's currency", async () => {
+        const securityMap = new Map<string, string | null>([
+          ["Apple Inc", "sec-1"],
+        ]);
+        const ctx = makeContext({
+          securityMap,
+          account: {
+            id: accountId,
+            currencyCode: "CAD",
+            accountSubType: null,
+            linkedAccountId: null,
+            name: "Investment Account",
+          } as never,
+        });
+        usdSecurityInCadAccount(ctx);
+        exchangeRateService.getRateForDate.mockResolvedValue(1.35);
+
+        await service.processTransaction(ctx, buyQif);
+
+        const cashTx = managerOf(ctx)
+          .save.mock.calls.map((c: any[]) => c[0])
+          .find((arg: any) => arg?.currencyCode !== undefined);
+        expect(cashTx.currencyCode).toBe(ctx.account.currencyCode);
+        // 1,000 USD at 1.35 is 1,350 in the account's currency, taken out.
+        expect(cashTx.amount).toBe(-1350);
+        expect(cashTx.exchangeRate).toBe(1.35);
+      });
+
+      it("does not post a cash effect it cannot denominate", async () => {
+        // Posting the unconverted number would move a real balance by the wrong
+        // amount and look entirely normal. The trade still imports; the user is
+        // told which pair is missing.
+        const securityMap = new Map<string, string | null>([
+          ["Apple Inc", "sec-1"],
+        ]);
+        const ctx = makeContext({
+          securityMap,
+          account: {
+            id: accountId,
+            currencyCode: "CAD",
+            accountSubType: null,
+            linkedAccountId: null,
+            name: "Investment Account",
+          } as never,
+        });
+        usdSecurityInCadAccount(ctx);
+        exchangeRateService.getRateForDate.mockResolvedValue(null);
+        exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+        await service.processTransaction(ctx, buyQif);
+
+        const cashTx = managerOf(ctx)
+          .save.mock.calls.map((c: any[]) => c[0])
+          .find((arg: any) => arg?.currencyCode !== undefined);
+        expect(cashTx).toBeUndefined();
+        expect(ctx.importResult.warnings?.join(" ")).toMatch(
+          /No exchange rate for USD -> /,
+        );
+      });
     });
 
     it("should map SELL action and calculate total correctly", async () => {

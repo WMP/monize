@@ -21,6 +21,8 @@ import {
 } from "../securities/cash-impact.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { roundFxRate } from "../common/fx-entry.util";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -44,7 +46,58 @@ export class TransactionSplitService {
     @Inject(forwardRef(() => NetWorthService))
     private netWorthService: NetWorthService,
     private dataSource: DataSource,
+    private exchangeRateService: ExchangeRateService,
   ) {}
+
+  /**
+   * The counterpart amount for a transfer child, in the TARGET account's
+   * currency, plus the rate used.
+   *
+   * A split's amounts are denominated in the parent account's currency. The
+   * counterpart used to be created at exactly `-split.amount` with
+   * `exchangeRate: 1` while being labelled with the target account's currency,
+   * so a 40 USD transfer child into a EUR account credited 40 EUR and recorded
+   * the pair as if the currencies were at par. That is the transfer-split half of
+   * audit P5-002, and it is the same silent 1:1 as the rest of that finding.
+   *
+   * Refuses rather than posting at par when the pair has no determinable rate.
+   */
+  private async resolveSplitTransferAmount(
+    amount: number,
+    sourceCurrencyCode: string,
+    targetCurrencyCode: string,
+    transactionDate: string,
+  ): Promise<{ amount: number; exchangeRate: number }> {
+    if (sourceCurrencyCode === targetCurrencyCode) {
+      return { amount: roundMoney(-amount), exchangeRate: 1 };
+    }
+
+    let rate = transactionDate
+      ? await this.exchangeRateService.getRateForDate(
+          sourceCurrencyCode,
+          targetCurrencyCode,
+          transactionDate,
+        )
+      : null;
+    if (rate === null) {
+      rate = await this.exchangeRateService.getLatestRate(
+        sourceCurrencyCode,
+        targetCurrencyCode,
+      );
+    }
+    if (rate === null || !(Number(rate) > 0)) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.transferRateUnavailable",
+          `Could not determine an exchange rate for ${sourceCurrencyCode} -> ${targetCurrencyCode}. Supply an exchangeRate or a destination amount so the transfer posts correctly.`,
+          { from: sourceCurrencyCode, to: targetCurrencyCode },
+        ),
+      );
+    }
+
+    const exchangeRate = roundFxRate(Number(rate));
+    return { amount: roundMoney(-amount * exchangeRate), exchangeRate };
+  }
 
   private async validateCategoryOwnership(
     userId: string,
@@ -72,6 +125,11 @@ export class TransactionSplitService {
         const split = s as CreateTransactionSplitDto;
         return Boolean(split.transferAccountId || split.investment);
       },
+      // An investment split's parent is the net cash effect of a brokerage line
+      // that can genuinely both credit and debit, so its children are allowed
+      // opposing signs. Plain category/transfer children are not: their signs
+      // drive budget and category reporting directly (audit P5-004).
+      allowMixedSign: splits.some((split) => Boolean(split.investment)),
     });
 
     for (const split of splits) {
@@ -331,13 +389,23 @@ export class TransactionSplitService {
         ? transactionDate.toISOString().substring(0, 10)
         : "";
 
+      // The counterpart is denominated in the TARGET account's currency, so a
+      // split amount in the parent's currency has to be converted rather than
+      // copied across with `exchangeRate: 1` (audit P5-002, transfer-split half).
+      const counterpart = await this.resolveSplitTransferAmount(
+        split.amount,
+        sourceAccount.currencyCode,
+        targetAccount.currencyCode,
+        dateStr,
+      );
+
       const linkedTransaction = m.create(Transaction, {
         userId,
         accountId: split.transferAccountId,
         transactionDate: (dateStr || null) as any,
-        amount: -split.amount,
+        amount: counterpart.amount,
         currencyCode: targetAccount.currencyCode,
-        exchangeRate: 1,
+        exchangeRate: counterpart.exchangeRate,
         description: split.memo || null,
         isTransfer: true,
         payeeId: parentPayeeId || null,
@@ -364,7 +432,7 @@ export class TransactionSplitService {
       } else {
         await this.accountsService.updateBalance(
           split.transferAccountId!,
-          -split.amount,
+          counterpart.amount,
         );
       }
 
@@ -619,13 +687,22 @@ export class TransactionSplitService {
           parent.accountId,
         );
 
+        const counterpart = await this.resolveSplitTransferAmount(
+          splitDto.amount,
+          sourceAccount.currencyCode,
+          targetAccount.currencyCode,
+          String(transaction.transactionDate),
+        );
+
         const linkedTransaction = m.create(Transaction, {
           userId,
           accountId: splitDto.transferAccountId,
+          // Date from the locked row (04-02 concurrency convention); amount is the
+          // cross-currency-converted counterpart, not a raw negation (audit P5-002).
           transactionDate: parent.transactionDate,
-          amount: -splitDto.amount,
+          amount: counterpart.amount,
           currencyCode: targetAccount.currencyCode,
-          exchangeRate: 1,
+          exchangeRate: counterpart.exchangeRate,
           description: splitDto.memo || null,
           isTransfer: true,
           payeeId: parent.payeeId || null,
@@ -646,7 +723,7 @@ export class TransactionSplitService {
         } else {
           await this.accountsService.updateBalance(
             splitDto.transferAccountId,
-            -splitDto.amount,
+            counterpart.amount,
           );
         }
       }

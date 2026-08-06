@@ -5,6 +5,7 @@ import { TransactionSplitService } from "./transaction-split.service";
 import { Transaction } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { AccountsService } from "../accounts/accounts.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import {
@@ -41,6 +42,7 @@ describe("TransactionSplitService", () => {
   let splitsRepository: Record<string, jest.Mock>;
   let categoriesRepository: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
+  let exchangeRateService: Record<string, jest.Mock>;
   let mockDataSource: DataSourceMock;
   // The withScopedDb EntityManager, kept under the legacy `mockQueryRunner.manager`
   // shape so the pre-RLS manager assertions below still read naturally.
@@ -167,6 +169,13 @@ describe("TransactionSplitService", () => {
     categoriesRepository = {
       findOne: jest.fn().mockResolvedValue({ id: "cat-1", userId: "user-1" }),
     };
+    // Transfer children resolve a cross-currency rate rather than posting the
+    // parent-currency amount at par (audit P5-002). Same-currency splits never
+    // reach the lookup.
+    exchangeRateService = {
+      getRateForDate: jest.fn().mockResolvedValue(null),
+      getLatestRate: jest.fn().mockResolvedValue(null),
+    };
 
     accountsService = {
       findOne: jest.fn().mockResolvedValue({
@@ -243,6 +252,13 @@ describe("TransactionSplitService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionSplitService,
+        {
+          // Transfer children resolve a cross-currency rate rather than posting
+          // the parent-currency amount at par (audit P5-002). Same-currency
+          // splits never reach the lookup.
+          provide: ExchangeRateService,
+          useValue: exchangeRateService,
+        },
         { provide: AccountsService, useValue: accountsService },
         {
           provide: InvestmentTransactionsService,
@@ -426,6 +442,117 @@ describe("TransactionSplitService", () => {
       );
       expect(result).toHaveLength(1);
       expect(result[0].linkedTransactionId).toBe("linked-tx-1");
+    });
+
+    it("converts a transfer child into the target account's currency", async () => {
+      // Split amounts are in the PARENT account's currency. The counterpart used
+      // to be created at exactly `-split.amount` with `exchangeRate: 1` while
+      // being labelled with the target's currency, so a 50 USD child credited 50
+      // EUR and recorded the pair as if the currencies were at par. That is the
+      // transfer-split half of audit P5-002.
+      accountsService.findOne
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Euro Savings",
+          currencyCode: "EUR",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+      exchangeRateService.getRateForDate.mockResolvedValue(0.9);
+
+      transactionsRepository.save.mockResolvedValueOnce({
+        id: "linked-tx-1",
+        accountId: "account-2",
+        amount: 45,
+      });
+      splitsRepository.save.mockResolvedValueOnce({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+        amount: -50,
+      });
+
+      await service.createSplits(
+        "tx-1",
+        [
+          {
+            amount: -50,
+            transferAccountId: "account-2",
+            memo: "Transfer part",
+          },
+        ],
+        "user-1",
+        "account-1",
+        new Date("2026-01-15"),
+        "Store",
+        "payee-uuid-1",
+      );
+
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+        "USD",
+        "EUR",
+        "2026-01-15",
+      );
+      expect(transactionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: "account-2",
+          currencyCode: "EUR",
+          amount: 45,
+          exchangeRate: 0.9,
+        }),
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-2",
+        45,
+      );
+    });
+
+    it("refuses a cross-currency transfer child with no determinable rate", async () => {
+      // Refusing beats posting at par: 50 USD credited as 50 EUR looks entirely
+      // normal and is wrong by the whole FX difference.
+      accountsService.findOne
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Euro Savings",
+          currencyCode: "EUR",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+      exchangeRateService.getRateForDate.mockResolvedValue(null);
+      exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+      splitsRepository.save.mockResolvedValueOnce({
+        id: "split-new",
+        transactionId: "tx-1",
+        transferAccountId: "account-2",
+        amount: -50,
+      });
+
+      await expect(
+        service.createSplits(
+          "tx-1",
+          [
+            {
+              amount: -50,
+              transferAccountId: "account-2",
+              memo: "Transfer part",
+            },
+          ],
+          "user-1",
+          "account-1",
+          new Date("2026-01-15"),
+          "Store",
+          "payee-uuid-1",
+        ),
+      ).rejects.toThrow(/Could not determine an exchange rate/);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
     });
 
     it("uses default payee name when parentPayeeName is null", async () => {

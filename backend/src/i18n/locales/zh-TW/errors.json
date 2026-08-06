@@ -232,7 +232,8 @@
     "demoModeRestricted": "此操作在示範模式下不可用。",
     "serviceNotReady": "服務尚未就緒",
     "oauthProviderNotInitialized": "OAuth 提供者未初始化",
-    "invalidCurrencyCode": "無效的貨幣代碼：{{ code }}"
+    "invalidCurrencyCode": "無效的貨幣代碼：{{ code }}",
+    "splitSignMismatch": "拆分金額的正負號必須與交易金額（{{ roundedAmount }}）一致"
   },
   "currencies": {
     "alreadyInList": "貨幣「{{ code }}」已在您的清單中",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "需要填寫資產類別名稱。",
     "documentNotFound": "找不到該文件",
     "selectionNotFound": "找不到所選證券中的一檔或多檔",
-    "comparisonSelectionEmpty": "請至少選擇一檔證券或一個市場指數進行比較"
+    "comparisonSelectionEmpty": "請至少選擇一檔證券或一個市場指數進行比較",
+    "exchangeRateNotPositive": "匯率必須大於零"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必須同時提供",
     "fxRateRequired": "外幣交易需要一個正的匯率",
     "fxSignMismatch": "originalAmount 和 amount 的符號必須相同",
-    "jointAccountMoveLocked": "共享帳戶中的交易無法移動到其他帳戶。"
+    "jointAccountMoveLocked": "共享帳戶中的交易無法移動到其他帳戶。",
+    "currencyMustMatchAccount": "交易貨幣 {{ supplied }} 必須與帳戶貨幣 {{ account }} 一致。外幣記帳請使用 originalAmount 與 originalCurrencyCode。",
+    "transferSameCurrencyMustConserve": "兩個 {{ currency }} 帳戶之間的轉帳，兩側金額必須相同",
+    "transferSameCurrencyRateMustBeOne": "兩個 {{ currency }} 帳戶之間的轉帳，匯率只能為 1",
+    "transferRateUnavailable": "無法確定 {{ from }} -> {{ to }} 的匯率。請提供 exchangeRate 或目標金額，以便正確記錄該轉帳。",
+    "transferAmountsMustAgreeOnZero": "轉帳必須在兩側移動非零金額，或兩側皆為零",
+    "transferImpliedRateInvalid": "目標金額相對於來源金額意味著無法使用的匯率"
   },
   "users": {
     "userNotFound": "找不到使用者",

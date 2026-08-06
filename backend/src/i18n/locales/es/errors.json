@@ -232,7 +232,8 @@
     "demoModeRestricted": "Esta acción no está disponible en modo demo.",
     "serviceNotReady": "Servicio no disponible",
     "oauthProviderNotInitialized": "Proveedor OAuth no inicializado",
-    "invalidCurrencyCode": "Código de moneda no válido: {{ code }}"
+    "invalidCurrencyCode": "Código de moneda no válido: {{ code }}",
+    "splitSignMismatch": "Los importes de los desglosos deben tener el mismo signo que el importe de la transacción ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "La divisa \"{{ code }}\" ya está en tu lista",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Se requiere un nombre de clase de activo.",
     "documentNotFound": "Documento no encontrado",
     "selectionNotFound": "No se encontraron uno o varios de los valores seleccionados",
-    "comparisonSelectionEmpty": "Seleccione al menos un valor o índice de mercado para comparar"
+    "comparisonSelectionEmpty": "Seleccione al menos un valor o índice de mercado para comparar",
+    "exchangeRateNotPositive": "El tipo de cambio debe ser mayor que cero"
   },
   "tags": {
     "notFound": "Etiqueta con ID {{ id }} no encontrada",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount y originalCurrencyCode deben proporcionarse juntos",
     "fxRateRequired": "Se requiere un tipo de cambio positivo para una transacción en moneda extranjera",
     "fxSignMismatch": "originalAmount y amount deben tener el mismo signo",
-    "jointAccountMoveLocked": "Las transacciones de una cuenta compartida no se pueden mover a otra cuenta."
+    "jointAccountMoveLocked": "Las transacciones de una cuenta compartida no se pueden mover a otra cuenta.",
+    "currencyMustMatchAccount": "La moneda de la transacción {{ supplied }} debe coincidir con la moneda de la cuenta {{ account }}. Use originalAmount y originalCurrencyCode para un asiento en moneda extranjera.",
+    "transferSameCurrencyMustConserve": "Una transferencia entre dos cuentas en {{ currency }} debe mover el mismo importe en ambos lados",
+    "transferSameCurrencyRateMustBeOne": "Una transferencia entre dos cuentas en {{ currency }} no puede tener un tipo de cambio distinto de 1",
+    "transferRateUnavailable": "No se pudo determinar un tipo de cambio para {{ from }} -> {{ to }}. Indique un exchangeRate o un importe de destino para que la transferencia se registre correctamente.",
+    "transferAmountsMustAgreeOnZero": "Una transferencia debe mover un importe distinto de cero en ambos lados, o cero en ambos",
+    "transferImpliedRateInvalid": "El importe de destino implica un tipo de cambio inutilizable frente al importe de origen"
   },
   "users": {
     "userNotFound": "Usuario no encontrado",

@@ -434,7 +434,22 @@ export class InvestmentTransactionsService {
     transactionDate?: string | Date,
   ): Promise<number> {
     if (dtoRate !== undefined && dtoRate !== null) {
-      return Number(dtoRate);
+      // A supplied rate is trusted but still has to be a rate. Zero used to be
+      // accepted here (the DTO allowed @Min(0)): the preview then multiplied the
+      // cash impact by 0 and showed no cash movement, while the committed cash
+      // transaction ran `Number(rate) || 1` and posted the full amount at 1.0. A
+      // user could approve a zero-cash preview and receive a 1,000 debit
+      // (audit P5-005). Negative is equally not a rate.
+      const supplied = Number(dtoRate);
+      if (!Number.isFinite(supplied) || supplied <= 0) {
+        throw new BadRequestException(
+          tr(
+            "errors.securities.exchangeRateNotPositive",
+            "Exchange rate must be greater than zero",
+          ),
+        );
+      }
+      return supplied;
     }
 
     const cashAccount = fundingAccountId
@@ -565,7 +580,12 @@ export class InvestmentTransactionsService {
       sourceCurrency,
     );
 
-    const exchangeRate = Number(investmentTransaction.exchangeRate) || 1;
+    // A stored rate is validated positive on the way in, and is absent only for
+    // a same-currency posting -- so `??` rather than `||`, which would also have
+    // swallowed a stored 0 and posted the full amount unconverted.
+    const storedRate = investmentTransaction.exchangeRate;
+    const exchangeRate =
+      storedRate === null || storedRate === undefined ? 1 : Number(storedRate);
     // Convert the signed source amount (security currency) into the cash
     // account's currency so balance updates reflect the correct amount.
     // Round to the cash account's currency precision (typically 2 decimals)

@@ -232,7 +232,8 @@
     "demoModeRestricted": "Bu işlem demo modunda kullanılamaz.",
     "serviceNotReady": "Servis hazır değil",
     "oauthProviderNotInitialized": "OAuth sağlayıcısı başlatılmadı",
-    "invalidCurrencyCode": "Geçersiz para birimi kodu: {{ code }}"
+    "invalidCurrencyCode": "Geçersiz para birimi kodu: {{ code }}",
+    "splitSignMismatch": "Bölme tutarları işlem tutarıyla ({{ roundedAmount }}) aynı işarete sahip olmalıdır"
   },
   "currencies": {
     "alreadyInList": "\"{{ code }}\" para birimi zaten listenizde mevcut",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Varlık sınıfı adı gerekli.",
     "documentNotFound": "Belge bulunamadı",
     "selectionNotFound": "Seçilen menkul kıymetlerden biri veya birkaçı bulunamadı",
-    "comparisonSelectionEmpty": "Karşılaştırmak için en az bir menkul kıymet veya piyasa endeksi seçin"
+    "comparisonSelectionEmpty": "Karşılaştırmak için en az bir menkul kıymet veya piyasa endeksi seçin",
+    "exchangeRateNotPositive": "Döviz kuru sıfırdan büyük olmalıdır"
   },
   "tags": {
     "notFound": "{{ id }} kimliğine sahip etiket bulunamadı",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount ve originalCurrencyCode birlikte sağlanmalıdır",
     "fxRateRequired": "Yabancı para birimi işlemi için pozitif bir döviz kuru gereklidir",
     "fxSignMismatch": "originalAmount ve amount aynı işarete sahip olmalıdır",
-    "jointAccountMoveLocked": "Paylaşılan hesaptaki işlemler başka bir hesaba taşınamaz."
+    "jointAccountMoveLocked": "Paylaşılan hesaptaki işlemler başka bir hesaba taşınamaz.",
+    "currencyMustMatchAccount": "İşlem para birimi {{ supplied }}, hesap para birimi {{ account }} ile aynı olmalıdır. Yabancı para girişi için originalAmount ve originalCurrencyCode kullanın.",
+    "transferSameCurrencyMustConserve": "İki {{ currency }} hesabı arasındaki transfer her iki tarafta da aynı tutarı hareket ettirmelidir",
+    "transferSameCurrencyRateMustBeOne": "İki {{ currency }} hesabı arasındaki transferin döviz kuru 1'den farklı olamaz",
+    "transferRateUnavailable": "{{ from }} -> {{ to }} için döviz kuru belirlenemedi. Transferin doğru kaydedilmesi için bir exchangeRate veya hedef tutar girin.",
+    "transferAmountsMustAgreeOnZero": "Bir transfer her iki tarafta sıfırdan farklı bir tutar taşımalı veya her iki tarafta sıfır olmalıdır",
+    "transferImpliedRateInvalid": "Hedef tutar, kaynak tutara göre kullanılamaz bir döviz kuru anlamına geliyor"
   },
   "users": {
     "userNotFound": "Kullanıcı bulunamadı",

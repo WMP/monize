@@ -232,7 +232,8 @@
     "demoModeRestricted": "Ta akcja nie jest dostępna w trybie demo.",
     "serviceNotReady": "Usługa nie jest gotowa",
     "oauthProviderNotInitialized": "Dostawca OAuth nie został zainicjowany",
-    "invalidCurrencyCode": "Nieprawidłowy kod waluty: {{ code }}"
+    "invalidCurrencyCode": "Nieprawidłowy kod waluty: {{ code }}",
+    "splitSignMismatch": "Kwoty podziału muszą mieć ten sam znak co kwota transakcji ({{ roundedAmount }})"
   },
   "currencies": {
     "alreadyInList": "Waluta \"{{ code }}\" już jest na Twojej liście",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "Nazwa klasy aktywów jest wymagana.",
     "documentNotFound": "Nie znaleziono dokumentu",
     "selectionNotFound": "Nie znaleziono jednego lub więcej wybranych papierów wartościowych",
-    "comparisonSelectionEmpty": "Wybierz co najmniej jeden papier wartościowy lub indeks giełdowy do porównania"
+    "comparisonSelectionEmpty": "Wybierz co najmniej jeden papier wartościowy lub indeks giełdowy do porównania",
+    "exchangeRateNotPositive": "Kurs wymiany musi być większy od zera"
   },
   "tags": {
     "notFound": "Nie znaleziono tagu o ID {{ id }}",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount i originalCurrencyCode muszą być podane razem",
     "fxRateRequired": "Do transakcji w obcej walucie wymagany jest dodatni kurs wymiany",
     "fxSignMismatch": "originalAmount i amount muszą mieć ten sam znak",
-    "jointAccountMoveLocked": "Transakcji ze wspólnego konta nie można przenieść na inne konto."
+    "jointAccountMoveLocked": "Transakcji ze wspólnego konta nie można przenieść na inne konto.",
+    "currencyMustMatchAccount": "Waluta transakcji {{ supplied }} musi być zgodna z walutą konta {{ account }}. Do wpisu w walucie obcej użyj originalAmount i originalCurrencyCode.",
+    "transferSameCurrencyMustConserve": "Przelew między dwoma kontami w {{ currency }} musi przenosić tę samą kwotę po obu stronach",
+    "transferSameCurrencyRateMustBeOne": "Przelew między dwoma kontami w {{ currency }} nie może mieć kursu wymiany innego niż 1",
+    "transferRateUnavailable": "Nie udało się ustalić kursu wymiany dla {{ from }} -> {{ to }}. Podaj exchangeRate lub kwotę docelową, aby przelew został zaksięgowany poprawnie.",
+    "transferAmountsMustAgreeOnZero": "Przelew musi przenosić kwotę różną od zera po obu stronach albo zero po obu stronach",
+    "transferImpliedRateInvalid": "Kwota docelowa daje nieprawidłowy kurs wymiany w stosunku do kwoty źródłowej"
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",

@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
+  IsPositive,
   IsString,
   IsEnum,
   IsOptional,
@@ -70,7 +71,9 @@ export class CreateInvestmentTransactionDto {
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 10 })
-  @Min(0)
+  // Strictly positive: zero is not a rate. `@Min(0)` let a request through that
+  // previewed as zero cash impact and committed at 1.0 (audit P5-005).
+  @IsPositive()
   exchangeRate?: number;
 
   @ApiProperty({

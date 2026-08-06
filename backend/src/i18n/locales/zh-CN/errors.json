@@ -232,7 +232,8 @@
     "demoModeRestricted": "此操作在演示模式下不可用。",
     "serviceNotReady": "服务未就绪",
     "oauthProviderNotInitialized": "OAuth 提供商未初始化",
-    "invalidCurrencyCode": "无效的货币代码：{{ code }}"
+    "invalidCurrencyCode": "无效的货币代码：{{ code }}",
+    "splitSignMismatch": "拆分金额的正负号必须与交易金额（{{ roundedAmount }}）一致"
   },
   "currencies": {
     "alreadyInList": "货币\"{{ code }}\"已在您的列表中",
@@ -434,7 +435,8 @@
     "assetOptionNameRequired": "需要填写资产类别名称。",
     "documentNotFound": "未找到该文档",
     "selectionNotFound": "未找到所选证券中的一个或多个",
-    "comparisonSelectionEmpty": "请至少选择一只证券或一个市场指数进行比较"
+    "comparisonSelectionEmpty": "请至少选择一只证券或一个市场指数进行比较",
+    "exchangeRateNotPositive": "汇率必须大于零"
   },
   "tags": {
     "notFound": "未找到 ID 为 {{ id }} 的标签",
@@ -493,7 +495,13 @@
     "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必须同时提供",
     "fxRateRequired": "外币交易需要一个正的汇率",
     "fxSignMismatch": "originalAmount 和 amount 的符号必须相同",
-    "jointAccountMoveLocked": "共享账户中的交易无法移动到其他账户。"
+    "jointAccountMoveLocked": "共享账户中的交易无法移动到其他账户。",
+    "currencyMustMatchAccount": "交易货币 {{ supplied }} 必须与账户货币 {{ account }} 一致。外币记账请使用 originalAmount 和 originalCurrencyCode。",
+    "transferSameCurrencyMustConserve": "两个 {{ currency }} 账户之间的转账，两侧金额必须相同",
+    "transferSameCurrencyRateMustBeOne": "两个 {{ currency }} 账户之间的转账，汇率只能为 1",
+    "transferRateUnavailable": "无法确定 {{ from }} -> {{ to }} 的汇率。请提供 exchangeRate 或目标金额，以便正确记录该转账。",
+    "transferAmountsMustAgreeOnZero": "转账必须在两侧移动非零金额，或两侧均为零",
+    "transferImpliedRateInvalid": "目标金额相对于源金额意味着无法使用的汇率"
   },
   "users": {
     "userNotFound": "未找到用户",
