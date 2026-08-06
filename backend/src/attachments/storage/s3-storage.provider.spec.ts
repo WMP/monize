@@ -1,5 +1,11 @@
 const mockSend = jest.fn();
 
+jest.mock("@smithy/node-http-handler", () => ({
+  NodeHttpHandler: jest
+    .fn()
+    .mockImplementation((cfg) => ({ kind: "handler", cfg })),
+}));
+
 jest.mock("@aws-sdk/client-s3", () => ({
   S3Client: jest.fn().mockImplementation((cfg) => ({ send: mockSend, cfg })),
   PutObjectCommand: jest.fn().mockImplementation((input) => ({
@@ -33,6 +39,92 @@ describe("S3StorageProvider", () => {
   it("has the s3 name", () => {
     const provider = new S3StorageProvider(configFor({}));
     expect(provider.name).toBe("s3");
+  });
+
+  it("bounds every request below the sweeper's quarantine window", async () => {
+    const provider = new S3StorageProvider(
+      configFor({ ATTACHMENT_S3_BUCKET: "my-bucket" }),
+    );
+    mockSend.mockResolvedValue({});
+    await provider.save("abc", Buffer.from("data"));
+
+    // A PutObject that could hang for hours would outlive the tombstone the sweeper
+    // retires after its quarantine, recreating the undiscoverable-orphan window
+    // (audit V4R3-003). The enforced bound is the abort signal armed around the
+    // whole operation -- asserted below and against a genuinely stalled endpoint in
+    // s3-storage.provider.deadline.spec.ts; the handler's socket timers are
+    // inactivity hygiene, and retries are pinned so the deadline's coverage of all
+    // of them is a closed set.
+    const cfg = (S3Client as unknown as jest.Mock).mock.calls[0][0];
+    expect(cfg.maxAttempts).toBe(3);
+    expect(cfg.requestHandler).toBeDefined();
+    expect(cfg.requestHandler.cfg.requestTimeout).toBe(5 * 60 * 1000);
+    expect(cfg.requestHandler.cfg.requestTimeout).toBeLessThan(
+      6 * 60 * 60 * 1000,
+    );
+    const options = mockSend.mock.calls[0][1];
+    expect(options.abortSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("passes the abort signal to every operation, not just save", async () => {
+    const provider = new S3StorageProvider(
+      configFor({ ATTACHMENT_S3_BUCKET: "my-bucket" }),
+    );
+    mockSend.mockResolvedValue({
+      Body: { transformToByteArray: async () => new Uint8Array([1]) },
+    });
+    await provider.load("abc");
+    await provider.delete("abc");
+    for (const call of mockSend.mock.calls) {
+      expect(call[1].abortSignal).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it("aborts the signal and names the deadline when an operation overruns it", async () => {
+    const provider = new S3StorageProvider(
+      configFor({
+        ATTACHMENT_S3_BUCKET: "my-bucket",
+        ATTACHMENT_S3_REQUEST_TIMEOUT_MS: "30",
+      }),
+    );
+    // A send that never settles on its own -- only the armed signal can end it.
+    mockSend.mockImplementation(
+      (_command: unknown, options: { abortSignal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.abortSignal.addEventListener("abort", () =>
+            reject(new Error("aborted by signal")),
+          );
+        }),
+    );
+    await expect(provider.save("abc", Buffer.from("x"))).rejects.toThrow(
+      /exceeded its 30 ms deadline/,
+    );
+  });
+
+  it("lets configuration shorten the deadline but never lengthen it", async () => {
+    // The six-hour quarantine math relies on this ceiling; a configured value
+    // above it must clamp down rather than widen the late-write window.
+    const tooLong = new S3StorageProvider(
+      configFor({
+        ATTACHMENT_S3_BUCKET: "my-bucket",
+        ATTACHMENT_S3_REQUEST_TIMEOUT_MS: String(7 * 60 * 60 * 1000),
+      }),
+    );
+    mockSend.mockResolvedValue({});
+    await tooLong.save("abc", Buffer.from("x"));
+    let cfg = (S3Client as unknown as jest.Mock).mock.calls[0][0];
+    expect(cfg.requestHandler.cfg.requestTimeout).toBe(5 * 60 * 1000);
+
+    (S3Client as unknown as jest.Mock).mockClear();
+    const shortened = new S3StorageProvider(
+      configFor({
+        ATTACHMENT_S3_BUCKET: "my-bucket",
+        ATTACHMENT_S3_REQUEST_TIMEOUT_MS: "300",
+      }),
+    );
+    await shortened.save("abc", Buffer.from("x"));
+    cfg = (S3Client as unknown as jest.Mock).mock.calls[0][0];
+    expect(cfg.requestHandler.cfg.requestTimeout).toBe(300);
   });
 
   it("puts bytes under bucket and key on save", async () => {

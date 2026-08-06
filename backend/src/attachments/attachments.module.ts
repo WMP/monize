@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AttachmentsController } from "./attachments.controller";
 import { AttachmentsService } from "./attachments.service";
 import { AttachmentToolPrepService } from "./attachment-tool-prep.service";
+import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
 import { DatabaseStorageProvider } from "./storage/database-storage.provider";
 import { LocalStorageProvider } from "./storage/local-storage.provider";
 import { S3StorageProvider } from "./storage/s3-storage.provider";
@@ -22,6 +23,7 @@ import { ATTACHMENT_STORAGE_PROVIDER } from "./storage/attachment-storage.interf
   providers: [
     AttachmentsService,
     AttachmentToolPrepService,
+    AttachmentOrphanSweeper,
     DatabaseStorageProvider,
     LocalStorageProvider,
     S3StorageProvider,
@@ -54,6 +56,7 @@ import { ATTACHMENT_STORAGE_PROVIDER } from "./storage/attachment-storage.interf
     AttachmentsService,
     AttachmentToolPrepService,
     ATTACHMENT_STORAGE_PROVIDER,
+    AttachmentOrphanSweeper,
   ],
 })
 export class AttachmentsModule {}
