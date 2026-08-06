@@ -58,6 +58,19 @@ export function scopedDbMockModule() {
           ? dataSource.transaction(isolation, fn)
           : dataSource.transaction(fn),
     ),
+    /**
+     * Calls straight through and **returns the callback's value**, like the real
+     * one does.
+     *
+     * Worth spelling out: a double that swallowed the return value would make
+     * every `await runOutsideActiveScopedManager(...)` resolve to `undefined`, so
+     * a caller reading the result -- a conditional claim's row count, a promise it
+     * attaches a `.catch` to -- would fail with a `TypeError` about `undefined`
+     * rather than anything resembling its cause. Whether the callback really got
+     * its own connection is not a question a mock can answer; `scoped-db.spec.ts`
+     * covers that.
+     */
+    runOutsideActiveScopedManager: jest.fn((fn: () => unknown) => fn()),
   };
 }
 
@@ -105,9 +118,19 @@ export function createScopedDbMocks(
   };
 
   const dataSource: DataSourceMock = {
+    // Accepts both TypeORM signatures -- `transaction(fn)` and
+    // `transaction(isolation, fn)` -- because a caller that asks for an
+    // isolation level would otherwise arrive here with the level in the
+    // callback's position and the spec would die calling a string. The level is
+    // still visible in `transaction.mock.calls` for specs that assert on it.
     transaction: jest.fn(
-      async (fn: (m: EntityManager) => unknown) =>
-        fn(manager as unknown as EntityManager) as Promise<unknown>,
+      async (
+        first: string | ((m: EntityManager) => unknown),
+        second?: (m: EntityManager) => unknown,
+      ) => {
+        const fn = typeof first === "function" ? first : second!;
+        return fn(manager as unknown as EntityManager) as Promise<unknown>;
+      },
     ),
     query: jest.fn(),
     manager,

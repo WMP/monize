@@ -398,6 +398,74 @@ describe("withScopedDb -- nested identity", () => {
       "SELECT set_config('app.bypass_rls', 'on', true)",
     );
   });
+
+  it("propagates an inner refusal out of the outer transaction when nobody catches it", async () => {
+    // The other half of the case below: uncaught, the refusal has to take the
+    // outer transaction down rather than being absorbed into a partial success.
+    withMode("off");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ userId: "user-a" }, () =>
+        withScopedDb(dataSource, async () =>
+          run({ system: true }, () =>
+            withScopedDb(dataSource, async () => undefined),
+          ),
+        ),
+      ),
+    ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+  });
+
+  it("clears the ambient scope after a callback throws something that is not an Error", async () => {
+    // A thrown string still unwinds the ALS scope; if it did not, the next
+    // request on this async chain would join a transaction that no longer
+    // exists.
+    withMode("enforce");
+    const { dataSource, transaction } = makeDataSource();
+
+    await expect(
+      run({ userId: "user-a" }, () =>
+        withScopedDb(dataSource, async () => {
+          throw "not an Error";
+        }),
+      ),
+    ).rejects.toBe("not an Error");
+
+    expect(getActiveScopedManager()).toBeUndefined();
+
+    // And the connection is usable again for a different identity.
+    await run({ system: true }, () =>
+      withScopedDb(dataSource, async () => undefined),
+    );
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps an inner throw catchable by the outer body", async () => {
+    // Refusing is an ordinary throw, so an outer body that already handles
+    // failures keeps handling it -- the guard must not become an unrecoverable
+    // state.
+    withMode("off");
+    const { dataSource, transaction } = makeDataSource();
+
+    const result = await run({ userId: "user-a" }, () =>
+      withScopedDb(dataSource, async (outer) => {
+        try {
+          await run({ system: true }, () =>
+            withScopedDb(dataSource, async () => "never"),
+          );
+          return "no refusal";
+        } catch {
+          // The outer transaction is still usable: the refusal happened before
+          // any statement was issued.
+          await outer.query("SELECT 1");
+          return "refused and recovered";
+        }
+      }),
+    );
+
+    expect(result).toBe("refused and recovered");
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("runOutsideActiveScopedManager", () => {

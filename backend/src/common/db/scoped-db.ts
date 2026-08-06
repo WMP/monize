@@ -139,9 +139,11 @@ export const MISSING_CONTEXT_MESSAGE =
   "DB access outside request/user/system context -- wrap the call path in withUserContext/withSystemContext";
 
 /**
- * Isolation levels callers may request. Only the registration paths need one
- * (SERIALIZABLE, to close the first-user-admin race); everything else uses the
- * connection default, exactly as before.
+ * Isolation levels callers may request. Two paths need one: registration
+ * (SERIALIZABLE, to close the first-user-admin race) and the backup export
+ * (REPEATABLE READ, so every table in one file comes from the same snapshot --
+ * `BackupService.withExportSnapshot`). Everything else uses the connection
+ * default, exactly as before.
  *
  * Spelled out rather than imported from `typeorm/driver/types/IsolationLevel`:
  * that deep path type-checks under tsc but does not resolve under ts-jest, so

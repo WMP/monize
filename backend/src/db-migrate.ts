@@ -2,6 +2,11 @@ import { Logger } from "@nestjs/common";
 import { Client } from "pg";
 import * as fs from "fs";
 import * as path from "path";
+import {
+  acquireBootstrapLock,
+  releaseBootstrapLock,
+  type BootstrapLockOptions,
+} from "./common/db/bootstrap-lock";
 
 const MIGRATIONS_DIRNAME = "migrations";
 
@@ -261,7 +266,12 @@ function safePath(base: string, relative: string): string | null {
   return resolved;
 }
 
-export async function runMigrations() {
+export async function runMigrations(
+  options: {
+    /** Overrides for the bootstrap lock wait; specs shorten it. */
+    lock?: BootstrapLockOptions;
+  } = {},
+) {
   logger.log("Running database migrations");
 
   const client = new Client({
@@ -272,8 +282,21 @@ export async function runMigrations() {
     database: process.env.DATABASE_NAME,
   });
 
+  let lockHeld = false;
+
   try {
     await client.connect();
+
+    // Serialize against every other replica before reading the applied set.
+    // The pending list is a snapshot: two containers starting together both
+    // compute the same list, and the loser dies either on the migration's own
+    // DDL or on the schema_migrations primary key when it records a file the
+    // winner already recorded. Taking the lock first means the loser's SELECT
+    // below happens after the winner committed, so it simply finds nothing
+    // pending. Same key as db-init, so a replica cannot start migrating while
+    // another is still applying schema.sql.
+    await acquireBootstrapLock(client, options.lock);
+    lockHeld = true;
 
     // Find migrations directory
     // All base directories are trusted (derived from __dirname or cwd)
@@ -370,6 +393,9 @@ export async function runMigrations() {
     logger.error(formatRunnerFailure(error));
     process.exit(1);
   } finally {
+    if (lockHeld) {
+      await releaseBootstrapLock(client);
+    }
     await client.end();
   }
 }
