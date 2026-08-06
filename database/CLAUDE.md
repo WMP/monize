@@ -112,6 +112,65 @@ GUCs through `withScopedDb` and the policies compare each row's owner against th
    to read as an absolute ban while that `REVOKE` was already in the tree, which is a rule nothing
    checked disagreeing with the code it governs.
 
+## A check-then-act cannot be fixed in application code
+
+When two requests may both pass a check and both act on it, the constraint belongs
+in the database. Application code cannot close that window -- it can only make it
+smaller, which reads as fixed and is not.
+
+The shapes and what they became in migration `136`:
+
+| Application shape | Database guard |
+|---|---|
+| count active rows, then insert | partial unique index (`import_jobs(user_id) WHERE status IN (...)`) |
+| read the set, then insert if absent | unique fingerprint + `ON CONFLICT DO NOTHING RETURNING` (`budget_alerts`) |
+| check "already posted", then post | unique occurrence key (`scheduled_transaction_postings`) |
+| a `Set` in process memory, per replica | a claim row (`job_claims`) |
+| delete external bytes, then commit | a trigger-written tombstone (`attachment_blob_tombstones`) |
+
+Two things go with such a guard:
+
+- **A `CHECK` beside a partial unique index whose predicate names statuses.** The
+  index only constrains rows matching its predicate, so a status the application
+  never intended sits outside it -- and the guard silently stops guarding. `136`
+  ships `import_jobs_status_check` for exactly that reason.
+- **`COALESCE` for a nullable column in a unique index.** `NULL` never equals
+  `NULL`, so the rows with a null there are precisely the ones left unprotected.
+  In `budget_alerts` those were the budget-wide alerts.
+
+**A pre-check plus a unique key is not the same as an upsert.** `findOne`, then
+insert if absent, is the commonest shape in this codebase, and its outcome
+depends entirely on where it runs:
+
+- In a **request handler**, the unique key stops the duplicate row and the global
+  exception filter turns the loser's `23505` into a `409` -- a worse message than
+  the pre-check's, but the right status. Tolerable.
+- In a **long transaction**, it is not tolerable. A unique violation aborts the
+  whole transaction, and inside a transaction it cannot be caught and recovered
+  from -- the statement after it dies with `25P02`. So one conflicting category
+  name used to lose an entire CSV import.
+- In a **cron**, it is a normal occurrence rather than a race, because every
+  replica fires every cron. `exchange_rates` and `security_prices` both had one,
+  and each meant that pair or security had no value stored for the day.
+
+Use `INSERT ... ON CONFLICT` in the last two cases, and read the result to tell
+"I created it" from "somebody else did" -- with `returnedRows`, not a length
+check on a shape you have not confirmed.
+
+**A unique key over a nullable column does not constrain the rows where it is
+null.** `categories UNIQUE(user_id, name, parent_id)` therefore does nothing at
+all for top-level categories, so two of those with the same name can both be
+created -- by two requests, or by an import racing a hand-created one. The fix is
+a unique index over `COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')`,
+as `budget_alerts` has, but it needs existing duplicates collapsed first and their
+references re-pointed, so it is a data migration rather than a one-line index.
+Not yet done.
+
+And a trigger that writes an audit or tombstone row must be `SECURITY DEFINER`
+with a pinned `search_path`: under RLS it would otherwise insert as the invoking
+role and be refused whenever the deleted row's owner is not the session identity,
+and a refused trigger fails the `DELETE` itself.
+
 ## Migration File Conventions
 - Numbered prefix for ordering: `NNN_description.sql` (e.g., `079_securities_is_favourite.sql`)
 - Use `ADD COLUMN IF NOT EXISTS` for column additions
@@ -134,6 +193,31 @@ TRIGGER` a `DROP TRIGGER IF EXISTS` or a `pg_trigger` `DO` block, `INSERT` an
   "Backend Lint & Type Check" job (`backend/scripts/migration-lint.mjs`).
 - `scripts/verify-schema.sh` -- applies every migration on top of `schema.sql`
   **twice** and diffs the result, run in the "Schema vs Migrations Drift" job.
+
+## A constraint added to a populated table needs a repair phase before it
+
+`CREATE UNIQUE INDEX` and `ADD CONSTRAINT` validate every existing row, and the
+rows that will fail are usually the exact state the constraint exists to prevent
+-- so the databases that most need the guard are the ones the migration cannot be
+applied to. And a failed migration is not a failed check: `db-migrate` runs at
+container start, so the backend never boots and the deploy reports only
+"backend exited (1)" for what is a data problem.
+
+So a guard over pre-existing data ships with a repair phase immediately before
+it, in the same file, and the comment says **which row survives and what happens
+to the rest** -- that is a product decision, not a detail. Both repairs must be
+re-runnable like everything else: write them as a window function over the
+duplicates so a second apply selects nothing. Migration `136` is the worked
+example (one active `import_jobs` row per user, and the `budget_alerts`
+fingerprint), and
+`backend/test/integration/migration-138-preflight.integration.spec.ts` is how it
+is proven: seed the legacy state in a real database, apply the file from disk,
+assert the guard exists and the rows were repaired. A unit test cannot see any of
+this, because the failure is PostgreSQL refusing an index.
+
+Where the repair sets an application-owned value -- an `error_key` a catalog has
+to have -- name the module that owns the literal in a comment, since a rename
+there has to change the SQL too.
 
 ## Tables
 
