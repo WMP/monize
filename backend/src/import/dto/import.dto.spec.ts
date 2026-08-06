@@ -47,8 +47,15 @@ describe("CSV import DTO validation", () => {
       categoryMappings: [],
       accountMappings: [],
       securityMappings: [
-        { originalName: "AAPL", securityId: "0b6f9070-9e2e-4f0e-9a3e-3a4b5c6d7e8f" },
-        { originalName: "Some Fund", createNew: "SF*", securityType: "MUTUAL_FUND" },
+        {
+          originalName: "AAPL",
+          securityId: "0b6f9070-9e2e-4f0e-9a3e-3a4b5c6d7e8f",
+        },
+        {
+          originalName: "Some Fund",
+          createNew: "SF*",
+          securityType: "MUTUAL_FUND",
+        },
       ],
     });
     const errors = await validateStrict(instance);

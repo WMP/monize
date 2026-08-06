@@ -1913,9 +1913,9 @@ describe("ImportInvestmentProcessorService", () => {
       expect(created.accountId).toBe("cash-1");
       expect(created.amount).toBe(500);
       expect(created.isTransfer).toBe(false);
-      expect(
-        managerOf(ctx).save.mock.calls[0][0],
-      ).not.toBeInstanceOf(InvestmentTransaction);
+      expect(managerOf(ctx).save.mock.calls[0][0]).not.toBeInstanceOf(
+        InvestmentTransaction,
+      );
       expect(ctx.affectedAccountIds.has("cash-1")).toBe(true);
       expect(ctx.importResult.imported).toBe(1);
     });

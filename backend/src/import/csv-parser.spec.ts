@@ -1732,7 +1732,10 @@ describe("CSV Parser investment mode", () => {
     };
   }
 
-  function parseRows(rows: string[], overrides: Partial<CsvColumnMappingConfig> = {}) {
+  function parseRows(
+    rows: string[],
+    overrides: Partial<CsvColumnMappingConfig> = {},
+  ) {
     return parseCsv([INV_HEADER, ...rows].join("\n"), invConfig(overrides));
   }
 
@@ -1749,7 +1752,9 @@ describe("CSV Parser investment mode", () => {
     });
 
     it("does not substring-match: 'sell to cover taxes withheld' stays unknown", () => {
-      expect(normalizeCsvAction("sell to cover taxes withheld", config)).toBeNull();
+      expect(
+        normalizeCsvAction("sell to cover taxes withheld", config),
+      ).toBeNull();
     });
 
     it("a user keyword list replaces the defaults for that action", () => {
@@ -1780,8 +1785,19 @@ describe("CSV Parser investment mode", () => {
       // The processor falls back to BUY for unknown codes, so an emitted code
       // outside this set would silently misfile rows as purchases.
       const processorCodes = new Set([
-        "buy", "sell", "div", "intinc", "cglong", "stksplit", "shrsin",
-        "shrsout", "reinvdiv", "xin", "xout", "addshares", "removeshares",
+        "buy",
+        "sell",
+        "div",
+        "intinc",
+        "cglong",
+        "stksplit",
+        "shrsin",
+        "shrsout",
+        "reinvdiv",
+        "xin",
+        "xout",
+        "addshares",
+        "removeshares",
       ]);
       for (const code of Object.values(CANONICAL_TO_QIF_ACTION)) {
         expect(processorCodes.has(code as string)).toBe(true);
@@ -1811,7 +1827,9 @@ describe("CSV Parser investment mode", () => {
       expect(tx.action).toBe("buy");
       // (1004.95 - 4.95) / 10 = 100; re-derived total = 10*100 + 4.95 = file amount
       expect(tx.price).toBe(100);
-      expect(Math.round((tx.quantity * tx.price + tx.commission) * 100) / 100).toBe(1004.95);
+      expect(
+        Math.round((tx.quantity * tx.price + tx.commission) * 100) / 100,
+      ).toBe(1004.95);
     });
 
     it("rounds a derived price to 10 decimal places, never 4", () => {
@@ -1825,7 +1843,9 @@ describe("CSV Parser investment mode", () => {
       expect(tx.action).toBe("sell");
       // (295.05 + 4.95) / 3 = 100; re-derived proceeds = 3*100 - 4.95 = file amount
       expect(tx.price).toBe(100);
-      expect(Math.round((tx.quantity * tx.price - tx.commission) * 100) / 100).toBe(295.05);
+      expect(
+        Math.round((tx.quantity * tx.price - tx.commission) * 100) / 100,
+      ).toBe(295.05);
     });
 
     it("downgrades a buy with no price and no amount to uncosted addshares", () => {
@@ -1912,7 +1932,9 @@ describe("CSV Parser investment mode", () => {
     });
 
     it("parses quantities with thousands separators and 8 decimals", () => {
-      const result = parseRows(['01/15/2026,Buy,VTI,"1,234.56789012",100.00,,0']);
+      const result = parseRows([
+        '01/15/2026,Buy,VTI,"1,234.56789012",100.00,,0',
+      ]);
       expect(result.transactions[0].quantity).toBe(1234.56789012);
     });
 
@@ -1959,7 +1981,12 @@ describe("CSV Parser investment mode", () => {
       ].join("\n");
       const result = parseCsv(
         csv,
-        invConfig({ amount: undefined, debit: 5, credit: 6, commissionColumn: undefined }),
+        invConfig({
+          amount: undefined,
+          debit: 5,
+          credit: 6,
+          commissionColumn: undefined,
+        }),
       );
       expect(result.transactions[0].action).toBe("div");
       expect(result.transactions[0].amount).toBe(45.67);
@@ -2009,11 +2036,24 @@ describe("CSV Parser investment mode", () => {
         "02/07/2026,Frobnicate,,,,75.00,",
       ]);
       expect(result.transactions.map((t) => t.action)).toEqual([
-        "buy", "sell", "div", "reinvdiv", "xin", "xout", "xin",
+        "buy",
+        "sell",
+        "div",
+        "reinvdiv",
+        "xin",
+        "xout",
+        "xin",
       ]);
       expect(result.securities).toEqual(["AAPL"]);
       expect(result.investmentSummary).toEqual({
-        actionCounts: { buy: 1, sell: 1, dividend: 1, reinvest: 1, cashIn: 2, cashOut: 1 },
+        actionCounts: {
+          buy: 1,
+          sell: 1,
+          dividend: 1,
+          reinvest: 1,
+          cashIn: 2,
+          cashOut: 1,
+        },
         cashFallbackValues: ["Frobnicate"],
         uncostedShareRows: 0,
         rejectedRows: [],

@@ -4,6 +4,10 @@ import { DataSource } from "typeorm";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
+  createUserPreferenceRepoMock,
+  type UserPreferenceRepoMock,
+} from "../test-helpers/user-preference-testing";
+import {
   UpdatesService,
   isNewerVersion,
   parseVersion,
@@ -40,6 +44,7 @@ describe("version helpers", () => {
 describe("UpdatesService", () => {
   let service: UpdatesService;
   let preferencesRepo: Record<string, jest.Mock>;
+  let preferencesRow: UserPreferenceRepoMock;
   let configGet: jest.Mock;
   let originalFetch: typeof fetch;
   let fetchMock: jest.Mock;
@@ -69,10 +74,11 @@ describe("UpdatesService", () => {
     }) as unknown as Response;
 
   beforeEach(async () => {
-    preferencesRepo = {
-      findOne: jest.fn(),
-      save: jest.fn().mockImplementation((p) => p),
-    };
+    // Behaves like the row: the dismiss path now materializes it with
+    // `ON CONFLICT DO NOTHING` and patches one column, so a `save`-recording
+    // mock could not tell that from overwriting the whole row.
+    preferencesRow = createUserPreferenceRepoMock(null);
+    preferencesRepo = preferencesRow.repo;
     configGet = jest.fn().mockReturnValue(undefined);
 
     const { dataSource } = createScopedDbMocks([
@@ -230,38 +236,40 @@ describe("UpdatesService", () => {
       fetchMock.mockResolvedValueOnce(mockOkResponse(buildRelease()));
       await service.refreshLatestRelease();
 
-      const existingPrefs = {
+      preferencesRow.seed({
         userId: "user-1",
-        dismissedUpdateVersion: null as string | null,
-      };
-      preferencesRepo.findOne.mockResolvedValueOnce(existingPrefs);
+        theme: "nord",
+        dismissedUpdateVersion: null,
+      });
 
       const result = await service.dismiss("user-1");
       expect(result).toEqual({ dismissed: true, version: "99.0.0" });
-      expect(preferencesRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ dismissedUpdateVersion: "99.0.0" }),
-      );
+      expect(preferencesRow.row()!.dismissedUpdateVersion).toBe("99.0.0");
+      // Only that column: dismissing an update banner must not drag any other
+      // preference back to whatever this request happened to read.
+      expect(Object.keys(preferencesRow.patches()[0])).toEqual([
+        "dismissedUpdateVersion",
+      ]);
+      expect(preferencesRow.row()!.theme).toBe("nord");
     });
 
     it("creates preferences row if none exists", async () => {
       fetchMock.mockResolvedValueOnce(mockOkResponse(buildRelease()));
       await service.refreshLatestRelease();
-      preferencesRepo.findOne.mockResolvedValueOnce(null);
+      preferencesRow.seed(null);
 
       const result = await service.dismiss("user-1");
       expect(result).toEqual({ dismissed: true, version: "99.0.0" });
-      expect(preferencesRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: "user-1",
-          dismissedUpdateVersion: "99.0.0",
-        }),
-      );
+      expect(preferencesRow.insertAttempts()).toHaveLength(1);
+      expect(preferencesRow.row()!.userId).toBe("user-1");
+      expect(preferencesRow.row()!.dismissedUpdateVersion).toBe("99.0.0");
     });
 
     it("is a no-op when no latest release has been fetched", async () => {
       const result = await service.dismiss("user-1");
       expect(result).toEqual({ dismissed: false, version: null });
-      expect(preferencesRepo.save).not.toHaveBeenCalled();
+      expect(preferencesRow.patches()).toHaveLength(0);
+      expect(preferencesRow.insertAttempts()).toHaveLength(0);
     });
   });
 

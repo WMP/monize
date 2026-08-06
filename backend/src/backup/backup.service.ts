@@ -49,6 +49,7 @@ import {
 } from "./restore-plan";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 import { gemConfigFingerprint } from "../strategies/gem-signal.service";
 import { GemStrategy } from "../strategies/entities/gem-strategy.entity";
 import { GemStrategyAsset } from "../strategies/entities/gem-strategy-asset.entity";
@@ -86,6 +87,18 @@ export class BackupPasswordRequiredError extends BadRequestException {
 const BACKUP_VERSION = 1;
 
 /**
+ * How long an export may sit idle inside its snapshot transaction before the
+ * database aborts it.
+ *
+ * The plain streaming export writes to the client between table reads, so a
+ * client that stops draining holds the snapshot open -- and a long-lived
+ * `REPEATABLE READ` transaction blocks vacuum from reclaiming dead tuples for
+ * the whole database, not just this user's tables. Bounding the idle time turns
+ * that from an operational problem into a failed download the user can retry.
+ */
+const EXPORT_IDLE_TIMEOUT_MS = 60_000;
+
+/**
  * Re-exported from the restore plan, which derives it from the insertion order
  * so the allowlist and the order cannot disagree. Consumed by the coverage guard
  * test (backup-restore.integration.spec.ts), which asserts every live table is
@@ -118,6 +131,22 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // backup's size by the size of whatever was last uploaded.
   "import_staged_files",
   "import_jobs",
+  // Cron bookkeeping, not user content: one row per already-claimed delivery or
+  // lease. Restoring them would re-suppress a reminder the restored account has
+  // not been sent, and the sweep drops them after 30 days anyway.
+  "job_claims",
+  // Deletion bookkeeping for bytes that live outside PostgreSQL. A restore
+  // replaces the attachment metadata wholesale, so a tombstone from before it
+  // describes an object no restored row references -- and the sweeper will have
+  // deleted it long before a restore lands anyway.
+  "attachment_blob_tombstones",
+  // The occurrence-claim ledger guards *concurrent* posting of the occurrence a
+  // schedule is currently due for -- two replicas, or a manual post racing the
+  // cron. A restore has no in-flight posting, and the restored schedules get new
+  // ids, so their old claims are gone by cascade and no stale row can shadow a
+  // live occurrence. What a restore does bring back is next_due_date, which
+  // already points past everything the backup had posted.
+  "scheduled_transaction_postings",
   "personal_access_tokens", // auth credentials -- never exported
   "refresh_tokens", // auth session tokens -- never exported
   "trusted_devices", // 2FA device registrations -- never exported
@@ -227,6 +256,7 @@ export class BackupService {
     private readonly oidcReauth: OidcReauthService,
     @Inject(ATTACHMENT_STORAGE_PROVIDER)
     private readonly attachmentStorage: AttachmentStorageProvider,
+    private readonly maintenance: UserMaintenanceService,
   ) {}
 
   /**
@@ -583,7 +613,20 @@ export class BackupService {
   ): Promise<T> {
     return withScopedDb(
       this.dataSource,
-      (manager) => fn((sql) => manager.query(sql, [userId])),
+      async (manager) => {
+        // Bound how long this REPEATABLE READ snapshot may sit idle. The
+        // streaming export holds the transaction open for as long as the client
+        // takes to drain, and a long-lived transaction blocks vacuum from
+        // reclaiming dead tuples across the whole database, not just this user's
+        // tables. EXPORT_IDLE_TIMEOUT_MS turns a stalled download into an aborted
+        // transaction the user can retry rather than an operational problem
+        // (audit DR-04). `true` scopes the setting to this transaction.
+        await manager.query(
+          "SELECT set_config('idle_in_transaction_session_timeout', $1, true)",
+          [String(EXPORT_IDLE_TIMEOUT_MS)],
+        );
+        return fn((sql) => manager.query(sql, [userId]));
+      },
       "REPEATABLE READ",
     );
   }
@@ -1197,77 +1240,89 @@ export class BackupService {
 
       const restored: Record<string, number> = {};
 
-      // One transaction for the whole restore, exactly as the QueryRunner block
-      // was: a half-applied restore would leave the account in a state that is
-      // neither the backup nor what was there before. `preserveTimestamps` makes
-      // withScopedDb emit `app.preserve_timestamps` for this transaction (in
-      // every RLS mode), so the GUC-aware `updated_at` trigger keeps the backup's
-      // timestamps through the Phase-3 deferred-FK UPDATEs -- replacing the old
-      // trigger-disabling ALTER TABLE DDL, which the unprivileged runtime role
-      // cannot execute under enforcement (task C5).
-      return withPreserveTimestamps(() =>
-        withScopedDb(this.dataSource, async (manager) => {
-          // Phase 1: Delete all existing user data (same order as deleteData in users.service)
-          await this.deleteAllUserData(userId, manager);
+      // A restore deletes everything the user owns and rewrites it, and it is not
+      // the only operation that does: a `.mny` import with "start fresh" and the
+      // self-service delete-my-data do too. Each is internally atomic, but two of
+      // them overlapping is not -- and the `.mny` import is not one transaction at
+      // all, so a restore landing mid-import wipes the rows its worker is still
+      // writing and the worker then writes them into the restored dataset. The
+      // lease refuses with a 409 before anything is deleted (audit DR-04-02).
+      return this.maintenance.withMaintenanceLease(
+        userId,
+        "backup restore",
+        () =>
+          // One transaction for the whole restore, exactly as the QueryRunner block
+          // was: a half-applied restore would leave the account in a state that is
+          // neither the backup nor what was there before. `preserveTimestamps` makes
+          // withScopedDb emit `app.preserve_timestamps` for this transaction (in
+          // every RLS mode), so the GUC-aware `updated_at` trigger keeps the backup's
+          // timestamps through the Phase-3 deferred-FK UPDATEs -- replacing the old
+          // trigger-disabling ALTER TABLE DDL, which the unprivileged runtime role
+          // cannot execute under enforcement (task C5).
+          withPreserveTimestamps(() =>
+            withScopedDb(this.dataSource, async (manager) => {
+              // Phase 1: Delete all existing user data (same order as deleteData in users.service)
+              await this.deleteAllUserData(userId, manager);
 
-          // Phase 2a: ensure every referenced currency code exists before
-          // restoring the tables with FK references to currencies(code).
-          await this.ensureCurrenciesExist(manager, data, userId);
+              // Phase 2a: ensure every referenced currency code exists before
+              // restoring the tables with FK references to currencies(code).
+              await this.ensureCurrenciesExist(manager, data, userId);
 
-          // Phase 2b: insert every backed-up table in FK-safe order. The order,
-          // the row-count key and whether user_id is forced live in
-          // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
-          // foreign keys -- so a new table or a new FK cannot quietly land in the
-          // wrong position.
-          for (const { table, countKey, scopeToUser } of RESTORE_PLAN) {
-            restored[countKey] = await this.insertRows(
-              manager,
-              table,
-              (data as unknown as Record<string, Record<string, unknown>[]>)[
-                table
-              ],
-              scopeToUser ? userId : null,
-            );
-          }
-
-          // Phase 3: Restore deferred FK columns that were stripped during insert
-          // to avoid circular/forward reference violations.
-          await this.restoreDeferredFkColumns(manager, data);
-
-          this.logger.log(`Backup restore completed for user ${userId}`);
-          // `skippedAttachments` is reported beside `restored`, never inside it:
-          // the client sums `restored`'s values to show a row total, and a count
-          // of rows that were deliberately not written does not belong in that
-          // sum.
-          return skippedAttachments > 0
-            ? {
-                message: "Backup restored successfully",
-                restored,
-                skippedAttachments,
+              // Phase 2b: insert every backed-up table in FK-safe order. The order,
+              // the row-count key and whether user_id is forced live in
+              // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
+              // foreign keys -- so a new table or a new FK cannot quietly land in the
+              // wrong position.
+              for (const { table, countKey, scopeToUser } of RESTORE_PLAN) {
+                restored[countKey] = await this.insertRows(
+                  manager,
+                  table,
+                  (
+                    data as unknown as Record<string, Record<string, unknown>[]>
+                  )[table],
+                  scopeToUser ? userId : null,
+                );
               }
-            : { message: "Backup restored successfully", restored };
-        }),
-      )
-        .then(async (result) => {
-          // After the commit, never before: until it lands, the metadata that
-          // references these objects may come back with a rollback.
-          await this.deleteDisplacedAttachmentObjects(displacedKeys, [
-            ...stagedKeys,
-            ...sourceKeys,
-          ]);
-          return result;
-        })
-        .catch(async (error) => {
-          this.logger.error(
-            `Backup restore failed for user ${userId}: ${error.message}`,
-          );
-          // The database rolled back; the objects staged for it did not, so remove
-          // them rather than leaving bytes nothing references. The user's own old
-          // objects stay exactly where they are -- their metadata rolled back with
-          // everything else, so those bytes are still referenced.
-          await this.discardStagedAttachmentObjects(stagedKeys);
-          throw error;
-        });
+
+              // Phase 3: Restore deferred FK columns that were stripped during insert
+              // to avoid circular/forward reference violations.
+              await this.restoreDeferredFkColumns(manager, data);
+
+              this.logger.log(`Backup restore completed for user ${userId}`);
+              // `skippedAttachments` is reported beside `restored`, never inside it:
+              // the client sums `restored`'s values to show a row total, and a count
+              // of rows that were deliberately not written does not belong in that
+              // sum.
+              return skippedAttachments > 0
+                ? {
+                    message: "Backup restored successfully",
+                    restored,
+                    skippedAttachments,
+                  }
+                : { message: "Backup restored successfully", restored };
+            }),
+          )
+            .then(async (result) => {
+              // After the commit, never before: until it lands, the metadata that
+              // references these objects may come back with a rollback.
+              await this.deleteDisplacedAttachmentObjects(displacedKeys, [
+                ...stagedKeys,
+                ...sourceKeys,
+              ]);
+              return result;
+            })
+            .catch(async (error) => {
+              this.logger.error(
+                `Backup restore failed for user ${userId}: ${error.message}`,
+              );
+              // The database rolled back; the objects staged for it did not, so remove
+              // them rather than leaving bytes nothing references. The user's own old
+              // objects stay exactly where they are -- their metadata rolled back with
+              // everything else, so those bytes are still referenced.
+              await this.discardStagedAttachmentObjects(stagedKeys);
+              throw error;
+            }),
+      );
     });
   }
 
@@ -1361,6 +1416,45 @@ export class BackupService {
     this.logger.log(
       `Removed ${removable.length - failures} displaced attachment object(s) after restore` +
         (failures > 0 ? ` (${failures} could not be removed)` : ""),
+    );
+  }
+
+  /**
+   * Runs every table read of one export inside a single `REPEATABLE READ`
+   * transaction.
+   *
+   * A backup is a graph, not a bag of tables: `transactions` reference
+   * `accounts`, `transaction_splits` reference `transactions`, and the restore
+   * inserts with `ON CONFLICT DO NOTHING`. Reading each table in its own
+   * autocommit transaction -- which is what a per-call `withScopedDb` gives --
+   * lets a concurrent write land between two of those reads, so the file can
+   * hold a split whose parent transaction is absent, or a transaction whose
+   * account is absent. Restoring it does not fail: the orphan's insert is
+   * skipped and the row is silently gone, which is the worst way for a backup to
+   * be wrong.
+   *
+   * `REPEATABLE READ` takes one snapshot for the whole transaction, so every
+   * read sees the same committed state and the export is a point in time. It is
+   * read-only, so there is no serialization failure to retry.
+   */
+  private async withExportSnapshot<T>(
+    run: (
+      read: (
+        sql: string,
+        params: unknown[],
+      ) => Promise<Record<string, unknown>[]>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    return withScopedDb(
+      this.dataSource,
+      async (manager) => {
+        await manager.query(
+          "SELECT set_config('idle_in_transaction_session_timeout', $1, true)",
+          [String(EXPORT_IDLE_TIMEOUT_MS)],
+        );
+        return run((sql, params) => manager.query(sql, params));
+      },
+      "REPEATABLE READ",
     );
   }
 

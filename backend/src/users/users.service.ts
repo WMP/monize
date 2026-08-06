@@ -17,11 +17,13 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import * as bcrypt from "bcryptjs";
 import { tr } from "../i18n/translate";
-import { currentRequestLocale } from "../i18n/request-locale";
 import { User } from "./entities/user.entity";
 import { UserPreference } from "./entities/user-preference.entity";
-import { buildDefaultPreferences } from "./user-preference.factory";
 import { lockAdminsForUpdate, wouldRemoveLastAdmin } from "./last-admin.util";
+import {
+  ensureUserPreferencesRow,
+  type UserPreferencePatch,
+} from "./user-preference-writer";
 import { TrustedDevice } from "./entities/trusted-device.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
@@ -40,6 +42,7 @@ import {
   type OidcReauthPurpose,
 } from "../auth/oidc/oidc-reauth.service";
 import { toUserProfile } from "./user-profile";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 
 @Injectable()
 export class UsersService {
@@ -51,6 +54,7 @@ export class UsersService {
     private moduleRef: ModuleRef,
     private demoModeService: DemoModeService,
     private oidcReauth: OidcReauthService,
+    private maintenance: UserMaintenanceService,
   ) {}
 
   /**
@@ -146,119 +150,142 @@ export class UsersService {
   }
 
   async getPreferences(userId: string): Promise<UserPreference> {
-    let preferences = await this.scoped(UserPreference, (repo) =>
-      repo.findOne({
-        where: { userId },
-      }),
-    );
-
-    // Create default preferences if they don't exist. Seed `language` from the
-    // request locale (browser-detected on first visit, forwarded by the proxy)
-    // so a row first materialized here still captures the user's UI language
-    // rather than defaulting everyone to English.
-    if (!preferences) {
-      const created = buildDefaultPreferences(userId, currentRequestLocale());
-      preferences = created;
-      await this.scoped(UserPreference, (repo) => repo.save(created));
-    }
-
-    return preferences;
+    // Materialize the row if it does not exist, then read it back. `language` is
+    // seeded from the request locale (browser-detected on first visit, forwarded
+    // by the proxy) so a row first materialized here captures the user's UI
+    // language rather than defaulting everyone to English.
+    //
+    // Insert-if-absent rather than read-then-insert: the first page load fires
+    // several requests at once, and two of them both finding no row used to mean
+    // one got a unique violation on a plain read. Both statements are in one
+    // transaction so the value returned is the value that is there.
+    return withScopedDb(this.dataSource, async (manager) => {
+      await ensureUserPreferencesRow(manager, userId);
+      const preferences = await manager
+        .getRepository(UserPreference)
+        .findOne({ where: { userId } });
+      // The insert above guarantees the row; the non-null assertion records that
+      // rather than inventing a fallback that could mask a real absence.
+      return preferences!;
+    });
   }
 
   async updatePreferences(
     userId: string,
     dto: UpdatePreferencesDto,
   ): Promise<UserPreference> {
-    let preferences = await this.scoped(UserPreference, (repo) =>
-      repo.findOne({
-        where: { userId },
-      }),
-    );
+    // Build a patch of exactly the fields the request supplied, and write only
+    // those. The previous shape mutated a loaded entity and `repo.save`d it,
+    // which writes back every column that differs from what the entity holds --
+    // including columns another request changed in between. `tour_progress`,
+    // `last_seen_version` and `dismissed_update_version` are all written by
+    // other endpoints on the same row, so saving a Settings form could quietly
+    // undo a tour the user had just dismissed in another tab.
+    const patch: UserPreferencePatch = {};
 
-    if (!preferences) {
-      // Create with defaults first
-      preferences = await this.getPreferences(userId);
-    }
-
-    const previousDefaultCurrency = preferences.defaultCurrency;
-
-    // Update only provided fields
     if (dto.defaultCurrency !== undefined) {
-      preferences.defaultCurrency = dto.defaultCurrency;
+      patch.defaultCurrency = dto.defaultCurrency;
     }
     if (dto.dateFormat !== undefined) {
-      preferences.dateFormat = dto.dateFormat;
+      patch.dateFormat = dto.dateFormat;
     }
     if (dto.numberFormat !== undefined) {
-      preferences.numberFormat = dto.numberFormat;
+      patch.numberFormat = dto.numberFormat;
     }
     if (dto.theme !== undefined) {
-      preferences.theme = dto.theme;
+      patch.theme = dto.theme;
     }
     if (dto.colorTheme !== undefined) {
-      preferences.colorTheme = dto.colorTheme;
+      patch.colorTheme = dto.colorTheme;
     }
     if (dto.timezone !== undefined) {
-      preferences.timezone = dto.timezone;
+      patch.timezone = dto.timezone;
     }
     if (dto.notificationEmail !== undefined) {
-      preferences.notificationEmail = dto.notificationEmail;
+      patch.notificationEmail = dto.notificationEmail;
     }
     if (dto.notificationBrowser !== undefined) {
-      preferences.notificationBrowser = dto.notificationBrowser;
+      patch.notificationBrowser = dto.notificationBrowser;
     }
     if (dto.gettingStartedDismissed !== undefined) {
-      preferences.gettingStartedDismissed = dto.gettingStartedDismissed;
+      patch.gettingStartedDismissed = dto.gettingStartedDismissed;
     }
     if (dto.aiBubbleEnabled !== undefined) {
-      preferences.aiBubbleEnabled = dto.aiBubbleEnabled;
+      patch.aiBubbleEnabled = dto.aiBubbleEnabled;
     }
     if (dto.showWhatsNew !== undefined) {
-      preferences.showWhatsNew = dto.showWhatsNew;
+      patch.showWhatsNew = dto.showWhatsNew;
     }
     if (dto.weekStartsOn !== undefined) {
-      preferences.weekStartsOn = dto.weekStartsOn;
+      patch.weekStartsOn = dto.weekStartsOn;
     }
     if (dto.budgetDigestEnabled !== undefined) {
-      preferences.budgetDigestEnabled = dto.budgetDigestEnabled;
+      patch.budgetDigestEnabled = dto.budgetDigestEnabled;
     }
     if (dto.budgetDigestDay !== undefined) {
-      preferences.budgetDigestDay = dto.budgetDigestDay;
+      patch.budgetDigestDay = dto.budgetDigestDay;
     }
     if (dto.favouriteReportIds !== undefined) {
-      preferences.favouriteReportIds = dto.favouriteReportIds;
+      patch.favouriteReportIds = dto.favouriteReportIds;
     }
     if (dto.dashboardWidgets !== undefined) {
-      preferences.dashboardWidgets = dto.dashboardWidgets;
+      patch.dashboardWidgets = dto.dashboardWidgets;
     }
     if (dto.dashboardWidgetConfig !== undefined) {
-      preferences.dashboardWidgetConfig = dto.dashboardWidgetConfig;
+      // A free-form JSONB map: `QueryDeepPartialEntity` treats a bare
+      // `Record<string, unknown>` as a possible nested-entity patch, so say
+      // plainly that this value is the column's whole contents.
+      patch.dashboardWidgetConfig =
+        dto.dashboardWidgetConfig as UserPreference["dashboardWidgetConfig"];
     }
     if (dto.showCreatedAt !== undefined) {
-      preferences.showCreatedAt = dto.showCreatedAt;
+      patch.showCreatedAt = dto.showCreatedAt;
     }
     if (dto.timeFormat !== undefined) {
-      preferences.timeFormat = dto.timeFormat;
+      patch.timeFormat = dto.timeFormat;
     }
     if (dto.preferredExchanges !== undefined) {
-      preferences.preferredExchanges = dto.preferredExchanges;
+      patch.preferredExchanges = dto.preferredExchanges;
     }
     if (dto.defaultQuoteProvider !== undefined) {
-      preferences.defaultQuoteProvider = dto.defaultQuoteProvider;
+      patch.defaultQuoteProvider = dto.defaultQuoteProvider;
     }
     if (dto.recentTransactionsLimit !== undefined) {
-      preferences.recentTransactionsLimit = dto.recentTransactionsLimit;
+      patch.recentTransactionsLimit = dto.recentTransactionsLimit;
     }
     // In demo mode the account is shared across all visitors, so the UI
     // language must not be persisted to it -- otherwise one visitor's choice
     // would follow the next person until the nightly reset. The locale cookie
     // (set client-side) still applies the language for the current visit.
     if (dto.language !== undefined && !this.demoModeService.isDemo) {
-      preferences.language = dto.language;
+      patch.language = dto.language;
     }
 
-    const saved = await this.scoped(UserPreference, (repo) =>
-      repo.save(preferences),
+    // One transaction: materialize the row if absent, capture the currency the
+    // refresh decision below compares against, apply the patch, read the result
+    // back. The old code did each of those in its own autocommit transaction,
+    // so the value it reported was not necessarily the value it wrote.
+    const { saved, previousDefaultCurrency } = await withScopedDb(
+      this.dataSource,
+      async (manager) => {
+        await ensureUserPreferencesRow(manager, userId);
+        const repo = manager.getRepository(UserPreference);
+        const before = await repo.findOne({ where: { userId } });
+        // Copy the value out now, not after the write: reading it from `before`
+        // later would depend on that object not having been touched by the
+        // update in between.
+        const previousDefaultCurrency = before?.defaultCurrency;
+        if (Object.keys(patch).length > 0) {
+          await repo
+            .createQueryBuilder()
+            .update()
+            .set(patch)
+            .where("user_id = :userId", { userId })
+            .execute();
+        }
+        const after = await repo.findOne({ where: { userId } });
+        return { saved: after!, previousDefaultCurrency };
+      },
     );
 
     // Fetch fresh exchange rates whenever the user picks a new default
@@ -524,11 +551,34 @@ export class UsersService {
    * .mny import's wipe-first mode passes its own, so an artifact obtained for one
    * cannot silently drive the other -- they present different confirmations to
    * the user and one of them is followed by an import.
+   *
+   * @param initiator who asked. `"user-request"` is the self-service flow and
+   *   must not overlap another operation replacing this account's data, so it
+   *   takes the maintenance lease. `"mny-import"` is the importer's "start
+   *   fresh" wipe, which already holds the user's single import slot -- taking
+   *   the lease there would have it refuse itself, and consulting it would
+   *   refuse on the importer's own in-flight job (audit DR-04-02).
    */
   async deleteData(
     userId: string,
     dto: DeleteDataDto,
     reauthPurpose: OidcReauthPurpose = "delete-data",
+    initiator: "user-request" | "mny-import" = "user-request",
+  ): Promise<{ deleted: Record<string, number> }> {
+    if (initiator === "user-request") {
+      return this.maintenance.withMaintenanceLease(
+        userId,
+        "delete my data",
+        () => this.deleteDataWithinLease(userId, dto, reauthPurpose),
+      );
+    }
+    return this.deleteDataWithinLease(userId, dto, reauthPurpose);
+  }
+
+  private async deleteDataWithinLease(
+    userId: string,
+    dto: DeleteDataDto,
+    reauthPurpose: OidcReauthPurpose,
   ): Promise<{ deleted: Record<string, number> }> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),

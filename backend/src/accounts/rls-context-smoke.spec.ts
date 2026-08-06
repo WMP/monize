@@ -14,6 +14,11 @@ import { PortfolioService } from "../securities/portfolio.service";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createJobClaimMock,
+  JobClaimMock,
+  jobClaimProvider,
+} from "../test-helpers/job-claim-testing";
 
 /**
  * RLS smoke for the accounts module's out-of-request entry points (task R1).
@@ -27,6 +32,8 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
  */
 
 describe("accounts module RLS context smoke (real withScopedDb)", () => {
+  /** Wins every claim, matching the pre-claim behaviour these specs describe. */
+  const jobClaims: JobClaimMock = createJobClaimMock();
   const OWNER_ID = "3f1f8a52-2f0e-4b6d-9a56-0d6a3f1c2b4e";
 
   it("applyDueTransactionBalances runs its withScopedDb work under the system context", async () => {
@@ -39,6 +46,10 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
     manager.query
       .mockResolvedValueOnce([{ user_id: OWNER_ID, timezone: "UTC" }])
       .mockResolvedValueOnce([{ account_id: "a1" }])
+      // ...which is then locked FOR UPDATE before the ledger is read, so the
+      // absolute balance write cannot overwrite a delta that commits in between
+      // (audit P4-005).
+      .mockResolvedValueOnce([{ id: "a1" }])
       .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }])
       .mockResolvedValueOnce(undefined);
 
@@ -72,6 +83,16 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
           c[0].includes("UPDATE accounts SET current_balance"),
       ),
     ).toBe(true);
+    // And the accounts were locked before the balances were read.
+    const lockIndex = manager.query.mock.calls.findIndex(
+      (c) => typeof c[0] === "string" && c[0].includes("FOR UPDATE"),
+    );
+    const sumIndex = manager.query.mock.calls.findIndex(
+      (c) =>
+        typeof c[0] === "string" && c[0].includes("COALESCE(SUM(t.amount)"),
+    );
+    expect(lockIndex).toBeGreaterThanOrEqual(0);
+    expect(lockIndex).toBeLessThan(sumIndex);
   });
 
   it("checkMortgageRenewals runs fan-out and per-user reads under their contexts", async () => {
@@ -111,6 +132,7 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MortgageReminderService,
+        jobClaimProvider(jobClaims),
         { provide: DataSource, useValue: dataSource },
         {
           provide: EmailService,

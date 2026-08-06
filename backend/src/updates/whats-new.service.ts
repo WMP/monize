@@ -1,8 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { UserPreference } from "../users/entities/user-preference.entity";
-import { buildDefaultPreferences } from "../users/user-preference.factory";
-import { currentRequestLocale } from "../i18n/request-locale";
+import { patchUserPreferences } from "../users/user-preference-writer";
 import { DemoModeService } from "../common/demo-mode.service";
 import { withScopedDb } from "../common/db/scoped-db";
 import { ReleaseNotesService } from "./release-notes.service";
@@ -83,18 +82,15 @@ export class WhatsNewService {
   async markSeen(userId: string): Promise<{ seen: boolean; version: string }> {
     const currentVersion = this.releaseNotesService.currentVersion;
 
-    await withScopedDb(this.dataSource, async (manager) => {
-      const repo = manager.getRepository(UserPreference);
-      const prefs = await repo.findOne({ where: { userId } });
-      if (prefs) {
-        prefs.lastSeenVersion = currentVersion;
-        await repo.save(prefs);
-      } else {
-        const created = buildDefaultPreferences(userId, currentRequestLocale());
-        created.lastSeenVersion = currentVersion;
-        await repo.save(created);
-      }
-    });
+    // One column, materializing the row if absent. The previous shape read the
+    // whole entity and saved it back, which reverts any other preference a
+    // concurrent request changed in between -- the entity in hand still holds the
+    // values it was read with, and `save` treats those as deliberate.
+    await withScopedDb(this.dataSource, (manager) =>
+      patchUserPreferences(manager, userId, {
+        lastSeenVersion: currentVersion,
+      }),
+    );
 
     return { seen: true, version: currentVersion };
   }
@@ -111,20 +107,12 @@ export class WhatsNewService {
    * would never arrive.
    */
   async remindNextLogin(userId: string): Promise<{ reminded: boolean }> {
-    await withScopedDb(this.dataSource, async (manager) => {
-      const repo = manager.getRepository(UserPreference);
-      const prefs = await repo.findOne({ where: { userId } });
-      if (prefs) {
-        if (prefs.lastSeenVersion !== null) {
-          prefs.lastSeenVersion = null;
-          await repo.save(prefs);
-        }
-      } else {
-        const created = buildDefaultPreferences(userId, currentRequestLocale());
-        created.lastSeenVersion = null;
-        await repo.save(created);
-      }
-    });
+    // Unconditional: writing NULL over NULL is a no-op the database can decide
+    // far more cheaply than a read-compare-write can, and the read-compare-write
+    // was the thing that could revert a concurrent change to another column.
+    await withScopedDb(this.dataSource, (manager) =>
+      patchUserPreferences(manager, userId, { lastSeenVersion: null }),
+    );
 
     return { reminded: true };
   }
