@@ -73,6 +73,42 @@ The one reset a generation cannot derive is a **corrected contact address**: the
 owner's cycle has not moved, so `updateContact` clears that contact's marker
 explicitly when the email changes.
 
+### Two predecessors, two fences, and the one case only a drain covers
+
+During a rolling deploy the emergency-access columns meet two different older
+binaries, and each needs its own database-side rule:
+
+- **The binary that knows `claim_notified_at`** (145+, pre-generation) acknowledges
+  a delivery without stamping `notified_grant_generation`. Migration 147 translates
+  that acknowledgement into the owner's current generation, so the new pending
+  query does not re-issue -- and kill -- a link that binary just delivered.
+- **The binary in production today** (pre-145) acknowledges nothing: it rotates
+  `claim_token_hash` directly, guarded only by a snapshot read of `granted_at`, so
+  a stale old pod can overwrite a link the new protocol has already minted or
+  delivered. No acknowledgement-shaped trigger ever sees that write. Migration 148
+  refuses it instead: a rotation that touches neither `claim_token_ciphertext` nor
+  `notified_grant_generation` is legacy-shaped, and it is rejected exactly when the
+  row holds new-protocol state -- an undelivered credential, or a live delivered
+  link. The old pod's own per-contact `try/catch` logs the refusal and its grant
+  retries next run, by which time a new pod has normally taken the cycle over.
+
+Costs, decided rather than discovered:
+
+- **Rolling back** the binary across migration 148 while a cycle is mid-flight
+  (credential minted or delivered, `granted_at` not yet set) stalls that owner's
+  grant with a per-contact error logged daily, until the credential expires (30
+  days) or a 145+ binary returns. The alternative was a silently dead link during
+  an account recovery; loud-and-stalled won. Revocation, disabling the feature and
+  claim consumption only ever clear the hash, which no fence matches, so they keep
+  working on every binary.
+- **The reverse direction is not fenceable.** When the *old* pod rotates first --
+  its write lands on a row with no new-protocol state and passes -- the new pod
+  then takes the row over by rotating again (with the ciphertext, and a logged
+  warning), and the link the old pod emailed dies. One dead link, visible in the
+  log, bounded by the deploy window. Only draining old pods before the new grant
+  cron first fires removes it; with the daily schedule that drain is the ordinary
+  case, not an operational demand.
+
 ### A lease is held by an attempt
 
 `(claim_type, user_id, claim_key)` names the *work*. It does not name the holder, so
@@ -148,7 +184,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
-| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at`, which also advances `grant_generation`, plus a per-contact `notified_grant_generation` delivery record for the grant (forward-only, and a migration-147 trigger backfills a previous-release acknowledgement into the current generation so a rollout cannot rotate a delivered link), whose credential is reused on retry while it is unexpired; **durable lease** plus `last_reminder_sent_at` for the reminder. The daily check is skipped when `AI_ENCRYPTION_KEY` is absent, since grant delivery cannot encrypt a token without it (V4R3-002) |
+| `emergency-access-monitor.service` | Daily 9 AM | Revoke links when a granted owner returns; grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at`, which also advances `grant_generation`, plus a per-contact `notified_grant_generation` delivery record for the grant (forward-only; a migration-147 trigger backfills a previous-release acknowledgement into the current generation, and a migration-148 fence refuses the pre-145 binary's generation-blind hash rotation, so a rollout cannot rotate a delivered link -- see "Two predecessors, two fences" above), whose credential is reused on retry while it is unexpired; **durable lease** plus `last_reminder_sent_at` for the reminder. The owner-return revocation sweep runs unconditionally at the top of the check; only the *delivery* sweeps are skipped when SMTP or `AI_ENCRYPTION_KEY` is absent, since a grant cannot deliver without them (V4R3-002) but a returned owner's links must die regardless (REMAINING-001) |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |

@@ -4,7 +4,7 @@ import { DataSource } from "typeorm";
 
 import { AiEncryptionService } from "@/ai/ai-encryption.service";
 import { hashToken } from "@/auth/crypto.util";
-import { returnedRows } from "@/common/db/query-result";
+import { affectedRowCount, returnedRows } from "@/common/db/query-result";
 import { withUserContext } from "@/common/db/with-context";
 import { JobClaimService } from "@/common/jobs/job-claim.service";
 import { EmergencyAccessMonitorService } from "@/emergency-access/emergency-access-monitor.service";
@@ -495,6 +495,29 @@ describe("emergency access across grant cycles", () => {
         [contactId],
       );
 
+    /**
+     * The binary in production *today* (pre-145) rotates the credential with
+     * exactly this statement -- a TypeORM save of the four columns its entity
+     * declares -- guarded only by a snapshot read of `granted_at`. It predates
+     * `claim_token_ciphertext` and `notified_grant_generation`, so it can touch
+     * neither (REMAINING-002). Migration 148's fence is what has to decide,
+     * per row state, whether this write may land.
+     */
+    const oldBinaryRotates = (
+      contactId: string,
+      rawToken: string,
+    ): Promise<unknown> =>
+      dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_token_hash = $2,
+                claim_token_expires_at = CURRENT_TIMESTAMP + INTERVAL '30 days',
+                claim_token_used_at = NULL,
+                claim_voided_reason = NULL,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1`,
+        [contactId, hashToken(rawToken)],
+      );
+
     it("translates an old-binary acknowledgement into the current generation", async () => {
       // A new pod claims the grant and mints token A, but the *old* pod delivers it
       // and writes the old-style acknowledgement.
@@ -552,6 +575,81 @@ describe("emergency access across grant cycles", () => {
       expect((await contactRow()).notified_grant_generation).toBe(
         servedGeneration,
       );
+    });
+
+    it("refuses the pre-delivery-column binary's rotation over a live delivered link", async () => {
+      // The REMAINING-002 race: the new pod granted, delivered token A and
+      // recorded the delivery; a stale old pod whose granted_at snapshot predates
+      // that grant now mints token B over it. Without the fence the only link in
+      // the recipient's inbox dies silently -- the P4-014 outcome, reachable by an
+      // ordinary rolling deploy.
+      const { token } = await runInactivityGrant();
+      const contactId = (await contactRow()).id;
+
+      await expect(
+        oldBinaryRotates(contactId, "0123456789abcdef"),
+      ).rejects.toThrow(/newer release owns this credential cycle/);
+
+      // The delivered link is untouched and still the one the database honours.
+      expect((await contactRow()).claim_token_hash).toBe(hashToken(token));
+    });
+
+    it("refuses the pre-delivery-column binary's rotation over an undelivered credential", async () => {
+      // The in-flight window: credential minted, delivery not yet recorded. A
+      // generation-blind rotation would desync hash and ciphertext, so the resume
+      // path would re-send a link whose hash is gone -- a dead link recorded as
+      // delivered, which is worse than no link at all.
+      const { token } = await runInactivityGrant();
+      const contactId = (await contactRow()).id;
+      await dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_notified_at = NULL,
+                notified_grant_generation = NULL,
+                claim_token_ciphertext = $2
+          WHERE id = $1`,
+        [contactId, encryption.encrypt(token)],
+      );
+
+      await expect(
+        oldBinaryRotates(contactId, "0123456789abcdef"),
+      ).rejects.toThrow(/newer release owns this credential cycle/);
+      expect((await contactRow()).claim_token_hash).toBe(hashToken(token));
+    });
+
+    it("keeps the legacy binary working where no new-protocol state exists", async () => {
+      // A rotation over a row with neither ciphertext nor generation is the old
+      // binary retrying its own legacy grant -- exactly as correct as it is on
+      // current main. Refusing it would stall every grant on a rollback, so the
+      // fence must let it through.
+      const contactId = (await contactRow()).id;
+      await oldBinaryRotates(contactId, "fedcba9876543210");
+      expect((await contactRow()).claim_token_hash).toBe(
+        hashToken("fedcba9876543210"),
+      );
+
+      // And the new binary takes the legacy row over cleanly: no ciphertext means
+      // the credential cannot be re-sent, so it rotates -- with the ciphertext in
+      // the same statement, which is what passes the fence.
+      const { token } = await runInactivityGrant();
+      expect((await contactRow()).claim_token_hash).toBe(hashToken(token));
+
+      // The old binary's owner-return revocation is never blocked either: it
+      // clears the hash, which is not a rotation. Verbatim from current main's
+      // revokeAfterReturn query-builder update.
+      const revoked: unknown = await dataSource.query(
+        `UPDATE emergency_access_contacts
+            SET claim_token_hash = NULL,
+                claim_token_expires_at = NULL,
+                claim_token_used_at = CURRENT_TIMESTAMP,
+                claim_voided_reason = 'owner_returned',
+                updated_at = CURRENT_TIMESTAMP
+          WHERE owner_user_id = $1
+            AND claim_token_hash IS NOT NULL
+            AND claim_token_used_at IS NULL`,
+        [owner],
+      );
+      expect(affectedRowCount(revoked)).toBe(1);
+      expect((await contactRow()).claim_token_hash).toBeNull();
     });
   });
 });

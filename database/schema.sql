@@ -1112,6 +1112,48 @@ CREATE TRIGGER trg_eac_backfill_notified_generation
     )
     EXECUTE FUNCTION backfill_notified_grant_generation();
 
+-- Rolling-deployment fence for the binary that predates the delivery columns
+-- (migration 148). The pre-145 release rotates `claim_token_hash` guarded only by
+-- a snapshot of `granted_at`, so a stale old pod can overwrite -- and kill -- a
+-- link the new protocol has already minted or delivered. The current code never
+-- writes a new hash without the matching `claim_token_ciphertext` in the same
+-- statement, so a rotation touching neither ciphertext nor generation is
+-- legacy-shaped, and it is refused exactly when it would destroy new-protocol
+-- state: an undelivered credential in flight, or a live delivered link. Hash
+-- clears (revocation, consumption) and rotations over rows with no new-protocol
+-- state pass through unchanged.
+CREATE OR REPLACE FUNCTION reject_legacy_emergency_token_rotation() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.claim_token_ciphertext IS NOT NULL THEN
+        RAISE EXCEPTION
+            'emergency-access contact % has an undelivered credential; a generation-blind token rotation would desync it (a newer release owns this credential cycle)',
+            OLD.id;
+    END IF;
+    IF OLD.notified_grant_generation IS NOT NULL
+       AND OLD.claim_token_hash IS NOT NULL
+       AND OLD.claim_token_used_at IS NULL
+       AND OLD.claim_token_expires_at IS NOT NULL
+       AND OLD.claim_token_expires_at >= CURRENT_TIMESTAMP THEN
+        RAISE EXCEPTION
+            'emergency-access contact % holds a live delivered link; a generation-blind token rotation would kill it (a newer release owns this credential cycle)',
+            OLD.id;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_eac_reject_legacy_token_rotation
+    BEFORE UPDATE ON emergency_access_contacts
+    FOR EACH ROW
+    WHEN (
+      NEW.claim_token_hash IS NOT NULL
+      AND NEW.claim_token_hash IS DISTINCT FROM OLD.claim_token_hash
+      AND NEW.claim_token_ciphertext IS NOT DISTINCT FROM OLD.claim_token_ciphertext
+      AND NEW.notified_grant_generation IS NOT DISTINCT FROM OLD.notified_grant_generation
+    )
+    EXECUTE FUNCTION reject_legacy_emergency_token_rotation();
+
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART
 -- timeframe_type: LAST_7_DAYS, LAST_30_DAYS, LAST_MONTH, LAST_3_MONTHS, LAST_6_MONTHS, LAST_12_MONTHS, LAST_YEAR, YEAR_TO_DATE, CUSTOM
