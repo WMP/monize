@@ -48,9 +48,9 @@
     "netInvested": "Investito netto",
     "netInvestedTooltip": "L'importo netto del tuo denaro depositato nei conti investimento. Sono i contributi totali meno i prelievi, esclusi guadagni da investimento, dividendi o interessi maturati.",
     "costBasis": "Costo di acquisto",
-    "costBasisTooltip": "L'importo totale originariamente pagato per acquisire i tuoi investimenti, inclusi i prezzi di acquisto e le commissioni. Usato per calcolare guadagni e perdite.",
+    "costBasisTooltip": "Quanto è costato acquisire le posizioni attuali, ricostruito dalla cronologia delle transazioni: prezzi di acquisto più la commissione addebitata su ogni acquisto, ciascuno convertito al tasso dell'operazione che l'ha pagato. Mostrato nella tua valuta di visualizzazione. Usato per calcolare guadagni e perdite.",
     "gainLoss": "Guadagno/Perdita",
-    "gainLossTooltip": "Plusvalenza o minusvalenza non realizzata sulle posizioni correnti: valore di mercato meno costo di acquisto. Non include le plusvalenze realizzate dalle vendite passate o i redditi ricevuti.",
+    "gainLossTooltip": "Guadagno o perdita non realizzati sulle posizioni attuali: valore di mercato ai prezzi odierni meno il costo di acquisto qui sopra. Non include i guadagni realizzati da vendite passate, né dividendi e interessi ricevuti.",
     "returns": "Rendimenti",
     "simpleReturn": "Rendimento semplice",
     "simpleReturnTooltip": "Percentuale di guadagno o perdita totale sulle posizioni, calcolata come (Valore di mercato − Costo di acquisto) ÷ Costo di acquisto. Non tiene conto dei tempi di contributi o prelievi.",
@@ -67,18 +67,18 @@
     "cash": "Cassa",
     "untagged": "Senza etichette",
     "noTagData": "Nessuna posizione con etichetta da mostrare. Aggiungi etichette ai tuoi titoli per vedere l'esposizione per etichetta.",
+    "noKeyData": "Nessuna posizione ha un valore per questa chiave tag. Etichetta i titoli come key:value (es. country:usa) per vedere questa ripartizione.",
     "noCountryData": "Nessun dato di allocazione per paese disponibile.",
+    "keySelectorLabel": "Chiave tag da aggregare",
     "otherCountries": "Altri paesi",
     "otherAssetClasses": "Altre classi di attivo",
     "groupBy": {
       "security": "Per titolo",
       "tag": "Per etichetta",
-      "country": "Per paese",
       "tagKey": "Per chiave",
+      "country": "Per paese",
       "assetClass": "Per classe di attivo"
-    },
-    "noKeyData": "Nessuna posizione ha un valore per questa chiave tag. Etichetta i titoli come key:value (es. country:usa) per vedere questa ripartizione.",
-    "keySelectorLabel": "Chiave tag da aggregare"
+    }
   },
   "holdingsList": {
     "title": "Posizioni",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Costo medio",
     "priceColumn": "Prezzo",
     "costBasisColumn": "Costo di acquisto",
+    "costBasisColumnTooltip": "Quantità per costo medio per azione, nella valuta propria del titolo. Le commissioni di acquisto non fanno parte del costo medio, quindi questa cifra può essere inferiore al Costo di acquisto del portafoglio qui sopra, ricostruito dalla cronologia con le commissioni incluse.",
     "mktValueColumn": "Valore di mercato",
     "gainLossColumn": "Guadagno/Perdita",
+    "gainLossColumnTooltip": "Valore di mercato meno il costo di acquisto di questa riga, quindi segue lo stesso costo medio senza commissioni.",
     "portfolioPercentColumn": "% Port"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Solo {available} azioni disponibili per il trasferimento",
     "toastSplitRatioRequired": "Il rapporto di suddivisione deve essere maggiore di zero",
     "toastPairedLegError": "Impossibile caricare il trasferimento abbinato; riapri e riprova",
-    "toastSaveFailed": "Salvataggio transazione non riuscito"
+    "toastSaveFailed": "Salvataggio transazione non riuscito",
+    "exchangeRateUnresolved": "Nessun tasso da {from} a {to} disponibile. Inseriscine uno, o il totale convertito, prima di salvare.",
+    "toastExchangeRateRequired": "Inserisci un tasso di cambio prima di salvare un'operazione tra valute.",
+    "notAvailable": "Non disponibile"
   },
   "newTransactionButton": {
     "label": "+ Nuova transazione",

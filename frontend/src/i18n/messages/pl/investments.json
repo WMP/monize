@@ -48,9 +48,9 @@
     "netInvested": "Zainwestowane netto",
     "netInvestedTooltip": "Kwota netto Twoich własnych środków wpłaconych na konta inwestycyjne. To suma wpłat minus wypłaty, z wyłączeniem zysków z inwestycji, dywidend i odsetek.",
     "costBasis": "Koszt nabycia",
-    "costBasisTooltip": "Całkowita kwota pierwotnie zapłacona za nabycie inwestycji, w tym ceny zakupu i opłaty transakcyjne. Używana do obliczania zysków i strat.",
+    "costBasisTooltip": "Ile kosztowało nabycie obecnych pozycji, odtworzone z historii transakcji: ceny zakupu plus prowizja naliczona przy każdym zakupie, każda przeliczona po kursie transakcji, która za nią zapłaciła. Wyświetlane w Twojej walucie prezentacji. Służy do obliczania zysków i strat.",
     "gainLoss": "Zysk/Strata",
-    "gainLossTooltip": "Niezrealizowany zysk lub strata na bieżących pozycjach: wartość rynkowa minus koszt nabycia. Nie obejmuje zysków zrealizowanych z przeszłych sprzedaży ani otrzymanych przychodów.",
+    "gainLossTooltip": "Niezrealizowany zysk lub strata na obecnych pozycjach: wartość rynkowa po dzisiejszych cenach minus koszt nabycia powyżej. Nie obejmuje zysków zrealizowanych na wcześniejszych sprzedażach ani otrzymanych dywidend i odsetek.",
     "returns": "Stopy zwrotu",
     "simpleReturn": "Prosta stopa zwrotu",
     "simpleReturnTooltip": "Całkowity procentowy zysk lub strata na pozycjach, obliczony jako (wartość rynkowa − koszt nabycia) ÷ koszt nabycia. Nie uwzględnia momentu wpłat ani wypłat.",
@@ -67,18 +67,18 @@
     "cash": "Gotówka",
     "untagged": "Bez tagów",
     "noTagData": "Brak otagowanych pozycji do pokazania. Dodaj tagi do swoich papierów, aby zobaczyć ekspozycję wg tagów.",
+    "noKeyData": "Żadna pozycja nie ma wartości dla tego klucza tagu. Oznacz papiery jako klucz:wartość (np. country:usa), aby zobaczyć ten podział.",
     "noCountryData": "Brak danych o alokacji krajowej.",
+    "keySelectorLabel": "Klucz tagu do agregacji",
     "otherCountries": "Pozostałe kraje",
     "otherAssetClasses": "Pozostałe klasy aktywów",
     "groupBy": {
       "security": "Wg papieru",
       "tag": "Wg tagu",
-      "country": "Wg kraju",
       "tagKey": "Wg klucza",
+      "country": "Wg kraju",
       "assetClass": "Wg klasy aktywów"
-    },
-    "noKeyData": "Żadna pozycja nie ma wartości dla tego klucza tagu. Oznacz papiery jako klucz:wartość (np. country:usa), aby zobaczyć ten podział.",
-    "keySelectorLabel": "Klucz tagu do agregacji"
+    }
   },
   "holdingsList": {
     "title": "Pozycje",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Śr. koszt",
     "priceColumn": "Cena",
     "costBasisColumn": "Koszt nabycia",
+    "costBasisColumnTooltip": "Liczba sztuk razy średni koszt na akcję, w walucie samego papieru wartościowego. Prowizje od zakupów nie wchodzą w średni koszt, więc ta wartość może być niższa niż Koszt nabycia portfela powyżej, odtwarzany z historii transakcji z prowizjami.",
     "mktValueColumn": "Wart. rynk.",
     "gainLossColumn": "Zysk/Strata",
+    "gainLossColumnTooltip": "Wartość rynkowa minus koszt nabycia z tego wiersza, a więc oparta na tym samym średnim koszcie bez prowizji.",
     "portfolioPercentColumn": "% portf."
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Tylko {available} udziałów dostępnych do przeniesienia",
     "toastSplitRatioRequired": "Współczynnik splitu musi być większy od zera",
     "toastPairedLegError": "Nie udało się załadować powiązanej części przeniesienia; otwórz ponownie i spróbuj jeszcze raz",
-    "toastSaveFailed": "Nie udało się zapisać transakcji"
+    "toastSaveFailed": "Nie udało się zapisać transakcji",
+    "exchangeRateUnresolved": "Brak kursu z {from} na {to}. Przed zapisaniem wprowadź kurs lub przeliczoną kwotę łączną.",
+    "toastExchangeRateRequired": "Wprowadź kurs wymiany przed zapisaniem transakcji między walutami.",
+    "notAvailable": "Niedostępne"
   },
   "newTransactionButton": {
     "label": "+ Nowa transakcja",

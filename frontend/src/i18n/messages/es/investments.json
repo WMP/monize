@@ -48,9 +48,9 @@
     "netInvested": "Net Invertido",
     "netInvestedTooltip": "El monto neto de tu propio dinero depositado en tus cuentas de inversión. Son las aportaciones totales menos los retiros, excluyendo ganancias de inversión, dividendos o intereses ganados.",
     "costBasis": "Base de Costo",
-    "costBasisTooltip": "El monto total que pagaste originalmente para adquirir tus inversiones, incluidos precios de compra y comisiones. Se usa para calcular tus ganancias y pérdidas.",
+    "costBasisTooltip": "Lo que costó adquirir tus posiciones actuales, reconstruido desde tu historial de transacciones: precios de compra más la comisión cobrada en cada compra, cada uno convertido al tipo de la operación que lo pagó. Se muestra en tu moneda de visualización. Se usa para calcular ganancias y pérdidas.",
     "gainLoss": "Ganancia/Pérdida",
-    "gainLossTooltip": "Ganancia o pérdida no realizada en tus posiciones actuales: Valor de Mercado menos Base de Costo. No incluye ganancias realizadas de ventas pasadas ni ingresos recibidos.",
+    "gainLossTooltip": "Ganancia o pérdida no realizada de tus posiciones actuales: valor de mercado a precios de hoy menos la base de costo de arriba. No incluye ganancias realizadas de ventas pasadas, ni dividendos e intereses recibidos.",
     "returns": "Rendimientos",
     "simpleReturn": "Rendimiento Simple",
     "simpleReturnTooltip": "Porcentaje total de ganancia o pérdida en tus posiciones, calculado como (Valor de Mercado − Base de Costo) ÷ Base de Costo. No tiene en cuenta el momento de las aportaciones o retiros.",
@@ -67,18 +67,18 @@
     "cash": "Efectivo",
     "untagged": "Sin etiquetas",
     "noTagData": "No hay posiciones etiquetadas para mostrar. Añade etiquetas a tus valores para ver la exposición por etiqueta.",
+    "noKeyData": "Ninguna posición tiene un valor para esta clave de etiqueta. Etiquete los valores como clave:valor (p. ej. country:usa) para ver este desglose.",
     "noCountryData": "No hay datos de asignación por país disponibles.",
+    "keySelectorLabel": "Clave de etiqueta para agregar",
     "otherCountries": "Otros países",
     "otherAssetClasses": "Otras clases de activo",
     "groupBy": {
       "security": "Por valor",
       "tag": "Por etiqueta",
-      "country": "Por país",
       "tagKey": "Por clave",
+      "country": "Por país",
       "assetClass": "Por clase de activo"
-    },
-    "noKeyData": "Ninguna posición tiene un valor para esta clave de etiqueta. Etiquete los valores como clave:valor (p. ej. country:usa) para ver este desglose.",
-    "keySelectorLabel": "Clave de etiqueta para agregar"
+    }
   },
   "holdingsList": {
     "title": "Posiciones",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Costo Prom.",
     "priceColumn": "Precio",
     "costBasisColumn": "Base de Costo",
+    "costBasisColumnTooltip": "Cantidad por costo promedio por acción, en la propia moneda del valor. Las comisiones de compra no forman parte del costo promedio, así que esta cifra puede ser menor que la Base de Costo del portafolio de arriba, que se reconstruye desde tu historial de transacciones con comisiones incluidas.",
     "mktValueColumn": "Val. Mercado",
     "gainLossColumn": "Ganancia/Pérdida",
+    "gainLossColumnTooltip": "Valor de mercado menos la base de costo de esta fila, así que sigue el mismo costo promedio sin comisiones.",
     "portfolioPercentColumn": "% Cartera"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Solo hay {available} acciones disponibles para transferir",
     "toastSplitRatioRequired": "El ratio de división debe ser mayor que cero",
     "toastPairedLegError": "No se pudo cargar la contraparte de la transferencia; vuelve a abrir e inténtalo de nuevo",
-    "toastSaveFailed": "Error al guardar la transacción"
+    "toastSaveFailed": "Error al guardar la transacción",
+    "exchangeRateUnresolved": "No hay tipo de {from} a {to} disponible. Introduce uno, o el total convertido, antes de guardar.",
+    "toastExchangeRateRequired": "Introduce un tipo de cambio antes de guardar una operación entre monedas.",
+    "notAvailable": "No disponible"
   },
   "newTransactionButton": {
     "label": "+ Nueva Transacción",

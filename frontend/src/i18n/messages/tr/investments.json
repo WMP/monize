@@ -48,9 +48,9 @@
     "netInvested": "Net Yatırım",
     "netInvestedTooltip": "Yatırım hesaplarınıza yatırdığınız kendi paranızın net tutarı. Bu, yatırım kazançları, temettüler veya kazanılan faiz hariç toplam katkılar eksi çekimlerdir.",
     "costBasis": "Maliyet Esası",
-    "costBasisTooltip": "Satın alma fiyatları ve işlem ücretleri dahil olmak üzere yatırımlarınızı edinmek için başlangıçta ödediğiniz toplam tutar. Kazanç ve kayıplarınızı hesaplamak için kullanılır.",
+    "costBasisTooltip": "Mevcut pozisyonlarınızın edinme maliyeti, işlem geçmişinizden yeniden oluşturulur: alış fiyatları artı her alışta kesilen komisyon, her biri onu ödeyen işlemin kuruyla çevrilir. Görüntüleme para biriminizde gösterilir. Kazanç ve kayıpları hesaplamak için kullanılır.",
     "gainLoss": "Kazanç/Kayıp",
-    "gainLossTooltip": "Mevcut pozisyonlarınızdaki gerçekleşmemiş kazanç veya kayıp: Piyasa Değeri eksi Maliyet Esası. Geçmiş satışlardan gerçekleşmiş kazanımları veya alınan geliri içermez.",
+    "gainLossTooltip": "Mevcut pozisyonlarınızdaki gerçekleşmemiş kazanç veya kayıp: bugünkü fiyatlarla piyasa değeri eksi yukarıdaki maliyet esası. Geçmiş satışlardan gerçekleşen kazançları veya alınan temettü ve faizi içermez.",
     "returns": "Getiriler",
     "simpleReturn": "Basit Getiri",
     "simpleReturnTooltip": "Pozisyonlarınızdaki toplam yüzde kazanç veya kayıp, (Piyasa Değeri − Maliyet Esası) ÷ Maliyet Esası olarak hesaplanır. Katkı veya çekimlerin zamanlamasını dikkate almaz.",
@@ -67,18 +67,18 @@
     "cash": "Nakit",
     "untagged": "Etiketsiz",
     "noTagData": "Gösterilecek etiketli pozisyon yok. Etikete göre dağılımı görmek için menkul kıymetlerinize etiket ekleyin.",
+    "noKeyData": "Bu etiket anahtarı için değeri olan varlık yok. Bu dökümü görmek için menkul kıymetleri anahtar:değer (örn. country:usa) olarak etiketleyin.",
     "noCountryData": "Ülke dağılımı verisi mevcut değil.",
+    "keySelectorLabel": "Toplanacak etiket anahtarı",
     "otherCountries": "Diğer ülkeler",
     "otherAssetClasses": "Diğer varlık sınıfları",
     "groupBy": {
       "security": "Menkul kıymete göre",
       "tag": "Etikete göre",
-      "country": "Ülkeye göre",
       "tagKey": "Anahtara göre",
+      "country": "Ülkeye göre",
       "assetClass": "Varlık sınıfına göre"
-    },
-    "noKeyData": "Bu etiket anahtarı için değeri olan varlık yok. Bu dökümü görmek için menkul kıymetleri anahtar:değer (örn. country:usa) olarak etiketleyin.",
-    "keySelectorLabel": "Toplanacak etiket anahtarı"
+    }
   },
   "holdingsList": {
     "title": "Pozisyonlar",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Ort. Maliyet",
     "priceColumn": "Fiyat",
     "costBasisColumn": "Maliyet Esası",
+    "costBasisColumnTooltip": "Adet çarpı hisse başına ortalama maliyet, menkul kıymetin kendi para biriminde. Alış komisyonları ortalama maliyete dahil değildir; bu yüzden bu rakam, komisyonlar dahil işlem geçmişinden yeniden oluşturulan yukarıdaki portföy Maliyet Esasından düşük olabilir.",
     "mktValueColumn": "Piy. Değeri",
     "gainLossColumn": "Kazanç/Kayıp",
+    "gainLossColumnTooltip": "Piyasa değeri eksi bu satırdaki maliyet esası; yani aynı komisyonsuz ortalama maliyeti izler.",
     "portfolioPercentColumn": "% Port."
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Transfer için yalnızca {available} hisse mevcut",
     "toastSplitRatioRequired": "Bölünme oranı sıfırdan büyük olmalıdır",
     "toastPairedLegError": "Eşleştirilmiş transfer kolu yüklenemedi; yeniden açın ve tekrar deneyin",
-    "toastSaveFailed": "İşlem kaydedilemedi"
+    "toastSaveFailed": "İşlem kaydedilemedi",
+    "exchangeRateUnresolved": "{from} → {to} kuru yok. Kaydetmeden önce bir kur veya çevrilmiş toplamı girin.",
+    "toastExchangeRateRequired": "Para birimleri arası bir işlemi kaydetmeden önce bir döviz kuru girin.",
+    "notAvailable": "Mevcut değil"
   },
   "newTransactionButton": {
     "label": "+ Yeni İşlem",

@@ -48,9 +48,9 @@
     "netInvested": "Net Diinvestasikan",
     "netInvestedTooltip": "Jumlah bersih uang Anda sendiri yang disetor ke akun investasi. Ini adalah total kontribusi dikurangi penarikan, tidak termasuk keuntungan investasi, dividen, atau bunga yang diperoleh.",
     "costBasis": "Dasar Biaya",
-    "costBasisTooltip": "Total jumlah yang awalnya Anda bayarkan untuk memperoleh investasi, termasuk harga pembelian dan biaya transaksi. Digunakan untuk menghitung keuntungan dan kerugian Anda.",
+    "costBasisTooltip": "Biaya perolehan posisi Anda saat ini, direkonstruksi dari riwayat transaksi: harga beli plus komisi yang dibebankan pada setiap pembelian, masing-masing dikonversi dengan kurs transaksi yang membayarnya. Ditampilkan dalam mata uang tampilan Anda. Digunakan untuk menghitung untung dan rugi.",
     "gainLoss": "Untung/Rugi",
-    "gainLossTooltip": "Keuntungan atau kerugian yang belum direalisasi dari kepemilikan saat ini: Nilai Pasar dikurangi Dasar Biaya. Tidak termasuk keuntungan yang direalisasi dari penjualan sebelumnya atau pendapatan yang diterima.",
+    "gainLossTooltip": "Untung atau rugi yang belum terealisasi atas posisi saat ini: nilai pasar pada harga hari ini dikurangi dasar biaya di atas. Tidak termasuk keuntungan terealisasi dari penjualan sebelumnya, atau dividen dan bunga yang diterima.",
     "returns": "Imbal Hasil",
     "simpleReturn": "Imbal Hasil Sederhana",
     "simpleReturnTooltip": "Total persentase keuntungan atau kerugian dari kepemilikan Anda, dihitung sebagai (Nilai Pasar − Dasar Biaya) ÷ Dasar Biaya. Tidak memperhitungkan waktu kontribusi atau penarikan.",
@@ -67,18 +67,18 @@
     "cash": "Tunai",
     "untagged": "Tanpa tag",
     "noTagData": "Tidak ada kepemilikan bertag untuk ditampilkan. Tambahkan tag ke sekuritas Anda untuk melihat eksposur berdasarkan tag.",
+    "noKeyData": "Tidak ada kepemilikan yang memiliki nilai untuk kunci tag ini. Beri tag sekuritas sebagai key:value (mis. country:usa) untuk melihat rincian ini.",
     "noCountryData": "Tidak ada data alokasi negara tersedia.",
+    "keySelectorLabel": "Kunci tag untuk diagregasi",
     "otherCountries": "Negara lainnya",
     "otherAssetClasses": "Kelas aset lainnya",
     "groupBy": {
       "security": "Berdasarkan sekuritas",
       "tag": "Berdasarkan tag",
-      "country": "Berdasarkan negara",
       "tagKey": "Menurut kunci",
+      "country": "Berdasarkan negara",
       "assetClass": "Menurut kelas aset"
-    },
-    "noKeyData": "Tidak ada kepemilikan yang memiliki nilai untuk kunci tag ini. Beri tag sekuritas sebagai key:value (mis. country:usa) untuk melihat rincian ini.",
-    "keySelectorLabel": "Kunci tag untuk diagregasi"
+    }
   },
   "holdingsList": {
     "title": "Kepemilikan",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Biaya Rata-rata",
     "priceColumn": "Harga",
     "costBasisColumn": "Dasar Biaya",
+    "costBasisColumnTooltip": "Jumlah dikali biaya rata-rata per saham, dalam mata uang sekuritas itu sendiri. Komisi pembelian bukan bagian dari biaya rata-rata, jadi angka ini bisa lebih rendah dari Dasar Biaya portofolio di atas, yang direkonstruksi dari riwayat transaksi dengan komisi disertakan.",
     "mktValueColumn": "Nilai Pasar",
     "gainLossColumn": "Untung/Rugi",
+    "gainLossColumnTooltip": "Nilai pasar dikurangi dasar biaya di baris ini, jadi mengikuti biaya rata-rata bebas komisi yang sama.",
     "portfolioPercentColumn": "% Port"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Hanya {available} lembar tersedia untuk ditransfer",
     "toastSplitRatioRequired": "Rasio pemecahan saham harus lebih dari nol",
     "toastPairedLegError": "Tidak dapat memuat pasangan transfer; buka kembali dan coba lagi",
-    "toastSaveFailed": "Gagal menyimpan transaksi"
+    "toastSaveFailed": "Gagal menyimpan transaksi",
+    "exchangeRateUnresolved": "Tidak ada kurs {from} ke {to}. Masukkan satu, atau total terkonversi, sebelum menyimpan.",
+    "toastExchangeRateRequired": "Masukkan nilai tukar sebelum menyimpan perdagangan lintas mata uang.",
+    "notAvailable": "Tidak tersedia"
   },
   "newTransactionButton": {
     "label": "+ Transaksi Baru",
