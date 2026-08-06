@@ -28,6 +28,7 @@ describe("MonteCarloService", () => {
   let portfolioService: {
     getPortfolioSummary: jest.Mock;
     getLatestPrices: jest.Mock;
+    convertSecurityValuesToDefault: jest.Mock;
   };
   let manager: ManagerMock;
   let dataSource: DataSourceMock;
@@ -116,12 +117,38 @@ describe("MonteCarloService", () => {
     portfolioService = {
       getPortfolioSummary: jest.fn().mockResolvedValue({
         totalPortfolioValue: 250000,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: true,
       }),
       getLatestPrices: jest.fn().mockResolvedValue(new Map()),
       getBrokerageAccounts: jest.fn().mockResolvedValue([]),
+      // Same-currency identity by default (what every existing single-USD test
+      // needs): sum the supplied native values by security, nothing unconvertible.
+      // The mixed-currency and missing-rate cases override this.
+      convertSecurityValuesToDefault: jest
+        .fn()
+        .mockImplementation(
+          async (
+            _userId: string,
+            items: Array<{ securityId: string; nativeValue: number }>,
+          ) => {
+            const valueBySecurity = new Map<string, number>();
+            for (const it of items) {
+              valueBySecurity.set(
+                it.securityId,
+                (valueBySecurity.get(it.securityId) ?? 0) + it.nativeValue,
+              );
+            }
+            return { valueBySecurity, missingRatePairs: [] };
+          },
+        ),
     } as unknown as {
       getPortfolioSummary: jest.Mock;
       getLatestPrices: jest.Mock;
+      convertSecurityValuesToDefault: jest.Mock;
     };
     ({ manager, dataSource } = createScopedDbMocks([
       [MonteCarloScenario, scenariosRepository],
@@ -329,6 +356,140 @@ describe("MonteCarloService", () => {
       expect(stats.meanReturn).not.toBeNull();
       // Expected mean of yearly returns ≈ 0.10
       expect(stats.meanReturn!).toBeCloseTo(0.1, 4);
+    });
+  });
+
+  describe("historical weighting is in one currency and complete (RR5-003)", () => {
+    it("weights securities by common-currency value, not raw native price", async () => {
+      // A +20% USD holding worth 100 USD and a -20% JPY holding worth 15,000 JPY
+      // that is also 100 USD. Weighting by native price (100 vs 15,000) drowns the
+      // USD holding and produces about -20%; in common currency the balanced mix
+      // is 0%.
+      accountsRepository.find.mockResolvedValueOnce([
+        { id: "acct-1", name: "A", currencyCode: "USD" },
+      ]);
+      holdingsRepository.find.mockResolvedValueOnce([
+        {
+          id: "h1",
+          accountId: "acct-1",
+          securityId: "sec-usd",
+          quantity: 1,
+          security: { symbol: "USDCO", name: "USD Co", currencyCode: "USD" },
+        },
+        {
+          id: "h2",
+          accountId: "acct-1",
+          securityId: "sec-jpy",
+          quantity: 1,
+          security: { symbol: "JPYCO", name: "JPY Co", currencyCode: "JPY" },
+        },
+      ]);
+      // +20% for the USD security, -20% for the JPY security, two years each.
+      manager.query.mockResolvedValue([
+        { security_id: "sec-usd", year: "2023", close_price: "100" },
+        { security_id: "sec-usd", year: "2024", close_price: "120" },
+        { security_id: "sec-usd", year: "2025", close_price: "144" },
+        { security_id: "sec-jpy", year: "2023", close_price: "100" },
+        { security_id: "sec-jpy", year: "2024", close_price: "80" },
+        { security_id: "sec-jpy", year: "2025", close_price: "64" },
+      ]);
+      portfolioService.getLatestPrices = jest.fn().mockResolvedValue(
+        new Map([
+          ["sec-usd", 100],
+          ["sec-jpy", 15000],
+        ]),
+      );
+      // The real converter turns 15,000 JPY into 100 USD; the mock does the same,
+      // so both securities carry equal weight.
+      portfolioService.convertSecurityValuesToDefault = jest
+        .fn()
+        .mockResolvedValue({
+          valueBySecurity: new Map([
+            ["sec-usd", 100],
+            ["sec-jpy", 100],
+          ]),
+          missingRatePairs: [],
+        });
+
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+
+      expect(stats.returnsComplete).toBe(true);
+      // Balanced: each year the +20% and -20% cancel to 0.
+      expect(stats.meanReturn!).toBeCloseTo(0, 6);
+    });
+
+    it("refuses when a held security cannot be converted for weighting", async () => {
+      accountsRepository.find.mockResolvedValueOnce([
+        { id: "acct-1", name: "A", currencyCode: "USD" },
+      ]);
+      holdingsRepository.find.mockResolvedValueOnce([
+        {
+          id: "h1",
+          accountId: "acct-1",
+          securityId: "sec-jpy",
+          quantity: 1,
+          security: { symbol: "JPYCO", name: "JPY Co", currencyCode: "JPY" },
+        },
+      ]);
+      manager.query.mockResolvedValue([
+        { security_id: "sec-jpy", year: "2023", close_price: "100" },
+        { security_id: "sec-jpy", year: "2024", close_price: "80" },
+        { security_id: "sec-jpy", year: "2025", close_price: "64" },
+      ]);
+      portfolioService.getLatestPrices = jest
+        .fn()
+        .mockResolvedValue(new Map([["sec-jpy", 15000]]));
+      portfolioService.convertSecurityValuesToDefault = jest
+        .fn()
+        .mockResolvedValue({
+          valueBySecurity: new Map(),
+          missingRatePairs: ["JPY->USD"],
+        });
+
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+
+      // A subset return is not the portfolio return.
+      expect(stats.returnsComplete).toBe(false);
+      expect(stats.meanReturn).toBeNull();
+      expect(stats.volatility).toBeNull();
+      expect(stats.missingRatePairs).toEqual(["JPY->USD"]);
+    });
+
+    it("refuses when a held security has no current price", async () => {
+      accountsRepository.find.mockResolvedValueOnce([
+        { id: "acct-1", name: "A", currencyCode: "USD" },
+      ]);
+      holdingsRepository.find.mockResolvedValueOnce([
+        {
+          id: "h1",
+          accountId: "acct-1",
+          securityId: "sec-priced",
+          quantity: 1,
+          security: { symbol: "P", name: "Priced", currencyCode: "USD" },
+        },
+        {
+          id: "h2",
+          accountId: "acct-1",
+          securityId: "sec-unpriced",
+          quantity: 1,
+          security: { symbol: "U", name: "Unpriced", currencyCode: "USD" },
+        },
+      ]);
+      manager.query.mockResolvedValue([
+        { security_id: "sec-priced", year: "2023", close_price: "100" },
+        { security_id: "sec-priced", year: "2024", close_price: "110" },
+        { security_id: "sec-priced", year: "2025", close_price: "121" },
+      ]);
+      // Only the priced security has a current price.
+      portfolioService.getLatestPrices = jest
+        .fn()
+        .mockResolvedValue(new Map([["sec-priced", 121]]));
+
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+
+      expect(stats.returnsComplete).toBe(false);
+      expect(stats.meanReturn).toBeNull();
+      expect(stats.unpricedSecurityIds).toEqual(["sec-unpriced"]);
     });
   });
 
@@ -662,7 +823,10 @@ describe("MonteCarloService", () => {
       );
     });
 
-    it("uses 0 marketValue when no current price is available", async () => {
+    it("reports marketValue as null when no current price is available (RR4-004)", async () => {
+      // This test used to assert `0`, entrenching the defect: a held position with
+      // no quote was reported as worth nothing, in the same report that refuses to
+      // project from an incomplete current value. Unknown is not zero.
       accountsRepository.find.mockResolvedValueOnce([
         { id: "acct-1", name: "A", currencyCode: "USD" },
       ]);
@@ -678,8 +842,32 @@ describe("MonteCarloService", () => {
       portfolioService.getLatestPrices = jest.fn().mockResolvedValue(new Map());
 
       const result = await service.getHoldingStats(userId, ["acct-1"]);
-      expect(result[0].holdings[0].marketValue).toBe(0);
+      expect(result[0].holdings[0].marketValue).toBeNull();
       expect(result[0].holdings[0].meanReturn).toBeNull();
+    });
+
+    it("still reports a real zero market value as zero", async () => {
+      // The control: a security genuinely priced at 0 stays 0, so the nullable
+      // field does not turn every cheap holding into an unknown one.
+      accountsRepository.find.mockResolvedValueOnce([
+        { id: "acct-1", name: "A", currencyCode: "USD" },
+      ]);
+      holdingsRepository.find.mockResolvedValueOnce([
+        {
+          id: "h1",
+          accountId: "acct-1",
+          securityId: "sec-1",
+          quantity: 5,
+          security: { symbol: "X", name: "X co", currencyCode: "USD" },
+        },
+      ]);
+      manager.query.mockResolvedValue([]);
+      portfolioService.getLatestPrices = jest
+        .fn()
+        .mockResolvedValue(new Map([["sec-1", 0]]));
+
+      const result = await service.getHoldingStats(userId, ["acct-1"]);
+      expect(result[0].holdings[0].marketValue).toBe(0);
     });
 
     it("ignores holdings whose accountId is not in the (verified) account set", async () => {
@@ -723,32 +911,109 @@ describe("MonteCarloService", () => {
   });
 
   describe("computeCurrentValue branches via runSaved", () => {
-    it("returns 0 when portfolio service throws", async () => {
+    it("refuses to run when the portfolio valuation throws (P5-010)", async () => {
+      // This test previously read "returns 0 when portfolio service throws" and
+      // asserted only that the call did not blow up -- it documented the defect
+      // as intended behaviour. A user with 100,000 invested got a full
+      // retirement projection built from an opening portfolio of nothing:
+      // success rate, percentile bands and safe-withdrawal figures all
+      // mathematically valid and financially meaningless, with nothing on
+      // screen to say the valuation had failed.
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
       portfolioService.getPortfolioSummary.mockRejectedValueOnce(
         new Error("db down"),
       );
-      scenariosRepository.save.mockImplementationOnce((s) =>
-        Promise.resolve(s),
-      );
 
-      const result = await service.runSaved(userId, "scn-1");
-      // Should not blow up — falls back to 0 starting value.
-      expect(result).toBeDefined();
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        /could not be determined/,
+      );
     });
 
-    it("clamps non-finite portfolio values to 0", async () => {
+    it("refuses to run when the portfolio value is not finite", async () => {
+      // A non-finite aggregate means some component was unusable, which is a
+      // failure to value rather than a value of zero.
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
       portfolioService.getPortfolioSummary.mockResolvedValueOnce({
         totalPortfolioValue: NaN,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: true,
+      });
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        /could not be determined/,
+      );
+    });
+
+    it("refuses to run from an incomplete portfolio total (FR-005)", async () => {
+      // The check used to look only for a thrown error or a non-finite number, so
+      // a portfolio with one unresolvable currency pair handed over a perfectly
+      // finite figure -- short by whatever could not be converted -- and the
+      // simulation ran from it. A subtotal is not a starting portfolio value.
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: 100,
+        fxComplete: false,
+        missingRatePairs: ["EUR->USD"],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: false,
+      });
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        /could not be determined/,
+      );
+    });
+
+    it("refuses to run when a held position has no price (RR3-004)", async () => {
+      // A different cause from a missing rate and the same consequence. The FX gate
+      // did not cover it: an unpriced holding was dropped out of the total without
+      // recording anything, so `fxComplete` stayed true and the simulation started
+      // from a value short by that whole position.
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: 100,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSecurityIds: ["sec-2"],
+        valuationComplete: false,
+      });
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        /could not be determined/,
+      );
+    });
+
+    it("still runs from a genuinely empty portfolio", async () => {
+      // Zero is a known answer. Refusing here would tell the user a settled
+      // question could not be worked out, which is the other half of the same
+      // mistake.
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: 0,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: true,
       });
       scenariosRepository.save.mockImplementationOnce((s) =>
         Promise.resolve(s),
       );
+
       const result = await service.runSaved(userId, "scn-1");
       expect(result).toBeDefined();
     });

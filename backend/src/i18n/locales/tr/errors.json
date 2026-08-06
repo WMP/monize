@@ -316,7 +316,8 @@
   "monteCarlo": {
     "scenarioNotFound": "{{ id }} senaryosu bulunamadı",
     "scenarioIdsMustBeArray": "scenarioIds bir dizi olmalıdır",
-    "atLeastOneAccountRequired": "En az bir accountId gereklidir"
+    "atLeastOneAccountRequired": "En az bir accountId gereklidir",
+    "currentValueUnavailable": "Seçilen hesapların güncel değeri belirlenemedi, bu nedenle bir simülasyon bu değerden başlayamaz. Bir başlangıç değeri girin veya fiyatlar ve döviz kurları hazır olduğunda yeniden deneyin."
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-AA-GG biçiminde olmalıdır",

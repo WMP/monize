@@ -32,8 +32,32 @@ export interface HistoricalStats {
   meanReturn: number | null;
   /** Sample standard deviation of annual returns. null if not enough data. */
   volatility: number | null;
-  /** Aggregate current market value of the selected accounts in the user's default currency. */
-  currentBalance: number;
+  /**
+   * False when the historical mean/volatility could not be computed over the
+   * whole selected portfolio -- a held security had no current price, or its
+   * value could not be converted into one common currency for weighting.
+   *
+   * When false, `meanReturn` and `volatility` are `null`: a return computed over
+   * the priced, convertible subset is not the selected portfolio's return, and
+   * the review's mixed-currency example turned a balanced 0% mix into -20%
+   * (recheck RR5-003).
+   */
+  returnsComplete: boolean;
+  /** `"JPY->USD"` for each holding value that could not be converted for weighting. */
+  missingRatePairs: string[];
+  /** Securities held with no current price, so they could not be weighted. */
+  unpricedSecurityIds: string[];
+  /**
+   * Aggregate current market value of the selected accounts in the user's
+   * default currency, or `null` when it could not be determined.
+   *
+   * `null` and `0` are different answers: zero means the accounts hold nothing,
+   * `null` means the valuation failed (a price or exchange rate was missing, or
+   * the portfolio summary threw). This used to be a non-null number with a
+   * hard-coded 0 on failure, so a form could offer to start a simulation from a
+   * fabricated empty portfolio (audit P5-010).
+   */
+  currentBalance: number | null;
 }
 
 export interface HoldingStat {
@@ -41,7 +65,15 @@ export interface HoldingStat {
   name: string;
   currencyCode: string;
   quantity: number;
-  marketValue: number;
+  /**
+   * Current market value, or `null` when the security has no current price.
+   *
+   * `null` and `0` are different answers, and this was `0`: the same report that
+   * correctly refuses an incomplete starting value simultaneously told the user an
+   * unpriced 10-share holding was worth nothing (recheck RR4-004). A held position
+   * with no quote is unknown.
+   */
+  marketValue: number | null;
   yearsObserved: number;
   meanReturn: number | null;
   volatility: number | null;
@@ -253,7 +285,9 @@ export class MonteCarloService {
 
     const startingValue =
       scenario.useCurrentBalance && scenario.accountIds.length > 0
-        ? await this.computeCurrentValue(userId, scenario.accountIds)
+        ? this.requireCurrentValue(
+            await this.computeCurrentValue(userId, scenario.accountIds),
+          )
         : scenario.startingValue;
 
     const { expectedReturn, volatility } = await this.resolveReturns(
@@ -295,7 +329,9 @@ export class MonteCarloService {
   ): Promise<SimulationResult> {
     const startingValue =
       dto.useCurrentBalance && dto.accountIds.length > 0
-        ? await this.computeCurrentValue(userId, dto.accountIds)
+        ? this.requireCurrentValue(
+            await this.computeCurrentValue(userId, dto.accountIds),
+          )
         : dto.startingValue;
 
     const { expectedReturn, volatility } = await this.resolveReturns(
@@ -353,18 +389,20 @@ export class MonteCarloService {
   }
 
   /**
-   * Computes annualized mean return and stdev from the user's investment
-   * transaction history for the selected accounts. The user's "Use historical"
-   * button calls this to prefill the form.
+   * Annualized mean return and stdev for the selected accounts' *current mix*,
+   * to prefill the "Use historical" form.
    *
-   * Methodology: build a per-year value series from the running portfolio
-   * value at each year-end, factoring out external cash flows (contributions
-   * and withdrawals) so the return reflects asset performance, not deposits.
-   * Money-weighted return per year:
+   * Methodology (the comment used to describe a money-weighted transaction-history
+   * backtest this method never implemented -- recheck DOC5-01): take each
+   * currently held security's per-year return from its year-end price series, and
+   * combine them each year weighted by the security's current market value. The
+   * weights are converted into one common currency first (recheck RR5-003), and
+   * the whole thing is refused -- null mean/volatility -- when any held security
+   * cannot be priced or converted, because a return over a subset of the holdings
+   * is not the portfolio's return.
    *
-   *   r_t = (V_t - V_{t-1} - netFlow_t) / max(V_{t-1} + netFlow_t, eps)
-   *
-   * Returns null mean/volatility when there are fewer than 2 full years.
+   * Returns null mean/volatility when there are fewer than 2 full years, or when
+   * the weighting set is incomplete.
    */
   async getHistoricalStats(
     userId: string,
@@ -399,6 +437,9 @@ export class MonteCarloService {
         yearsObserved: 0,
         meanReturn: null,
         volatility: null,
+        returnsComplete: true,
+        missingRatePairs: [],
+        unpricedSecurityIds: [],
         currentBalance,
       };
     }
@@ -406,18 +447,59 @@ export class MonteCarloService {
     const securityIds = [...new Set(active.map((h) => h.securityId))];
     const yearlyReturns = await this.fetchYearlyReturnsBySecurity(securityIds);
 
-    // Weight each security by its current market value (sum across accounts).
+    // Weight each security by its current market value in ONE common currency.
+    // Weighting by raw native price summed USD, JPY and EUR amounts as though the
+    // units matched, and dropped an unpriced holding without recording it -- both
+    // silently changed the expected return the simulation ran on (recheck
+    // RR5-003). Value each holding here (an unpriced one is unknown, not zero),
+    // then convert every value into one currency through the shared resolver.
     const currentPrices =
       await this.portfolioService.getLatestPrices(securityIds);
-    const weightBySec = new Map<string, number>();
+    const nativeValues: Array<{
+      securityId: string;
+      currencyCode: string;
+      nativeValue: number;
+    }> = [];
+    const unpricedSecurityIds = new Set<string>();
     for (const h of active) {
       const price = currentPrices.get(h.securityId);
-      if (price == null) continue;
-      const value = Number(h.quantity) * price;
-      weightBySec.set(
-        h.securityId,
-        (weightBySec.get(h.securityId) ?? 0) + value,
+      if (price == null) {
+        unpricedSecurityIds.add(h.securityId);
+        continue;
+      }
+      nativeValues.push({
+        securityId: h.securityId,
+        currencyCode: h.security?.currencyCode ?? "USD",
+        nativeValue: Number(h.quantity) * price,
+      });
+    }
+
+    const converted =
+      await this.portfolioService.convertSecurityValuesToDefault(
+        userId,
+        nativeValues,
       );
+    const weightBySec = converted.valueBySecurity;
+
+    // A return over the priced, convertible subset is not the selected
+    // portfolio's return. If any active holding could not be weighted, the
+    // mean/volatility are unknown, not the subset's.
+    if (unpricedSecurityIds.size > 0 || converted.missingRatePairs.length > 0) {
+      this.logger.warn(
+        `Historical stats for accounts ${accountIds.join(",")} omit holdings that could not be weighted (${[
+          ...converted.missingRatePairs,
+          ...[...unpricedSecurityIds].map((id) => `unpriced:${id}`),
+        ].join(", ")}); reporting mean/volatility as unavailable`,
+      );
+      return {
+        yearsObserved: 0,
+        meanReturn: null,
+        volatility: null,
+        returnsComplete: false,
+        missingRatePairs: converted.missingRatePairs,
+        unpricedSecurityIds: [...unpricedSecurityIds].sort(),
+        currentBalance,
+      };
     }
 
     // Compute portfolio yearly returns by combining per-security returns
@@ -446,6 +528,10 @@ export class MonteCarloService {
         yearsObserved: portfolioReturns.length,
         meanReturn: null,
         volatility: null,
+        // The weighting set was complete; there simply is not enough history.
+        returnsComplete: true,
+        missingRatePairs: [],
+        unpricedSecurityIds: [],
         currentBalance,
       };
     }
@@ -461,6 +547,9 @@ export class MonteCarloService {
       yearsObserved: portfolioReturns.length,
       meanReturn: Math.round(mean * 1_000_000) / 1_000_000,
       volatility: Math.round(stdev * 1_000_000) / 1_000_000,
+      returnsComplete: true,
+      missingRatePairs: [],
+      unpricedSecurityIds: [],
       currentBalance,
     };
   }
@@ -528,7 +617,8 @@ export class MonteCarloService {
         name: h.security?.name ?? "Unknown",
         currencyCode: h.security?.currencyCode ?? "USD",
         quantity: Number(h.quantity),
-        marketValue: price == null ? 0 : roundMoney(Number(h.quantity) * price),
+        marketValue:
+          price == null ? null : roundMoney(Number(h.quantity) * price),
         yearsObserved: series.length,
         meanReturn: stats.mean,
         volatility: stats.stdev,
@@ -540,7 +630,10 @@ export class MonteCarloService {
       accountName: a.name,
       currencyCode: a.currencyCode,
       holdings: (grouped.get(a.id) ?? []).sort(
-        (x, y) => y.marketValue - x.marketValue,
+        // Unpriced holdings sort last: an unknown value cannot be compared with a
+        // known one, and putting them at 0 would bury them among genuinely empty
+        // positions.
+        (x, y) => (y.marketValue ?? -Infinity) - (x.marketValue ?? -Infinity),
       ),
     }));
   }
@@ -666,20 +759,50 @@ export class MonteCarloService {
     return yearlyReturns;
   }
 
+  /**
+   * The current value of the selected accounts, or `null` when it could not be
+   * worked out.
+   *
+   * `null`, not 0: a failed valuation is unknown, and a simulation started from
+   * a fabricated zero opening portfolio produces success rates, percentile bands
+   * and safe-withdrawal figures that are mathematically valid and financially
+   * meaningless. A user with 100,000 invested got a retirement projection built
+   * from nothing, with nothing on screen to say so (audit P5-010).
+   *
+   * Zero is still returned when the accounts genuinely hold nothing -- that is a
+   * known answer, and conflating it with "could not compute" is the other half
+   * of the same mistake.
+   */
   private async computeCurrentValue(
     userId: string,
     accountIds: string[],
-  ): Promise<number> {
+  ): Promise<number | null> {
     try {
       const summary = await this.portfolioService.getPortfolioSummary(
         userId,
         accountIds,
       );
+      // An incomplete total is a subtotal, and a subtotal is not a starting
+      // portfolio value. This used to check only for a thrown error or a
+      // non-finite number, so a portfolio with one unresolvable currency pair
+      // handed over a perfectly finite figure short by whatever could not be
+      // converted, and the simulation ran from it (review finding FR-005).
+      if (!summary.valuationComplete) {
+        this.logger.warn(
+          `Current portfolio value for accounts ${accountIds.join(",")} is incomplete (${[...summary.missingRatePairs, ...summary.unpricedSecurityIds.map((id) => `unpriced:${id}`)].join(", ")}); reporting it as unavailable`,
+        );
+        return null;
+      }
+
       const value = summary.totalPortfolioValue;
-      // NaN serializes to JSON null and would break the frontend form. Floats
-      // with more than 4 decimals fail the DTO's @IsNumber maxDecimalPlaces
-      // check. Clamp non-finite values to 0 and round to 4 decimal places.
-      if (!Number.isFinite(value)) return 0;
+      // A non-finite aggregate means some component was unusable, which is a
+      // failure to value rather than a value of zero.
+      if (!Number.isFinite(value)) {
+        this.logger.warn(
+          `Current portfolio value for accounts ${accountIds.join(",")} is not finite; reporting it as unavailable`,
+        );
+        return null;
+      }
       return roundMoney(value);
     } catch (err) {
       this.logger.warn(
@@ -687,8 +810,24 @@ export class MonteCarloService {
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      return 0;
+      return null;
     }
+  }
+
+  /**
+   * The starting value for a run that asked to use current balances, refusing
+   * rather than substituting a number nobody computed.
+   */
+  private requireCurrentValue(value: number | null): number {
+    if (value === null) {
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.currentValueUnavailable",
+          "The current value of the selected accounts could not be determined, so a simulation cannot start from it. Enter a starting value explicitly, or retry once prices and exchange rates are available.",
+        ),
+      );
+    }
+    return value;
   }
 }
 

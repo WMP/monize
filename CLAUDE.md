@@ -342,6 +342,17 @@ touches that account. A helper that moves an account nobody upstream knows about
 Dispatch the recalculation after the commit, never from inside the transaction: a
 rollback must not leave a recompute queued for state that was never written.
 
+### A weighting is in one currency or it is meaningless
+
+Summing `quantity * nativePrice` across USD, JPY and EUR holdings weights them by
+exchange rate as much as by size, so a balanced mix came out of the Monte Carlo
+historical-return calc near -20% instead of 0%. Convert every value into one common
+currency before weighting (the choice of currency does not matter -- normalized weights
+are invariant to it -- only that they share one), through the same resolver everything
+else uses. And an unpriced holding dropped from the weights makes the priced subset
+stand in for the portfolio: refuse the whole statistic (`null`) rather than report a
+subset's.
+
 ### An account, its currency, its rate and its amount are one tuple
 
 Persist all of it or none of it. Moving a transfer's destination leg to an account

@@ -316,7 +316,8 @@
   "monteCarlo": {
     "scenarioNotFound": "परिदृश्य {{ id }} नहीं मिला",
     "scenarioIdsMustBeArray": "scenarioIds एक सरणी होनी चाहिए",
-    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है"
+    "atLeastOneAccountRequired": "कम से कम एक accountId आवश्यक है",
+    "currentValueUnavailable": "चयनित खातों का वर्तमान मूल्य निर्धारित नहीं किया जा सका, इसलिए सिमुलेशन उससे शुरू नहीं हो सकता। कोई प्रारंभिक मूल्य स्वयं दर्ज करें, या कीमतें और विनिमय दरें उपलब्ध होने पर पुनः प्रयास करें।"
   },
   "netWorth": {
     "invalidStartDate": "startDate YYYY-MM-DD प्रारूप में होनी चाहिए",

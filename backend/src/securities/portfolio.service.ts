@@ -455,6 +455,66 @@ export class PortfolioService {
   }
 
   /**
+   * Convert a set of native-currency security values into the user's default
+   * currency, summing by security, and report the pairs that could not convert.
+   *
+   * A weighting has to be in one currency. Monte Carlo's historical-return
+   * weighting summed `quantity * nativePrice` across USD, JPY and EUR holdings as
+   * though the units matched, so a balanced mix of a +20% USD holding and an
+   * equal-value -20% JPY holding came out near -20% instead of 0% (recheck
+   * RR5-003). The choice of common currency does not change the normalized
+   * weights -- only that they share one -- so the default currency is the natural
+   * denominator, and this reuses the same `convertToDefault` the portfolio summary
+   * uses (stored daily rate, `null` on a missing pair, never a silent 1:1).
+   *
+   * The caller supplies the already-priced values so this does not re-load or
+   * re-price holdings; missing *prices* are the caller's to report, missing
+   * *rates* are reported here.
+   */
+  async convertSecurityValuesToDefault(
+    userId: string,
+    items: Array<{
+      securityId: string;
+      currencyCode: string;
+      nativeValue: number;
+    }>,
+  ): Promise<{
+    valueBySecurity: Map<string, number>;
+    missingRatePairs: string[];
+  }> {
+    const pref = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    );
+    const defaultCurrency = pref?.defaultCurrency || "CAD";
+    const rateCache = new Map<string, number>();
+
+    const valueBySecurity = new Map<string, number>();
+    const missingRatePairs = new Set<string>();
+
+    for (const item of items) {
+      const converted = await this.calculationService.convertToDefault(
+        item.nativeValue,
+        item.currencyCode,
+        defaultCurrency,
+        rateCache,
+      );
+      if (converted === null) {
+        missingRatePairs.add(`${item.currencyCode}->${defaultCurrency}`);
+        continue;
+      }
+      valueBySecurity.set(
+        item.securityId,
+        (valueBySecurity.get(item.securityId) ?? 0) + converted,
+      );
+    }
+
+    return {
+      valueBySecurity,
+      missingRatePairs: [...missingRatePairs].sort(),
+    };
+  }
+
+  /**
    * Get all investment accounts (both cash and brokerage) for a user
    */
   async getInvestmentAccounts(userId: string): Promise<Account[]> {
