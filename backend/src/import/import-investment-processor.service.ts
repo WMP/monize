@@ -14,6 +14,10 @@ import { ImportContext, updateAccountBalance } from "./import-context";
 import { roundMoney, roundToDecimals } from "../common/round.util";
 import { roundFxRate } from "../common/fx-entry.util";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
+import {
+  applyActionToQuantity,
+  SHARE_MOVING_ACTIONS,
+} from "../securities/investment-replay.util";
 
 @Injectable()
 export class ImportInvestmentProcessorService {
@@ -555,16 +559,12 @@ export class ImportInvestmentProcessorService {
     quantity: number,
     price: number,
   ): Promise<void> {
-    const holdingsActions = [
-      InvestmentAction.BUY,
-      InvestmentAction.SELL,
-      InvestmentAction.REINVEST,
-      InvestmentAction.TRANSFER_IN,
-      InvestmentAction.TRANSFER_OUT,
-      InvestmentAction.SPLIT,
-    ];
-
-    if (!holdingsActions.includes(action) || !securityId || !quantity) {
+    // ADD_SHARES and REMOVE_SHARES were missing from this list, so importing
+    // either left holdings untouched: shares booked without a purchase never
+    // reached the position at all. Same omission the three net-worth reducers
+    // had, in a path the audit could not execute. The shared list is used so a
+    // new action cannot be dropped from one surface again.
+    if (!SHARE_MOVING_ACTIONS.includes(action) || !securityId || !quantity) {
       return;
     }
 
@@ -580,18 +580,20 @@ export class ImportInvestmentProcessorService {
       if (!holding || quantity <= 0) return;
       const currentQuantity = Number(holding.quantity);
       const currentAvgCost = Number(holding.averageCost || 0);
-      holding.quantity = currentQuantity * quantity;
+      holding.quantity = applyActionToQuantity(
+        currentQuantity,
+        action,
+        quantity,
+      );
       holding.averageCost = currentAvgCost / quantity;
       await ctx.manager.save(holding);
       return;
     }
 
-    const quantityChange = [
-      InvestmentAction.SELL,
-      InvestmentAction.TRANSFER_OUT,
-    ].includes(action)
-      ? -quantity
-      : quantity;
+    // Direction from the shared reducer rather than a second hand-written list,
+    // which is how REMOVE_SHARES came to be treated as an acquisition here.
+    const quantityChange =
+      applyActionToQuantity(0, action, quantity) < 0 ? -quantity : quantity;
 
     if (!holding) {
       const newHolding = new Holding();

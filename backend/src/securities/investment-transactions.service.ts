@@ -16,6 +16,10 @@ import {
   InvestmentAction,
 } from "./entities/investment-transaction.entity";
 import { Security } from "./entities/security.entity";
+import {
+  acquisitionUnitCost,
+  applyActionToQuantity,
+} from "./investment-replay.util";
 import { CreateInvestmentTransactionDto } from "./dto/create-investment-transaction.dto";
 import { UpdateInvestmentTransactionDto } from "./dto/update-investment-transaction.dto";
 import { TransferSecurityDto } from "./dto/transfer-security.dto";
@@ -1736,6 +1740,7 @@ export class InvestmentTransactionsService {
       securityId,
       quantity,
       price,
+      commission,
       totalAmount,
       fundingAccountId,
     } = transaction;
@@ -1764,7 +1769,11 @@ export class InvestmentTransactionsService {
             accountId,
             securityId!,
             Number(quantity),
-            Number(price),
+            // Commission included, so the live average cost is what a share
+            // actually cost to acquire and matches what a rebuild would compute.
+            // The raw price here made the two disagree until something unrelated
+            // triggered a rebuild (review finding FR-008).
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );
@@ -1828,7 +1837,7 @@ export class InvestmentTransactionsService {
             accountId,
             securityId,
             Number(quantity),
-            Number(price),
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );
@@ -1858,7 +1867,9 @@ export class InvestmentTransactionsService {
             accountId,
             securityId,
             Number(quantity),
-            Number(price),
+            // An acquisition, so the same commission-inclusive unit cost the
+            // rebuild uses. An unpriced transfer still carries cost 0.
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );
@@ -2219,31 +2230,16 @@ export class InvestmentTransactionsService {
   }
 
   /**
-   * Apply a transaction's effect on a running share balance. Mirrors the
-   * authoritative per-action math in HoldingsService.getHoldingAt so the
-   * running totals reconcile with stored holdings.
+   * Apply a transaction's effect on a running share balance. Calls the shared
+   * reducer rather than mirroring it, so these running totals cannot drift from
+   * stored holdings or from the historical net-worth replay.
    */
   private applyQuantityToBalance(
     balance: number,
     action: InvestmentAction,
     quantity: number,
   ): number {
-    switch (action) {
-      case InvestmentAction.BUY:
-      case InvestmentAction.REINVEST:
-      case InvestmentAction.TRANSFER_IN:
-      case InvestmentAction.ADD_SHARES:
-        return balance + quantity;
-      case InvestmentAction.SELL:
-      case InvestmentAction.TRANSFER_OUT:
-      case InvestmentAction.REMOVE_SHARES:
-        return balance - quantity;
-      case InvestmentAction.SPLIT:
-        return quantity > 0 ? balance * quantity : balance;
-      default:
-        // DIVIDEND / INTEREST / CAPITAL_GAIN do not move shares.
-        return balance;
-    }
+    return applyActionToQuantity(balance, action, quantity);
   }
 
   /**
@@ -3260,8 +3256,15 @@ export class InvestmentTransactionsService {
     const isFuture =
       isFutureOverride ?? isTransactionInFuture(transaction.transactionDate);
 
-    const { action, accountId, securityId, quantity, price, transactionId } =
-      transaction;
+    const {
+      action,
+      accountId,
+      securityId,
+      quantity,
+      price,
+      commission,
+      transactionId,
+    } = transaction;
 
     if (transactionId) {
       // Clear the FK reference BEFORE deleting the cash transaction
@@ -3296,7 +3299,9 @@ export class InvestmentTransactionsService {
             accountId,
             securityId,
             -Number(quantity),
-            Number(price),
+            // The same unit cost the apply path used, or the reversal would not
+            // undo what was applied.
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );
@@ -3329,7 +3334,9 @@ export class InvestmentTransactionsService {
             accountId,
             securityId,
             -Number(quantity),
-            Number(price),
+            // The same unit cost the apply path used, or the reversal would not
+            // undo what was applied.
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );
@@ -3343,7 +3350,9 @@ export class InvestmentTransactionsService {
             accountId,
             securityId,
             -Number(quantity),
-            Number(price),
+            // The same unit cost the apply path used, or the reversal would not
+            // undo what was applied.
+            acquisitionUnitCost({ quantity, price, commission }),
             manager,
             allowNegative,
           );

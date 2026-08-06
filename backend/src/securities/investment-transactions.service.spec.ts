@@ -450,15 +450,20 @@ describe("InvestmentTransactionsService", () => {
       expect(result).toEqual(mockBuyTransaction);
     });
 
-    it("updates holdings for a BUY transaction", async () => {
+    it("updates holdings for a BUY transaction at the commission-inclusive unit cost", async () => {
       await service.create(userId, createBuyDto);
 
+      // The live holding must agree with what a rebuild would compute: a
+      // rebuild folds commission into basis (10 * 150 + 9.99 = 1509.99, so
+      // 150.999 per share), so blending the raw price in here would report the
+      // commission as gain on the eventual disposal until something happened to
+      // trigger a recompute (FR-008).
       expect(holdingsService.updateHolding).toHaveBeenCalledWith(
         userId,
         accountId,
         securityId,
         10,
-        150,
+        150.999,
         expect.anything(),
         false,
       );
@@ -1839,7 +1844,9 @@ describe("InvestmentTransactionsService", () => {
         accountId,
         securityId,
         -10, // Reverse: remove original 10 shares
-        150,
+        // Commission-inclusive unit cost, matching what the apply path blended
+        // in: (10 * 150 + 9.99) / 10.
+        150.999,
         expect.anything(),
         true,
       );
@@ -2390,13 +2397,14 @@ describe("InvestmentTransactionsService", () => {
 
       await service.remove(userId, transactionId);
 
-      // Should reverse BUY holdings (remove shares)
+      // Should reverse BUY holdings (remove shares), at the same
+      // commission-inclusive unit cost the create path blended in.
       expect(holdingsService.updateHolding).toHaveBeenCalledWith(
         userId,
         accountId,
         securityId,
         -10,
-        150,
+        150.999,
         expect.anything(),
         true,
       );
@@ -2464,7 +2472,8 @@ describe("InvestmentTransactionsService", () => {
         accountId,
         securityId,
         -3,
-        150,
+        // (3 * 150 + 9.99) / 3
+        153.33,
         expect.anything(),
         true,
       );
@@ -2491,7 +2500,8 @@ describe("InvestmentTransactionsService", () => {
         accountId,
         securityId,
         -20,
-        100,
+        // (20 * 100 + 9.99) / 20
+        100.4995,
         expect.anything(),
         true,
       );

@@ -313,6 +313,71 @@ describe("HoldingsService", () => {
       expect(result.averageCost).toBe(10);
     });
 
+    it("multiplies by a split ratio rather than adding it", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          id: "tx-1",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 100,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          id: "tx-2",
+          action: InvestmentAction.SPLIT,
+          quantity: 2,
+          price: 0,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+      ]);
+
+      const result = await service.getHoldingAt(
+        "11111111-1111-1111-1111-111111111111",
+        "acc-1",
+        "sec-1",
+        "2025-03-01",
+      );
+
+      // 10 shares * 2 = 20, not 10 + 2 = 12. Total basis is preserved, so the
+      // per-share cost halves.
+      expect(result.quantity).toBe(20);
+      expect(result.averageCost).toBe(50);
+    });
+
+    it("counts ADD_SHARES and REMOVE_SHARES", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          id: "tx-1",
+          action: InvestmentAction.ADD_SHARES,
+          quantity: 30,
+          price: 0,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          id: "tx-2",
+          action: InvestmentAction.REMOVE_SHARES,
+          quantity: 5,
+          price: 0,
+          transactionDate: "2025-01-05",
+          createdAt: new Date("2025-01-05"),
+        },
+      ]);
+
+      const result = await service.getHoldingAt(
+        "11111111-1111-1111-1111-111111111111",
+        "acc-1",
+        "sec-1",
+        "2025-03-01",
+      );
+
+      expect(result.quantity).toBe(25);
+      // No cost was supplied for shares booked without a purchase.
+      expect(result.averageCost).toBe(0);
+    });
+
     it("excludes the supplied transaction id (used by SPLIT edit preview)", async () => {
       investmentTransactionsRepository.find.mockResolvedValue([
         {
@@ -1327,6 +1392,61 @@ describe("HoldingsService", () => {
         }),
       );
       expect(result.holdingsCreated).toBe(1);
+    });
+
+    it("includes the acquisition commission in averageCost (P5-006)", async () => {
+      accountsRepository.find.mockResolvedValue([mockAccount]);
+
+      const transactions = [
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 100,
+          commission: 10,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+      ];
+      investmentTransactionsRepository.find.mockResolvedValue(transactions);
+
+      await service.rebuildFromTransactions(
+        "11111111-1111-1111-1111-111111111111",
+      );
+
+      // The cash debit for this buy is 1,010, so a share cost 101.00 to
+      // acquire. Reporting 100.00 turns the commission into gain on the sale.
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ quantity: 10, averageCost: 101 }),
+      );
+    });
+
+    it("does not invent a cost for an unpriced acquisition", async () => {
+      accountsRepository.find.mockResolvedValue([mockAccount]);
+
+      const transactions = [
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: null,
+          commission: 0,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+      ];
+      investmentTransactionsRepository.find.mockResolvedValue(transactions);
+
+      await service.rebuildFromTransactions(
+        "11111111-1111-1111-1111-111111111111",
+      );
+
+      // The shares are held; no basis was fabricated for them.
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ quantity: 10, averageCost: 0 }),
+      );
     });
 
     it("handles TRANSFER_OUT and REMOVE_SHARES as negative quantity changes", async () => {

@@ -1956,8 +1956,18 @@ describe("ImportInvestmentProcessorService", () => {
       // An unknown cost is persisted as NULL, never as a zero price
       expect(saved.price).toBeNull();
       expect(saved.totalAmount).toBe(0);
-      // No cash transaction: only the investment row is saved
-      expect(managerOf(ctx).save).toHaveBeenCalledTimes(1);
+      // No cash transaction leg: ADD_SHARES has no cash impact. Asserted by the
+      // absence of a saved cash Transaction (currencyCode + amount), mirroring
+      // the StkSplit sibling above -- not by a raw save count, because the
+      // holding IS now updated: folding ADD_SHARES through the shared reducer
+      // (this concept) is exactly what upstream's processHoldings dropped, so a
+      // Holding save legitimately joins the investment row.
+      const saveCalls = managerOf(ctx).save.mock.calls;
+      const cashTxCall = saveCalls.find(
+        (call: any) =>
+          call[0]?.currencyCode !== undefined && call[0]?.amount !== undefined,
+      );
+      expect(cashTxCall).toBeUndefined();
       expect(ctx.importResult.imported).toBe(1);
     });
 

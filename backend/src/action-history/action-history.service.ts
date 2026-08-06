@@ -15,6 +15,10 @@ import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
+import {
+  acquisitionCost,
+  applyActionToQuantity,
+} from "../securities/investment-replay.util";
 import { Security } from "../securities/entities/security.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { Budget } from "../budgets/entities/budget.entity";
@@ -1346,44 +1350,61 @@ export class ActionHistoryService {
         totalCost: 0,
       };
       const qty = Number(tx.quantity || 0);
-      const price = Number(tx.price || 0);
 
+      // Quantity folds through the shared reducer so an undo cannot rebuild a
+      // different position than the canonical holdings rebuild would. This copy
+      // multiplied by a SPLIT ratio without the `> 0` guard, so a ratio of 0
+      // silently destroyed the position; and it left the acquisition commission
+      // out of the basis, so undoing an action could also change the cost basis
+      // the holdings page reports.
       switch (tx.action) {
         case "BUY":
         case "REINVEST":
-        case "TRANSFER_IN":
-          current.quantity += qty;
-          current.totalCost += qty * price;
+        case "TRANSFER_IN": {
+          // Raw select: commission comes back as a string, and the row is
+          // denominated in the security's currency like the rest of this fold.
+          const cost = acquisitionCost({
+            quantity: tx.quantity,
+            price: tx.price,
+            commission: tx.commission,
+          });
+          if (cost !== null) current.totalCost += cost;
+          current.quantity = applyActionToQuantity(
+            current.quantity,
+            tx.action,
+            qty,
+          );
           break;
-        case "ADD_SHARES":
-          current.quantity += qty;
-          break;
-        case "REMOVE_SHARES":
-          current.quantity -= qty;
-          if (current.quantity <= 0) {
-            current.totalCost = 0;
-            current.quantity = Math.max(0, current.quantity);
-          }
-          break;
+        }
         case "SELL":
         case "TRANSFER_OUT": {
-          const sellQty = qty;
           if (current.quantity > 0) {
             const avgCost = current.totalCost / current.quantity;
-            current.totalCost -= sellQty * avgCost;
-            current.quantity -= sellQty;
+            const relieved = Math.min(qty, current.quantity);
+            current.totalCost -= relieved * avgCost;
           }
-          if (current.quantity <= 0) {
-            current.totalCost = 0;
-            current.quantity = Math.max(0, current.quantity);
-          }
+          current.quantity = applyActionToQuantity(
+            current.quantity,
+            tx.action,
+            qty,
+          );
           break;
         }
-        case "SPLIT": {
-          const ratio = qty;
-          current.quantity = current.quantity * ratio;
+        default:
+          current.quantity = applyActionToQuantity(
+            current.quantity,
+            tx.action,
+            qty,
+          );
           break;
-        }
+      }
+
+      // A position drawn down to nothing holds no basis. Kept as a clamp on the
+      // fold's output rather than inside each branch so every action reaching
+      // zero is treated the same way.
+      if (current.quantity <= 0) {
+        current.totalCost = 0;
+        current.quantity = Math.max(0, current.quantity);
       }
 
       holdings.set(securityId, current);

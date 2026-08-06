@@ -266,6 +266,19 @@ A field named `total*`, `portfolioValue`, `transferValue`, `gain`, `tax`, or `es
 
 **`null` is not the safe answer either.** It means "not known", so a state that *is* known must not use it: empty accounts hold zero, move zero, realize zero and owe zero, and reporting those as unknown tells the user a settled question could not be worked out -- while making "nothing to do" indistinguishable from "cannot compute". Decide which of the two each branch is in before writing it.
 
+### An investment action is folded into a share count in exactly one place
+
+`applyActionToQuantity` (`backend/src/securities/investment-replay.util.ts`), with
+`SHARE_MOVING_ACTIONS` naming the set. `quantity` means shares for most actions
+and a **ratio** for `SPLIT`, which is the distinction duplication kept losing:
+seven replays existed, three added the ratio instead of multiplying by it and the
+same three omitted `ADD_SHARES`/`REMOVE_SHARES`, so a post-split position read 40%
+light on every history chart while the holdings page was right. Each copy was
+internally consistent, which is why nothing failed. Cost goes through
+`acquisitionCost` in the same file -- commission included, `null` for an unpriced
+row. `investment-replay.guard.spec.ts` scans for a new hand-rolled fold in either
+the `case` or the `if` form.
+
 ### VOID means no balance moved -- on every path that writes one
 
 A `VOID` row records something that did not happen, and

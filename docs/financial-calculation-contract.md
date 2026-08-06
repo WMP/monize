@@ -120,6 +120,44 @@ a known result of zero (cash-only operation, break-even sale); `null` means
 the result cannot be computed. Never default an unknown cost basis, price, or
 tax input to `0` to keep a formula running.
 
+### 2.1 The acquisition commission is part of the basis
+
+What a position cost to acquire includes what it cost to acquire it. The linked
+cash debit for a BUY is `quantity * price + commission`, and the basis a later
+disposal is measured against is that same figure -- so 10 shares at 100 with 10
+of commission is a basis of 1,010 and an average cost of 101.00, not 100.00.
+
+Leaving the commission out understates the basis and therefore overstates every
+gain and every tax derived from one: 10 of commission is 10 of phantom gain, and
+1.90 of phantom tax at 19%. It propagates -- a partial sale relieves the
+understated average, so every later disposal inherits it.
+
+`acquisitionCost` (`backend/src/securities/investment-replay.util.ts`) is the one
+place this is computed. It returns `null` when the row cannot say what the
+acquisition cost: `price` is nullable, and folding that to `0` made an unpriced
+import look like a free purchase -- the units joined the position, nothing joined
+the basis, and the quantity reconciliation downstream then *passed* because the
+units did add up. A row genuinely worth zero still says so, with an explicit `0`.
+
+Commission on a disposal is different and already handled: `totalAmount` on a
+SELL is net of it, so proceeds need no further adjustment.
+
+### 2.2 A share-count replay is written once
+
+`applyActionToQuantity` (same file) is the only place an investment action is
+folded into a share count, and `SHARE_MOVING_ACTIONS` the only place the set of
+share-moving actions is named. `quantity` means shares for most actions and a
+**ratio** for `SPLIT`, which is the distinction the duplication kept losing:
+seven separate replays existed, three added a split's ratio to the share count
+instead of multiplying by it, and the same three omitted `ADD_SHARES` and
+`REMOVE_SHARES` entirely. Each copy was internally consistent, which is why
+nothing failed -- a post-split position read 40% light on every history chart
+while the holdings page was right.
+
+`backend/src/securities/investment-replay.guard.spec.ts` scans for a new
+hand-rolled fold, in both the `case` and the `if` form, and for a quantity
+derived from a multiplication outside the reducer.
+
 ## 3. Cash
 
 Cash is a funding leg, not an instrument with a gain:

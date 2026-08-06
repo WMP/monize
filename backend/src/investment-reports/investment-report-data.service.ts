@@ -7,6 +7,10 @@ import {
   InvestmentTransaction,
   InvestmentAction,
 } from "../securities/entities/investment-transaction.entity";
+import {
+  acquisitionCost,
+  applyActionToQuantity,
+} from "../securities/investment-replay.util";
 import { Account } from "../accounts/entities/account.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
@@ -107,23 +111,29 @@ function applyQuantity(
   state: { quantity: number },
   tx: InvestmentTransaction,
 ): void {
-  const quantity = Number(tx.quantity) || 0;
-  switch (tx.action) {
-    case InvestmentAction.BUY:
-    case InvestmentAction.REINVEST:
-    case InvestmentAction.TRANSFER_IN:
-    case InvestmentAction.ADD_SHARES:
-      state.quantity += quantity;
-      break;
-    case InvestmentAction.SELL:
-    case InvestmentAction.TRANSFER_OUT:
-    case InvestmentAction.REMOVE_SHARES:
-      state.quantity -= quantity;
-      break;
-    case InvestmentAction.SPLIT:
-      if (quantity > 0) state.quantity *= quantity;
-      break;
-  }
+  state.quantity = applyActionToQuantity(
+    state.quantity,
+    tx.action,
+    Number(tx.quantity) || 0,
+  );
+}
+
+/**
+ * What an acquisition cost in the **security's** currency.
+ *
+ * Every monetary column this report produces is denominated in the holding's
+ * own currency (see the class comment), so the row's `exchangeRate` -- which
+ * converts into the settlement account's currency -- must not be applied here.
+ * The commission still belongs in the basis: it is part of what was paid.
+ */
+function securityCurrencyAcquisitionCost(
+  tx: InvestmentTransaction,
+): number | null {
+  return acquisitionCost({
+    quantity: tx.quantity,
+    price: tx.price,
+    commission: tx.commission,
+  });
 }
 
 /**
@@ -574,7 +584,6 @@ export class InvestmentReportDataService {
   /** Apply one transaction to the cumulative state (native security currency). */
   private applyToState(state: ReplayState, tx: InvestmentTransaction): void {
     const quantity = Number(tx.quantity) || 0;
-    const price = Number(tx.price) || 0;
     const totalAmount = Number(tx.totalAmount) || 0;
     const commission = Number(tx.commission) || 0;
     state.commissions += commission;
@@ -583,15 +592,24 @@ export class InvestmentReportDataService {
     switch (tx.action) {
       case InvestmentAction.BUY:
       case InvestmentAction.TRANSFER_IN:
-        state.costBasis += quantity * price;
-        state.quantity += quantity;
+      case InvestmentAction.REINVEST: {
+        // The acquisition commission is part of the basis a later disposal is
+        // measured against -- omitting it reported the commission as realized
+        // gain in this report's gain columns too. `null` means the row cannot
+        // say what it cost, and unknown is not free.
+        const cost = securityCurrencyAcquisitionCost(tx);
+        if (cost !== null) state.costBasis += cost;
+        state.quantity = applyActionToQuantity(
+          state.quantity,
+          tx.action,
+          quantity,
+        );
         if (tx.action === InvestmentAction.BUY) state.purchases += totalAmount;
+        if (tx.action === InvestmentAction.REINVEST) {
+          state.reinvestments += totalAmount;
+        }
         break;
-      case InvestmentAction.REINVEST:
-        state.costBasis += quantity * price;
-        state.quantity += quantity;
-        state.reinvestments += totalAmount;
-        break;
+      }
       case InvestmentAction.SELL:
       case InvestmentAction.TRANSFER_OUT: {
         const sellQty = Math.min(quantity, state.quantity);
@@ -611,14 +629,12 @@ export class InvestmentReportDataService {
       case InvestmentAction.CAPITAL_GAIN:
         state.income += totalAmount;
         break;
-      case InvestmentAction.ADD_SHARES:
-        state.quantity += quantity;
-        break;
-      case InvestmentAction.REMOVE_SHARES:
-        state.quantity -= quantity;
-        break;
-      case InvestmentAction.SPLIT:
-        if (quantity > 0) state.quantity *= quantity;
+      default:
+        state.quantity = applyActionToQuantity(
+          state.quantity,
+          tx.action,
+          quantity,
+        );
         break;
     }
 
