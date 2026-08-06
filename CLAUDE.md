@@ -245,9 +245,12 @@ once the external write can no longer land. `attachment_blob_tombstones
 **The quarantine window is a wall-clock guess, so it is not the correctness
 mechanism by itself.** Two things make it sound. The record is re-swept on every
 pass, so a late write is deleted whenever it lands, not only on the final pass; and
-the write's own deadline is bounded *below* the window -- the S3 provider sets a
-request timeout (`S3_REQUEST_TIMEOUT_MS`) far shorter than the quarantine, so a put
-cannot still be in flight when the row retires. A window with neither of those is a
+the write's own deadline is bounded *below* the window -- the S3 provider arms an
+aborting whole-operation deadline (`S3_REQUEST_TIMEOUT_MS`, configurable shorter but
+clamped never longer) around every request including its retries and body streaming,
+so a put cannot still be in flight when the row retires. Socket inactivity timers do
+not establish that bound -- a trickling endpoint never goes idle -- which is why the
+provider's spec proves the abort against a deliberately stalled endpoint. A window with neither of those is a
 best-effort guess dressed as a proof; say which one you have. And enforce the whole
 thing where both binaries meet: a nullable column a new sweeper respects is bypassed
 by a previous-release sweeper that never learned it exists, so the quarantine is a
