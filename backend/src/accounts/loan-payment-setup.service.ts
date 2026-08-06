@@ -12,6 +12,7 @@ import {
   SetupLoanPaymentsDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
+import { roundMoney } from "../common/round.util";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import {
@@ -148,10 +149,75 @@ export class LoanPaymentSetupService {
       principalPayment = split.principal;
       interestPayment = split.interest;
     } else {
-      // No interest rate - entire payment goes to principal
-      principalPayment = dto.paymentAmount;
+      // No interest rate: the whole of the base payment goes to principal.
+      //
+      // This branch alone used `dto.paymentAmount` rather than
+      // `basePaymentAmount`, so extra principal was counted twice -- once inside
+      // the regular principal child and again in its own child. The children
+      // then summed to payment + extra against a parent of payment, and
+      // `ScheduledTransactionsService.create` validates that sum to exact 4dp
+      // equality: setting up payments on a 0% loan with any extra principal
+      // failed outright.
+      principalPayment = basePaymentAmount;
       interestPayment = 0;
     }
+
+    principalPayment = roundMoney(principalPayment);
+    interestPayment = roundMoney(interestPayment);
+
+    // A payment that does not cover the accrued interest allocates all of the
+    // base payment to interest. The splits describe how the payment is applied,
+    // so they have to sum to it: a detected interest amount above the base
+    // payment left principal clamped to 0 and interest above what the parent
+    // carried, and the children then could not reconcile with it.
+    if (interestPayment > basePaymentAmount) {
+      // Interest-first across the whole installment, extra principal included:
+      // a designated extra-principal transfer has no principal to reduce until the
+      // accrued interest is met. Same policy as
+      // `ScheduledTransactionLoanService`, decided once (recheck DR3-01).
+      interestPayment = Math.min(
+        roundMoney(interestPayment),
+        roundMoney(dto.paymentAmount),
+      );
+      principalPayment = 0;
+    }
+
+    // Never schedule more principal than the loan still owes. The recalculation
+    // that runs after each posting clamps this, but the first installment is
+    // written here and nothing clamped it: setting up payments on a nearly-paid
+    // loan scheduled a payment that would drive the balance past zero.
+    //
+    // Regular principal is what the amortization says is owed, so it is filled
+    // first and the discretionary extra absorbs the shortfall -- the same
+    // ordering `ScheduledTransactionLoanService` uses, because the two must agree
+    // about what the final installment looks like.
+    // What is left of the installment after interest bounds the total principal.
+    const availableForPrincipal = Math.max(
+      0,
+      roundMoney(dto.paymentAmount - interestPayment),
+    );
+    let scheduledExtraPrincipal = Math.min(
+      extraPrincipal,
+      Math.max(0, roundMoney(availableForPrincipal - principalPayment)),
+    );
+    if (currentBalance > 0) {
+      if (principalPayment > currentBalance) {
+        principalPayment = currentBalance;
+      }
+      if (
+        roundMoney(principalPayment + scheduledExtraPrincipal) > currentBalance
+      ) {
+        scheduledExtraPrincipal = roundMoney(currentBalance - principalPayment);
+      }
+    }
+
+    // The parent is the sum of the children by construction rather than by
+    // assumption, so `ScheduledTransactionsService.create`'s exact-4dp split
+    // validation cannot be reached with a mismatch. The clamps above only ever
+    // shrink, so this never exceeds what the user entered.
+    const parentAmount = roundMoney(
+      principalPayment + interestPayment + scheduledExtraPrincipal,
+    );
 
     // Map frequency for scheduled transactions
     // Mortgage frequencies like ACCELERATED_BIWEEKLY map to BIWEEKLY in scheduling
@@ -192,10 +258,10 @@ export class LoanPaymentSetupService {
 
     // Extra principal as a separate transfer split to the loan account,
     // matching the structure of imported transactions
-    if (extraPrincipal > 0) {
+    if (scheduledExtraPrincipal > 0) {
       splits.push({
         transferAccountId: accountId,
-        amount: -extraPrincipal,
+        amount: -scheduledExtraPrincipal,
         memo: "Extra Principal",
       });
     }
@@ -211,7 +277,7 @@ export class LoanPaymentSetupService {
         name: `${accountLabel} Payment - ${account.name}`,
         payeeId: dto.payeeId || undefined,
         payeeName: dto.payeeName || account.institution || undefined,
-        amount: -dto.paymentAmount,
+        amount: -parentAmount,
         currencyCode: account.currencyCode,
         frequency: scheduledFrequency as any,
         nextDueDate: dto.nextDueDate,

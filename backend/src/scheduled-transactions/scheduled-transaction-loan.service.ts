@@ -152,10 +152,86 @@ export class ScheduledTransactionLoanService {
         if (newPrincipal > currentBalance) newPrincipal = currentBalance;
       }
 
+      // A payment that does not cover the accrued interest is applied
+      // interest-first across the WHOLE installment, extra principal included.
+      //
+      // Two things are being decided here. First, the interest has to be bounded
+      // at all: neither branch above bounded it and the parent update below only
+      // shrinks, so a 100,000 balance at 5% per period against a configured 1,000
+      // payment wrote an interest child of -5,000 under a parent of -1,000, and the
+      // posting path then reached the shared split validator with children 4,000
+      // above the parent -- the schedule stopped posting (recheck RR2-006).
+      //
+      // Second, *which* part yields. Capping at `basePaymentAmount` left a
+      // designated extra-principal transfer paying down principal while the
+      // interest it accrued went unpaid: 1,000 payment with 300 extra against 800
+      // of interest allocated 700 interest and 300 principal. A lender applies a
+      // payment to accrued interest before principal, so the extra instruction has
+      // no principal to reduce until the interest is met (recheck DR3-01). It is a
+      // policy choice, recorded here and in the response document rather than left
+      // to whichever branch happened to run.
+      if (newInterest > basePaymentAmount) {
+        newInterest = Math.min(
+          roundMoney(newInterest),
+          roundMoney(paymentAmount),
+        );
+        newPrincipal = 0;
+      }
+
+      // The final installment: what is left to pay is less than a regular
+      // payment, so the payment itself has to shrink with it.
+      //
+      // Capping the principal child to the outstanding balance without touching
+      // the parent left parent -100 against children summing -50, and the
+      // posting path then submits those children to the shared split validator,
+      // which requires exact 4dp equality. The final payment failed at exactly
+      // the moment the user expected the loan to close, and a manual overpayment
+      // triggered the same thing earlier in the schedule (audit P5-008).
+      //
+      // The recurrence path above had no cap at all, so it could also overpay
+      // the loan past zero. Both paths now go through the same clamp.
+      if (newPrincipal > currentBalance) {
+        newPrincipal = currentBalance;
+      }
+
+      // FR-009: the clamp above bounds the regular principal child alone, but
+      // the balance is retired by regular *and* extra principal together. A
+      // 500 remaining balance against a 400 amortized principal plus a 300
+      // standing extra transfer left 700 going into a 500 debt: the loan account
+      // crossed zero into a 200 credit, the payoff-detection branch above
+      // (`currentBalance <= 0.01`) never fired on the exact-zero it was waiting
+      // for, and the schedule kept billing.
+      //
+      // Regular principal is what the amortization says is owed, so it is filled
+      // first; the extra transfer is discretionary and absorbs the shortfall.
+      // Interest is not clamped -- it accrued on the balance and is owed
+      // independently of how much principal is left to retire.
+      // What is left of the installment after interest is the most that can go to
+      // principal in total, so the extra is bounded by that as well as by the debt.
+      const availableForPrincipal = Math.max(
+        0,
+        roundMoney(paymentAmount - newInterest),
+      );
+      let finalExtraPrincipal = Math.min(
+        extraPrincipalAmount,
+        Math.max(0, roundMoney(availableForPrincipal - newPrincipal)),
+      );
+      if (roundMoney(newPrincipal + finalExtraPrincipal) > currentBalance) {
+        finalExtraPrincipal = Math.max(
+          0,
+          roundMoney(currentBalance - newPrincipal),
+        );
+      }
+
+      const requiredParentAmount = roundMoney(
+        newPrincipal + newInterest + finalExtraPrincipal,
+      );
+
       this.logger.log(
         `Recalculate loan splits: prevPrincipal=${prevPrincipal}, prevInterest=${prevInterest}, ` +
           `rate=${interestRate}%, freq=${frequency}, basePayment=${basePaymentAmount}, ` +
-          `extra=${extraPrincipalAmount}, newPrincipal=${newPrincipal}, newInterest=${newInterest}, ` +
+          `extra=${extraPrincipalAmount} (final ${finalExtraPrincipal}), ` +
+          `newPrincipal=${newPrincipal}, newInterest=${newInterest}, ` +
           `isMortgage=${loanAccount.accountType === "MORTGAGE"}, ` +
           `isCanadian=${loanAccount.isCanadianMortgage}`,
       );
@@ -168,6 +244,34 @@ export class ScheduledTransactionLoanService {
       if (interestSplit) {
         interestSplit.amount = -newInterest;
         await m.getRepository(ScheduledTransactionSplit).save(interestSplit);
+      }
+
+      // The extra principal child was never written here, so a clamped total had
+      // nowhere to land: the parent would shrink while the children still summed
+      // to the unclamped figure, and the posting path's split validator requires
+      // exact 4dp equality between them (audit P5-008 again, on the child the
+      // first fix did not reach).
+      if (extraPrincipalSplit && finalExtraPrincipal !== extraPrincipalAmount) {
+        extraPrincipalSplit.amount = -finalExtraPrincipal;
+        await m
+          .getRepository(ScheduledTransactionSplit)
+          .save(extraPrincipalSplit);
+      }
+
+      // Parent and children are written in the same transaction, so a posting
+      // can never see one without the other. Only shrunk, never grown: a
+      // regular installment keeps the amount the user set, and the parent is
+      // reduced only when the debt no longer needs the whole of it.
+      if (
+        requiredParentAmount > 0 &&
+        requiredParentAmount < roundMoney(paymentAmount)
+      ) {
+        await m
+          .getRepository(ScheduledTransaction)
+          .update(scheduledTransactionId, { amount: -requiredParentAmount });
+        this.logger.log(
+          `Final loan payment: reduced scheduled amount from ${paymentAmount} to ${requiredParentAmount} to match the outstanding balance of ${currentBalance}`,
+        );
       }
     });
   }

@@ -371,6 +371,19 @@ account, the source amount, an explicit destination amount, an explicit rate. A
 date correction is not a re-pricing; the rate a transfer settled at is a fact about
 the transfer.
 
+### A clamp bounds the total, not one of its parts
+
+Two children retiring one debt are clamped together. The loan final-payment fix
+capped the amortized principal at the outstanding balance and left the extra
+principal transfer beside it uncapped, so 400 + 300 went into a 500 balance, the
+account crossed zero into a credit, and the payoff check waiting for `<= 0.01`
+never fired. Decide which part yields -- the amortized figure is owed, the
+discretionary extra absorbs the shortfall -- and write the yielding part back:
+shrinking the parent while a child still carries the unclamped number fails the
+split validator's exact-4dp equality at the moment the user expected the loan to
+close. The same rule caught two more instances in `LoanPaymentSetupService`, which
+wrote the first installment and clamped nothing at all.
+
 ### A completeness flag covers every total it is documented to cover, on every surface
 
 `fxComplete` claimed to describe all of `PortfolioSummary`'s `total*` fields while

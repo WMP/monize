@@ -128,6 +128,408 @@ describe("ScheduledTransactionLoanService", () => {
       expect(interestSave[0].amount).toBeLessThan(0);
     });
 
+    describe("final installment (P5-008)", () => {
+      it("reduces the parent amount with the principal when the balance is below one payment", async () => {
+        // The audit's worked example: 50 outstanding at 0%, regular payment 100.
+        //
+        // The principal child was capped to 50 and the parent left at -100, so
+        // the posting path submitted children summing -50 against a -100 parent
+        // and the shared split validator rejected it on exact 4dp equality. The
+        // final payment failed at exactly the moment the user expected the loan
+        // to close.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -50,
+          interestRate: 0,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        // No usable previous split data, so the balance-based fallback runs.
+        const scheduledTx = makeScheduledTransaction({
+          amount: -100,
+          splits: [
+            {
+              id: "split-principal",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: 0,
+              memo: "Principal",
+            },
+            {
+              id: "split-interest",
+              transferAccountId: null,
+              categoryId: "cat-interest",
+              amount: 0,
+              memo: "Interest",
+            },
+          ],
+        } as never);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(scheduledTx);
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const principalSave = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].transferAccountId === loanAccountId,
+        );
+        const interestSave = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].categoryId === "cat-interest",
+        );
+        expect(principalSave[0].amount).toBe(-50);
+        expect(interestSave[0].amount).toBe(-0);
+
+        // The parent shrank to match, so parent and children reconcile exactly.
+        expect(scheduledTransactionsRepository.update).toHaveBeenCalledWith(
+          scheduledTransactionId,
+          { amount: -50 },
+        );
+      });
+
+      it("leaves the parent alone for an ordinary installment", async () => {
+        // The reduction must be a floor-following clamp, not a rewrite: a
+        // regular payment keeps the amount the user set.
+        const loanAccount = makeLoanAccount({ currentBalance: -20000 });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          makeScheduledTransaction(),
+        );
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("caps interest at the payment when the payment does not cover it (RR2-006)", async () => {
+        // 100,000 outstanding at 60% annual (5% monthly) against a configured
+        // 1,000 payment. Neither branch bounded the interest and the parent
+        // update only ever shrinks, so the template held an interest child of
+        // -5,000 under a parent of -1,000 -- children 4,000 above the parent,
+        // which the posting path's split validator rejects outright, so the
+        // schedule stopped posting. `LoanPaymentSetupService` was corrected for
+        // the same underpayment and this sibling was not.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -100000,
+          interestRate: 60,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        // No previous split values, so the balance-based branch runs.
+        const scheduledTx = makeScheduledTransaction({
+          amount: -1000,
+          splits: [
+            {
+              id: "split-principal",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: 0,
+              memo: "Principal",
+            },
+            {
+              id: "split-interest",
+              transferAccountId: null,
+              categoryId: "cat-interest",
+              amount: 0,
+              memo: "Interest",
+            },
+          ],
+        } as never);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(scheduledTx);
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const saved = Object.fromEntries(
+          splitsRepository.save.mock.calls.map((call: any) => [
+            call[0].id,
+            call[0].amount,
+          ]),
+        );
+        // The whole installment goes to interest; nothing retires principal.
+        expect(saved["split-interest"]).toBe(-1000);
+        expect(saved["split-principal"]).toBe(-0);
+        // Children sum to the parent exactly, so posting still validates. The
+        // parent keeps the amount the user configured -- the payment is not
+        // short of the debt, it is short of the interest.
+        expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("applies interest first across the whole installment, extra included (DR3-01)", async () => {
+        // 1,000 payment with a 300 standing extra-principal transfer against 800 of
+        // accrued interest. Capping interest at the base payment (700) left the
+        // extra reducing principal while 100 of interest went unpaid. A lender
+        // applies a payment to accrued interest before principal, so the extra has
+        // no principal to reduce until the interest is met.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -100000,
+          // 800 of interest on 100,000 is 0.8% per period; annual = 9.6%.
+          interestRate: 9.6,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        const scheduledTx = makeScheduledTransaction({
+          amount: -1000,
+          splits: [
+            {
+              id: "split-principal",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: 0,
+              memo: "Principal",
+            },
+            {
+              id: "split-extra",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: -300,
+              memo: "Extra Principal",
+            },
+            {
+              id: "split-interest",
+              transferAccountId: null,
+              categoryId: "cat-interest",
+              amount: 0,
+              memo: "Interest",
+            },
+          ],
+        } as never);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(scheduledTx);
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const saved = Object.fromEntries(
+          splitsRepository.save.mock.calls.map((call: any) => [
+            call[0].id,
+            call[0].amount,
+          ]),
+        );
+        // The whole 800 of interest is paid; nothing is left for principal, so the
+        // extra comes down to 200 and the installment still sums to 1,000.
+        expect(saved["split-interest"]).toBe(-800);
+        expect(saved["split-principal"]).toBe(-0);
+        expect(saved["split-extra"]).toBe(-200);
+        expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("clamps regular and extra principal together, not each on its own (FR-009)", async () => {
+        // 500 left on the loan, a 400 amortized principal and a standing 300
+        // extra-principal transfer. The clamp only ever looked at the regular
+        // child, which was already under the balance, so 700 of principal went
+        // into a 500 debt: the loan account crossed zero into a 200 credit, and
+        // the payoff branch waiting for `<= 0.01` never fired.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -500,
+          interestRate: 0,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        // Zero rate and no previous interest, so the balance-based branch runs
+        // and the amortized principal is basePayment (700 - 300 = 400).
+        const scheduledTx = makeScheduledTransaction({
+          amount: -700,
+          splits: [
+            {
+              id: "split-principal",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: 0,
+              memo: "Principal",
+            },
+            {
+              id: "split-extra",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: -300,
+              memo: "Extra Principal",
+            },
+            {
+              id: "split-interest",
+              transferAccountId: null,
+              categoryId: "cat-interest",
+              amount: 0,
+              memo: "Interest",
+            },
+          ],
+        } as never);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(scheduledTx);
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const saved = splitsRepository.save.mock.calls.map((call: any) => [
+          call[0].id,
+          call[0].amount,
+        ]);
+        // Amortization keeps its 400; the discretionary extra absorbs the
+        // shortfall and comes down to 100. Together they retire exactly 500.
+        expect(saved).toEqual(
+          expect.arrayContaining([
+            ["split-principal", -400],
+            ["split-extra", -100],
+          ]),
+        );
+
+        // The parent equals the sum of the children to the cent, which is what
+        // the posting path's split validator demands.
+        expect(scheduledTransactionsRepository.update).toHaveBeenCalledWith(
+          scheduledTransactionId,
+          { amount: -500 },
+        );
+      });
+
+      it("leaves the extra principal alone when the total still fits", async () => {
+        // The clamp must not touch a schedule that is not in its final
+        // installment: the extra transfer is the user's standing instruction.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -20000,
+          interestRate: 0,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          makeScheduledTransaction({
+            amount: -700,
+            splits: [
+              {
+                id: "split-principal",
+                transferAccountId: loanAccountId,
+                categoryId: null,
+                amount: 0,
+                memo: "Principal",
+              },
+              {
+                id: "split-extra",
+                transferAccountId: loanAccountId,
+                categoryId: null,
+                amount: -300,
+                memo: "Extra Principal",
+              },
+              {
+                id: "split-interest",
+                transferAccountId: null,
+                categoryId: "cat-interest",
+                amount: 0,
+                memo: "Interest",
+              },
+            ],
+          } as never),
+        );
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const extraSave = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].id === "split-extra",
+        );
+        expect(extraSave).toBeUndefined();
+        expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("drops the extra principal to zero when the amortized principal alone closes the loan", async () => {
+        // 200 outstanding against a 400 amortized principal: the regular child
+        // clamps to 200 and there is nothing left for the extra to retire.
+        // Paying it anyway is money into a settled debt.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -200,
+          interestRate: 0,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          makeScheduledTransaction({
+            amount: -700,
+            splits: [
+              {
+                id: "split-principal",
+                transferAccountId: loanAccountId,
+                categoryId: null,
+                amount: 0,
+                memo: "Principal",
+              },
+              {
+                id: "split-extra",
+                transferAccountId: loanAccountId,
+                categoryId: null,
+                amount: -300,
+                memo: "Extra Principal",
+              },
+              {
+                id: "split-interest",
+                transferAccountId: null,
+                categoryId: "cat-interest",
+                amount: 0,
+                memo: "Interest",
+              },
+            ],
+          } as never),
+        );
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const saved = splitsRepository.save.mock.calls.map((call: any) => [
+          call[0].id,
+          call[0].amount,
+        ]);
+        expect(saved).toEqual(
+          expect.arrayContaining([
+            ["split-principal", -200],
+            ["split-extra", -0],
+          ]),
+        );
+        expect(scheduledTransactionsRepository.update).toHaveBeenCalledWith(
+          scheduledTransactionId,
+          { amount: -200 },
+        );
+      });
+
+      it("caps the principal to the balance on the recurrence path too", async () => {
+        // The amortization-recurrence branch had no cap at all, so a schedule
+        // with previous split values could pay more principal than the loan
+        // still owed and drive the balance past zero.
+        const loanAccount = makeLoanAccount({
+          currentBalance: -100,
+          interestRate: 5.5,
+        });
+        accountsRepository.findOne.mockResolvedValue(loanAccount);
+
+        // Previous principal/interest present, so the recurrence branch runs.
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          makeScheduledTransaction({ amount: -500 }),
+        );
+
+        await service.recalculateLoanPaymentSplits(
+          scheduledTransactionId,
+          loanAccountId,
+        );
+
+        const principalSave = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].transferAccountId === loanAccountId,
+        );
+        // Never more principal than is owed.
+        expect(Math.abs(principalSave[0].amount)).toBeLessThanOrEqual(100);
+
+        // And the parent follows it down.
+        const update = scheduledTransactionsRepository.update.mock.calls[0];
+        expect(update).toBeDefined();
+        expect(Math.abs(update[1].amount)).toBeLessThan(500);
+      });
+    });
+
     it("should deactivate scheduled transaction when balance is near zero", async () => {
       const loanAccount = makeLoanAccount({ currentBalance: -0.005 });
       accountsRepository.findOne.mockResolvedValue(loanAccount);

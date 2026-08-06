@@ -105,7 +105,47 @@ export async function queryCategorySpending(
           for (const row of rows) {
             transferSpendingMap.set(
               row.destinationAccountId,
-              parseFloat(row.total || "0"),
+              (transferSpendingMap.get(row.destinationAccountId) ?? 0) +
+                parseFloat(row.total || "0"),
+            );
+          }
+        }),
+    );
+
+    // A transfer can also be one component of a split. The parent is a split
+    // transaction rather than a transfer row, so the query above -- which keys
+    // off `t.is_transfer` on the parent -- never saw it, and a savings or
+    // debt-payment budget under-reported its progress by the whole transfer
+    // whenever the user recorded it alongside a category on one line
+    // (audit P5-007).
+    //
+    // The split row carries `transfer_account_id` directly, so no join to the
+    // counterpart is needed: filtering on the split's own target cannot
+    // double-count, because a counterpart row is not itself a split.
+    queries.push(
+      splitsRepository
+        .createQueryBuilder("s")
+        .innerJoin("s.transaction", "t")
+        .select("s.transfer_account_id", "destinationAccountId")
+        .addSelect("COALESCE(ABS(SUM(s.amount)), 0)", "total")
+        .where("t.user_id = :userId", { userId })
+        .andWhere("s.transfer_account_id IN (:...transferAccountIds)", {
+          transferAccountIds,
+        })
+        // Outflows only, matching the parent query's `t.amount < 0`: a transfer
+        // INTO the budgeted account is progress, one out of it is not.
+        .andWhere("s.amount < 0")
+        .andWhere("t.transaction_date >= :periodStart", { periodStart })
+        .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
+        .andWhere("t.status != :void", { void: "VOID" })
+        .groupBy("s.transfer_account_id")
+        .getRawMany()
+        .then((rows) => {
+          for (const row of rows) {
+            transferSpendingMap.set(
+              row.destinationAccountId,
+              (transferSpendingMap.get(row.destinationAccountId) ?? 0) +
+                parseFloat(row.total || "0"),
             );
           }
         }),
