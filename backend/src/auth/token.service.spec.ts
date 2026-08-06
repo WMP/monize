@@ -31,6 +31,7 @@ describe("TokenService", () => {
   let refreshTokensRepository: Record<string, jest.Mock>;
   let jwtService: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
+  let scopedManager: Record<string, jest.Mock>;
 
   const mockUser = {
     id: "user-1",
@@ -66,9 +67,13 @@ describe("TokenService", () => {
       sign: jest.fn().mockReturnValue("mock-access-token"),
     };
 
-    dataSource = createScopedDbMocks([
+    const scoped = createScopedDbMocks([
       [RefreshToken, refreshTokensRepository as never],
-    ]).dataSource as unknown as Record<string, jest.Mock>;
+    ]);
+    // The advisory family lock and the family-discovery SELECT both go through
+    // the manager, so the spec drives them directly.
+    scopedManager = scoped.manager;
+    dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -196,6 +201,7 @@ describe("TokenService", () => {
 
   describe("refreshTokens", () => {
     let mockManager: Record<string, jest.Mock>;
+    let stageRefresh: (token: unknown, user?: unknown) => void;
 
     beforeEach(() => {
       mockManager = {
@@ -203,6 +209,25 @@ describe("TokenService", () => {
         update: jest.fn().mockResolvedValue({ affected: 1 }),
         save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
         create: jest.fn().mockImplementation((_Entity, data) => data),
+        // The family advisory lock, taken before any row lock so rotation and
+        // revocation cannot deadlock (audit P4-011).
+        query: jest.fn().mockResolvedValue([]),
+      };
+
+      /**
+       * Queue the answers `refreshTokens` reads, in the order it reads them.
+       *
+       * There are two token reads now, not one: an unlocked probe that only
+       * learns the family id, then the locked re-read once the family lock is
+       * held. Both see the same row.
+       */
+      stageRefresh = (token: unknown, user?: unknown) => {
+        mockManager.findOne
+          .mockResolvedValueOnce(token)
+          .mockResolvedValueOnce(token);
+        if (user !== undefined) {
+          mockManager.findOne.mockResolvedValueOnce(user);
+        }
       };
 
       dataSource.transaction.mockImplementation(async (callback) => {
@@ -217,9 +242,7 @@ describe("TokenService", () => {
         expiresAt: new Date(Date.now() + 1000 * 60 * 60),
       };
 
-      mockManager.findOne
-        .mockResolvedValueOnce(existingToken)
-        .mockResolvedValueOnce(mockUser);
+      stageRefresh(existingToken, mockUser);
 
       const result = await service.refreshTokens("raw-refresh-token");
 
@@ -269,9 +292,7 @@ describe("TokenService", () => {
         actingAsUserId: "owner-9",
         delegationId: "deleg-9",
       };
-      mockManager.findOne
-        .mockResolvedValueOnce(existingToken)
-        .mockResolvedValueOnce(mockUser);
+      stageRefresh(existingToken, mockUser);
 
       await service.refreshTokens("raw-refresh-token");
 
@@ -305,7 +326,7 @@ describe("TokenService", () => {
         familyId: "family-1",
       };
 
-      mockManager.findOne.mockResolvedValueOnce(revokedToken);
+      stageRefresh(revokedToken);
 
       await expect(service.refreshTokens("reused-token")).rejects.toThrow(
         UnauthorizedException,
@@ -324,7 +345,7 @@ describe("TokenService", () => {
         isRevoked: true,
       };
 
-      mockManager.findOne.mockResolvedValueOnce(revokedToken);
+      stageRefresh(revokedToken);
 
       await expect(service.refreshTokens("reused-token")).rejects.toThrow(
         "Refresh token reuse detected",
@@ -338,7 +359,7 @@ describe("TokenService", () => {
         expiresAt: new Date(Date.now() - 1000),
       };
 
-      mockManager.findOne.mockResolvedValueOnce(expiredToken);
+      stageRefresh(expiredToken);
 
       await expect(service.refreshTokens("expired-token")).rejects.toThrow(
         UnauthorizedException,
@@ -355,7 +376,7 @@ describe("TokenService", () => {
         expiresAt: new Date(Date.now() - 1000),
       };
 
-      mockManager.findOne.mockResolvedValueOnce(expiredToken);
+      stageRefresh(expiredToken);
 
       await expect(service.refreshTokens("expired-token")).rejects.toThrow(
         "Refresh token expired",
@@ -370,9 +391,7 @@ describe("TokenService", () => {
         familyId: "family-1",
       };
 
-      mockManager.findOne
-        .mockResolvedValueOnce(validToken)
-        .mockResolvedValueOnce(null);
+      stageRefresh(validToken, null);
 
       await expect(service.refreshTokens("valid-token")).rejects.toThrow(
         UnauthorizedException,
@@ -395,9 +414,7 @@ describe("TokenService", () => {
 
       const inactiveUser = { ...mockUser, isActive: false };
 
-      mockManager.findOne
-        .mockResolvedValueOnce(validToken)
-        .mockResolvedValueOnce(inactiveUser);
+      stageRefresh(validToken, inactiveUser);
 
       await expect(service.refreshTokens("valid-token")).rejects.toThrow(
         "User not found or inactive",
@@ -465,13 +482,76 @@ describe("TokenService", () => {
   });
 
   describe("revokeAllUserRefreshTokens", () => {
-    it("should batch revoke all non-revoked tokens for user", async () => {
+    /**
+     * Answer by statement rather than by call order: the family-discovery SELECT
+     * and the advisory locks interleave, so a `mockResolvedValueOnce` chain would
+     * hand a lock the SELECT's answer.
+     */
+    function stageFamilies(passes: Array<Array<{ family_id: string }>>): void {
+      let pass = 0;
+      scopedManager.query.mockImplementation(async (sql: string) => {
+        if (String(sql).includes("pg_advisory_xact_lock")) return [];
+        return passes[Math.min(pass++, passes.length - 1)];
+      });
+    }
+
+    it("locks every family, then batch revokes the user's tokens", async () => {
+      stageFamilies([
+        [{ family_id: "family-2" }, { family_id: "family-1" }],
+        [],
+      ]);
+      refreshTokensRepository.update.mockResolvedValueOnce({ affected: 2 });
+
       await service.revokeAllUserRefreshTokens("user-1");
 
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
         { userId: "user-1", isRevoked: false },
         { isRevoked: true },
       );
+      // Ascending family order, the same fixed order every other multi-lock path
+      // uses, so this cannot deadlock against a rotation holding one family.
+      const lockedFamilies = scopedManager.query.mock.calls
+        .filter((c) => String(c[0]).includes("pg_advisory_xact_lock"))
+        .map((c) => (c[1] as unknown[])[1]);
+      expect(lockedFamilies).toEqual(["family-1", "family-2"]);
+    });
+
+    it("loops until a pass revokes nothing", async () => {
+      // The regression guard for the statement-snapshot blind spot behind
+      // P4-011: one `UPDATE ... WHERE is_revoked = false` cannot see a
+      // replacement a concurrent rotation inserted after its snapshot, and here
+      // there is no single family to lock. Re-reading until a pass is empty
+      // converges.
+      stageFamilies([
+        [{ family_id: "family-1" }],
+        [{ family_id: "family-1" }],
+        [],
+      ]);
+      refreshTokensRepository.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValueOnce({ affected: 0 });
+
+      await service.revokeAllUserRefreshTokens("user-1");
+
+      expect(refreshTokensRepository.update.mock.calls.length).toBeGreaterThan(
+        1,
+      );
+    });
+
+    it("gives up after a bounded number of passes", async () => {
+      // A client rotating in a loop must not spin here forever. The cap is a
+      // backstop, not an expectation about legitimate clients.
+      stageFamilies([[{ family_id: "family-1" }]]);
+      refreshTokensRepository.update.mockResolvedValue({ affected: 1 });
+      const warn = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation(() => undefined);
+
+      await service.revokeAllUserRefreshTokens("user-1");
+
+      expect(warn).toHaveBeenCalled();
+      expect(refreshTokensRepository.update.mock.calls.length).toBe(10);
     });
   });
 

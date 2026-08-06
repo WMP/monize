@@ -13,6 +13,7 @@ import { Throttle } from "@nestjs/throttler";
 import { ConfigService } from "@nestjs/config";
 import { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { returnedRows } from "../common/db/query-result";
 import * as bcrypt from "bcryptjs";
 import { Response } from "express";
 import { SkipCsrf } from "../common/decorators/skip-csrf.decorator";
@@ -171,8 +172,9 @@ export class EmergencyAccessClaimController {
   private async completeWithinContext(dto: ClaimCompleteDto, res: Response) {
     // Validate the magic link before doing any expensive work. Otherwise an
     // unauthenticated caller could force a breach lookup and a bcrypt hash
-    // (cost 12) on every request with a bogus token. The transaction below
-    // re-validates under lock to close the TOCTOU window.
+    // (cost 12) on every request with a bogus token. This is a cheap rejection
+    // only -- the transaction below *consumes* the token conditionally, which is
+    // what actually makes it single-use.
     await this.findValidContact(dto.token);
 
     const isBreached = await this.passwordBreachService.isBreached(
@@ -190,15 +192,38 @@ export class EmergencyAccessClaimController {
     const tokenHash = hashToken(dto.token);
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
     const ownerId = await withScopedDb(this.dataSource, async (manager) => {
-      const contact = await manager.findOne(EmergencyAccessContact, {
-        where: { claimTokenHash: tokenHash },
-      });
-      if (
-        !contact ||
-        !contact.claimTokenExpiresAt ||
-        contact.claimTokenUsedAt ||
-        contact.claimTokenExpiresAt.getTime() < Date.now()
-      ) {
+      // CONSUME THE TOKEN FIRST, in one conditional statement, before touching a
+      // single credential.
+      //
+      // The previous shape was a `findOne` followed by an ordinary entity save,
+      // under a comment claiming it revalidated "under lock" -- there was no
+      // lock and no predicate. Two requests could both read the unused token,
+      // both replace the owner's password with a different value, and both mark
+      // it used: an account-takeover race where an attacker holding the link
+      // competes with the intended contact instead of merely arriving second
+      // (audit P4-007, DOC-04-04).
+      //
+      // `claim_token_used_at IS NULL` and the expiry are predicates of the
+      // UPDATE, so PostgreSQL re-evaluates them after the row lock. Exactly one
+      // statement gets a row back; every other caller sees zero and is refused
+      // before anything is written.
+      const consumed: unknown = await manager.query(
+        `UPDATE emergency_access_contacts
+            SET claim_token_used_at = CURRENT_TIMESTAMP,
+                claim_token_hash = NULL,
+                claim_token_ciphertext = NULL,
+                claim_voided_reason = NULL
+          WHERE claim_token_hash = $1
+            AND claim_token_used_at IS NULL
+            AND claim_token_expires_at IS NOT NULL
+            AND claim_token_expires_at >= CURRENT_TIMESTAMP
+          RETURNING id, owner_user_id`,
+        [tokenHash],
+      );
+      const claimed = returnedRows<{ id: string; owner_user_id: string }>(
+        consumed,
+      );
+      if (claimed.length === 0) {
         throw new NotFoundException(
           tr(
             "errors.emergencyAccess.invalidClaimLink",
@@ -206,7 +231,8 @@ export class EmergencyAccessClaimController {
           ),
         );
       }
-      const ownerId = contact.ownerUserId;
+      const contactId = claimed[0].id;
+      const ownerId = claimed[0].owner_user_id;
 
       const owner = await manager.findOne(User, {
         where: { id: ownerId },
@@ -252,12 +278,8 @@ export class EmergencyAccessClaimController {
       // Trusted devices belonged to the previous holder.
       await manager.delete(TrustedDevice, { userId: ownerId });
 
-      // Consume the claiming token, void all sibling tokens (single-claim wins).
-      contact.claimTokenUsedAt = new Date();
-      contact.claimVoidedReason = null;
-      contact.claimTokenHash = null;
-      await manager.save(contact);
-
+      // The claiming token was already consumed above; void the siblings
+      // (single-claim wins).
       await manager
         .createQueryBuilder()
         .update(EmergencyAccessContact)
@@ -266,9 +288,13 @@ export class EmergencyAccessClaimController {
           claimTokenExpiresAt: null,
           claimTokenUsedAt: () => "CURRENT_TIMESTAMP",
           claimVoidedReason: "claimed_by_other",
+          // The credential goes with the hash that made it usable: worthless
+          // without one, but still a recoverable secret under the application
+          // key, and nothing will ever want it again (DR-RRV4-03).
+          claimTokenCiphertext: null,
         })
         .where("owner_user_id = :id", { id: ownerId })
-        .andWhere("id <> :contactId", { contactId: contact.id })
+        .andWhere("id <> :contactId", { contactId })
         .andWhere("claim_token_hash IS NOT NULL")
         .andWhere("claim_token_used_at IS NULL")
         .execute();
