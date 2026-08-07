@@ -231,7 +231,13 @@ export class RlsRowSeeder {
         const entry = this.entry(table);
         return entry.columns.every((col) => {
           const fk = this.effectiveFk(table, col);
-          if (!fk || col.nullable) return true;
+          // A nullable ownership column is filled by `buildInsert` (the policy
+          // keys on it), so it is a real dependency here too -- otherwise the row
+          // can be ordered before the user it points at and the insert dies on
+          // the foreign key.
+          if (!fk || (col.nullable && !USER_REF_COLUMNS.has(col.name))) {
+            return true;
+          }
           if (fk.refTable === table) return true;
           if (!inSet.has(fk.refTable)) return true;
           return !remaining.has(fk.refTable);
@@ -282,7 +288,15 @@ export class RlsRowSeeder {
 
       const fk = this.effectiveFk(table, col);
       if (fk) {
-        if (col.nullable) continue;
+        // A nullable *ownership* column is still the row's ownership, and the
+        // policy keys on it -- so it gets the owner even though it may be NULL in
+        // production. `attachment_blob_tombstones.user_id` is nullable on purpose
+        // (ON DELETE SET NULL: a tombstone has to outlive its owner, because that
+        // is exactly when the bytes most need removing), and skipping it left an
+        // ownerless row that neither user could see. The sweep then reported
+        // "saw 0 rows" for a table whose policy is fine.
+        const isOwnership = USER_REF_COLUMNS.has(col.name);
+        if (col.nullable && !isOwnership) continue;
         columns.push(col.name);
         values.push(this.resolveForeignKey(table, fk, ownerId));
         continue;

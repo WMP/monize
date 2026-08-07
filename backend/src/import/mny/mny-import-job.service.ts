@@ -6,6 +6,7 @@ import {
   runOutsideActiveScopedManager,
   withScopedDb,
 } from "../../common/db/scoped-db";
+import { returnedRows } from "../../common/db/query-result";
 import {
   withSystemContext,
   withUserContext,
@@ -102,20 +103,12 @@ export interface JobRunContext {
 export type JobBody = (context: JobRunContext) => Promise<MnyImportResult>;
 
 /**
- * The rows a `query()` returned, whichever shape TypeORM chose.
- *
- * A data-modifying statement with `RETURNING` comes back as `[rows, rowCount]`,
- * while a `SELECT` comes back as bare rows. Reading that wrong fails silently in
- * the worst possible direction: `result.length > 0` on the tuple is always true,
- * so every conditional claim would look like a winner and two workers would
- * import the same file. Found by the concurrency spec, kept honest by it.
+ * `returnedRows` lives in exactly one place -- `common/db/query-result` -- so
+ * the two driver-shape readers this module found the hard way cannot drift
+ * apart. Re-exported here because the concurrency spec imports it from this
+ * module, and the internal call sites below use it too.
  */
-export function returnedRows<T>(result: unknown): T[] {
-  if (!Array.isArray(result)) {
-    return [];
-  }
-  return Array.isArray(result[0]) ? (result[0] as T[]) : (result as T[]);
-}
+export { returnedRows };
 
 @Injectable()
 export class MnyImportJobService {
