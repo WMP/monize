@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Overboekingsbedrag ({currency})",
       "amountReceived": "Ontvangen bedrag ({currency})",
       "payeeOptional": "Begunstigde (optioneel)",
-      "categoryOptional": "Categorie (optioneel)"
+      "categoryOptional": "Categorie (optioneel)",
+      "transferExchangeRate": "Wisselkoers ({to} per 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Selecteer rekening...",
@@ -415,7 +416,8 @@
       "tagCreated": "Label \"{name}\" aangemaakt",
       "fxRateRequired": "Voer een wisselkoers of het omgerekende bedrag in voordat je een transactie in vreemde valuta opslaat.",
       "jointPayeeCreateNotGranted": "De eigenaar van de rekening heeft u geen toestemming gegeven om begunstigden aan te maken. Kies in plaats daarvan een bestaande begunstigde.",
-      "splitsOppositeSign": "Splitsingsrij {rows} keert de richting van de transactie om. Corrigeer het teken voordat u opslaat."
+      "splitsOppositeSign": "Splitsingsrij {rows} keert de richting van de transactie om. Corrigeer het teken voordat u opslaat.",
+      "transferConversionRequired": "Voer de wisselkoers of het ontvangen bedrag in: {from} en {to} kunnen niet als gelijk worden behandeld."
     },
     "ariaHistory": "Recente transacties tonen",
     "ariaHistoryForPayee": "Recente transacties voor deze begunstigde tonen",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee})."
     },
-    "jointSplitDisabled": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd"
+    "jointSplitDisabled": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd",
+    "transferRate": {
+      "hint": "Hoeveel {to} één {from} koopt. Voer dit of het ontvangen bedrag in; het andere volgt eruit.",
+      "fromMarket": "De vandaag opgeslagen koers voor dit paar en deze datum. Pas hem aan zodat hij overeenkomt met uw afschrift.",
+      "loading": "Koers voor deze datum wordt opgezocht...",
+      "unresolved": "Geen opgeslagen wisselkoers van {from} naar {to} op deze datum. Voer de koers of het ontvangen bedrag in — de twee valuta's kunnen niet als gelijk worden behandeld.",
+      "lookupFailed": "De wisselkoers van {from} naar {to} kon niet worden geladen. Voer de koers of het ontvangen bedrag in om verder te gaan."
+    }
   },
   "splitEditor": {
     "header": "Splitsingsdetails",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Labels...",
     "oppositeSignShort": "In balans, maar één rij keert de transactie om",
     "oppositeSignExpense": "Rij {rows} is een inkomst binnen een uitgave. Elke categorierij van een uitgave moet negatief zijn, anders registreert de splitsing inkomsten die de transactie nooit heeft ontvangen.",
-    "oppositeSignIncome": "Rij {rows} is een uitgave binnen een inkomsttransactie. Elke categorierij van een inkomsttransactie moet positief zijn."
+    "oppositeSignIncome": "Rij {rows} is een uitgave binnen een inkomsttransactie. Elke categorierij van een inkomsttransactie moet positief zijn.",
+    "crossCurrencyTransfer": "Rij {rows}: de doelrekening wordt gevoerd in {to}, niet in {from}. Het bedrag dat daar aankomt wordt omgerekend tegen de opgeslagen koers {from} naar {to} van de datum van deze transactie en zal dus afwijken van het hier ingevoerde bedrag. Opslaan mislukt als er voor die datum geen koers is opgeslagen."
   },
   "recentPopover": {
     "recentForPayee": "Recent voor {name}",

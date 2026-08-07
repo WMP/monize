@@ -283,7 +283,8 @@
       "estimateCaption": "Sekitar {total} pada 1 {from} = {rate} {to}.",
       "noRateWarning": "Tidak ada nilai tukar untuk {from} ke {to}. Pilih mata uang lain, atau masukkan jumlah dalam {to}.",
       "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Transfer ini mengirim {from} ke akun {to}. Setiap kejadian dikonversi dengan kurs {from} ke {to} yang tersimpan untuk tanggal pencatatannya, jadi jumlah yang diterima bervariasi; sebuah kejadian tidak akan dicatat jika tidak ada kurs tersimpan untuk tanggal itu."
   },
   "postTransaction": {
     "minSplits": "Transaksi terbagi memerlukan setidaknya 2 pembagian",

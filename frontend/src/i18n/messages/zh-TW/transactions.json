@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "轉帳金額（{currency}）",
       "amountReceived": "收到金額（{currency}）",
       "payeeOptional": "收款人（選填）",
-      "categoryOptional": "類別（選填）"
+      "categoryOptional": "類別（選填）",
+      "transferExchangeRate": "匯率（每 1 {from} 兌 {to}）"
     },
     "placeholders": {
       "selectAccount": "選擇科目...",
@@ -415,7 +416,8 @@
       "tagCreated": "標籤「{name}」已建立",
       "fxRateRequired": "儲存外幣交易前，請輸入匯率或換算後的金額。",
       "jointPayeeCreateNotGranted": "帳戶擁有者未授予您建立收款人的權限。請從其現有收款人中選擇。",
-      "splitsOppositeSign": "分割第 {rows} 列使交易方向反轉。請在儲存前修正符號。"
+      "splitsOppositeSign": "分割第 {rows} 列使交易方向反轉。請在儲存前修正符號。",
+      "transferConversionRequired": "請輸入匯率或收到的金額：{from} 和 {to} 不能視為等值。"
     },
     "ariaHistory": "顯示最近交易",
     "ariaHistoryForPayee": "顯示此收款人的最近交易",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。"
     },
-    "jointSplitDisabled": "共享帳戶中的分割交易只能由擁有者管理"
+    "jointSplitDisabled": "共享帳戶中的分割交易只能由擁有者管理",
+    "transferRate": {
+      "hint": "1 {from} 能買多少 {to}。輸入此項或收到的金額，另一項會自動得出。",
+      "fromMarket": "今天為該貨幣對和日期儲存的匯率。請修改為與您的對帳單一致。",
+      "loading": "正在查詢該日期的匯率...",
+      "unresolved": "該日期沒有已儲存的 {from} 兌 {to} 匯率。請輸入匯率或收到的金額——兩種貨幣不能視為等值。",
+      "lookupFailed": "無法載入 {from} 兌 {to} 的匯率。請輸入匯率或收到的金額以繼續。"
+    }
   },
   "splitEditor": {
     "header": "分割詳情",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "標籤...",
     "oppositeSignShort": "總額平衡，但有一列反轉了交易",
     "oppositeSignExpense": "第 {rows} 列是支出中的收入。支出的每個類別列都必須為負數，否則分割會記錄交易從未收到的收入。",
-    "oppositeSignIncome": "第 {rows} 列是收入交易中的支出。收入交易的每個類別列都必須為正數。"
+    "oppositeSignIncome": "第 {rows} 列是收入交易中的支出。收入交易的每個類別列都必須為正數。",
+    "crossCurrencyTransfer": "第 {rows} 列：目標帳戶使用 {to}，而不是 {from}。到帳金額將按此交易日期已儲存的 {from} 兌 {to} 匯率換算，因此會與此處輸入的金額不同。如果該日期沒有儲存匯率，儲存將失敗。"
   },
   "recentPopover": {
     "recentForPayee": "{name} 的最近記錄",

@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Transfer Tutarı ({currency})",
       "amountReceived": "Alınan Tutar ({currency})",
       "payeeOptional": "Alacaklı (İsteğe Bağlı)",
-      "categoryOptional": "Kategori (İsteğe bağlı)"
+      "categoryOptional": "Kategori (İsteğe bağlı)",
+      "transferExchangeRate": "Döviz kuru (1 {from} için {to})"
     },
     "placeholders": {
       "selectAccount": "Hesap seçin...",
@@ -415,7 +416,8 @@
       "tagCreated": "\"{name}\" etiketi oluşturuldu",
       "fxRateRequired": "Yabancı para birimi işlemini kaydetmeden önce bir döviz kuru veya dönüştürülen tutarı girin.",
       "jointPayeeCreateNotGranted": "Hesap sahibi size alacaklı oluşturma izni vermedi. Bunun yerine mevcut alacaklılardan birini seçin.",
-      "splitsOppositeSign": "Bölünme satırı {rows} işlemin yönünü tersine çeviriyor. Kaydetmeden önce işareti düzeltin."
+      "splitsOppositeSign": "Bölünme satırı {rows} işlemin yönünü tersine çeviriyor. Kaydetmeden önce işareti düzeltin.",
+      "transferConversionRequired": "Döviz kurunu veya alınan tutarı girin: {from} ile {to} eşit sayılamaz."
     },
     "ariaHistory": "Son işlemleri göster",
     "ariaHistoryForPayee": "Bu alacaklının son işlemlerini göster",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir."
     },
-    "jointSplitDisabled": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir"
+    "jointSplitDisabled": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir",
+    "transferRate": {
+      "hint": "Bir {from} kaç {to} alır. Bunu veya alınan tutarı girin; diğeri bundan türetilir.",
+      "fromMarket": "Bu çift ve tarih için bugün kayıtlı kur. Ekstrenizle eşleşmesi için değiştirin.",
+      "loading": "Bu tarih için kur aranıyor...",
+      "unresolved": "Bu tarih için kayıtlı {from} → {to} kuru yok. Kuru veya alınan tutarı girin — iki para birimi eşit sayılamaz.",
+      "lookupFailed": "{from} → {to} kuru yüklenemedi. Devam etmek için kuru veya alınan tutarı girin."
+    }
   },
   "splitEditor": {
     "header": "Bölüm Ayrıntıları",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Etiketler...",
     "oppositeSignShort": "Dengeli, ama bir satır işlemi tersine çeviriyor",
     "oppositeSignExpense": "Satır {rows}, bir gider içinde gelir. Bir giderin her kategori satırı negatif olmalıdır; aksi halde bölünme, işlemin hiç almadığı bir geliri kaydeder.",
-    "oppositeSignIncome": "Satır {rows}, bir gelir işlemi içinde gider. Bir gelir işleminin her kategori satırı pozitif olmalıdır."
+    "oppositeSignIncome": "Satır {rows}, bir gelir işlemi içinde gider. Bir gelir işleminin her kategori satırı pozitif olmalıdır.",
+    "crossCurrencyTransfer": "Satır {rows}: hedef hesap {to} cinsinden tutuluyor, {from} değil. Oraya ulaşan tutar bu işlemin tarihi için kayıtlı {from} → {to} kuruyla çevrilir; bu yüzden burada girilen tutardan farklı olacaktır. O tarih için kayıtlı kur yoksa kaydetme başarısız olur."
   },
   "recentPopover": {
     "recentForPayee": "{name} için son işlemler",

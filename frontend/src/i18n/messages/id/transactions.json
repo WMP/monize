@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Jumlah Transfer ({currency})",
       "amountReceived": "Jumlah Diterima ({currency})",
       "payeeOptional": "Penerima (Opsional)",
-      "categoryOptional": "Kategori (Opsional)"
+      "categoryOptional": "Kategori (Opsional)",
+      "transferExchangeRate": "Nilai tukar ({to} per 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Pilih akun...",
@@ -415,7 +416,8 @@
       "tagCreated": "Tag \"{name}\" dibuat",
       "fxRateRequired": "Masukkan nilai tukar atau jumlah terkonversi sebelum menyimpan transaksi mata uang asing.",
       "jointPayeeCreateNotGranted": "Pemilik akun belum memberi Anda izin membuat penerima. Pilih salah satu penerima yang sudah ada.",
-      "splitsOppositeSign": "Baris pembagian {rows} membalik arah transaksi. Perbaiki tandanya sebelum menyimpan."
+      "splitsOppositeSign": "Baris pembagian {rows} membalik arah transaksi. Perbaiki tandanya sebelum menyimpan.",
+      "transferConversionRequired": "Masukkan nilai tukar atau jumlah yang diterima: {from} dan {to} tidak dapat dianggap sama."
     },
     "ariaHistory": "Tampilkan transaksi terbaru",
     "ariaHistoryForPayee": "Tampilkan transaksi terbaru untuk penerima ini",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik"
+    "jointSplitDisabled": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik",
+    "transferRate": {
+      "hint": "Berapa {to} yang dibeli oleh satu {from}. Masukkan ini atau jumlah yang diterima; yang lain mengikuti.",
+      "fromMarket": "Kurs yang tersimpan hari ini untuk pasangan dan tanggal ini. Ubah agar sesuai dengan rekening koran Anda.",
+      "loading": "Mencari kurs untuk tanggal ini...",
+      "unresolved": "Tidak ada nilai tukar tersimpan dari {from} ke {to} untuk tanggal ini. Masukkan kurs atau jumlah yang diterima — kedua mata uang tidak dapat dianggap sama.",
+      "lookupFailed": "Nilai tukar dari {from} ke {to} tidak dapat dimuat. Masukkan kurs atau jumlah yang diterima untuk melanjutkan."
+    }
   },
   "splitEditor": {
     "header": "Detail Pembagian",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Tag...",
     "oppositeSignShort": "Seimbang, tetapi satu baris membalik transaksi",
     "oppositeSignExpense": "Baris {rows} adalah pemasukan di dalam pengeluaran. Setiap baris kategori pengeluaran harus negatif, atau pembagian mencatat pemasukan yang tidak pernah diterima transaksi.",
-    "oppositeSignIncome": "Baris {rows} adalah pengeluaran di dalam transaksi pemasukan. Setiap baris kategori transaksi pemasukan harus positif."
+    "oppositeSignIncome": "Baris {rows} adalah pengeluaran di dalam transaksi pemasukan. Setiap baris kategori transaksi pemasukan harus positif.",
+    "crossCurrencyTransfer": "Baris {rows}: akun target menggunakan {to}, bukan {from}. Jumlah yang sampai di sana dikonversi dengan kurs {from} ke {to} yang tersimpan untuk tanggal transaksi ini, jadi akan berbeda dari jumlah yang dimasukkan di sini. Penyimpanan gagal jika tidak ada kurs tersimpan untuk tanggal itu."
   },
   "recentPopover": {
     "recentForPayee": "Terbaru untuk {name}",

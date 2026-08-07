@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "振替金額（{currency}）",
       "amountReceived": "受取金額（{currency}）",
       "payeeOptional": "支払先（任意）",
-      "categoryOptional": "カテゴリ（任意）"
+      "categoryOptional": "カテゴリ（任意）",
+      "transferExchangeRate": "為替レート（1 {from} あたりの {to}）"
     },
     "placeholders": {
       "selectAccount": "口座を選択...",
@@ -415,7 +416,8 @@
       "tagCreated": "タグ「{name}」を作成しました",
       "fxRateRequired": "外貨取引を保存する前に、為替レートまたは換算後の金額を入力してください。",
       "jointPayeeCreateNotGranted": "口座の所有者から支払先を作成する権限が付与されていません。既存の支払先から選択してください。",
-      "splitsOppositeSign": "分割行 {rows} が取引の方向を反転させています。保存する前に符号を修正してください。"
+      "splitsOppositeSign": "分割行 {rows} が取引の方向を反転させています。保存する前に符号を修正してください。",
+      "transferConversionRequired": "為替レートまたは受取金額を入力してください。{from} と {to} を等価として扱うことはできません。"
     },
     "ariaHistory": "最近の取引を表示",
     "ariaHistoryForPayee": "この支払先の最近の取引を表示",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。"
     },
-    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです"
+    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです",
+    "transferRate": {
+      "hint": "1 {from} で買える {to} の量です。これか受取金額を入力すれば、もう一方は自動で求まります。",
+      "fromMarket": "このペアと日付に対して今日保存されているレートです。明細に合わせて変更してください。",
+      "loading": "この日付のレートを検索しています...",
+      "unresolved": "この日付の {from} から {to} への保存済み為替レートがありません。レートまたは受取金額を入力してください — 2 つの通貨を等価として扱うことはできません。",
+      "lookupFailed": "{from} から {to} への為替レートを読み込めませんでした。続行するにはレートまたは受取金額を入力してください。"
+    }
   },
   "splitEditor": {
     "header": "分割の詳細",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "タグ...",
     "oppositeSignShort": "合計は一致していますが、1 行が取引を反転させています",
     "oppositeSignExpense": "行 {rows} は支出の中の収入です。支出のカテゴリ行はすべて負である必要があります。そうでないと、取引が受け取っていない収入を分割が記録してしまいます。",
-    "oppositeSignIncome": "行 {rows} は収入取引の中の支出です。収入取引のカテゴリ行はすべて正である必要があります。"
+    "oppositeSignIncome": "行 {rows} は収入取引の中の支出です。収入取引のカテゴリ行はすべて正である必要があります。",
+    "crossCurrencyTransfer": "行 {rows}：対象口座は {to} 建てで、{from} ではありません。そこに入る金額はこの取引の日付の保存済み {from}→{to} レートで換算されるため、ここで入力した金額とは異なります。その日のレートが保存されていない場合、保存は失敗します。"
   },
   "recentPopover": {
     "recentForPayee": "{name}の最近の取引",

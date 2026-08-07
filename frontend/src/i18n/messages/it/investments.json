@@ -226,7 +226,7 @@
     "sourceHolds": "L'origine detiene",
     "sharesAt": "azioni @",
     "avgCostSuffix": "costo medio.",
-    "transferCostNote": "Il costo per azione (precompilato dal conto di origine) viene trasferito alla destinazione in modo che i report su guadagni e profitti rimangano corretti. Questo sposta solo le azioni -- non vengono trasferiti contanti.",
+    "transferCostNote": "Il costo per azione (precompilato dal conto di origine) viene trasferito alla destinazione nella valuta propria del titolo, così i report di guadagni e profitti mantengono la stessa base. Si spostano solo azioni — nessun contante passa di mano.",
     "totalAmount": "Importo totale ({currency})",
     "sharesAtPrice": "{shares} azioni @ {symbol}{price}",
     "commissionSuffix": "commissione",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Salvataggio transazione non riuscito",
     "exchangeRateUnresolved": "Nessun tasso da {from} a {to} disponibile. Inseriscine uno, o il totale convertito, prima di salvare.",
     "toastExchangeRateRequired": "Inserisci un tasso di cambio prima di salvare un'operazione tra valute.",
-    "notAvailable": "Non disponibile"
+    "notAvailable": "Non disponibile",
+    "transferCrossCurrencyNote": "Il conto di destinazione è in {destination} e questo titolo è quotato in {security}. Il costo per azione qui sopra resta invariato — rimane in {security} — ma il costo di acquisto in {destination} della destinazione viene convertito al tasso salvato da {security} a {destination} della data del trasferimento. Il trasferimento viene rifiutato se per quella data non è salvato alcun tasso."
   },
   "newTransactionButton": {
     "label": "+ Nuova transazione",

@@ -283,7 +283,8 @@
       "estimateCaption": "約 {total}，按 1 {from} = {rate} {to} 計。",
       "noRateWarning": "找不到從 {from} 到 {to} 的匯率。請選擇其他貨幣，或以 {to} 輸入金額。",
       "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。"
-    }
+    },
+    "transferCrossCurrencyNote": "此轉帳將 {from} 傳送到 {to} 帳戶。每次執行都會按其入帳日期已儲存的 {from} 兌 {to} 匯率換算，因此收到的金額會變動；如果該日期沒有儲存匯率，該次執行將不會入帳。"
   },
   "postTransaction": {
     "minSplits": "分割交易至少需要 2 筆分割",

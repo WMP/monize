@@ -226,7 +226,7 @@
     "sourceHolds": "Bron heeft",
     "sharesAt": "aandelen @",
     "avgCostSuffix": "gem. kostprijs.",
-    "transferCostNote": "De kostprijs per aandeel (vooraf ingevuld vanuit de bronrekening) wordt meegenomen naar de doelrekening zodat jouw winst- en verliesrapportages correct blijven. Dit verplaatst alleen aandelen — er wisselt geen geld van eigenaar.",
+    "transferCostNote": "De kostprijs per aandeel (vooraf ingevuld vanuit de bronrekening) gaat mee naar de bestemming in de eigen valuta van het effect, zodat winst- en rendementsrapporten dezelfde basis houden. Er worden alleen aandelen verplaatst — er gaat geen geld over.",
     "totalAmount": "Totaalbedrag ({currency})",
     "sharesAtPrice": "{shares} aandelen @ {symbol}{price}",
     "commissionSuffix": "commissie",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Opslaan van transactie mislukt",
     "exchangeRateUnresolved": "Geen koers van {from} naar {to} beschikbaar. Voer er een in, of het omgerekende totaal, voordat u opslaat.",
     "toastExchangeRateRequired": "Voer een wisselkoers in voordat u een transactie tussen valuta's opslaat.",
-    "notAvailable": "Niet beschikbaar"
+    "notAvailable": "Niet beschikbaar",
+    "transferCrossCurrencyNote": "De doelrekening wordt gevoerd in {destination} en dit effect noteert in {security}. De kostprijs per aandeel hierboven blijft ongewijzigd — die blijft in {security} — maar de {destination}-kostprijs van de bestemming wordt omgerekend tegen de opgeslagen koers {security} naar {destination} van de overdrachtsdatum. De overdracht wordt geweigerd als er voor die datum geen koers is opgeslagen."
   },
   "newTransactionButton": {
     "label": "+ Nieuwe transactie",

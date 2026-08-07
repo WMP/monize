@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Überweisungsbetrag ({currency})",
       "amountReceived": "Erhaltener Betrag ({currency})",
       "payeeOptional": "Zahlungsempfänger (optional)",
-      "categoryOptional": "Kategorie (optional)"
+      "categoryOptional": "Kategorie (optional)",
+      "transferExchangeRate": "Wechselkurs ({to} pro 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Konto auswählen...",
@@ -415,7 +416,8 @@
       "tagCreated": "Tag „{name}” erstellt",
       "fxRateRequired": "Geben Sie einen Wechselkurs oder den umgerechneten Betrag ein, bevor Sie eine Fremdwährungstransaktion speichern.",
       "jointPayeeCreateNotGranted": "Der Kontoinhaber hat Ihnen nicht erlaubt, Zahlungsempfänger zu erstellen. Wählen Sie stattdessen einen vorhandenen Zahlungsempfänger.",
-      "splitsOppositeSign": "Teilzeile {rows} kehrt die Richtung der Buchung um. Korrigieren Sie das Vorzeichen vor dem Speichern."
+      "splitsOppositeSign": "Teilzeile {rows} kehrt die Richtung der Buchung um. Korrigieren Sie das Vorzeichen vor dem Speichern.",
+      "transferConversionRequired": "Geben Sie den Wechselkurs oder den erhaltenen Betrag ein: {from} und {to} können nicht als gleichwertig behandelt werden."
     },
     "ariaHistory": "Letzte Buchungen anzeigen",
     "ariaHistoryForPayee": "Letzte Buchungen für diesen Zahlungsempfänger anzeigen",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten"
+    "jointSplitDisabled": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten",
+    "transferRate": {
+      "hint": "Wie viel {to} ein {from} kauft. Geben Sie dies oder den erhaltenen Betrag ein; das andere ergibt sich daraus.",
+      "fromMarket": "Der heute gespeicherte Kurs für dieses Paar und Datum. Passen Sie ihn an Ihren Kontoauszug an.",
+      "loading": "Kurs für dieses Datum wird gesucht...",
+      "unresolved": "Kein gespeicherter Wechselkurs für {from} zu {to} an diesem Datum. Geben Sie den Kurs oder den erhaltenen Betrag ein — die beiden Währungen können nicht als gleichwertig behandelt werden.",
+      "lookupFailed": "Der Wechselkurs für {from} zu {to} konnte nicht geladen werden. Geben Sie den Kurs oder den erhaltenen Betrag ein, um fortzufahren."
+    }
   },
   "splitEditor": {
     "header": "Details der Buchungsteile",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Tags...",
     "oppositeSignShort": "Ausgeglichen, aber eine Zeile kehrt die Buchung um",
     "oppositeSignExpense": "Zeile {rows} ist eine Einnahme innerhalb einer Ausgabe. Jede Kategoriezeile einer Ausgabe muss negativ sein, sonst verzeichnet der Buchungsteil Einnahmen, die die Buchung nie erhalten hat.",
-    "oppositeSignIncome": "Zeile {rows} ist eine Ausgabe innerhalb einer Einnahmebuchung. Jede Kategoriezeile einer Einnahmebuchung muss positiv sein."
+    "oppositeSignIncome": "Zeile {rows} ist eine Ausgabe innerhalb einer Einnahmebuchung. Jede Kategoriezeile einer Einnahmebuchung muss positiv sein.",
+    "crossCurrencyTransfer": "Zeile {rows}: Das Zielkonto führt {to}, nicht {from}. Der dort ankommende Betrag wird zum gespeicherten Kurs {from} zu {to} des Buchungsdatums umgerechnet und weicht daher vom hier eingegebenen Betrag ab. Das Speichern schlägt fehl, wenn für dieses Datum kein Kurs gespeichert ist."
   },
   "recentPopover": {
     "recentForPayee": "Zuletzt für {name}",

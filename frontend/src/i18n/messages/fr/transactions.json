@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Montant du virement ({currency})",
       "amountReceived": "Montant reçu ({currency})",
       "payeeOptional": "Bénéficiaire (facultatif)",
-      "categoryOptional": "Catégorie (facultatif)"
+      "categoryOptional": "Catégorie (facultatif)",
+      "transferExchangeRate": "Taux de change ({to} pour 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Sélectionner un compte...",
@@ -415,7 +416,8 @@
       "tagCreated": "Étiquette « {name} » créée",
       "fxRateRequired": "Saisissez un taux de change ou le montant converti avant d'enregistrer une transaction en devise étrangère.",
       "jointPayeeCreateNotGranted": "Le propriétaire du compte ne vous a pas autorisé à créer des bénéficiaires. Choisissez plutôt un de ses bénéficiaires existants.",
-      "splitsOppositeSign": "La ligne {rows} de la répartition inverse le sens de la transaction. Corrigez le signe avant d'enregistrer."
+      "splitsOppositeSign": "La ligne {rows} de la répartition inverse le sens de la transaction. Corrigez le signe avant d'enregistrer.",
+      "transferConversionRequired": "Saisissez le taux de change ou le montant reçu : {from} et {to} ne peuvent pas être traités comme égaux."
     },
     "ariaHistory": "Afficher les transactions récentes",
     "ariaHistoryForPayee": "Afficher les transactions récentes pour ce bénéficiaire",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé"
+    "jointSplitDisabled": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé",
+    "transferRate": {
+      "hint": "Combien de {to} un {from} achète. Saisissez ceci ou le montant reçu ; l'autre en découle.",
+      "fromMarket": "Le taux enregistré aujourd'hui pour cette paire et cette date. Modifiez-le pour correspondre à votre relevé.",
+      "loading": "Recherche du taux pour cette date...",
+      "unresolved": "Aucun taux de change enregistré de {from} vers {to} à cette date. Saisissez le taux ou le montant reçu — les deux devises ne peuvent pas être traitées comme égales.",
+      "lookupFailed": "Le taux de change de {from} vers {to} n'a pas pu être chargé. Saisissez le taux ou le montant reçu pour continuer."
+    }
   },
   "splitEditor": {
     "header": "Détails de la répartition",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Étiquettes...",
     "oppositeSignShort": "Équilibré, mais une ligne inverse la transaction",
     "oppositeSignExpense": "La ligne {rows} est un revenu dans une dépense. Chaque ligne de catégorie d'une dépense doit être négative, sinon la répartition enregistre un revenu que la transaction n'a jamais reçu.",
-    "oppositeSignIncome": "La ligne {rows} est une dépense dans une transaction de revenu. Chaque ligne de catégorie d'une transaction de revenu doit être positive."
+    "oppositeSignIncome": "La ligne {rows} est une dépense dans une transaction de revenu. Chaque ligne de catégorie d'une transaction de revenu doit être positive.",
+    "crossCurrencyTransfer": "Ligne {rows} : le compte cible est en {to}, pas en {from}. Le montant qui y arrive est converti au taux enregistré de {from} vers {to} à la date de cette transaction ; il différera donc du montant saisi ici. L'enregistrement échoue si aucun taux n'est enregistré pour cette date."
   },
   "recentPopover": {
     "recentForPayee": "Récent pour {name}",

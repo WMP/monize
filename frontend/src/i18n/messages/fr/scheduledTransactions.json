@@ -283,7 +283,8 @@
       "estimateCaption": "Environ {total} au taux 1 {from} = {rate} {to}.",
       "noRateWarning": "Aucun taux de change trouvé de {from} vers {to}. Choisissez une autre devise ou saisissez le montant en {to}.",
       "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Ce virement envoie des {from} vers un compte en {to}. Chaque occurrence est convertie au taux enregistré de {from} vers {to} à sa date de comptabilisation ; le montant reçu varie donc, et une occurrence ne sera pas comptabilisée si aucun taux n'est enregistré pour cette date."
   },
   "postTransaction": {
     "minSplits": "Les transactions réparties nécessitent au moins 2 répartitions",

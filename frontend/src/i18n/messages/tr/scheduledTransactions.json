@@ -283,7 +283,8 @@
       "estimateCaption": "Yaklaşık {total}, 1 {from} = {rate} {to} kurundan.",
       "noRateWarning": "{from} biriminden {to} birimine döviz kuru bulunamadı. Başka bir para birimi seçin veya tutarı {to} cinsinden girin.",
       "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir."
-    }
+    },
+    "transferCrossCurrencyNote": "Bu transfer {from} tutarını bir {to} hesabına gönderir. Her tekrar, kayıt tarihi için kayıtlı {from} → {to} kuruyla çevrilir; alınan tutar bu yüzden değişir. O tarih için kayıtlı kur yoksa tekrar kaydedilmez."
   },
   "postTransaction": {
     "minSplits": "Bölünmüş işlemler için en az 2 bölüm gereklidir",

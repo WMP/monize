@@ -226,7 +226,7 @@
     "sourceHolds": "Źródło posiada",
     "sharesAt": "udziałów @",
     "avgCostSuffix": "śr. koszt.",
-    "transferCostNote": "Koszt za udział (wypełniony z konta źródłowego) jest przenoszony do konta docelowego, aby raporty zysków i zysków pozostały poprawne. Operacja przenosi tylko udziały -- gotówka nie zmienia właściciela.",
+    "transferCostNote": "Koszt na akcję (wstępnie wypełniony z konta źródłowego) jest przenoszony do celu w walucie samego papieru wartościowego, dzięki czemu raporty zysków zachowują tę samą podstawę. Przenoszone są tylko akcje — gotówka nie zmienia właściciela.",
     "totalAmount": "Suma ({currency})",
     "sharesAtPrice": "{shares} udziałów @ {symbol}{price}",
     "commissionSuffix": "prowizja",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Nie udało się zapisać transakcji",
     "exchangeRateUnresolved": "Brak kursu z {from} na {to}. Przed zapisaniem wprowadź kurs lub przeliczoną kwotę łączną.",
     "toastExchangeRateRequired": "Wprowadź kurs wymiany przed zapisaniem transakcji między walutami.",
-    "notAvailable": "Niedostępne"
+    "notAvailable": "Niedostępne",
+    "transferCrossCurrencyNote": "Konto docelowe jest prowadzone w {destination}, a ten papier wartościowy jest wyceniany w {security}. Koszt na akcję powyżej pozostaje bez zmian — nadal jest w {security} — ale koszt nabycia w {destination} po stronie docelowej jest przeliczany po zapisanym kursie {security} na {destination} z dnia transferu. Transfer zostanie odrzucony, jeśli dla tej daty nie zapisano kursu."
   },
   "newTransactionButton": {
     "label": "+ Nowa transakcja",

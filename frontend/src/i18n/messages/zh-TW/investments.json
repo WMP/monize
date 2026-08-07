@@ -226,7 +226,7 @@
     "sourceHolds": "來源持有",
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
-    "transferCostNote": "每股成本（從來源科目預填）將帶入目的科目，確保獲利和損益報表正確。此操作僅移轉股份，不涉及現金交易。",
+    "transferCostNote": "每股成本（從來源帳戶預先填入）會以證券自身的貨幣轉入目標帳戶，因此損益與收益報表保持相同的成本基礎。此操作只轉移股份——沒有現金流動。",
     "totalAmount": "總金額（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",
     "commissionSuffix": "手續費",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "儲存交易失敗",
     "exchangeRateUnresolved": "沒有 {from} 兌 {to} 的匯率。請在儲存前輸入匯率或換算後的總額。",
     "toastExchangeRateRequired": "在儲存跨貨幣交易前請輸入匯率。",
-    "notAvailable": "無法使用"
+    "notAvailable": "無法使用",
+    "transferCrossCurrencyNote": "目標帳戶使用 {destination}，而此證券以 {security} 計價。上面的每股成本保持不變——仍為 {security}——但目標帳戶的 {destination} 成本基礎會按轉移日期已儲存的 {security} 兌 {destination} 匯率換算。如果該日期沒有儲存匯率，轉移將被拒絕。"
   },
   "newTransactionButton": {
     "label": "+ 新增交易",

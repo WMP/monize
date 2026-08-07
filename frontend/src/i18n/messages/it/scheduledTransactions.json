@@ -283,7 +283,8 @@
       "estimateCaption": "Circa {total} al tasso 1 {from} = {rate} {to}.",
       "noRateWarning": "Nessun tasso di cambio trovato da {from} a {to}. Scegli un'altra valuta oppure inserisci l'importo in {to}.",
       "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Questo trasferimento invia {from} a un conto in {to}. Ogni occorrenza viene convertita al tasso salvato da {from} a {to} della sua data di registrazione, quindi l'importo ricevuto varia; un'occorrenza non verrà registrata se per quella data non è salvato alcun tasso."
   },
   "postTransaction": {
     "minSplits": "Le transazioni suddivise richiedono almeno 2 suddivisioni",

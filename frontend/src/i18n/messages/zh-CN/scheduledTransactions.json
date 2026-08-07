@@ -283,7 +283,8 @@
       "estimateCaption": "约 {total}，按 1 {from} = {rate} {to} 计。",
       "noRateWarning": "未找到从 {from} 到 {to} 的汇率。请选择其他货币，或以 {to} 输入金额。",
       "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。"
-    }
+    },
+    "transferCrossCurrencyNote": "此转账将 {from} 发送到 {to} 账户。每次执行都会按其入账日期已保存的 {from} 兑 {to} 汇率换算，因此收到的金额会变化；如果该日期没有保存汇率，该次执行将不会入账。"
   },
   "postTransaction": {
     "minSplits": "拆分交易至少需要 2 个拆分项",

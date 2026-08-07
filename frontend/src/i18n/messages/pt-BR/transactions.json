@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Valor da Transferência ({currency})",
       "amountReceived": "Valor Recebido ({currency})",
       "payeeOptional": "Beneficiário (Opcional)",
-      "categoryOptional": "Categoria (opcional)"
+      "categoryOptional": "Categoria (opcional)",
+      "transferExchangeRate": "Taxa de câmbio ({to} por 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Selecionar conta...",
@@ -415,7 +416,8 @@
       "tagCreated": "Etiqueta \"{name}\" criada",
       "fxRateRequired": "Insira uma taxa de câmbio ou o valor convertido antes de salvar uma transação em moeda estrangeira.",
       "jointPayeeCreateNotGranted": "O proprietário da conta não concedeu a você permissão para criar favorecidos. Escolha um dos favorecidos existentes.",
-      "splitsOppositeSign": "A linha {rows} da divisão inverte a direção da transação. Corrija o sinal antes de salvar."
+      "splitsOppositeSign": "A linha {rows} da divisão inverte a direção da transação. Corrija o sinal antes de salvar.",
+      "transferConversionRequired": "Insira a taxa de câmbio ou o valor recebido: {from} e {to} não podem ser tratadas como iguais."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Transações divididas em uma conta compartilhada só podem ser gerenciadas pelo proprietário"
+    "jointSplitDisabled": "Transações divididas em uma conta compartilhada só podem ser gerenciadas pelo proprietário",
+    "transferRate": {
+      "hint": "Quantos {to} um {from} compra. Insira isto ou o valor recebido; o outro é derivado.",
+      "fromMarket": "A taxa salva hoje para este par e data. Altere-a para bater com seu extrato.",
+      "loading": "Buscando a taxa para esta data...",
+      "unresolved": "Não há taxa de câmbio salva de {from} para {to} nesta data. Insira a taxa ou o valor recebido — as duas moedas não podem ser tratadas como iguais.",
+      "lookupFailed": "Não foi possível carregar a taxa de câmbio de {from} para {to}. Insira a taxa ou o valor recebido para continuar."
+    }
   },
   "splitEditor": {
     "header": "Detalhes das Divisões",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Etiquetas...",
     "oppositeSignShort": "Balanceado, mas uma linha inverte a transação",
     "oppositeSignExpense": "A linha {rows} é uma receita dentro de uma despesa. Cada linha de categoria de uma despesa deve ser negativa, ou a divisão registra receita que a transação nunca recebeu.",
-    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita deve ser positiva."
+    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita deve ser positiva.",
+    "crossCurrencyTransfer": "Linha {rows}: a conta de destino está em {to}, não em {from}. O valor que chega lá é convertido pela taxa salva de {from} para {to} da data desta transação, então será diferente do valor inserido aqui. Salvar falha se não houver taxa salva para essa data."
   },
   "recentPopover": {
     "recentForPayee": "Recentes para {name}",

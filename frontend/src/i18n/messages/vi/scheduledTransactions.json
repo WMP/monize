@@ -283,7 +283,8 @@
       "estimateCaption": "Khoảng {total} theo tỷ giá 1 {from} = {rate} {to}.",
       "noRateWarning": "Không tìm thấy tỷ giá từ {from} sang {to}. Hãy chọn đơn vị tiền tệ khác, hoặc nhập số tiền bằng {to}.",
       "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Giao dịch chuyển khoản này gửi {from} vào tài khoản {to}. Mỗi lần thực hiện được quy đổi theo tỷ giá {from} sang {to} đã lưu cho ngày ghi nhận, nên số tiền nhận được sẽ thay đổi; một lần thực hiện sẽ không được ghi nhận nếu không có tỷ giá lưu cho ngày đó."
   },
   "postTransaction": {
     "minSplits": "Giao tác chia cần ít nhất 2 phần",

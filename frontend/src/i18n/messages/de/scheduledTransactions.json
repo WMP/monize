@@ -283,7 +283,8 @@
       "estimateCaption": "Etwa {total} bei 1 {from} = {rate} {to}.",
       "noRateWarning": "Kein Wechselkurs für {from} zu {to} gefunden. Bitte eine andere Währung wählen oder den Betrag in {to} eingeben.",
       "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Diese Überweisung sendet {from} auf ein {to}-Konto. Jede Ausführung rechnet zum gespeicherten Kurs {from} zu {to} ihres Buchungsdatums um, der erhaltene Betrag schwankt also; eine Ausführung wird nicht gebucht, wenn für ihr Datum kein Kurs gespeichert ist."
   },
   "postTransaction": {
     "minSplits": "Aufgeteilte Buchungen erfordern mindestens 2 Buchungsteile",

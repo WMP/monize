@@ -283,7 +283,8 @@
       "estimateCaption": "Ongeveer {total} bij 1 {from} = {rate} {to}.",
       "noRateWarning": "Geen wisselkoers gevonden voor {from} naar {to}. Kies een andere valuta of voer het bedrag in {to} in.",
       "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Deze overboeking stuurt {from} naar een {to}-rekening. Elke termijn wordt omgerekend tegen de opgeslagen koers {from} naar {to} van de boekingsdatum; het ontvangen bedrag varieert dus, en een termijn wordt niet geboekt als er voor die datum geen koers is opgeslagen."
   },
   "postTransaction": {
     "minSplits": "Gesplitste transacties vereisen minimaal 2 splitsingen",

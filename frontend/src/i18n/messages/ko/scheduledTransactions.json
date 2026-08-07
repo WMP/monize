@@ -283,7 +283,8 @@
       "estimateCaption": "약 {total}(1 {from} = {rate} {to}).",
       "noRateWarning": "{from}에서 {to}로의 환율을 찾을 수 없습니다. 다른 통화를 선택하거나 금액을 {to}로 입력하세요.",
       "feeCaption": "{percent}% 해외 거래 수수료({fee})가 포함됩니다."
-    }
+    },
+    "transferCrossCurrencyNote": "이 이체는 {from}을(를) {to} 계좌로 보냅니다. 각 회차는 기록일의 저장된 {from}→{to} 환율로 환산되므로 수취 금액이 달라집니다. 해당 날짜의 환율이 저장되어 있지 않으면 그 회차는 기록되지 않습니다."
   },
   "postTransaction": {
     "minSplits": "분할 거래에는 최소 2개의 분할이 필요합니다",

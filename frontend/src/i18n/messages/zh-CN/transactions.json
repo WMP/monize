@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "转账金额（{currency}）",
       "amountReceived": "收到金额（{currency}）",
       "payeeOptional": "收款人（可选）",
-      "categoryOptional": "类别（可选）"
+      "categoryOptional": "类别（可选）",
+      "transferExchangeRate": "汇率（每 1 {from} 兑 {to}）"
     },
     "placeholders": {
       "selectAccount": "选择账户...",
@@ -415,7 +416,8 @@
       "tagCreated": "标签\"{name}\"已创建",
       "fxRateRequired": "在保存外币交易前，请输入汇率或换算后的金额。",
       "jointPayeeCreateNotGranted": "账户所有者未授予您创建收款人的权限。请从其现有收款人中选择。",
-      "splitsOppositeSign": "拆分第 {rows} 行使交易方向反转。请在保存前修正符号。"
+      "splitsOppositeSign": "拆分第 {rows} 行使交易方向反转。请在保存前修正符号。",
+      "transferConversionRequired": "请输入汇率或收到的金额：{from} 和 {to} 不能视为等值。"
     },
     "ariaHistory": "显示近期交易",
     "ariaHistoryForPayee": "显示此收款人的近期交易",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。"
     },
-    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理"
+    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理",
+    "transferRate": {
+      "hint": "1 {from} 能买多少 {to}。输入此项或收到的金额，另一项会自动得出。",
+      "fromMarket": "今天为该货币对和日期保存的汇率。请修改为与您的对账单一致。",
+      "loading": "正在查找该日期的汇率...",
+      "unresolved": "该日期没有已保存的 {from} 兑 {to} 汇率。请输入汇率或收到的金额——两种货币不能视为等值。",
+      "lookupFailed": "无法加载 {from} 兑 {to} 的汇率。请输入汇率或收到的金额以继续。"
+    }
   },
   "splitEditor": {
     "header": "拆分详情",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "标签...",
     "oppositeSignShort": "总额平衡，但有一行反转了交易",
     "oppositeSignExpense": "第 {rows} 行是支出中的收入。支出的每个类别行都必须为负数，否则拆分会记录交易从未收到的收入。",
-    "oppositeSignIncome": "第 {rows} 行是收入交易中的支出。收入交易的每个类别行都必须为正数。"
+    "oppositeSignIncome": "第 {rows} 行是收入交易中的支出。收入交易的每个类别行都必须为正数。",
+    "crossCurrencyTransfer": "第 {rows} 行：目标账户使用 {to}，而不是 {from}。到账金额将按此交易日期已保存的 {from} 兑 {to} 汇率换算，因此会与此处输入的金额不同。如果该日期没有保存汇率，保存将失败。"
   },
   "recentPopover": {
     "recentForPayee": "{name} 的近期交易",

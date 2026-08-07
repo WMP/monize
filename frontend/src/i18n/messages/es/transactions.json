@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Cantidad de transferencia ({currency})",
       "amountReceived": "Cantidad recibida ({currency})",
       "payeeOptional": "Beneficiario (opcional)",
-      "categoryOptional": "Categoría (opcional)"
+      "categoryOptional": "Categoría (opcional)",
+      "transferExchangeRate": "Tipo de cambio ({to} por 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Seleccionar cuenta...",
@@ -415,7 +416,8 @@
       "tagCreated": "Etiqueta \"{name}\" creada",
       "fxRateRequired": "Introduce un tipo de cambio o el importe convertido antes de guardar una transacción en moneda extranjera.",
       "jointPayeeCreateNotGranted": "El propietario de la cuenta no le ha concedido permiso para crear beneficiarios. Elija uno de sus beneficiarios existentes.",
-      "splitsOppositeSign": "La fila {rows} del desglose invierte la dirección de la transacción. Corrige el signo antes de guardar."
+      "splitsOppositeSign": "La fila {rows} del desglose invierte la dirección de la transacción. Corrige el signo antes de guardar.",
+      "transferConversionRequired": "Introduce el tipo de cambio o el importe recibido: {from} y {to} no pueden tratarse como iguales."
     },
     "ariaHistory": "Mostrar transacciones recientes",
     "ariaHistoryForPayee": "Mostrar transacciones recientes de este beneficiario",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Incluye una comisión por transacción en el extranjero del {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Solo el propietario puede gestionar transacciones divididas en una cuenta compartida"
+    "jointSplitDisabled": "Solo el propietario puede gestionar transacciones divididas en una cuenta compartida",
+    "transferRate": {
+      "hint": "Cuántos {to} compra un {from}. Introduce esto o el importe recibido; el otro se deriva.",
+      "fromMarket": "El tipo guardado hoy para este par y fecha. Cámbialo para que coincida con tu extracto.",
+      "loading": "Buscando el tipo para esta fecha...",
+      "unresolved": "No hay tipo de cambio guardado de {from} a {to} para esta fecha. Introduce el tipo o el importe recibido — las dos monedas no pueden tratarse como iguales.",
+      "lookupFailed": "No se pudo cargar el tipo de cambio de {from} a {to}. Introduce el tipo o el importe recibido para continuar."
+    }
   },
   "splitEditor": {
     "header": "Detalles del desglose",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Etiquetas...",
     "oppositeSignShort": "Cuadrado, pero una fila invierte la transacción",
     "oppositeSignExpense": "La fila {rows} es un ingreso dentro de un gasto. Cada fila de categoría de un gasto debe ser negativa, o el desglose registra ingresos que la transacción nunca recibió.",
-    "oppositeSignIncome": "La fila {rows} es un gasto dentro de una transacción de ingreso. Cada fila de categoría de una transacción de ingreso debe ser positiva."
+    "oppositeSignIncome": "La fila {rows} es un gasto dentro de una transacción de ingreso. Cada fila de categoría de una transacción de ingreso debe ser positiva.",
+    "crossCurrencyTransfer": "Fila {rows}: la cuenta de destino está en {to}, no en {from}. El importe que llega allí se convierte al tipo guardado de {from} a {to} de la fecha de esta transacción, así que diferirá del importe introducido aquí. Guardar falla si no hay tipo guardado para esa fecha."
   },
   "recentPopover": {
     "recentForPayee": "Recientes de {name}",

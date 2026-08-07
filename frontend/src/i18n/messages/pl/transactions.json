@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Kwota przelewu ({currency})",
       "amountReceived": "Kwota otrzymana ({currency})",
       "payeeOptional": "Odbiorca (opcjonalnie)",
-      "categoryOptional": "Kategoria (opcjonalnie)"
+      "categoryOptional": "Kategoria (opcjonalnie)",
+      "transferExchangeRate": "Kurs wymiany ({to} za 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Wybierz konto...",
@@ -415,7 +416,8 @@
       "tagCreated": "Tag \"{name}\" utworzony",
       "fxRateRequired": "Wprowadź kurs wymiany lub przeliczoną kwotę przed zapisaniem transakcji w obcej walucie.",
       "jointPayeeCreateNotGranted": "Właściciel konta nie przyznał Ci uprawnień do tworzenia odbiorców. Wybierz jednego z istniejących odbiorców.",
-      "splitsOppositeSign": "Wiersz podziału {rows} odwraca kierunek transakcji. Popraw znak przed zapisaniem."
+      "splitsOppositeSign": "Wiersz podziału {rows} odwraca kierunek transakcji. Popraw znak przed zapisaniem.",
+      "transferConversionRequired": "Wprowadź kurs wymiany lub otrzymaną kwotę: {from} i {to} nie mogą być traktowane jako równe."
     },
     "ariaHistory": "Pokaż ostatnie transakcje",
     "ariaHistoryForPayee": "Pokaż ostatnie transakcje dla tego odbiorcy",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Zawiera opłatę za transakcję zagraniczną {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Transakcjami podzielonymi na wspólnym koncie może zarządzać tylko właściciel"
+    "jointSplitDisabled": "Transakcjami podzielonymi na wspólnym koncie może zarządzać tylko właściciel",
+    "transferRate": {
+      "hint": "Ile {to} kupuje jeden {from}. Wprowadź to lub otrzymaną kwotę; druga wartość wynika z pierwszej.",
+      "fromMarket": "Zapisany dziś kurs dla tej pary i daty. Zmień go, aby zgadzał się z wyciągiem.",
+      "loading": "Wyszukiwanie kursu dla tej daty...",
+      "unresolved": "Brak zapisanego kursu wymiany z {from} na {to} dla tej daty. Wprowadź kurs lub otrzymaną kwotę — obie waluty nie mogą być traktowane jako równe.",
+      "lookupFailed": "Nie udało się wczytać kursu wymiany z {from} na {to}. Wprowadź kurs lub otrzymaną kwotę, aby kontynuować."
+    }
   },
   "splitEditor": {
     "header": "Szczegóły podziału",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Tagi...",
     "oppositeSignShort": "Zbilansowane, ale jeden wiersz odwraca transakcję",
     "oppositeSignExpense": "Wiersz {rows} to przychód wewnątrz wydatku. Każdy wiersz kategorii wydatku musi być ujemny, inaczej podział zapisuje przychód, którego transakcja nigdy nie otrzymała.",
-    "oppositeSignIncome": "Wiersz {rows} to wydatek wewnątrz transakcji przychodowej. Każdy wiersz kategorii transakcji przychodowej musi być dodatni."
+    "oppositeSignIncome": "Wiersz {rows} to wydatek wewnątrz transakcji przychodowej. Każdy wiersz kategorii transakcji przychodowej musi być dodatni.",
+    "crossCurrencyTransfer": "Wiersz {rows}: konto docelowe jest prowadzone w {to}, a nie w {from}. Kwota, która tam trafi, zostanie przeliczona po zapisanym kursie {from} na {to} z daty tej transakcji, więc będzie się różnić od kwoty wpisanej tutaj. Zapis nie powiedzie się, jeśli dla tej daty nie zapisano kursu."
   },
   "recentPopover": {
     "recentForPayee": "Ostatnie dla {name}",

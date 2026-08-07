@@ -226,7 +226,7 @@
     "sourceHolds": "Nguồn nắm giữ",
     "sharesAt": "cổ phiếu @",
     "avgCostSuffix": "giá TB.",
-    "transferCostNote": "Giá mỗi cổ phiếu (điền sẵn từ tài khoản nguồn) được chuyển sang tài khoản đích để báo cáo lãi lỗ của bạn chính xác. Thao tác này chỉ chuyển cổ phiếu -- không có thay đổi tiền mặt.",
+    "transferCostNote": "Chi phí mỗi cổ phiếu (điền sẵn từ tài khoản nguồn) được chuyển sang đích bằng chính đồng tiền của chứng khoán, nên các báo cáo lãi lỗ giữ nguyên cùng một cơ sở. Thao tác này chỉ chuyển cổ phiếu — không có tiền mặt di chuyển.",
     "totalAmount": "Tổng số tiền ({currency})",
     "sharesAtPrice": "{shares} cổ phiếu @ {symbol}{price}",
     "commissionSuffix": "hoa hồng",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Lưu giao dịch thất bại",
     "exchangeRateUnresolved": "Không có tỷ giá {from} sang {to}. Nhập tỷ giá, hoặc tổng đã quy đổi, trước khi lưu.",
     "toastExchangeRateRequired": "Nhập tỷ giá trước khi lưu một giao dịch giữa hai loại tiền tệ.",
-    "notAvailable": "Không có sẵn"
+    "notAvailable": "Không có sẵn",
+    "transferCrossCurrencyNote": "Tài khoản đích dùng {destination} và chứng khoán này được định giá bằng {security}. Chi phí mỗi cổ phiếu ở trên không đổi — vẫn ở {security} — nhưng cơ sở chi phí bằng {destination} của bên đích được quy đổi theo tỷ giá {security} sang {destination} đã lưu cho ngày chuyển. Việc chuyển sẽ bị từ chối nếu không có tỷ giá lưu cho ngày đó."
   },
   "newTransactionButton": {
     "label": "+ Giao dịch mới",

@@ -226,7 +226,7 @@
     "sourceHolds": "출처 보유",
     "sharesAt": "주 @",
     "avgCostSuffix": "평균 취득원가.",
-    "transferCostNote": "주당 취득원가(출처 계정에서 미리 채워짐)가 목적지로 이전되어 이익 및 수익 보고서가 올바르게 유지됩니다. 주식만 이동하며 현금 변동은 없습니다.",
+    "transferCostNote": "주당 원가(출금 계좌에서 자동 입력)는 증권 자체 통화로 대상에 이전되므로 손익 보고서는 같은 기준을 유지합니다. 주식만 이동하며 현금은 움직이지 않습니다.",
     "totalAmount": "총 금액 ({currency})",
     "sharesAtPrice": "{shares}주 @ {symbol}{price}",
     "commissionSuffix": "수수료",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "거래 저장에 실패했습니다",
     "exchangeRateUnresolved": "{from}→{to} 환율이 없습니다. 저장하기 전에 환율 또는 환산된 합계를 입력하세요.",
     "toastExchangeRateRequired": "통화 간 거래를 저장하기 전에 환율을 입력하세요.",
-    "notAvailable": "사용 불가"
+    "notAvailable": "사용 불가",
+    "transferCrossCurrencyNote": "대상 계좌는 {destination} 계좌이고 이 증권은 {security}(으)로 표시됩니다. 위의 주당 원가는 변하지 않고 {security}(으)로 유지되지만, 대상의 {destination} 취득원가는 이전일의 저장된 {security}→{destination} 환율로 환산됩니다. 해당 날짜의 환율이 저장되어 있지 않으면 이전이 거부됩니다."
   },
   "newTransactionButton": {
     "label": "+ 새 거래",

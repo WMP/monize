@@ -283,7 +283,8 @@
       "estimateCaption": "Około {total} przy 1 {from} = {rate} {to}.",
       "noRateWarning": "Nie znaleziono kursu wymiany z {from} na {to}. Wybierz inną walutę lub wprowadź kwotę w {to}.",
       "feeCaption": "Zawiera opłatę za transakcję zagraniczną {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Ten przelew wysyła {from} na konto w {to}. Każde wystąpienie jest przeliczane po zapisanym kursie {from} na {to} z dnia księgowania, więc otrzymana kwota się zmienia; wystąpienie nie zostanie zaksięgowane, jeśli dla tej daty nie zapisano kursu."
   },
   "postTransaction": {
     "minSplits": "Transakcje podzielone wymagają co najmniej 2 podziałów",

@@ -226,7 +226,7 @@
     "sourceHolds": "Quelle hält",
     "sharesAt": "Anteile @",
     "avgCostSuffix": "Durchschn. Kosten.",
-    "transferCostNote": "Die Kosten pro Anteil (aus dem Quellkonto vorausgefüllt) werden auf das Zielkonto übertragen, damit Ihre Gewinn- und Ertragsberichte korrekt bleiben. Dabei werden nur Anteile verschoben – kein Bargeld wechselt den Besitzer.",
+    "transferCostNote": "Der Preis pro Anteil (aus dem Quellkonto vorausgefüllt) wird in der eigenen Währung des Wertpapiers auf das Ziel übertragen, sodass Gewinn- und Ertragsberichte dieselbe Basis behalten. Es werden nur Anteile bewegt — es fließt kein Geld.",
     "totalAmount": "Gesamtbetrag ({currency})",
     "sharesAtPrice": "{shares} Anteile @ {symbol}{price}",
     "commissionSuffix": "Provision",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Buchung konnte nicht gespeichert werden",
     "exchangeRateUnresolved": "Kein Kurs für {from} zu {to} verfügbar. Geben Sie vor dem Speichern einen Kurs oder den umgerechneten Gesamtbetrag ein.",
     "toastExchangeRateRequired": "Geben Sie einen Wechselkurs ein, bevor Sie einen währungsübergreifenden Handel speichern.",
-    "notAvailable": "Nicht verfügbar"
+    "notAvailable": "Nicht verfügbar",
+    "transferCrossCurrencyNote": "Das Zielkonto führt {destination}, dieses Wertpapier ist in {security} notiert. Der Preis pro Anteil oben bleibt unverändert — er bleibt in {security} —, aber die {destination}-Anschaffungskosten des Ziels werden zum gespeicherten Kurs {security} zu {destination} für das Übertragungsdatum umgerechnet. Die Übertragung wird abgelehnt, wenn für dieses Datum kein Kurs gespeichert ist."
   },
   "newTransactionButton": {
     "label": "+ Neue Buchung",

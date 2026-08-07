@@ -226,7 +226,7 @@
     "sourceHolds": "ソースの保有",
     "sharesAt": "株 @",
     "avgCostSuffix": "平均取得原価。",
-    "transferCostNote": "1株あたりのコスト（ソース口座からの事前入力）は、損益レポートが正確になるように振替先に引き継がれます。これは株式のみを移動します -- 現金は変わりません。",
+    "transferCostNote": "1株あたり取得原価（送金元口座から自動入力）は証券自体の通貨のまま移動先に引き継がれるため、損益レポートは同じ基準を保ちます。移動するのは株式のみで、現金は動きません。",
     "totalAmount": "合計金額（{currency}）",
     "sharesAtPrice": "{shares} 株 @ {symbol}{price}",
     "commissionSuffix": "手数料",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "取引の保存に失敗しました",
     "exchangeRateUnresolved": "{from} から {to} へのレートがありません。保存する前にレートか換算後の合計を入力してください。",
     "toastExchangeRateRequired": "通貨をまたぐ取引を保存する前に為替レートを入力してください。",
-    "notAvailable": "利用不可"
+    "notAvailable": "利用不可",
+    "transferCrossCurrencyNote": "移動先の口座は {destination} 建てで、この証券は {security} 建てです。上の1株あたり取得原価は変わらず {security} のままですが、移動先の {destination} 建て取得原価は、移動日の保存済み {security}→{destination} レートで換算されます。その日のレートが保存されていない場合、移動は拒否されます。"
   },
   "newTransactionButton": {
     "label": "+ 新規取引",

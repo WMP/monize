@@ -283,7 +283,8 @@
       "estimateCaption": "Cerca de {total} a 1 {from} = {rate} {to}.",
       "noRateWarning": "Nenhuma taxa de câmbio encontrada de {from} para {to}. Escolha outra moeda ou insira o valor em {to}.",
       "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Esta transferência envia {from} para uma conta em {to}. Cada ocorrência converte pela taxa salva de {from} para {to} da data de lançamento, então o valor recebido varia; uma ocorrência não será lançada se não houver taxa salva para essa data."
   },
   "postTransaction": {
     "minSplits": "As transações divididas requerem pelo menos 2 parcelas",

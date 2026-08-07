@@ -226,7 +226,7 @@
     "sourceHolds": "来源持有",
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
-    "transferCostNote": "每股成本（从来源账户预填）会转移到目标账户，以确保盈亏报表正确。此操作仅移动股份，不涉及现金。",
+    "transferCostNote": "每股成本（从源账户预填）会以证券自身的货币转入目标账户，因此盈亏和收益报表保持相同的成本基础。此操作只转移股份——没有现金流动。",
     "totalAmount": "总金额（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",
     "commissionSuffix": "佣金",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "保存交易失败",
     "exchangeRateUnresolved": "没有 {from} 兑 {to} 的汇率。请在保存前输入汇率或换算后的总额。",
     "toastExchangeRateRequired": "在保存跨货币交易前请输入汇率。",
-    "notAvailable": "不可用"
+    "notAvailable": "不可用",
+    "transferCrossCurrencyNote": "目标账户使用 {destination}，而此证券以 {security} 计价。上面的每股成本保持不变——仍为 {security}——但目标账户的 {destination} 成本基础会按转移日期已保存的 {security} 兑 {destination} 汇率换算。如果该日期没有保存汇率，转移将被拒绝。"
   },
   "newTransactionButton": {
     "label": "+ 新建交易",

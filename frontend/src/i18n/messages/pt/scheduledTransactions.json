@@ -283,7 +283,8 @@
       "estimateCaption": "Cerca de {total} a 1 {from} = {rate} {to}.",
       "noRateWarning": "Não foi encontrada uma taxa de câmbio de {from} para {to}. Escolha outra moeda ou introduza o montante em {to}.",
       "feeCaption": "Inclui uma comissão de transação estrangeira de {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Esta transferência envia {from} para uma conta em {to}. Cada ocorrência converte à taxa guardada de {from} para {to} da respetiva data de registo, pelo que o montante recebido varia; uma ocorrência não será registada se não houver taxa guardada para essa data."
   },
   "postTransaction": {
     "minSplits": "As transações divididas requerem pelo menos 2 parcelas",

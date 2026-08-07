@@ -226,7 +226,7 @@
     "sourceHolds": "Sumber memegang",
     "sharesAt": "lembar @",
     "avgCostSuffix": "biaya rata-rata.",
-    "transferCostNote": "Biaya per lembar (diisi otomatis dari akun sumber) dibawa ke tujuan agar laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan lembar -- tidak ada perubahan tunai.",
+    "transferCostNote": "Biaya per saham (terisi otomatis dari akun sumber) dibawa ke tujuan dalam mata uang sekuritas itu sendiri, sehingga laporan untung-rugi mempertahankan dasar yang sama. Ini hanya memindahkan saham — tidak ada uang tunai yang berpindah.",
     "totalAmount": "Total Jumlah ({currency})",
     "sharesAtPrice": "{shares} lembar @ {symbol}{price}",
     "commissionSuffix": "komisi",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Gagal menyimpan transaksi",
     "exchangeRateUnresolved": "Tidak ada kurs {from} ke {to}. Masukkan satu, atau total terkonversi, sebelum menyimpan.",
     "toastExchangeRateRequired": "Masukkan nilai tukar sebelum menyimpan perdagangan lintas mata uang.",
-    "notAvailable": "Tidak tersedia"
+    "notAvailable": "Tidak tersedia",
+    "transferCrossCurrencyNote": "Akun tujuan menggunakan {destination} dan sekuritas ini dihargai dalam {security}. Biaya per saham di atas tidak berubah — tetap dalam {security} — tetapi dasar biaya {destination} di tujuan dikonversi dengan kurs {security} ke {destination} yang tersimpan untuk tanggal transfer. Transfer ditolak jika tidak ada kurs tersimpan untuk tanggal itu."
   },
   "newTransactionButton": {
     "label": "+ Transaksi Baru",

@@ -226,7 +226,7 @@
     "sourceHolds": "La source détient",
     "sharesAt": "parts @",
     "avgCostSuffix": "coût moyen.",
-    "transferCostNote": "Le coût par part (prérempli depuis le compte source) est transféré vers la destination afin que vos rapports de gains et bénéfices restent exacts. Cela déplace uniquement les parts — aucune liquidité ne change de main.",
+    "transferCostNote": "Le prix de revient par action (prérempli depuis le compte source) est transféré vers la destination dans la devise propre du titre, de sorte que les rapports de gains gardent la même base. Seules les actions sont déplacées — aucune somme d'argent ne circule.",
     "totalAmount": "Montant total ({currency})",
     "sharesAtPrice": "{shares} parts @ {symbol}{price}",
     "commissionSuffix": "commission",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "Échec de l'enregistrement de la transaction",
     "exchangeRateUnresolved": "Aucun taux de {from} vers {to} n'est disponible. Saisissez-en un, ou le total converti, avant d'enregistrer.",
     "toastExchangeRateRequired": "Saisissez un taux de change avant d'enregistrer une opération entre devises.",
-    "notAvailable": "Non disponible"
+    "notAvailable": "Non disponible",
+    "transferCrossCurrencyNote": "Le compte de destination est en {destination} et ce titre est coté en {security}. Le prix par action ci-dessus reste inchangé — il reste en {security} —, mais le prix de revient en {destination} de la destination est converti au taux enregistré de {security} vers {destination} à la date du transfert. Le transfert est refusé si aucun taux n'est enregistré pour cette date."
   },
   "newTransactionButton": {
     "label": "+ Nouvelle transaction",

@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Montante da Transferência ({currency})",
       "amountReceived": "Montante Recebido ({currency})",
       "payeeOptional": "Beneficiário (Opcional)",
-      "categoryOptional": "Categoria (opcional)"
+      "categoryOptional": "Categoria (opcional)",
+      "transferExchangeRate": "Taxa de câmbio ({to} por 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Selecionar conta...",
@@ -415,7 +416,8 @@
       "tagCreated": "Etiqueta \"{name}\" criada",
       "fxRateRequired": "Introduza uma taxa de câmbio ou o montante convertido antes de guardar uma transação em moeda estrangeira.",
       "jointPayeeCreateNotGranted": "O proprietário da conta não lhe concedeu permissão para criar beneficiários. Escolha um dos beneficiários existentes.",
-      "splitsOppositeSign": "A linha {rows} da parcela inverte a direção da transação. Corrija o sinal antes de guardar."
+      "splitsOppositeSign": "A linha {rows} da parcela inverte a direção da transação. Corrija o sinal antes de guardar.",
+      "transferConversionRequired": "Introduza a taxa de câmbio ou o montante recebido: {from} e {to} não podem ser tratadas como iguais."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Inclui uma comissão de transação estrangeira de {percent}% ({fee})."
     },
-    "jointSplitDisabled": "As transações divididas numa conta partilhada só podem ser geridas pelo proprietário"
+    "jointSplitDisabled": "As transações divididas numa conta partilhada só podem ser geridas pelo proprietário",
+    "transferRate": {
+      "hint": "Quantos {to} um {from} compra. Introduza isto ou o montante recebido; o outro deriva daí.",
+      "fromMarket": "A taxa guardada hoje para este par e data. Altere-a para corresponder ao seu extrato.",
+      "loading": "A procurar a taxa para esta data...",
+      "unresolved": "Não há taxa de câmbio guardada de {from} para {to} nesta data. Introduza a taxa ou o montante recebido — as duas moedas não podem ser tratadas como iguais.",
+      "lookupFailed": "Não foi possível carregar a taxa de câmbio de {from} para {to}. Introduza a taxa ou o montante recebido para continuar."
+    }
   },
   "splitEditor": {
     "header": "Detalhes das Parcelas",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Etiquetas...",
     "oppositeSignShort": "Equilibrado, mas uma linha inverte a transação",
     "oppositeSignExpense": "A linha {rows} é uma receita dentro de uma despesa. Cada linha de categoria de uma despesa tem de ser negativa, ou a parcela regista receitas que a transação nunca recebeu.",
-    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita tem de ser positiva."
+    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita tem de ser positiva.",
+    "crossCurrencyTransfer": "Linha {rows}: a conta de destino está em {to}, não em {from}. O montante que lá chega é convertido à taxa guardada de {from} para {to} da data desta transação, pelo que diferirá do montante aqui introduzido. A gravação falha se não houver taxa guardada para essa data."
   },
   "recentPopover": {
     "recentForPayee": "Recentes para {name}",

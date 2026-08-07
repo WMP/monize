@@ -283,7 +283,8 @@
       "estimateCaption": "Unos {total} a 1 {from} = {rate} {to}.",
       "noRateWarning": "No se encontró un tipo de cambio de {from} a {to}. Elige otra moneda o introduce el importe en {to}.",
       "feeCaption": "Incluye una comisión por transacción en el extranjero del {percent}% ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "Esta transferencia envía {from} a una cuenta en {to}. Cada ocurrencia se convierte al tipo guardado de {from} a {to} de su fecha de registro, así que el importe recibido varía; una ocurrencia no se registrará si no hay tipo guardado para esa fecha."
   },
   "postTransaction": {
     "minSplits": "Los desgloses de transacción requieren al menos 2 partes",

@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Số tiền chuyển ({currency})",
       "amountReceived": "Số tiền nhận ({currency})",
       "payeeOptional": "Người nhận (tùy chọn)",
-      "categoryOptional": "Danh mục (Tùy chọn)"
+      "categoryOptional": "Danh mục (Tùy chọn)",
+      "transferExchangeRate": "Tỷ giá ({to} cho 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Chọn tài khoản...",
@@ -415,7 +416,8 @@
       "tagCreated": "Thẻ \"{name}\" đã được tạo",
       "fxRateRequired": "Nhập tỷ giá hoặc số tiền đã quy đổi trước khi lưu giao dịch bằng ngoại tệ.",
       "jointPayeeCreateNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền tạo người nhận. Hãy chọn một người nhận hiện có.",
-      "splitsOppositeSign": "Dòng phần chia {rows} đảo ngược chiều của giao tác. Sửa dấu trước khi lưu."
+      "splitsOppositeSign": "Dòng phần chia {rows} đảo ngược chiều của giao tác. Sửa dấu trước khi lưu.",
+      "transferConversionRequired": "Nhập tỷ giá hoặc số tiền đã nhận: {from} và {to} không thể coi là bằng nhau."
     },
     "ariaHistory": "Hiển thị giao tác gần đây",
     "ariaHistoryForPayee": "Hiển thị giao tác gần đây cho người nhận này",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ"
+    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ",
+    "transferRate": {
+      "hint": "Một {from} mua được bao nhiêu {to}. Nhập giá trị này hoặc số tiền đã nhận; giá trị còn lại sẽ được suy ra.",
+      "fromMarket": "Tỷ giá đã lưu hôm nay cho cặp tiền và ngày này. Hãy sửa cho khớp với sao kê của bạn.",
+      "loading": "Đang tra tỷ giá cho ngày này...",
+      "unresolved": "Không có tỷ giá {from} sang {to} đã lưu cho ngày này. Nhập tỷ giá hoặc số tiền đã nhận — hai loại tiền tệ không thể coi là bằng nhau.",
+      "lookupFailed": "Không tải được tỷ giá {from} sang {to}. Nhập tỷ giá hoặc số tiền đã nhận để tiếp tục."
+    }
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Thẻ...",
     "oppositeSignShort": "Cân bằng, nhưng có một dòng đảo ngược giao tác",
     "oppositeSignExpense": "Dòng {rows} là khoản thu bên trong một khoản chi. Mọi dòng danh mục của khoản chi phải âm, nếu không phần chia sẽ ghi nhận khoản thu mà giao tác chưa bao giờ nhận.",
-    "oppositeSignIncome": "Dòng {rows} là khoản chi bên trong một giao tác thu. Mọi dòng danh mục của giao tác thu phải dương."
+    "oppositeSignIncome": "Dòng {rows} là khoản chi bên trong một giao tác thu. Mọi dòng danh mục của giao tác thu phải dương.",
+    "crossCurrencyTransfer": "Dòng {rows}: tài khoản đích dùng {to}, không phải {from}. Số tiền đến đó sẽ được quy đổi theo tỷ giá {from} sang {to} đã lưu cho ngày của giao tác này, nên sẽ khác số tiền nhập ở đây. Lưu sẽ thất bại nếu không có tỷ giá lưu cho ngày đó."
   },
   "recentPopover": {
     "recentForPayee": "Gần đây cho {name}",

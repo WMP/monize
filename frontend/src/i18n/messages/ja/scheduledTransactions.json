@@ -283,7 +283,8 @@
       "estimateCaption": "約 {total}（1 {from} = {rate} {to}）。",
       "noRateWarning": "{from} から {to} への為替レートが見つかりません。別の通貨を選ぶか、金額を {to} で入力してください。",
       "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。"
-    }
+    },
+    "transferCrossCurrencyNote": "この振替は {from} を {to} 建ての口座に送ります。各回は記帳日の保存済み {from}→{to} レートで換算されるため、受取金額は変動します。その日のレートが保存されていない場合、その回は記帳されません。"
   },
   "postTransaction": {
     "minSplits": "分割取引には少なくとも2つの分割が必要です",

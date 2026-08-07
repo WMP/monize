@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Importo trasferimento ({currency})",
       "amountReceived": "Importo ricevuto ({currency})",
       "payeeOptional": "Beneficiario (facoltativo)",
-      "categoryOptional": "Categoria (facoltativa)"
+      "categoryOptional": "Categoria (facoltativa)",
+      "transferExchangeRate": "Tasso di cambio ({to} per 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Seleziona conto...",
@@ -415,7 +416,8 @@
       "tagCreated": "Etichetta \"{name}\" creata",
       "fxRateRequired": "Inserisci un tasso di cambio o l'importo convertito prima di salvare una transazione in valuta estera.",
       "jointPayeeCreateNotGranted": "Il proprietario del conto non ti ha concesso il permesso di creare beneficiari. Scegli uno dei suoi beneficiari esistenti.",
-      "splitsOppositeSign": "La riga {rows} della suddivisione inverte la direzione della transazione. Correggi il segno prima di salvare."
+      "splitsOppositeSign": "La riga {rows} della suddivisione inverte la direzione della transazione. Correggi il segno prima di salvare.",
+      "transferConversionRequired": "Inserisci il tasso di cambio o l'importo ricevuto: {from} e {to} non possono essere trattate come uguali."
     },
     "ariaHistory": "Mostra transazioni recenti",
     "ariaHistoryForPayee": "Mostra transazioni recenti per questo beneficiario",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario"
+    "jointSplitDisabled": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario",
+    "transferRate": {
+      "hint": "Quanti {to} compra un {from}. Inserisci questo o l'importo ricevuto; l'altro ne deriva.",
+      "fromMarket": "Il tasso salvato oggi per questa coppia e data. Modificalo perché corrisponda al tuo estratto conto.",
+      "loading": "Ricerca del tasso per questa data...",
+      "unresolved": "Nessun tasso di cambio salvato da {from} a {to} per questa data. Inserisci il tasso o l'importo ricevuto — le due valute non possono essere trattate come uguali.",
+      "lookupFailed": "Impossibile caricare il tasso di cambio da {from} a {to}. Inserisci il tasso o l'importo ricevuto per continuare."
+    }
   },
   "splitEditor": {
     "header": "Dettagli suddivisione",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Etichette...",
     "oppositeSignShort": "In pareggio, ma una riga inverte la transazione",
     "oppositeSignExpense": "La riga {rows} è un'entrata dentro una spesa. Ogni riga di categoria di una spesa deve essere negativa, altrimenti la suddivisione registra entrate che la transazione non ha mai ricevuto.",
-    "oppositeSignIncome": "La riga {rows} è una spesa dentro una transazione di entrata. Ogni riga di categoria di una transazione di entrata deve essere positiva."
+    "oppositeSignIncome": "La riga {rows} è una spesa dentro una transazione di entrata. Ogni riga di categoria di una transazione di entrata deve essere positiva.",
+    "crossCurrencyTransfer": "Riga {rows}: il conto di destinazione è in {to}, non in {from}. L'importo che vi arriva viene convertito al tasso salvato da {from} a {to} della data di questa transazione, quindi differirà dall'importo inserito qui. Il salvataggio fallisce se per quella data non è salvato alcun tasso."
   },
   "recentPopover": {
     "recentForPayee": "Recenti per {name}",

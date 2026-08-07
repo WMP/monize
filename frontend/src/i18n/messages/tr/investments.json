@@ -226,7 +226,7 @@
     "sourceHolds": "Kaynak elinde tutar",
     "sharesAt": "hisse @",
     "avgCostSuffix": "ort. maliyet.",
-    "transferCostNote": "Hisse başı maliyet (kaynak hesaptan önceden doldurulmuş) kazanç ve kâr raporlarınızın doğru kalması için hedefe taşınır. Bu yalnızca hisseleri taşır -- nakit el değiştirmez.",
+    "transferCostNote": "Hisse başına maliyet (kaynak hesaptan önceden doldurulur) hedefe menkul kıymetin kendi para biriminde taşınır; böylece kazanç ve kâr raporları aynı tabanı korur. Bu yalnızca hisse taşır — nakit el değiştirmez.",
     "totalAmount": "Toplam Tutar ({currency})",
     "sharesAtPrice": "{shares} hisse @ {symbol}{price}",
     "commissionSuffix": "komisyon",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "İşlem kaydedilemedi",
     "exchangeRateUnresolved": "{from} → {to} kuru yok. Kaydetmeden önce bir kur veya çevrilmiş toplamı girin.",
     "toastExchangeRateRequired": "Para birimleri arası bir işlemi kaydetmeden önce bir döviz kuru girin.",
-    "notAvailable": "Mevcut değil"
+    "notAvailable": "Mevcut değil",
+    "transferCrossCurrencyNote": "Hedef hesap {destination} cinsinden tutuluyor ve bu menkul kıymet {security} ile fiyatlanıyor. Yukarıdaki hisse başına maliyet değişmez — {security} cinsinden kalır — ancak hedefin {destination} maliyet esası, transfer tarihi için kayıtlı {security} → {destination} kuruyla çevrilir. O tarih için kayıtlı kur yoksa transfer reddedilir."
   },
   "newTransactionButton": {
     "label": "+ Yeni İşlem",
