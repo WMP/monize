@@ -414,7 +414,8 @@
       "categoryCreateFailed": "建立類別失敗",
       "tagCreated": "標籤「{name}」已建立",
       "fxRateRequired": "儲存外幣交易前，請輸入匯率或換算後的金額。",
-      "jointPayeeCreateNotGranted": "帳戶擁有者未授予您建立收款人的權限。請從其現有收款人中選擇。"
+      "jointPayeeCreateNotGranted": "帳戶擁有者未授予您建立收款人的權限。請從其現有收款人中選擇。",
+      "splitsOppositeSign": "分割第 {rows} 列使交易方向反轉。請在儲存前修正符號。"
     },
     "ariaHistory": "顯示最近交易",
     "ariaHistoryForPayee": "顯示此收款人的最近交易",
@@ -485,7 +486,10 @@
     "selectAccount": "選擇科目...",
     "memoPlaceholder": "選填備註",
     "mobileMemoPlaceholder": "備註",
-    "tagsPlaceholder": "標籤..."
+    "tagsPlaceholder": "標籤...",
+    "oppositeSignShort": "總額平衡，但有一列反轉了交易",
+    "oppositeSignExpense": "第 {rows} 列是支出中的收入。支出的每個類別列都必須為負數，否則分割會記錄交易從未收到的收入。",
+    "oppositeSignIncome": "第 {rows} 列是收入交易中的支出。收入交易的每個類別列都必須為正數。"
   },
   "recentPopover": {
     "recentForPayee": "{name} 的最近記錄",

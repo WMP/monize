@@ -176,7 +176,9 @@
       "deleteFailed": "刪除覆寫失敗",
       "quantityRequired": "數量必須大於零",
       "priceRequired": "價格必須大於零",
-      "totalAmountRequired": "總金額為必填"
+      "totalAmountRequired": "總金額為必填",
+      "splitsNotEqual": "分割金額之和必須等於該次執行的金額",
+      "splitsOppositeSign": "分割第 {rows} 列使交易方向反轉。請在儲存前修正符號。"
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "數量必須大於零",
       "priceRequired": "價格必須大於零",
       "totalAmountRequired": "此操作需要總金額",
-      "fxRateRequired": "儲存前請以所選貨幣輸入金額。目前還沒有可用的匯率。"
+      "fxRateRequired": "儲存前請以所選貨幣輸入金額。目前還沒有可用的匯率。",
+      "splitsOppositeSign": "分割第 {rows} 列使交易方向反轉。請在儲存前修正符號。"
     },
     "fx": {
       "amountInCurrency": "以 {currency} 計的金額",

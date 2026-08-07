@@ -176,7 +176,9 @@
       "deleteFailed": "Eliminazione della sostituzione non riuscita",
       "quantityRequired": "La quantità deve essere maggiore di zero",
       "priceRequired": "Il prezzo deve essere maggiore di zero",
-      "totalAmountRequired": "L'importo totale è obbligatorio"
+      "totalAmountRequired": "L'importo totale è obbligatorio",
+      "splitsNotEqual": "Gli importi della suddivisione devono sommarsi all'importo dell'occorrenza",
+      "splitsOppositeSign": "La riga {rows} della suddivisione inverte la direzione della transazione. Correggi il segno prima di salvare."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "La quantità deve essere maggiore di zero",
       "priceRequired": "Il prezzo deve essere maggiore di zero",
       "totalAmountRequired": "L'importo totale è obbligatorio per questa azione",
-      "fxRateRequired": "Inserisci un importo nella valuta scelta prima di salvare. Non è ancora disponibile un tasso di cambio."
+      "fxRateRequired": "Inserisci un importo nella valuta scelta prima di salvare. Non è ancora disponibile un tasso di cambio.",
+      "splitsOppositeSign": "La riga {rows} della suddivisione inverte la direzione della transazione. Correggi il segno prima di salvare."
     },
     "fx": {
       "amountInCurrency": "Importo in {currency}",

@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Échec de la création de la catégorie",
       "tagCreated": "Étiquette « {name} » créée",
       "fxRateRequired": "Saisissez un taux de change ou le montant converti avant d'enregistrer une transaction en devise étrangère.",
-      "jointPayeeCreateNotGranted": "Le propriétaire du compte ne vous a pas autorisé à créer des bénéficiaires. Choisissez plutôt un de ses bénéficiaires existants."
+      "jointPayeeCreateNotGranted": "Le propriétaire du compte ne vous a pas autorisé à créer des bénéficiaires. Choisissez plutôt un de ses bénéficiaires existants.",
+      "splitsOppositeSign": "La ligne {rows} de la répartition inverse le sens de la transaction. Corrigez le signe avant d'enregistrer."
     },
     "ariaHistory": "Afficher les transactions récentes",
     "ariaHistoryForPayee": "Afficher les transactions récentes pour ce bénéficiaire",
@@ -485,7 +486,10 @@
     "selectAccount": "Sélectionner un compte...",
     "memoPlaceholder": "Note facultative",
     "mobileMemoPlaceholder": "Note",
-    "tagsPlaceholder": "Étiquettes..."
+    "tagsPlaceholder": "Étiquettes...",
+    "oppositeSignShort": "Équilibré, mais une ligne inverse la transaction",
+    "oppositeSignExpense": "La ligne {rows} est un revenu dans une dépense. Chaque ligne de catégorie d'une dépense doit être négative, sinon la répartition enregistre un revenu que la transaction n'a jamais reçu.",
+    "oppositeSignIncome": "La ligne {rows} est une dépense dans une transaction de revenu. Chaque ligne de catégorie d'une transaction de revenu doit être positive."
   },
   "recentPopover": {
     "recentForPayee": "Récent pour {name}",

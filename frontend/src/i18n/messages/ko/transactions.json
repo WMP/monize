@@ -414,7 +414,8 @@
       "categoryCreateFailed": "카테고리 생성에 실패했습니다",
       "tagCreated": "태그 \"{name}\"이(가) 생성되었습니다",
       "fxRateRequired": "외화 거래를 저장하기 전에 환율 또는 환산 금액을 입력하세요.",
-      "jointPayeeCreateNotGranted": "계좌 소유자가 수취인 생성 권한을 부여하지 않았습니다. 기존 수취인 중에서 선택하세요."
+      "jointPayeeCreateNotGranted": "계좌 소유자가 수취인 생성 권한을 부여하지 않았습니다. 기존 수취인 중에서 선택하세요.",
+      "splitsOppositeSign": "분할 행 {rows}이(가) 거래 방향을 뒤집습니다. 저장하기 전에 부호를 수정하세요."
     },
     "ariaHistory": "최근 거래 보기",
     "ariaHistoryForPayee": "이 수취인의 최근 거래 보기",
@@ -485,7 +486,10 @@
     "selectAccount": "계정 선택...",
     "memoPlaceholder": "선택적 메모",
     "mobileMemoPlaceholder": "메모",
-    "tagsPlaceholder": "태그..."
+    "tagsPlaceholder": "태그...",
+    "oppositeSignShort": "합계는 맞지만 한 행이 거래를 뒤집습니다",
+    "oppositeSignExpense": "행 {rows}은(는) 지출 안의 수입입니다. 지출의 모든 카테고리 행은 음수여야 합니다. 그렇지 않으면 분할이 거래가 받은 적 없는 수입을 기록합니다.",
+    "oppositeSignIncome": "행 {rows}은(는) 수입 거래 안의 지출입니다. 수입 거래의 모든 카테고리 행은 양수여야 합니다."
   },
   "recentPopover": {
     "recentForPayee": "{name}의 최근 거래",

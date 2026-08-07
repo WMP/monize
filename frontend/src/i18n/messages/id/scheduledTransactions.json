@@ -176,7 +176,9 @@
       "deleteFailed": "Gagal menghapus override",
       "quantityRequired": "Kuantitas harus lebih dari nol",
       "priceRequired": "Harga harus lebih dari nol",
-      "totalAmountRequired": "Total jumlah wajib diisi"
+      "totalAmountRequired": "Total jumlah wajib diisi",
+      "splitsNotEqual": "Jumlah pembagian harus berjumlah sama dengan jumlah kejadian",
+      "splitsOppositeSign": "Baris pembagian {rows} membalik arah transaksi. Perbaiki tandanya sebelum menyimpan."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Kuantitas harus lebih dari nol",
       "priceRequired": "Harga harus lebih dari nol",
       "totalAmountRequired": "Total jumlah wajib diisi untuk tindakan ini",
-      "fxRateRequired": "Masukkan jumlah dalam mata uang yang dipilih sebelum menyimpan. Belum ada nilai tukar yang tersedia."
+      "fxRateRequired": "Masukkan jumlah dalam mata uang yang dipilih sebelum menyimpan. Belum ada nilai tukar yang tersedia.",
+      "splitsOppositeSign": "Baris pembagian {rows} membalik arah transaksi. Perbaiki tandanya sebelum menyimpan."
     },
     "fx": {
       "amountInCurrency": "Jumlah dalam {currency}",

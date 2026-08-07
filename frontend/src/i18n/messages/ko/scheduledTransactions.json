@@ -176,7 +176,9 @@
       "deleteFailed": "재정의 삭제에 실패했습니다",
       "quantityRequired": "수량은 0보다 커야 합니다",
       "priceRequired": "가격은 0보다 커야 합니다",
-      "totalAmountRequired": "총 금액이 필요합니다"
+      "totalAmountRequired": "총 금액이 필요합니다",
+      "splitsNotEqual": "분할 금액의 합은 회차 금액과 같아야 합니다",
+      "splitsOppositeSign": "분할 행 {rows}이(가) 거래 방향을 뒤집습니다. 저장하기 전에 부호를 수정하세요."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "수량은 0보다 커야 합니다",
       "priceRequired": "가격은 0보다 커야 합니다",
       "totalAmountRequired": "이 작업에는 총 금액이 필요합니다",
-      "fxRateRequired": "저장하기 전에 선택한 통화로 금액을 입력하세요. 아직 사용할 수 있는 환율이 없습니다."
+      "fxRateRequired": "저장하기 전에 선택한 통화로 금액을 입력하세요. 아직 사용할 수 있는 환율이 없습니다.",
+      "splitsOppositeSign": "분할 행 {rows}이(가) 거래 방향을 뒤집습니다. 저장하기 전에 부호를 수정하세요."
     },
     "fx": {
       "amountInCurrency": "{currency} 기준 금액",

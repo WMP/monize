@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Không thể tạo danh mục",
       "tagCreated": "Thẻ \"{name}\" đã được tạo",
       "fxRateRequired": "Nhập tỷ giá hoặc số tiền đã quy đổi trước khi lưu giao dịch bằng ngoại tệ.",
-      "jointPayeeCreateNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền tạo người nhận. Hãy chọn một người nhận hiện có."
+      "jointPayeeCreateNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền tạo người nhận. Hãy chọn một người nhận hiện có.",
+      "splitsOppositeSign": "Dòng phần chia {rows} đảo ngược chiều của giao tác. Sửa dấu trước khi lưu."
     },
     "ariaHistory": "Hiển thị giao tác gần đây",
     "ariaHistoryForPayee": "Hiển thị giao tác gần đây cho người nhận này",
@@ -485,7 +486,10 @@
     "selectAccount": "Chọn tài khoản...",
     "memoPlaceholder": "Ghi nhớ tùy chọn",
     "mobileMemoPlaceholder": "Ghi nhớ",
-    "tagsPlaceholder": "Thẻ..."
+    "tagsPlaceholder": "Thẻ...",
+    "oppositeSignShort": "Cân bằng, nhưng có một dòng đảo ngược giao tác",
+    "oppositeSignExpense": "Dòng {rows} là khoản thu bên trong một khoản chi. Mọi dòng danh mục của khoản chi phải âm, nếu không phần chia sẽ ghi nhận khoản thu mà giao tác chưa bao giờ nhận.",
+    "oppositeSignIncome": "Dòng {rows} là khoản chi bên trong một giao tác thu. Mọi dòng danh mục của giao tác thu phải dương."
   },
   "recentPopover": {
     "recentForPayee": "Gần đây cho {name}",

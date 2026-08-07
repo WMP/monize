@@ -176,7 +176,9 @@
       "deleteFailed": "Uitzondering verwijderen mislukt",
       "quantityRequired": "Hoeveelheid moet groter zijn dan nul",
       "priceRequired": "Koers moet groter zijn dan nul",
-      "totalAmountRequired": "Totaalbedrag is verplicht"
+      "totalAmountRequired": "Totaalbedrag is verplicht",
+      "splitsNotEqual": "De splitsingsbedragen moeten optellen tot het bedrag van de termijn",
+      "splitsOppositeSign": "Splitsingsrij {rows} keert de richting van de transactie om. Corrigeer het teken voordat u opslaat."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Hoeveelheid moet groter zijn dan nul",
       "priceRequired": "Koers moet groter zijn dan nul",
       "totalAmountRequired": "Totaalbedrag is verplicht voor deze actie",
-      "fxRateRequired": "Voer een bedrag in de gekozen valuta in voordat je opslaat. Er is nog geen wisselkoers beschikbaar."
+      "fxRateRequired": "Voer een bedrag in de gekozen valuta in voordat je opslaat. Er is nog geen wisselkoers beschikbaar.",
+      "splitsOppositeSign": "Splitsingsrij {rows} keert de richting van de transactie om. Corrigeer het teken voordat u opslaat."
     },
     "fx": {
       "amountInCurrency": "Bedrag in {currency}",

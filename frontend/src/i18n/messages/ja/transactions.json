@@ -414,7 +414,8 @@
       "categoryCreateFailed": "カテゴリの作成に失敗しました",
       "tagCreated": "タグ「{name}」を作成しました",
       "fxRateRequired": "外貨取引を保存する前に、為替レートまたは換算後の金額を入力してください。",
-      "jointPayeeCreateNotGranted": "口座の所有者から支払先を作成する権限が付与されていません。既存の支払先から選択してください。"
+      "jointPayeeCreateNotGranted": "口座の所有者から支払先を作成する権限が付与されていません。既存の支払先から選択してください。",
+      "splitsOppositeSign": "分割行 {rows} が取引の方向を反転させています。保存する前に符号を修正してください。"
     },
     "ariaHistory": "最近の取引を表示",
     "ariaHistoryForPayee": "この支払先の最近の取引を表示",
@@ -485,7 +486,10 @@
     "selectAccount": "口座を選択...",
     "memoPlaceholder": "任意のメモ",
     "mobileMemoPlaceholder": "メモ",
-    "tagsPlaceholder": "タグ..."
+    "tagsPlaceholder": "タグ...",
+    "oppositeSignShort": "合計は一致していますが、1 行が取引を反転させています",
+    "oppositeSignExpense": "行 {rows} は支出の中の収入です。支出のカテゴリ行はすべて負である必要があります。そうでないと、取引が受け取っていない収入を分割が記録してしまいます。",
+    "oppositeSignIncome": "行 {rows} は収入取引の中の支出です。収入取引のカテゴリ行はすべて正である必要があります。"
   },
   "recentPopover": {
     "recentForPayee": "{name}の最近の取引",

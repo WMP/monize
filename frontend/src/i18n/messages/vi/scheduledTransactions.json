@@ -176,7 +176,9 @@
       "deleteFailed": "Không thể xóa ghi đè",
       "quantityRequired": "Số lượng phải lớn hơn không",
       "priceRequired": "Giá phải lớn hơn không",
-      "totalAmountRequired": "Cần có tổng số tiền"
+      "totalAmountRequired": "Cần có tổng số tiền",
+      "splitsNotEqual": "Các khoản của phần chia phải cộng lại bằng số tiền của lần thực hiện",
+      "splitsOppositeSign": "Dòng phần chia {rows} đảo ngược chiều của giao tác. Sửa dấu trước khi lưu."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Số lượng phải lớn hơn không",
       "priceRequired": "Giá phải lớn hơn không",
       "totalAmountRequired": "Tổng số tiền là bắt buộc cho hành động này",
-      "fxRateRequired": "Hãy nhập số tiền bằng đơn vị tiền tệ đã chọn trước khi lưu. Hiện chưa có tỷ giá."
+      "fxRateRequired": "Hãy nhập số tiền bằng đơn vị tiền tệ đã chọn trước khi lưu. Hiện chưa có tỷ giá.",
+      "splitsOppositeSign": "Dòng phần chia {rows} đảo ngược chiều của giao tác. Sửa dấu trước khi lưu."
     },
     "fx": {
       "amountInCurrency": "Số tiền bằng {currency}",

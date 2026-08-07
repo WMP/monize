@@ -176,7 +176,9 @@
       "deleteFailed": "上書きの削除に失敗しました",
       "quantityRequired": "数量はゼロより大きい必要があります",
       "priceRequired": "価格はゼロより大きい必要があります",
-      "totalAmountRequired": "合計金額は必須です"
+      "totalAmountRequired": "合計金額は必須です",
+      "splitsNotEqual": "分割金額の合計は、その回の金額と一致する必要があります",
+      "splitsOppositeSign": "分割行 {rows} が取引の方向を反転させています。保存する前に符号を修正してください。"
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "数量はゼロより大きい必要があります",
       "priceRequired": "価格はゼロより大きい必要があります",
       "totalAmountRequired": "このアクションには合計金額が必要です",
-      "fxRateRequired": "保存する前に、選択した通貨で金額を入力してください。まだ為替レートを取得できていません。"
+      "fxRateRequired": "保存する前に、選択した通貨で金額を入力してください。まだ為替レートを取得できていません。",
+      "splitsOppositeSign": "分割行 {rows} が取引の方向を反転させています。保存する前に符号を修正してください。"
     },
     "fx": {
       "amountInCurrency": "{currency} での金額",

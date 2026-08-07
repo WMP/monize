@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Falha ao criar categoria",
       "tagCreated": "Etiqueta \"{name}\" criada",
       "fxRateRequired": "Insira uma taxa de câmbio ou o valor convertido antes de salvar uma transação em moeda estrangeira.",
-      "jointPayeeCreateNotGranted": "O proprietário da conta não concedeu a você permissão para criar favorecidos. Escolha um dos favorecidos existentes."
+      "jointPayeeCreateNotGranted": "O proprietário da conta não concedeu a você permissão para criar favorecidos. Escolha um dos favorecidos existentes.",
+      "splitsOppositeSign": "A linha {rows} da divisão inverte a direção da transação. Corrija o sinal antes de salvar."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
@@ -485,7 +486,10 @@
     "selectAccount": "Selecionar conta...",
     "memoPlaceholder": "Nota opcional",
     "mobileMemoPlaceholder": "Nota",
-    "tagsPlaceholder": "Etiquetas..."
+    "tagsPlaceholder": "Etiquetas...",
+    "oppositeSignShort": "Balanceado, mas uma linha inverte a transação",
+    "oppositeSignExpense": "A linha {rows} é uma receita dentro de uma despesa. Cada linha de categoria de uma despesa deve ser negativa, ou a divisão registra receita que a transação nunca recebeu.",
+    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita deve ser positiva."
   },
   "recentPopover": {
     "recentForPayee": "Recentes para {name}",

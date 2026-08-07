@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Falha ao criar categoria",
       "tagCreated": "Etiqueta \"{name}\" criada",
       "fxRateRequired": "Introduza uma taxa de câmbio ou o montante convertido antes de guardar uma transação em moeda estrangeira.",
-      "jointPayeeCreateNotGranted": "O proprietário da conta não lhe concedeu permissão para criar beneficiários. Escolha um dos beneficiários existentes."
+      "jointPayeeCreateNotGranted": "O proprietário da conta não lhe concedeu permissão para criar beneficiários. Escolha um dos beneficiários existentes.",
+      "splitsOppositeSign": "A linha {rows} da parcela inverte a direção da transação. Corrija o sinal antes de guardar."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
@@ -485,7 +486,10 @@
     "selectAccount": "Selecionar conta...",
     "memoPlaceholder": "Nota opcional",
     "mobileMemoPlaceholder": "Nota",
-    "tagsPlaceholder": "Etiquetas..."
+    "tagsPlaceholder": "Etiquetas...",
+    "oppositeSignShort": "Equilibrado, mas uma linha inverte a transação",
+    "oppositeSignExpense": "A linha {rows} é uma receita dentro de uma despesa. Cada linha de categoria de uma despesa tem de ser negativa, ou a parcela regista receitas que a transação nunca recebeu.",
+    "oppositeSignIncome": "A linha {rows} é uma despesa dentro de uma transação de receita. Cada linha de categoria de uma transação de receita tem de ser positiva."
   },
   "recentPopover": {
     "recentForPayee": "Recentes para {name}",

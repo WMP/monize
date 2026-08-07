@@ -176,7 +176,9 @@
       "deleteFailed": "删除覆盖失败",
       "quantityRequired": "数量必须大于零",
       "priceRequired": "价格必须大于零",
-      "totalAmountRequired": "总金额为必填项"
+      "totalAmountRequired": "总金额为必填项",
+      "splitsNotEqual": "拆分金额之和必须等于该次执行的金额",
+      "splitsOppositeSign": "拆分第 {rows} 行使交易方向反转。请在保存前修正符号。"
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "数量必须大于零",
       "priceRequired": "价格必须大于零",
       "totalAmountRequired": "此操作需要填写总金额",
-      "fxRateRequired": "保存前请以所选货币输入金额。目前还没有可用的汇率。"
+      "fxRateRequired": "保存前请以所选货币输入金额。目前还没有可用的汇率。",
+      "splitsOppositeSign": "拆分第 {rows} 行使交易方向反转。请在保存前修正符号。"
     },
     "fx": {
       "amountInCurrency": "以 {currency} 计的金额",

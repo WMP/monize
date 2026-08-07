@@ -176,7 +176,9 @@
       "deleteFailed": "Falha ao eliminar substituição",
       "quantityRequired": "A quantidade deve ser superior a zero",
       "priceRequired": "O preço deve ser superior a zero",
-      "totalAmountRequired": "O montante total é obrigatório"
+      "totalAmountRequired": "O montante total é obrigatório",
+      "splitsNotEqual": "Os montantes das parcelas têm de somar o montante da ocorrência",
+      "splitsOppositeSign": "A linha {rows} da parcela inverte a direção da transação. Corrija o sinal antes de guardar."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "A quantidade deve ser superior a zero",
       "priceRequired": "O preço deve ser superior a zero",
       "totalAmountRequired": "O montante total é obrigatório para esta ação",
-      "fxRateRequired": "Introduza um montante na moeda escolhida antes de guardar. Ainda não há uma taxa de câmbio disponível."
+      "fxRateRequired": "Introduza um montante na moeda escolhida antes de guardar. Ainda não há uma taxa de câmbio disponível.",
+      "splitsOppositeSign": "A linha {rows} da parcela inverte a direção da transação. Corrija o sinal antes de guardar."
     },
     "fx": {
       "amountInCurrency": "Montante em {currency}",

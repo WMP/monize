@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Nie udało się utworzyć kategorii",
       "tagCreated": "Tag \"{name}\" utworzony",
       "fxRateRequired": "Wprowadź kurs wymiany lub przeliczoną kwotę przed zapisaniem transakcji w obcej walucie.",
-      "jointPayeeCreateNotGranted": "Właściciel konta nie przyznał Ci uprawnień do tworzenia odbiorców. Wybierz jednego z istniejących odbiorców."
+      "jointPayeeCreateNotGranted": "Właściciel konta nie przyznał Ci uprawnień do tworzenia odbiorców. Wybierz jednego z istniejących odbiorców.",
+      "splitsOppositeSign": "Wiersz podziału {rows} odwraca kierunek transakcji. Popraw znak przed zapisaniem."
     },
     "ariaHistory": "Pokaż ostatnie transakcje",
     "ariaHistoryForPayee": "Pokaż ostatnie transakcje dla tego odbiorcy",
@@ -485,7 +486,10 @@
     "selectAccount": "Wybierz konto...",
     "memoPlaceholder": "Opcjonalna notatka",
     "mobileMemoPlaceholder": "Notatka",
-    "tagsPlaceholder": "Tagi..."
+    "tagsPlaceholder": "Tagi...",
+    "oppositeSignShort": "Zbilansowane, ale jeden wiersz odwraca transakcję",
+    "oppositeSignExpense": "Wiersz {rows} to przychód wewnątrz wydatku. Każdy wiersz kategorii wydatku musi być ujemny, inaczej podział zapisuje przychód, którego transakcja nigdy nie otrzymała.",
+    "oppositeSignIncome": "Wiersz {rows} to wydatek wewnątrz transakcji przychodowej. Każdy wiersz kategorii transakcji przychodowej musi być dodatni."
   },
   "recentPopover": {
     "recentForPayee": "Ostatnie dla {name}",

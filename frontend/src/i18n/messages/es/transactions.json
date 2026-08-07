@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Error al crear la categoría",
       "tagCreated": "Etiqueta \"{name}\" creada",
       "fxRateRequired": "Introduce un tipo de cambio o el importe convertido antes de guardar una transacción en moneda extranjera.",
-      "jointPayeeCreateNotGranted": "El propietario de la cuenta no le ha concedido permiso para crear beneficiarios. Elija uno de sus beneficiarios existentes."
+      "jointPayeeCreateNotGranted": "El propietario de la cuenta no le ha concedido permiso para crear beneficiarios. Elija uno de sus beneficiarios existentes.",
+      "splitsOppositeSign": "La fila {rows} del desglose invierte la dirección de la transacción. Corrige el signo antes de guardar."
     },
     "ariaHistory": "Mostrar transacciones recientes",
     "ariaHistoryForPayee": "Mostrar transacciones recientes de este beneficiario",
@@ -485,7 +486,10 @@
     "selectAccount": "Seleccionar cuenta...",
     "memoPlaceholder": "Nota opcional",
     "mobileMemoPlaceholder": "Nota",
-    "tagsPlaceholder": "Etiquetas..."
+    "tagsPlaceholder": "Etiquetas...",
+    "oppositeSignShort": "Cuadrado, pero una fila invierte la transacción",
+    "oppositeSignExpense": "La fila {rows} es un ingreso dentro de un gasto. Cada fila de categoría de un gasto debe ser negativa, o el desglose registra ingresos que la transacción nunca recibió.",
+    "oppositeSignIncome": "La fila {rows} es un gasto dentro de una transacción de ingreso. Cada fila de categoría de una transacción de ingreso debe ser positiva."
   },
   "recentPopover": {
     "recentForPayee": "Recientes de {name}",

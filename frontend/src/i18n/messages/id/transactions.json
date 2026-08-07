@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Gagal membuat kategori",
       "tagCreated": "Tag \"{name}\" dibuat",
       "fxRateRequired": "Masukkan nilai tukar atau jumlah terkonversi sebelum menyimpan transaksi mata uang asing.",
-      "jointPayeeCreateNotGranted": "Pemilik akun belum memberi Anda izin membuat penerima. Pilih salah satu penerima yang sudah ada."
+      "jointPayeeCreateNotGranted": "Pemilik akun belum memberi Anda izin membuat penerima. Pilih salah satu penerima yang sudah ada.",
+      "splitsOppositeSign": "Baris pembagian {rows} membalik arah transaksi. Perbaiki tandanya sebelum menyimpan."
     },
     "ariaHistory": "Tampilkan transaksi terbaru",
     "ariaHistoryForPayee": "Tampilkan transaksi terbaru untuk penerima ini",
@@ -485,7 +486,10 @@
     "selectAccount": "Pilih akun...",
     "memoPlaceholder": "Memo opsional",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Tag..."
+    "tagsPlaceholder": "Tag...",
+    "oppositeSignShort": "Seimbang, tetapi satu baris membalik transaksi",
+    "oppositeSignExpense": "Baris {rows} adalah pemasukan di dalam pengeluaran. Setiap baris kategori pengeluaran harus negatif, atau pembagian mencatat pemasukan yang tidak pernah diterima transaksi.",
+    "oppositeSignIncome": "Baris {rows} adalah pengeluaran di dalam transaksi pemasukan. Setiap baris kategori transaksi pemasukan harus positif."
   },
   "recentPopover": {
     "recentForPayee": "Terbaru untuk {name}",

@@ -176,7 +176,9 @@
       "deleteFailed": "Error al eliminar la modificación",
       "quantityRequired": "La cantidad debe ser mayor que cero",
       "priceRequired": "El precio debe ser mayor que cero",
-      "totalAmountRequired": "El monto total es obligatorio"
+      "totalAmountRequired": "El monto total es obligatorio",
+      "splitsNotEqual": "Los importes del desglose deben sumar el importe de la ocurrencia",
+      "splitsOppositeSign": "La fila {rows} del desglose invierte la dirección de la transacción. Corrige el signo antes de guardar."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "La cantidad debe ser mayor que cero",
       "priceRequired": "El precio debe ser mayor que cero",
       "totalAmountRequired": "El monto total es obligatorio para esta acción",
-      "fxRateRequired": "Introduce un importe en la moneda elegida antes de guardar. Todavía no hay un tipo de cambio disponible."
+      "fxRateRequired": "Introduce un importe en la moneda elegida antes de guardar. Todavía no hay un tipo de cambio disponible.",
+      "splitsOppositeSign": "La fila {rows} del desglose invierte la dirección de la transacción. Corrige el signo antes de guardar."
     },
     "fx": {
       "amountInCurrency": "Monto en {currency}",

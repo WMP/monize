@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Aanmaken van categorie mislukt",
       "tagCreated": "Label \"{name}\" aangemaakt",
       "fxRateRequired": "Voer een wisselkoers of het omgerekende bedrag in voordat je een transactie in vreemde valuta opslaat.",
-      "jointPayeeCreateNotGranted": "De eigenaar van de rekening heeft u geen toestemming gegeven om begunstigden aan te maken. Kies in plaats daarvan een bestaande begunstigde."
+      "jointPayeeCreateNotGranted": "De eigenaar van de rekening heeft u geen toestemming gegeven om begunstigden aan te maken. Kies in plaats daarvan een bestaande begunstigde.",
+      "splitsOppositeSign": "Splitsingsrij {rows} keert de richting van de transactie om. Corrigeer het teken voordat u opslaat."
     },
     "ariaHistory": "Recente transacties tonen",
     "ariaHistoryForPayee": "Recente transacties voor deze begunstigde tonen",
@@ -485,7 +486,10 @@
     "selectAccount": "Selecteer rekening...",
     "memoPlaceholder": "Optionele memo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Labels..."
+    "tagsPlaceholder": "Labels...",
+    "oppositeSignShort": "In balans, maar één rij keert de transactie om",
+    "oppositeSignExpense": "Rij {rows} is een inkomst binnen een uitgave. Elke categorierij van een uitgave moet negatief zijn, anders registreert de splitsing inkomsten die de transactie nooit heeft ontvangen.",
+    "oppositeSignIncome": "Rij {rows} is een uitgave binnen een inkomsttransactie. Elke categorierij van een inkomsttransactie moet positief zijn."
   },
   "recentPopover": {
     "recentForPayee": "Recent voor {name}",

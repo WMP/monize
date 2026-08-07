@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Kategorie konnte nicht erstellt werden",
       "tagCreated": "Tag „{name}” erstellt",
       "fxRateRequired": "Geben Sie einen Wechselkurs oder den umgerechneten Betrag ein, bevor Sie eine Fremdwährungstransaktion speichern.",
-      "jointPayeeCreateNotGranted": "Der Kontoinhaber hat Ihnen nicht erlaubt, Zahlungsempfänger zu erstellen. Wählen Sie stattdessen einen vorhandenen Zahlungsempfänger."
+      "jointPayeeCreateNotGranted": "Der Kontoinhaber hat Ihnen nicht erlaubt, Zahlungsempfänger zu erstellen. Wählen Sie stattdessen einen vorhandenen Zahlungsempfänger.",
+      "splitsOppositeSign": "Teilzeile {rows} kehrt die Richtung der Buchung um. Korrigieren Sie das Vorzeichen vor dem Speichern."
     },
     "ariaHistory": "Letzte Buchungen anzeigen",
     "ariaHistoryForPayee": "Letzte Buchungen für diesen Zahlungsempfänger anzeigen",
@@ -485,7 +486,10 @@
     "selectAccount": "Konto auswählen...",
     "memoPlaceholder": "Optionales Memo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Tags..."
+    "tagsPlaceholder": "Tags...",
+    "oppositeSignShort": "Ausgeglichen, aber eine Zeile kehrt die Buchung um",
+    "oppositeSignExpense": "Zeile {rows} ist eine Einnahme innerhalb einer Ausgabe. Jede Kategoriezeile einer Ausgabe muss negativ sein, sonst verzeichnet der Buchungsteil Einnahmen, die die Buchung nie erhalten hat.",
+    "oppositeSignIncome": "Zeile {rows} ist eine Ausgabe innerhalb einer Einnahmebuchung. Jede Kategoriezeile einer Einnahmebuchung muss positiv sein."
   },
   "recentPopover": {
     "recentForPayee": "Zuletzt für {name}",

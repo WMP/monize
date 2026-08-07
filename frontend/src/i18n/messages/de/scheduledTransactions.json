@@ -176,7 +176,9 @@
       "deleteFailed": "Überschreibung konnte nicht gelöscht werden",
       "quantityRequired": "Menge muss größer als null sein",
       "priceRequired": "Kurs muss größer als null sein",
-      "totalAmountRequired": "Gesamtbetrag ist erforderlich"
+      "totalAmountRequired": "Gesamtbetrag ist erforderlich",
+      "splitsNotEqual": "Die Teilbeträge müssen zusammen den Betrag der Ausführung ergeben",
+      "splitsOppositeSign": "Teilzeile {rows} kehrt die Richtung der Buchung um. Korrigieren Sie das Vorzeichen vor dem Speichern."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Menge muss größer als null sein",
       "priceRequired": "Kurs muss größer als null sein",
       "totalAmountRequired": "Gesamtbetrag ist für diese Aktion erforderlich",
-      "fxRateRequired": "Geben Sie vor dem Speichern einen Betrag in der gewählten Währung ein. Es ist noch kein Wechselkurs verfügbar."
+      "fxRateRequired": "Geben Sie vor dem Speichern einen Betrag in der gewählten Währung ein. Es ist noch kein Wechselkurs verfügbar.",
+      "splitsOppositeSign": "Teilzeile {rows} kehrt die Richtung der Buchung um. Korrigieren Sie das Vorzeichen vor dem Speichern."
     },
     "fx": {
       "amountInCurrency": "Betrag in {currency}",

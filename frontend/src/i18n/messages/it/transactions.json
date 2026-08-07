@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Creazione categoria non riuscita",
       "tagCreated": "Etichetta \"{name}\" creata",
       "fxRateRequired": "Inserisci un tasso di cambio o l'importo convertito prima di salvare una transazione in valuta estera.",
-      "jointPayeeCreateNotGranted": "Il proprietario del conto non ti ha concesso il permesso di creare beneficiari. Scegli uno dei suoi beneficiari esistenti."
+      "jointPayeeCreateNotGranted": "Il proprietario del conto non ti ha concesso il permesso di creare beneficiari. Scegli uno dei suoi beneficiari esistenti.",
+      "splitsOppositeSign": "La riga {rows} della suddivisione inverte la direzione della transazione. Correggi il segno prima di salvare."
     },
     "ariaHistory": "Mostra transazioni recenti",
     "ariaHistoryForPayee": "Mostra transazioni recenti per questo beneficiario",
@@ -485,7 +486,10 @@
     "selectAccount": "Seleziona conto...",
     "memoPlaceholder": "Memo facoltativo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Etichette..."
+    "tagsPlaceholder": "Etichette...",
+    "oppositeSignShort": "In pareggio, ma una riga inverte la transazione",
+    "oppositeSignExpense": "La riga {rows} è un'entrata dentro una spesa. Ogni riga di categoria di una spesa deve essere negativa, altrimenti la suddivisione registra entrate che la transazione non ha mai ricevuto.",
+    "oppositeSignIncome": "La riga {rows} è una spesa dentro una transazione di entrata. Ogni riga di categoria di una transazione di entrata deve essere positiva."
   },
   "recentPopover": {
     "recentForPayee": "Recenti per {name}",

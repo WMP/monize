@@ -176,7 +176,9 @@
       "deleteFailed": "Échec de la suppression du remplacement",
       "quantityRequired": "La quantité doit être supérieure à zéro",
       "priceRequired": "Le prix doit être supérieur à zéro",
-      "totalAmountRequired": "Le montant total est requis"
+      "totalAmountRequired": "Le montant total est requis",
+      "splitsNotEqual": "Les montants de la répartition doivent totaliser le montant de l'occurrence",
+      "splitsOppositeSign": "La ligne {rows} de la répartition inverse le sens de la transaction. Corrigez le signe avant d'enregistrer."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "La quantité doit être supérieure à zéro",
       "priceRequired": "Le prix doit être supérieur à zéro",
       "totalAmountRequired": "Le montant total est requis pour cette action",
-      "fxRateRequired": "Saisissez un montant dans la devise choisie avant d'enregistrer. Aucun taux de change n'est encore disponible."
+      "fxRateRequired": "Saisissez un montant dans la devise choisie avant d'enregistrer. Aucun taux de change n'est encore disponible.",
+      "splitsOppositeSign": "La ligne {rows} de la répartition inverse le sens de la transaction. Corrigez le signe avant d'enregistrer."
     },
     "fx": {
       "amountInCurrency": "Montant en {currency}",

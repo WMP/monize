@@ -176,7 +176,9 @@
       "deleteFailed": "Nie udało się usunąć wyjątku",
       "quantityRequired": "Ilość musi być większa od zera",
       "priceRequired": "Cena musi być większa od zera",
-      "totalAmountRequired": "Kwota łączna jest wymagana"
+      "totalAmountRequired": "Kwota łączna jest wymagana",
+      "splitsNotEqual": "Kwoty podziału muszą sumować się do kwoty wystąpienia",
+      "splitsOppositeSign": "Wiersz podziału {rows} odwraca kierunek transakcji. Popraw znak przed zapisaniem."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Ilość musi być większa od zera",
       "priceRequired": "Cena musi być większa od zera",
       "totalAmountRequired": "Kwota łączna jest wymagana dla tej akcji",
-      "fxRateRequired": "Przed zapisaniem wprowadź kwotę w wybranej walucie. Kurs wymiany nie jest jeszcze dostępny."
+      "fxRateRequired": "Przed zapisaniem wprowadź kwotę w wybranej walucie. Kurs wymiany nie jest jeszcze dostępny.",
+      "splitsOppositeSign": "Wiersz podziału {rows} odwraca kierunek transakcji. Popraw znak przed zapisaniem."
     },
     "fx": {
       "amountInCurrency": "Kwota w {currency}",

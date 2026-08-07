@@ -176,7 +176,9 @@
       "deleteFailed": "Geçersiz kılma silinemedi",
       "quantityRequired": "Miktar sıfırdan büyük olmalıdır",
       "priceRequired": "Fiyat sıfırdan büyük olmalıdır",
-      "totalAmountRequired": "Toplam tutar zorunludur"
+      "totalAmountRequired": "Toplam tutar zorunludur",
+      "splitsNotEqual": "Bölünme tutarları, tekrarın tutarına eşit olacak şekilde toplanmalıdır",
+      "splitsOppositeSign": "Bölünme satırı {rows} işlemin yönünü tersine çeviriyor. Kaydetmeden önce işareti düzeltin."
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "Miktar sıfırdan büyük olmalıdır",
       "priceRequired": "Fiyat sıfırdan büyük olmalıdır",
       "totalAmountRequired": "Bu işlem için toplam tutar zorunludur",
-      "fxRateRequired": "Kaydetmeden önce seçilen para biriminde bir tutar girin. Henüz kullanılabilir bir döviz kuru yok."
+      "fxRateRequired": "Kaydetmeden önce seçilen para biriminde bir tutar girin. Henüz kullanılabilir bir döviz kuru yok.",
+      "splitsOppositeSign": "Bölünme satırı {rows} işlemin yönünü tersine çeviriyor. Kaydetmeden önce işareti düzeltin."
     },
     "fx": {
       "amountInCurrency": "{currency} cinsinden tutar",
