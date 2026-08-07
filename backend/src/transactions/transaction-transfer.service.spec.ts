@@ -20,6 +20,10 @@ import {
   createScopedDbMocks,
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
+import { ConflictException } from "@nestjs/common";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import type { LockedTransactionRow } from "../common/db/locks";
+import { lockedTransactionRow } from "../test-helpers/locks-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -35,6 +39,14 @@ jest.mock("../common/db/with-context", () => {
 const mockedWithSystemContext = withSystemContext as jest.MockedFunction<
   typeof withSystemContext
 >;
+
+// Both legs are locked inside the write transaction and the update refuses if
+// either changed under it (audit P4-003). The double below derives the locked
+// legs from the rows this spec's `findOne` callback has returned, so a spec only
+// states the committed rows when it means them to differ.
+jest.mock("../common/db/locks", () =>
+  jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
+);
 
 jest.mock("../common/date-utils", () => ({
   isTransactionInFuture: jest.fn().mockReturnValue(false),
@@ -177,6 +189,76 @@ describe("TransactionTransferService", () => {
     mockedWithSystemContext.mockClear();
     mockFindOne.mockReset();
 
+    /**
+     * Serve the locked leg readers from whatever this spec's `findOne` callback
+     * has returned.
+     *
+     * Reading the mock's recorded results consumes nothing, unlike calling it
+     * again and eating a queued `mockResolvedValueOnce`. A spec that wants the
+     * committed legs to differ from the caller's view -- the concurrency case
+     * `updateTransfer` now refuses -- overrides `lockTransactionRows` itself.
+     */
+    const resolveLocked = async (
+      ids: readonly string[],
+    ): Promise<Map<string, LockedTransactionRow>> => {
+      const byId = new Map<string, Record<string, unknown>>();
+      // The own leg comes back through the caller's `findOne`; the counterpart
+      // through the repository. Both are rows this spec described.
+      for (const mock of [
+        mockFindOne.mock,
+        transactionsRepository.findOne.mock,
+      ]) {
+        for (const result of mock.results) {
+          if (result.type !== "return") continue;
+          try {
+            const row = (await result.value) as Record<string, unknown> | null;
+            if (row?.id) byId.set(String(row.id), row);
+          } catch {
+            continue;
+          }
+        }
+      }
+      // The lock replaced the counterpart read, so on some paths nothing has
+      // been read yet. Consulting the repository mock now is exactly right:
+      // whatever the spec set up IS the committed counterpart.
+      for (const id of ids) {
+        if (byId.has(id)) continue;
+        const row = (await transactionsRepository.findOne({
+          where: { id },
+        })) as Record<string, unknown> | null;
+        if (row?.id) byId.set(String(row.id), row);
+      }
+      const found = new Map<string, LockedTransactionRow>();
+      for (const id of ids) {
+        const row = byId.get(id);
+        if (!row) continue;
+        found.set(
+          id,
+          lockedTransactionRow({
+            id: String(row.id),
+            accountId: String(row.accountId ?? ""),
+            amount: Number(row.amount ?? 0),
+            transactionDate: row.transactionDate as string,
+            status: (row.status as string | null) ?? null,
+            isSplit: Boolean(row.isSplit),
+            linkedTransactionId:
+              (row.linkedTransactionId as string | null) ?? null,
+          }),
+        );
+      }
+      return found;
+    };
+
+    (lockTransactionRows as jest.Mock).mockImplementation(
+      async (_m: unknown, ids: readonly string[]) => resolveLocked(ids),
+    );
+    // The cross-owner removal locks each leg on its own, because the two legs
+    // have different owners and the ownership predicate differs per row.
+    (lockTransactionRow as jest.Mock).mockImplementation(
+      async (_m: unknown, id: string) =>
+        (await resolveLocked([id])).get(id) ?? null,
+    );
+
     const tenantMocks = createScopedDbMocks([
       [Transaction, transactionsRepository],
       [TransactionSplit, splitsRepository],
@@ -194,6 +276,9 @@ describe("TransactionTransferService", () => {
     manager.update.mockImplementation((_Entity: any, id: any, data: any) =>
       transactionsRepository.update(id, data),
     );
+    // Both legs are deleted conditionally and each reversal is gated on what the
+    // database actually removed (audit P4-003), so the double reports a count.
+    manager.delete.mockResolvedValue({ affected: 1 });
     manager.findOne.mockImplementation((_Entity: any, opts: any) =>
       transactionsRepository.findOne(opts),
     );
@@ -809,6 +894,75 @@ describe("TransactionTransferService", () => {
     });
   });
 
+  describe("stale-snapshot refusal", () => {
+    it("returns 409 when a leg changed between the read and the write", async () => {
+      // The regression guard for P4-003 on transfers. The four balance
+      // adjustments reverse the OLD leg amounts and re-apply the new ones, so a
+      // concurrent edit makes those old values describe a version this write is
+      // not replacing -- two updates each reversing the same pair corrupt both
+      // accounts. A 409 the client can retry is the honest answer.
+      const fromTx = {
+        id: "from-tx",
+        userId: "user-1",
+        accountId: "from-account",
+        amount: -200,
+        isTransfer: true,
+        linkedTransactionId: "to-tx",
+        exchangeRate: 1,
+        transactionDate: "2026-01-15",
+      };
+      const toTx = {
+        id: "to-tx",
+        userId: "user-1",
+        accountId: "to-account",
+        amount: 200,
+        isTransfer: true,
+        linkedTransactionId: "from-tx",
+        exchangeRate: 1,
+        transactionDate: "2026-01-15",
+      };
+      mockFindOne.mockImplementation(async (_u: string, id: string) =>
+        id === "from-tx" ? fromTx : toTx,
+      );
+      splitsRepository.findOne.mockResolvedValue(null);
+
+      // The committed from-leg is already -300: another request got there first.
+      (lockTransactionRows as jest.Mock).mockResolvedValue(
+        new Map([
+          [
+            "from-tx",
+            lockedTransactionRow({
+              id: "from-tx",
+              accountId: "from-account",
+              amount: -300,
+              transactionDate: "2026-01-15",
+            }),
+          ],
+          [
+            "to-tx",
+            lockedTransactionRow({
+              id: "to-tx",
+              accountId: "to-account",
+              amount: 300,
+              transactionDate: "2026-01-15",
+            }),
+          ],
+        ]),
+      );
+
+      await expect(
+        service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { amount: 250 },
+          mockFindOne,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+  });
+
   describe("removeTransfer", () => {
     it("removes both from and to transactions for standalone transfer", async () => {
       const fromTx = {
@@ -841,8 +995,16 @@ describe("TransactionTransferService", () => {
         -500,
       );
       // Both transactions removed
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(toTx);
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(fromTx);
+      // Conditional DELETEs, with each reversal gated on the row the database
+      // actually removed (audit P4-003).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "to-tx",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "from-tx",
+        userId: "user-1",
+      });
     });
 
     it("throws when transaction is not a transfer", async () => {
@@ -877,13 +1039,18 @@ describe("TransactionTransferService", () => {
         "from-account",
         500,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledTimes(1);
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(tx);
+      // One conditional DELETE, for the own leg only.
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledTimes(1);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "tx-1",
+        userId: "user-1",
+      });
     });
 
     it("delegates to removeTransferFromSplit when transaction is part of a split", async () => {
       const tx = {
         id: "linked-from-split",
+        userId: "user-1",
         isTransfer: true,
         linkedTransactionId: "parent-tx",
         accountId: "account-2",
@@ -909,9 +1076,19 @@ describe("TransactionTransferService", () => {
 
       await service.removeTransfer("user-1", "linked-from-split", mockFindOne);
 
-      // Should remove the parent transaction and all related splits
+      // Should remove the parent transaction and all related splits. Both ledger
+      // rows go through the conditional delete (audit FV4-002); only the split
+      // rows, which carry no balance, still use `remove`.
       expect(splitsRepository.remove).toHaveBeenCalled();
-      expect(transactionsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "parent-tx",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "linked-from-split",
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalled();
     });
 
     it("triggers net worth recalc for affected accounts", async () => {
@@ -949,6 +1126,7 @@ describe("TransactionTransferService", () => {
 
       const tx = {
         id: "linked-from-split",
+        userId: "user-1",
         isTransfer: true,
         linkedTransactionId: "parent-tx",
         accountId: "account-2",
@@ -996,12 +1174,15 @@ describe("TransactionTransferService", () => {
       // Future-dated: balances are recalculated, never adjusted.
       expect(accountsService.updateBalance).not.toHaveBeenCalled();
       expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "user-1",
         "account-3",
       );
       expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "user-1",
         "account-1",
       );
       expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "user-1",
         "account-2",
       );
     });
@@ -1804,8 +1985,14 @@ describe("TransactionTransferService", () => {
         await service.removeTransfer("user-1", "from-tx", mockFindOne);
 
         expect(accountsService.updateBalance).not.toHaveBeenCalled();
-        expect(transactionsRepository.remove).toHaveBeenCalledWith(toTx);
-        expect(transactionsRepository.remove).toHaveBeenCalledWith(fromTx);
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "to-tx", userId: "user-1" },
+        );
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "from-tx", userId: "user-1" },
+        );
       });
     });
 
@@ -1863,9 +2050,11 @@ describe("TransactionTransferService", () => {
 
         // When any future date is involved, recalculate from scratch
         expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+          "user-1",
           "from-account",
         );
         expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+          "user-1",
           "to-account",
         );
         expect(accountsService.updateBalance).not.toHaveBeenCalled();
@@ -1892,9 +2081,11 @@ describe("TransactionTransferService", () => {
 
         // When any future date is involved, recalculate from scratch
         expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+          "user-1",
           "from-account",
         );
         expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+          "user-1",
           "to-account",
         );
         expect(accountsService.updateBalance).not.toHaveBeenCalled();
@@ -2749,7 +2940,17 @@ describe("TransactionTransferService", () => {
           "to-account",
           "delete",
         );
-        expect(transactionsRepository.remove).toHaveBeenCalledTimes(2);
+        // Each leg is deleted conditionally, keyed on its own owner, and only the
+        // winner of that delete reverses a balance (audit FV4-002).
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "foreign-leg", userId: "owner-2" },
+        );
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "own-leg", userId: "user-1" },
+        );
+        expect(transactionsRepository.remove).not.toHaveBeenCalled();
         expect(accountsService.updateBalance).toHaveBeenCalledWith(
           "to-account",
           -500,
@@ -2769,8 +2970,12 @@ describe("TransactionTransferService", () => {
 
         await service.removeTransfer("user-1", "own-leg", mockFindOne, actor);
 
-        expect(transactionsRepository.remove).toHaveBeenCalledTimes(1);
-        expect(transactionsRepository.remove).toHaveBeenCalledWith(ownLeg);
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledTimes(1);
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "own-leg", userId: "user-1" },
+        );
+        expect(transactionsRepository.remove).not.toHaveBeenCalled();
         expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
         expect(accountsService.updateBalance).toHaveBeenCalledWith(
           "from-account",

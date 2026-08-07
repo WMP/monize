@@ -24,6 +24,8 @@ import { roundMoney, sumMoney } from "../common/round.util";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import { removeLockedTransactionLeg } from "./remove-transaction-leg";
 
 function inferSplitKind(split: CreateTransactionSplitDto): SplitKind {
   if (split.splitKind) return split.splitKind;
@@ -353,7 +355,10 @@ export class TransactionSplitService {
       });
 
       if (dateStr && isTransactionInFuture(dateStr)) {
+        // The transfer counterpart is created under `userId` above, so its
+        // account is the caller's -- scope the balance-write lock to that owner.
         await this.accountsService.recalculateCurrentBalance(
+          userId!,
           split.transferAccountId!,
         );
       } else {
@@ -432,24 +437,15 @@ export class TransactionSplitService {
 
       if (linkedTxIds.length === 0) return;
 
-      const txRepo = m.getRepository(Transaction);
-      const linkedTransactions = await txRepo.find({
-        where: { id: In(linkedTxIds) },
-      });
-
-      for (const linkedTx of linkedTransactions) {
-        const linkedIsFuture = isTransactionInFuture(linkedTx.transactionDate);
-        const linkedAccId = linkedTx.accountId;
-        if (!linkedIsFuture) {
-          await this.accountsService.updateBalance(
-            linkedAccId,
-            -Number(linkedTx.amount),
-          );
-        }
-        await txRepo.remove(linkedTx);
-        if (linkedIsFuture) {
-          await this.accountsService.recalculateCurrentBalance(linkedAccId);
-        }
+      // Locked, re-read and conditionally deleted, exactly like the single-leg
+      // path. An unlocked `find` followed by `remove(entity)` reversed whatever
+      // amount the snapshot happened to hold and reversed it whether or not this
+      // call was the one that removed the row -- a split replacement racing a
+      // counterpart edit, or racing another replacement, each moved the target
+      // account's balance once for one deleted row (audit FV4-002).
+      const linked = await lockTransactionRows(m, linkedTxIds, userId);
+      for (const leg of linked.values()) {
+        await removeLockedTransactionLeg(m, leg, userId, this.accountsService);
       }
     });
   }
@@ -484,23 +480,42 @@ export class TransactionSplitService {
     splits: CreateTransactionSplitDto[],
     userId: string,
   ): Promise<TransactionSplit[]> {
-    this.validateSplits(splits, transaction.amount);
-
     return withScopedDb(this.dataSource, async (m) => {
+      // Same parent lock as addSplit, so full replacement and incremental
+      // addition serialize against each other, and validated against the
+      // parent's committed amount rather than the caller's snapshot of it.
+      const parent = await lockTransactionRow(m, transaction.id, userId);
+      if (!parent) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transaction.id} not found`,
+            { id: transaction.id },
+          ),
+        );
+      }
+      this.validateSplits(splits, parent.amount);
+
       await this.deleteSplitSideEffects(transaction.id, userId);
 
       await m.delete(TransactionSplit, {
         transactionId: transaction.id,
       });
 
+      // Every field the new splits are built from comes off the locked parent,
+      // not off the caller's copy of it. The counterpart rows and embedded
+      // investment rows *describe* the parent -- its account, its date, its payee
+      // -- so a concurrent parent edit that committed after the caller read it
+      // would otherwise be written into rows claiming the old values, with no
+      // error and nothing to reconcile against (audit FV4-002).
       const newSplits = await this.createSplits(
-        transaction.id,
+        parent.id,
         splits,
         userId,
-        transaction.accountId,
-        new Date(transaction.transactionDate),
-        transaction.payeeName,
-        transaction.payeeId,
+        parent.accountId,
+        new Date(parent.transactionDate),
+        parent.payeeName,
+        parent.payeeId,
       );
 
       await m.update(Transaction, transaction.id, {
@@ -529,28 +544,55 @@ export class TransactionSplitService {
       await this.validateCategoryOwnership(userId, splitDto.categoryId);
     }
 
-    const existingSplits = await this.getSplits(transaction.id);
-    const existingTotal = sumMoney(existingSplits.map((s) => Number(s.amount)));
-    const newTotal = sumMoney([existingTotal, Number(splitDto.amount)]);
-    const transactionAmount = roundMoney(Number(transaction.amount));
-
-    if (Math.abs(newTotal) > Math.abs(transactionAmount)) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.splitExceedsTransactionAmount",
-          `Adding this split would exceed the transaction amount. ` +
-            `Current total: ${existingTotal}, New split: ${splitDto.amount}, ` +
-            `Transaction amount: ${transaction.amount}`,
-          {
-            existingTotal,
-            newSplit: splitDto.amount,
-            transactionAmount: transaction.amount,
-          },
-        ),
-      );
-    }
-
     const savedSplitId = await withScopedDb(this.dataSource, async (m) => {
+      // The aggregate check and the insert are one serialized unit.
+      //
+      // Reading the split set, validating in application code, and inserting in
+      // a later transaction is a check-then-act with nothing under it: the schema
+      // has no aggregate constraint, and two inserts against the same parent hold
+      // compatible foreign-key key-share locks, so both commit. Parent -100.00
+      // with -60.00 already split, two concurrent -30.00 additions each
+      // validating -90.00, and the splits total -120.00 (audit P4-009).
+      //
+      // The parent row lock is what serializes them. Every other writer of this
+      // split set -- full replacement included -- takes the same lock, so the
+      // second request re-reads the set the first one committed and refuses.
+      const parent = await lockTransactionRow(m, transaction.id, userId);
+      if (!parent) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transaction.id} not found`,
+            { id: transaction.id },
+          ),
+        );
+      }
+
+      const existingSplits = await m.getRepository(TransactionSplit).find({
+        where: { transactionId: transaction.id },
+      });
+      const existingTotal = sumMoney(
+        existingSplits.map((s) => Number(s.amount)),
+      );
+      const newTotal = sumMoney([existingTotal, Number(splitDto.amount)]);
+      const transactionAmount = roundMoney(parent.amount);
+
+      if (Math.abs(newTotal) > Math.abs(transactionAmount)) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.splitExceedsTransactionAmount",
+            `Adding this split would exceed the transaction amount. ` +
+              `Current total: ${existingTotal}, New split: ${splitDto.amount}, ` +
+              `Transaction amount: ${transactionAmount}`,
+            {
+              existingTotal,
+              newSplit: splitDto.amount,
+              transactionAmount,
+            },
+          ),
+        );
+      }
+
       const splitKind = splitDto.transferAccountId
         ? SplitKind.TRANSFER
         : SplitKind.CATEGORY;
@@ -570,23 +612,24 @@ export class TransactionSplitService {
           userId,
           splitDto.transferAccountId,
         );
+        // Built from the locked parent, not the caller's snapshot: see the note
+        // in `updateSplits` (audit FV4-002).
         const sourceAccount = await this.accountsService.findOne(
           userId,
-          transaction.accountId,
+          parent.accountId,
         );
 
         const linkedTransaction = m.create(Transaction, {
           userId,
           accountId: splitDto.transferAccountId,
-          transactionDate: transaction.transactionDate,
+          transactionDate: parent.transactionDate,
           amount: -splitDto.amount,
           currencyCode: targetAccount.currencyCode,
           exchangeRate: 1,
           description: splitDto.memo || null,
           isTransfer: true,
-          payeeId: transaction.payeeId || null,
-          payeeName:
-            transaction.payeeName || `Transfer from ${sourceAccount.name}`,
+          payeeId: parent.payeeId || null,
+          payeeName: parent.payeeName || `Transfer from ${sourceAccount.name}`,
         });
 
         const savedLinkedTransaction = await m.save(linkedTransaction);
@@ -595,8 +638,9 @@ export class TransactionSplitService {
           linkedTransactionId: savedLinkedTransaction.id,
         });
 
-        if (isTransactionInFuture(transaction.transactionDate)) {
+        if (isTransactionInFuture(parent.transactionDate)) {
           await this.accountsService.recalculateCurrentBalance(
+            userId,
             splitDto.transferAccountId,
           );
         } else {
@@ -608,7 +652,7 @@ export class TransactionSplitService {
       }
 
       const totalSplits = existingSplits.length + 1;
-      if (totalSplits >= 2 && !transaction.isSplit) {
+      if (totalSplits >= 2 && !parent.isSplit) {
         await m.update(Transaction, transaction.id, {
           isSplit: true,
           categoryId: null,
@@ -638,29 +682,66 @@ export class TransactionSplitService {
     return splitWithRelations;
   }
 
+  /**
+   * Delete a split's transfer counterpart and reverse its balance, once.
+   *
+   * The leg is locked and re-read here rather than taken from the split's
+   * snapshot: the amount reversed has to be the amount the delete removes, and
+   * the reversal only happens when this call is the one that removed the row.
+   * Both split-removal paths below go through this, so the collapse case cannot
+   * drift from the ordinary one.
+   */
+  private async removeLinkedLeg(
+    m: EntityManager,
+    linkedTransactionId: string,
+    userId: string,
+  ): Promise<void> {
+    const linked = await lockTransactionRow(m, linkedTransactionId, userId);
+    if (!linked) return;
+    await removeLockedTransactionLeg(m, linked, userId, this.accountsService);
+  }
+
   async removeSplit(
     transaction: Transaction,
     splitId: string,
     userId: string,
   ): Promise<void> {
-    const split = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(TransactionSplit).findOne({
+    return withScopedDb(this.dataSource, async (m) => {
+      // The parent first, so a concurrent split mutation on the same parent
+      // serializes behind this one, and so the split below is read from a state
+      // that cannot change under us. The old code read the split in its own
+      // autocommit transaction before opening this one, then reversed a balance
+      // from that snapshot -- two concurrent removals of the same transfer split
+      // each applied the reversal while only one row went away (audit FV4-002).
+      const lockedParent = await lockTransactionRow(m, transaction.id, userId);
+      if (!lockedParent) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transaction.id} not found`,
+            { id: transaction.id },
+          ),
+        );
+      }
+
+      const split = await m.getRepository(TransactionSplit).findOne({
         where: { id: splitId, transactionId: transaction.id },
         relations: ["investmentTransaction"],
-      }),
-    );
+      });
 
-    if (!split) {
-      throw new NotFoundException(
-        tr(
-          "errors.transactions.splitNotFoundById",
-          `Split with ID ${splitId} not found`,
-          { id: splitId },
-        ),
-      );
-    }
+      if (!split) {
+        // Either it never existed or another request removed it while this one
+        // waited for the parent lock. Both are "not found", and neither has left
+        // a balance for this call to reverse.
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.splitNotFoundById",
+            `Split with ID ${splitId} not found`,
+            { id: splitId },
+          ),
+        );
+      }
 
-    return withScopedDb(this.dataSource, async (m) => {
       if (split.kind === SplitKind.INVESTMENT && split.investmentTransaction) {
         await this.investmentTransactionsService.reverseAndRemoveEmbedded(
           m,
@@ -668,26 +749,7 @@ export class TransactionSplitService {
           split.investmentTransaction,
         );
       } else if (split.linkedTransactionId && split.transferAccountId) {
-        const linkedTx = await m.findOne(Transaction, {
-          where: { id: split.linkedTransactionId },
-        });
-
-        if (linkedTx) {
-          const linkedIsFuture = isTransactionInFuture(
-            linkedTx.transactionDate,
-          );
-          const linkedAccId = linkedTx.accountId;
-          if (!linkedIsFuture) {
-            await this.accountsService.updateBalance(
-              linkedAccId,
-              -Number(linkedTx.amount),
-            );
-          }
-          await m.remove(linkedTx);
-          if (linkedIsFuture) {
-            await this.accountsService.recalculateCurrentBalance(linkedAccId);
-          }
-        }
+        await this.removeLinkedLeg(m, split.linkedTransactionId, userId);
       }
 
       await m.remove(split);
@@ -709,28 +771,11 @@ export class TransactionSplitService {
           }
 
           if (lastSplit.linkedTransactionId && lastSplit.transferAccountId) {
-            const linkedTx = await m.findOne(Transaction, {
-              where: { id: lastSplit.linkedTransactionId },
-            });
-
-            if (linkedTx) {
-              const lastLinkedIsFuture = isTransactionInFuture(
-                linkedTx.transactionDate,
-              );
-              const lastLinkedAccId = linkedTx.accountId;
-              if (!lastLinkedIsFuture) {
-                await this.accountsService.updateBalance(
-                  lastLinkedAccId,
-                  -Number(linkedTx.amount),
-                );
-              }
-              await m.remove(linkedTx);
-              if (lastLinkedIsFuture) {
-                await this.accountsService.recalculateCurrentBalance(
-                  lastLinkedAccId,
-                );
-              }
-            }
+            await this.removeLinkedLeg(
+              m,
+              lastSplit.linkedTransactionId,
+              userId,
+            );
           }
 
           await m.update(Transaction, transaction.id, {

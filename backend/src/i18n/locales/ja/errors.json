@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "メールが設定されていません。SMTPが設定されるまで緊急アクセスは有効にできません。",
     "encryptionNotConfigured": "暗号化キーが設定されていません。AI_ENCRYPTION_KEY が設定されるまでフリーフォームメッセージを安全に保存できません。",
+    "encryptionRequiredToEnable": "資格情報の暗号化が設定されていません。付与では各連絡先のアクセスリンクを安全に保存する必要があるため、AI_ENCRYPTION_KEY が設定されるまで緊急アクセスは有効にできません。",
     "contactEmailExists": "このメールアドレスの緊急連絡先はすでに存在します。",
     "contactNotFound": "連絡先が見つかりません",
     "notConfigured": "緊急アクセスが設定されていません",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "ソース口座と振替先口座は異なる必要があります",
     "requiresBrokerageAccount": "スケジュール投資取引には証券口座が必要です",
     "notFound": "ID {{ id }} のスケジュール取引が見つかりません",
+    "occurrenceAlreadyPosted": "この回はすでに記帳されています。",
+    "fxPlainOnly": "別の通貨を使用できるのは通常のスケジュール取引のみで、分割、振替、投資では使用できません",
+    "fxRateUnavailable": "{{ date }} の {{ from }} から {{ to }} への為替レートが利用できません。投稿するには金額を {{ to }} で入力してください。",
     "investmentActionRequired": "スケジュール投資取引には投資アクションが必要です",
     "actionRequiresSecurity": "アクション {{ action }} には有価証券が必要です",
     "actionRequiresPositiveQuantity": "アクション {{ action }} には正の数量が必要です",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "分割上書きを作成するには金額が必要です",
     "overrideNotFound": "ID {{ overrideId }} の上書きが見つかりません",
     "updateSplitOverrideRequiresAmount": "分割上書きには金額が必要です",
-    "dateMustBeYMD": "date は YYYY-MM-DD 形式でなければなりません",
-    "fxPlainOnly": "別の通貨を使用できるのは通常のスケジュール取引のみで、分割、振替、投資では使用できません",
-    "fxRateUnavailable": "{{ date }} の {{ from }} から {{ to }} への為替レートが利用できません。投稿するには金額を {{ to }} で入力してください。"
+    "dateMustBeYMD": "date は YYYY-MM-DD 形式でなければなりません"
   },
   "securities": {
     "exchangeRateUnavailable": "取引日における {{ from }} -> {{ to }} の為替レートを特定できませんでした。現金口座への計上が正しくなるよう、明示的な exchangeRate を指定してください。",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId は有効なUUIDでなければなりません",
     "amountFromMustBeNumber": "amountFrom は数値でなければなりません",
     "amountToMustBeNumber": "amountTo は数値でなければなりません",
+    "tagKeyTooLong": "tagKey は100文字を超えてはいけません",
+    "invalidTagKeyOp": "無効な tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "contains / notContains には tagKeyValue が必要です",
+    "tagKeyRequired": "タグキー（1〜100文字）が必要です",
     "invalidGroupBy": "groupBy は 'category' または 'payee' でなければなりません",
     "limitMustBePositive": "limit は正の数でなければなりません",
     "recurringPayeeRequired": "payeeIds は必須です",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance は数値でなければなりません",
     "categoryNotFound": "カテゴリが見つかりません",
     "categoriesNotFound": "カテゴリが見つかりません：{{ ids }}",
+    "crossOwnerTransferLocked": "この振替の相手側は、アクセスできなくなった口座にあります。この取引自体の詳細は編集できますが、金額、日付、口座はロックされています。",
+    "crossOwnerAccountMoveLocked": "この振替には他のユーザーの口座が関係しているため、別の口座に移動できません。",
+    "cannotEditTransfer": "振替はここでは編集できません。取引画面から振替を編集してください。",
+    "cannotEditSplit": "分割取引はここでは編集できません。取引画面から分割を編集してください。",
+    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。",
     "investmentSplitRequiresPayload": "投資分割には投資ペイロードが必要です",
     "investmentActionNotAllowedInSplit": "投資アクション {{ action }} は分割取引内では許可されていません",
     "investmentSplitCannotSetCategoryOrTransfer": "投資分割では categoryId または transferAccountId を設定できません",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "一部の取引が見つからないか、指定した口座に属していません",
     "cannotReconcileVoidPlural": "無効な取引は照合できません",
     "transferSameAccount": "ソース口座と振替先口座は異なる必要があります",
+    "transferChangedConcurrently": "この振替は別のリクエストによって変更されました。再読み込みしてやり直してください。",
     "transferAmountNegative": "振替金額はマイナスにできません",
     "notATransfer": "取引は振替ではありません",
     "splitTransferLegAccountLocked": "この振替は分割取引の一部です。口座を変更するには、元の取引の分割を編集してください。",
     "notFoundById": "ID {{ id }} の取引が見つかりません",
     "bulkUpdateNoFields": "少なくとも1つの更新フィールドが必要です",
     "payeeNotFound": "支払先が見つかりません",
-    "crossOwnerTransferLocked": "この振替の相手側は、アクセスできなくなった口座にあります。この取引自体の詳細は編集できますが、金額、日付、口座はロックされています。",
-    "crossOwnerAccountMoveLocked": "この振替には他のユーザーの口座が関係しているため、別の口座に移動できません。",
-    "cannotEditTransfer": "振替はここでは編集できません。取引画面から振替を編集してください。",
-    "cannotEditSplit": "分割取引はここでは編集できません。取引画面から分割を編集してください。",
-    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。",
-    "tagKeyTooLong": "tagKey は100文字を超えてはいけません",
-    "invalidTagKeyOp": "無効な tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "contains / notContains には tagKeyValue が必要です",
-    "tagKeyRequired": "タグキー（1〜100文字）が必要です",
     "fxFieldsIncomplete": "originalAmount と originalCurrencyCode は一緒に指定する必要があります",
     "fxRateRequired": "外貨取引には正の為替レートが必要です",
     "fxSignMismatch": "originalAmount と amount は同じ符号である必要があります",
@@ -537,5 +540,8 @@
     "signalNotFound": "戦略シグナルが見つかりません",
     "signalStrategyMismatch": "そのシグナルは別の戦略のものです。",
     "strategyNotFound": "戦略が見つかりません"
+  },
+  "maintenance": {
+    "inProgress": "現在、別の処理がこのアカウントのデータを置き換えています。完了するまで待ってから、もう一度お試しください。"
   }
 }

@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "Електронну пошту не налаштовано. Екстрений доступ не можна увімкнути до налаштування SMTP.",
     "encryptionNotConfigured": "Ключ шифрування не налаштовано. Вільний текстовий повідомлення не можна безпечно зберегти до встановлення AI_ENCRYPTION_KEY.",
+    "encryptionRequiredToEnable": "Шифрування облікових даних не налаштовано. Екстрений доступ не можна увімкнути, доки не встановлено AI_ENCRYPTION_KEY, адже під час надання доступу посилання доступу кожного контакту має зберігатися захищено.",
     "contactEmailExists": "Екстрений контакт із цією електронною адресою вже існує.",
     "contactNotFound": "Контакт не знайдено",
     "notConfigured": "Екстрений доступ не налаштовано",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "Рахунки-джерело та призначення мають бути різними",
     "requiresBrokerageAccount": "Заплановані інвестиційні операції вимагають брокерського рахунку",
     "notFound": "Заплановану операцію з ідентифікатором {{ id }} не знайдено",
+    "occurrenceAlreadyPosted": "Цю подію вже проведено.",
+    "fxPlainOnly": "Іншу валюту можна використати лише у звичайній запланованій операції, але не в розбитті, переказі чи інвестиції",
+    "fxRateUnavailable": "На {{ date }} курс обміну {{ from }} на {{ to }} недоступний. Введіть суму в {{ to }}, щоб провести її.",
     "investmentActionRequired": "Для запланованих інвестиційних операцій необхідна інвестиційна дія",
     "actionRequiresSecurity": "Дія {{ action }} вимагає цінного паперу",
     "actionRequiresPositiveQuantity": "Дія {{ action }} вимагає позитивної кількості",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "Для створення заміни розбиття необхідна сума",
     "overrideNotFound": "Заміну з ідентифікатором {{ overrideId }} не знайдено",
     "updateSplitOverrideRequiresAmount": "Для заміни розбиття необхідна сума",
-    "dateMustBeYMD": "Дата має бути у форматі YYYY-MM-DD",
-    "fxPlainOnly": "Іншу валюту можна використати лише у звичайній запланованій операції, але не в розбитті, переказі чи інвестиції",
-    "fxRateUnavailable": "На {{ date }} курс обміну {{ from }} на {{ to }} недоступний. Введіть суму в {{ to }}, щоб провести її."
+    "dateMustBeYMD": "Дата має бути у форматі YYYY-MM-DD"
   },
   "securities": {
     "exchangeRateUnavailable": "Не вдалося визначити обмінний курс для {{ from }} -> {{ to }} на дату транзакції. Вкажіть явний exchangeRate, щоб проведення за грошовим рахунком було коректним.",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId має бути дійсним UUID",
     "amountFromMustBeNumber": "amountFrom має бути числом",
     "amountToMustBeNumber": "amountTo має бути числом",
+    "tagKeyTooLong": "tagKey не має перевищувати 100 символів",
+    "invalidTagKeyOp": "Недійсний tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue обов'язковий для contains / notContains",
+    "tagKeyRequired": "Потрібен ключ тегу (1–100 символів)",
     "invalidGroupBy": "groupBy має бути 'category' або 'payee'",
     "limitMustBePositive": "limit має бути додатним числом",
     "recurringPayeeRequired": "payeeIds є обов'язковим",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance має бути числом",
     "categoryNotFound": "Категорію не знайдено",
     "categoriesNotFound": "Категорії не знайдено: {{ ids }}",
+    "crossOwnerTransferLocked": "Інша сторона цього переказу знаходиться на рахунку, до якого ви більше не маєте доступу. Ви можете редагувати деталі цієї транзакції, але її сума, дата та рахунки заблоковані.",
+    "crossOwnerAccountMoveLocked": "Цей переказ стосується рахунку іншого користувача, тому його не можна перенести на інші рахунки.",
+    "cannotEditTransfer": "Перекази не можна редагувати тут. Відредагуйте переказ на екрані «Транзакції».",
+    "cannotEditSplit": "Розділені транзакції не можна редагувати тут. Відредагуйте розділення на екрані «Транзакції».",
+    "noUpdateFields": "Укажіть принаймні одне поле для зміни.",
     "investmentSplitRequiresPayload": "Інвестиційне розбиття вимагає інвестиційного навантаження",
     "investmentActionNotAllowedInSplit": "Інвестиційна дія {{ action }} не дозволена всередині розбитої операції",
     "investmentSplitCannotSetCategoryOrTransfer": "Інвестиційні розбиття не можуть також встановлювати categoryId або transferAccountId",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "Деякі операції не знайдено або вони не належать до зазначеного рахунку",
     "cannotReconcileVoidPlural": "Неможливо узгодити анульовані операції",
     "transferSameAccount": "Рахунки-джерело та призначення мають бути різними",
+    "transferChangedConcurrently": "Цей переказ змінено іншим запитом. Оновіть його та спробуйте ще раз.",
     "transferAmountNegative": "Сума переказу не повинна бути від'ємною",
     "notATransfer": "Операція не є переказом",
     "splitTransferLegAccountLocked": "Цей переказ є частиною розбитої операції. Щоб змінити його рахунки, відредагуйте частину у вихідній операції.",
     "notFoundById": "Операцію з ідентифікатором {{ id }} не знайдено",
     "bulkUpdateNoFields": "Необхідно вказати щонайменше одне поле для оновлення",
     "payeeNotFound": "Одержувача не знайдено",
-    "crossOwnerTransferLocked": "Інша сторона цього переказу знаходиться на рахунку, до якого ви більше не маєте доступу. Ви можете редагувати деталі цієї транзакції, але її сума, дата та рахунки заблоковані.",
-    "crossOwnerAccountMoveLocked": "Цей переказ стосується рахунку іншого користувача, тому його не можна перенести на інші рахунки.",
-    "cannotEditTransfer": "Перекази не можна редагувати тут. Відредагуйте переказ на екрані «Транзакції».",
-    "cannotEditSplit": "Розділені транзакції не можна редагувати тут. Відредагуйте розділення на екрані «Транзакції».",
-    "noUpdateFields": "Укажіть принаймні одне поле для зміни.",
-    "tagKeyTooLong": "tagKey не має перевищувати 100 символів",
-    "invalidTagKeyOp": "Недійсний tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue обов'язковий для contains / notContains",
-    "tagKeyRequired": "Потрібен ключ тегу (1–100 символів)",
     "fxFieldsIncomplete": "originalAmount і originalCurrencyCode потрібно вказувати разом",
     "fxRateRequired": "Для операції в іноземній валюті потрібен додатний курс обміну",
     "fxSignMismatch": "originalAmount і amount повинні мати однаковий знак",
@@ -537,5 +540,8 @@
     "signalNotFound": "Сигнал стратегії не знайдено",
     "signalStrategyMismatch": "Цей сигнал належить до іншої стратегії.",
     "strategyNotFound": "Стратегію не знайдено"
+  },
+  "maintenance": {
+    "inProgress": "Інша операція зараз замінює дані цього облікового запису. Дочекайтеся її завершення та спробуйте ще раз."
   }
 }

@@ -19,6 +19,7 @@ import {
   createScopedDbMocks,
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
 
 jest.mock("../common/db/scoped-db", () => {
   const helpers = jest.requireActual("../test-helpers/scoped-db-testing");
@@ -29,6 +30,17 @@ jest.mock("../common/db/scoped-db", () => {
     runOutsideActiveScopedManager: (fn: () => unknown) => fn(),
   };
 });
+
+// The real lock issues a `SELECT ... FOR UPDATE` through the manager, which the
+// query router below would route to `reportQuery` and shift every assertion.
+// See test-helpers/locks-testing.
+jest.mock("../common/db/locks", () =>
+  jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
+);
+
+const lockAccounts = lockAccountsForBalanceWrite as jest.MockedFunction<
+  typeof lockAccountsForBalanceWrite
+>;
 
 describe("NetWorthService", () => {
   let service: NetWorthService;
@@ -143,6 +155,10 @@ describe("NetWorthService", () => {
   };
 
   beforeEach(async () => {
+    // Module-level mock, so it survives between tests unless reset.
+    lockAccounts.mockReset();
+    lockAccounts.mockResolvedValue(undefined);
+
     mabRepository = {
       count: jest.fn().mockResolvedValue(0),
       find: jest.fn().mockResolvedValue([]),
@@ -190,6 +206,136 @@ describe("NetWorthService", () => {
     );
 
     service = new NetWorthService(dataSource as never);
+  });
+
+  describe("recalculateAccount -- serialization", () => {
+    it("locks the account before reading anything the snapshots derive from", async () => {
+      // The regression: the monthly sums were read in one autocommit
+      // transaction and written in another. Under READ COMMITTED those are two
+      // statement snapshots, so a transaction committing between them produced
+      // snapshots that did not include it -- permanently, until something else
+      // triggered a recalc.
+      const order: string[] = [];
+      lockAccounts.mockImplementation(async () => {
+        order.push("lock");
+      });
+      accountRepository.findOne.mockImplementation(async () => {
+        order.push("read-account");
+        return { ...mockRegularAccount };
+      });
+      reportQuery.mockImplementation(async () => {
+        order.push("read-ledger");
+        return [{ earliest: "2024-01-01" }];
+      });
+      snapshotQuery.mockImplementation(async () => {
+        order.push("write");
+      });
+
+      await service.recalculateAccount("user-1", "acc-1");
+
+      expect(order[0]).toBe("lock");
+      expect(order.indexOf("read-ledger")).toBeGreaterThan(0);
+      expect(order.indexOf("write")).toBeGreaterThan(
+        order.indexOf("read-ledger"),
+      );
+      // Owner-scoped: the balance-write lock carries the caller's userId so it
+      // can never land on an account that is not theirs (maintainer review,
+      // PR #1095).
+      expect(lockAccounts).toHaveBeenCalledWith(
+        expect.anything(),
+        ["acc-1"],
+        "user-1",
+      );
+    });
+  });
+
+  describe("sweepStaleSnapshots", () => {
+    // withUserContext validates the id, so the sweep's rows carry real UUIDs --
+    // a garbage owner id would raise 22P02 on every policied statement under
+    // enforcement, which is why it is checked at the wrap site.
+    const ownerA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const ownerB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+    /** The sweep's discovery query, distinguished from the recalc's own reads. */
+    function serveStale(rows: Array<{ user_id: string; account_id: string }>) {
+      reportQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes("JOIN (")) return rows;
+        if (sql.includes("MIN(transaction_date)")) {
+          return [{ earliest: "2024-01-01" }];
+        }
+        return [{ month: "2024-01-01", balance: 1000 }];
+      });
+    }
+
+    it("finds accounts whose snapshots fell behind their own row", async () => {
+      // The durability answer for a debounce timer that lives in process memory:
+      // derive the staleness from the data, because the crash that loses the
+      // timer would lose a queue entry just as easily (DR-04-03).
+      serveStale([]);
+
+      await service.sweepStaleSnapshots();
+
+      const [sql, params] = reportQuery.mock.calls[0];
+      expect(sql).toContain("FROM accounts");
+      expect(sql).toContain("MAX(updated_at)");
+      expect(sql).toContain("a.updated_at >");
+      // Bounded, so a broken deployment cannot exhaust the pool in one pass.
+      expect(sql).toContain("LIMIT $2");
+      expect(params[1]).toBeGreaterThan(0);
+    });
+
+    it("recomputes each stale account as its owner", async () => {
+      serveStale([
+        { user_id: ownerA, account_id: "acc-1" },
+        { user_id: ownerB, account_id: "acc-2" },
+      ]);
+      accountRepository.findOne.mockImplementation(
+        async ({ where }: { where: { id: string } }) => ({
+          ...mockRegularAccount,
+          id: where.id,
+        }),
+      );
+
+      await service.sweepStaleSnapshots();
+
+      expect(lockAccounts.mock.calls.map((call) => call[1])).toEqual([
+        ["acc-1"],
+        ["acc-2"],
+      ]);
+    });
+
+    it("keeps going when one account's recompute fails", async () => {
+      serveStale([
+        { user_id: ownerA, account_id: "acc-1" },
+        { user_id: ownerA, account_id: "acc-2" },
+      ]);
+      accountRepository.findOne.mockImplementation(
+        async ({ where }: { where: { id: string } }) => {
+          if (where.id === "acc-1") throw new Error("DB down");
+          return { ...mockRegularAccount, id: where.id };
+        },
+      );
+
+      await expect(service.sweepStaleSnapshots()).resolves.toBeUndefined();
+      expect(snapshotWriteBlocks()).toBe(1);
+    });
+
+    it("does nothing when every snapshot is current", async () => {
+      serveStale([]);
+
+      await service.sweepStaleSnapshots();
+
+      expect(lockAccounts).not.toHaveBeenCalled();
+      expect(snapshotWriteBlocks()).toBe(0);
+    });
+
+    it("does not throw when its own discovery query fails", async () => {
+      // A cron handler that rejects takes the process down with an unhandled
+      // rejection.
+      reportQuery.mockRejectedValue(new Error("DB down"));
+
+      await expect(service.sweepStaleSnapshots()).resolves.toBeUndefined();
+    });
   });
 
   describe("recalculateAccount", () => {
@@ -719,7 +865,23 @@ describe("NetWorthService", () => {
   });
 
   describe("recalculateAllAccounts", () => {
+    /**
+     * The per-account path re-reads the account inside its own locked
+     * transaction, so `find` (the fan-out list) and `findOne` (the locked
+     * re-read) both have to answer. Routing the second from the first keeps the
+     * two consistent without each test restating the list.
+     */
+    function serveLockedReads(): void {
+      accountRepository.findOne.mockImplementation(
+        async ({ where }: { where: { id: string } }) =>
+          (await accountRepository.find()).find(
+            (a: Account) => a.id === where.id,
+          ) ?? null,
+      );
+    }
+
     it("recalculates all accounts for a user", async () => {
+      serveLockedReads();
       accountRepository.find.mockResolvedValue([
         { ...mockRegularAccount },
         { ...mockCreditCardAccount },
@@ -744,6 +906,7 @@ describe("NetWorthService", () => {
     });
 
     it("continues processing when one account fails", async () => {
+      serveLockedReads();
       accountRepository.find.mockResolvedValue([
         { ...mockRegularAccount, id: "acc-1" },
         { ...mockRegularAccount, id: "acc-2" },
@@ -773,6 +936,7 @@ describe("NetWorthService", () => {
     });
 
     it("processes brokerage accounts differently from regular accounts", async () => {
+      serveLockedReads();
       accountRepository.find.mockResolvedValue([
         { ...mockRegularAccount },
         { ...mockBrokerageAccount },

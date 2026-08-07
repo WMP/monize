@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "Email belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga SMTP dikonfigurasi.",
     "encryptionNotConfigured": "Kunci enkripsi belum dikonfigurasi. Pesan teks bebas tidak dapat disimpan dengan aman hingga AI_ENCRYPTION_KEY diatur.",
+    "encryptionRequiredToEnable": "Enkripsi kredensial belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga AI_ENCRYPTION_KEY diatur, karena pemberian akses harus menyimpan tautan akses setiap kontak dengan aman.",
     "contactEmailExists": "Kontak darurat dengan email ini sudah ada.",
     "contactNotFound": "Kontak tidak ditemukan",
     "notConfigured": "Akses darurat belum dikonfigurasi",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "Akun sumber dan tujuan harus berbeda",
     "requiresBrokerageAccount": "Transaksi investasi terjadwal memerlukan akun pialang",
     "notFound": "Transaksi terjadwal dengan ID {{ id }} tidak ditemukan",
+    "occurrenceAlreadyPosted": "Kejadian ini sudah dicatat.",
+    "fxPlainOnly": "Mata uang lain hanya dapat dipakai pada transaksi terjadwal biasa, bukan pada transaksi terbagi, transfer, atau investasi",
+    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya.",
     "investmentActionRequired": "Tindakan investasi diperlukan untuk transaksi investasi terjadwal",
     "actionRequiresSecurity": "Tindakan {{ action }} memerlukan sekuritas",
     "actionRequiresPositiveQuantity": "Tindakan {{ action }} memerlukan kuantitas positif",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "Jumlah diperlukan saat membuat penggantian terbagi",
     "overrideNotFound": "Penggantian dengan ID {{ overrideId }} tidak ditemukan",
     "updateSplitOverrideRequiresAmount": "Jumlah diperlukan untuk penggantian terbagi",
-    "dateMustBeYMD": "tanggal harus dalam format YYYY-MM-DD",
-    "fxPlainOnly": "Mata uang lain hanya dapat dipakai pada transaksi terjadwal biasa, bukan pada transaksi terbagi, transfer, atau investasi",
-    "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya."
+    "dateMustBeYMD": "tanggal harus dalam format YYYY-MM-DD"
   },
   "securities": {
     "exchangeRateUnavailable": "Tidak dapat menentukan nilai tukar untuk {{ from }} -> {{ to }} pada tanggal transaksi. Berikan exchangeRate eksplisit agar pencatatan ke akun kas benar.",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId harus berupa UUID yang valid",
     "amountFromMustBeNumber": "amountFrom harus berupa angka",
     "amountToMustBeNumber": "amountTo harus berupa angka",
+    "tagKeyTooLong": "tagKey tidak boleh melebihi 100 karakter",
+    "invalidTagKeyOp": "tagKeyOp tidak valid: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue diperlukan untuk contains / notContains",
+    "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan",
     "invalidGroupBy": "groupBy harus 'category' atau 'payee'",
     "limitMustBePositive": "limit harus berupa angka positif",
     "recurringPayeeRequired": "payeeIds wajib diisi",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance harus berupa angka",
     "categoryNotFound": "Kategori tidak ditemukan",
     "categoriesNotFound": "Kategori tidak ditemukan: {{ ids }}",
+    "crossOwnerTransferLocked": "Sisi lain dari transfer ini berada di akun yang tidak lagi dapat Anda akses. Anda dapat mengedit detail transaksi ini, tetapi jumlah, tanggal, dan akunnya terkunci.",
+    "crossOwnerAccountMoveLocked": "Transfer ini melibatkan akun pengguna lain, sehingga tidak dapat dipindahkan ke akun lain.",
+    "cannotEditTransfer": "Transfer tidak dapat diedit di sini. Edit transfer dari layar Transaksi.",
+    "cannotEditSplit": "Transaksi terpisah tidak dapat diedit di sini. Edit pemisahan dari layar Transaksi.",
+    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
     "investmentSplitRequiresPayload": "Pembagian investasi memerlukan muatan investasi",
     "investmentActionNotAllowedInSplit": "Tindakan investasi {{ action }} tidak diizinkan di dalam transaksi terbagi",
     "investmentSplitCannotSetCategoryOrTransfer": "Pembagian investasi tidak dapat sekaligus menetapkan categoryId atau transferAccountId",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "Beberapa transaksi tidak ditemukan atau tidak termasuk dalam akun yang ditentukan",
     "cannotReconcileVoidPlural": "Tidak dapat merekonsiliasi transaksi yang dibatalkan",
     "transferSameAccount": "Akun sumber dan tujuan harus berbeda",
+    "transferChangedConcurrently": "Transfer ini diubah oleh permintaan lain. Muat ulang lalu coba lagi.",
     "transferAmountNegative": "Jumlah transfer tidak boleh negatif",
     "notATransfer": "Transaksi bukan merupakan transfer",
     "splitTransferLegAccountLocked": "Transfer ini adalah bagian dari transaksi terbagi. Ubah akunnya dengan mengedit pembagian pada transaksi sumber.",
     "notFoundById": "Transaksi dengan ID {{ id }} tidak ditemukan",
     "bulkUpdateNoFields": "Minimal satu kolom pembaruan harus diberikan",
     "payeeNotFound": "Penerima tidak ditemukan",
-    "crossOwnerTransferLocked": "Sisi lain dari transfer ini berada di akun yang tidak lagi dapat Anda akses. Anda dapat mengedit detail transaksi ini, tetapi jumlah, tanggal, dan akunnya terkunci.",
-    "crossOwnerAccountMoveLocked": "Transfer ini melibatkan akun pengguna lain, sehingga tidak dapat dipindahkan ke akun lain.",
-    "cannotEditTransfer": "Transfer tidak dapat diedit di sini. Edit transfer dari layar Transaksi.",
-    "cannotEditSplit": "Transaksi terpisah tidak dapat diedit di sini. Edit pemisahan dari layar Transaksi.",
-    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
-    "tagKeyTooLong": "tagKey tidak boleh melebihi 100 karakter",
-    "invalidTagKeyOp": "tagKeyOp tidak valid: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue diperlukan untuk contains / notContains",
-    "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan",
     "fxFieldsIncomplete": "originalAmount dan originalCurrencyCode harus diberikan bersama",
     "fxRateRequired": "Nilai tukar positif diperlukan untuk transaksi mata uang asing",
     "fxSignMismatch": "originalAmount dan amount harus memiliki tanda yang sama",
@@ -537,5 +540,8 @@
     "signalNotFound": "Sinyal strategi tidak ditemukan",
     "signalStrategyMismatch": "Sinyal itu milik strategi lain.",
     "strategyNotFound": "Strategi tidak ditemukan"
+  },
+  "maintenance": {
+    "inProgress": "Operasi lain sedang menggantikan data akun ini. Tunggu hingga selesai lalu coba lagi."
   }
 }

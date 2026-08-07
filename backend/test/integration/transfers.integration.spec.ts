@@ -170,4 +170,132 @@ describe("TransactionsService transfers (integration)", () => {
       expect(remaining).toHaveLength(0);
     });
   });
+
+  /**
+   * Lock ordering across the paths that touch a split parent and its legs
+   * (audit RV4-005).
+   *
+   * This is a liveness property of PostgreSQL, not of the service: two
+   * transactions that acquire the same two rows in opposite orders get `40P01`
+   * and one of them is aborted. The ids are chosen so the leg sorts *before* the
+   * parent, which is the case a single sorted batch over parent-plus-legs gets
+   * wrong -- `removeSplit` cannot know a leg id before reading the split, so it
+   * necessarily locks the parent first, and the rule has to be "parent before
+   * legs" rather than "ascending id".
+   */
+  describe("split parent and leg lock ordering", () => {
+    /**
+     * A split parent whose transfer leg's UUID sorts before its own, so
+     * ascending-id order and parent-first order genuinely disagree.
+     */
+    const PARENT_ID = "ffffffff-0000-4000-8000-000000000001";
+    const LEG_ID = "00000000-0000-4000-8000-000000000001";
+    const SPLIT_ID = "aaaaaaaa-1111-4000-8000-000000000001";
+
+    beforeEach(async () => {
+      // Built with raw SQL: the service would allocate its own UUIDs, and the
+      // adversarial ordering is the whole point of the fixture.
+      await dataSource.query(
+        `INSERT INTO transactions
+           (id, user_id, account_id, transaction_date, amount, currency_code,
+            exchange_rate, is_split, is_transfer, status)
+         VALUES ($1, $2, $3, DATE '2026-01-15', -100, 'USD', 1, true, false,
+                 'UNRECONCILED')`,
+        [PARENT_ID, userId, fromAccountId],
+      );
+      await dataSource.query(
+        `INSERT INTO transactions
+           (id, user_id, account_id, transaction_date, amount, currency_code,
+            exchange_rate, is_split, is_transfer, status, linked_transaction_id)
+         VALUES ($1, $2, $3, DATE '2026-01-15', 100, 'USD', 1, false, true,
+                 'UNRECONCILED', $4)`,
+        [LEG_ID, userId, toAccountId, PARENT_ID],
+      );
+      await dataSource.query(
+        `INSERT INTO transaction_splits
+           (id, transaction_id, kind, amount, transfer_account_id,
+            linked_transaction_id)
+         VALUES ($1, $2, 'TRANSFER', -100, $3, $4)`,
+        [SPLIT_ID, PARENT_ID, toAccountId, LEG_ID],
+      );
+    });
+
+    it("removes the split and the counterpart concurrently without deadlocking", async () => {
+      // Both directions at once. Before the ordering fix one of these took the
+      // parent then the leg while the other took the leg then the parent, and
+      // PostgreSQL aborted whichever it picked.
+      const outcomes = await Promise.allSettled([
+        withUserContext(userId, () =>
+          service.removeSplit(userId, PARENT_ID, SPLIT_ID),
+        ),
+        withUserContext(userId, () => service.removeTransfer(userId, LEG_ID)),
+      ]);
+
+      for (const outcome of outcomes) {
+        if (outcome.status !== "rejected") continue;
+        const message = String(
+          (outcome.reason as { message?: string })?.message ?? outcome.reason,
+        );
+        // Losing the race is legitimate -- the row may already be gone, and a
+        // 404 is the honest answer. A deadlock is not.
+        expect(message).not.toMatch(/deadlock/i);
+        expect((outcome.reason as { code?: string })?.code).not.toBe("40P01");
+      }
+    });
+
+    it("does not deadlock when both directions are run repeatedly", async () => {
+      // One pass can pass by luck: whichever request happens to finish before the
+      // other starts never contends at all. Several rounds over fresh fixtures
+      // make the interleaving actually happen.
+      for (let round = 0; round < 5; round += 1) {
+        if (round > 0) {
+          await dataSource.query(
+            `DELETE FROM transactions WHERE id IN ($1, $2)`,
+            [PARENT_ID, LEG_ID],
+          );
+          await dataSource.query(
+            `INSERT INTO transactions
+               (id, user_id, account_id, transaction_date, amount, currency_code,
+                exchange_rate, is_split, is_transfer, status)
+             VALUES ($1, $2, $3, DATE '2026-01-15', -100, 'USD', 1, true, false,
+                     'UNRECONCILED')`,
+            [PARENT_ID, userId, fromAccountId],
+          );
+          await dataSource.query(
+            `INSERT INTO transactions
+               (id, user_id, account_id, transaction_date, amount, currency_code,
+                exchange_rate, is_split, is_transfer, status,
+                linked_transaction_id)
+             VALUES ($1, $2, $3, DATE '2026-01-15', 100, 'USD', 1, false, true,
+                     'UNRECONCILED', $4)`,
+            [LEG_ID, userId, toAccountId, PARENT_ID],
+          );
+          await dataSource.query(
+            `INSERT INTO transaction_splits
+               (id, transaction_id, kind, amount, transfer_account_id,
+                linked_transaction_id)
+             VALUES ($1, $2, 'TRANSFER', -100, $3, $4)`,
+            [SPLIT_ID, PARENT_ID, toAccountId, LEG_ID],
+          );
+        }
+
+        const outcomes = await Promise.allSettled([
+          withUserContext(userId, () =>
+            service.removeSplit(userId, PARENT_ID, SPLIT_ID),
+          ),
+          withUserContext(userId, () => service.removeTransfer(userId, LEG_ID)),
+        ]);
+
+        for (const outcome of outcomes) {
+          if (outcome.status !== "rejected") continue;
+          expect(
+            String(
+              (outcome.reason as { message?: string })?.message ??
+                outcome.reason,
+            ),
+          ).not.toMatch(/deadlock/i);
+        }
+      }
+    });
+  });
 });

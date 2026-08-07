@@ -282,6 +282,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",
     "encryptionNotConfigured": "Encryption key is not configured. The free-form message cannot be stored securely until AI_ENCRYPTION_KEY is set.",
+    "encryptionRequiredToEnable": "Credential encryption is not configured. Emergency access cannot be enabled until AI_ENCRYPTION_KEY is set, because a grant has to store each contact's access link securely.",
     "contactEmailExists": "An emergency contact with this email already exists.",
     "contactNotFound": "Contact not found",
     "notConfigured": "Emergency access not configured",
@@ -365,6 +366,7 @@
     "sameSourceAndDestination": "Source and destination accounts must be different",
     "requiresBrokerageAccount": "Scheduled investment transactions require a brokerage account",
     "notFound": "Scheduled transaction with ID {{ id }} not found",
+    "occurrenceAlreadyPosted": "This occurrence has already been posted.",
     "fxPlainOnly": "A different currency can only be used on a plain scheduled transaction, not a split, transfer or investment",
     "fxRateUnavailable": "No exchange rate is available for {{ from }} to {{ to }} on {{ date }}. Enter the amount in {{ to }} to post it.",
     "investmentActionRequired": "Investment action is required for scheduled investment transactions",
@@ -487,6 +489,7 @@
     "bulkReconcileNotFound": "Some transactions were not found or do not belong to the specified account",
     "cannotReconcileVoidPlural": "Cannot reconcile void transactions",
     "transferSameAccount": "Source and destination accounts must be different",
+    "transferChangedConcurrently": "This transfer was changed by another request. Reload it and try again.",
     "transferAmountNegative": "Transfer amount must not be negative",
     "notATransfer": "Transaction is not a transfer",
     "splitTransferLegAccountLocked": "This transfer is part of a split transaction. Change its accounts by editing the split on the source transaction instead.",
@@ -537,5 +540,8 @@
     "signalNotFound": "Strategy signal not found",
     "signalStrategyMismatch": "That signal belongs to a different strategy.",
     "strategyNotFound": "Strategy not found"
+  },
+  "maintenance": {
+    "inProgress": "Another operation is currently replacing this account's data. Wait for it to finish and try again."
   }
 }

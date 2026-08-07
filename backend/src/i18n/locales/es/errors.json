@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "El correo electrónico no está configurado. El acceso de emergencia no puede habilitarse hasta que se configure SMTP.",
     "encryptionNotConfigured": "La clave de cifrado no está configurada. El mensaje de texto libre no se puede almacenar de forma segura hasta que se establezca AI_ENCRYPTION_KEY.",
+    "encryptionRequiredToEnable": "El cifrado de credenciales no está configurado. El acceso de emergencia no puede habilitarse hasta que se establezca AI_ENCRYPTION_KEY, porque una concesión tiene que almacenar de forma segura el enlace de acceso de cada contacto.",
     "contactEmailExists": "Ya existe un contacto de emergencia con este correo electrónico.",
     "contactNotFound": "Contacto no encontrado",
     "notConfigured": "Acceso de emergencia no configurado",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "Las cuentas de origen y destino deben ser diferentes",
     "requiresBrokerageAccount": "Las transacciones de inversión planificadas requieren una cuenta de corretaje",
     "notFound": "Transacción planificada con ID {{ id }} no encontrada",
+    "occurrenceAlreadyPosted": "Esta ocurrencia ya se ha registrado.",
+    "fxPlainOnly": "Solo se puede usar otra moneda en una transacción planificada simple, no en un desglose, una transferencia ni una inversión",
+    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo.",
     "investmentActionRequired": "Se requiere acción de inversión para las transacciones de inversión planificadas",
     "actionRequiresSecurity": "La acción {{ action }} requiere un valor",
     "actionRequiresPositiveQuantity": "La acción {{ action }} requiere una cantidad positiva",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "La cantidad es obligatoria al crear una modificación de desglose",
     "overrideNotFound": "Modificación con ID {{ overrideId }} no encontrada",
     "updateSplitOverrideRequiresAmount": "La cantidad es obligatoria para la modificación de desglose",
-    "dateMustBeYMD": "la fecha debe estar en formato YYYY-MM-DD",
-    "fxPlainOnly": "Solo se puede usar otra moneda en una transacción planificada simple, no en un desglose, una transferencia ni una inversión",
-    "fxRateUnavailable": "No hay un tipo de cambio disponible de {{ from }} a {{ to }} el {{ date }}. Introduce el importe en {{ to }} para registrarlo."
+    "dateMustBeYMD": "la fecha debe estar en formato YYYY-MM-DD"
   },
   "securities": {
     "exchangeRateUnavailable": "No se pudo determinar un tipo de cambio para {{ from }} -> {{ to }} en la fecha de la transacción. Indica un exchangeRate explícito para que el asiento en la cuenta de efectivo sea correcto.",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId debe ser un UUID válido",
     "amountFromMustBeNumber": "amountFrom debe ser un número",
     "amountToMustBeNumber": "amountTo debe ser un número",
+    "tagKeyTooLong": "tagKey no debe superar los 100 caracteres",
+    "invalidTagKeyOp": "tagKeyOp no válido: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue es obligatorio para contains / notContains",
+    "tagKeyRequired": "Se requiere una clave de etiqueta (1-100 caracteres)",
     "invalidGroupBy": "groupBy debe ser 'category' o 'payee'",
     "limitMustBePositive": "limit debe ser un número positivo",
     "recurringPayeeRequired": "payeeIds es obligatorio",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance debe ser un número",
     "categoryNotFound": "Categoría no encontrada",
     "categoriesNotFound": "Categorías no encontradas: {{ ids }}",
+    "crossOwnerTransferLocked": "El otro lado de esta transferencia está en una cuenta a la que ya no tienes acceso. Puedes editar los detalles de esta transacción, pero su importe, fecha y cuentas están bloqueados.",
+    "crossOwnerAccountMoveLocked": "Esta transferencia involucra la cuenta de otro usuario, por lo que no se puede mover a otras cuentas.",
+    "cannotEditTransfer": "Las transferencias no se pueden editar aquí. Edita la transferencia desde la pantalla de Transacciones.",
+    "cannotEditSplit": "Las transacciones divididas no se pueden editar aquí. Edita la división desde la pantalla de Transacciones.",
+    "noUpdateFields": "Proporciona al menos un campo para cambiar.",
     "investmentSplitRequiresPayload": "El desglose de inversión requiere un payload de inversión",
     "investmentActionNotAllowedInSplit": "La acción de inversión {{ action }} no está permitida dentro de una transacción desglosada",
     "investmentSplitCannotSetCategoryOrTransfer": "Los desgloses de inversión no pueden establecer también categoryId o transferAccountId",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "Algunas transacciones no se encontraron o no pertenecen a la cuenta especificada",
     "cannotReconcileVoidPlural": "No se pueden conciliar transacciones anuladas",
     "transferSameAccount": "Las cuentas de origen y destino deben ser diferentes",
+    "transferChangedConcurrently": "Otra solicitud modificó esta transferencia. Vuelve a cargarla e inténtalo de nuevo.",
     "transferAmountNegative": "La cantidad de la transferencia no puede ser negativa",
     "notATransfer": "La transacción no es una transferencia",
     "splitTransferLegAccountLocked": "Esta transferencia forma parte de una transacción desglosada. Para cambiar sus cuentas, edite el desglose en la transacción de origen.",
     "notFoundById": "Transacción con ID {{ id }} no encontrada",
     "bulkUpdateNoFields": "Se debe proporcionar al menos un campo de actualización",
     "payeeNotFound": "Beneficiario no encontrado",
-    "crossOwnerTransferLocked": "El otro lado de esta transferencia está en una cuenta a la que ya no tienes acceso. Puedes editar los detalles de esta transacción, pero su importe, fecha y cuentas están bloqueados.",
-    "crossOwnerAccountMoveLocked": "Esta transferencia involucra la cuenta de otro usuario, por lo que no se puede mover a otras cuentas.",
-    "cannotEditTransfer": "Las transferencias no se pueden editar aquí. Edita la transferencia desde la pantalla de Transacciones.",
-    "cannotEditSplit": "Las transacciones divididas no se pueden editar aquí. Edita la división desde la pantalla de Transacciones.",
-    "noUpdateFields": "Proporciona al menos un campo para cambiar.",
-    "tagKeyTooLong": "tagKey no debe superar los 100 caracteres",
-    "invalidTagKeyOp": "tagKeyOp no válido: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue es obligatorio para contains / notContains",
-    "tagKeyRequired": "Se requiere una clave de etiqueta (1-100 caracteres)",
     "fxFieldsIncomplete": "originalAmount y originalCurrencyCode deben proporcionarse juntos",
     "fxRateRequired": "Se requiere un tipo de cambio positivo para una transacción en moneda extranjera",
     "fxSignMismatch": "originalAmount y amount deben tener el mismo signo",
@@ -537,5 +540,8 @@
     "signalNotFound": "Señal de estrategia no encontrada",
     "signalStrategyMismatch": "Esa señal pertenece a otra estrategia.",
     "strategyNotFound": "Estrategia no encontrada"
+  },
+  "maintenance": {
+    "inProgress": "Otra operacion esta reemplazando actualmente los datos de esta cuenta. Espera a que termine e intentalo de nuevo."
   }
 }

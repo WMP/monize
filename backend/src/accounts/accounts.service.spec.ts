@@ -360,12 +360,25 @@ describe("AccountsService", () => {
   });
 
   describe("updateBalance", () => {
+    /**
+     * The guarded UPDATE reports whether it matched a row.
+     *
+     * `is_closed = false` is a predicate of the write, not of a read that came
+     * before it: a separate check let a mutation of an existing transaction read
+     * the account as open, wait behind `close()`, and then add its delta to a row
+     * that had since been closed at zero (audit P4-008). So the double has to
+     * answer the way the statement does -- a row, or nothing.
+     */
+    function stageBalanceUpdate(matched: boolean): void {
+      mockQueryRunner.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("UPDATE accounts") && matched
+          ? [[{ id: "account-1" }], 1]
+          : [[], 0],
+      );
+    }
+
     it("adds positive amount to balance", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockAccount,
-        currentBalance: 1000,
-      });
-      accountsRepository.query.mockResolvedValue(undefined);
+      stageBalanceUpdate(true);
       accountsRepository.findOneOrFail.mockResolvedValue({
         ...mockAccount,
         currentBalance: 1500,
@@ -373,19 +386,16 @@ describe("AccountsService", () => {
 
       const result = await service.updateBalance("account-1", 500);
 
-      expect(mockQueryRunner.query).toHaveBeenCalledWith(
-        `UPDATE accounts SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4) WHERE id = $2`,
-        [500, "account-1"],
-      );
+      const [sql, params] = mockQueryRunner.query.mock.calls[0];
+      expect(sql).toContain("current_balance AS numeric) + $1");
+      expect(sql).toContain("is_closed = false");
+      expect(sql).toContain("RETURNING");
+      expect(params).toEqual([500, "account-1"]);
       expect(result.currentBalance).toBe(1500);
     });
 
     it("subtracts negative amount from balance", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockAccount,
-        currentBalance: 1000,
-      });
-      accountsRepository.query.mockResolvedValue(undefined);
+      stageBalanceUpdate(true);
       accountsRepository.findOneOrFail.mockResolvedValue({
         ...mockAccount,
         currentBalance: 700,
@@ -393,14 +403,15 @@ describe("AccountsService", () => {
 
       const result = await service.updateBalance("account-1", -300);
 
-      expect(mockQueryRunner.query).toHaveBeenCalledWith(
-        `UPDATE accounts SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4) WHERE id = $2`,
-        [-300, "account-1"],
-      );
+      expect(mockQueryRunner.query.mock.calls[0][1]).toEqual([
+        -300,
+        "account-1",
+      ]);
       expect(result.currentBalance).toBe(700);
     });
 
     it("throws NotFoundException when account not found", async () => {
+      stageBalanceUpdate(false);
       accountsRepository.findOne.mockResolvedValue(null);
 
       await expect(service.updateBalance("nonexistent", 100)).rejects.toThrow(
@@ -409,6 +420,9 @@ describe("AccountsService", () => {
     });
 
     it("throws BadRequestException for closed accounts", async () => {
+      // No row matched and the account exists: it is closed. Told apart so the
+      // caller gets 400 rather than one ambiguous error.
+      stageBalanceUpdate(false);
       accountsRepository.findOne.mockResolvedValue({
         ...mockAccount,
         isClosed: true,
@@ -419,12 +433,26 @@ describe("AccountsService", () => {
       );
     });
 
-    it("rounds to 4 decimal places to match DB schema precision", async () => {
+    it("refuses the delta when close() committed while the ledger write waited", async () => {
+      // The regression guard for P4-008: an unvoid read the account as open, the
+      // close committed at zero, and the delta then landed on the closed row --
+      // a closed account holding -10.00. Re-evaluating the predicate after the
+      // row lock refuses instead, and the throw rolls the ledger mutation back
+      // with it.
+      stageBalanceUpdate(false);
       accountsRepository.findOne.mockResolvedValue({
         ...mockAccount,
-        currentBalance: 10.1,
+        isClosed: true,
       });
-      accountsRepository.query.mockResolvedValue(undefined);
+
+      await expect(
+        service.updateBalance("account-1", -10),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(accountsRepository.findOneOrFail).not.toHaveBeenCalled();
+    });
+
+    it("rounds to 4 decimal places to match DB schema precision", async () => {
+      stageBalanceUpdate(true);
       accountsRepository.findOneOrFail.mockResolvedValue({
         ...mockAccount,
         currentBalance: 20.3,
@@ -432,19 +460,12 @@ describe("AccountsService", () => {
 
       const result = await service.updateBalance("account-1", 10.2);
 
-      expect(mockQueryRunner.query).toHaveBeenCalledWith(
-        `UPDATE accounts SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4) WHERE id = $2`,
-        [10.2, "account-1"],
-      );
+      expect(mockQueryRunner.query.mock.calls[0][0]).toContain("ROUND(");
       expect(result.currentBalance).toBe(20.3);
     });
 
-    it("uses atomic SQL UPDATE to prevent race conditions", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockAccount,
-        currentBalance: 1000,
-      });
-      accountsRepository.query.mockResolvedValue(undefined);
+    it("uses atomic SQL arithmetic to prevent race conditions", async () => {
+      stageBalanceUpdate(true);
       accountsRepository.findOneOrFail.mockResolvedValue({
         ...mockAccount,
         currentBalance: 1100,
@@ -1001,6 +1022,27 @@ describe("AccountsService", () => {
   });
 
   describe("findAll", () => {
+    it("stays strictly owner-scoped -- AI/MCP listings exclude joint accounts (N2)", async () => {
+      // The joint-account union happens only in the HTTP controller. Every
+      // other consumer of findAll -- AI tools, MCP, internal summaries --
+      // deliberately sees own accounts only (joint-accounts spec, N2 scope
+      // cut). This pins the predicate so a widened findAll fails loudly.
+      const where = jest.fn().mockReturnThis();
+      const getMany = jest.fn().mockResolvedValue([]);
+      accountsRepository.createQueryBuilder.mockReturnValue({
+        where,
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany,
+      });
+
+      await service.findAll("user-1");
+
+      expect(where).toHaveBeenCalledWith("account.userId = :userId", {
+        userId: "user-1",
+      });
+    });
+
     it("returns accounts with canDelete computed", async () => {
       const getMany = jest.fn().mockResolvedValue([mockAccount]);
       accountsRepository.createQueryBuilder.mockReturnValue({
@@ -1028,27 +1070,6 @@ describe("AccountsService", () => {
       const result = await service.findAll("user-1");
 
       expect(result).toHaveLength(0);
-    });
-
-    it("stays strictly owner-scoped -- AI/MCP listings exclude joint accounts (N2)", async () => {
-      // The joint-account union happens only in the HTTP controller. Every
-      // other consumer of findAll -- AI tools, MCP, internal summaries --
-      // deliberately sees own accounts only (joint-accounts spec, N2 scope
-      // cut). This pins the predicate so a widened findAll fails loudly.
-      const where = jest.fn().mockReturnThis();
-      const getMany = jest.fn().mockResolvedValue([]);
-      accountsRepository.createQueryBuilder.mockReturnValue({
-        where,
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getMany,
-      });
-
-      await service.findAll("user-1");
-
-      expect(where).toHaveBeenCalledWith("account.userId = :userId", {
-        userId: "user-1",
-      });
     });
   });
 
@@ -2534,7 +2555,6 @@ describe("AccountsService", () => {
   });
 
   // ─── extra branch coverage ────────────────────────────────────────────
-
   describe("update extra branches", () => {
     it("throws NotFoundException when account is not found", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue(null);
@@ -2691,17 +2711,19 @@ describe("AccountsService", () => {
 
   describe("updateBalance", () => {
     it("applies the atomic UPDATE and re-reads the balance in one scoped transaction", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockAccount,
-        currentBalance: 100,
-      });
+      // The guarded UPDATE answers as the driver does: a matched row, as a tuple.
+      mockQueryRunner.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("UPDATE accounts")
+          ? [[{ id: "account-1" }], 1]
+          : [[], 0],
+      );
       accountsRepository.findOneOrFail.mockResolvedValue({
         ...mockAccount,
         currentBalance: 200,
       });
       const result = await service.updateBalance("account-1", 100);
-      expect(mockQueryRunner.manager.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE accounts SET current_balance"),
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE accounts"),
         [100, "account-1"],
       );
       expect(result.currentBalance).toBe(200);
@@ -2709,47 +2731,113 @@ describe("AccountsService", () => {
   });
 
   describe("recalculateCurrentBalance", () => {
-    it("throws NotFoundException when account not found", async () => {
-      accountsRepository.findOne.mockResolvedValue(null);
-      await expect(service.recalculateCurrentBalance("nope")).rejects.toThrow(
-        NotFoundException,
-      );
+    /**
+     * The recomputation locks the account rows and then reads the ledger.
+     *
+     * That order is the fix, not a detail: it writes an absolute balance, and
+     * under READ COMMITTED its SELECT and its UPDATE are separate statement
+     * snapshots -- so a delta committing between them used to be overwritten by a
+     * total that never saw it (audit P4-005). The double answers the lock, the
+     * sum, and the write in the order the transaction issues them.
+     */
+    function stageRecalc(balanceRows: unknown[]): jest.Mock {
+      const query = jest.fn().mockImplementation(async (sql: string) => {
+        if (String(sql).includes("FOR UPDATE")) return [{ id: "account-1" }];
+        if (String(sql).includes("COALESCE(SUM(t.amount)")) return balanceRows;
+        return [];
+      });
+      (mockQueryRunner.manager as unknown as { query: jest.Mock }).query =
+        query;
+      return query;
+    }
+
+    it("throws NotFoundException when the account is gone", async () => {
+      // The ledger sum joins from `accounts`, so no row means no account.
+      stageRecalc([]);
+      await expect(
+        service.recalculateCurrentBalance("user-1", "nope"),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it("computes the new balance from the summed transactions", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        id: "account-1",
-        openingBalance: 100,
+      stageRecalc([{ balance: "150.5" }]);
+      accountsRepository.findOneOrFail.mockResolvedValue({
+        ...mockAccount,
+        currentBalance: 150.5,
       });
-      accountsRepository.save.mockImplementation((d) => Promise.resolve(d));
-      const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
-      ds.query = jest.fn().mockResolvedValue([{ balance: "150.5" }]);
-      const result = await service.recalculateCurrentBalance("account-1");
+
+      const result = await service.recalculateCurrentBalance(
+        "user-1",
+        "account-1",
+      );
+
       expect(result.currentBalance).toBe(150.5);
     });
 
-    it("falls back to openingBalance when query returns empty", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        id: "account-1",
-        openingBalance: 100,
-        currentBalance: 50,
-      });
-      const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
-      ds.query = jest.fn().mockResolvedValue([]);
-      const r = await service.recalculateCurrentBalance("account-1");
-      expect(r.currentBalance).toBe(100);
+    it("locks the account before reading the ledger, scoped to the owner", async () => {
+      const query = stageRecalc([{ balance: "150.5" }]);
+      accountsRepository.findOneOrFail.mockResolvedValue({ ...mockAccount });
+
+      await service.recalculateCurrentBalance("user-1", "account-1");
+
+      const statements = query.mock.calls.map((c) => String(c[0]));
+      const lockAt = statements.findIndex((sql) => sql.includes("FOR UPDATE"));
+      const sumAt = statements.findIndex((sql) =>
+        sql.includes("COALESCE(SUM(t.amount)"),
+      );
+      expect(lockAt).toBeGreaterThanOrEqual(0);
+      expect(lockAt).toBeLessThan(sumAt);
+
+      // The balance-write lock is owner-scoped: an own-context recomputation
+      // must never lock an account that is not the caller's (maintainer review,
+      // PR #1095). The userId reaches lockAccountsForBalanceWrite and lands in
+      // the FOR UPDATE predicate.
+      const lockCall = query.mock.calls.find((c) =>
+        String(c[0]).includes("FOR UPDATE"),
+      );
+      expect(String(lockCall![0])).toContain("user_id = $2");
+      expect(lockCall![1]).toEqual([["account-1"], "user-1"]);
     });
 
-    it("persists the recomputed balance", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        id: "account-1",
-        openingBalance: 100,
+    it("writes only current_balance, never the whole account row", async () => {
+      // Saving the entity read before the transaction would write back every
+      // other column from that snapshot, so a concurrent rename or
+      // opening-balance edit would be reverted by a balance recalculation.
+      const query = stageRecalc([{ balance: "275.5" }]);
+      accountsRepository.findOneOrFail.mockResolvedValue({
+        ...mockAccount,
+        currentBalance: 275.5,
       });
-      accountsRepository.save.mockImplementation((d) => Promise.resolve(d));
-      const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
-      ds.query = jest.fn().mockResolvedValue([{ balance: "275.5" }]);
-      const r = await service.recalculateCurrentBalance("account-1");
-      expect(r.currentBalance).toBe(275.5);
+
+      const result = await service.recalculateCurrentBalance(
+        "user-1",
+        "account-1",
+      );
+
+      expect(result.currentBalance).toBe(275.5);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      const write = query.mock.calls
+        .map((c) => String(c[0]))
+        .find((sql) => sql.startsWith("UPDATE accounts"));
+      expect(write).toBe(
+        "UPDATE accounts SET current_balance = $1 WHERE id = $2",
+      );
+    });
+
+    it("resolves an account with no transactions to its opening balance", async () => {
+      // The old implementation fell back to `openingBalance` in code when the
+      // sum query returned nothing; the LEFT JOIN + COALESCE now answer that
+      // case in SQL, so an empty result means only "no such account". The
+      // behaviour the fallback protected -- no ledger rows means the opening
+      // balance -- is asserted here through the query's own answer.
+      stageRecalc([{ balance: "100" }]);
+      accountsRepository.findOneOrFail.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 100,
+        currentBalance: 100,
+      });
+      const r = await service.recalculateCurrentBalance("user-1", "account-1");
+      expect(r.currentBalance).toBe(100);
     });
   });
 
@@ -3181,6 +3269,9 @@ describe("AccountsService", () => {
         .mockResolvedValueOnce([{ user_id: "u1", timezone: "America/Toronto" }])
         // accountRows
         .mockResolvedValueOnce([{ account_id: "a1" }])
+        // ...locked FOR UPDATE before the ledger is read, so the absolute write
+        // cannot overwrite a delta that commits in between (audit P4-005)
+        .mockResolvedValueOnce([{ id: "a1" }])
         // balances
         .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }])
         // bulk UPDATE ... FROM (VALUES ...)
@@ -3195,6 +3286,13 @@ describe("AccountsService", () => {
       expect(bulkUpdateCall).toBeDefined();
       expect(bulkUpdateCall?.[1]).toEqual(["a1", 150]);
       expect(accountsRepository.update).not.toHaveBeenCalled();
+      // And the lock came first.
+      const statements = ds.query.mock.calls.map((c) => String(c[0]));
+      expect(
+        statements.findIndex((sql) => sql.includes("FOR UPDATE")),
+      ).toBeLessThan(
+        statements.findIndex((sql) => sql.includes("COALESCE(SUM(t.amount)")),
+      );
     });
 
     it("logs error when query throws", async () => {

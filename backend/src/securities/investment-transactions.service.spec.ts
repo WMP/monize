@@ -346,7 +346,40 @@ describe("InvestmentTransactionsService", () => {
     for (const [name, impl] of Object.entries(mockQueryRunner.manager)) {
       mocks.manager[name] = impl as jest.Mock;
     }
-    mocks.manager.query = jest.fn().mockResolvedValue([]);
+    /**
+     * The cash-leg reads that feed a balance reversal are locked ones now, so
+     * they arrive through `manager.query` rather than `findOne` -- the amount a
+     * delta reverses has to be the version the delete removes (audit P4-003).
+     *
+     * Answered from whatever `transactionRepository.findOne` is returning, so a
+     * spec states the row once. Column names are the raw SQL ones.
+     */
+    // Deletes are conditional and each reversal is gated on what the database
+    // actually removed, so the double reports a count.
+    mocks.manager.delete = jest.fn().mockResolvedValue({ affected: 1 });
+    mocks.manager.query = jest.fn().mockImplementation(async (sql: string) => {
+      if (!String(sql).includes("FOR UPDATE")) return [];
+      const row = (await transactionRepository.findOne({})) as {
+        id?: string;
+        accountId?: string;
+        amount?: number;
+        transactionDate?: string;
+        status?: string | null;
+      } | null;
+      if (!row?.id) return [];
+      return [
+        {
+          id: row.id,
+          account_id: row.accountId,
+          amount: String(row.amount ?? 0),
+          transaction_date: row.transactionDate ?? null,
+          status: row.status ?? null,
+          is_split: false,
+          linked_transaction_id: null,
+          parent_transaction_id: null,
+        },
+      ];
+    });
     mockQueryRunner = { manager: mocks.manager };
 
     service = new InvestmentTransactionsService(
@@ -2077,8 +2110,12 @@ describe("InvestmentTransactionsService", () => {
         1509.99, // Reverse of -1509.99
       );
 
-      // Should remove the cash transaction
-      expect(transactionRepository.remove).toHaveBeenCalled();
+      // Should remove the cash transaction -- conditionally, with the reversal
+      // gated on the row the database actually removed.
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: cashTransactionId,
+        userId,
+      });
     });
 
     it("triggers net worth recalculation for brokerage and cash accounts after update", async () => {
@@ -2369,7 +2406,10 @@ describe("InvestmentTransactionsService", () => {
         cashAccountId,
         1509.99,
       );
-      expect(transactionRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: cashTransactionId,
+        userId,
+      });
 
       // Should delete the investment transaction
       expect(investmentTransactionsRepository.remove).toHaveBeenCalledWith(tx);
@@ -3283,6 +3323,21 @@ describe("InvestmentTransactionsService", () => {
           return Promise.resolve([]);
         },
       );
+      // The cash legs are locked in ascending id order before their amounts
+      // become reversals (audit P4-003), so they arrive through the locked read.
+      mockQueryRunner.manager.query.mockImplementation(async (sql: string) => {
+        if (!String(sql).includes("FOR UPDATE")) return [];
+        return [cashTx1, cashTx2].map((tx) => ({
+          id: tx.id,
+          account_id: tx.accountId,
+          amount: String(tx.amount),
+          transaction_date: null,
+          status: tx.status,
+          is_split: false,
+          linked_transaction_id: null,
+          parent_transaction_id: null,
+        }));
+      });
 
       const result = await service.removeAll(userId);
 
@@ -3300,10 +3355,16 @@ describe("InvestmentTransactionsService", () => {
         -790.01,
       );
       // Should remove cash transactions
-      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith([
-        cashTx1,
-        cashTx2,
-      ]);
+      // Conditional DELETEs, one per locked leg, each reversal gated on the row
+      // the database actually removed.
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: cashTx1.id,
+        userId,
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: cashTx2.id,
+        userId,
+      });
       // Should remove investment transactions
       expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(transactions);
       expect(holdingsService.removeAllForUser).toHaveBeenCalledWith(userId);
@@ -4827,6 +4888,27 @@ describe("InvestmentTransactionsService", () => {
             return Promise.resolve([split, incomeSplit]);
           return Promise.resolve([]);
         });
+      // The parent amount a delta is derived from is read under a row lock: two
+      // concurrent edits to the same parent's splits would otherwise each apply a
+      // delta from the same stale amount (audit P4-003).
+      mockQueryRunner.manager.query = jest
+        .fn()
+        .mockImplementation(async (sql: string) =>
+          String(sql).includes("FOR UPDATE")
+            ? [
+                {
+                  id: parentTx.id,
+                  account_id: parentTx.accountId,
+                  amount: String(parentTx.amount),
+                  transaction_date: parentTx.transactionDate,
+                  status: null,
+                  is_split: true,
+                  linked_transaction_id: null,
+                  parent_transaction_id: null,
+                },
+              ]
+            : [],
+        );
 
       return { split, incomeSplit, parentTx };
     };

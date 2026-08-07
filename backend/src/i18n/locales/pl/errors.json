@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail nie jest skonfigurowany. Dostępu awaryjnego nie można włączyć, dopóki nie skonfigurujesz SMTP.",
     "encryptionNotConfigured": "Klucz szyfrowania nie jest skonfigurowany. Dowolna wiadomość nie może być bezpiecznie przechowywana, dopóki nie ustawisz AI_ENCRYPTION_KEY.",
+    "encryptionRequiredToEnable": "Szyfrowanie poświadczeń nie jest skonfigurowane. Dostępu awaryjnego nie można włączyć, dopóki nie ustawisz AI_ENCRYPTION_KEY, ponieważ przyznanie dostępu musi bezpiecznie przechowywać link dostępowy każdego kontaktu.",
     "contactEmailExists": "Kontakt awaryjny z tym adresem e-mail już istnieje.",
     "contactNotFound": "Nie znaleziono kontaktu",
     "notConfigured": "Dostęp awaryjny nie jest skonfigurowany",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "Konto źródłowe i docelowe muszą być różne",
     "requiresBrokerageAccount": "Zaplanowane transakcje inwestycyjne wymagają konta maklerskiego",
     "notFound": "Nie znaleziono zaplanowanej transakcji o ID {{ id }}",
+    "occurrenceAlreadyPosted": "Ta rata została już zaksięgowana.",
+    "fxPlainOnly": "Innej waluty można użyć tylko w zwykłej zaplanowanej transakcji, a nie w podziale, przelewie ani inwestycji",
+    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować.",
     "investmentActionRequired": "Operacja inwestycyjna jest wymagana dla zaplanowanych transakcji inwestycyjnych",
     "actionRequiresSecurity": "Operacja {{ action }} wymaga papieru wartościowego",
     "actionRequiresPositiveQuantity": "Operacja {{ action }} wymaga dodatniej ilości",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "Kwota jest wymagana przy tworzeniu nadpisania podziału",
     "overrideNotFound": "Nie znaleziono nadpisania o ID {{ overrideId }}",
     "updateSplitOverrideRequiresAmount": "Kwota jest wymagana dla nadpisania podziału",
-    "dateMustBeYMD": "date musi być w formacie YYYY-MM-DD",
-    "fxPlainOnly": "Innej waluty można użyć tylko w zwykłej zaplanowanej transakcji, a nie w podziale, przelewie ani inwestycji",
-    "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować."
+    "dateMustBeYMD": "date musi być w formacie YYYY-MM-DD"
   },
   "securities": {
     "exchangeRateUnavailable": "Nie można ustalić kursu wymiany dla {{ from }} -> {{ to }} na dzień transakcji. Podaj jawny exchangeRate, aby księgowanie na koncie gotówkowym było poprawne.",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId musi być prawidłowym UUID",
     "amountFromMustBeNumber": "amountFrom musi być liczbą",
     "amountToMustBeNumber": "amountTo musi być liczbą",
+    "tagKeyTooLong": "tagKey nie może przekraczać 100 znaków",
+    "invalidTagKeyOp": "Nieprawidłowy tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue jest wymagany dla contains / notContains",
+    "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)",
     "invalidGroupBy": "groupBy musi mieć wartość 'category' lub 'payee'",
     "limitMustBePositive": "limit musi być liczbą dodatnią",
     "recurringPayeeRequired": "payeeIds jest wymagane",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance musi być liczbą",
     "categoryNotFound": "Nie znaleziono kategorii",
     "categoriesNotFound": "Nie znaleziono kategorii: {{ ids }}",
+    "crossOwnerTransferLocked": "Druga strona tego przelewu znajduje się na koncie, do którego nie masz już dostępu. Możesz edytować szczegóły tej transakcji, ale jej kwota, data i konta są zablokowane.",
+    "crossOwnerAccountMoveLocked": "Ten przelew dotyczy konta innego użytkownika, więc nie można go przenieść na inne konta.",
+    "cannotEditTransfer": "Przelewów nie można tutaj edytować. Edytuj przelew na ekranie Transakcje.",
+    "cannotEditSplit": "Transakcji podzielonych nie można tutaj edytować. Edytuj podział na ekranie Transakcje.",
+    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany.",
     "investmentSplitRequiresPayload": "Podział inwestycyjny wymaga danych inwestycji",
     "investmentActionNotAllowedInSplit": "Operacja inwestycyjna {{ action }} nie jest dozwolona wewnątrz transakcji podzielonej",
     "investmentSplitCannotSetCategoryOrTransfer": "Podziały inwestycyjne nie mogą jednocześnie ustawiać categoryId ani transferAccountId",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "Niektórych transakcji nie znaleziono lub nie należą do wskazanego konta",
     "cannotReconcileVoidPlural": "Nie można uzgodnić anulowanych transakcji",
     "transferSameAccount": "Konto źródłowe i docelowe muszą być różne",
+    "transferChangedConcurrently": "Ten przelew został zmieniony przez inne żądanie. Odśwież i spróbuj ponownie.",
     "transferAmountNegative": "Kwota przelewu nie może być ujemna",
     "notATransfer": "Transakcja nie jest przelewem",
     "splitTransferLegAccountLocked": "Ten przelew jest częścią transakcji podzielonej. Aby zmienić jego konta, edytuj podział w transakcji źródłowej.",
     "notFoundById": "Nie znaleziono transakcji o ID {{ id }}",
     "bulkUpdateNoFields": "Należy podać co najmniej jedno pole do aktualizacji",
     "payeeNotFound": "Nie znaleziono odbiorcy",
-    "crossOwnerTransferLocked": "Druga strona tego przelewu znajduje się na koncie, do którego nie masz już dostępu. Możesz edytować szczegóły tej transakcji, ale jej kwota, data i konta są zablokowane.",
-    "crossOwnerAccountMoveLocked": "Ten przelew dotyczy konta innego użytkownika, więc nie można go przenieść na inne konta.",
-    "cannotEditTransfer": "Przelewów nie można tutaj edytować. Edytuj przelew na ekranie Transakcje.",
-    "cannotEditSplit": "Transakcji podzielonych nie można tutaj edytować. Edytuj podział na ekranie Transakcje.",
-    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany.",
-    "tagKeyTooLong": "tagKey nie może przekraczać 100 znaków",
-    "invalidTagKeyOp": "Nieprawidłowy tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "tagKeyValue jest wymagany dla contains / notContains",
-    "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)",
     "fxFieldsIncomplete": "originalAmount i originalCurrencyCode muszą być podane razem",
     "fxRateRequired": "Do transakcji w obcej walucie wymagany jest dodatni kurs wymiany",
     "fxSignMismatch": "originalAmount i amount muszą mieć ten sam znak",
@@ -537,5 +540,8 @@
     "signalNotFound": "Nie znaleziono sygnału strategii",
     "signalStrategyMismatch": "Ten sygnał należy do innej strategii.",
     "strategyNotFound": "Nie znaleziono strategii"
+  },
+  "maintenance": {
+    "inProgress": "Inna operacja wlasnie zamienia dane tego konta. Poczekaj na jej zakonczenie i sprobuj ponownie."
   }
 }

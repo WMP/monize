@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "邮件未配置。在设置 SMTP 之前，无法启用紧急访问。",
     "encryptionNotConfigured": "加密密钥未配置。在设置 AI_ENCRYPTION_KEY 之前，无法安全存储自由格式留言。",
+    "encryptionRequiredToEnable": "凭据加密未配置。在设置 AI_ENCRYPTION_KEY 之前，无法启用紧急访问，因为授予访问权限时必须安全地存储每位联系人的访问链接。",
     "contactEmailExists": "此邮箱已存在紧急联系人。",
     "contactNotFound": "未找到联系人",
     "notConfigured": "紧急访问未配置",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "来源账户和目标账户必须不同",
     "requiresBrokerageAccount": "计划投资交易需要经纪账户",
     "notFound": "未找到 ID 为 {{ id }} 的计划交易",
+    "occurrenceAlreadyPosted": "该次记账已完成。",
+    "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
+    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。",
     "investmentActionRequired": "计划投资交易需要投资操作",
     "actionRequiresSecurity": "操作 {{ action }} 需要证券",
     "actionRequiresPositiveQuantity": "操作 {{ action }} 需要正数量",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "创建拆分覆盖时需要金额",
     "overrideNotFound": "未找到 ID 为 {{ overrideId }} 的覆盖",
     "updateSplitOverrideRequiresAmount": "拆分覆盖需要金额",
-    "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式",
-    "fxPlainOnly": "只有普通计划交易才能使用其他货币，拆分、转账和投资均不支持",
-    "fxRateUnavailable": "{{ date }} 没有从 {{ from }} 到 {{ to }} 的可用汇率。请以 {{ to }} 输入金额后再过账。"
+    "dateMustBeYMD": "date 必须为 YYYY-MM-DD 格式"
   },
   "securities": {
     "exchangeRateUnavailable": "无法确定交易日 {{ from }} -> {{ to }} 的汇率。请提供明确的 exchangeRate，以便现金账户的记账正确。",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId 必须是有效的 UUID",
     "amountFromMustBeNumber": "amountFrom 必须是数字",
     "amountToMustBeNumber": "amountTo 必须是数字",
+    "tagKeyTooLong": "tagKey 不得超过 100 个字符",
+    "invalidTagKeyOp": "无效的 tagKeyOp：{{ op }}",
+    "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
+    "tagKeyRequired": "需要标签键（1-100 个字符）",
     "invalidGroupBy": "groupBy 必须为 'category' 或 'payee'",
     "limitMustBePositive": "limit 必须为正数",
     "recurringPayeeRequired": "payeeIds 为必填项",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance 必须是数字",
     "categoryNotFound": "未找到分类",
     "categoriesNotFound": "未找到分类：{{ ids }}",
+    "crossOwnerTransferLocked": "此转账的另一方位于您已无法访问的账户中。您可以编辑此交易自身的详细信息，但其金额、日期和账户已锁定。",
+    "crossOwnerAccountMoveLocked": "此转账涉及其他用户的账户，因此无法移动到其他账户。",
+    "cannotEditTransfer": "无法在此处编辑转账。请在交易页面中编辑该转账。",
+    "cannotEditSplit": "无法在此处编辑拆分交易。请在交易页面中编辑该拆分。",
+    "noUpdateFields": "请至少提供一个要更改的字段。",
     "investmentSplitRequiresPayload": "投资拆分项需要投资载荷",
     "investmentActionNotAllowedInSplit": "投资操作 {{ action }} 不允许在拆分交易中使用",
     "investmentSplitCannotSetCategoryOrTransfer": "投资拆分项不能同时设置 categoryId 或 transferAccountId",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "部分交易未找到或不属于指定账户",
     "cannotReconcileVoidPlural": "无法对账作废交易",
     "transferSameAccount": "来源账户和目标账户必须不同",
+    "transferChangedConcurrently": "该笔转账已被其他请求修改，请重新加载后再试。",
     "transferAmountNegative": "转账金额不能为负数",
     "notATransfer": "交易不是转账",
     "splitTransferLegAccountLocked": "此转账属于拆分交易的一部分。请改为在源交易中编辑拆分项以更改其账户。",
     "notFoundById": "未找到 ID 为 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一个更新字段",
     "payeeNotFound": "未找到收款人",
-    "crossOwnerTransferLocked": "此转账的另一方位于您已无法访问的账户中。您可以编辑此交易自身的详细信息，但其金额、日期和账户已锁定。",
-    "crossOwnerAccountMoveLocked": "此转账涉及其他用户的账户，因此无法移动到其他账户。",
-    "cannotEditTransfer": "无法在此处编辑转账。请在交易页面中编辑该转账。",
-    "cannotEditSplit": "无法在此处编辑拆分交易。请在交易页面中编辑该拆分。",
-    "noUpdateFields": "请至少提供一个要更改的字段。",
-    "tagKeyTooLong": "tagKey 不得超过 100 个字符",
-    "invalidTagKeyOp": "无效的 tagKeyOp：{{ op }}",
-    "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
-    "tagKeyRequired": "需要标签键（1-100 个字符）",
     "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必须同时提供",
     "fxRateRequired": "外币交易需要一个正的汇率",
     "fxSignMismatch": "originalAmount 和 amount 的符号必须相同",
@@ -537,5 +540,8 @@
     "signalNotFound": "未找到策略信号",
     "signalStrategyMismatch": "该信号属于另一个策略。",
     "strategyNotFound": "未找到策略"
+  },
+  "maintenance": {
+    "inProgress": "另一项操作正在替换此账户的数据。请等待其完成后重试。"
   }
 }

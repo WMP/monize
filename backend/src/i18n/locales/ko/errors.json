@@ -274,6 +274,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "이메일이 구성되지 않았습니다. SMTP가 설정될 때까지 긴급 접근을 활성화할 수 없습니다.",
     "encryptionNotConfigured": "암호화 키가 구성되지 않았습니다. AI_ENCRYPTION_KEY가 설정될 때까지 자유 형식 메시지를 안전하게 저장할 수 없습니다.",
+    "encryptionRequiredToEnable": "자격 증명 암호화가 구성되지 않았습니다. 부여 시 각 연락처의 접근 링크를 안전하게 저장해야 하므로, AI_ENCRYPTION_KEY가 설정될 때까지 긴급 접근을 활성화할 수 없습니다.",
     "contactEmailExists": "이 이메일을 가진 긴급 연락처가 이미 존재합니다.",
     "contactNotFound": "연락처를 찾을 수 없습니다",
     "notConfigured": "긴급 접근이 구성되지 않았습니다",
@@ -357,6 +358,9 @@
     "sameSourceAndDestination": "출금 계정과 입금 계정은 서로 달라야 합니다",
     "requiresBrokerageAccount": "예약 투자 거래에는 중개 계정이 필요합니다",
     "notFound": "ID가 {{ id }}인 예약 거래를 찾을 수 없습니다",
+    "occurrenceAlreadyPosted": "이 발생 건은 이미 등록되었습니다.",
+    "fxPlainOnly": "다른 통화는 일반 예약 거래에서만 사용할 수 있으며 분할, 이체, 투자에서는 사용할 수 없습니다",
+    "fxRateUnavailable": "{{ date }}에 {{ from }}에서 {{ to }}로의 환율을 사용할 수 없습니다. 게시하려면 금액을 {{ to }}로 입력하세요.",
     "investmentActionRequired": "예약 투자 거래에는 투자 작업이 필요합니다",
     "actionRequiresSecurity": "{{ action }} 작업에는 증권이 필요합니다",
     "actionRequiresPositiveQuantity": "{{ action }} 작업에는 양수 수량이 필요합니다",
@@ -367,9 +371,7 @@
     "splitOverrideRequiresAmount": "분할 재정의를 생성할 때는 금액이 필요합니다",
     "overrideNotFound": "ID가 {{ overrideId }}인 재정의를 찾을 수 없습니다",
     "updateSplitOverrideRequiresAmount": "분할 재정의에는 금액이 필요합니다",
-    "dateMustBeYMD": "date는 YYYY-MM-DD 형식이어야 합니다",
-    "fxPlainOnly": "다른 통화는 일반 예약 거래에서만 사용할 수 있으며 분할, 이체, 투자에서는 사용할 수 없습니다",
-    "fxRateUnavailable": "{{ date }}에 {{ from }}에서 {{ to }}로의 환율을 사용할 수 없습니다. 게시하려면 금액을 {{ to }}로 입력하세요."
+    "dateMustBeYMD": "date는 YYYY-MM-DD 형식이어야 합니다"
   },
   "securities": {
     "exchangeRateUnavailable": "거래일의 {{ from }} -> {{ to }} 환율을 확인할 수 없습니다. 현금 계좌 기록이 정확하도록 명시적인 exchangeRate를 입력하세요.",
@@ -445,6 +447,10 @@
     "targetTransactionIdInvalidUuid": "targetTransactionId는 유효한 UUID여야 합니다",
     "amountFromMustBeNumber": "amountFrom은 숫자여야 합니다",
     "amountToMustBeNumber": "amountTo는 숫자여야 합니다",
+    "tagKeyTooLong": "tagKey는 100자를 초과할 수 없습니다",
+    "invalidTagKeyOp": "잘못된 tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "contains / notContains에는 tagKeyValue가 필요합니다",
+    "tagKeyRequired": "태그 키(1~100자)가 필요합니다",
     "invalidGroupBy": "groupBy는 'category' 또는 'payee'여야 합니다",
     "limitMustBePositive": "limit은 양수여야 합니다",
     "recurringPayeeRequired": "payeeIds는 필수입니다",
@@ -453,6 +459,11 @@
     "statementBalanceMustBeNumber": "statementBalance는 숫자여야 합니다",
     "categoryNotFound": "카테고리를 찾을 수 없습니다",
     "categoriesNotFound": "카테고리를 찾을 수 없습니다: {{ ids }}",
+    "crossOwnerTransferLocked": "이 이체의 상대편이 더 이상 접근할 수 없는 계좌에 있습니다. 이 거래의 세부 정보는 편집할 수 있지만 금액, 날짜, 계좌는 잠겨 있습니다.",
+    "crossOwnerAccountMoveLocked": "이 이체에는 다른 사용자의 계좌가 포함되어 있으므로 다른 계좌로 이동할 수 없습니다.",
+    "cannotEditTransfer": "이체는 여기서 편집할 수 없습니다. 거래 화면에서 이체를 편집하세요.",
+    "cannotEditSplit": "분할 거래는 여기서 편집할 수 없습니다. 거래 화면에서 분할을 편집하세요.",
+    "noUpdateFields": "변경할 항목을 하나 이상 입력하세요.",
     "investmentSplitRequiresPayload": "투자 분할에는 투자 페이로드가 필요합니다",
     "investmentActionNotAllowedInSplit": "투자 작업 {{ action }}은(는) 분할 거래 내에서 허용되지 않습니다",
     "investmentSplitCannotSetCategoryOrTransfer": "투자 분할에는 categoryId 또는 transferAccountId를 함께 설정할 수 없습니다",
@@ -470,21 +481,13 @@
     "bulkReconcileNotFound": "일부 거래를 찾을 수 없거나 지정된 계정에 속하지 않습니다",
     "cannotReconcileVoidPlural": "무효 거래는 조정할 수 없습니다",
     "transferSameAccount": "출금 계정과 입금 계정은 서로 달라야 합니다",
+    "transferChangedConcurrently": "다른 요청이 이 이체를 변경했습니다. 다시 불러온 후 시도하세요.",
     "transferAmountNegative": "이체 금액은 음수일 수 없습니다",
     "notATransfer": "거래가 이체가 아닙니다",
     "splitTransferLegAccountLocked": "이 이체는 분할 거래의 일부입니다. 계좌를 변경하려면 원본 거래의 분할을 편집하세요.",
     "notFoundById": "ID가 {{ id }}인 거래를 찾을 수 없습니다",
     "bulkUpdateNoFields": "하나 이상의 업데이트 필드를 제공해야 합니다",
     "payeeNotFound": "수취인을 찾을 수 없습니다",
-    "crossOwnerTransferLocked": "이 이체의 상대편이 더 이상 접근할 수 없는 계좌에 있습니다. 이 거래의 세부 정보는 편집할 수 있지만 금액, 날짜, 계좌는 잠겨 있습니다.",
-    "crossOwnerAccountMoveLocked": "이 이체에는 다른 사용자의 계좌가 포함되어 있으므로 다른 계좌로 이동할 수 없습니다.",
-    "cannotEditTransfer": "이체는 여기서 편집할 수 없습니다. 거래 화면에서 이체를 편집하세요.",
-    "cannotEditSplit": "분할 거래는 여기서 편집할 수 없습니다. 거래 화면에서 분할을 편집하세요.",
-    "noUpdateFields": "변경할 항목을 하나 이상 입력하세요.",
-    "tagKeyTooLong": "tagKey는 100자를 초과할 수 없습니다",
-    "invalidTagKeyOp": "잘못된 tagKeyOp: {{ op }}",
-    "tagKeyValueRequired": "contains / notContains에는 tagKeyValue가 필요합니다",
-    "tagKeyRequired": "태그 키(1~100자)가 필요합니다",
     "fxFieldsIncomplete": "originalAmount와 originalCurrencyCode는 함께 제공해야 합니다",
     "fxRateRequired": "외화 거래에는 양수 환율이 필요합니다",
     "fxSignMismatch": "originalAmount와 amount의 부호가 같아야 합니다",
@@ -537,5 +540,8 @@
     "signalNotFound": "전략 신호를 찾을 수 없습니다",
     "signalStrategyMismatch": "해당 시그널은 다른 전략에 속합니다.",
     "strategyNotFound": "전략을 찾을 수 없습니다"
+  },
+  "maintenance": {
+    "inProgress": "다른 작업이 이 계정의 데이터를 교체하고 있습니다. 완료될 때까지 기다린 후 다시 시도하세요."
   }
 }

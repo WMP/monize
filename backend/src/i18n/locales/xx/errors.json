@@ -282,6 +282,7 @@
   "emergencyAccess": {
     "smtpNotConfigured": "[XX-Email is not configured. Emergency access cannot be enabled until SMTP is set up.-XX]",
     "encryptionNotConfigured": "[XX-Encryption key is not configured. The free-form message cannot be stored securely until AI_ENCRYPTION_KEY is set.-XX]",
+    "encryptionRequiredToEnable": "[XX-Credential encryption is not configured. Emergency access cannot be enabled until AI_ENCRYPTION_KEY is set, because a grant has to store each contact's access link securely.-XX]",
     "contactEmailExists": "[XX-An emergency contact with this email already exists.-XX]",
     "contactNotFound": "[XX-Contact not found-XX]",
     "notConfigured": "[XX-Emergency access not configured-XX]",
@@ -365,6 +366,7 @@
     "sameSourceAndDestination": "[XX-Source and destination accounts must be different-XX]",
     "requiresBrokerageAccount": "[XX-Scheduled investment transactions require a brokerage account-XX]",
     "notFound": "[XX-Scheduled transaction with ID {{ id }} not found-XX]",
+    "occurrenceAlreadyPosted": "[XX-This occurrence has already been posted.-XX]",
     "fxPlainOnly": "[XX-A different currency can only be used on a plain scheduled transaction, not a split, transfer or investment-XX]",
     "fxRateUnavailable": "[XX-No exchange rate is available for {{ from }} to {{ to }} on {{ date }}. Enter the amount in {{ to }} to post it.-XX]",
     "investmentActionRequired": "[XX-Investment action is required for scheduled investment transactions-XX]",
@@ -487,6 +489,7 @@
     "bulkReconcileNotFound": "[XX-Some transactions were not found or do not belong to the specified account-XX]",
     "cannotReconcileVoidPlural": "[XX-Cannot reconcile void transactions-XX]",
     "transferSameAccount": "[XX-Source and destination accounts must be different-XX]",
+    "transferChangedConcurrently": "[XX-This transfer was changed by another request. Reload it and try again.-XX]",
     "transferAmountNegative": "[XX-Transfer amount must not be negative-XX]",
     "notATransfer": "[XX-Transaction is not a transfer-XX]",
     "splitTransferLegAccountLocked": "[XX-This transfer is part of a split transaction. Change its accounts by editing the split on the source transaction instead.-XX]",
@@ -537,5 +540,8 @@
     "signalNotFound": "[XX-Strategy signal not found-XX]",
     "signalStrategyMismatch": "[XX-That signal belongs to a different strategy.-XX]",
     "strategyNotFound": "[XX-Strategy not found-XX]"
+  },
+  "maintenance": {
+    "inProgress": "[XX-Another operation is currently replacing this account's data. Wait for it to finish and try again.-XX]"
   }
 }
