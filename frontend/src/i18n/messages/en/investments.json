@@ -38,6 +38,10 @@
     "title": "Portfolio Summary",
     "noData": "No investment data available.",
     "totalPortfolioValue": "Total Portfolio Value",
+    "knownPortfolioSubtotal": "Portfolio Value (partial)",
+    "incompleteHeading": "These figures are incomplete",
+    "incompletePrices": "No current price for {symbols}, so the holdings they represent are not included in any total below.",
+    "incompleteFx": "No exchange rate for {pairs}, so the holdings in those currencies are not included in any total below.",
     "values": "Values",
     "holdingsValue": "Holdings Value",
     "holdingsValueTooltip": "The current market value of all securities you hold, based on the latest available prices.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Asset Allocation",
     "noData": "No allocation data available.",
+    "knownValueOnly": "Percentages cover known value only; some holdings could not be valued.",
     "cash": "Cash",
     "untagged": "Untagged",
     "noTagData": "No tagged holdings to show. Add tags to your securities to see exposure by tag.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Holdings by Account",
     "noHoldings": "No holdings in your portfolio.",
+    "accountIncomplete": "Partial: this account's totals leave out holdings that could not be valued in {currency}.",
     "accountSummary": "{accounts} account{accountsPlural} with {positions} position{positionsPlural}",
     "positionsWithCash": "{count} position{plural} + Cash",
     "positions": "{count} position{plural}",

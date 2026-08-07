@@ -38,6 +38,10 @@
     "title": "Tóm tắt danh mục đầu tư",
     "noData": "Không có dữ liệu đầu tư.",
     "totalPortfolioValue": "Tổng giá trị danh mục",
+    "knownPortfolioSubtotal": "Giá trị danh mục (một phần)",
+    "incompleteHeading": "Các số liệu này chưa đầy đủ",
+    "incompletePrices": "Không có giá hiện tại cho {symbols}, nên các khoản nắm giữ đó không được tính vào bất kỳ tổng nào bên dưới.",
+    "incompleteFx": "Không có tỷ giá cho {pairs}, nên các khoản nắm giữ bằng những tiền tệ đó không được tính vào bất kỳ tổng nào bên dưới.",
     "values": "Giá trị",
     "holdingsValue": "Giá trị nắm giữ",
     "holdingsValueTooltip": "Giá trị thị trường hiện tại của tất cả chứng khoán bạn đang nắm giữ, dựa trên giá mới nhất.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Phân bổ tài sản",
     "noData": "Không có dữ liệu phân bổ.",
+    "knownValueOnly": "Tỷ lệ phần trăm chỉ tính trên giá trị đã biết; một số khoản nắm giữ không thể định giá.",
     "cash": "Tiền mặt",
     "untagged": "Chưa gắn thẻ",
     "noTagData": "Không có khoản nắm giữ nào được gắn thẻ. Thêm thẻ cho chứng khoán của bạn để xem mức độ tiếp xúc theo thẻ.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Nắm giữ theo tài khoản",
     "noHoldings": "Không có khoản nắm giữ trong danh mục của bạn.",
+    "accountIncomplete": "Một phần: tổng của tài khoản này bỏ qua các khoản nắm giữ không thể định giá bằng {currency}.",
     "accountSummary": "{accounts} tài khoản{accountsPlural} với {positions} vị thế{positionsPlural}",
     "positionsWithCash": "{count} vị thế{plural} + Tiền mặt",
     "positions": "{count} vị thế{plural}",

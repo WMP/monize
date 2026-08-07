@@ -38,6 +38,10 @@
     "title": "Resumen de Cartera",
     "noData": "No hay datos de inversión disponibles.",
     "totalPortfolioValue": "Valor Total de la Cartera",
+    "knownPortfolioSubtotal": "Valor de la cartera (parcial)",
+    "incompleteHeading": "Estas cifras están incompletas",
+    "incompletePrices": "No hay precio actual para {symbols}, por lo que esas posiciones no se incluyen en ningún total de abajo.",
+    "incompleteFx": "No hay tipo de cambio para {pairs}, por lo que las posiciones en esas monedas no se incluyen en ningún total de abajo.",
     "values": "Valores",
     "holdingsValue": "Valor de Posiciones",
     "holdingsValueTooltip": "El valor de mercado actual de todos los valores que posees, basado en los precios más recientes disponibles.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Asignación de Activos",
     "noData": "No hay datos de asignación disponibles.",
+    "knownValueOnly": "Los porcentajes cubren solo el valor conocido; algunas posiciones no se pudieron valorar.",
     "cash": "Efectivo",
     "untagged": "Sin etiquetas",
     "noTagData": "No hay posiciones etiquetadas para mostrar. Añade etiquetas a tus valores para ver la exposición por etiqueta.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Posiciones por Cuenta",
     "noHoldings": "No hay posiciones en tu cartera.",
+    "accountIncomplete": "Parcial: los totales de esta cuenta omiten posiciones que no se pudieron valorar en {currency}.",
     "accountSummary": "{accounts} cuenta{accountsPlural} con {positions} posición{positionsPlural}",
     "positionsWithCash": "{count} posición{plural} + Efectivo",
     "positions": "{count} posición{plural}",

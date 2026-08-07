@@ -165,6 +165,16 @@ export function GroupedHoldingsList({
                         ? t('groupedHoldings.positionsWithCash', { count: account.holdings.length, plural: account.holdings.length !== 1 ? 's' : '' })
                         : t('groupedHoldings.positions', { count: account.holdings.length, plural: account.holdings.length !== 1 ? 's' : '' })}
                     </div>
+                    {/* This account's totals are in its OWN currency, a different
+                        conversion from the portfolio's, so the global state cannot
+                        speak for them (recheck RR4-002 / RR3-005). */}
+                    {account.valuationComplete === false && (
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('groupedHoldings.accountIncomplete', {
+                          currency: account.currencyCode,
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -370,8 +380,9 @@ const HoldingRow = memo(function HoldingRow({
     holding.marketValue !== null
       ? convert(holding.marketValue, holding.currencyCode, accountCurrency)
       : null;
+  // Unknown basis makes the gain unknown, not equal to the market value.
   const gainLossAcct =
-    marketValueAcct !== null
+    marketValueAcct !== null && holding.costBasisAccountCurrency !== null
       ? marketValueAcct - holding.costBasisAccountCurrency
       : null;
 

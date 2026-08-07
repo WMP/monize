@@ -820,6 +820,7 @@
       "maxCompare": "Sie können bis zu {max} Szenarien vergleichen.",
       "loadFailed": "Monte-Carlo-Daten konnten nicht geladen werden. Bitte aktualisieren Sie die Seite.",
       "currentValueFailed": "Der aktuelle Portfoliowert konnte nicht abgerufen werden.",
+      "currentValueUnavailable": "Der aktuelle Wert der ausgewählten Konten konnte nicht ermittelt werden. Geben Sie einen Startwert ein oder versuchen Sie es erneut, sobald Kurse und Wechselkurse verfügbar sind.",
       "holdingStatsFailed": "Historische Statistiken je Position konnten nicht geladen werden.",
       "reorderFailed": "Szenarien konnten nicht neu angeordnet werden."
     },

@@ -820,6 +820,7 @@
       "maxCompare": "Anda dapat membandingkan hingga {max} skenario.",
       "loadFailed": "Gagal memuat data Monte Carlo. Silakan segarkan.",
       "currentValueFailed": "Gagal mengambil nilai portofolio saat ini.",
+      "currentValueUnavailable": "Nilai saat ini dari akun yang dipilih tidak dapat ditentukan. Masukkan nilai awal, atau coba lagi setelah harga dan nilai tukar tersedia.",
       "holdingStatsFailed": "Gagal memuat statistik historis per kepemilikan.",
       "reorderFailed": "Tidak dapat mengurutkan ulang skenario."
     },

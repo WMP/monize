@@ -820,6 +820,7 @@
       "maxCompare": "最多可对比 {max} 个情景。",
       "loadFailed": "加载蒙特卡洛数据失败。请刷新。",
       "currentValueFailed": "获取当前投资组合价值失败。",
+      "currentValueUnavailable": "无法确定所选账户的当前价值。请输入起始金额，或在价格与汇率可用后重试。",
       "holdingStatsFailed": "加载各持仓历史统计数据失败。",
       "reorderFailed": "无法重新排序情景。"
     },

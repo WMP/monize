@@ -38,6 +38,10 @@
     "title": "Ringkasan Portofolio",
     "noData": "Tidak ada data investasi tersedia.",
     "totalPortfolioValue": "Total Nilai Portofolio",
+    "knownPortfolioSubtotal": "Nilai Portofolio (sebagian)",
+    "incompleteHeading": "Angka-angka ini belum lengkap",
+    "incompletePrices": "Tidak ada harga terkini untuk {symbols}, sehingga kepemilikan tersebut tidak termasuk dalam total mana pun di bawah.",
+    "incompleteFx": "Tidak ada nilai tukar untuk {pairs}, sehingga kepemilikan dalam mata uang tersebut tidak termasuk dalam total mana pun di bawah.",
     "values": "Nilai",
     "holdingsValue": "Nilai Kepemilikan",
     "holdingsValueTooltip": "Nilai pasar saat ini dari semua sekuritas yang Anda miliki, berdasarkan harga terbaru yang tersedia.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Alokasi Aset",
     "noData": "Tidak ada data alokasi tersedia.",
+    "knownValueOnly": "Persentase hanya mencakup nilai yang diketahui; beberapa kepemilikan tidak dapat dinilai.",
     "cash": "Tunai",
     "untagged": "Tanpa tag",
     "noTagData": "Tidak ada kepemilikan bertag untuk ditampilkan. Tambahkan tag ke sekuritas Anda untuk melihat eksposur berdasarkan tag.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Kepemilikan berdasarkan Akun",
     "noHoldings": "Tidak ada kepemilikan dalam portofolio Anda.",
+    "accountIncomplete": "Sebagian: total akun ini tidak mencakup kepemilikan yang tidak dapat dinilai dalam {currency}.",
     "accountSummary": "{accounts} akun{accountsPlural} dengan {positions} posisi{positionsPlural}",
     "positionsWithCash": "{count} posisi{plural} + Tunai",
     "positions": "{count} posisi{plural}",

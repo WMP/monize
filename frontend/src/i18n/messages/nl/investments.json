@@ -38,6 +38,10 @@
     "title": "Portefeuillesamenvatting",
     "noData": "Geen beleggingsgegevens beschikbaar.",
     "totalPortfolioValue": "Totale portefeuillewaarde",
+    "knownPortfolioSubtotal": "Portefeuillewaarde (gedeeltelijk)",
+    "incompleteHeading": "Deze cijfers zijn onvolledig",
+    "incompletePrices": "Geen actuele koers voor {symbols}, dus die posities zijn in geen enkel totaal hieronder meegenomen.",
+    "incompleteFx": "Geen wisselkoers voor {pairs}, dus de posities in die valuta's zijn in geen enkel totaal hieronder meegenomen.",
     "values": "Waarden",
     "holdingsValue": "Waarde posities",
     "holdingsValueTooltip": "De huidige marktwaarde van alle waardepapieren die je aanhoudt, op basis van de meest recente beschikbare koersen.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Activaspreiding",
     "noData": "Geen spreidingsgegevens beschikbaar.",
+    "knownValueOnly": "Percentages dekken alleen de bekende waarde; sommige posities konden niet worden gewaardeerd.",
     "cash": "Kas",
     "untagged": "Zonder labels",
     "noTagData": "Geen gelabelde posities om te tonen. Voeg labels toe aan je effecten om de verdeling per label te zien.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Posities per rekening",
     "noHoldings": "Geen posities in jouw portefeuille.",
+    "accountIncomplete": "Gedeeltelijk: de totalen van deze rekening laten posities weg die niet in {currency} gewaardeerd konden worden.",
     "accountSummary": "{accounts} rekening{accountsPlural} met {positions} positie{positionsPlural}",
     "positionsWithCash": "{count} positie{plural} + kas",
     "positions": "{count} positie{plural}",

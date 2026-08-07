@@ -820,6 +820,7 @@
       "maxCompare": "Je kunt maximaal {max} scenario's vergelijken.",
       "loadFailed": "Monte Carlo-gegevens konden niet worden geladen. Vernieuw de pagina.",
       "currentValueFailed": "De huidige portefeuillewaarde kon niet worden opgehaald.",
+      "currentValueUnavailable": "De huidige waarde van de geselecteerde rekeningen kon niet worden bepaald. Voer een startwaarde in, of probeer het opnieuw zodra koersen en wisselkoersen beschikbaar zijn.",
       "holdingStatsFailed": "Historische statistieken per positie konden niet worden geladen.",
       "reorderFailed": "Scenario's konden niet opnieuw worden geordend."
     },

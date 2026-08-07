@@ -161,6 +161,13 @@ interface AssetAllocationChartProps {
    * tagged holdings.
    */
   enableTagGrouping?: boolean;
+  /**
+   * False when the portfolio valuation is incomplete (a missing price or FX
+   * rate). The percentages here are then shares of the known subtotal, not of the
+   * whole portfolio, so the chart says so rather than presenting them as
+   * definitive (recheck RR5-005). Absent reads as complete.
+   */
+  valuationComplete?: boolean;
 }
 
 export function AssetAllocationChart({
@@ -171,6 +178,7 @@ export function AssetAllocationChart({
   titleSuffix,
   accountIds,
   enableTagGrouping = true,
+  valuationComplete,
 }: AssetAllocationChartProps) {
   const t = useTranslations('investments');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
@@ -535,9 +543,17 @@ export function AssetAllocationChart({
     );
   }
 
+  const knownValueOnly =
+    valuationComplete === false && groupBy === 'security';
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
       {heading}
+      {knownValueOnly && (
+        <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+          {t('assetAllocation.knownValueOnly')}
+        </p>
+      )}
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <PieChart>

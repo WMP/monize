@@ -38,6 +38,10 @@
     "title": "Podsumowanie portfela",
     "noData": "Brak danych inwestycyjnych.",
     "totalPortfolioValue": "Całkowita wartość portfela",
+    "knownPortfolioSubtotal": "Wartość portfela (częściowa)",
+    "incompleteHeading": "Te kwoty są niekompletne",
+    "incompletePrices": "Brak aktualnej ceny dla {symbols}, więc te pozycje nie są ujęte w żadnej sumie poniżej.",
+    "incompleteFx": "Brak kursu wymiany dla {pairs}, więc pozycje w tych walutach nie są ujęte w żadnej sumie poniżej.",
     "values": "Wartości",
     "holdingsValue": "Wartość pozycji",
     "holdingsValueTooltip": "Aktualna wartość rynkowa wszystkich posiadanych papierów wartościowych, na podstawie najnowszych dostępnych cen.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Alokacja aktywów",
     "noData": "Brak danych o alokacji.",
+    "knownValueOnly": "Wartości procentowe obejmują tylko znaną wartość; niektórych pozycji nie udało się wycenić.",
     "cash": "Gotówka",
     "untagged": "Bez tagów",
     "noTagData": "Brak otagowanych pozycji do pokazania. Dodaj tagi do swoich papierów, aby zobaczyć ekspozycję wg tagów.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Pozycje wg konta",
     "noHoldings": "Brak pozycji w Twoim portfelu.",
+    "accountIncomplete": "Częściowo: sumy tego konta pomijają pozycje, których nie dało się wycenić w {currency}.",
     "accountSummary": "{accounts} {accounts, plural, one {konto} few {konta} many {kont} other {konta}} z {positions} {positions, plural, one {pozycją} few {pozycjami} many {pozycjami} other {pozycji}}",
     "positionsWithCash": "{count} {count, plural, one {pozycja} few {pozycje} many {pozycji} other {pozycji}} + gotówka",
     "positions": "{count} {count, plural, one {pozycja} few {pozycje} many {pozycji} other {pozycji}}",

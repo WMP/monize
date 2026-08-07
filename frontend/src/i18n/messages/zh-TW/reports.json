@@ -820,6 +820,7 @@
       "maxCompare": "最多可比較 {max} 個情境。",
       "loadFailed": "載入蒙地卡羅資料失敗。請重新整理。",
       "currentValueFailed": "取得目前投資組合價值失敗。",
+      "currentValueUnavailable": "無法確定所選帳戶的目前價值。請輸入起始金額，或在價格與匯率可用後重試。",
       "holdingStatsFailed": "載入個別持倉歷史統計資料失敗。",
       "reorderFailed": "無法重新排序情境。"
     },

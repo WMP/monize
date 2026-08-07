@@ -38,6 +38,10 @@
     "title": "Portfolio-Übersicht",
     "noData": "Keine Investitionsdaten verfügbar.",
     "totalPortfolioValue": "Gesamter Portfoliowert",
+    "knownPortfolioSubtotal": "Portfoliowert (unvollständig)",
+    "incompleteHeading": "Diese Zahlen sind unvollständig",
+    "incompletePrices": "Kein aktueller Kurs für {symbols}, daher sind die betreffenden Positionen in keiner Summe unten enthalten.",
+    "incompleteFx": "Kein Wechselkurs für {pairs}, daher sind die Positionen in diesen Währungen in keiner Summe unten enthalten.",
     "values": "Werte",
     "holdingsValue": "Depotwert",
     "holdingsValueTooltip": "Der aktuelle Marktwert aller gehaltenen Wertpapiere basierend auf den zuletzt verfügbaren Kursen.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Vermögensaufteilung",
     "noData": "Keine Aufteilungsdaten verfügbar.",
+    "knownValueOnly": "Prozentsätze umfassen nur den bekannten Wert; einige Positionen konnten nicht bewertet werden.",
     "cash": "Barmittel",
     "untagged": "Ohne Tags",
     "noTagData": "Keine getaggten Positionen vorhanden. Vergib Tags an deine Wertpapiere, um die Aufteilung nach Tags zu sehen.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Depotbestand nach Konto",
     "noHoldings": "Keine Positionen in Ihrem Portfolio.",
+    "accountIncomplete": "Unvollständig: Die Summen dieses Kontos lassen Positionen aus, die nicht in {currency} bewertet werden konnten.",
     "accountSummary": "{accounts} Konto{accountsPlural} mit {positions} Position{positionsPlural}",
     "positionsWithCash": "{count} Position{plural} + Barmittel",
     "positions": "{count} Position{plural}",

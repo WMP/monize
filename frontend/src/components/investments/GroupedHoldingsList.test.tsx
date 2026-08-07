@@ -337,3 +337,112 @@ describe('GroupedHoldingsList', () => {
     expect(screen.queryByText(/\u2248/)).not.toBeInTheDocument();
   });
 });
+  it("marks an account whose own totals are incomplete (recheck RR4-002)", () => {
+    // The account totals are in the ACCOUNT's currency, a different conversion
+    // from the portfolio's, so the global flag cannot speak for them: this list
+    // rendered a known subtotal as the account's value and gain.
+    const accounts = [
+      {
+        accountId: 'a1',
+        accountName: 'Tokyo Brokerage',
+        currencyCode: 'JPY',
+        cashAccountId: null,
+        cashBalance: 0,
+        // The account must hold something, or the list renders its empty state
+        // and there is no account row to inspect.
+        holdings: [
+          {
+            id: 'h1',
+            securityId: 'sec-1',
+            symbol: 'EUSTX',
+            name: 'Euro Stoxx',
+            securityType: 'ETF',
+            currencyCode: 'EUR',
+            quantity: 10,
+            averageCost: 50,
+            costBasis: 500,
+            costBasisAccountCurrency: null,
+            currentPrice: 60,
+            marketValue: 600,
+            gainLoss: 100,
+            gainLossPercent: 20,
+          },
+        ],
+        totalCostBasis: 0,
+        totalMarketValue: 0,
+        totalGainLoss: 0,
+        totalGainLossPercent: 0,
+        netInvested: 0,
+        fxComplete: false,
+        missingRatePairs: ['EUR->JPY'],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: false,
+      },
+    ];
+
+    render(
+      <GroupedHoldingsList
+        holdingsByAccount={accounts as never}
+        isLoading={false}
+        totalPortfolioValue={600}
+      />,
+    );
+
+    // Names the account's own currency, because that is the conversion that failed
+    // -- not the portfolio's reporting currency.
+    expect(
+      screen.getByText(/Partial: this account's totals leave out .* in JPY\./),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing for an account whose own totals are complete", () => {
+    const accounts = [
+      {
+        accountId: 'a1',
+        accountName: 'Tokyo Brokerage',
+        currencyCode: 'JPY',
+        cashAccountId: null,
+        cashBalance: 0,
+        holdings: [
+          {
+            id: 'h1',
+            securityId: 'sec-1',
+            symbol: 'EUSTX',
+            name: 'Euro Stoxx',
+            securityType: 'ETF',
+            currencyCode: 'JPY',
+            quantity: 10,
+            averageCost: 50,
+            costBasis: 500,
+            costBasisAccountCurrency: 500,
+            currentPrice: 60,
+            marketValue: 600,
+            gainLoss: 100,
+            gainLossPercent: 20,
+          },
+        ],
+        totalCostBasis: 500,
+        totalMarketValue: 600,
+        totalGainLoss: 100,
+        totalGainLossPercent: 20,
+        netInvested: 500,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        valuationComplete: true,
+      },
+    ];
+
+    render(
+      <GroupedHoldingsList
+        holdingsByAccount={accounts as never}
+        isLoading={false}
+        totalPortfolioValue={600}
+      />,
+    );
+
+    expect(screen.queryByText(/Partial:/)).not.toBeInTheDocument();
+  });
+

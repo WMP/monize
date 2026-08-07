@@ -820,6 +820,7 @@
       "maxCompare": "Puedes comparar hasta {max} escenarios.",
       "loadFailed": "No se pudieron cargar los datos de Monte Carlo. Por favor, actualiza la página.",
       "currentValueFailed": "No se pudo obtener el valor actual de la cartera.",
+      "currentValueUnavailable": "No se pudo determinar el valor actual de las cuentas seleccionadas. Introduzca un valor inicial o vuelva a intentarlo cuando haya precios y tipos de cambio disponibles.",
       "holdingStatsFailed": "No se pudieron cargar las estadísticas históricas por posición.",
       "reorderFailed": "No se pudieron reordenar los escenarios."
     },

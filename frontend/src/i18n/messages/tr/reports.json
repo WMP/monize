@@ -820,6 +820,7 @@
       "maxCompare": "En fazla {max} senaryo karşılaştırabilirsiniz.",
       "loadFailed": "Monte Carlo verileri yüklenemedi. Lütfen yenileyin.",
       "currentValueFailed": "Mevcut portföy değeri alınamadı.",
+      "currentValueUnavailable": "Seçilen hesapların güncel değeri belirlenemedi. Bir başlangıç değeri girin veya fiyatlar ve döviz kurları hazır olduğunda yeniden deneyin.",
       "holdingStatsFailed": "Varlık bazında geçmiş istatistikler yüklenemedi.",
       "reorderFailed": "Senaryolar yeniden sıralanamadı."
     },

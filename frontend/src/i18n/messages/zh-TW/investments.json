@@ -38,6 +38,10 @@
     "title": "投資組合摘要",
     "noData": "無可用的投資資料。",
     "totalPortfolioValue": "投資組合總值",
+    "knownPortfolioSubtotal": "投資組合價值（部分）",
+    "incompleteHeading": "這些數字並不完整",
+    "incompletePrices": "缺少 {symbols} 的目前價格，因此相關持倉未計入下方任何合計。",
+    "incompleteFx": "缺少 {pairs} 的匯率，因此這些貨幣的持倉未計入下方任何合計。",
     "values": "價值",
     "holdingsValue": "持倉價值",
     "holdingsValueTooltip": "您所持有的所有證券的目前市值，依最新可用價格計算。",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "資產配置",
     "noData": "無可用的配置資料。",
+    "knownValueOnly": "百分比僅涵蓋可估值部分；部分持倉無法估值。",
     "cash": "現金",
     "untagged": "無標籤",
     "noTagData": "沒有可顯示的帶標籤持倉。為你的證券新增標籤即可按標籤查看曝險。",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "依科目分組持倉",
     "noHoldings": "您的投資組合中無持倉。",
+    "accountIncomplete": "部分：此帳戶的合計不包含無法以 {currency} 計價的持倉。",
     "accountSummary": "{accounts} 個科目，共 {positions} 個部位",
     "positionsWithCash": "{count} 個部位 + 現金",
     "positions": "{count} 個部位",

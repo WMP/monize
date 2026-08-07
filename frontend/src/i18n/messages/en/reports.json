@@ -817,6 +817,7 @@
       "maxCompare": "You can compare up to {max} scenarios.",
       "loadFailed": "Failed to load Monte Carlo data. Please refresh.",
       "currentValueFailed": "Failed to fetch the current portfolio value.",
+      "currentValueUnavailable": "The current value of the selected accounts could not be determined. Enter a starting value, or try again once prices and exchange rates are available.",
       "holdingStatsFailed": "Failed to load per-holding historical stats.",
       "reorderFailed": "Could not reorder scenarios."
     },

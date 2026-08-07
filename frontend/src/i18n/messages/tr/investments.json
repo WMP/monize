@@ -38,6 +38,10 @@
     "title": "Portföy Özeti",
     "noData": "Yatırım verisi mevcut değil.",
     "totalPortfolioValue": "Toplam Portföy Değeri",
+    "knownPortfolioSubtotal": "Portföy Değeri (kısmi)",
+    "incompleteHeading": "Bu tutarlar eksik",
+    "incompletePrices": "{symbols} için güncel fiyat yok, bu nedenle ilgili pozisyonlar aşağıdaki hiçbir toplama dahil edilmedi.",
+    "incompleteFx": "{pairs} için döviz kuru yok, bu nedenle o para birimlerindeki pozisyonlar aşağıdaki hiçbir toplama dahil edilmedi.",
     "values": "Değerler",
     "holdingsValue": "Pozisyon Değeri",
     "holdingsValueTooltip": "En son mevcut fiyatlara göre sahip olduğunuz tüm menkul kıymetlerin mevcut piyasa değeri.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Varlık Dağılımı",
     "noData": "Dağılım verisi mevcut değil.",
+    "knownValueOnly": "Yüzdeler yalnızca bilinen değeri kapsar; bazı pozisyonlar değerlenemedi.",
     "cash": "Nakit",
     "untagged": "Etiketsiz",
     "noTagData": "Gösterilecek etiketli pozisyon yok. Etikete göre dağılımı görmek için menkul kıymetlerinize etiket ekleyin.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Hesaba Göre Pozisyonlar",
     "noHoldings": "Portföyünüzde pozisyon yok.",
+    "accountIncomplete": "Kısmi: bu hesabın toplamları, {currency} cinsinden değerlenemeyen pozisyonları içermiyor.",
     "accountSummary": "{positions} pozisyonlu {accounts} hesap",
     "positionsWithCash": "{count} pozisyon + Nakit",
     "positions": "{count} pozisyon",

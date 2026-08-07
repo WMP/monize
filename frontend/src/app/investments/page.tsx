@@ -232,6 +232,7 @@ function InvestmentsContent() {
               holdingsByAccount={data.portfolioSummary?.holdingsByAccount}
               titleSuffix={accountFilterLabel}
               accountIds={data.selectedAccountIds}
+              valuationComplete={data.portfolioSummary?.valuationComplete}
             />
           </div>
 

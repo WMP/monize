@@ -38,6 +38,10 @@
     "title": "포트폴리오 요약",
     "noData": "사용 가능한 투자 데이터가 없습니다.",
     "totalPortfolioValue": "총 포트폴리오 가치",
+    "knownPortfolioSubtotal": "포트폴리오 가치(일부)",
+    "incompleteHeading": "이 수치는 불완전합니다",
+    "incompletePrices": "{symbols}의 현재 가격이 없어 해당 보유 종목은 아래 어떤 합계에도 포함되지 않았습니다.",
+    "incompleteFx": "{pairs}의 환율이 없어 해당 통화의 보유 종목은 아래 어떤 합계에도 포함되지 않았습니다.",
     "values": "가치",
     "holdingsValue": "보유 가치",
     "holdingsValueTooltip": "최신 가격을 기준으로 현재 보유 중인 모든 유가증권의 현재 시장 가치입니다.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "자산 배분",
     "noData": "사용 가능한 배분 데이터가 없습니다.",
+    "knownValueOnly": "백분율은 평가된 금액만을 기준으로 합니다. 일부 보유 종목은 평가할 수 없었습니다.",
     "cash": "현금",
     "untagged": "태그 없음",
     "noTagData": "표시할 태그가 지정된 보유 종목이 없습니다. 태그별 노출을 보려면 증권에 태그를 추가하세요.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "계정별 보유 자산",
     "noHoldings": "포트폴리오에 보유 자산이 없습니다.",
+    "accountIncomplete": "일부: 이 계좌의 합계에는 {currency}로 평가할 수 없었던 보유 종목이 빠져 있습니다.",
     "accountSummary": "{positions}개 포지션{positionsPlural}을 보유한 {accounts}개 계정{accountsPlural}",
     "positionsWithCash": "{count}개 포지션{plural} + 현금",
     "positions": "{count}개 포지션{plural}",

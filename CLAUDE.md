@@ -342,6 +342,28 @@ touches that account. A helper that moves an account nobody upstream knows about
 Dispatch the recalculation after the commit, never from inside the transaction: a
 rollback must not leave a recompute queued for state that was never written.
 
+### A completeness flag nobody displays is not a completeness signal
+
+The backend, the AI adapter and the MCP schema all carried `valuationComplete`
+faithfully while `frontend/src/types/investment.ts` omitted the field entirely, so
+the Investments page rendered the subtotal under "Total Portfolio Value" -- the one
+surface a household user actually reads. Adding metadata to a response is half the
+change; the other half is the consumer that has to branch on it. When you add a
+completeness field, grep the frontend types for the interface it belongs to in the
+same commit, and relabel the figure rather than leaving a total's caption over a
+partial number.
+
+Read such a field defensively at the consumer (`=== false`, not `!`): during a
+rolling deploy a page can receive a response from a backend that predates the field,
+and absent means "no information" -- not "incomplete", and certainly not a crash.
+
+And read the flag from the *same aggregate that produced the numbers on screen*. The
+single foreign-account summary card showed account-currency subtotals while checking
+the top-level default-currency flag -- two different conversion graphs -- so an account
+that could not be valued in its own currency rendered zero under a complete-looking
+total. When a view switches which aggregate it displays, it switches which completeness
+it trusts.
+
 ### A weighting is in one currency or it is meaningless
 
 Summing `quantity * nativePrice` across USD, JPY and EUR holdings weights them by

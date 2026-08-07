@@ -92,6 +92,37 @@ describe('AssetAllocationChart', () => {
     expect(screen.getByText('MSFT')).toBeInTheDocument();
   });
 
+  it('marks percentages as known-value-only when valuation is incomplete (RR5-005)', async () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: 'VTI', name: 'Vanguard Total', type: 'security' as const, value: 10000, percentage: 100, color: '#22c55e', currencyCode: 'CAD' },
+      ],
+    };
+
+    await renderChart({ allocation, isLoading: false, valuationComplete: false });
+
+    // The user is told the 100% is a share of what could be valued, not the whole.
+    expect(
+      screen.getByText(/Percentages cover known value only/),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing when the valuation is complete', async () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: 'VTI', name: 'Vanguard Total', type: 'security' as const, value: 10000, percentage: 100, color: '#22c55e', currencyCode: 'CAD' },
+      ],
+    };
+
+    await renderChart({ allocation, isLoading: false, valuationComplete: true });
+
+    expect(
+      screen.queryByText(/Percentages cover known value only/),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows percentages in legend', async () => {
     const allocation = {
       totalValue: 10000,

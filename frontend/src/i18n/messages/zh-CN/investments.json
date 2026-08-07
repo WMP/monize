@@ -38,6 +38,10 @@
     "title": "投资组合摘要",
     "noData": "暂无投资数据。",
     "totalPortfolioValue": "投资组合总价值",
+    "knownPortfolioSubtotal": "投资组合价值（部分）",
+    "incompleteHeading": "这些数字并不完整",
+    "incompletePrices": "缺少 {symbols} 的当前价格，因此相关持仓未计入下方任何合计。",
+    "incompleteFx": "缺少 {pairs} 的汇率，因此这些货币的持仓未计入下方任何合计。",
     "values": "价值",
     "holdingsValue": "持仓价值",
     "holdingsValueTooltip": "根据最新可用价格计算的所有持有证券的当前市值。",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "资产配置",
     "noData": "暂无配置数据。",
+    "knownValueOnly": "百分比仅涵盖可估值部分；部分持仓无法估值。",
     "cash": "现金",
     "untagged": "无标签",
     "noTagData": "没有可显示的带标签持仓。为你的证券添加标签即可按标签查看敞口。",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "按账户划分的持仓",
     "noHoldings": "您的投资组合无持仓。",
+    "accountIncomplete": "部分：此账户的合计不包含无法以 {currency} 计价的持仓。",
     "accountSummary": "{accounts} 个账户{accountsPlural}，{positions} 个持仓{positionsPlural}",
     "positionsWithCash": "{count} 个持仓{plural} + 现金",
     "positions": "{count} 个持仓{plural}",

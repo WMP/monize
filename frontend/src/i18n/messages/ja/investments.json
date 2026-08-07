@@ -38,6 +38,10 @@
     "title": "ポートフォリオサマリー",
     "noData": "投資データがありません。",
     "totalPortfolioValue": "ポートフォリオ総額",
+    "knownPortfolioSubtotal": "ポートフォリオ評価額（一部）",
+    "incompleteHeading": "これらの数値は不完全です",
+    "incompletePrices": "{symbols} の現在価格が取得できないため、該当する保有分は以下のどの合計にも含まれていません。",
+    "incompleteFx": "{pairs} の為替レートが取得できないため、それらの通貨の保有分は以下のどの合計にも含まれていません。",
     "values": "評価額",
     "holdingsValue": "保有評価額",
     "holdingsValueTooltip": "最新の価格に基づく保有有価証券の現在の市場価値。",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "資産配分",
     "noData": "配分データがありません。",
+    "knownValueOnly": "割合は評価できた分のみを対象としています。一部の保有分は評価できませんでした。",
     "cash": "現金",
     "untagged": "タグなし",
     "noTagData": "表示できるタグ付き保有銘柄がありません。タグ別のエクスポージャーを表示するには、銘柄にタグを追加してください。",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "口座別保有銘柄",
     "noHoldings": "ポートフォリオに保有銘柄がありません。",
+    "accountIncomplete": "一部のみ: この口座の合計には、{currency} で評価できなかった保有分が含まれていません。",
     "accountSummary": "{accounts} 口座に {positions} ポジション{positionsPlural}あり{accountsPlural}",
     "positionsWithCash": "{count} ポジション{plural} + 現金",
     "positions": "{count} ポジション{plural}",

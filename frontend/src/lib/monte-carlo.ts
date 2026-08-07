@@ -121,7 +121,29 @@ export interface HistoricalStats {
   yearsObserved: number;
   meanReturn: number | null;
   volatility: number | null;
-  currentBalance: number;
+  /**
+   * False when the mean/volatility could not be computed over the whole selected
+   * portfolio -- a held security had no current price, or its value could not be
+   * converted into one common currency for weighting. `meanReturn`/`volatility`
+   * are `null` then, and the backend simulation falls back to the manually
+   * entered return rather than weighting a subset (recheck RR5-003).
+   *
+   * Carried on the type so this contract is not silently dropped at the frontend
+   * boundary, which is the mistake RR4-002 was.
+   */
+  returnsComplete?: boolean;
+  missingRatePairs?: string[];
+  unpricedSecurityIds?: string[];
+  /**
+   * Aggregate current market value of the selected accounts, or `null` when the
+   * server could not determine it (a missing price or exchange rate, or a failed
+   * portfolio valuation).
+   *
+   * `null` and `0` are different answers: zero means the accounts hold nothing.
+   * Do not coerce this to 0 -- a simulation started from a fabricated empty
+   * portfolio produces a plausible, meaningless projection (audit P5-010).
+   */
+  currentBalance: number | null;
 }
 
 export interface HoldingStat {
@@ -129,7 +151,15 @@ export interface HoldingStat {
   name: string;
   currencyCode: string;
   quantity: number;
-  marketValue: number;
+  /**
+   * Current market value, or `null` when the security has no current price.
+   *
+   * `null` and `0` are different answers. This was typed `number` while the server
+   * sent `0` for a missing quote, so the table told the user an unpriced holding
+   * was worth nothing -- in the same report that refuses to project from an
+   * incomplete value (recheck RR4-004).
+   */
+  marketValue: number | null;
   yearsObserved: number;
   meanReturn: number | null;
   volatility: number | null;

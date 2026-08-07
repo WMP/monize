@@ -38,6 +38,10 @@
     "title": "Riepilogo portafoglio",
     "noData": "Nessun dato di investimento disponibile.",
     "totalPortfolioValue": "Valore totale portafoglio",
+    "knownPortfolioSubtotal": "Valore del portafoglio (parziale)",
+    "incompleteHeading": "Questi importi sono incompleti",
+    "incompletePrices": "Nessun prezzo corrente per {symbols}, quindi le posizioni relative non sono incluse in alcun totale qui sotto.",
+    "incompleteFx": "Nessun tasso di cambio per {pairs}, quindi le posizioni in quelle valute non sono incluse in alcun totale qui sotto.",
     "values": "Valori",
     "holdingsValue": "Valore delle posizioni",
     "holdingsValueTooltip": "Il valore di mercato corrente di tutti i titoli detenuti, in base agli ultimi prezzi disponibili.",
@@ -64,6 +68,7 @@
   "assetAllocation": {
     "title": "Allocazione attività",
     "noData": "Nessun dato di allocazione disponibile.",
+    "knownValueOnly": "Le percentuali coprono solo il valore noto; alcune posizioni non è stato possibile valorizzarle.",
     "cash": "Cassa",
     "untagged": "Senza etichette",
     "noTagData": "Nessuna posizione con etichetta da mostrare. Aggiungi etichette ai tuoi titoli per vedere l'esposizione per etichetta.",
@@ -93,6 +98,7 @@
   "groupedHoldings": {
     "title": "Posizioni per conto",
     "noHoldings": "Nessuna posizione nel portafoglio.",
+    "accountIncomplete": "Parziale: i totali di questo conto escludono posizioni che non è stato possibile valorizzare in {currency}.",
     "accountSummary": "{accounts} conto{accountsPlural} con {positions} posizion{positionsPlural}",
     "positionsWithCash": "{count} posizion{plural} + Liquidità",
     "positions": "{count} posizion{plural}",

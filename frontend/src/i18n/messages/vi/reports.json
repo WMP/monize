@@ -820,6 +820,7 @@
       "maxCompare": "Bạn có thể so sánh tối đa {max} kịch bản.",
       "loadFailed": "Không thể tải dữ liệu Monte Carlo. Vui lòng tải lại.",
       "currentValueFailed": "Không thể lấy giá trị danh mục hiện tại.",
+      "currentValueUnavailable": "Không thể xác định giá trị hiện tại của các tài khoản đã chọn. Hãy nhập giá trị khởi điểm, hoặc thử lại khi đã có giá và tỷ giá.",
       "holdingStatsFailed": "Không thể tải thống kê lịch sử theo vị thế.",
       "reorderFailed": "Không thể sắp xếp lại các kịch bản."
     },
