@@ -24,11 +24,11 @@ import { UAParser } from "ua-parser-js";
 
 import { User } from "../users/entities/user.entity";
 import { toUserProfile } from "../users/user-profile";
-import { UserPreference } from "../users/entities/user-preference.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
 import { encrypt, decrypt, derivePurposeKey, hashToken } from "./crypto.util";
 import { TokenService } from "./token.service";
 import { tr } from "../i18n/translate";
+import { patchUserPreferences } from "../users/user-preference-writer";
 
 @Injectable()
 export class TwoFactorService {
@@ -446,21 +446,13 @@ export class TwoFactorService {
     user.pendingTwoFactorSecret = null;
     await this.scoped(User, (repo) => repo.save(user));
 
-    // Enable 2FA in preferences. Read-modify-write (materializing the row when
-    // absent), so it stays in one transaction.
-    await withScopedDb(this.dataSource, async (manager) => {
-      const repo = manager.getRepository(UserPreference);
-      let preferences = await repo.findOne({
-        where: { userId },
-      });
-
-      if (!preferences) {
-        preferences = repo.create({ userId });
-      }
-
-      preferences.twoFactorEnabled = true;
-      await repo.save(preferences);
-    });
+    // Enable 2FA in preferences. One column, materializing the row when absent:
+    // the previous read-modify-write of the whole entity could revert any other
+    // preference a concurrent request had changed, and this one is a security
+    // setting -- the last thing that should be losing writes in either direction.
+    await withScopedDb(this.dataSource, (manager) =>
+      patchUserPreferences(manager, userId, { twoFactorEnabled: true }),
+    );
 
     return { message: "Two-factor authentication enabled successfully" };
   }
@@ -503,16 +495,14 @@ export class TwoFactorService {
     user.twoFactorSecret = null;
     await this.scoped(User, (repo) => repo.save(user));
 
-    const preferences = await this.scoped(UserPreference, (repo) =>
-      repo.findOne({
-        where: { userId },
-      }),
+    // Same as the enable path: write the one column, and do it unconditionally.
+    // Reading the row to decide whether to write it left a window in which
+    // another request's preference change was read, kept in memory, and written
+    // back -- and skipping the write entirely when no row exists meant a user
+    // whose preferences had never materialized stayed flagged as 2FA-enabled.
+    await withScopedDb(this.dataSource, (manager) =>
+      patchUserPreferences(manager, userId, { twoFactorEnabled: false }),
     );
-
-    if (preferences) {
-      preferences.twoFactorEnabled = false;
-      await this.scoped(UserPreference, (repo) => repo.save(preferences));
-    }
 
     // Revoke all trusted devices
     await this.scoped(TrustedDevice, (repo) => repo.delete({ userId }));

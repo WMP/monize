@@ -40,6 +40,7 @@ import { DelegationService } from "../delegation/delegation.service";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import { returnedRows } from "../common/db/query-result";
 import { tr } from "../i18n/translate";
 import { currentRequestLocale } from "../i18n/request-locale";
 import { I18nService } from "nestjs-i18n";
@@ -116,6 +117,34 @@ export class AuthService {
         `Could not store the backup password for user ${userId}: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Increment this user's failed-login counter in one statement and return the
+   * value PostgreSQL committed.
+   *
+   * The returned number -- not one derived from an earlier read -- is what the
+   * lockout threshold is compared against. That is the whole difference between
+   * a counter that tracks the attempt rate and one that tracks how many requests
+   * happened to be serialized: parallel attempts each read the pre-bcrypt value
+   * and each wrote the same `1`, so the intended online-attempt limit was
+   * ineffective under exactly the load it exists to defend against.
+   *
+   * Returns 0 when no row matched, so a caller cannot mistake a missing user for
+   * a first failed attempt.
+   */
+  private async incrementFailedAttempts(userId: string): Promise<number> {
+    const rows = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `UPDATE users
+            SET failed_login_attempts = failed_login_attempts + 1
+          WHERE id = $1
+          RETURNING failed_login_attempts`,
+        [userId],
+      ),
+    );
+    const updated = returnedRows<{ failed_login_attempts: number }>(rows);
+    return updated.length > 0 ? Number(updated[0].failed_login_attempts) : 0;
   }
 
   // RLS: register/login/refresh/verify/OIDC lookups are public, pre-identity
@@ -385,11 +414,17 @@ export class AuthService {
 
     if (!isPasswordValid) {
       this.logger.warn(`Login failed: invalid password for user ${user.id}`);
-      // Atomically increment failed attempts
-      const newAttempts = user.failedLoginAttempts + 1;
-      const updateFields: Record<string, unknown> = {
-        failedLoginAttempts: newAttempts,
-      };
+      // Increment in SQL and derive the lockout from what the database
+      // committed, not from the entity read before bcrypt ran.
+      //
+      // `user.failedLoginAttempts + 1` computed in application code is a
+      // read-modify-write across a ~100ms bcrypt comparison -- an enormous window.
+      // Five parallel invalid passwords all read 0 and all wrote 1, so the
+      // persistent counter grew at a fraction of the attempt rate and the account
+      // was never locked (audit P4-012). Despite the comment that used to sit
+      // here, nothing about it was atomic.
+      const newAttempts = await this.incrementFailedAttempts(user.id);
+      const updateFields: Record<string, unknown> = {};
       if (newAttempts >= this.MAX_FAILED_ATTEMPTS) {
         const lockoutMultiplier = Math.pow(
           2,
@@ -420,14 +455,16 @@ export class AuthService {
             );
         }
       }
-      await this.scoped(User, (repo) =>
-        repo
-          .createQueryBuilder()
-          .update(User)
-          .set(updateFields)
-          .where("id = :id", { id: user.id })
-          .execute(),
-      );
+      if (Object.keys(updateFields).length > 0) {
+        await this.scoped(User, (repo) =>
+          repo
+            .createQueryBuilder()
+            .update(User)
+            .set(updateFields)
+            .where("id = :id", { id: user.id })
+            .execute(),
+        );
+      }
       throw new UnauthorizedException(
         tr("errors.auth.invalidCredentials", "Invalid credentials"),
       );
@@ -447,17 +484,22 @@ export class AuthService {
     // cannot decrypt.
     await this.rememberBackupPassword(user.id, password);
 
-    // Reset failed attempts on successful login
-    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-      await this.scoped(User, (repo) =>
-        repo
-          .createQueryBuilder()
-          .update(User)
-          .set({ failedLoginAttempts: 0, lockedUntil: null })
-          .where("id = :id", { id: user.id })
-          .execute(),
-      );
-    }
+    // Reset failed attempts on successful login.
+    //
+    // Unconditional in SQL rather than gated on the entity snapshot: a failure
+    // that committed between the read and here would otherwise leave the counter
+    // standing after a proven-correct password, and the old `if` could also skip
+    // the reset entirely because the snapshot said there was nothing to clear.
+    // A correct password is authoritative about the attempts before it.
+    await this.scoped(User, (repo) =>
+      repo
+        .createQueryBuilder()
+        .update(User)
+        .set({ failedLoginAttempts: 0, lockedUntil: null })
+        .where("id = :id", { id: user.id })
+        .andWhere("(failed_login_attempts <> 0 OR locked_until IS NOT NULL)")
+        .execute(),
+    );
 
     // Hard email-verification gate: a local account that self-registered while
     // SMTP was enabled must confirm its email before it can sign in. The
