@@ -91,7 +91,8 @@
     "totalAmountLabel": "Totaalbedrag",
     "descriptionLabel": "Beschrijving (optioneel)",
     "categoryLabel": "Categorie",
-    "transferLabel": "Overboeking",
+    "transferSummary": "Overboeking: {from} → {to}",
+    "categorySummary": "Categorie: {category}",
     "balanceWarning": {
       "belowZero": "onder nul",
       "overCreditLimit": "boven de kredietlimiet",

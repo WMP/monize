@@ -91,7 +91,8 @@
     "totalAmountLabel": "कुल राशि",
     "descriptionLabel": "विवरण (वैकल्पिक)",
     "categoryLabel": "श्रेणी",
-    "transferLabel": "ट्रांसफ़र",
+    "transferSummary": "ट्रांसफर: {from} → {to}",
+    "categorySummary": "श्रेणी: {category}",
     "balanceWarning": {
       "belowZero": "शून्य से नीचे",
       "overCreditLimit": "क्रेडिट सीमा से अधिक",

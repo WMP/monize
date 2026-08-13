@@ -91,7 +91,8 @@
     "totalAmountLabel": "Importo totale",
     "descriptionLabel": "Descrizione (opzionale)",
     "categoryLabel": "Categoria",
-    "transferLabel": "Trasferimento",
+    "transferSummary": "Trasferimento: {from} → {to}",
+    "categorySummary": "Categoria: {category}",
     "balanceWarning": {
       "belowZero": "sotto lo zero",
       "overCreditLimit": "oltre il limite di credito",

@@ -91,7 +91,8 @@
     "totalAmountLabel": "总金额",
     "descriptionLabel": "描述（可选）",
     "categoryLabel": "分类",
-    "transferLabel": "转账",
+    "transferSummary": "转账：{from} → {to}",
+    "categorySummary": "分类：{category}",
     "balanceWarning": {
       "belowZero": "低于零",
       "overCreditLimit": "超过信用额度",

@@ -91,7 +91,8 @@
     "totalAmountLabel": "Kwota łączna",
     "descriptionLabel": "Opis (opcjonalnie)",
     "categoryLabel": "Kategoria",
-    "transferLabel": "Przelew",
+    "transferSummary": "Przelew: {from} → {to}",
+    "categorySummary": "Kategoria: {category}",
     "balanceWarning": {
       "belowZero": "poniżej zera",
       "overCreditLimit": "powyżej limitu kredytowego",

@@ -91,7 +91,8 @@
     "totalAmountLabel": "Montant total",
     "descriptionLabel": "Description (facultatif)",
     "categoryLabel": "Catégorie",
-    "transferLabel": "Virement",
+    "transferSummary": "Virement : {from} → {to}",
+    "categorySummary": "Catégorie : {category}",
     "balanceWarning": {
       "belowZero": "en dessous de zéro",
       "overCreditLimit": "au-delà de la limite de crédit",

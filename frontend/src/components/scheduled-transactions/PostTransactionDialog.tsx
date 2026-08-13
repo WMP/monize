@@ -460,8 +460,7 @@ export function PostTransactionDialog({
       ) {
         const commission = Number(scheduledTransaction.investmentCommission ?? 0);
         const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
-        const total = initialQty * initialPrice + sign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(totalFromQuantity(initialQty, initialPrice, sign, commission));
       } else {
         setInvestmentTotalValue('');
       }
@@ -1039,14 +1038,17 @@ export function PostTransactionDialog({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                {t('postDialog.transferLabel')}: {scheduledTransaction.account?.name} → {scheduledTransaction.transferAccount?.name}
+                {t('postDialog.transferSummary', {
+                  from: scheduledTransaction.account?.name ?? '',
+                  to: scheduledTransaction.transferAccount?.name ?? '',
+                })}
               </span>
             </div>
             {/* A categorized transfer (#743) shows its category here so it is
                 clear it will be applied to both legs on posting. */}
             {currentCategoryLabel && (
               <div className="mt-2 pl-7 text-sm text-blue-700 dark:text-blue-300">
-                {t('postDialog.categoryLabel')}: {currentCategoryLabel}
+                {t('postDialog.categorySummary', { category: currentCategoryLabel })}
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { OverrideEditorDialog } from './OverrideEditorDialog';
 import toast from 'react-hot-toast';
 
@@ -816,6 +816,51 @@ describe('OverrideEditorDialog', () => {
       // with an empty quantity.
       expect(Number(qtyInput.value)).toBeCloseTo(8, 6);
       expect(Number(priceInput.value)).toBe(125);
+    });
+
+    it('does not overwrite a total typed before the latest close arrives', async () => {
+      // The typed-before-fetch race on the override editor's own auto-fill. On a
+      // slow connection the user enters a quantity and a total while
+      // getSecurityPrices is still pending; the price field is still blank, so
+      // the auto-fill gate's `investmentPrice === ''` holds. Without the
+      // userEditedInvestment guard the arriving close fired writePrice, whose
+      // quantity-first branch re-derived the total to 10 * 123.45 = 1,234.5 --
+      // booking ~30% more money than the user entered. A deferred promise
+      // reproduces the timing. (No stored price, so the auto-fill is armed.)
+      let resolvePrices: (v: any) => void = () => {};
+      mockGetSecurityPrices.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePrices = resolve;
+        }),
+      );
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={{
+            ...investmentTransaction,
+            investmentPrice: null,
+            investmentQuantity: null,
+          }}
+        />,
+      );
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(qtyInput, { target: { value: '10' } });
+        fireEvent.change(totalInput, { target: { value: '950' } });
+        fireEvent.blur(totalInput);
+      });
+      expect(totalInput.value.replace(/,/g, '')).toBe('950');
+
+      // The close lands after the user has already typed.
+      await act(async () => {
+        resolvePrices([{ closePrice: '123.45', priceDate: '2025-02-20' }]);
+      });
+
+      // The typed total stands and the quantity is untouched; the auto-fill did
+      // not fire over the user's own entry.
+      expect(Number(totalInput.value.replace(/,/g, ''))).toBe(950);
+      expect(Number(qtyInput.value)).toBe(10);
     });
 
     it('sends investment fields when saving a new override', async () => {

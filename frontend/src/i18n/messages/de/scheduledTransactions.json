@@ -91,7 +91,8 @@
     "totalAmountLabel": "Gesamtbetrag",
     "descriptionLabel": "Beschreibung (optional)",
     "categoryLabel": "Kategorie",
-    "transferLabel": "Überweisung",
+    "transferSummary": "Überweisung: {from} → {to}",
+    "categorySummary": "Kategorie: {category}",
     "balanceWarning": {
       "belowZero": "unter null",
       "overCreditLimit": "über das Kreditlimit",

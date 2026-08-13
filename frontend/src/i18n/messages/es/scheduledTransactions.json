@@ -91,7 +91,8 @@
     "totalAmountLabel": "Monto total",
     "descriptionLabel": "Descripción (opcional)",
     "categoryLabel": "Categoría",
-    "transferLabel": "Transferencia",
+    "transferSummary": "Transferencia: {from} → {to}",
+    "categorySummary": "Categoría: {category}",
     "balanceWarning": {
       "belowZero": "por debajo de cero",
       "overCreditLimit": "por encima del límite de crédito",

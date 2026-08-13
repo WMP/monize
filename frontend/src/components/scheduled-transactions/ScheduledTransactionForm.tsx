@@ -40,6 +40,7 @@ import { useAccountOptionLabel } from '@/hooks/useMainAccountName';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
 import { createLogger } from '@/lib/logger';
 
 import { optionalUuid, optionalString, optionalNumber } from '@/lib/zod-helpers';
@@ -184,7 +185,7 @@ export function ScheduledTransactionForm({
     const c = scheduledTransaction?.investmentCommission ?? 0;
     if (q != null && p != null) {
       const sign = scheduledTransaction?.investmentAction === 'SELL' ? -1 : 1;
-      return Math.round((Number(q) * Number(p) + sign * Number(c)) * 10000) / 10000;
+      return totalFromQuantity(Number(q), Number(p), sign, Number(c));
     }
     return '';
   });
@@ -584,9 +585,9 @@ export function ScheduledTransactionForm({
     if (effectiveInvestmentPrice > 0) {
       const commission =
         investmentCommission === '' ? 0 : Number(investmentCommission);
-      const cost = raw - investmentSign * commission;
-      const qty = Math.max(0, cost / effectiveInvestmentPrice);
-      setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+      setInvestmentQuantity(
+        quantityFromTotal(raw, effectiveInvestmentPrice, investmentSign, commission),
+      );
     }
   };
 
@@ -596,8 +597,9 @@ export function ScheduledTransactionForm({
     if (qty !== '' && effectiveInvestmentPrice > 0) {
       const commission =
         investmentCommission === '' ? 0 : Number(investmentCommission);
-      const total = Number(qty) * effectiveInvestmentPrice + investmentSign * commission;
-      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+      setInvestmentTotalValue(
+        totalFromQuantity(Number(qty), effectiveInvestmentPrice, investmentSign, commission),
+      );
     }
   };
 
@@ -610,13 +612,13 @@ export function ScheduledTransactionForm({
       // If the user has a total in mind, keep it and re-derive quantity. Otherwise
       // re-derive total from quantity * price.
       if (investmentTotalValue !== '') {
-        const cost = Number(investmentTotalValue) - investmentSign * commission;
-        const qty = Math.max(0, cost / Number(price));
-        setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+        setInvestmentQuantity(
+          quantityFromTotal(Number(investmentTotalValue), Number(price), investmentSign, commission),
+        );
       } else if (investmentQuantity !== '') {
-        const total =
-          Number(investmentQuantity) * Number(price) + investmentSign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(
+          totalFromQuantity(Number(investmentQuantity), Number(price), investmentSign, commission),
+        );
       }
     }
   };

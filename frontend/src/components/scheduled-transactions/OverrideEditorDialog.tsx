@@ -87,6 +87,12 @@ export function OverrideEditorDialog({
   // to state provenance.
   const [priceFromOccurrence, setPriceFromOccurrence] = useState(false);
   const [priceCameFromMarket, setPriceCameFromMarket] = useState(false);
+  // True once the user touches any investment field after the dialog opens. The
+  // latest close is fetched asynchronously, so a value typed while that fetch is
+  // still in flight is the user's own instruction and must not be clobbered when
+  // the market figure lands -- the same exemption PostTransactionDialog applies
+  // to its market refresh.
+  const [userEditedInvestment, setUserEditedInvestment] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
   const investmentAction = scheduledTransaction.investmentAction;
@@ -176,6 +182,7 @@ export function OverrideEditorDialog({
       setHasStoredPrice(typeof initialPrice === 'number' && initialPrice > 0);
       setPriceFromOccurrence(existingOverride?.investmentPrice != null);
       setPriceCameFromMarket(false);
+      setUserEditedInvestment(false);
       if (
         typeof initialQty === 'number' &&
         initialQty > 0 &&
@@ -274,12 +281,20 @@ export function OverrideEditorDialog({
   // open, so reopening an override to change only its date silently re-priced a
   // future purchase at today's close. Uses the "info from previous render"
   // pattern to avoid violating react-hooks/set-state-in-effect.
+  //
+  // `!userEditedInvestment` is the second half of that guard: the fetch is
+  // asynchronous, so a quantity or total the user typed while it was in flight
+  // is their own instruction. Without this, a stated total (price still empty,
+  // so `investmentPrice === ''` alone lets the fill through) would be silently
+  // re-derived from the arriving close -- the exact typed-before-fetch race
+  // PostTransactionDialog guards on its side.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
     if (
       isInvestmentQuantityPrice &&
       !hasStoredPrice &&
+      !userEditedInvestment &&
       investmentPrice === '' &&
       marketPrice != null &&
       marketPrice > 0
@@ -300,6 +315,7 @@ export function OverrideEditorDialog({
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
+    setUserEditedInvestment(true);
     setInvestmentQuantity(qty);
     if (qty !== '' && investmentPrice !== '' && Number(investmentPrice) > 0) {
       setInvestmentTotalValue(
@@ -310,6 +326,7 @@ export function OverrideEditorDialog({
 
   const handleInvestmentPriceChange = (raw: number | undefined) => {
     const price = raw ?? '';
+    setUserEditedInvestment(true);
     setInvestmentPrice(price);
     // A typed (or cleared) price is the user's own, whatever it happens to
     // equal, so it is no longer the stored instruction: both provenance flags
@@ -332,6 +349,7 @@ export function OverrideEditorDialog({
   };
 
   const handleInvestmentTotalValueChange = (raw: number | undefined) => {
+    setUserEditedInvestment(true);
     if (raw === undefined) {
       setInvestmentTotalValue('');
       return;

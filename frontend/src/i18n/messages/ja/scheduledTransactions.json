@@ -91,7 +91,8 @@
     "totalAmountLabel": "合計金額",
     "descriptionLabel": "説明（任意）",
     "categoryLabel": "カテゴリ",
-    "transferLabel": "振替",
+    "transferSummary": "振替：{from} → {to}",
+    "categorySummary": "カテゴリ: {category}",
     "balanceWarning": {
       "belowZero": "マイナス",
       "overCreditLimit": "与信限度額を超過",

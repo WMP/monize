@@ -91,7 +91,8 @@
     "totalAmountLabel": "總金額",
     "descriptionLabel": "描述（選填）",
     "categoryLabel": "類別",
-    "transferLabel": "轉帳",
+    "transferSummary": "轉帳：{from} → {to}",
+    "categorySummary": "類別：{category}",
     "balanceWarning": {
       "belowZero": "低於零",
       "overCreditLimit": "超過信用額度",

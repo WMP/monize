@@ -91,7 +91,8 @@
     "totalAmountLabel": "총 금액",
     "descriptionLabel": "설명 (선택사항)",
     "categoryLabel": "카테고리",
-    "transferLabel": "이체",
+    "transferSummary": "이체: {from} → {to}",
+    "categorySummary": "카테고리: {category}",
     "balanceWarning": {
       "belowZero": "0 미만",
       "overCreditLimit": "신용 한도 초과",

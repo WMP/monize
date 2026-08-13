@@ -91,7 +91,8 @@
     "totalAmountLabel": "Toplam Tutar",
     "descriptionLabel": "Açıklama (isteğe bağlı)",
     "categoryLabel": "Kategori",
-    "transferLabel": "Transfer",
+    "transferSummary": "Transfer: {from} → {to}",
+    "categorySummary": "Kategori: {category}",
     "balanceWarning": {
       "belowZero": "sıfırın altına",
       "overCreditLimit": "kredi limitinin üzerine",

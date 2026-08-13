@@ -91,7 +91,8 @@
     "totalAmountLabel": "Tổng số tiền",
     "descriptionLabel": "Mô tả (tùy chọn)",
     "categoryLabel": "Danh mục",
-    "transferLabel": "Chuyển khoản",
+    "transferSummary": "Chuyển khoản: {from} → {to}",
+    "categorySummary": "Danh mục: {category}",
     "balanceWarning": {
       "belowZero": "dưới 0",
       "overCreditLimit": "vượt hạn mức tín dụng",

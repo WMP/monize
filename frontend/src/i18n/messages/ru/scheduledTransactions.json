@@ -91,7 +91,8 @@
     "totalAmountLabel": "Общая сумма",
     "descriptionLabel": "Описание (необязательно)",
     "categoryLabel": "Категория",
-    "transferLabel": "Перевод",
+    "transferSummary": "Перевод: {from} → {to}",
+    "categorySummary": "Категория: {category}",
     "balanceWarning": {
       "belowZero": "ниже нуля",
       "overCreditLimit": "выше кредитного лимита",
