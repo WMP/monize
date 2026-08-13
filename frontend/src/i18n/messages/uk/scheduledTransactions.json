@@ -238,6 +238,7 @@
     "securityPlaceholder": "Оберіть цінний папір...",
     "quantityLabel": "Кількість (акцій)",
     "pricePerShareLabel": "Ціна за акцію",
+    "latestPlaceholder": "Остання: {price}",
     "commissionLabel": "Комісія",
     "totalValueLabel": "Загальна вартість",
     "fundingAccountLabel": "Рахунок фінансування (необов'язково)",

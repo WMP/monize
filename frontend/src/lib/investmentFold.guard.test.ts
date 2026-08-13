@@ -24,8 +24,13 @@ const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
 
 /** The one file allowed to round a share count to 8dp -- it *is* the fold. */
 const HELPER = '/src/lib/investmentFold.ts';
-/** 8dp share rounding, with or without the numeric separators. */
-const SHARE_PRECISION = /100_?000_?000/;
+/**
+ * 8dp share rounding, with or without the numeric separators. Anchored on both
+ * sides against a digit or underscore so an unrelated billion literal
+ * (`1000000000`, `1_000_000_000`) does not read as `100_000_000` and trip the
+ * guard with a misleading "hand-rolled fold" failure.
+ */
+const SHARE_PRECISION = /(?<![\d_])100_?000_?000(?![\d_])/;
 
 describe('the investment fold lives in lib/investmentFold.ts', () => {
   it('rounds a derived share count to 8dp in exactly one production source', () => {
@@ -51,5 +56,15 @@ describe('the investment fold lives in lib/investmentFold.ts', () => {
     const helper = sources[HELPER];
     expect(helper, `${HELPER} not found -- update HELPER in this test`).toBeTruthy();
     expect(SHARE_PRECISION.test(helper)).toBe(true);
+  });
+
+  it('matches the fold constant but not a billion literal', () => {
+    // The fingerprint must catch the share-rounding constant in either separator
+    // form, and must NOT fire on an unrelated one-billion literal that merely
+    // contains the same digits.
+    expect(SHARE_PRECISION.test('Math.round(qty * 100_000_000) / 100_000_000')).toBe(true);
+    expect(SHARE_PRECISION.test('qty * 100000000')).toBe(true);
+    expect(SHARE_PRECISION.test('const LIMIT = 1_000_000_000;')).toBe(false);
+    expect(SHARE_PRECISION.test('const LIMIT = 1000000000;')).toBe(false);
   });
 });

@@ -238,6 +238,7 @@
     "securityPlaceholder": "Выберите ценную бумагу...",
     "quantityLabel": "Количество (акции)",
     "pricePerShareLabel": "Цена за акцию",
+    "latestPlaceholder": "Последняя: {price}",
     "commissionLabel": "Комиссия",
     "totalValueLabel": "Общая стоимость",
     "fundingAccountLabel": "Счёт финансирования (необязательно)",

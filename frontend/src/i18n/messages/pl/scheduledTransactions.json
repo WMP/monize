@@ -238,6 +238,7 @@
     "securityPlaceholder": "Wybierz papier wartościowy...",
     "quantityLabel": "Ilość (jednostek)",
     "pricePerShareLabel": "Cena za jednostkę",
+    "latestPlaceholder": "Ostatnia: {price}",
     "commissionLabel": "Prowizja",
     "totalValueLabel": "Wartość łączna",
     "fundingAccountLabel": "Konto finansujące (opcjonalnie)",

@@ -238,6 +238,7 @@
     "securityPlaceholder": "Select security...",
     "quantityLabel": "Quantity (shares)",
     "pricePerShareLabel": "Price per share",
+    "latestPlaceholder": "Latest: {price}",
     "commissionLabel": "Commission",
     "totalValueLabel": "Total Value",
     "fundingAccountLabel": "Funding Account (optional)",

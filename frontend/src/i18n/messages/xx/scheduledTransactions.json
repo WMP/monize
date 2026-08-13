@@ -238,6 +238,7 @@
     "securityPlaceholder": "[XX-Select security...-XX]",
     "quantityLabel": "[XX-Quantity (shares)-XX]",
     "pricePerShareLabel": "[XX-Price per share-XX]",
+    "latestPlaceholder": "[XX-Latest: {price}-XX]",
     "commissionLabel": "[XX-Commission-XX]",
     "totalValueLabel": "[XX-Total Value-XX]",
     "fundingAccountLabel": "[XX-Funding Account (optional)-XX]",

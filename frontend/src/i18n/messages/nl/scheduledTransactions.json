@@ -238,6 +238,7 @@
     "securityPlaceholder": "Selecteer waardepapier...",
     "quantityLabel": "Hoeveelheid (aandelen)",
     "pricePerShareLabel": "Koers per aandeel",
+    "latestPlaceholder": "Laatste: {price}",
     "commissionLabel": "Commissie",
     "totalValueLabel": "Totaalwaarde",
     "fundingAccountLabel": "Financieringsrekening (optioneel)",

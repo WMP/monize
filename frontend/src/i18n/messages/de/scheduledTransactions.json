@@ -238,6 +238,7 @@
     "securityPlaceholder": "Wertpapier auswählen...",
     "quantityLabel": "Menge (Anteile)",
     "pricePerShareLabel": "Kurs pro Anteil",
+    "latestPlaceholder": "Aktuell: {price}",
     "commissionLabel": "Provision",
     "totalValueLabel": "Gesamtwert",
     "fundingAccountLabel": "Finanzierungskonto (optional)",

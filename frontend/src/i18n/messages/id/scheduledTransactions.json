@@ -238,6 +238,7 @@
     "securityPlaceholder": "Pilih sekuritas...",
     "quantityLabel": "Kuantitas (lembar)",
     "pricePerShareLabel": "Harga per lembar",
+    "latestPlaceholder": "Terbaru: {price}",
     "commissionLabel": "Komisi",
     "totalValueLabel": "Total Nilai",
     "fundingAccountLabel": "Akun Pendanaan (opsional)",

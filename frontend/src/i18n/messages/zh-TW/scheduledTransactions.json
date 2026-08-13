@@ -238,6 +238,7 @@
     "securityPlaceholder": "選擇證券...",
     "quantityLabel": "數量（股數）",
     "pricePerShareLabel": "每股價格",
+    "latestPlaceholder": "最新：{price}",
     "commissionLabel": "手續費",
     "totalValueLabel": "總值",
     "fundingAccountLabel": "資金科目（選填）",

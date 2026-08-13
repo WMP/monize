@@ -249,6 +249,29 @@ describe('useNumberFormat', () => {
   });
 });
 
+describe('formatPrice in a comma-decimal locale', () => {
+  afterEach(() => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({ preferences: { numberFormat: 'en-US', defaultCurrency: 'USD' } }),
+    );
+  });
+
+  it('leaves no dangling separator when the decimal mark is a comma', () => {
+    // formatPrice exists specifically so a comma-decimal locale never trails a
+    // separator. The old `formatNumber(...).replace(/0+$/,'').replace(/\.$/,'')`
+    // produced "1.000," in German: stripping trailing zeros left "1.000," and
+    // the `/\.$/` strip never matched the comma. Intl does the trimming, so a
+    // whole number renders clean and a fractional one keeps its comma mark.
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({ preferences: { numberFormat: 'de-DE', defaultCurrency: 'EUR' } }),
+    );
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatPrice(1000)).toBe('1.000');
+    expect(result.current.formatPrice(123.45)).toBe('123,45');
+    expect(result.current.formatPrice(1234.5)).toBe('1.234,5');
+  });
+});
+
 describe('useNumberFormat with browser locale', () => {
   it('treats "browser" numberFormat as undefined locale', async () => {
     vi.resetModules();

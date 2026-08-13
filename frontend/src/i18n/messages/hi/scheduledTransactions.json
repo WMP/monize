@@ -238,6 +238,7 @@
     "securityPlaceholder": "प्रतिभूति चुनें...",
     "quantityLabel": "मात्रा (शेयर)",
     "pricePerShareLabel": "प्रति शेयर मूल्य",
+    "latestPlaceholder": "नवीनतम: {price}",
     "commissionLabel": "कमीशन",
     "totalValueLabel": "कुल मूल्य",
     "fundingAccountLabel": "वित्तपोषण खाता (वैकल्पिक)",

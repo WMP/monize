@@ -535,6 +535,14 @@ export function PostTransactionDialog({
   const investmentSign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
   const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
 
+  // A close is only usable when it is a positive number; a NaN or zero quote must
+  // not render as a "Latest: NaN" placeholder (the override editor guards its
+  // placeholder the same way via roundedMarketPrice).
+  const roundedMarketPrice =
+    marketPrice != null && marketPrice > 0
+      ? Math.round(marketPrice * 1_000_000) / 1_000_000
+      : null;
+
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
     setUserEditedInvestment(true);
@@ -875,8 +883,8 @@ export function PostTransactionDialog({
                   decimalPlaces={6}
                   min={0}
                   placeholder={
-                    marketPrice != null
-                      ? t('postDialog.latestPlaceholder', { price: formatPrice(marketPrice) })
+                    roundedMarketPrice != null
+                      ? t('postDialog.latestPlaceholder', { price: formatPrice(roundedMarketPrice) })
                       : undefined
                   }
                   value={investmentPrice === '' ? undefined : investmentPrice}

@@ -238,6 +238,7 @@
     "securityPlaceholder": "选择证券...",
     "quantityLabel": "数量（股数）",
     "pricePerShareLabel": "每股价格",
+    "latestPlaceholder": "最新：{price}",
     "commissionLabel": "佣金",
     "totalValueLabel": "总价值",
     "fundingAccountLabel": "资金账户（可选）",

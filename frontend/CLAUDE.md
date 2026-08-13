@@ -243,6 +243,21 @@ regex, which leaves a dangling separator in comma-decimal locales. Compose any
 string a translator can reorder, never as `{t('label')}: {value}` fragments in
 JSX.
 
+`ScheduledTransactionForm` reconciles the same way the dialogs do, and two more
+invariants live here because its `Total Value` is a shown figure that submit
+recomputes from `quantity * price (+/-) commission`: **the displayed total and
+the persisted amount must never disagree.** So every field that moves the
+economic total -- price, quantity, **commission, and the BUY/SELL action whose
+sign flips the fee** -- recomputes the shown total through the same fold, and the
+async close arriving mid-entry preserves an already-typed total and re-derives
+the quantity from it (total-first) rather than only writing the price. And **a
+market price belongs to one security**: changing the selected security clears the
+auto-filled price (and the seen-market-price latch) so the new security's own
+close fills the field, instead of the previous security's quote lingering because
+the field is non-empty. A NaN or zero close is not a usable price -- gate the
+"Latest:" placeholder on a positive `roundedMarketPrice`, never a bare
+`marketPrice != null`, so it never renders as "Latest: NaN".
+
 ### A long list -- page it, or bound it and scroll with `scrollbar-slim`
 
 Two patterns, depending on where it lives:

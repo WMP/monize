@@ -238,6 +238,7 @@
     "securityPlaceholder": "Menkul kıymet seçin...",
     "quantityLabel": "Miktar (hisse)",
     "pricePerShareLabel": "Hisse başı fiyat",
+    "latestPlaceholder": "En güncel: {price}",
     "commissionLabel": "Komisyon",
     "totalValueLabel": "Toplam Değer",
     "fundingAccountLabel": "Finansman Hesabı (isteğe bağlı)",

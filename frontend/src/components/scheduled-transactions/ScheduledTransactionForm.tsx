@@ -126,7 +126,7 @@ export function ScheduledTransactionForm({
 }: ScheduledTransactionFormProps) {
   const t = useTranslations('scheduledTransactions');
   const accountOptionLabel = useAccountOptionLabel();
-  const { defaultCurrency, formatCurrency, formatNumber } = useNumberFormat();
+  const { defaultCurrency, formatCurrency, formatNumber, formatPrice } = useNumberFormat();
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -555,26 +555,46 @@ export function ScheduledTransactionForm({
     };
   }, [mode, investmentSecurityId]);
 
-  // If the user hasn't typed a price, auto-fill from the latest market price
-  // once it arrives. Don't clobber an already-entered price. Uses the
-  // "info from previous render" pattern so we don't violate
-  // react-hooks/set-state-in-effect.
-  const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
-  if (marketPrice !== lastSeenMarketPrice) {
-    setLastSeenMarketPrice(marketPrice);
-    if (
-      marketPrice != null &&
-      (investmentPrice === '' || investmentPrice === 0)
-    ) {
-      setInvestmentPrice(Math.round(marketPrice * 1_000_000) / 1_000_000);
-    }
-  }
+  const investmentSign = investmentAction === 'SELL' ? -1 : 1;
 
   const effectiveInvestmentPrice =
     investmentPrice !== '' && Number(investmentPrice) > 0
       ? Number(investmentPrice)
       : marketPrice ?? 0;
-  const investmentSign = investmentAction === 'SELL' ? -1 : 1;
+
+  // A close rounded for display (6dp), null unless it is a usable positive
+  // number -- so a NaN or zero quote neither fills the field nor prints as a
+  // "Latest:" placeholder.
+  const roundedMarketPrice =
+    marketPrice != null && marketPrice > 0
+      ? Math.round(marketPrice * 1_000_000) / 1_000_000
+      : null;
+
+  // If the user hasn't typed a price, auto-fill from the latest market close
+  // once it arrives, and reconcile the rest of the triple: an entered Total
+  // Value is preserved and the quantity re-derived from it (total-first, the way
+  // this form treats a typed total everywhere else), so a close landing after
+  // the user typed a budget does not silently change the amount invested.
+  // Otherwise fill the total from an entered quantity. Uses the "info from
+  // previous render" pattern so we don't violate react-hooks/set-state-in-effect.
+  const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
+  if (marketPrice !== lastSeenMarketPrice) {
+    setLastSeenMarketPrice(marketPrice);
+    if (marketPrice != null && (investmentPrice === '' || investmentPrice === 0)) {
+      const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
+      setInvestmentPrice(rounded);
+      const commission = investmentCommission === '' ? 0 : Number(investmentCommission);
+      if (investmentTotalValue !== '') {
+        setInvestmentQuantity(
+          quantityFromTotal(Number(investmentTotalValue), rounded, investmentSign, commission),
+        );
+      } else if (investmentQuantity !== '') {
+        setInvestmentTotalValue(
+          totalFromQuantity(Number(investmentQuantity), rounded, investmentSign, commission),
+        );
+      }
+    }
+  }
 
   const handleTotalValueChange = (raw: number | undefined) => {
     if (raw === undefined) {
@@ -621,6 +641,55 @@ export function ScheduledTransactionForm({
         );
       }
     }
+  };
+
+  // The commission folds into the displayed Total Value and submit persists from
+  // the same formula, so a fee change has to move the shown total too -- otherwise
+  // the user confirms one cash figure while the saved schedule uses another.
+  const handleCommissionChange = (raw: number | undefined) => {
+    const commission = raw ?? '';
+    setInvestmentCommission(commission);
+    if (investmentQuantity !== '' && effectiveInvestmentPrice > 0) {
+      setInvestmentTotalValue(
+        totalFromQuantity(
+          Number(investmentQuantity),
+          effectiveInvestmentPrice,
+          investmentSign,
+          commission === '' ? 0 : Number(commission),
+        ),
+      );
+    }
+  };
+
+  // A BUY folds the commission in with a +sign, a SELL with a -sign, so flipping
+  // the action changes the total even when quantity, price and fee are untouched.
+  // Recompute the shown total with the new sign so it agrees with what submit
+  // will persist.
+  const handleInvestmentActionChange = (nextAction: InvestmentAction) => {
+    setInvestmentAction(nextAction);
+    if (
+      QUANTITY_PRICE_ACTIONS.includes(nextAction) &&
+      investmentQuantity !== '' &&
+      effectiveInvestmentPrice > 0
+    ) {
+      const nextSign = nextAction === 'SELL' ? -1 : 1;
+      const commission =
+        investmentCommission === '' ? 0 : Number(investmentCommission);
+      setInvestmentTotalValue(
+        totalFromQuantity(Number(investmentQuantity), effectiveInvestmentPrice, nextSign, commission),
+      );
+    }
+  };
+
+  // The auto-filled price belonged to the previously selected security. Clear it
+  // (and the seen-market-price latch) on a security change so the newly chosen
+  // security's close fills the field, rather than the old quote lingering because
+  // the field is non-empty and the auto-fill only writes into an empty one.
+  const handleInvestmentSecurityChange = (securityId: string) => {
+    setInvestmentSecurityId(securityId);
+    setInvestmentPrice('');
+    setMarketPrice(null);
+    setLastSeenMarketPrice(null);
   };
 
   // Load accounts, categories, active payees on mount
@@ -1714,7 +1783,7 @@ export function ScheduledTransactionForm({
             <Select
               label={t('form.actionLabel')}
               value={investmentAction}
-              onChange={(e) => setInvestmentAction(e.target.value as InvestmentAction)}
+              onChange={(e) => handleInvestmentActionChange(e.target.value as InvestmentAction)}
               options={SCHEDULABLE_INVESTMENT_ACTIONS.map(a => ({
                 value: a,
                 label: t(`form.investmentActionLabels.${a}` as Parameters<typeof t>[0]),
@@ -1724,7 +1793,7 @@ export function ScheduledTransactionForm({
               <Select
                 label={t('form.securityLabel')}
                 value={investmentSecurityId}
-                onChange={(e) => setInvestmentSecurityId(e.target.value)}
+                onChange={(e) => handleInvestmentSecurityChange(e.target.value)}
                 options={[
                   { value: '', label: t('form.securityPlaceholder') },
                   ...securityOptions,
@@ -1749,7 +1818,9 @@ export function ScheduledTransactionForm({
                   decimalPlaces={6}
                   min={0}
                   placeholder={
-                    marketPrice != null ? `Latest: ${marketPrice}` : undefined
+                    roundedMarketPrice != null
+                      ? t('form.latestPlaceholder', { price: formatPrice(roundedMarketPrice) })
+                      : undefined
                   }
                   value={investmentPrice === '' ? undefined : investmentPrice}
                   onChange={handlePriceChange}
@@ -1759,7 +1830,7 @@ export function ScheduledTransactionForm({
                   decimalPlaces={4}
                   min={0}
                   value={investmentCommission === '' ? undefined : investmentCommission}
-                  onChange={(value) => setInvestmentCommission(value ?? '')}
+                  onChange={handleCommissionChange}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

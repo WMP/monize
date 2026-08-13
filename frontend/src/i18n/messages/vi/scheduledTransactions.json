@@ -238,6 +238,7 @@
     "securityPlaceholder": "Chọn giấy chứng khoán...",
     "quantityLabel": "Số lượng (cổ phiếu)",
     "pricePerShareLabel": "Giá mỗi cổ phiếu",
+    "latestPlaceholder": "Mới nhất: {price}",
     "commissionLabel": "Hoa hồng",
     "totalValueLabel": "Tổng giá trị",
     "fundingAccountLabel": "Tài khoản tài trợ (tùy chọn)",

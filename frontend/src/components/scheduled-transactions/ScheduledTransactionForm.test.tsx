@@ -15,6 +15,8 @@ vi.mock('@/hooks/useNumberFormat', () => ({
     defaultCurrency: 'CAD',
     formatCurrency: (v: number, code: string) => `${code} ${v.toFixed(2)}`,
     formatNumber: (v: number, decimals = 2) => v.toFixed(decimals),
+    // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
+    formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
   }),
 }));
 
@@ -2355,6 +2357,155 @@ describe('ScheduledTransactionForm', () => {
         const totalInput = screen.getByLabelText('Total Value') as HTMLInputElement;
         // 3 * 500 = 1500 (no commission). CurrencyInput formats with commas.
         expect(Number(totalInput.value.replace(/,/g, ''))).toBe(1500);
+      });
+    });
+
+    it('preserves a Total Value typed before the latest price resolves', async () => {
+      // The typed-before-fetch race on this form's own auto-fill. On a slow
+      // connection the user enters a quantity and a budget while the price
+      // request is still pending; when the close lands the form must keep the
+      // total and re-derive the quantity from it (total-first), not leave the
+      // total behind while submit computes qty * price. Before the fix the
+      // auto-fill only set the price, so a typed 950 total would submit as
+      // 10 * 123.45 = 1,234.50 -- ~30% more than shown.
+      let resolvePrices!: (prices: any[]) => void;
+      mockGetSecurityPrices.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePrices = resolve;
+        }),
+      );
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      // Enter quantity and total while the price fetch is still pending.
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      fireEvent.change(screen.getByLabelText('Total Value'), {
+        target: { value: '950' },
+      });
+
+      await act(async () => {
+        resolvePrices([{ closePrice: 123.45, priceDate: '2026-05-09' }]);
+      });
+
+      const totalInput = screen.getByLabelText('Total Value') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      // The typed budget stands; the quantity is re-derived from it, so the shown
+      // total and the amount submit will persist agree.
+      expect(Number(totalInput.value.replace(/,/g, ''))).toBe(950);
+      expect(Number(qtyInput.value)).toBeCloseTo(950 / 123.45, 6);
+    });
+
+    it('recomputes Total Value when the commission changes', async () => {
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('500.000000');
+      });
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      await waitFor(() => {
+        expect(
+          Number(
+            (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+          ),
+        ).toBe(5000);
+      });
+      // A BUY folds the commission in: 10 * 500 + 25 = 5025. Before the fix the
+      // shown total stayed 5000 while submit persisted 5025.
+      fireEvent.change(screen.getByLabelText('Commission'), {
+        target: { value: '25' },
+      });
+      await waitFor(() => {
+        expect(
+          Number(
+            (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+          ),
+        ).toBe(5025);
+      });
+    });
+
+    it('recomputes Total Value when the action flips BUY to SELL', async () => {
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('500.000000');
+      });
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      fireEvent.change(screen.getByLabelText('Commission'), {
+        target: { value: '25' },
+      });
+      // BUY: 10 * 500 + 25 = 5025.
+      await waitFor(() => {
+        expect(
+          Number(
+            (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+          ),
+        ).toBe(5025);
+      });
+      // SELL nets the commission out: 10 * 500 - 25 = 4975. Before the fix the
+      // total stayed at the BUY figure while submit persisted the SELL one.
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'SELL' } });
+      await waitFor(() => {
+        expect(
+          Number(
+            (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+          ),
+        ).toBe(4975);
+      });
+    });
+
+    it('does not carry the previous security price into a newly chosen security', async () => {
+      mockGetSecurities.mockResolvedValue([
+        ...mockSecurities,
+        { ...mockSecurities[0], id: 'sec-bnd', symbol: 'BND', name: 'Vanguard Total Bond' },
+      ]);
+      mockGetSecurityPrices.mockImplementation((id: string) =>
+        Promise.resolve([{ closePrice: id === 'sec-voo' ? 100 : 250, priceDate: '2026-05-09' }]),
+      );
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('100.000000');
+      });
+      // Switch securities: the old 100 must be cleared and B's 250 fill in, not
+      // linger because the field is non-empty.
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-bnd' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('250.000000');
       });
     });
 

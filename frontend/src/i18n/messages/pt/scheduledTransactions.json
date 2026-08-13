@@ -238,6 +238,7 @@
     "securityPlaceholder": "Selecionar título...",
     "quantityLabel": "Quantidade (ações)",
     "pricePerShareLabel": "Preço por ação",
+    "latestPlaceholder": "Último: {price}",
     "commissionLabel": "Comissão",
     "totalValueLabel": "Valor Total",
     "fundingAccountLabel": "Conta de Financiamento (opcional)",

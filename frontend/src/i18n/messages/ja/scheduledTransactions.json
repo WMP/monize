@@ -238,6 +238,7 @@
     "securityPlaceholder": "証券を選択...",
     "quantityLabel": "数量（株数）",
     "pricePerShareLabel": "1株あたりの価格",
+    "latestPlaceholder": "最新: {price}",
     "commissionLabel": "手数料",
     "totalValueLabel": "合計価値",
     "fundingAccountLabel": "資金調達口座（任意）",

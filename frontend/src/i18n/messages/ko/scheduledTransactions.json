@@ -238,6 +238,7 @@
     "securityPlaceholder": "유가증권 선택...",
     "quantityLabel": "수량 (주식수)",
     "pricePerShareLabel": "주당 가격",
+    "latestPlaceholder": "최신: {price}",
     "commissionLabel": "수수료",
     "totalValueLabel": "총 가치",
     "fundingAccountLabel": "자금 계정 (선택사항)",
