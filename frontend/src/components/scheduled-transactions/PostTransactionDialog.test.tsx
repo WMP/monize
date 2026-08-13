@@ -1795,7 +1795,29 @@ describe('PostTransactionDialog', () => {
       expect(qtyInput.value).toBe('');
     });
 
-    it('shows manual-price hint when security has no price history', async () => {
+    it('shows manual-price hint when there is no price history and no stored price', async () => {
+      mockGetSecurityPrices.mockResolvedValue([]);
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={{
+            ...investmentTransaction,
+            investmentPrice: null,
+            investmentQuantity: null,
+          }}
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          screen.getByText(/No price history yet for this security/),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('hides the manual-price hint when a stored price is present', async () => {
+      // A scheduled price of 100 is in the field, so "enter the price manually"
+      // would be misleading; the hint is suppressed even when the market fetch
+      // returns nothing.
       mockGetSecurityPrices.mockResolvedValue([]);
       render(
         <PostTransactionDialog
@@ -1805,9 +1827,12 @@ describe('PostTransactionDialog', () => {
       );
       await waitFor(() => {
         expect(
-          screen.getByText(/No price history yet for this security/),
-        ).toBeInTheDocument();
+          Number((screen.getByLabelText('Price per share') as HTMLInputElement).value),
+        ).toBe(100);
       });
+      expect(
+        screen.queryByText(/No price history yet for this security/),
+      ).not.toBeInTheDocument();
     });
 
     it('handles a getSecurityPrices rejection without crashing', async () => {

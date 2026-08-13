@@ -2509,6 +2509,74 @@ describe('ScheduledTransactionForm', () => {
       });
     });
 
+    it('treats a malformed close as no price rather than NaN', async () => {
+      // A non-numeric closePrice must normalize to null: NaN would slip past the
+      // `!= null` gate, cascade into the fold, and -- because NaN !== NaN -- make
+      // the market-price latch re-fire every render.
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: 'not-a-number', priceDate: '2026-05-09' },
+      ]);
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalled();
+      });
+      // The price stays empty (no NaN written) and the "no price history" hint
+      // shows because the field is genuinely empty.
+      expect(
+        (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+      ).toBe('');
+      expect(screen.getByText(/No price history yet/)).toBeInTheDocument();
+    });
+
+    it('does not store a market price on an amount-only action (DIVIDEND)', async () => {
+      const { container } = render(<ScheduledTransactionForm />);
+      await waitFor(() => {
+        expect(mockAccountsGetAll).toHaveBeenCalled();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Investment'));
+      });
+      await waitFor(() => {
+        expect(mockGetSecurities).toHaveBeenCalled();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'VOO Dividend' },
+      });
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'DIVIDEND' } });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      // The price fetch still runs for the security even on a dividend.
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalled();
+      });
+      fireEvent.change(screen.getByLabelText('Total Amount'), {
+        target: { value: '42' },
+      });
+      const submitBtn = container.querySelector('button[type="submit"]')!;
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalled();
+      });
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.investmentAction).toBe('DIVIDEND');
+      // No Price field is shown for a dividend, so the market fetch must not leak
+      // a spurious investmentPrice into the payload.
+      expect(payload.investmentPrice).toBeUndefined();
+      expect(payload.investmentTotalAmount).toBe(42);
+    });
+
     it('errors out when submitted without a brokerage account', async () => {
       const { container } = render(<ScheduledTransactionForm />);
       await waitFor(() => {

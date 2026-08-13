@@ -543,7 +543,12 @@ export function ScheduledTransactionForm({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        setMarketPrice(latest ? Number(latest.closePrice) : null);
+        // A non-finite close (missing or malformed row) is "no price", not NaN:
+        // NaN slips past `!= null`, cascades through the fold, and -- because
+        // NaN !== NaN -- would make the market-price latch re-fire every render.
+        setMarketPrice(
+          latest && Number.isFinite(Number(latest.closePrice)) ? Number(latest.closePrice) : null,
+        );
       })
       .catch((err) => {
         if (cancelled) return;
@@ -580,17 +585,24 @@ export function ScheduledTransactionForm({
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
-    if (marketPrice != null && (investmentPrice === '' || investmentPrice === 0)) {
-      const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
-      setInvestmentPrice(rounded);
+    // Only a quantity-price action has a Price field to fill, and only a usable
+    // positive close is worth writing -- both guards match the two dialogs, so a
+    // dividend never stores a spurious price and a zero/NaN quote never cascades
+    // into the fold.
+    if (
+      QUANTITY_PRICE_ACTIONS.includes(investmentAction) &&
+      roundedMarketPrice != null &&
+      (investmentPrice === '' || investmentPrice === 0)
+    ) {
+      setInvestmentPrice(roundedMarketPrice);
       const commission = investmentCommission === '' ? 0 : Number(investmentCommission);
       if (investmentTotalValue !== '') {
         setInvestmentQuantity(
-          quantityFromTotal(Number(investmentTotalValue), rounded, investmentSign, commission),
+          quantityFromTotal(Number(investmentTotalValue), roundedMarketPrice, investmentSign, commission),
         );
       } else if (investmentQuantity !== '') {
         setInvestmentTotalValue(
-          totalFromQuantity(Number(investmentQuantity), rounded, investmentSign, commission),
+          totalFromQuantity(Number(investmentQuantity), roundedMarketPrice, investmentSign, commission),
         );
       }
     }
@@ -1861,7 +1873,7 @@ export function ScheduledTransactionForm({
                   </div>
                 )}
               </div>
-              {investmentSecurityId && marketPrice == null && (
+              {investmentSecurityId && marketPrice == null && investmentPrice === '' && (
                 <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {t('form.noPriceHistory')}
                 </p>

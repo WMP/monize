@@ -207,23 +207,32 @@ that would read as a real amount.
 An investment price *or quantity* the user saved -- on a scheduled occurrence's
 override, or carried from the schedule -- is a decision, not a stale default, so
 live market data may be *offered* beside it but never *written over* it. Both
-dialogs that fill a price obey this, and both guard on the same two facts.
-`OverrideEditorDialog` fills the field from the latest close only when the
-occurrence has no price of its own *and* the user has not already typed one
-(`hasStoredPrice` false, `userEditedInvestment` false, field empty), otherwise
-exposing an explicit "use latest close" action; `PostTransactionDialog` skips
-its market-price refresh when the prefill came from a per-occurrence override
-(`investmentFromStoredOverride`, keyed off a stored price *or quantity* -- an
-override that set only the shares must not have them rescaled) or when the user
-has already edited a field, keeping the base-schedule DCA refresh only for a
-price that is a creation-time snapshot. `userEditedInvestment` matters because
-the latest-close fetch is asynchronous: it can resolve *after* the dialog opens,
-and a quantity or total typed in the meantime (price still blank, so an
-"is the field empty" check alone lets the fill through) is the user's own
-instruction, not something to clobber on arrival. The defect all of this
-prevents is a silent re-price: reopening an override to change only its date,
-posting an occurrence whose price the user set, or having a value you just typed
-re-derived under you, must not move money to today's close.
+dialogs that fill a price obey this. `OverrideEditorDialog` fills the field from
+the latest close only when the occurrence has no price of its own and the user
+has not typed a total (`hasStoredPrice` false, `userEditedTotal` false, field
+empty), otherwise exposing an explicit "use latest close" action;
+`PostTransactionDialog` skips its market-price refresh when the prefill came from
+a per-occurrence override (`investmentFromStoredOverride`, keyed off a stored
+price *or quantity* -- an override that set only the shares must not have them
+rescaled) or when the user has edited any field, keeping the base-schedule DCA
+refresh only for a price that is a creation-time snapshot.
+
+The two guards differ **because their fill precedence differs**, and the guard
+protects whichever field that precedence would clobber. The override editor's
+fill is quantity-first (it keeps the shares and recomputes the total), so it must
+not run once the user has typed a **total** -- but a quantity-only edit is safe
+and is left to auto-fill. The post dialog's refresh is total-first (it preserves
+the scheduled total and rescales the shares), so it must not run once the user
+has typed anything, because a typed **quantity** is what its precedence would
+overwrite. The fetch being asynchronous is what makes this matter: it can resolve
+*after* the dialog opens, and a value typed in the meantime (price still blank,
+so an "is the field empty" check alone lets the fill through) is the user's own
+instruction. The defect all of this prevents is a silent re-price: reopening an
+override to change only its date, posting an occurrence whose price the user set,
+or having a value you just typed re-derived under you, must not move money to
+today's close. A NaN or zero close is not a usable price -- normalize it to null
+where `marketPrice` is set, so the fill, the placeholder and the latch all treat
+it as "no price" rather than a value.
 
 There are three surfaces that fill these fields -- the two dialogs and
 `ScheduledTransactionForm` -- and all three do the price/quantity/total

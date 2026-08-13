@@ -87,12 +87,14 @@ export function OverrideEditorDialog({
   // to state provenance.
   const [priceFromOccurrence, setPriceFromOccurrence] = useState(false);
   const [priceCameFromMarket, setPriceCameFromMarket] = useState(false);
-  // True once the user touches any investment field after the dialog opens. The
-  // latest close is fetched asynchronously, so a value typed while that fetch is
-  // still in flight is the user's own instruction and must not be clobbered when
-  // the market figure lands -- the same exemption PostTransactionDialog applies
-  // to its market refresh.
-  const [userEditedInvestment, setUserEditedInvestment] = useState(false);
+  // True once the user types into the Total field after the dialog opens. The
+  // latest close is fetched asynchronously and the auto-fill is quantity-first
+  // (writePrice keeps the shares and recomputes the total), so it would clobber a
+  // total the user typed while the fetch was still in flight. A quantity-only
+  // edit is safe to auto-fill -- the shares are preserved and the total follows --
+  // so only a typed total blocks it; a typed price already blocks via the
+  // `investmentPrice === ''` gate.
+  const [userEditedTotal, setUserEditedTotal] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
   const investmentAction = scheduledTransaction.investmentAction;
@@ -182,7 +184,7 @@ export function OverrideEditorDialog({
       setHasStoredPrice(typeof initialPrice === 'number' && initialPrice > 0);
       setPriceFromOccurrence(existingOverride?.investmentPrice != null);
       setPriceCameFromMarket(false);
-      setUserEditedInvestment(false);
+      setUserEditedTotal(false);
       if (
         typeof initialQty === 'number' &&
         initialQty > 0 &&
@@ -218,8 +220,12 @@ export function OverrideEditorDialog({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        setMarketPrice(latest ? Number(latest.closePrice) : null);
-        setMarketPriceDate(latest ? latest.priceDate : null);
+        // A non-finite close (missing or malformed row) is "no price", not NaN:
+        // NaN slips past `!= null` and -- because NaN !== NaN -- would make the
+        // market-price latch re-fire every render.
+        const usable = latest != null && Number.isFinite(Number(latest.closePrice));
+        setMarketPrice(usable ? Number(latest.closePrice) : null);
+        setMarketPriceDate(usable ? latest.priceDate : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -282,19 +288,20 @@ export function OverrideEditorDialog({
   // future purchase at today's close. Uses the "info from previous render"
   // pattern to avoid violating react-hooks/set-state-in-effect.
   //
-  // `!userEditedInvestment` is the second half of that guard: the fetch is
-  // asynchronous, so a quantity or total the user typed while it was in flight
-  // is their own instruction. Without this, a stated total (price still empty,
-  // so `investmentPrice === ''` alone lets the fill through) would be silently
-  // re-derived from the arriving close -- the exact typed-before-fetch race
-  // PostTransactionDialog guards on its side.
+  // `!userEditedTotal` is the second half of that guard: the fetch is
+  // asynchronous, and the fill is quantity-first (writePrice keeps the shares and
+  // recomputes the total), so a total the user typed while it was in flight would
+  // be silently re-derived from the arriving close -- the typed-before-fetch race
+  // PostTransactionDialog guards on its side. A quantity-only edit does not block
+  // it: the shares are preserved and the total simply follows, so filling the
+  // price is safe and matches ScheduledTransactionForm on identical input.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
     if (
       isInvestmentQuantityPrice &&
       !hasStoredPrice &&
-      !userEditedInvestment &&
+      !userEditedTotal &&
       investmentPrice === '' &&
       marketPrice != null &&
       marketPrice > 0
@@ -315,7 +322,6 @@ export function OverrideEditorDialog({
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
-    setUserEditedInvestment(true);
     setInvestmentQuantity(qty);
     if (qty !== '' && investmentPrice !== '' && Number(investmentPrice) > 0) {
       setInvestmentTotalValue(
@@ -326,7 +332,6 @@ export function OverrideEditorDialog({
 
   const handleInvestmentPriceChange = (raw: number | undefined) => {
     const price = raw ?? '';
-    setUserEditedInvestment(true);
     setInvestmentPrice(price);
     // A typed (or cleared) price is the user's own, whatever it happens to
     // equal, so it is no longer the stored instruction: both provenance flags
@@ -349,7 +354,7 @@ export function OverrideEditorDialog({
   };
 
   const handleInvestmentTotalValueChange = (raw: number | undefined) => {
-    setUserEditedInvestment(true);
+    setUserEditedTotal(true);
     if (raw === undefined) {
       setInvestmentTotalValue('');
       return;
@@ -600,7 +605,7 @@ export function OverrideEditorDialog({
                   }
                   onChange={handleInvestmentTotalValueChange}
                 />
-                {scheduledTransaction.investmentSecurityId && marketPrice == null && (
+                {scheduledTransaction.investmentSecurityId && marketPrice == null && investmentPrice === '' && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                     {t('overrideEditor.noPriceHistory')}
                   </p>

@@ -480,7 +480,12 @@ export function PostTransactionDialog({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        setMarketPrice(latest ? Number(latest.closePrice) : null);
+        // A non-finite close (missing or malformed row) is "no price", not NaN:
+        // NaN slips past `!= null` and -- because NaN !== NaN -- would make the
+        // market-price latch re-fire every render.
+        setMarketPrice(
+          latest && Number.isFinite(Number(latest.closePrice)) ? Number(latest.closePrice) : null,
+        );
       })
       .catch((err) => {
         if (cancelled) return;
@@ -900,7 +905,7 @@ export function PostTransactionDialog({
                   }
                   onChange={handleInvestmentTotalValueChange}
                 />
-                {scheduledTransaction.investmentSecurityId && marketPrice == null && (
+                {scheduledTransaction.investmentSecurityId && marketPrice == null && investmentPrice === '' && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                     {t('postDialog.noPriceHistory')}
                   </p>
