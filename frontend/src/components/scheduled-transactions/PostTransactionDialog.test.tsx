@@ -70,6 +70,8 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
     formatNumber: (n: number, d: number = 2) => n.toFixed(d),
+    // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
+    formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
   }),
 }));
 
@@ -1266,6 +1268,67 @@ describe('PostTransactionDialog', () => {
         expect(mockGetSecurityPrices).toHaveBeenCalledWith('sec1', {
           limit: 1,
         });
+      });
+    });
+
+    it('keeps a per-occurrence override price when the market price arrives', async () => {
+      // The finding: a price the user saved on this occurrence (via the override
+      // editor, which preserves it on reopen) was silently overwritten with
+      // today's close the moment the fetch resolved on the posting side too.
+      // Now an override price stands; the market figure only refreshes a base
+      // schedule's creation-time snapshot.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      const txWithOverride = {
+        ...investmentTransaction,
+        nextOverride: {
+          id: 'ov1',
+          scheduledTransactionId: 'inv1',
+          originalDate: '2025-02-15',
+          overrideDate: '2025-02-15',
+          amount: null,
+          categoryId: null,
+          description: null,
+          isSplit: null,
+          splits: null,
+          investmentQuantity: 4,
+          investmentPrice: 250,
+          investmentTotalAmount: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={txWithOverride}
+        />,
+      );
+      // Let the price fetch resolve; the overwrite would fire here if it ran.
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalledWith('sec1', { limit: 1 });
+      });
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      // Stored override wins: price stays 250 and quantity stays 4, not
+      // 123.45 with the quantity rescaled to hold a 1,000 total.
+      expect(Number(priceInput.value)).toBe(250);
+      expect(Number(qtyInput.value)).toBe(4);
+    });
+
+    it('still refreshes a base schedule price from the market (no override)', async () => {
+      // The other half of the rule: with no per-occurrence override, the
+      // schedule's saved price is a creation-time snapshot the post brings up to
+      // date, preserving the scheduled total and rescaling the quantity.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      await waitFor(() => {
+        expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
     });
 

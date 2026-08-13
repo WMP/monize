@@ -83,7 +83,7 @@ export function PostTransactionDialog({
 }: PostTransactionDialogProps) {
   const t = useTranslations('scheduledTransactions');
   const tc = useTranslations('common');
-  const { formatCurrency, formatNumber } = useNumberFormat();
+  const { formatCurrency, formatNumber, formatPrice } = useNumberFormat();
   const [isLoading, setIsLoading] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [amountCopied, setAmountCopied] = useState(false);
@@ -102,6 +102,13 @@ export function PostTransactionDialog({
   // Not sent to the backend -- the API derives the total from qty/price/commission.
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>('');
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
+  // True when the price prefilled below came from a per-occurrence override --
+  // a price the user deliberately saved for THIS occurrence. It is an
+  // instruction, not a stale template, so the market-price refresh below must
+  // not silently overwrite it (see OverrideEditorDialog: a stored price wins).
+  // A base schedule with no override keeps the DCA refresh: its price is a
+  // creation-time snapshot the post is meant to bring up to date.
+  const [priceFromStoredOverride, setPriceFromStoredOverride] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
   const investmentAction = scheduledTransaction.investmentAction;
@@ -416,6 +423,7 @@ export function PostTransactionDialog({
             : '';
       setInvestmentQuantity(initialQty);
       setInvestmentPrice(initialPrice);
+      setPriceFromStoredOverride(overridePrice != null);
       setInvestmentTotalAmount(
         overrideTotal != null
           ? Number(overrideTotal)
@@ -486,10 +494,20 @@ export function PostTransactionDialog({
   // The originally-scheduled total stays fixed, so the new price recomputes the
   // share quantity rather than the amount invested. Uses the "info from
   // previous render" pattern to avoid violating react-hooks/set-state-in-effect.
+  //
+  // A per-occurrence override price is exempt: it is a price the user saved for
+  // this occurrence, so refreshing it to today's close would silently re-price
+  // the very instruction they set -- the defect OverrideEditorDialog fixes on
+  // the editing side, closed here on the posting side too.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
-    if (isInvestmentQuantityPrice && marketPrice != null && marketPrice > 0) {
+    if (
+      isInvestmentQuantityPrice &&
+      !priceFromStoredOverride &&
+      marketPrice != null &&
+      marketPrice > 0
+    ) {
       const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
       setInvestmentPrice(rounded);
       const commission = Number(scheduledTransaction.investmentCommission ?? 0);
@@ -846,7 +864,7 @@ export function PostTransactionDialog({
                   min={0}
                   placeholder={
                     marketPrice != null
-                      ? t('postDialog.latestPlaceholder', { price: formatNumber(marketPrice, 6).replace(/0+$/, '').replace(/\.$/, '') })
+                      ? t('postDialog.latestPlaceholder', { price: formatPrice(marketPrice) })
                       : undefined
                   }
                   value={investmentPrice === '' ? undefined : investmentPrice}

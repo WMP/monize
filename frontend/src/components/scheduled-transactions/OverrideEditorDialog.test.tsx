@@ -63,6 +63,8 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
     formatNumber: (n: number, d: number = 2) => n.toFixed(d),
+    // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
+    formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
   }),
 }));
 
@@ -706,6 +708,66 @@ describe('OverrideEditorDialog', () => {
       });
       // and it says where the number came from
       expect(screen.getByText(/Filled from the close on/)).toBeInTheDocument();
+    });
+
+    it('stops calling the price "saved on this occurrence" once the user edits it', async () => {
+      // The provenance note recorded the price's origin on open but never
+      // cleared it on a manual edit, so it went on claiming a user-typed value
+      // was the stored one. No market price here (mock empty), so the only note
+      // in play is the stored-price one.
+      mockGetSecurityPrices.mockResolvedValue([]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      expect(
+        screen.getByText('Using the price saved on this occurrence.'),
+      ).toBeInTheDocument();
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      fireEvent.change(priceInput, { target: { value: '150' } });
+      expect(
+        screen.queryByText('Using the price saved on this occurrence.'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('derives quantity when "use latest close" is clicked with only a Total entered', async () => {
+      // The inconsistent-triple case: a Total but no Quantity. Clicking the
+      // suggestion used to set the price and leave the quantity empty; it now
+      // derives the quantity from the total, matching what typing the price does.
+      // A stored price (100) differs from the market (125), so the suggestion is
+      // offered rather than auto-applied -- the state the button needs to exist.
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '125', priceDate: '2025-02-20' },
+      ]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByText('Use latest close')).toBeInTheDocument();
+      });
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      // Reduce to a Total only: clear the quantity and the stored price, then
+      // enter a total. With no price the total does not back-derive a quantity,
+      // so the quantity stays empty -- the finding's precondition.
+      fireEvent.change(qtyInput, { target: { value: '' } });
+      fireEvent.change(priceInput, { target: { value: '' } });
+      fireEvent.change(totalInput, { target: { value: '1000' } });
+      fireEvent.blur(totalInput);
+      expect(qtyInput.value).toBe('');
+
+      fireEvent.click(screen.getByText('Use latest close'));
+
+      // 1000 / 125 = 8 shares; the triple is now consistent, not price+total
+      // with an empty quantity.
+      expect(Number(qtyInput.value)).toBeCloseTo(8, 6);
+      expect(Number(priceInput.value)).toBe(125);
     });
 
     it('sends investment fields when saving a new override', async () => {

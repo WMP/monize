@@ -55,12 +55,8 @@ export function OverrideEditorDialog({
 }: OverrideEditorDialogProps) {
   const t = useTranslations('scheduledTransactions');
   const tc = useTranslations('common');
-  const { formatNumber } = useNumberFormat();
+  const { formatPrice } = useNumberFormat();
   const { formatDate } = useDateFormat();
-  // A share price is not money: it carries up to six decimals, and the trailing
-  // zeros of a whole-cent price are noise beside a suggestion.
-  const formatPriceForCopy = (price: number) =>
-    formatNumber(price, 6).replace(/0+$/, '').replace(/[.,]$/, '');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(overrideDate);
   const [amount, setAmount] = useState<number>(0);
@@ -224,17 +220,32 @@ export function OverrideEditorDialog({
   const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
 
   /**
-   * Write a price into the form and recompute the total from the quantity
-   * already entered. Used by the explicit "use latest close" action and by the
-   * first-fill below; never called to replace a price already on file.
+   * Write a price into the form and recompute the field the user did not set.
+   * Used by the explicit "use latest close" action and by the first-fill below.
+   *
+   * A stated quantity wins -- the user is buying N shares and refreshing the
+   * price, so the total follows; only when no quantity is entered does a stated
+   * total derive the quantity. That fallback is the point: without it, clicking
+   * the suggestion after typing only a Total left the price set, the total
+   * unchanged and the quantity empty -- an inconsistent triple the keystroke
+   * path never produces.
+   *
+   * Once a market price is written, the field no longer holds the stored
+   * instruction, so `hasStoredPrice` drops -- the "saved on this occurrence"
+   * note must not outlive the value it describes.
    */
   const writePrice = (price: number, fromMarket: boolean) => {
     const rounded = Math.round(price * 1_000_000) / 1_000_000;
     setInvestmentPrice(rounded);
     setPriceCameFromMarket(fromMarket);
+    setHasStoredPrice(false);
     if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
       const total = Number(investmentQuantity) * rounded + investmentSign * investmentCommission;
       setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+    } else if (investmentTotalValue !== '') {
+      const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
+      const qty = Math.max(0, cost / rounded);
+      setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
     }
   };
 
@@ -281,8 +292,12 @@ export function OverrideEditorDialog({
   const handleInvestmentPriceChange = (raw: number | undefined) => {
     const price = raw ?? '';
     setInvestmentPrice(price);
-    // A typed price is the user's own, whatever it happens to equal.
+    // A typed (or cleared) price is the user's own, whatever it happens to
+    // equal, so it is no longer the stored instruction: both provenance flags
+    // drop, and the "saved on this occurrence" note stops claiming a value the
+    // user has since changed.
     setPriceCameFromMarket(false);
+    setHasStoredPrice(false);
     if (price !== '' && Number(price) > 0) {
       if (investmentTotalValue !== '') {
         const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
@@ -492,7 +507,7 @@ export function OverrideEditorDialog({
                   placeholder={
                     roundedMarketPrice != null
                       ? t('overrideEditor.latestPricePlaceholder', {
-                          price: formatPriceForCopy(roundedMarketPrice),
+                          price: formatPrice(roundedMarketPrice),
                         })
                       : undefined
                   }
@@ -506,11 +521,11 @@ export function OverrideEditorDialog({
                     <span>
                       {marketPriceDate
                         ? t('overrideEditor.latestCloseOnDate', {
-                            price: formatPriceForCopy(roundedMarketPrice),
+                            price: formatPrice(roundedMarketPrice),
                             date: formatDate(marketPriceDate),
                           })
                         : t('overrideEditor.latestClose', {
-                            price: formatPriceForCopy(roundedMarketPrice),
+                            price: formatPrice(roundedMarketPrice),
                           })}
                     </span>
                     <button
