@@ -1332,6 +1332,75 @@ describe('PostTransactionDialog', () => {
       });
     });
 
+    it('keeps a per-occurrence override quantity when the market price arrives', async () => {
+      // The finding-1 defect one axis over: an override storing only a quantity
+      // (the code's own "one-off DRIP at a different quantity" case) had its 4
+      // shares rescaled to 400/123.45 = 3.24 because the exemption keyed off a
+      // stored price alone. A saved quantity is an instruction too.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      const txWithQtyOverride = {
+        ...investmentTransaction,
+        nextOverride: {
+          id: 'ov1',
+          scheduledTransactionId: 'inv1',
+          originalDate: '2025-02-15',
+          overrideDate: '2025-02-15',
+          amount: null,
+          categoryId: null,
+          description: null,
+          isSplit: null,
+          splits: null,
+          investmentQuantity: 4,
+          investmentPrice: null,
+          investmentTotalAmount: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={txWithQtyOverride}
+        />,
+      );
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalledWith('sec1', { limit: 1 });
+      });
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      // The saved 4 shares stand, not rescaled by the market refresh.
+      expect(Number(qtyInput.value)).toBe(4);
+    });
+
+    it('does not overwrite a price the user typed before the fetch resolved', async () => {
+      // The finding-2 race: on a slow connection the user types a price while
+      // getSecurityPrices is still in flight; the refresh must not clobber it
+      // when the close finally lands. A deferred promise reproduces the timing.
+      let resolvePrices: (v: any) => void = () => {};
+      mockGetSecurityPrices.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePrices = resolve;
+        }),
+      );
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      // Type a price while the fetch is still pending.
+      await act(async () => {
+        fireEvent.change(priceInput, { target: { value: '99' } });
+      });
+      expect(Number(priceInput.value)).toBe(99);
+      // Now the close lands.
+      await act(async () => {
+        resolvePrices([{ closePrice: '123.45' }]);
+      });
+      // The typed 99 stands; it was not overwritten by the arriving close.
+      expect(Number(priceInput.value)).toBe(99);
+    });
+
     it('sends qty and price (not totalValue) in the POST payload', async () => {
       render(
         <PostTransactionDialog

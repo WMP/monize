@@ -18,6 +18,7 @@ import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { buildCategoryTree } from '@/lib/categoryUtils';
+import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
 import { roundToCents, getCurrencySymbol } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
@@ -78,6 +79,13 @@ export function OverrideEditorDialog({
   // or from the schedule it belongs to. Such a price is an instruction the user
   // saved, so market data may be offered beside it but never written over it.
   const [hasStoredPrice, setHasStoredPrice] = useState(false);
+  // Which of the two a stored price came from, so the provenance note tells the
+  // truth: a price on *this* override reads "saved on this occurrence", while a
+  // price inherited from the base schedule (a new override with no price of its
+  // own yet) reads "from the schedule" -- claiming the latter was saved on the
+  // occurrence would be a false provenance claim in the one place that exists
+  // to state provenance.
+  const [priceFromOccurrence, setPriceFromOccurrence] = useState(false);
   const [priceCameFromMarket, setPriceCameFromMarket] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
@@ -166,6 +174,7 @@ export function OverrideEditorDialog({
       setInvestmentPrice(initialPrice);
       setInvestmentTotalAmount(initialTotalAmount);
       setHasStoredPrice(typeof initialPrice === 'number' && initialPrice > 0);
+      setPriceFromOccurrence(existingOverride?.investmentPrice != null);
       setPriceCameFromMarket(false);
       if (
         typeof initialQty === 'number' &&
@@ -173,10 +182,15 @@ export function OverrideEditorDialog({
         typeof initialPrice === 'number' &&
         initialPrice > 0
       ) {
-        const commission = Number(scheduledTransaction.investmentCommission ?? 0);
         const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
-        const total = initialQty * initialPrice + sign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(
+          totalFromQuantity(
+            initialQty,
+            initialPrice,
+            sign,
+            Number(scheduledTransaction.investmentCommission ?? 0),
+          ),
+        );
       } else {
         setInvestmentTotalValue('');
       }
@@ -220,32 +234,36 @@ export function OverrideEditorDialog({
   const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
 
   /**
-   * Write a price into the form and recompute the field the user did not set.
-   * Used by the explicit "use latest close" action and by the first-fill below.
+   * Write a market price into the form and recompute the field the user did not
+   * set. Only ever called for a market figure -- the auto-fill below and the
+   * "use latest close" button -- so the value always came from the market and
+   * `priceCameFromMarket` is set unconditionally.
    *
-   * A stated quantity wins -- the user is buying N shares and refreshing the
-   * price, so the total follows; only when no quantity is entered does a stated
-   * total derive the quantity. That fallback is the point: without it, clicking
-   * the suggestion after typing only a Total left the price set, the total
-   * unchanged and the quantity empty -- an inconsistent triple the keystroke
-   * path never produces.
+   * Precedence here is quantity-first: a stated quantity keeps its shares and
+   * the total follows, because clicking "use latest close" means "re-price the
+   * shares I am buying". Only when no quantity is entered does a stated total
+   * derive the quantity, so the click never leaves an inconsistent
+   * price/total/empty-quantity triple. This deliberately differs from the
+   * keystroke path (`handleInvestmentPriceChange`, total-first); reconciling the
+   * two is a product decision tracked separately, not a claim made here.
    *
    * Once a market price is written, the field no longer holds the stored
-   * instruction, so `hasStoredPrice` drops -- the "saved on this occurrence"
-   * note must not outlive the value it describes.
+   * instruction, so `hasStoredPrice` drops -- the provenance note must not
+   * outlive the value it describes.
    */
-  const writePrice = (price: number, fromMarket: boolean) => {
+  const writePrice = (price: number) => {
     const rounded = Math.round(price * 1_000_000) / 1_000_000;
     setInvestmentPrice(rounded);
-    setPriceCameFromMarket(fromMarket);
+    setPriceCameFromMarket(true);
     setHasStoredPrice(false);
     if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
-      const total = Number(investmentQuantity) * rounded + investmentSign * investmentCommission;
-      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+      setInvestmentTotalValue(
+        totalFromQuantity(Number(investmentQuantity), rounded, investmentSign, investmentCommission),
+      );
     } else if (investmentTotalValue !== '') {
-      const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
-      const qty = Math.max(0, cost / rounded);
-      setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+      setInvestmentQuantity(
+        quantityFromTotal(Number(investmentTotalValue), rounded, investmentSign, investmentCommission),
+      );
     }
   };
 
@@ -266,7 +284,7 @@ export function OverrideEditorDialog({
       marketPrice != null &&
       marketPrice > 0
     ) {
-      writePrice(marketPrice, true);
+      writePrice(marketPrice);
     }
   }
 
@@ -284,8 +302,9 @@ export function OverrideEditorDialog({
     const qty = raw ?? '';
     setInvestmentQuantity(qty);
     if (qty !== '' && investmentPrice !== '' && Number(investmentPrice) > 0) {
-      const total = Number(qty) * Number(investmentPrice) + investmentSign * investmentCommission;
-      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+      setInvestmentTotalValue(
+        totalFromQuantity(Number(qty), Number(investmentPrice), investmentSign, investmentCommission),
+      );
     }
   };
 
@@ -299,13 +318,15 @@ export function OverrideEditorDialog({
     setPriceCameFromMarket(false);
     setHasStoredPrice(false);
     if (price !== '' && Number(price) > 0) {
+      // Keystroke path: total-first (a stated budget wins, quantity follows).
       if (investmentTotalValue !== '') {
-        const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
-        const qty = Math.max(0, cost / Number(price));
-        setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+        setInvestmentQuantity(
+          quantityFromTotal(Number(investmentTotalValue), Number(price), investmentSign, investmentCommission),
+        );
       } else if (investmentQuantity !== '') {
-        const total = Number(investmentQuantity) * Number(price) + investmentSign * investmentCommission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(
+          totalFromQuantity(Number(investmentQuantity), Number(price), investmentSign, investmentCommission),
+        );
       }
     }
   };
@@ -317,9 +338,9 @@ export function OverrideEditorDialog({
     }
     setInvestmentTotalValue(raw);
     if (investmentPrice !== '' && Number(investmentPrice) > 0) {
-      const cost = raw - investmentSign * investmentCommission;
-      const qty = Math.max(0, cost / Number(investmentPrice));
-      setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+      setInvestmentQuantity(
+        quantityFromTotal(raw, Number(investmentPrice), investmentSign, investmentCommission),
+      );
     }
   };
 
@@ -530,7 +551,7 @@ export function OverrideEditorDialog({
                     </span>
                     <button
                       type="button"
-                      onClick={() => writePrice(roundedMarketPrice, true)}
+                      onClick={() => writePrice(roundedMarketPrice)}
                       className="text-blue-600 hover:underline dark:text-blue-400"
                     >
                       {t('overrideEditor.useLatestClose')}
@@ -546,7 +567,9 @@ export function OverrideEditorDialog({
                 )}
                 {hasStoredPrice && !canApplyMarketPrice && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {t('overrideEditor.priceFromSchedule')}
+                    {priceFromOccurrence
+                      ? t('overrideEditor.priceFromOccurrence')
+                      : t('overrideEditor.priceFromSchedule')}
                   </p>
                 )}
                 <CurrencyInput

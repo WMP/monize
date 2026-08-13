@@ -19,6 +19,7 @@ import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
+import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
 import { getLocalDateString } from '@/lib/utils';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import {
@@ -102,13 +103,19 @@ export function PostTransactionDialog({
   // Not sent to the backend -- the API derives the total from qty/price/commission.
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>('');
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
-  // True when the price prefilled below came from a per-occurrence override --
-  // a price the user deliberately saved for THIS occurrence. It is an
-  // instruction, not a stale template, so the market-price refresh below must
-  // not silently overwrite it (see OverrideEditorDialog: a stored price wins).
-  // A base schedule with no override keeps the DCA refresh: its price is a
+  // True when the price OR quantity prefilled below came from a per-occurrence
+  // override -- values the user deliberately saved for THIS occurrence. They are
+  // instructions, not a stale template, so the market-price refresh below must
+  // not silently overwrite them (see OverrideEditorDialog: a stored value wins).
+  // Keyed off both fields: an override that set only a quantity would otherwise
+  // have its shares rescaled by the refresh, which is the same defect one axis
+  // over. A base schedule with no override keeps the DCA refresh: its price is a
   // creation-time snapshot the post is meant to bring up to date.
-  const [priceFromStoredOverride, setPriceFromStoredOverride] = useState(false);
+  const [investmentFromStoredOverride, setInvestmentFromStoredOverride] = useState(false);
+  // True once the user edits any investment field. The market fetch can resolve
+  // after the dialog opens, so without this a price/quantity typed in the
+  // meantime would be overwritten when the close finally lands.
+  const [userEditedInvestment, setUserEditedInvestment] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
   const investmentAction = scheduledTransaction.investmentAction;
@@ -423,7 +430,8 @@ export function PostTransactionDialog({
             : '';
       setInvestmentQuantity(initialQty);
       setInvestmentPrice(initialPrice);
-      setPriceFromStoredOverride(overridePrice != null);
+      setInvestmentFromStoredOverride(overridePrice != null || overrideQty != null);
+      setUserEditedInvestment(false);
       setInvestmentTotalAmount(
         overrideTotal != null
           ? Number(overrideTotal)
@@ -495,16 +503,19 @@ export function PostTransactionDialog({
   // share quantity rather than the amount invested. Uses the "info from
   // previous render" pattern to avoid violating react-hooks/set-state-in-effect.
   //
-  // A per-occurrence override price is exempt: it is a price the user saved for
-  // this occurrence, so refreshing it to today's close would silently re-price
-  // the very instruction they set -- the defect OverrideEditorDialog fixes on
-  // the editing side, closed here on the posting side too.
+  // Two exemptions keep this from silently overwriting a user instruction:
+  // - `investmentFromStoredOverride`: a price or quantity the user saved for
+  //   this occurrence stands, exactly as saved (the same rule the override
+  //   editor enforces on its side).
+  // - `userEditedInvestment`: a value the user typed after the dialog opened but
+  //   before this fetch resolved is theirs, not something to clobber on arrival.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
     if (
       isInvestmentQuantityPrice &&
-      !priceFromStoredOverride &&
+      !investmentFromStoredOverride &&
+      !userEditedInvestment &&
       marketPrice != null &&
       marketPrice > 0
     ) {
@@ -514,13 +525,10 @@ export function PostTransactionDialog({
       const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
       if (investmentTotalValue !== '' && Number(investmentTotalValue) > 0) {
         // Preserve the scheduled total -- adjust quantity to the new price.
-        const cost = Number(investmentTotalValue) - sign * commission;
-        const qty = Math.max(0, cost / rounded);
-        setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+        setInvestmentQuantity(quantityFromTotal(Number(investmentTotalValue), rounded, sign, commission));
       } else if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
         // No scheduled total to preserve -- fall back to deriving it from qty.
-        const total = Number(investmentQuantity) * rounded + sign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(totalFromQuantity(Number(investmentQuantity), rounded, sign, commission));
       }
     }
   }
@@ -530,39 +538,44 @@ export function PostTransactionDialog({
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
+    setUserEditedInvestment(true);
     setInvestmentQuantity(qty);
     if (qty !== '' && investmentPrice !== '' && Number(investmentPrice) > 0) {
-      const total = Number(qty) * Number(investmentPrice) + investmentSign * investmentCommission;
-      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+      setInvestmentTotalValue(
+        totalFromQuantity(Number(qty), Number(investmentPrice), investmentSign, investmentCommission),
+      );
     }
   };
 
   const handleInvestmentPriceChange = (raw: number | undefined) => {
     const price = raw ?? '';
+    setUserEditedInvestment(true);
     setInvestmentPrice(price);
     if (price !== '' && Number(price) > 0) {
       if (investmentTotalValue !== '') {
         // User has a target total -- keep it and derive quantity.
-        const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
-        const qty = Math.max(0, cost / Number(price));
-        setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+        setInvestmentQuantity(
+          quantityFromTotal(Number(investmentTotalValue), Number(price), investmentSign, investmentCommission),
+        );
       } else if (investmentQuantity !== '') {
-        const total = Number(investmentQuantity) * Number(price) + investmentSign * investmentCommission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+        setInvestmentTotalValue(
+          totalFromQuantity(Number(investmentQuantity), Number(price), investmentSign, investmentCommission),
+        );
       }
     }
   };
 
   const handleInvestmentTotalValueChange = (raw: number | undefined) => {
+    setUserEditedInvestment(true);
     if (raw === undefined) {
       setInvestmentTotalValue('');
       return;
     }
     setInvestmentTotalValue(raw);
     if (investmentPrice !== '' && Number(investmentPrice) > 0) {
-      const cost = raw - investmentSign * investmentCommission;
-      const qty = Math.max(0, cost / Number(investmentPrice));
-      setInvestmentQuantity(Math.round(qty * 100_000_000) / 100_000_000);
+      setInvestmentQuantity(
+        quantityFromTotal(raw, Number(investmentPrice), investmentSign, investmentCommission),
+      );
     }
   };
 

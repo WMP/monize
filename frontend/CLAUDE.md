@@ -204,22 +204,34 @@ that would read as a real amount.
 
 ### A stored occurrence price is an instruction; the market close is a suggestion
 
-An investment price the user saved -- on a scheduled occurrence's override, or
-carried from the schedule -- is a decision, not a stale default, so live market
-data may be *offered* beside it but never *written over* it. Both surfaces that
-fill a price obey this: `OverrideEditorDialog` fills the field from the latest
-close only when the occurrence has no price of its own (`hasStoredPrice` is
-false and the field is empty) and otherwise exposes an explicit "use latest
-close" action; `PostTransactionDialog` skips its market-price refresh when the
-prefilled price came from a per-occurrence override (`priceFromStoredOverride`),
-keeping the base-schedule DCA refresh only for a price that is a creation-time
-snapshot. The defect this prevents is a silent re-price: reopening an override
-to change only its date, or posting an occurrence whose price the user set, must
-not move money to today's close. When you add a third price-filling surface,
-carry the same distinction -- and format the "latest close" copy through
-`useNumberFormat().formatPrice` (a price is not money: up to six decimals,
-trailing zeros trimmed by Intl), never a hand-rolled `toFixed`/trailing-zero
-regex, which leaves a dangling separator in comma-decimal locales.
+An investment price *or quantity* the user saved -- on a scheduled occurrence's
+override, or carried from the schedule -- is a decision, not a stale default, so
+live market data may be *offered* beside it but never *written over* it. Both
+surfaces that fill a price obey this: `OverrideEditorDialog` fills the field
+from the latest close only when the occurrence has no price of its own
+(`hasStoredPrice` is false and the field is empty) and otherwise exposes an
+explicit "use latest close" action; `PostTransactionDialog` skips its
+market-price refresh when the prefill came from a per-occurrence override
+(`investmentFromStoredOverride`, keyed off a stored price *or quantity* -- an
+override that set only the shares must not have them rescaled) or when the user
+has already edited a field (`userEditedInvestment` -- the fetch can resolve
+after the dialog opens, and a value typed in the meantime is not something to
+clobber on arrival), keeping the base-schedule DCA refresh only for a price that
+is a creation-time snapshot. The defect this prevents is a silent re-price:
+reopening an override to change only its date, or posting an occurrence whose
+price the user set, must not move money to today's close.
+
+When you add a third price-filling surface, carry the same distinction; do the
+price/quantity/total arithmetic through `lib/investmentFold.ts`
+(`totalFromQuantity` / `quantityFromTotal` -- one rounding scale and one signed
+commission fold, so the surfaces cannot drift on the math, only on which
+conversion they run); state a stored price's provenance truthfully (a price on
+this override reads "saved on this occurrence", one inherited from the schedule
+reads "from the schedule" -- the two are different keys, not one); and format
+the "latest close" copy through `useNumberFormat().formatPrice` (a price is not
+money: up to six decimals, trailing zeros trimmed by Intl), never a hand-rolled
+`toFixed`/trailing-zero regex, which leaves a dangling separator in comma-decimal
+locales.
 
 ### A long list -- page it, or bound it and scroll with `scrollbar-slim`
 

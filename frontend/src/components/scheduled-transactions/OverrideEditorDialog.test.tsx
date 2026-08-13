@@ -710,11 +710,61 @@ describe('OverrideEditorDialog', () => {
       expect(screen.getByText(/Filled from the close on/)).toBeInTheDocument();
     });
 
-    it('stops calling the price "saved on this occurrence" once the user edits it', async () => {
+    it('names the price provenance truthfully: schedule vs this occurrence', async () => {
+      // The provenance note is the point of the feature, so it must not claim a
+      // price was "saved on this occurrence" when it was inherited from the base
+      // schedule. No market price here (mock empty), so the stored-price note is
+      // the only one in play.
+      mockGetSecurityPrices.mockResolvedValue([]);
+      const { rerender } = render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      // A brand-new override inherits the price from the schedule -> "from the
+      // schedule", never "saved on this occurrence".
+      expect(screen.getByText('Using the price from the schedule.')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Using the price saved on this occurrence.'),
+      ).not.toBeInTheDocument();
+
+      // A price actually saved on the override reads as the occurrence's own.
+      const existingOverride = {
+        id: 'ov1',
+        scheduledTransactionId: 'inv1',
+        originalDate: '2025-02-15',
+        overrideDate: '2025-02-15',
+        amount: null,
+        categoryId: null,
+        description: null,
+        isSplit: null,
+        splits: null,
+        investmentQuantity: 5,
+        investmentPrice: 250,
+        investmentTotalAmount: null,
+        createdAt: '',
+        updatedAt: '',
+      } as any;
+      rerender(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+          existingOverride={existingOverride}
+        />,
+      );
+      expect(
+        screen.getByText('Using the price saved on this occurrence.'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Using the price from the schedule.'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('stops calling the price stored once the user edits it', async () => {
       // The provenance note recorded the price's origin on open but never
       // cleared it on a manual edit, so it went on claiming a user-typed value
-      // was the stored one. No market price here (mock empty), so the only note
-      // in play is the stored-price one.
+      // was the stored one.
       mockGetSecurityPrices.mockResolvedValue([]);
       render(
         <OverrideEditorDialog
@@ -722,13 +772,11 @@ describe('OverrideEditorDialog', () => {
           scheduledTransaction={investmentTransaction}
         />,
       );
-      expect(
-        screen.getByText('Using the price saved on this occurrence.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Using the price from the schedule.')).toBeInTheDocument();
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       fireEvent.change(priceInput, { target: { value: '150' } });
       expect(
-        screen.queryByText('Using the price saved on this occurrence.'),
+        screen.queryByText('Using the price from the schedule.'),
       ).not.toBeInTheDocument();
     });
 
