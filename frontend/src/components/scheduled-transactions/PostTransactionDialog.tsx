@@ -19,7 +19,7 @@ import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
-import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney } from '@/lib/investmentFold';
 import { getLocalDateString } from '@/lib/utils';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import {
@@ -451,7 +451,7 @@ export function PostTransactionDialog({
             ? Number(scheduledTransaction.investmentTotalAmount)
             : null;
       if (storedTotal != null && storedTotal > 0) {
-        setInvestmentTotalValue(Math.round(storedTotal * 10_000) / 10_000);
+        setInvestmentTotalValue(roundMoney(storedTotal));
       } else if (
         typeof initialQty === 'number' &&
         initialQty > 0 &&
@@ -480,12 +480,12 @@ export function PostTransactionDialog({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        // A non-finite close (missing or malformed row) is "no price", not NaN:
-        // NaN slips past `!= null` and -- because NaN !== NaN -- would make the
-        // market-price latch re-fire every render.
-        setMarketPrice(
-          latest && Number.isFinite(Number(latest.closePrice)) ? Number(latest.closePrice) : null,
-        );
+        // Only a positive, finite close is a usable price; 0, negative, NaN and a
+        // missing row are all "no price" (null). NaN in particular slips past
+        // `!= null` and -- since NaN !== NaN -- would make the latch re-fire every
+        // render.
+        const close = latest ? Number(latest.closePrice) : NaN;
+        setMarketPrice(Number.isFinite(close) && close > 0 ? close : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -523,7 +523,7 @@ export function PostTransactionDialog({
       marketPrice != null &&
       marketPrice > 0
     ) {
-      const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
+      const rounded = roundPrice(marketPrice);
       setInvestmentPrice(rounded);
       const commission = Number(scheduledTransaction.investmentCommission ?? 0);
       const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
@@ -544,9 +544,7 @@ export function PostTransactionDialog({
   // not render as a "Latest: NaN" placeholder (the override editor guards its
   // placeholder the same way via roundedMarketPrice).
   const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0
-      ? Math.round(marketPrice * 1_000_000) / 1_000_000
-      : null;
+    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';

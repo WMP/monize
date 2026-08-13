@@ -40,7 +40,7 @@ import { useAccountOptionLabel } from '@/hooks/useMainAccountName';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice } from '@/lib/investmentFold';
 import { createLogger } from '@/lib/logger';
 
 import { optionalUuid, optionalString, optionalNumber } from '@/lib/zod-helpers';
@@ -543,12 +543,13 @@ export function ScheduledTransactionForm({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        // A non-finite close (missing or malformed row) is "no price", not NaN:
-        // NaN slips past `!= null`, cascades through the fold, and -- because
-        // NaN !== NaN -- would make the market-price latch re-fire every render.
-        setMarketPrice(
-          latest && Number.isFinite(Number(latest.closePrice)) ? Number(latest.closePrice) : null,
-        );
+        // Only a positive, finite close is a usable price; 0, negative, NaN and a
+        // missing row are all "no price" (null), so the fill, the placeholder, the
+        // latch and the "enter manually" hint agree there is nothing to offer.
+        // (NaN in particular slips past `!= null` and -- since NaN !== NaN -- would
+        // make the market-price latch re-fire every render.)
+        const close = latest ? Number(latest.closePrice) : NaN;
+        setMarketPrice(Number.isFinite(close) && close > 0 ? close : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -571,9 +572,7 @@ export function ScheduledTransactionForm({
   // number -- so a NaN or zero quote neither fills the field nor prints as a
   // "Latest:" placeholder.
   const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0
-      ? Math.round(marketPrice * 1_000_000) / 1_000_000
-      : null;
+    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
 
   // If the user hasn't typed a price, auto-fill from the latest market close
   // once it arrives, and reconcile the rest of the triple: an entered Total

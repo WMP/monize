@@ -18,7 +18,7 @@ import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { buildCategoryTree } from '@/lib/categoryUtils';
-import { totalFromQuantity, quantityFromTotal } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice } from '@/lib/investmentFold';
 import { roundToCents, getCurrencySymbol } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
@@ -220,11 +220,13 @@ export function OverrideEditorDialog({
       .then((prices) => {
         if (cancelled) return;
         const latest = prices[0];
-        // A non-finite close (missing or malformed row) is "no price", not NaN:
-        // NaN slips past `!= null` and -- because NaN !== NaN -- would make the
-        // market-price latch re-fire every render.
-        const usable = latest != null && Number.isFinite(Number(latest.closePrice));
-        setMarketPrice(usable ? Number(latest.closePrice) : null);
+        // Only a positive, finite close is a usable price; 0, negative, NaN and a
+        // missing row are all "no price" (null). NaN in particular slips past
+        // `!= null` and -- since NaN !== NaN -- would make the latch re-fire every
+        // render.
+        const close = latest ? Number(latest.closePrice) : NaN;
+        const usable = Number.isFinite(close) && close > 0;
+        setMarketPrice(usable ? close : null);
         setMarketPriceDate(usable ? latest.priceDate : null);
       })
       .catch((err) => {
@@ -265,7 +267,7 @@ export function OverrideEditorDialog({
    * outlive the value it describes.
    */
   const writePrice = (price: number) => {
-    const rounded = Math.round(price * 1_000_000) / 1_000_000;
+    const rounded = roundPrice(price);
     setInvestmentPrice(rounded);
     setPriceCameFromMarket(true);
     setHasStoredPrice(false);
@@ -311,9 +313,7 @@ export function OverrideEditorDialog({
   }
 
   const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0
-      ? Math.round(marketPrice * 1_000_000) / 1_000_000
-      : null;
+    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
   // Offer the market price only when it would actually change the field.
   const canApplyMarketPrice =
     isInvestmentQuantityPrice &&

@@ -11,6 +11,22 @@
  * price - commission).
  */
 
+/**
+ * Round to money precision (4dp, `decimal(20,4)`) -- the scale a total and a
+ * balance are stored at. Kept here beside the fold so the two conversions and
+ * their call sites round money one way. (Plain `Math.round`, matching the fold;
+ * `lib/format.ts`'s `roundToDecimals` applies an epsilon nudge and is a different
+ * strategy on the boundary -- do not swap one for the other.)
+ */
+export function roundMoney(value: number): number {
+  return Math.round(value * 10_000) / 10_000;
+}
+
+/** Round a share price to its stored/display precision (6dp). */
+export function roundPrice(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
 /** Total cash for `quantity` shares at `price`, commission folded in, at money precision. */
 export function totalFromQuantity(
   quantity: number,
@@ -18,7 +34,7 @@ export function totalFromQuantity(
   sign: number,
   commission: number,
 ): number {
-  return Math.round((quantity * price + sign * commission) * 10_000) / 10_000;
+  return roundMoney(quantity * price + sign * commission);
 }
 
 /**

@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { totalFromQuantity, quantityFromTotal } from './investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney } from './investmentFold';
+
+describe('roundMoney', () => {
+  it('rounds to money precision (4dp)', () => {
+    expect(roundMoney(1.23456)).toBe(1.2346);
+    expect(roundMoney(1.23454)).toBe(1.2345);
+    expect(roundMoney(99.99999)).toBe(100);
+    expect(roundMoney(100)).toBe(100);
+  });
+});
+
+describe('roundPrice', () => {
+  it('rounds to price precision (6dp)', () => {
+    expect(roundPrice(1.2345674)).toBe(1.234567);
+    expect(roundPrice(1.2345676)).toBe(1.234568);
+    expect(roundPrice(123)).toBe(123);
+  });
+});
 
 describe('totalFromQuantity', () => {
   it('folds a buy commission into the total (sign +1)', () => {

@@ -2534,6 +2534,29 @@ describe('ScheduledTransactionForm', () => {
       expect(screen.getByText(/No price history yet/)).toBeInTheDocument();
     });
 
+    it('treats a zero close as no price', async () => {
+      // A zero (or negative) quote is not a usable price, so it normalizes to
+      // null just like a missing one: the field stays empty and the hint shows,
+      // rather than a suppressed hint over an empty field with no way forward.
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: 0, priceDate: '2026-05-09' },
+      ]);
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalled();
+      });
+      expect(
+        (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+      ).toBe('');
+      expect(screen.getByText(/No price history yet/)).toBeInTheDocument();
+    });
+
     it('does not store a market price on an amount-only action (DIVIDEND)', async () => {
       const { container } = render(<ScheduledTransactionForm />);
       await waitFor(() => {
