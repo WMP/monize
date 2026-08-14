@@ -18,7 +18,7 @@ import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { buildCategoryTree } from '@/lib/categoryUtils';
-import { totalFromQuantity, quantityFromTotal, roundPrice } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, usableClose } from '@/lib/investmentFold';
 import { roundToCents, getCurrencySymbol } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
@@ -219,15 +219,9 @@ export function OverrideEditorDialog({
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
-        const latest = prices[0];
-        // Only a positive, finite close is a usable price; 0, negative, NaN and a
-        // missing row are all "no price" (null). NaN in particular slips past
-        // `!= null` and -- since NaN !== NaN -- would make the latch re-fire every
-        // render.
-        const close = latest ? Number(latest.closePrice) : NaN;
-        const usable = Number.isFinite(close) && close > 0;
-        setMarketPrice(usable ? close : null);
-        setMarketPriceDate(usable ? latest.priceDate : null);
+        const close = usableClose(prices);
+        setMarketPrice(close ? close.price : null);
+        setMarketPriceDate(close ? close.date : null);
       })
       .catch((err) => {
         if (cancelled) return;

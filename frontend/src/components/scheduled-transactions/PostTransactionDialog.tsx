@@ -19,7 +19,7 @@ import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
-import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney, usableClose } from '@/lib/investmentFold';
 import { getLocalDateString } from '@/lib/utils';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import {
@@ -479,13 +479,8 @@ export function PostTransactionDialog({
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
-        const latest = prices[0];
-        // Only a positive, finite close is a usable price; 0, negative, NaN and a
-        // missing row are all "no price" (null). NaN in particular slips past
-        // `!= null` and -- since NaN !== NaN -- would make the latch re-fire every
-        // render.
-        const close = latest ? Number(latest.closePrice) : NaN;
-        setMarketPrice(Number.isFinite(close) && close > 0 ? close : null);
+        const close = usableClose(prices);
+        setMarketPrice(close ? close.price : null);
       })
       .catch((err) => {
         if (cancelled) return;

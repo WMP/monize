@@ -12,6 +12,25 @@
  */
 
 /**
+ * The latest usable market close from a security-price response, or null. Only a
+ * positive, finite close is a price: 0, negative, NaN and an empty response are
+ * all "no price". NaN in particular slips past a `!= null` check and, since
+ * NaN !== NaN, would make a market-price latch re-fire every render. Kept in one
+ * place so the three scheduled-investment surfaces cannot drift on what counts as
+ * a quote (they all set marketPrice from this, and gate the fill/placeholder/hint
+ * on its result).
+ */
+export function usableClose(
+  prices: ReadonlyArray<{ closePrice: number | string; priceDate?: string | null }>,
+): { price: number; date: string | null } | null {
+  const latest = prices[0];
+  if (!latest) return null;
+  const price = Number(latest.closePrice);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return { price, date: latest.priceDate ?? null };
+}
+
+/**
  * Round to money precision (4dp, `decimal(20,4)`) -- the scale a total and a
  * balance are stored at. Kept here beside the fold so the two conversions and
  * their call sites round money one way. (Plain `Math.round`, matching the fold;

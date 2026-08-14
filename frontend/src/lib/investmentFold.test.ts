@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney } from './investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, roundMoney, usableClose } from './investmentFold';
+
+describe('usableClose', () => {
+  it('returns the latest positive close with its date', () => {
+    expect(usableClose([{ closePrice: 123.45, priceDate: '2026-05-09' }])).toEqual({
+      price: 123.45,
+      date: '2026-05-09',
+    });
+  });
+
+  it('coerces a numeric string close', () => {
+    expect(usableClose([{ closePrice: '99.5', priceDate: '2026-05-09' }])).toEqual({
+      price: 99.5,
+      date: '2026-05-09',
+    });
+  });
+
+  it('is null for an empty response', () => {
+    expect(usableClose([])).toBeNull();
+  });
+
+  it('is null for a zero, negative or non-numeric close', () => {
+    expect(usableClose([{ closePrice: 0 }])).toBeNull();
+    expect(usableClose([{ closePrice: -5 }])).toBeNull();
+    expect(usableClose([{ closePrice: 'abc' }])).toBeNull();
+    expect(usableClose([{ closePrice: NaN }])).toBeNull();
+  });
+
+  it('defaults a missing date to null', () => {
+    expect(usableClose([{ closePrice: 10 }])).toEqual({ price: 10, date: null });
+  });
+});
 
 describe('roundMoney', () => {
   it('rounds to money precision (4dp)', () => {

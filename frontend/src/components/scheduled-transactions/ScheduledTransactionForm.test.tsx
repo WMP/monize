@@ -2509,6 +2509,62 @@ describe('ScheduledTransactionForm', () => {
       });
     });
 
+    it('keeps the entered quantity when switching securities, not the derived total', async () => {
+      // The reported bug: after a share count is typed, switching securities left
+      // the stale (derived) total behind, and the new security's total-first
+      // auto-fill rescaled the quantity to hold it -- 10 shares silently becoming
+      // 4. The quantity is the user's input; the total was derived, so it must not
+      // win over it.
+      mockGetSecurities.mockResolvedValue([
+        ...mockSecurities,
+        { ...mockSecurities[0], id: 'sec-bnd', symbol: 'BND', name: 'Vanguard Total Bond' },
+      ]);
+      mockGetSecurityPrices.mockImplementation((id: string) =>
+        Promise.resolve([{ closePrice: id === 'sec-voo' ? 100 : 250, priceDate: '2026-05-09' }]),
+      );
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('100.000000');
+      });
+      // Enter a share count; the total derives to 10 * 100 = 1000.
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      await waitFor(() => {
+        expect(
+          Number(
+            (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+          ),
+        ).toBe(1000);
+      });
+      // Switch securities. The 10 shares stand; the total recomputes at the new
+      // price (10 * 250 = 2500), rather than the quantity being rescaled to 4.
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-bnd' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('250.000000');
+      });
+      expect(
+        Number((screen.getByLabelText('Quantity (shares)') as HTMLInputElement).value),
+      ).toBe(10);
+      expect(
+        Number(
+          (screen.getByLabelText('Total Value') as HTMLInputElement).value.replace(/,/g, ''),
+        ),
+      ).toBe(2500);
+    });
+
     it('treats a malformed close as no price rather than NaN', async () => {
       // A non-numeric closePrice must normalize to null: NaN would slip past the
       // `!= null` gate, cascade into the fold, and -- because NaN !== NaN -- make
@@ -2578,10 +2634,10 @@ describe('ScheduledTransactionForm', () => {
       fireEvent.change(screen.getByLabelText('Security'), {
         target: { value: 'sec-voo' },
       });
-      // The price fetch still runs for the security even on a dividend.
-      await waitFor(() => {
-        expect(mockGetSecurityPrices).toHaveBeenCalled();
-      });
+      // A dividend has no Price field, so the form never fetches a market close
+      // for it (matching the dialogs) -- there is nothing to leak into the payload.
+      await act(async () => {});
+      expect(mockGetSecurityPrices).not.toHaveBeenCalled();
       fireEvent.change(screen.getByLabelText('Total Amount'), {
         target: { value: '42' },
       });

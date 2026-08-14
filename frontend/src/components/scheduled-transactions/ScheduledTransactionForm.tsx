@@ -40,7 +40,7 @@ import { useAccountOptionLabel } from '@/hooks/useMainAccountName';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { totalFromQuantity, quantityFromTotal, roundPrice } from '@/lib/investmentFold';
+import { totalFromQuantity, quantityFromTotal, roundPrice, usableClose } from '@/lib/investmentFold';
 import { createLogger } from '@/lib/logger';
 
 import { optionalUuid, optionalString, optionalNumber } from '@/lib/zod-helpers';
@@ -532,9 +532,16 @@ export function ScheduledTransactionForm({
   }, [mode, securities.length, t]);
 
   // When the chosen security changes, fetch its most recent close price so we
-  // can auto-fill the Price field and back-derive quantity from Total Value.
+  // can auto-fill the Price field and back-derive quantity from Total Value. Only
+  // a quantity-price action has a Price field to fill; amount-only (DIVIDEND ...)
+  // and quantity-only (ADD_SHARES ...) actions never use a close, so skip the
+  // request for them -- matching the two dialogs, which gate the fetch the same way.
   useEffect(() => {
-    if (mode !== 'investment' || !investmentSecurityId) {
+    if (
+      mode !== 'investment' ||
+      !investmentSecurityId ||
+      !QUANTITY_PRICE_ACTIONS.includes(investmentAction)
+    ) {
       setMarketPrice(null);
       return;
     }
@@ -542,14 +549,8 @@ export function ScheduledTransactionForm({
     investmentsApi.getSecurityPrices(investmentSecurityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
-        const latest = prices[0];
-        // Only a positive, finite close is a usable price; 0, negative, NaN and a
-        // missing row are all "no price" (null), so the fill, the placeholder, the
-        // latch and the "enter manually" hint agree there is nothing to offer.
-        // (NaN in particular slips past `!= null` and -- since NaN !== NaN -- would
-        // make the market-price latch re-fire every render.)
-        const close = latest ? Number(latest.closePrice) : NaN;
-        setMarketPrice(Number.isFinite(close) && close > 0 ? close : null);
+        const close = usableClose(prices);
+        setMarketPrice(close ? close.price : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -559,7 +560,7 @@ export function ScheduledTransactionForm({
     return () => {
       cancelled = true;
     };
-  }, [mode, investmentSecurityId]);
+  }, [mode, investmentSecurityId, investmentAction]);
 
   const investmentSign = investmentAction === 'SELL' ? -1 : 1;
 
@@ -696,9 +697,17 @@ export function ScheduledTransactionForm({
   // (and the seen-market-price latch) on a security change so the newly chosen
   // security's close fills the field, rather than the old quote lingering because
   // the field is non-empty and the auto-fill only writes into an empty one.
+  //
+  // Clear the Total Value too, and keep the quantity: the total was derived from
+  // the *previous* security's price, so it is not a budget to preserve. Leaving
+  // it makes the new security's total-first auto-fill rescale the share count the
+  // user entered (10 shares silently becoming 4 to hold a stale $ total). With
+  // the total cleared the auto-fill falls to its quantity branch and recomputes
+  // the total from the shares at the new price.
   const handleInvestmentSecurityChange = (securityId: string) => {
     setInvestmentSecurityId(securityId);
     setInvestmentPrice('');
+    setInvestmentTotalValue('');
     setMarketPrice(null);
     setLastSeenMarketPrice(null);
   };
