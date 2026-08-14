@@ -231,8 +231,16 @@ instruction. The defect all of this prevents is a silent re-price: reopening an
 override to change only its date, posting an occurrence whose price the user set,
 or having a value you just typed re-derived under you, must not move money to
 today's close. A NaN or zero close is not a usable price -- normalize it to null
-where `marketPrice` is set, so the fill, the placeholder and the latch all treat
-it as "no price" rather than a value.
+where `marketPrice` is set (through `usableClose`), so the fill, the placeholder
+and the latch all treat it as "no price" rather than a value.
+
+`marketPrice == null` is three states at once -- loading, a failed lookup, and a
+genuinely empty history -- so it must not gate the "no price history, enter
+manually" hint: a failed lookup is not an empty dataset, and flashing the hint
+mid-fetch is a lie the resolve then retracts. Each surface carries a
+`priceHistoryEmpty` flag set true *only* when a request completes with no usable
+close, reset false while in flight and left false on rejection; the hint reads
+that flag, never the bare null.
 
 There are three surfaces that fill these fields -- the two dialogs and
 `ScheduledTransactionForm` -- and all three do the price/quantity/total

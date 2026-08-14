@@ -179,6 +179,11 @@ export function ScheduledTransactionForm({
   // BUY/SELL/REINVEST helpers: latest market price (used when Price is blank)
   // and a computed Total Value bound to (qty * price (+/-) commission).
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
+  // True only once a price request completes and returns no usable close -- the
+  // one state that means "this security genuinely has no price history". Kept
+  // apart from marketPrice == null, which is also the loading window and a failed
+  // lookup: a failed lookup is not an empty dataset (frontend/CLAUDE.md).
+  const [priceHistoryEmpty, setPriceHistoryEmpty] = useState(false);
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>(() => {
     const q = scheduledTransaction?.investmentQuantity;
     const p = scheduledTransaction?.investmentPrice;
@@ -546,18 +551,25 @@ export function ScheduledTransactionForm({
   useEffect(() => {
     if (mode !== 'investment' || !investmentSecurityId || !isQuantityPriceAction) {
       setMarketPrice(null);
+      setPriceHistoryEmpty(false);
       return;
     }
     let cancelled = false;
+    // Reset while the request is in flight: "no price history" is a
+    // completed-empty result, not the loading window and not a failed lookup.
+    setPriceHistoryEmpty(false);
     investmentsApi.getSecurityPrices(investmentSecurityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
         const close = usableClose(prices);
         setMarketPrice(close ? close.price : null);
+        setPriceHistoryEmpty(close === null);
       })
       .catch((err) => {
         if (cancelled) return;
         setMarketPrice(null);
+        // A failed lookup is not an empty dataset -- leave the hint off.
+        setPriceHistoryEmpty(false);
         logger.warn?.('Failed to fetch latest price', err);
       });
     return () => {
@@ -567,11 +579,10 @@ export function ScheduledTransactionForm({
 
   const investmentSign = investmentAction === 'SELL' ? -1 : 1;
 
-  // A close rounded for display (6dp), null unless it is a usable positive
-  // number -- so a NaN or zero quote neither fills the field nor prints as a
-  // "Latest:" placeholder.
-  const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
+  // A close rounded for display (6dp). marketPrice is already null unless it is a
+  // usable positive number (usableClose rejects zero/negative/NaN before it is
+  // set), so a plain null check is all that is needed here.
+  const roundedMarketPrice = marketPrice != null ? roundPrice(marketPrice) : null;
 
   // The price a keystroke folds against: a typed price, else the market close.
   // Fall back to the *rounded* close (not raw marketPrice) so a derived quantity
@@ -1889,7 +1900,7 @@ export function ScheduledTransactionForm({
                   </div>
                 )}
               </div>
-              {investmentSecurityId && marketPrice == null && investmentPrice === '' && (
+              {investmentSecurityId && priceHistoryEmpty && investmentPrice === '' && (
                 <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {t('form.noPriceHistory')}
                 </p>

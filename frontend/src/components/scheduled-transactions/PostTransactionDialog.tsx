@@ -103,6 +103,11 @@ export function PostTransactionDialog({
   // Not sent to the backend -- the API derives the total from qty/price/commission.
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>('');
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
+  // True only once a price request completes and returns no usable close -- the
+  // one state that means "this security genuinely has no price history", kept
+  // apart from marketPrice == null (also the loading window and a failed lookup).
+  // A failed lookup is not an empty dataset (frontend/CLAUDE.md).
+  const [priceHistoryEmpty, setPriceHistoryEmpty] = useState(false);
   // True when the price OR quantity prefilled below came from a per-occurrence
   // override -- values the user deliberately saved for THIS occurrence. They are
   // instructions, not a stale template, so the market-price refresh below must
@@ -475,16 +480,22 @@ export function PostTransactionDialog({
     const securityId = scheduledTransaction.investmentSecurityId;
     if (!securityId) return;
     let cancelled = false;
+    // Reset while the request is in flight: "no price history" is a
+    // completed-empty result, not the loading window and not a failed lookup.
+    setPriceHistoryEmpty(false);
     investmentsApi
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
         const close = usableClose(prices);
         setMarketPrice(close ? close.price : null);
+        setPriceHistoryEmpty(close === null);
       })
       .catch((err) => {
         if (cancelled) return;
         setMarketPrice(null);
+        // A failed lookup is not an empty dataset -- leave the hint off.
+        setPriceHistoryEmpty(false);
         logger.warn?.('Failed to fetch latest price', err);
       });
     return () => {
@@ -535,11 +546,10 @@ export function PostTransactionDialog({
   const investmentSign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
   const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
 
-  // A close is only usable when it is a positive number; a NaN or zero quote must
-  // not render as a "Latest: NaN" placeholder (the override editor guards its
-  // placeholder the same way via roundedMarketPrice).
-  const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
+  // A close rounded for display (6dp). marketPrice is already null unless it is a
+  // usable positive number (usableClose rejects zero/negative/NaN before it is
+  // set), so a plain null check is all that is needed here.
+  const roundedMarketPrice = marketPrice != null ? roundPrice(marketPrice) : null;
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
@@ -898,7 +908,7 @@ export function PostTransactionDialog({
                   }
                   onChange={handleInvestmentTotalValueChange}
                 />
-                {scheduledTransaction.investmentSecurityId && marketPrice == null && investmentPrice === '' && (
+                {scheduledTransaction.investmentSecurityId && priceHistoryEmpty && investmentPrice === '' && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                     {t('postDialog.noPriceHistory')}
                   </p>

@@ -75,6 +75,11 @@ export function OverrideEditorDialog({
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>('');
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
   const [marketPriceDate, setMarketPriceDate] = useState<string | null>(null);
+  // True only once a price request completes and returns no usable close -- the
+  // one state that means "this security genuinely has no price history", kept
+  // apart from marketPrice == null (also the loading window and a failed lookup).
+  // A failed lookup is not an empty dataset (frontend/CLAUDE.md).
+  const [priceHistoryEmpty, setPriceHistoryEmpty] = useState(false);
   // True when the occurrence already has a price on file -- from this override
   // or from the schedule it belongs to. Such a price is an instruction the user
   // saved, so market data may be offered beside it but never written over it.
@@ -205,6 +210,7 @@ export function OverrideEditorDialog({
       }
       setMarketPrice(null);
       setMarketPriceDate(null);
+      setPriceHistoryEmpty(false);
     }
   }, [isOpen, existingOverride, scheduledTransaction, overrideDate, prefillAmount]);
 
@@ -215,6 +221,9 @@ export function OverrideEditorDialog({
     const securityId = scheduledTransaction.investmentSecurityId;
     if (!securityId) return;
     let cancelled = false;
+    // Reset while the request is in flight: "no price history" is a
+    // completed-empty result, not the loading window and not a failed lookup.
+    setPriceHistoryEmpty(false);
     investmentsApi
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
@@ -222,11 +231,14 @@ export function OverrideEditorDialog({
         const close = usableClose(prices);
         setMarketPrice(close ? close.price : null);
         setMarketPriceDate(close ? close.date : null);
+        setPriceHistoryEmpty(close === null);
       })
       .catch((err) => {
         if (cancelled) return;
         setMarketPrice(null);
         setMarketPriceDate(null);
+        // A failed lookup is not an empty dataset -- leave the hint off.
+        setPriceHistoryEmpty(false);
         logger.warn?.('Failed to fetch latest price', err);
       });
     return () => {
@@ -306,8 +318,10 @@ export function OverrideEditorDialog({
     }
   }
 
-  const roundedMarketPrice =
-    marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
+  // marketPrice is already null unless it is a usable positive number
+  // (usableClose rejects zero/negative/NaN before it is set), so a plain null
+  // check is all that is needed here.
+  const roundedMarketPrice = marketPrice != null ? roundPrice(marketPrice) : null;
   // Offer the market price only when it would actually change the field.
   const canApplyMarketPrice =
     isInvestmentQuantityPrice &&
@@ -599,7 +613,7 @@ export function OverrideEditorDialog({
                   }
                   onChange={handleInvestmentTotalValueChange}
                 />
-                {scheduledTransaction.investmentSecurityId && marketPrice == null && investmentPrice === '' && (
+                {scheduledTransaction.investmentSecurityId && priceHistoryEmpty && investmentPrice === '' && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
                     {t('overrideEditor.noPriceHistory')}
                   </p>

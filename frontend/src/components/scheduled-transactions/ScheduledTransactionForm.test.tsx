@@ -2565,6 +2565,24 @@ describe('ScheduledTransactionForm', () => {
       ).toBe(2500);
     });
 
+    it('does not show the no-price-history hint when the lookup fails', async () => {
+      // A failed lookup is not an empty dataset: on a rejection the hint must
+      // stay off, not falsely claim the security has no price history.
+      mockGetSecurityPrices.mockRejectedValueOnce(new Error('network'));
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalled();
+      });
+      await act(async () => {});
+      expect(screen.queryByText(/No price history yet/)).not.toBeInTheDocument();
+    });
+
     it('does not re-fetch the close when toggling within quantity-price actions', async () => {
       await openInvestmentTab();
       fireEvent.change(screen.getByLabelText('Investment Account'), {

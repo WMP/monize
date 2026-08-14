@@ -1161,6 +1161,27 @@ describe('OverrideEditorDialog', () => {
         expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
       });
     });
+
+    it('does not show the no-price-history hint when the lookup fails', async () => {
+      // A failed lookup is not an empty dataset -- the hint must stay off, not
+      // falsely tell the user the security has no price history.
+      mockGetSecurityPrices.mockRejectedValueOnce(new Error('network'));
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={{
+            ...investmentTransaction,
+            investmentPrice: null,
+            investmentQuantity: null,
+          }}
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
+      });
+      await act(async () => {});
+      expect(screen.queryByText(/No price history yet/)).not.toBeInTheDocument();
+    });
   });
 
   // --- Transfer save: amount is negated ---
