@@ -44,10 +44,13 @@ export function IncompleteLogoutNotice() {
       await authApi.logout();
       clearLogoutIncomplete();
       setDismissed(true);
-      toast.success(t('signIn.logoutRetrySucceeded'));
+      // Reuse AppHeader's 'logout-failed' toast id: this outcome is about the
+      // same sign-out, so the success here replaces the failure toast that
+      // AppHeader raised, and repeated retries never stack.
+      toast.success(t('signIn.logoutRetrySucceeded'), { id: 'logout-failed' });
     } catch {
       // Still unreachable. Keep the warning up -- the session is still live.
-      toast.error(t('signIn.logoutRetryFailed'));
+      toast.error(t('signIn.logoutRetryFailed'), { id: 'logout-failed' });
     } finally {
       setIsRetrying(false);
     }
