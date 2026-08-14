@@ -54,7 +54,11 @@ const logger = createLogger('ScheduledTxForm');
 export type ScheduledTransactionMode = 'transaction' | 'split' | 'transfer' | 'investment';
 
 
-// Mirrors visibility rules in InvestmentTransactionForm — keep in sync.
+// Field visibility mirrors InvestmentTransactionForm for every action this form
+// can actually schedule (SCHEDULABLE_INVESTMENT_ACTIONS) -- keep the two in sync.
+// QUANTITY_ONLY_ACTIONS additionally lists SPLIT to match the backend's grouping
+// (scheduled-transactions.service.ts); SPLIT is not schedulable here, so that
+// entry is inert -- InvestmentTransactionForm instead models a split separately.
 const SECURITY_REQUIRED_ACTIONS: InvestmentAction[] = [
   'BUY', 'SELL', 'DIVIDEND', 'CAPITAL_GAIN', 'SPLIT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES',
 ];
