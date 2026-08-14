@@ -531,48 +531,56 @@ describe('OverrideEditorDialog', () => {
       mockGetSecurityPrices.mockResolvedValue([]);
     });
 
-    it('hides Amount / Category / Split toggle for investment occurrences', () => {
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+    it('hides Amount / Category / Split toggle for investment occurrences', async () => {
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        );
+      });
       expect(screen.queryByText('Amount')).not.toBeInTheDocument();
       expect(screen.queryByText('Category')).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Split this occurrence')).not.toBeInTheDocument();
     });
 
-    it('shows Quantity, Price, and Total Price inputs', () => {
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+    it('shows Quantity, Price, and Total Price inputs', async () => {
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        );
+      });
       expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
       expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
       expect(screen.getByLabelText('Total Price')).toBeInTheDocument();
     });
 
-    it('seeds Total Price from saved quantity * price', () => {
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+    it('seeds Total Price from saved quantity * price', async () => {
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        );
+      });
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       expect(totalInput.value).toBe('1,000');
     });
 
-    it('updates Quantity when Total Price is changed', () => {
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+    it('updates Quantity when Total Price is changed', async () => {
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        );
+      });
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       fireEvent.change(totalInput, { target: { value: '250' } });
       fireEvent.blur(totalInput);
@@ -716,12 +724,15 @@ describe('OverrideEditorDialog', () => {
       // schedule. No market price here (mock empty), so the stored-price note is
       // the only one in play.
       mockGetSecurityPrices.mockResolvedValue([]);
-      const { rerender } = render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+      let rerender: ReturnType<typeof render>['rerender'];
+      await act(async () => {
+        ({ rerender } = render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        ));
+      });
       // A brand-new override inherits the price from the schedule -> "from the
       // schedule", never "saved on this occurrence".
       expect(screen.getByText('Using the price from the schedule.')).toBeInTheDocument();
@@ -746,13 +757,15 @@ describe('OverrideEditorDialog', () => {
         createdAt: '',
         updatedAt: '',
       } as any;
-      rerender(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-          existingOverride={existingOverride}
-        />,
-      );
+      await act(async () => {
+        rerender(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={existingOverride}
+          />,
+        );
+      });
       expect(
         screen.getByText('Using the price saved on this occurrence.'),
       ).toBeInTheDocument();
@@ -766,12 +779,14 @@ describe('OverrideEditorDialog', () => {
       // cleared it on a manual edit, so it went on claiming a user-typed value
       // was the stored one.
       mockGetSecurityPrices.mockResolvedValue([]);
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-        />,
-      );
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+          />,
+        );
+      });
       expect(screen.getByText('Using the price from the schedule.')).toBeInTheDocument();
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       fireEvent.change(priceInput, { target: { value: '150' } });
@@ -962,7 +977,7 @@ describe('OverrideEditorDialog', () => {
       expect(payload.isSplit).toBeUndefined();
     });
 
-    it('prefills existing override values when editing', () => {
+    it('prefills existing override values when editing', async () => {
       const existingOverride = {
         id: 'ov1',
         scheduledTransactionId: 'inv1',
@@ -979,13 +994,15 @@ describe('OverrideEditorDialog', () => {
         createdAt: '',
         updatedAt: '',
       } as any;
-      render(
-        <OverrideEditorDialog
-          {...defaultProps}
-          scheduledTransaction={investmentTransaction}
-          existingOverride={existingOverride}
-        />,
-      );
+      await act(async () => {
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={existingOverride}
+          />,
+        );
+      });
       const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       expect(Number(qtyInput.value)).toBe(3);
