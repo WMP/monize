@@ -64,17 +64,18 @@ export function isLogoutIncomplete(): boolean {
 }
 
 export function clearLogoutIncomplete(): void {
-  // Nothing to resolve on the ordinary sign-in that never failed a logout --
-  // and this runs on every login, so the guard keeps the toast side effect (and
-  // the subscriber notification) scoped to the state it actually clears.
+  // Dismiss unconditionally: the failure toast can outlive the flag when
+  // sessionStorage is unavailable (private mode raised the toast but could not
+  // persist the flag), and dismissing an id that is not on screen is a harmless
+  // no-op. Otherwise the 12s failure toast lingers over a now-authenticated app.
+  toast.dismiss(LOGOUT_FAILED_TOAST_ID);
+  // The storage removal and the subscriber notification are genuine no-ops when
+  // nothing was ever flagged -- and this runs on every login -- so guard those.
   if (!isLogoutIncomplete()) return;
   try {
     window.sessionStorage.removeItem(KEY);
   } catch {
     // Nothing to clear.
   }
-  // The state is resolved, so take down its toast too -- otherwise the 12s
-  // failure toast lingers over a now-authenticated app after a fresh sign-in.
-  toast.dismiss(LOGOUT_FAILED_TOAST_ID);
   emitChange();
 }

@@ -25,7 +25,7 @@ describe('IncompleteLogoutNotice', () => {
   it('warns that only this browser was signed out', () => {
     window.sessionStorage.setItem('monize:logout-incomplete', '1');
     render(<IncompleteLogoutNotice />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText(/only this browser was signed out/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /retry sign-out/i }),
@@ -41,7 +41,7 @@ describe('IncompleteLogoutNotice', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBeNull();
   });
@@ -58,7 +58,7 @@ describe('IncompleteLogoutNotice', () => {
     });
     await act(async () => {});
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBe('1');
   });
 
@@ -68,12 +68,12 @@ describe('IncompleteLogoutNotice', () => {
   it('hides when the flag is cleared while it is mounted', async () => {
     window.sessionStorage.setItem('monize:logout-incomplete', '1');
     render(<IncompleteLogoutNotice />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
 
     await act(async () => {
       clearLogoutIncomplete();
     });
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

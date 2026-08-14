@@ -30,15 +30,16 @@ describe('logout-state', () => {
     expect(toast.dismiss).toHaveBeenCalledWith(LOGOUT_FAILED_TOAST_ID);
   });
 
-  // clearLogoutIncomplete runs on every sign-in, so when there is nothing to
-  // resolve it must not touch the toast or wake subscribers.
-  it('does nothing when the flag was never set', () => {
+  // clearLogoutIncomplete runs on every sign-in. The toast dismiss is
+  // unconditional (a private-mode toast can outlive the flag), but the
+  // subscriber notification is guarded, so an ordinary sign-in wakes no one.
+  it('dismisses the toast but does not notify when the flag was never set', () => {
     const listener = vi.fn();
     subscribeLogoutIncomplete(listener);
 
     clearLogoutIncomplete();
 
-    expect(toast.dismiss).not.toHaveBeenCalled();
+    expect(toast.dismiss).toHaveBeenCalledWith(LOGOUT_FAILED_TOAST_ID);
     expect(listener).not.toHaveBeenCalled();
   });
 

@@ -195,8 +195,10 @@ export function AppHeader() {
   const handleLogout = async () => {
     try {
       await authApi.logout();
-      // Dismisses any lingering failure toast from a prior attempt, so the
-      // clean-sign-out toast below stands alone instead of stacking under it.
+      // Defensive: a clean sign-out must leave no stale incomplete-logout state.
+      // Today the flag is only ever set while signing out -- so it is already
+      // clear by the time an authenticated user reaches this handler -- but
+      // clearing here keeps a future logout path that sets it correct.
       clearLogoutIncomplete();
       logout();
       toast.success(t('loggedOut'));

@@ -63,11 +63,12 @@ export function IncompleteLogoutNotice() {
 
   return (
     <div
-      // A persistent banner, not a transient interruption: `status` (polite)
-      // rather than `alert` (assertive) so a screen reader is not told about the
-      // same failed sign-out twice -- AppHeader's toast already announced it
-      // assertively just before this screen mounted.
-      role="status"
+      // role="alert" (assertive), not "status" (polite): this notice is inserted
+      // dynamically when /login is reached by client-side navigation, and an
+      // alert region is announced reliably on insertion where a status region
+      // often is not. The security warning must be heard, and AppHeader's toast
+      // is only a polite react-hot-toast region, so the notice cannot lean on it.
+      role="alert"
       className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3"
     >
       <p className="text-sm text-amber-800 dark:text-amber-200">
