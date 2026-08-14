@@ -35,7 +35,12 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // NOTE: intentionally NOT spreading devices['Desktop Chrome']. Its pinned
+      // (and often stale) userAgent stops this Next.js app from rendering its
+      // client content under the runner -- screens came back with no <h1>/<dl>
+      // and every DOM signal read as "missing", while a plain context (the
+      // bundled chromium's own UA) renders reliably. Use a plain desktop viewport.
+      use: { viewport: { width: 1280, height: 800 } },
     },
   ],
 });

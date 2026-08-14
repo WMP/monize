@@ -40,8 +40,16 @@ export const API_CAPTURE_MATCHERS: RegExp[] = [
   /\/api\/v1\/portfolio\/allocation(\/[^/?]+)?$/,
   /\/api\/v1\/portfolio\/(asset-class|sector|country)-weightings$/,
   /\/api\/v1\/holdings$/,
-  /\/api\/v1\/net-worth\/(monthly|investments-breakdown|investments-monthly)$/,
+  /\/api\/v1\/net-worth\/(monthly|investments-breakdown|investments-monthly|investments-daily)$/,
   /\/api\/v1\/scheduled-transactions(\/due)?$/,
+  // Reports screens fetch their figures from the built-in-reports family and
+  // the investment report. Observed on this instance (monize 1.14) by watching
+  // the network per screen; added so cash-flow, income/spending, tax-summary,
+  // bill-payment-history and the investment report are compared too -- these
+  // carry exactly the totals the "unknown is not zero" PR can flip to null.
+  /\/api\/v1\/built-in-reports\/(cash-flow|income-by-source|spending-by-category|tax-summary|bill-payment-history)$/,
+  /\/api\/v1\/reports\/investment$/,
+  /\/api\/v1\/portfolio\/(top-movers|allocation\/by-tag)$/,
 ];
 
 // Leaf keys that legitimately differ between two runs minutes apart, or that

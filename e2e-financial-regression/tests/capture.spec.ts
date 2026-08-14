@@ -21,16 +21,24 @@ test('capture financial values (read-only)', async ({ page }) => {
   // 14 screens with per-screen settle waits; well beyond the default 60s.
   test.setTimeout(600_000);
 
-  const phase = (process.env.REGRESSION_PHASE || '').toLowerCase();
-  if (phase !== 'before' && phase !== 'after') {
+  // Accept any non-empty label (the version-walk uses per-version labels like
+  // "baseline", "pr-1050", "pr-06"), sanitised for use as a filename. The
+  // classic before/after flow still works unchanged.
+  const rawPhase = (process.env.REGRESSION_PHASE || '').toLowerCase().trim();
+  const phase = rawPhase.replace(/[^a-z0-9._-]/g, '-');
+  if (!phase) {
     throw new Error(
-      `REGRESSION_PHASE must be "before" or "after" (got "${process.env.REGRESSION_PHASE}"). ` +
-        `Run via "npm run compare", which sets it per phase.`,
+      `REGRESSION_PHASE must be a non-empty label (got "${process.env.REGRESSION_PHASE}").`,
     );
   }
 
   const revisionRef =
-    phase === 'before' ? process.env.MONIZE_BEFORE_REF : process.env.MONIZE_AFTER_REF;
+    process.env.MONIZE_REVISION_REF ??
+    (phase === 'before'
+      ? process.env.MONIZE_BEFORE_REF
+      : phase === 'after'
+        ? process.env.MONIZE_AFTER_REF
+        : phase);
 
   const result = await capture(page, {
     phase,

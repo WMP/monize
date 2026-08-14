@@ -4,6 +4,11 @@ import { loginExistingUser, userFromEnv } from './auth';
 import { normalize, type ValueKind, type ValueStatus } from './money';
 import { API_CAPTURE_MATCHERS, SCREENS, jsonLeaves } from './signals';
 
+// Passive settling knobs. See the screen loop for why active waits are avoided.
+const SCREEN_SETTLE_MS = 5000; // let each screen hydrate + fetch + paint
+const DOM_POLL_INTERVAL_MS = 500;
+const DOM_POLL_TRIES = 24; // up to ~12s waiting for a DOM value to appear/settle
+
 export interface CapturedSignal {
   screen: string;
   field: string;
@@ -84,25 +89,46 @@ export async function capture(
 
   for (const spec of SCREENS) {
     currentScreen = spec.screen;
-    await page.goto(spec.path, { waitUntil: 'domcontentloaded' });
-    // Prove first render, then let the screen's XHRs settle so the API layer
-    // and any client-computed figure are present. networkidle can be flaky on
-    // apps that poll, so bound it and continue regardless.
-    await spec
-      .ready(page)
-      .waitFor({ state: 'visible', timeout: 20000 })
-      .catch(() => {
-        /* header not found: record nothing for DOM; API layer may still fire */
-      });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    // 'commit' (not 'domcontentloaded'): with route interception active on a
+    // Next.js App Router app that streams RSC, the DOMContentLoaded event does
+    // not reliably fire, hanging the navigation. 'commit' resolves once the
+    // response headers arrive; the render is then proven by ready().waitFor.
+    // Bounded, non-fatal navigation. The backend is a single small pod; under
+    // load a response can stall, and an unbounded goto would hang the whole run
+    // on one slow screen. Cap it and continue -- the API layer still captured
+    // whatever earlier screens fetched, and a skipped screen is a visible gap,
+    // not a corrupted run.
+    await page.goto(spec.path, { waitUntil: 'commit', timeout: 30000 }).catch(() => {});
+    // PASSIVE settle only. On this Next.js RSC app under route interception,
+    // ACTIVE waits after 'commit' (waitForLoadState('networkidle') or
+    // locator.waitFor()) were observed to STALL the client render entirely --
+    // the screen stayed blank and every DOM read came back "missing", while a
+    // plain timer let it hydrate and paint. The API layer is captured passively
+    // by the response listener regardless, so a timer gives it the same settling
+    // time without the stall. `ready` is polled (not awaited) below.
+    await page.waitForTimeout(SCREEN_SETTLE_MS);
 
     for (const field of spec.domFields) {
       const locator = field.locate(page).first();
-      const count = await locator.count().catch(() => 0);
-      const present = count > 0;
+      // Poll passively (no locator.waitFor, which stalls render here) until the
+      // value node exists and its text is non-empty and stable across two reads
+      // -- summary cards mount with a "zł 0.00" placeholder that settles ~1-2s
+      // after data loads, so a bare first read would capture the placeholder.
+      let present = false;
       let rawText: string | null = null;
-      if (present) {
-        rawText = (await locator.innerText().catch(() => null))?.trim() ?? null;
+      let prev: string | null = null;
+      for (let i = 0; i < DOM_POLL_TRIES; i++) {
+        const count = await locator.count().catch(() => 0);
+        if (count > 0) {
+          const t = (await locator.innerText().catch(() => null))?.trim() ?? null;
+          if (t) {
+            present = true;
+            rawText = t;
+            if (t === prev) break; // stable, non-empty: done
+          }
+          prev = t;
+        }
+        await page.waitForTimeout(DOM_POLL_INTERVAL_MS);
       }
       const norm = normalize(present, rawText, field.kind);
       domSignals.push({

@@ -30,14 +30,41 @@ const AUTH_WRITE_ALLOWLIST: RegExp[] = [
   /\/api\/v1\/auth\/logout$/,
 ];
 
-function isAllowedAuthWrite(url: string): boolean {
-  let path = url;
+// Read-style POSTs: endpoints that use POST only to carry a request body (e.g.
+// a list of ids) and return data WITHOUT mutating anything. Verified read-only
+// against the backend controllers. Let them through so the screen's figures
+// render -- blocking them would corrupt the capture with false "unknown"s.
+const READ_POST_ALLOWLIST: RegExp[] = [
+  // budgets.controller.ts getCategoryBudgetStatus: returns a status map, no writes.
+  /\/api\/v1\/budgets\/category-budget-status$/,
+];
+
+// App-initiated navigation side-effects we intentionally SUPPRESS during a
+// read-only capture. The app auto-fires these when a screen mounts; the harness
+// never asked for them. We block the request (so nothing is written and stored
+// values stay frozen -- exactly the read-only behaviour we want) but do NOT
+// record it as a violation, because suppressing it is correct, not a finding.
+const SUPPRESS_WRITE_ALLOWLIST: RegExp[] = [
+  // securities.controller.ts refreshSelectedPrices: fetches Yahoo prices, writes
+  // price snapshots and recalculates net worth. Freezing prices is what we want.
+  /\/api\/v1\/securities\/prices\/refresh\/selected$/,
+];
+
+function pathOf(url: string): string {
   try {
-    path = new URL(url).pathname;
+    return new URL(url).pathname;
   } catch {
-    /* keep raw url */
+    return url;
   }
-  return AUTH_WRITE_ALLOWLIST.some((re) => re.test(path));
+}
+
+function matchesAny(url: string, list: RegExp[]): boolean {
+  const path = pathOf(url);
+  return list.some((re) => re.test(path));
+}
+
+function isAllowedAuthWrite(url: string): boolean {
+  return matchesAny(url, AUTH_WRITE_ALLOWLIST);
 }
 
 /**
@@ -55,12 +82,23 @@ export function installReadonlyGuard(
     const method = request.method().toUpperCase();
     const url = request.url();
 
-    if (!MUTATING_METHODS.has(method) || isAllowedAuthWrite(url)) {
+    if (
+      !MUTATING_METHODS.has(method) ||
+      isAllowedAuthWrite(url) ||
+      matchesAny(url, READ_POST_ALLOWLIST)
+    ) {
       await route.continue();
       return;
     }
 
-    // A mutating request that is not an allowed auth write. Record and block.
+    // An app-initiated navigation side-effect we suppress on purpose: block it
+    // (freeze data) but do not treat it as a violation.
+    if (matchesAny(url, SUPPRESS_WRITE_ALLOWLIST)) {
+      await route.abort('failed');
+      return;
+    }
+
+    // A mutating request that is not allowed and not suppressed. Record and block.
     violations.push({ method, url, when: getLabel() });
     await route.abort('failed');
   };

@@ -35,7 +35,9 @@ export async function loginExistingUser(page: Page, user: RegressionUser): Promi
 
   await page.getByLabel(/email/i).fill(user.email);
   await page.getByLabel(/password/i).fill(user.password);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  // Exact match: the OIDC/SSO login page also renders a "Sign in with SSO"
+  // button, so /sign in/i is ambiguous. We drive the local-credentials button.
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
   // Race three outcomes: straight to the dashboard, a 2FA prompt, or an error.
   const codeField = page.getByLabel(/verification code|authenticator|one-time|2fa|code/i).first();
