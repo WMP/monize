@@ -8,14 +8,15 @@ import { authApi } from '@/lib/auth';
 import {
   isLogoutIncomplete,
   clearLogoutIncomplete,
+  subscribeLogoutIncomplete,
+  LOGOUT_FAILED_TOAST_ID,
 } from '@/lib/logout-state';
 
-// The flag is client-only and not reactive: it changes on a successful retry
-// (handled below by `dismissed`) or on the next sign-out, never while this
-// screen is mounted -- so `subscribe` is a no-op. `getServerSnapshot` returns
-// false so the server-rendered /login and the first client render agree, and
-// sessionStorage (which is undefined during SSR) is only read on the client.
-const subscribe = () => () => {};
+// The flag lives outside React (sessionStorage), so read it through
+// useSyncExternalStore: it stays in sync when a sign-in in another flow clears
+// the flag while this notice is mounted, and `getServerSnapshot` returns false
+// so the server-rendered /login and the first client render agree (sessionStorage
+// is undefined during SSR and is only read on the client).
 const getSnapshot = () => isLogoutIncomplete();
 const getServerSnapshot = () => false;
 
@@ -30,29 +31,31 @@ const getServerSnapshot = () => false;
  */
 export function IncompleteLogoutNotice() {
   const t = useTranslations('auth');
-  const incomplete = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  // A successful retry clears the flag; `dismissed` hides the notice for the
-  // rest of this render without depending on sessionStorage being reactive.
-  const [dismissed, setDismissed] = useState(false);
+  const incomplete = useSyncExternalStore(
+    subscribeLogoutIncomplete,
+    getSnapshot,
+    getServerSnapshot,
+  );
   const [isRetrying, setIsRetrying] = useState(false);
 
-  if (!incomplete || dismissed) return null;
+  if (!incomplete) return null;
 
   const retry = async () => {
     setIsRetrying(true);
     try {
       await authApi.logout();
+      // Resolves the state: dismisses the failure toast and notifies this
+      // notice to unmount. The success toast then stands alone.
       clearLogoutIncomplete();
-      setDismissed(true);
-      // Reuse AppHeader's 'logout-failed' toast id: this outcome is about the
-      // same sign-out, so the success here replaces the failure toast that
-      // AppHeader raised, and repeated retries never stack.
-      toast.success(t('signIn.logoutRetrySucceeded'), { id: 'logout-failed' });
+      toast.success(t('signIn.logoutRetrySucceeded'));
     } catch {
       // Still unreachable. Keep the warning up -- the session is still live.
-      // Repeat AppHeader's 12s dwell: reusing the id would otherwise reset this
-      // still-unresolved warning to the default (~4s) error duration.
-      toast.error(t('signIn.logoutRetryFailed'), { duration: 12_000, id: 'logout-failed' });
+      // Reuse the shared id so repeated retries dedup, with AppHeader's 12s
+      // dwell rather than the default (~4s) error duration.
+      toast.error(t('signIn.logoutRetryFailed'), {
+        duration: 12_000,
+        id: LOGOUT_FAILED_TOAST_ID,
+      });
     } finally {
       setIsRetrying(false);
     }

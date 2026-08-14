@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { IncompleteLogoutNotice } from './IncompleteLogoutNotice';
+import { clearLogoutIncomplete } from '@/lib/logout-state';
 
 const mockApiLogout = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/auth', () => ({
@@ -59,5 +60,20 @@ describe('IncompleteLogoutNotice', () => {
 
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBe('1');
+  });
+
+  // The flag can be cleared elsewhere -- a sign-in in another flow -- while the
+  // notice is still mounted. It subscribes to the flag, so it must hide rather
+  // than stay stale until unmount.
+  it('hides when the flag is cleared while it is mounted', async () => {
+    window.sessionStorage.setItem('monize:logout-incomplete', '1');
+    render(<IncompleteLogoutNotice />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    await act(async () => {
+      clearLogoutIncomplete();
+    });
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

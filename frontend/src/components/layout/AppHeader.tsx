@@ -7,7 +7,11 @@ import { useHideOnScroll } from '@/hooks/useHideOnScroll';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/auth';
-import { markLogoutIncomplete, clearLogoutIncomplete } from '@/lib/logout-state';
+import {
+  markLogoutIncomplete,
+  clearLogoutIncomplete,
+  LOGOUT_FAILED_TOAST_ID,
+} from '@/lib/logout-state';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { BudgetAlertBadge } from '@/components/budgets/BudgetAlertBadge';
@@ -191,12 +195,11 @@ export function AppHeader() {
   const handleLogout = async () => {
     try {
       await authApi.logout();
+      // Dismisses any lingering failure toast from a prior attempt, so the
+      // clean-sign-out toast below stands alone instead of stacking under it.
       clearLogoutIncomplete();
       logout();
-      // Share the 'logout-failed' toast id so a clean sign-out supersedes any
-      // failure toast a previous attempt left on screen instead of stacking
-      // under it -- every toast about a sign-out outcome uses this one id.
-      toast.success(t('loggedOut'), { id: 'logout-failed' });
+      toast.success(t('loggedOut'));
       router.push('/login');
     } catch {
       // Only the server can clear the HttpOnly refresh cookie, so a failed
@@ -206,7 +209,10 @@ export function AppHeader() {
       // Record it, warn, and let the login screen offer the retry.
       markLogoutIncomplete();
       logout();
-      toast.error(t('logoutNotConfirmed'), { duration: 12_000, id: 'logout-failed' });
+      toast.error(t('logoutNotConfirmed'), {
+        duration: 12_000,
+        id: LOGOUT_FAILED_TOAST_ID,
+      });
       router.push('/login');
     }
   };
