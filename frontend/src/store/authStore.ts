@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { AxiosError } from 'axios';
 import { User } from '@/types/auth';
 import { clearAllCache } from '@/lib/apiCache';
+import { clearLogoutIncomplete } from '@/lib/logout-state';
 import { markWhatsNewPendingForLogin } from './whatsNewStore';
 import type {
   DelegateContext,
@@ -80,6 +81,12 @@ export const useAuthStore = create<AuthState>()(
         // rehydrates isAuthenticated from localStorage without coming through
         // here, which is exactly why the digest used to reappear on every one.
         markWhatsNewPendingForLogin();
+        // A real sign-in supersedes whatever the previous session left behind,
+        // including a logout the server never confirmed. This is the one place
+        // every login path (local, 2FA, OIDC callback, registration) passes
+        // through, so clearing the incomplete-logout flag here keeps the
+        // invariant from being re-broken one call site at a time.
+        clearLogoutIncomplete();
         // Backend sets httpOnly cookies; we only track auth state in Zustand
         set({
           user,

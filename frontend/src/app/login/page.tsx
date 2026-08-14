@@ -18,7 +18,6 @@ import { authApi, AuthMethods } from '@/lib/auth';
 import { TwoFactorVerify } from '@/components/auth/TwoFactorVerify';
 import { AuthLanguagePicker } from '@/components/auth/AuthLanguagePicker';
 import { IncompleteLogoutNotice } from '@/components/auth/IncompleteLogoutNotice';
-import { clearLogoutIncomplete } from '@/lib/logout-state';
 import { AppVersion } from '@/components/ui/AppVersion';
 import { User } from '@/types/auth';
 import { createLogger } from '@/lib/logger';
@@ -114,10 +113,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Token is now in httpOnly cookie, not in response body. A fresh sign-in
-      // supersedes whatever the previous session left behind, including a
-      // logout the server never confirmed.
-      clearLogoutIncomplete();
+      // Token is now in httpOnly cookie, not in response body. The store's
+      // login() clears any incomplete-logout flag a prior session left behind.
       login(response.user!, 'httpOnly');
       if (authMethods.demo) {
         toast.success(t('toasts.welcomeDemo'), { duration: 6000 });
@@ -142,7 +139,6 @@ export default function LoginPage() {
   };
 
   const handle2FAVerified = (user: User) => {
-    clearLogoutIncomplete();
     login(user, 'httpOnly');
     if (authMethods.demo) {
       toast.success(t('toasts.welcomeDemo'), { duration: 6000 });
@@ -244,6 +240,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
+          <IncompleteLogoutNotice />
           <div className="text-center">
             <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
           </div>
@@ -262,6 +259,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
+          <IncompleteLogoutNotice />
           <div className="text-center">
             <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
             <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">

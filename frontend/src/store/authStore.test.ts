@@ -54,6 +54,18 @@ describe('authStore', () => {
       expect(state.error).toBeNull();
       expect(state.isLoading).toBe(false);
     });
+
+    // A fresh sign-in supersedes a logout the server never confirmed. Every
+    // login path (local, 2FA, OIDC callback, registration) goes through this
+    // action, so the incomplete-logout flag must be cleared here rather than at
+    // each call site -- where it was once missing on the OIDC and register paths.
+    it('clears any incomplete-logout flag left by a prior session', () => {
+      window.sessionStorage.setItem('monize:logout-incomplete', '1');
+
+      useAuthStore.getState().login(mockUser, 'httpOnly');
+
+      expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBeNull();
+    });
   });
 
   describe('logout', () => {
@@ -84,6 +96,22 @@ describe('authStore', () => {
       expect(
         window.localStorage.getItem('monize:ai-chat-messages'),
       ).toBeNull();
+    });
+
+    // The whole incomplete-logout feature rests on this: AppHeader's failed
+    // sign-out path calls markLogoutIncomplete() and then store.logout(), and
+    // relies on logout() leaving the flag alone so the /login notice can warn
+    // and offer a retry. logout() already clears several storage keys, so a
+    // future addition here could silently disable the notice with every other
+    // test still green -- this pins the invariant.
+    it('does not clear the incomplete-logout flag it must leave for the login notice', () => {
+      window.sessionStorage.setItem('monize:logout-incomplete', '1');
+
+      useAuthStore.getState().logout();
+
+      expect(
+        window.sessionStorage.getItem('monize:logout-incomplete'),
+      ).toBe('1');
     });
   });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,15 @@ import {
   isLogoutIncomplete,
   clearLogoutIncomplete,
 } from '@/lib/logout-state';
+
+// The flag is client-only and not reactive: it changes on a successful retry
+// (handled below by `dismissed`) or on the next sign-out, never while this
+// screen is mounted -- so `subscribe` is a no-op. `getServerSnapshot` returns
+// false so the server-rendered /login and the first client render agree, and
+// sessionStorage (which is undefined during SSR) is only read on the client.
+const subscribe = () => () => {};
+const getSnapshot = () => isLogoutIncomplete();
+const getServerSnapshot = () => false;
 
 /**
  * Shown on the login screen when the last sign-out cleared local state but the
@@ -21,19 +30,20 @@ import {
  */
 export function IncompleteLogoutNotice() {
   const t = useTranslations('auth');
-  // Read once on first render: sessionStorage is not reactive, and the flag only
-  // changes here (on a successful retry) or on the next sign-out.
-  const [visible, setVisible] = useState(() => isLogoutIncomplete());
+  const incomplete = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  // A successful retry clears the flag; `dismissed` hides the notice for the
+  // rest of this render without depending on sessionStorage being reactive.
+  const [dismissed, setDismissed] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  if (!visible) return null;
+  if (!incomplete || dismissed) return null;
 
   const retry = async () => {
     setIsRetrying(true);
     try {
       await authApi.logout();
       clearLogoutIncomplete();
-      setVisible(false);
+      setDismissed(true);
       toast.success(t('signIn.logoutRetrySucceeded'));
     } catch {
       // Still unreachable. Keep the warning up -- the session is still live.
