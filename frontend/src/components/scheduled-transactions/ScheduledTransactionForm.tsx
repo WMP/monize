@@ -531,17 +531,20 @@ export function ScheduledTransactionForm({
       });
   }, [mode, securities.length, t]);
 
+  // Whether the current action has a Price field the market close can fill. Used
+  // as the fetch dependency instead of the raw action so toggling *within* the
+  // quantity-price set (BUY <-> SELL <-> REINVEST, same security) does not
+  // re-issue the request -- the close is action-independent; only a flip in
+  // price-field applicability changes what the fetch should do.
+  const isQuantityPriceAction = QUANTITY_PRICE_ACTIONS.includes(investmentAction);
+
   // When the chosen security changes, fetch its most recent close price so we
   // can auto-fill the Price field and back-derive quantity from Total Value. Only
   // a quantity-price action has a Price field to fill; amount-only (DIVIDEND ...)
   // and quantity-only (ADD_SHARES ...) actions never use a close, so skip the
   // request for them -- matching the two dialogs, which gate the fetch the same way.
   useEffect(() => {
-    if (
-      mode !== 'investment' ||
-      !investmentSecurityId ||
-      !QUANTITY_PRICE_ACTIONS.includes(investmentAction)
-    ) {
+    if (mode !== 'investment' || !investmentSecurityId || !isQuantityPriceAction) {
       setMarketPrice(null);
       return;
     }
@@ -560,7 +563,7 @@ export function ScheduledTransactionForm({
     return () => {
       cancelled = true;
     };
-  }, [mode, investmentSecurityId, investmentAction]);
+  }, [mode, investmentSecurityId, isQuantityPriceAction]);
 
   const investmentSign = investmentAction === 'SELL' ? -1 : 1;
 

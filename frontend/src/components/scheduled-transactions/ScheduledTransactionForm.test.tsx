@@ -2565,6 +2565,25 @@ describe('ScheduledTransactionForm', () => {
       ).toBe(2500);
     });
 
+    it('does not re-fetch the close when toggling within quantity-price actions', async () => {
+      await openInvestmentTab();
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(mockGetSecurityPrices).toHaveBeenCalledTimes(1);
+      });
+      // BUY -> SELL -> REINVEST: same security, all price-relevant, so the close
+      // is unchanged and there is nothing to re-fetch.
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'SELL' } });
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'REINVEST' } });
+      await act(async () => {});
+      expect(mockGetSecurityPrices).toHaveBeenCalledTimes(1);
+    });
+
     it('treats a malformed close as no price rather than NaN', async () => {
       // A non-numeric closePrice must normalize to null: NaN would slip past the
       // `!= null` gate, cascade into the fold, and -- because NaN !== NaN -- make
