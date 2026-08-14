@@ -41,6 +41,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { totalFromQuantity, quantityFromTotal, roundPrice, usableClose } from '@/lib/investmentFold';
+import { computeInvestmentCashImpact } from '@/lib/investmentCashImpact';
 import { createLogger } from '@/lib/logger';
 
 import { optionalUuid, optionalString, optionalNumber } from '@/lib/zod-helpers';
@@ -1053,16 +1054,24 @@ export function ScheduledTransactionForm({
           splits: toCreateSplitData(splits),
         };
       } else if (mode === 'investment') {
-        // Estimate display amount from quantity*price (or totalAmount).
+        // Estimate the display amount -- the cash figure the bills list, forecast
+        // and scheduledKind read -- as the signed cash impact of the trade. Route
+        // it through the same helper the register form and the backend use
+        // (`computeInvestmentCashImpact`) rather than hand-rolling qty*price: a
+        // REINVEST moves no cash (the dividend buys the shares), so a hand-rolled
+        // -(qty*price+commission) would post a phantom recurring outflow that the
+        // occurrence never actually makes.
         const estQty = investmentQuantity === '' ? 0 : Number(investmentQuantity);
         const estPrice = investmentPrice === '' ? 0 : Number(investmentPrice);
         const estTotal = investmentTotalAmount === '' ? 0 : Number(investmentTotalAmount);
         const estCommission = investmentCommission === '' ? 0 : Number(investmentCommission);
+        const isQuantityPrice = QUANTITY_PRICE_ACTIONS.includes(investmentAction);
+        const isQuantityOnly = QUANTITY_ONLY_ACTIONS.includes(investmentAction);
+        const isAmountOnly = AMOUNT_ONLY_ACTIONS.includes(investmentAction);
         let displayAmount = formData.amount;
-        if (QUANTITY_PRICE_ACTIONS.includes(investmentAction)) {
-          const sign = investmentAction === 'SELL' ? 1 : -1;
-          displayAmount = sign * (estQty * estPrice + (sign === -1 ? estCommission : -estCommission));
-        } else if (AMOUNT_ONLY_ACTIONS.includes(investmentAction)) {
+        if (isQuantityPrice) {
+          displayAmount = computeInvestmentCashImpact(investmentAction, estQty, estPrice, estCommission);
+        } else if (isAmountOnly) {
           displayAmount = estTotal;
         } else {
           displayAmount = 0;
@@ -1078,10 +1087,20 @@ export function ScheduledTransactionForm({
           investmentFundingAccountId: FUNDING_ACCOUNT_ACTIONS.includes(investmentAction) && investmentFundingAccountId
             ? investmentFundingAccountId
             : undefined,
-          investmentQuantity: investmentQuantity === '' ? undefined : Number(investmentQuantity),
-          investmentPrice: investmentPrice === '' ? undefined : Number(investmentPrice),
-          investmentCommission: investmentCommission === '' ? undefined : Number(investmentCommission),
-          investmentTotalAmount: investmentTotalAmount === '' ? undefined : Number(investmentTotalAmount),
+          // Gate each field on the action family it belongs to, matching
+          // InvestmentTransactionForm -- a field the current action does not use
+          // (a price on a DIVIDEND, a total amount on a BUY) is a stale value from
+          // a previous action choice and must not be persisted onto the row.
+          investmentQuantity:
+            (isQuantityPrice || isQuantityOnly) && investmentQuantity !== ''
+              ? Number(investmentQuantity)
+              : undefined,
+          investmentPrice:
+            isQuantityPrice && investmentPrice !== '' ? Number(investmentPrice) : undefined,
+          investmentCommission:
+            isQuantityPrice && investmentCommission !== '' ? Number(investmentCommission) : undefined,
+          investmentTotalAmount:
+            isAmountOnly && investmentTotalAmount !== '' ? Number(investmentTotalAmount) : undefined,
           categoryId: undefined,
           payeeId: undefined,
           payeeName: undefined,

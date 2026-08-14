@@ -2693,6 +2693,166 @@ describe('ScheduledTransactionForm', () => {
       expect(payload.investmentTotalAmount).toBe(42);
     });
 
+    it('persists a cash impact of 0 for a scheduled REINVEST, not a phantom outflow', async () => {
+      // A REINVEST buys shares with the dividend, so no net cash moves. The
+      // scheduled `amount` drives the bills list, the cash-flow forecast and
+      // scheduledKind, so hand-rolling it as -(qty*price + commission) injected a
+      // phantom recurring -5025 outflow the occurrence never makes. Route it
+      // through computeInvestmentCashImpact (0 for REINVEST) like the register form.
+      const { container } = render(<ScheduledTransactionForm />);
+      await waitFor(() => {
+        expect(mockAccountsGetAll).toHaveBeenCalled();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Investment'));
+      });
+      await waitFor(() => {
+        expect(mockGetSecurities).toHaveBeenCalled();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'VOO DRIP' },
+      });
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'REINVEST' } });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('500.000000');
+      });
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      fireEvent.change(screen.getByLabelText('Commission'), {
+        target: { value: '25' },
+      });
+      const submitBtn = container.querySelector('button[type="submit"]')!;
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalled();
+      });
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.investmentAction).toBe('REINVEST');
+      // The cash impact is 0, not -(10*500 + 25) = -5025.
+      expect(payload.amount).toBe(0);
+      // The trade details still persist so the occurrence knows what to buy.
+      expect(payload.investmentQuantity).toBe(10);
+      expect(payload.investmentPrice).toBe(500);
+    });
+
+    it('does not persist a stale price or quantity after switching BUY to DIVIDEND', async () => {
+      // Entering a BUY populates quantity and price; switching to an amount-only
+      // action must gate them out of the payload (as InvestmentTransactionForm
+      // does), not persist them as stale columns on the DIVIDEND row.
+      const { container } = render(<ScheduledTransactionForm />);
+      await waitFor(() => {
+        expect(mockAccountsGetAll).toHaveBeenCalled();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Investment'));
+      });
+      await waitFor(() => {
+        expect(mockGetSecurities).toHaveBeenCalled();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'VOO' },
+      });
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('500.000000');
+      });
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '10' },
+      });
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'DIVIDEND' } });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Total Amount')).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByLabelText('Total Amount'), {
+        target: { value: '42' },
+      });
+      const submitBtn = container.querySelector('button[type="submit"]')!;
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalled();
+      });
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.investmentAction).toBe('DIVIDEND');
+      expect(payload.investmentTotalAmount).toBe(42);
+      expect(payload.amount).toBe(42);
+      // The BUY's price and quantity are not part of a DIVIDEND -- gated out.
+      expect(payload.investmentPrice).toBeUndefined();
+      expect(payload.investmentQuantity).toBeUndefined();
+    });
+
+    it('does not persist a stale total amount after switching DIVIDEND to BUY', async () => {
+      // The mirror of the previous case: a total amount entered for a DIVIDEND
+      // must not ride along on a BUY row, and the BUY's cash impact is the signed
+      // qty*price + commission (negative), not the leftover dividend total.
+      const { container } = render(<ScheduledTransactionForm />);
+      await waitFor(() => {
+        expect(mockAccountsGetAll).toHaveBeenCalled();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Investment'));
+      });
+      await waitFor(() => {
+        expect(mockGetSecurities).toHaveBeenCalled();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'VOO' },
+      });
+      fireEvent.change(screen.getByLabelText('Investment Account'), {
+        target: { value: 'acc-4' },
+      });
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'DIVIDEND' } });
+      fireEvent.change(screen.getByLabelText('Security'), {
+        target: { value: 'sec-voo' },
+      });
+      fireEvent.change(screen.getByLabelText('Total Amount'), {
+        target: { value: '42' },
+      });
+      // Switch to BUY and enter the trade.
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'BUY' } });
+      await waitFor(() => {
+        expect(
+          (screen.getByLabelText('Price per share') as HTMLInputElement).value,
+        ).toBe('500.000000');
+      });
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), {
+        target: { value: '2' },
+      });
+      const submitBtn = container.querySelector('button[type="submit"]')!;
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalled();
+      });
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.investmentAction).toBe('BUY');
+      // 2 * 500 = 1000 leaving the account; the dividend's 42 is gated out.
+      expect(payload.amount).toBe(-1000);
+      expect(payload.investmentTotalAmount).toBeUndefined();
+      expect(payload.investmentQuantity).toBe(2);
+      expect(payload.investmentPrice).toBe(500);
+    });
+
     it('errors out when submitted without a brokerage account', async () => {
       const { container } = render(<ScheduledTransactionForm />);
       await waitFor(() => {
