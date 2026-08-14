@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/render';
+import toast from 'react-hot-toast';
 import { AppHeader } from './AppHeader';
 
 // Mock next/image
@@ -134,15 +135,58 @@ describe('AppHeader', () => {
     });
   });
 
-  it('still logs out and redirects when authApi.logout fails', async () => {
-    mockApiLogout.mockRejectedValueOnce(new Error('Network error'));
-    render(<AppHeader />);
-    const logoutButton = screen.getByRole('button', { name: /logout/i });
-    fireEvent.click(logoutButton);
+  describe('when the server logout fails', () => {
+    // This case used to be named "still logs out and redirects when
+    // authApi.logout fails" and asserted only the local clear plus the
+    // redirect. That is the false-success contract: the refresh-token family
+    // was never revoked, so the session can still be accepted in another tab or
+    // on another device, while the user is looking at a login screen that says
+    // they are out. Local state clearing is not a server logout.
+    beforeEach(() => {
+      vi.mocked(toast.success).mockClear();
+      vi.mocked(toast.error).mockClear();
+    });
 
-    await waitFor(() => {
-      expect(mockLogout).toHaveBeenCalled();
-      expect(mockPush).toHaveBeenCalledWith('/login');
+    it('clears local state and redirects', async () => {
+      // Still the right thing to do: leaving the user apparently signed in on a
+      // machine they asked to leave would be worse.
+      mockApiLogout.mockRejectedValueOnce(new Error('Network error'));
+      render(<AppHeader />);
+      fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+      await waitFor(() => {
+        expect(mockLogout).toHaveBeenCalled();
+        expect(mockPush).toHaveBeenCalledWith('/login');
+      });
+    });
+
+    it('does not claim the logout succeeded', async () => {
+      mockApiLogout.mockRejectedValueOnce(new Error('Network error'));
+      render(<AppHeader />);
+      fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+      await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it('warns that the server did not confirm the logout', async () => {
+      mockApiLogout.mockRejectedValueOnce(new Error('Network error'));
+      render(<AppHeader />);
+      fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalled());
+      const message = vi.mocked(toast.error).mock.calls[0][0];
+      expect(String(message)).toMatch(/did not confirm/i);
+    });
+
+    it('shows the success message when the server does confirm', async () => {
+      // Positive control: the warning above is about the failure path, not a
+      // message that fires unconditionally.
+      render(<AppHeader />);
+      fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      expect(toast.error).not.toHaveBeenCalled();
     });
   });
 

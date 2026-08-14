@@ -30,5 +30,6 @@
     "label": "Rechercher des transactions",
     "open": "Ouvrir la recherche",
     "submit": "Rechercher"
-  }
+  },
+  "logoutNotConfirmed": "Vous avez été déconnecté sur cet appareil, mais le serveur ne l'a pas confirmé. Votre session peut rester utilisable ailleurs. Fermez le navigateur, ou révoquez vos sessions dans les Paramètres dès que le serveur sera joignable."
 }

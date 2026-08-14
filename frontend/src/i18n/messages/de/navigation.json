@@ -30,5 +30,6 @@
     "label": "Buchungen suchen",
     "open": "Suche öffnen",
     "submit": "Suchen"
-  }
+  },
+  "logoutNotConfirmed": "Sie wurden auf diesem Gerät abgemeldet, der Server hat dies jedoch nicht bestätigt. Ihre Sitzung ist möglicherweise anderswo weiterhin nutzbar. Schließen Sie den Browser oder widerrufen Sie Ihre Sitzungen in den Einstellungen, sobald der Server wieder erreichbar ist."
 }
