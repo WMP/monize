@@ -145,7 +145,12 @@ describe('AppHeader', () => {
       expect(mockLogout).toHaveBeenCalled();
     });
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBeNull();
-    expect(toast.success).toHaveBeenCalled();
+    // Shares the failure toast's id so a clean sign-out supersedes a lingering
+    // failure toast from a prior attempt rather than stacking beneath it.
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'logout-failed' }),
+    );
     expect(toast.error).not.toHaveBeenCalled();
   });
 

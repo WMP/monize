@@ -193,7 +193,10 @@ export function AppHeader() {
       await authApi.logout();
       clearLogoutIncomplete();
       logout();
-      toast.success(t('loggedOut'));
+      // Share the 'logout-failed' toast id so a clean sign-out supersedes any
+      // failure toast a previous attempt left on screen instead of stacking
+      // under it -- every toast about a sign-out outcome uses this one id.
+      toast.success(t('loggedOut'), { id: 'logout-failed' });
       router.push('/login');
     } catch {
       // Only the server can clear the HttpOnly refresh cookie, so a failed

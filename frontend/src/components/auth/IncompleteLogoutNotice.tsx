@@ -50,7 +50,9 @@ export function IncompleteLogoutNotice() {
       toast.success(t('signIn.logoutRetrySucceeded'), { id: 'logout-failed' });
     } catch {
       // Still unreachable. Keep the warning up -- the session is still live.
-      toast.error(t('signIn.logoutRetryFailed'), { id: 'logout-failed' });
+      // Repeat AppHeader's 12s dwell: reusing the id would otherwise reset this
+      // still-unresolved warning to the default (~4s) error duration.
+      toast.error(t('signIn.logoutRetryFailed'), { duration: 12_000, id: 'logout-failed' });
     } finally {
       setIsRetrying(false);
     }
@@ -58,7 +60,11 @@ export function IncompleteLogoutNotice() {
 
   return (
     <div
-      role="alert"
+      // A persistent banner, not a transient interruption: `status` (polite)
+      // rather than `alert` (assertive) so a screen reader is not told about the
+      // same failed sign-out twice -- AppHeader's toast already announced it
+      // assertively just before this screen mounted.
+      role="status"
       className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3"
     >
       <p className="text-sm text-amber-800 dark:text-amber-200">
