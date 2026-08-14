@@ -567,16 +567,21 @@ export function ScheduledTransactionForm({
 
   const investmentSign = investmentAction === 'SELL' ? -1 : 1;
 
-  const effectiveInvestmentPrice =
-    investmentPrice !== '' && Number(investmentPrice) > 0
-      ? Number(investmentPrice)
-      : marketPrice ?? 0;
-
   // A close rounded for display (6dp), null unless it is a usable positive
   // number -- so a NaN or zero quote neither fills the field nor prints as a
   // "Latest:" placeholder.
   const roundedMarketPrice =
     marketPrice != null && marketPrice > 0 ? roundPrice(marketPrice) : null;
+
+  // The price a keystroke folds against: a typed price, else the market close.
+  // Fall back to the *rounded* close (not raw marketPrice) so a derived quantity
+  // or total is computed from the same 6dp price the field auto-fills and the
+  // placeholder shows -- otherwise a >6dp close would compute against one number
+  // and display another.
+  const effectiveInvestmentPrice =
+    investmentPrice !== '' && Number(investmentPrice) > 0
+      ? Number(investmentPrice)
+      : roundedMarketPrice ?? 0;
 
   // If the user hasn't typed a price, auto-fill from the latest market close
   // once it arrives, and reconcile the rest of the triple: an entered Total
