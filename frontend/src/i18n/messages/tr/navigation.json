@@ -31,5 +31,5 @@
     "open": "Aramayı aç",
     "submit": "Ara"
   },
-  "logoutNotConfirmed": "Bu cihazda oturumunuz kapatıldı, ancak sunucu bunu doğrulamadı; bu nedenle oturumunuz diğer cihazlarda hâlâ etkin olabilir. Her yerde oturumu kapatmak için, sunucuya yeniden erişebildiğinizde Ayarlar'dan parolanızı değiştirin."
+  "logoutNotConfirmed": "Bu cihazda oturumunuz kapatıldı, ancak sunucu bunu doğrulamadı; bu nedenle oturumunuz başka yerlerde hâlâ etkin olabilir. Sunucuya yeniden erişebildiğinizde, tüm oturumları sonlandırmak için parolanızı değiştirin (veya SSO sağlayıcınızdan çıkış yapın)."
 }

@@ -31,5 +31,5 @@
     "open": "Apri ricerca",
     "submit": "Cerca"
   },
-  "logoutNotConfirmed": "La disconnessione su questo dispositivo è avvenuta, ma il server non l'ha confermata, quindi la tua sessione potrebbe essere ancora attiva su altri dispositivi. Per disconnetterti ovunque, cambia la password nelle Impostazioni quando il server sarà di nuovo raggiungibile."
+  "logoutNotConfirmed": "La disconnessione su questo dispositivo è avvenuta, ma il server non l'ha confermata, quindi la tua sessione potrebbe essere ancora attiva altrove. Quando il server sarà di nuovo raggiungibile, cambia la password (o disconnettiti dal tuo provider SSO) per terminare ogni sessione."
 }

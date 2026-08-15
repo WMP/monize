@@ -31,5 +31,5 @@
     "open": "Otwórz wyszukiwanie",
     "submit": "Szukaj"
   },
-  "logoutNotConfirmed": "Wylogowano Cię na tym urządzeniu, ale serwer tego nie potwierdził, więc Twoja sesja może być nadal aktywna na innych urządzeniach. Aby wylogować się wszędzie, zmień hasło w Ustawieniach, gdy tylko ponownie uzyskasz dostęp do serwera."
+  "logoutNotConfirmed": "Wylogowano Cię na tym urządzeniu, ale serwer tego nie potwierdził, więc Twoja sesja może być nadal aktywna gdzie indziej. Gdy tylko ponownie uzyskasz dostęp do serwera, zmień hasło (lub wyloguj się u swojego dostawcy SSO), aby zakończyć wszystkie sesje."
 }

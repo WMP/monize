@@ -31,5 +31,5 @@
     "open": "Mở tìm kiếm",
     "submit": "Tìm kiếm"
   },
-  "logoutNotConfirmed": "Bạn đã đăng xuất trên thiết bị này, nhưng máy chủ chưa xác nhận điều đó, nên phiên của bạn có thể vẫn hoạt động trên các thiết bị khác. Để đăng xuất ở mọi nơi, hãy đổi mật khẩu trong Cài đặt khi bạn có thể kết nối lại với máy chủ."
+  "logoutNotConfirmed": "Bạn đã đăng xuất trên thiết bị này, nhưng máy chủ chưa xác nhận điều đó, nên phiên của bạn có thể vẫn hoạt động ở nơi khác. Khi bạn có thể kết nối lại với máy chủ, hãy đổi mật khẩu (hoặc đăng xuất qua nhà cung cấp SSO của bạn) để kết thúc mọi phiên."
 }
