@@ -175,10 +175,14 @@ describe('AppHeader', () => {
       const message = vi.mocked(toast.error).mock.calls[0][0];
       expect(String(message)).toMatch(/did not confirm/i);
     });
+  });
 
-    it('shows the success message when the server does confirm', async () => {
-      // Positive control: the warning above is about the failure path, not a
-      // message that fires unconditionally.
+  describe('when the server confirms the logout', () => {
+    // Positive control for the failure block above: the warning is about the
+    // failure path, not a message that fires unconditionally. mockApiLogout
+    // defaults to a resolved value (set in the outer beforeEach), so this is
+    // the success path with no rejection queued.
+    it('shows the success message and no warning', async () => {
       render(<AppHeader />);
       fireEvent.click(screen.getByRole('button', { name: /logout/i }));
 
