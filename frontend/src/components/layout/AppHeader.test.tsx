@@ -142,11 +142,8 @@ describe('AppHeader', () => {
     // was never revoked, so the session can still be accepted in another tab or
     // on another device, while the user is looking at a login screen that says
     // they are out. Local state clearing is not a server logout.
-    beforeEach(() => {
-      vi.mocked(toast.success).mockClear();
-      vi.mocked(toast.error).mockClear();
-    });
-
+    // (The outer beforeEach already runs vi.clearAllMocks(), which resets the
+    // toast.success/error spies, so no per-case clear is needed here.)
     it('clears local state and redirects', async () => {
       // Still the right thing to do: leaving the user apparently signed in on a
       // machine they asked to leave would be worse.
