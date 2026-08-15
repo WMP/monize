@@ -378,8 +378,8 @@ jobs:
         # resource it exists to produce -- a template that silently rendered
         # nothing would leave the valid statefulsets/services and pass the parse.
         run: |
-          helm template monize ./helm > /tmp/rendered.yaml
-          grep -q '^kind: HTTPRoute$' /tmp/rendered.yaml \
+          helm template monize ./helm > "$RUNNER_TEMP/rendered.yaml"
+          grep -q '^kind: HTTPRoute$' "$RUNNER_TEMP/rendered.yaml" \
             || { echo "default values rendered no HTTPRoute (httpRoute.enabled defaults true)"; exit 1; }
       # Each variant the README documents. Rendering only the defaults would
       # leave the Ingress and HTTPRoute paths -- which are mutually exclusive in
@@ -393,11 +393,11 @@ jobs:
           helm template monize ./helm \
             --set ingress.enabled=true \
             --set httpRoute.enabled=false \
-            --set ingress.className=nginx > /tmp/rendered-ingress.yaml
-          grep -q '^kind: Ingress$' /tmp/rendered-ingress.yaml \
+            --set ingress.className=nginx > "$RUNNER_TEMP/rendered-ingress.yaml"
+          grep -q '^kind: Ingress$' "$RUNNER_TEMP/rendered-ingress.yaml" \
             || { echo "ingress.enabled=true rendered no Ingress -- the value flag is not turning the resource on"; exit 1; }
       - name: Render with HTTPRoute disabled
-        run: helm template monize ./helm --set httpRoute.enabled=false > /tmp/rendered-minimal.yaml
+        run: helm template monize ./helm --set httpRoute.enabled=false > "$RUNNER_TEMP/rendered-minimal.yaml"
       # PyYAML happens to be present on the current ubuntu-latest image, which
       # is not the same as this job declaring it. An undeclared dependency that
       # disappears in a runner-image bump turns the check below into an
@@ -418,8 +418,11 @@ jobs:
       - name: Parse rendered manifests as YAML
         run: |
           python3 - <<'PY'
-          import sys, glob, yaml
-          files = sorted(glob.glob("/tmp/rendered*.yaml"))
+          import os, sys, glob, yaml
+          # Same base directory the render steps wrote to, so a self-hosted
+          # runner with a persistent /tmp cannot feed a stale file into the glob.
+          tmp = os.environ["RUNNER_TEMP"]
+          files = sorted(glob.glob(os.path.join(tmp, "rendered*.yaml")))
           if not files:
               sys.exit("no rendered manifests found to parse")
           for path in files:
