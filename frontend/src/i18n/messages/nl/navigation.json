@@ -31,5 +31,5 @@
     "open": "Zoeken openen",
     "submit": "Zoeken"
   },
-  "logoutNotConfirmed": "U bent op dit apparaat afgemeld, maar de server heeft dit niet bevestigd, dus uw sessie is mogelijk elders nog actief. Zodra u de server weer kunt bereiken, wijzigt u uw wachtwoord (of meldt u zich af bij uw SSO-provider) om elke sessie te beëindigen."
+  "logoutNotConfirmed": "Hier lijkt u afgemeld, maar de server heeft dit niet bevestigd, dus uw sessie is mogelijk nog actief op dit en andere apparaten. Zodra u de server weer kunt bereiken, wijzigt u uw wachtwoord (of meldt u zich af bij uw SSO-provider) om elke sessie te beëindigen."
 }

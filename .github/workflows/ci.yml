@@ -406,9 +406,9 @@ jobs:
       - name: Install PyYAML
         # --break-system-packages: ubuntu-latest ships an externally-managed
         # Python (PEP 668), which refuses a system-level `pip install` outright.
-        # The flag is accepted and ignored where the environment is not managed,
-        # so it is safe on either image and keeps the install from being the
-        # thing that breaks on a runner-image bump.
+        # The flag exists in pip 23.0.1+, which every current GitHub-hosted
+        # image ships; it keeps the install from being the thing that breaks on
+        # a runner-image bump to a managed Python.
         run: python3 -m pip install --disable-pip-version-check --break-system-packages --quiet 'PyYAML==6.0.2'
       # A rendered manifest that helm accepts can still be invalid Kubernetes.
       # Parse every document -- across every rendered variant -- so a malformed

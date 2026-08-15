@@ -31,5 +31,5 @@
     "open": "Ouvrir la recherche",
     "submit": "Rechercher"
   },
-  "logoutNotConfirmed": "Vous avez été déconnecté sur cet appareil, mais le serveur ne l'a pas confirmé, votre session peut donc rester active ailleurs. Dès que le serveur sera de nouveau accessible, modifiez votre mot de passe (ou déconnectez-vous auprès de votre fournisseur SSO) pour mettre fin à toutes les sessions."
+  "logoutNotConfirmed": "Vous semblez déconnecté ici, mais le serveur ne l'a pas confirmé, votre session peut donc rester active sur cet appareil et sur d'autres. Dès que le serveur sera de nouveau accessible, modifiez votre mot de passe (ou déconnectez-vous auprès de votre fournisseur SSO) pour mettre fin à toutes les sessions."
 }

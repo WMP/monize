@@ -31,5 +31,5 @@
     "open": "Abrir pesquisa",
     "submit": "Pesquisar"
   },
-  "logoutNotConfirmed": "A sessão foi terminada neste dispositivo, mas o servidor não o confirmou, pelo que a sua sessão pode continuar ativa noutro lado. Assim que voltar a ter acesso ao servidor, altere a sua palavra-passe (ou termine a sessão no seu fornecedor de SSO) para encerrar todas as sessões."
+  "logoutNotConfirmed": "Aqui aparece com a sessão terminada, mas o servidor não o confirmou, pelo que a sua sessão pode continuar ativa neste e noutros dispositivos. Assim que voltar a ter acesso ao servidor, altere a sua palavra-passe (ou termine a sessão no seu fornecedor de SSO) para encerrar todas as sessões."
 }

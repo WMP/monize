@@ -31,5 +31,5 @@
     "open": "[XX-Open search-XX]",
     "submit": "[XX-Search-XX]"
   },
-  "logoutNotConfirmed": "[XX-You have been signed out on this device, but the server did not confirm it, so your session may still be active elsewhere. Once you can reach the server again, change your password (or sign out with your SSO provider) to end every session.-XX]"
+  "logoutNotConfirmed": "[XX-You appear signed out here, but the server did not confirm it, so your session may still be active on this and other devices. Once you can reach the server again, change your password (or sign out with your SSO provider) to end every session.-XX]"
 }

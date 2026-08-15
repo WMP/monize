@@ -31,5 +31,5 @@
     "open": "Abrir pesquisa",
     "submit": "Pesquisar"
   },
-  "logoutNotConfirmed": "Você saiu neste dispositivo, mas o servidor não confirmou, então sua sessão pode continuar ativa em outro lugar. Assim que conseguir acessar o servidor novamente, altere sua senha (ou saia pelo seu provedor de SSO) para encerrar todas as sessões."
+  "logoutNotConfirmed": "Aqui você aparece desconectado, mas o servidor não confirmou, então sua sessão pode continuar ativa neste e em outros dispositivos. Assim que conseguir acessar o servidor novamente, altere sua senha (ou saia pelo seu provedor de SSO) para encerrar todas as sessões."
 }
