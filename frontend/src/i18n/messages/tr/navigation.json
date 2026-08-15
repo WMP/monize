@@ -31,5 +31,5 @@
     "open": "Aramayı aç",
     "submit": "Ara"
   },
-  "logoutNotConfirmed": "Bu cihazda oturumunuz kapatıldı, ancak sunucu bunu onaylamadı. Oturumunuz başka bir yerde hâlâ kullanılabilir olabilir. Tarayıcıyı kapatın veya sunucuya erişebildiğinizde Ayarlar'dan oturumlarınızı iptal edin."
+  "logoutNotConfirmed": "Bu cihazda oturumunuz kapatıldı, ancak sunucu bunu doğrulamadı; bu nedenle oturumunuz diğer cihazlarda hâlâ etkin olabilir. Her yerde oturumu kapatmak için, sunucuya yeniden erişebildiğinizde Ayarlar'dan parolanızı değiştirin."
 }

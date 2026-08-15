@@ -31,5 +31,5 @@
     "open": "[XX-Open search-XX]",
     "submit": "[XX-Search-XX]"
   },
-  "logoutNotConfirmed": "[XX-You have been signed out on this device, but the server did not confirm it. Your session may still be usable elsewhere. Close the browser, or revoke your sessions from Settings once you can reach the server again.-XX]"
+  "logoutNotConfirmed": "[XX-You have been signed out on this device, but the server did not confirm it, so your session may still be active on other devices. To sign out everywhere, change your password in Settings once you can reach the server again.-XX]"
 }

@@ -31,5 +31,5 @@
     "open": "Buka pencarian",
     "submit": "Cari"
   },
-  "logoutNotConfirmed": "Anda telah keluar di perangkat ini, tetapi server tidak mengonfirmasinya. Sesi Anda mungkin masih dapat digunakan di tempat lain. Tutup browser, atau cabut sesi Anda dari Pengaturan setelah server dapat dijangkau."
+  "logoutNotConfirmed": "Anda telah keluar di perangkat ini, tetapi server tidak mengonfirmasinya, sehingga sesi Anda mungkin masih aktif di perangkat lain. Untuk keluar di semua perangkat, ubah kata sandi Anda di Pengaturan setelah server dapat dijangkau kembali."
 }

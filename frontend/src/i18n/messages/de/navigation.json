@@ -31,5 +31,5 @@
     "open": "Suche öffnen",
     "submit": "Suchen"
   },
-  "logoutNotConfirmed": "Sie wurden auf diesem Gerät abgemeldet, der Server hat dies jedoch nicht bestätigt. Ihre Sitzung ist möglicherweise anderswo weiterhin nutzbar. Schließen Sie den Browser oder widerrufen Sie Ihre Sitzungen in den Einstellungen, sobald der Server wieder erreichbar ist."
+  "logoutNotConfirmed": "Sie wurden auf diesem Gerät abgemeldet, aber der Server hat dies nicht bestätigt, sodass Ihre Sitzung auf anderen Geräten möglicherweise noch aktiv ist. Um sich überall abzumelden, ändern Sie Ihr Passwort in den Einstellungen, sobald Sie den Server wieder erreichen."
 }

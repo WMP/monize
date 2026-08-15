@@ -31,5 +31,5 @@
     "open": "Zoeken openen",
     "submit": "Zoeken"
   },
-  "logoutNotConfirmed": "U bent op dit apparaat afgemeld, maar de server heeft dit niet bevestigd. Uw sessie kan elders nog bruikbaar zijn. Sluit de browser, of trek uw sessies in via Instellingen zodra de server weer bereikbaar is."
+  "logoutNotConfirmed": "U bent op dit apparaat afgemeld, maar de server heeft dit niet bevestigd, dus uw sessie is mogelijk nog actief op andere apparaten. Wijzig uw wachtwoord in Instellingen zodra u de server weer kunt bereiken om u overal af te melden."
 }

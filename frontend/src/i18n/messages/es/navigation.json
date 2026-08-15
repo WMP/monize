@@ -31,5 +31,5 @@
     "open": "Abrir búsqueda",
     "submit": "Buscar"
   },
-  "logoutNotConfirmed": "Se ha cerrado tu sesión en este dispositivo, pero el servidor no lo confirmó. Tu sesión podría seguir siendo válida en otro lugar. Cierra el navegador o revoca tus sesiones en Ajustes cuando puedas contactar con el servidor."
+  "logoutNotConfirmed": "Se ha cerrado la sesión en este dispositivo, pero el servidor no lo confirmó, por lo que tu sesión puede seguir activa en otros dispositivos. Para cerrar sesión en todas partes, cambia tu contraseña en Ajustes cuando vuelvas a tener acceso al servidor."
 }

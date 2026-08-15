@@ -31,5 +31,5 @@
     "open": "Abrir pesquisa",
     "submit": "Pesquisar"
   },
-  "logoutNotConfirmed": "Sua sessão foi encerrada neste dispositivo, mas o servidor não confirmou. A sessão pode continuar utilizável em outro lugar. Feche o navegador, ou revogue suas sessões nas Configurações quando o servidor estiver acessível."
+  "logoutNotConfirmed": "Você saiu neste dispositivo, mas o servidor não confirmou, então sua sessão pode continuar ativa em outros dispositivos. Para sair de todos os dispositivos, altere sua senha nas Configurações assim que conseguir acessar o servidor novamente."
 }
