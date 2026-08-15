@@ -371,20 +371,23 @@ jobs:
       - name: helm lint
         run: helm lint ./helm
       - name: Render default values
-        # Keep the rendered output: the YAML-parse step below reuses it rather
-        # than rendering the defaults a second time.
+        # Keep the rendered output: the YAML-parse step below parses it (and the
+        # variant renders below) rather than rendering the defaults a second time.
         run: helm template monize ./helm > /tmp/rendered.yaml
       # Each variant the README documents. Rendering only the defaults would
       # leave the Ingress and HTTPRoute paths -- which are mutually exclusive in
-      # practice -- unexercised.
+      # practice -- unexercised. Keep each variant's output too: the Ingress
+      # resource never appears in the default render, so discarding it to
+      # /dev/null would mean the one manifest a value flag turns on is the one
+      # the parse step below never kind/apiVersion-checks.
       - name: Render with Ingress enabled
         run: |
           helm template monize ./helm \
             --set ingress.enabled=true \
             --set httpRoute.enabled=false \
-            --set ingress.className=nginx > /dev/null
+            --set ingress.className=nginx > /tmp/rendered-ingress.yaml
       - name: Render with HTTPRoute disabled
-        run: helm template monize ./helm --set httpRoute.enabled=false > /dev/null
+        run: helm template monize ./helm --set httpRoute.enabled=false > /tmp/rendered-minimal.yaml
       # PyYAML happens to be present on the current ubuntu-latest image, which
       # is not the same as this job declaring it. An undeclared dependency that
       # disappears in a runner-image bump turns the check below into an
@@ -398,19 +401,26 @@ jobs:
         # thing that breaks on a runner-image bump.
         run: python3 -m pip install --disable-pip-version-check --break-system-packages --quiet 'PyYAML==6.0.2'
       # A rendered manifest that helm accepts can still be invalid Kubernetes.
-      # Parse every document so a malformed template fails here rather than at
-      # `kubectl apply` time on someone's cluster.
+      # Parse every document -- across every rendered variant -- so a malformed
+      # template fails here rather than at `kubectl apply` time on someone's
+      # cluster. Globbing the variant files means the Ingress manifest, absent
+      # from the default render, is checked too.
       - name: Parse rendered manifests as YAML
         run: |
           python3 - <<'PY'
-          import sys, yaml
-          docs = [d for d in yaml.safe_load_all(open("/tmp/rendered.yaml")) if d]
-          if not docs:
-              sys.exit("rendered chart produced no manifests")
-          for d in docs:
-              if "kind" not in d or "apiVersion" not in d:
-                  sys.exit(f"manifest without kind/apiVersion: {d!r}")
-          print(f"{len(docs)} manifest(s) parsed")
+          import sys, glob, yaml
+          files = sorted(glob.glob("/tmp/rendered*.yaml"))
+          if not files:
+              sys.exit("no rendered manifests found to parse")
+          for path in files:
+              with open(path) as fh:
+                  docs = [d for d in yaml.safe_load_all(fh) if d]
+              if not docs:
+                  sys.exit(f"{path}: rendered chart produced no manifests")
+              for d in docs:
+                  if "kind" not in d or "apiVersion" not in d:
+                      sys.exit(f"{path}: manifest without kind/apiVersion: {d!r}")
+              print(f"{path}: {len(docs)} manifest(s) parsed")
           PY
 
   zizmor-scan:
