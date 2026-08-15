@@ -30,5 +30,6 @@
     "label": "İşlem ara",
     "open": "Aramayı aç",
     "submit": "Ara"
-  }
+  },
+  "logoutNotConfirmed": "Bu cihazda oturumunuz kapatıldı, ancak sunucu bunu onaylamadı. Oturumunuz başka bir yerde hâlâ kullanılabilir olabilir. Tarayıcıyı kapatın veya sunucuya erişebildiğinizde Ayarlar'dan oturumlarınızı iptal edin."
 }

@@ -30,5 +30,6 @@
     "label": "Cerca transazioni",
     "open": "Apri ricerca",
     "submit": "Cerca"
-  }
+  },
+  "logoutNotConfirmed": "Sei stato disconnesso su questo dispositivo, ma il server non l'ha confermato. La tua sessione potrebbe essere ancora utilizzabile altrove. Chiudi il browser, oppure revoca le sessioni dalle Impostazioni quando il server sarà raggiungibile."
 }
