@@ -1525,11 +1525,11 @@ describe("mny writers (integration)", () => {
         const real = jobs.reportProgress.bind(jobs);
         return jest
           .spyOn(jobs, "reportProgress")
-          .mockImplementation(async (jobId, progress) => {
+          .mockImplementation(async (jobId, attemptToken, progress) => {
             if (progress.phase === phase) {
               throw new Error(`injected failure at ${phase}`);
             }
-            await real(jobId, progress);
+            await real(jobId, attemptToken, progress);
           });
       }
 
