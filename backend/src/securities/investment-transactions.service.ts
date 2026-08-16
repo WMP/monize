@@ -2966,6 +2966,13 @@ export class InvestmentTransactionsService {
     const beforeData = { ...transaction };
     const accountId = transaction.accountId;
     const oldSecurityId = transaction.securityId;
+    // Captured before any assignment below moves it. `fundingChanged` must
+    // compare the DTO against the *stored* funding account, not against the
+    // property this method has already overwritten -- otherwise the comparison
+    // is always false and a funding-account change to a different currency
+    // silently keeps the old exchange rate (a USD->EUR switch posts the cash
+    // leg at rate 1). Same pattern as accountId / oldSecurityId above.
+    const oldFundingAccountId = transaction.fundingAccountId;
     const oldTransactionDate = transaction.transactionDate;
     const oldAction = transaction.action;
     const isEmbedded = transaction.transactionSplitId != null;
@@ -3097,10 +3104,17 @@ export class InvestmentTransactionsService {
       if (updateDto.description !== undefined)
         transaction.description = updateDto.description;
 
+      // The total is derived from the action as much as from the numbers: the
+      // formula itself changes with the action (BUY folds in commission,
+      // DIVIDEND multiplies quantity-or-one by price, ADD_SHARES is zero). So an
+      // action-only edit has to recompute too -- otherwise switching a
+      // BUY(10 @ 100 + 5) to DIVIDEND leaves the stale 1005 total, and the
+      // linked cash leg posts a 1005 dividend instead of 1000.
       if (
         updateDto.quantity !== undefined ||
         updateDto.price !== undefined ||
-        updateDto.commission !== undefined
+        updateDto.commission !== undefined ||
+        transaction.action !== oldAction
       ) {
         transaction.totalAmount = this.calculateTotalAmount({
           action: transaction.action,
@@ -3166,7 +3180,7 @@ export class InvestmentTransactionsService {
           updateDto.accountId !== accountId;
         const fundingChanged =
           updateDto.fundingAccountId !== undefined &&
-          (updateDto.fundingAccountId || null) !== transaction.fundingAccountId;
+          (updateDto.fundingAccountId || null) !== oldFundingAccountId;
         const securityChanged =
           updateDto.securityId !== undefined &&
           updateDto.securityId !== oldSecurityId;

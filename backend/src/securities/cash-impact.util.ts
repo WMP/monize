@@ -1,14 +1,11 @@
 import { InvestmentAction } from "./entities/investment-transaction.entity";
+import {
+  calculateContractCashImpact,
+  investmentActionsWhere,
+} from "./investment-action.contract";
 
 export const EMBEDDED_INVESTMENT_SPLIT_ACTIONS: ReadonlySet<InvestmentAction> =
-  new Set([
-    InvestmentAction.BUY,
-    InvestmentAction.SELL,
-    InvestmentAction.DIVIDEND,
-    InvestmentAction.INTEREST,
-    InvestmentAction.CAPITAL_GAIN,
-    InvestmentAction.REINVEST,
-  ]);
+  new Set(investmentActionsWhere((state) => state.supportsEmbeddedSplit));
 
 export function isInvestmentActionAllowedInSplit(
   action: InvestmentAction,
@@ -24,6 +21,9 @@ export function isInvestmentActionAllowedInSplit(
  * Negative = cash leaves the brokerage cash account (BUY).
  * Positive = cash arrives in the brokerage cash account (SELL, DIVIDEND, etc).
  * Zero     = no cash side (REINVEST and the share-only actions).
+ *
+ * The action classification lives in `investment-action.contract.ts`; adding a
+ * new enum member without a cash formula fails the financial-invariant gate.
  */
 export function computeInvestmentCashImpact(
   action: InvestmentAction,
@@ -31,22 +31,5 @@ export function computeInvestmentCashImpact(
   price: number,
   commission: number,
 ): number {
-  const q = Number(quantity) || 0;
-  const p = Number(price) || 0;
-  const c = Number(commission) || 0;
-
-  switch (action) {
-    case InvestmentAction.BUY:
-      return -(q * p + c);
-    case InvestmentAction.SELL:
-      return q * p - c;
-    case InvestmentAction.DIVIDEND:
-    case InvestmentAction.INTEREST:
-    case InvestmentAction.CAPITAL_GAIN:
-      return (q || 1) * p;
-    case InvestmentAction.REINVEST:
-      return 0;
-    default:
-      return 0;
-  }
+  return calculateContractCashImpact(action, quantity, price, commission);
 }

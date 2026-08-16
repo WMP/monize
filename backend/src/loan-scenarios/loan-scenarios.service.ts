@@ -8,15 +8,10 @@ import { DataSource } from "typeorm";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { LoanScenario } from "./entities/loan-scenario.entity";
-import { Account, AccountType } from "../accounts/entities/account.entity";
+import { Account } from "../accounts/entities/account.entity";
+import { supportsLoanScenarios } from "../accounts/account-type.contract";
 import { CreateLoanScenarioDto } from "./dto/create-loan-scenario.dto";
 import { UpdateLoanScenarioDto } from "./dto/update-loan-scenario.dto";
-
-const LOAN_ACCOUNT_TYPES = [
-  AccountType.LOAN,
-  AccountType.MORTGAGE,
-  AccountType.LINE_OF_CREDIT,
-];
 
 @Injectable()
 export class LoanScenariosService {
@@ -169,7 +164,7 @@ export class LoanScenariosService {
     return scenario;
   }
 
-  /** Ownership and type gate applied before any scenario operation */
+  /** Ownership and type gate applied before any scenario operation. */
   private async verifyLoanAccount(
     userId: string,
     accountId: string,
@@ -188,7 +183,7 @@ export class LoanScenariosService {
         ),
       );
     }
-    if (!LOAN_ACCOUNT_TYPES.includes(account.accountType)) {
+    if (!supportsLoanScenarios(account.accountType)) {
       throw new BadRequestException(
         tr(
           "errors.loanScenarios.notLoanAccount",

@@ -188,4 +188,118 @@ describe("InvestmentTransactionsService funding account changes (integration)", 
     );
     expect(reloaded.fundingAccountId).toBe(fundingAccountB);
   });
+
+  // FINV-FX-001: changing the funding account to one in a different currency,
+  // with no explicit rate, must re-resolve FX for the new pair. The defect was
+  // that `fundingChanged` compared the DTO against the property this method had
+  // already overwritten, so it was always false and the old same-currency rate
+  // of 1 survived -- posting a 1,000 USD buy as a 1,000 EUR debit instead of
+  // 920 EUR at 0.92.
+  it("re-resolves FX when the funding account currency changes", async () => {
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places) VALUES ('EUR', 'Euro', '€', 2) ON CONFLICT DO NOTHING`,
+    );
+    // A USD -> EUR rate on/around the trade date, so the resolver reads it from
+    // the database (LessThanOrEqual carry-forward) rather than reaching Yahoo.
+    await dataSource.query(
+      `INSERT INTO exchange_rates (from_currency, to_currency, rate, rate_date, source) VALUES ('USD', 'EUR', 0.92, '2026-01-01', 'test') ON CONFLICT DO NOTHING`,
+    );
+
+    const eurFunding = await createTestAccount(dataSource, userId, {
+      name: "Funding EUR",
+      currencyCode: "EUR",
+      openingBalance: 10000,
+      currentBalance: 10000,
+    });
+
+    // BUY 10 @ 100 USD, funded from a USD account -> stored rate 1.
+    const buy = await withUserContext(userId, () =>
+      service.create(userId, {
+        accountId: brokerageAccountId,
+        action: InvestmentAction.BUY,
+        transactionDate: "2026-01-15",
+        securityId,
+        fundingAccountId: fundingAccountA,
+        quantity: 10,
+        price: 100,
+        commission: 0,
+      }),
+    );
+
+    // Switch the funding account to the EUR one and nothing else -- no rate.
+    await withUserContext(userId, () =>
+      service.update(userId, buy.id, { fundingAccountId: eurFunding.id }),
+    );
+
+    const reloaded = await dataSource.manager.findOneOrFail(
+      InvestmentTransaction,
+      { where: { id: buy.id } },
+    );
+    expect(reloaded.fundingAccountId).toBe(eurFunding.id);
+    // The stored rate is the USD -> EUR rate, not the stale same-currency 1.
+    expect(Number(reloaded.exchangeRate)).toBeCloseTo(0.92, 10);
+
+    // The linked cash leg lands in the EUR account: 1000 USD * 0.92 = 920 EUR.
+    const eurTx = await dataSource.manager.find(Transaction, {
+      where: { accountId: eurFunding.id, userId },
+    });
+    expect(eurTx).toHaveLength(1);
+    expect(Number(eurTx[0].amount)).toBe(-920);
+    expect(eurTx[0].currencyCode).toBe("EUR");
+
+    // The original USD funding account is refunded in full; the EUR account is
+    // debited by 920, not 1000.
+    const a = await dataSource.manager.findOneOrFail(Account, {
+      where: { id: fundingAccountA },
+    });
+    const eur = await dataSource.manager.findOneOrFail(Account, {
+      where: { id: eurFunding.id },
+    });
+    expect(Number(a.currentBalance)).toBe(10000);
+    expect(Number(eur.currentBalance)).toBe(9080);
+  });
+
+  // FINV-STATE-002: an action-only edit must recompute the derived total from
+  // the new action's formula. The defect recomputed the total only when
+  // quantity/price/commission were present, so switching a BUY(10 @ 100 + 5)
+  // to DIVIDEND kept the stale 1005 total and posted a 1005 dividend.
+  it("recomputes the derived total when only the action changes", async () => {
+    const buy = await withUserContext(userId, () =>
+      service.create(userId, {
+        accountId: brokerageAccountId,
+        action: InvestmentAction.BUY,
+        transactionDate: "2026-01-15",
+        securityId,
+        fundingAccountId: fundingAccountA,
+        quantity: 10,
+        price: 100,
+        commission: 5,
+      }),
+    );
+    const created = await dataSource.manager.findOneOrFail(
+      InvestmentTransaction,
+      { where: { id: buy.id } },
+    );
+    expect(Number(created.totalAmount)).toBe(1005);
+
+    // Change only the action.
+    await withUserContext(userId, () =>
+      service.update(userId, buy.id, { action: InvestmentAction.DIVIDEND }),
+    );
+
+    const reloaded = await dataSource.manager.findOneOrFail(
+      InvestmentTransaction,
+      { where: { id: buy.id } },
+    );
+    // DIVIDEND total = (10 || 1) * 100 = 1000, not the carried-over BUY 1005.
+    expect(Number(reloaded.totalAmount)).toBe(1000);
+
+    // The old BUY cash leg (-1005) is reversed and a DIVIDEND credit created in
+    // its place: the funding account now holds exactly one +1000 cash entry.
+    const cashTx = await dataSource.manager.find(Transaction, {
+      where: { accountId: fundingAccountA, userId },
+    });
+    expect(cashTx).toHaveLength(1);
+    expect(Number(cashTx[0].amount)).toBe(1000);
+  });
 });
