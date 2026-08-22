@@ -2356,7 +2356,12 @@ export class NetWorthService {
    * `SecurityPriceService.upsertTransactionPrice` would have written to
    * `security_prices` (which rounds to 1e-6) -- not the raw driver average,
    * which differs in the last places (review MZ-1242-R8) -- rather than letting
-   * the last row of the day stand in for the session.
+   * the last row of the day stand in for the session. The row filter is
+   * `price IS NOT NULL`, matching the canonical writer exactly: a zero-price
+   * disposal (a `SELL`/`REDEEM` at $0, which the service allows) is a real
+   * observation the writer stores, so excluding it with `price > 0` would let
+   * the fallback carry an older price forward where the writer would not
+   * (review MZ-1242-R10).
    *
    * Bounded to the window plus one pre-window observation, as the stored loader
    * is. The aggregate is applied *after* the date predicates rather than over
@@ -2380,7 +2385,7 @@ export class NetWorthService {
            FROM investment_transactions
           WHERE security_id = ANY($1::UUID[])
             AND action = ANY($2)
-            AND price IS NOT NULL AND price > 0
+            AND price IS NOT NULL
             AND status != 'VOID'
             AND transaction_date < $3::DATE
           ORDER BY security_id, transaction_date DESC
@@ -2393,7 +2398,7 @@ export class NetWorthService {
              ON bd.security_id = it.security_id
             AND bd.transaction_date = it.transaction_date
           WHERE it.action = ANY($2)
-            AND it.price IS NOT NULL AND it.price > 0
+            AND it.price IS NOT NULL
             AND it.status != 'VOID'
           GROUP BY it.security_id, it.transaction_date
        ),
@@ -2403,7 +2408,7 @@ export class NetWorthService {
            FROM investment_transactions
           WHERE security_id = ANY($1::UUID[])
             AND action = ANY($2)
-            AND price IS NOT NULL AND price > 0
+            AND price IS NOT NULL
             AND status != 'VOID'
             AND transaction_date >= $3::DATE
             AND transaction_date <= $4::DATE

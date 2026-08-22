@@ -2,37 +2,41 @@ import { TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { AccountsModule } from "@/accounts/accounts.module";
 import { NetWorthService } from "@/net-worth/net-worth.service";
+import { SecurityPriceService } from "@/securities/security-price.service";
 import {
   createIntegrationModule,
   cleanTables,
   createTestUserDirect,
 } from "../helpers/integration-setup";
+import { withUserContext, withPreserveTimestamps } from "@/common/db/with-context";
+import { withScopedDb } from "@/common/db/scoped-db";
 
 /**
- * MZ-1242-R5 -- crash recovery for a manual-price snapshot invalidation.
+ * MZ-1242-R5 / R9 -- crash recovery for a manual-price snapshot invalidation,
+ * exercised through the real mutation path.
  *
- * A manual price moves no account balance, so the only durable signal that the
- * derived `monthly_account_balances` snapshot is stale is the `accounts.updated_at`
- * marker the write path advances in the same transaction as the price. The
- * stale-snapshot sweep is what turns that marker into a recompute when the
- * in-process debounce timer is lost (a pod killed in the two-second window).
+ * The property is not "if a durable marker already exists the sweep sees it"; it
+ * is "the manual-price mutation atomically leaves that marker, and the sweep
+ * recovers the recompute if the process-local debounce is lost". So this drives
+ * the real `SecurityPriceService.createManualPrice` -- not a hand-seeded
+ * `accounts.updated_at` -- and separately proves the price write and the marker
+ * cannot split across a failure boundary.
  *
- * The property under test is that the sweep actually fires for the exact shape a
- * manual price produces: an account whose row changed only a little after its
- * snapshot, but long enough ago that the debounce plainly did not run. The old
- * predicate (`a.updated_at > s.computed_at + grace`) never fired for that shape,
- * so a lost recompute was permanently invisible; the corrected predicate
- * (`a.updated_at > s.computed_at AND a.updated_at <= NOW() - grace`) recovers it.
+ * `createIntegrationModule` stubs `triggerDebouncedRecalc` to a no-op, which is
+ * exactly the "debounce lost" condition: recovery must come from the sweep, off
+ * the `accounts.updated_at` marker the mutation committed in its own
+ * transaction. A mocked `manager.query` cannot prove either half -- the sweep
+ * defect lived in timestamp arithmetic PostgreSQL evaluates, and atomicity is a
+ * transaction-boundary property -- so this is a real-database test.
  *
- * A mocked `manager.query` cannot prove this -- the defect lives in the timestamp
- * arithmetic PostgreSQL evaluates -- so this is a real-database test.
- * `createIntegrationModule` already stubs `triggerDebouncedRecalc` to a no-op,
- * which is exactly the "debounce lost" condition; recovery must come from the
- * sweep alone.
+ * The service is constructed directly with the real DataSource and NetWorthService;
+ * its quote-provider registry is unused by `createManualPrice`, which only writes
+ * `security_prices` and touches the holding accounts.
  */
-describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)", () => {
+describe("manual-price crash recovery (integration, MZ-1242-R5/R9)", () => {
   let module: TestingModule;
   let netWorth: NetWorthService;
+  let priceService: SecurityPriceService;
   let dataSource: DataSource;
   let userId: string;
   let accountId: string;
@@ -48,6 +52,13 @@ describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)",
     module = await createIntegrationModule([AccountsModule]);
     netWorth = module.get(NetWorthService);
     dataSource = module.get(DataSource);
+    // createManualPrice uses only the DataSource and NetWorthService; the quote
+    // provider registry it also takes is never touched on this path.
+    priceService = new SecurityPriceService(
+      dataSource,
+      netWorth,
+      {} as never,
+    );
   });
 
   afterAll(async () => {
@@ -75,15 +86,15 @@ describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)",
       [userId],
     );
 
-    // A brokerage account whose row was last touched 19 minutes ago -- one
-    // minute after its snapshot. The updated_at trigger fires BEFORE UPDATE
+    // Brokerage account with an old updated_at, so a manual-price mutation
+    // advancing it is observable. The updated_at trigger fires BEFORE UPDATE
     // only, so an explicit value on INSERT stands.
     const accountRows = await dataSource.query(
       `INSERT INTO accounts (user_id, account_type, account_sub_type, name,
                              currency_code, current_balance, opening_balance,
                              created_at, updated_at)
        VALUES ($1, 'INVESTMENT', 'INVESTMENT_BROKERAGE', 'Sample Retirement Plan',
-               'USD', 0, 0, NOW() - INTERVAL '2 days', NOW() - INTERVAL '19 minutes')
+               'USD', 0, 0, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 hour')
        RETURNING id`,
       [userId],
     );
@@ -98,8 +109,6 @@ describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)",
     );
     securityId = securityRows[0].id;
 
-    // 120 shares bought in 2024 at $61 -- the transaction basis the pre-fix
-    // snapshot was computed from.
     await dataSource.query(
       `INSERT INTO investment_transactions
          (user_id, account_id, security_id, action, transaction_date, quantity,
@@ -115,14 +124,6 @@ describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)",
       ],
     );
 
-    // The accepted manual correction: $120, dated today so it is the latest
-    // close on or before every recent month end.
-    await dataSource.query(
-      `INSERT INTO security_prices (security_id, price_date, close_price, source)
-       VALUES ($1, CURRENT_DATE, $2, 'manual')`,
-      [securityId, MANUAL_PRICE],
-    );
-
     // The stale snapshot computed 20 minutes ago under the old $61 basis.
     await dataSource.query(
       `INSERT INTO monthly_account_balances
@@ -133,20 +134,103 @@ describe("manual-price stale-snapshot crash recovery (integration, MZ-1242-R5)",
     );
   });
 
-  it("rebuilds a manual-price snapshot the lost debounce never recomputed", async () => {
-    // The debounce is stubbed to a no-op (createIntegrationModule), so this is
-    // the crash case: only the sweep can recover the snapshot.
+  async function accountUpdatedAt(): Promise<Date> {
+    const rows = await dataSource.query(
+      `SELECT updated_at FROM accounts WHERE id = $1`,
+      [accountId],
+    );
+    return new Date(rows[0].updated_at);
+  }
+
+  it("recovers a manual-price recompute lost with the debounce, via the real mutation path", async () => {
+    const before = await accountUpdatedAt();
+
+    // The real mutation: writes the $120 manual price and, in the same
+    // transaction, advances accounts.updated_at for the holding account. The
+    // debounce it schedules afterward is the stubbed no-op (the crash case).
+    await withUserContext(userId, () =>
+      priceService.createManualPrice(
+        securityId,
+        { priceDate: new Date().toISOString().slice(0, 10), closePrice: MANUAL_PRICE },
+        userId,
+      ),
+    );
+
+    // The mutation produced the durable marker.
+    const after = await accountUpdatedAt();
+    expect(after.getTime()).toBeGreaterThan(before.getTime());
+
+    // Simulate the ten-minute grace elapsing without sleeping: age the marker
+    // the mutation just wrote to 19 minutes ago (still newer than the 20-minute
+    // snapshot). Under app.preserve_timestamps the updated_at trigger keeps the
+    // supplied value instead of re-stamping now().
+    await withUserContext(userId, () =>
+      withPreserveTimestamps(() =>
+        withScopedDb(dataSource, (m) =>
+          m.query(
+            `UPDATE accounts SET updated_at = NOW() - INTERVAL '19 minutes'
+              WHERE id = $1`,
+            [accountId],
+          ),
+        ),
+      ),
+    );
+
     await netWorth.sweepStaleSnapshots();
 
     const rows = await dataSource.query(
-      `SELECT market_value
-         FROM monthly_account_balances
-        WHERE account_id = $1
-        ORDER BY month DESC
-        LIMIT 1`,
+      `SELECT market_value FROM monthly_account_balances
+        WHERE account_id = $1 ORDER BY month DESC LIMIT 1`,
       [accountId],
     );
     // 120 shares * $120 accepted close = $14,400, not the stale 120 * $61.
     expect(Number(rows[0].market_value)).toBe(EXPECTED_MARKET_VALUE);
+  });
+
+  it("commits the manual price and the stale marker atomically", async () => {
+    // Force the holding-account marker UPDATE to fail after the price INSERT has
+    // executed inside the same transaction. If the two were not one transaction,
+    // the price row would survive; it must not.
+    await dataSource.query(
+      `CREATE OR REPLACE FUNCTION test_fail_account_update()
+         RETURNS trigger AS $$ BEGIN
+           RAISE EXCEPTION 'failpoint: account update';
+         END; $$ LANGUAGE plpgsql`,
+    );
+    await dataSource.query(
+      `CREATE TRIGGER test_fail_account_update
+         BEFORE UPDATE ON accounts
+         FOR EACH ROW EXECUTE FUNCTION test_fail_account_update()`,
+    );
+
+    try {
+      await expect(
+        withUserContext(userId, () =>
+          priceService.createManualPrice(
+            securityId,
+            {
+              priceDate: new Date().toISOString().slice(0, 10),
+              closePrice: MANUAL_PRICE,
+            },
+            userId,
+          ),
+        ),
+      ).rejects.toThrow();
+
+      const rows = await dataSource.query(
+        `SELECT COUNT(*)::int AS n FROM security_prices
+          WHERE security_id = $1 AND source = 'manual'`,
+        [securityId],
+      );
+      // The price write rolled back with the failed marker update.
+      expect(rows[0].n).toBe(0);
+    } finally {
+      await dataSource.query(
+        `DROP TRIGGER IF EXISTS test_fail_account_update ON accounts`,
+      );
+      await dataSource.query(
+        `DROP FUNCTION IF EXISTS test_fail_account_update()`,
+      );
+    }
   });
 });

@@ -3437,6 +3437,68 @@ describe("NetWorthService", () => {
       expect(valueOn("2025-03-01")).toBe(8000);
     });
 
+    // MZ-1242-R7/R8/R10: the legacy transaction fallback query is bounded to
+    // the window plus one boundary date (not a lifetime aggregate CTE), rounds
+    // the same-day average to 6dp to match upsertTransactionPrice, and filters
+    // on `price IS NOT NULL` -- not `price > 0`, which would drop a zero-price
+    // disposal the canonical writer keeps.
+    it("bounds, 6dp-rounds and null-filters the legacy transaction fallback query (#1242 R7/R8/R10)", async () => {
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      const seenSql: string[] = [];
+      reportQuery.mockImplementation(async (sql: string) => {
+        seenSql.push(sql);
+        if (/FROM accounts a/.test(sql)) {
+          return [
+            {
+              id: "brok-1",
+              account_type: "INVESTMENT",
+              account_sub_type: "INVESTMENT_BROKERAGE",
+              currency_code: "USD",
+              opening_balance: 0,
+            },
+          ];
+        }
+        // The holdings-replay read (no aggregate) needs one held security so the
+        // valuation series -- including the fallback -- is loaded.
+        if (
+          /FROM\s+investment_transactions/.test(sql) &&
+          !/boundary_dates/.test(sql)
+        ) {
+          return [
+            {
+              account_id: "brok-1",
+              security_id: "sec-1",
+              action: "BUY",
+              quantity: "10",
+              transaction_date: "2024-01-15",
+            },
+          ];
+        }
+        return [];
+      });
+      securityRepository.findByIds.mockResolvedValue([
+        { id: "sec-1", skipPriceUpdates: false, currencyCode: "USD" },
+      ]);
+
+      await service.getDailyInvestments("user-1", "2026-08-15", "2026-08-22");
+
+      const txSql = seenSql.find((s) => /boundary_dates/.test(s));
+      expect(txSql).toBeDefined();
+      // R8: same-day average rounded to the canonical 6 decimals.
+      expect(txSql).toContain("ROUND(AVG(price::numeric), 6)");
+      // R7: bounded -- a pre-window boundary date plus the in-window rows, no
+      // unbounded all-time aggregate.
+      expect(txSql).toContain("transaction_date < $3::DATE");
+      expect(txSql).toContain("transaction_date >= $3::DATE");
+      expect(txSql).toContain("transaction_date <= $4::DATE");
+      expect(txSql).not.toMatch(/WITH\s+agg\s+AS/);
+      // R10: matches the canonical writer's filter; a zero-price disposal is
+      // kept, not excluded by `price > 0`.
+      expect(txSql).toContain("price IS NOT NULL");
+      expect(txSql).not.toMatch(/price\s*>\s*0/);
+    });
+
     it("returns empty when accountIds resolve to no accounts", async () => {
       prefRepository.findOne.mockResolvedValue({
         defaultCurrency: "USD",
