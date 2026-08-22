@@ -2055,15 +2055,51 @@ export class SecurityPriceService {
     return { processed: pairs.length, created, skipped };
   }
 
+  /**
+   * A manual price create/update/delete changes the accepted close for a
+   * security, so every `monthly_account_balances` snapshot for an account
+   * holding it now carries a stale `market_value`. Recompute through the same
+   * debounced net-worth path an investment-transaction edit uses
+   * (`NetWorthService.triggerDebouncedRecalc`), scoped to the accounts that
+   * actually hold the security. This is the shared invalidation path (#1242):
+   * before it, provider refresh and backfill recomputed snapshots but the HTTP
+   * manual-price routes did not, so a corrected price left the charts stale.
+   *
+   * Best-effort and fire-and-forget, exactly as the refresh and
+   * transaction-edit paths are -- a timer lost to a crash is recovered by
+   * `sweepStaleSnapshots` and by the next edit. It runs in the caller's
+   * identity context (the manual-price routes are authenticated), which the
+   * debounced timer captures. The security is per-user, so every holder is an
+   * account of the same `userId`.
+   */
+  private async invalidateSnapshotsForSecurity(
+    securityId: string,
+    userId: string,
+  ): Promise<void> {
+    const rows: Array<{ account_id: string }> = await withScopedDb(
+      this.dataSource,
+      (m) =>
+        m.query(
+          `SELECT DISTINCT account_id FROM investment_transactions
+            WHERE security_id = $1 AND status != 'VOID'`,
+          [securityId],
+        ),
+    );
+    for (const { account_id } of rows ?? []) {
+      this.netWorthService.triggerDebouncedRecalc(account_id, userId);
+    }
+  }
+
   async createManualPrice(
     securityId: string,
     dto: CreateSecurityPriceDto,
+    userId: string,
   ): Promise<SecurityPrice> {
     // Same shape as the quote path, and the same reason: read-then-insert on a
     // uniquely-keyed row turns a second submission -- a double-clicked Save, or a
     // manual entry landing on the same day the price cron just wrote -- into a
     // unique violation instead of an update.
-    return withScopedDb(this.dataSource, async (m) => {
+    const saved = await withScopedDb(this.dataSource, async (m) => {
       const rows: unknown = await m.query(
         `INSERT INTO security_prices
            (security_id, price_date, open_price, high_price, low_price,
@@ -2099,12 +2135,16 @@ export class SecurityPriceService {
       }
       return saved;
     });
+
+    await this.invalidateSnapshotsForSecurity(securityId, userId);
+    return saved;
   }
 
   async updatePrice(
     securityId: string,
     priceId: number,
     dto: UpdateSecurityPriceDto,
+    userId: string,
   ): Promise<SecurityPrice> {
     const price = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(SecurityPrice).findOne({
@@ -2126,12 +2166,18 @@ export class SecurityPriceService {
     if (dto.priceDate !== undefined) price.priceDate = dto.priceDate;
     price.source = "manual";
 
-    return withScopedDb(this.dataSource, (m) =>
+    const saved = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(SecurityPrice).save(price),
     );
+    await this.invalidateSnapshotsForSecurity(securityId, userId);
+    return saved;
   }
 
-  async deletePrice(securityId: string, priceId: number): Promise<void> {
+  async deletePrice(
+    securityId: string,
+    priceId: number,
+    userId: string,
+  ): Promise<void> {
     const price = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(SecurityPrice).findOne({
         where: { id: priceId, securityId },
@@ -2155,5 +2201,10 @@ export class SecurityPriceService {
         `Failed to backfill transaction price after deletion: ${err.message}`,
       ),
     );
+
+    // Both the removed manual row and any transaction-derived row restored in
+    // its place change the accepted close, so the holding accounts' snapshots
+    // are recomputed after both writes have settled.
+    await this.invalidateSnapshotsForSecurity(securityId, userId);
   }
 }
