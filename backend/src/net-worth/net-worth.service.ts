@@ -106,11 +106,24 @@ export class NetWorthService {
   private static readonly RECALC_DEBOUNCE_MS = 2000;
 
   /**
-   * How stale a snapshot may be, relative to its account's last change, before
-   * the sweep recomputes it.
+   * How long a snapshot may lag its account's last change before the sweep
+   * recomputes it -- measured from the change to *now*, not from the change to
+   * the previous snapshot.
    *
-   * Comfortably longer than the debounce plus a slow recalc, so the sweep does
-   * not race the timer that is about to do the same work.
+   * The distinction is load-bearing (review MZ-1242-R5). The sweep fires when
+   * `a.updated_at > s.computed_at AND a.updated_at <= NOW() - grace`: the
+   * account changed after its snapshot, and that change is now older than the
+   * grace, so the debounce timer had ample time and clearly did not run.
+   * Expressing the grace as a required distance *between the change and the old
+   * snapshot* instead (`a.updated_at > s.computed_at + grace`) is a permanent
+   * blind spot: a change one minute after the snapshot never satisfies it, so a
+   * lost debounce for a manual-price edit -- which moves no balance and touches
+   * only `updated_at` -- would never be recovered.
+   *
+   * The grace is comfortably longer than the debounce plus a slow recalc, so
+   * the sweep does not race the timer that is about to do the same work, and
+   * repeated edits keep pushing `updated_at` forward so it waits until the most
+   * recent change has settled.
    */
   private static readonly STALE_SNAPSHOT_GRACE_MS = 10 * 60 * 1000;
 
@@ -211,7 +224,9 @@ export class NetWorthService {
    * Either way `accounts.updated_at` advances, so it is a timestamp the account
    * itself keeps -- and the snapshots are a delete-and-reinsert, so their
    * `updated_at` is when they were last computed. An account whose row is newer
-   * than its own snapshots by more than the grace period was missed.
+   * than its own snapshots, and whose change is now older than the grace
+   * period, was missed (see `STALE_SNAPSHOT_GRACE_MS` for why the grace is an
+   * age of the change, not a distance from the old snapshot -- MZ-1242-R5).
    *
    * This is the idempotent-predicate mechanism from `docs/cron-jobs.md`: two
    * replicas racing the sweep recompute the same accounts from scratch, under the
@@ -232,7 +247,8 @@ export class NetWorthService {
                    FROM monthly_account_balances
                   GROUP BY account_id
                ) s ON s.account_id = a.id
-              WHERE a.updated_at > s.computed_at + ($1::text || ' milliseconds')::interval
+              WHERE a.updated_at > s.computed_at
+                AND a.updated_at <= NOW() - ($1::text || ' milliseconds')::interval
               ORDER BY a.updated_at
               LIMIT $2`,
             [
@@ -1162,10 +1178,10 @@ export class NetWorthService {
         : [];
     const securityMap = new Map(securities.map((s) => [s.id, s]));
 
-    // Accepted stored closes for every held security, plus the legacy
-    // transaction fallback for any with no stored price. Every day is valued at
-    // the latest accepted close on or before it, so a manual/imported price is
-    // honoured exactly as a provider quote is.
+    // Accepted stored closes for every held security, merged chronologically
+    // with the legacy transaction series (positionCloseAsOf). Every day is
+    // valued at the latest accepted close on or before it, so a manual/imported
+    // price is honoured exactly as a provider quote is.
     const { stored: pricesBySec, txFallback: txPricesBySec } =
       await this.loadValuationSeries(securityIds, start, end);
 
@@ -1478,9 +1494,9 @@ export class NetWorthService {
     // --- Price lookups -------------------------------------------------------
     // Every point is valued at the latest accepted close on or before its
     // valuation date (the day itself for daily, the month end for monthly),
-    // from security_prices, with the legacy transaction fallback for any
-    // security with no stored price. One load for both granularities and no
-    // skipPriceUpdates branch -- see positionCloseAsOf (#1242).
+    // from security_prices merged chronologically with the legacy transaction
+    // series. One load for both granularities and no skipPriceUpdates branch --
+    // see positionCloseAsOf (#1242).
     // Window the price load to the samples actually valued: monthly points are
     // valued at their month end, which can run past the report `end`, so bound
     // to the last sample's valuation date rather than to `end`.
@@ -2208,7 +2224,7 @@ export class NetWorthService {
 
         const security = securityMap.get(secId);
         // Latest accepted close on or before month end, from security_prices
-        // (legacy transaction fallback only where none exists). #1242.
+        // merged chronologically with the legacy transaction series. #1242.
         const price = positionCloseAsOf(
           storedPrices.get(secId),
           txPrices.get(secId),
@@ -2335,11 +2351,20 @@ export class NetWorthService {
    * so a stored series that begins mid-window does not suppress the legacy
    * history that values its earlier dates (review MZ-1242-R1).
    *
-   * Same-day trades are averaged (`AVG(price)`), reproducing exactly what
+   * Same-day trades are averaged and rounded to six decimals
+   * (`ROUND(AVG(price), 6)`), reproducing exactly what
    * `SecurityPriceService.upsertTransactionPrice` would have written to
-   * `security_prices`, rather than letting the last row of the day stand in for
-   * the session. Bounded to the window plus one pre-window observation, as the
-   * stored loader is.
+   * `security_prices` (which rounds to 1e-6) -- not the raw driver average,
+   * which differs in the last places (review MZ-1242-R8) -- rather than letting
+   * the last row of the day stand in for the session.
+   *
+   * Bounded to the window plus one pre-window observation, as the stored loader
+   * is. The aggregate is applied *after* the date predicates rather than over
+   * an all-time CTE referenced twice: a lifetime aggregate that PostgreSQL 16
+   * materializes before filtering scans every transaction of every held
+   * security for a one-week report (review MZ-1242-R7). The boundary date is
+   * resolved first with a bounded lookup, then only rows on that date and rows
+   * inside `[start, end]` are aggregated.
    */
   private async loadTxPriceSeries(
     securityIds: string[],
@@ -2350,25 +2375,39 @@ export class NetWorthService {
     if (securityIds.length === 0) return result;
 
     const rows: any[] = await this.scopedQuery(
-      `WITH agg AS (
-         SELECT security_id, transaction_date, AVG(price::numeric) AS price
+      `WITH boundary_dates AS (
+         SELECT DISTINCT ON (security_id) security_id, transaction_date
            FROM investment_transactions
           WHERE security_id = ANY($1::UUID[])
             AND action = ANY($2)
             AND price IS NOT NULL AND price > 0
             AND status != 'VOID'
-          GROUP BY security_id, transaction_date
-       ),
-       boundary AS (
-         SELECT DISTINCT ON (security_id) security_id, transaction_date, price
-           FROM agg
-          WHERE transaction_date < $3::DATE
+            AND transaction_date < $3::DATE
           ORDER BY security_id, transaction_date DESC
        ),
+       boundary AS (
+         SELECT it.security_id, it.transaction_date,
+                ROUND(AVG(it.price::numeric), 6) AS price
+           FROM investment_transactions it
+           JOIN boundary_dates bd
+             ON bd.security_id = it.security_id
+            AND bd.transaction_date = it.transaction_date
+          WHERE it.action = ANY($2)
+            AND it.price IS NOT NULL AND it.price > 0
+            AND it.status != 'VOID'
+          GROUP BY it.security_id, it.transaction_date
+       ),
        windowed AS (
-         SELECT security_id, transaction_date, price FROM agg
-          WHERE transaction_date >= $3::DATE
+         SELECT security_id, transaction_date,
+                ROUND(AVG(price::numeric), 6) AS price
+           FROM investment_transactions
+          WHERE security_id = ANY($1::UUID[])
+            AND action = ANY($2)
+            AND price IS NOT NULL AND price > 0
+            AND status != 'VOID'
+            AND transaction_date >= $3::DATE
             AND transaction_date <= $4::DATE
+          GROUP BY security_id, transaction_date
        )
        SELECT security_id, transaction_date, price FROM boundary
        UNION ALL

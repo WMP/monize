@@ -279,7 +279,12 @@ describe("NetWorthService", () => {
       const [sql, params] = reportQuery.mock.calls[0];
       expect(sql).toContain("FROM accounts");
       expect(sql).toContain("MAX(updated_at)");
-      expect(sql).toContain("a.updated_at >");
+      // The change is newer than the snapshot AND older than the grace measured
+      // from NOW() -- not a distance from the old snapshot, which would never
+      // recover a change made within the grace of its snapshot (MZ-1242-R5).
+      expect(sql).toContain("a.updated_at > s.computed_at");
+      expect(sql).toContain("a.updated_at <= NOW() -");
+      expect(sql).not.toMatch(/s\.computed_at\s*\+/);
       // Bounded, so a broken deployment cannot exhaust the pool in one pass.
       expect(sql).toContain("LIMIT $2");
       expect(params[1]).toBeGreaterThan(0);
