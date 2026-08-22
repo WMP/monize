@@ -1,4 +1,4 @@
-import { priceAsOf, PricePoint } from "../common/time-series/price-boundary.util";
+import { pointAsOf, PricePoint } from "../common/time-series/price-boundary.util";
 
 export { PricePoint } from "../common/time-series/price-boundary.util";
 
@@ -22,16 +22,23 @@ export { PricePoint } from "../common/time-series/price-boundary.util";
  * -- there is deliberately no second precedence rule reimplemented here.
  *
  * `txFallback` is a legacy compatibility source: transaction-derived prices read
- * directly from `investment_transactions`. Every accepted transaction
- * observation is normally mirrored into `security_prices`
- * (`upsertTransactionPrice` on every investment-transaction mutation,
- * `backfillTransactionPrices` on import), so callers populate this **only** for
- * securities that have no `security_prices` row at all -- chiefly a backup taken
- * before transaction-derived `security_prices` existed and restored without a
- * price backfill. It is used only when `stored` cannot answer, so an accepted
- * price always wins.
+ * directly from `investment_transactions` (same-day trades averaged, as
+ * `upsertTransactionPrice` writes them). Every accepted transaction observation
+ * is normally mirrored into `security_prices` (`upsertTransactionPrice` on every
+ * investment-transaction mutation, `backfillTransactionPrices` on import), so it
+ * only carries anything for data that predates that mirroring and was never
+ * rewritten -- chiefly a backup taken before transaction-derived
+ * `security_prices` existed and restored without a price backfill.
  *
- * Neither source is read past `date`: `priceAsOf` returns the most recent
+ * The two are **merged chronologically**, not switched per security: the newest
+ * observation at or before `date` from either source wins, and on an equal date
+ * the accepted store wins (its source precedence was resolved at write time).
+ * Switching per security -- "use tx only if the store is empty" -- was wrong: a
+ * security with a single *future* stored observation (a manual price added after
+ * a legacy restore) would suppress the legacy transaction history it needs to
+ * value earlier dates, and report those positions as $0 (review MZ-1242-R1).
+ *
+ * Neither source is read past `date`: `pointAsOf` returns the most recent
  * observation at or before it, so a future close never values an earlier day.
  * Both series must be sorted oldest-first (as loaded `ORDER BY ... price_date`).
  *
@@ -43,12 +50,16 @@ export function positionCloseAsOf(
   txFallback: PricePoint[] | undefined,
   date: string,
 ): number | null {
-  if (stored && stored.length > 0) {
-    const close = priceAsOf(stored, date);
-    if (close !== null) return close;
-  }
-  if (txFallback && txFallback.length > 0) {
-    return priceAsOf(txFallback, date);
-  }
-  return null;
+  const storedPoint =
+    stored && stored.length > 0 ? pointAsOf(stored, date) : null;
+  const txPoint =
+    txFallback && txFallback.length > 0 ? pointAsOf(txFallback, date) : null;
+
+  if (!storedPoint) return txPoint?.close ?? null;
+  if (!txPoint) return storedPoint.close;
+
+  // Equal date: the accepted store owns same-day precedence. Otherwise the
+  // more recent observation stands for the date.
+  if (storedPoint.date >= txPoint.date) return storedPoint.close;
+  return txPoint.close;
 }

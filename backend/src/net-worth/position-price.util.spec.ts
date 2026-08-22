@@ -3,8 +3,11 @@ import { positionCloseAsOf, PricePoint } from "./position-price.util";
 /**
  * The as-of merge for issue #1242. The invariant under test: the accepted price
  * store (security_prices) is authoritative for valuation regardless of a
- * security's skipPriceUpdates flag, a transaction-derived fallback answers only
- * when the store cannot, and no observation after the sample date is ever used.
+ * security's skipPriceUpdates flag; the legacy transaction fallback is merged
+ * chronologically (newest observation wins, the store wins on an equal date),
+ * so a stored series that only begins mid-window does not suppress the legacy
+ * history that values its earlier dates (review MZ-1242-R1); and no observation
+ * after the sample date is ever used.
  */
 describe("positionCloseAsOf", () => {
   const stored: PricePoint[] = [
@@ -32,7 +35,7 @@ describe("positionCloseAsOf", () => {
     expect(positionCloseAsOf(stored, tx, "2026-08-20")).toBe(120);
   });
 
-  it("falls back to transaction prices only when the store is empty", () => {
+  it("falls back to transaction prices when the store has no row", () => {
     const tx: PricePoint[] = [
       { date: "2024-01-10", close: 50 },
       { date: "2024-03-10", close: 55 },
@@ -41,6 +44,28 @@ describe("positionCloseAsOf", () => {
     expect(positionCloseAsOf([], tx, "2024-05-01")).toBe(55);
     // The fallback also respects the as-of boundary.
     expect(positionCloseAsOf(undefined, tx, "2023-12-31")).toBeNull();
+  });
+
+  // MZ-1242-R1: a legacy restore can leave a security with only a *future*
+  // stored observation (a manual price added after the restore) while its
+  // pre-restore history lives only in investment_transactions. Suppressing the
+  // fallback because "a stored row exists" reported those earlier dates as $0.
+  it("uses legacy history before the first accepted stored observation", () => {
+    const storedFuture: PricePoint[] = [{ date: "2025-03-01", close: 80 }];
+    const tx: PricePoint[] = [{ date: "2024-01-15", close: 50 }];
+    expect(positionCloseAsOf(storedFuture, tx, "2024-12-31")).toBe(50);
+  });
+
+  it("uses a newer legacy observation after an older stored observation", () => {
+    const storedOld: PricePoint[] = [{ date: "2025-01-01", close: 80 }];
+    const tx: PricePoint[] = [{ date: "2025-06-01", close: 90 }];
+    expect(positionCloseAsOf(storedOld, tx, "2025-06-30")).toBe(90);
+  });
+
+  it("keeps accepted stored precedence when both sources share the date", () => {
+    const storedSameDay: PricePoint[] = [{ date: "2025-06-01", close: 120 }];
+    const tx: PricePoint[] = [{ date: "2025-06-01", close: 61 }];
+    expect(positionCloseAsOf(storedSameDay, tx, "2025-06-01")).toBe(120);
   });
 
   it("returns null when neither source can answer", () => {

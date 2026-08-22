@@ -3169,6 +3169,38 @@ describe("SecurityPriceService", () => {
         "user-1",
       );
     });
+
+    // MZ-1242-R2: the recompute must survive a crash before the debounce
+    // timer fires, so the write path advances accounts.updated_at in the same
+    // transaction as the price -- a durable marker sweepStaleSnapshots reads.
+    // The debounce is only a latency optimization on top of it.
+    it("advances holding accounts' updated_at as a durable stale marker", async () => {
+      const calls: Array<{ sql: string; params?: unknown[] }> = [];
+      dataSourceMock.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          calls.push({ sql, params });
+          if (/SELECT DISTINCT account_id/.test(sql)) {
+            return [{ account_id: "acc-1" }, { account_id: "acc-2" }];
+          }
+          return [];
+        },
+      );
+
+      await service.createManualPrice(
+        "sec-1",
+        { priceDate: "2026-08-20", closePrice: 120 },
+        "user-1",
+      );
+
+      const touch = calls.find(
+        (c) =>
+          /UPDATE accounts/.test(c.sql) && /updated_at\s*=\s*now\(\)/.test(c.sql),
+      );
+      expect(touch).toBeDefined();
+      // Scoped to the holding accounts and the owner.
+      expect(touch?.params?.[0]).toEqual(["acc-1", "acc-2"]);
+      expect(touch?.params?.[1]).toBe("user-1");
+    });
   });
 
   describe("updatePrice", () => {

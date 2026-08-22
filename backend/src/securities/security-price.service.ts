@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { tr } from "../i18n/translate";
-import { In, DataSource } from "typeorm";
+import { In, DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { returnedRows } from "../common/db/query-result";
 import { Cron } from "@nestjs/schedule";
@@ -2058,35 +2058,59 @@ export class SecurityPriceService {
   /**
    * A manual price create/update/delete changes the accepted close for a
    * security, so every `monthly_account_balances` snapshot for an account
-   * holding it now carries a stale `market_value`. Recompute through the same
-   * debounced net-worth path an investment-transaction edit uses
-   * (`NetWorthService.triggerDebouncedRecalc`), scoped to the accounts that
-   * actually hold the security. This is the shared invalidation path (#1242):
-   * before it, provider refresh and backfill recomputed snapshots but the HTTP
-   * manual-price routes did not, so a corrected price left the charts stale.
+   * holding it now carries a stale `market_value`. This is the shared
+   * invalidation path (#1242): before it, provider refresh and backfill
+   * recomputed snapshots but the HTTP manual-price routes did not, so a
+   * corrected price left the charts stale.
    *
-   * Best-effort and fire-and-forget, exactly as the refresh and
-   * transaction-edit paths are -- a timer lost to a crash is recovered by
-   * `sweepStaleSnapshots` and by the next edit. It runs in the caller's
-   * identity context (the manual-price routes are authenticated), which the
-   * debounced timer captures. The security is per-user, so every holder is an
-   * account of the same `userId`.
+   * Invalidation is durable, not just debounced. `sweepStaleSnapshots`
+   * recovers a lost recompute by finding accounts whose `updated_at` is newer
+   * than their snapshots -- but that only works if the mutation advances
+   * `accounts.updated_at`. A manual price moves no balance, so nothing touched
+   * the account row and the sweep had no signal: a crash between the price
+   * commit and the two-second debounce timer left the snapshot stale forever
+   * (review MZ-1242-R2). So this runs **inside the same transaction as the
+   * price write**, advancing `updated_at` on every holding account atomically
+   * with the price change -- the same durable marker an investment-transaction
+   * edit leaves via its balance write. The security is per-user, so every
+   * holder is an account of the same `userId`.
+   *
+   * Returns the affected account ids so the caller can, after commit, schedule
+   * the debounced recompute as a latency optimization on top of the durable
+   * marker.
    */
-  private async invalidateSnapshotsForSecurity(
+  private async markHoldingAccountsDirty(
+    manager: EntityManager,
     securityId: string,
     userId: string,
-  ): Promise<void> {
-    const rows: Array<{ account_id: string }> = await withScopedDb(
-      this.dataSource,
-      (m) =>
-        m.query(
-          `SELECT DISTINCT account_id FROM investment_transactions
-            WHERE security_id = $1 AND status != 'VOID'`,
-          [securityId],
-        ),
+  ): Promise<string[]> {
+    const rows: Array<{ account_id: string }> = await manager.query(
+      `SELECT DISTINCT account_id FROM investment_transactions
+        WHERE security_id = $1 AND status != 'VOID'`,
+      [securityId],
     );
-    for (const { account_id } of rows ?? []) {
-      this.netWorthService.triggerDebouncedRecalc(account_id, userId);
+    const accountIds = (rows ?? []).map((r) => r.account_id);
+    if (accountIds.length > 0) {
+      await manager.query(
+        `UPDATE accounts SET updated_at = now()
+          WHERE id = ANY($1::UUID[]) AND user_id = $2`,
+        [accountIds, userId],
+      );
+    }
+    return accountIds;
+  }
+
+  /**
+   * Schedule the debounced net-worth recompute for the given accounts, after
+   * the durable marker has committed. Best-effort latency optimization: a
+   * timer lost to a crash is recovered by `sweepStaleSnapshots` off the
+   * `updated_at` marker `markHoldingAccountsDirty` wrote. Runs in the caller's
+   * identity context (the manual-price routes are authenticated), which the
+   * debounced timer captures.
+   */
+  private scheduleSnapshotRecalc(accountIds: string[], userId: string): void {
+    for (const accountId of accountIds) {
+      this.netWorthService.triggerDebouncedRecalc(accountId, userId);
     }
   }
 
@@ -2099,9 +2123,11 @@ export class SecurityPriceService {
     // uniquely-keyed row turns a second submission -- a double-clicked Save, or a
     // manual entry landing on the same day the price cron just wrote -- into a
     // unique violation instead of an update.
-    const saved = await withScopedDb(this.dataSource, async (m) => {
-      const rows: unknown = await m.query(
-        `INSERT INTO security_prices
+    const { saved, accountIds } = await withScopedDb(
+      this.dataSource,
+      async (m) => {
+        const rows: unknown = await m.query(
+          `INSERT INTO security_prices
            (security_id, price_date, open_price, high_price, low_price,
             close_price, volume, source)
          VALUES ($1, $2::DATE, $3, $4, $5, $6, $7, 'manual')
@@ -2113,30 +2139,37 @@ export class SecurityPriceService {
            volume      = COALESCE(EXCLUDED.volume,      security_prices.volume),
            source      = 'manual'
          RETURNING id`,
-        [
-          securityId,
-          dto.priceDate,
-          dto.openPrice ?? null,
-          dto.highPrice ?? null,
-          dto.lowPrice ?? null,
-          dto.closePrice,
-          dto.volume ?? null,
-        ],
-      );
-
-      const id = returnedRows<{ id: number }>(rows)[0]?.id;
-      const saved = id
-        ? await m.getRepository(SecurityPrice).findOne({ where: { id } })
-        : null;
-      if (!saved) {
-        throw new Error(
-          `Failed to persist manual price for security ${securityId} on ${dto.priceDate}`,
+          [
+            securityId,
+            dto.priceDate,
+            dto.openPrice ?? null,
+            dto.highPrice ?? null,
+            dto.lowPrice ?? null,
+            dto.closePrice,
+            dto.volume ?? null,
+          ],
         );
-      }
-      return saved;
-    });
 
-    await this.invalidateSnapshotsForSecurity(securityId, userId);
+        const id = returnedRows<{ id: number }>(rows)[0]?.id;
+        const saved = id
+          ? await m.getRepository(SecurityPrice).findOne({ where: { id } })
+          : null;
+        if (!saved) {
+          throw new Error(
+            `Failed to persist manual price for security ${securityId} on ${dto.priceDate}`,
+          );
+        }
+        // Durable stale marker in the same transaction as the price write.
+        const accountIds = await this.markHoldingAccountsDirty(
+          m,
+          securityId,
+          userId,
+        );
+        return { saved, accountIds };
+      },
+    );
+
+    this.scheduleSnapshotRecalc(accountIds, userId);
     return saved;
   }
 
@@ -2166,10 +2199,20 @@ export class SecurityPriceService {
     if (dto.priceDate !== undefined) price.priceDate = dto.priceDate;
     price.source = "manual";
 
-    const saved = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(SecurityPrice).save(price),
+    const { saved, accountIds } = await withScopedDb(
+      this.dataSource,
+      async (m) => {
+        const saved = await m.getRepository(SecurityPrice).save(price);
+        // Durable stale marker in the same transaction as the price write.
+        const accountIds = await this.markHoldingAccountsDirty(
+          m,
+          securityId,
+          userId,
+        );
+        return { saved, accountIds };
+      },
     );
-    await this.invalidateSnapshotsForSecurity(securityId, userId);
+    this.scheduleSnapshotRecalc(accountIds, userId);
     return saved;
   }
 
@@ -2192,10 +2235,15 @@ export class SecurityPriceService {
 
     const priceDate = price.priceDate;
 
-    await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(SecurityPrice).remove(price),
-    );
+    const accountIds = await withScopedDb(this.dataSource, async (m) => {
+      await m.getRepository(SecurityPrice).remove(price);
+      // Durable stale marker in the same transaction as the removal.
+      return this.markHoldingAccountsDirty(m, securityId, userId);
+    });
 
+    // Restore a transaction-derived row for the freed date where one applies.
+    // Its own write commits separately; the durable marker above already
+    // covers the recompute, so a failure here only loses the fallback row.
     await this.upsertTransactionPrice(securityId, priceDate).catch((err) =>
       this.logger.warn(
         `Failed to backfill transaction price after deletion: ${err.message}`,
@@ -2203,8 +2251,7 @@ export class SecurityPriceService {
     );
 
     // Both the removed manual row and any transaction-derived row restored in
-    // its place change the accepted close, so the holding accounts' snapshots
-    // are recomputed after both writes have settled.
-    await this.invalidateSnapshotsForSecurity(securityId, userId);
+    // its place change the accepted close, so recompute the holding accounts.
+    this.scheduleSnapshotRecalc(accountIds, userId);
   }
 }

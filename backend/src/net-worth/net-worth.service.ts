@@ -1167,7 +1167,7 @@ export class NetWorthService {
     // the latest accepted close on or before it, so a manual/imported price is
     // honoured exactly as a provider quote is.
     const { stored: pricesBySec, txFallback: txPricesBySec } =
-      await this.loadValuationSeries(securityIds);
+      await this.loadValuationSeries(securityIds, start, end);
 
     // Load daily cash balances for INVESTMENT_CASH and standalone accounts
     const cashBalances = new Map<string, Map<string, number>>();
@@ -1481,8 +1481,14 @@ export class NetWorthService {
     // from security_prices, with the legacy transaction fallback for any
     // security with no stored price. One load for both granularities and no
     // skipPriceUpdates branch -- see positionCloseAsOf (#1242).
+    // Window the price load to the samples actually valued: monthly points are
+    // valued at their month end, which can run past the report `end`, so bound
+    // to the last sample's valuation date rather than to `end`.
+    const lastSample = sampleDates[sampleDates.length - 1];
+    const loadEnd =
+      granularity === "monthly" ? this.monthEndDate(lastSample) : lastSample;
     const { stored: storedSeries, txFallback: txSeries } =
-      await this.loadValuationSeries(securityIds);
+      await this.loadValuationSeries(securityIds, sampleDates[0], loadEnd);
 
     // --- Cash balances -------------------------------------------------------
     const cashBalances = new Map<string, Map<string, number>>();
@@ -2130,10 +2136,18 @@ export class NetWorthService {
     const securityMap = new Map(securities.map((s) => [s.id, s]));
 
     // Preload accepted stored prices for every held security (plus the legacy
-    // transaction fallback for any with no stored price). Not keyed on
-    // skipPriceUpdates -- see loadValuationSeries / positionCloseAsOf (#1242).
+    // transaction fallback). Not keyed on skipPriceUpdates -- see
+    // loadValuationSeries / positionCloseAsOf (#1242). The window spans the
+    // months being (re)built, from the first month through its month end, so
+    // every month-end valuation below is covered without loading lifetime
+    // history.
+    const windowStart = months[0] ?? startDate;
+    const windowEnd =
+      months.length > 0
+        ? this.monthEndDate(months[months.length - 1])
+        : today;
     const { stored: storedPrices, txFallback: txPrices } =
-      await this.loadValuationSeries(securityIds);
+      await this.loadValuationSeries(securityIds, windowStart, windowEnd);
 
     // Build a rate index for security currencies -> account currency so that
     // per-holding market values (which are stored in the security's native
@@ -2263,19 +2277,43 @@ export class NetWorthService {
    * from raw transaction prices instead -- is what left a manually corrected
    * 401(k) reporting its old transaction price on every historical chart
    * (issue #1242). That flag is a fetch-eligibility rule, not a valuation one.
+   *
+   * Bounded to the report window (`[start, end]`) plus the single most recent
+   * observation *before* `start`, which is the carry-forward that values the
+   * window's first day. Loading the whole lifetime history of every held
+   * security to answer a one-week chart is millions of avoidable rows on a
+   * large portfolio (review MZ-1242-R4). The pre-window boundary keeps an
+   * arbitrarily old sparse/manual price usable without loading everything
+   * between it and the window.
    */
   private async loadStoredPriceSeries(
     securityIds: string[],
+    start: string,
+    end: string,
   ): Promise<Map<string, PricePoint[]>> {
     const result = new Map<string, PricePoint[]>();
     if (securityIds.length === 0) return result;
 
     const rows: any[] = await this.scopedQuery(
-      `SELECT security_id, price_date, close_price
-       FROM security_prices
-       WHERE security_id = ANY($1::UUID[])
+      `WITH boundary AS (
+         SELECT DISTINCT ON (security_id) security_id, price_date, close_price
+           FROM security_prices
+          WHERE security_id = ANY($1::UUID[])
+            AND price_date < $2::DATE
+          ORDER BY security_id, price_date DESC
+       ),
+       windowed AS (
+         SELECT security_id, price_date, close_price
+           FROM security_prices
+          WHERE security_id = ANY($1::UUID[])
+            AND price_date >= $2::DATE
+            AND price_date <= $3::DATE
+       )
+       SELECT security_id, price_date, close_price FROM boundary
+       UNION ALL
+       SELECT security_id, price_date, close_price FROM windowed
        ORDER BY security_id, price_date`,
-      [securityIds],
+      [securityIds, start, end],
     );
     for (const r of rows) {
       const arr = result.get(r.security_id) ?? [];
@@ -2290,27 +2328,53 @@ export class NetWorthService {
 
   /**
    * Transaction-derived closes per security, read directly from
-   * `investment_transactions` -- the legacy fallback (see
-   * `positionCloseAsOf`). Every accepted transaction observation is normally
-   * mirrored into `security_prices`, so callers load this only for the
-   * securities that have no stored price at all.
+   * `investment_transactions` -- the legacy fallback (see `positionCloseAsOf`).
+   * Every accepted transaction observation is normally mirrored into
+   * `security_prices`, so this only carries anything for legacy data absent
+   * from the store; it is loaded for every security and merged chronologically
+   * so a stored series that begins mid-window does not suppress the legacy
+   * history that values its earlier dates (review MZ-1242-R1).
+   *
+   * Same-day trades are averaged (`AVG(price)`), reproducing exactly what
+   * `SecurityPriceService.upsertTransactionPrice` would have written to
+   * `security_prices`, rather than letting the last row of the day stand in for
+   * the session. Bounded to the window plus one pre-window observation, as the
+   * stored loader is.
    */
   private async loadTxPriceSeries(
     securityIds: string[],
+    start: string,
+    end: string,
   ): Promise<Map<string, PricePoint[]>> {
     const result = new Map<string, PricePoint[]>();
     if (securityIds.length === 0) return result;
 
     const rows: any[] = await this.scopedQuery(
-      `SELECT security_id, transaction_date, price
-       FROM investment_transactions
-       WHERE security_id = ANY($1::UUID[])
-         AND action = ANY($2)
-         AND price IS NOT NULL
-         AND price > 0
-         AND status != 'VOID'
-       ORDER BY security_id, transaction_date, created_at`,
-      [securityIds, MARKET_PRICED_TRADE_ACTIONS],
+      `WITH agg AS (
+         SELECT security_id, transaction_date, AVG(price::numeric) AS price
+           FROM investment_transactions
+          WHERE security_id = ANY($1::UUID[])
+            AND action = ANY($2)
+            AND price IS NOT NULL AND price > 0
+            AND status != 'VOID'
+          GROUP BY security_id, transaction_date
+       ),
+       boundary AS (
+         SELECT DISTINCT ON (security_id) security_id, transaction_date, price
+           FROM agg
+          WHERE transaction_date < $3::DATE
+          ORDER BY security_id, transaction_date DESC
+       ),
+       windowed AS (
+         SELECT security_id, transaction_date, price FROM agg
+          WHERE transaction_date >= $3::DATE
+            AND transaction_date <= $4::DATE
+       )
+       SELECT security_id, transaction_date, price FROM boundary
+       UNION ALL
+       SELECT security_id, transaction_date, price FROM windowed
+       ORDER BY security_id, transaction_date`,
+      [securityIds, MARKET_PRICED_TRADE_ACTIONS, start, end],
     );
     for (const r of rows) {
       const arr = result.get(r.security_id) ?? [];
@@ -2324,21 +2388,25 @@ export class NetWorthService {
   }
 
   /**
-   * The pair `positionCloseAsOf` reads: the accepted stored series for every
-   * security, plus a legacy transaction-derived fallback for exactly those
-   * securities that have no `security_prices` row at all. `skipPriceUpdates`
-   * plays no part in the choice -- the store answers for any security it can,
-   * and the fallback covers only securities the store cannot answer for
-   * (backups predating transaction-derived `security_prices`, restored without
-   * a price backfill).
+   * The pair `positionCloseAsOf` reads: the accepted stored series and the
+   * legacy transaction-derived series, both for every requested security and
+   * both bounded to `[start, end]` plus one pre-window observation.
+   * `skipPriceUpdates` plays no part -- the store is authoritative and the two
+   * are merged chronologically, so an accepted price always wins on its date
+   * while legacy history still values dates the store does not reach.
    */
-  private async loadValuationSeries(securityIds: string[]): Promise<{
+  private async loadValuationSeries(
+    securityIds: string[],
+    start: string,
+    end: string,
+  ): Promise<{
     stored: Map<string, PricePoint[]>;
     txFallback: Map<string, PricePoint[]>;
   }> {
-    const stored = await this.loadStoredPriceSeries(securityIds);
-    const lacking = securityIds.filter((id) => !stored.has(id));
-    const txFallback = await this.loadTxPriceSeries(lacking);
+    const [stored, txFallback] = await Promise.all([
+      this.loadStoredPriceSeries(securityIds, start, end),
+      this.loadTxPriceSeries(securityIds, start, end),
+    ]);
     return { stored, txFallback };
   }
 

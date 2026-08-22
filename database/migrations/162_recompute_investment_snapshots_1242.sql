@@ -16,20 +16,19 @@
 -- rows here; NetWorthService.ensurePopulated / refreshStaleAccountsForCurrentMonth
 -- rebuilds them from the corrected algorithm on the next net-worth read.
 --
--- Bounded to accounts that actually hold a skip_price_updates security via a
--- non-void investment transaction -- the only accounts whose market_value could
--- have been computed under the old branch. Derived data only: no source
+-- Bounded to investment accounts -- the only accounts whose market_value the
+-- valuation code computes at all, so the only ones the old branch could have
+-- got wrong. Deliberately NOT narrowed to securities currently flagged
+-- skip_price_updates: SecuritiesService.update clears that flag when the user
+-- assigns a quote provider, so a snapshot computed while the flag was true can
+-- outlive it (review MZ-1242-R3, secondary gap). Derived data only: no source
 -- transaction and no accepted price row (security_prices) is touched.
 --
 -- Idempotent by construction: monthly_account_balances is derived, so a
--- re-applied DELETE either matches the same rebuilt-but-still-affected rows
--- (harmless -- they are rebuilt again) or matches nothing on a database with no
--- such holdings (a fresh schema.sql install), so it is a safe no-op on replay.
-DELETE FROM monthly_account_balances
- WHERE account_id IN (
-   SELECT DISTINCT it.account_id
-     FROM investment_transactions it
-     JOIN securities s ON s.id = it.security_id
-    WHERE s.skip_price_updates = true
-      AND it.status <> 'VOID'
- );
+-- re-applied DELETE either matches the same rebuilt rows (harmless -- they are
+-- rebuilt again) or matches nothing on a database with no such accounts (a
+-- fresh schema.sql install), so it is a safe no-op on replay.
+DELETE FROM monthly_account_balances mab
+ USING accounts a
+ WHERE mab.account_id = a.id
+   AND a.account_type = 'INVESTMENT';

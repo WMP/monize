@@ -974,7 +974,7 @@ describe("NetWorthService", () => {
           .mockResolvedValueOnce([{ earliest: null }])
           .mockResolvedValueOnce([{ inv_earliest: "2025-02-01" }])
           .mockResolvedValueOnce([{ month: "2025-02-01", balance: 0 }])
-          // loadSecurityPrices query
+          // loadStoredPriceSeries query
           .mockResolvedValueOnce([
             {
               security_id: "sec-usd",
@@ -982,6 +982,8 @@ describe("NetWorthService", () => {
               close_price: 25.675,
             },
           ])
+          // loadTxPriceSeries fallback (no legacy transaction prices needed)
+          .mockResolvedValueOnce([])
           // buildRateIndex query (USD -> CAD)
           .mockResolvedValueOnce([
             {
@@ -2911,6 +2913,9 @@ describe("NetWorthService", () => {
         },
       ]);
 
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
+
       // exchange rates (buildRateIndex)
       reportQuery.mockResolvedValueOnce([
         {
@@ -2980,6 +2985,9 @@ describe("NetWorthService", () => {
         },
       ]);
 
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
+
       // cash balances CTE
       reportQuery.mockResolvedValueOnce([
         { date: "2025-03-01", balance: "5000", account_id: "cash-cad" },
@@ -3048,6 +3056,9 @@ describe("NetWorthService", () => {
           close_price: "50.00",
         },
       ]);
+
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
 
       // cash balances CTE (standalone accounts also appear in cashIds)
       reportQuery.mockResolvedValueOnce([
@@ -3137,6 +3148,9 @@ describe("NetWorthService", () => {
           close_price: "100.00",
         },
       ]);
+
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
 
       // exchange rates (buildRateIndex): USD->CAD rate
       reportQuery.mockResolvedValueOnce([
@@ -3357,6 +3371,67 @@ describe("NetWorthService", () => {
       expect(valueOn("2026-08-21")).toBe(120);
     });
 
+    // Issue #1242 MZ-1242-R1: a legacy restore leaves the holding with only a
+    // FUTURE accepted stored price ($80 on 2025-03-01) while its earlier
+    // history lives only in investment_transactions ($50 on 2024-01-15).
+    // Keying the fallback off "does a stored row exist" reported the earlier
+    // dates as $0; the chronological merge values them from the legacy history
+    // and switches to the stored price once it is the newer observation.
+    it("merges legacy transaction history under a later stored price (#1242)", async () => {
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      reportQuery.mockResolvedValueOnce([
+        {
+          id: "brok-1",
+          account_type: "INVESTMENT",
+          account_sub_type: "INVESTMENT_BROKERAGE",
+          currency_code: "USD",
+          opening_balance: 0,
+        },
+      ]);
+      reportQuery.mockResolvedValueOnce([
+        {
+          account_id: "brok-1",
+          security_id: "sec-legacy",
+          action: "BUY",
+          quantity: "100",
+          transaction_date: "2024-01-15",
+        },
+      ]);
+      securityRepository.findByIds.mockResolvedValue([
+        { id: "sec-legacy", skipPriceUpdates: true, currencyCode: "USD" },
+      ]);
+      // loadStoredPriceSeries: only a future manual price falls in the window.
+      reportQuery.mockResolvedValueOnce([
+        {
+          security_id: "sec-legacy",
+          price_date: "2025-03-01",
+          close_price: "80",
+        },
+      ]);
+      // loadTxPriceSeries: the pre-window boundary carries the legacy $50.
+      reportQuery.mockResolvedValueOnce([
+        {
+          security_id: "sec-legacy",
+          transaction_date: "2024-01-15",
+          price: "50",
+        },
+      ]);
+
+      const result = await service.getDailyInvestments(
+        "user-1",
+        "2024-12-31",
+        "2025-03-01",
+      );
+
+      const valueOn = (date: string) =>
+        result.find((p) => p.date === date)?.value;
+      // Before the stored price exists: 100 * $50 legacy = $5,000 (not $0).
+      expect(valueOn("2024-12-31")).toBe(5000);
+      // Once the stored price is the newer observation: 100 * $80 = $8,000.
+      expect(valueOn("2025-03-01")).toBe(8000);
+    });
+
     it("returns empty when accountIds resolve to no accounts", async () => {
       prefRepository.findOne.mockResolvedValue({
         defaultCurrency: "USD",
@@ -3418,6 +3493,9 @@ describe("NetWorthService", () => {
           close_price: "25.675",
         },
       ]);
+
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
 
       // exchange rates (USD -> CAD)
       reportQuery.mockResolvedValueOnce([
@@ -3553,11 +3631,14 @@ describe("NetWorthService", () => {
         },
       ]);
 
-      // month-end security prices (loadSecurityPrices)
+      // month-end security prices (loadStoredPriceSeries)
       reportQuery.mockResolvedValueOnce([
         { security_id: "sec-1", price_date: "2024-05-31", close_price: "100" },
         { security_id: "sec-1", price_date: "2024-06-28", close_price: "110" },
       ]);
+
+      // loadTxPriceSeries fallback (no legacy transaction prices)
+      reportQuery.mockResolvedValueOnce([]);
 
       // monthly cash balances
       reportQuery.mockResolvedValueOnce([
