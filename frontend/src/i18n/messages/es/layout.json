@@ -145,5 +145,17 @@
     "title": "No se puede conectar",
     "message": "Monize no pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
     "retry": "Reintentar"
+  },
+  "pushBanner": {
+    "enableTitle": "¿Activar las notificaciones?",
+    "enableBody": "Monize puede recordarte facturas y límites de presupuesto en este dispositivo, incluso con la aplicación cerrada. Tu navegador te pedirá permiso.",
+    "enableButton": "Activar",
+    "enabling": "Activando…",
+    "installIosTitle": "Añade Monize a la pantalla de inicio primero.",
+    "installIosBody": "En iPhone y iPad las notificaciones solo funcionan desde la aplicación instalada. Toca Compartir, luego Añadir a pantalla de inicio, y abre Monize desde ahí.",
+    "blockedTitle": "Las notificaciones están bloqueadas para Monize.",
+    "blockedBody": "Permítelas en la configuración del sitio de tu navegador para esta página. Monize no puede volver a preguntar por sí solo.",
+    "blockedIosBody": "Abre Ajustes de iOS, luego Notificaciones, luego Monize, y permítelas ahí. Si Monize no aparece, quítalo de la pantalla de inicio y vuelve a añadirlo.",
+    "dismiss": "Ahora no"
   }
 }

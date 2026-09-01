@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Bijwerken van voorkeur voor budgetoverzicht mislukt",
       "digestDayFailed": "Bijwerken van dag van budgetoverzicht mislukt",
       "testEmailFailed": "Verzenden van teste-mail mislukt"
+    },
+    "push": {
+      "heading": "Browserpush",
+      "description": "Registreer dit apparaat zodat Monize het ook kan bereiken als de app gesloten is. Voorlopig wordt alleen de testmelding zo bezorgd; al het andere komt nog steeds in de bel.",
+      "permissionHint": "Als je dit aanzet, vraagt je browser toestemming om meldingen te tonen. Er wordt niets verzonden voordat je die geeft.",
+      "enableButton": "Inschakelen op dit apparaat",
+      "enablingButton": "Inschakelen...",
+      "sendTestButton": "Testmelding versturen",
+      "sendingTestButton": "Versturen...",
+      "removeButton": "Verwijderen",
+      "thisDevice": "Dit apparaat",
+      "unnamedDevice": "Naamloos apparaat",
+      "lastSeen": "Laatst actief {when}",
+      "noLiveDevices": "Nog geen apparaat geregistreerd. Schakel push in op dit apparaat om een test te versturen.",
+      "notConfigured": "Browserpush is niet beschikbaar op deze Monize-instantie. Een beheerder kan het inschakelen in het Admin-gedeelte.",
+      "disabledByAdmin": "Een beheerder heeft browserpush uitgeschakeld voor deze Monize-instantie.",
+      "keyUnreadable": "Monize kan het pushsleutelpaar van deze instantie niet lezen, dus er wordt niets bezorgd. Een beheerder kan dit herstellen door het sleutelpaar in het Admin-gedeelte te vervangen.",
+      "serverKeyMissing": "Deze Monize-instantie mist de encryptiesleutel die nodig is om het push-sleutelpaar te openen, dus er kan niets bezorgd worden. Een beheerder moet die in de deployment instellen en opnieuw opstarten.",
+      "statusUnavailable": "Monize kon niet controleren of browserpush beschikbaar is. Herlaad de pagina om het opnieuw te proberen.",
+      "devicesUnavailable": "Monize kon je geregistreerde apparaten niet laden. De rest van deze pagina werkt gewoon; herlaad om het opnieuw te proberen.",
+      "unsupported": {
+        "unsupported": "Deze browser kan geen pushmeldingen ontvangen.",
+        "denied": "Meldingen zijn geblokkeerd voor Monize in deze browser. Sta ze toe in de site-instellingen en herlaad deze pagina.",
+        "ios-browser": "Op iPhone en iPad werken pushmeldingen pas als Monize op het beginscherm is geïnstalleerd. Gebruik Deel en daarna Zet op beginscherm, en open Monize van daaruit."
+      },
+      "disabledReason": {
+        "GONE": "Niet meer bereikbaar. Schakel push opnieuw in in die browser.",
+        "KEY_ROTATED": "Stopgezet toen deze instantie haar pushsleutelpaar verving. Schakel push opnieuw in in die browser.",
+        "FAILING": "Stopgezet na herhaalde afleverfouten. Schakel push opnieuw in in die browser."
+      },
+      "toasts": {
+        "enabled": "Pushmeldingen ingeschakeld op dit apparaat",
+        "enableFailed": "Pushmeldingen konden niet worden ingeschakeld",
+        "permissionDenied": "Deze browser blokkeert meldingen van Monize. Sta ze toe in de site-instellingen en probeer het opnieuw.",
+        "permissionDeniedIos": "Meldingen zijn geblokkeerd voor Monize. Open iOS-instellingen, dan Meldingen, dan Monize, om ze toe te staan.",
+        "permissionDismissed": "Meldingen zijn niet ingeschakeld. Kies Toestaan wanneer de browser het vraagt.",
+        "permissionNoPrompt": "Meldingen zijn niet aangezet en er verscheen geen verzoek. Open iOS-instellingen, dan Meldingen, dan Monize, en sta ze daar toe. Staat Monize er niet bij, verwijder het dan van het beginscherm, voeg het opnieuw toe (Deel, dan Zet op beginscherm) en probeer het nog eens.",
+        "removed": "Apparaat verwijderd",
+        "removeFailed": "Apparaat kon niet worden verwijderd",
+        "testSent": "{count, plural, one {Testmelding verstuurd naar 1 apparaat} other {Testmelding verstuurd naar # apparaten}}",
+        "testPartial": "De testmelding bereikte {delivered} van {attempted} apparaten",
+        "testFailed": "De testmelding kon niet worden afgeleverd"
+      }
     }
   },
   "help": {

@@ -40,6 +40,8 @@ import { ImportModule } from "./import/import.module";
 import { NetWorthModule } from "./net-worth/net-worth.module";
 import { BuiltInReportsModule } from "./built-in-reports/built-in-reports.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+// TEST DRIVE ONLY -- not for merge. In-memory Web Push, no migrations.
+import { PushModule } from "./push/push.module";
 import { SystemAlertsModule } from "./system-alerts/system-alerts.module";
 import { ProviderHealthModule } from "./provider-health/provider-health.module";
 import { HealthModule } from "./health/health.module";
@@ -150,6 +152,7 @@ import { I18nModule } from "./i18n/i18n.module";
     NetWorthModule,
     BuiltInReportsModule,
     NotificationsModule,
+    PushModule,
     SystemAlertsModule,
     ProviderHealthModule,
     AdminModule,

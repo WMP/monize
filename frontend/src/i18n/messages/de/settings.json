@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Einstellung für Budget-Zusammenfassung konnte nicht aktualisiert werden",
       "digestDayFailed": "Budget-Zusammenfassungstag konnte nicht aktualisiert werden",
       "testEmailFailed": "Test-E-Mail konnte nicht gesendet werden"
+    },
+    "push": {
+      "heading": "Browser-Push",
+      "description": "Dieses Gerät registrieren, damit Monize es auch bei geschlossener App erreichen kann. Bisher wird auf diesem Weg nur die Testbenachrichtigung zugestellt; alles andere landet weiterhin in der Glocke.",
+      "permissionHint": "Wenn Sie dies aktivieren, fragt Ihr Browser um Erlaubnis, Benachrichtigungen anzuzeigen. Vorher wird nichts gesendet.",
+      "enableButton": "Auf diesem Gerät aktivieren",
+      "enablingButton": "Wird aktiviert ...",
+      "sendTestButton": "Testbenachrichtigung senden",
+      "sendingTestButton": "Wird gesendet ...",
+      "removeButton": "Entfernen",
+      "thisDevice": "Dieses Gerät",
+      "unnamedDevice": "Unbenanntes Gerät",
+      "lastSeen": "Zuletzt aktiv {when}",
+      "noLiveDevices": "Noch kein Gerät registriert. Aktivieren Sie Push auf diesem Gerät, um einen Test zu senden.",
+      "notConfigured": "Browser-Push ist auf dieser Monize-Instanz nicht verfügbar. Eine Administratorin oder ein Administrator kann es im Admin-Bereich aktivieren.",
+      "disabledByAdmin": "Die Administration hat Browser-Push für diese Monize-Instanz deaktiviert.",
+      "keyUnreadable": "Monize kann das Push-Schlüsselpaar dieser Instanz nicht lesen, daher wird nichts zugestellt. Die Administration kann es im Admin-Bereich durch Erneuern des Schlüsselpaars wiederherstellen.",
+      "serverKeyMissing": "Dieser Monize-Instanz fehlt der Schlüssel, mit dem sie ihr Push-Schlüsselpaar öffnet, daher kann nichts zugestellt werden. Ein Administrator muss ihn im Deployment setzen und neu starten.",
+      "statusUnavailable": "Monize konnte nicht prüfen, ob Browser-Push verfügbar ist. Laden Sie die Seite neu, um es erneut zu versuchen.",
+      "devicesUnavailable": "Monize konnte Ihre registrierten Geräte nicht laden. Alles andere auf dieser Seite funktioniert weiterhin; laden Sie neu, um es erneut zu versuchen.",
+      "unsupported": {
+        "unsupported": "Dieser Browser kann keine Push-Benachrichtigungen empfangen.",
+        "denied": "Benachrichtigungen sind für Monize in diesem Browser blockiert. Erlauben Sie sie in den Website-Einstellungen des Browsers und laden Sie diese Seite neu.",
+        "ios-browser": "Auf iPhone und iPad funktionieren Push-Benachrichtigungen erst, wenn Monize zum Home-Bildschirm hinzugefügt wurde. Nutzen Sie „Teilen“, dann „Zum Home-Bildschirm“, und öffnen Sie Monize von dort."
+      },
+      "disabledReason": {
+        "GONE": "Nicht mehr erreichbar. Aktivieren Sie Push in jenem Browser erneut.",
+        "KEY_ROTATED": "Stillgelegt, als diese Instanz ihr Push-Schlüsselpaar erneuert hat. Aktivieren Sie Push in jenem Browser erneut.",
+        "FAILING": "Stillgelegt nach wiederholt fehlgeschlagener Zustellung. Aktivieren Sie Push in jenem Browser erneut."
+      },
+      "toasts": {
+        "enabled": "Push-Benachrichtigungen auf diesem Gerät aktiviert",
+        "enableFailed": "Push-Benachrichtigungen konnten nicht aktiviert werden",
+        "permissionDenied": "Dieser Browser blockiert Benachrichtigungen für Monize. Erlauben Sie sie in den Website-Einstellungen und versuchen Sie es erneut.",
+        "permissionDeniedIos": "Benachrichtigungen sind für Monize blockiert. Öffnen Sie die iOS-Einstellungen, dann Mitteilungen, dann Monize, um sie zu erlauben.",
+        "permissionDismissed": "Benachrichtigungen wurden nicht aktiviert. Wählen Sie „Zulassen“, wenn der Browser fragt.",
+        "permissionNoPrompt": "Benachrichtigungen wurden nicht aktiviert, und es erschien keine Abfrage. Öffnen Sie die iOS-Einstellungen, dann Mitteilungen, dann Monize, und erlauben Sie sie dort. Falls Monize nicht aufgeführt ist, entfernen Sie es vom Home-Bildschirm, fügen Sie es erneut hinzu (Teilen, dann Zum Home-Bildschirm) und versuchen Sie es noch einmal.",
+        "removed": "Gerät entfernt",
+        "removeFailed": "Gerät konnte nicht entfernt werden",
+        "testSent": "{count, plural, one {Testbenachrichtigung an 1 Gerät gesendet} other {Testbenachrichtigung an # Geräte gesendet}}",
+        "testPartial": "Testbenachrichtigung erreichte {delivered} von {attempted} Geräten",
+        "testFailed": "Testbenachrichtigung konnte nicht zugestellt werden"
+      }
     }
   },
   "help": {

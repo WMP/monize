@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "Outra operacao esta a substituir os dados desta conta. Aguarde que termine e tente novamente."
+  },
+  "push": {
+    "channelUnavailable": "As notificações push não estão disponíveis nesta instância do Monize.",
+    "endpointClaimed": "Este navegador já está registado noutra conta Monize. Termine a sessão dessa conta neste navegador e tente novamente.",
+    "deviceNotFound": "Dispositivo push não encontrado.",
+    "noDevices": "Não há dispositivos push registados nesta conta. Ative primeiro as notificações push neste navegador.",
+    "rotationUnavailable": "ENCRYPTION_KEY não está definida, por isso a nova chave privada não pôde ser guardada cifrada. Defina-a e reinicie antes de rodar.",
+    "channelNotConfigured": "Esta instância ainda não tem par de chaves push, por isso o canal de push do navegador não pode ser ligado nem desligado.",
+    "keyRotated": "Esta instância mudou a sua chave push enquanto estava nesta página. Recarregue e ative o push novamente.",
+    "tooManyDevices": "Esta conta já tem o número máximo de dispositivos push. Remova um antes de adicionar outro."
   }
 }

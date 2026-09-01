@@ -100,6 +100,207 @@ self.addEventListener('message', function (event) {
   if (event.waitUntil) event.waitUntil(write);
 });
 
+// ---------------------------------------------------------------------------
+// Web Push
+//
+// The payload is composed by the server and travels through Mozilla's, Google's
+// or Apple's infrastructure, so it deliberately carries no amount, account or
+// payee -- the detail loads once the app is open. What arrives here is
+// { type, title, body, target } and nothing about it is trusted: a worker is the
+// last place a forged value can be caught before it becomes a navigation.
+// ---------------------------------------------------------------------------
+
+var PUSH_ICON = '/icons/icon-192x192.png';
+var PUSH_BADGE = '/icons/icon-maskable-192x192.png';
+var PUSH_FALLBACK_TITLE = 'Monize';
+var PUSH_FALLBACK_BODY = 'You have a new notification in Monize.';
+
+// A push target is a path inside this app, never a URL. Anything else -- an
+// absolute URL, a protocol-relative '//host', a backslash Chrome normalises to
+// a slash, a 'javascript:' string -- is discarded rather than repaired, because
+// a repaired hostile value is still a value somebody chose.
+//
+// The parser is the authority here, not the shape of the raw string. WHATWG URL
+// strips ASCII tab, CR and LF *before* parsing, so '/\t/evil.test/steal' begins
+// with a slash, has no second slash, contains no backslash -- and resolves to
+// https://evil.test/steal. Any guard written against the characters alone loses
+// to that, so the check is: resolve it, then require the result to be this
+// origin, and hand back the parser's own normalised path.
+function safeNotificationPath(value) {
+  if (typeof value !== 'string') return '/';
+  if (value.length === 0 || value.length > 512) return '/';
+  // Still required, so a target is an absolute path rather than something whose
+  // meaning depends on what it is resolved against.
+  if (value.charAt(0) !== '/') return '/';
+
+  var resolved;
+  try {
+    resolved = new URL(value, self.location.origin);
+  } catch (_error) {
+    return '/';
+  }
+  if (resolved.origin !== self.location.origin) return '/';
+  return resolved.pathname + resolved.search + resolved.hash;
+}
+
+/**
+ * The key two notifications must share to replace each other.
+ *
+ * The browser replaces a shown notification whose `tag` matches, so the tag is
+ * a claim about what the notification is ABOUT. Two bills due on the same day
+ * are both `BILL_DUE`, so grouping by type alone showed the reader one of them
+ * and threw the other away.
+ *
+ * The subject comes from the payload's own `collapseKey`, not from `target`: a
+ * route is not a subject, and the bill producer proves it -- every reminder
+ * points at `/bills`, because no per-bill page exists, so a tag built from the
+ * target collapsed exactly the case it was meant to separate.
+ *
+ * A payload with no usable key groups by type, which is right where the type
+ * really does describe one subject: one "email delivery is failing", not four.
+ * The key is bounded and read as text like every other field here, so a hostile
+ * payload can neither mint unbounded buckets nor put anything but a short string
+ * in the tag.
+ */
+function collapseTag(payload) {
+  var type = pushText(payload.type, 'monize');
+  var key = pushText(payload.collapseKey, '');
+  return key === '' ? type : type + '|' + key;
+}
+
+function readPushPayload(event) {
+  if (!event.data) return {};
+  try {
+    var parsed = event.data.json();
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function pushText(value, fallback) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 300
+    ? value
+    : fallback;
+}
+
+self.addEventListener('push', function (event) {
+  var payload = readPushPayload(event);
+  var target = safeNotificationPath(payload.target);
+
+  event.waitUntil(
+    self.registration.showNotification(
+      pushText(payload.title, PUSH_FALLBACK_TITLE),
+      {
+        body: pushText(payload.body, PUSH_FALLBACK_BODY),
+        icon: PUSH_ICON,
+        badge: PUSH_BADGE,
+        // Collapse repeats of ONE subject onto one notification rather than
+        // stacking four of them, and let two different subjects stack. See
+        // `collapseTag`: the subject is the payload's `collapseKey`, and a
+        // payload without one is saying its type IS the subject.
+        tag: collapseTag(payload),
+        data: { target: target },
+      }
+    )
+  );
+});
+
+// A browser may rotate a push subscription on its own -- a key refresh, a long
+// idle period, storage pressure. The old endpoint stops working and the stored
+// row keeps naming it: delivery just stops, and nothing retires the row until
+// something tries to send to it.
+//
+// The worker resubscribes with the key the old subscription carried (the server
+// checks it is still current, and refuses if a rotation is what caused this),
+// but it cannot register the result itself: the API is CSRF-protected by a
+// double-submit cookie the worker has no portable way to read. So it tells the
+// page, which has the session and the token. With no page open, the settings
+// panel already reads this browser's endpoint on load and offers to enable
+// again -- the message is the fast path, not the only one.
+function applicationServerKeyOf(subscription) {
+  return (
+    subscription && subscription.options && subscription.options.applicationServerKey
+  );
+}
+
+/** Tell every open window, so the settings panel reconciles even if we cannot. */
+function announceSubscriptionChange() {
+  return self.clients
+    .matchAll({ type: 'window', includeUncontrolled: true })
+    .then(function (clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        clientList[i].postMessage({ type: 'monize-push-subscription-changed' });
+      }
+    });
+}
+
+self.addEventListener('pushsubscriptionchange', function (event) {
+  // Firefox -- where Web Push is most used -- fires this with NO oldSubscription,
+  // and so did Chrome before the event's properties shipped. Returning early
+  // there meant the browsers that need this handler most got nothing from it:
+  // no resubscribe, and no message, so even a window with the settings panel
+  // open learned nothing and delivery stayed dead until somebody happened to
+  // open Settings again.
+  var key =
+    applicationServerKeyOf(event.oldSubscription) ||
+    applicationServerKeyOf(event.newSubscription);
+
+  // No key to subscribe with is not a reason to stay silent: the page holds the
+  // session and the CSRF token this worker cannot read, so it can do the whole
+  // thing itself. Announcing is the part that must always happen.
+  if (!key) {
+    event.waitUntil(announceSubscriptionChange().catch(function () {}));
+    return;
+  }
+
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey: key })
+      .then(announceSubscriptionChange)
+      .catch(function () {
+        // The resubscribe failed -- a rotation, a revoked permission. The panel
+        // is still the durable path, so it is told either way.
+        return announceSubscriptionChange().catch(function () {});
+      })
+  );
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+
+  var data = event.notification.data || {};
+  // Re-validated rather than trusted: the stored data IS the payload, so it is
+  // no more trustworthy here than it was on arrival.
+  var url = new URL(
+    safeNotificationPath(data.target),
+    self.location.origin
+  ).href;
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function (clientList) {
+        // Focus an open window rather than opening a second one, and navigate it
+        // where the app can. A client that cannot navigate is still better
+        // focused than ignored.
+        for (var i = 0; i < clientList.length; i++) {
+          var client = clientList[i];
+          if (new URL(client.url).origin !== self.location.origin) continue;
+          if (typeof client.navigate === 'function') {
+            return client.navigate(url).then(function (navigated) {
+              return (navigated || client).focus();
+            }).catch(function () {
+              return client.focus();
+            });
+          }
+          return client.focus();
+        }
+        return self.clients.openWindow(url);
+      })
+  );
+});
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;')

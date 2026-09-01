@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "[XX-Another operation is currently replacing this account's data. Wait for it to finish and try again.-XX]"
+  },
+  "push": {
+    "channelUnavailable": "[XX-Push notifications are not available on this Monize instance.-XX]",
+    "endpointClaimed": "[XX-This browser is already registered to a different Monize account. Sign out of that account in this browser and try again.-XX]",
+    "deviceNotFound": "[XX-Push device not found.-XX]",
+    "noDevices": "[XX-No push devices are registered for this account. Enable push notifications in this browser first.-XX]",
+    "rotationUnavailable": "[XX-ENCRYPTION_KEY is not set, so a new private key could not be stored encrypted. Set it and restart before rotating.-XX]",
+    "channelNotConfigured": "[XX-This instance has no push key pair yet, so the browser push channel cannot be switched on or off.-XX]",
+    "keyRotated": "[XX-This instance changed its push key while you were on this page. Reload and enable push again.-XX]",
+    "tooManyDevices": "[XX-This account already has the maximum number of push devices. Remove one before adding another.-XX]"
   }
 }

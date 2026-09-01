@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Échec de la mise à jour de la préférence de récapitulatif de budget",
       "digestDayFailed": "Échec de la mise à jour du jour du récapitulatif",
       "testEmailFailed": "Échec de l'envoi de l'e-mail de test"
+    },
+    "push": {
+      "heading": "Push du navigateur",
+      "description": "Enregistrez cet appareil pour que Monize puisse l'atteindre même quand l'application est fermée. Pour l'instant, seule la notification de test passe par ce canal ; tout le reste arrive toujours dans la cloche.",
+      "permissionHint": "Quand vous l'activez, votre navigateur demande l'autorisation d'afficher des notifications. Rien n'est envoyé avant votre accord.",
+      "enableButton": "Activer sur cet appareil",
+      "enablingButton": "Activation...",
+      "sendTestButton": "Envoyer une notification de test",
+      "sendingTestButton": "Envoi...",
+      "removeButton": "Supprimer",
+      "thisDevice": "Cet appareil",
+      "unnamedDevice": "Appareil sans nom",
+      "lastSeen": "Dernière activité {when}",
+      "noLiveDevices": "Aucun appareil enregistré pour l'instant. Activez le push sur cet appareil pour envoyer un test.",
+      "notConfigured": "Le push du navigateur n'est pas disponible sur cette instance Monize. Un administrateur peut l'activer dans l'espace d'administration.",
+      "disabledByAdmin": "Un administrateur a désactivé le push du navigateur pour cette instance Monize.",
+      "keyUnreadable": "Monize ne peut pas lire la paire de clés push de cette instance : rien n'est distribué. Un administrateur peut rétablir le service en effectuant une rotation dans l'espace d'administration.",
+      "serverKeyMissing": "Cette instance Monize n'a pas la cle de chiffrement necessaire pour ouvrir sa paire de cles push, donc rien ne peut etre delivre. Un administrateur doit la definir dans le deploiement et redemarrer.",
+      "statusUnavailable": "Monize n'a pas pu vérifier si le push du navigateur est disponible. Rechargez la page pour réessayer.",
+      "devicesUnavailable": "Monize n'a pas pu charger vos appareils enregistrés. Le reste de cette page fonctionne toujours ; rechargez pour réessayer.",
+      "unsupported": {
+        "unsupported": "Ce navigateur ne peut pas recevoir de notifications push.",
+        "denied": "Les notifications sont bloquées pour Monize dans ce navigateur. Autorisez-les dans les paramètres du site, puis rechargez cette page.",
+        "ios-browser": "Sur iPhone et iPad, les notifications push ne fonctionnent qu'une fois Monize installé sur l'écran d'accueil. Utilisez Partager, puis Sur l'écran d'accueil, et ouvrez Monize depuis là."
+      },
+      "disabledReason": {
+        "GONE": "Plus joignable. Réactivez le push dans ce navigateur.",
+        "KEY_ROTATED": "Retiré lors de la rotation de la paire de clés push de cette instance. Réactivez le push dans ce navigateur.",
+        "FAILING": "Retiré après des échecs de distribution répétés. Réactivez le push dans ce navigateur."
+      },
+      "toasts": {
+        "enabled": "Notifications push activées sur cet appareil",
+        "enableFailed": "Impossible d'activer les notifications push",
+        "permissionDenied": "Ce navigateur bloque les notifications de Monize. Autorisez-les dans les paramètres du site puis réessayez.",
+        "permissionDeniedIos": "Les notifications sont bloquées pour Monize. Ouvrez Réglages iOS, puis Notifications, puis Monize, pour les autoriser.",
+        "permissionDismissed": "Les notifications n'ont pas été activées. Choisissez Autoriser lorsque le navigateur vous le demande.",
+        "permissionNoPrompt": "Les notifications n'ont pas été activées et aucune demande n'est apparue. Ouvrez Réglages iOS, puis Notifications, puis Monize, et autorisez-les là. Si Monize n'y figure pas, retirez-le de l'écran d'accueil, ajoutez-le à nouveau (Partager, puis Sur l'écran d'accueil) et réessayez.",
+        "removed": "Appareil supprimé",
+        "removeFailed": "Impossible de supprimer l'appareil",
+        "testSent": "{count, plural, one {Notification de test envoyée à 1 appareil} other {Notification de test envoyée à # appareils}}",
+        "testPartial": "La notification de test a atteint {delivered} appareils sur {attempted}",
+        "testFailed": "Impossible de distribuer la notification de test"
+      }
     }
   },
   "help": {

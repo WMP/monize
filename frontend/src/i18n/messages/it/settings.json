@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Impossibile aggiornare la preferenza del riepilogo budget",
       "digestDayFailed": "Impossibile aggiornare il giorno del riepilogo",
       "testEmailFailed": "Invio dell'email di prova non riuscito"
+    },
+    "push": {
+      "heading": "Push del browser",
+      "description": "Registra questo dispositivo perché Monize possa raggiungerlo anche con l'app chiusa. Per ora solo la notifica di prova arriva per questa via; tutto il resto continua ad arrivare nella campanella.",
+      "permissionHint": "Quando lo attivi, il browser chiede l'autorizzazione a mostrare le notifiche. Nulla viene inviato prima del consenso.",
+      "enableButton": "Attiva su questo dispositivo",
+      "enablingButton": "Attivazione...",
+      "sendTestButton": "Invia notifica di prova",
+      "sendingTestButton": "Invio...",
+      "removeButton": "Rimuovi",
+      "thisDevice": "Questo dispositivo",
+      "unnamedDevice": "Dispositivo senza nome",
+      "lastSeen": "Ultima attività {when}",
+      "noLiveDevices": "Nessun dispositivo registrato. Attiva il push su questo dispositivo per inviare una prova.",
+      "notConfigured": "Il push del browser non è disponibile su questa istanza di Monize. Un amministratore può attivarlo nell'area Admin.",
+      "disabledByAdmin": "Un amministratore ha disattivato il push del browser per questa istanza di Monize.",
+      "keyUnreadable": "Monize non riesce a leggere la coppia di chiavi push di questa istanza, quindi non viene consegnato nulla. Un amministratore può ripristinarla ruotando la coppia di chiavi nell'area Admin.",
+      "serverKeyMissing": "A questa istanza Monize manca la chiave di cifratura necessaria per aprire la coppia di chiavi push, quindi non si può consegnare nulla. Un amministratore deve impostarla nel deployment e riavviare.",
+      "statusUnavailable": "Monize non è riuscito a verificare se il push del browser è disponibile. Ricarica la pagina per riprovare.",
+      "devicesUnavailable": "Monize non è riuscito a caricare i tuoi dispositivi registrati. Tutto il resto in questa pagina funziona ancora; ricarica per riprovare.",
+      "unsupported": {
+        "unsupported": "Questo browser non può ricevere notifiche push.",
+        "denied": "Le notifiche sono bloccate per Monize in questo browser. Consentile nelle impostazioni del sito, poi ricarica questa pagina.",
+        "ios-browser": "Su iPhone e iPad le notifiche push funzionano solo dopo aver installato Monize nella schermata Home. Usa Condividi, poi Aggiungi a Home, e apri Monize da lì."
+      },
+      "disabledReason": {
+        "GONE": "Non più raggiungibile. Riattiva il push in quel browser.",
+        "KEY_ROTATED": "Ritirato quando questa istanza ha ruotato la coppia di chiavi push. Riattiva il push in quel browser.",
+        "FAILING": "Ritirato dopo ripetuti errori di consegna. Riattiva il push in quel browser."
+      },
+      "toasts": {
+        "enabled": "Notifiche push attivate su questo dispositivo",
+        "enableFailed": "Impossibile attivare le notifiche push",
+        "permissionDenied": "Questo browser sta bloccando le notifiche di Monize. Consentile nelle impostazioni del sito e riprova.",
+        "permissionDeniedIos": "Le notifiche sono bloccate per Monize. Apri Impostazioni iOS, poi Notifiche, poi Monize, per consentirle.",
+        "permissionDismissed": "Le notifiche non sono state attivate. Scegli Consenti quando il browser lo chiede.",
+        "permissionNoPrompt": "Le notifiche non sono state attivate e non è apparsa alcuna richiesta. Apri Impostazioni iOS, poi Notifiche, poi Monize, e consentile lì. Se Monize non è in elenco, rimuovilo dalla schermata Home, aggiungilo di nuovo (Condividi, poi Aggiungi a Home) e riprova.",
+        "removed": "Dispositivo rimosso",
+        "removeFailed": "Impossibile rimuovere il dispositivo",
+        "testSent": "{count, plural, one {Notifica di prova inviata a 1 dispositivo} other {Notifica di prova inviata a # dispositivi}}",
+        "testPartial": "La notifica di prova ha raggiunto {delivered} dispositivi su {attempted}",
+        "testFailed": "Impossibile consegnare la notifica di prova"
+      }
     }
   },
   "help": {

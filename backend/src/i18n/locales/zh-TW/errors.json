@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "另一項作業正在取代此帳戶的資料。請等待完成後再試一次。"
+  },
+  "push": {
+    "channelUnavailable": "此 Monize 執行個體未提供推播通知。",
+    "endpointClaimed": "這個瀏覽器已註冊至另一個 Monize 帳戶。請在此瀏覽器登出該帳戶後再試一次。",
+    "deviceNotFound": "找不到推播裝置。",
+    "noDevices": "此帳戶尚未註冊推播裝置。請先在此瀏覽器啟用推播通知。",
+    "rotationUnavailable": "未設定 ENCRYPTION_KEY，因此無法加密儲存新的私密金鑰。請先設定並重新啟動，然後再輪替。",
+    "channelNotConfigured": "此執行個體尚無推播金鑰組，因此無法開啟或關閉瀏覽器推播管道。",
+    "keyRotated": "在你停留在本頁期間，此執行個體更換了推播金鑰。請重新載入頁面並再次啟用推播。",
+    "tooManyDevices": "此帳戶的推播裝置數量已達上限。請先移除一台再新增。"
   }
 }

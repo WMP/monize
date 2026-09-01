@@ -145,5 +145,17 @@
     "title": "无法连接",
     "message": "Monize 无法连接到服务器。请检查您的网络连接后重试。",
     "retry": "重试"
+  },
+  "pushBanner": {
+    "enableTitle": "要开启通知吗？",
+    "enableBody": "即使应用已关闭，Monize 也能在此设备上提醒你账单和预算上限。浏览器会请求你的许可。",
+    "enableButton": "开启",
+    "enabling": "正在开启…",
+    "installIosTitle": "请先将 Monize 添加到主屏幕。",
+    "installIosBody": "在 iPhone 和 iPad 上，通知只能从已安装的应用中使用。点按“分享”，然后“添加到主屏幕”，再从那里打开 Monize。",
+    "blockedTitle": "Monize 的通知已被阻止。",
+    "blockedBody": "请在浏览器的本页站点设置中允许通知。Monize 无法自行再次询问。",
+    "blockedIosBody": "打开 iOS“设置”，然后“通知”，再选择 Monize 并允许。如果列表中没有 Monize，请从主屏幕移除后重新添加。",
+    "dismiss": "暂不"
   }
 }

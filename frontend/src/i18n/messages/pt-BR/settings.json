@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Falha ao atualizar a preferência do resumo de orçamento",
       "digestDayFailed": "Falha ao atualizar o dia do resumo",
       "testEmailFailed": "Falha ao enviar o e-mail de teste"
+    },
+    "push": {
+      "heading": "Push do navegador",
+      "description": "Registre este dispositivo para que o Monize possa alcançá-lo mesmo com o app fechado. Por enquanto só a notificação de teste é entregue por esse caminho; todo o resto continua chegando no sininho.",
+      "permissionHint": "Quando você ativar isso, seu navegador pedirá permissão para mostrar notificações. Nada é enviado antes de você permitir.",
+      "enableButton": "Ativar neste dispositivo",
+      "enablingButton": "Ativando...",
+      "sendTestButton": "Enviar notificação de teste",
+      "sendingTestButton": "Enviando...",
+      "removeButton": "Remover",
+      "thisDevice": "Este dispositivo",
+      "unnamedDevice": "Dispositivo sem nome",
+      "lastSeen": "Última atividade {when}",
+      "noLiveDevices": "Nenhum dispositivo registrado ainda. Ative o push neste dispositivo para enviar um teste.",
+      "notConfigured": "O push do navegador não está disponível nesta instância do Monize. Um administrador pode ativá-lo na área Admin.",
+      "disabledByAdmin": "Um administrador desativou o push do navegador nesta instância do Monize.",
+      "keyUnreadable": "O Monize não consegue ler o par de chaves push desta instância, então nada é entregue. Um administrador pode recuperá-lo girando o par de chaves na área Admin.",
+      "serverKeyMissing": "A esta instância do Monize falta a chave de criptografia necessária para abrir seu par de chaves push, por isso nada pode ser entregue. Um administrador precisa defini-la no deployment e reiniciar.",
+      "statusUnavailable": "O Monize não conseguiu verificar se o push do navegador está disponível. Recarregue a página para tentar novamente.",
+      "devicesUnavailable": "O Monize não conseguiu carregar seus dispositivos registrados. O resto desta página continua funcionando; recarregue para tentar novamente.",
+      "unsupported": {
+        "unsupported": "Este navegador não consegue receber notificações push.",
+        "denied": "As notificações estão bloqueadas para o Monize neste navegador. Permita-as nas configurações do site e recarregue esta página.",
+        "ios-browser": "No iPhone e no iPad, as notificações push só funcionam depois de instalar o Monize na Tela de Início. Use Compartilhar, depois Adicionar à Tela de Início, e abra o Monize por ali."
+      },
+      "disabledReason": {
+        "GONE": "Não está mais acessível. Ative o push novamente naquele navegador.",
+        "KEY_ROTATED": "Desativado quando esta instância trocou o par de chaves push. Ative o push novamente naquele navegador.",
+        "FAILING": "Desativado após falhas repetidas de entrega. Ative o push novamente naquele navegador."
+      },
+      "toasts": {
+        "enabled": "Notificações push ativadas neste dispositivo",
+        "enableFailed": "Não foi possível ativar as notificações push",
+        "permissionDenied": "Este navegador está bloqueando as notificações do Monize. Permita-as nas configurações do site e tente novamente.",
+        "permissionDeniedIos": "As notificações estão bloqueadas para o Monize. Abra Ajustes do iOS, depois Notificações, depois Monize, para permitir.",
+        "permissionDismissed": "As notificações não foram ativadas. Escolha Permitir quando o navegador perguntar.",
+        "permissionNoPrompt": "As notificações não foram ativadas e nenhum pedido apareceu. Abra Ajustes do iOS, depois Notificações, depois Monize, e permita ali. Se o Monize não aparecer na lista, remova-o da tela de início, adicione novamente (Compartilhar, depois Adicionar à Tela de Início) e tente mais uma vez.",
+        "removed": "Dispositivo removido",
+        "removeFailed": "Não foi possível remover o dispositivo",
+        "testSent": "{count, plural, one {Notificação de teste enviada para 1 dispositivo} other {Notificação de teste enviada para # dispositivos}}",
+        "testPartial": "A notificação de teste chegou a {delivered} de {attempted} dispositivos",
+        "testFailed": "Não foi possível entregar a notificação de teste"
+      }
     }
   },
   "help": {

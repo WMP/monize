@@ -145,5 +145,17 @@
     "title": "Nie można się połączyć",
     "message": "Monize nie może połączyć się z serwerem. Sprawdź swoje połączenie i spróbuj ponownie.",
     "retry": "Spróbuj ponownie"
+  },
+  "pushBanner": {
+    "enableTitle": "Włączyć powiadomienia?",
+    "enableBody": "Monize może przypominać na tym urządzeniu o rachunkach i limitach budżetu, także gdy aplikacja jest zamknięta. Przeglądarka poprosi o zgodę.",
+    "enableButton": "Włącz",
+    "enabling": "Włączanie…",
+    "installIosTitle": "Najpierw dodaj Monize do ekranu głównego.",
+    "installIosBody": "Na iPhonie i iPadzie powiadomienia działają tylko z zainstalowanej aplikacji. Dotknij Udostępnij, potem Dodaj do ekranu głównego, i otwórz Monize stamtąd.",
+    "blockedTitle": "Powiadomienia dla Monize są zablokowane.",
+    "blockedBody": "Zezwól na nie w ustawieniach witryny w przeglądarce dla tej strony. Monize nie może zapytać ponownie samo z siebie.",
+    "blockedIosBody": "Otwórz Ustawienia iOS, potem Powiadomienia, potem Monize, i zezwól tam. Jeśli Monize nie ma na liście, usuń je z ekranu głównego i dodaj ponownie.",
+    "dismiss": "Nie teraz"
   }
 }

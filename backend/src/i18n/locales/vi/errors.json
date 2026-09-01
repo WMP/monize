@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "Mot tac vu khac dang thay the du lieu cua tai khoan nay. Hay doi hoan tat roi thu lai."
+  },
+  "push": {
+    "channelUnavailable": "Thông báo đẩy không khả dụng trên phiên bản Monize này.",
+    "endpointClaimed": "Trình duyệt này đã được đăng ký cho một tài khoản Monize khác. Hãy đăng xuất khỏi tài khoản đó trong trình duyệt này rồi thử lại.",
+    "deviceNotFound": "Không tìm thấy thiết bị nhận thông báo đẩy.",
+    "noDevices": "Chưa có thiết bị nhận thông báo đẩy nào cho tài khoản này. Hãy bật thông báo đẩy trong trình duyệt này trước.",
+    "rotationUnavailable": "Chưa đặt ENCRYPTION_KEY nên không thể lưu khóa riêng mới ở dạng mã hóa. Hãy đặt biến này và khởi động lại trước khi xoay khóa.",
+    "channelNotConfigured": "Phiên bản này chưa có cặp khóa đẩy nên không thể bật hoặc tắt kênh đẩy từ trình duyệt.",
+    "keyRotated": "Phiên bản này đã đổi khóa đẩy trong lúc bạn ở trang này. Hãy tải lại trang và bật đẩy lần nữa.",
+    "tooManyDevices": "Tài khoản này đã đạt số thiết bị nhận đẩy tối đa. Hãy xóa bớt một thiết bị trước khi thêm mới."
   }
 }

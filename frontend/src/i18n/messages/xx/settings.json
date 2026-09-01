@@ -212,6 +212,49 @@
       "digestUpdateFailed": "[XX-Failed to update budget digest preference-XX]",
       "digestDayFailed": "[XX-Failed to update digest day-XX]",
       "testEmailFailed": "[XX-Failed to send test email-XX]"
+    },
+    "push": {
+      "heading": "[XX-Browser push-XX]",
+      "description": "[XX-Register this device so Monize can reach it even when the app is closed. Only the test notification is delivered this way so far; everything else still arrives in the bell.-XX]",
+      "permissionHint": "[XX-When you turn this on, your browser asks for permission to show notifications. Nothing is sent until you allow it.-XX]",
+      "enableButton": "[XX-Enable on this device-XX]",
+      "enablingButton": "[XX-Enabling...-XX]",
+      "sendTestButton": "[XX-Send test notification-XX]",
+      "sendingTestButton": "[XX-Sending...-XX]",
+      "removeButton": "[XX-Remove-XX]",
+      "thisDevice": "[XX-This device-XX]",
+      "unnamedDevice": "[XX-Unnamed device-XX]",
+      "lastSeen": "[XX-Last active {when}-XX]",
+      "noLiveDevices": "[XX-No device is registered yet. Enable push on this device to send a test.-XX]",
+      "notConfigured": "[XX-Browser push is not available on this Monize instance. An administrator can enable it in the Admin area.-XX]",
+      "disabledByAdmin": "[XX-An administrator has switched browser push off for this Monize instance.-XX]",
+      "keyUnreadable": "[XX-Monize cannot read this instance's push key pair, so nothing can be delivered. An administrator can recover it by rotating the key pair in the Admin area.-XX]",
+      "serverKeyMissing": "[XX-This Monize instance is missing the encryption key it needs to open its push key pair, so nothing can be delivered. An administrator has to set it in the deployment and restart.-XX]",
+      "statusUnavailable": "[XX-Monize could not check whether browser push is available. Reload the page to try again.-XX]",
+      "devicesUnavailable": "[XX-Monize could not load your registered devices. Everything else on this page still works; reload to try again.-XX]",
+      "unsupported": {
+        "unsupported": "[XX-This browser cannot receive push notifications.-XX]",
+        "denied": "[XX-Notifications are blocked for Monize in this browser. Allow them in the browser’s site settings, then reload this page.-XX]",
+        "ios-browser": "[XX-On iPhone and iPad, push notifications work only once Monize is installed to the Home Screen. Use Share, then Add to Home Screen, and open Monize from there.-XX]"
+      },
+      "disabledReason": {
+        "GONE": "[XX-No longer reachable. Enable push again in that browser.-XX]",
+        "KEY_ROTATED": "[XX-Retired when this instance rotated its push key pair. Enable push again in that browser.-XX]",
+        "FAILING": "[XX-Retired after repeated delivery failures. Enable push again in that browser.-XX]"
+      },
+      "toasts": {
+        "enabled": "[XX-Push notifications enabled on this device-XX]",
+        "enableFailed": "[XX-Could not enable push notifications-XX]",
+        "permissionDenied": "[XX-This browser is blocking notifications for Monize. Allow them in the browser’s site settings, then try again.-XX]",
+        "permissionDeniedIos": "[XX-Notifications are blocked for Monize. Open iOS Settings, then Notifications, then Monize to allow them.-XX]",
+        "permissionDismissed": "[XX-Notifications were not enabled. Choose Allow when the browser asks.-XX]",
+        "permissionNoPrompt": "[XX-Notifications were not enabled, and no prompt appeared. Open iOS Settings, then Notifications, then Monize, and allow them there. If Monize is not listed, remove it from the Home Screen, add it again (Share, then Add to Home Screen) and try once more.-XX]",
+        "removed": "[XX-Device removed-XX]",
+        "removeFailed": "[XX-Could not remove the device-XX]",
+        "testSent": "[XX-{count, plural, one {Test notification sent to 1 device} other {Test notification sent to # devices}}-XX]",
+        "testPartial": "[XX-Test notification reached {delivered} of {attempted} devices-XX]",
+        "testFailed": "[XX-Could not deliver the test notification-XX]"
+      }
     }
   },
   "help": {

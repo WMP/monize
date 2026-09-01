@@ -145,5 +145,17 @@
     "title": "Unable to connect",
     "message": "Monize could not reach the server. Check your connection and try again.",
     "retry": "Try again"
+  },
+  "pushBanner": {
+    "enableTitle": "Turn on notifications?",
+    "enableBody": "Monize can remind you about bills and budget limits on this device, even when the app is closed. Your browser will ask you to allow it.",
+    "enableButton": "Turn on",
+    "enabling": "Turning on…",
+    "installIosTitle": "Add Monize to your Home Screen first.",
+    "installIosBody": "On iPhone and iPad, notifications only work from the installed app. Tap Share, then Add to Home Screen, and open Monize from there.",
+    "blockedTitle": "Notifications are blocked for Monize.",
+    "blockedBody": "Allow them in your browser's site settings for this page. Monize cannot ask again on its own.",
+    "blockedIosBody": "Open iOS Settings, then Notifications, then Monize, and allow them there. If Monize is not listed, remove it from the Home Screen and add it again.",
+    "dismiss": "Not now"
   }
 }

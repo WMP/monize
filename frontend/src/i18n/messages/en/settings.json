@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Failed to update budget digest preference",
       "digestDayFailed": "Failed to update digest day",
       "testEmailFailed": "Failed to send test email"
+    },
+    "push": {
+      "heading": "Browser push",
+      "description": "Register this device so Monize can reach it even when the app is closed. Only the test notification is delivered this way so far; everything else still arrives in the bell.",
+      "permissionHint": "When you turn this on, your browser asks for permission to show notifications. Nothing is sent until you allow it.",
+      "enableButton": "Enable on this device",
+      "enablingButton": "Enabling...",
+      "sendTestButton": "Send test notification",
+      "sendingTestButton": "Sending...",
+      "removeButton": "Remove",
+      "thisDevice": "This device",
+      "unnamedDevice": "Unnamed device",
+      "lastSeen": "Last active {when}",
+      "noLiveDevices": "No device is registered yet. Enable push on this device to send a test.",
+      "notConfigured": "Browser push is not available on this Monize instance. An administrator can enable it in the Admin area.",
+      "disabledByAdmin": "An administrator has switched browser push off for this Monize instance.",
+      "keyUnreadable": "Monize cannot read this instance's push key pair, so nothing can be delivered. An administrator can recover it by rotating the key pair in the Admin area.",
+      "serverKeyMissing": "This Monize instance is missing the encryption key it needs to open its push key pair, so nothing can be delivered. An administrator has to set it in the deployment and restart.",
+      "statusUnavailable": "Monize could not check whether browser push is available. Reload the page to try again.",
+      "devicesUnavailable": "Monize could not load your registered devices. Everything else on this page still works; reload to try again.",
+      "unsupported": {
+        "unsupported": "This browser cannot receive push notifications.",
+        "denied": "Notifications are blocked for Monize in this browser. Allow them in the browser’s site settings, then reload this page.",
+        "ios-browser": "On iPhone and iPad, push notifications work only once Monize is installed to the Home Screen. Use Share, then Add to Home Screen, and open Monize from there."
+      },
+      "disabledReason": {
+        "GONE": "No longer reachable. Enable push again in that browser.",
+        "KEY_ROTATED": "Retired when this instance rotated its push key pair. Enable push again in that browser.",
+        "FAILING": "Retired after repeated delivery failures. Enable push again in that browser."
+      },
+      "toasts": {
+        "enabled": "Push notifications enabled on this device",
+        "enableFailed": "Could not enable push notifications",
+        "permissionDenied": "This browser is blocking notifications for Monize. Allow them in the browser’s site settings, then try again.",
+        "permissionDeniedIos": "Notifications are blocked for Monize. Open iOS Settings, then Notifications, then Monize to allow them.",
+        "permissionDismissed": "Notifications were not enabled. Choose Allow when the browser asks.",
+        "permissionNoPrompt": "Notifications were not enabled, and no prompt appeared. Open iOS Settings, then Notifications, then Monize, and allow them there. If Monize is not listed, remove it from the Home Screen, add it again (Share, then Add to Home Screen) and try once more.",
+        "removed": "Device removed",
+        "removeFailed": "Could not remove the device",
+        "testSent": "{count, plural, one {Test notification sent to 1 device} other {Test notification sent to # devices}}",
+        "testPartial": "Test notification reached {delivered} of {attempted} devices",
+        "testFailed": "Could not deliver the test notification"
+      }
     }
   },
   "help": {

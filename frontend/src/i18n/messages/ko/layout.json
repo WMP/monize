@@ -145,5 +145,17 @@
     "title": "연결할 수 없음",
     "message": "Monize가 서버에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도하세요.",
     "retry": "다시 시도"
+  },
+  "pushBanner": {
+    "enableTitle": "알림을 켤까요?",
+    "enableBody": "Monize는 앱이 닫혀 있어도 이 기기에서 청구서와 예산 한도를 알려줄 수 있습니다. 브라우저가 권한을 요청합니다.",
+    "enableButton": "켜기",
+    "enabling": "켜는 중…",
+    "installIosTitle": "먼저 Monize를 홈 화면에 추가하세요.",
+    "installIosBody": "iPhone과 iPad에서는 설치된 앱에서만 알림이 작동합니다. 공유를 누르고 홈 화면에 추가를 선택한 뒤, 거기서 Monize를 여세요.",
+    "blockedTitle": "Monize의 알림이 차단되어 있습니다.",
+    "blockedBody": "이 페이지에 대해 브라우저의 사이트 설정에서 허용해 주세요. Monize가 스스로 다시 요청할 수는 없습니다.",
+    "blockedIosBody": "iOS 설정에서 알림, 그다음 Monize를 열어 허용하세요. 목록에 Monize가 없으면 홈 화면에서 삭제한 뒤 다시 추가하세요.",
+    "dismiss": "나중에"
   }
 }

@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Gagal memperbarui preferensi ringkasan anggaran",
       "digestDayFailed": "Gagal memperbarui hari ringkasan",
       "testEmailFailed": "Gagal mengirim surel uji"
+    },
+    "push": {
+      "heading": "Push peramban",
+      "description": "Daftarkan perangkat ini agar Monize dapat menghubunginya bahkan saat aplikasi ditutup. Untuk saat ini hanya notifikasi uji yang dikirim lewat jalur ini; sisanya tetap masuk ke bel.",
+      "permissionHint": "Saat Anda mengaktifkannya, peramban akan meminta izin untuk menampilkan notifikasi. Tidak ada yang dikirim sebelum Anda mengizinkan.",
+      "enableButton": "Aktifkan di perangkat ini",
+      "enablingButton": "Mengaktifkan...",
+      "sendTestButton": "Kirim notifikasi uji coba",
+      "sendingTestButton": "Mengirim...",
+      "removeButton": "Hapus",
+      "thisDevice": "Perangkat ini",
+      "unnamedDevice": "Perangkat tanpa nama",
+      "lastSeen": "Terakhir aktif {when}",
+      "noLiveDevices": "Belum ada perangkat terdaftar. Aktifkan push di perangkat ini untuk mengirim uji coba.",
+      "notConfigured": "Push peramban tidak tersedia di instans Monize ini. Administrator dapat mengaktifkannya di area Admin.",
+      "disabledByAdmin": "Administrator telah mematikan push peramban untuk instans Monize ini.",
+      "keyUnreadable": "Monize tidak dapat membaca pasangan kunci push instans ini, sehingga tidak ada yang terkirim. Administrator dapat memulihkannya dengan merotasi pasangan kunci di area Admin.",
+      "serverKeyMissing": "Instance Monize ini tidak memiliki kunci enkripsi yang dibutuhkan untuk membuka pasangan kunci push-nya, sehingga tidak ada yang dapat dikirim. Administrator harus menyetelnya di deployment dan memulai ulang.",
+      "statusUnavailable": "Monize tidak dapat memeriksa apakah push peramban tersedia. Muat ulang halaman untuk mencoba lagi.",
+      "devicesUnavailable": "Monize tidak dapat memuat perangkat terdaftar Anda. Semua hal lain di halaman ini tetap berfungsi; muat ulang untuk mencoba lagi.",
+      "unsupported": {
+        "unsupported": "Peramban ini tidak dapat menerima notifikasi push.",
+        "denied": "Notifikasi diblokir untuk Monize di peramban ini. Izinkan di pengaturan situs peramban, lalu muat ulang halaman ini.",
+        "ios-browser": "Di iPhone dan iPad, notifikasi push hanya berfungsi setelah Monize dipasang ke Layar Utama. Gunakan Bagikan, lalu Tambahkan ke Layar Utama, dan buka Monize dari sana."
+      },
+      "disabledReason": {
+        "GONE": "Tidak dapat dijangkau lagi. Aktifkan kembali push di peramban tersebut.",
+        "KEY_ROTATED": "Dinonaktifkan saat instans ini merotasi pasangan kunci push. Aktifkan kembali push di peramban tersebut.",
+        "FAILING": "Dinonaktifkan setelah kegagalan pengiriman berulang. Aktifkan kembali push di peramban tersebut."
+      },
+      "toasts": {
+        "enabled": "Notifikasi push diaktifkan di perangkat ini",
+        "enableFailed": "Tidak dapat mengaktifkan notifikasi push",
+        "permissionDenied": "Peramban ini memblokir notifikasi Monize. Izinkan di pengaturan situs lalu coba lagi.",
+        "permissionDeniedIos": "Notifikasi diblokir untuk Monize. Buka Pengaturan iOS, lalu Notifikasi, lalu Monize, untuk mengizinkannya.",
+        "permissionDismissed": "Notifikasi tidak diaktifkan. Pilih Izinkan saat peramban bertanya.",
+        "permissionNoPrompt": "Notifikasi tidak diaktifkan dan tidak ada permintaan yang muncul. Buka Pengaturan iOS, lalu Notifikasi, lalu Monize, dan izinkan di sana. Jika Monize tidak ada dalam daftar, hapus dari Layar Utama, tambahkan kembali (Bagikan, lalu Tambah ke Layar Utama) lalu coba sekali lagi.",
+        "removed": "Perangkat dihapus",
+        "removeFailed": "Tidak dapat menghapus perangkat",
+        "testSent": "{count, plural, other {Notifikasi uji coba dikirim ke # perangkat}}",
+        "testPartial": "Notifikasi uji coba menjangkau {delivered} dari {attempted} perangkat",
+        "testFailed": "Tidak dapat mengirim notifikasi uji coba"
+      }
     }
   },
   "help": {

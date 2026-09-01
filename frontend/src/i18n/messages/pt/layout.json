@@ -145,5 +145,17 @@
     "title": "Não é possível ligar",
     "message": "O Monize não conseguiu contactar o servidor. Verifique a sua ligação e tente novamente.",
     "retry": "Tentar novamente"
+  },
+  "pushBanner": {
+    "enableTitle": "Ativar as notificações?",
+    "enableBody": "O Monize pode lembrá-lo de contas e limites de orçamento neste dispositivo, mesmo com a aplicação fechada. O seu navegador vai pedir permissão.",
+    "enableButton": "Ativar",
+    "enabling": "A ativar…",
+    "installIosTitle": "Adicione primeiro o Monize ao ecrã principal.",
+    "installIosBody": "No iPhone e no iPad as notificações só funcionam a partir da aplicação instalada. Toque em Partilhar, depois em Adicionar ao ecrã principal, e abra o Monize a partir daí.",
+    "blockedTitle": "As notificações estão bloqueadas para o Monize.",
+    "blockedBody": "Permita-as nas definições do site do seu navegador para esta página. O Monize não pode voltar a pedir por si próprio.",
+    "blockedIosBody": "Abra os Ajustes do iOS, depois Notificações, depois Monize, e permita-as aí. Se o Monize não estiver na lista, remova-o do ecrã principal e adicione-o novamente.",
+    "dismiss": "Agora não"
   }
 }

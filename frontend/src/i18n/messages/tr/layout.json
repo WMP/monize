@@ -145,5 +145,17 @@
     "title": "Bağlanılamıyor",
     "message": "Monize sunucuya ulaşamadı. Bağlantınızı kontrol edip yeniden deneyin.",
     "retry": "Yeniden dene"
+  },
+  "pushBanner": {
+    "enableTitle": "Bildirimler açılsın mı?",
+    "enableBody": "Monize bu cihazda faturaları ve bütçe sınırlarını, uygulama kapalıyken de hatırlatabilir. Tarayıcınız izin isteyecek.",
+    "enableButton": "Aç",
+    "enabling": "Açılıyor…",
+    "installIosTitle": "Önce Monize'yi ana ekrana ekleyin.",
+    "installIosBody": "iPhone ve iPad'de bildirimler yalnızca kurulu uygulamadan çalışır. Paylaş'a, sonra Ana Ekrana Ekle'ye dokunun ve Monize'yi oradan açın.",
+    "blockedTitle": "Monize için bildirimler engellenmiş.",
+    "blockedBody": "Bu sayfa için tarayıcınızın site ayarlarından izin verin. Monize kendiliğinden yeniden soramaz.",
+    "blockedIosBody": "iOS Ayarlar'ı açın, sonra Bildirimler, sonra Monize, ve orada izin verin. Monize listede yoksa ana ekrandan kaldırıp yeniden ekleyin.",
+    "dismiss": "Şimdi değil"
   }
 }

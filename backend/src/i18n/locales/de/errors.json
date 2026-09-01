@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "Eine andere Operation ersetzt derzeit die Daten dieses Kontos. Warten Sie, bis sie abgeschlossen ist, und versuchen Sie es erneut."
+  },
+  "push": {
+    "channelUnavailable": "Push-Benachrichtigungen sind auf dieser Monize-Instanz nicht verfügbar.",
+    "endpointClaimed": "Dieser Browser ist bereits bei einem anderen Monize-Konto registriert. Melden Sie sich in diesem Browser von jenem Konto ab und versuchen Sie es erneut.",
+    "deviceNotFound": "Push-Gerät nicht gefunden.",
+    "noDevices": "Für dieses Konto ist kein Push-Gerät registriert. Aktivieren Sie Push-Benachrichtigungen zuerst in diesem Browser.",
+    "rotationUnavailable": "ENCRYPTION_KEY ist nicht gesetzt, daher konnte kein neuer privater Schlüssel verschlüsselt gespeichert werden. Setzen Sie die Variable und starten Sie neu, bevor Sie erneuern.",
+    "channelNotConfigured": "Diese Instanz hat noch kein Push-Schlüsselpaar, daher lässt sich der Browser-Push-Kanal nicht ein- oder ausschalten.",
+    "keyRotated": "Diese Instanz hat ihren Push-Schlüssel geändert, während diese Seite geöffnet war. Laden Sie neu und aktivieren Sie Push erneut.",
+    "tooManyDevices": "Dieses Konto hat bereits die maximale Anzahl an Push-Geräten. Entfernen Sie eines, bevor Sie ein weiteres hinzufügen."
   }
 }

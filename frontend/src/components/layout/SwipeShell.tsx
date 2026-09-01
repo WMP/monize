@@ -8,6 +8,8 @@ import { BackendDownBanner } from './BackendDownBanner';
 import { DemoModeBanner } from './DemoModeBanner';
 import { HttpWarningBanner } from './HttpWarningBanner';
 import { SwipeIndicator } from './SwipeIndicator';
+// TEST DRIVE ONLY -- not for merge.
+import { PushEnableBanner } from './PushEnableBanner';
 import { UpdateAvailableBanner } from './UpdateAvailableBanner';
 import { AiChatBubble } from '@/components/ai/AiChatBubble';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
@@ -48,6 +50,7 @@ export function SwipeShell({ children, httpsHeadersActive = false }: SwipeShellP
       <BackendDownBanner httpsHeadersActive={httpsHeadersActive} />
       <DemoModeBanner />
       <UpdateAvailableBanner />
+      <PushEnableBanner />
       <SwipeIndicator currentIndex={currentIndex} totalPages={totalPages} isSwipePage={isSwipePage} />
       <div ref={contentRef}>
         {children}

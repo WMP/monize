@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Không thể cập nhật tùy chọn tóm tắt ngân sách",
       "digestDayFailed": "Không thể cập nhật ngày tóm tắt",
       "testEmailFailed": "Không thể gửi email thử nghiệm"
+    },
+    "push": {
+      "heading": "Đẩy từ trình duyệt",
+      "description": "Đăng ký thiết bị này để Monize có thể gửi tới nó ngay cả khi ứng dụng đã đóng. Hiện chỉ có thông báo thử nghiệm được gửi theo đường này; mọi thứ khác vẫn đến ở chuông.",
+      "permissionHint": "Khi bạn bật, trình duyệt sẽ xin quyền hiển thị thông báo. Không có gì được gửi trước khi bạn cho phép.",
+      "enableButton": "Bật trên thiết bị này",
+      "enablingButton": "Đang bật...",
+      "sendTestButton": "Gửi thông báo thử nghiệm",
+      "sendingTestButton": "Đang gửi...",
+      "removeButton": "Xóa",
+      "thisDevice": "Thiết bị này",
+      "unnamedDevice": "Thiết bị chưa đặt tên",
+      "lastSeen": "Hoạt động lần cuối {when}",
+      "noLiveDevices": "Chưa có thiết bị nào được đăng ký. Hãy bật đẩy trên thiết bị này để gửi thử nghiệm.",
+      "notConfigured": "Đẩy từ trình duyệt không khả dụng trên phiên bản Monize này. Quản trị viên có thể bật trong khu vực Admin.",
+      "disabledByAdmin": "Quản trị viên đã tắt đẩy từ trình duyệt cho phiên bản Monize này.",
+      "keyUnreadable": "Monize không đọc được cặp khóa đẩy của phiên bản này nên không có gì được gửi đi. Quản trị viên có thể khôi phục bằng cách xoay cặp khóa trong khu vực Admin.",
+      "serverKeyMissing": "Phiên bản Monize này thiếu khóa mã hóa cần để mở cặp khóa push, nên không thể gửi được gì. Quản trị viên phải đặt khóa đó trong bản triển khai và khởi động lại.",
+      "statusUnavailable": "Monize không kiểm tra được đẩy từ trình duyệt có khả dụng hay không. Hãy tải lại trang để thử lại.",
+      "devicesUnavailable": "Monize không tải được các thiết bị đã đăng ký của bạn. Mọi thứ khác trên trang này vẫn hoạt động; hãy tải lại để thử lại.",
+      "unsupported": {
+        "unsupported": "Trình duyệt này không thể nhận thông báo đẩy.",
+        "denied": "Thông báo cho Monize đang bị chặn trong trình duyệt này. Hãy cho phép trong cài đặt trang web rồi tải lại trang.",
+        "ios-browser": "Trên iPhone và iPad, thông báo đẩy chỉ hoạt động sau khi cài Monize vào Màn hình chính. Chọn Chia sẻ, rồi Thêm vào Màn hình chính, và mở Monize từ đó."
+      },
+      "disabledReason": {
+        "GONE": "Không còn tiếp cận được. Hãy bật lại đẩy trong trình duyệt đó.",
+        "KEY_ROTATED": "Đã ngừng khi phiên bản này xoay cặp khóa đẩy. Hãy bật lại đẩy trong trình duyệt đó.",
+        "FAILING": "Đã ngừng sau nhiều lần gửi thất bại. Hãy bật lại đẩy trong trình duyệt đó."
+      },
+      "toasts": {
+        "enabled": "Đã bật thông báo đẩy trên thiết bị này",
+        "enableFailed": "Không thể bật thông báo đẩy",
+        "permissionDenied": "Trình duyệt này đang chặn thông báo của Monize. Hãy cho phép trong cài đặt trang web rồi thử lại.",
+        "permissionDeniedIos": "Thông báo đang bị chặn với Monize. Mở Cài đặt iOS, rồi Thông báo, rồi Monize để cho phép.",
+        "permissionDismissed": "Thông báo chưa được bật. Hãy chọn Cho phép khi trình duyệt hỏi.",
+        "permissionNoPrompt": "Thông báo chưa được bật và không có hộp thoại nào xuất hiện. Mở Cài đặt iOS, rồi Thông báo, rồi Monize, và cho phép ở đó. Nếu không thấy Monize trong danh sách, hãy xóa khỏi Màn hình chính, thêm lại (Chia sẻ, rồi Thêm vào Màn hình chính) và thử lần nữa.",
+        "removed": "Đã xóa thiết bị",
+        "removeFailed": "Không thể xóa thiết bị",
+        "testSent": "{count, plural, other {Đã gửi thông báo thử nghiệm tới # thiết bị}}",
+        "testPartial": "Thông báo thử nghiệm đã tới {delivered} trên {attempted} thiết bị",
+        "testFailed": "Không thể gửi thông báo thử nghiệm"
+      }
     }
   },
   "help": {

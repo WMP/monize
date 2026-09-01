@@ -145,5 +145,17 @@
     "title": "Kan geen verbinding maken",
     "message": "Monize kon de server niet bereiken. Controleer je verbinding en probeer het opnieuw.",
     "retry": "Opnieuw proberen"
+  },
+  "pushBanner": {
+    "enableTitle": "Meldingen aanzetten?",
+    "enableBody": "Monize kan je op dit apparaat aan rekeningen en budgetgrenzen herinneren, ook als de app gesloten is. Je browser vraagt om toestemming.",
+    "enableButton": "Aanzetten",
+    "enabling": "Wordt aangezet…",
+    "installIosTitle": "Voeg Monize eerst toe aan je beginscherm.",
+    "installIosBody": "Op iPhone en iPad werken meldingen alleen vanuit de geïnstalleerde app. Tik op Deel, dan op Zet op beginscherm, en open Monize daarvandaan.",
+    "blockedTitle": "Meldingen zijn geblokkeerd voor Monize.",
+    "blockedBody": "Sta ze toe in de site-instellingen van je browser voor deze pagina. Monize kan het niet zelf opnieuw vragen.",
+    "blockedIosBody": "Open iOS-instellingen, dan Meldingen, dan Monize, en sta ze daar toe. Staat Monize er niet bij, verwijder het dan van het beginscherm en voeg het opnieuw toe.",
+    "dismiss": "Niet nu"
   }
 }

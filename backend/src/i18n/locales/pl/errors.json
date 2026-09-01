@@ -586,5 +586,15 @@
   },
   "maintenance": {
     "inProgress": "Inna operacja wlasnie zamienia dane tego konta. Poczekaj na jej zakonczenie i sprobuj ponownie."
+  },
+  "push": {
+    "channelUnavailable": "Powiadomienia push nie są dostępne w tej instancji Monize.",
+    "endpointClaimed": "Ta przeglądarka jest już zarejestrowana na innym koncie Monize. Wyloguj się z tamtego konta w tej przeglądarce i spróbuj ponownie.",
+    "deviceNotFound": "Nie znaleziono urządzenia push.",
+    "noDevices": "Do tego konta nie przypisano żadnego urządzenia push. Najpierw włącz powiadomienia push w tej przeglądarce.",
+    "rotationUnavailable": "Nie ustawiono ENCRYPTION_KEY, więc nowego klucza prywatnego nie dało się zapisać zaszyfrowanego. Ustaw ją i uruchom ponownie przed wymianą.",
+    "channelNotConfigured": "Ta instancja nie ma jeszcze pary kluczy push, więc kanału push w przeglądarce nie da się włączyć ani wyłączyć.",
+    "keyRotated": "Ta instancja zmieniła klucz push, gdy ta strona była otwarta. Odśwież stronę i włącz push ponownie.",
+    "tooManyDevices": "To konto ma już maksymalną liczbę urządzeń push. Usuń jedno, zanim dodasz kolejne."
   }
 }

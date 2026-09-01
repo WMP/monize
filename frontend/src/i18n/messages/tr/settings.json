@@ -212,6 +212,49 @@
       "digestUpdateFailed": "Bütçe özeti tercihi güncellenemedi",
       "digestDayFailed": "Özet günü güncellenemedi",
       "testEmailFailed": "Test e-postası gönderilemedi"
+    },
+    "push": {
+      "heading": "Tarayıcı anlık bildirimi",
+      "description": "Bu cihazı kaydedin, böylece uygulama kapalıyken de Monize ona ulaşabilir. Şimdilik bu yolla yalnızca test bildirimi teslim ediliyor; diğer her şey yine zil simgesine geliyor.",
+      "permissionHint": "Bunu açtığınızda tarayıcınız bildirim gösterme izni ister. İzin verilene kadar hiçbir şey gönderilmez.",
+      "enableButton": "Bu cihazda etkinleştir",
+      "enablingButton": "Etkinleştiriliyor...",
+      "sendTestButton": "Test bildirimi gönder",
+      "sendingTestButton": "Gönderiliyor...",
+      "removeButton": "Kaldır",
+      "thisDevice": "Bu cihaz",
+      "unnamedDevice": "Adsız cihaz",
+      "lastSeen": "Son etkinlik {when}",
+      "noLiveDevices": "Henüz kayıtlı cihaz yok. Test göndermek için bu cihazda anlık bildirimleri açın.",
+      "notConfigured": "Bu Monize örneğinde tarayıcı anlık bildirimi kullanılamıyor. Bir yönetici Admin bölümünden etkinleştirebilir.",
+      "disabledByAdmin": "Bir yönetici bu Monize örneği için tarayıcı anlık bildirimini kapattı.",
+      "keyUnreadable": "Monize bu örneğin anlık bildirim anahtar çiftini okuyamıyor; bu yüzden hiçbir şey teslim edilmiyor. Bir yönetici Admin bölümünde anahtar çiftini değiştirerek kurtarabilir.",
+      "serverKeyMissing": "Bu Monize örneğinde push anahtar çiftini açmak için gereken şifreleme anahtarı yok, bu yüzden hiçbir şey iletilemiyor. Bir yöneticinin bunu dağıtımda ayarlayıp yeniden başlatması gerekiyor.",
+      "statusUnavailable": "Monize, tarayıcı anlık bildiriminin kullanılabilir olup olmadığını kontrol edemedi. Yeniden denemek için sayfayı yenileyin.",
+      "devicesUnavailable": "Monize kayıtlı cihazlarınızı yükleyemedi. Bu sayfadaki diğer her şey çalışıyor; yeniden denemek için sayfayı yenileyin.",
+      "unsupported": {
+        "unsupported": "Bu tarayıcı anlık bildirim alamaz.",
+        "denied": "Bu tarayıcıda Monize bildirimleri engellenmiş. Tarayıcının site ayarlarından izin verin ve bu sayfayı yenileyin.",
+        "ios-browser": "iPhone ve iPad'de anlık bildirimler yalnızca Monize Ana Ekrana eklendikten sonra çalışır. Paylaş, ardından Ana Ekrana Ekle'yi kullanın ve Monize'ı oradan açın."
+      },
+      "disabledReason": {
+        "GONE": "Artık erişilebilir değil. O tarayıcıda anlık bildirimleri yeniden açın.",
+        "KEY_ROTATED": "Bu örnek anlık bildirim anahtar çiftini değiştirdiğinde devre dışı bırakıldı. O tarayıcıda anlık bildirimleri yeniden açın.",
+        "FAILING": "Tekrarlanan teslim hatalarından sonra devre dışı bırakıldı. O tarayıcıda anlık bildirimleri yeniden açın."
+      },
+      "toasts": {
+        "enabled": "Bu cihazda anlık bildirimler etkinleştirildi",
+        "enableFailed": "Anlık bildirimler etkinleştirilemedi",
+        "permissionDenied": "Bu tarayıcı Monize bildirimlerini engelliyor. Site ayarlarından izin verip yeniden deneyin.",
+        "permissionDeniedIos": "Monize için bildirimler engellenmiş. İzin vermek için iOS Ayarlar'ı, sonra Bildirimler'i, sonra Monize'yi açın.",
+        "permissionDismissed": "Bildirimler etkinleştirilmedi. Tarayıcı sorduğunda İzin Ver'i seçin.",
+        "permissionNoPrompt": "Bildirimler açılmadı ve hiçbir istek görünmedi. iOS Ayarlar'ı açın, sonra Bildirimler, sonra Monize, ve orada izin verin. Monize listede yoksa ana ekrandan kaldırın, yeniden ekleyin (Paylaş, sonra Ana Ekrana Ekle) ve bir daha deneyin.",
+        "removed": "Cihaz kaldırıldı",
+        "removeFailed": "Cihaz kaldırılamadı",
+        "testSent": "{count, plural, one {Test bildirimi 1 cihaza gönderildi} other {Test bildirimi # cihaza gönderildi}}",
+        "testPartial": "Test bildirimi {attempted} cihazın {delivered} tanesine ulaştı",
+        "testFailed": "Test bildirimi teslim edilemedi"
+      }
     }
   },
   "help": {

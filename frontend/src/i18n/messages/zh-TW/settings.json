@@ -212,6 +212,49 @@
       "digestUpdateFailed": "更新預算摘要偏好設定失敗",
       "digestDayFailed": "更新摘要日失敗",
       "testEmailFailed": "發送測試電子郵件失敗"
+    },
+    "push": {
+      "heading": "瀏覽器推播",
+      "description": "註冊此裝置，Monize 就能在應用程式關閉時也送達通知。目前透過這條通道送達的只有測試通知，其餘仍會出現在鈴鐺裡。",
+      "permissionHint": "開啟後，瀏覽器會請求顯示通知的權限。在你允許之前不會傳送任何內容。",
+      "enableButton": "在此裝置啟用",
+      "enablingButton": "啟用中...",
+      "sendTestButton": "傳送測試通知",
+      "sendingTestButton": "傳送中...",
+      "removeButton": "移除",
+      "thisDevice": "此裝置",
+      "unnamedDevice": "未命名裝置",
+      "lastSeen": "最後活動 {when}",
+      "noLiveDevices": "尚未註冊任何裝置。請先在此裝置啟用推播再傳送測試。",
+      "notConfigured": "此 Monize 執行個體未提供瀏覽器推播。管理員可在 Admin 區域啟用。",
+      "disabledByAdmin": "管理員已為此 Monize 執行個體關閉瀏覽器推播。",
+      "keyUnreadable": "Monize 無法讀取此執行個體的推播金鑰組，因此無法傳送任何通知。管理員可於 Admin 區域輪替金鑰組以恢復。",
+      "serverKeyMissing": "此 Monize 實例缺少開啟推播金鑰組所需的加密金鑰，因此無法遞送任何內容。需要管理員在部署中設定該金鑰並重新啟動。",
+      "statusUnavailable": "Monize 無法確認瀏覽器推播是否可用。請重新載入頁面後再試。",
+      "devicesUnavailable": "Monize 無法載入你已註冊的裝置。本頁其他功能仍可使用；請重新載入後再試。",
+      "unsupported": {
+        "unsupported": "此瀏覽器無法接收推播通知。",
+        "denied": "此瀏覽器已封鎖 Monize 的通知。請在瀏覽器的網站設定中允許，然後重新載入本頁。",
+        "ios-browser": "在 iPhone 與 iPad 上，必須先將 Monize 加入主畫面，推播通知才會運作。請使用「分享」，接著選擇「加入主畫面」，並從那裡開啟 Monize。"
+      },
+      "disabledReason": {
+        "GONE": "已無法送達。請在該瀏覽器重新啟用推播。",
+        "KEY_ROTATED": "此執行個體輪替推播金鑰組時已停用。請在該瀏覽器重新啟用推播。",
+        "FAILING": "多次傳送失敗後已停用。請在該瀏覽器重新啟用推播。"
+      },
+      "toasts": {
+        "enabled": "已在此裝置啟用推播通知",
+        "enableFailed": "無法啟用推播通知",
+        "permissionDenied": "此瀏覽器正在封鎖 Monize 的通知。請在網站設定中允許後再試。",
+        "permissionDeniedIos": "Monize 的通知已被封鎖。請開啟 iOS「設定」，然後「通知」，再選擇 Monize 以允許。",
+        "permissionDismissed": "未啟用通知。瀏覽器詢問時請選擇「允許」。",
+        "permissionNoPrompt": "通知未開啟，也沒有出現任何請求。請開啟 iOS「設定」，然後「通知」，再選擇 Monize 並允許。如果清單中沒有 Monize，請從主畫面移除後重新加入（「分享」，然後「加入主畫面」），再試一次。",
+        "removed": "已移除裝置",
+        "removeFailed": "無法移除裝置",
+        "testSent": "{count, plural, other {測試通知已傳送至 # 台裝置}}",
+        "testPartial": "測試通知送達 {attempted} 台裝置中的 {delivered} 台",
+        "testFailed": "無法傳送測試通知"
+      }
     }
   },
   "help": {
