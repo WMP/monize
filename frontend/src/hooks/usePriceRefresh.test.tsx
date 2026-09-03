@@ -162,6 +162,25 @@ describe('usePriceRefresh', () => {
     expect(investmentsApi.refreshSelectedPrices).toHaveBeenCalledWith(['s-1']);
   });
 
+  it('does not send a security whose price fetching the user turned off', async () => {
+    vi.mocked(investmentsApi.getSecurities).mockResolvedValue([
+      sec('s-1'),
+      sec('s-2', { priceFetchStatus: 'disabled' }),
+      sec('s-3', { priceFetchStatus: 'auto_disabled' }),
+    ] as any);
+    vi.mocked(investmentsApi.refreshSelectedPrices).mockResolvedValue({
+      updated: 2, failed: 0, totalSecurities: 2, skipped: 0, results: [], lastUpdated: '',
+    });
+
+    const { result } = renderHook(() => usePriceRefresh());
+    await act(async () => {
+      await result.current.triggerManualRefresh();
+    });
+    // Only the user's own 'disabled' is withheld client-side; an auto-disabled
+    // security is the server's call (it may be due for a re-probe).
+    expect(investmentsApi.refreshSelectedPrices).toHaveBeenCalledWith(['s-1', 's-3']);
+  });
+
   it('includes QIF-imported securities once the user assigns a provider override', async () => {
     // QIF/OFX import flags new securities with skipPriceUpdates=true. After
     // the user picks an MSN provider override or supplies an Instrument ID,

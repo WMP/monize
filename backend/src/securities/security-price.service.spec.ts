@@ -894,7 +894,7 @@ describe("SecurityPriceService", () => {
       await service.refreshAllPrices();
 
       expect(securitiesRepository.update).toHaveBeenCalledWith(
-        "sec-1",
+        expect.objectContaining({ id: "sec-1" }),
         expect.objectContaining({
           priceFetchStatus: "auto_disabled",
           priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD,
@@ -956,7 +956,7 @@ describe("SecurityPriceService", () => {
 
       expect(result.updated).toBe(1);
       expect(securitiesRepository.update).toHaveBeenCalledWith(
-        "sec-1",
+        expect.objectContaining({ id: "sec-1" }),
         expect.objectContaining({
           priceFetchStatus: "active",
           priceFetchFailureCount: 0,
@@ -983,6 +983,116 @@ describe("SecurityPriceService", () => {
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(result.totalSecurities).toBe(0);
+    });
+
+    it("writes the outcome as a compare-and-set that a user's concurrent 'disabled' wins", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "active",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD - 1,
+          priceFetchLastFailureAt: null,
+          priceFetchAutoDisabledAt: null,
+        },
+      ]);
+      fetchAlways404();
+
+      await service.refreshAllPrices();
+
+      // The predicate is the claim: the write must exclude a row the user has
+      // since switched off, and must be pinned to the streak the run read so a
+      // second replica applying the same outcome no-ops instead of doubling.
+      const [criteria] = securitiesRepository.update.mock.calls[0];
+      expect(criteria).toMatchObject({
+        id: "sec-1",
+        priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD - 1,
+      });
+      expect(criteria.priceFetchStatus).toBeDefined();
+      expect(criteria.priceFetchStatus).not.toBe("active");
+    });
+
+    it("leaves the in-memory row alone when the compare-and-set matched nothing", async () => {
+      const row = {
+        ...mockSecurity,
+        priceFetchStatus: "active" as const,
+        priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD - 1,
+        priceFetchLastFailureAt: null,
+        priceFetchAutoDisabledAt: null,
+      };
+      securitiesRepository.find.mockResolvedValue([row]);
+      // The row was flipped to 'disabled' between the read and the write.
+      securitiesRepository.update.mockResolvedValue({ affected: 0 });
+      fetchAlways404();
+
+      await service.refreshAllPrices();
+
+      expect(row.priceFetchStatus).toBe("active");
+      expect(row.priceFetchFailureCount).toBe(PRICE_FETCH_ABSENT_THRESHOLD - 1);
+    });
+
+    it("excludes a disabled security from the catalogue backfill", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        { ...mockSecurity, priceFetchStatus: "disabled" },
+      ]);
+      // The earliest-transaction lookup runs before the eligibility filter is
+      // consulted; an empty catalogue answer keeps this about the filter.
+      scopedManagerQuery.mockResolvedValue([]);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await service.backfillHistoricalPrices();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.totalSecurities).toBe(0);
+    });
+
+    it("excludes an auto-disabled security from daily settlement", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "auto_disabled",
+          priceFetchLastFailureAt: new Date(0),
+        },
+      ]);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await service.settleDailyBars();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.totalSecurities).toBe(0);
+    });
+
+    it("excludes a disabled security from the on-demand report fill", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        { ...mockSecurity, priceFetchStatus: "disabled" },
+      ]);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const stored = await service.ensurePricesForDate(["sec-1"], "2026-03-16");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(stored).toBe(0);
+    });
+
+    it("does not backfill a disabled security in the background, but does when forced", async () => {
+      const disabled = {
+        ...mockSecurity,
+        priceFetchStatus: "disabled",
+      } as Security;
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(makeYahooHistoricalResponse()),
+        );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      expect(await service.backfillSecurityRange(disabled, "1y")).toBe(0);
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      await service.backfillSecurityRange(disabled, "1y", { force: true });
+      expect(fetchMock).toHaveBeenCalled();
     });
   });
 

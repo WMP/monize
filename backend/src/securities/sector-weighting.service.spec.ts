@@ -300,6 +300,23 @@ describe("SectorWeightingService", () => {
       expect(securityRepo.save).not.toHaveBeenCalled();
     });
 
+    it.each([["disabled"], ["auto_disabled"]])(
+      "skips a security whose price fetching is %s",
+      async (status) => {
+        const sec = {
+          ...mockStockSecurity,
+          sector: null,
+          sectorDataUpdatedAt: null,
+          priceFetchStatus: status,
+        } as Security;
+
+        await service.ensureSectorData([sec]);
+
+        expect(yahooService.fetchStockSectorInfo).not.toHaveBeenCalled();
+        expect(securityRepo.save).not.toHaveBeenCalled();
+      },
+    );
+
     it("skips securities with fresh sectorDataUpdatedAt", async () => {
       const sec = {
         ...mockStockSecurity,

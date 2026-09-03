@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { tr } from "../i18n/translate";
-import { In, DataSource, EntityManager } from "typeorm";
+import { In, Not, DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { returnedRows } from "../common/db/query-result";
 import { Cron } from "@nestjs/schedule";
@@ -368,11 +368,32 @@ export class SecurityPriceService {
   ): Promise<void> {
     const update = computeFetchOutcomeUpdate(security, outcome, now);
     if (!update) return;
-    Object.assign(security, update);
     try {
-      await withScopedDb(this.dataSource, (m) =>
-        m.getRepository(Security).update(security.id, update),
+      // Compare-and-set on the state the decision was made from, never a blind
+      // write from the snapshot this run loaded at its start. Two things hide
+      // in that gap: a user who switched the security off while the run was in
+      // flight (their `disabled` must win, and must never be re-probed), and a
+      // second replica applying the same outcome to the same streak (it must
+      // no-op rather than double-apply). `docs/concurrency-and-idempotency.md`.
+      const result = await withScopedDb(this.dataSource, (m) =>
+        m.getRepository(Security).update(
+          {
+            id: security.id,
+            priceFetchStatus: Not("disabled"),
+            ...(typeof security.priceFetchFailureCount === "number"
+              ? { priceFetchFailureCount: security.priceFetchFailureCount }
+              : {}),
+          },
+          update,
+        ),
       );
+      if ((result?.affected ?? 0) === 0) {
+        this.logger.log(
+          `Price-fetch status for ${security.symbol} changed underneath this run; outcome not applied`,
+        );
+        return;
+      }
+      Object.assign(security, update);
     } catch (err) {
       this.logger.warn(
         `Failed to persist price-fetch status for ${security.symbol}: ${err instanceof Error ? err.message : String(err)}`,
@@ -731,7 +752,7 @@ export class SecurityPriceService {
         totalSecurities: 0,
         updated: 0,
         failed: 0,
-        skipped: 0,
+        skipped,
         results: [],
         lastUpdated: new Date(),
       };
@@ -815,7 +836,7 @@ export class SecurityPriceService {
       totalSecurities: securities.length,
       updated,
       failed,
-      skipped: 0,
+      skipped,
       results,
       lastUpdated: new Date(),
     };

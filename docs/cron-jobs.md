@@ -26,7 +26,7 @@ One row per `@Cron` handler. The Cron column is the decorator's expression verba
 | `budget-alert.service` | `0 7 * * *` | Daily 7 AM | Budget threshold alerts |
 | `budget-alert.service` | `0 7 * * 1` | Mondays 7 AM | Weekly budget digest |
 | `budget-alert.service` | `0 3 * * *` | Daily 3 AM | Purge sent alerts older than 30 days |
-| `security-price.service` | `0 17 * * 1-5` (America/New_York) | 5 PM ET weekdays | Fetch security prices, then settle the day: re-read each symbol's recent daily bars and overwrite the provisional intraday quotes with the provider's official OHLCV and adjusted close |
+| `security-price.service` | `0 17 * * 1-5` (America/New_York) | 5 PM ET weekdays | Fetch security prices, then settle the day: re-read each symbol's recent daily bars and overwrite the provisional intraday quotes with the provider's official OHLCV and adjusted close. Price upserts are idempotent (`ON CONFLICT`); the per-security price-fetch status write (404 streak, auto-disable, re-enable) is a compare-and-set on the status and streak the run read, so a second replica's identical outcome no-ops and a user's concurrent `disabled` is never overwritten |
 | `market-index.service` | `10 17 * * 1-5` (America/New_York) | 5:10 PM ET weekdays | Fetch market index closes for the benchmark overlay (staggered after the price and FX refreshes) |
 | `mny-staging.service` | `0 0-23/1 * * *` | Hourly | Delete expired staged import files (24 h TTL) |
 | `mny-import-job.service` | `0 0-23/1 * * *` | Hourly | Backstop sweep for import jobs whose worker stopped heartbeating; the reap that a waiting user depends on runs on their own next request, not here |

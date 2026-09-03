@@ -382,6 +382,89 @@ describe('SecurityForm', () => {
     });
   });
 
+  describe('price fetching control', () => {
+    it('sends no priceFetchStatus for an untouched create form', async () => {
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText('Symbol'), { target: { value: 'MSFT' } });
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Microsoft' } });
+      fireEvent.click(screen.getByText('Create Security'));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      // 'active' is the column default; sending it would also 400 on a backend
+      // that does not know the field yet (forbidNonWhitelisted).
+      expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('priceFetchStatus');
+    });
+
+    it('sends disabled when the user turns fetching off on create', async () => {
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText('Symbol'), { target: { value: 'MSFT' } });
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Microsoft' } });
+      fireEvent.change(screen.getByLabelText('Price data from provider'), {
+        target: { value: 'disabled' },
+      });
+      fireEvent.click(screen.getByText('Create Security'));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ priceFetchStatus: 'disabled' }),
+        ),
+      );
+    });
+
+    it('sends nothing when an edit leaves the status as it was', async () => {
+      const security = createSecurity({ priceFetchStatus: 'disabled' });
+      render(<SecurityForm security={security} onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() => expect(screen.getByText('Update Security')).toBeInTheDocument());
+
+      const select = screen.getByLabelText('Price data from provider') as HTMLSelectElement;
+      expect(select.value).toBe('disabled');
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
+      fireEvent.click(screen.getByText('Update Security'));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('priceFetchStatus');
+    });
+
+    it('shows the system auto-pause as the current option and sends active only when the user resumes', async () => {
+      const security = createSecurity({ priceFetchStatus: 'auto_disabled' });
+      render(<SecurityForm security={security} onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() => expect(screen.getByText('Update Security')).toBeInTheDocument());
+
+      const select = screen.getByLabelText('Price data from provider') as HTMLSelectElement;
+      expect(select.value).toBe('auto_disabled');
+      expect(
+        screen.getByRole('option', { name: 'Automatically paused by the system' }),
+      ).toBeInTheDocument();
+
+      // Untouched: the pause stays.
+      fireEvent.click(screen.getByText('Update Security'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('priceFetchStatus');
+
+      // Resumed: exactly 'active' is sent.
+      onSubmit.mockClear();
+      fireEvent.change(select, { target: { value: 'active' } });
+      fireEvent.click(screen.getByText('Update Security'));
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ priceFetchStatus: 'active' }),
+        ),
+      );
+    });
+
+    it('never offers the auto-pause option to a security that is not paused', async () => {
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() =>
+        expect(screen.getByLabelText('Price data from provider')).toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByRole('option', { name: 'Automatically paused by the system' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('defaults a new security to not favourite and can toggle it on before submit', async () => {
     render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
 

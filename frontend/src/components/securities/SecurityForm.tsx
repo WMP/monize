@@ -450,6 +450,21 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       return;
     }
 
+    const nextPriceFetchStatus =
+      data.priceFetchStatus === 'disabled'
+        ? 'disabled'
+        : data.priceFetchStatus === 'active'
+          ? 'active'
+          : undefined;
+    // Absent means 'active' on both sides (the column default; an older backend
+    // that does not send the field), so a create or an untouched select sends
+    // nothing rather than a redundant 'active'.
+    const currentPriceFetchStatus = security?.priceFetchStatus ?? 'active';
+    const priceFetchStatusChange =
+      nextPriceFetchStatus && nextPriceFetchStatus !== currentPriceFetchStatus
+        ? nextPriceFetchStatus
+        : undefined;
+
     const cleanedData: CreateSecurityData = {
       symbol: data.symbol.toUpperCase().trim(),
       name: data.name.trim(),
@@ -465,16 +480,9 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       // Only the two user-settable states are sent, and only when they differ
       // from what the security already holds: leaving an 'auto_disabled' security
       // untouched sends nothing (it stays paused), while unrelated edits to an
-      // active security do not reset its 404 streak.
-      priceFetchStatus: (() => {
-        const next =
-          data.priceFetchStatus === 'disabled'
-            ? 'disabled'
-            : data.priceFetchStatus === 'active'
-              ? 'active'
-              : undefined;
-        return next && next !== security?.priceFetchStatus ? next : undefined;
-      })(),
+      // active security do not reset its 404 streak. Spread rather than set to
+      // undefined so the key is genuinely absent from the payload.
+      ...(priceFetchStatusChange ? { priceFetchStatus: priceFetchStatusChange } : {}),
       // Empty string rather than undefined, so clearing an address actually
       // clears it: the backend normalises "" to null, where an omitted field
       // would leave the previous value in place.

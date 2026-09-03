@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { DataSource, In } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Security } from "./entities/security.entity";
+import { isActiveStatus } from "./price-fetch-status";
 import { Holding } from "./entities/holding.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { YahooFinanceService } from "./yahoo-finance.service";
@@ -165,7 +166,11 @@ export class SectorWeightingService {
     const toUpdate: Security[] = [];
 
     for (const sec of securities) {
-      if (sec.skipPriceUpdates) continue;
+      // The same door as the price refresh: a security the user switched off,
+      // or one the provider has repeatedly said does not exist, is not asked
+      // for sector data either -- it is the same provider and the same symbol.
+      if (sec.skipPriceUpdates || !isActiveStatus(sec.priceFetchStatus))
+        continue;
 
       const isFresh =
         sec.sectorDataUpdatedAt &&
