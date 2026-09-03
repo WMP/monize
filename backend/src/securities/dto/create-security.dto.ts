@@ -18,6 +18,7 @@ import {
 import { Type } from "class-transformer";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
+import { USER_SETTABLE_PRICE_FETCH_STATUSES } from "../price-fetch-status";
 
 /**
  * One slice of a manual allocation breakdown (e.g. a country and its share of
@@ -179,6 +180,19 @@ export class CreateSecurityDto {
   @MaxLength(50)
   @SanitizeHtml()
   msnInstrumentId?: string;
+
+  @ApiProperty({
+    example: "active",
+    description:
+      "Whether to fetch prices from the quote provider. Only 'active' and " +
+      "'disabled' may be set by hand -- 'auto_disabled' is reached by the system " +
+      "after repeated 404s and setting 'active' clears it.",
+    required: false,
+    enum: ["active", "disabled"],
+  })
+  @IsOptional()
+  @IsIn([...USER_SETTABLE_PRICE_FETCH_STATUSES])
+  priceFetchStatus?: "active" | "disabled";
 
   @ApiProperty({
     description:

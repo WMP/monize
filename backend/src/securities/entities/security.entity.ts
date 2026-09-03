@@ -85,6 +85,62 @@ export class Security {
   skipPriceUpdates: boolean;
 
   @ApiProperty({
+    example: "active",
+    description:
+      "Whether we ask the quote provider for this security's prices. " +
+      "'active' = fetch normally; 'auto_disabled' = the system stopped after a " +
+      "run of provider 'no such symbol' (404/422) answers, and re-probes " +
+      "occasionally; 'disabled' = the user turned fetching off.",
+    enum: ["active", "auto_disabled", "disabled"],
+  })
+  @Column({
+    type: "varchar",
+    length: 20,
+    name: "price_fetch_status",
+    default: "active",
+  })
+  priceFetchStatus: "active" | "auto_disabled" | "disabled";
+
+  @ApiProperty({
+    example: 0,
+    description:
+      "Consecutive provider 'no such symbol' (404/422) answers; reset to 0 on " +
+      "any successful price. Drives the auto-disable threshold.",
+  })
+  @Column({
+    type: "int",
+    name: "price_fetch_failure_count",
+    default: 0,
+  })
+  priceFetchFailureCount: number;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description:
+      "Instant of the most recent 404-type answer; drives the re-probe cooldown.",
+  })
+  @Column({
+    type: "timestamp",
+    nullable: true,
+    name: "price_fetch_last_failure_at",
+  })
+  priceFetchLastFailureAt: Date | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description:
+      "When the system auto-disabled fetching (null unless auto_disabled).",
+  })
+  @Column({
+    type: "timestamp",
+    nullable: true,
+    name: "price_fetch_auto_disabled_at",
+  })
+  priceFetchAutoDisabledAt: Date | null;
+
+  @ApiProperty({
     example: "Technology",
     description: "Stock sector from Yahoo Finance",
   })

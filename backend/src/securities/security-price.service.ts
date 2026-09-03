@@ -18,6 +18,12 @@ import {
   SecurityLookupResult,
 } from "./providers/quote-provider.interface";
 import {
+  canFetchActive,
+  shouldAttemptFetch,
+  computeFetchOutcomeUpdate,
+  PriceFetchAttemptOutcome,
+} from "./price-fetch-status";
+import {
   DEFAULT_QUOTE_PROVIDER,
   QuoteProviderRegistry,
 } from "./providers/quote-provider.registry";
@@ -146,23 +152,6 @@ function sourceFor(provider: QuoteProviderName | undefined): string {
   return provider === "msn" ? "msn_finance" : "yahoo_finance";
 }
 
-/**
- * A security is eligible for price refresh when skipPriceUpdates is false,
- * OR the user has explicitly opted in by setting a per-security provider
- * override or supplying an MSN Instrument ID. The latter exists because
- * QIF/OFX imports auto-flag securities with skipPriceUpdates=true (since the
- * symbol is auto-generated and may not be a real ticker), and we don't want
- * the user to also have to manually clear that flag after picking a provider.
- */
-function isRefreshEligible(s: {
-  skipPriceUpdates: boolean;
-  quoteProvider: string | null;
-  msnInstrumentId: string | null;
-}): boolean {
-  if (!s.skipPriceUpdates) return true;
-  return Boolean(s.quoteProvider) || Boolean(s.msnInstrumentId);
-}
-
 export interface PriceUpdateResult {
   symbol: string;
   success: boolean;
@@ -213,6 +202,16 @@ interface UserContext {
 interface HistoricalWithProvider {
   prices: HistoricalPrice[];
   provider: QuoteProviderName;
+}
+
+/**
+ * The result of one quote refresh for a security: the quote when one came back,
+ * and whether the failure (if any) was a provider "no such symbol" answer that
+ * counts toward auto-disable. `quote` present always implies `absent === false`.
+ */
+interface QuoteRefreshResolution {
+  quote: QuoteResult | null;
+  absent: boolean;
 }
 
 @Injectable()
@@ -279,7 +278,7 @@ export class SecurityPriceService {
   private async fetchQuoteWithFallback(
     security: Security,
     ctx: UserContext,
-  ): Promise<QuoteResult | null> {
+  ): Promise<QuoteRefreshResolution> {
     const ordered = this.providers.resolveForSecurity(
       security,
       ctx.defaultQuoteProvider,
@@ -289,22 +288,62 @@ export class SecurityPriceService {
       `Refresh ${security.symbol}: override=${security.quoteProvider ?? "(none)"} default=${ctx.defaultQuoteProvider} → trying [${ordered.map((p) => p.name).join(", ")}]`,
     );
 
+    // Only a provider answering "no such symbol" (404/422) sets this. A
+    // throttle, timeout or outage never does, so a provider being down cannot
+    // auto-disable a security. `absent` is only reported when at least one
+    // provider said so and none produced a usable quote.
+    let sawAbsent = false;
+
     for (const provider of ordered) {
       try {
-        const quote = await provider.fetchQuote(
-          security.symbol,
-          security.exchange,
-          this.optsFor(provider, security, ctx),
-        );
-        if (quote && quote.regularMarketPrice !== undefined) {
-          this.logger.log(
-            `Refresh ${security.symbol}: ${provider.name} returned price=${quote.regularMarketPrice}`,
+        const opts = this.optsFor(provider, security, ctx);
+        if (provider.fetchQuoteOutcome) {
+          const outcome = await provider.fetchQuoteOutcome(
+            security.symbol,
+            security.exchange,
+            opts,
           );
-          return { ...quote, provider: provider.name };
+          if (
+            outcome.kind === "ok" &&
+            outcome.quote.regularMarketPrice !== undefined
+          ) {
+            this.logger.log(
+              `Refresh ${security.symbol}: ${provider.name} returned price=${outcome.quote.regularMarketPrice}`,
+            );
+            return {
+              quote: { ...outcome.quote, provider: provider.name },
+              absent: false,
+            };
+          }
+          if (outcome.kind === "absent") sawAbsent = true;
+          this.logger.log(
+            `Refresh ${security.symbol}: ${provider.name} ${
+              outcome.kind === "absent"
+                ? "reports no such symbol"
+                : "returned no usable price"
+            }`,
+          );
+        } else {
+          const quote = await provider.fetchQuote(
+            security.symbol,
+            security.exchange,
+            opts,
+          );
+          if (quote && quote.regularMarketPrice !== undefined) {
+            this.logger.log(
+              `Refresh ${security.symbol}: ${provider.name} returned price=${quote.regularMarketPrice}`,
+            );
+            return {
+              quote: { ...quote, provider: provider.name },
+              absent: false,
+            };
+          }
+          // A provider without the richer classification cannot tell absent
+          // from unavailable, so a null never counts toward auto-disable.
+          this.logger.log(
+            `Refresh ${security.symbol}: ${provider.name} returned no usable price`,
+          );
         }
-        this.logger.log(
-          `Refresh ${security.symbol}: ${provider.name} returned no usable price`,
-        );
       } catch (err) {
         this.logger.warn(
           `${provider.name} fetchQuote failed for ${security.symbol}: ${err instanceof Error ? err.message : String(err)}`,
@@ -314,7 +353,31 @@ export class SecurityPriceService {
     this.logger.warn(
       `Refresh ${security.symbol}: no provider returned a price`,
     );
-    return null;
+    return { quote: null, absent: sawAbsent };
+  }
+
+  /**
+   * Fold one refresh outcome into the security's price-fetch state (streak,
+   * auto-disable, re-enable) and persist only the fields that changed. Never
+   * throws -- a metadata write must not fail a refresh that otherwise worked.
+   */
+  private async applyFetchOutcome(
+    security: Security,
+    outcome: PriceFetchAttemptOutcome,
+    now: Date,
+  ): Promise<void> {
+    const update = computeFetchOutcomeUpdate(security, outcome, now);
+    if (!update) return;
+    Object.assign(security, update);
+    try {
+      await withScopedDb(this.dataSource, (m) =>
+        m.getRepository(Security).update(security.id, update),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to persist price-fetch status for ${security.symbol}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   private async fetchHistoricalWithFallback(
@@ -508,6 +571,7 @@ export class SecurityPriceService {
 
   private async refreshAllPricesGlobally(): Promise<PriceRefreshSummary> {
     const startTime = Date.now();
+    const now = new Date();
     this.logger.log("Starting price refresh for all securities");
 
     const allActive = await withScopedDb(this.dataSource, (m) =>
@@ -515,7 +579,9 @@ export class SecurityPriceService {
         where: { isActive: true },
       }),
     );
-    const securities = allActive.filter((s) => isRefreshEligible(s));
+    // `active` securities plus `auto_disabled` ones due for a re-probe; a
+    // user-`disabled` security is never fetched here.
+    const securities = allActive.filter((s) => shouldAttemptFetch(s, now));
 
     if (securities.length === 0) {
       return {
@@ -560,7 +626,7 @@ export class SecurityPriceService {
 
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i];
-      const quote = quotes[i];
+      const { quote, absent } = quotes[i];
 
       if (!quote || quote.regularMarketPrice === undefined) {
         for (const security of group) {
@@ -569,6 +635,7 @@ export class SecurityPriceService {
             success: false,
             error: "No price data available",
           });
+          if (absent) await this.applyFetchOutcome(security, "absent", now);
           failed++;
         }
         continue;
@@ -600,6 +667,9 @@ export class SecurityPriceService {
         try {
           await this.savePriceData(security.id, tradingDate, quote);
           await this.persistMarketSession(security, quote);
+          // A success clears the streak and re-enables an auto-disabled
+          // security whose re-probe just found data.
+          await this.applyFetchOutcome(security, "success", now);
           results.push({
             symbol: security.symbol,
             success: true,
@@ -636,20 +706,21 @@ export class SecurityPriceService {
   async refreshPricesForSecurities(
     securityIds: string[],
   ): Promise<PriceRefreshSummary> {
+    const now = new Date();
     const securities = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Security).find({
         where: { id: In(securityIds), isActive: true },
       }),
     );
-    const eligible = securities.filter((s) => isRefreshEligible(s));
+    const eligible = securities.filter((s) => shouldAttemptFetch(s, now));
     const skipped = securities.length - eligible.length;
     if (skipped > 0) {
       const skippedSymbols = securities
-        .filter((s) => !isRefreshEligible(s))
+        .filter((s) => !shouldAttemptFetch(s, now))
         .map((s) => s.symbol)
         .join(", ");
       this.logger.log(
-        `Skipping ${skipped} security/securities flagged with skipPriceUpdates and no explicit provider override: ${skippedSymbols}`,
+        `Skipping ${skipped} security/securities not eligible for a price fetch (skipPriceUpdates without a provider, or price fetching disabled): ${skippedSymbols}`,
       );
     }
     securities.length = 0;
@@ -688,7 +759,7 @@ export class SecurityPriceService {
 
     for (let i = 0; i < securities.length; i++) {
       const security = securities[i];
-      const quote = quotes[i];
+      const { quote, absent } = quotes[i];
 
       if (!quote || quote.regularMarketPrice === undefined) {
         results.push({
@@ -696,6 +767,7 @@ export class SecurityPriceService {
           success: false,
           error: "No price data available",
         });
+        if (absent) await this.applyFetchOutcome(security, "absent", now);
         failed++;
         continue;
       }
@@ -721,6 +793,7 @@ export class SecurityPriceService {
         const tradingDate = formatDateYMD(getTradingDateFromQuote(quote));
         await this.savePriceData(security.id, tradingDate, quote);
         await this.persistMarketSession(security, quote);
+        await this.applyFetchOutcome(security, "success", now);
         results.push({
           symbol: security.symbol,
           success: true,
@@ -1070,7 +1143,7 @@ export class SecurityPriceService {
         where: { isActive: true },
       }),
     );
-    const securities = allActive.filter((s) => isRefreshEligible(s));
+    const securities = allActive.filter((s) => canFetchActive(s));
 
     const userContexts = await this.loadUserContexts(
       securities.map((s) => s.userId),
@@ -1372,7 +1445,7 @@ export class SecurityPriceService {
     const allActive = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Security).find({ where: { isActive: true } }),
     );
-    const securities = allActive.filter((s) => isRefreshEligible(s));
+    const securities = allActive.filter((s) => canFetchActive(s));
     if (securities.length === 0) {
       return {
         totalSecurities: 0,
@@ -1537,6 +1610,9 @@ export class SecurityPriceService {
     opts: { force?: boolean } = {},
   ): Promise<number> {
     if (security.skipPriceUpdates && !opts.force) return 0;
+    // A user who turned price fetching off gets no background history fetches
+    // either; `force` (the manual per-security backfill) still overrides.
+    if (security.priceFetchStatus === "disabled" && !opts.force) return 0;
 
     const [ctx] =
       (await this.loadUserContexts([security.userId])).values() || [];
@@ -1599,9 +1675,9 @@ export class SecurityPriceService {
    * the total null -- rather than failing the request. Nothing here invents a
    * price.
    *
-   * `skipPriceUpdates` is honoured (via `isRefreshEligible`): an import that
-   * auto-generated a symbol marked it precisely because fetching against it is
-   * pointless.
+   * Eligibility is honoured (via `canFetchActive`): a symbol an import
+   * auto-generated (`skipPriceUpdates`), or one whose price fetching is
+   * disabled/auto-disabled, is skipped -- fetching against it is pointless.
    *
    * Returns the number of daily bars persisted.
    */
@@ -1618,7 +1694,7 @@ export class SecurityPriceService {
     const securities = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Security).find({ where: { id: In(due) } }),
     );
-    const eligible = securities.filter((s) => isRefreshEligible(s));
+    const eligible = securities.filter((s) => canFetchActive(s));
     if (eligible.length === 0) return 0;
 
     const contexts = await this.loadUserContexts(eligible.map((s) => s.userId));

@@ -38,6 +38,55 @@ describe("YahooFinanceService", () => {
     (service as any).crumbExpiresAt = Date.now() + 3600000;
   };
 
+  describe("fetchQuoteOutcome", () => {
+    it("classifies a valid quote as ok", async () => {
+      mockFetchResponse({
+        chart: {
+          result: [{ meta: { symbol: "AAPL", regularMarketPrice: 185.5 } }],
+        },
+      });
+
+      const outcome = await service.fetchQuoteOutcome("AAPL", "NASDAQ");
+
+      expect(outcome.kind).toBe("ok");
+      if (outcome.kind === "ok") {
+        expect(outcome.quote.regularMarketPrice).toBe(185.5);
+      }
+    });
+
+    it("classifies a 404 as absent (the symbol does not exist)", async () => {
+      mockFetchResponse({}, false, 404);
+
+      const outcome = await service.fetchQuoteOutcome("NOPE", "NASDAQ");
+
+      expect(outcome.kind).toBe("absent");
+    });
+
+    it("classifies a 500 as unavailable, never absent", async () => {
+      mockFetchResponse({}, false, 500);
+
+      const outcome = await service.fetchQuoteOutcome("AAPL", "NASDAQ");
+
+      expect(outcome.kind).toBe("unavailable");
+    });
+
+    it("classifies a network failure as unavailable", async () => {
+      mockFetchError(new Error("Network failure"));
+
+      const outcome = await service.fetchQuoteOutcome("AAPL", "NASDAQ");
+
+      expect(outcome.kind).toBe("unavailable");
+    });
+
+    it("classifies a 200 body with no meta as unavailable", async () => {
+      mockFetchResponse({ chart: { result: [] } });
+
+      const outcome = await service.fetchQuoteOutcome("AAPL", "NASDAQ");
+
+      expect(outcome.kind).toBe("unavailable");
+    });
+  });
+
   describe("fetchQuote", () => {
     it("should fetch and return quote data for a valid symbol", async () => {
       mockFetchResponse({

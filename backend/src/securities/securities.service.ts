@@ -643,6 +643,18 @@ export class SecuritiesService {
       security.quoteProvider = updateSecurityDto.quoteProvider ?? null;
     if (updateSecurityDto.msnInstrumentId !== undefined)
       security.msnInstrumentId = updateSecurityDto.msnInstrumentId ?? null;
+    if (updateSecurityDto.priceFetchStatus !== undefined) {
+      // The DTO admits only 'active' / 'disabled'; 'auto_disabled' is the
+      // system's conclusion, never a client instruction. Re-enabling ('active')
+      // clears the auto-disable bookkeeping so a fresh 404 streak has to build
+      // up again before the security is auto-disabled once more.
+      security.priceFetchStatus = updateSecurityDto.priceFetchStatus;
+      if (updateSecurityDto.priceFetchStatus === "active") {
+        security.priceFetchFailureCount = 0;
+        security.priceFetchLastFailureAt = null;
+        security.priceFetchAutoDisabledAt = null;
+      }
+    }
     if (updateSecurityDto.countryWeightings !== undefined)
       security.countryWeightings = this.normalizeAllocationWeightings(
         updateSecurityDto.countryWeightings,

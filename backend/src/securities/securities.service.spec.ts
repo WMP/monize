@@ -650,6 +650,38 @@ describe("SecuritiesService", () => {
       expect(queryRunnerManager.save).toHaveBeenCalled();
     });
 
+    it("disables price fetching when the status is set to disabled", async () => {
+      securitiesRepository.findOne.mockResolvedValue({
+        ...mockSecurity,
+        priceFetchStatus: "active",
+      });
+
+      const result = await service.update("user-1", "sec-1", {
+        priceFetchStatus: "disabled",
+      });
+
+      expect(result.priceFetchStatus).toBe("disabled");
+    });
+
+    it("re-enabling clears the auto-disable bookkeeping", async () => {
+      securitiesRepository.findOne.mockResolvedValue({
+        ...mockSecurity,
+        priceFetchStatus: "auto_disabled",
+        priceFetchFailureCount: 12,
+        priceFetchLastFailureAt: new Date("2026-01-01"),
+        priceFetchAutoDisabledAt: new Date("2026-01-01"),
+      });
+
+      const result = await service.update("user-1", "sec-1", {
+        priceFetchStatus: "active",
+      });
+
+      expect(result.priceFetchStatus).toBe("active");
+      expect(result.priceFetchFailureCount).toBe(0);
+      expect(result.priceFetchLastFailureAt).toBeNull();
+      expect(result.priceFetchAutoDisabledAt).toBeNull();
+    });
+
     it("normalizes a supplied asset allocation and clears it when emptied", async () => {
       securitiesRepository.findOne.mockResolvedValue({
         ...mockSecurity,

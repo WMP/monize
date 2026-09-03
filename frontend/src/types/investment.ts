@@ -39,6 +39,17 @@ export interface Security {
   isActive: boolean;
   isFavourite: boolean;
   skipPriceUpdates: boolean;
+  /**
+   * Whether we ask the quote provider for this security's prices. 'active' =
+   * fetch normally; 'auto_disabled' = the system stopped after repeated provider
+   * "no such symbol" (404) answers and re-probes occasionally; 'disabled' = the
+   * user turned fetching off. Only 'active'/'disabled' are user-settable.
+   */
+  priceFetchStatus?: 'active' | 'auto_disabled' | 'disabled';
+  /** Consecutive provider "no such symbol" answers; reset on any success. */
+  priceFetchFailureCount?: number;
+  /** When the system auto-disabled fetching (null unless auto_disabled). */
+  priceFetchAutoDisabledAt?: string | null;
   sector: string | null;
   industry: string | null;
   sectorWeightings: { sector: string; weight: number }[] | null;
@@ -581,6 +592,8 @@ export interface CreateSecurityData {
   quoteProvider?: QuoteProviderName | null;
   msnInstrumentId?: string;
   isFavourite?: boolean;
+  /** Whether to fetch prices from the provider. Only 'active'/'disabled' are settable by hand. */
+  priceFetchStatus?: 'active' | 'disabled';
   /** Manual ETF/fund country breakdown; weight is a decimal 0-1 (like sectorWeightings). */
   countryWeightings?: { name: string; weight: number }[];
   /** Manual ETF/fund asset-class breakdown (free-text names); weight is a decimal 0-1. */

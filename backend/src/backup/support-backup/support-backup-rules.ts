@@ -346,6 +346,12 @@ export const RULES: Record<string, TableRules> = {
     is_active: keep,
     is_favourite: keep,
     skip_price_updates: keep,
+    // Provider-fetch control: an enum, a count and two timestamps -- structure
+    // and flags about the provider fetch, nothing that re-identifies the symbol.
+    price_fetch_status: keep,
+    price_fetch_failure_count: keep,
+    price_fetch_last_failure_at: keep,
+    price_fetch_auto_disabled_at: keep,
     sector: keep,
     industry: keep,
     sector_weightings: keep, // public weightings

@@ -107,6 +107,26 @@ export interface QuoteProviderOptions {
   preferredExchanges?: string[];
 }
 
+/**
+ * A quote attempt classified for the price-fetch state machine.
+ *
+ *   - "ok": a usable quote came back.
+ *   - "absent": the provider answered *about this symbol* that it does not exist
+ *     (HTTP 404/422, or the equivalent error code in a 200 body). This is the
+ *     only outcome that counts toward auto-disabling a security -- it is a fact
+ *     about the symbol, not about the provider's health.
+ *   - "unavailable": anything else -- a throttle, a timeout, a breaker refusal,
+ *     an outage, or a lookup that could not resolve the instrument. Says nothing
+ *     about whether the symbol exists, so it never counts toward auto-disable.
+ *
+ * Distinct from `fetchQuote` returning `null`, which collapses "absent" and
+ * "unavailable" into one value a caller cannot tell apart.
+ */
+export type QuoteFetchOutcome =
+  | { kind: "ok"; quote: QuoteResult }
+  | { kind: "absent" }
+  | { kind: "unavailable" };
+
 export interface QuoteProvider {
   readonly name: QuoteProviderName;
 
@@ -115,6 +135,19 @@ export interface QuoteProvider {
     exchange: string | null,
     opts?: QuoteProviderOptions,
   ): Promise<QuoteResult | null>;
+
+  /**
+   * Like `fetchQuote`, but classifies a null result as "absent" (the provider
+   * says the symbol does not exist) or "unavailable" (a transient failure), so
+   * the price-fetch state machine only auto-disables on a genuine 404-type
+   * answer. Optional: a provider that does not implement it is treated as
+   * "unavailable" whenever `fetchQuote` returns null, which never auto-disables.
+   */
+  fetchQuoteOutcome?(
+    symbol: string,
+    exchange: string | null,
+    opts?: QuoteProviderOptions,
+  ): Promise<QuoteFetchOutcome>;
 
   fetchHistorical(
     symbol: string,

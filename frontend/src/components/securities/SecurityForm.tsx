@@ -67,6 +67,9 @@ const buildSecuritySchema = (t: (key: string) => string) => z.object({
   quoteProvider: z.enum(['', 'yahoo', 'msn']).optional(),
   msnInstrumentId: z.string().max(50).optional(),
   isFavourite: z.boolean().optional(),
+  // 'auto_disabled' is carried through so an auto-paused security keeps its state
+  // when the user saves an unrelated edit; only 'active'/'disabled' are ever sent.
+  priceFetchStatus: z.enum(['active', 'auto_disabled', 'disabled']).optional(),
 });
 
 type SecurityFormData = z.infer<ReturnType<typeof buildSecuritySchema>>;
@@ -231,6 +234,7 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       quoteProvider: security?.quoteProvider || '',
       msnInstrumentId: security?.msnInstrumentId || '',
       isFavourite: security?.isFavourite || false,
+      priceFetchStatus: security?.priceFetchStatus ?? 'active',
     },
   });
 
@@ -380,6 +384,7 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
         quoteProvider: '',
         msnInstrumentId: '',
         isFavourite: false,
+        priceFetchStatus: 'active',
       });
       setSelectedTagIds([]);
       setCountryRows([]);
@@ -457,6 +462,19 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       // backend clears any existing override. Undefined would be stripped by
       // axios and treated as "no change", leaving the previous override in place.
       quoteProvider: data.quoteProvider === '' ? null : data.quoteProvider,
+      // Only the two user-settable states are sent, and only when they differ
+      // from what the security already holds: leaving an 'auto_disabled' security
+      // untouched sends nothing (it stays paused), while unrelated edits to an
+      // active security do not reset its 404 streak.
+      priceFetchStatus: (() => {
+        const next =
+          data.priceFetchStatus === 'disabled'
+            ? 'disabled'
+            : data.priceFetchStatus === 'active'
+              ? 'active'
+              : undefined;
+        return next && next !== security?.priceFetchStatus ? next : undefined;
+      })(),
       // Empty string rather than undefined, so clearing an address actually
       // clears it: the backend normalises "" to null, where an omitted field
       // would leave the previous value in place.
@@ -625,6 +643,45 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
           placeholder={t('form.exchangePlaceholder')}
         />
       )}
+
+      {/* Price fetching control: lets the user turn off provider lookups for a
+          security no data provider carries, and surfaces the system's own
+          auto-pause after repeated 404s. */}
+      <div>
+        <Select
+          label={t('form.priceFetchLabel')}
+          options={[
+            ...(watch('priceFetchStatus') === 'auto_disabled'
+              ? [
+                  {
+                    value: 'auto_disabled',
+                    label: t('form.priceFetchAutoPaused'),
+                  },
+                ]
+              : []),
+            { value: 'active', label: t('form.priceFetchActive') },
+            { value: 'disabled', label: t('form.priceFetchDisabled') },
+          ]}
+          value={watch('priceFetchStatus') || 'active'}
+          onChange={(e) =>
+            setValue(
+              'priceFetchStatus',
+              e.target.value as 'active' | 'auto_disabled' | 'disabled',
+              { shouldDirty: true },
+            )
+          }
+        />
+        {watch('priceFetchStatus') === 'auto_disabled' && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            {t('form.priceFetchAutoPausedHelp')}
+          </p>
+        )}
+        {watch('priceFetchStatus') === 'disabled' && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            {t('form.priceFetchDisabledHelp')}
+          </p>
+        )}
+      </div>
 
       {/* Favourite star toggle */}
       <button

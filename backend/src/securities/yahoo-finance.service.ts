@@ -6,6 +6,7 @@ import {
   QuoteProviderName,
   QuoteProviderOptions,
   QuoteResult,
+  QuoteFetchOutcome,
   SecurityLookupResult,
   HistoricalPrice,
   IntradayInterval,
@@ -515,24 +516,48 @@ export class YahooFinanceService implements QuoteProvider {
   async fetchQuote(
     symbol: string,
     exchange: string | null = null,
-    _opts?: QuoteProviderOptions,
+    opts?: QuoteProviderOptions,
   ): Promise<QuoteResult | null> {
-    const primary = this.getYahooSymbol(symbol, exchange);
-    const quote = await this.fetchQuoteRaw(primary);
-    if (quote) return quote;
-
-    if (primary === symbol) {
-      for (const altSymbol of this.getAlternateSymbols(symbol)) {
-        const alt = await this.fetchQuoteRaw(altSymbol);
-        if (alt) return alt;
-      }
-    }
-    return null;
+    const outcome = await this.fetchQuoteOutcome(symbol, exchange, opts);
+    return outcome.kind === "ok" ? outcome.quote : null;
   }
 
+  async fetchQuoteOutcome(
+    symbol: string,
+    exchange: string | null = null,
+    _opts?: QuoteProviderOptions,
+  ): Promise<QuoteFetchOutcome> {
+    const primary = this.getYahooSymbol(symbol, exchange);
+    const primaryOutcome = await this.fetchQuoteRawOutcome(primary);
+    if (primaryOutcome.kind === "ok") return primaryOutcome;
+
+    let sawUnavailable = primaryOutcome.kind === "unavailable";
+    if (primary === symbol) {
+      for (const altSymbol of this.getAlternateSymbols(symbol)) {
+        const altOutcome = await this.fetchQuoteRawOutcome(altSymbol);
+        if (altOutcome.kind === "ok") return altOutcome;
+        if (altOutcome.kind === "unavailable") sawUnavailable = true;
+      }
+    }
+
+    // No usable quote came back. Only claim the symbol is absent when every
+    // attempt said so definitively -- a single "unavailable" (throttle, outage,
+    // breaker refusal) means we cannot rule the symbol back in, so it must not
+    // count toward auto-disable.
+    return { kind: sawUnavailable ? "unavailable" : "absent" };
+  }
+
+  /** Thin wrapper kept for the batch `fetchQuotes` path. */
   private async fetchQuoteRaw(
     yahooSymbol: string,
   ): Promise<QuoteResult | null> {
+    const outcome = await this.fetchQuoteRawOutcome(yahooSymbol);
+    return outcome.kind === "ok" ? outcome.quote : null;
+  }
+
+  private async fetchQuoteRawOutcome(
+    yahooSymbol: string,
+  ): Promise<QuoteFetchOutcome> {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
 
@@ -547,7 +572,11 @@ export class YahooFinanceService implements QuoteProvider {
         this.logger.warn(
           `Yahoo Finance API returned ${response.status} for ${yahooSymbol}`,
         );
-        return null;
+        return {
+          kind: SYMBOL_ABSENT_STATUSES.has(response.status)
+            ? "absent"
+            : "unavailable",
+        };
       }
 
       const data = await this.readBody<any>(response);
@@ -569,7 +598,7 @@ export class YahooFinanceService implements QuoteProvider {
           (v): v is number => v != null && !Number.isNaN(v),
         );
 
-        return {
+        const quote: QuoteResult = {
           symbol: meta.symbol,
           regularMarketPrice: convert(meta.regularMarketPrice),
           regularMarketOpen: convert(meta.regularMarketOpen ?? openFromSeries),
@@ -595,9 +624,21 @@ export class YahooFinanceService implements QuoteProvider {
           currencyCode: meta.currency ? (gbx ? "GBP" : meta.currency) : null,
           provider: "yahoo",
         };
+        return { kind: "ok", quote };
       }
 
-      return null;
+      // A 200 body with no meta: Yahoo also reports "no such symbol" through
+      // chart.error.code (e.g. "Not Found"), distinct from its own faults.
+      const errorCode =
+        typeof data.chart?.error?.code === "string"
+          ? data.chart.error.code
+          : null;
+      return {
+        kind:
+          errorCode && SYMBOL_ABSENT_ERROR_CODES.has(errorCode)
+            ? "absent"
+            : "unavailable",
+      };
     } catch (error) {
       this.health.logFailure(
         this.logger,
@@ -605,7 +646,7 @@ export class YahooFinanceService implements QuoteProvider {
         `quote for ${yahooSymbol}`,
         error,
       );
-      return null;
+      return { kind: "unavailable" };
     }
   }
 

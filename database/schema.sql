@@ -563,6 +563,10 @@ CREATE TABLE securities (
     is_active BOOLEAN DEFAULT true,
     is_favourite BOOLEAN NOT NULL DEFAULT false, -- pinned to the dashboard Favourite Securities widget
     skip_price_updates BOOLEAN DEFAULT false, -- for auto-generated symbols that can't be looked up
+    price_fetch_status VARCHAR(20) NOT NULL DEFAULT 'active', -- 'active' | 'auto_disabled' (system, after repeated 404s) | 'disabled' (user)
+    price_fetch_failure_count INTEGER NOT NULL DEFAULT 0, -- consecutive provider "no such symbol" (404/422) answers; reset on any success
+    price_fetch_last_failure_at TIMESTAMP, -- instant of the most recent 404-type answer; drives the re-probe cooldown
+    price_fetch_auto_disabled_at TIMESTAMP, -- when the system auto-disabled fetching (null unless auto_disabled)
     sector VARCHAR(100),             -- stock sector from Yahoo Finance (e.g. 'Technology')
     industry VARCHAR(100),           -- stock industry (e.g. 'Consumer Electronics')
     sector_weightings JSONB,         -- ETF sector breakdown [{sector, weight}] (weight is a decimal 0-1, from Yahoo)
@@ -581,7 +585,9 @@ CREATE TABLE securities (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, symbol),
     CONSTRAINT securities_quote_provider_check
-      CHECK (quote_provider IS NULL OR quote_provider IN ('yahoo','msn'))
+      CHECK (quote_provider IS NULL OR quote_provider IN ('yahoo','msn')),
+    CONSTRAINT securities_price_fetch_status_check
+      CHECK (price_fetch_status IN ('active','auto_disabled','disabled'))
 );
 
 CREATE INDEX idx_securities_user_id ON securities(user_id);

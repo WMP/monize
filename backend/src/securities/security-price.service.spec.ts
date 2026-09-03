@@ -9,6 +9,7 @@ import {
   MAX_PRICE_HISTORY_ROWS,
 } from "./dto/price-history-query.dto";
 import { Security } from "./entities/security.entity";
+import { PRICE_FETCH_ABSENT_THRESHOLD } from "./price-fetch-status";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { createTestProviderHealth } from "../test-helpers/provider-health-testing";
 import { ProviderHealthService } from "../provider-health/provider-health.service";
@@ -856,6 +857,132 @@ describe("SecurityPriceService", () => {
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe("No price data available");
+    });
+  });
+
+  describe("price-fetch auto-disable and re-probe", () => {
+    /** A 404 for every fetch: the provider answering "no such symbol". */
+    function fetchAlways404(): void {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse({}, false, 404),
+        ) as jest.Mock;
+    }
+
+    /** A 500 for every fetch: a transient failure, never an absence. */
+    function fetchAlways500(): void {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse({}, false, 500),
+        ) as jest.Mock;
+    }
+
+    it("auto-disables an active security when a 404 reaches the streak threshold", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "active",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD - 1,
+          priceFetchLastFailureAt: null,
+          priceFetchAutoDisabledAt: null,
+        },
+      ]);
+      fetchAlways404();
+
+      await service.refreshAllPrices();
+
+      expect(securitiesRepository.update).toHaveBeenCalledWith(
+        "sec-1",
+        expect.objectContaining({
+          priceFetchStatus: "auto_disabled",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD,
+          priceFetchAutoDisabledAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it("counts only a definitive 404, never a transient failure", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "active",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD - 1,
+          priceFetchLastFailureAt: null,
+          priceFetchAutoDisabledAt: null,
+        },
+      ]);
+      fetchAlways500();
+
+      await service.refreshAllPrices();
+
+      // A 5xx says nothing about whether the symbol exists, so the streak must
+      // not advance and the security must not be auto-disabled.
+      expect(securitiesRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("does not fetch a user-disabled security at all", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        { ...mockSecurity, priceFetchStatus: "disabled" },
+      ]);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await service.refreshAllPrices();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.totalSecurities).toBe(0);
+    });
+
+    it("re-enables an auto-disabled security when a re-probe succeeds", async () => {
+      const staleFailure = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "auto_disabled",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD,
+          priceFetchLastFailureAt: staleFailure,
+          priceFetchAutoDisabledAt: staleFailure,
+        },
+      ]);
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(makeYahooChartResponse()),
+        ) as jest.Mock;
+
+      const result = await service.refreshAllPrices();
+
+      expect(result.updated).toBe(1);
+      expect(securitiesRepository.update).toHaveBeenCalledWith(
+        "sec-1",
+        expect.objectContaining({
+          priceFetchStatus: "active",
+          priceFetchFailureCount: 0,
+          priceFetchLastFailureAt: null,
+          priceFetchAutoDisabledAt: null,
+        }),
+      );
+    });
+
+    it("does not re-probe an auto-disabled security before its cooldown elapses", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          priceFetchStatus: "auto_disabled",
+          priceFetchFailureCount: PRICE_FETCH_ABSENT_THRESHOLD,
+          priceFetchLastFailureAt: new Date(),
+          priceFetchAutoDisabledAt: new Date(),
+        },
+      ]);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await service.refreshAllPrices();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.totalSecurities).toBe(0);
     });
   });
 
