@@ -36,9 +36,13 @@
  *   date, payee, amount, balance, category, status, account and tags across
  *   two lines, with description, ref #, attachments and the row actions
  *   omitted (the long-press action sheet already carries the actions). The
- *   column header row is hidden there, because the card labels its own values.
- *   Compact and Dense keep the tier table on a phone, and every non-phone
- *   width keeps it at all three levels. Column presence in the TIER TABLE is
+ *   full column header is replaced there by a slim control header that keeps
+ *   the day/month date toggle and the select-all-on-page box, because the card
+ *   labels its own values. Compact and Dense keep the tier table on a phone,
+ *   and so do the foreign-currency fee surfaces (`showFxColumns`) at every
+ *   level, since the card does not carry their paid-currency / amount / fee
+ *   columns. Every non-phone width keeps it at all three levels. Column
+ *   presence in the TIER TABLE is
  *   still never density-dependent: the exception swaps one layout for another,
  *   it does not add or remove a column from the table this file describes.
  * - **The Account column is structural, not responsive.** It renders only when

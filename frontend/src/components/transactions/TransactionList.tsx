@@ -151,6 +151,42 @@ function registerStaleReason(
   return reason === 'missed' ? reason : undefined;
 }
 
+/**
+ * The day/month date-view toggle that drops the year from the Date column. It
+ * lives in the register's column header and, on a phone at Normal density, in
+ * the wrapped card's slim control header -- one button, so the two cannot
+ * drift.
+ */
+function CompactDatesToggle({
+  active,
+  onToggle,
+  label,
+  title,
+}: {
+  active: boolean;
+  onToggle: () => void;
+  label: string;
+  title: string;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      aria-pressed={active}
+      aria-label={label}
+      title={title}
+      className={`rounded p-0.5 focus-visible:outline-2 focus-visible:outline-blue-500 ${
+        active
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+      }`}
+    >
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2m8-16h2a2 2 0 012 2v2m-4 12h2a2 2 0 002-2v-2M9 12h6" />
+      </svg>
+    </button>
+  );
+}
+
 export function TransactionList({
   transactions,
   onEdit,
@@ -205,7 +241,11 @@ export function TransactionList({
   // sideways; Compact and Dense keep the tier table, unchanged, and so does
   // every non-phone width. Exactly one branch renders per row, chosen here.
   const isMobile = useIsMobile();
-  const wrapped = isMobile && density === 'normal';
+  // The foreign-currency fee surfaces (`showFxColumns`) keep the tier table on
+  // a phone: their whole subject is the paid-currency, paid-amount and fee
+  // columns, which the card does not carry, so wrapping there would hide the
+  // very data the surface exists to show.
+  const wrapped = isMobile && density === 'normal' && !showFxColumns;
   const { compactMobileDates, toggleCompactMobileDates } = useCompactMobileDates();
   const compactPadding = registerDateColumnPadding(compactMobileDates);
 
@@ -531,10 +571,38 @@ export function TransactionList({
           viewport overstates this width by the page padding around it. */}
       <div className={`overflow-x-auto ${REGISTER_TABLE_CONTAINER}`}>
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          {/* The wrapped card carries its own meaning (each value sits beside
-              the thing it describes), so the column header row is dropped on
-              phones rather than labelling a table that is not being drawn. */}
-          <thead className={`bg-gray-50 dark:bg-gray-800 ${wrapped ? 'hidden' : ''}`}>
+          {/* On a phone the wrapped card labels its own values, so the full
+              column header is dropped -- but the two controls that live in the
+              header row must not go with it: the day/month date toggle (the
+              register keeps it selectable at every width) and, in selection
+              mode, the select-all-on-page box. A slim control header carries
+              exactly those. */}
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            {wrapped ? (
+              <tr>
+                <th className={`${headerPadding} text-left`}>
+                  <div className="flex items-center gap-3">
+                    {selectionMode && (
+                      <input
+                        type="checkbox"
+                        checked={isAllOnPageSelected || false}
+                        onChange={() => onToggleAllOnPage?.()}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                      />
+                    )}
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      {t('list.header.date')}
+                      <CompactDatesToggle
+                        active={compactMobileDates}
+                        onToggle={toggleCompactMobileDates}
+                        label={t('list.dateDisplay.toggleLabel')}
+                        title={t('list.dateDisplay.toggleTitle')}
+                      />
+                    </span>
+                  </div>
+                </th>
+              </tr>
+            ) : (
             <tr>
               {selectionMode && (
                 <th className={`${headerPadding} w-10`}>
@@ -554,21 +622,12 @@ export function TransactionList({
                       the part a register row can spare -- and now offered at
                       every width, so the day/month view is a choice rather
                       than something only phones get. */}
-                  <button
-                    onClick={toggleCompactMobileDates}
-                    aria-pressed={compactMobileDates}
-                    aria-label={t('list.dateDisplay.toggleLabel')}
+                  <CompactDatesToggle
+                    active={compactMobileDates}
+                    onToggle={toggleCompactMobileDates}
+                    label={t('list.dateDisplay.toggleLabel')}
                     title={t('list.dateDisplay.toggleTitle')}
-                    className={`rounded p-0.5 focus-visible:outline-2 focus-visible:outline-blue-500 ${
-                      compactMobileDates
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2m8-16h2a2 2 0 012 2v2m-4 12h2a2 2 0 002-2v-2M9 12h6" />
-                    </svg>
-                  </button>
+                  />
                 </span>
               </th>
               {/* Structural, not responsive: on a single account's page every
@@ -609,6 +668,7 @@ export function TransactionList({
               <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('status')}`}>{t('list.header.status')}</th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('actions')} sticky right-0 bg-gray-50 dark:bg-gray-800`}>{t('list.header.actions')}</th>
             </tr>
+            )}
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {transactions.map((transaction, index) => {

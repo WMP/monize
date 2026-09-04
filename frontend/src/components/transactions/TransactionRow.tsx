@@ -382,11 +382,6 @@ export const TransactionRow = memo(function TransactionRow({
                   </div>
                 )}
               </div>
-              {transaction.referenceNumber && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {t('list.row.ref', { number: transaction.referenceNumber })}
-                </div>
-              )}
             </div>
             <div
               className={`text-right whitespace-nowrap text-sm font-medium ${isVoid ? 'line-through' : ''}`}

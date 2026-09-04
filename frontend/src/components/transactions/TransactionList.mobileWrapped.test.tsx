@@ -135,10 +135,13 @@ describe('the register on a phone', () => {
     // rather than a table row with the columns squeezed.
     expect(rows[0].querySelectorAll('td')).toHaveLength(1);
 
-    // The card labels its own values, so the column header is dropped.
+    // The full column header is replaced by a slim control header: one cell,
+    // none of the column labels, but the day/month date toggle still reachable.
     const head = container.querySelector('thead');
     expect(head).toBeTruthy();
-    expect(head!.className).toContain('hidden');
+    expect(head!.querySelectorAll('th')).toHaveLength(1);
+    expect(head!.textContent).not.toContain('Category');
+    expect(head!.querySelector('button')).toBeTruthy();
 
     // More of the register than a phone-width tier table shows, all in the
     // one row: payee, amount, category and status.
@@ -194,6 +197,56 @@ describe('the register on a phone', () => {
     const rows = bodyRows(container);
     expect(rows).toHaveLength(1);
     expect(rows[0].querySelectorAll('td').length).toBeGreaterThan(1);
-    expect(container.querySelector('thead')!.className).not.toContain('hidden');
+    expect(container.querySelector('thead')!.querySelectorAll('th').length).toBeGreaterThan(1);
+  });
+
+  it('keeps the tier table on a foreign-currency fee surface at Normal density', async () => {
+    // showFxColumns is the FX fees report/section, whose subject is the
+    // paid-currency / amount / fee columns the card does not carry -- so it
+    // stays a table even on a phone at Normal density.
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { transactions: 'normal' } });
+
+    const { container } = render(
+      <TransactionList
+        transactions={[createTransaction()]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+        showFxColumns
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    });
+
+    const rows = bodyRows(container);
+    expect(rows[0].querySelectorAll('td').length).toBeGreaterThan(1);
+    expect(container.querySelector('thead')!.querySelectorAll('th').length).toBeGreaterThan(1);
+  });
+
+  it('keeps the select-all-on-page box in the slim header in selection mode', async () => {
+    // Hiding the header outright would have taken the select-all control with
+    // it; the slim control header keeps it reachable on a phone.
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { transactions: 'normal' } });
+
+    const { container } = render(
+      <TransactionList
+        transactions={[createTransaction()]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+        selectionMode
+        isAllOnPageSelected={false}
+        onToggleAllOnPage={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    });
+
+    const head = container.querySelector('thead');
+    expect(head!.querySelector('input[type="checkbox"]')).toBeTruthy();
   });
 });
