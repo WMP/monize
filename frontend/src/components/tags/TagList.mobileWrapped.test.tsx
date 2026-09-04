@@ -196,6 +196,26 @@ describe('the tags list on a phone', () => {
     expect(head.querySelector('th')!.getAttribute('aria-sort')).toBe('ascending');
   });
 
+  it('claims no sort direction while the stored field is one it cannot show', () => {
+    // `SortField` includes `createdAt`, which the tags page persists in
+    // localStorage and which no control in either header offers. The Name
+    // button then shows the unsorted glyph, so announcing a direction on the
+    // column would tell a screen reader the opposite of what is on screen.
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { tags: 'normal' } });
+
+    const { container } = renderList([createTag()], {
+      sortField: 'createdAt',
+      sortDirection: 'desc',
+      onSort: vi.fn(),
+    });
+
+    expect(container.querySelector('thead th')!.hasAttribute('aria-sort')).toBe(false);
+    // The way back is still there: the Name button re-sorts on a field the
+    // phone can see.
+    expect(container.querySelector('thead button')!.textContent).toContain('Name');
+  });
+
   it('offers a sort control for every column the tier header sorts by', () => {
     // The two headers are separate JSX, so this is what ties them together: a
     // second sortable column in the tier header fails here until the phone's

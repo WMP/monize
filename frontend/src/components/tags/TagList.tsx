@@ -346,12 +346,20 @@ export function TagList({
           <thead className="bg-gray-50 dark:bg-gray-800">
             {wrapped ? (
             <tr>
-              {/* The one column is always sorted by something, and `aria-sort`
-                  is the only place that direction is announced -- the arrow in
-                  the button's label is a glyph, not a state. */}
+              {/* `aria-sort` is the only place the direction is announced --
+                  the arrow in the button's label is a glyph, not a state. It
+                  is claimed only when the field in force is one this header
+                  names: `SortField` also has `createdAt`, which the tags page
+                  persists and no control here offers, and announcing
+                  "ascending" over a Name button showing the unsorted glyph
+                  would tell a screen reader the opposite of what is true. */}
               <th
                 className={`${headerPadding} text-left`}
-                aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
+                aria-sort={
+                  SORT_FIELD_LABEL_KEYS.some(({ field }) => field === sortField)
+                    ? sortDirection === 'asc' ? 'ascending' : 'descending'
+                    : undefined
+                }
               >
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   {SORT_FIELD_LABEL_KEYS.map(({ field, labelKey }) => (
