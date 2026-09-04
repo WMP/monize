@@ -580,6 +580,10 @@ export function TransactionList({
           <thead className="bg-gray-50 dark:bg-gray-800">
             {wrapped ? (
               <tr>
+                {/* Controls only, no column label: the single card cell below
+                    carries payee, amount, status and the rest, so naming this
+                    header "Date" would misdescribe the column to a screen
+                    reader. The toggle names itself through its own aria-label. */}
                 <th className={`${headerPadding} text-left`}>
                   <div className="flex items-center gap-3">
                     {selectionMode && (
@@ -590,15 +594,12 @@ export function TransactionList({
                         className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
                       />
                     )}
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('list.header.date')}
-                      <CompactDatesToggle
-                        active={compactMobileDates}
-                        onToggle={toggleCompactMobileDates}
-                        label={t('list.dateDisplay.toggleLabel')}
-                        title={t('list.dateDisplay.toggleTitle')}
-                      />
-                    </span>
+                    <CompactDatesToggle
+                      active={compactMobileDates}
+                      onToggle={toggleCompactMobileDates}
+                      label={t('list.dateDisplay.toggleLabel')}
+                      title={t('list.dateDisplay.toggleTitle')}
+                    />
                   </div>
                 </th>
               </tr>
@@ -685,7 +686,10 @@ export function TransactionList({
                 <React.Fragment key={transaction.id}>
                   {index === futureBoundaryIndex && futureBoundaryIndex > 0 && (
                     <tr>
-                      <td colSpan={colCount} className="px-0 py-0">
+                      {/* In the wrapped phone layout every header and body row
+                          spans one column, so the divider does too; the tier
+                          table keeps its full-width span. */}
+                      <td colSpan={wrapped ? 1 : colCount} className="px-0 py-0">
                         <div className="flex items-center gap-3 px-4 py-1.5">
                           <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
                           <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">{t('list.today')}</span>
