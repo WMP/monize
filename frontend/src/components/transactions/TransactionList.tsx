@@ -28,6 +28,7 @@ import { getLocalDateString } from '@/lib/utils';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useDensityPreference, type DensityView } from '@/store/densityStore';
 import { useCompactMobileDates } from '@/store/dateDisplayStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { EmptyState } from '@/components/ui/EmptyState';
 
@@ -198,6 +199,13 @@ export function TransactionList({
   const { formatCurrency } = useNumberFormat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { density } = useDensityPreference(densityView);
+  // Model B: on a phone, density picks the LAYOUT rather than only the row
+  // height. At Normal each row is a wrapped two-line card that shows more of
+  // the register than a phone-width tier table can without scrolling
+  // sideways; Compact and Dense keep the tier table, unchanged, and so does
+  // every non-phone width. Exactly one branch renders per row, chosen here.
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
   const { compactMobileDates, toggleCompactMobileDates } = useCompactMobileDates();
   const compactPadding = registerDateColumnPadding(compactMobileDates);
 
@@ -523,7 +531,10 @@ export function TransactionList({
           viewport overstates this width by the page padding around it. */}
       <div className={`overflow-x-auto ${REGISTER_TABLE_CONTAINER}`}>
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          {/* The wrapped card carries its own meaning (each value sits beside
+              the thing it describes), so the column header row is dropped on
+              phones rather than labelling a table that is not being drawn. */}
+          <thead className={`bg-gray-50 dark:bg-gray-800 ${wrapped ? 'hidden' : ''}`}>
             <tr>
               {selectionMode && (
                 <th className={`${headerPadding} w-10`}>
@@ -629,6 +640,7 @@ export function TransactionList({
                     density={density}
                     cellPadding={cellPadding}
                     isSingleAccountView={isSingleAccountView}
+                    wrapped={wrapped}
                     showRunningBalance={showRunningBalance}
                     runningBalance={runningBalances.get(transaction.id)}
                     displayAmount={displayAmounts.get(transaction.id)}
