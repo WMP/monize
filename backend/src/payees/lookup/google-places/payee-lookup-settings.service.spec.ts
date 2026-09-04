@@ -227,7 +227,10 @@ describe("PayeeLookupSettingsService", () => {
       await service.updateSettings(USER, { enabled: false });
 
       expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKeyEnc: "cipher", googlePlacesEnabled: false }),
+        expect.objectContaining({
+          apiKeyEnc: "cipher",
+          googlePlacesEnabled: false,
+        }),
       );
     });
 
@@ -244,16 +247,19 @@ describe("PayeeLookupSettingsService", () => {
       ["a key", { apiKey: "secret" }],
       ["the cap switch", { capEnabled: false }],
       ["the cap", { monthlyCap: 10 }],
-    ])("refuses %s in operator mode rather than ignoring it", async (_l, patch) => {
-      // A stored setting that can never apply looks, from the screen, exactly
-      // like one that does.
-      env.GOOGLE_PLACES_API_KEY = "operator-key";
+    ])(
+      "refuses %s in operator mode rather than ignoring it",
+      async (_l, patch) => {
+        // A stored setting that can never apply looks, from the screen, exactly
+        // like one that does.
+        env.GOOGLE_PLACES_API_KEY = "operator-key";
 
-      await expect(service.updateSettings(USER, patch)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-      expect(repo.save).not.toHaveBeenCalled();
-    });
+        await expect(
+          service.updateSettings(USER, patch),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repo.save).not.toHaveBeenCalled();
+      },
+    );
 
     it("still accepts the on/off switch in operator mode", async () => {
       env.GOOGLE_PLACES_API_KEY = "operator-key";

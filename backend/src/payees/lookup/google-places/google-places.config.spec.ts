@@ -84,7 +84,10 @@ describe("resolveOperatorGooglePlaces", () => {
   it("does not warn when nothing was supplied", () => {
     const logger = makeLogger();
 
-    resolveOperatorGooglePlaces(readerFor({ GOOGLE_PLACES_API_KEY: "k" }), logger);
+    resolveOperatorGooglePlaces(
+      readerFor({ GOOGLE_PLACES_API_KEY: "k" }),
+      logger,
+    );
 
     expect(logger.warn).not.toHaveBeenCalled();
   });
@@ -110,8 +113,12 @@ describe("resolveMonthlyCap", () => {
   });
 
   it("accepts both ends of the range", () => {
-    expect(resolveMonthlyCap(GOOGLE_PLACES_CAP.min)).toBe(GOOGLE_PLACES_CAP.min);
-    expect(resolveMonthlyCap(GOOGLE_PLACES_CAP.max)).toBe(GOOGLE_PLACES_CAP.max);
+    expect(resolveMonthlyCap(GOOGLE_PLACES_CAP.min)).toBe(
+      GOOGLE_PLACES_CAP.min,
+    );
+    expect(resolveMonthlyCap(GOOGLE_PLACES_CAP.max)).toBe(
+      GOOGLE_PLACES_CAP.max,
+    );
   });
 });
 

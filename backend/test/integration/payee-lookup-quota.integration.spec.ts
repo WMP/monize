@@ -127,9 +127,10 @@ describe("Google Places quota claim (INV-PAYEE-002)", () => {
       await withUserContext(userId, () => quota.claim(userScope(10)));
 
       const rows = await withSystemContext(() =>
-        dataSource.query("SELECT month FROM payee_lookup_usage WHERE user_id = $1", [
-          userId,
-        ]),
+        dataSource.query(
+          "SELECT month FROM payee_lookup_usage WHERE user_id = $1",
+          [userId],
+        ),
       );
       const expected = new Date().toISOString().slice(0, 7);
       expect(rows[0].month.trim()).toBe(expected);

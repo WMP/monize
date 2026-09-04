@@ -4,7 +4,6 @@ import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { AuthGuard } from "@nestjs/passport";
 import { DEMO_RESTRICTED_KEY } from "../../common/guards/demo-mode.guard";
-import { AiService } from "../../ai/ai.service";
 import {
   PayeeLookupSettingsService,
   PayeeLookupStatus,
@@ -46,7 +45,9 @@ describe("PayeeLookupController", () => {
       } as PayeeLookupStatus),
       testKey: jest.fn().mockResolvedValue({ available: true }),
     } as unknown as typeof settings;
-    aiService = { getStatus: jest.fn().mockResolvedValue({ configured: true }) };
+    aiService = {
+      getStatus: jest.fn().mockResolvedValue({ configured: true }),
+    };
 
     const module = await Test.createTestingModule({
       controllers: [PayeeLookupController],
