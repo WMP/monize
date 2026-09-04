@@ -169,11 +169,13 @@ describe("IncomeVsExpensesReport (phone wrapped table)", () => {
         expect(cell.className).toMatch(/\brow-start-\d\b/);
       }
       // The four money cells (everything but the month/label) never wrap, and
-      // each is bounded by its grid track rather than by its own content.
+      // each is right-aligned -- which is what keeps an over-long amount
+      // overflowing toward the start edge (not scrollable) rather than
+      // reopening the sideways scroll this layout exists to close.
       const money = cells.filter((c) => c.className.includes("whitespace-nowrap"));
       expect(money).toHaveLength(4);
       for (const cell of money) {
-        expect(cell.className).toContain("min-w-0");
+        expect(cell.className).toContain("text-right");
       }
     }
   });

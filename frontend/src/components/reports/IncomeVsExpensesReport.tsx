@@ -56,19 +56,24 @@ const HEADER_CLASS =
 // a touch screen, and without them the strip reads as another row of the
 // captions the cells below carry.
 const PHONE_HEADER_CLASS =
-  'rounded border border-gray-200 bg-white px-1.5 py-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
+  'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
 
 // A money cell inside a wrapped card: no padding of its own below `sm` (the row
 // supplies it and the grid does the spacing), the table cell's own padding from
 // `sm` up. Smaller type on phones so a six-figure amount still fits a
 // half-width column, and `whitespace-nowrap` so a locale that groups thousands
-// with a space cannot break in the middle of a number. `min-w-0` keeps a cell's
-// automatic minimum size from outgrowing its grid track when a currency does
-// run long (a ten-figure IDR/VND amount): the number then overflows its own
-// box rather than widening the row. It is inert in table layout, where the
-// cell is sized from its content.
+// with a space cannot break in the middle of a number.
+//
+// A nowrap amount too long for its track cannot bring the sideways scroll back:
+// the row is a fixed-width block-level grid (`grid-cols-2` is
+// `repeat(2, minmax(0, 1fr))`, so neither track grows for content) and every
+// money cell is right-aligned, so an over-long number overflows toward the
+// start edge, which is not scrollable. Measured in Chromium at 320px: a
+// thirteen-digit amount leaves the wrapper's `scrollWidth` equal to its
+// `clientWidth` and crowds its neighbour instead. Crowding is the deliberate
+// choice -- `overflow-hidden` here would silently truncate a figure.
 const MONEY_CELL =
-  'p-0 min-w-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
+  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
 /**
  * The caption a value carries on phones. Below `sm` the column header row is
