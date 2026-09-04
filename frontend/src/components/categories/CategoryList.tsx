@@ -271,7 +271,16 @@ const CategoryRow = memo(function CategoryRow({
               style={{ paddingLeft: `${indentRem}rem` }}
             >
               <CategoryMark category={category} density={density} className="mt-0.5" />
-              <div className="min-w-0 flex items-center">
+              {/* `flex-wrap` is what keeps the NAME the identity of the card.
+                  The name is the only shrinkable item here (`truncate` floors
+                  its min-width at zero) while "(System)" cannot shrink below
+                  its one word, so on a narrow phone the marker took its full
+                  width out of the name's: measured in the replica, a deeply
+                  indented system category's name rendered 4px wide at 320px
+                  and 74px at 390px. Wrapping lets the marker drop to its own
+                  line instead (91px and 161px), and a short system name -- the
+                  common case -- still keeps it inline. */}
+              <div className="min-w-0 flex flex-wrap items-center">
                 <CategoryNameButton
                   category={category}
                   onViewTransactions={onViewTransactions}

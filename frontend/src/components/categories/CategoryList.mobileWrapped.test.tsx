@@ -251,6 +251,29 @@ describe('the categories list on a phone', () => {
     expect(row.querySelectorAll('.truncate').length).toBe(2);
   });
 
+  it('lets the system marker yield a line rather than the name its width', () => {
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { categories: 'normal' } });
+
+    const { container } = renderList([
+      makeCategory({
+        id: 'c1',
+        name: 'Uncategorised transfers between own accounts',
+        isSystem: true,
+      }),
+    ]);
+
+    const [row] = bodyRows(container);
+    const nameRow = row.querySelector('.truncate')!.parentElement!;
+    // The name truncates, so it is the only item here that can shrink;
+    // "(System)" cannot shrink below its one word and would otherwise take its
+    // width out of the name. jsdom does no layout, so this pins the mechanism:
+    // measured in a hand-CSS replica, a deeply indented system category's name
+    // rendered 4px wide at 320px without this and 91px with it.
+    expect(nameRow.className).toContain('flex-wrap');
+    expect(nameRow.className).toContain('min-w-0');
+  });
+
   it('keeps the system marker and still withholds Delete from the card', () => {
     setPhoneViewport(true);
     useDensityStore.setState({ densities: { categories: 'normal' } });
