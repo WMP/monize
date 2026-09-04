@@ -44,20 +44,21 @@ describe('PayeeContactLookupToggle', () => {
   });
 
   it('renders the heading and an off switch by default', () => {
-    render(<PayeeContactLookupToggle aiConfigured />);
+    render(<PayeeContactLookupToggle lookupAvailable />);
     expect(screen.getByText('Automatic payee contact lookup')).toBeInTheDocument();
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('names the details it looks up and what it looks them up through', () => {
-    render(<PayeeContactLookupToggle aiConfigured />);
-    // A switch whose subtitle does not say what it fetches, or through what,
-    // is asking for consent to something unnamed.
+  it('names the details it looks up and what is sent', () => {
+    render(<PayeeContactLookupToggle lookupAvailable />);
+    // A switch whose subtitle does not say what it fetches, or what it sends,
+    // is asking for consent to something unnamed. It deliberately no longer
+    // names the AI provider: Google Places answers the same lookup, and copy
+    // naming one source would be wrong for whichever is actually configured.
     const subtitle = screen.getByText(/Automatically look up a new payee/);
     expect(subtitle).toHaveTextContent(
       /website, address, email and phone number/,
     );
-    expect(subtitle).toHaveTextContent(/configured AI provider/);
     // A switch that ships the payee's stored notes to a third-party model has
     // to say so: this is the only surface where the user consents, and the
     // lookup sends more than the name (buildLookupContext on the server).
@@ -70,7 +71,7 @@ describe('PayeeContactLookupToggle', () => {
       payeeContactLookupEnabled: true,
     });
 
-    render(<PayeeContactLookupToggle aiConfigured />);
+    render(<PayeeContactLookupToggle lookupAvailable />);
     fireEvent.click(screen.getByRole('switch'));
 
     expect(updatePreferencesStore).toHaveBeenCalledWith({ payeeContactLookupEnabled: true });
@@ -85,7 +86,7 @@ describe('PayeeContactLookupToggle', () => {
   it('reverts the optimistic change and shows an error when the save fails', async () => {
     (userSettingsApi.updatePreferences as Mock).mockRejectedValue(new Error('nope'));
 
-    render(<PayeeContactLookupToggle aiConfigured />);
+    render(<PayeeContactLookupToggle lookupAvailable />);
     fireEvent.click(screen.getByRole('switch'));
 
     await waitFor(() => {
@@ -100,7 +101,7 @@ describe('PayeeContactLookupToggle', () => {
 
   it('renders on and disables the switch when asked', () => {
     mockPreferences = { payeeContactLookupEnabled: true };
-    render(<PayeeContactLookupToggle aiConfigured disabled />);
+    render(<PayeeContactLookupToggle lookupAvailable disabled />);
     const toggle = screen.getByRole('switch');
     expect(toggle).toHaveAttribute('aria-checked', 'true');
     expect(toggle).toBeDisabled();

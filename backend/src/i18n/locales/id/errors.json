@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Operasi lain sedang menggantikan data akun ini. Tunggu hingga selesai lalu coba lagi."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places dikonfigurasi oleh administrator server ini. Hanya pengaturan aktif/nonaktif yang dapat diubah di sini.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY belum dikonfigurasi. Kunci API Google Places tidak dapat disimpan dengan aman.",
+    "notConfigured": "Tidak ada kunci API Google Places yang dikonfigurasi.",
+    "capReached": "Batas permintaan Google Places bulan ini telah tercapai.",
+    "testFailed": "Uji koneksi Google Places gagal."
   }
 }

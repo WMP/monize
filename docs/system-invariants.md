@@ -143,6 +143,7 @@ implied.
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
 | INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
+| INV-PAYEE-002 | Google Places requests in a UTC calendar month never exceed the cap for the key's owner | enforced |
 | INV-RELEASE-001 | The tested, imaged and tagged revisions are one revision | partial |
 
 ## Imports
@@ -2172,6 +2173,52 @@ Required tests      payee-contact-enrichment.service.spec.ts (COALESCE and
 Status              enforced
 ```
 
+
+### INV-PAYEE-002 -- the Google Places monthly cap is never exceeded
+
+```text
+Statement           The number of Google Places requests made in one UTC
+                    calendar month never exceeds the cap configured for the key
+                    that pays for them. A user's own key is capped per user; the
+                    operator's key (GOOGLE_PLACES_API_KEY) is capped once for
+                    the whole deployment, because one key is one bill.
+Source of truth     payee_lookup_usage(user_id, month).google_places_requests
+                    for a user's key; google_places_instance_usage(month).requests
+                    for the operator's.
+Enforcement         One statement per scope, in PayeeLookupQuotaService.claim: an
+                    INSERT ... ON CONFLICT DO UPDATE SET requests = requests + 1
+                    WHERE $cap_disabled OR requests < $cap, RETURNING the new
+                    count. The predicate is part of the write, so a second
+                    claimant blocks on the first's row lock inside the statement
+                    and re-evaluates against the committed value -- there is no
+                    window between a read and a write. Zero rows back is the cap
+                    being reached, and the caller falls back to the AI adapter.
+                    The month is to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'),
+                    evaluated by PostgreSQL, so every replica rolls over on one
+                    clock. The claim runs through runOutsideActiveScopedManager
+                    and commits BEFORE the request leaves: Google bills an
+                    attempt whatever comes back, so a slot released because the
+                    request then failed would under-count what is being paid for.
+                    The operator's counter is claimed under withSystemContext
+                    (the table is RLS-exempt, having no owner); a user's counter
+                    is an ordinary policied row.
+Concurrency scope   per user for a user's key; per deployment for the operator's
+Retry semantics     Each attempt claims its own slot. A retry after a failed
+                    request spends another, which is correct: Google billed both.
+Crash semantics     A crash after the claim and before the request spends a slot
+                    for a request nobody made -- the survivable direction, since
+                    the alternative over-spends a paid quota.
+Failure response    ContactLookupOutcome.reason = "quota_exceeded" when the cap
+                    is spent AND no AI provider can answer; otherwise the lookup
+                    silently falls back to the AI adapter.
+Required tests      Two-connection: concurrent claims over the last slot, one
+                    winner, for both scopes. Present in
+                    backend/test/integration/payee-lookup-quota.integration.spec.ts
+                    ("has exactly one winner when two claims race over the last
+                    slot", "has exactly one winner when two users race over the
+                    last slot").
+Status              enforced
+```
 ### INV-BACKUP-001 -- a backup is complete, verified, owner-namespaced
 
 ```text

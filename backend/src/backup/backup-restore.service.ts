@@ -41,6 +41,16 @@ import {
   RestoreResult,
 } from "./backup-format";
 import { restoreAiProviderKey } from "./ai-provider-key-transport";
+
+/**
+ * Backed-up tables holding an `api_key_enc` -- ciphertext under this instance's
+ * ENCRYPTION_KEY, which never travels in the artifact. Each is exported with
+ * the key decrypted and restored with it re-encrypted here.
+ */
+const KEY_BEARING_TABLES = [
+  "ai_provider_configs",
+  "payee_lookup_settings",
+] as const;
 import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
 
@@ -549,31 +559,39 @@ export class BackupRestoreService {
    */
   private restoreAiProviderKeys(userId: string, data: BackupData): number {
     const tables = backupTables(data);
-    const rows = tables.ai_provider_configs;
-    if (!rows || rows.length === 0) return 0;
-
     let unusable = 0;
-    tables.ai_provider_configs = rows.map((row) => {
-      const result = restoreAiProviderKey(row, this.encryption);
-      if (result.outcome === "dropped-unencryptable") {
-        unusable += 1;
-      } else if (
-        result.outcome === "kept-foreign-ciphertext" &&
-        !this.encryption.canDecrypt(result.row.api_key_enc as string)
-      ) {
-        // An older artifact, written before keys travelled in plaintext. It only
-        // restores onto the instance that produced it; anywhere else the column
-        // is populated and unreadable, which is exactly the failure this field
-        // exists to stop being silent.
-        unusable += 1;
-      }
-      return result.row;
-    });
+
+    // Every table whose rows carry an `api_key_enc`. The transport is keyed on
+    // that column name rather than on the table, so this list is the whole of
+    // what makes a second such table work -- and a table added to the export
+    // with an encrypted key and left out of here would restore populated and
+    // unreadable, which is the exact failure the transport exists to stop.
+    for (const table of KEY_BEARING_TABLES) {
+      const rows = tables[table];
+      if (!rows || rows.length === 0) continue;
+
+      tables[table] = rows.map((row) => {
+        const result = restoreAiProviderKey(row, this.encryption);
+        if (result.outcome === "dropped-unencryptable") {
+          unusable += 1;
+        } else if (
+          result.outcome === "kept-foreign-ciphertext" &&
+          !this.encryption.canDecrypt(result.row.api_key_enc as string)
+        ) {
+          // An older artifact, written before keys travelled in plaintext. It only
+          // restores onto the instance that produced it; anywhere else the column
+          // is populated and unreadable, which is exactly the failure this field
+          // exists to stop being silent.
+          unusable += 1;
+        }
+        return result.row;
+      });
+    }
 
     if (unusable > 0) {
       this.logger.warn(
-        `Restoring ${unusable} AI provider configuration(s) for user ${userId} without a ` +
-          "usable API key: the artifact carried instance-key ciphertext this server " +
+        `Restoring ${unusable} stored API key(s) for user ${userId} without a ` +
+          "usable value: the artifact carried instance-key ciphertext this server " +
           "cannot read, or ENCRYPTION_KEY is unset here. The rows are restored; " +
           "the keys must be re-entered.",
       );

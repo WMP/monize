@@ -842,7 +842,8 @@
     "autoBackup": "Automatyczna kopia zapasowa",
     "help": "Pomoc i wsparcie",
     "dangerZone": "Strefa zagrożenia",
-    "about": "O programie"
+    "about": "O programie",
+    "payeeLookup": "Wyszukiwanie odbiorców"
   },
   "page": {
     "title": "Ustawienia",
@@ -905,14 +906,6 @@
         "step3": "Odpowiedzi są przesyłane strumieniowo z powrotem do czatu. Kropka stanu pokazuje, czy agent jest połączony.",
         "note": "Nic się nie uruchamia, dopóki agent nie jest połączony i nie nasłuchuje. Czat wyświetla instrukcje połączenia."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatyczne wyszukiwanie danych kontaktowych odbiorcy",
-      "subtitle": "Automatycznie wyszukuje stronę internetową, adres, e-mail i numer telefonu nowego odbiorcy za pomocą skonfigurowanego dostawcy AI. Wysyłana jest nazwa odbiorcy wraz z zapisanymi już notatkami, stroną internetową, adresem, e-mailem i numerem telefonu, aby wyszukiwanie rozpoznało właściwą firmę we właściwej lokalizacji.",
-      "toggleLabel": "Włącz automatyczne wyszukiwanie danych kontaktowych",
-      "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
-      "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
-      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Cały czas"
     },
     "estCostTooltip": "Szacowane przy użyciu stawek kosztów skonfigurowanych dla każdego dostawcy. Wyklucza aktywność, dla której nie ustawiono pasującej stawki."
+  },
+  "payeeLookup": {
+    "title": "Wyszukiwanie odbiorców",
+    "subtitle": "Skąd pochodzą strona internetowa, adres, e-mail i numer telefonu odbiorcy, gdy je wyszukujesz.",
+    "saved": "Zapisano ustawienia wyszukiwania odbiorców",
+    "saveFailed": "Nie udało się zapisać ustawień wyszukiwania odbiorców",
+    "loadFailed": "Nie udało się wczytać ustawień wyszukiwania odbiorców. Odśwież stronę, aby spróbować ponownie.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Używaj Google Places do wyszukiwania odbiorców",
+      "configured": "Wyszukuje firmy w katalogu Google zamiast korzystać z dostawcy AI.",
+      "notConfigured": "Dodaj klucz API Google Places, aby wyszukiwać firmy w katalogu Google zamiast korzystać z dostawcy AI.",
+      "operatorManaged": "Skonfigurowane przez administratora tego serwera. Możesz to wyłączyć dla własnych odbiorców.",
+      "configure": "Skonfiguruj",
+      "edit": "Edytuj",
+      "removeKey": "Usuń klucz",
+      "usage": "Wykorzystano w tym miesiącu: {used} z {cap}",
+      "usageNoCap": "Wykorzystano w tym miesiącu: {used}. Bez limitu miesięcznego.",
+      "keyUnreadable": "Ten serwer nie może odczytać zapisanego klucza API. Dzieje się tak po przywróceniu kopii zapasowej na innej instancji lub po zmianie klucza szyfrowania. Wprowadź klucz ponownie, aby to naprawić.",
+      "encryptionUnavailable": "Na tym serwerze nie skonfigurowano klucza szyfrowania, więc klucza API nie da się bezpiecznie zapisać. Poproś administratora o jego ustawienie.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize wysyła do Google nazwę odbiorcy i adres, który już masz, i nic tam nie przechowuje.",
+      "apiKeyLabel": "Klucz API",
+      "apiKeyPlaceholder": "Wklej swój klucz API Google Places",
+      "apiKeyHelp": "Utwórz klucz w konsoli Google Cloud z włączonym Places API (New). Pozostaw puste, aby zachować już zapisany klucz.",
+      "capToggleLabel": "Ogranicz liczbę zapytań w miesiącu",
+      "capHelp": "Google daje {free} bezpłatnych zapytań Text Search miesięcznie dla pól potrzebnych temu wyszukiwaniu. Po przekroczeniu limitu wyszukiwanie wraca do dostawcy AI.",
+      "capLabel": "Zapytania miesięcznie",
+      "capRange": "Wprowadź liczbę z zakresu od {min} do {max}.",
+      "test": "Testuj",
+      "testing": "Testowanie...",
+      "testSuccess": "Google zaakceptował klucz.",
+      "save": "Zapisz",
+      "cancel": "Anuluj"
+    },
+    "automatic": {
+      "title": "Automatyczne wyszukiwanie danych kontaktowych odbiorcy",
+      "subtitle": "Automatycznie wyszukuj stronę internetową, adres, e-mail i numer telefonu nowego odbiorcy. Wysyłana jest nazwa odbiorcy wraz z zapisanymi już notatkami, stroną, adresem, e-mailem i telefonem, aby wyszukiwanie rozróżniło właściwą firmę i właściwą lokalizację.",
+      "toggleLabel": "Włącz automatyczne wyszukiwanie danych kontaktowych odbiorcy",
+      "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
+      "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
+      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
+    }
   }
 }

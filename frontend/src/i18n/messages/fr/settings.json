@@ -842,7 +842,8 @@
     "autoBackup": "Sauvegarde automatique",
     "help": "Aide et support",
     "dangerZone": "Zone dangereuse",
-    "about": "À propos"
+    "about": "À propos",
+    "payeeLookup": "Recherche de bénéficiaires"
   },
   "page": {
     "title": "Paramètres",
@@ -905,14 +906,6 @@
         "step3": "Les réponses sont diffusées dans le chat. Un voyant d'état indique si votre agent est connecté.",
         "note": "Rien ne s'exécute tant que votre agent n'est pas connecté et à l'écoute. Le chat affiche les instructions de connexion."
       }
-    },
-    "payeeLookup": {
-      "title": "Recherche automatique des coordonnées du bénéficiaire",
-      "subtitle": "Recherche automatiquement le site web, l'adresse, l'e-mail et le numéro de téléphone d'un nouveau bénéficiaire via votre fournisseur d'IA configuré. Le nom du bénéficiaire est envoyé, ainsi que les notes, le site web, l'adresse, l'e-mail et le téléphone dont il dispose déjà, afin que la recherche distingue la bonne entreprise et le bon lieu.",
-      "toggleLabel": "Activer la recherche automatique des coordonnées",
-      "enabled": "Recherche automatique des coordonnées activée",
-      "disabled": "Recherche automatique des coordonnées désactivée",
-      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Toute la période"
     },
     "estCostTooltip": "Estimé en utilisant les tarifs que vous avez configurés sur chaque fournisseur. Exclut toute activité pour laquelle aucun tarif correspondant n'est défini."
+  },
+  "payeeLookup": {
+    "title": "Recherche de bénéficiaires",
+    "subtitle": "D'où proviennent le site web, l'adresse, l'e-mail et le téléphone d'un bénéficiaire lorsque vous les recherchez.",
+    "saved": "Paramètres de recherche de bénéficiaires enregistrés",
+    "saveFailed": "Impossible d'enregistrer les paramètres de recherche de bénéficiaires",
+    "loadFailed": "Impossible de charger les paramètres de recherche de bénéficiaires. Rechargez la page pour réessayer.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Utiliser Google Places pour la recherche de bénéficiaires",
+      "configured": "Recherche les entreprises dans l'annuaire Google plutôt que via votre fournisseur d'IA.",
+      "notConfigured": "Ajoutez une clé d'API Google Places pour rechercher les entreprises dans l'annuaire Google plutôt que via votre fournisseur d'IA.",
+      "operatorManaged": "Configuré par l'administration de ce serveur. Vous pouvez le désactiver pour vos propres bénéficiaires.",
+      "configure": "Configurer",
+      "edit": "Modifier",
+      "removeKey": "Supprimer la clé",
+      "usage": "Utilisé ce mois-ci : {used} sur {cap}",
+      "usageNoCap": "Utilisé ce mois-ci : {used}. Aucune limite mensuelle.",
+      "keyUnreadable": "Ce serveur ne peut pas lire la clé d'API enregistrée. Cela arrive lorsqu'une sauvegarde est restaurée sur une autre instance, ou après un changement de clé de chiffrement. Saisissez à nouveau la clé pour corriger cela.",
+      "encryptionUnavailable": "Ce serveur n'a aucune clé de chiffrement configurée : une clé d'API ne peut donc pas être stockée en sécurité. Demandez à votre administration d'en configurer une.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize envoie à Google le nom du bénéficiaire et l'adresse dont vous disposez déjà, et n'y stocke rien.",
+      "apiKeyLabel": "Clé d'API",
+      "apiKeyPlaceholder": "Collez votre clé d'API Google Places",
+      "apiKeyHelp": "Créez une clé dans la console Google Cloud avec l'API Places (New) activée. Laissez ce champ vide pour conserver la clé déjà enregistrée.",
+      "capToggleLabel": "Limiter les requêtes chaque mois",
+      "capHelp": "Google offre {free} requêtes Text Search gratuites par mois pour les champs dont cette recherche a besoin. Au-delà de la limite, la recherche revient à votre fournisseur d'IA.",
+      "capLabel": "Requêtes par mois",
+      "capRange": "Saisissez un nombre entre {min} et {max}.",
+      "test": "Tester",
+      "testing": "Test en cours...",
+      "testSuccess": "Google a accepté la clé.",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "automatic": {
+      "title": "Recherche automatique des coordonnées des bénéficiaires",
+      "subtitle": "Rechercher automatiquement le site web, l'adresse, l'e-mail et le téléphone d'un nouveau bénéficiaire. Le nom du bénéficiaire est envoyé, avec les notes, le site web, l'adresse, l'e-mail et le téléphone dont il dispose déjà, afin que la recherche distingue la bonne entreprise et le bon établissement.",
+      "toggleLabel": "Activer la recherche automatique des coordonnées",
+      "enabled": "Recherche automatique des coordonnées activée",
+      "disabled": "Recherche automatique des coordonnées désactivée",
+      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
+    }
   }
 }

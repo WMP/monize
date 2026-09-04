@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Baska bir islem su anda bu hesabin verilerini degistiriyor. Tamamlanmasini bekleyip yeniden deneyin."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places bu sunucunun yöneticisi tarafından yapılandırılır. Burada yalnızca açma/kapama ayarı değiştirilebilir.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY yapılandırılmamış. Google Places API anahtarı güvenle saklanamıyor.",
+    "notConfigured": "Yapılandırılmış bir Google Places API anahtarı yok.",
+    "capReached": "Bu ayki Google Places istek sınırına ulaşıldı.",
+    "testFailed": "Google Places bağlantı testi başarısız oldu."
   }
 }

@@ -842,7 +842,8 @@
     "autoBackup": "Otomatik Yedekleme",
     "help": "Yardım ve Destek",
     "dangerZone": "Tehlikeli Alan",
-    "about": "Hakkında"
+    "about": "Hakkında",
+    "payeeLookup": "Alacaklı arama"
   },
   "page": {
     "title": "Ayarlar",
@@ -905,14 +906,6 @@
         "step3": "Yanıtlar sohbete geri akışla gelir. Bir durum noktası, aracınızın bağlı olup olmadığını gösterir.",
         "note": "Aracınız bağlanıp dinlemeye başlayana kadar hiçbir şey çalışmaz. Sohbet, bağlantı talimatlarını gösterir."
       }
-    },
-    "payeeLookup": {
-      "title": "Alacaklı iletişim bilgilerini otomatik arama",
-      "subtitle": "Yeni bir alacaklının web sitesini, adresini, e-posta adresini ve telefon numarasını yapılandırdığınız yapay zeka sağlayıcısı üzerinden otomatik olarak arar. Alacaklının adı, halihazırda kayıtlı notlar, web sitesi, adres, e-posta ve telefon bilgileriyle birlikte gönderilir; böylece arama doğru işletmeyi ve doğru konumu ayırt edebilir.",
-      "toggleLabel": "İletişim bilgilerini otomatik aramayı etkinleştir",
-      "enabled": "İletişim bilgilerini otomatik arama etkinleştirildi",
-      "disabled": "İletişim bilgilerini otomatik arama devre dışı bırakıldı",
-      "saveFailed": "İletişim bilgisi arama ayarı güncellenemedi"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Tüm zamanlar"
     },
     "estCostTooltip": "Her sağlayıcıda yapılandırdığınız maliyet oranları kullanılarak tahmin edildi. Eşleşen oran ayarlanmamış aktiviteler hariçtir."
+  },
+  "payeeLookup": {
+    "title": "Alacaklı arama",
+    "subtitle": "Bir alacaklıyı aradığınızda web sitesi, adres, e-posta ve telefon numarasının nereden geldiği.",
+    "saved": "Alacaklı arama ayarları kaydedildi",
+    "saveFailed": "Alacaklı arama ayarları kaydedilemedi",
+    "loadFailed": "Alacaklı arama ayarları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Alacaklı aramasında Google Places kullan",
+      "configured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde arar.",
+      "notConfigured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde aramak için bir Google Places API anahtarı ekleyin.",
+      "operatorManaged": "Bu sunucunun yöneticisi tarafından yapılandırıldı. Kendi alacaklılarınız için kapatabilirsiniz.",
+      "configure": "Kur",
+      "edit": "Düzenle",
+      "removeKey": "Anahtarı kaldır",
+      "usage": "Bu ay kullanılan: {cap} isteğin {used} tanesi",
+      "usageNoCap": "Bu ay kullanılan: {used}. Aylık sınır yok.",
+      "keyUnreadable": "Bu sunucu kayıtlı API anahtarını okuyamıyor. Bu, bir yedek başka bir örneğe geri yüklendiğinde ya da şifreleme anahtarı değiştiğinde olur. Düzeltmek için anahtarı yeniden girin.",
+      "encryptionUnavailable": "Bu sunucuda şifreleme anahtarı yapılandırılmamış, bu yüzden bir API anahtarı güvenle saklanamaz. Yöneticinizden bir tane ayarlamasını isteyin.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize, alacaklının adını ve halihazırdaki adresi Google'a gönderir ve orada hiçbir şey saklamaz.",
+      "apiKeyLabel": "API anahtarı",
+      "apiKeyPlaceholder": "Google Places API anahtarınızı yapıştırın",
+      "apiKeyHelp": "Google Cloud konsolunda Places API (New) etkinleştirilmiş bir anahtar oluşturun. Kayıtlı anahtarı korumak için boş bırakın.",
+      "capToggleLabel": "Aylık istekleri sınırla",
+      "capHelp": "Google, bu aramanın ihtiyaç duyduğu alanlar için ayda {free} ücretsiz Text Search isteği verir. Sınırın ötesinde arama, yapay zekâ sağlayıcınıza döner.",
+      "capLabel": "Aylık istek sayısı",
+      "capRange": "{min} ile {max} arasında bir sayı girin.",
+      "test": "Test et",
+      "testing": "Test ediliyor...",
+      "testSuccess": "Google anahtarı kabul etti.",
+      "save": "Kaydet",
+      "cancel": "İptal"
+    },
+    "automatic": {
+      "title": "Otomatik alacaklı iletişim araması",
+      "subtitle": "Yeni bir alacaklının web sitesini, adresini, e-postasını ve telefon numarasını otomatik olarak arayın. Aramanın doğru işletmeyi ve doğru şubeyi ayırt edebilmesi için alacaklının adıyla birlikte mevcut notlar, web sitesi, adres, e-posta ve telefon da gönderilir.",
+      "toggleLabel": "Otomatik alacaklı iletişim aramasını etkinleştir",
+      "enabled": "Otomatik alacaklı iletişim araması etkinleştirildi",
+      "disabled": "Otomatik alacaklı iletişim araması devre dışı bırakıldı",
+      "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi"
+    }
   }
 }

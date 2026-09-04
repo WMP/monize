@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "另一项操作正在替换此账户的数据。请等待其完成后重试。"
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places 由本服务器的管理员配置。此处只能更改开启或关闭设置。",
+    "encryptionKeyNotConfigured": "未配置 ENCRYPTION_KEY，无法安全存储 Google Places API 密钥。",
+    "notConfigured": "未配置任何 Google Places API 密钥。",
+    "capReached": "本月的 Google Places 请求已达上限。",
+    "testFailed": "Google Places 连接测试失败。"
   }
 }

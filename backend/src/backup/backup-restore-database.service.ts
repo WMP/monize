@@ -68,6 +68,13 @@ export class BackupRestoreDatabaseService {
       userId,
     ]);
 
+    // Payee lookup settings (Google Places key and cap). The usage counters
+    // beside it are deliberately not exported, so nothing clears them.
+    await manager.query(
+      "DELETE FROM payee_lookup_settings WHERE user_id = $1",
+      [userId],
+    );
+
     // Investment data
     await manager.query(
       "DELETE FROM investment_transactions WHERE user_id = $1",

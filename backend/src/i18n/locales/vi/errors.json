@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Mot tac vu khac dang thay the du lieu cua tai khoan nay. Hay doi hoan tat roi thu lai."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places do quản trị viên máy chủ này thiết lập. Tại đây chỉ có thể thay đổi cài đặt bật/tắt.",
+    "encryptionKeyNotConfigured": "Chưa cấu hình ENCRYPTION_KEY. Không thể lưu khóa API Google Places một cách an toàn.",
+    "notConfigured": "Chưa cấu hình khóa API Google Places nào.",
+    "capReached": "Đã đạt giới hạn yêu cầu Google Places của tháng này.",
+    "testFailed": "Kiểm tra kết nối Google Places thất bại."
   }
 }

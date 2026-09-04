@@ -842,7 +842,8 @@
     "autoBackup": "Automatic Backup",
     "help": "Help & Support",
     "dangerZone": "Danger Zone",
-    "about": "About"
+    "about": "About",
+    "payeeLookup": "Payee lookup"
   },
   "page": {
     "title": "Settings",
@@ -905,14 +906,6 @@
         "step3": "Answers stream back into the chat. A status dot shows whether your agent is connected.",
         "note": "Nothing runs until your agent is connected and listening. The chat shows connection instructions."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatic payee contact lookup",
-      "subtitle": "Automatically look up a new payee's website, address, email and phone number through your configured AI provider. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.",
-      "toggleLabel": "Enable automatic payee contact lookup",
-      "enabled": "Automatic payee contact lookup enabled",
-      "disabled": "Automatic payee contact lookup disabled",
-      "saveFailed": "Could not update the payee contact lookup setting"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "All time"
     },
     "estCostTooltip": "Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set."
+  },
+  "payeeLookup": {
+    "title": "Payee lookup",
+    "subtitle": "Where a payee's website, address, email and phone number come from when you look one up.",
+    "saved": "Payee lookup settings saved",
+    "saveFailed": "Could not save the payee lookup settings",
+    "loadFailed": "Could not load the payee lookup settings. Reload the page to try again.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Use Google Places for payee lookups",
+      "configured": "Looks up businesses in Google's directory instead of your AI provider.",
+      "notConfigured": "Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.",
+      "operatorManaged": "Configured by this server's administrator. You can turn it off for your own payees.",
+      "configure": "Set up",
+      "edit": "Edit",
+      "removeKey": "Remove key",
+      "usage": "Used this month: {used} of {cap}",
+      "usageNoCap": "Used this month: {used}. No monthly limit.",
+      "keyUnreadable": "The stored API key cannot be read by this server. This happens when a backup is restored onto a different instance, or after the encryption key changes. Enter the key again to fix it.",
+      "encryptionUnavailable": "This server has no encryption key configured, so an API key cannot be stored securely. Ask your administrator to set one.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize sends the payee's name, and the address you already have, to Google and stores nothing with them.",
+      "apiKeyLabel": "API key",
+      "apiKeyPlaceholder": "Paste your Google Places API key",
+      "apiKeyHelp": "Create a key in the Google Cloud console with the Places API (New) enabled. Leave this blank to keep the key you already saved.",
+      "capToggleLabel": "Limit requests each month",
+      "capHelp": "Google gives {free} free Text Search requests a month for the fields this lookup needs. Past the limit, lookups fall back to your AI provider.",
+      "capLabel": "Requests per month",
+      "capRange": "Enter a number between {min} and {max}.",
+      "test": "Test",
+      "testing": "Testing...",
+      "testSuccess": "Google accepted the key.",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "automatic": {
+      "title": "Automatic payee contact lookup",
+      "subtitle": "Automatically look up a new payee's website, address, email and phone number. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.",
+      "toggleLabel": "Enable automatic payee contact lookup",
+      "enabled": "Automatic payee contact lookup enabled",
+      "disabled": "Automatic payee contact lookup disabled",
+      "saveFailed": "Could not update the payee contact lookup setting"
+    }
   }
 }

@@ -224,13 +224,18 @@ vi.mock('@/lib/payees', () => ({
 }));
 
 // Whether a payee created here gets its contact details looked up turns on two
-// facts the form cannot control: the opt-in preference and whether an AI
-// provider exists at all. Both are mocked so each test says which world it is
-// in; both default to off, which is what an untouched account has.
-let mockAiConfigured = false;
+// facts the form cannot control: the opt-in preference and whether ANY lookup
+// source exists -- Google Places or an AI provider. Both are mocked so each
+// test says which world it is in; both default to off, which is what an
+// untouched account has.
+let mockLookupAvailable = false;
 
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: mockAiConfigured, resolved: true }),
+vi.mock('@/hooks/useContactLookupAvailable', () => ({
+  useContactLookupAvailable: () => ({
+    available: mockLookupAvailable,
+    resolved: true,
+    source: mockLookupAvailable ? 'ai' : null,
+  }),
 }));
 
 const mockCategoriesGetAll = vi.fn().mockResolvedValue(mockCategories);
@@ -1936,7 +1941,7 @@ describe('TransactionForm', () => {
       mockLookupContactForPayee.mockResolvedValue({ reason: 'none', suggestions: [] });
       mockPayeeUpdate.mockReset();
       mockPayeeUpdate.mockResolvedValue({ ...created, website: suggestion.website });
-      mockAiConfigured = true;
+      mockLookupAvailable = true;
       usePreferencesStore.setState({
         preferences: { payeeContactLookupEnabled: true } as any,
       });
@@ -1946,7 +1951,7 @@ describe('TransactionForm', () => {
       // The tree is still mounted when a file's own after-hook runs, and a
       // Zustand write re-renders it outside act -- so unmount first.
       cleanup();
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
       usePreferencesStore.setState({ preferences: null });
     });
 
@@ -2006,7 +2011,7 @@ describe('TransactionForm', () => {
     });
 
     it('leaves the lookup to the server when no AI provider is configured', async () => {
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
 
       await createPayee();
 

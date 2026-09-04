@@ -842,7 +842,8 @@
     "autoBackup": "自动备份",
     "help": "帮助与支持",
     "dangerZone": "危险区域",
-    "about": "关于"
+    "about": "关于",
+    "payeeLookup": "收款方查询"
   },
   "page": {
     "title": "设置",
@@ -905,14 +906,6 @@
         "step3": "回答会流式传输回聊天。状态点显示您的代理是否已连接。",
         "note": "在您的代理连接并侦听之前，不会运行任何内容。聊天会显示连接说明。"
       }
-    },
-    "payeeLookup": {
-      "title": "自动查找收款人联系信息",
-      "subtitle": "通过您配置的 AI 提供商自动查找新收款人的网站、地址、电子邮件和电话号码。 收款人的名称会随同已保存的备注、网站、地址、电子邮件和电话一起发送，以便查询能区分正确的商家和正确的地点。",
-      "toggleLabel": "启用自动查找收款人联系信息",
-      "enabled": "已启用自动查找收款人联系信息",
-      "disabled": "已禁用自动查找收款人联系信息",
-      "saveFailed": "无法更新收款人联系信息查找设置"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "所有时间"
     },
     "estCostTooltip": "使用您在每个提供商上配置的费率估算。不包括没有匹配费率的活动。"
+  },
+  "payeeLookup": {
+    "title": "收款方查询",
+    "subtitle": "查询收款方时，其网站、地址、电子邮件和电话号码的来源。",
+    "saved": "已保存收款方查询设置",
+    "saveFailed": "无法保存收款方查询设置",
+    "loadFailed": "无法加载收款方查询设置。请刷新页面重试。",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "使用 Google Places 查询收款方",
+      "configured": "在 Google 的商户目录中查询，而不使用你的 AI 提供方。",
+      "notConfigured": "添加 Google Places API 密钥，即可在 Google 的商户目录中查询，而不使用你的 AI 提供方。",
+      "operatorManaged": "由本服务器的管理员配置。你可以为自己的收款方关闭它。",
+      "configure": "设置",
+      "edit": "编辑",
+      "removeKey": "移除密钥",
+      "usage": "本月已用：{used}/{cap}",
+      "usageNoCap": "本月已用：{used}。无每月上限。",
+      "keyUnreadable": "本服务器无法读取已保存的 API 密钥。将备份恢复到其他实例，或加密密钥变更后会出现这种情况。请重新输入密钥以修复。",
+      "encryptionUnavailable": "本服务器未配置加密密钥，因此无法安全保存 API 密钥。请让管理员配置一个。",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize 会将收款方名称和你已有的地址发送给 Google，不会在 Google 存储任何内容。",
+      "apiKeyLabel": "API 密钥",
+      "apiKeyPlaceholder": "粘贴你的 Google Places API 密钥",
+      "apiKeyHelp": "在 Google Cloud 控制台创建密钥并启用 Places API (New)。留空则保留已保存的密钥。",
+      "capToggleLabel": "限制每月请求数",
+      "capHelp": "对于此查询所需的字段，Google 每月提供 {free} 次免费 Text Search 请求。超出上限后，查询将回退到你的 AI 提供方。",
+      "capLabel": "每月请求数",
+      "capRange": "请输入 {min} 到 {max} 之间的数字。",
+      "test": "测试",
+      "testing": "测试中...",
+      "testSuccess": "Google 已接受该密钥。",
+      "save": "保存",
+      "cancel": "取消"
+    },
+    "automatic": {
+      "title": "自动查询收款方联系信息",
+      "subtitle": "自动查询新收款方的网站、地址、电子邮件和电话号码。系统会发送收款方名称，以及其已有的备注、网站、地址、电子邮件和电话，以便查询区分正确的商户和门店。",
+      "toggleLabel": "启用自动查询收款方联系信息",
+      "enabled": "已启用自动查询收款方联系信息",
+      "disabled": "已停用自动查询收款方联系信息",
+      "saveFailed": "无法更新收款方联系信息查询设置"
+    }
   }
 }

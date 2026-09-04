@@ -99,8 +99,9 @@
       "replaced": "Von der Suche ersetzt:",
       "clear": "Änderungen der Suche rückgängig machen",
       "nothingFound": "Für diesen Namen wurden keine öffentlichen Kontaktangaben gefunden.",
-      "noProvider": "Richten Sie in den <link>KI-Einstellungen</link> einen KI-Anbieter ein, um Kontaktangaben nachzuschlagen.",
-      "failed": "Die Suche konnte nicht abgeschlossen werden. Versuchen Sie es später erneut."
+      "noProvider": "Richte in den <link>Einstellungen zur Zahlungsempfänger-Suche</link> eine Quelle ein, um Kontaktdaten zu finden.",
+      "failed": "Die Suche konnte nicht abgeschlossen werden. Versuchen Sie es später erneut.",
+      "quotaExceeded": "Die Google-Places-Abfragen dieses Monats sind aufgebraucht. Erhöhe das Limit in den <link>Einstellungen zur Zahlungsempfänger-Suche</link> oder warte bis zum nächsten Monat."
     }
   },
   "merge": {

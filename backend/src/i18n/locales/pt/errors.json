@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Outra operacao esta a substituir os dados desta conta. Aguarde que termine e tente novamente."
+  },
+  "payeeLookup": {
+    "operatorManaged": "O Google Places é configurado pela administração deste servidor. Só a definição de ativação pode ser alterada aqui.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY não está configurada. Não é possível guardar a chave de API do Google Places em segurança.",
+    "notConfigured": "Não está configurada nenhuma chave de API do Google Places.",
+    "capReached": "O limite de pedidos do Google Places deste mês foi atingido.",
+    "testFailed": "O teste de ligação ao Google Places falhou."
   }
 }

@@ -842,7 +842,8 @@
     "autoBackup": "Sao lưu tự động",
     "help": "Trợ giúp & Hỗ trợ",
     "dangerZone": "Khu vực nguy hiểm",
-    "about": "Giới thiệu"
+    "about": "Giới thiệu",
+    "payeeLookup": "Tra cứu người nhận"
   },
   "page": {
     "title": "Cài đặt",
@@ -905,14 +906,6 @@
         "step3": "Câu trả lời được truyền trở lại trò chuyện. Một chấm trạng thái cho biết tác nhân của bạn đã kết nối hay chưa.",
         "note": "Không có gì chạy cho đến khi tác nhân của bạn được kết nối và lắng nghe. Trò chuyện hiển thị hướng dẫn kết nối."
       }
-    },
-    "payeeLookup": {
-      "title": "Tự động tra cứu thông tin liên hệ của người nhận",
-      "subtitle": "Tự động tra cứu trang web, địa chỉ, email và số điện thoại của người nhận mới thông qua nhà cung cấp AI bạn đã cấu hình. Tên người nhận được gửi đi, cùng với mọi ghi chú, trang web, địa chỉ, email và số điện thoại đã có, để việc tra cứu phân biệt đúng doanh nghiệp và đúng địa điểm.",
-      "toggleLabel": "Bật tự động tra cứu thông tin liên hệ",
-      "enabled": "Đã bật tự động tra cứu thông tin liên hệ",
-      "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
-      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Tất cả thời gian"
     },
     "estCostTooltip": "Ước tính sử dụng tỷ lệ chi phí bạn đã cấu hình trên mỗi nhà cung cấp. Không bao gồm bất kỳ hoạt động nào mà không có tỷ lệ phù hợp được đặt."
+  },
+  "payeeLookup": {
+    "title": "Tra cứu người nhận",
+    "subtitle": "Website, địa chỉ, email và số điện thoại của người nhận đến từ đâu khi bạn tra cứu.",
+    "saved": "Đã lưu cài đặt tra cứu người nhận",
+    "saveFailed": "Không thể lưu cài đặt tra cứu người nhận",
+    "loadFailed": "Không thể tải cài đặt tra cứu người nhận. Hãy tải lại trang để thử lại.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Dùng Google Places để tra cứu người nhận",
+      "configured": "Tra cứu doanh nghiệp trong danh bạ của Google thay vì qua nhà cung cấp AI của bạn.",
+      "notConfigured": "Thêm khóa API Google Places để tra cứu doanh nghiệp trong danh bạ của Google thay vì qua nhà cung cấp AI của bạn.",
+      "operatorManaged": "Do quản trị viên máy chủ này thiết lập. Bạn có thể tắt cho những người nhận của mình.",
+      "configure": "Thiết lập",
+      "edit": "Sửa",
+      "removeKey": "Xóa khóa",
+      "usage": "Đã dùng tháng này: {used} trên {cap}",
+      "usageNoCap": "Đã dùng tháng này: {used}. Không giới hạn hằng tháng.",
+      "keyUnreadable": "Máy chủ này không đọc được khóa API đã lưu. Điều này xảy ra khi bản sao lưu được khôi phục sang máy chủ khác, hoặc sau khi khóa mã hóa thay đổi. Hãy nhập lại khóa để khắc phục.",
+      "encryptionUnavailable": "Máy chủ này chưa cấu hình khóa mã hóa nên không thể lưu khóa API an toàn. Hãy đề nghị quản trị viên thiết lập một khóa.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize gửi tên người nhận và địa chỉ bạn đã có tới Google, và không lưu gì tại đó.",
+      "apiKeyLabel": "Khóa API",
+      "apiKeyPlaceholder": "Dán khóa API Google Places của bạn",
+      "apiKeyHelp": "Tạo khóa trong Google Cloud console với Places API (New) đã bật. Để trống để giữ khóa đã lưu.",
+      "capToggleLabel": "Giới hạn số yêu cầu mỗi tháng",
+      "capHelp": "Google cung cấp {free} yêu cầu Text Search miễn phí mỗi tháng cho các trường mà tra cứu này cần. Vượt giới hạn, tra cứu sẽ quay lại nhà cung cấp AI của bạn.",
+      "capLabel": "Số yêu cầu mỗi tháng",
+      "capRange": "Hãy nhập một số từ {min} đến {max}.",
+      "test": "Kiểm tra",
+      "testing": "Đang kiểm tra...",
+      "testSuccess": "Google đã chấp nhận khóa.",
+      "save": "Lưu",
+      "cancel": "Hủy"
+    },
+    "automatic": {
+      "title": "Tự động tra cứu thông tin liên hệ người nhận",
+      "subtitle": "Tự động tra cứu website, địa chỉ, email và số điện thoại của người nhận mới. Tên người nhận được gửi đi, cùng với ghi chú, website, địa chỉ, email và điện thoại đã có, để việc tra cứu phân biệt đúng doanh nghiệp và đúng địa điểm.",
+      "toggleLabel": "Bật tự động tra cứu thông tin liên hệ người nhận",
+      "enabled": "Đã bật tự động tra cứu thông tin liên hệ",
+      "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
+      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ"
+    }
   }
 }

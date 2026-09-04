@@ -842,7 +842,8 @@
     "autoBackup": "자동 백업",
     "help": "도움말 및 지원",
     "dangerZone": "위험 구역",
-    "about": "정보"
+    "about": "정보",
+    "payeeLookup": "거래처 조회"
   },
   "page": {
     "title": "설정",
@@ -905,14 +906,6 @@
         "step3": "응답이 채팅으로 다시 스트리밍됩니다. 상태 점은 에이전트의 연결 여부를 표시합니다.",
         "note": "에이전트가 연결되어 수신 대기할 때까지 아무것도 실행되지 않습니다. 채팅에 연결 지침이 표시됩니다."
       }
-    },
-    "payeeLookup": {
-      "title": "거래처 연락처 정보 자동 조회",
-      "subtitle": "구성된 AI 제공업체를 통해 새 거래처의 웹사이트, 주소, 이메일, 전화번호를 자동으로 조회합니다. 거래처 이름과 함께 이미 저장된 메모, 웹사이트, 주소, 이메일, 전화번호가 전송되어 조회가 올바른 업체와 올바른 위치를 구분할 수 있습니다.",
-      "toggleLabel": "연락처 정보 자동 조회 사용",
-      "enabled": "연락처 정보 자동 조회를 사용합니다",
-      "disabled": "연락처 정보 자동 조회를 사용하지 않습니다",
-      "saveFailed": "연락처 정보 조회 설정을 업데이트할 수 없습니다"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "전체 기간"
     },
     "estCostTooltip": "각 제공자에 구성한 비용 요율을 사용하여 추정됩니다. 일치하는 요율이 없는 활동은 제외됩니다."
+  },
+  "payeeLookup": {
+    "title": "거래처 조회",
+    "subtitle": "거래처를 조회할 때 웹사이트, 주소, 이메일, 전화번호를 어디에서 가져올지 설정합니다.",
+    "saved": "거래처 조회 설정을 저장했습니다",
+    "saveFailed": "거래처 조회 설정을 저장하지 못했습니다",
+    "loadFailed": "거래처 조회 설정을 불러오지 못했습니다. 페이지를 새로 고쳐 다시 시도하세요.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "거래처 조회에 Google Places 사용",
+      "configured": "AI 제공자 대신 Google 디렉터리에서 업체를 조회합니다.",
+      "notConfigured": "Google Places API 키를 추가하면 AI 제공자 대신 Google 디렉터리에서 업체를 조회합니다.",
+      "operatorManaged": "이 서버의 관리자가 설정했습니다. 내 거래처에 대해서는 끌 수 있습니다.",
+      "configure": "설정",
+      "edit": "편집",
+      "removeKey": "키 제거",
+      "usage": "이번 달 사용: {cap}건 중 {used}건",
+      "usageNoCap": "이번 달 사용: {used}건. 월 한도 없음.",
+      "keyUnreadable": "이 서버가 저장된 API 키를 읽을 수 없습니다. 백업을 다른 인스턴스에 복원했거나 암호화 키가 바뀐 경우 발생합니다. 키를 다시 입력하세요.",
+      "encryptionUnavailable": "이 서버에는 암호화 키가 설정되어 있지 않아 API 키를 안전하게 저장할 수 없습니다. 관리자에게 설정을 요청하세요.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize는 거래처 이름과 이미 저장된 주소를 Google에 보내며, Google에는 아무것도 저장하지 않습니다.",
+      "apiKeyLabel": "API 키",
+      "apiKeyPlaceholder": "Google Places API 키를 붙여넣으세요",
+      "apiKeyHelp": "Google Cloud 콘솔에서 Places API (New)를 활성화한 키를 만드세요. 이미 저장된 키를 유지하려면 비워 두세요.",
+      "capToggleLabel": "매월 요청 수 제한",
+      "capHelp": "이 조회에 필요한 필드에 대해 Google은 매월 {free}건의 Text Search 요청을 무료로 제공합니다. 한도를 넘으면 조회는 AI 제공자로 넘어갑니다.",
+      "capLabel": "월 요청 수",
+      "capRange": "{min}에서 {max} 사이의 숫자를 입력하세요.",
+      "test": "테스트",
+      "testing": "테스트 중...",
+      "testSuccess": "Google이 키를 승인했습니다.",
+      "save": "저장",
+      "cancel": "취소"
+    },
+    "automatic": {
+      "title": "거래처 연락처 자동 조회",
+      "subtitle": "새 거래처의 웹사이트, 주소, 이메일, 전화번호를 자동으로 조회합니다. 거래처 이름과 함께 이미 저장된 메모, 웹사이트, 주소, 이메일, 전화번호도 전송되어 올바른 업체와 지점을 구분합니다.",
+      "toggleLabel": "거래처 연락처 자동 조회 사용",
+      "enabled": "거래처 연락처 자동 조회를 사용합니다",
+      "disabled": "거래처 연락처 자동 조회를 사용하지 않습니다",
+      "saveFailed": "거래처 연락처 조회 설정을 업데이트하지 못했습니다"
+    }
   }
 }

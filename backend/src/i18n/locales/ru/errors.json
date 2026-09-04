@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Другая операция сейчас заменяет данные этой учётной записи. Дождитесь её завершения и попробуйте снова."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places настраивается администратором этого сервера. Здесь можно изменить только включение и отключение.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY не настроен. Ключ API Google Places нельзя сохранить безопасно.",
+    "notConfigured": "Ключ API Google Places не настроен.",
+    "capReached": "Достигнут месячный лимит запросов Google Places.",
+    "testFailed": "Проверка подключения к Google Places не удалась."
   }
 }

@@ -49,10 +49,14 @@ export interface ExportTableQuery {
   trailingRows?: ExportRowSource;
   /**
    * Rewrites one row on its way into the document, row at a time so the memory
-   * ceiling is unchanged. There is exactly one: `ai_provider_configs` swaps its
-   * instance-key ciphertext for the plaintext key
-   * (`ai-provider-key-transport.ts`), because `ENCRYPTION_KEY` is server
-   * configuration and never travels in the file.
+   * ceiling is unchanged. Two tables use it, for one reason:
+   * `ai_provider_configs` and `payee_lookup_settings` each hold an
+   * `api_key_enc` under this instance's `ENCRYPTION_KEY`, which is server
+   * configuration and never travels in the file, so the key is swapped for its
+   * plaintext here (`ai-provider-key-transport.ts`) and re-encrypted by the
+   * restore. Both columns are named `api_key_enc` deliberately: the transport
+   * is keyed on that name, so a third such table gets this treatment by
+   * spelling its column the same way.
    *
    * Applied by both `exportJsonChunks` and `collectExportTables`, so the
    * streamed artifact and the support backup's in-memory map cannot disagree
@@ -72,6 +76,11 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "action_history", // undo/redo log, wiped on restore (not undoable to prior state)
   "ai_insights", // regenerable AI cache
   "ai_usage_logs", // usage telemetry, not user content
+  // Google Places request counters. Restoring an older artifact would lower
+  // this month's count and hand back quota the key has already spent -- and
+  // the operator's counter belongs to the deployment, not to any user.
+  "payee_lookup_usage",
+  "google_places_instance_usage",
   "exchange_rates", // global shared reference data, not per-user
   "market_index_prices", // global market reference data, refetched from the provider
   "market_index_sync", // provider fetch bookkeeping for the above
@@ -396,6 +405,14 @@ export function buildExportTableQueries(
       // instance populated and unreadable, so the key is decrypted here and
       // re-encrypted by the restore. See ai-provider-key-transport.ts for the
       // contract, including what the artifact then contains in plaintext.
+      transformRow: aiProviderKeyTransform,
+    },
+    {
+      key: "payee_lookup_settings",
+      sql: "SELECT * FROM payee_lookup_settings WHERE user_id = $1",
+      // Same contract as ai_provider_configs above, and the same column name:
+      // api_key_enc is ciphertext under this instance's ENCRYPTION_KEY, so it
+      // travels decrypted and is re-encrypted by the restore.
       transformRow: aiProviderKeyTransform,
     },
     {

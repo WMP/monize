@@ -99,8 +99,9 @@
       "replaced": "Replaced by lookup:",
       "clear": "Undo lookup changes",
       "nothingFound": "No public contact details were found for this name.",
-      "noProvider": "Configure an AI provider in <link>AI Settings</link> to look up contact details.",
-      "failed": "The lookup could not be completed. Try again later."
+      "noProvider": "Set up a lookup source in <link>Payee lookup settings</link> to find contact details.",
+      "failed": "The lookup could not be completed. Try again later.",
+      "quotaExceeded": "This month's Google Places lookups are used up. Raise the limit in <link>Payee lookup settings</link>, or wait until next month."
     }
   },
   "merge": {

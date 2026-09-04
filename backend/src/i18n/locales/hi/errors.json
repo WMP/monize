@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "इस खाते का डेटा वर्तमान में किसी अन्य कार्रवाई द्वारा बदला जा रहा है। उसके पूरा होने की प्रतीक्षा करें और फिर पुनः प्रयास करें।"
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places इस सर्वर के प्रशासक द्वारा कॉन्फ़िगर किया गया है। यहाँ केवल चालू/बंद सेटिंग बदली जा सकती है।",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY कॉन्फ़िगर नहीं है। Google Places API कुंजी सुरक्षित रूप से संग्रहीत नहीं की जा सकती।",
+    "notConfigured": "कोई Google Places API कुंजी कॉन्फ़िगर नहीं है।",
+    "capReached": "इस महीने की Google Places अनुरोध सीमा पूरी हो चुकी है।",
+    "testFailed": "Google Places कनेक्शन परीक्षण विफल रहा।"
   }
 }

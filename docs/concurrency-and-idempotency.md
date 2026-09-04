@@ -342,7 +342,10 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 ### Conditional claims that exist
 
 `mny-import-job.service.ts` `claim` and `reapStaleJobs`; the sibling-token
-voiding in the three emergency-access call sites. There is no `@VersionColumn`
+voiding in the three emergency-access call sites; the Google Places monthly quota
+claim (`payee-lookup-quota.service.ts`, INV-PAYEE-002), whose conditional
+`ON CONFLICT DO UPDATE ... WHERE requests < cap` is both the increment and the
+limit, so no caller ever reads a count it then writes back. There is no `@VersionColumn`
 anywhere in the codebase -- conditional `WHERE` is the whole of its optimistic
 concurrency control.
 

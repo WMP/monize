@@ -318,6 +318,32 @@ matches no row. The AI/MCP confirmation flow avoids the question by looking
 up in the *preview* and carrying the stamp down the signed descriptor to the
 commit, so the card and the row agree and nothing looks up twice.
 
+### Google Places, and the quota claimed before the call
+
+The same lookup can be answered by Google Places instead of an AI provider
+(`backend/src/payees/lookup/google-places/`), and the ordering rule there is the
+opposite of the usual one. Google bills a Text Search request whatever comes
+back, so the **quota claim commits before the request goes out**
+(`PayeeLookupQuotaService.claim`, INV-PAYEE-002): a slot released because the
+request then failed would under-count what the user is paying for, and an
+under-count is the direction that spends money. The claim therefore runs through
+`runOutsideActiveScopedManager`, so the count of what has been spent cannot be
+rolled back by whatever operation discovered it -- exactly as `provider_health`
+records an outage outside the request that found it.
+
+What that costs, stated rather than hidden: a crash between the claim and the
+call, or a transport failure after it, spends a slot for an answer nobody
+received. That is the survivable direction.
+
+Whose key is spent is decided once, by `PayeeLookupSettingsService.resolveSource`:
+the operator's `GOOGLE_PLACES_API_KEY` where the deployment set one (counted in
+`google_places_instance_usage`, deployment-wide, because one key is one bill),
+otherwise the user's own encrypted key (counted per user). Availability goes
+through the same `ProviderHealthService` breaker as the market-data clients, with
+one asymmetry worth naming: a 400 or 403 from a rejected key is recorded as a
+**success**, because the host plainly answered -- counting it as a failure would
+let one user's bad key open a deployment-wide breaker and page the operator.
+
 ## 7. There is no shared lifecycle, and one workflow shows what it would look like
 
 No generic `pending -> externally_created -> verified -> available` state machine

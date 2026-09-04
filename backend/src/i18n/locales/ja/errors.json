@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "現在、別の処理がこのアカウントのデータを置き換えています。完了するまで待ってから、もう一度お試しください。"
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places はこのサーバーの管理者が設定しています。ここで変更できるのはオン/オフの設定のみです。",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY が設定されていません。Google Places の API キーを安全に保存できません。",
+    "notConfigured": "Google Places の API キーが設定されていません。",
+    "capReached": "今月の Google Places リクエスト上限に達しました。",
+    "testFailed": "Google Places の接続テストに失敗しました。"
   }
 }

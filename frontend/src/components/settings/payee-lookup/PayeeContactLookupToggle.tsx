@@ -12,23 +12,28 @@ import { getErrorMessage } from '@/lib/errors';
 interface PayeeContactLookupToggleProps {
   disabled?: boolean;
   /**
-   * Whether this user has an AI provider at all. The lookup has nothing to run
-   * on without one, so the setting is not offered rather than offered and
-   * silently ineffective -- the provider list below is where that is fixed.
+   * Whether a lookup can run at all -- Google Places within its cap, or an AI
+   * provider. Without a source the setting has nothing to act on, so it is not
+   * offered rather than offered and silently ineffective; the card above is
+   * where that is fixed.
    */
-  aiConfigured?: boolean;
+  lookupAvailable?: boolean;
 }
 
 /**
- * Opt-in for the automatic payee contact lookup. The payee form reads the same
- * `payeeContactLookupEnabled` preference from the store, so the switch takes
- * effect on the next payee immediately (optimistic), reverting on save error.
+ * Opt-in for the automatic payee contact lookup -- the one that runs by itself
+ * when a payee is created with nothing but a name. The buttons on the payee
+ * form and detail card are not gated by it: a click is its own consent.
+ *
+ * The payee form reads the same `payeeContactLookupEnabled` preference from the
+ * store, so the switch takes effect on the next payee immediately (optimistic),
+ * reverting on save error.
  */
 export function PayeeContactLookupToggle({
   disabled = false,
-  aiConfigured = false,
+  lookupAvailable = false,
 }: PayeeContactLookupToggleProps) {
-  const t = useTranslations('settings.aiSettings.payeeLookup');
+  const t = useTranslations('settings.payeeLookup.automatic');
   const preferences = usePreferencesStore((s) => s.preferences);
   const updatePreferencesStore = usePreferencesStore((s) => s.updatePreferences);
   const enabled = preferences?.payeeContactLookupEnabled ?? false;
@@ -52,7 +57,7 @@ export function PayeeContactLookupToggle({
     }
   };
 
-  if (!aiConfigured) return null;
+  if (!lookupAvailable) return null;
 
   return (
     <Card padding="md" className="mb-6">

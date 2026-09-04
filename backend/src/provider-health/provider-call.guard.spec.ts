@@ -5,17 +5,22 @@ import { TRACKED_PROVIDERS } from "./providers";
 const SRC_ROOT = join(__dirname, "..");
 
 /**
- * The market-data clients: every outbound call in here has to be answerable to
- * a circuit breaker, because these are the ones a whole deployment's worth of
- * requests fan out into (issue #1265).
+ * The clients whose outbound calls have to be answerable to a circuit breaker,
+ * because these are the ones a whole deployment's worth of requests fan out
+ * into (issue #1265).
  *
- * Scoped deliberately. The FX, AI, favicon, release-check and breach-check
- * callers have the same shape and are named in
+ * Market data was the original scope. `payees/lookup/google-places` joined it
+ * because the payee contact lookup has the same fan-out shape -- one request
+ * per payee, from every user, against one third-party host -- even though it
+ * runs in front of a waiting person rather than in a background refresh.
+ *
+ * Still scoped deliberately. The FX, AI, favicon, release-check and
+ * breach-check callers have the same shape and are named in
  * `docs/specs/provider-outage-alerts.md` as the next adopters; widening this
  * scan before they adopt would only be a failing test nobody can fix in one
  * change.
  */
-const GUARDED_DIRS = ["securities"];
+const GUARDED_DIRS = ["securities", "payees/lookup/google-places"];
 
 /** A bare global `fetch(` or a raw `https.get(` -- an outbound request. */
 const OUTBOUND_CALL = /(?<![.\w])fetch\(|https\.(get|request)\(/;
@@ -52,6 +57,7 @@ describe("outbound provider calls are answerable to the breaker", () => {
       OUTBOUND_CALL.test(file.source),
     );
     expect(callers.map((file) => file.path).sort()).toEqual([
+      "payees/lookup/google-places/google-places.client.ts",
       "securities/msn-finance.service.ts",
       "securities/security-news.service.ts",
       "securities/yahoo-finance.service.ts",
@@ -69,8 +75,10 @@ describe("outbound provider calls are answerable to the breaker", () => {
         expect(source).toContain("private async fetchImage(");
         return;
       }
-      expect(source).toContain(
-        'from "../provider-health/provider-health.service"',
+      // The relative depth differs by where the client lives, so the assertion
+      // is on the module it reaches, not on one spelling of the path.
+      expect(source).toMatch(
+        /from "(?:\.\.\/)+provider-health\/provider-health\.service"/,
       );
       expect(source).toMatch(/this\.health\.(tryRequest|assertAvailable)\(/);
       expect(source).toContain("this.health.recordSuccess(");
@@ -120,6 +128,9 @@ describe("a response is recorded in one place per client", () => {
   it.each([
     ["securities/yahoo-finance.service.ts", 3],
     ["securities/msn-finance.service.ts", 4],
+    // Google Places: two. The non-2xx branch, which is a complete answer, and
+    // the point the body finishes arriving -- the same split Yahoo documents.
+    ["payees/lookup/google-places/google-places.client.ts", 2],
   ])("%s records an arrived response in at most %i places", (file, allowed) => {
     const source = readFileSync(join(SRC_ROOT, file), "utf8");
     const occurrences = source.split("recordSuccess(").length - 1;

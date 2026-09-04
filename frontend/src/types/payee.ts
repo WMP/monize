@@ -110,7 +110,20 @@ export interface PayeeAlias {
 }
 
 /** Why a contact lookup did or did not produce a suggestion. */
-export type ContactLookupReason = 'ok' | 'none' | 'disabled' | 'no_provider' | 'failed';
+/**
+ * Six outcomes, because each sends the user somewhere different: `none` is "we
+ * looked and there was nothing", `failed` is "we could not look" and must never
+ * read as nothing found, `no_provider` means configure a source,
+ * `quota_exceeded` means this month's Google Places limit is spent with no AI
+ * behind it, and `disabled` means the automatic lookup is switched off.
+ */
+export type ContactLookupReason =
+  | 'ok'
+  | 'none'
+  | 'disabled'
+  | 'no_provider'
+  | 'quota_exceeded'
+  | 'failed';
 
 export type ContactLookupField = 'website' | 'address' | 'email' | 'phone';
 export const CONTACT_LOOKUP_FIELDS: readonly ContactLookupField[] = [

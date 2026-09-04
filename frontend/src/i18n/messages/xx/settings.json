@@ -842,7 +842,8 @@
     "autoBackup": "[XX-Automatic Backup-XX]",
     "help": "[XX-Help & Support-XX]",
     "dangerZone": "[XX-Danger Zone-XX]",
-    "about": "[XX-About-XX]"
+    "about": "[XX-About-XX]",
+    "payeeLookup": "[XX-Payee lookup-XX]"
   },
   "page": {
     "title": "[XX-Settings-XX]",
@@ -905,14 +906,6 @@
         "step3": "[XX-Answers stream back into the chat. A status dot shows whether your agent is connected.-XX]",
         "note": "[XX-Nothing runs until your agent is connected and listening. The chat shows connection instructions.-XX]"
       }
-    },
-    "payeeLookup": {
-      "title": "[XX-Automatic payee contact lookup-XX]",
-      "subtitle": "[XX-Automatically look up a new payee's website, address, email and phone number through your configured AI provider. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.-XX]",
-      "toggleLabel": "[XX-Enable automatic payee contact lookup-XX]",
-      "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
-      "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
-      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "[XX-All time-XX]"
     },
     "estCostTooltip": "[XX-Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set.-XX]"
+  },
+  "payeeLookup": {
+    "title": "[XX-Payee lookup-XX]",
+    "subtitle": "[XX-Where a payee's website, address, email and phone number come from when you look one up.-XX]",
+    "saved": "[XX-Payee lookup settings saved-XX]",
+    "saveFailed": "[XX-Could not save the payee lookup settings-XX]",
+    "loadFailed": "[XX-Could not load the payee lookup settings. Reload the page to try again.-XX]",
+    "googlePlaces": {
+      "title": "[XX-Google Places-XX]",
+      "toggleLabel": "[XX-Use Google Places for payee lookups-XX]",
+      "configured": "[XX-Looks up businesses in Google's directory instead of your AI provider.-XX]",
+      "notConfigured": "[XX-Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.-XX]",
+      "operatorManaged": "[XX-Configured by this server's administrator. You can turn it off for your own payees.-XX]",
+      "configure": "[XX-Set up-XX]",
+      "edit": "[XX-Edit-XX]",
+      "removeKey": "[XX-Remove key-XX]",
+      "usage": "[XX-Used this month: {used} of {cap}-XX]",
+      "usageNoCap": "[XX-Used this month: {used}. No monthly limit.-XX]",
+      "keyUnreadable": "[XX-The stored API key cannot be read by this server. This happens when a backup is restored onto a different instance, or after the encryption key changes. Enter the key again to fix it.-XX]",
+      "encryptionUnavailable": "[XX-This server has no encryption key configured, so an API key cannot be stored securely. Ask your administrator to set one.-XX]",
+      "modalTitle": "[XX-Google Places-XX]",
+      "modalSubtitle": "[XX-Monize sends the payee's name, and the address you already have, to Google and stores nothing with them.-XX]",
+      "apiKeyLabel": "[XX-API key-XX]",
+      "apiKeyPlaceholder": "[XX-Paste your Google Places API key-XX]",
+      "apiKeyHelp": "[XX-Create a key in the Google Cloud console with the Places API (New) enabled. Leave this blank to keep the key you already saved.-XX]",
+      "capToggleLabel": "[XX-Limit requests each month-XX]",
+      "capHelp": "[XX-Google gives {free} free Text Search requests a month for the fields this lookup needs. Past the limit, lookups fall back to your AI provider.-XX]",
+      "capLabel": "[XX-Requests per month-XX]",
+      "capRange": "[XX-Enter a number between {min} and {max}.-XX]",
+      "test": "[XX-Test-XX]",
+      "testing": "[XX-Testing...-XX]",
+      "testSuccess": "[XX-Google accepted the key.-XX]",
+      "save": "[XX-Save-XX]",
+      "cancel": "[XX-Cancel-XX]"
+    },
+    "automatic": {
+      "title": "[XX-Automatic payee contact lookup-XX]",
+      "subtitle": "[XX-Automatically look up a new payee's website, address, email and phone number. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.-XX]",
+      "toggleLabel": "[XX-Enable automatic payee contact lookup-XX]",
+      "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
+      "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
+      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
+    }
   }
 }

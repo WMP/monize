@@ -842,7 +842,8 @@
     "autoBackup": "Backup automatico",
     "help": "Guida e supporto",
     "dangerZone": "Zona pericolosa",
-    "about": "Informazioni"
+    "about": "Informazioni",
+    "payeeLookup": "Ricerca beneficiari"
   },
   "page": {
     "title": "Impostazioni",
@@ -905,14 +906,6 @@
         "step3": "Le risposte vengono trasmesse nella chat. Un indicatore di stato mostra se il tuo agente è connesso.",
         "note": "Non viene eseguito nulla finché il tuo agente non è connesso e in ascolto. La chat mostra le istruzioni di connessione."
       }
-    },
-    "payeeLookup": {
-      "title": "Ricerca automatica dei recapiti del beneficiario",
-      "subtitle": "Cerca automaticamente sito web, indirizzo, email e numero di telefono di un nuovo beneficiario tramite il provider IA configurato. Vengono inviati il nome del beneficiario e le eventuali note, sito web, indirizzo, email e telefono che ha già, in modo che la ricerca distingua l'azienda e la sede corrette.",
-      "toggleLabel": "Abilita la ricerca automatica dei recapiti",
-      "enabled": "Ricerca automatica dei recapiti abilitata",
-      "disabled": "Ricerca automatica dei recapiti disabilitata",
-      "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei recapiti"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Tutto il periodo"
     },
     "estCostTooltip": "Stimato usando le tariffe di costo configurate per ciascun provider. Esclude le attività per cui non è impostata alcuna tariffa corrispondente."
+  },
+  "payeeLookup": {
+    "title": "Ricerca beneficiari",
+    "subtitle": "Da dove provengono sito web, indirizzo, e-mail e numero di telefono di un beneficiario quando lo cerchi.",
+    "saved": "Impostazioni di ricerca beneficiari salvate",
+    "saveFailed": "Impossibile salvare le impostazioni di ricerca beneficiari",
+    "loadFailed": "Impossibile caricare le impostazioni di ricerca beneficiari. Ricarica la pagina per riprovare.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Usa Google Places per la ricerca dei beneficiari",
+      "configured": "Cerca le attività nella directory di Google invece che tramite il tuo provider di IA.",
+      "notConfigured": "Aggiungi una chiave API di Google Places per cercare le attività nella directory di Google invece che tramite il tuo provider di IA.",
+      "operatorManaged": "Configurato dall'amministrazione di questo server. Puoi disattivarlo per i tuoi beneficiari.",
+      "configure": "Configura",
+      "edit": "Modifica",
+      "removeKey": "Rimuovi chiave",
+      "usage": "Usate questo mese: {used} su {cap}",
+      "usageNoCap": "Usate questo mese: {used}. Nessun limite mensile.",
+      "keyUnreadable": "Questo server non riesce a leggere la chiave API salvata. Succede quando un backup viene ripristinato su un'altra istanza o dopo un cambio della chiave di cifratura. Inserisci di nuovo la chiave per risolvere.",
+      "encryptionUnavailable": "Questo server non ha una chiave di cifratura configurata, quindi una chiave API non può essere conservata in sicurezza. Chiedi all'amministrazione di configurarne una.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize invia a Google il nome del beneficiario e l'indirizzo che possiedi già, e non vi memorizza nulla.",
+      "apiKeyLabel": "Chiave API",
+      "apiKeyPlaceholder": "Incolla la tua chiave API di Google Places",
+      "apiKeyHelp": "Crea una chiave nella console Google Cloud con la Places API (New) abilitata. Lascia vuoto per mantenere la chiave già salvata.",
+      "capToggleLabel": "Limita le richieste ogni mese",
+      "capHelp": "Google offre {free} richieste Text Search gratuite al mese per i campi richiesti da questa ricerca. Oltre il limite, la ricerca torna al tuo provider di IA.",
+      "capLabel": "Richieste al mese",
+      "capRange": "Inserisci un numero tra {min} e {max}.",
+      "test": "Prova",
+      "testing": "Prova in corso...",
+      "testSuccess": "Google ha accettato la chiave.",
+      "save": "Salva",
+      "cancel": "Annulla"
+    },
+    "automatic": {
+      "title": "Ricerca automatica dei contatti dei beneficiari",
+      "subtitle": "Cerca automaticamente sito web, indirizzo, e-mail e numero di telefono di un nuovo beneficiario. Viene inviato il nome del beneficiario, insieme a note, sito web, indirizzo, e-mail e telefono che possiede già, così la ricerca distingue l'attività e la sede corrette.",
+      "toggleLabel": "Attiva la ricerca automatica dei contatti dei beneficiari",
+      "enabled": "Ricerca automatica dei contatti attivata",
+      "disabled": "Ricerca automatica dei contatti disattivata",
+      "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei contatti"
+    }
   }
 }

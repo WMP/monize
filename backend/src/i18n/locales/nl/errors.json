@@ -603,5 +603,12 @@
   },
   "maintenance": {
     "inProgress": "Een andere bewerking vervangt momenteel de gegevens van dit account. Wacht tot deze klaar is en probeer het opnieuw."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places wordt ingesteld door de beheerder van deze server. Alleen de aan/uit-instelling kan hier worden gewijzigd.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY is niet ingesteld. De Google Places API-sleutel kan niet veilig worden opgeslagen.",
+    "notConfigured": "Er is geen Google Places API-sleutel ingesteld.",
+    "capReached": "De limiet voor Google Places-verzoeken van deze maand is bereikt.",
+    "testFailed": "De verbindingstest met Google Places is mislukt."
   }
 }

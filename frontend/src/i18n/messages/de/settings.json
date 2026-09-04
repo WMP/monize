@@ -842,7 +842,8 @@
     "autoBackup": "Automatisches Backup",
     "help": "Hilfe & Support",
     "dangerZone": "Gefahrenbereich",
-    "about": "Über"
+    "about": "Über",
+    "payeeLookup": "Zahlungsempfänger-Suche"
   },
   "page": {
     "title": "Einstellungen",
@@ -905,14 +906,6 @@
         "step3": "Antworten werden zurück in den Chat gestreamt. Ein Statuspunkt zeigt an, ob Ihr Agent verbunden ist.",
         "note": "Es läuft nichts, bis Ihr Agent verbunden ist und zuhört. Der Chat zeigt Verbindungsanweisungen an."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatische Suche nach Kontaktangaben des Zahlungsempfängers",
-      "subtitle": "Sucht Website, Adresse, E-Mail-Adresse und Telefonnummer eines neuen Zahlungsempfängers automatisch über Ihren konfigurierten KI-Anbieter. Dabei werden der Name des Zahlungsempfängers sowie vorhandene Notizen, Website, Adresse, E-Mail-Adresse und Telefonnummer übermittelt, damit die Suche das richtige Unternehmen am richtigen Standort erkennt.",
-      "toggleLabel": "Automatische Suche nach Kontaktangaben aktivieren",
-      "enabled": "Automatische Suche nach Kontaktangaben aktiviert",
-      "disabled": "Automatische Suche nach Kontaktangaben deaktiviert",
-      "saveFailed": "Die Einstellung zur Kontaktsuche konnte nicht gespeichert werden"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "Gesamter Zeitraum"
     },
     "estCostTooltip": "Geschätzt anhand der Kostensätze, die Sie für jeden Anbieter konfiguriert haben. Aktivitäten ohne passenden Satz werden nicht berücksichtigt."
+  },
+  "payeeLookup": {
+    "title": "Zahlungsempfänger-Suche",
+    "subtitle": "Woher Website, Adresse, E-Mail und Telefonnummer eines Zahlungsempfängers stammen, wenn du sie nachschlägst.",
+    "saved": "Einstellungen zur Zahlungsempfänger-Suche gespeichert",
+    "saveFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht gespeichert werden",
+    "loadFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "Google Places für die Zahlungsempfänger-Suche verwenden",
+      "configured": "Sucht Unternehmen im Google-Verzeichnis statt über deinen KI-Anbieter.",
+      "notConfigured": "Füge einen Google-Places-API-Schlüssel hinzu, um Unternehmen im Google-Verzeichnis statt über deinen KI-Anbieter zu suchen.",
+      "operatorManaged": "Von der Administration dieses Servers konfiguriert. Du kannst es für deine eigenen Zahlungsempfänger deaktivieren.",
+      "configure": "Einrichten",
+      "edit": "Bearbeiten",
+      "removeKey": "Schlüssel entfernen",
+      "usage": "Diesen Monat genutzt: {used} von {cap}",
+      "usageNoCap": "Diesen Monat genutzt: {used}. Kein Monatslimit.",
+      "keyUnreadable": "Der gespeicherte API-Schlüssel kann von diesem Server nicht gelesen werden. Das passiert, wenn ein Backup auf einer anderen Instanz wiederhergestellt wird oder sich der Verschlüsselungsschlüssel ändert. Gib den Schlüssel erneut ein, um das zu beheben.",
+      "encryptionUnavailable": "Auf diesem Server ist kein Verschlüsselungsschlüssel konfiguriert, daher kann kein API-Schlüssel sicher gespeichert werden. Bitte die Administration, einen einzurichten.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize sendet den Namen des Zahlungsempfängers und die bereits vorhandene Adresse an Google und speichert dort nichts.",
+      "apiKeyLabel": "API-Schlüssel",
+      "apiKeyPlaceholder": "Google-Places-API-Schlüssel einfügen",
+      "apiKeyHelp": "Erstelle in der Google Cloud Console einen Schlüssel mit aktivierter Places API (New). Lass das Feld leer, um den bereits gespeicherten Schlüssel zu behalten.",
+      "capToggleLabel": "Anfragen pro Monat begrenzen",
+      "capHelp": "Google gewährt {free} kostenlose Text-Search-Anfragen pro Monat für die Felder, die diese Suche benötigt. Über dem Limit greift die Suche auf deinen KI-Anbieter zurück.",
+      "capLabel": "Anfragen pro Monat",
+      "capRange": "Gib eine Zahl zwischen {min} und {max} ein.",
+      "test": "Testen",
+      "testing": "Wird getestet...",
+      "testSuccess": "Google hat den Schlüssel akzeptiert.",
+      "save": "Speichern",
+      "cancel": "Abbrechen"
+    },
+    "automatic": {
+      "title": "Automatische Kontaktsuche für Zahlungsempfänger",
+      "subtitle": "Website, Adresse, E-Mail und Telefonnummer eines neuen Zahlungsempfängers automatisch nachschlagen. Der Name des Zahlungsempfängers wird gesendet, zusammen mit vorhandenen Notizen, Website, Adresse, E-Mail und Telefonnummer, damit die Suche das richtige Unternehmen und den richtigen Standort unterscheiden kann.",
+      "toggleLabel": "Automatische Kontaktsuche für Zahlungsempfänger aktivieren",
+      "enabled": "Automatische Kontaktsuche für Zahlungsempfänger aktiviert",
+      "disabled": "Automatische Kontaktsuche für Zahlungsempfänger deaktiviert",
+      "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden"
+    }
   }
 }

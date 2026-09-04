@@ -842,7 +842,8 @@
     "autoBackup": "自動備份",
     "help": "說明與支援",
     "dangerZone": "危險區域",
-    "about": "關於"
+    "about": "關於",
+    "payeeLookup": "收款人查詢"
   },
   "page": {
     "title": "設定",
@@ -905,14 +906,6 @@
         "step3": "回答會串流回聊天。狀態點顯示您的代理程式是否已連線。",
         "note": "在您的代理程式連線並接聽之前，不會執行任何內容。聊天會顯示連線指示。"
       }
-    },
-    "payeeLookup": {
-      "title": "自動查詢收款人聯絡資訊",
-      "subtitle": "透過您設定的 AI 供應商自動查詢新收款人的網站、地址、電子郵件和電話號碼。 收款人的名稱會連同已儲存的備註、網站、地址、電子郵件和電話一起傳送，以便查詢能區分正確的商家和正確的地點。",
-      "toggleLabel": "啟用自動查詢收款人聯絡資訊",
-      "enabled": "已啟用自動查詢收款人聯絡資訊",
-      "disabled": "已停用自動查詢收款人聯絡資訊",
-      "saveFailed": "無法更新收款人聯絡資訊查詢設定"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,48 @@
       "all": "所有時間"
     },
     "estCostTooltip": "使用您在每個提供者上設定的費率進行估算。不含未設定匹配費率的活動。"
+  },
+  "payeeLookup": {
+    "title": "收款人查詢",
+    "subtitle": "查詢收款人時，其網站、地址、電子郵件與電話號碼的來源。",
+    "saved": "已儲存收款人查詢設定",
+    "saveFailed": "無法儲存收款人查詢設定",
+    "loadFailed": "無法載入收款人查詢設定。請重新整理頁面再試一次。",
+    "googlePlaces": {
+      "title": "Google Places",
+      "toggleLabel": "使用 Google Places 查詢收款人",
+      "configured": "在 Google 的商家目錄中查詢，而非透過你的 AI 供應商。",
+      "notConfigured": "新增 Google Places API 金鑰，即可在 Google 的商家目錄中查詢，而非透過你的 AI 供應商。",
+      "operatorManaged": "由本伺服器的管理員設定。你可以為自己的收款人關閉它。",
+      "configure": "設定",
+      "edit": "編輯",
+      "removeKey": "移除金鑰",
+      "usage": "本月已用：{used}/{cap}",
+      "usageNoCap": "本月已用：{used}。無每月上限。",
+      "keyUnreadable": "本伺服器無法讀取已儲存的 API 金鑰。將備份還原到其他執行個體，或加密金鑰變更後會發生這種情況。請重新輸入金鑰以修正。",
+      "encryptionUnavailable": "本伺服器未設定加密金鑰，因此無法安全儲存 API 金鑰。請請管理員設定一組。",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize 會將收款人名稱與你已有的地址傳送給 Google，且不會在 Google 儲存任何內容。",
+      "apiKeyLabel": "API 金鑰",
+      "apiKeyPlaceholder": "貼上你的 Google Places API 金鑰",
+      "apiKeyHelp": "在 Google Cloud 主控台建立金鑰並啟用 Places API (New)。留空則保留已儲存的金鑰。",
+      "capToggleLabel": "限制每月要求數",
+      "capHelp": "針對此查詢所需的欄位，Google 每月提供 {free} 次免費 Text Search 要求。超過上限後，查詢會回退到你的 AI 供應商。",
+      "capLabel": "每月要求數",
+      "capRange": "請輸入 {min} 到 {max} 之間的數字。",
+      "test": "測試",
+      "testing": "測試中...",
+      "testSuccess": "Google 已接受該金鑰。",
+      "save": "儲存",
+      "cancel": "取消"
+    },
+    "automatic": {
+      "title": "自動查詢收款人聯絡資訊",
+      "subtitle": "自動查詢新收款人的網站、地址、電子郵件與電話號碼。系統會傳送收款人名稱，以及其已有的備註、網站、地址、電子郵件與電話，讓查詢能分辨正確的商家與分店。",
+      "toggleLabel": "啟用自動查詢收款人聯絡資訊",
+      "enabled": "已啟用自動查詢收款人聯絡資訊",
+      "disabled": "已停用自動查詢收款人聯絡資訊",
+      "saveFailed": "無法更新收款人聯絡資訊查詢設定"
+    }
   }
 }

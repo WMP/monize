@@ -193,6 +193,11 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
     scopeToUser: true,
   },
   {
+    table: "payee_lookup_settings",
+    countKey: "payeeLookupSettings",
+    scopeToUser: true,
+  },
+  {
     table: "monte_carlo_scenarios",
     countKey: "monteCarloScenarios",
     scopeToUser: true,
