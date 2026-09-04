@@ -120,6 +120,27 @@ describe('the categories list on a phone', () => {
     expect(text).not.toContain('Delete');
   });
 
+  it('reaches Edit and Delete through the action sheet the card sends them to', () => {
+    // The card drops the Actions column, so this is the claim that makes that
+    // safe. Without it the suite would stay green if `getRowHandlers` stopped
+    // being spread on the wrapped row: the "no Edit/Delete in the card"
+    // assertions below would still pass, with no way left to edit a category
+    // on a phone. Right-click is the same route as a 750ms press.
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { categories: 'normal' } });
+
+    const { container } = renderList([makeCategory({ id: 'c1', name: 'Groceries' })]);
+
+    const [row] = bodyRows(container);
+    expect(row.textContent).not.toContain('Edit');
+
+    fireEvent.contextMenu(row);
+
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  });
+
   it('captions the bare transaction count with the column label it lost', () => {
     setPhoneViewport(true);
     useDensityStore.setState({ densities: { categories: 'normal' } });
