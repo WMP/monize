@@ -27,6 +27,7 @@ import { buildLogicalAccounts, type LogicalAccount } from '@/lib/logical-account
 import { useMainAccountName } from '@/hooks/useMainAccountName';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 type SortField = 'name' | 'type' | 'balance' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -91,6 +92,84 @@ interface AccountListProps {
   convertToDefault: (value: number, fromCurrency: string) => number | null;
   onEdit: (account: Account) => void;
   onRefresh: () => void;
+}
+
+/**
+ * A column label with its sort indicator. Rendered by the full column header
+ * and by the phone's slim control header from this one place, so the label a
+ * sort control carries cannot drift from the field it sorts.
+ */
+function ColumnSortLabel({
+  label,
+  field,
+  sortField,
+  sortDirection,
+  align = 'start',
+}: {
+  label: string;
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  align?: 'start' | 'end';
+}) {
+  return (
+    <div className={`flex items-center${align === 'end' ? ' justify-end' : ''}`}>
+      {label}
+      <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
+    </div>
+  );
+}
+
+/** The chevron, type name and account count of a group header, in both layouts. */
+function GroupHeaderLabel({
+  label,
+  count,
+  isCollapsed,
+}: {
+  label: string;
+  count: string;
+  isCollapsed: boolean;
+}) {
+  return (
+    <>
+      <svg
+        className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+      <span className="font-semibold text-gray-700 dark:text-gray-200">{label}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400">{count}</span>
+    </>
+  );
+}
+
+/** A group's converted total, in both layouts (partial when a rate is missing). */
+function GroupHeaderTotal({
+  total,
+  displayCurrency,
+  format,
+}: {
+  total: ConvertedTotal;
+  displayCurrency: string;
+  format: (value: number, currencyCode?: string) => string;
+}) {
+  return (
+    <span
+      className={`text-sm font-medium ${
+        total.value >= 0
+          ? 'text-gray-700 dark:text-gray-200'
+          : 'text-red-600 dark:text-red-400'
+      }`}
+    >
+      <PartialTotal total={total} displayCurrency={displayCurrency}>
+        {format(total.value, displayCurrency)}
+      </PartialTotal>
+    </span>
+  );
 }
 
 /** A group with nothing in it: complete, and zero. */
@@ -254,6 +333,13 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
   }), [t, tc]);
   const { density } = useDensityPreference('accounts');
   const { cellPadding, headerPadding } = useTableDensity(density);
+  // Model B: on a phone, density picks the LAYOUT rather than only the row
+  // height. At Normal each account is a wrapped card carrying the type and
+  // status this table hides below `sm`/`md`; Compact and Dense keep the tier
+  // table, unchanged, and so does every non-phone width. Exactly one branch
+  // renders per row, chosen here.
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
 
   // Every account as the user thinks of it: a linked brokerage/cash pair is one
   // entry, so it filters, sorts, counts and renders as a single account.
@@ -795,48 +881,99 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
         <DensityToggleBar view="accounts" />
         <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          {/* On a phone the wrapped card labels its own values, so the column
+              header is dropped -- but the controls in that header row must not
+              go with it: these `<th>`s are how the list is sorted, and Name
+              and Balance are the two a phone can reach today (Type and Status
+              are hidden below `sm`/`md`). A slim control header carries
+              exactly those two, as buttons and with no column label of its
+              own: the single card cell below holds name, balance, type and
+              status at once, so naming this header after any one of them would
+              misdescribe the column to a screen reader. */}
           <thead className="bg-gray-50 dark:bg-gray-800">
+            {wrapped ? (
+            <tr>
+              <th className={`${headerPadding} text-left`}>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('name')}
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
+                  >
+                    <ColumnSortLabel
+                      label={t('list.columns.accountName')}
+                      field="name"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('balance')}
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
+                  >
+                    <ColumnSortLabel
+                      label={t('list.columns.balance')}
+                      field="balance"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                    />
+                  </button>
+                </div>
+              </th>
+            </tr>
+            ) : (
             <tr>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none`}
                 onClick={() => handleSort('name')}
               >
-                <div className="flex items-center">
-                  {t('list.columns.accountName')}
-                  <SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
-                </div>
+                <ColumnSortLabel
+                  label={t('list.columns.accountName')}
+                  field="name"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none hidden sm:table-cell`}
                 onClick={() => handleSort('type')}
               >
-                <div className="flex items-center">
-                  {t('list.columns.type')}
-                  <SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
-                </div>
+                <ColumnSortLabel
+                  label={t('list.columns.type')}
+                  field="type"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none hidden md:table-cell w-1 whitespace-nowrap`}
                 onClick={() => handleSort('status')}
               >
-                <div className="flex items-center">
-                  {t('list.columns.status')}
-                  <SortIcon field="status" sortField={sortField} sortDirection={sortDirection} />
-                </div>
+                <ColumnSortLabel
+                  label={t('list.columns.status')}
+                  field="status"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none`}
                 onClick={() => handleSort('balance')}
               >
-                <div className="flex items-center justify-end">
-                  {t('list.columns.balance')}
-                  <SortIcon field="balance" sortField={sortField} sortDirection={sortDirection} />
-                </div>
+                <ColumnSortLabel
+                  label={t('list.columns.balance')}
+                  field="balance"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  align="end"
+                />
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
                 {t('list.columns.actions')}
               </th>
             </tr>
+            )}
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {renderItems.map((item) =>
@@ -847,44 +984,52 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   onClick={() => toggleGroup(item.type)}
                   aria-expanded={!item.isCollapsed}
                 >
+                  {/* Every row of the wrapped layout is one cell, so the group
+                      header is too: its label and its total share that cell
+                      and the row stays as tappable as the tier version. */}
+                  {wrapped ? (
+                    <td className={cellPadding}>
+                      <div className="flex items-center gap-2 min-w-0 text-sm">
+                        <GroupHeaderLabel
+                          label={formatAccountType(item.type, tc)}
+                          count={t('list.groupCount', { count: item.count })}
+                          isCollapsed={item.isCollapsed}
+                        />
+                        <span className="ml-auto text-right whitespace-nowrap">
+                          <GroupHeaderTotal
+                            total={item.total}
+                            displayCurrency={defaultCurrency}
+                            format={formatCurrencyBase}
+                          />
+                        </span>
+                      </div>
+                    </td>
+                  ) : (
+                  <>
                   <td className={cellPadding}>
                     <div className="flex items-center gap-2 min-w-0 text-sm">
-                      <svg
-                        className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${item.isCollapsed ? '-rotate-90' : ''}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                      <span className="font-semibold text-gray-700 dark:text-gray-200">
-                        {formatAccountType(item.type, tc)}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('list.groupCount', { count: item.count })}
-                      </span>
+                      <GroupHeaderLabel
+                        label={formatAccountType(item.type, tc)}
+                        count={t('list.groupCount', { count: item.count })}
+                        isCollapsed={item.isCollapsed}
+                      />
                     </div>
                   </td>
                   <td className="hidden sm:table-cell" aria-hidden="true" />
                   <td className="hidden md:table-cell" aria-hidden="true" />
                   <td className={`${cellPadding} text-right whitespace-nowrap`}>
-                    <span
-                      className={`text-sm font-medium ${
-                        item.total.value >= 0
-                          ? 'text-gray-700 dark:text-gray-200'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      <PartialTotal total={item.total} displayCurrency={defaultCurrency}>
-                        {formatCurrencyBase(item.total.value, defaultCurrency)}
-                      </PartialTotal>
-                    </span>
+                    <GroupHeaderTotal
+                      total={item.total}
+                      displayCurrency={defaultCurrency}
+                      format={formatCurrencyBase}
+                    />
                   </td>
                   <td
                     className="hidden min-[480px]:table-cell sticky right-0 bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
                     aria-hidden="true"
                   />
+                  </>
+                  )}
                 </tr>
               ) : (
                 <AccountRow
@@ -893,6 +1038,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   logical={item.logical}
                   index={item.index}
                   density={density}
+                  wrapped={wrapped}
                   cellPadding={cellPadding}
                   isDeletable={deletableAccounts.has(item.logical.id)}
                   accountNameMap={accountNameMap}
