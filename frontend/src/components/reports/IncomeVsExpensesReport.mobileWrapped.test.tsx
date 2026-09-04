@@ -168,10 +168,13 @@ describe("IncomeVsExpensesReport (phone wrapped table)", () => {
         expect(cell.className).toMatch(/\bcol-start-\d\b/);
         expect(cell.className).toMatch(/\brow-start-\d\b/);
       }
-      // The four money cells (everything but the month/label) never wrap.
-      expect(
-        cells.filter((c) => c.className.includes("whitespace-nowrap")).length,
-      ).toBe(4);
+      // The four money cells (everything but the month/label) never wrap, and
+      // each is bounded by its grid track rather than by its own content.
+      const money = cells.filter((c) => c.className.includes("whitespace-nowrap"));
+      expect(money).toHaveLength(4);
+      for (const cell of money) {
+        expect(cell.className).toContain("min-w-0");
+      }
     }
   });
 
@@ -224,9 +227,10 @@ describe("IncomeVsExpensesReport (phone wrapped table)", () => {
       );
     expect(monthOrder()).toEqual(["Jan 2024", "Feb 2024"]);
 
-    // "Savings" in the phone strip: the third-from-last control of the first
-    // header row. Addressed by position because the label also appears in the
-    // column header row and in every row's caption.
+    // "Savings" in the phone strip: the fourth of the five controls in the
+    // first header row (Month, Income, Expenses, Savings, Savings Rate).
+    // Addressed by position because the label also appears in the column
+    // header row and in every row's caption.
     const phoneSavings = container.querySelectorAll("thead tr")[0].querySelectorAll("th")[3];
     await act(async () => {
       fireEvent.click(phoneSavings);

@@ -52,16 +52,23 @@ const HEADER_CLASS =
 // The same sort controls in the phone strip: a wrapped row of compact chips.
 // Column alignment means nothing there -- the column header row is hidden and
 // each data row is a grid -- so every control is left-aligned and self-naming.
+// The border and card background are what say "tappable": there is no hover on
+// a touch screen, and without them the strip reads as another row of the
+// captions the cells below carry.
 const PHONE_HEADER_CLASS =
-  'px-1.5 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
+  'rounded border border-gray-200 bg-white px-1.5 py-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
 
 // A money cell inside a wrapped card: no padding of its own below `sm` (the row
 // supplies it and the grid does the spacing), the table cell's own padding from
 // `sm` up. Smaller type on phones so a six-figure amount still fits a
 // half-width column, and `whitespace-nowrap` so a locale that groups thousands
-// with a space cannot break in the middle of a number.
+// with a space cannot break in the middle of a number. `min-w-0` keeps a cell's
+// automatic minimum size from outgrowing its grid track when a currency does
+// run long (a ten-figure IDR/VND amount): the number then overflows its own
+// box rather than widening the row. It is inert in table layout, where the
+// cell is sized from its content.
 const MONEY_CELL =
-  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
+  'p-0 min-w-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
 /**
  * The caption a value carries on phones. Below `sm` the column header row is
@@ -328,7 +335,16 @@ export function IncomeVsExpensesReport() {
                 income and expenses line 2, the savings rate line 3. From `sm`
                 up it is the ordinary table. The sort controls survive as their
                 own phone-only header row, because the column header row that
-                carries them on desktop is hidden there. */}
+                carries them on desktop is hidden there.
+
+                Two costs of restyling one tree, both deliberate. Changing the
+                display roles drops the table semantics below `sm`, which is
+                why every value carries a `CellLabel` naming its column -- a
+                phone reader gets labelled values rather than a header
+                association. And Savings is read fourth but drawn second: DOM
+                order is the desktop column order, which the grid placement
+                overrides visually. Both are properties of the mechanism, not
+                of this table. */}
             <div className="overflow-x-auto">
               <table className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
                 <thead className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
