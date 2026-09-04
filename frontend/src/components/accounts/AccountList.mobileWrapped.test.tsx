@@ -258,6 +258,11 @@ describe('the accounts list on a phone', () => {
     expect(group.textContent).toContain('$1500.00');
     // The type name is the part that yields, so the header cannot set a
     // minimum width wider than the phone (see the comment on the branch).
+    // jsdom does no layout, so this pins the mechanism, not the width: the
+    // width itself was measured in a hand-CSS replica at 390px (521px before
+    // this shape, 390px after), and only a real-browser case at device width
+    // -- the shape `e2e/tests/mobile.spec.ts` uses for the reconcile table --
+    // can hold it against a future change.
     expect(group.querySelector('.truncate')).toBeTruthy();
     expect(group.querySelector('.grid')?.className).toContain('minmax(0,1fr)');
 

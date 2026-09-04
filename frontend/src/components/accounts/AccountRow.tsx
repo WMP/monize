@@ -353,9 +353,13 @@ export interface AccountRowProps {
    * Note the two breakpoints are not the same one. The tier row's Actions cell
    * is `min-[480px]`, and `wrapped` covers everything below 640px, so between
    * 480px and 639px at Normal density the actions move from inline buttons to
-   * that sheet. That is deliberate -- it is the trade the whole card makes,
-   * buying the Type and Status this table hides below `sm`/`md` -- and the
-   * sheet, not a hover-only affordance, is what those widths already use.
+   * that sheet -- which also means they stop being tab-reachable there, since
+   * the sheet opens on long-press or right-click. It is the price of the card,
+   * paid for the Type and Status this table hides below `sm`/`md`, and the
+   * register's wrapped card makes the same trade at the same two widths
+   * (`exceptPhones` is 480 in `register-columns.ts`, its card is `< 640`), so
+   * the two tables behave alike. Compact density, one tap away, is the way
+   * back to inline actions.
    */
   wrapped?: boolean;
   brokerageMarketValue: number | undefined;
@@ -565,7 +569,11 @@ export const AccountRow = memo(function AccountRow({
         {...getRowHandlers(account)}
       >
         <td className="p-0">
-          <div className="px-4 py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
+          {/* The inset is the density table's, not a hand-picked one: the
+              group header rows between these cards read `cellPadding` too, and
+              a card indented differently from the header above it reads as two
+              lists. */}
+          <div className={`${cellPadding} grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start`}>
             {/* The brand slot the tier row shows at this density: the
                 institution's favicon, falling back to the account-type icon. */}
             <InstitutionLogo

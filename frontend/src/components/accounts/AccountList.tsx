@@ -917,7 +917,13 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
           <thead className="bg-gray-50 dark:bg-gray-800">
             {wrapped ? (
             <tr>
-              <th className={`${headerPadding} text-left`}>
+              {/* The one column is always sorted by something, and `aria-sort`
+                  is the only place that direction is announced -- the arrow in
+                  each button's label is a glyph, not a state. */}
+              <th
+                className={`${headerPadding} text-left`}
+                aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
+              >
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   {SORT_FIELD_LABEL_KEYS.map(({ field, labelKey }) => (
                     <button
