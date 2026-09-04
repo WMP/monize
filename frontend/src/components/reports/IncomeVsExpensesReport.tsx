@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef, type ReactNode } from "react";
+import { useState, useMemo, useRef } from "react";
+import { CellLabel } from "@/components/ui/Table";
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from "next/navigation";
 import {
@@ -74,20 +75,6 @@ const PHONE_HEADER_CLASS =
 // choice -- `overflow-hidden` here would silently truncate a figure.
 const MONEY_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
-
-/**
- * The caption a value carries on phones. Below `sm` the column header row is
- * hidden and each row wraps into a two-column grid, so every value names its
- * own column here instead of relying on a header the reader can no longer see.
- * Hidden from `sm` up, where the real column header row returns.
- */
-function CellLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="block text-[10px] font-normal uppercase leading-tight tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">
-      {children}
-    </span>
-  );
-}
 
 interface ChartDataItem {
   name: string;
@@ -351,10 +338,12 @@ export function IncomeVsExpensesReport() {
                 overrides visually. Both are properties of the mechanism, not
                 of this table. */}
             <div className="overflow-x-auto">
-              <table className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
-                <thead className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
+              {/* Explicit roles: restyling `display` below `sm` strips the implicit
+                  table semantics, and these put them back (inert from `sm` up). */}
+              <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
+                <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
                   {/* Phone sort strip: the same five controls, wrapped. */}
-                  <tr className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
+                  <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
                     {sortColumns.map((col) => (
                       <SortableHeader<IncomeVsExpensesSortField>
                         key={col.field}
@@ -368,7 +357,7 @@ export function IncomeVsExpensesReport() {
                       </SortableHeader>
                     ))}
                   </tr>
-                  <tr className="hidden sm:table-row">
+                  <tr role="row" className="hidden sm:table-row">
                     {sortColumns.map((col) => (
                       <SortableHeader<IncomeVsExpensesSortField>
                         key={col.field}
@@ -384,10 +373,11 @@ export function IncomeVsExpensesReport() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
+                <tbody role="rowgroup" className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
                   {sortedTableData.map((row) => (
                     <tr
                       key={row.name}
+                      role="row"
                       className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
                       onClick={() =>
                         router.push(
@@ -395,15 +385,15 @@ export function IncomeVsExpensesReport() {
                         )
                       }
                     >
-                      <td className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
+                      <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                         {row.fullName}
                       </td>
-                      <td className={`col-start-1 row-start-2 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
-                        <CellLabel>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                      <td role="cell" className={`col-start-1 row-start-2 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                        <CellLabel className="sm:hidden">{t('incomeVsExpenses.colIncome')}</CellLabel>
                         {formatCurrency(row.Income)}
                       </td>
-                      <td className={`col-start-2 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
-                        <CellLabel>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                      <td role="cell" className={`col-start-2 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                        <CellLabel className="sm:hidden">{t('incomeVsExpenses.colExpenses')}</CellLabel>
                         {formatCurrency(row.Expenses)}
                       </td>
                       {/* Savings takes the right half of line 1 beside the
@@ -411,42 +401,42 @@ export function IncomeVsExpensesReport() {
                       <td
                         className={`col-start-2 row-start-1 font-medium ${row.Savings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
-                        <CellLabel>{t('incomeVsExpenses.colSavings')}</CellLabel>
+                        <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavings')}</CellLabel>
                         {formatCurrency(row.Savings)}
                       </td>
                       <td
                         className={`col-start-1 row-start-3 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
-                        <CellLabel>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
+                        <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                         {row.SavingsRate}%
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
+                <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
                   {/* The totals are the largest figures on the table, so this
                       row wraps the same way a data row does -- two columns,
                       each money cell captioned. */}
-                  <tr className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
-                    <td className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">{t('incomeVsExpenses.total')}</td>
-                    <td className={`col-start-1 row-start-2 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
-                      <CellLabel>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                  <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
+                    <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">{t('incomeVsExpenses.total')}</td>
+                    <td role="cell" className={`col-start-1 row-start-2 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('incomeVsExpenses.colIncome')}</CellLabel>
                       {formatCurrency(totals.totalIncome)}
                     </td>
-                    <td className={`col-start-2 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
-                      <CellLabel>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                    <td role="cell" className={`col-start-2 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('incomeVsExpenses.colExpenses')}</CellLabel>
                       {formatCurrency(totals.totalExpenses)}
                     </td>
                     <td
                       className={`col-start-2 row-start-1 font-bold ${totals.totalSavings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
-                      <CellLabel>{t('incomeVsExpenses.colSavings')}</CellLabel>
+                      <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavings')}</CellLabel>
                       {formatCurrency(totals.totalSavings)}
                     </td>
                     <td
                       className={`col-start-1 row-start-3 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
-                      <CellLabel>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
+                      <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                       {totals.savingsRate.toFixed(1)}%
                     </td>
                   </tr>

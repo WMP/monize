@@ -12,7 +12,8 @@ import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { LoanRateEditing } from './useLoanRateEditing';
-import { ScheduleTableRow, CellLabel } from './ScheduleTableRow';
+import { CellLabel } from '@/components/ui/Table';
+import { ScheduleTableRow } from './ScheduleTableRow';
 
 const COLLAPSED_PAST_ROWS = 5;
 const COLLAPSED_FUTURE_ROWS = 5;
@@ -78,36 +79,38 @@ function TotalsRow({
   const cell = 'p-0 text-sm text-right whitespace-nowrap sm:table-cell sm:px-4 sm:py-3';
   return (
     <tr
+      role="row"
       className={`grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0 ${rowClassName}`}
     >
       <td
+        role="cell"
         colSpan={2}
         className="col-start-1 row-start-1 p-0 text-left text-sm sm:table-cell sm:px-4 sm:py-3"
       >
         {label}
       </td>
-      <td className={`col-start-1 row-start-2 ${cell}`}>
-        <CellLabel>{t('loanDetail.schedule.colPayment')}</CellLabel>
+      <td role="cell" className={`col-start-1 row-start-2 ${cell}`}>
+        <CellLabel className="sm:hidden">{t('loanDetail.schedule.colPayment')}</CellLabel>
         {formatCurrency(totals.payment, currencyCode)}
       </td>
-      <td className={`col-start-2 row-start-2 text-orange-600 dark:text-orange-400 ${cell}`}>
-        <CellLabel>{t('loanDetail.schedule.colInterest')}</CellLabel>
+      <td role="cell" className={`col-start-2 row-start-2 text-orange-600 dark:text-orange-400 ${cell}`}>
+        <CellLabel className="sm:hidden">{t('loanDetail.schedule.colInterest')}</CellLabel>
         {formatCurrency(totals.interest, currencyCode)}
       </td>
-      <td className={`col-start-1 row-start-3 text-green-600 dark:text-green-400 ${cell}`}>
-        <CellLabel>{t('loanDetail.schedule.colPrincipal')}</CellLabel>
+      <td role="cell" className={`col-start-1 row-start-3 text-green-600 dark:text-green-400 ${cell}`}>
+        <CellLabel className="sm:hidden">{t('loanDetail.schedule.colPrincipal')}</CellLabel>
         {formatCurrency(totals.principal, currencyCode)}
       </td>
       {showExtraColumn && (
-        <td className={`col-start-2 row-start-3 text-blue-600 dark:text-blue-400 ${cell}`}>
-          <CellLabel>{t('loanDetail.schedule.colExtra')}</CellLabel>
+        <td role="cell" className={`col-start-2 row-start-3 text-blue-600 dark:text-blue-400 ${cell}`}>
+          <CellLabel className="sm:hidden">{t('loanDetail.schedule.colExtra')}</CellLabel>
           {totals.extra > 0 ? formatCurrency(totals.extra, currencyCode) : '—'}
         </td>
       )}
       {/* The rate column has no total; hidden on phones so it claims no grid slot. */}
-      <td className="hidden sm:table-cell sm:px-4 sm:py-3" />
-      <td className={`col-start-2 row-start-1 ${cell}`}>
-        {balance !== undefined && <CellLabel>{t('loanDetail.schedule.colBalance')}</CellLabel>}
+      <td role="cell" className="hidden sm:table-cell sm:px-4 sm:py-3" />
+      <td role="cell" className={`col-start-2 row-start-1 ${cell}`}>
+        {balance !== undefined && <CellLabel className="sm:hidden">{t('loanDetail.schedule.colBalance')}</CellLabel>}
         {balance !== undefined ? formatCurrency(balance, currencyCode) : null}
       </td>
     </tr>
@@ -318,31 +321,33 @@ export function AmortizationScheduleTable({
               two-line grid so all eight columns fit a phone without a
               horizontal scroll; from `sm` up it is the ordinary table. */}
           <div className="overflow-x-auto">
-            <table className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
-              <thead className="hidden bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
+            {/* Explicit roles: restyling `display` below `sm` strips the implicit
+                table semantics, and these put them back (inert from `sm` up). */}
+            <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
+              <thead role="rowgroup" className="hidden bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
                 <tr>
-                  <th className={`${headerClass} text-left`}>{t('loanDetail.schedule.colNumber')}</th>
-                  <th className={`${headerClass} text-left`}>{t('loanDetail.schedule.colDate')}</th>
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colPayment')}</th>
-                  <th className={`${headerClass} text-right`}>
+                  <th role="columnheader" className={`${headerClass} text-left`}>{t('loanDetail.schedule.colNumber')}</th>
+                  <th role="columnheader" className={`${headerClass} text-left`}>{t('loanDetail.schedule.colDate')}</th>
+                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colPayment')}</th>
+                  <th role="columnheader" className={`${headerClass} text-right`}>
                     <span className={operatorClass}>= </span>
                     {t('loanDetail.schedule.colInterest')}
                   </th>
-                  <th className={`${headerClass} text-right`}>
+                  <th role="columnheader" className={`${headerClass} text-right`}>
                     <span className={operatorClass}>+ </span>
                     {t('loanDetail.schedule.colPrincipal')}
                   </th>
                   {showExtraColumn && (
-                    <th className={`${headerClass} text-right`}>
+                    <th role="columnheader" className={`${headerClass} text-right`}>
                       <span className={operatorClass}>+ </span>
                       {t('loanDetail.schedule.colExtra')}
                     </th>
                   )}
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRate')}</th>
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colBalance')}</th>
+                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRate')}</th>
+                  <th role="columnheader" className={`${headerClass} text-right`}>{t('loanDetail.schedule.colBalance')}</th>
                 </tr>
               </thead>
-              <tbody className="block bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
+              <tbody role="rowgroup" className="block bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
                 {displayedUnits.map((unit, idx) => {
                   const prev = idx > 0 ? displayedUnits[idx - 1] : null;
                   const isProjectedUnit = unit.kind === 'single' && unit.row.isProjected;
@@ -360,8 +365,9 @@ export function AmortizationScheduleTable({
                           balance={paidTotals.balance}
                         />
                       )}
-                      <tr className="block bg-gray-100 dark:bg-gray-700 sm:table-row">
+                      <tr role="row" className="block bg-gray-100 dark:bg-gray-700 sm:table-row">
                         <td
+                          role="cell"
                           colSpan={columnCount}
                           className="block px-4 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider sm:table-cell"
                         >
@@ -377,9 +383,11 @@ export function AmortizationScheduleTable({
                     return (
                       <tr
                         key={unit.key}
+                        role="row"
                         className="block bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 sm:table-row"
                       >
                         <td
+                          role="cell"
                           colSpan={columnCount}
                           className="block px-4 py-2 text-center text-xs font-medium sm:table-cell"
                         >
@@ -432,7 +440,7 @@ export function AmortizationScheduleTable({
                   );
                 })}
               </tbody>
-              <tfoot className="block bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-200 dark:border-gray-700 sm:table-footer-group">
+              <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-200 dark:border-gray-700 sm:table-footer-group">
                 <TotalsRow
                   label={t('loanDetail.schedule.total')}
                   totals={totals}

@@ -36,6 +36,32 @@ export const TH_CLASS =
 /** The ordinary body cell. */
 export const TD_CLASS = 'px-4 py-3 text-sm text-gray-900 dark:text-gray-100';
 
+/**
+ * The per-cell caption a wide table's value carries on a phone.
+ *
+ * Below `sm` a wide table wraps each row onto two lines and hides (or replaces)
+ * its column header, so every bare figure names its own column here instead of
+ * relying on a header the reader can no longer see. One component, so the
+ * caption's face cannot drift between tables: two converted tables each grew a
+ * local copy before this existed.
+ *
+ * Pass `className="sm:hidden"` from a table restyled by CSS breakpoints (the
+ * real header returns at `sm`); pass nothing from a card branch that only ever
+ * renders on phones. Self-describing pills need no caption; numbers and dates do.
+ */
+export function CellLabel({ children, className }: { children: ReactNode; className?: string }) {
+  return createElement(
+    'span',
+    {
+      className: cn(
+        'block text-[10px] font-normal uppercase leading-tight tracking-wide text-gray-400 dark:text-gray-500',
+        className,
+      ),
+    },
+    children,
+  );
+}
+
 type ThProps = ThHTMLAttributes<HTMLTableCellElement> & {
   /** Alignment for this column; `<th>` is centred by default in the UA sheet. */
   align?: 'left' | 'right' | 'center';
