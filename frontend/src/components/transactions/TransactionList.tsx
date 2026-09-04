@@ -442,6 +442,15 @@ export function TransactionList({
   }, [transactions]);
 
   const showRunningBalance = isSingleAccountView || startingBalance !== undefined;
+  // Row-invariant, so computed once rather than per row: ten unconditional
+  // columns (register-columns.ts order, minus Account/FX/Balance, which are
+  // conditional) plus the ones this render actually drew. Used by the "today"
+  // divider's colSpan in the tier table.
+  const colCount = 10
+    + (isSingleAccountView ? 0 : 1)
+    + (selectionMode ? 1 : 0)
+    + (showRunningBalance ? 1 : 0)
+    + (showFxColumns ? 3 : 0);
 
   // Compute display amounts for split transactions.  When a filter
   // causes only some splits to be returned, the sum of visible splits
@@ -674,14 +683,6 @@ export function TransactionList({
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {transactions.map((transaction, index) => {
               const isFuture = index < futureBoundaryIndex;
-              // Ten unconditional columns (register-columns.ts order, minus
-              // Account/FX/Balance, which are conditional) plus the ones this
-              // render actually drew.
-              const colCount = 10
-                + (isSingleAccountView ? 0 : 1)
-                + (selectionMode ? 1 : 0)
-                + (showRunningBalance ? 1 : 0)
-                + (showFxColumns ? 3 : 0);
               return (
                 <React.Fragment key={transaction.id}>
                   {index === futureBoundaryIndex && futureBoundaryIndex > 0 && (
