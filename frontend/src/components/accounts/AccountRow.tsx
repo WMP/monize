@@ -347,8 +347,15 @@ export interface AccountRowProps {
    * brand badge, the favourite star, the name with its Joint badge and its
    * paired/shared/description lines, the balance with its breakdown, credit
    * limit and approximate-in-default lines, the type pill and the status pill.
-   * Only the Actions column is left out: on a phone those live in the
-   * long-press action sheet the same row handlers open.
+   * Only the Actions column is left out: they are what the long-press (and
+   * right-click) action sheet these same row handlers open already carries.
+   *
+   * Note the two breakpoints are not the same one. The tier row's Actions cell
+   * is `min-[480px]`, and `wrapped` covers everything below 640px, so between
+   * 480px and 639px at Normal density the actions move from inline buttons to
+   * that sheet. That is deliberate -- it is the trade the whole card makes,
+   * buying the Type and Status this table hides below `sm`/`md` -- and the
+   * sheet, not a hover-only affordance, is what those widths already use.
    */
   wrapped?: boolean;
   brokerageMarketValue: number | undefined;

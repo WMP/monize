@@ -187,14 +187,36 @@ describe('the accounts list on a phone', () => {
     const head = container.querySelector('thead');
     expect(head).toBeTruthy();
     expect(head!.querySelectorAll('th')).toHaveLength(1);
-    // The two sort controls a phone can reach today survive as buttons; the
-    // columns the tier table hides below `sm`/`md` are not named here.
-    const buttons = head!.querySelectorAll('button');
-    expect(buttons).toHaveLength(2);
-    expect(head!.textContent).toContain('Account Name');
-    expect(head!.textContent).toContain('Balance');
-    expect(head!.textContent).not.toContain('Status');
+    // Every sortable field survives as a button. Fewer would leave a list
+    // sorted by a persisted field the phone can neither see nor undo.
+    const labels = Array.from(head!.querySelectorAll('button')).map(
+      (button) => button.textContent?.replace(/[^A-Za-z ]/g, '').trim(),
+    );
+    expect(labels).toEqual(['Account Name', 'Type', 'Status', 'Balance']);
+    // No column label of its own: the one card cell below carries all four.
     expect(head!.textContent).not.toContain('Actions');
+  });
+
+  it('offers a sort control for every column the tier header sorts by', () => {
+    // The two headers are separate JSX, so this is what ties them together: a
+    // fifth sortable column in the tier header fails here until the phone's
+    // slim header carries it too.
+    setPhoneViewport(false);
+    useDensityStore.setState({ densities: { accounts: 'normal' } });
+    const { container: tier, unmount } = renderList([createAccount()]);
+    const tierLabels = Array.from(tier.querySelectorAll('thead th')).map((th) =>
+      th.textContent?.replace(/[^A-Za-z ]/g, '').trim(),
+    );
+    unmount();
+
+    setPhoneViewport(true);
+    const { container: phone } = renderList([createAccount()]);
+    const phoneLabels = Array.from(phone.querySelectorAll('thead button')).map(
+      (button) => button.textContent?.replace(/[^A-Za-z ]/g, '').trim(),
+    );
+
+    // The tier header is the sortable columns plus the un-sortable Actions.
+    expect(tierLabels).toEqual([...phoneLabels, 'Actions']);
   });
 
   it('still sorts from the slim header', () => {
@@ -234,6 +256,10 @@ describe('the accounts list on a phone', () => {
     expect(group.querySelectorAll('td')).toHaveLength(1);
     // The group's converted total is not what the single column gave up.
     expect(group.textContent).toContain('$1500.00');
+    // The type name is the part that yields, so the header cannot set a
+    // minimum width wider than the phone (see the comment on the branch).
+    expect(group.querySelector('.truncate')).toBeTruthy();
+    expect(group.querySelector('.grid')?.className).toContain('minmax(0,1fr)');
 
     fireEvent.click(group);
     expect(screen.queryByText('Cheq A')).not.toBeInTheDocument();

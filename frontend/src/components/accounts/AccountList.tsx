@@ -32,6 +32,20 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 type SortField = 'name' | 'type' | 'balance' | 'status';
 type SortDirection = 'asc' | 'desc';
 
+/**
+ * Every field the list sorts by, with the column label that names it, in the
+ * tier header's own order. The phone's slim control header renders all of
+ * them: the chosen field is persisted across sessions, so a header offering
+ * fewer would leave the list ordered by a field the phone can neither see nor
+ * undo.
+ */
+const SORT_FIELD_LABEL_KEYS = [
+  { field: 'name', labelKey: 'list.columns.accountName' },
+  { field: 'type', labelKey: 'list.columns.type' },
+  { field: 'status', labelKey: 'list.columns.status' },
+  { field: 'balance', labelKey: 'list.columns.balance' },
+] as const satisfies ReadonlyArray<{ field: SortField; labelKey: string }>;
+
 // LocalStorage keys for filter persistence
 const STORAGE_KEYS = {
   showFilters: 'accounts.filter.showFilters',
@@ -120,15 +134,23 @@ function ColumnSortLabel({
   );
 }
 
-/** The chevron, type name and account count of a group header, in both layouts. */
+/**
+ * The chevron, type name and account count of a group header, in both layouts.
+ * `labelClassName` is how the wrapped layout lets the type name truncate: a
+ * group header that cannot shrink sets the table's minimum width, and on a
+ * phone that is not merely a scrollbar -- mobile Chrome sizes the viewport
+ * `position: fixed` attaches to from the widest content on the page.
+ */
 function GroupHeaderLabel({
   label,
   count,
   isCollapsed,
+  labelClassName = '',
 }: {
   label: string;
   count: string;
   isCollapsed: boolean;
+  labelClassName?: string;
 }) {
   return (
     <>
@@ -141,8 +163,8 @@ function GroupHeaderLabel({
       >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
-      <span className="font-semibold text-gray-700 dark:text-gray-200">{label}</span>
-      <span className="text-xs text-gray-500 dark:text-gray-400">{count}</span>
+      <span className={`font-semibold text-gray-700 dark:text-gray-200 ${labelClassName}`}>{label}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{count}</span>
     </>
   );
 }
@@ -883,42 +905,35 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           {/* On a phone the wrapped card labels its own values, so the column
               header is dropped -- but the controls in that header row must not
-              go with it: these `<th>`s are how the list is sorted, and Name
-              and Balance are the two a phone can reach today (Type and Status
-              are hidden below `sm`/`md`). A slim control header carries
-              exactly those two, as buttons and with no column label of its
-              own: the single card cell below holds name, balance, type and
-              status at once, so naming this header after any one of them would
-              misdescribe the column to a screen reader. */}
+              go with it: these `<th>`s are how the list is sorted, and the
+              chosen field is persisted, so a header showing fewer fields than
+              the sort can be in would leave the list ordered by something the
+              phone can neither see nor undo. A slim control header carries all
+              four as buttons -- the card shows all four values -- and no column
+              label of its own: the single card cell below holds name, balance,
+              type and status at once, so naming this header after any one of
+              them would misdescribe the column to a screen reader. Each button
+              names itself with the label of the field it sorts by. */}
           <thead className="bg-gray-50 dark:bg-gray-800">
             {wrapped ? (
             <tr>
               <th className={`${headerPadding} text-left`}>
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('name')}
-                    className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
-                  >
-                    <ColumnSortLabel
-                      label={t('list.columns.accountName')}
-                      field="name"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSort('balance')}
-                    className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
-                  >
-                    <ColumnSortLabel
-                      label={t('list.columns.balance')}
-                      field="balance"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                    />
-                  </button>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {SORT_FIELD_LABEL_KEYS.map(({ field, labelKey }) => (
+                    <button
+                      key={field}
+                      type="button"
+                      onClick={() => handleSort(field)}
+                      className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
+                    >
+                      <ColumnSortLabel
+                        label={t(labelKey)}
+                        field={field}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                      />
+                    </button>
+                  ))}
                 </div>
               </th>
             </tr>
@@ -989,13 +1004,24 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                       and the row stays as tappable as the tier version. */}
                   {wrapped ? (
                     <td className={cellPadding}>
-                      <div className="flex items-center gap-2 min-w-0 text-sm">
-                        <GroupHeaderLabel
-                          label={formatAccountType(item.type, tc)}
-                          count={t('list.groupCount', { count: item.count })}
-                          isCollapsed={item.isCollapsed}
-                        />
-                        <span className="ml-auto text-right whitespace-nowrap">
+                      {/* A grid, not a flex row, and for the reason the card
+                          rows are: `minmax(0,1fr)` is a track that may be
+                          zero, so the label truncates instead of setting the
+                          table's minimum width. `min-w-0` on a flex item does
+                          not do that -- the item still contributes the full
+                          width of its nowrap text -- and a group header wider
+                          than the phone displaces every fixed-position panel
+                          on the page. */}
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <GroupHeaderLabel
+                            label={formatAccountType(item.type, tc)}
+                            count={t('list.groupCount', { count: item.count })}
+                            isCollapsed={item.isCollapsed}
+                            labelClassName="truncate"
+                          />
+                        </div>
+                        <span className="text-right whitespace-nowrap">
                           <GroupHeaderTotal
                             total={item.total}
                             displayCurrency={defaultCurrency}
