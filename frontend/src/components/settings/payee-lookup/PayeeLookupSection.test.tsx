@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { render } from '@/test/render';
 import { PayeeLookupSection } from './PayeeLookupSection';
 import type { PayeeLookupSettings } from '@/types/payee-lookup';
@@ -277,17 +277,26 @@ describe('PayeeLookupSection', () => {
   });
 
   describe('choosing which source answers first', () => {
-    it('offers no ordering when only one source can answer', async () => {
-      // Places configured, no AI. There is nothing to order, and offering the
-      // choice would imply a fallback that does not exist.
+    it('withholds the moving, not the rows, when only one source can answer', async () => {
+      // Places configured, no AI. Ordering would imply a fallback that does
+      // not exist -- but the rows are where Places is CONFIGURED, so they
+      // still render and only the arrows go dead.
       getSettings.mockResolvedValue(
         settings({ mode: 'user', configured: true }),
       );
       await renderSection();
 
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      for (const button of [
+        ...screen.getAllByRole('button', { name: 'Move up' }),
+        ...screen.getAllByRole('button', { name: 'Move down' }),
+      ]) {
+        expect(button).toBeDisabled();
+      }
+      // And it says why, rather than leaving a dead control unexplained.
       expect(
-        screen.queryByText('Which source to ask first'),
-      ).not.toBeInTheDocument();
+        screen.getByText(/Set up a second source/),
+      ).toBeInTheDocument();
     });
 
     it('offers the ordering once both sources are configured', async () => {
@@ -384,6 +393,86 @@ describe('PayeeLookupSection', () => {
       // reads null as clearing the pin.
       await waitFor(() =>
         expect(updateSettings).toHaveBeenCalledWith({ aiProviderConfigId: null }),
+      );
+    });
+  });
+
+  /**
+   * One section, not two. The Google Places key, its switch and the source
+   * order used to be separate blocks stacked in one card, which asked the
+   * reader to hold one feature in two places and made the order read as a
+   * footnote to the key. Everything a source needs now sits on that source's
+   * own row.
+   */
+  describe('as one combined section', () => {
+    it('puts the Google Places controls inside its row in the order list', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      const [placesRow] = screen.getAllByRole('listitem');
+      expect(placesRow).toHaveTextContent('Google Places');
+      // The key management and the on/off switch, on the row itself.
+      expect(
+        within(placesRow).getByRole('button', { name: 'Edit' }),
+      ).toBeInTheDocument();
+      expect(
+        within(placesRow).getByRole('button', { name: 'Remove key' }),
+      ).toBeInTheDocument();
+      expect(
+        within(placesRow).getByRole('switch', {
+          name: 'Use Google Places for payee lookups',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('offers setup and its instructions on the row before a key exists', async () => {
+      await renderSection();
+
+      const [placesRow] = screen.getAllByRole('listitem');
+      expect(
+        within(placesRow).getByRole('button', { name: 'Set up' }),
+      ).toBeInTheDocument();
+      expect(
+        within(placesRow).getByRole('link', { name: 'Setup instructions' }),
+      ).toBeInTheDocument();
+      expect(
+        within(placesRow).queryByRole('button', { name: 'Remove key' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('draws one heading for the whole feature', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      // The Google Places sub-heading is gone: the row's own title carries it.
+      expect(
+        screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
+      ).toEqual(['Payee Lookup']);
+    });
+
+    it('still saves the switch from inside the row', async () => {
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      const [placesRow] = screen.getAllByRole('listitem');
+      await act(async () => {
+        fireEvent.click(
+          within(placesRow).getByRole('switch', {
+            name: 'Use Google Places for payee lookups',
+          }),
+        );
+      });
+
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({ enabled: false }),
       );
     });
   });

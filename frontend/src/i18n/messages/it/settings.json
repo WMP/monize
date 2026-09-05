@@ -1187,7 +1187,6 @@
     "saveFailed": "Impossibile salvare le impostazioni di ricerca beneficiari",
     "loadFailed": "Impossibile caricare le impostazioni di ricerca beneficiari. Ricarica la pagina per riprovare.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Usa Google Places per la ricerca dei beneficiari",
       "configured": "Cerca le attività nella directory di Google invece che tramite il tuo provider di IA.",
       "notConfigured": "Aggiungi una chiave API di Google Places per cercare le attività nella directory di Google invece che tramite il tuo provider di IA.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Quale fonte risponde per prima",
       "subtitle": "Trascina una fonte, o usa le frecce, per cambiare l'ordine. La seconda viene interrogata solo quando la prima non può rispondere, perché non è configurata o il limite mensile di Google è esaurito. Se una fonte fallisce, la ricerca segnala l'errore invece di pagare l'altra in silenzio.",
+      "subtitleSingle": "Configura una seconda fonte per scegliere quale risponde per prima. Fino ad allora, quella configurata risponde a ogni ricerca.",
       "placesTitle": "Google Places",
       "placesHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
       "aiTitle": "Provider IA",

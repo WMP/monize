@@ -1187,7 +1187,6 @@
     "saveFailed": "Alacaklı arama ayarları kaydedilemedi",
     "loadFailed": "Alacaklı arama ayarları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Alacaklı aramasında Google Places kullan",
       "configured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde arar.",
       "notConfigured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde aramak için bir Google Places API anahtarı ekleyin.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Önce hangi kaynak yanıtlar",
       "subtitle": "Sırayı değiştirmek için bir kaynağı sürükleyin veya okları kullanın. İkincisi yalnızca ilki yapılandırılmadığı ya da aylık Google sınırı tükendiği için yanıt veremediğinde sorulur. Bir kaynak başarısız olursa arama, sessizce diğerinin ücretini ödemek yerine hatayı bildirir.",
+      "subtitleSingle": "Hangisinin önce yanıtlayacağını seçmek için ikinci bir kaynak ayarlayın. O zamana kadar yapılandırdığınız kaynak her aramayı yanıtlar.",
       "placesTitle": "Google Places",
       "placesHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
       "aiTitle": "Yapay zekâ sağlayıcısı",

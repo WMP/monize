@@ -1,36 +1,33 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { Select } from '@/components/ui/Select';
 import { DropIndicatorLine, useDragReorder } from '@/hooks/useDragReorder';
 import type {
   PayeeLookupPreferredSource,
   PayeeLookupSettings,
 } from '@/types/payee-lookup';
-import type { AiProviderConfig } from '@/types/ai';
 
 /** The two sources, in the order they are asked. */
 type SourceRow = PayeeLookupPreferredSource;
 
-/**
- * How a provider is named in the picker.
- *
- * The model matters as much as the vendor -- two Anthropic rows differing only
- * by model are otherwise indistinguishable -- and `displayName` is the name the
- * user gave it, so it wins where they set one.
- */
-function providerLabel(provider: AiProviderConfig): string {
-  const name = provider.displayName || provider.provider;
-  return provider.model ? `${name} (${provider.model})` : name;
-}
-
 interface LookupSourceOrderProps {
   settings: PayeeLookupSettings;
-  /** The user's active AI providers, for the "which model" selector. */
-  aiProviders: AiProviderConfig[];
   disabled?: boolean;
+  /**
+   * Whether the order is worth changing. False when only one source can answer
+   * -- the rows still render, because each carries its own configuration, but
+   * moving them would imply a fallback that does not exist.
+   */
+  reorderable?: boolean;
   onReorder: (first: PayeeLookupPreferredSource) => void;
-  onSelectAiProvider: (configId: string | null) => void;
+  /**
+   * Each source's own controls, rendered under its description: the Google
+   * Places key and switch, the AI provider picker. They live with the handlers
+   * that save them rather than here, so this component stays the list and
+   * nothing else.
+   */
+  rowControls?: Partial<Record<SourceRow, ReactNode>>;
 }
 
 /**
@@ -50,10 +47,10 @@ interface LookupSourceOrderProps {
  */
 export function LookupSourceOrder({
   settings,
-  aiProviders,
   disabled = false,
+  reorderable = true,
   onReorder,
-  onSelectAiProvider,
+  rowControls,
 }: LookupSourceOrderProps) {
   const t = useTranslations('settings.payeeLookup.order');
   const order: SourceRow[] =
@@ -68,7 +65,7 @@ export function LookupSourceOrder({
    * that only ever have one outcome.
    */
   const swap = () => {
-    if (disabled) return;
+    if (disabled || !reorderable) return;
     onReorder(order[1]);
   };
 
@@ -84,22 +81,24 @@ export function LookupSourceOrder({
 
   const { dragIndex, rowProps, dropIndicator } = useDragReorder(moveItem);
 
+  const canDrag = !disabled && reorderable;
+
   return (
-    <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+    <div>
       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
         {t('title')}
       </p>
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {t('subtitle')}
+        {reorderable ? t('subtitle') : t('subtitleSingle')}
       </p>
 
       <ol className="mt-3 space-y-2">
         {order.map((source, index) => (
           <li
             key={source}
-            {...(disabled ? {} : rowProps(index))}
-            className={`relative flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 ${
-              disabled ? '' : 'cursor-grab'
+            {...(canDrag ? rowProps(index) : {})}
+            className={`relative flex items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700 ${
+              canDrag ? 'cursor-grab' : ''
             } ${dragIndex === index ? 'opacity-50' : ''}`}
           >
             <DropIndicatorLine position={dropIndicator(index, order.length)} />
@@ -119,33 +118,14 @@ export function LookupSourceOrder({
                 {t(source === 'ai' ? 'aiHelp' : 'placesHelp')}
               </p>
 
-              {/* Which model answers, offered only where there is a choice to
-                  make: with one provider the select would be a control with a
-                  single option, and with none it would name nothing. */}
-              {source === 'ai' && aiProviders.length > 1 && (
-                <div className="mt-2">
-                  <Select
-                    label={t('aiProviderLabel')}
-                    value={settings.aiProviderConfigId ?? ''}
-                    disabled={disabled}
-                    onChange={(e) => onSelectAiProvider(e.target.value || null)}
-                    options={[
-                      { value: '', label: t('aiProviderAny') },
-                      ...aiProviders.map((provider) => ({
-                        value: provider.id,
-                        label: providerLabel(provider),
-                      })),
-                    ]}
-                  />
-                </div>
-              )}
+              {rowControls?.[source]}
             </div>
 
             <div className="flex shrink-0 flex-col">
               <button
                 type="button"
                 onClick={() => move(index, -1)}
-                disabled={disabled || index === 0}
+                disabled={disabled || !reorderable || index === 0}
                 aria-label={t('moveUp')}
                 title={t('moveUp')}
                 className="rounded p-1 text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30 motion-reduce:transition-none dark:hover:text-gray-300"
@@ -168,7 +148,7 @@ export function LookupSourceOrder({
               <button
                 type="button"
                 onClick={() => move(index, 1)}
-                disabled={disabled || index === order.length - 1}
+                disabled={disabled || !reorderable || index === order.length - 1}
                 aria-label={t('moveDown')}
                 title={t('moveDown')}
                 className="rounded p-1 text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30 motion-reduce:transition-none dark:hover:text-gray-300"

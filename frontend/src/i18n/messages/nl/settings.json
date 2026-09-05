@@ -1187,7 +1187,6 @@
     "saveFailed": "Kan de instellingen voor begunstigde opzoeken niet opslaan",
     "loadFailed": "Kan de instellingen voor begunstigde opzoeken niet laden. Laad de pagina opnieuw om het nog eens te proberen.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Google Places gebruiken voor het opzoeken van begunstigden",
       "configured": "Zoekt bedrijven op in de directory van Google in plaats van via je AI-provider.",
       "notConfigured": "Voeg een Google Places API-sleutel toe om bedrijven op te zoeken in de directory van Google in plaats van via je AI-provider.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Welke bron als eerste antwoordt",
       "subtitle": "Sleep een bron, of gebruik de pijlen, om de volgorde te wijzigen. De tweede wordt alleen geraadpleegd als de eerste geen antwoord kan geven, doordat die niet is ingesteld of de maandelijkse Google-limiet op is. Als een bron faalt, meldt de zoekopdracht die fout in plaats van stilletjes voor de andere te betalen.",
+      "subtitleSingle": "Stel een tweede bron in om te kiezen welke als eerste antwoordt. Tot dan beantwoordt de bron die u hebt ingesteld elke zoekopdracht.",
       "placesTitle": "Google Places",
       "placesHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
       "aiTitle": "AI-provider",

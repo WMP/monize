@@ -1187,7 +1187,6 @@
     "saveFailed": "No se pudieron guardar los ajustes de búsqueda de beneficiarios",
     "loadFailed": "No se pudieron cargar los ajustes de búsqueda de beneficiarios. Recarga la página para volver a intentarlo.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Usar Google Places para las búsquedas de beneficiarios",
       "configured": "Busca empresas en el directorio de Google en lugar de usar tu proveedor de IA.",
       "notConfigured": "Añade una clave de API de Google Places para buscar empresas en el directorio de Google en lugar de usar tu proveedor de IA.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Qué fuente responde primero",
       "subtitle": "Arrastre una fuente, o use las flechas, para cambiar el orden. La segunda solo se consulta cuando la primera no puede responder, porque no está configurada o se agotó el límite mensual de Google. Si una fuente falla, la búsqueda informa del fallo en lugar de pagar la otra en silencio.",
+      "subtitleSingle": "Configure una segunda fuente para elegir cuál responde primero. Hasta entonces, la que tiene configurada responde todas las búsquedas.",
       "placesTitle": "Google Places",
       "placesHelp": "Datos de directorio, más baratos por búsqueda. Google no tiene direcciones de correo.",
       "aiTitle": "Proveedor de IA",

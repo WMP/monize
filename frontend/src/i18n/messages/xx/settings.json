@@ -1187,7 +1187,6 @@
     "saveFailed": "[XX-Could not save the payee lookup settings-XX]",
     "loadFailed": "[XX-Could not load the payee lookup settings. Reload the page to try again.-XX]",
     "googlePlaces": {
-      "title": "[XX-Google Places-XX]",
       "toggleLabel": "[XX-Use Google Places for payee lookups-XX]",
       "configured": "[XX-Looks up businesses in Google's directory instead of your AI provider.-XX]",
       "notConfigured": "[XX-Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.-XX]",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "[XX-Which source answers first-XX]",
       "subtitle": "[XX-Drag a source, or use the arrows, to change the order. The second one is asked only when the first cannot answer, because it is not configured or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.-XX]",
+      "subtitleSingle": "[XX-Set up a second source to choose which one answers first. Until then the one you have configured answers every lookup.-XX]",
       "placesTitle": "[XX-Google Places-XX]",
       "placesHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
       "aiTitle": "[XX-AI provider-XX]",

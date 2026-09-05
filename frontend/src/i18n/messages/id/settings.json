@@ -1187,7 +1187,6 @@
     "saveFailed": "Tidak dapat menyimpan pengaturan pencarian penerima",
     "loadFailed": "Tidak dapat memuat pengaturan pencarian penerima. Muat ulang halaman untuk mencoba lagi.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Gunakan Google Places untuk pencarian penerima",
       "configured": "Mencari bisnis di direktori Google, bukan lewat penyedia AI Anda.",
       "notConfigured": "Tambahkan kunci API Google Places untuk mencari bisnis di direktori Google, bukan lewat penyedia AI Anda.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Sumber mana yang menjawab lebih dulu",
       "subtitle": "Seret sebuah sumber, atau gunakan panah, untuk mengubah urutan. Yang kedua hanya ditanya bila yang pertama tidak dapat menjawab, karena belum dikonfigurasi atau batas bulanan Google sudah habis. Jika sebuah sumber gagal, pencarian melaporkan kegagalan itu alih-alih diam-diam membayar yang lain.",
+      "subtitleSingle": "Siapkan sumber kedua untuk memilih mana yang menjawab lebih dulu. Sampai saat itu, sumber yang sudah Anda konfigurasikan menjawab setiap pencarian.",
       "placesTitle": "Google Places",
       "placesHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
       "aiTitle": "Penyedia AI",

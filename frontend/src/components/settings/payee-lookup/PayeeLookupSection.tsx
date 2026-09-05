@@ -14,6 +14,7 @@ import type {
   PayeeLookupSettings,
   UpdatePayeeLookupSettings,
 } from '@/types/payee-lookup';
+import { Select } from '@/components/ui/Select';
 import { aiApi } from '@/lib/ai';
 import type { AiProviderConfig } from '@/types/ai';
 import { GooglePlacesConfigModal } from './GooglePlacesConfigModal';
@@ -30,6 +31,18 @@ import { PayeeContactLookupToggle } from './PayeeContactLookupToggle';
  */
 const GOOGLE_PLACES_SETUP_URL =
   'https://github.com/kenlasko/monize/wiki/Categories-and-Payees#setting-up-google-places';
+
+/**
+ * How a provider is named in the picker.
+ *
+ * The model matters as much as the vendor -- two Anthropic rows differing only
+ * by model are otherwise indistinguishable -- and `displayName` is the name the
+ * user gave it, so it wins where they set one.
+ */
+function providerLabel(provider: AiProviderConfig): string {
+  const name = provider.displayName || provider.provider;
+  return provider.model ? `${name} (${provider.model})` : name;
+}
 
 interface PayeeLookupSectionProps {
   disabled?: boolean;
@@ -203,106 +216,130 @@ export function PayeeLookupSection({
           {t('subtitle')}
         </p>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {t('googlePlaces.title')}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {operatorManaged
-                ? t('googlePlaces.operatorManaged')
-                : settings.configured
-                  ? t('googlePlaces.configured')
-                  : t('googlePlaces.notConfigured')}
-            </p>
-          </div>
-          <ToggleSwitch
-            checked={settings.enabled}
-            onChange={handleToggle}
-            disabled={disabled || saving}
-            label={t('googlePlaces.toggleLabel')}
-          />
-        </div>
+        {/* One list, and each source carries its own configuration: the
+            Google Places key and switch, the AI provider picker. Splitting the
+            two into "settings" above and "order" below asked the reader to
+            hold one feature in two places and made the order look like a
+            footnote to the key rather than the thing being configured. */}
+        <LookupSourceOrder
+          settings={settings}
+          disabled={disabled || saving}
+          // Ordering means nothing until both sources can answer, but the rows
+          // are still where Places is set up -- so they render either way and
+          // only the moving is withheld.
+          reorderable={aiConfigured && settings.configured}
+          onReorder={handlePreferredSource}
+          rowControls={{
+            'google-places': (
+              <div className="mt-3 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {operatorManaged
+                      ? t('googlePlaces.operatorManaged')
+                      : settings.configured
+                        ? t('googlePlaces.configured')
+                        : t('googlePlaces.notConfigured')}
+                  </p>
+                  <ToggleSwitch
+                    checked={settings.enabled}
+                    onChange={handleToggle}
+                    disabled={disabled || saving}
+                    label={t('googlePlaces.toggleLabel')}
+                  />
+                </div>
 
-        {/* A key that cannot be decrypted is not the same as no key: say so,
-            because the repair is to enter it again rather than for the first
-            time. */}
-        {!settings.apiKeyReadable && (
-          <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
-            {t('googlePlaces.keyUnreadable')}
-          </p>
-        )}
+                {/* A key that cannot be decrypted is not the same as no key:
+                    say so, because the repair is to enter it again rather than
+                    for the first time. */}
+                {!settings.apiKeyReadable && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {t('googlePlaces.keyUnreadable')}
+                  </p>
+                )}
 
-        {!operatorManaged && !settings.encryptionAvailable && (
-          <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
-            {t('googlePlaces.encryptionUnavailable')}
-          </p>
-        )}
+                {!operatorManaged && !settings.encryptionAvailable && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {t('googlePlaces.encryptionUnavailable')}
+                  </p>
+                )}
 
-        {settings.configured && settings.enabled && (
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            {settings.capEnabled
-              ? t('googlePlaces.usage', {
-                  used: settings.usedThisMonth,
-                  cap: settings.monthlyCap,
-                })
-              : t('googlePlaces.usageNoCap', { used: settings.usedThisMonth })}
-          </p>
-        )}
+                {settings.configured && settings.enabled && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {settings.capEnabled
+                      ? t('googlePlaces.usage', {
+                          used: settings.usedThisMonth,
+                          cap: settings.monthlyCap,
+                        })
+                      : t('googlePlaces.usageNoCap', {
+                          used: settings.usedThisMonth,
+                        })}
+                  </p>
+                )}
 
-        {!operatorManaged && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowConfig(true)}
-              disabled={disabled || !settings.encryptionAvailable}
-            >
-              {settings.configured
-                ? t('googlePlaces.edit')
-                : t('googlePlaces.configure')}
-            </Button>
-            {settings.configured && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRemoveKey}
-                disabled={disabled || saving}
-              >
-                {t('googlePlaces.removeKey')}
-              </Button>
-            )}
-            {/* Only before there is a key: getting one is a Google Cloud
-                errand with a step that is easy to get wrong (restrict by IP,
-                not by HTTP referrer -- this is a server-side call). Once it
-                works the link is clutter. */}
-            {!settings.configured && (
-              <a
-                href={GOOGLE_PLACES_SETUP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {t('googlePlaces.setupInstructions')}
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* Ordering only matters when both sources can actually answer. With
-            one configured there is nothing to order, and offering the choice
-            would imply a fallback that does not exist. */}
-        {aiConfigured && settings.configured && (
-          <LookupSourceOrder
-            settings={settings}
-            aiProviders={aiProviders}
-            disabled={disabled || saving}
-            onReorder={handlePreferredSource}
-            onSelectAiProvider={handleAiProvider}
-          />
-        )}
+                {!operatorManaged && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowConfig(true)}
+                      disabled={disabled || !settings.encryptionAvailable}
+                    >
+                      {settings.configured
+                        ? t('googlePlaces.edit')
+                        : t('googlePlaces.configure')}
+                    </Button>
+                    {settings.configured && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveKey}
+                        disabled={disabled || saving}
+                      >
+                        {t('googlePlaces.removeKey')}
+                      </Button>
+                    )}
+                    {/* Only before there is a key: getting one is a Google
+                        Cloud errand with a step that is easy to get wrong
+                        (restrict by IP, not by HTTP referrer -- this is a
+                        server-side call). Once it works the link is clutter. */}
+                    {!settings.configured && (
+                      <a
+                        href={GOOGLE_PLACES_SETUP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {t('googlePlaces.setupInstructions')}
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            ),
+            // Which model answers, offered only where there is a choice to
+            // make: with one provider the select would carry a single option,
+            // and with none it would name nothing.
+            ai: aiProviders.length > 1 && (
+              <div className="mt-3">
+                <Select
+                  label={t('order.aiProviderLabel')}
+                  value={settings.aiProviderConfigId ?? ''}
+                  disabled={disabled || saving}
+                  onChange={(e) => handleAiProvider(e.target.value || null)}
+                  options={[
+                    { value: '', label: t('order.aiProviderAny') },
+                    ...aiProviders.map((provider) => ({
+                      value: provider.id,
+                      label: providerLabel(provider),
+                    })),
+                  ]}
+                />
+              </div>
+            ),
+          }}
+        />
 
         <PayeeContactLookupToggle
           disabled={disabled}

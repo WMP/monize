@@ -1187,7 +1187,6 @@
     "saveFailed": "Không thể lưu cài đặt tra cứu người nhận",
     "loadFailed": "Không thể tải cài đặt tra cứu người nhận. Hãy tải lại trang để thử lại.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Dùng Google Places để tra cứu người nhận",
       "configured": "Tra cứu doanh nghiệp trong danh bạ của Google thay vì qua nhà cung cấp AI của bạn.",
       "notConfigured": "Thêm khóa API Google Places để tra cứu doanh nghiệp trong danh bạ của Google thay vì qua nhà cung cấp AI của bạn.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Nguồn nào trả lời trước",
       "subtitle": "Kéo một nguồn, hoặc dùng các mũi tên, để thay đổi thứ tự. Nguồn thứ hai chỉ được hỏi khi nguồn đầu tiên không thể trả lời, do chưa được cấu hình hoặc đã dùng hết hạn mức Google hằng tháng. Nếu một nguồn gặp lỗi, việc tra cứu sẽ báo lỗi thay vì âm thầm trả tiền cho nguồn kia.",
+      "subtitleSingle": "Hãy thiết lập nguồn thứ hai để chọn nguồn nào trả lời trước. Cho đến lúc đó, nguồn bạn đã cấu hình sẽ trả lời mọi lần tra cứu.",
       "placesTitle": "Google Places",
       "placesHelp": "Dữ liệu danh bạ, rẻ hơn cho mỗi lần tra cứu. Google không có địa chỉ email.",
       "aiTitle": "Nhà cung cấp AI",

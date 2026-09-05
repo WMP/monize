@@ -1187,7 +1187,6 @@
     "saveFailed": "Nie udało się zapisać ustawień wyszukiwania odbiorców",
     "loadFailed": "Nie udało się wczytać ustawień wyszukiwania odbiorców. Odśwież stronę, aby spróbować ponownie.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "Używaj Google Places do wyszukiwania odbiorców",
       "configured": "Wyszukuje firmy w katalogu Google zamiast korzystać z dostawcy AI.",
       "notConfigured": "Dodaj klucz API Google Places, aby wyszukiwać firmy w katalogu Google zamiast korzystać z dostawcy AI.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "Które źródło odpowiada najpierw",
       "subtitle": "Przeciągnij źródło lub użyj strzałek, aby zmienić kolejność. Drugie jest pytane tylko wtedy, gdy pierwsze nie może odpowiedzieć, ponieważ nie zostało skonfigurowane albo wyczerpano miesięczny limit Google. Jeśli źródło zawiedzie, wyszukiwanie zgłasza błąd, zamiast po cichu płacić za drugie.",
+      "subtitleSingle": "Skonfiguruj drugie źródło, aby wybrać, które odpowiada najpierw. Do tego czasu skonfigurowane źródło odpowiada na każde wyszukiwanie.",
       "placesTitle": "Google Places",
       "placesHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
       "aiTitle": "Dostawca AI",

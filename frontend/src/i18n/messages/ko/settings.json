@@ -1187,7 +1187,6 @@
     "saveFailed": "거래처 조회 설정을 저장하지 못했습니다",
     "loadFailed": "거래처 조회 설정을 불러오지 못했습니다. 페이지를 새로 고쳐 다시 시도하세요.",
     "googlePlaces": {
-      "title": "Google Places",
       "toggleLabel": "거래처 조회에 Google Places 사용",
       "configured": "AI 제공자 대신 Google 디렉터리에서 업체를 조회합니다.",
       "notConfigured": "Google Places API 키를 추가하면 AI 제공자 대신 Google 디렉터리에서 업체를 조회합니다.",
@@ -1226,6 +1225,7 @@
     "order": {
       "title": "먼저 조회할 소스",
       "subtitle": "소스를 끌거나 화살표를 사용해 순서를 바꾸세요. 두 번째 소스는 첫 번째가 구성되지 않았거나 Google 월간 한도가 소진되어 응답할 수 없을 때만 조회됩니다. 소스가 실패하면 조회는 조용히 다른 소스에 비용을 지불하는 대신 실패를 보고합니다.",
+      "subtitleSingle": "어느 쪽이 먼저 응답할지 선택하려면 두 번째 소스를 설정하세요. 그때까지는 구성된 소스가 모든 조회에 응답합니다.",
       "placesTitle": "Google Places",
       "placesHelp": "디렉터리 정보이며 조회당 비용이 저렴합니다. Google에는 이메일 주소가 없습니다.",
       "aiTitle": "AI 공급자",
