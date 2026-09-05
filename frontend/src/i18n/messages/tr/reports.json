@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Dönem",
     "pdfChange": "Değişim",
     "pdfAnnualizedReturn": "Yıllıklaştırılmış Getiri",
-    "tooltipNetWorth": "Net Değer"
+    "tooltipNetWorth": "Net Değer",
+    "savingsNoteMore": "{currentMonth} ayında {previousMonth} ayına göre {percent} daha fazla tasarruf ettiniz, toplam {amount}",
+    "savingsNoteLess": "{currentMonth} ayında {previousMonth} ayına göre {percent} daha az tasarruf ettiniz, toplam {amount}",
+    "incomeNoteMore": "{currentMonth} ayındaki toplam geliriniz {amount} oldu, bu {previousMonth} ayına göre {diff} daha fazla",
+    "incomeNoteLess": "{currentMonth} ayındaki toplam geliriniz {amount} oldu, bu {previousMonth} ayına göre {diff} daha az"
   },
   "monthlySpendingTrend": {
     "total": "Toplam",

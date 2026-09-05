@@ -27,7 +27,7 @@ vi.mock("recharts", () => ({
   Bar: ({ dataKey, onClick }: any) => (
     <button
       data-testid={`bar-${dataKey}`}
-      onClick={() => onClick?.({ name: "Mar" })}
+      onClick={() => onClick?.({ payload: { monthIndex: 2 } })}
     />
   ),
   XAxis: () => null,
@@ -263,7 +263,7 @@ describe("YearOverYearReport", () => {
       Bar: ({ dataKey, onClick }: any) => (
         <button
           data-testid={`bar-invalid-${dataKey}`}
-          onClick={() => onClick?.({ name: "InvalidMonth" })}
+          onClick={() => onClick?.({ payload: { monthIndex: -1 } })}
         />
       ),
       XAxis: () => null,
@@ -288,8 +288,9 @@ describe("YearOverYearReport", () => {
     });
     // Simulate handleBarClick with invalid month by calling it directly
     fireEvent.click(screen.getByTestId("bar-2024"));
-    // "Mar" is the mock's hardcoded name, so push will be called — but this
-    // exercises the monthIndex !== -1 path; we just verify no crash
+    // vi.doMock does not replace the module-level vi.mock("recharts", ...)
+    // above for a component already rendered, so this still exercises the
+    // top-level mock's monthIndex: 2 -- we just verify no crash
     expect(mockPush).toHaveBeenCalled();
   });
 

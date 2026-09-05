@@ -1113,7 +1113,11 @@
     "pdfPeriod": "期间",
     "pdfChange": "变化",
     "pdfAnnualizedReturn": "年化回报率",
-    "tooltipNetWorth": "资产净值"
+    "tooltipNetWorth": "资产净值",
+    "savingsNoteMore": "{currentMonth}您的储蓄比{previousMonth}多{percent}，共计{amount}",
+    "savingsNoteLess": "{currentMonth}您的储蓄比{previousMonth}少{percent}，共计{amount}",
+    "incomeNoteMore": "您在{currentMonth}的总收入为{amount}，比{previousMonth}多{diff}",
+    "incomeNoteLess": "您在{currentMonth}的总收入为{amount}，比{previousMonth}少{diff}"
   },
   "monthlySpendingTrend": {
     "total": "合计",

@@ -9,6 +9,7 @@ vi.mock('@/lib/pdf-export', () => ({
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+    formatPercent: (n: number, decimals = 2) => `${n.toFixed(decimals)}%`,
     formatCurrency: (n: number) => `$${n.toFixed(2)}`,
     formatCurrencyCompact: (n: number) => `$${Math.round(n)}`,
     formatCurrencyAxis: (n: number) => `$${n}`,
@@ -193,8 +194,15 @@ describe('MonthlyComparisonReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Summary')).toBeInTheDocument();
     });
-    expect(screen.getByText(mockResponse.notes.savingsNote)).toBeInTheDocument();
-    expect(screen.getByText(mockResponse.notes.incomeNote)).toBeInTheDocument();
+    // The summary notes are computed client-side (locale-aware month labels
+    // and currency formatting), not read verbatim from the backend's English
+    // notes.savingsNote/incomeNote -- those exist only for the AI/MCP payload.
+    expect(screen.getByText(
+      'In January 2026, you saved 100.0% more than December 2025 for a total of $2000.00',
+    )).toBeInTheDocument();
+    expect(screen.getByText(
+      'Your total income in January 2026 was $5000.00, which is $500.00 more than December 2025',
+    )).toBeInTheDocument();
   });
 
   it('renders expense comparison table with category names', async () => {

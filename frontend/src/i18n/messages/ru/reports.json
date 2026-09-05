@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Период",
     "pdfChange": "Изменение",
     "pdfAnnualizedReturn": "Годовая доходность",
-    "tooltipNetWorth": "Чистая стоимость"
+    "tooltipNetWorth": "Чистая стоимость",
+    "savingsNoteMore": "В {currentMonth} вы сэкономили на {percent} больше, чем в {previousMonth}, всего {amount}",
+    "savingsNoteLess": "В {currentMonth} вы сэкономили на {percent} меньше, чем в {previousMonth}, всего {amount}",
+    "incomeNoteMore": "Ваш общий доход в {currentMonth} составил {amount}, что на {diff} больше, чем в {previousMonth}",
+    "incomeNoteLess": "Ваш общий доход в {currentMonth} составил {amount}, что на {diff} меньше, чем в {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Итого",

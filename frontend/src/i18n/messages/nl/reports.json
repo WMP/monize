@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Periode",
     "pdfChange": "Wijziging",
     "pdfAnnualizedReturn": "Geannualiseerd rendement",
-    "tooltipNetWorth": "Nettowaarde"
+    "tooltipNetWorth": "Nettowaarde",
+    "savingsNoteMore": "In {currentMonth} heb je {percent} meer bespaard dan in {previousMonth}, in totaal {amount}",
+    "savingsNoteLess": "In {currentMonth} heb je {percent} minder bespaard dan in {previousMonth}, in totaal {amount}",
+    "incomeNoteMore": "Je totale inkomen in {currentMonth} was {amount}, wat {diff} meer is dan in {previousMonth}",
+    "incomeNoteLess": "Je totale inkomen in {currentMonth} was {amount}, wat {diff} minder is dan in {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Totaal",
