@@ -54,7 +54,12 @@ export class NotificationPortfolioState {
   baselineValue: number | null;
 
   /** The reporting currency baselineValue is in (a resolved snapshot). */
-  @Column({ type: "varchar", name: "baseline_currency", length: 3, nullable: true })
+  @Column({
+    type: "varchar",
+    name: "baseline_currency",
+    length: 3,
+    nullable: true,
+  })
   baselineCurrency: string | null;
 
   /** The day the baseline value was measured. */

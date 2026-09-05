@@ -702,13 +702,16 @@ export class AccountsService {
         // Balance thresholds: reset the latch when the threshold changes, so a
         // newly set threshold arms cleanly on the next crossing (spec 4.1).
         if (updateAccountDto.lowBalanceThreshold !== undefined) {
-          if (account.lowBalanceThreshold !== updateAccountDto.lowBalanceThreshold)
+          if (
+            account.lowBalanceThreshold !== updateAccountDto.lowBalanceThreshold
+          )
             account.lowAlertArmed = false;
           account.lowBalanceThreshold = updateAccountDto.lowBalanceThreshold;
         }
         if (updateAccountDto.highBalanceThreshold !== undefined) {
           if (
-            account.highBalanceThreshold !== updateAccountDto.highBalanceThreshold
+            account.highBalanceThreshold !==
+            updateAccountDto.highBalanceThreshold
           )
             account.highAlertArmed = false;
           account.highBalanceThreshold = updateAccountDto.highBalanceThreshold;

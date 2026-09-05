@@ -1310,7 +1310,7 @@ describe('SecurityList', () => {
         .find((el) => el.tagName === 'SPAN')!.textContent ?? '';
 
     /** A group separator, whichever space or comma the locale uses. */
-    const grouped = (text: string) => /\d[\s  ,.]\d/.test(text);
+    const grouped = (text: string) => /\d[\s\u00a0\u202f,.]\d/.test(text);
 
     it('renders money in the configured locale, not a fixed en-US', () => {
       setNumberPreferences('pl-PL', 'pl');

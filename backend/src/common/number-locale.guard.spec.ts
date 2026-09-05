@@ -273,7 +273,8 @@ describe("numberFormatterFor", () => {
    * and a regular no-break space (U+00A0) in others, and pinning the byte makes
    * the suite fail on a Node upgrade with nothing wrong.
    */
-  const groupsWithSpace = (formatted: string) => /\d[\s  ]\d/.test(formatted);
+  const groupsWithSpace = (formatted: string) =>
+    /\d[\s\u00a0\u202f]\d/.test(formatted);
 
   it("renders Polish money with a comma decimal and a spaced group", () => {
     const n = numberFormatterFor("pl-PL", "en");
