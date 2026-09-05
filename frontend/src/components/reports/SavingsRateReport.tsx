@@ -41,31 +41,47 @@ interface SortColumn {
   label: string;
   /** Money columns are right-aligned in the column header row. */
   align?: 'right';
-  /** The last column carries no right padding, exactly as it does today. */
+  /**
+   * The last column carries no right padding, exactly as it does today. This
+   * flag is the ONE place that is decided: the header cell and the body cell
+   * both read it (`headerClass` / `cellPadding`), so reordering the list
+   * cannot leave the two disagreeing about which column drops its `pr-4`.
+   */
   last?: boolean;
 }
 
-// Today's header cell, unchanged. The last column has no right padding, so it
-// gets its own constant rather than a conditional that could drift from it.
-const HEADER_CLASS = 'py-2 pr-4 font-medium text-gray-500 dark:text-gray-400';
-const HEADER_CLASS_LAST = 'py-2 font-medium text-gray-500 dark:text-gray-400';
+// Today's header cell, unchanged.
+const headerClass = (col: SortColumn) =>
+  col.last
+    ? 'py-2 font-medium text-gray-500 dark:text-gray-400'
+    : 'py-2 pr-4 font-medium text-gray-500 dark:text-gray-400';
+
+// Today's body cell padding, restored from `sm` up and absent below it (the
+// wrapped row supplies the vertical inset and the grid does the spacing).
+const cellPadding = (col: SortColumn) => (col.last ? 'sm:py-2' : 'sm:py-2 sm:pr-4');
 
 // The same sort controls in the phone strip: a wrapped row of compact chips.
 // Column alignment means nothing there -- the column header row is hidden and
 // each data row is a grid -- so every control is left-aligned and self-naming.
-// The border and card background are what say "tappable": there is no hover on
-// a touch screen, and without them the strip reads as another row of the
-// captions the cells below carry.
+// The border is what says "tappable" here: there is no hover on a touch screen,
+// and the strip sits directly on the card, whose background this already is --
+// so the border is the whole of the affordance. (The class is kept identical to
+// the two sibling report tables that ship this strip, where the background does
+// separate the chip from a tinted header; the three copies are one of the
+// duplications the converted-table consolidation pass folds into one home.)
 const PHONE_HEADER_CLASS =
   'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
 
 // A money (or rate) cell inside a wrapped row: no padding of its own below
-// `sm` -- the row supplies the vertical inset and the grid does the spacing --
-// and this table's own cell padding from `sm` up. `sm:pr-4` is added per cell
-// rather than here, because the Rate column is last and carries none. Smaller
-// type on phones so a seven-figure amount still fits a third of the width, and
-// `whitespace-nowrap` so a locale that groups thousands with a space cannot
-// break in the middle of a number.
+// `sm` and this table's own from `sm` up, which each cell adds through
+// `cellPadding` so "which column is last" stays decided in one place. Smaller
+// type on phones so a seven-figure amount still fits a third of the width.
+//
+// `whitespace-nowrap` is the one property here that is NOT phone-only, and it
+// is deliberate: `formatCurrencyCompact` groups thousands, and a locale that
+// groups them with a space (`1 234 567 zł`) could otherwise break a figure in
+// the middle at any width -- so the ban holds above `sm` too. That is the
+// single respect in which the desktop cell differs from today's.
 //
 // The budget was measured on a hand-written CSS replica in Chromium, at the
 // insets this table really gets on a phone (the report page's `px-4` plus the
@@ -73,11 +89,20 @@ const PHONE_HEADER_CLASS =
 // which holds a seven-figure `pl-PL` amount (`1 234 567 zł`, 77px at
 // `text-xs`) at both widths, and a six-figure one with room to spare. Right
 // alignment is not a containment device -- a nowrap amount longer than its
-// track overflows past the end edge whatever `text-align` says -- but
+// track overflows past the end edge whatever `text-align` says, and in the
+// third track that does reopen the wrapper's sideways scroll -- but
 // `overflow-hidden` here would silently cut a figure, which is worse than a
 // crowded one.
-const MONEY_CELL =
-  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:py-2 sm:text-sm';
+//
+// The caption inside the cell takes `whitespace-normal` back: `white-space` is
+// inherited, so without it a caption with no space in it (`[XX-Expenses-XX]`
+// in the pseudo-locale) could not wrap either, and overflowed the third track
+// by 20px at 320px -- the very scroll this layout removes. A number must not
+// break; a caption may.
+const MONEY_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:text-sm';
+
+/** Every caption in a wrapped cell: phone-only, and free to wrap. */
+const CAPTION_CLASS = 'sm:hidden whitespace-normal';
 
 export function SavingsRateReport() {
   const t = useTranslations('reports');
@@ -136,6 +161,13 @@ export function SavingsRateReport() {
     { field: 'savings', label: t('savingsRate.colSavings'), align: 'right' },
     { field: 'rate', label: t('savingsRate.colRate'), align: 'right', last: true },
   ];
+
+  // Both header rows and every body cell take their `sm`-and-up padding from
+  // that one list, so the header and the cells cannot disagree about which
+  // column is last and drops its right padding.
+  const cellPaddings = Object.fromEntries(
+    sortColumns.map((col) => [col.field, cellPadding(col)]),
+  ) as Record<SavingsRateSortField, string>;
 
   useEffect(() => {
     const loadBudgets = async () => {
@@ -359,13 +391,18 @@ export function SavingsRateReport() {
               tracks) and the expenses share line 2. Each derived figure sits
               under the figure it derives from -- rate under savings, expenses
               under income -- and the month is the one cell allowed to wrap,
-              since a compact amount never may. No column is dropped. From `sm`
-              up it is the ordinary table, byte for byte: each cell restores
-              this table's own `py-2 pr-4` (and the Rate column's bare `py-2`),
-              which a Chromium replica confirms renders pixel-identically to
-              today at 800px. The sort controls survive as their own phone-only
-              header row, because the column header row that carries them on
-              desktop is hidden there.
+              since a compact amount never may. No column is dropped, and no
+              figure is truncated -- an amount wider than its track overflows
+              the end edge and reopens the wrapper's scroll, which is the
+              honest failure for an amount that large and does not happen for
+              any real locale at the measured budget. From `sm` up it is the
+              ordinary table: each cell restores this table's own `py-2 pr-4`
+              (and the Rate column's bare `py-2`) through `cellPaddings`, and a
+              Chromium replica renders it pixel-identically to today at 800px.
+              The one deliberate difference above `sm` is `whitespace-nowrap`
+              on the figures, for the reason `MONEY_CELL` gives. The sort
+              controls survive as their own phone-only header row, because the
+              column header row that carries them on desktop is hidden there.
 
               Two costs of restyling one tree, both deliberate. Changing the
               display roles drops the table semantics below `sm`, which is why
@@ -402,7 +439,7 @@ export function SavingsRateReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align={col.align}
-                      className={col.last ? HEADER_CLASS_LAST : HEADER_CLASS}
+                      className={headerClass(col)}
                     >
                       {col.label}
                     </SortableHeader>
@@ -416,26 +453,26 @@ export function SavingsRateReport() {
                     role="row"
                     className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 py-2 border-b border-gray-100 dark:border-gray-700/50 sm:table-row sm:py-0"
                   >
-                    <td role="cell" className="col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell sm:py-2 sm:pr-4">{point.month}</td>
-                    <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 sm:pr-4 ${MONEY_CELL}`}>
-                      <CellLabel className="sm:hidden">{t('savingsRate.colIncome')}</CellLabel>
+                    <td role="cell" className={`col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell ${cellPaddings.month}`}>{point.month}</td>
+                    <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 ${cellPaddings.income} ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colIncome')}</CellLabel>
                       {formatCurrency(point.income)}
                     </td>
-                    <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 sm:pr-4 ${MONEY_CELL}`}>
-                      <CellLabel className="sm:hidden">{t('savingsRate.colExpenses')}</CellLabel>
+                    <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 ${cellPaddings.expenses} ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colExpenses')}</CellLabel>
                       {formatCurrency(point.expenses)}
                     </td>
                     {/* Savings takes the middle of line 1 beside the month:
                         it is the figure the row is read for. */}
-                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(point.savings)} sm:pr-4 ${MONEY_CELL}`}>
-                      <CellLabel className="sm:hidden">{t('savingsRate.colSavings')}</CellLabel>
+                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(point.savings)} ${cellPaddings.savings} ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colSavings')}</CellLabel>
                       {formatCurrency(point.savings)}
                     </td>
                     {/* The rate spans the first two tracks so it has room
                         beneath the savings it is derived from; right-aligned,
                         it ends under that figure. */}
-                    <td role="cell" className={`col-start-1 col-span-2 row-start-2 font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'} ${MONEY_CELL}`}>
-                      <CellLabel className="sm:hidden">{t('savingsRate.colRate')}</CellLabel>
+                    <td role="cell" className={`col-start-1 col-span-2 row-start-2 font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'} ${cellPaddings.rate} ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colRate')}</CellLabel>
                       {point.savingsRate.toFixed(1)}%
                     </td>
                   </tr>

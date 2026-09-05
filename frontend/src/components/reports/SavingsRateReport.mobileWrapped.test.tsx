@@ -148,6 +148,13 @@ describe('SavingsRateReport (phone wrapped table)', () => {
       expect(money).toHaveLength(4);
       for (const cell of money) {
         expect(cell.className).toContain('text-right');
+        // `white-space` is inherited, so the caption inside a nowrap cell has
+        // to take the ban back: a caption with no space in it would otherwise
+        // be unbreakable and overflow its track, which is the sideways scroll
+        // this layout exists to remove. A number must not break; a caption may.
+        const caption = cell.querySelector('span');
+        expect(caption?.className).toContain('whitespace-normal');
+        expect(caption?.className).toContain('sm:hidden');
       }
     }
   });
@@ -223,6 +230,21 @@ describe('SavingsRateReport (phone wrapped table)', () => {
     expect(headerCells.slice(0, 4).every((th) => th.className.includes('py-2 pr-4'))).toBe(true);
     expect(headerCells[4].className).toContain('py-2 font-medium');
     expect(headerCells[4].className).not.toContain('pr-4');
+
+    // And the two agree: "which column is last" is one decision, taken in
+    // `sortColumns`, so the header cell that drops `pr-4` and the body cell
+    // that drops `sm:pr-4` are the same column. Reordering the list without
+    // this derivation would move one and not the other.
+    const bodyCells = Array.from(
+      container.querySelectorAll('tbody tr')[0].querySelectorAll('td'),
+    );
+    const headerBare = headerCells.findIndex((th) => !th.className.includes('pr-4'));
+    const bodyBare = bodyCells.findIndex((td) => !td.className.includes('sm:pr-4'));
+    expect(headerBare).toBe(bodyBare);
+    expect(headerBare).toBe(headerCells.length - 1);
+    // Exactly one column drops it, on each side.
+    expect(headerCells.filter((th) => !th.className.includes('pr-4'))).toHaveLength(1);
+    expect(bodyCells.filter((td) => !td.className.includes('sm:pr-4'))).toHaveLength(1);
   });
 
   it('restores the table semantics a phone restyle strips', async () => {
