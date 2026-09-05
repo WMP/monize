@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY is niet ingesteld. De Google Places API-sleutel kan niet veilig worden opgeslagen.",
     "notConfigured": "Er is geen Google Places API-sleutel ingesteld.",
     "capReached": "De limiet voor Google Places-verzoeken van deze maand is bereikt.",
-    "testFailed": "De verbindingstest met Google Places is mislukt."
+    "testFailed": "De verbindingstest met Google Places is mislukt.",
+    "referrerRestricted": "Deze sleutel is beperkt op HTTP-referrer, wat hier niet kan werken: Monize roept Google aan vanaf de server, dus er wordt geen referrer verzonden. Stel in de Google Cloud-console de toepassingsbeperking van de sleutel in op IP-adressen (of Geen) en beperk hem tot de Places API."
   }
 }

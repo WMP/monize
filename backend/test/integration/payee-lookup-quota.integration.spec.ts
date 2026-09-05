@@ -165,6 +165,41 @@ describe("Google Places quota claim (INV-PAYEE-002)", () => {
       expect(otherResult).toBe(1);
     });
 
+    it("hands a claimed request back, and never past zero", async () => {
+      // The Test button releases the slot when Google ANSWERED with a refusal:
+      // nothing was served, so nothing was billed.
+      await withUserContext(userId, () => quota.claim(userScope(10)));
+      await withUserContext(userId, () => quota.claim(userScope(10)));
+
+      await withUserContext(userId, () => quota.release(userScope(10)));
+      await expect(
+        withUserContext(userId, () => quota.usedThisMonth(userScope(10))),
+      ).resolves.toBe(1);
+
+      // A release is a compensation, not a ledger entry: more releases than
+      // claims (a month boundary crossed in between) must not mint free quota.
+      await withUserContext(userId, () => quota.release(userScope(10)));
+      await withUserContext(userId, () => quota.release(userScope(10)));
+      await expect(
+        withUserContext(userId, () => quota.usedThisMonth(userScope(10))),
+      ).resolves.toBe(0);
+    });
+
+    it("frees a slot the cap was refusing, so the next claim succeeds", async () => {
+      // The point of releasing: a rejected key must not spend the month. At the
+      // cap the claim is refused; handing one back has to actually reopen it.
+      await withUserContext(userId, () => quota.claim(userScope(1)));
+      await expect(
+        withUserContext(userId, () => quota.claim(userScope(1))),
+      ).resolves.toBeNull();
+
+      await withUserContext(userId, () => quota.release(userScope(1)));
+
+      await expect(
+        withUserContext(userId, () => quota.claim(userScope(1))),
+      ).resolves.toBe(1);
+    });
+
     it("reads back what it has spent this month", async () => {
       await withUserContext(userId, () => quota.claim(userScope(10)));
       await withUserContext(userId, () => quota.claim(userScope(10)));
@@ -333,6 +368,15 @@ describe("Google Places quota claim (INV-PAYEE-002)", () => {
       await expect(
         withUserContext(userId, () => quota.claim(operatorScope(5))),
       ).resolves.toBe(1);
+    });
+
+    it("hands a claimed request back on the deployment counter too", async () => {
+      await withUserContext(userId, () => quota.claim(operatorScope(10)));
+      await withUserContext(userId, () => quota.release(operatorScope(10)));
+
+      await expect(
+        withUserContext(userId, () => quota.usedThisMonth(operatorScope(10))),
+      ).resolves.toBe(0);
     });
 
     it("counts every user's lookup against the one deployment counter", async () => {

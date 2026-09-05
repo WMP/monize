@@ -108,6 +108,16 @@ describe("payee contact lookup, end to end over Google Places", () => {
         capEnabled: true,
         cap: 1000,
       }),
+      resolveRouting: jest.fn().mockResolvedValue({
+        places: {
+          kind: "user",
+          apiKey: "user-key",
+          userId: "u1",
+          capEnabled: true,
+          cap: 1000,
+        },
+        preferredSource: "google-places",
+      }),
     } as unknown as PayeeLookupSettingsService;
     claim = jest.fn().mockResolvedValue(1);
     const quota = { claim } as unknown as PayeeLookupQuotaService;

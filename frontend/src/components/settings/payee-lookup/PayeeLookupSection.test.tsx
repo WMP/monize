@@ -13,12 +13,15 @@ vi.mock('@/lib/payee-lookup', () => ({
   },
 }));
 
+const availability = {
+  available: true,
+  resolved: true,
+  source: 'google-places' as const,
+  aiConfigured: false,
+};
+
 vi.mock('@/hooks/useContactLookupAvailable', () => ({
-  useContactLookupAvailable: () => ({
-    available: true,
-    resolved: true,
-    source: 'google-places',
-  }),
+  useContactLookupAvailable: () => availability,
 }));
 
 vi.mock('@/store/preferencesStore', () => ({
@@ -43,6 +46,7 @@ const settings = (over: Partial<PayeeLookupSettings> = {}): PayeeLookupSettings 
   apiKeyMasked: null,
   apiKeyReadable: true,
   usedThisMonth: 0,
+  preferredSource: 'google-places',
   encryptionAvailable: true,
   ...over,
 });
@@ -55,6 +59,7 @@ async function renderSection() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  availability.aiConfigured = false;
   getSettings.mockResolvedValue(settings());
   updateSettings.mockImplementation(async (patch) =>
     settings({ ...patch, configured: Boolean(patch.apiKey) }),
@@ -226,5 +231,84 @@ describe('PayeeLookupSection', () => {
     expect(
       screen.queryByRole('button', { name: 'Set up' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * One section, not two. The automatic-lookup switch used to be its own card
+   * under its own heading, which read as a second feature about the same thing;
+   * it now lives inside Payee Lookup and draws no heading of its own.
+   */
+  it('renders the automatic-lookup switch inside the one Payee Lookup section', async () => {
+    await renderSection();
+
+    // Exactly one heading for the whole feature.
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual(['Payee Lookup']);
+    expect(
+      screen.getByText('Automatic payee contact lookup'),
+    ).toBeInTheDocument();
+  });
+
+  it('links to the setup instructions only until a key exists', async () => {
+    await renderSection();
+
+    // Getting a key is a Google Cloud errand with a step that is easy to get
+    // wrong, so the link is offered while it is still needed.
+    const link = screen.getByRole('link', { name: 'Setup instructions' });
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining('Categories-and-Payees'),
+    );
+
+    getSettings.mockResolvedValue(settings({ mode: 'user', configured: true }));
+    await renderSection();
+    expect(
+      screen.queryAllByRole('link', { name: 'Setup instructions' }),
+    ).toHaveLength(1);
+  });
+
+  describe('choosing which source answers first', () => {
+    it('offers no ordering when only one source can answer', async () => {
+      // Places configured, no AI. There is nothing to order, and offering the
+      // choice would imply a fallback that does not exist.
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      expect(
+        screen.queryByText('Which source to ask first'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers the ordering once both sources are configured', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      expect(screen.getByText('Which source to ask first')).toBeInTheDocument();
+      expect(
+        screen.getByRole('radio', { name: /Google Places first/ }),
+      ).toBeChecked();
+    });
+
+    it('saves the new order and never resends the key alongside it', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('radio', { name: /AI provider first/ }));
+      });
+
+      await waitFor(() => expect(updateSettings).toHaveBeenCalled());
+      // Only the field that changed. An apiKey of '' would DELETE the stored
+      // key, so a patch that carried one would silently destroy it.
+      expect(updateSettings).toHaveBeenCalledWith({ preferredSource: 'ai' });
+    });
   });
 });

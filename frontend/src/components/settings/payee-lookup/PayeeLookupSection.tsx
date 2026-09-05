@@ -10,11 +10,23 @@ import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { getErrorMessage } from '@/lib/errors';
 import { payeeLookupApi } from '@/lib/payee-lookup';
 import type {
+  PayeeLookupPreferredSource,
   PayeeLookupSettings,
   UpdatePayeeLookupSettings,
 } from '@/types/payee-lookup';
 import { GooglePlacesConfigModal } from './GooglePlacesConfigModal';
 import { PayeeContactLookupToggle } from './PayeeContactLookupToggle';
+
+/**
+ * Where the wiki explains getting a Google Places key.
+ *
+ * Worth a link rather than more copy on the card: the setup is a Google Cloud
+ * errand (create a project, enable Places API (New), restrict the key BY IP
+ * because Monize calls Google from the server, not by HTTP referrer) and none
+ * of it fits beside a switch.
+ */
+const GOOGLE_PLACES_SETUP_URL =
+  'https://github.com/kenlasko/monize/wiki/Categories-and-Payees#setting-up-google-places';
 
 interface PayeeLookupSectionProps {
   disabled?: boolean;
@@ -44,7 +56,8 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
   // Whether ANY source can answer -- Places within its cap, or an AI provider.
   // The automatic-lookup toggle is about a lookup that runs by itself, so it is
   // offered only when something could actually run.
-  const { available: lookupAvailable } = useContactLookupAvailable();
+  const { available: lookupAvailable, aiConfigured } =
+    useContactLookupAvailable();
 
   useEffect(() => {
     let active = true;
@@ -97,6 +110,18 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
       await save(update);
       setShowConfig(false);
     } catch (error) {
+      toast.error(getErrorMessage(error, t('saveFailed')));
+    }
+  };
+
+  const handlePreferredSource = async (next: PayeeLookupPreferredSource) => {
+    if (!settings || saving || settings.preferredSource === next) return;
+    const previous = settings;
+    setSettings({ ...settings, preferredSource: next });
+    try {
+      await save({ preferredSource: next });
+    } catch (error) {
+      setSettings(previous);
       toast.error(getErrorMessage(error, t('saveFailed')));
     }
   };
@@ -182,7 +207,7 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
         )}
 
         {!operatorManaged && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -205,14 +230,69 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
                 {t('googlePlaces.removeKey')}
               </Button>
             )}
+            {/* Only before there is a key: getting one is a Google Cloud
+                errand with a step that is easy to get wrong (restrict by IP,
+                not by HTTP referrer -- this is a server-side call). Once it
+                works the link is clutter. */}
+            {!settings.configured && (
+              <a
+                href={GOOGLE_PLACES_SETUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {t('googlePlaces.setupInstructions')}
+              </a>
+            )}
           </div>
         )}
-      </Card>
 
-      <PayeeContactLookupToggle
-        disabled={disabled}
-        lookupAvailable={lookupAvailable}
-      />
+        {/* Ordering only matters when both sources can actually answer. With
+            one configured there is nothing to order, and offering the choice
+            would imply a fallback that does not exist. */}
+        {aiConfigured && settings.configured && (
+          <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {t('priority.title')}
+            </p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {t('priority.subtitle')}
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {(['google-places', 'ai'] as const).map((option) => (
+                <label
+                  key={option}
+                  className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                >
+                  <input
+                    type="radio"
+                    name="payee-lookup-preferred-source"
+                    className="mt-0.5"
+                    checked={settings.preferredSource === option}
+                    onChange={() => handlePreferredSource(option)}
+                    disabled={disabled || saving}
+                  />
+                  <span>
+                    <span className="font-medium">
+                      {t(`priority.${option === 'ai' ? 'aiFirst' : 'placesFirst'}`)}
+                    </span>
+                    <span className="block text-gray-500 dark:text-gray-400">
+                      {t(
+                        `priority.${option === 'ai' ? 'aiFirstHelp' : 'placesFirstHelp'}`,
+                      )}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <PayeeContactLookupToggle
+          disabled={disabled}
+          lookupAvailable={lookupAvailable}
+        />
+      </Card>
 
       {showConfig && (
         <GooglePlacesConfigModal

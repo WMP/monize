@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "未設定 ENCRYPTION_KEY，無法安全儲存 Google Places API 金鑰。",
     "notConfigured": "未設定任何 Google Places API 金鑰。",
     "capReached": "本月的 Google Places 要求已達上限。",
-    "testFailed": "Google Places 連線測試失敗。"
+    "testFailed": "Google Places 連線測試失敗。",
+    "referrerRestricted": "此金鑰受 HTTP 參照網址限制，在這裡無法生效：Monize 從伺服器呼叫 Google，因此不會傳送參照網址。請在 Google Cloud 主控台中將該金鑰的應用程式限制改為 IP 位址（或「無」），並將其限制為 Places API。"
   }
 }

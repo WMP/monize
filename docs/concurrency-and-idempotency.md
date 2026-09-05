@@ -345,7 +345,10 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 voiding in the three emergency-access call sites; the Google Places monthly quota
 claim (`payee-lookup-quota.service.ts`, INV-PAYEE-002), whose conditional
 `ON CONFLICT DO UPDATE ... WHERE requests < cap` is both the increment and the
-limit, so no caller ever reads a count it then writes back. There is no `@VersionColumn`
+limit, so no caller ever reads a count it then writes back. Its compensating
+`release` is deliberately NOT conditional: it is a `GREATEST(x - 1, 0)` applied
+after an answered refusal, and the floor is what keeps a release that crossed a
+month boundary from minting quota rather than returning it. There is no `@VersionColumn`
 anywhere in the codebase -- conditional `WHERE` is the whole of its optimistic
 concurrency control.
 

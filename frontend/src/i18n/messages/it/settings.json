@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Ricerca beneficiari",
-    "subtitle": "Da dove provengono sito web, indirizzo, e-mail e numero di telefono di un beneficiario quando lo cerchi.",
+    "subtitle": "Da dove provengono sito web, indirizzo, email e numero di telefono di un beneficiario, e quando una ricerca parte da sola.",
     "saved": "Impostazioni di ricerca beneficiari salvate",
     "saveFailed": "Impossibile salvare le impostazioni di ricerca beneficiari",
     "loadFailed": "Impossibile caricare le impostazioni di ricerca beneficiari. Ricarica la pagina per riprovare.",
@@ -1212,7 +1212,8 @@
       "testing": "Prova in corso...",
       "testSuccess": "Google ha accettato la chiave.",
       "save": "Salva",
-      "cancel": "Annulla"
+      "cancel": "Annulla",
+      "setupInstructions": "Istruzioni di configurazione"
     },
     "automatic": {
       "title": "Ricerca automatica dei contatti dei beneficiari",
@@ -1221,6 +1222,14 @@
       "enabled": "Ricerca automatica dei contatti attivata",
       "disabled": "Ricerca automatica dei contatti disattivata",
       "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei contatti"
+    },
+    "priority": {
+      "title": "Quale fonte interrogare per prima",
+      "subtitle": "Entrambe sono configurate. L'altra viene interrogata solo quando la prima non può rispondere, perché non è configurato alcun provider IA o il limite mensile di Google è esaurito. Se una fonte fallisce, la ricerca segnala l'errore invece di pagare l'altra in silenzio.",
+      "placesFirst": "Prima Google Places",
+      "placesFirstHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
+      "aiFirst": "Prima il provider IA",
+      "aiFirstHelp": "Può trovare un indirizzo email e costa una chiamata al modello a ogni ricerca."
     }
   }
 }

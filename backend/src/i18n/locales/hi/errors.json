@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY कॉन्फ़िगर नहीं है। Google Places API कुंजी सुरक्षित रूप से संग्रहीत नहीं की जा सकती।",
     "notConfigured": "कोई Google Places API कुंजी कॉन्फ़िगर नहीं है।",
     "capReached": "इस महीने की Google Places अनुरोध सीमा पूरी हो चुकी है।",
-    "testFailed": "Google Places कनेक्शन परीक्षण विफल रहा।"
+    "testFailed": "Google Places कनेक्शन परीक्षण विफल रहा।",
+    "referrerRestricted": "यह कुंजी HTTP रेफ़रर द्वारा प्रतिबंधित है, जो यहाँ काम नहीं कर सकती: Monize सर्वर से Google को कॉल करता है, इसलिए कोई रेफ़रर नहीं भेजा जाता। Google Cloud कंसोल में कुंजी का एप्लिकेशन प्रतिबंध इसके बजाय IP पतों (या कोई नहीं) पर सेट करें और इसे Places API तक सीमित करें।"
   }
 }

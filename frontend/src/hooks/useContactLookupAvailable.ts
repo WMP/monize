@@ -16,6 +16,12 @@ export interface ContactLookupAvailability {
   resolved: boolean;
   /** Which source would answer, for copy that names it. Null when none can. */
   source: PayeeLookupStatus['source'];
+  /**
+   * Whether an AI provider exists. The Payee Lookup settings section reads it
+   * to decide whether ordering the two sources is a choice worth offering:
+   * with only one source configured there is nothing to order.
+   */
+  aiConfigured: boolean;
 }
 
 /**
@@ -36,6 +42,7 @@ export function useContactLookupAvailable(): ContactLookupAvailability {
     available: false,
     resolved: false,
     source: null,
+    aiConfigured: false,
   });
 
   useEffect(() => {
@@ -48,6 +55,7 @@ export function useContactLookupAvailable(): ContactLookupAvailability {
             available: status.available,
             resolved: true,
             source: status.source,
+            aiConfigured: status.aiConfigured,
           });
         }
       })
@@ -55,7 +63,13 @@ export function useContactLookupAvailable(): ContactLookupAvailability {
         // Nothing to tell the user here: the surfaces reading this simply do
         // not offer the lookup, and one that runs anyway still reports the
         // server's own reason.
-        if (active) setState({ available: false, resolved: true, source: null });
+        if (active)
+          setState({
+            available: false,
+            resolved: true,
+            source: null,
+            aiConfigured: false,
+          });
       });
     return () => {
       active = false;

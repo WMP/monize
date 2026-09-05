@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
-import { Card } from '@/components/ui/Card';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { userSettingsApi } from '@/lib/user-settings';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -24,6 +23,11 @@ interface PayeeContactLookupToggleProps {
  * Opt-in for the automatic payee contact lookup -- the one that runs by itself
  * when a payee is created with nothing but a name. The buttons on the payee
  * form and detail card are not gated by it: a click is its own consent.
+ *
+ * Rendered as a block INSIDE the Payee Lookup section rather than as a card of
+ * its own: it is one more thing about the same feature, and a second heading
+ * for it read as a second feature. It therefore draws no Card and no <h2> --
+ * `PayeeLookupSection` owns both.
  *
  * The payee form reads the same `payeeContactLookupEnabled` preference from the
  * store, so the switch takes effect on the next payee immediately (optimistic),
@@ -60,12 +64,16 @@ export function PayeeContactLookupToggle({
   if (!lookupAvailable) return null;
 
   return (
-    <Card padding="md" className="mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-        {t('title')}
-      </h2>
+    <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('subtitle')}</p>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {t('title')}
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {t('subtitle')}
+          </p>
+        </div>
         <ToggleSwitch
           checked={enabled}
           onChange={handleToggle}
@@ -73,6 +81,6 @@ export function PayeeContactLookupToggle({
           label={t('toggleLabel')}
         />
       </div>
-    </Card>
+    </div>
   );
 }

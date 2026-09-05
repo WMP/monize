@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +9,11 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { PayeeLookupPreferredSource } from "../entities/payee-lookup-settings.entity";
+
+/** The two orders, as data, so the DTO and the column's CHECK cannot drift. */
+export const PAYEE_LOOKUP_PREFERRED_SOURCES: readonly PayeeLookupPreferredSource[] =
+  ["google-places", "ai"];
 import { GOOGLE_PLACES_CAP } from "../google-places/google-places-cap";
 
 /**
@@ -56,6 +62,14 @@ export class UpdatePayeeLookupSettingsDto {
   @Min(GOOGLE_PLACES_CAP.min)
   @Max(GOOGLE_PLACES_CAP.max)
   monthlyCap?: number;
+
+  @ApiPropertyOptional({
+    description: "Which source answers a lookup first",
+    enum: PAYEE_LOOKUP_PREFERRED_SOURCES,
+  })
+  @IsOptional()
+  @IsIn(PAYEE_LOOKUP_PREFERRED_SOURCES)
+  preferredSource?: PayeeLookupPreferredSource;
 }
 
 /** The draft key the Test button checks, when the user has typed a new one. */

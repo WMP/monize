@@ -1511,10 +1511,16 @@ CREATE TABLE payee_lookup_settings (
     google_places_enabled BOOLEAN NOT NULL DEFAULT true,
     cap_enabled BOOLEAN NOT NULL DEFAULT true,
     monthly_cap INTEGER NOT NULL DEFAULT 1000,
+    -- Which source answers first (migration 189). An order, not a switch: the
+    -- other source is still reached when this one cannot answer for a
+    -- configuration or budget reason, never to paper over a failure.
+    preferred_source VARCHAR(20) NOT NULL DEFAULT 'google-places',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT payee_lookup_settings_monthly_cap_check
-        CHECK (monthly_cap BETWEEN 1 AND 1000000)
+        CHECK (monthly_cap BETWEEN 1 AND 1000000),
+    CONSTRAINT payee_lookup_settings_preferred_source_check
+        CHECK (preferred_source IN ('google-places', 'ai'))
 );
 
 CREATE TRIGGER update_payee_lookup_settings_updated_at

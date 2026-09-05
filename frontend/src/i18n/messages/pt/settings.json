@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Pesquisa de beneficiários",
-    "subtitle": "De onde vêm o site, a morada, o e-mail e o telefone de um beneficiário quando os pesquisa.",
+    "subtitle": "De onde vêm o site, a morada, o e-mail e o telefone de um beneficiário, e quando uma pesquisa é executada por si só.",
     "saved": "Definições de pesquisa de beneficiários guardadas",
     "saveFailed": "Não foi possível guardar as definições de pesquisa de beneficiários",
     "loadFailed": "Não foi possível carregar as definições de pesquisa de beneficiários. Recarregue a página para tentar novamente.",
@@ -1212,7 +1212,8 @@
       "testing": "A testar...",
       "testSuccess": "A Google aceitou a chave.",
       "save": "Guardar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "setupInstructions": "Instruções de configuração"
     },
     "automatic": {
       "title": "Pesquisa automática de contactos de beneficiários",
@@ -1221,6 +1222,14 @@
       "enabled": "Pesquisa automática de contactos ativada",
       "disabled": "Pesquisa automática de contactos desativada",
       "saveFailed": "Não foi possível atualizar a definição de pesquisa de contactos"
+    },
+    "priority": {
+      "title": "Que fonte consultar primeiro",
+      "subtitle": "Ambas estão configuradas. A outra só é consultada quando a primeira não consegue responder, por não haver fornecedor de IA configurado ou por se ter esgotado o limite mensal da Google. Se uma fonte falhar, a pesquisa comunica a falha em vez de pagar a outra em silêncio.",
+      "placesFirst": "Google Places primeiro",
+      "placesFirstHelp": "Dados de diretório, mais baratos por pesquisa. A Google não tem endereços de e-mail.",
+      "aiFirst": "Fornecedor de IA primeiro",
+      "aiFirstHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada pesquisa."
     }
   }
 }

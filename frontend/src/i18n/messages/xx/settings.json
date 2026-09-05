@@ -843,7 +843,7 @@
     "help": "[XX-Help & Support-XX]",
     "dangerZone": "[XX-Danger Zone-XX]",
     "about": "[XX-About-XX]",
-    "payeeLookup": "[XX-Payee lookup-XX]"
+    "payeeLookup": "[XX-Payee Lookup-XX]"
   },
   "page": {
     "title": "[XX-Settings-XX]",
@@ -1181,8 +1181,8 @@
     "estCostTooltip": "[XX-Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set.-XX]"
   },
   "payeeLookup": {
-    "title": "[XX-Payee lookup-XX]",
-    "subtitle": "[XX-Where a payee's website, address, email and phone number come from when you look one up.-XX]",
+    "title": "[XX-Payee Lookup-XX]",
+    "subtitle": "[XX-Where a payee's website, address, email and phone number come from, and when a lookup runs by itself.-XX]",
     "saved": "[XX-Payee lookup settings saved-XX]",
     "saveFailed": "[XX-Could not save the payee lookup settings-XX]",
     "loadFailed": "[XX-Could not load the payee lookup settings. Reload the page to try again.-XX]",
@@ -1212,7 +1212,8 @@
       "testing": "[XX-Testing...-XX]",
       "testSuccess": "[XX-Google accepted the key.-XX]",
       "save": "[XX-Save-XX]",
-      "cancel": "[XX-Cancel-XX]"
+      "cancel": "[XX-Cancel-XX]",
+      "setupInstructions": "[XX-Setup instructions-XX]"
     },
     "automatic": {
       "title": "[XX-Automatic payee contact lookup-XX]",
@@ -1221,6 +1222,14 @@
       "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
       "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
       "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
+    },
+    "priority": {
+      "title": "[XX-Which source to ask first-XX]",
+      "subtitle": "[XX-Both are configured. The other one is asked only when the first cannot answer, because no AI provider is set up or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.-XX]",
+      "placesFirst": "[XX-Google Places first-XX]",
+      "placesFirstHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
+      "aiFirst": "[XX-AI provider first-XX]",
+      "aiFirstHelp": "[XX-Can find an email address, and costs a model call for every lookup.-XX]"
     }
   }
 }

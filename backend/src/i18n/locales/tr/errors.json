@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY yapılandırılmamış. Google Places API anahtarı güvenle saklanamıyor.",
     "notConfigured": "Yapılandırılmış bir Google Places API anahtarı yok.",
     "capReached": "Bu ayki Google Places istek sınırına ulaşıldı.",
-    "testFailed": "Google Places bağlantı testi başarısız oldu."
+    "testFailed": "Google Places bağlantı testi başarısız oldu.",
+    "referrerRestricted": "Bu anahtar HTTP yönlendireni ile kısıtlanmış ve burada çalışamaz: Monize, Google'ı sunucudan çağırır, bu nedenle yönlendiren gönderilmez. Google Cloud konsolunda anahtarın uygulama kısıtlamasını bunun yerine IP adresleri (veya Yok) olarak ayarlayın ve Places API ile sınırlayın."
   }
 }

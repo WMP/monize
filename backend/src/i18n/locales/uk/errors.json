@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY не налаштовано. Ключ API Google Places неможливо зберегти безпечно.",
     "notConfigured": "Ключ API Google Places не налаштовано.",
     "capReached": "Досягнуто місячний ліміт запитів Google Places.",
-    "testFailed": "Перевірка з'єднання з Google Places не вдалася."
+    "testFailed": "Перевірка з'єднання з Google Places не вдалася.",
+    "referrerRestricted": "Цей ключ обмежено за HTTP-реферером, що тут не може працювати: Monize звертається до Google із сервера, тож реферер не надсилається. У консолі Google Cloud змініть обмеження застосунку для ключа на IP-адреси (або «Немає») та обмежте його API Places."
   }
 }

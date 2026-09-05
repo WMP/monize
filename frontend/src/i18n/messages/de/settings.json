@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Zahlungsempfänger-Suche",
-    "subtitle": "Woher Website, Adresse, E-Mail und Telefonnummer eines Zahlungsempfängers stammen, wenn du sie nachschlägst.",
+    "subtitle": "Woher Website, Adresse, E-Mail und Telefonnummer eines Zahlungsempfängers stammen und wann eine Suche von selbst läuft.",
     "saved": "Einstellungen zur Zahlungsempfänger-Suche gespeichert",
     "saveFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht gespeichert werden",
     "loadFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
@@ -1212,7 +1212,8 @@
       "testing": "Wird getestet...",
       "testSuccess": "Google hat den Schlüssel akzeptiert.",
       "save": "Speichern",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "setupInstructions": "Einrichtungsanleitung"
     },
     "automatic": {
       "title": "Automatische Kontaktsuche für Zahlungsempfänger",
@@ -1221,6 +1222,14 @@
       "enabled": "Automatische Kontaktsuche für Zahlungsempfänger aktiviert",
       "disabled": "Automatische Kontaktsuche für Zahlungsempfänger deaktiviert",
       "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden"
+    },
+    "priority": {
+      "title": "Welche Quelle zuerst gefragt wird",
+      "subtitle": "Beide sind eingerichtet. Die andere wird nur gefragt, wenn die erste nicht antworten kann, weil kein KI-Anbieter eingerichtet ist oder das monatliche Google-Limit aufgebraucht ist. Schlägt eine Quelle fehl, meldet die Suche den Fehler, statt stillschweigend für die andere zu zahlen.",
+      "placesFirst": "Zuerst Google Places",
+      "placesFirstHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
+      "aiFirst": "Zuerst KI-Anbieter",
+      "aiFirstHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf."
     }
   }
 }

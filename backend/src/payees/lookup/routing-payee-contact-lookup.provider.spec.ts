@@ -32,7 +32,20 @@ const aiAnswer = [suggestionFrom("ai-web-search")];
  * answer.
  */
 describe("RoutingPayeeContactLookupProvider", () => {
-  let settings: { resolveSource: jest.Mock };
+  let settings: { resolveSource: jest.Mock; resolveRouting: jest.Mock };
+  /**
+   * The router asks `resolveRouting` (key + order in one read). These specs
+   * drive the key through `resolveSource`, so the two are kept in step here
+   * rather than in every case: a spec that set only one of them would be
+   * testing a settings row that cannot exist.
+   */
+  const setSource = (source: unknown, preferredSource = "google-places") => {
+    settings.resolveSource.mockResolvedValue(source);
+    settings.resolveRouting.mockResolvedValue({
+      places: source,
+      preferredSource,
+    });
+  };
   let quota: { claim: jest.Mock };
   let places: { lookup: jest.Mock };
   let ai: { lookup: jest.Mock };
@@ -54,7 +67,8 @@ describe("RoutingPayeeContactLookupProvider", () => {
   };
 
   beforeEach(() => {
-    settings = { resolveSource: jest.fn().mockResolvedValue(userSource) };
+    settings = { resolveSource: jest.fn(), resolveRouting: jest.fn() };
+    setSource(userSource);
     quota = { claim: jest.fn().mockResolvedValue(1) };
     places = { lookup: jest.fn().mockResolvedValue(placesAnswer) };
     ai = { lookup: jest.fn().mockResolvedValue(aiAnswer) };
@@ -72,7 +86,7 @@ describe("RoutingPayeeContactLookupProvider", () => {
 
   describe("with no Google Places key configured", () => {
     beforeEach(() =>
-      settings.resolveSource.mockResolvedValue({ kind: "none" }),
+      setSource({ kind: "none" }),
     );
 
     it("answers through AI, exactly as before this feature existed", async () => {
@@ -106,7 +120,7 @@ describe("RoutingPayeeContactLookupProvider", () => {
     });
 
     it("claims against the deployment's counter for the operator's key", async () => {
-      settings.resolveSource.mockResolvedValue(operatorSource);
+      setSource(operatorSource);
 
       await lookup();
 
@@ -117,7 +131,7 @@ describe("RoutingPayeeContactLookupProvider", () => {
     });
 
     it("answers through AI when the user switched Places off", async () => {
-      settings.resolveSource.mockResolvedValue({ kind: "none" });
+      setSource({ kind: "none" });
 
       await expect(lookup()).resolves.toEqual(aiAnswer);
     });
@@ -180,6 +194,64 @@ describe("RoutingPayeeContactLookupProvider", () => {
         detail: "API key not valid",
       });
       expect(ai.lookup).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The other order. Google holds no email address, so a user who mainly wants
+   * one is right to put their model first -- and the fallback rule has to be
+   * the mirror image of the default's, not a looser one.
+   */
+  describe("when the user asks for AI first", () => {
+    beforeEach(() => setSource(userSource, "ai"));
+
+    it("answers through AI and never spends a Places request", async () => {
+      await router.lookup("u1", { name: "Acme" });
+
+      expect(ai.lookup).toHaveBeenCalled();
+      expect(places.lookup).not.toHaveBeenCalled();
+      // The cap exists to ration a key this lookup never used.
+      expect(quota.claim).not.toHaveBeenCalled();
+    });
+
+    it("falls through to Places when no AI provider is configured", async () => {
+      ai.lookup.mockRejectedValue(
+        new ContactLookupUnavailableError("no_provider"),
+      );
+
+      await router.lookup("u1", { name: "Acme" });
+
+      // A configuration reason, so the second source answers -- the same rule
+      // the default order applies to a spent cap.
+      expect(places.lookup).toHaveBeenCalled();
+      expect(quota.claim).toHaveBeenCalled();
+    });
+
+    it("reports an AI failure instead of quietly paying Google for it", async () => {
+      // The asymmetry that matters: a rejected key or a provider outage is
+      // something the user must see. Silently buying the answer elsewhere means
+      // they never learn their AI provider is broken -- and it is the exact
+      // rule the default order applies to a Places failure.
+      ai.lookup.mockRejectedValue(
+        new ContactLookupUnavailableError("failed", "Anthropic returned 401"),
+      );
+
+      await expect(router.lookup("u1", { name: "Acme" })).rejects.toMatchObject(
+        { reason: "failed", detail: "Anthropic returned 401" },
+      );
+      expect(places.lookup).not.toHaveBeenCalled();
+      expect(quota.claim).not.toHaveBeenCalled();
+    });
+
+    it("reports no provider when neither source can answer", async () => {
+      setSource({ kind: "none" }, "ai");
+      ai.lookup.mockRejectedValue(
+        new ContactLookupUnavailableError("no_provider"),
+      );
+
+      await expect(router.lookup("u1", { name: "Acme" })).rejects.toMatchObject(
+        { reason: "no_provider" },
+      );
     });
   });
 });

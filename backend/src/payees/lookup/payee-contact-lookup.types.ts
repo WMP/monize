@@ -180,6 +180,17 @@ export class ContactLookupUnavailableError extends Error {
   constructor(
     readonly reason: "no_provider" | "quota_exceeded" | "failed",
     readonly detail?: string,
+    /**
+     * The upstream HTTP status, where the failure was an ANSWERED refusal.
+     *
+     * Absent means nobody answered -- a timeout, a transport error, an open
+     * breaker -- which is a different fact from a 4xx: the provider may still
+     * have served (and billed) the request while we failed to hear the reply.
+     * `PayeeLookupSettingsService.testKey` is the caller that needs the
+     * distinction, to decide whether the quota slot it spent should be
+     * handed back.
+     */
+    readonly httpStatus?: number,
   ) {
     super(detail ?? reason);
     this.name = "ContactLookupUnavailableError";

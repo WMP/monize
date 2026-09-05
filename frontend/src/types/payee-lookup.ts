@@ -1,3 +1,6 @@
+/** Which source a user wants asked first. Mirrors the column's CHECK. */
+export type PayeeLookupPreferredSource = 'google-places' | 'ai';
+
 /** Which source would answer a payee contact lookup, and whether one can. */
 export interface PayeeLookupStatus {
   /**
@@ -9,6 +12,8 @@ export interface PayeeLookupStatus {
   /** The source that would answer right now, or null when nothing can. */
   source: 'google-places' | 'ai' | null;
   aiConfigured: boolean;
+  /** The order the user asked for, whether or not both sources can answer. */
+  preferredSource: PayeeLookupPreferredSource;
   googlePlaces: {
     /**
      * Who configures Places here. `operator` means the deployment supplies the
@@ -37,6 +42,11 @@ export interface PayeeLookupSettings {
    */
   apiKeyReadable: boolean;
   usedThisMonth: number;
+  /**
+   * Which source is asked first. Stored even when only one can answer, so
+   * configuring the second later does not silently reorder the first.
+   */
+  preferredSource: PayeeLookupPreferredSource;
   /** False when the server holds no ENCRYPTION_KEY, so no key can be stored. */
   encryptionAvailable: boolean;
 }
@@ -47,6 +57,7 @@ export interface UpdatePayeeLookupSettings {
   apiKey?: string;
   capEnabled?: boolean;
   monthlyCap?: number;
+  preferredSource?: PayeeLookupPreferredSource;
 }
 
 export interface PayeeLookupKeyTestResult {

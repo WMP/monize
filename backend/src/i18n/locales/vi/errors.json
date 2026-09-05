@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "Chưa cấu hình ENCRYPTION_KEY. Không thể lưu khóa API Google Places một cách an toàn.",
     "notConfigured": "Chưa cấu hình khóa API Google Places nào.",
     "capReached": "Đã đạt giới hạn yêu cầu Google Places của tháng này.",
-    "testFailed": "Kiểm tra kết nối Google Places thất bại."
+    "testFailed": "Kiểm tra kết nối Google Places thất bại.",
+    "referrerRestricted": "Khóa này bị giới hạn theo HTTP referrer, điều này không thể hoạt động ở đây: Monize gọi Google từ máy chủ nên không có referrer nào được gửi đi. Trong bảng điều khiển Google Cloud, hãy đặt giới hạn ứng dụng của khóa thành địa chỉ IP (hoặc Không có) và giới hạn khóa ở Places API."
   }
 }

@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Recherche de bénéficiaires",
-    "subtitle": "D'où proviennent le site web, l'adresse, l'e-mail et le téléphone d'un bénéficiaire lorsque vous les recherchez.",
+    "subtitle": "D'où proviennent le site web, l'adresse, l'e-mail et le téléphone d'un bénéficiaire, et quand une recherche s'exécute d'elle-même.",
     "saved": "Paramètres de recherche de bénéficiaires enregistrés",
     "saveFailed": "Impossible d'enregistrer les paramètres de recherche de bénéficiaires",
     "loadFailed": "Impossible de charger les paramètres de recherche de bénéficiaires. Rechargez la page pour réessayer.",
@@ -1212,7 +1212,8 @@
       "testing": "Test en cours...",
       "testSuccess": "Google a accepté la clé.",
       "save": "Enregistrer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "setupInstructions": "Instructions de configuration"
     },
     "automatic": {
       "title": "Recherche automatique des coordonnées des bénéficiaires",
@@ -1221,6 +1222,14 @@
       "enabled": "Recherche automatique des coordonnées activée",
       "disabled": "Recherche automatique des coordonnées désactivée",
       "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
+    },
+    "priority": {
+      "title": "Quelle source interroger en premier",
+      "subtitle": "Les deux sont configurées. L'autre n'est interrogée que si la première ne peut pas répondre, faute de fournisseur d'IA configuré ou parce que la limite mensuelle Google est épuisée. Si une source échoue, la recherche signale l'échec au lieu de payer l'autre en silence.",
+      "placesFirst": "Google Places d'abord",
+      "placesFirstHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
+      "aiFirst": "Fournisseur d'IA d'abord",
+      "aiFirstHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche."
     }
   }
 }

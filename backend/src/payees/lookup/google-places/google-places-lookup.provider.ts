@@ -59,7 +59,13 @@ export class GooglePlacesLookupProvider {
       });
     } catch (error) {
       if (error instanceof GooglePlacesRejectedError) {
-        throw new ContactLookupUnavailableError("failed", error.detail);
+        // The status travels with it: Google answered and refused, so the
+        // request was never served and never billed.
+        throw new ContactLookupUnavailableError(
+          "failed",
+          error.detail,
+          error.status,
+        );
       }
       throw error;
     }

@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Wyszukiwanie odbiorców",
-    "subtitle": "Skąd pochodzą strona internetowa, adres, e-mail i numer telefonu odbiorcy, gdy je wyszukujesz.",
+    "subtitle": "Skąd pochodzą strona, adres, e-mail i telefon odbiorcy oraz kiedy wyszukiwanie uruchamia się samo.",
     "saved": "Zapisano ustawienia wyszukiwania odbiorców",
     "saveFailed": "Nie udało się zapisać ustawień wyszukiwania odbiorców",
     "loadFailed": "Nie udało się wczytać ustawień wyszukiwania odbiorców. Odśwież stronę, aby spróbować ponownie.",
@@ -1212,7 +1212,8 @@
       "testing": "Testowanie...",
       "testSuccess": "Google zaakceptował klucz.",
       "save": "Zapisz",
-      "cancel": "Anuluj"
+      "cancel": "Anuluj",
+      "setupInstructions": "Instrukcja konfiguracji"
     },
     "automatic": {
       "title": "Automatyczne wyszukiwanie danych kontaktowych odbiorcy",
@@ -1221,6 +1222,14 @@
       "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
       "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
       "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
+    },
+    "priority": {
+      "title": "Które źródło pytać najpierw",
+      "subtitle": "Oba są skonfigurowane. Drugie jest pytane tylko wtedy, gdy pierwsze nie może odpowiedzieć, ponieważ nie skonfigurowano dostawcy AI albo wyczerpano miesięczny limit Google. Jeśli źródło zawiedzie, wyszukiwanie zgłasza błąd, zamiast po cichu płacić za drugie.",
+      "placesFirst": "Najpierw Google Places",
+      "placesFirstHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
+      "aiFirst": "Najpierw dostawca AI",
+      "aiFirstHelp": "Może znaleźć adres e-mail i kosztuje jedno wywołanie modelu przy każdym wyszukiwaniu."
     }
   }
 }

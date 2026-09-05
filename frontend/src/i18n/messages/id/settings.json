@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Pencarian penerima",
-    "subtitle": "Dari mana situs web, alamat, email, dan nomor telepon penerima berasal saat Anda mencarinya.",
+    "subtitle": "Dari mana situs web, alamat, email, dan nomor telepon penerima berasal, dan kapan pencarian berjalan sendiri.",
     "saved": "Pengaturan pencarian penerima disimpan",
     "saveFailed": "Tidak dapat menyimpan pengaturan pencarian penerima",
     "loadFailed": "Tidak dapat memuat pengaturan pencarian penerima. Muat ulang halaman untuk mencoba lagi.",
@@ -1212,7 +1212,8 @@
       "testing": "Menguji...",
       "testSuccess": "Google menerima kuncinya.",
       "save": "Simpan",
-      "cancel": "Batal"
+      "cancel": "Batal",
+      "setupInstructions": "Petunjuk penyiapan"
     },
     "automatic": {
       "title": "Pencarian kontak penerima otomatis",
@@ -1221,6 +1222,14 @@
       "enabled": "Pencarian kontak penerima otomatis diaktifkan",
       "disabled": "Pencarian kontak penerima otomatis dinonaktifkan",
       "saveFailed": "Tidak dapat memperbarui pengaturan pencarian kontak penerima"
+    },
+    "priority": {
+      "title": "Sumber mana yang ditanya lebih dulu",
+      "subtitle": "Keduanya sudah dikonfigurasi. Yang lain hanya ditanya bila yang pertama tidak dapat menjawab, karena tidak ada penyedia AI yang disiapkan atau batas bulanan Google sudah habis. Jika sebuah sumber gagal, pencarian melaporkan kegagalan itu alih-alih diam-diam membayar yang lain.",
+      "placesFirst": "Google Places lebih dulu",
+      "placesFirstHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
+      "aiFirst": "Penyedia AI lebih dulu",
+      "aiFirstHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian."
     }
   }
 }

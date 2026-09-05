@@ -4,7 +4,11 @@ import { DataSource } from "typeorm";
 import { withScopedDb } from "../../../common/db/scoped-db";
 import { EncryptionService } from "../../../common/encryption/encryption.service";
 import { tr } from "../../../i18n/translate";
-import { PayeeLookupSettings } from "../entities/payee-lookup-settings.entity";
+import { ContactLookupUnavailableError } from "../payee-contact-lookup.types";
+import {
+  PayeeLookupPreferredSource,
+  PayeeLookupSettings,
+} from "../entities/payee-lookup-settings.entity";
 import { GOOGLE_PLACES_CAP, resolveMonthlyCap } from "./google-places-cap";
 import {
   OperatorGooglePlaces,
@@ -35,6 +39,8 @@ export interface UpdatePayeeLookupSettings {
   apiKey?: string;
   capEnabled?: boolean;
   monthlyCap?: number;
+  /** Which source to ask first. Meaningful only where both can answer. */
+  preferredSource?: PayeeLookupPreferredSource;
 }
 
 /** What the settings screen renders. Never the key itself. */
@@ -60,6 +66,12 @@ export interface PayeeLookupSettingsView {
   apiKeyReadable: boolean;
   /** Requests spent this billing month against whichever key applies. */
   usedThisMonth: number;
+  /**
+   * Which source this user wants asked first. Stored even when only one source
+   * can answer, so configuring the second later does not silently reorder the
+   * first.
+   */
+  preferredSource: PayeeLookupPreferredSource;
   /** False when the server holds no ENCRYPTION_KEY, so no key can be stored. */
   encryptionAvailable: boolean;
 }
@@ -71,6 +83,8 @@ export interface PayeeLookupStatus {
   /** Which source would answer right now, or null when nothing can. */
   source: "google-places" | "ai" | null;
   aiConfigured: boolean;
+  /** The order the user asked for, whether or not both sources can answer. */
+  preferredSource: PayeeLookupPreferredSource;
   googlePlaces: {
     mode: "operator" | "user" | "none";
     enabled: boolean;
@@ -132,6 +146,7 @@ export class PayeeLookupSettingsService {
       apiKeyReadable,
       usedThisMonth:
         source.kind === "none" ? 0 : await this.quota.usedThisMonth(source),
+      preferredSource: row?.preferredSource ?? "google-places",
       encryptionAvailable: this.encryption.isConfigured(),
     };
   }
@@ -178,6 +193,8 @@ export class PayeeLookupSettingsService {
         row.googlePlacesEnabled = update.enabled;
       if (update.capEnabled !== undefined) row.capEnabled = update.capEnabled;
       if (update.monthlyCap !== undefined) row.monthlyCap = update.monthlyCap;
+      if (update.preferredSource !== undefined)
+        row.preferredSource = update.preferredSource;
       if (update.apiKey !== undefined) {
         // An empty string is "remove the key"; a value is a new one. Absent is
         // "keep what is stored", which is what the form sends when the user
@@ -190,6 +207,7 @@ export class PayeeLookupSettingsService {
         row.googlePlacesEnabled = update.enabled ?? true;
         row.capEnabled = update.capEnabled ?? true;
         row.monthlyCap = update.monthlyCap ?? GOOGLE_PLACES_CAP.default;
+        row.preferredSource = update.preferredSource ?? "google-places";
       }
       await repo.save(row);
     });
@@ -209,6 +227,25 @@ export class PayeeLookupSettingsService {
   async resolveSource(userId: string): Promise<ResolvedLookupSource> {
     const row = await this.readRow(userId);
     return this.sourceFrom(userId, row, this.operatorConfig());
+  }
+
+  /**
+   * Everything the router needs, from ONE read of the row.
+   *
+   * The order and the key are two halves of one decision, so they are answered
+   * together: resolving them separately would read the row twice and let a
+   * concurrent save put the router's key and its ordering on different
+   * versions of the user's settings.
+   */
+  async resolveRouting(userId: string): Promise<{
+    places: ResolvedLookupSource;
+    preferredSource: PayeeLookupPreferredSource;
+  }> {
+    const row = await this.readRow(userId);
+    return {
+      places: this.sourceFrom(userId, row, this.operatorConfig()),
+      preferredSource: row?.preferredSource ?? "google-places",
+    };
   }
 
   private sourceFrom(
@@ -269,11 +306,29 @@ export class PayeeLookupSettingsService {
       capReached = (await this.quota.usedThisMonth(source)) >= source.cap;
     }
     const placesUsable = source.kind !== "none" && !capReached;
+    const preferredSource = row?.preferredSource ?? "google-places";
+
+    // Which one would actually answer: the preferred source when it can, the
+    // other when it cannot. Same order the router applies, so a surface naming
+    // the source in its copy cannot disagree with the lookup it describes.
+    const answering =
+      preferredSource === "ai"
+        ? aiConfigured
+          ? "ai"
+          : placesUsable
+            ? "google-places"
+            : null
+        : placesUsable
+          ? "google-places"
+          : aiConfigured
+            ? "ai"
+            : null;
 
     return {
       available: placesUsable || aiConfigured,
-      source: placesUsable ? "google-places" : aiConfigured ? "ai" : null,
+      source: answering,
       aiConfigured,
+      preferredSource,
       googlePlaces: {
         mode,
         enabled: row?.googlePlacesEnabled ?? true,
@@ -350,19 +405,57 @@ export class PayeeLookupSettingsService {
       await this.places.lookup(apiKey, { name: PAYEE_LOOKUP_TEST_QUERY });
       return { available: true };
     } catch (error) {
+      // A request Google ANSWERED with a refusal was never served and never
+      // billed, so the slot claimed above is handed back. Without this,
+      // checking whether a rejected key is fixed costs a request every time --
+      // and a key that is rejected for every attempt would burn the month's
+      // quota on nothing but failures. A transport error or an open breaker is
+      // deliberately NOT released: nobody answered, so whether Google served
+      // the request is unknown, and under-counting is the direction that bills.
+      const status =
+        error instanceof ContactLookupUnavailableError
+          ? error.httpStatus
+          : undefined;
+      if (status !== undefined && status >= 400) {
+        await this.quota.release(scope);
+      }
+
       // Google's own refusal message where there is one ("API key not valid",
       // "this API is not enabled") -- that is the whole value of a test button.
       return {
         available: false,
-        error:
-          error instanceof Error && error.message
-            ? error.message
-            : tr(
-                "errors.payeeLookup.testFailed",
-                "The Google Places connection test failed.",
-              ),
+        error: this.describeTestFailure(error),
       };
     }
+  }
+
+  /**
+   * What to tell the user about a failed test.
+   *
+   * Google's own message is the useful part, except in one case where it is
+   * actively misleading: an HTTP-referrer restriction reports "Requests from
+   * referer <empty> are blocked", which reads as a bug in Monize. It is not --
+   * Monize calls Google from the SERVER, so there is no referrer to send, and
+   * a referrer restriction can never be satisfied by it. That restriction is
+   * for keys used in a browser; a server-side key is restricted by IP address.
+   * Saying so is the difference between a two-minute fix and an hour spent
+   * checking a domain that was never going to matter.
+   */
+  private describeTestFailure(error: unknown): string {
+    const message = error instanceof Error ? error.message : "";
+    if (/referer|referrer/i.test(message)) {
+      return tr(
+        "errors.payeeLookup.referrerRestricted",
+        "This key is restricted by HTTP referrer, which cannot work here: Monize calls Google from the server, so no referrer is sent. In the Google Cloud console, set the key's application restriction to IP addresses (or None) instead, and restrict it to the Places API.",
+      );
+    }
+    return (
+      message ||
+      tr(
+        "errors.payeeLookup.testFailed",
+        "The Google Places connection test failed.",
+      )
+    );
   }
 
   private async readRow(userId: string): Promise<PayeeLookupSettings | null> {

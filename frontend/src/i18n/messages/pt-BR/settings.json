@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Busca de favorecidos",
-    "subtitle": "De onde vêm o site, o endereço, o e-mail e o telefone de um favorecido quando você os busca.",
+    "subtitle": "De onde vêm o site, o endereço, o e-mail e o telefone de um favorecido, e quando uma busca é executada sozinha.",
     "saved": "Configurações de busca de favorecidos salvas",
     "saveFailed": "Não foi possível salvar as configurações de busca de favorecidos",
     "loadFailed": "Não foi possível carregar as configurações de busca de favorecidos. Recarregue a página para tentar de novo.",
@@ -1212,7 +1212,8 @@
       "testing": "Testando...",
       "testSuccess": "O Google aceitou a chave.",
       "save": "Salvar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "setupInstructions": "Instruções de configuração"
     },
     "automatic": {
       "title": "Busca automática de contatos de favorecidos",
@@ -1221,6 +1222,14 @@
       "enabled": "Busca automática de contatos ativada",
       "disabled": "Busca automática de contatos desativada",
       "saveFailed": "Não foi possível atualizar a configuração de busca de contatos"
+    },
+    "priority": {
+      "title": "Qual fonte consultar primeiro",
+      "subtitle": "Ambas estão configuradas. A outra só é consultada quando a primeira não consegue responder, por não haver provedor de IA configurado ou por ter se esgotado o limite mensal do Google. Se uma fonte falhar, a busca informa a falha em vez de pagar a outra silenciosamente.",
+      "placesFirst": "Google Places primeiro",
+      "placesFirstHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
+      "aiFirst": "Provedor de IA primeiro",
+      "aiFirstHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca."
     }
   }
 }

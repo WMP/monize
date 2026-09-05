@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "收款方查询",
-    "subtitle": "查询收款方时，其网站、地址、电子邮件和电话号码的来源。",
+    "subtitle": "收款方的网站、地址、电子邮件和电话号码来自何处，以及查询何时自动运行。",
     "saved": "已保存收款方查询设置",
     "saveFailed": "无法保存收款方查询设置",
     "loadFailed": "无法加载收款方查询设置。请刷新页面重试。",
@@ -1212,7 +1212,8 @@
       "testing": "测试中...",
       "testSuccess": "Google 已接受该密钥。",
       "save": "保存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "setupInstructions": "设置说明"
     },
     "automatic": {
       "title": "自动查询收款方联系信息",
@@ -1221,6 +1222,14 @@
       "enabled": "已启用自动查询收款方联系信息",
       "disabled": "已停用自动查询收款方联系信息",
       "saveFailed": "无法更新收款方联系信息查询设置"
+    },
+    "priority": {
+      "title": "先查询哪个来源",
+      "subtitle": "两者均已配置。只有在第一个来源无法作答时才会查询另一个，原因是未配置 AI 提供商或已用完 Google 的每月额度。如果某个来源失败，查询会报告失败，而不会默默地为另一个付费。",
+      "placesFirst": "优先使用 Google Places",
+      "placesFirstHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
+      "aiFirst": "优先使用 AI 提供商",
+      "aiFirstHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。"
     }
   }
 }

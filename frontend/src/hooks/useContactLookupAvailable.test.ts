@@ -32,6 +32,7 @@ describe('useContactLookupAvailable', () => {
       available: false,
       resolved: false,
       source: null,
+      aiConfigured: false,
     });
 
     await waitFor(() => {
@@ -39,6 +40,9 @@ describe('useContactLookupAvailable', () => {
         available: true,
         resolved: true,
         source: 'ai',
+        // The settings section reads this to decide whether ordering the two
+        // sources is a choice worth offering.
+        aiConfigured: true,
       });
     });
   });

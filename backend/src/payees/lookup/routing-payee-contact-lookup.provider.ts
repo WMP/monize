@@ -4,7 +4,10 @@ import { AiPayeeContactLookupProvider } from "./ai-payee-contact-lookup.provider
 import { GOOGLE_PLACES_PROVIDER } from "./google-places/google-places.client";
 import { GooglePlacesLookupProvider } from "./google-places/google-places-lookup.provider";
 import { PayeeLookupQuotaService } from "./google-places/payee-lookup-quota.service";
-import { PayeeLookupSettingsService } from "./google-places/payee-lookup-settings.service";
+import {
+  PayeeLookupSettingsService,
+  ResolvedLookupSource,
+} from "./google-places/payee-lookup-settings.service";
 import {
   ContactLookupUnavailableError,
   PayeeContactLookupInput,
@@ -15,10 +18,19 @@ import {
 /**
  * Which source answers one lookup.
  *
- * Google Places REPLACES the AI adapter where it is configured -- it is what
- * the user chose and what they are paying Google for -- and AI is reached
- * again in exactly one case: the month's request cap is spent. That single
- * fallback is deliberate, and so is its narrowness:
+ * The user picks the ORDER (`preferredSource`), and the rule is the same in
+ * both directions: the second source is reached only when the first cannot
+ * answer for a **configuration or budget** reason -- no AI provider
+ * configured, or the Places cap spent -- and never to paper over a failure.
+ *
+ * By default Google Places goes first and REPLACES the AI adapter where it is
+ * configured: it is cheaper per answer and returns directory facts rather than
+ * a model's recollection. A user who chooses `ai` gets the mirror image, which
+ * is what Google holding no email address makes worth offering.
+ *
+ * With Places first, AI is reached again in exactly one case: the month's
+ * request cap is spent. That single fallback is deliberate, and so is its
+ * narrowness:
  *
  * - **Cap reached** is a budget decision the user made, and silently stopping
  *   would turn their own limit into a broken feature. Falling back keeps
@@ -55,11 +67,57 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
     userId: string,
     input: PayeeContactLookupInput,
   ): Promise<PayeeContactSuggestion[]> {
-    const source = await this.settings.resolveSource(userId);
+    const { places: source, preferredSource } =
+      await this.settings.resolveRouting(userId);
+
+    // The user asked for AI first. Places is still reached -- but only if AI
+    // cannot answer for a CONFIGURATION reason, which is the same asymmetry the
+    // other order uses: a source that fails is reported, never papered over by
+    // paying the other one.
+    if (preferredSource === "ai") {
+      return this.aiFirst(userId, input, source);
+    }
+
     if (source.kind === "none") {
       return this.ai.lookup(userId, input);
     }
 
+    return this.viaPlaces(userId, input, source);
+  }
+
+  /**
+   * AI first, with Places behind it.
+   *
+   * `no_provider` is the only reason to fall through: the user asked for a
+   * model they have not configured, and Places can still answer. Anything else
+   * the AI adapter raises -- a rejected key, a provider outage, an unreadable
+   * answer -- is a failure the user has to see.
+   */
+  private async aiFirst(
+    userId: string,
+    input: PayeeContactLookupInput,
+    source: ResolvedLookupSource,
+  ): Promise<PayeeContactSuggestion[]> {
+    try {
+      return await this.ai.lookup(userId, input);
+    } catch (error) {
+      const noProvider =
+        error instanceof ContactLookupUnavailableError &&
+        error.reason === "no_provider";
+      if (!noProvider || source.kind === "none") throw error;
+      this.logger.log(
+        `No AI provider configured for user ${userId}; falling back to Google Places.`,
+      );
+      return this.viaPlaces(userId, input, source);
+    }
+  }
+
+  /** One Places lookup: breaker pre-check, quota claim, request. */
+  private async viaPlaces(
+    userId: string,
+    input: PayeeContactLookupInput,
+    source: Exclude<ResolvedLookupSource, { kind: "none" }>,
+  ): Promise<PayeeContactSuggestion[]> {
     if (this.health.wouldRefuse(GOOGLE_PLACES_PROVIDER)) {
       throw new ContactLookupUnavailableError(
         "failed",

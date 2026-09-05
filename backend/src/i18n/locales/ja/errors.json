@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY が設定されていません。Google Places の API キーを安全に保存できません。",
     "notConfigured": "Google Places の API キーが設定されていません。",
     "capReached": "今月の Google Places リクエスト上限に達しました。",
-    "testFailed": "Google Places の接続テストに失敗しました。"
+    "testFailed": "Google Places の接続テストに失敗しました。",
+    "referrerRestricted": "このキーは HTTP リファラーで制限されていますが、ここでは機能しません。Monize はサーバーから Google を呼び出すため、リファラーは送信されません。Google Cloud コンソールで、キーのアプリケーション制限を IP アドレス（または「なし」）に変更し、Places API に限定してください。"
   }
 }

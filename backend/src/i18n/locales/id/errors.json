@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY belum dikonfigurasi. Kunci API Google Places tidak dapat disimpan dengan aman.",
     "notConfigured": "Tidak ada kunci API Google Places yang dikonfigurasi.",
     "capReached": "Batas permintaan Google Places bulan ini telah tercapai.",
-    "testFailed": "Uji koneksi Google Places gagal."
+    "testFailed": "Uji koneksi Google Places gagal.",
+    "referrerRestricted": "Kunci ini dibatasi oleh perujuk HTTP, yang tidak dapat bekerja di sini: Monize memanggil Google dari server, sehingga tidak ada perujuk yang dikirim. Di konsol Google Cloud, setel pembatasan aplikasi kunci ke alamat IP (atau Tidak ada) dan batasi ke Places API."
   }
 }

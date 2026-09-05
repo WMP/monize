@@ -62,6 +62,49 @@ export class PayeeLookupQuotaService {
       : this.claimInstance(scope.capEnabled, scope.cap);
   }
 
+  /**
+   * Hand one claimed request back.
+   *
+   * The claim commits before the request goes out because Google bills an
+   * attempt -- but a request Google ANSWERED WITH A REFUSAL was never served
+   * and never billed, so the slot it spent is not a slot the user owes. The
+   * Test button is the one caller: it is a diagnostic the user pressed, and a
+   * rejected key would otherwise cost them a request every time they checked
+   * whether they had fixed it.
+   *
+   * Deliberately not called from the lookup path. There the same 4xx is
+   * indistinguishable, at the moment it arrives, from a key that was rejected
+   * AFTER Google served something -- and over-counting a lookup costs the user
+   * a request, while under-counting costs them a bill.
+   *
+   * `GREATEST(..., 0)` because a release is a compensation, not a ledger entry:
+   * a month boundary crossed between the claim and the release would otherwise
+   * drive the new month's row negative and hand out free quota.
+   */
+  async release(scope: QuotaScope): Promise<void> {
+    const [sql, params] =
+      scope.kind === "user"
+        ? [
+            `UPDATE payee_lookup_usage
+                SET google_places_requests = GREATEST(google_places_requests - 1, 0)
+              WHERE user_id = $1
+                AND month = to_char(now() AT TIME ZONE $2, 'YYYY-MM')`,
+            [scope.userId, GOOGLE_PLACES_QUOTA_TIMEZONE],
+          ]
+        : [
+            `UPDATE google_places_instance_usage
+                SET requests = GREATEST(requests - 1, 0)
+              WHERE month = to_char(now() AT TIME ZONE $1, 'YYYY-MM')`,
+            [GOOGLE_PLACES_QUOTA_TIMEZONE],
+          ];
+
+    const run = () =>
+      withScopedDb(this.dataSource, (m) => m.query(sql, params));
+    await runOutsideActiveScopedManager(() =>
+      scope.kind === "user" ? run() : withSystemContext(run),
+    );
+  }
+
   /** What this scope has spent in the current billing month (Pacific). */
   async usedThisMonth(scope: QuotaScope): Promise<number> {
     return scope.kind === "user"

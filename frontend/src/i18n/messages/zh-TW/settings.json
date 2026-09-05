@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "收款人查詢",
-    "subtitle": "查詢收款人時，其網站、地址、電子郵件與電話號碼的來源。",
+    "subtitle": "收款人的網站、地址、電子郵件和電話號碼來自何處，以及查詢何時自動執行。",
     "saved": "已儲存收款人查詢設定",
     "saveFailed": "無法儲存收款人查詢設定",
     "loadFailed": "無法載入收款人查詢設定。請重新整理頁面再試一次。",
@@ -1212,7 +1212,8 @@
       "testing": "測試中...",
       "testSuccess": "Google 已接受該金鑰。",
       "save": "儲存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "setupInstructions": "設定說明"
     },
     "automatic": {
       "title": "自動查詢收款人聯絡資訊",
@@ -1221,6 +1222,14 @@
       "enabled": "已啟用自動查詢收款人聯絡資訊",
       "disabled": "已停用自動查詢收款人聯絡資訊",
       "saveFailed": "無法更新收款人聯絡資訊查詢設定"
+    },
+    "priority": {
+      "title": "先查詢哪個來源",
+      "subtitle": "兩者均已設定。只有在第一個來源無法作答時才會查詢另一個，原因是未設定 AI 供應商或已用完 Google 的每月額度。如果某個來源失敗，查詢會回報失敗，而不會默默地為另一個付費。",
+      "placesFirst": "優先使用 Google Places",
+      "placesFirstHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
+      "aiFirst": "優先使用 AI 供應商",
+      "aiFirstHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。"
     }
   }
 }

@@ -843,7 +843,7 @@
     "help": "Help & Support",
     "dangerZone": "Danger Zone",
     "about": "About",
-    "payeeLookup": "Payee lookup"
+    "payeeLookup": "Payee Lookup"
   },
   "page": {
     "title": "Settings",
@@ -1181,8 +1181,8 @@
     "estCostTooltip": "Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set."
   },
   "payeeLookup": {
-    "title": "Payee lookup",
-    "subtitle": "Where a payee's website, address, email and phone number come from when you look one up.",
+    "title": "Payee Lookup",
+    "subtitle": "Where a payee's website, address, email and phone number come from, and when a lookup runs by itself.",
     "saved": "Payee lookup settings saved",
     "saveFailed": "Could not save the payee lookup settings",
     "loadFailed": "Could not load the payee lookup settings. Reload the page to try again.",
@@ -1212,7 +1212,8 @@
       "testing": "Testing...",
       "testSuccess": "Google accepted the key.",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "setupInstructions": "Setup instructions"
     },
     "automatic": {
       "title": "Automatic payee contact lookup",
@@ -1221,6 +1222,14 @@
       "enabled": "Automatic payee contact lookup enabled",
       "disabled": "Automatic payee contact lookup disabled",
       "saveFailed": "Could not update the payee contact lookup setting"
+    },
+    "priority": {
+      "title": "Which source to ask first",
+      "subtitle": "Both are configured. The other one is asked only when the first cannot answer, because no AI provider is set up or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.",
+      "placesFirst": "Google Places first",
+      "placesFirstHelp": "Directory facts, cheaper per lookup. Google holds no email address.",
+      "aiFirst": "AI provider first",
+      "aiFirstHelp": "Can find an email address, and costs a model call for every lookup."
     }
   }
 }

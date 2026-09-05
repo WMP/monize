@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Alacaklı arama",
-    "subtitle": "Bir alacaklıyı aradığınızda web sitesi, adres, e-posta ve telefon numarasının nereden geldiği.",
+    "subtitle": "Bir alacaklının web sitesi, adresi, e-postası ve telefon numarasının nereden geldiği ve aramanın kendiliğinden ne zaman çalıştığı.",
     "saved": "Alacaklı arama ayarları kaydedildi",
     "saveFailed": "Alacaklı arama ayarları kaydedilemedi",
     "loadFailed": "Alacaklı arama ayarları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
@@ -1212,7 +1212,8 @@
       "testing": "Test ediliyor...",
       "testSuccess": "Google anahtarı kabul etti.",
       "save": "Kaydet",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "setupInstructions": "Kurulum talimatları"
     },
     "automatic": {
       "title": "Otomatik alacaklı iletişim araması",
@@ -1221,6 +1222,14 @@
       "enabled": "Otomatik alacaklı iletişim araması etkinleştirildi",
       "disabled": "Otomatik alacaklı iletişim araması devre dışı bırakıldı",
       "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi"
+    },
+    "priority": {
+      "title": "Önce hangi kaynağa sorulacak",
+      "subtitle": "Her ikisi de yapılandırılmış. Diğeri yalnızca ilki yanıt veremediğinde sorulur; yapay zekâ sağlayıcısı kurulmadığı veya aylık Google sınırı tükendiği için. Bir kaynak başarısız olursa arama, sessizce diğerinin ücretini ödemek yerine hatayı bildirir.",
+      "placesFirst": "Önce Google Places",
+      "placesFirstHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
+      "aiFirst": "Önce yapay zekâ sağlayıcısı",
+      "aiFirstHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır."
     }
   }
 }

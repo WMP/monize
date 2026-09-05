@@ -9,6 +9,9 @@ import {
 } from "typeorm";
 import { User } from "../../../users/entities/user.entity";
 
+/** Which source a user wants asked first. Mirrors the column's CHECK. */
+export type PayeeLookupPreferredSource = "google-places" | "ai";
+
 /**
  * One user's Google Places configuration for the payee contact lookup.
  *
@@ -43,6 +46,23 @@ export class PayeeLookupSettings {
   /** Requests allowed per Pacific calendar month while `capEnabled`. */
   @Column({ type: "int", name: "monthly_cap", default: 1000 })
   monthlyCap: number;
+
+  /**
+   * Which source answers a lookup first.
+   *
+   * An ORDER rather than a switch: the other source is still reached when this
+   * one cannot answer for a configuration or budget reason (no AI provider, or
+   * the Places cap spent). A source that FAILS is still reported as a failure
+   * -- paying the other one to hide a rejected key is the thing the routing
+   * rule exists to prevent.
+   */
+  @Column({
+    type: "varchar",
+    length: 20,
+    name: "preferred_source",
+    default: "google-places",
+  })
+  preferredSource: PayeeLookupPreferredSource;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

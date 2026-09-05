@@ -609,6 +609,7 @@
     "encryptionKeyNotConfigured": "ENCRYPTION_KEY non è configurata. Impossibile memorizzare in sicurezza la chiave API di Google Places.",
     "notConfigured": "Nessuna chiave API di Google Places configurata.",
     "capReached": "Il limite di richieste Google Places di questo mese è stato raggiunto.",
-    "testFailed": "Il test di connessione a Google Places non è riuscito."
+    "testFailed": "Il test di connessione a Google Places non è riuscito.",
+    "referrerRestricted": "Questa chiave è limitata dal referrer HTTP, il che non può funzionare qui: Monize chiama Google dal server, quindi non viene inviato alcun referrer. Nella console Google Cloud imposta invece la restrizione dell'applicazione della chiave su indirizzi IP (o Nessuna) e limitala all'API Places."
   }
 }

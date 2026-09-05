@@ -8,6 +8,7 @@ import { GooglePlacesLookupProvider } from "./google-places-lookup.provider";
 import { GOOGLE_PLACES_CAP } from "./google-places-cap";
 import { PayeeLookupQuotaService } from "./payee-lookup-quota.service";
 import { PayeeLookupSettingsService } from "./payee-lookup-settings.service";
+import { ContactLookupUnavailableError } from "../payee-contact-lookup.types";
 
 jest.mock("../../../common/db/scoped-db", () =>
   jest
@@ -21,7 +22,7 @@ describe("PayeeLookupSettingsService", () => {
   let service: PayeeLookupSettingsService;
   let repo: Record<string, jest.Mock>;
   let encryption: Record<string, jest.Mock>;
-  let quota: { claim: jest.Mock; usedThisMonth: jest.Mock };
+  let quota: { claim: jest.Mock; usedThisMonth: jest.Mock; release: jest.Mock };
   let places: { lookup: jest.Mock };
   let env: Record<string, unknown>;
 
@@ -65,6 +66,7 @@ describe("PayeeLookupSettingsService", () => {
     quota = {
       claim: jest.fn().mockResolvedValue(1),
       usedThisMonth: jest.fn().mockResolvedValue(0),
+      release: jest.fn().mockResolvedValue(undefined),
     };
     places = { lookup: jest.fn().mockResolvedValue([]) };
     service = build();
@@ -370,6 +372,54 @@ describe("PayeeLookupSettingsService", () => {
         available: false,
         error: "HTTP 403: API key not valid",
       });
+    });
+
+    it("hands the slot back when Google refused, because it billed nothing", async () => {
+      // A refusal was answered but never served. Charging for it means every
+      // check of a broken key costs a request, and a key rejected on every
+      // attempt would spend the month failing.
+      places.lookup.mockRejectedValue(
+        new ContactLookupUnavailableError(
+          "failed",
+          "Google Places returned HTTP 400: API key not valid",
+          400,
+        ),
+      );
+
+      await service.testKey(USER, "draft-key");
+
+      expect(quota.release).toHaveBeenCalled();
+    });
+
+    it("keeps the slot when nobody answered", async () => {
+      // A timeout or a dropped connection: Google may have served and billed
+      // the request while we failed to hear it. Under-counting is the
+      // direction that costs money, so an unknown outcome keeps the slot.
+      places.lookup.mockRejectedValue(new Error("fetch failed"));
+
+      await service.testKey(USER, "draft-key");
+
+      expect(quota.release).not.toHaveBeenCalled();
+    });
+
+    it("explains a referrer restriction instead of repeating Google's message", async () => {
+      // "Requests from referer <empty> are blocked" reads as a Monize bug. It
+      // is not: this is a server-side call, so no referrer is ever sent and an
+      // HTTP-referrer restriction can never be satisfied. The fix is an IP
+      // restriction, and the message has to say so.
+      places.lookup.mockRejectedValue(
+        new ContactLookupUnavailableError(
+          "failed",
+          "Google Places returned HTTP 403: Requests from referer <empty> are blocked.",
+          403,
+        ),
+      );
+
+      const result = await service.testKey(USER, "draft-key");
+
+      expect(result.available).toBe(false);
+      expect(result.error).toMatch(/IP address/i);
+      expect(result.error).not.toMatch(/<empty>/);
     });
 
     it("refuses when no key is configured and none was supplied", async () => {

@@ -1182,7 +1182,7 @@
   },
   "payeeLookup": {
     "title": "Begunstigde opzoeken",
-    "subtitle": "Waar de website, het adres, het e-mailadres en het telefoonnummer van een begunstigde vandaan komen als je ze opzoekt.",
+    "subtitle": "Waar de website, het adres, het e-mailadres en het telefoonnummer van een begunstigde vandaan komen, en wanneer een zoekopdracht vanzelf loopt.",
     "saved": "Instellingen voor begunstigde opzoeken opgeslagen",
     "saveFailed": "Kan de instellingen voor begunstigde opzoeken niet opslaan",
     "loadFailed": "Kan de instellingen voor begunstigde opzoeken niet laden. Laad de pagina opnieuw om het nog eens te proberen.",
@@ -1212,7 +1212,8 @@
       "testing": "Bezig met testen...",
       "testSuccess": "Google heeft de sleutel geaccepteerd.",
       "save": "Opslaan",
-      "cancel": "Annuleren"
+      "cancel": "Annuleren",
+      "setupInstructions": "Installatie-instructies"
     },
     "automatic": {
       "title": "Automatisch contactgegevens van begunstigden opzoeken",
@@ -1221,6 +1222,14 @@
       "enabled": "Automatisch contactgegevens opzoeken ingeschakeld",
       "disabled": "Automatisch contactgegevens opzoeken uitgeschakeld",
       "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken"
+    },
+    "priority": {
+      "title": "Welke bron als eerste wordt geraadpleegd",
+      "subtitle": "Beide zijn ingesteld. De andere wordt alleen geraadpleegd als de eerste geen antwoord kan geven, doordat er geen AI-provider is ingesteld of de maandelijkse Google-limiet op is. Als een bron faalt, meldt de zoekopdracht die fout in plaats van stilletjes voor de andere te betalen.",
+      "placesFirst": "Eerst Google Places",
+      "placesFirstHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
+      "aiFirst": "Eerst AI-provider",
+      "aiFirstHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep."
     }
   }
 }
