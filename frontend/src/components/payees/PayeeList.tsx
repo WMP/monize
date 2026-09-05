@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Payee } from '@/types/payee';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Badge } from '@/components/ui/Badge';
 import { payeesApi } from '@/lib/payees';
 import toast from 'react-hot-toast';
 import { createLogger } from '@/lib/logger';
@@ -22,7 +21,16 @@ import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PayeeLogo } from '@/components/payees/PayeeLogo';
-import { CategoryPill } from '@/components/transactions/CategoryPill';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { CellLabel } from '@/components/ui/Table';
+import {
+  PayeeNameButton,
+  PayeeUncategorizedBadge,
+  PayeeStatusBadge,
+  PayeeDefaultCategory,
+  payeeDayText,
+  payeeNotesText,
+} from '@/components/payees/PayeeListParts';
 
 const logger = createLogger('PayeeList');
 
@@ -88,6 +96,42 @@ export type { DensityLevel };
 export type SortField = 'name' | 'category' | 'count' | 'createdAt' | 'aliases' | 'lastUsed';
 export type SortDirection = 'asc' | 'desc';
 
+/**
+ * Every field this list sorts by, with its position in the tier header's own
+ * order. The phone's slim control header renders all six: the chosen field is
+ * persisted (`monize-payees-sort-field`, set on the Payees page) and FIVE of
+ * the six columns are hidden at phone width (Default Category and Status below
+ * `sm`, Count below `md`, Aliases, Last Used and Created below `lg`), so a
+ * header offering fewer would strand a phone on a sort order it can neither see
+ * nor undo. Notes and Actions are absent because the tier header offers no sort
+ * control for them.
+ *
+ * `createdAt` is the one field whose VALUE the card does not print (see the
+ * `wrapped` prop doc for why Created is the omitted column). That is not
+ * stranding: the button still re-sorts, every other button is an escape from
+ * it, and the tier table -- one density tap away -- shows the dates.
+ *
+ * It is a `Record` keyed by the union rather than a hand-written array because
+ * the slim `<th>` announces a direction UNCONDITIONALLY, and that is only
+ * honest while the buttons name every field the list can be sorted by. Here the
+ * compiler holds that: a seventh sort field is a type error until it is given a
+ * position, and the derived list cannot omit one. `as const satisfies
+ * ReadonlyArray<SortField>` would have accepted a proper subset -- leaving
+ * "sorted ascending" announced over six unsorted glyphs.
+ */
+const SORT_FIELD_ORDER: Record<SortField, number> = {
+  name: 0,
+  category: 1,
+  count: 2,
+  aliases: 3,
+  lastUsed: 4,
+  createdAt: 5,
+};
+
+const SORT_FIELDS: readonly SortField[] = (
+  Object.keys(SORT_FIELD_ORDER) as SortField[]
+).sort((a, b) => SORT_FIELD_ORDER[a] - SORT_FIELD_ORDER[b]);
+
 interface PayeeListProps {
   payees: Payee[];
   onEdit: (payee: Payee) => void;
@@ -125,6 +169,45 @@ interface PayeeRowProps {
   formatDate: (date: string) => string;
   getRowHandlers: (payee: Payee) => LongPressRowHandlers;
   isHighlighted?: boolean;
+  /**
+   * Render the row as a wrapped card instead of the tier table's cells. The
+   * list sets it for phones at Normal density only (Model B: on a phone the
+   * density toggle picks the layout); every other width and every other density
+   * renders the tier row below, unchanged.
+   *
+   * The card carries eight of this table's nine columns: the payee's logo and
+   * name, its "N uncategorized" marker, the transaction Count (captioned), the
+   * Default Category pill, the Active/Inactive pill (only where the tier table
+   * would show that column, i.e. `showStatusColumn`), Last Used, Aliases and
+   * Notes. Six of those are ones a phone-width tier row does not show at all --
+   * Default Category and Status are `hidden sm:table-cell`, Count
+   * `hidden md:table-cell`, Aliases, Last Used and Created
+   * `hidden lg:table-cell` -- so the card is how they get back on screen.
+   *
+   * TWO columns are left out, for different reasons:
+   * - **Actions**, because the long-press (and right-click) sheet these same
+   *   row handlers open already carries them.
+   * - **Created**, because nine columns do not fit three lines. It is the
+   *   lowest-value of the nine (a system timestamp, against a user's own
+   *   notes), and it is the only omitted value no phone width shows today
+   *   anyway -- it is `hidden lg:table-cell`, where Notes is visible on a phone
+   *   at Normal density right now and so could not be dropped. Line 3 carries
+   *   Last Used, Aliases and Notes; a fourth captioned item there left Notes
+   *   about 70px wide at 320px, which is a truncated column pretending to be a
+   *   column. Its sort button survives in the slim header (see
+   *   `SORT_FIELD_ORDER`), and the tier table one density tap away shows the
+   *   dates.
+   *
+   * The two breakpoints are not the same one. The tier row's Actions cell is
+   * `min-[480px]`, and `wrapped` covers everything below 640px, so between
+   * 480px and 639px at Normal density the actions move from inline buttons to
+   * that sheet -- which also means they stop being tab-reachable there. It is
+   * the price of the card, paid for the six columns above, and the register,
+   * the accounts list and the categories list make the same trade at the same
+   * two widths, so they all behave alike. Compact density, one tap away, is the
+   * way back to inline actions.
+   */
+  wrapped?: boolean;
 }
 
 const PayeeRow = memo(function PayeeRow({
@@ -144,19 +227,11 @@ const PayeeRow = memo(function PayeeRow({
   formatDate,
   getRowHandlers,
   isHighlighted,
+  wrapped = false,
 }: PayeeRowProps) {
   const t = useTranslations('payees');
   const tc = useTranslations('common');
   const rowRef = useScrollIntoViewWhen<HTMLTableRowElement>(!!isHighlighted);
-  const defaultCategoryColor = payee.defaultCategory
-    ? (categoryColorMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.color)
-    : null;
-  const defaultCategoryLabel = payee.defaultCategory
-    ? (categoryLabelMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.name)
-    : null;
-  const defaultCategoryIcon = payee.defaultCategory
-    ? (categoryIconMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.icon)
-    : null;
   const actions = useMemo(
     () => buildPayeeActions(
       payee,
@@ -165,6 +240,113 @@ const PayeeRow = memo(function PayeeRow({
     ),
     [payee, tc, onEdit, onDelete, onMerge, onReactivate],
   );
+
+  // Phone + Normal density: one wrapped card per row instead of the tier
+  // table's cells (see the `wrapped` prop). It is a LAYOUT mode, not a
+  // different set of facts -- the name button, the "uncategorized" marker, the
+  // default-category pill, the status pill and the two "-" placeholders are the
+  // same components and helpers the tier branch renders, so the two cannot
+  // disagree about a payee's category, its status or what "never used" means.
+  if (wrapped) {
+    return (
+      <tr
+        ref={rowRef}
+        className={`group hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer select-none bg-white dark:bg-gray-900 ${!payee.isActive ? 'opacity-60' : ''} ${isHighlighted ? HIGHLIGHT_FLASH : ''}`}
+        {...getRowHandlers(payee)}
+      >
+        <td className="p-0">
+          {/* The inset is the density table's, not a hand-picked one: two
+              insets on one screen misalign, and the header above these cards is
+              padded from the same table. */}
+          <div className={cellPadding}>
+            {/* A grid, not a flex row, and `minmax(0,1fr)` rather than a plain
+                `1fr`: a track that may be zero lets the name truncate, where a
+                flex item's `min-w-0` still contributes the full width of its
+                nowrap text to the table's minimum. On a phone that is not
+                merely a scrollbar -- mobile Chrome sizes the viewport
+                `position: fixed` attaches to from the widest content on the
+                page. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
+              {/* The card has the room the tier row does not, so the logo is
+                  drawn here at every width -- the tier cell's `max-sm:hidden`
+                  is what this replaces. `BrandLogo` sizes itself from `size`,
+                  so this track is a fixed 20px on every row and the names line
+                  up down the card rather than stepping left and right. */}
+              <PayeeLogo payee={payee} size={20} className="mt-0.5" />
+              {/* `flex-wrap` is what keeps the NAME the identity of the card.
+                  The name is the only shrinkable item here (`truncate` floors
+                  its min-width at zero) while the "N uncategorized" marker
+                  cannot shrink below its own words, so on a narrow phone it
+                  would otherwise take its full width out of the name's.
+                  Wrapping lets the marker drop to its own line instead, and a
+                  short name -- the common case -- still keeps it inline. The
+                  marker is self-describing, so it takes no caption. */}
+              <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <PayeeNameButton
+                  payee={payee}
+                  onViewTransactions={onViewTransactions}
+                  className="truncate max-w-full"
+                />
+                <PayeeUncategorizedBadge payee={payee} />
+              </div>
+              {/* The key figure, on the right of line 1. A bare number with no
+                  column header to name it, so it carries the header's own
+                  label; the caption is its own node above the value's, so a
+                  test still matches the count alone. */}
+              <div className="text-right whitespace-nowrap">
+                <CellLabel>{t('list.columns.count')}</CellLabel>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {payee.transactionCount ?? 0}
+                </div>
+              </div>
+              {/* Line 2 is the two self-describing pills, and its own grid for
+                  the same reason line 1 is: the category pill truncates, so it
+                  needs a track with a zero minimum rather than a flex slot.
+                  Neither pill is captioned. The status pill follows the tier
+                  table's own `showStatusColumn`, so the card shows exactly the
+                  column the table would. */}
+              <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                <div className="min-w-0">
+                  <PayeeDefaultCategory
+                    payee={payee}
+                    density={density}
+                    categoryColorMap={categoryColorMap}
+                    categoryIconMap={categoryIconMap}
+                    categoryLabelMap={categoryLabelMap}
+                  />
+                </div>
+                {showStatusColumn && <PayeeStatusBadge payee={payee} />}
+              </div>
+              {/* Line 3 is the captioned values, and a grid again because Notes
+                  truncates. The two dates and the alias count are `auto`
+                  tracks -- each is a caption over a short value -- and Notes
+                  takes what is left. */}
+              <div className="col-span-3 grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-4">
+                <div className="whitespace-nowrap">
+                  <CellLabel>{t('list.columns.lastUsed')}</CellLabel>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {payeeDayText(payee.lastUsedDate, formatDate)}
+                  </div>
+                </div>
+                <div className="whitespace-nowrap">
+                  <CellLabel>{t('list.columns.aliases')}</CellLabel>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {payee.aliasCount ?? 0}
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <CellLabel>{t('list.columns.notes')}</CellLabel>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {payeeNotesText(payee)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <tr
@@ -177,34 +359,18 @@ const PayeeRow = memo(function PayeeRow({
           {density !== 'dense' && (
             <PayeeLogo payee={payee} size={20} className="max-sm:hidden" />
           )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onViewTransactions(payee); }}
-            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline text-left"
-            title={t('list.viewTransactionsTitle')}
-          >
-            {payee.name}
-          </button>
-          {(payee.uncategorizedCount ?? 0) > 0 && (
-            <Badge
-              variant="amber"
-              title={t('list.uncategorizedTitle', { count: payee.uncategorizedCount ?? 0 })}
-            >
-              {t('list.uncategorizedBadge', { count: payee.uncategorizedCount ?? 0 })}
-            </Badge>
-          )}
+          <PayeeNameButton payee={payee} onViewTransactions={onViewTransactions} />
+          <PayeeUncategorizedBadge payee={payee} />
         </div>
       </td>
       <td className={`${cellPadding} whitespace-nowrap hidden sm:table-cell`}>
-        {payee.defaultCategory && defaultCategoryLabel ? (
-          <CategoryPill
-            name={defaultCategoryLabel}
-            color={defaultCategoryColor}
-            icon={defaultCategoryIcon}
-            density={density}
-          />
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">{t('list.noCategory')}</span>
-        )}
+        <PayeeDefaultCategory
+          payee={payee}
+          density={density}
+          categoryColorMap={categoryColorMap}
+          categoryIconMap={categoryIconMap}
+          categoryLabelMap={categoryLabelMap}
+        />
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400 hidden md:table-cell`}>
         {payee.transactionCount ?? 0}
@@ -213,24 +379,20 @@ const PayeeRow = memo(function PayeeRow({
         {payee.aliasCount ?? 0}
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell`}>
-        {payee.lastUsedDate ? formatDate(payee.lastUsedDate.substring(0, 10)) : '-'}
+        {payeeDayText(payee.lastUsedDate, formatDate)}
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell`}>
-        {payee.createdAt ? formatDate(payee.createdAt.substring(0, 10)) : '-'}
+        {payeeDayText(payee.createdAt, formatDate)}
       </td>
       {showStatusColumn && (
         <td className={`${cellPadding} whitespace-nowrap hidden sm:table-cell`}>
-          {payee.isActive ? (
-            <Badge variant="green">{t('list.statusBadge.active')}</Badge>
-          ) : (
-            <Badge>{t('list.statusBadge.inactive')}</Badge>
-          )}
+          <PayeeStatusBadge payee={payee} />
         </td>
       )}
       {density === 'normal' && (
         <td className={`${cellPadding}`}>
           <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
-            {payee.notes || '-'}
+            {payeeNotesText(payee)}
           </div>
         </td>
       )}
@@ -273,6 +435,26 @@ export function PayeeList({
 
 
   const { cellPadding, headerPadding } = useTableDensity(density);
+  // Model B: on a phone, density picks the LAYOUT rather than only the row
+  // height. At Normal each payee is a wrapped card carrying the Default
+  // Category, Count, Aliases, Last Used and Status this table hides below
+  // `sm`/`md`/`lg`; Compact and Dense keep the tier table, unchanged, and so
+  // does every non-phone width. Exactly one branch renders per row, chosen
+  // here. This list has one mounting surface (`app/payees/page.tsx`), so there
+  // is no caller whose columns the card cannot carry to exclude.
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
+
+  // One label per sortable column, read by BOTH headers, so the slim phone
+  // header and the tier header cannot come to name the same field differently.
+  const sortFieldLabels: Record<SortField, string> = {
+    name: t('list.columns.name'),
+    category: t('list.columns.defaultCategory'),
+    count: t('list.columns.count'),
+    aliases: t('list.columns.aliases'),
+    lastUsed: t('list.columns.lastUsed'),
+    createdAt: t('list.columns.created'),
+  };
 
   const handleSort = useCallback((field: SortField) => {
     if (onSort) {
@@ -366,43 +548,83 @@ export function PayeeList({
       <DensityToggleBar view="payees" />
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          {/* On a phone the wrapped card labels its own values, so the column
+              header is dropped -- but the controls in that header row must not
+              go with it: these `<th>`s are how the list is sorted, the chosen
+              field is persisted by the Payees page, and FIVE of the six
+              sortable columns are hidden at phone width (Default Category
+              below `sm`, Count below `md`, Aliases, Last Used and Created below
+              `lg`), so a phone could be left sorted by a field it can neither
+              see nor undo. A slim control header carries all six as buttons and
+              no column label of its own: the single card cell below holds name,
+              category, count, aliases, last used, status and notes at once, so
+              naming this header after any one of them would misdescribe the
+              column to a screen reader. Each button names itself with the label
+              of the field it sorts by. */}
           <thead className="bg-gray-50 dark:bg-gray-800">
+            {wrapped ? (
+            <tr>
+              {/* The one column is always sorted by something, and `aria-sort`
+                  is the only place that direction is announced -- the arrow in
+                  each button's label is a glyph, not a state. Announcing it
+                  unconditionally is honest here because the buttons name every
+                  member of `SortField`. */}
+              <th
+                className={`${headerPadding} text-left`}
+                aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {SORT_FIELDS.map((field) => (
+                    <button
+                      key={field}
+                      type="button"
+                      onClick={() => handleSort(field)}
+                      className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
+                    >
+                      {sortFieldLabels[field]}
+                      <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
+                    </button>
+                  ))}
+                </div>
+              </th>
+            </tr>
+            ) : (
             <tr>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('name')}
               >
-                {t('list.columns.name')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.name}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                 onClick={() => handleSort('category')}
               >
-                {t('list.columns.defaultCategory')}<SortIcon field="category" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.category}<SortIcon field="category" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
                 onClick={() => handleSort('count')}
               >
-                {t('list.columns.count')}<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.count}<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('aliases')}
               >
-                {t('list.columns.aliases')}<SortIcon field="aliases" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.aliases}<SortIcon field="aliases" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('lastUsed')}
               >
-                {t('list.columns.lastUsed')}<SortIcon field="lastUsed" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.lastUsed}<SortIcon field="lastUsed" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('createdAt')}
               >
-                {t('list.columns.created')}<SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
+                {sortFieldLabels.createdAt}<SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {showStatusColumn && (
                 <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
@@ -418,6 +640,7 @@ export function PayeeList({
                 {t('list.columns.actions')}
               </th>
             </tr>
+            )}
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {displayPayees.map((payee, index) => (
@@ -439,6 +662,7 @@ export function PayeeList({
                 formatDate={formatDate}
                 getRowHandlers={getRowHandlers}
                 isHighlighted={!!highlightId && payee.id === highlightId}
+                wrapped={wrapped}
               />
             ))}
           </tbody>
