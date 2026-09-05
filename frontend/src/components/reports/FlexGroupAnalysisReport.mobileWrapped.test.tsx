@@ -74,7 +74,7 @@ vi.mock('recharts', () => ({
 
 /**
  * `percentUsed` is the SERVER's figure, not a rounded integer: per category
- * `getCachedCategoryActuals` in `budgets.service.ts` computes
+ * `computeCategoryActuals` in `budgets.service.ts` computes
  * `Math.round((spent / budgeted) * 10000) / 100`, and `getFlexGroupStatus`
  * (in `budget-activity-reports.service.ts`) carries it through unchanged, so
  * it has two decimals and no ceiling. The fixture derives it the same way

@@ -158,7 +158,7 @@ const PHONE_HEADER_CLASS =
 // widest measured overflow across every figure cell in every locale being
 // zero. In a currency with a narrow symbol the same seven-figure amount is
 // 75px. `percentUsed` is the server's own figure and not the short integer an
-// English fixture suggests: `getCachedCategoryActuals` in `budgets.service.ts`
+// English fixture suggests: `computeCategoryActuals` in `budgets.service.ts`
 // computes `Math.round((spent / budgeted) * 10000) / 100` per category and
 // `getFlexGroupStatus` (in `budget-activity-reports.service.ts`) carries it
 // through unchanged, so it has two decimals and no ceiling -- a category
