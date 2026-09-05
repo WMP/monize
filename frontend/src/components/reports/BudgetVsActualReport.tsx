@@ -15,7 +15,7 @@ import {
   Line,
 } from 'recharts';
 import { budgetsApi } from '@/lib/budgets';
-import type { CategoryTrendSeries } from '@/types/budget';
+import type { BudgetTrendPoint, CategoryTrendSeries } from '@/types/budget';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
@@ -37,6 +37,14 @@ type BudgetTrendSortField = 'month' | 'budgeted' | 'actual' | 'variance' | 'perc
 interface SortColumn {
   field: BudgetTrendSortField;
   label: string;
+  /**
+   * This column's cell, as text. The PDF export builds its headings AND its
+   * row cells from the same ordered record the table renders, so the export
+   * cannot drift from the screen it exports -- reordering the record moves the
+   * two together, where a hand-listed export would keep the old order under
+   * the new headings.
+   */
+  value: (point: BudgetTrendPoint) => string;
   /** Money and percent columns are right-aligned in the column header row. */
   align?: 'right';
   /**
@@ -63,6 +71,10 @@ interface SortColumn {
 type SortColumnsByField = {
   [K in BudgetTrendSortField]: SortColumn & { field: K };
 };
+
+// An over-budget variance is prefixed; nothing else is. Written once because
+// the wrapped cell, the desktop cell and the PDF export all state it.
+const varianceSign = (point: BudgetTrendPoint) => (point.variance > 0 ? '+' : '');
 
 // Today's header cell, unchanged.
 const headerClass = (col: SortColumn) =>
@@ -103,12 +115,18 @@ const PHONE_HEADER_CLASS =
 // The two money tracks are `minmax(0,1fr)` beside an `auto` identity track,
 // NOT three equal thirds, and that is what makes the figures fit. The month is
 // the only bounded thing in the row -- the server sends a three-letter English
-// month and a four-digit year -- and its cell carries no caption, so an `auto`
-// track costs it the 61px it actually uses instead of a third of the width,
-// and hands the difference to the figures: 90px each at 320px and 125px at
-// 390px, against 83px and 106px on three equal tracks. (`auto` is safe here
-// for exactly that reason: an `auto` track takes MAX-content, so it is only
-// ever used for a slot whose caption and value are both bounded.)
+// month and a four-digit year (`formatPeriodMonth`) -- and its cell carries no
+// caption, so an `auto` track costs it the 61px it actually uses instead of a
+// third of the width, and hands the difference to the figures. The resolved
+// tracks, read off `getComputedStyle` rather than divided out: 61/93/93 at
+// 320px and 61/128/128 at 390px, against 83 and 106 on three equal thirds.
+//
+// Those figures are the SAME in every locale, including the one whose
+// spanning Budgeted caption is widest: a grid item spanning an `auto` track
+// and a `minmax(0,1fr)` one distributes its contribution to the flexible
+// track, so the spanning cell on line 2 does not reopen the identity track.
+// (`auto` is otherwise reserved for a slot whose caption AND value are
+// bounded, since an `auto` track takes MAX-content; the month cell is both.)
 //
 // The formatter is `formatCurrencyCompact` (no decimals), and the widest unit
 // it can produce is not a symbol: it asks for `narrowSymbol`, which falls back
@@ -116,11 +134,11 @@ const PHONE_HEADER_CLASS =
 // `text-xs`, the widest cell is the variance, which wears `font-medium` AND a
 // `+` sign: `+123 456 CHF` is 88px and `+1 456 789 CHF` is 99px (in a currency
 // with a narrow symbol, `+1 456 789 zł` is 85px). So a six-figure amount fits
-// the 90px track at 320px with room to spare, a seven-figure one is 9px past
+// the 93px track at 320px with room to spare, a seven-figure one is 6px past
 // it, and the measured wrapper still does not scroll at either width in any
 // locale, because the overflow spends the column gap rather than the page. An
 // eight-figure `+12 345 678 CHF` (107px) is the first that crowds its
-// neighbour at 320px; it fits the 125px track at 390px.
+// neighbour at 320px; it fits the 128px track at 390px.
 //
 // Where a figure does exceed its track, it overflows rather than being cut:
 // right alignment is not a containment device -- a nowrap amount longer than
@@ -136,17 +154,19 @@ const PHONE_HEADER_CLASS =
 // number must not break; a caption may.
 //
 // And a caption that CANNOT break is what actually sizes this layout, not the
-// money. Every caption in the catalogue was rendered into a 90px box at
-// `CellLabel`'s own type: four of the five fit or wrap there in all 23
-// locales, and `colBudgeted` is the one that does neither -- `Запланировано`
-// (ru, 96px) and `Gebudgetteerd` (nl, 93px) are single words with no break
-// opportunity, and an unbreakable caption block overflows to the RIGHT, which
-// is the one kind of overflow that reopens the wrapper's scroll (a nowrap
-// figure past its track overflows towards the start edge and does not). So the
+// money. Every caption in the catalogue was rendered into the 93px a money
+// track gets at 320px, at `CellLabel`'s own type: four of the five fit or wrap
+// there in all 23 locales, and `colBudgeted` is the one that does neither --
+// `Запланировано` (ru, 96px) and `Gebudgetteerd` (nl, 93px) are single words
+// with no break opportunity, and an unbreakable caption block overflows to the
+// RIGHT, which is the one kind of overflow that reopens the wrapper's scroll
+// (a nowrap figure past its track overflows towards the start edge and does
+// not: measured, the 99px variance in a 93px track adds nothing to the table's
+// `scrollWidth`, while a 96px caption in the same track added 6px). So the
 // spanning slot on line 2 goes to Budgeted rather than to the longest caption:
-// `% wykorzystania` is longer at 102px but carries a space, so a 90px track
+// `% wykorzystania` is longer at 102px but carries a space, so a 93px track
 // wraps it. Measured with Budgeted spanning: no sideways scroll at 320px or
-// 390px in pl, ru, id, de, en or the pseudo-locale.
+// 390px in pl, ru, id, de, en, the widest-per-key set or the pseudo-locale.
 const MONEY_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:text-sm';
 
 /** Every caption in a wrapped cell is phone-only. */
@@ -238,13 +258,33 @@ export function BudgetVsActualReport() {
   // The five sortable columns, keyed by field so the record is exhaustive and
   // each entry must name its own key (see `SortColumnsByField`).
   const columns: SortColumnsByField = {
-    month: { field: 'month', label: t('budgetVsActual.colMonth') },
-    budgeted: { field: 'budgeted', label: t('budgetVsActual.colBudgeted'), align: 'right' },
-    actual: { field: 'actual', label: t('budgetVsActual.colActual'), align: 'right' },
-    variance: { field: 'variance', label: t('budgetVsActual.colVariance'), align: 'right' },
+    month: {
+      field: 'month',
+      label: t('budgetVsActual.colMonth'),
+      value: (point) => point.month,
+    },
+    budgeted: {
+      field: 'budgeted',
+      label: t('budgetVsActual.colBudgeted'),
+      value: (point) => formatCurrency(point.budgeted),
+      align: 'right',
+    },
+    actual: {
+      field: 'actual',
+      label: t('budgetVsActual.colActual'),
+      value: (point) => formatCurrency(point.actual),
+      align: 'right',
+    },
+    variance: {
+      field: 'variance',
+      label: t('budgetVsActual.colVariance'),
+      value: (point) => `${varianceSign(point)}${formatCurrency(point.variance)}`,
+      align: 'right',
+    },
     percentUsed: {
       field: 'percentUsed',
       label: t('budgetVsActual.colPercentUsed'),
+      value: (point) => `${point.percentUsed}%`,
       align: 'right',
       last: true,
     },
@@ -261,14 +301,10 @@ export function BudgetVsActualReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = [t('budgetVsActual.colMonth'), t('budgetVsActual.colBudgeted'), t('budgetVsActual.colActual'), t('budgetVsActual.colVariance'), t('budgetVsActual.colPercentUsed')];
-    const rows = trendData.map(point => [
-      point.month,
-      formatCurrency(point.budgeted),
-      formatCurrency(point.actual),
-      `${point.variance > 0 ? '+' : ''}${formatCurrency(point.variance)}`,
-      `${point.percentUsed}%`,
-    ]);
+    // Headings and row cells both come from the ordered column record, so the
+    // export cannot carry the screen's old column order (see `SortColumn`).
+    const headers = sortColumns.map((col) => col.label);
+    const rows = trendData.map((point) => sortColumns.map((col) => col.value(point)));
     await exportToPdf({
       title: t('budgetVsActual.pdfTitle'),
       chartContainer: chartRef.current,
@@ -451,7 +487,7 @@ export function BudgetVsActualReport() {
                   and argues for.
 
                   Which cell gets the spanning track was decided by measuring
-                  every caption in the catalogue against the 90px a money track
+                  every caption in the catalogue against the 93px a money track
                   gets at 320px, and Budgeted is the one that neither fits nor
                   breaks (`Запланировано`, `Gebudgetteerd`) -- see `MONEY_CELL`.
 
@@ -527,7 +563,7 @@ export function BudgetVsActualReport() {
                             month: it is the figure the row is read for. */}
                         <td role="cell" className={`col-start-2 row-start-1 font-medium ${point.variance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'} ${cellPadding(columns.variance)} ${MONEY_CELL}`}>
                           <CellLabel className={CAPTION_CLASS}>{t('budgetVsActual.colVariance')}</CellLabel>
-                          {point.variance > 0 ? '+' : ''}{formatCurrency(point.variance)}
+                          {varianceSign(point)}{formatCurrency(point.variance)}
                         </td>
                         {/* Percent used sits under the actual figure it is a
                             share of. Its caption wraps at its own space in
