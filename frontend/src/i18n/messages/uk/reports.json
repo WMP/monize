@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Період",
     "pdfChange": "Зміна",
     "pdfAnnualizedReturn": "Річна прибутковість",
-    "tooltipNetWorth": "Чистий капітал"
+    "tooltipNetWorth": "Чистий капітал",
+    "savingsNoteMore": "У {currentMonth} ви заощадили на {percent} більше, ніж у {previousMonth}, загалом {amount}",
+    "savingsNoteLess": "У {currentMonth} ви заощадили на {percent} менше, ніж у {previousMonth}, загалом {amount}",
+    "incomeNoteMore": "Ваш загальний дохід у {currentMonth} становив {amount}, що на {diff} більше, ніж у {previousMonth}",
+    "incomeNoteLess": "Ваш загальний дохід у {currentMonth} становив {amount}, що на {diff} менше, ніж у {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Разом",

@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Okres",
     "pdfChange": "Zmiana",
     "pdfAnnualizedReturn": "Zwrot roczny",
-    "tooltipNetWorth": "Wartość netto"
+    "tooltipNetWorth": "Wartość netto",
+    "savingsNoteMore": "W {currentMonth} zaoszczędziłeś o {percent} więcej niż w {previousMonth}, czyli łącznie {amount}",
+    "savingsNoteLess": "W {currentMonth} zaoszczędziłeś o {percent} mniej niż w {previousMonth}, czyli łącznie {amount}",
+    "incomeNoteMore": "Twój łączny dochód w {currentMonth} wyniósł {amount}, czyli o {diff} więcej niż w {previousMonth}",
+    "incomeNoteLess": "Twój łączny dochód w {currentMonth} wyniósł {amount}, czyli o {diff} mniej niż w {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Suma",

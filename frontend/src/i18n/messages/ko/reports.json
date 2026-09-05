@@ -1113,7 +1113,11 @@
     "pdfPeriod": "기간",
     "pdfChange": "변화",
     "pdfAnnualizedReturn": "연간화된 수익률",
-    "tooltipNetWorth": "순자산가액"
+    "tooltipNetWorth": "순자산가액",
+    "savingsNoteMore": "{currentMonth}에는 {previousMonth}보다 {percent} 더 많이 저축하여 총 {amount}을 저축했습니다",
+    "savingsNoteLess": "{currentMonth}에는 {previousMonth}보다 {percent} 더 적게 저축하여 총 {amount}을 저축했습니다",
+    "incomeNoteMore": "{currentMonth}의 총소득은 {amount}였으며, 이는 {previousMonth}보다 {diff} 더 많습니다",
+    "incomeNoteLess": "{currentMonth}의 총소득은 {amount}였으며, 이는 {previousMonth}보다 {diff} 더 적습니다"
   },
   "monthlySpendingTrend": {
     "total": "합계",

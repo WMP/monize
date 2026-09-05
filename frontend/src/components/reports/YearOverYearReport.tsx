@@ -18,6 +18,7 @@ import {
 import { builtInReportsApi } from "@/lib/built-in-reports";
 import { YearData } from "@/types/built-in-reports";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
+import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
 import { chartColors, chartSeriesColor } from "@/lib/chart-colors";
 import { resolvePdfColor } from "@/components/reports/resolve-pdf-color";
@@ -30,26 +31,36 @@ import { ReportError } from "@/components/reports/ReportError";
 
 type YearOverYearSortField = string; // 'name' or any year as a string
 
-const MONTH_NAMES = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+/**
+ * The transactions range a clicked month bar links to, or `null` when the datum
+ * does not name a month.
+ *
+ * `payload` is optional on recharts' `BarRectangleItem`, so a click can arrive
+ * without one and `Number(undefined)` is NaN -- which passes a bare
+ * `< 0 || > 11` range check and makes `new Date(year, NaN, 1)` an Invalid Date
+ * that `format` throws on. `Number.isInteger` rejects it. Exported because the
+ * throw happens inside a React event handler, where the test harness swallows
+ * it: only a direct call can hold this rule.
+ */
+export function monthClickRange(
+  year: number,
+  monthIndex: number,
+): { startDate: string; endDate: string } | null {
+  if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null;
+  }
+  return {
+    startDate: `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`,
+    endDate: format(endOfMonth(new Date(year, monthIndex, 1)), "yyyy-MM-dd"),
+  };
+}
 
 export function YearOverYearReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatSignedPercent } =
     useNumberFormat();
+  const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [yearsToCompare, setYearsToCompare] = useState(2);
   const [metric, setMetric] = useState<"expenses" | "income" | "savings">(
@@ -71,9 +82,10 @@ export function YearOverYearReport() {
   const years = useMemo(() => yearData.map((yd) => yd.year), [yearData]);
 
   const chartData = useMemo(() => {
-    return MONTH_NAMES.map((monthName, monthIndex) => {
-      const data: { name: string; [key: string]: number | string } = {
-        name: monthName,
+    return Array.from({ length: 12 }, (_, monthIndex) => {
+      const data: { name: string; monthIndex: number; [key: string]: number | string } = {
+        name: formatChartDate(new Date(2000, monthIndex, 1), 'MMM'),
+        monthIndex,
       };
 
       yearData.forEach((yd) => {
@@ -87,7 +99,7 @@ export function YearOverYearReport() {
 
       return data;
     });
-  }, [yearData, metric]);
+  }, [yearData, metric, formatChartDate]);
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -95,9 +107,7 @@ export function YearOverYearReport() {
       let comparison = 0;
       if (sortField === 'name') {
         // Default to calendar order for the month column
-        const ai = MONTH_NAMES.indexOf(a.name);
-        const bi = MONTH_NAMES.indexOf(b.name);
-        comparison = compareValues(ai, bi);
+        comparison = compareValues(a.monthIndex, b.monthIndex);
       } else {
         comparison = compareValues(a[sortField] as number, b[sortField] as number);
       }
@@ -123,15 +133,12 @@ export function YearOverYearReport() {
     return totals;
   }, [yearData]);
 
-  const handleBarClick = (year: number, data: { name: string }) => {
-    const monthIndex = MONTH_NAMES.indexOf(data.name);
-    if (monthIndex === -1) return;
-    const startDate = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
-    const lastDay = format(
-      endOfMonth(new Date(year, monthIndex, 1)),
-      "yyyy-MM-dd",
+  const handleBarClick = (year: number, monthIndex: number) => {
+    const range = monthClickRange(year, monthIndex);
+    if (!range) return;
+    router.push(
+      `/transactions?startDate=${range.startDate}&endDate=${range.endDate}`,
     );
-    router.push(`/transactions?startDate=${startDate}&endDate=${lastDay}`);
   };
 
   const handleExportPdf = async () => {
@@ -370,7 +377,7 @@ export function YearOverYearReport() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedTableData.map((row) => (
-                  <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <tr key={row.monthIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {row.name}
                     </td>
@@ -380,7 +387,7 @@ export function YearOverYearReport() {
                         <td
                           key={year}
                           className="px-4 py-3 text-right text-sm text-gray-900 dark:text-gray-100 cursor-pointer"
-                          onClick={() => handleBarClick(year, { name: row.name })}
+                          onClick={() => handleBarClick(year, row.monthIndex)}
                         >
                           {formatCurrency(value)}
                         </td>
@@ -425,7 +432,7 @@ export function YearOverYearReport() {
                     name={`${year}`}
                     cursor="pointer"
                     onClick={(data) =>
-                      handleBarClick(year, { name: data.name ?? '' })
+                      handleBarClick(year, Number(data.payload?.monthIndex))
                     }
                   />
                 ))}

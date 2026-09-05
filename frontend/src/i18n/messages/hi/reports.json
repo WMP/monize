@@ -1113,7 +1113,11 @@
     "pdfPeriod": "अवधि",
     "pdfChange": "परिवर्तन",
     "pdfAnnualizedReturn": "वार्षिकीकृत रिटर्न",
-    "tooltipNetWorth": "निवल मूल्य"
+    "tooltipNetWorth": "निवल मूल्य",
+    "savingsNoteMore": "{currentMonth} में आपने {previousMonth} की तुलना में {percent} अधिक बचत की, कुल {amount}",
+    "savingsNoteLess": "{currentMonth} में आपने {previousMonth} की तुलना में {percent} कम बचत की, कुल {amount}",
+    "incomeNoteMore": "{currentMonth} में आपकी कुल आय {amount} थी, जो {previousMonth} की तुलना में {diff} अधिक है",
+    "incomeNoteLess": "{currentMonth} में आपकी कुल आय {amount} थी, जो {previousMonth} की तुलना में {diff} कम है"
   },
   "monthlySpendingTrend": {
     "total": "कुल",

@@ -51,22 +51,35 @@ function canGoForward(month: string): boolean {
   return !isAfter(startOfMonth(current), startOfMonth(next));
 }
 
-function DeltaBadge({ value, percent, invert = false }: { value: number; percent: number; invert?: boolean }) {
+function DeltaBadge({
+  value,
+  percent,
+  invert = false,
+  formatSignedPercent,
+}: {
+  value: number;
+  percent: number;
+  invert?: boolean;
+  formatSignedPercent: (value: number, decimals?: number) => string;
+}) {
   const positive = invert ? value <= 0 : value >= 0;
   const color = positive
     ? 'text-green-600 dark:text-green-400'
     : 'text-red-600 dark:text-red-400';
-  const arrow = value >= 0 ? '+' : '';
+  // The sign comes from the amount, never from the percentage: the server
+  // reports a flat +100 whenever the previous period was 0, so a decline from
+  // zero would otherwise render "+100.0%" in red.
+  const signedPercent = value >= 0 ? Math.abs(percent) : -Math.abs(percent);
   return (
     <span className={`text-sm font-medium ${color}`}>
-      {arrow}{percent.toFixed(1)}%
+      {formatSignedPercent(signedPercent, 1)}
     </span>
   );
 }
 
 export function MonthlyComparisonReport() {
   const t = useTranslations('reports');
-  const { formatCurrency, formatCurrencyCompact, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
+  const { formatCurrency, formatCurrencyCompact, formatCurrencyAxis, formatSignedPercent, formatPercent } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState(getDefaultMonth);
@@ -137,109 +150,6 @@ export function MonthlyComparisonReport() {
     return sorted;
   }, [data, topMoversSort.sortField, topMoversSort.sortDirection]);
 
-  const handleExportPdf = async () => {
-    if (!data) return;
-    const { exportToPdf } = await import('@/lib/pdf-export');
-    const { incomeExpenses, notes: n, expenses: exp, topCategories: topCats, netWorth: netW, investments: inv, currency: cur } = data;
-    const savingsColor = incomeExpenses.currentSavings >= 0 ? '#2563eb' : '#ea580c';
-
-    // Summary notes
-    const descriptionParts: string[] = [];
-    if (n.savingsNote) descriptionParts.push(n.savingsNote);
-    if (n.incomeNote) descriptionParts.push(n.incomeNote);
-
-    // Chart legend for expense categories
-    const chartLegend = exp.comparison.slice(0, 10).map((item, i) => ({
-      color: item.color || CHART_COLOURS[i % CHART_COLOURS.length],
-      label: item.categoryName,
-    }));
-
-    // Monthly Expenses Comparison (main table - renders right after legend)
-    const comparisonTable = exp.comparison.length > 0 ? {
-      headers: [t('monthlyComparison.colCategory'), data.currentMonthLabel, data.previousMonthLabel, t('monthlyComparison.colChange'), t('monthlyComparison.colChangePercent')],
-      rows: exp.comparison.map((item) => [
-        item.categoryName,
-        formatCurrency(item.currentTotal, cur),
-        formatCurrency(item.previousTotal, cur),
-        `${item.change >= 0 ? '+' : ''}${formatCurrency(item.change, cur)}`,
-        formatSignedPercent(item.changePercent, 1),
-      ]),
-    } : undefined;
-
-    // Additional tables
-    const additionalTables: Array<{ title?: string; headers: string[]; rows: (string | number)[][] }> = [];
-
-    // Top 5 categories
-    if (topCats.currentMonth.length > 0) {
-      additionalTables.push({
-        title: t('monthlyComparison.pdfTop5Categories', { month: data.currentMonthLabel }),
-        headers: [t('monthlyComparison.pdfColHash'), t('monthlyComparison.colCategory'), t('monthlyComparison.colAmount')],
-        rows: topCats.currentMonth.map((cat, i) => [
-          i + 1,
-          cat.categoryName,
-          formatCurrency(Math.abs(cat.total), cur),
-        ]),
-      });
-    }
-    if (topCats.previousMonth.length > 0) {
-      additionalTables.push({
-        title: t('monthlyComparison.pdfTop5Categories', { month: data.previousMonthLabel }),
-        headers: [t('monthlyComparison.pdfColHash'), t('monthlyComparison.colCategory'), t('monthlyComparison.colAmount')],
-        rows: topCats.previousMonth.map((cat, i) => [
-          i + 1,
-          cat.categoryName,
-          formatCurrency(Math.abs(cat.total), cur),
-        ]),
-      });
-    }
-
-    // Net Worth
-    if (netW.monthlyHistory.length > 0) {
-      const changeSign = netW.netWorthChange >= 0 ? '+' : '';
-      additionalTables.push({
-        title: t('monthlyComparison.pdfNetWorth'),
-        headers: [t('monthlyComparison.pdfPeriod'), t('monthlyComparison.pdfNetWorth')],
-        rows: [
-          [data.currentMonthLabel, formatCurrency(netW.currentNetWorth, cur)],
-          [data.previousMonthLabel, formatCurrency(netW.currentNetWorth - netW.netWorthChange, cur)],
-          [t('monthlyComparison.pdfChange'), `${changeSign}${formatCurrency(netW.netWorthChange, cur)} (${changeSign}${netW.netWorthChangePercent.toFixed(1)}%)`],
-        ],
-      });
-    }
-
-    // Top Movers
-    if (inv.topMovers.length > 0) {
-      additionalTables.push({
-        title: t('monthlyComparison.topMovers'),
-        headers: [t('monthlyComparison.colSymbol'), t('monthlyComparison.colName'), t('monthlyComparison.colPrice'), t('monthlyComparison.colChange'), t('monthlyComparison.colChangePercent')],
-        rows: inv.topMovers.map((mover) => [
-          mover.symbol,
-          mover.name,
-          formatCurrency(mover.currentPrice, cur),
-          `${mover.change >= 0 ? '+' : ''}${formatCurrency(mover.change, cur)}`,
-          formatSignedPercent(mover.changePercent, 2),
-        ]),
-      });
-    }
-
-    await exportToPdf({
-      title: t('monthlyComparison.pdfTitle'),
-      subtitle: t('monthlyComparison.pdfSubtitle', { current: data.currentMonthLabel, previous: data.previousMonthLabel }),
-      description: descriptionParts.length > 0 ? descriptionParts.join('\n') : undefined,
-      summaryCards: [
-        { label: t('monthlyComparison.income'), value: formatCurrencyCompact(incomeExpenses.currentIncome, cur), color: '#16a34a' },
-        { label: t('monthlyComparison.expenses'), value: formatCurrencyCompact(incomeExpenses.currentExpenses, cur), color: '#dc2626' },
-        { label: t('monthlyComparison.savings'), value: formatCurrencyCompact(incomeExpenses.currentSavings, cur), color: savingsColor },
-      ],
-      chartContainer: chartRef.current,
-      chartColumns: 2,
-      chartLegend,
-      tableData: comparisonTable,
-      additionalTables: additionalTables.length > 0 ? additionalTables : undefined,
-      filename: 'monthly-comparison',
-    });
-  };
-
   const goBack = () => {
     const d = parseMonth(month);
     const prev = subMonths(d, 1);
@@ -294,8 +204,133 @@ export function MonthlyComparisonReport() {
     );
   }
 
-  const { incomeExpenses: ie, notes, expenses, topCategories, netWorth: nw, investments } = data;
+  const { incomeExpenses: ie, expenses, topCategories, netWorth: nw, investments } = data;
   const currency = data.currency;
+
+  // The backend's currentMonthLabel/previousMonthLabel are English, formatted
+  // for the AI/MCP tool payloads that share this DTO -- the UI renders its own
+  // locale-aware labels from the raw currentMonth/previousMonth (YYYY-MM).
+  const currentMonthLabel = formatChartDate(parseMonth(data.currentMonth), 'MMMM yyyy');
+  const previousMonthLabel = formatChartDate(parseMonth(data.previousMonth), 'MMMM yyyy');
+
+  const savingsNote = t(
+    ie.savingsChange >= 0 ? 'monthlyComparison.savingsNoteMore' : 'monthlyComparison.savingsNoteLess',
+    {
+      currentMonth: currentMonthLabel,
+      previousMonth: previousMonthLabel,
+      percent: formatPercent(Math.abs(ie.savingsChangePercent), 1),
+      amount: formatCurrency(ie.currentSavings, currency),
+    },
+  );
+  const incomeNote = t(
+    ie.incomeChange >= 0 ? 'monthlyComparison.incomeNoteMore' : 'monthlyComparison.incomeNoteLess',
+    {
+      currentMonth: currentMonthLabel,
+      previousMonth: previousMonthLabel,
+      amount: formatCurrency(ie.currentIncome, currency),
+      diff: formatCurrency(Math.abs(ie.incomeChange), currency),
+    },
+  );
+
+  const handleExportPdf = async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    const { incomeExpenses, expenses: exp, topCategories: topCats, netWorth: netW, investments: inv, currency: cur } = data;
+    const savingsColor = incomeExpenses.currentSavings >= 0 ? '#2563eb' : '#ea580c';
+
+    // Summary notes
+    const descriptionParts = [savingsNote, incomeNote];
+
+    // Chart legend for expense categories
+    const chartLegend = exp.comparison.slice(0, 10).map((item, i) => ({
+      color: item.color || CHART_COLOURS[i % CHART_COLOURS.length],
+      label: item.categoryName,
+    }));
+
+    // Monthly Expenses Comparison (main table - renders right after legend)
+    const comparisonTable = exp.comparison.length > 0 ? {
+      headers: [t('monthlyComparison.colCategory'), currentMonthLabel, previousMonthLabel, t('monthlyComparison.colChange'), t('monthlyComparison.colChangePercent')],
+      rows: exp.comparison.map((item) => [
+        item.categoryName,
+        formatCurrency(item.currentTotal, cur),
+        formatCurrency(item.previousTotal, cur),
+        `${item.change >= 0 ? '+' : ''}${formatCurrency(item.change, cur)}`,
+        formatSignedPercent(item.changePercent, 1),
+      ]),
+    } : undefined;
+
+    // Additional tables
+    const additionalTables: Array<{ title?: string; headers: string[]; rows: (string | number)[][] }> = [];
+
+    // Top 5 categories
+    if (topCats.currentMonth.length > 0) {
+      additionalTables.push({
+        title: t('monthlyComparison.pdfTop5Categories', { month: currentMonthLabel }),
+        headers: [t('monthlyComparison.pdfColHash'), t('monthlyComparison.colCategory'), t('monthlyComparison.colAmount')],
+        rows: topCats.currentMonth.map((cat, i) => [
+          i + 1,
+          cat.categoryName,
+          formatCurrency(Math.abs(cat.total), cur),
+        ]),
+      });
+    }
+    if (topCats.previousMonth.length > 0) {
+      additionalTables.push({
+        title: t('monthlyComparison.pdfTop5Categories', { month: previousMonthLabel }),
+        headers: [t('monthlyComparison.pdfColHash'), t('monthlyComparison.colCategory'), t('monthlyComparison.colAmount')],
+        rows: topCats.previousMonth.map((cat, i) => [
+          i + 1,
+          cat.categoryName,
+          formatCurrency(Math.abs(cat.total), cur),
+        ]),
+      });
+    }
+
+    // Net Worth
+    if (netW.monthlyHistory.length > 0) {
+      const changeSign = netW.netWorthChange >= 0 ? '+' : '';
+      additionalTables.push({
+        title: t('monthlyComparison.pdfNetWorth'),
+        headers: [t('monthlyComparison.pdfPeriod'), t('monthlyComparison.pdfNetWorth')],
+        rows: [
+          [currentMonthLabel, formatCurrency(netW.currentNetWorth, cur)],
+          [previousMonthLabel, formatCurrency(netW.currentNetWorth - netW.netWorthChange, cur)],
+          [t('monthlyComparison.pdfChange'), `${changeSign}${formatCurrency(netW.netWorthChange, cur)} (${formatSignedPercent(netW.netWorthChangePercent, 1)})`],
+        ],
+      });
+    }
+
+    // Top Movers
+    if (inv.topMovers.length > 0) {
+      additionalTables.push({
+        title: t('monthlyComparison.topMovers'),
+        headers: [t('monthlyComparison.colSymbol'), t('monthlyComparison.colName'), t('monthlyComparison.colPrice'), t('monthlyComparison.colChange'), t('monthlyComparison.colChangePercent')],
+        rows: inv.topMovers.map((mover) => [
+          mover.symbol,
+          mover.name,
+          formatCurrency(mover.currentPrice, cur),
+          `${mover.change >= 0 ? '+' : ''}${formatCurrency(mover.change, cur)}`,
+          formatSignedPercent(mover.changePercent, 2),
+        ]),
+      });
+    }
+
+    await exportToPdf({
+      title: t('monthlyComparison.pdfTitle'),
+      subtitle: t('monthlyComparison.pdfSubtitle', { current: currentMonthLabel, previous: previousMonthLabel }),
+      description: descriptionParts.length > 0 ? descriptionParts.join('\n') : undefined,
+      summaryCards: [
+        { label: t('monthlyComparison.income'), value: formatCurrencyCompact(incomeExpenses.currentIncome, cur), color: '#16a34a' },
+        { label: t('monthlyComparison.expenses'), value: formatCurrencyCompact(incomeExpenses.currentExpenses, cur), color: '#dc2626' },
+        { label: t('monthlyComparison.savings'), value: formatCurrencyCompact(incomeExpenses.currentSavings, cur), color: savingsColor },
+      ],
+      chartContainer: chartRef.current,
+      chartColumns: 2,
+      chartLegend,
+      tableData: comparisonTable,
+      additionalTables: additionalTables.length > 0 ? additionalTables : undefined,
+      filename: 'monthly-comparison',
+    });
+  };
 
   return (
     <div ref={chartRef} className="space-y-6">
@@ -313,10 +348,10 @@ export function MonthlyComparisonReport() {
             </button>
             <div className="text-center">
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {data.currentMonthLabel}
+                {currentMonthLabel}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                {t('monthlyComparison.vsMonth', { month: data.previousMonthLabel })}
+                {t('monthlyComparison.vsMonth', { month: previousMonthLabel })}
               </div>
             </div>
             <button
@@ -345,9 +380,9 @@ export function MonthlyComparisonReport() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousIncome, currency), month: data.previousMonthLabel })}
+                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousIncome, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.incomeChange} percent={ie.incomeChangePercent} />
+              <DeltaBadge value={ie.incomeChange} percent={ie.incomeChangePercent} formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
           {/* Expenses */}
@@ -358,9 +393,9 @@ export function MonthlyComparisonReport() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousExpenses, currency), month: data.previousMonthLabel })}
+                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousExpenses, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.expensesChange} percent={ie.expensesChangePercent} invert />
+              <DeltaBadge value={ie.expensesChange} percent={ie.expensesChangePercent} invert formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
           {/* Savings */}
@@ -373,9 +408,9 @@ export function MonthlyComparisonReport() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousSavings, currency), month: data.previousMonthLabel })}
+                {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousSavings, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.savingsChange} percent={ie.savingsChangePercent} />
+              <DeltaBadge value={ie.savingsChange} percent={ie.savingsChangePercent} formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
         </div>
@@ -385,8 +420,8 @@ export function MonthlyComparisonReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('monthlyComparison.summary')}</h2>
         <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <p>{notes.savingsNote}</p>
-          <p>{notes.incomeNote}</p>
+          <p>{savingsNote}</p>
+          <p>{incomeNote}</p>
         </div>
       </div>
 
@@ -396,7 +431,7 @@ export function MonthlyComparisonReport() {
         {/* Pie Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <ExpensePieChart
-            title={data.currentMonthLabel}
+            title={currentMonthLabel}
             data={expenses.currentMonth}
             currency={currency}
             formatCurrency={formatCurrencyCompact}
@@ -404,7 +439,7 @@ export function MonthlyComparisonReport() {
             totalLabel={t('monthlyComparison.netWorthTotal', { amount: formatCurrencyCompact(expenses.currentTotal, currency) })}
           />
           <ExpensePieChart
-            title={data.previousMonthLabel}
+            title={previousMonthLabel}
             data={expenses.previousMonth}
             currency={currency}
             formatCurrency={formatCurrencyCompact}
@@ -435,7 +470,7 @@ export function MonthlyComparisonReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    {data.currentMonthLabel}
+                    {currentMonthLabel}
                   </SortableHeader>
                   <SortableHeader<ComparisonSortField>
                     field="previous"
@@ -445,7 +480,7 @@ export function MonthlyComparisonReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    {data.previousMonthLabel}
+                    {previousMonthLabel}
                   </SortableHeader>
                   <SortableHeader<ComparisonSortField>
                     field="change"
@@ -503,7 +538,7 @@ export function MonthlyComparisonReport() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('monthlyComparison.topExpenseCategories')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <TopCategoriesTable
-            title={data.currentMonthLabel}
+            title={currentMonthLabel}
             categories={topCategories.currentMonth}
             currency={currency}
             formatCurrency={formatCurrency}
@@ -513,7 +548,7 @@ export function MonthlyComparisonReport() {
             colHash={t('monthlyComparison.pdfColHash')}
           />
           <TopCategoriesTable
-            title={data.previousMonthLabel}
+            title={previousMonthLabel}
             categories={topCategories.previousMonth}
             currency={currency}
             formatCurrency={formatCurrency}
@@ -550,10 +585,10 @@ export function MonthlyComparisonReport() {
             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 {t.rich('monthlyComparison.netWorthSummary', {
-                  currentMonth: data.currentMonthLabel,
+                  currentMonth: currentMonthLabel,
                   netWorth: formatCurrency(nw.currentNetWorth, currency),
                   changeAmount: `${nw.netWorthChange >= 0 ? '+' : ''}${formatCurrency(nw.netWorthChange, currency)} (${formatSignedPercent(nw.netWorthChangePercent, 1)})`,
-                  previousMonth: data.previousMonthLabel,
+                  previousMonth: previousMonthLabel,
                   strong: (chunks) => <span className="font-semibold">{chunks}</span>,
                   delta: (chunks) => <span className={`font-semibold ${gainLossColor(nw.netWorthChange)}`}>{chunks}</span>,
                 })}
@@ -583,9 +618,11 @@ export function MonthlyComparisonReport() {
                     layout="vertical"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                    <XAxis type="number" tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 12 }} />
+                    {/* Fractional ticks keep a decimal: forcing 0 would print a
+                        narrow range (0.4%, 0.9%, 1.2%) as "0%", "1%", "1%". */}
+                    <XAxis type="number" tickFormatter={(v: number) => formatPercent(v, Number.isInteger(v) ? 0 : 1)} tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} />
-                    <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}%`, t('monthlyComparison.pdfAnnualizedReturn')]} />
+                    <Tooltip formatter={(value) => [formatPercent(Number(value), 2), t('monthlyComparison.pdfAnnualizedReturn')]} />
                     <Bar
                       dataKey="return"
                       radius={[0, 4, 4, 0]}

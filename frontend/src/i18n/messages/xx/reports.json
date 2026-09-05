@@ -1113,7 +1113,11 @@
     "pdfPeriod": "[XX-Period-XX]",
     "pdfChange": "[XX-Change-XX]",
     "pdfAnnualizedReturn": "[XX-Annualized Return-XX]",
-    "tooltipNetWorth": "[XX-Net Worth-XX]"
+    "tooltipNetWorth": "[XX-Net Worth-XX]",
+    "savingsNoteMore": "[XX-In {currentMonth}, you saved {percent} more than {previousMonth} for a total of {amount}-XX]",
+    "savingsNoteLess": "[XX-In {currentMonth}, you saved {percent} less than {previousMonth} for a total of {amount}-XX]",
+    "incomeNoteMore": "[XX-Your total income in {currentMonth} was {amount}, which is {diff} more than {previousMonth}-XX]",
+    "incomeNoteLess": "[XX-Your total income in {currentMonth} was {amount}, which is {diff} less than {previousMonth}-XX]"
   },
   "monthlySpendingTrend": {
     "total": "[XX-Total-XX]",

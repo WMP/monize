@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, act } from "@/test/render";
-import { YearOverYearReport } from "./YearOverYearReport";
+import { YearOverYearReport, monthClickRange } from "./YearOverYearReport";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -17,6 +17,10 @@ vi.mock("@/hooks/useNumberFormat", () => ({
   }),
 }));
 
+// What a clicked bar hands back. A test sets this to reproduce the shapes
+// recharts can actually produce -- `payload` is optional on BarRectangleItem.
+let barClickArg: unknown = { payload: { monthIndex: 2 } };
+
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: any) => (
     <div data-testid="responsive-container">{children}</div>
@@ -27,7 +31,7 @@ vi.mock("recharts", () => ({
   Bar: ({ dataKey, onClick }: any) => (
     <button
       data-testid={`bar-${dataKey}`}
-      onClick={() => onClick?.({ name: "Mar" })}
+      onClick={() => onClick?.(barClickArg)}
     />
   ),
   XAxis: () => null,
@@ -79,10 +83,37 @@ vi.mock("@/lib/pdf-export", () => ({
   exportToPdf: (...args: any[]) => mockExportToPdf(...args),
 }));
 
+describe("monthClickRange", () => {
+  it("spans the clicked month", () => {
+    expect(monthClickRange(2024, 2)).toEqual({
+      startDate: "2024-03-01",
+      endDate: "2024-03-31",
+    });
+  });
+
+  it("honours a leap February", () => {
+    expect(monthClickRange(2024, 1)?.endDate).toBe("2024-02-29");
+    expect(monthClickRange(2025, 1)?.endDate).toBe("2025-02-28");
+  });
+
+  // A recharts datum can arrive with no payload, so the index reaching this
+  // function is Number(undefined) -- NaN, which a bare range check lets through
+  // and which turns the date into an Invalid Date that `format` throws on.
+  it.each([
+    ["NaN", Number(undefined)],
+    ["a non-integer", 2.5],
+    ["a negative index", -1],
+    ["an index past December", 12],
+  ])("returns null for %s", (_label, monthIndex) => {
+    expect(monthClickRange(2024, monthIndex)).toBeNull();
+  });
+});
+
 describe("YearOverYearReport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPush.mockClear();
+    barClickArg = { payload: { monthIndex: 2 } };
   });
 
   it("shows loading state initially", () => {
@@ -251,28 +282,15 @@ describe("YearOverYearReport", () => {
     );
   });
 
-  it("does not navigate when bar click has an invalid month name", async () => {
-    // Override Bar mock to pass an invalid month name
-    vi.doMock("recharts", () => ({
-      ResponsiveContainer: ({ children }: any) => (
-        <div data-testid="responsive-container">{children}</div>
-      ),
-      BarChart: ({ children }: any) => (
-        <div data-testid="bar-chart">{children}</div>
-      ),
-      Bar: ({ dataKey, onClick }: any) => (
-        <button
-          data-testid={`bar-invalid-${dataKey}`}
-          onClick={() => onClick?.({ name: "InvalidMonth" })}
-        />
-      ),
-      XAxis: () => null,
-      YAxis: () => null,
-      CartesianGrid: () => null,
-      Tooltip: () => null,
-      Legend: () => null,
-    }));
-
+  // `payload` is optional on recharts' BarRectangleItem, so a click can arrive
+  // without one; Number(undefined) is NaN, which passes a bare range check and
+  // makes new Date(year, NaN, 1) throw inside the handler.
+  it.each([
+    ["no payload at all", {}],
+    ["a payload with no monthIndex", { payload: {} }],
+    ["a month index out of range", { payload: { monthIndex: -1 } }],
+  ])("does not navigate or throw on %s", async (_label, clickArg) => {
+    barClickArg = clickArg;
     mockGetYearOverYear.mockResolvedValue({
       data: [
         {
@@ -286,11 +304,8 @@ describe("YearOverYearReport", () => {
     await waitFor(() => {
       expect(screen.getByTestId("bar-2024")).toBeInTheDocument();
     });
-    // Simulate handleBarClick with invalid month by calling it directly
-    fireEvent.click(screen.getByTestId("bar-2024"));
-    // "Mar" is the mock's hardcoded name, so push will be called — but this
-    // exercises the monthIndex !== -1 path; we just verify no crash
-    expect(mockPush).toHaveBeenCalled();
+    expect(() => fireEvent.click(screen.getByTestId("bar-2024"))).not.toThrow();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("changes years-to-compare select and reloads data", async () => {

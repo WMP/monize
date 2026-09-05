@@ -1113,7 +1113,11 @@
     "pdfPeriod": "期間",
     "pdfChange": "変化",
     "pdfAnnualizedReturn": "年率リターン",
-    "tooltipNetWorth": "純資産"
+    "tooltipNetWorth": "純資産",
+    "savingsNoteMore": "{currentMonth}の貯蓄額は{previousMonth}より{percent}多く、合計{amount}でした",
+    "savingsNoteLess": "{currentMonth}の貯蓄額は{previousMonth}より{percent}少なく、合計{amount}でした",
+    "incomeNoteMore": "{currentMonth}の総収入は{amount}で、{previousMonth}より{diff}多くなりました",
+    "incomeNoteLess": "{currentMonth}の総収入は{amount}で、{previousMonth}より{diff}少なくなりました"
   },
   "monthlySpendingTrend": {
     "total": "合計",

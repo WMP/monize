@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Kỳ",
     "pdfChange": "Thay đổi",
     "pdfAnnualizedReturn": "Lợi nhuận hàng năm",
-    "tooltipNetWorth": "Giá trị ròng"
+    "tooltipNetWorth": "Giá trị ròng",
+    "savingsNoteMore": "Trong {currentMonth}, bạn đã tiết kiệm nhiều hơn {percent} so với {previousMonth}, tổng cộng {amount}",
+    "savingsNoteLess": "Trong {currentMonth}, bạn đã tiết kiệm ít hơn {percent} so với {previousMonth}, tổng cộng {amount}",
+    "incomeNoteMore": "Tổng thu nhập của bạn trong {currentMonth} là {amount}, nhiều hơn {diff} so với {previousMonth}",
+    "incomeNoteLess": "Tổng thu nhập của bạn trong {currentMonth} là {amount}, ít hơn {diff} so với {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Tổng",
