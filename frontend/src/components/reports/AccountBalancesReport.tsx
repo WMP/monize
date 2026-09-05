@@ -65,7 +65,7 @@ export function AccountBalancesReport() {
   const tAccounts = useTranslations('accounts');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency, defaultCurrency: preferredCurrency } = useNumberFormat();
+  const { formatCurrency, defaultCurrency: preferredCurrency, formatPercent } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const mainAccountName = useMainAccountName();
 
@@ -513,14 +513,14 @@ export function AccountBalancesReport() {
   }) => {
     if (active && payload?.length) {
       const data = payload[0].payload;
-      const pct = chartTotal > 0 ? ((data.value / chartTotal) * 100).toFixed(1) : '0.0';
+      const pct = chartTotal > 0 ? (data.value / chartTotal) * 100 : 0;
       return (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
           <p className="text-gray-600 dark:text-gray-400">
             {/* The signed amount: a liability slice is money owed, and the
                 minus sign is what says so in text. */}
-            {formatCurrency(data.signedValue ?? data.value, displayCurrency)} ({pct}%)
+            {formatCurrency(data.signedValue ?? data.value, displayCurrency)} ({formatPercent(pct, 1)})
           </p>
         </div>
       );
@@ -744,7 +744,7 @@ export function AccountBalancesReport() {
 
               <div className="mt-4 grid grid-cols-2 gap-2 max-h-48 overflow-y-auto scrollbar-slim">
                 {chartData.map((item, index) => {
-                  const pct = chartTotal > 0 ? ((item.value / chartTotal) * 100).toFixed(1) : '0.0';
+                  const pct = chartTotal > 0 ? (item.value / chartTotal) * 100 : 0;
                   return (
                     <div
                       key={index}
@@ -759,7 +759,7 @@ export function AccountBalancesReport() {
                       {/* Signed, so a liability's role is stated in text, not
                           only in the palette. */}
                       <span className="text-gray-900 dark:text-gray-100 ml-auto whitespace-nowrap">
-                        {formatCurrency(item.signedValue, displayCurrency)} ({pct}%)
+                        {formatCurrency(item.signedValue, displayCurrency)} ({formatPercent(pct, 1)})
                       </span>
                     </div>
                   );

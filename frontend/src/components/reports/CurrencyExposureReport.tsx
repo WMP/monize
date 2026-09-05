@@ -327,9 +327,12 @@ export function CurrencyExposureReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.homeCurrency', { defaultCurrency })}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {totalPortfolioValue > 0
-              ? ((1 - foreignCurrencyExposure / totalPortfolioValue) * 100).toFixed(1)
-              : '0.0'}%
+            {formatPercent(
+              totalPortfolioValue > 0
+                ? (1 - foreignCurrencyExposure / totalPortfolioValue) * 100
+                : 0,
+              1,
+            )}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">

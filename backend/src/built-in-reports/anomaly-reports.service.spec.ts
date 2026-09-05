@@ -5,6 +5,7 @@ import { AnomalyReportsService } from "./anomaly-reports.service";
 import { ReportCurrencyService } from "./report-currency.service";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { Category } from "../categories/entities/category.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -113,6 +114,17 @@ describe("AnomalyReportsService", () => {
     ({ manager: scopedManager, dataSource: scopedDataSource } =
       createScopedDbMocks([
         [Transaction, transactionsRepository as never],
+        [
+          UserPreference,
+          {
+            // The copy these surfaces compose is addressed to this user, so the
+            // figures in it follow their number locale (issue #1316).
+            findOne: jest.fn().mockResolvedValue({
+              numberFormat: "en-US",
+              language: "en",
+            }),
+          } as never,
+        ],
         [Category, categoriesRepository as never],
       ]));
 

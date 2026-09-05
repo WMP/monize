@@ -127,12 +127,12 @@ export function SpendingByPayeeReport() {
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; value: number } }> }) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
-    const percentage = totalExpenses > 0 ? ((data.value / totalExpenses) * 100).toFixed(1) : '0';
+    const percentage = totalExpenses > 0 ? (data.value / totalExpenses) * 100 : 0;
     return (
       <ChartTooltipPanel>
         <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
         <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(data.value)} ({percentage}%)
+          {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
         </p>
       </ChartTooltipPanel>
     );

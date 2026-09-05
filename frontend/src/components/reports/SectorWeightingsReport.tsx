@@ -413,9 +413,12 @@ export function SectorWeightingsReport() {
                     {formatCurrencyFull(data.unclassifiedValue, defaultCurrency)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-500 dark:text-gray-400">
-                    {data.totalPortfolioValue > 0
-                      ? ((data.unclassifiedValue / data.totalPortfolioValue) * 100).toFixed(1)
-                      : '0.0'}%
+                    {formatPercent(
+                      data.totalPortfolioValue > 0
+                        ? (data.unclassifiedValue / data.totalPortfolioValue) * 100
+                        : 0,
+                      1,
+                    )}
                   </td>
                 </tr>
               )}

@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
 
 import { withScopedDb } from "../common/db/scoped-db";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { returnedRows } from "../common/db/query-result";
 import {
@@ -20,6 +21,11 @@ import {
 } from "./entities/notification.entity";
 import { CreateNotificationInput } from "./notification.service";
 import { FlowSubtotal, foldExternalFlow } from "./portfolio-flow.util";
+import {
+  NumberT,
+  defaultNumberT,
+  numberFormatterFor,
+} from "../common/number-locale.util";
 import {
   FiredMovement,
   MovementInputs,
@@ -159,9 +165,17 @@ export class PortfolioMovementAlertService {
     }
     if (decision.fire == null) return false;
 
+    const prefs = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    );
     const written = await this.dispatch.notify(
       userId,
-      buildPortfolioNotification(decision.fire, currency, today),
+      buildPortfolioNotification(
+        decision.fire,
+        currency,
+        today,
+        numberFormatterFor(prefs?.numberFormat, prefs?.language),
+      ),
     );
     return written != null;
   }
@@ -328,6 +342,7 @@ export function buildPortfolioNotification(
   fire: FiredMovement,
   currency: string,
   today: string,
+  n: NumberT = defaultNumberT,
 ): CreateNotificationInput {
   return {
     type: NotificationType.PORTFOLIO_MOVEMENT,
@@ -335,8 +350,8 @@ export function buildPortfolioNotification(
     title: "Investment value moved",
     message:
       fire.direction === "up"
-        ? `Your investments are up ${fire.changePercent}% today (excluding deposits). Open Monize for the details.`
-        : `Your investments are down ${Math.abs(fire.changePercent)}% today (excluding deposits). Open Monize for the details.`,
+        ? `Your investments are up ${n.formatPercentTrimmed(fire.changePercent)} today (excluding deposits). Open Monize for the details.`
+        : `Your investments are down ${n.formatPercentTrimmed(Math.abs(fire.changePercent))} today (excluding deposits). Open Monize for the details.`,
     data: {
       changePercent: fire.changePercent,
       direction: fire.direction,

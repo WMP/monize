@@ -17,7 +17,7 @@ interface CreditCardSummaryCardsProps {
 /** Key figures for a credit card: balance, limit, available, utilization, rate. */
 export function CreditCardSummaryCards({ account }: CreditCardSummaryCardsProps) {
   const t = useTranslations('accountDetail-creditCard');
-  const { formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrency, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const currency = account.currencyCode;
 
   const used = Math.abs(Number(account.currentBalance) || 0);
@@ -43,7 +43,7 @@ export function CreditCardSummaryCards({ account }: CreditCardSummaryCardsProps)
     },
     {
       label: t('summary.interestRate'),
-      value: account.interestRate != null ? `${account.interestRate}%` : t('summary.notSet'),
+      value: account.interestRate != null ? `${formatPercentTrimmed(account.interestRate)}` : t('summary.notSet'),
     },
   ];
 

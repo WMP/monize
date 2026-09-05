@@ -36,6 +36,14 @@ const read = (file: string): string =>
  * is NOT addressed to a person. Every one of these is a documented fixed-locale
  * contract; a new caller must earn its line here or use
  * `number-locale.util.ts` instead.
+ *
+ * `budgets/budgets.service.ts` was on this list and should not have been. Its
+ * BILL_DUE `message` looks like the same stored-English-fallback case as the
+ * action-history rows -- but PAYMENTS supports `emailNotification`, so
+ * `notificationImmediateTemplate` renders that exact string into an email built
+ * with the recipient's translator. "Stored English fallback" is not by itself a
+ * machine format: what settles it is whether anything renders the string TO A
+ * PERSON, and for that one it did.
  */
 const MACHINE_FORMAT_CALLERS: Record<string, string> = {
   "ai/forecast/ai-forecast.service.ts":
@@ -44,8 +52,6 @@ const MACHINE_FORMAT_CALLERS: Record<string, string> = {
     "the English `description` fallback on an action-history row; the reader's client formats `amountValue`/`amountCurrency` instead",
   "transactions/transaction-transfer.service.ts":
     "same action-history English fallback, for the transfer pair",
-  "budgets/budgets.service.ts":
-    "the English `title`/`message` fallback on a bill notification; the UI composes its own copy from `type` + `data`",
 };
 
 /** Where the helpers themselves live. */
@@ -101,6 +107,137 @@ describe("the en-US money helpers", () => {
 
   it("still hold that formatter, so the exemption is not vacuous", () => {
     expect(read(HELPER_MODULE)).toMatch(/Intl\.NumberFormat\(\s*["']en-US["']/);
+  });
+});
+
+describe("a percentage addressed to a person", () => {
+  /**
+   * The frontend guard bans `toFixed` beside a literal `%`; the server composes
+   * copy too, and had exactly the same defect in the budget alerts and the
+   * monthly-comparison notes. Without this scan the invariant was enforced on
+   * one layer and merely intended on the other, which is what makes an
+   * `enforced` status wrong.
+   */
+  const TOFIXED_PERCENT = /\.toFixed\(\s*\d+\s*\)\s*(?:\}%|\+\s*["']%["'])/;
+  const PERCENT_AFTER_INTERPOLATION = /\}%/;
+
+  /**
+   * Modules whose `%`-bearing strings are read by a MACHINE, with the reason.
+   * A SQL LIKE pattern (`` `%${term}%` ``) is not a percentage at all and is
+   * excluded by the pattern above rather than by a listing.
+   */
+  const MACHINE_PERCENT: Record<string, string> = {
+    "ai/query/tool-executor.service.ts":
+      "tool summaries a model reads; a stable representation is the point",
+    "ai/query/calculate-tool.ts":
+      "a calculator tool's result shape, read by a model",
+    "ai/insights/ai-insights.service.ts": "prompt aggregates a model reads",
+    "securities/yahoo-finance.service.ts":
+      "provider metric strings assembled for matching, never rendered",
+  };
+
+  /**
+   * Two shapes that are not a figure addressed to a person. A CSS length
+   * (`width: ${pct}%`) has to stay a plain number -- CSS does not read a locale
+   * -- and a log line is read by an operator, not by the account holder.
+   */
+  const CSS_LENGTH =
+    /(width|height|left|right|top|bottom|inset|margin|padding)\s*:/i;
+
+  /**
+   * A SQL LIKE pattern is not a percentage: there `%` is the wildcard. Both
+   * shapes appear -- `` `%${escapeLikePattern(x)}%` `` for a contains match and
+   * `` `${escapeLikeWildcards(x)}%` `` for a prefix one -- so the tell is the
+   * LIKE context rather than the leading `%`, which the prefix form does not
+   * have. An earlier version excluded these with a lookahead for the closing
+   * backtick instead, and that also swallowed every genuine percentage that
+   * ended its template, which is the commonest shape there is.
+   */
+  const SQL_LIKE = /`%\$\{|\bLike\(|escapeLike/;
+
+  /**
+   * Blank the ARGUMENTS of every logger call, keeping newlines so line numbers
+   * survive. A per-line test cannot do this: the loan-recalculation log builds
+   * its message across seven concatenated lines and the `%` is on the second, so
+   * the `logger.log(` that explains it is nowhere near the match.
+   */
+  function withoutLoggerCalls(source: string): string {
+    const call = /(this\.)?logger\.(debug|log|warn|error|verbose)\(/g;
+    let out = source;
+    for (const match of [...source.matchAll(call)].reverse()) {
+      let i = match.index + match[0].length - 1;
+      let depth = 0;
+      const start = i;
+      while (i < out.length) {
+        if (out[i] === "(") depth += 1;
+        else if (out[i] === ")") {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+        i += 1;
+      }
+      const body = out.slice(start, i);
+      out = out.slice(0, start) + body.replace(/[^\n]/g, " ") + out.slice(i);
+    }
+    return out;
+  }
+
+  /** Lines carrying a `%` that is neither a CSS length nor a log message. */
+  function percentLines(source: string): string[] {
+    return withoutLoggerCalls(source)
+      .split("\n")
+      .filter(
+        (line) =>
+          (TOFIXED_PERCENT.test(line) ||
+            PERCENT_AFTER_INTERPOLATION.test(line)) &&
+          !CSS_LENGTH.test(line) &&
+          !SQL_LIKE.test(line),
+      );
+  }
+
+  it("does not mistake a SQL LIKE pattern for a percentage", () => {
+    expect(percentLines("const p = `%${escapeLikePattern(term)}%`;")).toEqual(
+      [],
+    );
+    expect(percentLines("name: Like(`${escapeLikeWildcards(q)}%`),")).toEqual(
+      [],
+    );
+    // ...but a real percentage on a line with neither is still reported.
+    expect(percentLines("const shown = `${pct}%`;")).toHaveLength(1);
+  });
+
+  it("blanks a logger call without moving the lines after it", () => {
+    // A guard that silently stopped matching would pass every assertion below.
+    const source = [
+      "this.logger.log(",
+      "  `rate=${x}%, ` +",
+      "    `freq=${y}`,",
+      ");",
+      "const shown = `${pct}%`;",
+    ].join("\n");
+    const stripped = withoutLoggerCalls(source);
+    expect(stripped.split("\n")).toHaveLength(5);
+    expect(percentLines(source)).toEqual(["const shown = `${pct}%`;"]);
+  });
+
+  it("is not composed with toFixed and a literal % outside the machine set", () => {
+    const offenders = sourceFiles().filter(
+      (file) =>
+        !(file in MACHINE_PERCENT) && percentLines(read(file)).length > 0,
+    );
+
+    // Use `numberFormatterFor(...).formatPercent(value, decimals)`; it takes
+    // percentage units and puts the symbol where the recipient's locale does.
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps the machine-percent list honest", () => {
+    const files = sourceFiles();
+    for (const file of Object.keys(MACHINE_PERCENT)) {
+      // A stale entry silently covers a future offender in the same path.
+      expect(files).toContain(file);
+      expect(percentLines(read(file)).length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -193,6 +330,37 @@ describe("numberFormatterFor", () => {
     // back to en-US -- that is the defect wearing a catch block.
     const n = numberFormatterFor("pl-PL", "en");
     expect(n.formatCurrency(1234.5, "NOTACURRENCY")).toContain("1234,50");
+  });
+
+  it("falls back to the default locale for a tag Intl cannot use", () => {
+    // `en_US` -- the underscore form -- makes `Intl.NumberFormat` throw
+    // `RangeError`, and nothing validated `numberFormat` before this. One such
+    // stored value used to take out every formatter at once: the Monthly
+    // Comparison report 500'd, and the cron composing bill reminders and budget
+    // alerts threw, so those emails stopped arriving with nothing saying why.
+    expect(resolveNumberLocale("en_US", "pl")).toBe(DEFAULT_LOCALE);
+    expect(resolveNumberLocale("browser", "pl_PL")).toBe(DEFAULT_LOCALE);
+    expect(resolveNumberLocale("", "")).toBe(DEFAULT_LOCALE);
+  });
+
+  it("formats rather than throws for an unusable stored preference", () => {
+    // The whole surface, not just the resolver: the first fix caught the throw
+    // inside `formatCurrency` and fell back to `formatNumber`, which rebuilt
+    // `Intl` from the SAME locale and threw again.
+    const n = numberFormatterFor("en_US", "pl");
+    expect(n.locale).toBe(DEFAULT_LOCALE);
+    expect(() => n.formatCurrency(1234.5, "USD")).not.toThrow();
+    expect(() => n.formatCurrencyAmount(1234.5, "USD")).not.toThrow();
+    expect(() => n.formatNumber(1234.5)).not.toThrow();
+    expect(() => n.formatPercent(12.3)).not.toThrow();
+    expect(n.formatCurrency(1234.5, "USD")).toBe("$1,234.50");
+  });
+
+  it("keeps a well-formed but unknown tag, which Intl resolves itself", () => {
+    // `zzz` does not throw -- Intl falls back to its own default. That is a
+    // locale the reader asked for and the platform could not honour, which is
+    // not the same thing as a value it cannot parse.
+    expect(resolveNumberLocale("zzz", "en")).toBe("zzz");
   });
 
   it("exposes a default-locale formatter for a caller with no recipient", () => {

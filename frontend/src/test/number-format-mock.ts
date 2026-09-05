@@ -53,6 +53,8 @@ export function numberFormatMockDefaults() {
     formatCurrencyLabel: (value: number) => money(value, 2),
     formatNumber: (value: number, digits = 2) => plain(value, digits),
     formatPercent: (value: number, digits = 2) => `${plain(value, digits)}%`,
+    formatPercentTrimmed: (value: number) =>
+      `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 }).format(value)}%`,
     formatSignedPercent: (value: number, digits = 2) =>
       `${value >= 0 ? '+' : ''}${plain(value, digits)}%`,
     formatQuantity: (value: number) => String(value),

@@ -32,7 +32,7 @@ type SavingsRateSortField = 'month' | 'income' | 'expenses' | 'savings' | 'rate'
 
 export function SavingsRateReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>('');
@@ -104,7 +104,7 @@ export function SavingsRateReport() {
       summaryCards: [
         { label: t('savingsRate.pdfCurrentRate'), value: formatPercent(currentRate, 1), color: meetsTarget ? '#16a34a' : '#dc2626' },
         { label: t('savingsRate.pdfAverageRate'), value: formatPercent(avgRate, 1), color: '#111827' },
-        { label: t('savingsRate.pdfTargetRate'), value: `${targetRate}%`, color: '#2563eb' },
+        { label: t('savingsRate.pdfTargetRate'), value: `${formatPercentTrimmed(targetRate)}`, color: '#2563eb' },
         { label: t('savingsRate.pdfTotalSaved'), value: formatCurrency(totalSaved), color: totalSaved >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
@@ -222,7 +222,7 @@ export function SavingsRateReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.targetRate')}</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {targetRate}%
+            {formatPercentTrimmed(targetRate)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
@@ -246,7 +246,7 @@ export function SavingsRateReport() {
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis
-                  tickFormatter={(v) => `${v}%`}
+                  tickFormatter={(v) => `${formatPercentTrimmed(v)}`}
                   tick={{ fontSize: 12 }}
                   domain={['auto', 'auto']}
                 />

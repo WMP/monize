@@ -240,10 +240,16 @@ screen used their own convention (issue #1316).
 
 Three ways in, and the second is the one that looks like a fix and is not:
 
-- **`toFixed(n) + '%'`** writes a `.` decimal in every locale and puts the `%`
-  where English puts it (fr-FR writes `12,3 %`). Use `formatPercent(value, decimals)`
-  -- it takes percentage units -- or `formatSignedPercent` where an explicit
-  leading sign is wanted.
+- **A literal `%` beside a number** -- `` `${x.toFixed(1)}%` `` and the far
+  commoner `{percentage}%` -- writes a `.` decimal in every locale and puts the
+  `%` where English puts it (fr-FR writes `12,3 %`). Use
+  `formatPercent(value, decimals)` where the surface has decided a decimal count,
+  `formatPercentTrimmed(value)` where the value arrives already rounded (the
+  server rounds `percentUsed` to 2dp, so the same expression must still render
+  `80%`, `80.5%` and `80.55%` -- pinning a count would change the figure, which
+  is the one thing a localization fix must not do), or `formatSignedPercent`
+  where an explicit leading sign is wanted. A CSS length (`width: ${pct}%`) is
+  the one legitimate case and stays a plain number: CSS reads no locale.
 - **A bare `toLocaleString()`** follows the *browser*, and an explicit
   `numberFormat` exists precisely to override the browser: a reader on `en-US`
   hardware who picked `pl-PL` still gets `12,345`. Swapping a hardcoded `en-US`
@@ -268,6 +274,11 @@ the number *before* the suffix and leave the suffix alone.
 `src/test/number-locale.guard.test.ts` scans for all four fingerprints with a
 classified allowlist (a `new Date(...).toLocaleString()` is a date, which
 `useDateFormat` governs; `lib/utils.ts`'s `sv-SE` timestamps are machine-shaped).
+**Its percentage scan is keyed on the literal `%`, not on `toFixed`** -- written
+from the diff it matched only the shapes the migration had just removed and
+reported clean over fourteen survivors, because the shape that actually
+dominates names no formatter at all. A scan written from a diff sees what was
+fixed; write it from the rule.
 A component test must not build its expectation with the same helper the
 component uses -- `SecurityList.test.tsx` did, so it proved the component agreed
 with a hardcoded formatter while the screen disagreed with the user. Set a real

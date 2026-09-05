@@ -171,12 +171,12 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as { name: string; value: number };
-                    const pct = totalSpending > 0 ? ((d.value / totalSpending) * 100).toFixed(1) : '0';
+                    const pct = totalSpending > 0 ? (d.value / totalSpending) * 100 : 0;
                     return (
                       <ChartTooltipPanel>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
                         <p className="text-gray-600 dark:text-gray-400">
-                          {formatCurrency(d.value)} ({pct}%)
+                          {formatCurrency(d.value)} ({formatPercent(pct, 1)})
                         </p>
                       </ChartTooltipPanel>
                     );

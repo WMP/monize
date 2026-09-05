@@ -364,3 +364,78 @@ describe('formatShareQuantity', () => {
     ).toBe('755,8342');
   });
 });
+
+describe('an unusable stored numberFormat', () => {
+  const withPreferences = (numberFormat: string, language?: string) => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({
+        preferences: { numberFormat, defaultCurrency: 'USD', language },
+      }),
+    );
+    return renderHook(() => useNumberFormat()).result;
+  };
+
+  afterEach(() => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({ preferences: { numberFormat: 'en-US', defaultCurrency: 'USD' } }),
+    );
+  });
+
+  it('renders through the browser default instead of throwing', () => {
+    // `Intl.NumberFormat` throws RangeError on a structurally invalid tag, and
+    // `en_US` -- the underscore form -- is one. This call sits inside render, so
+    // a single bad stored value took the whole screen down rather than one
+    // figure. Nothing validated the preference before this.
+    const r = withPreferences('en_US', 'pl').current;
+    expect(() => r.formatCurrency(1234.5, 'USD')).not.toThrow();
+    expect(() => r.formatNumber(1234.5)).not.toThrow();
+    expect(() => r.formatPercent(12.3)).not.toThrow();
+    expect(() => r.formatPercentTrimmed(12.3)).not.toThrow();
+    expect(() => r.formatShareQuantity(755.8342)).not.toThrow();
+    expect(r.formatCurrency(1234.5, 'USD')).toBe('$1,234.50');
+  });
+
+  it('falls back for an unusable UI language too', () => {
+    const r = withPreferences('browser', 'pl_PL').current;
+    expect(() => r.formatNumber(1234.5)).not.toThrow();
+  });
+});
+
+describe('formatPercentTrimmed', () => {
+  const withPreferences = (numberFormat: string, language?: string) => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({
+        preferences: { numberFormat, defaultCurrency: 'USD', language },
+      }),
+    );
+    return renderHook(() => useNumberFormat()).result;
+  };
+
+  afterEach(() => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({ preferences: { numberFormat: 'en-US', defaultCurrency: 'USD' } }),
+    );
+  });
+
+  it('keeps the precision the value already carries', () => {
+    // The migration target for the `{value}%` shape. The server rounds
+    // percentUsed to 2dp, so the same expression must still render "80%",
+    // "80.5%" and "80.55%" -- a fixed decimal count would change all three.
+    const en = withPreferences('en-US', 'en').current;
+    expect(en.formatPercentTrimmed(80)).toBe('80%');
+    expect(en.formatPercentTrimmed(80.5)).toBe('80.5%');
+    expect(en.formatPercentTrimmed(80.55)).toBe('80.55%');
+    expect(en.formatPercentTrimmed(0)).toBe('0%');
+  });
+
+  it('uses the configured locale', () => {
+    const pl = withPreferences('pl-PL', 'pl').current;
+    expect(pl.formatPercentTrimmed(80.55)).toBe('80,55%');
+    expect(pl.formatPercentTrimmed(80)).toBe('80%');
+  });
+
+  it('caps at four decimals', () => {
+    const en = withPreferences('en-US', 'en').current;
+    expect(en.formatPercentTrimmed(33.333333)).toBe('33.3333%');
+  });
+});

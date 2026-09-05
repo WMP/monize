@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type {
   AiUsageSummary,
@@ -27,26 +27,6 @@ const PERIOD_OPTIONS = [
   { labelKey: 'periods.d90', value: 90 },
   { labelKey: 'periods.all', value: undefined },
 ];
-
-function currencyFormatter(currency: string): Intl.NumberFormat {
-  // Guard against any invalid currency code; fall back to USD so formatting
-  // never throws for users with exotic codes.
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-  } catch {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-  }
-}
 
 function providerLabel(provider: string): string {
   return AI_PROVIDER_LABELS[provider as AiProviderType] ?? provider;
@@ -91,7 +71,17 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
   // Request and token counts are read by a person, so they follow the
   // configured number locale like every other figure -- never the browser's,
   // which an explicit `numberFormat` preference exists to override.
-  const { formatNumber } = useNumberFormat();
+  const { formatNumber, formatCurrencyPrecise } = useNumberFormat();
+  /**
+   * A model call costs fractions of a cent, so this column shows 2-4 decimals
+   * rather than the currency's own two -- `formatCurrencyPrecise` expands only
+   * when the base precision would round to zero, which is the same rule.
+   * An unknown currency code loses the symbol rather than the reader's locale.
+   */
+  const formatCost = useCallback(
+    (value: number, currency: string) => formatCurrencyPrecise(value, currency, 2),
+    [formatCurrencyPrecise],
+  );
   const [selectedPeriod, setSelectedPeriod] = useState<number | undefined>(30);
   const [showInHomeCurrency, setShowInHomeCurrency] = useState(true);
   const { convert } = useExchangeRates();
@@ -140,11 +130,11 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
         if (converted === null) return '-';
         total += converted;
       }
-      return currencyFormatter(homeCurrency).format(total);
+      return formatCost(total, homeCurrency);
     }
     return Object.entries(bucket)
       .filter(([, amount]) => amount > 0)
-      .map(([currency, amount]) => currencyFormatter(currency).format(amount))
+      .map(([currency, amount]) => formatCost(amount, currency))
       .join(' + ');
   };
 
@@ -156,9 +146,9 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
     if (showInHomeCurrency) {
       const converted = convert(cost, costCurrency, homeCurrency);
       if (converted === null) return '-';
-      return currencyFormatter(homeCurrency).format(converted);
+      return formatCost(converted, homeCurrency);
     }
-    return currencyFormatter(costCurrency).format(cost);
+    return formatCost(cost, costCurrency);
   };
 
   const totalHasCost = hasAnyCost(usage.totalEstimatedCostByCurrency);

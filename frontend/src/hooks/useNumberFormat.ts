@@ -63,10 +63,44 @@ export interface NumberFormatters {
  */
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
+/**
+ * Cache of "can `Intl` build a formatter for this tag", so the probe runs once
+ * per distinct preference value rather than once per figure.
+ */
+const localeUsable = new Map<string, boolean>();
+
+/**
+ * The locale itself, or `undefined` (the browser default) when `Intl` cannot use
+ * it.
+ *
+ * `Intl.NumberFormat` throws `RangeError` on a structurally invalid tag, and
+ * `en_US` -- the underscore form half the world writes -- is one. Nothing
+ * validates `numberFormat` on the way in, and this call sits inside render, so
+ * one such stored value took the whole screen down rather than one figure.
+ * Falling back to the browser is the honest answer here: the preference is
+ * unreadable, and the browser is what an absent preference already means.
+ * (The server's counterpart lands on `DEFAULT_LOCALE` instead, because it has no
+ * browser to fall back to.)
+ */
+function usableLocale(locale: string | undefined): string | undefined {
+  if (locale === undefined) return undefined;
+  const cached = localeUsable.get(locale);
+  if (cached !== undefined) return cached ? locale : undefined;
+  let usable = true;
+  try {
+    new Intl.NumberFormat(locale);
+  } catch {
+    usable = false;
+  }
+  localeUsable.set(locale, usable);
+  return usable ? locale : undefined;
+}
+
 function getNumberFormat(
-  locale: string | undefined,
+  rawLocale: string | undefined,
   options: Intl.NumberFormatOptions,
 ): Intl.NumberFormat {
+  const locale = usableLocale(rawLocale);
   const key = `${locale ?? ''}|${JSON.stringify(options)}`;
   let formatter = formatterCache.get(key);
   if (!formatter) {
@@ -197,6 +231,36 @@ export function useNumberFormat() {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value / 100); // Intl.NumberFormat expects decimal (0.5 = 50%)
+    },
+    [numberFormat, language]
+  );
+
+  /**
+   * Locale-aware percentage that keeps the precision the value already carries:
+   * 0 to `maxDecimals` fraction digits, trailing zeros trimmed. The sibling of
+   * `formatQuantity` and `formatPrice`, for percentages.
+   *
+   * `formatPercent` takes a decimal count and is right where the surface has
+   * decided one (a table column that must line up). This one is for the far
+   * commoner `{value}%` shape, where the value arrives already rounded -- the
+   * server rounds `percentUsed` to 2dp, so the same expression renders "80%",
+   * "80.5%" and "80.55%" -- and pinning a count would either add zeros the
+   * reader has not seen before or silently drop a digit. Migrating those to a
+   * fixed `formatPercent` would have changed the figure, which is the one thing
+   * a localization fix must not do.
+   *
+   * Four decimals because an interest rate is quoted to at most three or four;
+   * a value carrying more than that is a rounding defect upstream, and it is
+   * better to show it trimmed than to let the cap decide the design.
+   */
+  const formatPercentTrimmed = useCallback(
+    (value: number, maxDecimals: number = 4): string => {
+      const locale = getEffectiveLocale(numberFormat, language);
+      return getNumberFormat(locale, {
+        style: 'percent',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals,
+      }).format(value / 100); // Intl takes a fraction; call sites hold percent units
     },
     [numberFormat, language]
   );
@@ -340,5 +404,5 @@ export function useNumberFormat() {
     [numberFormat, defaultCurrency, language]
   );
 
-  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, formatShareQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
+  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatPercentTrimmed, formatSignedPercent, formatQuantity, formatShareQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
 }

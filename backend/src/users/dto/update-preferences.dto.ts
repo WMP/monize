@@ -14,6 +14,7 @@ import {
   IsIn,
 } from "class-validator";
 import { IsDashboardWidgetConfig } from "../validators/is-dashboard-widget-config.validator";
+import { IsNumberLocale } from "../../common/validators/is-number-locale.validator";
 
 /**
  * Map services an address link can be sent to.
@@ -60,6 +61,7 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsString()
   @MaxLength(50)
+  @IsNumberLocale()
   numberFormat?: string;
 
   @ApiPropertyOptional({ description: "Theme preference", example: "light" })

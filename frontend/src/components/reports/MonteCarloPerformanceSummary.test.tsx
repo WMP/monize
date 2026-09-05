@@ -28,7 +28,7 @@ const fmt = (v: number) => `$${v.toFixed(0)}`;
  * A deterministic stand-in for `useNumberFormat()`'s bundle. These are unit
  * tests of the pure helpers' branching, not of locale rendering -- the locale
  * cases live in `src/hooks/useNumberFormat.test.ts` and the component locale
- * regressions in `src/test/number-locale.regression.test.tsx`.
+ * regressions in `SecurityList.test.tsx`'s "number locale" block.
  */
 const fmts = {
   formatCurrency: fmt,

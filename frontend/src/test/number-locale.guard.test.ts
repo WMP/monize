@@ -174,30 +174,85 @@ describe('a number is not formatted through the browser locale', () => {
   });
 });
 
-describe('a percentage is not built with toFixed and a literal %', () => {
-  /** Both shapes that were found: `${x.toFixed(1)}%` and `x.toFixed(1) + '%'`. */
-  const TOFIXED_PERCENT = /\.toFixed\(\s*\d+\s*\)\s*(?:\}%|\+\s*['"]%['"])/g;
+describe('a percentage is not written beside a literal %', () => {
+  /**
+   * The first pass of this guard matched `.toFixed(n)}%` and `x.toFixed(n) + '%'`
+   * -- the two shapes the migration had just removed -- and reported clean over
+   * fourteen surviving offenders, because the codebase's commonest shape names no
+   * formatter at all: `{percentage}%`, `{Math.round(x)}%`, `{cond ? a : '0.0'}%`.
+   * A scan written from the diff sees what was fixed, not what the rule is.
+   *
+   * So the subject is the literal `%` itself: any `}` immediately followed by one.
+   * That is the whole family, and it needs no list of shapes to keep up with.
+   */
+  const CLOSING_BRACE_PERCENT = /\}%/g;
 
-  it('has none in the source tree', () => {
+  /**
+   * A CSS percentage is a length, not a figure: `width: ${pct}%` inside a style
+   * is the one legitimate `}%`, and it must stay a plain number because CSS does
+   * not read the user's locale. Recognised by the property it is assigned to,
+   * looking only at the text before the match on its own line.
+   */
+  const CSS_LENGTH =
+    /(width|height|left|right|top|bottom|translate|basis|offset|inset|size|margin|padding)/i;
+
+  /** The three modules whose job IS composing a percentage from its parts. */
+  const FORMATTER_MODULES = new Set([
+    '/src/hooks/useNumberFormat.ts',
+    '/src/lib/format.ts',
+    '/src/test/number-format-mock.ts',
+  ]);
+
+  it('has no percentage composed beside a literal % outside the formatters', () => {
     const offenders: string[] = [];
     for (const [path, raw] of productionSources()) {
+      if (FORMATTER_MODULES.has(path)) continue;
       const content = withoutComments(raw);
-      for (const match of content.matchAll(TOFIXED_PERCENT)) {
+      for (const match of content.matchAll(CLOSING_BRACE_PERCENT)) {
+        const lineStart = content.lastIndexOf('\n', match.index) + 1;
+        if (CSS_LENGTH.test(content.slice(lineStart, match.index))) continue;
         offenders.push(`${path}:${lineOf(content, match.index)}`);
       }
     }
 
-    // `toFixed` writes a `.` decimal in every locale and the literal `%` lands
-    // where English puts it (fr-FR writes "12,3 %"). Use
-    // `useNumberFormat().formatPercent(value, decimals)` -- it takes percentage
-    // units -- or `formatSignedPercent` where an explicit leading sign is wanted.
+    // A literal `%` lands where English puts it (fr-FR writes "12,3 %"), and the
+    // number beside it carries a `.` decimal. Use
+    // `useNumberFormat().formatPercent(value, decimals)` where the surface has
+    // decided a decimal count, `formatPercentTrimmed(value)` where the value
+    // arrives already rounded and the count must not change what is displayed,
+    // or `formatSignedPercent` where an explicit leading sign is wanted.
     expect(offenders).toEqual([]);
+  });
+
+  it('still finds the formatter modules, so the exemption is not vacuous', () => {
+    for (const path of FORMATTER_MODULES) {
+      expect(sources[path], `${path} not found -- update this guard`).toBeTruthy();
+      expect(withoutComments(sources[path])).toMatch(CLOSING_BRACE_PERCENT);
+    }
+  });
+
+  it('leaves a CSS length alone but catches a figure on the same line', () => {
+    // The exemption is keyed on the text BEFORE the match, so a percentage
+    // rendered on a line that also sets a width is still caught.
+    const css = 'style={{ width: `${pct}%` }}';
+    const figure = '<span>{pct}%</span>';
+    const lineOfText = (text: string) =>
+      CSS_LENGTH.test(text.slice(0, text.indexOf('}%')));
+    expect(lineOfText(css)).toBe(true);
+    expect(lineOfText(figure)).toBe(false);
   });
 });
 
 describe('en-US is not hardcoded in a formatter', () => {
+  /**
+   * `undefined` is included deliberately. It is not a fixed locale, it is the
+   * BROWSER's -- the same defect the `toLocaleString()` scan above covers,
+   * wearing an explicit argument. The AI usage dashboard formatted money through
+   * `new Intl.NumberFormat(undefined, ...)` beside counts that had just been
+   * migrated, so one table row disagreed with itself.
+   */
   const HARDCODED_EN_US =
-    /(?:Intl\.NumberFormat|toLocaleString)\(\s*['"]en-US['"]/g;
+    /(?:Intl\.NumberFormat|toLocaleString)\(\s*(?:['"]en-US['"]|undefined)/g;
 
   /** The one module whose documented contract IS a fixed deterministic locale. */
   const DETERMINISTIC_HELPERS = '/src/lib/format.ts';

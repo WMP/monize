@@ -81,7 +81,7 @@ const ACCOUNT_STORAGE_KEY = 'monize-reports-debt-payoff-timeline-account';
 export function DebtPayoffTimelineReport() {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   // Today-anchored (see `loan-projection-anchor.guard.test.ts`), but still the
   // USER's today: the payoff date this report draws per account is the one the
@@ -581,7 +581,7 @@ export function DebtPayoffTimelineReport() {
         : selectedAccount.accountType.charAt(0) + selectedAccount.accountType.slice(1).toLowerCase(),
       formatCurrency(Math.abs(selectedAccount.currentBalance)),
       currentTerms.annualRate != null
-        ? `${currentTerms.annualRate}%`
+        ? `${formatPercentTrimmed(currentTerms.annualRate)}`
         : t('debtPayoff.notSet'),
       currentTerms.payment ? formatCurrency(currentTerms.payment) : t('debtPayoff.notSet'),
       String(paymentsMade),
@@ -858,7 +858,7 @@ export function DebtPayoffTimelineReport() {
                       interval="preserveStartEnd"
                     />
                     <YAxis
-                      tickFormatter={(value: number) => `${value}%`}
+                      tickFormatter={(value: number) => `${formatPercentTrimmed(value)}`}
                       tick={{ fontSize: 12 }}
                       domain={[0, 100]}
                     />
@@ -952,7 +952,7 @@ export function DebtPayoffTimelineReport() {
               <span className="text-gray-500 dark:text-gray-400">{t('debtPayoff.colInterestRate')}</span>
               <p className="font-medium text-gray-900 dark:text-gray-100">
                 {currentTerms.annualRate != null
-                  ? `${currentTerms.annualRate}%`
+                  ? `${formatPercentTrimmed(currentTerms.annualRate)}`
                   : t('debtPayoff.notSet')}
               </p>
             </div>

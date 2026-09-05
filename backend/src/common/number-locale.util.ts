@@ -37,9 +37,52 @@ export function resolveNumberLocale(
   numberFormat: string | null | undefined,
   language: string | null | undefined,
 ): string {
-  if (numberFormat && numberFormat !== "browser") return numberFormat;
-  if (language && language !== "browser" && language !== "xx") return language;
+  if (numberFormat && numberFormat !== "browser") {
+    return usableLocale(numberFormat);
+  }
+  if (language && language !== "browser" && language !== "xx") {
+    return usableLocale(language);
+  }
   return DEFAULT_LOCALE;
+}
+
+/**
+ * Cache of "can `Intl` build a formatter for this tag", so the probe below runs
+ * once per distinct stored value rather than once per figure.
+ */
+const localeUsable = new Map<string, boolean>();
+
+/**
+ * The locale itself, or {@link DEFAULT_LOCALE} when `Intl` cannot use it.
+ *
+ * `Intl.NumberFormat` throws `RangeError` on a STRUCTURALLY invalid tag -- and
+ * `en_US`, the underscore form half the world writes, is one. Nothing validates
+ * `numberFormat` on the way in (the DTO checks `@IsString()` and a length), so
+ * one such value used to reach every formatter here at once: the Monthly
+ * Comparison report answered 500, and because the throw happened inside the cron
+ * that composes them, that user's bill reminders and budget alerts stopped
+ * arriving with no message anywhere saying why.
+ *
+ * Note the failure this must NOT have: catching the throw at the call site and
+ * falling back to another formatter *built from the same locale* -- which is
+ * what the first version of `formatCurrency` did, so its catch threw too. The
+ * check belongs here, once, before any formatter is built.
+ *
+ * A tag that is well-formed but unknown (`zzz`) does not throw; `Intl` resolves
+ * it to its own default. That is not this function's problem to solve -- it is a
+ * locale the reader asked for and the platform could not honour.
+ */
+function usableLocale(locale: string): string {
+  const cached = localeUsable.get(locale);
+  if (cached !== undefined) return cached ? locale : DEFAULT_LOCALE;
+  let usable = true;
+  try {
+    new Intl.NumberFormat(locale);
+  } catch {
+    usable = false;
+  }
+  localeUsable.set(locale, usable);
+  return usable ? locale : DEFAULT_LOCALE;
 }
 
 /**
@@ -58,6 +101,14 @@ export interface NumberT {
   formatNumber(value: number, decimals?: number): string;
   /** A percentage in percentage units (12.3 -> "12.3%" / "12,3%"). */
   formatPercent(value: number, decimals?: number): string;
+  /**
+   * A percentage that keeps the precision the value already carries (0 to
+   * `maxDecimals`, trailing zeros trimmed). The counterpart of the client's
+   * `formatPercentTrimmed`: for a figure that arrives already rounded, pinning a
+   * decimal count would change what the reader sees, and a localization fix must
+   * not change the figure.
+   */
+  formatPercentTrimmed(value: number, maxDecimals?: number): string;
 }
 
 /**
@@ -88,7 +139,11 @@ function intl(
  * (`const { formatCurrency } = n`) would lose a `this` binding, and the failure
  * would be a runtime crash in a cron-composed email nobody is watching.
  */
-export function numberFormatterForLocale(locale: string): NumberT {
+export function numberFormatterForLocale(rawLocale: string): NumberT {
+  // Exported, so a caller can reach it with a tag that never went through
+  // `resolveNumberLocale`. Probe here too: every formatter below is built from
+  // this one value, so an unusable tag would take all of them down together.
+  const locale = usableLocale(rawLocale);
   const formatNumber = (value: number, decimals = 2): string =>
     intl(locale, {
       minimumFractionDigits: decimals,
@@ -128,6 +183,13 @@ export function numberFormatterForLocale(locale: string): NumberT {
         style: "percent",
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
+      }).format(value / 100);
+    },
+    formatPercentTrimmed(value: number, maxDecimals = 4): string {
+      return intl(locale, {
+        style: "percent",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals,
       }).format(value / 100);
     },
   };

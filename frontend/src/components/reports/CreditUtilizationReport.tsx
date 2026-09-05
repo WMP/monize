@@ -75,7 +75,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-credit-utilization-accounts';
 export function CreditUtilizationReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrency, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const { convert, defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -347,7 +347,7 @@ export function CreditUtilizationReport() {
                     <XAxis
                       type="number"
                       domain={[0, 100]}
-                      tickFormatter={(value: number) => `${value}%`}
+                      tickFormatter={(value: number) => `${formatPercentTrimmed(value)}`}
                       tick={{ fontSize: 12 }}
                     />
                     <YAxis

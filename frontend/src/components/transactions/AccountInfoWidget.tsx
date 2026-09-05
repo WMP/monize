@@ -61,7 +61,7 @@ export function AccountInfoWidget({
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const formatChartDate = useChartDateFormat();
   // Loan/mortgage figures: the current installment, the estimated payoff date
@@ -143,7 +143,7 @@ export function AccountInfoWidget({
   if (displayedRate != null && displayedRate !== 0) {
     details.push({
       label: t('accountWidget.interestRate'),
-      value: `${displayedRate}%`,
+      value: `${formatPercentTrimmed(displayedRate)}`,
     });
   }
   if (loan.status !== 'idle') {

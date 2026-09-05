@@ -33,7 +33,7 @@ type FlexGroupSortField = 'category' | 'budgeted' | 'spent' | 'remaining' | 'per
 
 export function FlexGroupAnalysisReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>('');
@@ -108,7 +108,7 @@ export function FlexGroupAnalysisReport() {
         formatCurrency(cat.budgeted),
         formatCurrency(cat.spent),
         formatCurrency(cat.budgeted - cat.spent),
-        `${cat.percentUsed}%`,
+        `${formatPercentTrimmed(cat.percentUsed)}`,
       ]),
     );
     await exportToPdf({
@@ -209,7 +209,7 @@ export function FlexGroupAnalysisReport() {
                   group.percentUsed > 80 ? 'text-yellow-600 dark:text-yellow-400' :
                   'text-green-600 dark:text-green-400'
                 }`}>
-                  {group.percentUsed}%
+                  {formatPercentTrimmed(group.percentUsed)}
                 </span>
               </div>
             </div>
@@ -332,7 +332,7 @@ export function FlexGroupAnalysisReport() {
                         cat.percentUsed > 80 ? 'text-yellow-600 dark:text-yellow-400' :
                         'text-green-600 dark:text-green-400'
                       }`}>
-                        {cat.percentUsed}%
+                        {formatPercentTrimmed(cat.percentUsed)}
                       </td>
                     </tr>
                   ))}

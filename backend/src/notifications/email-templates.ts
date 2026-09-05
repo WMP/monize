@@ -457,7 +457,7 @@ export function budgetMonthlySummaryTemplate(
           <div style="background: #e5e7eb; border-radius: 4px; height: 8px; margin-bottom: 8px;">
             <div style="background: ${percentColor}; border-radius: 4px; height: 8px; width: ${Math.min(s.percentUsed, 100)}%;"></div>
           </div>
-          <p style="margin: 0 0 8px 0; color: ${percentColor}; font-weight: 600; font-size: 14px;">${t("emails.budgetMonthlySummary.percentUsed", `${n.formatNumber(s.percentUsed, 1)}% used`, { percent: n.formatNumber(s.percentUsed, 1) })}</p>
+          <p style="margin: 0 0 8px 0; color: ${percentColor}; font-weight: 600; font-size: 14px;">${t("emails.budgetMonthlySummary.percentUsed", `${n.formatPercent(s.percentUsed, 1)} used`, { percent: n.formatNumber(s.percentUsed, 1) })}</p>
 
           ${healthSection}
           ${overBudgetRows}

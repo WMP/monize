@@ -97,6 +97,8 @@ describe("the reporting-currency fallback", () => {
     // from ReportCurrencyService.getDefaultCurrency.
     "built-in-reports/monthly-comparison.service.ts":
       "reads numberFormat/language; its reporting currency comes from ReportCurrencyService",
+    "built-in-reports/anomaly-reports.service.ts":
+      "reads numberFormat/language; its reporting currency comes from ReportCurrencyService",
     // Puts the user's own currency (and locale) into a lookup prompt as a
     // disambiguation hint ("Hydro One" vs "Hydro-Québec"). No preference means
     // no hint; a fallback would tell the model something the user never said.

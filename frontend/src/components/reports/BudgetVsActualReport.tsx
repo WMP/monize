@@ -30,7 +30,7 @@ type BudgetTrendSortField = 'month' | 'budgeted' | 'actual' | 'variance' | 'perc
 
 export function BudgetVsActualReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
   const [months, setMonths] = useState(6);
   const [viewMode, setViewMode] = useState<'overview' | 'categories'>('overview');
@@ -119,7 +119,7 @@ export function BudgetVsActualReport() {
       formatCurrency(point.budgeted),
       formatCurrency(point.actual),
       `${point.variance > 0 ? '+' : ''}${formatCurrency(point.variance)}`,
-      `${point.percentUsed}%`,
+      `${formatPercentTrimmed(point.percentUsed)}`,
     ]);
     await exportToPdf({
       title: t('budgetVsActual.pdfTitle'),

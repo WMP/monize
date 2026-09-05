@@ -40,7 +40,7 @@ export function CreditUtilizationAccountsWidget({
   isLoading,
 }: CreditUtilizationAccountsWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrency, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const { convert, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
@@ -103,7 +103,7 @@ export function CreditUtilizationAccountsWidget({
               <XAxis
                 type="number"
                 domain={[0, 100]}
-                tickFormatter={(v: number) => `${v}%`}
+                tickFormatter={(v: number) => `${formatPercentTrimmed(v)}`}
                 tick={{ fontSize: 11 }}
               />
               <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />

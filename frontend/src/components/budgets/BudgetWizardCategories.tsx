@@ -107,7 +107,7 @@ export function BudgetWizardCategories({
   onBack,
 }: BudgetWizardCategoriesProps) {
   const t = useTranslations('budgets');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const { analysisResult, selectedCategories, selectedTransfers = new Map(), profile, strategy, currencyCode } = state;
   const is503020 = strategy === 'FIFTY_THIRTY_TWENTY';
 
@@ -630,7 +630,7 @@ export function BudgetWizardCategories({
                       {g.label} <span className="text-gray-400">{t('wizardCategories.allocationTarget', { percent: String(g.target) })}</span>
                     </span>
                     <span className={`font-medium ${statusColor}`}>
-                      {g.percent}% &middot; {formatCurrency(g.amount, currencyCode)}
+                      {formatPercentTrimmed(g.percent)} &middot; {formatCurrency(g.amount, currencyCode)}
                     </span>
                   </div>
                   <div className="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">

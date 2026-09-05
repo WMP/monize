@@ -357,7 +357,11 @@ describe("SpendingByCategoryReport", () => {
     });
   });
 
-  it("shows 0% percentage in legend when totalExpenses is zero", async () => {
+  it("shows a zero percentage in the legend when totalExpenses is zero", async () => {
+    // "0.0%", not "0%": the share is rendered at one decimal like every
+    // other row in this legend. The old code took a shortcut in this branch
+    // -- a literal `'0'` beside `.toFixed(1)` for the computed one -- so the
+    // no-data case was the only row that disagreed with its neighbours.
     mockGetSpendingByCategory.mockResolvedValue({
       data: [
         { categoryId: "cat-1", categoryName: "Food", total: 0, color: "" },
@@ -369,7 +373,7 @@ describe("SpendingByCategoryReport", () => {
       expect(screen.getByText("Food")).toBeInTheDocument();
     });
     // When totalExpenses is 0, percentage should display as '0'
-    expect(screen.getByText("$0.00 (0%)")).toBeInTheDocument();
+    expect(screen.getByText("$0.00 (0.0%)")).toBeInTheDocument();
   });
 
   it("does not load data when isValid is false", async () => {

@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 function getImpactColor(impact: number): string {
   if (impact > 0) return 'text-green-600 dark:text-green-400';
   if (impact < 0) return 'text-red-600 dark:text-red-400';
@@ -28,6 +29,7 @@ type CategoryImpactSortField = 'category' | 'group' | 'percentUsed' | 'impact';
 
 export function BudgetHealthScoreReport() {
   const t = useTranslations('reports');
+  const { formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
 
   const getGroupLabel = (group: string | null): string => {
@@ -111,7 +113,7 @@ export function BudgetHealthScoreReport() {
           .map((cat) => [
             cat.categoryName,
             getGroupLabel(cat.categoryGroup),
-            `${cat.percentUsed}%`,
+            `${formatPercentTrimmed(cat.percentUsed)}`,
             `${cat.impact > 0 ? '+' : ''}${cat.impact}`,
           ])
       : [];
@@ -303,7 +305,7 @@ export function BudgetHealthScoreReport() {
                             </span>
                           </td>
                           <td className={`py-2 pr-4 text-right font-medium ${cat.percentUsed > 100 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                            {cat.percentUsed}%
+                            {formatPercentTrimmed(cat.percentUsed)}
                           </td>
                           <td className={`py-2 text-right font-medium ${getImpactColor(cat.impact)}`}>
                             {cat.impact > 0 ? '+' : ''}{cat.impact}

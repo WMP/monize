@@ -44,7 +44,7 @@ type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
 export function NetWorthReport() {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const isMobile = useIsMobile();
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [chartType, setChartType] = useLocalStorage<'line' | 'bar' | 'stacked' | 'table'>(
@@ -233,7 +233,7 @@ export function NetWorthReport() {
 
   // The 100% stacked view normalises each bar to its assets/liabilities split,
   // so the Y axis reads as a percentage rather than a currency amount.
-  const formatPercentAxis = (value: number) => `${Math.round(value * 100)}%`;
+  const formatPercentAxis = (value: number) => `${formatPercentTrimmed(Math.round(value * 100))}`;
 
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string; payload: { name: string } }> }) => {
     if (active && payload && payload.length) {

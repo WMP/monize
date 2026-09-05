@@ -1895,27 +1895,51 @@ Source of truth     frontend/src/hooks/useNumberFormat.ts getEffectiveLocale;
 Enforcement         Client: every figure goes through useNumberFormat(); a pure
                     module takes its NumberFormatters as an argument.
                     frontend/src/test/number-locale.guard.test.ts scans src/ for
-                    the four fingerprints -- a UI file importing the raw
+                    four fingerprints -- a UI file importing the raw
                     formatCurrency/formatShareQuantity from @/lib/format, a
-                    numeric toLocaleString(), a toFixed() concatenated with '%',
-                    and a hardcoded en-US Intl.NumberFormat -- with a classified
-                    allowlist and a comment stripper so the prose that has to
-                    NAME the banned patterns does not trip its own scan.
+                    numeric toLocaleString(), a literal '%' beside an
+                    interpolation, and an Intl.NumberFormat built on 'en-US' or
+                    on `undefined` (the browser, which an explicit preference
+                    exists to override) -- with a classified allowlist and a
+                    comment stripper so the prose that has to NAME the banned
+                    patterns does not trip its own scan.
+                    The percentage scan is keyed on the literal '%' rather than
+                    on `toFixed`: written from the diff it matched only the
+                    shapes the migration had just removed and reported clean over
+                    fourteen survivors, because the codebase's commonest shape
+                    (`{percentage}%`) names no formatter at all.
                     Server: numberFormatterFor(numberFormat, language) built from
                     the recipient's preference row, passed into the email
-                    templates, the budget-alert message builders and the
-                    monthly-comparison notes.
+                    templates, the budget-alert and bill-due message builders,
+                    the portfolio-movement push body, the anomaly-report
+                    descriptions and the monthly-comparison notes.
                     backend/src/common/number-locale.guard.spec.ts holds the
                     classification of every caller of the en-US helpers (each
-                    with the reason its output is not addressed to a person) and
-                    fails on a second hardcoded en-US formatter in src/.
+                    with the reason its output is not addressed to a person),
+                    fails on a second hardcoded en-US formatter in src/, and runs
+                    the same literal-'%' scan over the server -- excluding CSS
+                    lengths, SQL LIKE wildcards and logger arguments, the last by
+                    blanking whole logger CALLS, since a multi-line log message
+                    puts the '%' nowhere near the logger call that names it.
 Concurrency scope   per reader
-Failure response    A locale that Intl rejects is not a reason to fall back to
-                    en-US -- that is the defect wearing a catch block. An unknown
-                    currency code costs the SYMBOL and keeps the reader's
-                    separators.
+Failure response    An unknown currency code costs the SYMBOL and keeps the
+                    reader's separators.
+                    A stored preference Intl cannot use at all is a different
+                    case and is resolved BEFORE any formatter is built: `en_US`,
+                    the underscore form, makes Intl.NumberFormat throw RangeError,
+                    and nothing validated the column. The server falls back to
+                    DEFAULT_LOCALE, the client to the browser (which is what an
+                    absent preference already means). Catching the throw at the
+                    call site is not enough and was the first fix's mistake: its
+                    fallback rebuilt Intl from the same locale and threw too,
+                    which 500'd a report and silently stopped that user's bill
+                    reminders and budget alerts. IsNumberLocale on the DTO stops
+                    new such values; the two fallbacks cover rows already stored.
 Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp under
-                    pl-PL and en-US, tiny residual preserved, -0 normalized);
+                    pl-PL and en-US, tiny residual preserved, -0 normalized;
+                    formatPercentTrimmed keeping 80 / 80.5 / 80.55 as they are;
+                    an unusable stored locale rendering rather than throwing);
+                    is-number-locale.validator.spec.ts;
                     SecurityList.test.tsx "number locale" (the reported screen,
                     under pl-PL, en-US chosen while the UI is Polish, browser
                     fallback, and one case where the preference deliberately

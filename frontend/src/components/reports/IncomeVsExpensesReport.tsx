@@ -31,7 +31,6 @@ import { exportToCsv } from "@/lib/csv-export";
 import { chartColors } from "@/lib/chart-colors";
 import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useTranslations } from 'next-intl';
-
 type IncomeVsExpensesSortField = 'name' | 'income' | 'expenses' | 'savings' | 'savingsRate';
 
 interface ChartDataItem {
@@ -50,7 +49,7 @@ export function IncomeVsExpensesReport() {
   const formatChartDate = useChartDateFormat();
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } =
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, formatPercentTrimmed } =
     useNumberFormat();
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const {
@@ -162,7 +161,7 @@ export function IncomeVsExpensesReport() {
       d.Income,
       d.Expenses,
       d.Savings,
-      `${d.SavingsRate}%`,
+      `${formatPercentTrimmed(d.SavingsRate)}`,
     ]);
     exportToCsv('income-vs-expenses', headers, rows);
   };
@@ -353,7 +352,7 @@ export function IncomeVsExpensesReport() {
                       <td
                         className={`px-4 py-3 text-right text-sm font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'}`}
                       >
-                        {row.SavingsRate}%
+                        {formatPercentTrimmed(row.SavingsRate)}
                       </td>
                     </tr>
                   ))}
