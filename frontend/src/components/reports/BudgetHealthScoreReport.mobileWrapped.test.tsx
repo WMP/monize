@@ -86,12 +86,9 @@ const SCORE: HealthScoreResult = {
 
 async function renderTable() {
   mockGetAll.mockResolvedValue([{ id: 'b-1', name: 'Default', isActive: true } as Budget]);
-  // A fresh object per render, because `handleExportPdf` sorts the response's
-  // `categoryScores` in place -- a shared fixture would carry the ordering of
-  // whichever test exported a PDF into the next one. That mutation predates
-  // this layout change and is deliberately left as found (it is reported as a
-  // follow-up, not fixed here); the copy is what keeps these tests independent
-  // of it either way.
+  // A fresh object per render, so no test can carry state into the next one.
+  // (`handleExportPdf` used to sort the response's `categoryScores` in place,
+  // which is exactly the leak this guards against; it sorts a copy now.)
   mockGetHealthScore.mockResolvedValue({
     ...SCORE,
     categoryScores: SCORE.categoryScores.map((c) => ({ ...c })),

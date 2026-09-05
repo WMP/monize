@@ -287,10 +287,12 @@ export function BudgetHealthScoreReport() {
     // Headings and row cells both come from the ordered column record, so the
     // export cannot carry the screen's old column order (see `SortColumn`).
     // The ROW order is this export's own, unchanged: by impact ascending
-    // rather than by the transient sort on screen.
+    // rather than by the transient sort on screen. Sorted on a COPY: the
+    // response array is what the table renders, and `sort` in place made an
+    // export silently re-order the tie groups of a Group- or %-sorted table.
     const headers = sortColumns.map((col) => col.label);
     const rows = healthScore
-      ? healthScore.categoryScores
+      ? [...healthScore.categoryScores]
           .sort((a, b) => a.impact - b.impact)
           .map((cat) => sortColumns.map((col) => col.value(cat)))
       : [];
