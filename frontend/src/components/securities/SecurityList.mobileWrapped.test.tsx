@@ -377,7 +377,26 @@ describe('the securities list on a phone', () => {
     ]);
   });
 
-  it('lets the name and the type truncate rather than widen the table', () => {
+  it('clamps a long name over two lines rather than cutting it to one', () => {
+    // The tier's name cell carries no `whitespace-nowrap`, so a phone at Normal
+    // density has always wrapped a long name and shown it whole. Truncating to
+    // one line here would take that away on the exact width this card converts,
+    // and a `title` is not the way back on a device with no pointer. The box
+    // still wraps inside a `minmax(0,1fr)` track, so it contributes no minimum
+    // width -- the containment measured in the replica is unchanged.
+    onPhoneAtNormal();
+
+    const longName = 'Vanguard FTSE Global All Cap Index ETF Fund';
+    const { container } = renderList([makeSecurity({ name: longName })]);
+
+    const [row] = bodyRows(container);
+    const name = within(row).getByText(longName);
+    expect(name.className).toContain('line-clamp-2');
+    expect(name.className).not.toContain('truncate');
+    expect(name.getAttribute('title')).toBe(longName);
+  });
+
+  it('lets the name and the type yield rather than widen the table', () => {
     onPhoneAtNormal();
 
     const { container } = renderList([
@@ -398,7 +417,9 @@ describe('the securities list on a phone', () => {
     for (const grid of grids) {
       expect(grid.className).toContain('minmax(0,1fr)');
     }
-    // The name and the type text are the two regions that yield.
+    // The name wraps and clamps, the symbol and the type text truncate: three
+    // regions with a zero minimum, none of which can widen the table.
+    expect(row.querySelectorAll('.line-clamp-2').length).toBeGreaterThanOrEqual(1);
     expect(row.querySelectorAll('.truncate').length).toBeGreaterThanOrEqual(2);
   });
 

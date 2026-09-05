@@ -240,6 +240,14 @@ interface SecurityRowProps {
    * density the actions move to that sheet on exactly the widths where the tier
    * table did not show them either -- this list has no `min-[480px]` window.
    * Compact density, one tap away, is the way back to the tier table.
+   *
+   * One trade-off is deliberate and bounded: the symbol's slot has a ceiling,
+   * so a symbol near the form's 20-character maximum is the one value on the
+   * card that can be cut short (it keeps a `title`, and Compact density shows
+   * it whole). It cannot wrap the way the name does -- an ISO-style ticker
+   * broken across two lines stops reading as one ticker -- and without a
+   * ceiling its nowrap text would set the table's minimum width, which on a
+   * phone is not merely a scrollbar. Every realistic symbol is well inside it.
    */
   wrapped?: boolean;
 }
@@ -328,11 +336,21 @@ const SecurityRow = memo(function SecurityRow({
                 under it comes with it: a phone at Normal density showed the
                 tags and the description before this card existed, so dropping
                 them here would lose information the wrap is meant to recover.
-                Both sit inside the zero-floored track, so neither can widen
-                the table. */}
+                All three sit inside the zero-floored track, so none of them can
+                widen the table.
+
+                The name CLAMPS rather than truncates, and that is the same
+                argument: the tier's name cell carries no `whitespace-nowrap`,
+                so a phone at Normal density has always wrapped a long name over
+                several lines and shown it whole. One line plus an ellipsis
+                would have taken that away on the exact width this card
+                converts, and a `title` is not the way back on a device with no
+                pointer to hover. Two lines is the description's own limit, and
+                a wrapping box in a `minmax(0,1fr)` track contributes no
+                minimum, so the measured containment is unchanged. */}
             <div className="min-w-0">
               <div
-                className="truncate text-sm text-gray-900 dark:text-gray-100"
+                className="line-clamp-2 text-sm text-gray-900 dark:text-gray-100"
                 title={security.name}
               >
                 {security.name}
