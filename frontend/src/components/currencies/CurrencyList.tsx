@@ -28,18 +28,33 @@ export type SortDirection = 'asc' | 'desc';
 const logger = createLogger('CurrencyList');
 
 /**
- * Every field this list sorts by, in the tier header's own order. The phone's
- * slim control header renders all of them: the chosen field is persisted
- * (`monize-currencies-sort-field`, set on the Currencies page) and Name and
- * Decimals are hidden below `sm` and `lg` respectively, so a header offering
- * fewer would strand a phone on a sort order it can neither see nor undo. It is
- * also the whole `CurrencySortField` union, which is what lets the slim `<th>`
- * announce a direction unconditionally: every field it could be sorted by is a
- * field this header names. Usage, Status and Actions are absent because the
+ * Every field this list sorts by, with its position in the tier header's own
+ * order. The phone's slim control header renders all of them: the chosen field
+ * is persisted (`monize-currencies-sort-field`, set on the Currencies page) and
+ * two of the five columns are hidden at phone width (Name below `sm`, Decimals
+ * below `lg`), so a header offering fewer would strand a phone on a sort order
+ * it can neither see nor undo. Usage, Status and Actions are absent because the
  * tier header offers no sort control for them.
+ *
+ * It is a `Record` keyed by the union rather than a hand-written array because
+ * the slim `<th>` announces a direction UNCONDITIONALLY, and that is only
+ * honest while the buttons name every field the list can be sorted by. Here the
+ * compiler holds that: a sixth sort field is a type error until it is given a
+ * position, and the derived list cannot omit one. `as const satisfies
+ * ReadonlyArray<CurrencySortField>` would have accepted a proper subset --
+ * leaving "sorted ascending" announced over five unsorted glyphs.
  */
-const SORT_FIELDS = ['code', 'name', 'symbol', 'decimals', 'rate'] as const satisfies
-  ReadonlyArray<CurrencySortField>;
+const SORT_FIELD_ORDER: Record<CurrencySortField, number> = {
+  code: 0,
+  name: 1,
+  symbol: 2,
+  decimals: 3,
+  rate: 4,
+};
+
+const SORT_FIELDS: readonly CurrencySortField[] = (
+  Object.keys(SORT_FIELD_ORDER) as CurrencySortField[]
+).sort((a, b) => SORT_FIELD_ORDER[a] - SORT_FIELD_ORDER[b]);
 
 /** The Usage column's figure: accounts plus securities, zero when unused. */
 function currencyUsageTotal(usage: { accounts: number; securities: number } | undefined): number {
@@ -536,10 +551,10 @@ export function CurrencyList({
           {/* On a phone the wrapped card labels its own values, so the column
               header is dropped -- but the controls in that header row must not
               go with it: these `<th>`s are how the list is sorted, the chosen
-              field is persisted by the Currencies page, and four of the five
-              sortable columns are hidden or unreadable at phone width (Name
-              below `sm`, Decimals below `lg`), so a phone could be left sorted
-              by a field it can neither see nor undo. A slim control header
+              field is persisted by the Currencies page, and two of the five
+              sortable columns are hidden at phone width (Name below `sm`,
+              Decimals below `lg`), so a phone could be left sorted by a field
+              it can neither see nor undo. A slim control header
               carries all five as buttons -- the card shows all five values --
               and no column label of its own: the single card cell below holds
               code, name, symbol, decimals, usage, rate and status at once, so
