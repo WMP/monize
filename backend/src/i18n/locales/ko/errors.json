@@ -610,6 +610,7 @@
     "notConfigured": "설정된 Google Places API 키가 없습니다.",
     "capReached": "이번 달 Google Places 요청 한도에 도달했습니다.",
     "testFailed": "Google Places 연결 테스트에 실패했습니다.",
-    "referrerRestricted": "이 키는 HTTP 리퍼러로 제한되어 있어 여기서는 작동할 수 없습니다. Monize는 서버에서 Google을 호출하므로 리퍼러가 전송되지 않습니다. Google Cloud 콘솔에서 키의 애플리케이션 제한을 IP 주소(또는 없음)로 변경하고 Places API로 제한하세요."
+    "referrerRestricted": "이 키는 HTTP 리퍼러로 제한되어 있지만 이 배포에는 PUBLIC_APP_URL이 설정되어 있지 않아 리퍼러가 전송되지 않으며 어떤 허용 목록과도 일치할 수 없습니다. PUBLIC_APP_URL을 설정하거나, 서버 측 키를 실제로 보호하는 IP 주소 제한을 사용하세요.",
+    "referrerRejected": "Google가 이 키의 HTTP 리퍼러 제한을 거부했습니다. Monize는 \"{referer}\"를 전송합니다(PUBLIC_APP_URL 기준). 해당 값을 그대로 키의 허용 리퍼러에 추가하세요. *.example.com/* 같은 패턴은 순수한 example.com과 일치하지 않습니다. 서버 측 키를 실제로 보호하는 것은 IP 주소 제한입니다."
   }
 }

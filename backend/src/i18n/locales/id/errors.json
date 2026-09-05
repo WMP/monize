@@ -610,6 +610,7 @@
     "notConfigured": "Tidak ada kunci API Google Places yang dikonfigurasi.",
     "capReached": "Batas permintaan Google Places bulan ini telah tercapai.",
     "testFailed": "Uji koneksi Google Places gagal.",
-    "referrerRestricted": "Kunci ini dibatasi oleh perujuk HTTP, yang tidak dapat bekerja di sini: Monize memanggil Google dari server, sehingga tidak ada perujuk yang dikirim. Di konsol Google Cloud, setel pembatasan aplikasi kunci ke alamat IP (atau Tidak ada) dan batasi ke Places API."
+    "referrerRestricted": "Kunci ini dibatasi oleh perujuk HTTP, tetapi penerapan ini tidak menyetel PUBLIC_APP_URL, sehingga tidak ada perujuk yang dikirim dan tidak ada daftar izin yang dapat cocok. Setel PUBLIC_APP_URL, atau batasi kunci berdasarkan alamat IP, yaitu opsi yang benar-benar melindungi kunci sisi server.",
+    "referrerRejected": "Google menolak pembatasan perujuk HTTP kunci ini. Monize mengirim \"{referer}\" (dari PUBLIC_APP_URL); tambahkan persis nilai itu ke perujuk yang diizinkan, dan ingat bahwa pola seperti *.example.com/* tidak cocok dengan example.com polos. Membatasi kunci berdasarkan alamat IP adalah opsi yang benar-benar melindungi kunci sisi server."
   }
 }

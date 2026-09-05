@@ -610,6 +610,7 @@
     "notConfigured": "Google Places の API キーが設定されていません。",
     "capReached": "今月の Google Places リクエスト上限に達しました。",
     "testFailed": "Google Places の接続テストに失敗しました。",
-    "referrerRestricted": "このキーは HTTP リファラーで制限されていますが、ここでは機能しません。Monize はサーバーから Google を呼び出すため、リファラーは送信されません。Google Cloud コンソールで、キーのアプリケーション制限を IP アドレス（または「なし」）に変更し、Places API に限定してください。"
+    "referrerRestricted": "このキーは HTTP リファラーで制限されていますが、このデプロイには PUBLIC_APP_URL が設定されていないためリファラーが送信されず、どの許可リストにも一致しません。PUBLIC_APP_URL を設定するか、サーバー側のキーを実際に保護する IP アドレスによる制限を使用してください。",
+    "referrerRejected": "Google がこのキーの HTTP リファラー制限を拒否しました。Monize は「{referer}」を送信します（PUBLIC_APP_URL より）。その値をそのままキーの許可リファラーに追加してください。*.example.com/* のようなパターンは素の example.com には一致しない点に注意してください。サーバー側のキーを実際に保護するのは、IP アドレスによる制限です。"
   }
 }

@@ -1,3 +1,4 @@
+import { ConfigService } from "@nestjs/config";
 import { ProviderHealthService } from "../../../provider-health/provider-health.service";
 import { ProviderUnavailableError } from "../../../provider-health/provider-unavailable.error";
 import {
@@ -28,6 +29,8 @@ describe("GooglePlacesClient", () => {
   >;
   let client: GooglePlacesClient;
 
+  let env: Record<string, string | undefined>;
+
   const okResponse = (payload: unknown) => ({
     ok: true,
     status: 200,
@@ -43,7 +46,11 @@ describe("GooglePlacesClient", () => {
       releaseProbe: jest.fn(),
       logFailure: jest.fn(),
     } as unknown as typeof health;
-    client = new GooglePlacesClient(health as unknown as ProviderHealthService);
+    env = {};
+    client = new GooglePlacesClient(
+      health as unknown as ProviderHealthService,
+      { get: (k: string) => env[k] } as unknown as ConfigService,
+    );
   });
 
   afterAll(() => {
@@ -292,6 +299,77 @@ describe("GooglePlacesClient", () => {
 
       await expect(search()).rejects.toThrow("bad url");
       expect(health.releaseProbe).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Google's HTTP-referrer key restriction matches this header, and a server
+   * sends none of its own -- which is why such a key answers "Requests from
+   * referer <empty> are blocked" for every lookup. Browsers forbid script from
+   * setting `Referer`; Node does not, so sending the deployment's own URL makes
+   * that restriction satisfiable.
+   *
+   * It is worth saying what this does NOT buy, because the tests are the place
+   * the intent survives: a referrer restriction protects a key that is public
+   * (shipped in browser JS, where the browser sets the header). This key never
+   * reaches a browser, so anything holding it can send this header too. The
+   * restriction that actually constrains a server-side key is by IP.
+   */
+  describe("identifying the deployment to Google", () => {
+    const headersOfLastCall = (): Record<string, string> =>
+      (global.fetch as jest.Mock).mock.calls[0][1].headers;
+
+    it("sends PUBLIC_APP_URL as the Referer", async () => {
+      env.PUBLIC_APP_URL = "https://monize.laskonet.com";
+      (global.fetch as jest.Mock).mockResolvedValue(okResponse({ places: [] }));
+
+      await client.searchText({
+        apiKey: "k",
+        textQuery: "Acme",
+        maxResults: 3,
+      });
+
+      // Origin plus a trailing slash: Google matches patterns like
+      // `*.laskonet.com/*`, and a path would only narrow what matches.
+      expect(headersOfLastCall().Referer).toBe("https://monize.laskonet.com/");
+    });
+
+    it("reduces a URL carrying a path to its origin", async () => {
+      env.PUBLIC_APP_URL = "https://monize.laskonet.com/app/?x=1";
+      (global.fetch as jest.Mock).mockResolvedValue(okResponse({ places: [] }));
+
+      await client.searchText({
+        apiKey: "k",
+        textQuery: "Acme",
+        maxResults: 3,
+      });
+
+      expect(headersOfLastCall().Referer).toBe("https://monize.laskonet.com/");
+    });
+
+    it("sends no Referer at all when PUBLIC_APP_URL is unset", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(okResponse({ places: [] }));
+
+      await client.searchText({
+        apiKey: "k",
+        textQuery: "Acme",
+        maxResults: 3,
+      });
+
+      // Omitted, not empty: an empty Referer is exactly what a restricted key
+      // already rejects, so sending one would look like a value and match
+      // nothing.
+      expect(headersOfLastCall()).not.toHaveProperty("Referer");
+      expect(client.referer()).toBeNull();
+    });
+
+    it("drops a value that is not an absolute http(s) URL", async () => {
+      // A misconfigured PUBLIC_APP_URL must not become a header nothing can
+      // match; the error message then correctly reports that none was sent.
+      for (const bad of ["laskonet.com", "", "   ", "ftp://x.example"]) {
+        env.PUBLIC_APP_URL = bad;
+        expect(client.referer()).toBeNull();
+      }
     });
   });
 });

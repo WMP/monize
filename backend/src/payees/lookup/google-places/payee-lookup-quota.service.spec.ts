@@ -112,9 +112,7 @@ describe("PayeeLookupQuotaService", () => {
       // able to disagree with the row it is incrementing.
       await service.claim(userScope);
 
-      expect(lastSql()).toContain(
-        "to_char(now() AT TIME ZONE $4, 'YYYY-MM')",
-      );
+      expect(lastSql()).toContain("to_char(now() AT TIME ZONE $4, 'YYYY-MM')");
     });
   });
 

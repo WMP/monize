@@ -432,22 +432,35 @@ export class PayeeLookupSettingsService {
   /**
    * What to tell the user about a failed test.
    *
-   * Google's own message is the useful part, except in one case where it is
-   * actively misleading: an HTTP-referrer restriction reports "Requests from
-   * referer <empty> are blocked", which reads as a bug in Monize. It is not --
-   * Monize calls Google from the SERVER, so there is no referrer to send, and
-   * a referrer restriction can never be satisfied by it. That restriction is
-   * for keys used in a browser; a server-side key is restricted by IP address.
-   * Saying so is the difference between a two-minute fix and an hour spent
-   * checking a domain that was never going to matter.
+   * Google's own message is the useful part, except for a referrer rejection,
+   * where it names a value the user cannot act on. Two different repairs hide
+   * behind that one message, and which applies depends on whether this
+   * deployment has a `PUBLIC_APP_URL` to send:
+   *
+   * - It sends one, and Google still refused: the restriction does not list
+   *   that value. Naming it exactly is the whole fix -- a pattern like
+   *   `*.example.com/*` does not match a bare `example.com`, which is the
+   *   mistake this message exists to make visible.
+   * - It sends none: the header is empty, which is what "referer <empty>"
+   *   means, and no allow-list can ever match it.
+   *
+   * Both end with the same alternative, because it is the one that actually
+   * constrains a server-side key: restrict by IP address instead.
    */
   private describeTestFailure(error: unknown): string {
     const message = error instanceof Error ? error.message : "";
     if (/referer|referrer/i.test(message)) {
-      return tr(
-        "errors.payeeLookup.referrerRestricted",
-        "This key is restricted by HTTP referrer, which cannot work here: Monize calls Google from the server, so no referrer is sent. In the Google Cloud console, set the key's application restriction to IP addresses (or None) instead, and restrict it to the Places API.",
-      );
+      const referer = this.places.referer();
+      return referer
+        ? tr(
+            "errors.payeeLookup.referrerRejected",
+            `Google rejected this key's HTTP referrer restriction. Monize sends "${referer}" (from PUBLIC_APP_URL); add exactly that to the key's allowed referrers, remembering that a pattern like *.example.com/* does not match a bare example.com. Restricting the key by IP address instead is the option that actually protects a server-side key.`,
+            { referer },
+          )
+        : tr(
+            "errors.payeeLookup.referrerRestricted",
+            "This key is restricted by HTTP referrer, but this deployment has no PUBLIC_APP_URL set, so it sends no referrer and no allow-list can match it. Set PUBLIC_APP_URL, or restrict the key by IP address instead, which is the option that actually protects a server-side key.",
+          );
     }
     return (
       message ||

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ProviderHealthService } from "../../../provider-health/provider-health.service";
 
 /** The id this client reports under. Must match `TRACKED_PROVIDERS`. */
@@ -8,6 +9,42 @@ const SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText";
 
 /** A slow directory lookup is worse than none: the user is waiting on it. */
 const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * The `Referer` this deployment sends, from `PUBLIC_APP_URL`.
+ *
+ * Google's HTTP-referrer key restriction matches this header, and a server
+ * sends no referrer of its own -- which is why a key restricted that way
+ * answers "Requests from referer <empty> are blocked" for every lookup. Sending
+ * the deployment's own URL makes such a key work.
+ *
+ * **What it is worth, stated plainly.** A referrer restriction protects a key
+ * that is PUBLIC -- shipped inside browser JavaScript, where the browser sets
+ * `Referer` and page script cannot forge it. This key is not public: it lives
+ * encrypted in the database and never reaches a browser. Anything that can
+ * reach Google can send this header too (Node sets it happily; only browsers
+ * treat it as forbidden), so the restriction filters nobody who has the key.
+ * An IP restriction is the one that actually constrains a server-side key.
+ *
+ * It is still sent, because a deployment without a stable egress address --
+ * a home server on a dynamic IP, a cluster with variable egress -- cannot use
+ * an IP restriction at all, and for them a forgeable filter beats no filter.
+ * The choice is the operator's; this just stops it being impossible.
+ *
+ * Only an absolute http(s) URL is sent, reduced to its origin: Google matches
+ * patterns like `*.example.com/*`, a path would only narrow what matches, and
+ * a malformed value is dropped rather than sent as a header nothing can match.
+ */
+function refererFrom(rawUrl: string | undefined): string | null {
+  if (!rawUrl?.trim()) return null;
+  try {
+    const url = new URL(rawUrl.trim());
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return `${url.origin}/`;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The fields asked for, which is also the SKU this request is billed at.
@@ -86,7 +123,20 @@ export class GooglePlacesRejectedError extends Error {
 export class GooglePlacesClient {
   private readonly logger = new Logger(GooglePlacesClient.name);
 
-  constructor(private readonly health: ProviderHealthService) {}
+  constructor(
+    private readonly health: ProviderHealthService,
+    private readonly configService?: ConfigService,
+  ) {}
+
+  /**
+   * What this deployment identifies itself as to Google, or null when
+   * `PUBLIC_APP_URL` is unset or unparseable. Read per request rather than
+   * cached, so the value follows configuration without a restart -- it costs
+   * one URL parse against a 10-second network call.
+   */
+  referer(): string | null {
+    return refererFrom(this.configService?.get<string>("PUBLIC_APP_URL"));
+  }
 
   /**
    * Best matches for one free-text query, best first.
@@ -101,6 +151,7 @@ export class GooglePlacesClient {
   ): Promise<GooglePlacesResult[]> {
     const admission = this.health.assertAvailable(GOOGLE_PLACES_PROVIDER);
     const context = `payee contact lookup for "${request.textQuery}"`;
+    const referer = this.referer();
 
     let response: Response;
     try {
@@ -110,6 +161,9 @@ export class GooglePlacesClient {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": request.apiKey,
           "X-Goog-FieldMask": FIELD_MASK,
+          // Omitted entirely when there is nothing to say, rather than sent
+          // empty: an empty Referer is what a restricted key already rejects.
+          ...(referer ? { Referer: referer } : {}),
         },
         body: JSON.stringify({
           textQuery: request.textQuery,

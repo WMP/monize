@@ -610,6 +610,7 @@
     "notConfigured": "Nenhuma chave de API do Google Places está configurada.",
     "capReached": "O limite de solicitações do Google Places deste mês foi atingido.",
     "testFailed": "O teste de conexão com o Google Places falhou.",
-    "referrerRestricted": "Esta chave está restrita por referenciador HTTP, o que não pode funcionar aqui: o Monize chama o Google a partir do servidor, então nenhum referenciador é enviado. No console do Google Cloud, defina a restrição de aplicativo da chave para endereços IP (ou Nenhuma) e restrinja-a à API Places."
+    "referrerRestricted": "Esta chave está restrita por referenciador HTTP, mas esta instalação não tem PUBLIC_APP_URL definida, então nenhum referenciador é enviado e nenhuma lista de permissões pode corresponder. Defina PUBLIC_APP_URL, ou restrinja a chave por endereço IP, a opção que realmente protege uma chave do lado do servidor.",
+    "referrerRejected": "O Google rejeitou a restrição de referenciador HTTP desta chave. O Monize envia \"{referer}\" (de PUBLIC_APP_URL); adicione exatamente esse valor aos referenciadores permitidos, lembrando que um padrão como *.example.com/* não corresponde a um example.com simples. Restringir a chave por endereço IP é a opção que realmente protege uma chave do lado do servidor."
   }
 }

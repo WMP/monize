@@ -610,6 +610,7 @@
     "notConfigured": "Nie skonfigurowano żadnego klucza API Google Places.",
     "capReached": "Osiągnięto tegomiesięczny limit zapytań Google Places.",
     "testFailed": "Test połączenia z Google Places nie powiódł się.",
-    "referrerRestricted": "Ten klucz jest ograniczony przez odsyłacz HTTP, co nie może tu działać: Monize wywołuje Google z serwera, więc odsyłacz nie jest wysyłany. W konsoli Google Cloud ustaw ograniczenie aplikacji klucza na adresy IP (lub Brak) i ogranicz go do Places API."
+    "referrerRestricted": "Ten klucz jest ograniczony przez odsyłacz HTTP, ale to wdrożenie nie ma ustawionego PUBLIC_APP_URL, więc nie wysyła żadnego odsyłacza i żadna lista dozwolonych nie może pasować. Ustaw PUBLIC_APP_URL albo ogranicz klucz według adresu IP -- opcji, która naprawdę chroni klucz po stronie serwera.",
+    "referrerRejected": "Google odrzucił ograniczenie odsyłacza HTTP dla tego klucza. Monize wysyła \"{referer}\" (z PUBLIC_APP_URL); dodaj dokładnie tę wartość do dozwolonych odsyłaczy, pamiętając, że wzorzec taki jak *.example.com/* nie pasuje do samego example.com. Ograniczenie klucza według adresu IP to opcja, która naprawdę chroni klucz po stronie serwera."
   }
 }

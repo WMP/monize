@@ -335,14 +335,38 @@ What that costs, stated rather than hidden: a crash between the claim and the
 call, or a transport failure after it, spends a slot for an answer nobody
 received. That is the survivable direction.
 
-Whose key is spent is decided once, by `PayeeLookupSettingsService.resolveSource`:
-the operator's `GOOGLE_PLACES_API_KEY` where the deployment set one (counted in
+The one **compensation** is `PayeeLookupQuotaService.release`, and only the Test
+button uses it. A request Google *answered with a refusal* was never served and
+never billed, so charging for it would make every check of a broken key cost a
+request. A transport failure is deliberately not released: nobody answered, so
+whether Google served it is unknown, and under-counting is the direction that
+spends money. `ContactLookupUnavailableError.httpStatus` is what tells an
+answered refusal from a stall. The release is `GREATEST(x - 1, 0)`, because a
+release that crossed a month boundary must return quota rather than mint it.
+
+Whose key is spent, and which source is asked first, are decided together in one
+read by `PayeeLookupSettingsService.resolveRouting`: the operator's
+`GOOGLE_PLACES_API_KEY` where the deployment set one (counted in
 `google_places_instance_usage`, deployment-wide, because one key is one bill),
-otherwise the user's own encrypted key (counted per user). Availability goes
-through the same `ProviderHealthService` breaker as the market-data clients, with
-one asymmetry worth naming: a 400 or 403 from a rejected key is recorded as a
-**success**, because the host plainly answered -- counting it as a failure would
-let one user's bad key open a deployment-wide breaker and page the operator.
+otherwise the user's own encrypted key (counted per user). The month those
+counters roll over on is **Pacific**, not UTC, because that is when Google's free
+allowance resets; a counter that rolled over first would hand back a cap the
+allowance behind it had not released.
+
+Availability goes through the same `ProviderHealthService` breaker as the
+market-data clients, with one asymmetry worth naming: a 400 or 403 from a
+rejected key is recorded as a **success**, because the host plainly answered --
+counting it as a failure would let one user's bad key open a deployment-wide
+breaker and page the operator.
+
+The client sends `PUBLIC_APP_URL`'s origin as `Referer`, which is what makes an
+HTTP-referrer key restriction satisfiable at all: a server sends none of its own,
+so such a key rejected every lookup. It buys availability rather than security --
+a referrer restriction protects a key that is public, shipped in browser
+JavaScript where the browser sets the header, and this key never leaves the
+server -- so an IP restriction is the one that actually constrains it. The header
+is sent because a deployment with no stable egress address cannot use an IP
+restriction at all.
 
 ## 7. There is no shared lifecycle, and one workflow shows what it would look like
 

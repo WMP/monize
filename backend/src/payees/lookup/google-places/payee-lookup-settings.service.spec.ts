@@ -23,7 +23,7 @@ describe("PayeeLookupSettingsService", () => {
   let repo: Record<string, jest.Mock>;
   let encryption: Record<string, jest.Mock>;
   let quota: { claim: jest.Mock; usedThisMonth: jest.Mock; release: jest.Mock };
-  let places: { lookup: jest.Mock };
+  let places: { lookup: jest.Mock; referer: jest.Mock };
   let env: Record<string, unknown>;
 
   const build = () => {
@@ -68,7 +68,10 @@ describe("PayeeLookupSettingsService", () => {
       usedThisMonth: jest.fn().mockResolvedValue(0),
       release: jest.fn().mockResolvedValue(undefined),
     };
-    places = { lookup: jest.fn().mockResolvedValue([]) };
+    places = {
+      lookup: jest.fn().mockResolvedValue([]),
+      referer: jest.fn().mockReturnValue(null),
+    };
     service = build();
   });
 
@@ -402,24 +405,44 @@ describe("PayeeLookupSettingsService", () => {
       expect(quota.release).not.toHaveBeenCalled();
     });
 
-    it("explains a referrer restriction instead of repeating Google's message", async () => {
-      // "Requests from referer <empty> are blocked" reads as a Monize bug. It
-      // is not: this is a server-side call, so no referrer is ever sent and an
-      // HTTP-referrer restriction can never be satisfied. The fix is an IP
-      // restriction, and the message has to say so.
-      places.lookup.mockRejectedValue(
-        new ContactLookupUnavailableError(
-          "failed",
-          "Google Places returned HTTP 403: Requests from referer <empty> are blocked.",
-          403,
-        ),
-      );
+    describe("a referrer rejection", () => {
+      beforeEach(() => {
+        places.lookup.mockRejectedValue(
+          new ContactLookupUnavailableError(
+            "failed",
+            "Google Places returned HTTP 403: Requests from referer <empty> are blocked.",
+            403,
+          ),
+        );
+      });
 
-      const result = await service.testKey(USER, "draft-key");
+      it("names the exact referrer this deployment sends", async () => {
+        // The whole fix is usually one string: a restriction written
+        // *.laskonet.com/* does not match a bare laskonet.com, and the user
+        // cannot compare against a value nothing tells them.
+        places.referer.mockReturnValue("https://monize.laskonet.com/");
 
-      expect(result.available).toBe(false);
-      expect(result.error).toMatch(/IP address/i);
-      expect(result.error).not.toMatch(/<empty>/);
+        const result = await service.testKey(USER, "draft-key");
+
+        expect(result.available).toBe(false);
+        expect(result.error).toContain("https://monize.laskonet.com/");
+        // Google's own "<empty>" is now wrong as well as unhelpful: a referrer
+        // IS being sent, it just is not on the allow-list.
+        expect(result.error).not.toMatch(/<empty>/);
+      });
+
+      it("says no referrer is sent when PUBLIC_APP_URL is unset", async () => {
+        // Here "<empty>" is literally true, and the repair is different: set
+        // PUBLIC_APP_URL, or restrict by IP. Reporting the first message would
+        // send the user to add a value to an allow-list that would still never
+        // match.
+        places.referer.mockReturnValue(null);
+
+        const result = await service.testKey(USER, "draft-key");
+
+        expect(result.error).toMatch(/PUBLIC_APP_URL/);
+        expect(result.error).toMatch(/IP address/i);
+      });
     });
 
     it("refuses when no key is configured and none was supplied", async () => {

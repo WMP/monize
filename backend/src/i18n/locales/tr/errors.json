@@ -610,6 +610,7 @@
     "notConfigured": "Yapılandırılmış bir Google Places API anahtarı yok.",
     "capReached": "Bu ayki Google Places istek sınırına ulaşıldı.",
     "testFailed": "Google Places bağlantı testi başarısız oldu.",
-    "referrerRestricted": "Bu anahtar HTTP yönlendireni ile kısıtlanmış ve burada çalışamaz: Monize, Google'ı sunucudan çağırır, bu nedenle yönlendiren gönderilmez. Google Cloud konsolunda anahtarın uygulama kısıtlamasını bunun yerine IP adresleri (veya Yok) olarak ayarlayın ve Places API ile sınırlayın."
+    "referrerRestricted": "Bu anahtar HTTP yönlendireni ile kısıtlanmış, ancak bu kurulumda PUBLIC_APP_URL ayarlı değil; bu nedenle hiçbir yönlendiren gönderilmiyor ve hiçbir izin listesi eşleşemez. PUBLIC_APP_URL değerini ayarlayın veya anahtarı IP adresine göre kısıtlayın; sunucu tarafı bir anahtarı gerçekten koruyan seçenek budur.",
+    "referrerRejected": "Google bu anahtarın HTTP yönlendiren kısıtlamasını reddetti. Monize \"{referer}\" gönderiyor (PUBLIC_APP_URL değerinden); tam olarak bu değeri anahtarın izin verilen yönlendirenlerine ekleyin ve *.example.com/* gibi bir kalıbın sade example.com ile eşleşmediğini unutmayın. Anahtarı IP adresine göre kısıtlamak, sunucu tarafı bir anahtarı gerçekten koruyan seçenektir."
   }
 }

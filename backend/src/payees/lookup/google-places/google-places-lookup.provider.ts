@@ -44,6 +44,17 @@ export class GooglePlacesLookupProvider {
    * can act on and none of them is "nothing found". A transport failure and an
    * open breaker propagate as they are, for the coordinator to classify.
    */
+  /**
+   * What this deployment identifies itself as to Google, or null when it sends
+   * nothing. Delegated rather than re-derived: the value in a Test button's
+   * error message has to be the one the request actually carried, and two
+   * readers of `PUBLIC_APP_URL` would eventually disagree about the trailing
+   * slash or a stray path.
+   */
+  referer(): string | null {
+    return this.client.referer();
+  }
+
   async lookup(
     apiKey: string,
     input: PayeeContactLookupInput,

@@ -610,6 +610,7 @@
     "notConfigured": "[XX-No Google Places API key is configured.-XX]",
     "capReached": "[XX-This month's Google Places request limit has been reached.-XX]",
     "testFailed": "[XX-The Google Places connection test failed.-XX]",
-    "referrerRestricted": "[XX-This key is restricted by HTTP referrer, which cannot work here: Monize calls Google from the server, so no referrer is sent. In the Google Cloud console, set the key's application restriction to IP addresses (or None) instead, and restrict it to the Places API.-XX]"
+    "referrerRestricted": "[XX-This key is restricted by HTTP referrer, but this deployment has no PUBLIC_APP_URL set, so it sends no referrer and no allow-list can match it. Set PUBLIC_APP_URL, or restrict the key by IP address instead, which is the option that actually protects a server-side key.-XX]",
+    "referrerRejected": "[XX-Google rejected this key's HTTP referrer restriction. Monize sends \"{referer}\" (from PUBLIC_APP_URL); add exactly that to the key's allowed referrers, remembering that a pattern like *.example.com/* does not match a bare example.com. Restricting the key by IP address instead is the option that actually protects a server-side key.-XX]"
   }
 }

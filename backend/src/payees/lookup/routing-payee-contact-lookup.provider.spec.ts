@@ -85,9 +85,7 @@ describe("RoutingPayeeContactLookupProvider", () => {
   const lookup = () => router.lookup("user-1", { name: "Acme" });
 
   describe("with no Google Places key configured", () => {
-    beforeEach(() =>
-      setSource({ kind: "none" }),
-    );
+    beforeEach(() => setSource({ kind: "none" }));
 
     it("answers through AI, exactly as before this feature existed", async () => {
       await expect(lookup()).resolves.toEqual(aiAnswer);

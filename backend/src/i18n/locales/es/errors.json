@@ -610,6 +610,7 @@
     "notConfigured": "No hay ninguna clave de API de Google Places configurada.",
     "capReached": "Se ha alcanzado el límite de solicitudes de Google Places de este mes.",
     "testFailed": "La prueba de conexión con Google Places ha fallado.",
-    "referrerRestricted": "Esta clave está restringida por referente HTTP, lo que no puede funcionar aquí: Monize llama a Google desde el servidor, por lo que no se envía ningún referente. En la consola de Google Cloud, cambie la restricción de aplicación de la clave a direcciones IP (o Ninguna) y restrínjala a la API de Places."
+    "referrerRestricted": "Esta clave está restringida por referente HTTP, pero esta instalación no tiene PUBLIC_APP_URL configurada, así que no envía ningún referente y ninguna lista de permitidos puede coincidir. Configure PUBLIC_APP_URL, o restrinja la clave por dirección IP, que es la opción que realmente protege una clave del lado del servidor.",
+    "referrerRejected": "Google rechazó la restricción de referente HTTP de esta clave. Monize envía \"{referer}\" (de PUBLIC_APP_URL); añada exactamente ese valor a los referentes permitidos, teniendo en cuenta que un patrón como *.example.com/* no coincide con un example.com simple. Restringir la clave por dirección IP es la opción que realmente protege una clave del lado del servidor."
   }
 }

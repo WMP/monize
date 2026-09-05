@@ -610,6 +610,7 @@
     "notConfigured": "未設定任何 Google Places API 金鑰。",
     "capReached": "本月的 Google Places 要求已達上限。",
     "testFailed": "Google Places 連線測試失敗。",
-    "referrerRestricted": "此金鑰受 HTTP 參照網址限制，在這裡無法生效：Monize 從伺服器呼叫 Google，因此不會傳送參照網址。請在 Google Cloud 主控台中將該金鑰的應用程式限制改為 IP 位址（或「無」），並將其限制為 Places API。"
+    "referrerRestricted": "此金鑰受 HTTP 參照網址限制，但本部署未設定 PUBLIC_APP_URL，因此不會傳送任何參照網址，任何允許清單都無法符合。請設定 PUBLIC_APP_URL，或改為依 IP 位址限制金鑰——這才是真正保護伺服器端金鑰的選項。",
+    "referrerRejected": "Google 拒絕了此金鑰的 HTTP 參照網址限制。Monize 傳送「{referer}」（來自 PUBLIC_APP_URL）；請將該值原樣加入金鑰的允許參照網址，並注意 *.example.com/* 這樣的模式並不符合純粹的 example.com。依 IP 位址限制金鑰才是真正保護伺服器端金鑰的選項。"
   }
 }

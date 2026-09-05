@@ -610,6 +610,7 @@
     "notConfigured": "Er is geen Google Places API-sleutel ingesteld.",
     "capReached": "De limiet voor Google Places-verzoeken van deze maand is bereikt.",
     "testFailed": "De verbindingstest met Google Places is mislukt.",
-    "referrerRestricted": "Deze sleutel is beperkt op HTTP-referrer, wat hier niet kan werken: Monize roept Google aan vanaf de server, dus er wordt geen referrer verzonden. Stel in de Google Cloud-console de toepassingsbeperking van de sleutel in op IP-adressen (of Geen) en beperk hem tot de Places API."
+    "referrerRestricted": "Deze sleutel is beperkt op HTTP-referrer, maar deze installatie heeft geen PUBLIC_APP_URL ingesteld, dus er wordt geen referrer verzonden en geen enkele toegestane lijst kan overeenkomen. Stel PUBLIC_APP_URL in, of beperk de sleutel op IP-adres, de optie die een serversleutel daadwerkelijk beschermt.",
+    "referrerRejected": "Google heeft de HTTP-referrerbeperking van deze sleutel geweigerd. Monize verstuurt \"{referer}\" (uit PUBLIC_APP_URL); voeg precies die waarde toe aan de toegestane referrers, en let erop dat een patroon als *.example.com/* niet overeenkomt met een kaal example.com. De sleutel beperken op IP-adres is de optie die een serversleutel daadwerkelijk beschermt."
   }
 }

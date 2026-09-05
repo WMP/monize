@@ -610,6 +610,7 @@
     "notConfigured": "Chưa cấu hình khóa API Google Places nào.",
     "capReached": "Đã đạt giới hạn yêu cầu Google Places của tháng này.",
     "testFailed": "Kiểm tra kết nối Google Places thất bại.",
-    "referrerRestricted": "Khóa này bị giới hạn theo HTTP referrer, điều này không thể hoạt động ở đây: Monize gọi Google từ máy chủ nên không có referrer nào được gửi đi. Trong bảng điều khiển Google Cloud, hãy đặt giới hạn ứng dụng của khóa thành địa chỉ IP (hoặc Không có) và giới hạn khóa ở Places API."
+    "referrerRestricted": "Khóa này bị giới hạn theo HTTP referrer, nhưng bản triển khai này chưa đặt PUBLIC_APP_URL nên không gửi referrer nào và không danh sách cho phép nào có thể khớp. Hãy đặt PUBLIC_APP_URL, hoặc giới hạn khóa theo địa chỉ IP — tùy chọn thực sự bảo vệ một khóa phía máy chủ.",
+    "referrerRejected": "Google đã từ chối giới hạn HTTP referrer của khóa này. Monize gửi \"{referer}\" (từ PUBLIC_APP_URL); hãy thêm đúng giá trị đó vào danh sách referrer được phép, lưu ý rằng mẫu như *.example.com/* không khớp với example.com trần. Giới hạn khóa theo địa chỉ IP mới là tùy chọn thực sự bảo vệ một khóa phía máy chủ."
   }
 }
