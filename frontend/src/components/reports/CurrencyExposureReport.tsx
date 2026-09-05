@@ -19,6 +19,7 @@ import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { CellLabel } from '@/components/ui/Table';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
@@ -49,6 +50,88 @@ const CURRENCY_COLOURS: Record<string, string> = {
 
 const FALLBACK_COLOURS = [CHART_SERIES[8], CHART_SERIES[9]];
 
+/**
+ * One sortable column of the data table. The six are declared once, as a
+ * record over the sort field union, and rendered by BOTH header rows -- the
+ * column header row (from `sm` up) and the phone sort strip -- so the two can
+ * never list different fields, and adding a member to the union fails `tsc`
+ * rather than stranding a phone with no control for it.
+ */
+interface SortColumn {
+  field: CurrencyExposureSortField;
+  label: string;
+  /** Money, rate, percent and count columns are right-aligned on desktop. */
+  align?: 'right';
+}
+
+/**
+ * The record the two header rows are built from, keyed by sort field.
+ *
+ * The key is tied to the entry's own `field`, which a plain
+ * `Record<CurrencyExposureSortField, SortColumn>` does not do: that forces an
+ * entry to EXIST for every member of the union but lets it name a different
+ * one, so `rate: { field: 'nativeValue', label: colRate }` type-checks. Both
+ * header rows would then render two controls keyed `nativeValue` (a duplicate
+ * React key), tapping "Rate" would sort by Native Value, and "Rate" would be
+ * unsortable -- and a test comparing header LABELS cannot see any of it,
+ * because the labels stay right. Here it is a compile error instead.
+ */
+type SortColumnsByField = {
+  [K in CurrencyExposureSortField]: SortColumn & { field: K };
+};
+
+// Today's header cell, unchanged.
+const HEADER_CLASS =
+  'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
+
+// The same sort controls in the phone strip: a wrapped row of compact chips.
+// Column alignment means nothing there -- the column header row is hidden and
+// each data row is a grid -- so every control is left-aligned and self-naming.
+// The border and card background are what say "tappable": there is no hover on
+// a touch screen, and without them the strip reads as another row of the
+// captions the cells below carry.
+const PHONE_HEADER_CLASS =
+  'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
+
+// A figure cell inside a wrapped card: no padding of its own below `sm` (the
+// row supplies it and the grid does the spacing), the table cell's own padding
+// from `sm` up. Smaller type on phones. The colour stays on each cell, because
+// the two money cells, the rate and the two counts are coloured differently.
+//
+// `whitespace-nowrap` is the one property here that is NOT phone-only, and it
+// is one of exactly two respects in which the `sm`-and-up cell differs from
+// today's: a locale that groups thousands with a space could otherwise break a
+// figure in the middle of a number, at any width. It also holds the 6dp rate
+// on one line, which is the rule this report cannot bend -- a rate is not
+// money and is never rounded, truncated or clipped to fit.
+//
+// MONEY_CELL width budget, measured on a hand-written CSS replica in Chromium
+// at the insets this table really gets -- the report page's `px-4` and the
+// row's own `px-4`, the card contributing none -- so 256px of track at 320px
+// and 326px at 390px. Two equal `minmax(0,1fr)` tracks with the row's
+// `gap-x-3` give each figure cell a measured 122px at 320px and 157px at
+// 390px.
+//
+// The formatter is the 2dp `formatCurrencyFull`, not the compact one the
+// sibling reports use, and that is what decides the line count. The widest
+// realistic value is a six-figure amount in a currency `narrowSymbol` has no
+// symbol for, so the unit is the three-letter ISO code: `123 456,78 CHF`
+// measures 97px at `text-xs`, and a seven-figure `1 219 326,04 CHF` 110px --
+// both inside 122px. Three figure cells on one line was measured too and does
+// not fit: three equal tracks are 77px at 320px, and the same content put
+// 314px of table in a 288px wrapper with 42px of cell overflow. So two per
+// line, on three lines (see the row's comment).
+//
+// Right alignment is not a containment device: a nowrap figure longer than its
+// track overflows past the END edge whatever `text-align` says, and in the
+// right-hand track that reopens the wrapper's sideways scroll. That is the
+// deliberate choice -- `overflow-hidden` here would silently cut a figure or a
+// rate, and a cut figure is worse than a crowded one or an honest scroll.
+const FIGURE_CELL =
+  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
+
+/** Every caption in a wrapped cell is phone-only. */
+const CAPTION_CLASS = 'sm:hidden';
 
 interface CurrencyAllocation {
   currency: string;
@@ -225,9 +308,33 @@ export function CurrencyExposureReport() {
     [allocationData, defaultCurrency],
   );
 
+  // Exhaustive over the sort field union, so a new field is a compile error
+  // rather than a column with no control in either header -- and each entry
+  // must name its own key (see `SortColumnsByField`). Two of the labels take
+  // `defaultCurrency` as an ICU argument, so the phone captions below pass the
+  // same argument and read exactly as the column header does.
+  const columns: SortColumnsByField = {
+    currency: { field: 'currency', label: t('currencyExposure.colCurrency') },
+    nativeValue: { field: 'nativeValue', label: t('currencyExposure.colNativeValue'), align: 'right' },
+    rate: { field: 'rate', label: t('currencyExposure.colRate', { defaultCurrency }), align: 'right' },
+    convertedValue: { field: 'convertedValue', label: t('currencyExposure.colConvertedValue', { defaultCurrency }), align: 'right' },
+    percentage: { field: 'percentage', label: t('currencyExposure.colPortfolioPct'), align: 'right' },
+    count: { field: 'count', label: t('currencyExposure.colHoldings'), align: 'right' },
+  };
+
+  // Their order, rendered by BOTH header rows and matched by the cells' DOM
+  // order. DERIVED from the record rather than re-listed: a hand-written list
+  // beside an exhaustive record is not exhaustive, so a field added to the
+  // union would compile (the record forces an entry) and still ship with no
+  // sort control in either header -- exactly the stranding the record exists to
+  // prevent. The record's declaration order is the column order.
+  const sortColumns: readonly SortColumn[] = Object.values(columns);
+
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = [t('currencyExposure.colCurrency'), t('currencyExposure.colNativeValue'), t('currencyExposure.colRate', { defaultCurrency }), t('currencyExposure.colConvertedValue', { defaultCurrency }), t('currencyExposure.colPortfolioPct'), t('currencyExposure.colHoldings')];
+    // The PDF's column headings are the table's, from the same record, so the
+    // export cannot drift from the screen it exports.
+    const headers = sortColumns.map((col) => col.label);
     const rows = allocationData.map(item => [
       item.currency,
       formatCurrencyFull(item.nativeValue, item.currency),
@@ -378,77 +485,103 @@ export function CurrencyExposureReport() {
         </div>
       </div>
 
-      {/* Data Table */}
+      {/* Data Table
+
+          Below `sm` the table becomes a block and each row wraps into a
+          two-column grid so all six columns fit a phone without a horizontal
+          scroll, on three lines: the currency and the value in the reporting
+          currency -- the figure the row is read for -- share line 1; the
+          native value and the rate share line 2; and the portfolio share and
+          the holdings count share line 3. Three lines rather than two is a
+          measurement, not a preference: this table formats money with the 2dp
+          `formatCurrencyFull`, so three equal tracks are 77px at 320px against
+          a `123 456,78 CHF` that measures 97px, and the same content laid out
+          that way put 314px of table in a 288px wrapper with 42px of cell
+          overflow. Nothing is dropped -- the card carries all six columns --
+          and the row stays what it is today: hovering, but NOT clickable. From
+          `sm` up it is the ordinary table. The sort controls survive as their
+          own phone-only header row, because the column header row that carries
+          them on desktop is hidden there.
+
+          Measured before and after on a hand-written CSS replica in Chromium,
+          at this table's real insets (the report page's `px-4`; the card adds
+          none of its own): today the table is 743px wide in `pl` and 794px in
+          the pseudo-locale, inside a 288px wrapper at 320px and a 358px one at
+          390px -- a sideways scroll in every locale at both widths. Wrapped,
+          the wrapper's `scrollWidth` equals its `clientWidth` at both widths in
+          `pl`, `ru`, `id`, `de` and `xx`, with no cell overflowing its track.
+
+          Two properties of restyling one tree, both deliberate. Changing the
+          `display` would drop the implicit table semantics below `sm`, so the
+          explicit ARIA roles below put them back -- the phone sort strip is the
+          header row a phone reader gets, and its six controls sit in the
+          cells' own DOM order, so the column association survives. The
+          `CellLabel` captions are therefore REDUNDANT with that association
+          rather than a substitute for it, and deliberately so: the grid places
+          the cells out of DOM order visually, so a sighted phone reader has no
+          header row to look up and needs the name beside the value.
+
+          The second is an ACCEPTED, UNMITIGATED trade-off, and the roles are
+          not what answers it: they restore the table semantics, and have no
+          effect on reading order. The DOM keeps the desktop column order
+          (currency, native value, rate, converted value, share, holdings)
+          while the grid shows the converted value second, so a screen-reader
+          user hears the headline figure fourth -- the WCAG 1.3.2 tension
+          mechanism A carries. What limits the cost is the captions: every
+          value names its own column, so each one is self-describing in
+          whatever order it is heard. Both are properties of the mechanism, not
+          of this table. */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="currency"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colCurrency')}
-                </SortableHeader>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="nativeValue"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colNativeValue')}
-                </SortableHeader>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="rate"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colRate', { defaultCurrency })}
-                </SortableHeader>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="convertedValue"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colConvertedValue', { defaultCurrency })}
-                </SortableHeader>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="percentage"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colPortfolioPct')}
-                </SortableHeader>
-                <SortableHeader<CurrencyExposureSortField>
-                  field="count"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                  className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {t('currencyExposure.colHoldings')}
-                </SortableHeader>
+          {/* Explicit roles: restyling `display` below `sm` strips the implicit
+              table semantics, and these put them back (inert from `sm` up). */}
+          <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
+            <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
+              {/* Phone sort strip: the same six controls, wrapped. */}
+              <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
+                {sortColumns.map((col) => (
+                  <SortableHeader<CurrencyExposureSortField>
+                    key={col.field}
+                    field={col.field}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className={PHONE_HEADER_CLASS}
+                  >
+                    {col.label}
+                  </SortableHeader>
+                ))}
+              </tr>
+              <tr role="row" className="hidden sm:table-row">
+                {sortColumns.map((col) => (
+                  <SortableHeader<CurrencyExposureSortField>
+                    key={col.field}
+                    field={col.field}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align={col.align}
+                    className={HEADER_CLASS}
+                  >
+                    {col.label}
+                  </SortableHeader>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody role="rowgroup" className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
               {sortedAllocationData.map((item) => (
-                <tr key={item.currency} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                <tr
+                  key={item.currency}
+                  role="row"
+                  className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
+                >
+                  {/* The identity, and the one BOUNDED one in the report: a
+                      colour dot and a three-letter ISO code, 60px at its
+                      widest. It needs no floor, no clamp and no `title` -- the
+                      rules those answer are for an unbounded name -- so the
+                      inner markup is exactly today's. Measured rendered track:
+                      122px at 320px and 157px at 390px. */}
+                  <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                     <div className="flex items-center gap-2">
                       <div
                         className="w-3 h-3 rounded-full flex-shrink-0"
@@ -457,42 +590,70 @@ export function CurrencyExposureReport() {
                       {item.currency}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
+                  <td role="cell" className={`col-start-1 row-start-2 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
+                    <CellLabel className={CAPTION_CLASS}>{columns.nativeValue.label}</CellLabel>
                     {formatCurrencyFull(item.nativeValue, item.currency)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-500 dark:text-gray-400">
+                  {/* The rate is not money: six decimals, never rounded and
+                      never clipped, so it keeps `whitespace-nowrap` like the
+                      figures and sits in a full track of its own. `-` is the
+                      marker for a rate that could not be resolved, and stays
+                      exactly that -- an unknown rate is not a measured 1. */}
+                  <td role="cell" className={`col-start-2 row-start-2 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
+                    <CellLabel className={CAPTION_CLASS}>{columns.rate.label}</CellLabel>
                     {item.currency === defaultCurrency
                       ? (1).toFixed(FX_RATE_DISPLAY_DECIMALS)
                       : item.rate !== null
                         ? item.rate.toFixed(FX_RATE_DISPLAY_DECIMALS)
                         : '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
+                  {/* The value in the reporting currency is the headline: it
+                      takes the right of line 1 beside the currency, because it
+                      is what the row is read for. */}
+                  <td role="cell" className={`col-start-2 row-start-1 font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                    <CellLabel className={CAPTION_CLASS}>{columns.convertedValue.label}</CellLabel>
                     {formatCurrencyFull(item.convertedValue, defaultCurrency)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
+                  {/* Both values on line 3 are bounded (`100.0%` and a holdings
+                      count), but their CAPTIONS are not -- `[XX-% of
+                      Portfolio-XX]` is 22 characters -- so the line is two
+                      equal `minmax(0,1fr)` tracks like the others rather than
+                      an `auto` pair sized by its captions. */}
+                  <td role="cell" className={`col-start-1 row-start-3 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
+                    <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                     {item.percentage.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
+                  <td role="cell" className={`col-start-2 row-start-3 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
+                    <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
                     {item.count}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
+            <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
+              {/* The totals are the largest figures on the table, so this row
+                  wraps exactly the way a data row does -- the same two tracks
+                  and the same placement, each figure captioned -- with "Total"
+                  standing in for the currency in the identity track. The
+                  native value and the rate have no total, and their two blank
+                  cells are `hidden` below `sm` so they claim no grid slot;
+                  from `sm` up they are the same empty table cells as today. */}
+              <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
+                <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                   {t('currencyExposure.total')}
                 </td>
-                <td />
-                <td />
-                <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td role="cell" className="hidden sm:table-cell" />
+                <td role="cell" className="hidden sm:table-cell" />
+                <td role="cell" className={`col-start-2 row-start-1 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                  <CellLabel className={CAPTION_CLASS}>{columns.convertedValue.label}</CellLabel>
                   {formatCurrencyFull(totalPortfolioValue, defaultCurrency)}
                 </td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td role="cell" className={`col-start-1 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                  <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                   100%
                 </td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td role="cell" className={`col-start-2 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                  <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
                   {allocationData.reduce((sum, a) => sum + a.count, 0)}
                 </td>
               </tr>
