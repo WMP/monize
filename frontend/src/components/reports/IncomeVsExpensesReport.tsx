@@ -402,7 +402,7 @@ export function IncomeVsExpensesReport() {
                       </td>
                       {/* Savings takes the middle of line 1 beside the month:
                           it is the figure the row is read for. */}
-                      <td
+                      <td role="cell"
                         className={`col-start-2 row-start-1 font-medium ${row.Savings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavings')}</CellLabel>
@@ -411,7 +411,7 @@ export function IncomeVsExpensesReport() {
                       {/* The rate spans the first two tracks so its caption --
                           the longest in the table in every locale -- has room
                           on one line; right-aligned, it ends under Savings. */}
-                      <td
+                      <td role="cell"
                         className={`col-start-1 col-span-2 row-start-2 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
@@ -434,13 +434,13 @@ export function IncomeVsExpensesReport() {
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colExpenses')}</CellLabel>
                       {formatCurrency(totals.totalExpenses)}
                     </td>
-                    <td
+                    <td role="cell"
                       className={`col-start-2 row-start-1 font-bold ${totals.totalSavings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavings')}</CellLabel>
                       {formatCurrency(totals.totalSavings)}
                     </td>
-                    <td
+                    <td role="cell"
                       className={`col-start-1 col-span-2 row-start-2 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
