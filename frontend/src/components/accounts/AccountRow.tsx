@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Account, AccountType } from '@/types/account';
 import { AccountTypePill, AccountTypeIcon } from '@/lib/account-type-meta';
+import { hasAccountDetailView } from '@/lib/account-detail-views';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
 import { RowActions } from '@/components/ui/row-actions/RowActions';
 import type { LongPressRowHandlers } from '@/hooks/useLongPress';
@@ -42,23 +43,6 @@ export interface AccountActionHandlers {
   // Joint rows only: the grantee's per-account net-worth exclusion toggle.
   onToggleNetWorthExclusion?: (account: Account) => void;
 }
-
-/**
- * Account types with a dedicated detail page (the "Details" row action). Grows
- * as per-type detail views land; today it is the debt accounts.
- */
-export const DETAIL_ACCOUNT_TYPES: AccountType[] = [
-  'LOAN',
-  'MORTGAGE',
-  'LINE_OF_CREDIT',
-  'CREDIT_CARD',
-  'CHEQUING',
-  'SAVINGS',
-  'CASH',
-  'INVESTMENT',
-  'ASSET',
-  'OTHER',
-];
 
 /**
  * Builds the standard row actions for an account. Shared by the desktop
@@ -135,7 +119,7 @@ export function buildAccountActions(
       tone: 'primary',
       onClick: () => handlers.onDetails?.(account),
       hidden:
-        !handlers.onDetails || !DETAIL_ACCOUNT_TYPES.includes(account.accountType),
+        !handlers.onDetails || !hasAccountDetailView(account.accountType),
     },
     {
       key: 'edit',

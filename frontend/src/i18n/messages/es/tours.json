@@ -77,6 +77,14 @@
           "title": "Tus cuentas",
           "body": "Agrega aquí tus cuentas bancarias, de tarjeta de crédito, préstamos e inversiones con el botón resaltado. Todo saldo y transacción pertenece a una cuenta."
         },
+        "openAccountDetail": {
+          "title": "Abre la vista detallada de una cuenta",
+          "body": "Cada cuenta tiene una página adaptada a su tipo. Elige **Detalles** — el icono del ojo en la fila de una cuenta — para abrirla. En el móvil, mantén pulsada la cuenta y elige **Detalles**."
+        },
+        "accountDetailView": {
+          "title": "Una vista hecha para esta cuenta",
+          "body": "Esta página cambia según el tipo de cuenta: una cuenta bancaria, una tarjeta de crédito, un préstamo, una cuenta de inversión o un activo muestran cada uno las cifras y herramientas que les convienen. Vuelve cuando quieras con **Detalles** desde la lista de cuentas."
+        },
         "transactions": {
           "title": "Transacciones",
           "body": "Este es tu registro de transacciones: aquí se encuentran todos los pagos y depósitos de tus cuentas, listos para buscar y filtrar."

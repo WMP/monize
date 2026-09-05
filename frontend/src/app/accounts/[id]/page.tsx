@@ -23,45 +23,18 @@ import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { accountsApi } from '@/lib/accounts';
 import { isInvestmentCashHalf } from '@/lib/account-utils';
+// The per-account-type detail-view registry: which view this route renders,
+// and the same list the account row's Details action and the introduction
+// tour's account-detail step read.
+import { resolveAccountDetailView } from '@/lib/account-detail-views';
 import { loanScenariosApi } from '@/lib/loan-scenarios';
 import { loanRateChangesApi } from '@/lib/loan-rate-changes';
 import { fetchAllAccountTransactions, fetchLoanInterestTransactions } from '@/lib/loan-history';
 import { getErrorMessage } from '@/lib/errors';
-import type { Account, AccountType } from '@/types/account';
+import type { Account } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
 import type { LoanScenario } from '@/types/loan-scenario';
 import type { LoanRateChange } from '@/types/loan-rate-change';
-
-/**
- * Per-account-type detail-view registry. Phase 0 ships the two debt views;
- * later phases register credit-card, banking, investment, and asset views
- * here. A type absent from the registry has no dedicated page yet and
- * redirects to its transaction register.
- */
-type DetailViewKind =
-  | 'loan'
-  | 'lineOfCredit'
-  | 'creditCard'
-  | 'banking'
-  | 'investment'
-  | 'asset';
-
-const DETAIL_VIEW_REGISTRY: Partial<Record<AccountType, DetailViewKind>> = {
-  LOAN: 'loan',
-  MORTGAGE: 'loan',
-  LINE_OF_CREDIT: 'lineOfCredit',
-  CREDIT_CARD: 'creditCard',
-  CHEQUING: 'banking',
-  SAVINGS: 'banking',
-  CASH: 'banking',
-  INVESTMENT: 'investment',
-  ASSET: 'asset',
-  OTHER: 'asset',
-};
-
-function resolveDetailView(type: AccountType): DetailViewKind | null {
-  return DETAIL_VIEW_REGISTRY[type] ?? null;
-}
 
 export default function AccountDetailPage() {
   return (
@@ -98,7 +71,7 @@ function AccountDetailContent() {
 
   // Until the account loads, assume it has a dedicated page so the register
   // redirect below never fires prematurely.
-  const detailView = account ? resolveDetailView(account.accountType) : 'loan';
+  const detailView = account ? resolveAccountDetailView(account.accountType) : 'loan';
   const isRevolving = detailView === 'lineOfCredit';
   const hasDetailPage = detailView !== null;
 
@@ -118,7 +91,7 @@ function AccountDetailContent() {
       // Only the amortizing loan/mortgage view needs transaction history and
       // scenarios; the line-of-credit and credit-card views load their own
       // analytics, so just resolve the account for them.
-      if (resolveDetailView(accountData.accountType) !== 'loan') {
+      if (resolveAccountDetailView(accountData.accountType) !== 'loan') {
         setAccount(accountData);
         setTransactions([]);
         setInterestTransactions([]);
@@ -248,7 +221,7 @@ function AccountDetailContent() {
   // Account types without a registered detail view land on their transaction
   // register instead.
   useEffect(() => {
-    if (account && resolveDetailView(account.accountType) === null) {
+    if (account && resolveAccountDetailView(account.accountType) === null) {
       router.replace(`/transactions?accountId=${account.id}`);
     }
   }, [account, router]);

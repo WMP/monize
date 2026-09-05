@@ -77,6 +77,14 @@
           "title": "Hesaplarınız",
           "body": "Banka, kredi kartı, kredi ve yatırım hesaplarınızı buraya vurgulanan düğmeyle ekleyin. Her bakiye ve işlem bir hesaba aittir."
         },
+        "openAccountDetail": {
+          "title": "Bir hesabın ayrıntılı görünümünü açın",
+          "body": "Her hesabın türüne göre hazırlanmış bir sayfası vardır. Açmak için **Ayrıntılar**'ı — hesap satırındaki göz simgesini — seçin. Telefonda hesaba basılı tutun ve **Ayrıntılar**'ı seçin."
+        },
+        "accountDetailView": {
+          "title": "Bu hesap için hazırlanmış bir görünüm",
+          "body": "Bu sayfa hesap türüne göre değişir; banka hesabı, kredi kartı, kredi, yatırım hesabı veya varlık, her biri kendine en uygun rakamları ve araçları gösterir. Hesaplar listesindeki **Ayrıntılar** ile istediğiniz zaman buraya dönebilirsiniz."
+        },
         "transactions": {
           "title": "İşlemler",
           "body": "Bu, işlem kayıt defterinizdir — hesaplarınıza ait her ödeme ve yatırma burada bulunur, aramaya ve filtrelemeye hazırdır."

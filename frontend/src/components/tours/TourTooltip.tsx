@@ -54,10 +54,11 @@ interface TourTooltipProps {
   stepLabel: string;
   /** Interactive steps show a "Try it" hint + "Skip this step" instead of Next. */
   interactive: boolean;
-  /** Park an anchorless card in the bottom-right corner instead of centering
-   *  it, so the page behind stays readable and usable. Ignored when `rect` is
-   *  set (anchored cards position against the anchor) and on mobile (where the
-   *  card is a bottom sheet already). */
+  /** Park an anchorless card in a bottom corner instead of centering it, so the
+   *  page behind stays readable and usable. The corner is the right one unless
+   *  `placement` is 'left'. Ignored when `rect` is set (anchored cards position
+   *  against the anchor) and on mobile (where the card is a bottom sheet
+   *  already). */
   corner?: boolean;
   /** Last step (or the skipped outro): the primary button is Done, not Next. */
   isLast: boolean;
@@ -267,9 +268,17 @@ export function TourTooltip({
     top = pos.top;
     left = pos.left;
   } else if (corner) {
-    // Parked bottom-right so the page stays readable and usable behind it.
+    // Parked in a bottom corner so the page stays readable and usable behind
+    // it. Right by default; `placement: 'left'` moves it to the other side for
+    // a step that asks the user to use a control the right of the page holds --
+    // row actions are right-aligned and sticky, so a right-parked card lands on
+    // the very button such a step names (CI caught the account-detail step's
+    // card intercepting the click on Details at a 720px-tall viewport).
     top = Math.max(8, viewport.height - tooltipSize.height - 16);
-    left = Math.max(8, viewport.width - tooltipSize.width - 16);
+    left =
+      placement === 'left'
+        ? 16
+        : Math.max(8, viewport.width - tooltipSize.width - 16);
   } else {
     top = Math.max(8, viewport.height / 2 - tooltipSize.height / 2);
     left = Math.max(8, viewport.width / 2 - tooltipSize.width / 2);
