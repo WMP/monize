@@ -65,14 +65,14 @@ const PHONE_HEADER_CLASS =
 // half-width column, and `whitespace-nowrap` so a locale that groups thousands
 // with a space cannot break in the middle of a number.
 //
-// A nowrap amount too long for its track cannot bring the sideways scroll back:
-// the row is a fixed-width block-level grid (`grid-cols-2` is
-// `repeat(2, minmax(0, 1fr))`, so neither track grows for content) and every
-// money cell is right-aligned, so an over-long number overflows toward the
-// start edge, which is not scrollable. Measured in Chromium at 320px: a
-// thirteen-digit amount leaves the wrapper's `scrollWidth` equal to its
-// `clientWidth` and crowds its neighbour instead. Crowding is the deliberate
-// choice -- `overflow-hidden` here would silently truncate a figure.
+// The tracks are sized so a compact six-figure amount fits at 320px and a
+// seven-figure one at 390px (measured on a hand-CSS replica in Chromium).
+// Right alignment is not a containment device: a nowrap amount longer than its
+// track overflows past the END edge whatever `text-align` says, and in the
+// right-hand track that does reopen the wrapper's sideways scroll (measured:
+// a sixteen-character amount at 320px). That is the deliberate choice --
+// `overflow-hidden` here would silently truncate a figure, and a scroll that
+// appears only for an amount that large is honest.
 const MONEY_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
