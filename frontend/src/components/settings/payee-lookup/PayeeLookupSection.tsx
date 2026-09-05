@@ -81,11 +81,17 @@ export function PayeeLookupSection({
   // Only the ACTIVE providers: an inactive one cannot answer a lookup, so
   // offering it would let the user pin a source that reports no_provider.
   const [aiProviders, setAiProviders] = useState<AiProviderConfig[]>([]);
-  // Whether ANY source can answer -- Places within its cap, or an AI provider.
-  // The automatic-lookup toggle is about a lookup that runs by itself, so it is
-  // offered only when something could actually run.
-  const { available: lookupAvailable, aiConfigured } =
-    useContactLookupAvailable();
+  // Whether ANY source can answer -- Places within its cap and with a readable
+  // key, or an AI provider that is switched on. The automatic-lookup toggle is
+  // about a lookup that runs by itself, so it is live only when something could
+  // actually run. This card is the one surface that CHANGES that answer, so it
+  // re-reads the status after every save rather than re-deriving it here: the
+  // server's answer already folds in the spent cap and an unreadable key.
+  const {
+    available: lookupAvailable,
+    aiConfigured,
+    refresh: refreshAvailability,
+  } = useContactLookupAvailable();
 
   useEffect(() => {
     let active = true;
@@ -127,13 +133,17 @@ export function PayeeLookupSection({
       try {
         const saved = await payeeLookupApi.updateSettings(update);
         setSettings(saved);
+        // Awaited inside the save, so the card is still in its saving state
+        // while the status catches up -- the automatic-lookup toggle never
+        // renders live against a source that was just switched off.
+        await refreshAvailability();
         toast.success(t('saved'));
         return saved;
       } finally {
         setSaving(false);
       }
     },
-    [t],
+    [refreshAvailability, t],
   );
 
   const handleToggle = async (next: boolean) => {
@@ -165,6 +175,18 @@ export function PayeeLookupSection({
     setSettings({ ...settings, preferredSource: next });
     try {
       await save({ preferredSource: next });
+    } catch (error) {
+      setSettings(previous);
+      toast.error(getErrorMessage(error, t('saveFailed')));
+    }
+  };
+
+  const handleAiToggle = async (next: boolean) => {
+    if (!settings || saving) return;
+    const previous = settings;
+    setSettings({ ...settings, aiEnabled: next });
+    try {
+      await save({ aiEnabled: next });
     } catch (error) {
       setSettings(previous);
       toast.error(getErrorMessage(error, t('saveFailed')));
@@ -228,6 +250,9 @@ export function PayeeLookupSection({
           // are still where Places is set up -- so they render either way and
           // only the moving is withheld.
           reorderable={aiConfigured && settings.configured}
+          // With no AI provider there is nothing to switch on or to order, so
+          // the row is not drawn at all rather than drawn inert.
+          hidden={aiConfigured ? [] : ['ai']}
           onReorder={handlePreferredSource}
           rowControls={{
             'google-places': (
@@ -318,29 +343,52 @@ export function PayeeLookupSection({
                 )}
               </div>
             ),
-            // Which model answers, offered only where there is a choice to
-            // make: with one provider the select would carry a single option,
-            // and with none it would name nothing.
-            ai: aiProviders.length > 1 && (
-              <div className="mt-3">
-                <Select
-                  label={t('order.aiProviderLabel')}
-                  value={settings.aiProviderConfigId ?? ''}
-                  disabled={disabled || saving}
-                  onChange={(e) => handleAiProvider(e.target.value || null)}
-                  options={[
-                    { value: '', label: t('order.aiProviderAny') },
-                    ...aiProviders.map((provider) => ({
-                      value: provider.id,
-                      label: providerLabel(provider),
-                    })),
-                  ]}
-                />
+            ai: (
+              <div className="mt-3 space-y-3">
+                {/* Symmetric with the Google Places switch above: off means
+                    this source is not reached at all, so the user can stop
+                    paying for it without deleting a provider the assistant
+                    still uses. */}
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('order.aiConfigured')}
+                  </p>
+                  <ToggleSwitch
+                    checked={settings.aiEnabled}
+                    onChange={handleAiToggle}
+                    disabled={disabled || saving}
+                    label={t('order.aiToggleLabel')}
+                  />
+                </div>
+
+                {/* Which model answers, offered only where there is a choice to
+                    make: with one provider the select would carry a single
+                    option, and with none it would name nothing. */}
+                {aiProviders.length > 1 && (
+                  <Select
+                    label={t('order.aiProviderLabel')}
+                    value={settings.aiProviderConfigId ?? ''}
+                    disabled={disabled || saving || !settings.aiEnabled}
+                    onChange={(e) => handleAiProvider(e.target.value || null)}
+                    options={[
+                      { value: '', label: t('order.aiProviderAny') },
+                      ...aiProviders.map((provider) => ({
+                        value: provider.id,
+                        label: providerLabel(provider),
+                      })),
+                    ]}
+                  />
+                )}
               </div>
             ),
           }}
         />
 
+        {/* An automatic lookup with every source switched off would do
+            nothing, so the toggle shows off and disabled rather than claiming
+            a behaviour that cannot happen. The status is re-read after every
+            save above, so this is the server's own answer and not a stale
+            one. */}
         <PayeeContactLookupToggle
           disabled={disabled}
           lookupAvailable={lookupAvailable}

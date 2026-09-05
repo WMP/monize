@@ -28,6 +28,14 @@ interface LookupSourceOrderProps {
    * nothing else.
    */
   rowControls?: Partial<Record<SourceRow, ReactNode>>;
+  /**
+   * Sources with nothing to configure, left out of the list entirely.
+   *
+   * With no AI provider there is nothing to switch on or order, so the row is
+   * not drawn -- an empty row offering a disabled switch would be a control
+   * whose only outcome is "go and configure something else".
+   */
+  hidden?: readonly SourceRow[];
 }
 
 /**
@@ -51,12 +59,14 @@ export function LookupSourceOrder({
   reorderable = true,
   onReorder,
   rowControls,
+  hidden = [],
 }: LookupSourceOrderProps) {
   const t = useTranslations('settings.payeeLookup.order');
-  const order: SourceRow[] =
+  const order: SourceRow[] = (
     settings.preferredSource === 'ai'
-      ? ['ai', 'google-places']
-      : ['google-places', 'ai'];
+      ? (['ai', 'google-places'] as const)
+      : (['google-places', 'ai'] as const)
+  ).filter((source) => !hidden.includes(source));
 
   /**
    * Every legal move in a two-item list is the same move: the second becomes
@@ -65,7 +75,8 @@ export function LookupSourceOrder({
    * that only ever have one outcome.
    */
   const swap = () => {
-    if (disabled || !reorderable) return;
+    // Nothing to swap with when only one source is drawn.
+    if (disabled || !reorderable || order.length < 2) return;
     onReorder(order[1]);
   };
 

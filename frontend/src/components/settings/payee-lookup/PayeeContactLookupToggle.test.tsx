@@ -35,12 +35,26 @@ beforeEach(() => {
 });
 
 describe('PayeeContactLookupToggle', () => {
-  it('is not offered at all when no AI provider is configured', () => {
-    // Nothing would run the lookup, so the switch would be a setting whose
-    // only effect is nothing happening.
-    const { container } = render(<PayeeContactLookupToggle />);
-    expect(container).toBeEmptyDOMElement();
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+  it('is shown off and disabled when no source can answer', () => {
+    // Deliberately NOT hidden. The sources are configured immediately above
+    // this switch, so vanishing on the last one being switched off reads as a
+    // bug; an inert switch shows exactly what an automatic lookup would now do.
+    render(<PayeeContactLookupToggle />);
+
+    const toggle = screen.getByRole('switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText(/Switch on a source above/)).toBeInTheDocument();
+  });
+
+  it('shows off even when the stored preference is on, without rewriting it', () => {
+    // The preference survives: switching a source back on must restore the
+    // setting the user chose, not silently leave it off.
+    mockPreferences = { payeeContactLookupEnabled: true };
+    render(<PayeeContactLookupToggle />);
+
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+    expect(userSettingsApi.updatePreferences).not.toHaveBeenCalled();
   });
 
   it('renders the heading and an off switch by default', () => {

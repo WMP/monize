@@ -1220,7 +1220,8 @@
       "toggleLabel": "Automatische Kontaktsuche für Zahlungsempfänger aktivieren",
       "enabled": "Automatische Kontaktsuche für Zahlungsempfänger aktiviert",
       "disabled": "Automatische Kontaktsuche für Zahlungsempfänger deaktiviert",
-      "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden"
+      "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden",
+      "noSource": "Schalten Sie oben eine Quelle ein, um Zahlungsempfänger automatisch zu suchen. Sind beide aus, kann nichts eine Suche beantworten."
     },
     "order": {
       "title": "Welche Quelle zuerst antwortet",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
       "aiTitle": "KI-Anbieter",
       "aiHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf.",
+      "aiToggleLabel": "KI-Anbieter für Zahlungsempfänger-Suchen verwenden",
+      "aiConfigured": "Verwendet den in den KI-Einstellungen konfigurierten Anbieter.",
       "aiProviderLabel": "Zu verwendender Anbieter",
       "aiProviderAny": "Beliebiger Anbieter, nach Priorität",
       "moveUp": "Nach oben",

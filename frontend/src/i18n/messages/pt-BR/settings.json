@@ -1220,7 +1220,8 @@
       "toggleLabel": "Ativar a busca automática de contatos de favorecidos",
       "enabled": "Busca automática de contatos ativada",
       "disabled": "Busca automática de contatos desativada",
-      "saveFailed": "Não foi possível atualizar a configuração de busca de contatos"
+      "saveFailed": "Não foi possível atualizar a configuração de busca de contatos",
+      "noSource": "Ative uma fonte acima para buscar favorecidos automaticamente. Com ambas desativadas, nada pode responder a uma busca."
     },
     "order": {
       "title": "Qual fonte responde primeiro",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
       "aiTitle": "Provedor de IA",
       "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca.",
+      "aiToggleLabel": "Usar um provedor de IA para as buscas de favorecidos",
+      "aiConfigured": "Usa o provedor de IA que você configurou nas Configurações de IA.",
       "aiProviderLabel": "Provedor a usar",
       "aiProviderAny": "Qualquer provedor, por ordem de prioridade",
       "moveUp": "Mover para cima",

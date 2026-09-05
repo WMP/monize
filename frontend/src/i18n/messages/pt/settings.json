@@ -1220,7 +1220,8 @@
       "toggleLabel": "Ativar a pesquisa automática de contactos de beneficiários",
       "enabled": "Pesquisa automática de contactos ativada",
       "disabled": "Pesquisa automática de contactos desativada",
-      "saveFailed": "Não foi possível atualizar a definição de pesquisa de contactos"
+      "saveFailed": "Não foi possível atualizar a definição de pesquisa de contactos",
+      "noSource": "Ative uma fonte acima para pesquisar beneficiários automaticamente. Com ambas desativadas, nada pode responder a uma pesquisa."
     },
     "order": {
       "title": "Que fonte responde primeiro",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Dados de diretório, mais baratos por pesquisa. A Google não tem endereços de e-mail.",
       "aiTitle": "Fornecedor de IA",
       "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada pesquisa.",
+      "aiToggleLabel": "Utilizar um fornecedor de IA para as pesquisas de beneficiários",
+      "aiConfigured": "Utiliza o fornecedor de IA que configurou nas Definições de IA.",
       "aiProviderLabel": "Fornecedor a utilizar",
       "aiProviderAny": "Qualquer fornecedor, por ordem de prioridade",
       "moveUp": "Mover para cima",

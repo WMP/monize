@@ -12,9 +12,10 @@ interface PayeeContactLookupToggleProps {
   disabled?: boolean;
   /**
    * Whether a lookup can run at all -- Google Places within its cap, or an AI
-   * provider. Without a source the setting has nothing to act on, so it is not
-   * offered rather than offered and silently ineffective; the card above is
-   * where that is fixed.
+   * provider, each switched on. Without a source the switch is shown OFF and
+   * disabled rather than hidden: the sources are configured immediately above
+   * it, so disappearing on the last one being switched off reads as a bug,
+   * while an inert switch shows exactly what an automatic lookup would now do.
    */
   lookupAvailable?: boolean;
 }
@@ -61,8 +62,6 @@ export function PayeeContactLookupToggle({
     }
   };
 
-  if (!lookupAvailable) return null;
-
   return (
     <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
       <div className="flex items-start justify-between gap-4">
@@ -71,13 +70,17 @@ export function PayeeContactLookupToggle({
             {t('title')}
           </p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {t('subtitle')}
+            {lookupAvailable ? t('subtitle') : t('noSource')}
           </p>
         </div>
         <ToggleSwitch
-          checked={enabled}
+          // Shown off when nothing can answer -- which is what an automatic
+          // lookup would do. The stored preference is deliberately NOT written
+          // to false: switching a source back on should restore the setting
+          // the user chose, not silently leave it off.
+          checked={enabled && lookupAvailable}
           onChange={handleToggle}
-          disabled={disabled || saving}
+          disabled={disabled || saving || !lookupAvailable}
           label={t('toggleLabel')}
         />
       </div>

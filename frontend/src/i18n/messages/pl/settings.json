@@ -1220,7 +1220,8 @@
       "toggleLabel": "Włącz automatyczne wyszukiwanie danych kontaktowych odbiorcy",
       "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
       "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
-      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
+      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych",
+      "noSource": "Włącz powyżej jedno źródło, aby automatycznie wyszukiwać odbiorców. Przy obu wyłączonych nic nie odpowie na wyszukiwanie."
     },
     "order": {
       "title": "Które źródło odpowiada najpierw",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
       "aiTitle": "Dostawca AI",
       "aiHelp": "Może znaleźć adres e-mail i kosztuje jedno wywołanie modelu przy każdym wyszukiwaniu.",
+      "aiToggleLabel": "Używaj dostawcy AI do wyszukiwania odbiorców",
+      "aiConfigured": "Używa dostawcy AI skonfigurowanego w Ustawieniach AI.",
       "aiProviderLabel": "Dostawca do użycia",
       "aiProviderAny": "Dowolny dostawca, według priorytetu",
       "moveUp": "W górę",

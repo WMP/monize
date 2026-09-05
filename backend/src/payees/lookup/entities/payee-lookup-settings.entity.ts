@@ -40,6 +40,16 @@ export class PayeeLookupSettings {
   @Column({ name: "google_places_enabled", default: true })
   googlePlacesEnabled: boolean;
 
+  /**
+   * The AI source's own switch, symmetric with `googlePlacesEnabled`.
+   *
+   * Disabled means the AI adapter is not reached at all -- not first, and not
+   * as the fallback when the Places cap is spent. A switch that still let it
+   * answer sometimes would defeat the one thing it is for: not paying for it.
+   */
+  @Column({ name: "ai_enabled", default: true })
+  aiEnabled: boolean;
+
   @Column({ name: "cap_enabled", default: true })
   capEnabled: boolean;
 

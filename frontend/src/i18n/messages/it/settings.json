@@ -1220,7 +1220,8 @@
       "toggleLabel": "Attiva la ricerca automatica dei contatti dei beneficiari",
       "enabled": "Ricerca automatica dei contatti attivata",
       "disabled": "Ricerca automatica dei contatti disattivata",
-      "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei contatti"
+      "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei contatti",
+      "noSource": "Attiva una fonte qui sopra per cercare i beneficiari automaticamente. Con entrambe disattivate, nulla può rispondere a una ricerca."
     },
     "order": {
       "title": "Quale fonte risponde per prima",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
       "aiTitle": "Provider IA",
       "aiHelp": "Può trovare un indirizzo email e costa una chiamata al modello a ogni ricerca.",
+      "aiToggleLabel": "Usa un provider IA per le ricerche dei beneficiari",
+      "aiConfigured": "Usa il provider IA configurato in Impostazioni IA.",
       "aiProviderLabel": "Provider da usare",
       "aiProviderAny": "Qualsiasi provider, per priorità",
       "moveUp": "Sposta su",

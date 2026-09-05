@@ -1220,7 +1220,8 @@
       "toggleLabel": "Aktifkan pencarian kontak penerima otomatis",
       "enabled": "Pencarian kontak penerima otomatis diaktifkan",
       "disabled": "Pencarian kontak penerima otomatis dinonaktifkan",
-      "saveFailed": "Tidak dapat memperbarui pengaturan pencarian kontak penerima"
+      "saveFailed": "Tidak dapat memperbarui pengaturan pencarian kontak penerima",
+      "noSource": "Aktifkan sebuah sumber di atas untuk mencari penerima secara otomatis. Jika keduanya nonaktif, tidak ada yang dapat menjawab pencarian."
     },
     "order": {
       "title": "Sumber mana yang menjawab lebih dulu",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
       "aiTitle": "Penyedia AI",
       "aiHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian.",
+      "aiToggleLabel": "Gunakan penyedia AI untuk pencarian penerima",
+      "aiConfigured": "Menggunakan penyedia AI yang Anda konfigurasikan di Pengaturan AI.",
       "aiProviderLabel": "Penyedia yang digunakan",
       "aiProviderAny": "Penyedia mana pun, sesuai prioritas",
       "moveUp": "Naik",

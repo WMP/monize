@@ -2220,7 +2220,11 @@ Failure response    ContactLookupOutcome.reason = "quota_exceeded" when the cap
                     silently falls back to the AI adapter. A pinned AI provider
                     (payee_lookup_settings.ai_provider_config_id) that resolves
                     to nothing reports "no_provider" rather than falling through
-                    to a model the user did not choose.
+                    to a model the user did not choose. payee_lookup_settings.ai_enabled
+                    = false is the same answer reached earlier: the AI adapter is
+                    not asked at all, so a spent cap is "quota_exceeded" with no
+                    model call behind it, and Places being unreachable as well is
+                    "no_provider".
 Required tests      Two-connection: concurrent claims over the last slot, one
                     winner, for both scopes. Present in
                     backend/test/integration/payee-lookup-quota.integration.spec.ts

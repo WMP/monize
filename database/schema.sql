@@ -1509,6 +1509,10 @@ CREATE TABLE payee_lookup_settings (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     api_key_enc TEXT,                     -- Encrypted Google Places API key (null = user configured none)
     google_places_enabled BOOLEAN NOT NULL DEFAULT true,
+    -- The AI source's own switch (migration 191). Symmetric with the one
+    -- above: disabled means never reached, not even as the fallback when the
+    -- Places cap is spent.
+    ai_enabled BOOLEAN NOT NULL DEFAULT true,
     cap_enabled BOOLEAN NOT NULL DEFAULT true,
     monthly_cap INTEGER NOT NULL DEFAULT 1000,
     -- Which source answers first (migration 189). An order, not a switch: the

@@ -1220,7 +1220,8 @@
       "toggleLabel": "Activer la recherche automatique des coordonnées",
       "enabled": "Recherche automatique des coordonnées activée",
       "disabled": "Recherche automatique des coordonnées désactivée",
-      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
+      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées",
+      "noSource": "Activez une source ci-dessus pour rechercher les bénéficiaires automatiquement. Les deux désactivées, rien ne peut répondre à une recherche."
     },
     "order": {
       "title": "Quelle source répond en premier",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
       "aiTitle": "Fournisseur d'IA",
       "aiHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche.",
+      "aiToggleLabel": "Utiliser un fournisseur d'IA pour les recherches de bénéficiaires",
+      "aiConfigured": "Utilise le fournisseur d'IA configuré dans les paramètres d'IA.",
       "aiProviderLabel": "Fournisseur à utiliser",
       "aiProviderAny": "N'importe quel fournisseur, par priorité",
       "moveUp": "Monter",

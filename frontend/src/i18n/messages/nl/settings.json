@@ -1220,7 +1220,8 @@
       "toggleLabel": "Automatisch contactgegevens van begunstigden opzoeken inschakelen",
       "enabled": "Automatisch contactgegevens opzoeken ingeschakeld",
       "disabled": "Automatisch contactgegevens opzoeken uitgeschakeld",
-      "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken"
+      "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken",
+      "noSource": "Schakel hierboven een bron in om begunstigden automatisch op te zoeken. Met beide uit kan niets een zoekopdracht beantwoorden."
     },
     "order": {
       "title": "Welke bron als eerste antwoordt",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
       "aiTitle": "AI-provider",
       "aiHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep.",
+      "aiToggleLabel": "Een AI-provider gebruiken voor het opzoeken van begunstigden",
+      "aiConfigured": "Gebruikt de AI-provider die u in AI-instellingen hebt ingesteld.",
       "aiProviderLabel": "Te gebruiken provider",
       "aiProviderAny": "Elke provider, op volgorde van prioriteit",
       "moveUp": "Omhoog",

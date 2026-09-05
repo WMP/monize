@@ -17,11 +17,14 @@ vi.mock('@/lib/payee-lookup', () => ({
   },
 }));
 
+const refreshAvailability = vi.fn(async () => {});
+
 const availability = {
   available: true,
   resolved: true,
   source: 'google-places' as const,
   aiConfigured: false,
+  refresh: refreshAvailability,
 };
 
 vi.mock('@/hooks/useContactLookupAvailable', () => ({
@@ -48,6 +51,7 @@ const settings = (over: Partial<PayeeLookupSettings> = {}): PayeeLookupSettings 
   mode: 'none',
   configured: false,
   enabled: true,
+  aiEnabled: true,
   capEnabled: true,
   monthlyCap: 1000,
   apiKeyMasked: null,
@@ -68,6 +72,8 @@ async function renderSection() {
 beforeEach(() => {
   vi.clearAllMocks();
   availability.aiConfigured = false;
+  availability.available = true;
+  availability.refresh = refreshAvailability;
   getConfigs.mockResolvedValue([]);
   getSettings.mockResolvedValue(settings());
   updateSettings.mockImplementation(async (patch) =>
@@ -277,13 +283,26 @@ describe('PayeeLookupSection', () => {
   });
 
   describe('choosing which source answers first', () => {
-    it('withholds the moving, not the rows, when only one source can answer', async () => {
-      // Places configured, no AI. Ordering would imply a fallback that does
-      // not exist -- but the rows are where Places is CONFIGURED, so they
-      // still render and only the arrows go dead.
+    it('does not draw the AI row at all when no provider is configured', async () => {
+      // Nothing to switch on and nothing to order, so the row is absent rather
+      // than present-and-inert: an empty row offering a dead switch would be a
+      // control whose only outcome is "go and configure something else".
       getSettings.mockResolvedValue(
         settings({ mode: 'user', configured: true }),
       );
+      await renderSection();
+
+      const rows = screen.getAllByRole('listitem');
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent('Google Places');
+      expect(screen.queryByText('AI provider')).not.toBeInTheDocument();
+    });
+
+    it('withholds the moving, not the rows, when only one source can answer', async () => {
+      // Both rows drawn (a provider exists) but Places has no key, so ordering
+      // would imply a fallback that does not exist. The rows still render --
+      // they are where Places is CONFIGURED -- and only the arrows go dead.
+      availability.aiConfigured = true;
       await renderSection();
 
       expect(screen.getAllByRole('listitem')).toHaveLength(2);
@@ -474,6 +493,104 @@ describe('PayeeLookupSection', () => {
       await waitFor(() =>
         expect(updateSettings).toHaveBeenCalledWith({ enabled: false }),
       );
+    });
+  });
+
+  /**
+   * Each source has its own switch, and between them they decide whether an
+   * automatic lookup can happen at all.
+   */
+  describe('switching a source off', () => {
+    const bothSources = () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+    };
+
+    it('saves the AI switch on its own', async () => {
+      bothSources();
+      await renderSection();
+
+      // Located by the switch rather than by row copy: the Google Places
+      // description names the AI provider too, so a textContent match found
+      // the wrong row.
+      const aiToggle = screen.getByRole('switch', {
+        name: 'Use an AI provider for payee lookups',
+      });
+      // It belongs to the AI row, not to Places' block of controls.
+      expect(aiToggle.closest('li')).toBe(
+        screen.getAllByRole('listitem').at(1),
+      );
+
+      await act(async () => {
+        fireEvent.click(aiToggle);
+      });
+
+      // Only the field that changed -- an apiKey of '' would delete the key.
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({ aiEnabled: false }),
+      );
+    });
+
+    it('leaves the automatic lookup live while one source is still on', async () => {
+      bothSources();
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true, aiEnabled: false }),
+      );
+      await renderSection();
+
+      // Places is still on, so an automatic lookup still has a source.
+      expect(
+        screen.getByRole('switch', {
+          name: 'Enable automatic payee contact lookup',
+        }),
+      ).toBeEnabled();
+    });
+
+    it('turns the automatic lookup off and disables it when nothing can answer', async () => {
+      bothSources();
+      // The server's own answer, which folds in a spent cap and an unreadable
+      // key as well as the two switches.
+      availability.available = false;
+      getSettings.mockResolvedValue(
+        settings({
+          mode: 'user',
+          configured: true,
+          enabled: false,
+          aiEnabled: false,
+        }),
+      );
+      await renderSection();
+
+      const auto = screen.getByRole('switch', {
+        name: 'Enable automatic payee contact lookup',
+      });
+      expect(auto).toBeDisabled();
+      expect(auto).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('re-reads whether a lookup can run, before the save reports success', async () => {
+      // Switching the last source off is what MAKES a lookup impossible, so a
+      // status read from mount would leave the automatic-lookup toggle live
+      // over a lookup that can no longer run. Awaited inside the save, so the
+      // card is never live against the stale answer.
+      bothSources();
+      await renderSection();
+      refreshAvailability.mockClear();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('switch', {
+            name: 'Use Google Places for payee lookups',
+          }),
+        );
+      });
+
+      await waitFor(() => expect(refreshAvailability).toHaveBeenCalled());
+      expect(
+        refreshAvailability.mock.invocationCallOrder[0],
+      ).toBeGreaterThan(updateSettings.mock.invocationCallOrder[0]);
     });
   });
 });

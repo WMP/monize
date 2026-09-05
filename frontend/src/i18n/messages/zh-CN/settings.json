@@ -1220,7 +1220,8 @@
       "toggleLabel": "启用自动查询收款方联系信息",
       "enabled": "已启用自动查询收款方联系信息",
       "disabled": "已停用自动查询收款方联系信息",
-      "saveFailed": "无法更新收款方联系信息查询设置"
+      "saveFailed": "无法更新收款方联系信息查询设置",
+      "noSource": "请在上方开启一个来源以自动查询收款方。两者都关闭时，没有任何来源可以回答查询。"
     },
     "order": {
       "title": "先查询哪个来源",
@@ -1230,6 +1231,8 @@
       "placesHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
       "aiTitle": "AI 提供商",
       "aiHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。",
+      "aiToggleLabel": "使用 AI 提供商进行收款方查询",
+      "aiConfigured": "使用您在 AI 设置中配置的 AI 提供商。",
       "aiProviderLabel": "要使用的提供商",
       "aiProviderAny": "任意提供商，按优先级顺序",
       "moveUp": "上移",

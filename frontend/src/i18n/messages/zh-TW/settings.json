@@ -1220,7 +1220,8 @@
       "toggleLabel": "啟用自動查詢收款人聯絡資訊",
       "enabled": "已啟用自動查詢收款人聯絡資訊",
       "disabled": "已停用自動查詢收款人聯絡資訊",
-      "saveFailed": "無法更新收款人聯絡資訊查詢設定"
+      "saveFailed": "無法更新收款人聯絡資訊查詢設定",
+      "noSource": "請在上方開啟一個來源以自動查詢收款人。兩者都關閉時，沒有任何來源可以回答查詢。"
     },
     "order": {
       "title": "先查詢哪個來源",
@@ -1230,6 +1231,8 @@
       "placesHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
       "aiTitle": "AI 供應商",
       "aiHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。",
+      "aiToggleLabel": "使用 AI 供應商進行收款人查詢",
+      "aiConfigured": "使用您在 AI 設定中設定的 AI 供應商。",
       "aiProviderLabel": "要使用的供應商",
       "aiProviderAny": "任何供應商，依優先順序",
       "moveUp": "上移",

@@ -1220,7 +1220,8 @@
       "toggleLabel": "Bật tự động tra cứu thông tin liên hệ người nhận",
       "enabled": "Đã bật tự động tra cứu thông tin liên hệ",
       "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
-      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ"
+      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ",
+      "noSource": "Hãy bật một nguồn ở trên để tra cứu người nhận tự động. Khi cả hai đều tắt, không có gì trả lời được yêu cầu tra cứu."
     },
     "order": {
       "title": "Nguồn nào trả lời trước",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Dữ liệu danh bạ, rẻ hơn cho mỗi lần tra cứu. Google không có địa chỉ email.",
       "aiTitle": "Nhà cung cấp AI",
       "aiHelp": "Có thể tìm được địa chỉ email và tốn một lệnh gọi mô hình cho mỗi lần tra cứu.",
+      "aiToggleLabel": "Dùng nhà cung cấp AI để tra cứu người nhận",
+      "aiConfigured": "Dùng nhà cung cấp AI bạn đã cấu hình trong Cài đặt AI.",
       "aiProviderLabel": "Nhà cung cấp sử dụng",
       "aiProviderAny": "Bất kỳ nhà cung cấp nào, theo thứ tự ưu tiên",
       "moveUp": "Di chuyển lên",

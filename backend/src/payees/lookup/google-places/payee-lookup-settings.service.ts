@@ -40,6 +40,8 @@ export interface UpdatePayeeLookupSettings {
   apiKey?: string;
   capEnabled?: boolean;
   monthlyCap?: number;
+  /** The AI source's own switch. */
+  aiEnabled?: boolean;
   /** Which source to ask first. Meaningful only where both can answer. */
   preferredSource?: PayeeLookupPreferredSource;
   /**
@@ -60,6 +62,8 @@ export interface PayeeLookupSettingsView {
   /** True when a key exists for this user to use, wherever it came from. */
   configured: boolean;
   enabled: boolean;
+  /** The AI source's own switch, independent of whether a provider exists. */
+  aiEnabled: boolean;
   capEnabled: boolean;
   monthlyCap: number;
   /** `"****"` when a key is stored for this user, else null. Never the key. */
@@ -94,7 +98,13 @@ export interface PayeeLookupStatus {
   available: boolean;
   /** Which source would answer right now, or null when nothing can. */
   source: "google-places" | "ai" | null;
+  /**
+   * A provider EXISTS. Drives whether the AI row is offered at all -- with no
+   * provider there is nothing to switch on, so the row is not drawn.
+   */
   aiConfigured: boolean;
+  /** The AI switch. False means AI is never reached, provider or not. */
+  aiEnabled: boolean;
   /** The order the user asked for, whether or not both sources can answer. */
   preferredSource: PayeeLookupPreferredSource;
   googlePlaces: {
@@ -150,6 +160,7 @@ export class PayeeLookupSettingsService {
       mode,
       configured: mode !== "none",
       enabled,
+      aiEnabled: row?.aiEnabled ?? true,
       capEnabled: operator ? true : (row?.capEnabled ?? true),
       monthlyCap: operator
         ? operator.monthlyCap
@@ -204,6 +215,7 @@ export class PayeeLookupSettingsService {
       const row = existing ?? repo.create({ userId });
       if (update.enabled !== undefined)
         row.googlePlacesEnabled = update.enabled;
+      if (update.aiEnabled !== undefined) row.aiEnabled = update.aiEnabled;
       if (update.capEnabled !== undefined) row.capEnabled = update.capEnabled;
       if (update.monthlyCap !== undefined) row.monthlyCap = update.monthlyCap;
       if (update.preferredSource !== undefined)
@@ -227,6 +239,7 @@ export class PayeeLookupSettingsService {
       }
       if (!existing) {
         row.googlePlacesEnabled = update.enabled ?? true;
+        row.aiEnabled = update.aiEnabled ?? true;
         row.capEnabled = update.capEnabled ?? true;
         row.monthlyCap = update.monthlyCap ?? GOOGLE_PLACES_CAP.default;
         row.preferredSource = update.preferredSource ?? "google-places";
@@ -264,12 +277,14 @@ export class PayeeLookupSettingsService {
     places: ResolvedLookupSource;
     preferredSource: PayeeLookupPreferredSource;
     aiProviderConfigId: string | null;
+    aiEnabled: boolean;
   }> {
     const row = await this.readRow(userId);
     return {
       places: this.sourceFrom(userId, row, this.operatorConfig()),
       preferredSource: row?.preferredSource ?? "google-places",
       aiProviderConfigId: row?.aiProviderConfigId ?? null,
+      aiEnabled: row?.aiEnabled ?? true,
     };
   }
 
@@ -331,6 +346,10 @@ export class PayeeLookupSettingsService {
       capReached = (await this.quota.usedThisMonth(source)) >= source.cap;
     }
     const placesUsable = source.kind !== "none" && !capReached;
+    const aiEnabled = row?.aiEnabled ?? true;
+    // Configured is not usable: a provider the user switched off answers
+    // nothing, so it cannot make the lookup "available" either.
+    const aiUsable = aiConfigured && aiEnabled;
     const preferredSource = row?.preferredSource ?? "google-places";
 
     // Which one would actually answer: the preferred source when it can, the
@@ -338,21 +357,22 @@ export class PayeeLookupSettingsService {
     // the source in its copy cannot disagree with the lookup it describes.
     const answering =
       preferredSource === "ai"
-        ? aiConfigured
+        ? aiUsable
           ? "ai"
           : placesUsable
             ? "google-places"
             : null
         : placesUsable
           ? "google-places"
-          : aiConfigured
+          : aiUsable
             ? "ai"
             : null;
 
     return {
-      available: placesUsable || aiConfigured,
+      available: placesUsable || aiUsable,
       source: answering,
       aiConfigured,
+      aiEnabled,
       preferredSource,
       googlePlaces: {
         mode,

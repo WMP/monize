@@ -1220,7 +1220,8 @@
       "toggleLabel": "Activar la búsqueda automática de contactos de beneficiarios",
       "enabled": "Búsqueda automática de contactos de beneficiarios activada",
       "disabled": "Búsqueda automática de contactos de beneficiarios desactivada",
-      "saveFailed": "No se pudo actualizar el ajuste de búsqueda de contactos"
+      "saveFailed": "No se pudo actualizar el ajuste de búsqueda de contactos",
+      "noSource": "Active una fuente arriba para buscar beneficiarios automáticamente. Con ambas desactivadas, nada puede responder una búsqueda."
     },
     "order": {
       "title": "Qué fuente responde primero",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Datos de directorio, más baratos por búsqueda. Google no tiene direcciones de correo.",
       "aiTitle": "Proveedor de IA",
       "aiHelp": "Puede encontrar un correo electrónico y cuesta una llamada al modelo en cada búsqueda.",
+      "aiToggleLabel": "Usar un proveedor de IA para las búsquedas de beneficiarios",
+      "aiConfigured": "Usa el proveedor de IA que tiene configurado en Ajustes de IA.",
       "aiProviderLabel": "Proveedor a usar",
       "aiProviderAny": "Cualquier proveedor, por orden de prioridad",
       "moveUp": "Subir",

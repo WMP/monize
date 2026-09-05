@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { payeeLookupApi } from '@/lib/payee-lookup';
 import type { PayeeLookupStatus } from '@/types/payee-lookup';
 
@@ -18,10 +18,22 @@ export interface ContactLookupAvailability {
   source: PayeeLookupStatus['source'];
   /**
    * Whether an AI provider exists. The Payee Lookup settings section reads it
-   * to decide whether ordering the two sources is a choice worth offering:
-   * with only one source configured there is nothing to order.
+   * to decide whether the AI row is worth drawing at all: with no provider
+   * there is nothing to switch on or to order.
    */
   aiConfigured: boolean;
+  /**
+   * Ask again.
+   *
+   * Only the settings card needs this, and it needs it because it is the one
+   * surface that CHANGES the answer: switching a source off makes a lookup
+   * impossible, and the mounted hook would otherwise hold the value it read on
+   * mount for the rest of the session. Re-reading keeps the server the single
+   * authority on "can a lookup run" -- the alternative, re-deriving that from
+   * the settings row on the client, is a second copy of a decision that
+   * already accounts for the spent cap and an unreadable key.
+   */
+  refresh: () => Promise<void>;
 }
 
 /**
@@ -37,12 +49,35 @@ export interface ContactLookupAvailability {
  * this on the payee form, the detail card and the transaction page costs one
  * request; a settings save or an AI provider change drops that cache.
  */
+type Availability = Omit<ContactLookupAvailability, 'refresh'>;
+
+/**
+ * The mapping, written once so the mount read and the refresh cannot answer
+ * differently for one status payload.
+ */
+const fromStatus = (status: PayeeLookupStatus): Availability => ({
+  available: status.available,
+  resolved: true,
+  source: status.source,
+  aiConfigured: status.aiConfigured,
+});
+
+/**
+ * What a failed read means. Nothing to tell the user here: the surfaces
+ * reading this simply do not offer the lookup, and one that runs anyway still
+ * reports the server's own reason.
+ */
+const UNAVAILABLE: Availability = {
+  available: false,
+  resolved: true,
+  source: null,
+  aiConfigured: false,
+};
+
 export function useContactLookupAvailable(): ContactLookupAvailability {
-  const [state, setState] = useState<ContactLookupAvailability>({
-    available: false,
+  const [state, setState] = useState<Availability>({
+    ...UNAVAILABLE,
     resolved: false,
-    source: null,
-    aiConfigured: false,
   });
 
   useEffect(() => {
@@ -50,31 +85,28 @@ export function useContactLookupAvailable(): ContactLookupAvailability {
     payeeLookupApi
       .getStatus()
       .then((status) => {
-        if (active) {
-          setState({
-            available: status.available,
-            resolved: true,
-            source: status.source,
-            aiConfigured: status.aiConfigured,
-          });
-        }
+        if (active) setState(fromStatus(status));
       })
       .catch(() => {
-        // Nothing to tell the user here: the surfaces reading this simply do
-        // not offer the lookup, and one that runs anyway still reports the
-        // server's own reason.
-        if (active)
-          setState({
-            available: false,
-            resolved: true,
-            source: null,
-            aiConfigured: false,
-          });
+        if (active) setState(UNAVAILABLE);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  return state;
+  const refresh = useCallback(
+    () =>
+      payeeLookupApi
+        .getStatus()
+        .then((status) => {
+          setState(fromStatus(status));
+        })
+        .catch(() => {
+          setState(UNAVAILABLE);
+        }),
+    [],
+  );
+
+  return { ...state, refresh };
 }

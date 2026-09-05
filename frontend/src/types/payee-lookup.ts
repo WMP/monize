@@ -11,7 +11,13 @@ export interface PayeeLookupStatus {
   available: boolean;
   /** The source that would answer right now, or null when nothing can. */
   source: 'google-places' | 'ai' | null;
+  /**
+   * A provider exists. Drives whether the AI row is offered at all -- with no
+   * provider there is nothing to switch on, so the row is not drawn.
+   */
   aiConfigured: boolean;
+  /** The AI switch. False means AI is never reached, provider or not. */
+  aiEnabled: boolean;
   /** The order the user asked for, whether or not both sources can answer. */
   preferredSource: PayeeLookupPreferredSource;
   googlePlaces: {
@@ -32,6 +38,8 @@ export interface PayeeLookupSettings {
   mode: 'operator' | 'user' | 'none';
   configured: boolean;
   enabled: boolean;
+  /** The AI source's own switch, independent of whether a provider exists. */
+  aiEnabled: boolean;
   capEnabled: boolean;
   monthlyCap: number;
   /** `'****'` when a key is stored, else null. Shown as a placeholder. */
@@ -59,6 +67,7 @@ export interface PayeeLookupSettings {
 
 export interface UpdatePayeeLookupSettings {
   enabled?: boolean;
+  aiEnabled?: boolean;
   /** A new key; `''` clears the stored one; omit to keep it. */
   apiKey?: string;
   capEnabled?: boolean;

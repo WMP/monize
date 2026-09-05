@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@/test/render';
-import { waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { useContactLookupAvailable } from './useContactLookupAvailable';
 
 vi.mock('@/lib/payee-lookup', () => ({
@@ -28,7 +28,7 @@ describe('useContactLookupAvailable', () => {
     getStatus.mockResolvedValue(status());
 
     const { result } = renderHook(() => useContactLookupAvailable());
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       available: false,
       resolved: false,
       source: null,
@@ -36,14 +36,38 @@ describe('useContactLookupAvailable', () => {
     });
 
     await waitFor(() => {
-      expect(result.current).toEqual({
+      expect(result.current).toMatchObject({
         available: true,
         resolved: true,
         source: 'ai',
-        // The settings section reads this to decide whether ordering the two
-        // sources is a choice worth offering.
+        // The settings section reads this to decide whether the AI row is
+        // worth drawing at all.
         aiConfigured: true,
       });
+    });
+  });
+
+  it('answers again on refresh, because the settings card changes the answer', async () => {
+    // Switching the last source off is what MAKES a lookup impossible, and a
+    // status read once on mount would go on saying a lookup can run for the
+    // rest of the session.
+    getStatus.mockResolvedValue(status());
+
+    const { result } = renderHook(() => useContactLookupAvailable());
+    await waitFor(() => expect(result.current.available).toBe(true));
+
+    getStatus.mockResolvedValue(
+      status({ available: false, source: null, aiConfigured: false }),
+    );
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(getStatus).toHaveBeenCalledTimes(2);
+    expect(result.current).toMatchObject({
+      available: false,
+      resolved: true,
+      source: null,
     });
   });
 

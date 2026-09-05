@@ -48,6 +48,13 @@ export class UpdatePayeeLookupSettingsDto {
   @MaxLength(2000)
   apiKey?: string;
 
+  @ApiPropertyOptional({
+    description: "Whether the AI provider answers payee contact lookups",
+  })
+  @IsOptional()
+  @IsBoolean()
+  aiEnabled?: boolean;
+
   @ApiPropertyOptional({ description: "Whether the monthly cap is enforced" })
   @IsOptional()
   @IsBoolean()

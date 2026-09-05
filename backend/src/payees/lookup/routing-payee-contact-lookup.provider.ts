@@ -51,6 +51,15 @@ import {
  * would put `PayeesModule` on `AiModule`'s require cycle, which is the reason
  * the AI adapter resolves it lazily in the first place.
  */
+/**
+ * The AI source is switched off, so it is not a candidate at all.
+ *
+ * A distinct value rather than `null`, because `null` already means "no
+ * provider pinned, use them all" -- folding the two would turn the switch into
+ * "use any provider", which is its exact opposite.
+ */
+const DISABLED = Symbol("ai-lookup-disabled");
+
 @Injectable()
 export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProvider {
   private readonly logger = new Logger(RoutingPayeeContactLookupProvider.name);
@@ -71,21 +80,32 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
       places: source,
       preferredSource,
       aiProviderConfigId,
+      aiEnabled,
     } = await this.settings.resolveRouting(userId);
+
+    // A source the user switched off is not reached at all -- not first, and
+    // not as the fallback below. Anything less would defeat the switch: its
+    // whole purpose is that this source stops costing them money.
+    const ai = aiEnabled ? aiProviderConfigId : DISABLED;
 
     // The user asked for AI first. Places is still reached -- but only if AI
     // cannot answer for a CONFIGURATION reason, which is the same asymmetry the
     // other order uses: a source that fails is reported, never papered over by
     // paying the other one.
-    if (preferredSource === "ai") {
-      return this.aiFirst(userId, input, source, aiProviderConfigId);
+    if (preferredSource === "ai" && ai !== DISABLED) {
+      return this.aiFirst(userId, input, source, ai);
     }
 
     if (source.kind === "none") {
-      return this.ai.lookup(userId, input, aiProviderConfigId ?? undefined);
+      // Nothing else can answer, so an AI that is switched off is reported the
+      // same way a missing provider is: the repair is the user's to choose.
+      if (ai === DISABLED) {
+        throw new ContactLookupUnavailableError("no_provider");
+      }
+      return this.ai.lookup(userId, input, ai ?? undefined);
     }
 
-    return this.viaPlaces(userId, input, source, aiProviderConfigId);
+    return this.viaPlaces(userId, input, source, ai);
   }
 
   /**
@@ -125,7 +145,8 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
     userId: string,
     input: PayeeContactLookupInput,
     source: Exclude<ResolvedLookupSource, { kind: "none" }>,
-    aiProviderConfigId: string | null,
+    /** `DISABLED` when the AI switch is off, so the cap has nothing behind it. */
+    ai: string | null | typeof DISABLED,
   ): Promise<PayeeContactSuggestion[]> {
     if (this.health.wouldRefuse(GOOGLE_PLACES_PROVIDER)) {
       throw new ContactLookupUnavailableError(
@@ -136,12 +157,23 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
 
     const claimed = await this.quota.claim(source);
     if (claimed === null) {
+      if (ai === DISABLED) {
+        // The cap is a budget the user chose AND they switched AI off, so
+        // there is nothing to fall back to. Same reason as a spent cap with no
+        // provider: raise or wait out the cap, not "configure a model".
+        this.logger.log(
+          `Google Places monthly limit reached for ${
+            source.kind === "user" ? `user ${userId}` : "this deployment"
+          }; the AI lookup is switched off, so nothing else can answer.`,
+        );
+        throw new ContactLookupUnavailableError("quota_exceeded");
+      }
       this.logger.log(
         `Google Places monthly limit reached for ${
           source.kind === "user" ? `user ${userId}` : "this deployment"
         }; falling back to the AI lookup.`,
       );
-      return this.fallbackToAi(userId, input, aiProviderConfigId);
+      return this.fallbackToAi(userId, input, ai);
     }
 
     return this.places.lookup(source.apiKey, input);

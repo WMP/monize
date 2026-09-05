@@ -1220,7 +1220,8 @@
       "toggleLabel": "Otomatik alacaklı iletişim aramasını etkinleştir",
       "enabled": "Otomatik alacaklı iletişim araması etkinleştirildi",
       "disabled": "Otomatik alacaklı iletişim araması devre dışı bırakıldı",
-      "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi"
+      "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi",
+      "noSource": "Alacaklıları otomatik aramak için yukarıdan bir kaynağı açın. İkisi de kapalıyken hiçbir şey aramayı yanıtlayamaz."
     },
     "order": {
       "title": "Önce hangi kaynak yanıtlar",
@@ -1230,6 +1231,8 @@
       "placesHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
       "aiTitle": "Yapay zekâ sağlayıcısı",
       "aiHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır.",
+      "aiToggleLabel": "Alacaklı aramaları için yapay zekâ sağlayıcısı kullan",
+      "aiConfigured": "Yapay Zekâ Ayarları'nda yapılandırdığınız sağlayıcıyı kullanır.",
       "aiProviderLabel": "Kullanılacak sağlayıcı",
       "aiProviderAny": "Öncelik sırasına göre herhangi bir sağlayıcı",
       "moveUp": "Yukarı taşı",

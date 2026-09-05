@@ -1220,7 +1220,8 @@
       "toggleLabel": "[XX-Enable automatic payee contact lookup-XX]",
       "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
       "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
-      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
+      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]",
+      "noSource": "[XX-Switch on a source above to look payees up automatically. With both off, nothing can answer a lookup.-XX]"
     },
     "order": {
       "title": "[XX-Which source answers first-XX]",
@@ -1230,6 +1231,8 @@
       "placesHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
       "aiTitle": "[XX-AI provider-XX]",
       "aiHelp": "[XX-Can find an email address, and costs a model call for every lookup.-XX]",
+      "aiToggleLabel": "[XX-Use an AI provider for payee lookups-XX]",
+      "aiConfigured": "[XX-Uses the AI provider you have configured in AI Settings.-XX]",
       "aiProviderLabel": "[XX-Provider to use-XX]",
       "aiProviderAny": "[XX-Any provider, in priority order-XX]",
       "moveUp": "[XX-Move up-XX]",

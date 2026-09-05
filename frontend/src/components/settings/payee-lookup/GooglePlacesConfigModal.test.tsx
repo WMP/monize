@@ -8,6 +8,7 @@ const settings = (over: Partial<PayeeLookupSettings> = {}): PayeeLookupSettings 
   mode: 'user',
   configured: false,
   enabled: true,
+  aiEnabled: true,
   capEnabled: true,
   monthlyCap: 1000,
   apiKeyMasked: null,

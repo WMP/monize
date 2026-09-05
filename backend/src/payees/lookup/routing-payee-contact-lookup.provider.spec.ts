@@ -39,11 +39,16 @@ describe("RoutingPayeeContactLookupProvider", () => {
    * rather than in every case: a spec that set only one of them would be
    * testing a settings row that cannot exist.
    */
-  const setSource = (source: unknown, preferredSource = "google-places") => {
+  const setSource = (
+    source: unknown,
+    preferredSource = "google-places",
+    aiEnabled = true,
+  ) => {
     settings.resolveSource.mockResolvedValue(source);
     settings.resolveRouting.mockResolvedValue({
       places: source,
       preferredSource,
+      aiEnabled,
     });
   };
   let quota: { claim: jest.Mock };
@@ -250,6 +255,46 @@ describe("RoutingPayeeContactLookupProvider", () => {
       await expect(router.lookup("u1", { name: "Acme" })).rejects.toMatchObject(
         { reason: "no_provider" },
       );
+    });
+  });
+
+  /**
+   * The AI source's own switch. Off means NOT REACHED -- not first, and not as
+   * the fallback when the Places cap is spent. A switch that still let it
+   * answer sometimes would defeat the one thing it is for: not paying for it.
+   */
+  describe("when the AI source is switched off", () => {
+    it("never asks AI, even with Places first and a spent cap", async () => {
+      setSource(userSource, "google-places", false);
+      quota.claim.mockResolvedValue(null);
+
+      await expect(router.lookup("u1", { name: "Acme" })).rejects.toMatchObject(
+        {
+          reason: "quota_exceeded",
+        },
+      );
+      expect(ai.lookup).not.toHaveBeenCalled();
+    });
+
+    it("answers through Places even when AI is the preferred source", async () => {
+      // The order is a preference; the switch is a refusal, and a refusal wins.
+      setSource(userSource, "ai", false);
+
+      await router.lookup("u1", { name: "Acme" });
+
+      expect(places.lookup).toHaveBeenCalled();
+      expect(ai.lookup).not.toHaveBeenCalled();
+    });
+
+    it("reports no provider when Places cannot answer either", async () => {
+      setSource({ kind: "none" }, "google-places", false);
+
+      await expect(router.lookup("u1", { name: "Acme" })).rejects.toMatchObject(
+        {
+          reason: "no_provider",
+        },
+      );
+      expect(ai.lookup).not.toHaveBeenCalled();
     });
   });
 });
