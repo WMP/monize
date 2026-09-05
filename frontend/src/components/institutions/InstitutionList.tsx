@@ -54,6 +54,15 @@ export type InstitutionSortField = 'name' | 'website' | 'country' | 'accounts';
  * hides below `md` and `sm`: a header offering fewer would leave a phone sorted
  * by a field it can neither see nor undo. Actions is absent from the list
  * because it is not sortable, and its `<th>` is written out below.
+ *
+ * That runs the other way too, and the escape is what makes it acceptable:
+ * sorting by Website or Country from the card and then switching to Compact
+ * brings back a tier header whose only visible controls are Name and Accounts,
+ * so the order in force is one this header no longer names. Nothing is
+ * stranded -- tapping Name re-sorts to a field that IS on screen, and Normal
+ * density (the same toggle, one tap) restores all four controls -- but the two
+ * headers do disagree about which orders they can express, and only the card's
+ * can express every one.
  */
 const SORT_COLUMNS = [
   { field: 'name', labelKey: 'list.columns.name', tierVisibility: '' },
