@@ -86,12 +86,22 @@ export function PayeeDefaultCategory({
   categoryColorMap,
   categoryIconMap,
   categoryLabelMap,
+  maxWidthClass,
 }: {
   payee: Payee;
   density: DensityLevel;
   categoryColorMap?: Map<string, string | null>;
   categoryIconMap?: Map<string, string | null>;
   categoryLabelMap?: Map<string, string>;
+  /**
+   * How wide the pill may grow. Layout, not meaning, so it is the one thing a
+   * caller may vary: the tier cell keeps `CategoryPill`'s own 160px cap (an
+   * unbounded pill would push the columns beside it), while the phone card
+   * passes `max-w-full` because there its width is decided by a grid track --
+   * a 160px pill in a track squeezed narrower by a long caption does not
+   * shrink, it overflows into the status pill beside it.
+   */
+  maxWidthClass?: string;
 }) {
   const t = useTranslations('payees');
   const label = payee.defaultCategory
@@ -106,6 +116,7 @@ export function PayeeDefaultCategory({
       color={categoryColorMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.color}
       icon={categoryIconMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.icon}
       density={density}
+      maxWidthClass={maxWidthClass}
     />
   );
 }

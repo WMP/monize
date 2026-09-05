@@ -402,6 +402,12 @@ describe('the payees list on a phone', () => {
     // announced on the `<th>` -- honestly, because the buttons name every
     // member of `SortField`.
     expect(head.querySelector('th')!.getAttribute('aria-sort')).toBe('ascending');
+    // These chips are tapped, so each carries a real hit target rather than
+    // being a bare 16px text run.
+    for (const button of Array.from(head.querySelectorAll('button'))) {
+      expect(button.className).toContain('min-h-[30px]');
+      expect(button.className).toContain('px-2');
+    }
   });
 
   it('offers a sort control for every column the tier header sorts by', () => {
@@ -477,8 +483,17 @@ describe('the payees list on a phone', () => {
     const grids = Array.from(row.querySelectorAll<HTMLElement>('.grid'));
     expect(grids).toHaveLength(3);
     for (const grid of grids) {
-      expect(grid.className).toContain('minmax(0,1fr)');
+      // A zero-minimum track, spelled either explicitly or as Tailwind's
+      // `grid-cols-N` (which compiles to `repeat(N, minmax(0,1fr))`).
+      expect(grid.className).toMatch(/minmax\(0,1fr\)|grid-cols-\d/);
     }
+    // Line 3 carries the only truncating value with no pill or button of its
+    // own to bound it, and it is where an `auto` track did real damage: an auto
+    // track takes its item's MAX-content, so a captioned neighbour starved
+    // Notes to 19px in `ru` while measuring 127px in English. Equal fr tracks
+    // are what stop that, so this line must name no `auto` track at all.
+    const line3 = grids[2];
+    expect(line3.className).not.toContain('auto');
     // The name, the pill's own inner label and the notes.
     expect(row.querySelectorAll('.truncate').length).toBe(3);
   });
@@ -505,21 +520,41 @@ describe('the payees list on a phone', () => {
     expect(nameRow.className).toContain('min-w-0');
   });
 
-  it('keeps the count from wrapping mid-number', () => {
+  it('keeps the values from wrapping, and lets their captions wrap', () => {
     setPhoneViewport(true);
     useDensityStore.setState({ densities: { payees: 'normal' } });
 
     const { container } = renderList([
-      makePayee({ id: 'p1', name: 'Walmart', transactionCount: 12345 }),
+      makePayee({
+        id: 'p1',
+        name: 'Walmart',
+        transactionCount: 12345,
+        aliasCount: 3,
+        lastUsedDate: '2026-08-30T00:00:00Z',
+      }),
     ]);
 
     const [row] = bodyRows(container);
-    // A locale that groups with a (thin) space would otherwise break the figure
-    // in two, and the figure is never truncated: a silently cut count is worse
-    // than a crowded one.
-    const countCell = within(row).getByText('12345').parentElement!;
-    expect(countCell.className).toContain('whitespace-nowrap');
-    expect(countCell.className).not.toContain('truncate');
+    // A locale that groups with a (thin) space would otherwise break a figure
+    // in two, and none of them is truncated: a silently cut count is worse than
+    // a crowded one.
+    for (const value of ['12345', '3', '2026-08-30']) {
+      const node = within(row).getByText(value);
+      expect(node.className).toContain('whitespace-nowrap');
+      expect(node.className).not.toContain('truncate');
+    }
+
+    // The CAPTIONS above them must NOT be nowrap. Each sits in an `auto` grid
+    // track, whose minimum is its item's min-content -- so a nowrap caption
+    // sizes the track from the label rather than the value, and
+    // `list.columns.lastUsed` is "Последнее использование" in `ru`. That would
+    // squeeze the Notes track to about 30px on a 320px phone in eleven locales
+    // while measuring fine in English.
+    for (const caption of ['Count', 'Last Used', 'Aliases']) {
+      const node = within(row).getByText(caption);
+      expect(node.className).not.toContain('whitespace-nowrap');
+      expect(node.parentElement!.className).not.toContain('whitespace-nowrap');
+    }
   });
 
   it('uses the density table\'s own inset, not a hand-picked one', () => {

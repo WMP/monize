@@ -100,11 +100,11 @@ export type SortDirection = 'asc' | 'desc';
  * Every field this list sorts by, with its position in the tier header's own
  * order. The phone's slim control header renders all six: the chosen field is
  * persisted (`monize-payees-sort-field`, set on the Payees page) and FIVE of
- * the six columns are hidden at phone width (Default Category and Status below
- * `sm`, Count below `md`, Aliases, Last Used and Created below `lg`), so a
- * header offering fewer would strand a phone on a sort order it can neither see
- * nor undo. Notes and Actions are absent because the tier header offers no sort
- * control for them.
+ * the six columns they name are hidden at phone width (Default Category below
+ * `sm`, Count below `md`, Aliases, Last Used and Created below `lg`; only Name
+ * survives), so a header offering fewer would strand a phone on a sort order it
+ * can neither see nor undo. Status, Notes and Actions are absent because the
+ * tier header offers no sort control for them -- they are columns, not fields.
  *
  * `createdAt` is the one field whose VALUE the card does not print (see the
  * `wrapped` prop doc for why Created is the omitted column). That is not
@@ -195,12 +195,16 @@ interface PayeeRowProps {
    *   lowest-value of the nine (a system timestamp, against a user's own
    *   notes), and it is the only omitted value no phone width shows today
    *   anyway -- it is `hidden lg:table-cell`, where Notes is visible on a phone
-   *   at Normal density right now and so could not be dropped. Line 3 carries
-   *   Last Used, Aliases and Notes; a fourth captioned item there left Notes
-   *   about 70px wide at 320px, which is a truncated column pretending to be a
-   *   column. Its sort button survives in the slim header (see
-   *   `SORT_FIELD_ORDER`), and the tier table one density tap away shows the
-   *   dates.
+   *   at Normal density right now and so could not be dropped. Its sort button
+   *   survives in the slim header (see `SORT_FIELD_ORDER`), and the tier table
+   *   one density tap away shows the dates.
+   *
+   * The three lines are: Name (with logo and marker) and Count; Default
+   * Category, Status and Aliases; Last Used and Notes. Aliases rides on line 2
+   * rather than beside Last Used because line 3's second track is where Notes
+   * has to live, and a line carrying three captions cannot also carry a
+   * readable Notes at 320px in a locale whose Last Used caption is "Последнее
+   * использование" -- the line-3 comment has the measurement.
    *
    * The two breakpoints are not the same one. The tier row's Actions cell is
    * `min-[480px]`, and `wrapped` covers everything below 640px, so between
@@ -296,10 +300,20 @@ const PayeeRow = memo(function PayeeRow({
               {/* The key figure, on the right of line 1. A bare number with no
                   column header to name it, so it carries the header's own
                   label; the caption is its own node above the value's, so a
-                  test still matches the count alone. */}
-              <div className="text-right whitespace-nowrap">
+                  test still matches the count alone.
+
+                  `whitespace-nowrap` goes on the VALUE, never on the wrapper:
+                  this is an `auto` track, and an auto track's minimum is its
+                  item's min-content -- so a nowrap wrapper would size the track
+                  from whichever is wider, the number or the CAPTION. A caption
+                  is a width input (`list.columns.count` is "Anzahl" in `de` and
+                  "Количество" in `ru`), and letting it wrap keeps the track
+                  sized by the figure it labels. The figure itself must not
+                  wrap: a locale grouping thousands with a thin space would
+                  otherwise break it in two. */}
+              <div className="text-right">
                 <CellLabel>{t('list.columns.count')}</CellLabel>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                   {payee.transactionCount ?? 0}
                 </div>
               </div>
@@ -318,8 +332,17 @@ const PayeeRow = memo(function PayeeRow({
                   themselves. It follows the tier table's own
                   `showStatusColumn`, so the card shows exactly the column the
                   table would, and `items-end` sits it on the pill's own line
-                  rather than centred against the caption above it. */}
-              <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
+                  rather than centred against the caption above it.
+
+                  The pill takes `max-w-full` rather than `CategoryPill`'s own
+                  160px cap: here its width is decided by a grid track, and a
+                  160px pill in a track squeezed narrower by a long caption does
+                  not shrink -- it overflows into the status pill beside it
+                  (measured in `ru`, where the caption is "Категория по
+                  умолчанию"). Aliases rides on this line as a captioned number
+                  at the card's right edge, under the Count, because line 3
+                  cannot hold three captions and a readable Notes. */}
+              <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-x-3">
                 <div className="min-w-0">
                   <CellLabel>{t('list.columns.defaultCategory')}</CellLabel>
                   <PayeeDefaultCategory
@@ -328,25 +351,44 @@ const PayeeRow = memo(function PayeeRow({
                     categoryColorMap={categoryColorMap}
                     categoryIconMap={categoryIconMap}
                     categoryLabelMap={categoryLabelMap}
+                    maxWidthClass="max-w-full"
                   />
                 </div>
                 {showStatusColumn && <PayeeStatusBadge payee={payee} />}
-              </div>
-              {/* Line 3 is the captioned values, and a grid again because Notes
-                  truncates. The two dates and the alias count are `auto`
-                  tracks -- each is a caption over a short value -- and Notes
-                  takes what is left. */}
-              <div className="col-span-3 grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-4">
-                <div className="whitespace-nowrap">
-                  <CellLabel>{t('list.columns.lastUsed')}</CellLabel>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {payeeDayText(payee.lastUsedDate, formatDate)}
+                <div className="text-right">
+                  <CellLabel>{t('list.columns.aliases')}</CellLabel>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    {payee.aliasCount ?? 0}
                   </div>
                 </div>
-                <div className="whitespace-nowrap">
-                  <CellLabel>{t('list.columns.aliases')}</CellLabel>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {payee.aliasCount ?? 0}
+              </div>
+              {/* Line 3: two EQUAL zero-minimum tracks (`grid-cols-2` is
+                  `repeat(2, minmax(0,1fr))`), never `auto` beside a `1fr`.
+
+                  An `auto` track takes its item's MAX-content when there is any
+                  room, so a captioned value in one starves the `1fr` beside it
+                  -- and a caption is a locale-sized width input, not a fixed
+                  one: `list.columns.lastUsed` is "Последнее использование" in
+                  `ru` and "Останнє використання" in `uk`, about 167px against
+                  an English date's 88px. Measured in the replica at 320px, the
+                  earlier `[auto auto minmax(0,1fr)]` line left Notes 19px in
+                  `ru` while measuring a comfortable 127px in English: the very
+                  "truncated column pretending to be a column" that got Created
+                  dropped, arriving in eleven locales through a card that looked
+                  fine in the language it was built in. Equal fr tracks give
+                  Notes 140px at 320px in every locale; a long caption buys its
+                  second line of height instead of the column beside it.
+
+                  `whitespace-nowrap` sits on the VALUES, never on a wrapper,
+                  for the other half of the same reason: a locale grouping
+                  thousands with a thin space must not break a figure in two,
+                  but a caption forced onto one line is what makes a track wide.
+                  Notes truncates; it is the only thing on this line that may. */}
+              <div className="col-span-3 grid grid-cols-2 items-start gap-x-4">
+                <div>
+                  <CellLabel>{t('list.columns.lastUsed')}</CellLabel>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {payeeDayText(payee.lastUsedDate, formatDate)}
                   </div>
                 </div>
                 <div className="min-w-0">
@@ -588,13 +630,17 @@ export function PayeeList({
                 className={`${headerPadding} text-left`}
                 aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
               >
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {/* These chips are TAPPED, so they carry a real hit target
+                    (`min-h-[30px]` with `px-2 py-1`) rather than the ~16px
+                    text-only chips the first converted lists shipped, and
+                    `gap-y-1.5` keeps two wrapped rows of them from colliding. */}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                   {SORT_FIELDS.map((field) => (
                     <button
                       key={field}
                       type="button"
                       onClick={() => handleSort(field)}
-                      className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
+                      className="flex min-h-[30px] items-center px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
                     >
                       {sortFieldLabels[field]}
                       <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
