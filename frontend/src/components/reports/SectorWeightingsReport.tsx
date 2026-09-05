@@ -104,7 +104,7 @@ const CELL_PLACEMENT: Record<SectorSortField, string> = {
 // locale that groups thousands with a space could otherwise break a figure in
 // the middle of a number, at any width.
 //
-// MONEY_CELL width budget, measured on a hand-written CSS replica in Chromium
+// `FIGURE_CELL` width budget, measured on a hand-written CSS replica in Chromium
 // at the insets this table really gets -- the report page's `px-4` and the
 // row's own `px-4`, the card contributing none -- so 256px of track at 320px
 // and 326px at 390px. Two equal `minmax(0,1fr)` tracks with the row's
@@ -587,6 +587,18 @@ export function SectorWeightingsReport() {
                       to phones (`sm:break-normal` restores today's `normal`
                       pair, which is also the initial value) because from `sm`
                       up the name box is 208px and the word fits.
+
+                      The clamp is load-bearing for containment as well as for
+                      length, and the two are easy to separate by accident.
+                      This span is a row-direction flex item WITHOUT its own
+                      `min-w-0`, so its automatic minimum size would normally
+                      be its min-content width -- the unbroken 15-character
+                      word, which `break-words` does not shrink. What zeroes
+                      that minimum is `line-clamp-3`'s own `overflow: hidden`.
+                      Replacing the clamp with any treatment that does not
+                      clip (a plain three-line box, `sm:line-clamp-none` leaking
+                      down) reopens the 320px overflow, so the two travel
+                      together.
 
                       `title` is therefore NOT the phone's fallback -- it is
                       for the one width where the clamp bites and a pointer
