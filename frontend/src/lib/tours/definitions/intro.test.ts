@@ -89,6 +89,13 @@ describe('introduction tour', () => {
       expect(step('openAccountDetail').skipOnMobile).toBeUndefined();
     });
 
+    it('parks its card clear of the row actions it asks the user to use', () => {
+      // The coach mark parks in a bottom corner, and the default is the right
+      // one -- where every list puts its row actions. CI caught the card
+      // intercepting the click on Details at a 720px-tall viewport.
+      expect(step('openAccountDetail').placement).toBe('left');
+    });
+
     it('shows the explanation on whichever account was opened', () => {
       // `routeMatch` is the prefix; the id belongs to the user's choice.
       expect(step('accountDetailView')).toMatchObject({

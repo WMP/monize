@@ -80,6 +80,10 @@ export const INTRO_TOUR: TourDefinition = {
       route: '/accounts',
       anchorId: null,
       unobtrusive: true,
+      // Bottom-LEFT: row actions are right-aligned and sticky, so the default
+      // corner parks the card on top of the Details button this step asks the
+      // user to click (CI proved it, at a 720px-tall viewport with one row).
+      placement: 'left',
       advance: { type: 'route', route: '/accounts/' },
     },
     {

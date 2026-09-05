@@ -41,6 +41,11 @@ test.describe('Guided tours', () => {
     // route change -- there is no per-row anchor to click, by design. The
     // seeded account is a CHEQUING one, so it lands on the banking detail view;
     // the step teaches the navigation, not one account type.
+    //
+    // This click is also the guard on where the coach mark parks: the default
+    // bottom-right corner sits on the sticky row actions, and Playwright fails
+    // it as "subtree intercepts pointer events" rather than letting a tour ship
+    // with its card over the button its own copy names.
     await page
       .locator('tr', { hasText: accountName })
       .getByRole('button', { name: 'Details', exact: true })

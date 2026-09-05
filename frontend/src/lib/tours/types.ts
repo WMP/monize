@@ -97,6 +97,14 @@ export interface TourStep {
    * for a user who has no accounts yet.
    */
   requires?: TourRequirement;
+  /**
+   * Where the card sits: against its anchor for an anchored step. For an
+   * `unobtrusive` step with NO anchor -- a corner-parked coach mark -- only
+   * 'left' is meaningful, and it moves the card to the bottom-LEFT corner.
+   * Use it whenever the step asks the user to click something the right of the
+   * page holds: row actions are right-aligned and sticky, so the default
+   * right-hand corner puts the card on top of the very control the copy names.
+   */
   placement?: TourPlacement;
   /** Filtered out at startTour on narrow viewports. */
   skipOnMobile?: boolean;
