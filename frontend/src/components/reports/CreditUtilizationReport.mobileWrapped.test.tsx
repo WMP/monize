@@ -262,8 +262,12 @@ describe('CreditUtilizationReport (phone wrapped table)', () => {
     expect(identity.className).toContain('min-w-0');
     const name = identity.querySelector('span')!;
     // The tier cell wraps this name today, so the card clamps rather than
-    // truncates, and hands the wrap back from `sm` up.
-    expect(name.className).toContain('line-clamp-2');
+    // truncates, and hands the wrap back from `sm` up. Three lines, not two:
+    // at the measured 122px track a two-line clamp shows about 25 characters,
+    // which renders two accounts differing only after "Scotiabank Momentum
+    // Visa " as the same row -- and `title` is a hover affordance a touch
+    // screen does not have.
+    expect(name.className).toContain('line-clamp-3');
     expect(name.className).toContain('sm:line-clamp-none');
     expect(name.getAttribute('title')).toBe(ACCOUNT_NAME_40);
     // The account-type sub-line stays inside the same identity cell.

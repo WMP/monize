@@ -609,17 +609,30 @@ export function CreditUtilizationReport() {
                       track with `min-w-0`: a track that may be zero lets the
                       name shrink, where a flex item's `min-w-0` still
                       contributes the full width of its text to the row's
-                      minimum. The tier cell WRAPS the name today, so clamping
-                      to two lines keeps that (a `truncate` would be a
+                      minimum. The tier cell WRAPS the name today, so the card
+                      clamps rather than truncates (a `truncate` would be a
                       regression), and `sm:line-clamp-none` hands the wrap back
                       from `sm` up. Measured rendered width: 122px at 320px and
-                      157px at 390px. The account-type sub-line is bounded (22
-                      characters at its longest, in the pseudo-locale) and is
-                      left to wrap on its own, so the `flex flex-col` markup
-                      below is exactly today's. */}
+                      157px at 390px.
+
+                      THREE lines, not two, and that is measured: at 122px a
+                      two-line clamp shows about 25 characters, so two cards
+                      differing only after "Scotiabank Momentum Visa " read as
+                      the same account -- and `title` is a hover affordance a
+                      touch screen does not have, so there is no second way to
+                      tell them apart. Three lines show the whole of a
+                      40-character name at both widths. Containment is
+                      unaffected either way (a wrapping box contributes no
+                      minimum width); the cost is 20px of row height, and only
+                      on the rows whose name actually needs it.
+
+                      The account-type sub-line is bounded (22 characters at its
+                      longest, in the pseudo-locale) and is left to wrap on its
+                      own, so the `flex flex-col` markup below is exactly
+                      today's. */}
                   <td role="cell" className="col-start-1 row-start-1 min-w-0 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                     <div className="flex flex-col">
-                      <span className="line-clamp-2 sm:line-clamp-none" title={row.name}>{row.name}</span>
+                      <span className="line-clamp-3 sm:line-clamp-none" title={row.name}>{row.name}</span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {accountTypeLabel(row.accountType)}
                       </span>
