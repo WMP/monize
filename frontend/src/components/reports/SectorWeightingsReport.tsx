@@ -606,10 +606,21 @@ export function SectorWeightingsReport() {
                       the name wraps in full and the tooltip only repeats what
                       is on screen.
 
-                      The colour dot keeps its index into the chart palette
-                      exactly as it is -- the row's position in the UNSORTED
-                      `data.items`, so re-sorting the table never re-colours a
-                      sector away from its bar in the chart above. */}
+                      The colour dot keeps its index exactly as it is -- the
+                      row's position in the UNSORTED `data.items` -- so a
+                      sector's swatch is the same whichever way the table is
+                      sorted. It is NOT a key to the chart above, which is a
+                      stacked bar coloured by SERIES (direct vs ETF) with no
+                      per-sector fill; `chartData[].color` is built and never
+                      read. Two consequences, both pre-existing and both
+                      deliberately unchanged here: the dot is a stable
+                      per-sector swatch and nothing more, and because
+                      `--chart-1`/`--chart-2` are the same values as
+                      `--chart-primary`/`--chart-income`, the first two rows'
+                      dots happen to match the two series fills. Logged as a
+                      follow-up (`chartSeriesColorAsidePrimary` is the helper
+                      that answers it); a layout mode does not re-decide a
+                      colour. */}
                   <td role="cell" className={`${IDENTITY_CELL} font-medium text-gray-900 dark:text-gray-100`}>
                     <div className="flex items-center gap-2">
                       <div
@@ -696,7 +707,16 @@ export function SectorWeightingsReport() {
                   width. */}
               <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
                 <td role="cell" className={`${IDENTITY_CELL} font-bold text-gray-900 dark:text-gray-100`}>
-                  {t('sectorWeightings.total')}
+                  {/* The same clamped span the other two shapes use, not a bare
+                      label: today's footer labels are short in every locale,
+                      but the identity track's containment argument IS the
+                      clamp's `overflow: hidden` (see the sector row), so a
+                      cell left outside it is one long token away from
+                      reopening the sideways scroll -- and nothing would show
+                      it until a locale grew one. */}
+                  <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={t('sectorWeightings.total')}>
+                    {t('sectorWeightings.total')}
+                  </span>
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.direct} font-bold text-blue-600 dark:text-blue-400 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.direct.label}</CellLabel>

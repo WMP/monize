@@ -21,8 +21,17 @@ import { SectorWeightingsReport } from './SectorWeightingsReport';
  */
 
 const mockPush = vi.fn();
+// One router for the run, as `src/test/setup.ts` builds it: `useRouter()`
+// returns the same object every render in the real hook, so a factory handing
+// back a fresh one changes the identity of every `useCallback([router])` and an
+// effect that also sets state loops. Built lazily inside the factory because
+// `vi.mock` is hoisted above the `const` it closes over.
+let router: { push: typeof mockPush; replace: () => void; back: () => void; prefetch: () => void };
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => {
+    router ??= { push: mockPush, replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() };
+    return router;
+  },
   usePathname: () => '/reports/sector-weightings',
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({ reportId: 'sector-weightings' }),
@@ -262,6 +271,19 @@ describe('SectorWeightingsReport (phone wrapped table)', () => {
       }
     }
 
+    // All three identity cells contain their label in the SAME clamped span,
+    // not just the same track. The containment argument for that track is the
+    // clamp's own `overflow: hidden` (a flex item with no `min-w-0` otherwise
+    // contributes its longest unbroken word to the row's minimum width), so a
+    // label left outside the span is one long token away from reopening the
+    // sideways scroll -- with nothing to show it until a locale grows one.
+    for (const row of [sectorRow, unclassified, footRow]) {
+      const label = cellsOf(row)[0].querySelector('span');
+      expect(label?.className).toContain('line-clamp-3');
+      expect(label?.className).toContain('break-words');
+      expect(cellsOf(row)[0].className).toContain('min-w-0');
+    }
+
     // The totals are the largest figures on the table and carry their captions
     // like any other cell, so a phone reader is not left with four bare
     // numbers under no heading.
@@ -318,8 +340,9 @@ describe('SectorWeightingsReport (phone wrapped table)', () => {
     const dotOf = (label: string) =>
       findRow(container, label)!.querySelector('td div div')!.getAttribute('style');
     // The index is the row's position in `data.items`, not in the sorted list,
-    // so re-sorting the table never re-colours a sector away from its bar in
-    // the chart above it.
+    // so a sector's swatch is the same whichever way the table is sorted. It
+    // is not a key to the chart, which colours by series rather than by sector
+    // (see the cell's own comment) -- the claim here is stability alone.
     const before = [LONG_SECTOR, SIBLING_SECTOR, 'Energy'].map(dotOf);
     expect(before[0]).toContain('--chart-1');
     expect(before[1]).toContain('--chart-2');
