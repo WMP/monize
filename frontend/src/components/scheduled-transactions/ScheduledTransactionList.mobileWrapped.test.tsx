@@ -153,7 +153,12 @@ describe('the bills list on a phone', () => {
     expect(text).toContain('2 modified');
     expect(text).toContain('Chequing');
     expect(text).toContain('Utilities');
-    expect(text).toContain('Auto');
+    // The auto-post BADGE ("On"), not the caption that names the column
+    // ("Auto") -- a `toContain('Auto')` is satisfied by the caption alone, so it
+    // would stay green with the marker regressed to the not-auto-posting em dash
+    // and the column reporting the opposite of the truth.
+    const autoSlot = within(rows[0]).getByText('Auto').parentElement!;
+    expect(autoSlot.textContent).toBe('AutoOn');
 
     // The row actions stay in the long-press action sheet on phones.
     expect(text).not.toContain('Edit');
@@ -211,6 +216,10 @@ describe('the bills list on a phone', () => {
     }
     expect(within(row).getByText('Chequing').textContent).toBe('Chequing');
     expect(within(row).getByText('Utilities').textContent).toBe('Utilities');
+    // The other side of the auto-post marker: a schedule the user posts by hand
+    // draws the muted em dash, which is exactly why this slot is captioned at
+    // all -- a bare dash has nothing to say what column it belongs to.
+    expect(within(row).getByText('Auto').parentElement!.textContent).toBe('Auto—');
 
     // The name carries no caption: it is the row's identity, and the tier
     // header's own label for that column ("Name / Payee") would misdescribe a

@@ -23,6 +23,16 @@ import type { RowAction } from '@/components/ui/row-actions/rowAction';
  * would otherwise take the list past the repo's 800-line ceiling.
  */
 
+/** The three row actions that go through the confirmation dialog. */
+export type ConfirmAction = 'post' | 'skip' | 'delete';
+
+/** Which schedule the confirmation dialog is open over, and for which action. */
+export interface ConfirmState {
+  isOpen: boolean;
+  action: ConfirmAction | null;
+  transaction: ScheduledTransaction | null;
+}
+
 export interface ScheduledActionLabels {
   post: string;
   skip: string;

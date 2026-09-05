@@ -30,18 +30,20 @@ import {
   ScheduledEmptyState,
   useDueDateStatus,
   useScheduledAmountFormatter,
+  type ConfirmAction,
+  type ConfirmState,
   type DueDateStatus,
 } from '@/components/scheduled-transactions/ScheduledTransactionListParts';
 
 /**
  * Cash impact of a scheduled transaction occurrence, taking nextOverride into
- * account when `useOverride` is true. This is the server's effective amount -- what the occurrence would post
- * *today* -- not the persisted `amount` and not a locally recomputed one (issue
- * #1247). A scheduled investment's stored `amount` is its security-currency cash
- * impact, converted at the *current* settlement rate; recomputing the pre-FX
- * figure here (which this list used to do) showed a number in one currency
- * under another currency's code, and disagreed with both the cash-flow forecast
- * and the posting. `null` means the current amount is unknown.
+ * account when `useOverride` is true. This is the server's effective amount --
+ * what the occurrence would post *today* -- not the persisted `amount` and not a
+ * locally recomputed one (issue #1247). A scheduled investment's stored `amount`
+ * is its security-currency cash impact, converted at the *current* settlement
+ * rate; recomputing the pre-FX figure here (which this list used to do) showed a
+ * number in one currency under another currency's code, and disagreed with both
+ * the cash-flow forecast and the posting. `null` means the amount is unknown.
  */
 function scheduledOccurrenceAmount(
   transaction: ScheduledTransaction,
@@ -289,13 +291,6 @@ function ScheduledAmountValue({
   );
 }
 
-type ConfirmAction = 'post' | 'skip' | 'delete';
-
-interface ConfirmState {
-  isOpen: boolean;
-  action: ConfirmAction | null;
-  transaction: ScheduledTransaction | null;
-}
 interface ScheduledTransactionRowProps {
   transaction: ScheduledTransaction;
   isProcessing: boolean;
@@ -340,12 +335,12 @@ interface ScheduledTransactionRowProps {
    * and Amount; Schedule and Account; Category and Auto.
    *
    * The two breakpoints are not the same one. The tier row's Actions cell is
-   * `min-[480px]` and `wrapped` covers everything below 640px, so between
-   * 480px and 639px at Normal density the actions move from inline buttons to
-   * that sheet -- and stop being tab-reachable there. It is the price of the
-   * card, paid for the four columns above; the register, accounts, payees and
+   * `min-[480px]` and `wrapped` covers everything below 640px, so between 480px
+   * and 639px at Normal density the actions move from inline buttons to that
+   * sheet -- and stop being tab-reachable there. It is the price of the card,
+   * paid for the four columns above; the register, accounts, payees and
    * securities lists make the same trade at the same two widths, and Compact
-   * density (one tap away) is the way back to inline actions.
+   * density is the way back to inline actions.
    */
   wrapped?: boolean;
 }
@@ -391,14 +386,13 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
   const stackedLines = density === 'dense' ? 'flex items-baseline gap-1.5 flex-wrap' : '';
 
   // Phone + Normal density: one wrapped card per row instead of the tier
-  // table's cells (see the `wrapped` prop). It is a LAYOUT mode, not a
-  // different set of facts -- the amount, the schedule details, the category
-  // chip and the auto-post marker are the same components the tier renders, so
-  // the two cannot disagree about what an occurrence costs, when it falls due
-  // or what an absent category looks like. Nothing in the card is interactive
-  // (the row's handlers own the click and the long press, and the tier's only
-  // control, the Actions cell, is the column the card drops), so no inner
-  // control needs a `stopPropagation` here.
+  // table's cells (see the `wrapped` prop). It is a LAYOUT mode, not a different
+  // set of facts -- the amount, the schedule details, the category chip and the
+  // auto-post marker are the same components the tier renders, so the two cannot
+  // disagree about what an occurrence costs, when it falls due or what an absent
+  // category looks like. Nothing in the card is interactive (the row's handlers
+  // own the click and the long press, and the tier's only control, the Actions
+  // cell, is the column the card drops), so nothing here needs `stopPropagation`.
   if (wrapped) {
     return (
       <tr
@@ -411,27 +405,26 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
           <div className={cellPadding}>
             {/* A grid, not a flex row, and `minmax(0,1fr)` rather than a plain
                 `1fr`: a track that may be zero lets the name and the account
-                shrink, where a flex item's `min-w-0` still contributes the full
-                width of its nowrap text to the table's minimum. On a phone that
-                is not merely a scrollbar -- mobile Chrome sizes the viewport
-                `position: fixed` attaches to from the page's widest content. */}
+                shrink, where a flex item's `min-w-0` still contributes its
+                nowrap text's full width to the table's minimum -- and on a phone
+                that is not merely a scrollbar, since mobile Chrome sizes the
+                `position: fixed` viewport from the page's widest content. */}
             <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
               {/* Line 1, left: the row's identity. The tier cell lets the name
                   WRAP, so `truncate` would cut it to one line; `line-clamp-2`
                   keeps two, and a wrapping box adds no minimum width, so
-                  containment is identical to `truncate`. What that costs, said
-                  plainly: a name past two lines IS shortened here where the
-                  tier wrapped it whole, and the `title` recovers it for a
-                  pointer and for assistive technology but not for a tap. Two
-                  lines is the deliberate bound the register, securities and
-                  payees cards use -- unclamped, one name pushes the amount and
-                  the schedule down a screen. `flex-wrap` then keeps the name
-                  the IDENTITY of the card: it is the only shrinkable item here,
-                  while the overdue chip cannot shrink below its own words
-                  ("Yakında Vadesi Doluyor" in `tr`) and would otherwise take
-                  its width out of the name's. Wrapping drops the chip to its
-                  own line instead, and a short name -- the common case -- keeps
-                  it inline. The chip describes itself, so no caption. */}
+                  containment is identical to `truncate`. What that costs: a name
+                  past two lines IS shortened here where the tier wrapped it
+                  whole, recoverable through `title` for a pointer and for
+                  assistive technology but not for a tap. Two lines is the bound
+                  the register, securities and payees cards use -- unclamped, one
+                  name pushes the amount and the schedule down a screen.
+                  `flex-wrap` then keeps the name the IDENTITY of the card: it is
+                  the only shrinkable item here, while the overdue chip cannot
+                  shrink below its own words ("Yakında Vadesi Doluyor" in `tr`)
+                  and would otherwise take its width out of the name's. Wrapping
+                  drops the chip to its own line instead; a short name keeps it
+                  inline. The chip describes itself, so no caption. */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <div
@@ -457,9 +450,9 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
                   test still matches the amount alone. `whitespace-nowrap` goes
                   on the VALUE, never the wrapper: this is an `auto` track whose
                   minimum is its item's min-content, so a nowrap wrapper would
-                  size it from whichever is wider, the figure or the CAPTION.
-                  The figure must not wrap (a locale grouping thousands with a
-                  thin space would break it in two) and is never truncated. */}
+                  size it from whichever is wider, the figure or the CAPTION. The
+                  figure must not wrap (a locale grouping thousands with a thin
+                  space breaks it in two) and is never truncated. */}
               <div className="text-right">
                 <CellLabel>{t('list.columns.amount')}</CellLabel>
                 <div className="text-sm font-medium whitespace-nowrap">
@@ -476,9 +469,8 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
                   caption buy a second line of height instead of the column
                   beside it. The schedule slot's values are deliberately NOT
                   nowrap: it holds a sentence-like frequency line, and a wrapped
-                  date is merely untidy where a wrapped money figure is
-                  unreadable. The account NAME is the one thing here that may
-                  truncate. */}
+                  date is untidy where a wrapped money figure is unreadable. The
+                  account NAME is the one thing here that may truncate. */}
               <div className="col-span-2 grid grid-cols-2 items-start gap-x-4">
                 <div className="min-w-0">
                   <CellLabel>{t('list.columns.schedule')}</CellLabel>
@@ -511,10 +503,10 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
                   Both slots are captioned even though a chip normally describes
                   itself, because each has a branch that does not: a schedule
                   with no category and one that does not auto-post both render a
-                  bare em dash, and uncaptioned that is a line with nothing to
-                  say what it is of -- the job the column header used to do. The
-                  caption sits on the slot rather than the dash branch, so the
-                  line keeps its shape row to row. */}
+                  bare em dash, which uncaptioned says nothing about what it is
+                  of -- the job the column header used to do. The caption sits on
+                  the slot rather than the dash branch, so the line keeps its
+                  shape row to row. */}
               <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
                 <div className="min-w-0">
                   <CellLabel>{t('list.columns.category')}</CellLabel>
@@ -701,7 +693,6 @@ export function ScheduledTransactionList({
       setActionInProgress(null);
     }
   };
-
 
   if (transactions.length === 0) {
     return <ScheduledEmptyState />;
