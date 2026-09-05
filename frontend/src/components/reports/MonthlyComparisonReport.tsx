@@ -51,15 +51,24 @@ function canGoForward(month: string): boolean {
   return !isAfter(startOfMonth(current), startOfMonth(next));
 }
 
-function DeltaBadge({ value, percent, invert = false }: { value: number; percent: number; invert?: boolean }) {
+function DeltaBadge({
+  value,
+  percent,
+  invert = false,
+  formatSignedPercent,
+}: {
+  value: number;
+  percent: number;
+  invert?: boolean;
+  formatSignedPercent: (value: number, decimals?: number) => string;
+}) {
   const positive = invert ? value <= 0 : value >= 0;
   const color = positive
     ? 'text-green-600 dark:text-green-400'
     : 'text-red-600 dark:text-red-400';
-  const arrow = value >= 0 ? '+' : '';
   return (
     <span className={`text-sm font-medium ${color}`}>
-      {arrow}{percent.toFixed(1)}%
+      {formatSignedPercent(percent, 1)}
     </span>
   );
 }
@@ -281,7 +290,7 @@ export function MonthlyComparisonReport() {
         rows: [
           [currentMonthLabel, formatCurrency(netW.currentNetWorth, cur)],
           [previousMonthLabel, formatCurrency(netW.currentNetWorth - netW.netWorthChange, cur)],
-          [t('monthlyComparison.pdfChange'), `${changeSign}${formatCurrency(netW.netWorthChange, cur)} (${changeSign}${netW.netWorthChangePercent.toFixed(1)}%)`],
+          [t('monthlyComparison.pdfChange'), `${changeSign}${formatCurrency(netW.netWorthChange, cur)} (${formatSignedPercent(netW.netWorthChangePercent, 1)})`],
         ],
       });
     }
@@ -369,7 +378,7 @@ export function MonthlyComparisonReport() {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousIncome, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.incomeChange} percent={ie.incomeChangePercent} />
+              <DeltaBadge value={ie.incomeChange} percent={ie.incomeChangePercent} formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
           {/* Expenses */}
@@ -382,7 +391,7 @@ export function MonthlyComparisonReport() {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousExpenses, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.expensesChange} percent={ie.expensesChangePercent} invert />
+              <DeltaBadge value={ie.expensesChange} percent={ie.expensesChangePercent} invert formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
           {/* Savings */}
@@ -397,7 +406,7 @@ export function MonthlyComparisonReport() {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {t('monthlyComparison.inMonth', { amount: formatCurrencyCompact(ie.previousSavings, currency), month: previousMonthLabel })}
               </span>
-              <DeltaBadge value={ie.savingsChange} percent={ie.savingsChangePercent} />
+              <DeltaBadge value={ie.savingsChange} percent={ie.savingsChangePercent} formatSignedPercent={formatSignedPercent} />
             </div>
           </div>
         </div>
@@ -605,9 +614,9 @@ export function MonthlyComparisonReport() {
                     layout="vertical"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                    <XAxis type="number" tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 12 }} />
+                    <XAxis type="number" tickFormatter={(v: number) => formatPercent(v, 0)} tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} />
-                    <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}%`, t('monthlyComparison.pdfAnnualizedReturn')]} />
+                    <Tooltip formatter={(value) => [formatPercent(Number(value), 2), t('monthlyComparison.pdfAnnualizedReturn')]} />
                     <Bar
                       dataKey="return"
                       radius={[0, 4, 4, 0]}
