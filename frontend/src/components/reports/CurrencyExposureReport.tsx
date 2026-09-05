@@ -121,20 +121,31 @@ const PHONE_HEADER_CLASS =
 // 390px.
 //
 // The formatter is the 2dp `formatCurrencyFull`, not the compact one the
-// sibling reports use, and that is what decides the line count. The widest
-// realistic value is a six-figure amount in a currency `narrowSymbol` has no
-// symbol for, so the unit is the three-letter ISO code: `123 456,78 CHF`
-// measures 97px at `text-xs`, and a seven-figure `1 219 326,04 CHF` 110px --
-// both inside 122px. Three figure cells on one line was measured too and does
-// not fit: three equal tracks are 77px at 320px, and the same content put
-// 314px of table in a 288px wrapper with 42px of cell overflow. So two per
-// line, on three lines (see the row's comment).
+// sibling reports use, and that is what decides the line count. The unit is
+// part of the budget and is not always a symbol: `narrowSymbol` falls back to
+// the three-letter ISO code where a currency has none, so the widest unit is
+// `CHF`. Three figure cells on one line was measured too and does not fit:
+// three equal tracks are 77px at 320px, and the same content put 314px of
+// table in a 288px wrapper with 42px of cell overflow. So two per line, on
+// three lines (see the row's comment).
 //
-// Right alignment is not a containment device: a nowrap figure longer than its
-// track overflows past the END edge whatever `text-align` says, and in the
-// right-hand track that reopens the wrapper's sideways scroll. That is the
-// deliberate choice -- `overflow-hidden` here would silently cut a figure or a
-// rate, and a cut figure is worse than a crowded one or an honest scroll.
+// The budget is measured against the FOOTER's grand total, not a row value:
+// the total is by construction larger than any row, and it is `font-bold`,
+// which costs about 11px more than the same digits in a data cell. Bold at
+// `text-xs`: `123 456,78 CHF` 107px, `1 219 326,04 CHF` 119px -- so six AND
+// seven figures fit the 122px track at 320px, against the one-line rule's bar
+// of six at 320px and seven at 390px. Eight figures (128px) are the first to
+// pass 122px, and everything up to eleven (157px) still fits the 157px track
+// at 390px. A portfolio whose total reaches eight figures therefore opens the
+// wrapper's sideways scroll at 320px, and only there.
+//
+// That is a deliberate choice rather than an oversight, because the
+// alternatives are worse: right alignment is not a containment device (a
+// nowrap figure longer than its track overflows past the END edge whatever
+// `text-align` says), `overflow-hidden` would silently cut a figure or a rate,
+// and dropping `whitespace-nowrap` would let a locale that groups thousands
+// with a space break a number in half. A cut or broken figure is worse than a
+// scroll -- and this is the only shape in which the scroll can come back.
 const FIGURE_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
@@ -610,7 +621,7 @@ export function CurrencyExposureReport() {
                         className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: item.color }}
                       />
-                      {item.currency}
+                      {columns.currency.value(item)}
                     </div>
                   </td>
                   <td role="cell" className={`col-start-1 row-start-2 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>

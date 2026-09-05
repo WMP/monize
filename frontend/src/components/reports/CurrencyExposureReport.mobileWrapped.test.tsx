@@ -445,6 +445,35 @@ describe('CurrencyExposureReport (phone wrapped table)', () => {
     expect(container.querySelectorAll('tbody tr')).toHaveLength(3);
   });
 
+  it('exports the columns the table renders, in the table\'s own order', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    (exportToPdf as any).mockClear();
+    const container = await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /export pdf/i }));
+    });
+    await waitFor(() => expect(exportToPdf).toHaveBeenCalledTimes(1));
+    const { headers, rows } = (exportToPdf as any).mock.calls[0][0].tableData;
+
+    // One ordered record feeds the phone sort strip, the column header row,
+    // the cells and the export -- so the export's headings, its row values and
+    // the table's own cells all have to line up column for column. Reordering
+    // the record must move all of them, and this fails if only some move.
+    const strip = Array.from(container.querySelectorAll('thead tr:first-child th'));
+    expect(headers).toEqual(strip.map((th) => th.textContent?.replace(/[↑↓↕]/g, '').trim()));
+
+    // The first exported row against the first rendered row, cell by cell,
+    // with each cell's phone caption stripped off -- what is left is the value.
+    const firstRow = container.querySelector('tbody tr')!;
+    const rendered = Array.from(firstRow.querySelectorAll('td')).map((td) => {
+      const caption = td.querySelector('span');
+      const text = td.textContent ?? '';
+      return caption ? text.slice((caption.textContent ?? '').length) : text;
+    });
+    expect(rows[0]).toEqual(rendered);
+  });
+
   it('leaves the surfaces outside the table alone', async () => {
     await renderReport();
 
