@@ -179,10 +179,15 @@ describe('CategoryPerformanceReport', () => {
     });
     // Every column label now names TWO controls -- the phone sort strip and the
     // column header row, both built from one column record -- so a header is
-    // addressed by POSITION in the column header row (`thead tr`[1]) rather
-    // than by text. jsdom applies no media queries, so both rows are present.
+    // addressed by POSITION rather than by text. jsdom applies no media
+    // queries, so both rows are present; the desktop one is identified by the
+    // class that displays it, not by its index among the header rows, so
+    // reordering or removing a header row fails here rather than silently
+    // exercising the other one.
+    const columnHeaderRow = document.querySelector('thead tr.sm\\:table-row')!;
+    expect(columnHeaderRow).not.toBeNull();
     const columnHeaderTh = (index: number) =>
-      document.querySelectorAll('thead tr')[1].querySelectorAll('th')[index] as HTMLElement;
+      columnHeaderRow.querySelectorAll('th')[index] as HTMLElement;
     // Default sort is avgPercent desc. Click name to switch field, which resets direction to asc.
     const nameTh = columnHeaderTh(0);
     await act(async () => { fireEvent.click(nameTh); });

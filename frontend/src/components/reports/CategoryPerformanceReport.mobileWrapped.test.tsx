@@ -178,8 +178,10 @@ describe('CategoryPerformanceReport (phone wrapped rows)', () => {
     expect(columnRow.className).toContain('sm:table-row');
     // Both rows are rendered from one record, so they cannot list different
     // fields -- assert it rather than trusting the loop. Every one of the
-    // eight persisted sort fields has a control in BOTH headers, so a phone
-    // can always sort its way back out of a stored sort.
+    // eight persisted sort fields has a TAPPABLE control in BOTH headers, so
+    // no stored sort can leave a phone with nothing to change it by. (Reaching
+    // one by keyboard is `SortableHeader`'s own pre-existing gap, shared by
+    // every report table and out of scope here.)
     const labelsOf = (row: Element) =>
       Array.from(row.querySelectorAll('th')).map((th) => stripGlyph(th.textContent));
     expect(labelsOf(phoneRow)).toEqual(EXPECTED_LABELS);
@@ -268,12 +270,20 @@ describe('CategoryPerformanceReport (phone wrapped rows)', () => {
         expect(cell.className).toMatch(/\bcol-start-\d\b/);
         expect(cell.className).toMatch(/\brow-start-\d\b/);
       }
-      // The six figure cells never wrap and are right-aligned; only the
-      // category name and the status pill may wrap. Right alignment is not
-      // containment -- an amount past the measured budget overflows the end
-      // edge -- but truncating a figure would be worse.
+      // The five cells that hold a NUMBER never wrap and are right-aligned.
+      // Right alignment is not containment -- an amount past the measured
+      // budget overflows the end edge -- but truncating a figure would be
+      // worse. The ban is exactly as wide as its reason (a space-grouped
+      // thousands separator must not split a number), so the three cells that
+      // hold no number are NOT in the set: the category name, the status pill,
+      // and the trend, whose value is a translated word (`Bez zmian`,
+      // `A descer`) that may wrap here exactly as it does today.
       const figures = cells.filter((c) => c.className.includes('whitespace-nowrap'));
-      expect(figures).toHaveLength(6);
+      expect(figures).toHaveLength(5);
+      const trendCell = cells[6];
+      expect(trendCell.className).not.toContain('whitespace-nowrap');
+      expect(trendCell.className).toContain('text-right');
+      expect(trendCell.className).toContain('text-xs');
       for (const cell of figures) {
         expect(cell.className).toContain('text-right');
         expect(cell.className).toContain('text-xs');

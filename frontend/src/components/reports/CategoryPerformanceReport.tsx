@@ -125,8 +125,11 @@ const cellPadding = (col: SortColumn) => (col.last ? 'sm:py-2.5' : 'sm:py-2.5 sm
 // five and six the sibling reports carry. In a long-caption locale that is
 // seven wrapped lines at 320px. Dropping controls is not the alternative --
 // `reports.category-performance.sort` persists any of the eight, so a field
-// with no control anywhere would leave a phone sorted by something it cannot
-// change back.
+// with no control anywhere would leave a phone POINTING at a sort with no
+// pointer back. What the strip restores is the tap; it inherits
+// `SortableHeader`'s pre-existing gap for a keyboard or switch user (a `<th>`
+// with an `onClick` and no `tabIndex`, `role` or key handler), which is shared
+// by every report table and is a separate fix.
 const PHONE_HEADER_CLASS =
   'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
 
@@ -202,6 +205,17 @@ const PHONE_HEADER_CLASS =
 // caption that one day loses its break opportunity spends the 12px column gap
 // there rather than reopening the wrapper's sideways scroll.
 const FIGURE_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:text-sm';
+
+// The Trend cell is laid out like a figure and is NOT one: it renders a
+// translated word (`Up`, `Стабильно`, `Bez zmian`, `A descer`) or the `--` a
+// series of fewer than two points produces. `FIGURE_CELL`'s nowrap exists so a
+// space-grouped THOUSANDS separator cannot split a number, and a word is not a
+// number -- applying it here would forbid a wrap this table allows today and
+// widen the desktop table's own minimum for nothing. So the trend keeps every
+// other property of a figure cell and lets its word wrap, exactly as it does
+// now. On a phone it never has to: the widest trend string in the catalogue,
+// the pseudo-locale's `[XX-Down-XX]`, is 84px in a 122px track at 320px.
+const WORD_CELL = 'p-0 text-right text-xs sm:table-cell sm:text-sm';
 
 /** Every caption in a wrapped cell is phone-only. */
 const CAPTION_CLASS = 'sm:hidden';
@@ -530,9 +544,11 @@ export function CategoryPerformanceReport() {
              an asymmetry this table has always had. A Chromium replica renders
              it pixel-identically to today at 800px in every locale. The one
              deliberate difference above `sm` is `whitespace-nowrap` on the
-             figures, for the reason `FIGURE_CELL` gives. The sort controls
-             survive as their own phone-only header row, because the column
-             header row that carries them on desktop is hidden there.
+             five cells that hold a NUMBER, for the reason `FIGURE_CELL` gives
+             -- the trend, which holds a word, keeps today's wrapping
+             (`WORD_CELL`). The sort controls survive as their own phone-only
+             header row, because the column header row that carries them on
+             desktop is hidden there.
 
              Two costs of restyling one tree, both deliberate. Changing the
              display roles drops the table semantics below `sm`, which is why
@@ -616,7 +632,7 @@ export function CategoryPerformanceReport() {
                       <CellLabel className={CAPTION_CLASS}>{columns.overCount.label}</CellLabel>
                       {columns.overCount.value(row)}
                     </td>
-                    <td role="cell" className={`col-start-2 row-start-4 font-medium ${row.trend.color} sm:text-center ${cellPadding(columns.trend)} ${FIGURE_CELL}`}>
+                    <td role="cell" className={`col-start-2 row-start-4 font-medium ${row.trend.color} sm:text-center ${cellPadding(columns.trend)} ${WORD_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.trend.label}</CellLabel>
                       {columns.trend.value(row)}
                     </td>
