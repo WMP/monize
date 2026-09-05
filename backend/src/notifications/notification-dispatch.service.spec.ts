@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { decode } from "he";
 import { join } from "path";
 
 import {
@@ -82,6 +83,54 @@ describe("NotificationDispatchService", () => {
       { translate } as never,
     );
   });
+
+  it.each([false, true])(
+    "localizes immediate email and reminder re-emits in the recipient locale (%s)",
+    async (reminder) => {
+      resolveDelivery.mockResolvedValue({
+        emailNotification: true,
+        push: false,
+        unifiedpush: false,
+        throttleMinutes: 0,
+      });
+      prefRepo.findOne.mockResolvedValue({ language: "pl" });
+      const stored = row({
+        type: NotificationType.BALANCE_BELOW_THRESHOLD,
+        data: {
+          accountName: "Current",
+          balance: -25,
+          threshold: 0,
+          currencyCode: "PLN",
+          ...(reminder ? { reminderId: "rem-1" } : {}),
+        },
+      });
+      create.mockResolvedValue(stored);
+      translate.mockImplementation(
+        (
+          key: string,
+          options: {
+            lang: string;
+            defaultValue: string;
+            args?: Record<string, unknown>;
+          },
+        ) => {
+          if (key === "emails.notificationCopy.balanceThreshold.titleLow")
+            return `Saldo: ${options.args?.account}`;
+          if (key === "emails.notificationCopy.balanceThreshold.messageLow")
+            return `Poniżej progu: ${options.args?.balance}`;
+          return options.defaultValue;
+        },
+      );
+      await service.notify("u1", {} as never);
+      const html = decode(sendMail.mock.calls[0][2]);
+      expect(html).toContain("Saldo: Current");
+      expect(html).toContain("Poniżej progu: -25,00");
+      expect(html).not.toContain(stored.title);
+      expect(stored.title).toBe("Groceries over budget");
+      for (const [, options] of translate.mock.calls)
+        expect(options.lang).toBe("pl");
+    },
+  );
 
   it("writes through the one write door and returns the row (INV-DISPATCH-001)", async () => {
     const result = await service.notify("u1", {

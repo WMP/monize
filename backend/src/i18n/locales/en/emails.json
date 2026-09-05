@@ -199,5 +199,92 @@
     "eyebrow": "Monize notification",
     "button": "Open in Monize",
     "footer": "You are receiving this because immediate email is on for this notification type. Change it in Settings, Notifications."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} overdue",
+      "titleToday": "{{ payee }} due today",
+      "titleTomorrow": "{{ payee }} due tomorrow",
+      "titleInDays": "{{ payee }} due in {{ days }} days",
+      "amountDue": "{{ amount }} due on {{ date }}",
+      "amountUnavailable": "Amount unavailable (no current exchange rate), due on {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} switched to {{ state }}",
+      "riskMessage": "Your GEM strategy \"{{ strategy }}\" changed from {{ fromState }} to {{ toState }}. Open to review the recommendation.",
+      "allocationTitle": "{{ strategy }} changed its target",
+      "allocationMessage": "Your GEM strategy \"{{ strategy }}\" now targets {{ target }}. Open to review the recommendation.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Developed markets ex-US",
+        "EM_EQUITY": "Emerging markets",
+        "SAFE": "Safe asset",
+        "RISK_FREE": "Risk-free benchmark"
+      },
+      "allocationMessageUnknown": "Your GEM strategy \"{{ strategy }}\" changed its target. Open to review the recommendation."
+    },
+    "portfolioMovement": {
+      "titleUp": "Investments up {{ percent }}%",
+      "titleDown": "Investments down {{ percent }}%",
+      "messageUp": "Your investments are up {{ percent }}% today, excluding deposits and withdrawals. Open to review.",
+      "messageDown": "Your investments are down {{ percent }}% today, excluding deposits and withdrawals. Open to review."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} is below your threshold",
+      "titleHigh": "{{ account }} is above your threshold",
+      "messageLow": "{{ account }} dropped to {{ balance }}, below your {{ threshold }} threshold.",
+      "messageHigh": "{{ account }} rose to {{ balance }}, above your {{ threshold }} threshold."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Automatic backup failed",
+        "message": "The automatic backup for {{ user }} failed: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Automatic backup incomplete",
+        "messageAttachments": "The backup for {{ user }} was written, but {{ missing }} of {{ expected }} attachments could not be included and {{ inconsistent }} did not match their metadata. Complete backups were preserved.",
+        "messagePromotion": "The daily backup for {{ user }} succeeded, but its weekly or monthly copy could not be written: {{ error }}",
+        "messageRetention": "The backup for {{ user }} succeeded, but old backup files could not be cleaned up: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Encryption key not configured",
+        "message": "ENCRYPTION_KEY is not set, so backups are written unencrypted and secrets cannot be stored. A future release will refuse to start without it."
+      },
+      "smtpFailure": {
+        "title": "Email delivery is failing",
+        "message": "Monize could not send email: {{ error }}. Notifications and reminders are not being delivered."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} is not responding",
+        "message": "Market data from {{ provider }} is unavailable. Prices and index data may be out of date until it answers again."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} is answering again",
+        "message": "The outage is over and market data from {{ provider }} is updating again."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} could not be posted",
+        "message": "Your scheduled transaction due {{ date }} did not post automatically: {{ error }}. You can post it manually from Bills."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} is over budget",
+      "overMessage": "You have spent {{ amount }} of your {{ limit }} budget for {{ category }} ({{ percent }}%).",
+      "criticalTitle": "{{ category }} approaching limit",
+      "warningTitle": "{{ category }} reaching budget limit",
+      "thresholdMessage": "You have used {{ percent }}% of your {{ category }} budget ({{ amount }} of {{ limit }}).",
+      "projectedTitle": "{{ category }} projected to overspend",
+      "projectedMessage": "At your current pace, {{ category }} is projected to reach {{ projected }} by the end of the period (budget: {{ budgeted }}).",
+      "flexTitle": "Flex group \"{{ group }}\" at {{ percent }}%",
+      "flexMessage": "The \"{{ group }}\" flex group has used {{ spent }} of its combined {{ budgeted }} budget ({{ percent }}%).",
+      "incomeTitle": "Income below expected",
+      "incomeMessage": "Your actual income ({{ actual }}) is at {{ ratio }}% of expected income ({{ expected }}) at this point in the period.",
+      "milestoneTitle": "Budget on track",
+      "milestoneMessage": "You are {{ progress }}% through the period and have only used {{ percent }}% of your total budget. Keep it up!",
+      "seasonalTitle": "Seasonal spike expected for {{ category }}",
+      "seasonalMessage": "Last {{ month }} you spent {{ increase }}x your usual on {{ category }}. Consider adjusting your budget."
+    }
   }
 }

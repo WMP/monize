@@ -25,6 +25,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { EmailService } from "../notifications/email.service";
 import { NotificationDispatchService } from "../notifications/notification-dispatch.service";
+import { notificationEmailCopy } from "../notifications/notification-email-copy";
 import {
   budgetAlertImmediateTemplate,
   budgetWeeklyDigestTemplate,
@@ -375,7 +376,9 @@ export class BudgetAlertService {
         severity: candidate.severity,
         title: candidate.title,
         message: candidate.message,
-        data: candidate.data,
+        // The amounts were computed in this budget's currency. Carry the
+        // code with the snapshot so later emails never guess from preferences.
+        data: { ...candidate.data, currencyCode: budget.currencyCode },
         budgetId: candidate.budgetId,
         budgetCategoryId: candidate.budgetCategoryId,
         // Where the bell sends the reader: the budget the alert is about.
@@ -678,15 +681,13 @@ export class BudgetAlertService {
         "http://localhost:3000",
       );
 
+      const lang = prefs?.language || DEFAULT_LOCALE;
+      const t = emailTranslator(this.i18n, lang);
       const alertData = alerts.map((a) => ({
-        title: a.title,
-        message: a.message,
+        ...notificationEmailCopy(a, t, lang),
         severity: a.severity,
         categoryName: (a.data?.categoryName as string) || "",
       }));
-
-      const lang = prefs?.language || DEFAULT_LOCALE;
-      const t = emailTranslator(this.i18n, lang);
 
       const html = budgetAlertImmediateTemplate(
         user.firstName || "",
@@ -699,8 +700,8 @@ export class BudgetAlertService {
         alerts.length === 1
           ? t(
               "emails.budgetAlertImmediate.subject",
-              `Monize: Alert - ${alerts[0].title}`,
-              { title: alerts[0].title },
+              `Monize: Alert - ${alertData[0].title}`,
+              { title: alertData[0].title },
             )
           : t(
               "emails.budgetAlertImmediate.subjectPlural",
@@ -827,17 +828,15 @@ export class BudgetAlertService {
       "http://localhost:3000",
     );
 
+    const lang = prefs?.language || DEFAULT_LOCALE;
+    const t = emailTranslator(this.i18n, lang);
     const alertData = recentAlerts.map((a) => ({
-      title: a.title,
-      message: a.message,
+      ...notificationEmailCopy(a, t, lang),
       severity: a.severity,
       categoryName: (a.data?.categoryName as string) || "",
     }));
 
     const budgetNames = budgets.map((b) => b.name);
-
-    const lang = prefs?.language || DEFAULT_LOCALE;
-    const t = emailTranslator(this.i18n, lang);
 
     const html = budgetWeeklyDigestTemplate(
       user.firstName || "",

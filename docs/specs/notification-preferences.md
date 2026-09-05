@@ -804,9 +804,24 @@ skipped (Section 4). `throttle_minutes = 0` disables the window.
   names, and a Web Push body is composed outside any request, so it follows the
   email rule. The wire is encrypted end to end (Section 15), the lock screen is
   not; the in-app row, one tap away through `target`, carries the detail.
-  `collapseKey` stays the row's dedupe key or id. The immediate email keeps the
-  row's copy inside a localized frame (known gap: the row's copy itself is
-  English for every producer today).
+  `collapseKey` stays the row's dedupe key or id. Email detail is composed from
+  `type` and `data` with `notificationEmailCopy` in the recipient's stored
+  language. This applies to immediate dispatch (including reminder re-emits),
+  critical budget emails, weekly budget digests and system-admin emails; dynamic
+  subjects use the same localized title. Each admin is rendered separately.
+  Catalogs under `emails.notificationCopy` cover all active notification types.
+  Numbers, snapshot currencies, dates and month names use the recipient's locale;
+  bill headlines are recomputed at delivery time against the UTC calendar day,
+  matching the server's bill-date convention. Push stays generic per category.
+  Names, symbols and diagnostic errors stay literal and are HTML-escaped by the
+  templates. New budget snapshots carry their currency code alongside the amounts.
+  Missing or malformed facts on legacy/restored rows retain the entire stored
+  title/message; no amount, currency, date or GEM state is invented. The dormant
+  `PACE_WARNING` enum has no producer or data contract and retains that fallback.
+  Tests: `backend/src/notifications/notification-email-copy.spec.ts` exercises
+  real nestjs-i18n, the active type set, English fallback, locales, incomplete
+  data and escaping; the dispatch, budget and system-alert service suites check
+  the four delivery paths and localized subjects.
 - **Concurrency, stated honestly:** the throttle is a **best-effort rate limit on
   external side effects**, not an exactly-once guarantee -- two replicas firing
   the same group within the window can both pass the `SELECT` and both send. Push
@@ -1127,9 +1142,10 @@ verify it against the discussion rather than trusting this summary.)
   is a specific transaction is removed when that transaction is deleted. Needs a
   bounded design (Section 16.4): which producers tie a row to a transaction id,
   and delete-vs-null per row.
-- **Async localization** -- the recipient's chosen language. Done for the push
-  body and the email frame; the immediate-email body is producer-composed English
-  today (PR #1304 open item 2, spec Section 14).
+- **Async localization** -- the recipient's chosen language. Implemented for
+  push category copy, email framing and structured notification titles/messages,
+  including admin alerts and budget digests (PR #1304 open item 2, Section 14).
+  Legacy rows without the required facts retain their stored English fallback.
 
 ### 16.4 What still needs a spec before code
 

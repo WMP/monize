@@ -173,6 +173,52 @@ describe("SystemAlertService", () => {
     );
   });
 
+  it("localizes each administrator's email and subject separately", async () => {
+    route({
+      admins: [
+        adminRow(),
+        adminRow({ id: "admin-2", email: "second@example.com" }),
+      ],
+    });
+    const original = manager.getRepository.getMockImplementation()!;
+    manager.getRepository.mockImplementation((entity) =>
+      entity === UserPreference
+        ? {
+            findOne: jest.fn(({ where }: { where: { userId: string } }) =>
+              Promise.resolve({
+                language: where.userId === "admin-1" ? "pl" : "de",
+              }),
+            ),
+          }
+        : original(entity),
+    );
+    jest
+      .spyOn(service["i18n"], "translate")
+      .mockImplementation((key, options) => {
+        if (key === "emails.notificationCopy.system.backupFailed.title")
+          return `${options?.lang}: backup`;
+        if (key === "emails.notificationCopy.system.backupFailed.message")
+          return `${options?.lang}: ${(options?.args as Record<string, unknown>)?.error}`;
+        return options?.defaultValue ?? key;
+      });
+    await service.raiseAdminAlert(
+      input({
+        data: {
+          system: true,
+          affectedUserEmail: "owner@example.com",
+          error: "ENOSPC <disk>",
+        },
+      }),
+    );
+    expect(emailService.sendMail).toHaveBeenCalledTimes(2);
+    for (const [index, lang] of ["pl", "de"].entries()) {
+      const [, subject, html] = emailService.sendMail.mock.calls[index];
+      expect(subject).toContain(`${lang}: backup`);
+      expect(html).toContain(`${lang}: ENOSPC &lt;disk&gt;`);
+      expect(html).not.toContain("Automatic backup failed");
+    }
+  });
+
   describe("fan-out", () => {
     it("writes one guarded insert per active admin, carrying the dedupe key", async () => {
       route({

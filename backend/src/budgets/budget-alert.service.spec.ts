@@ -322,6 +322,53 @@ describe("BudgetAlertService", () => {
     service = module.get<BudgetAlertService>(BudgetAlertService);
   });
 
+  describe("localized alert emails", () => {
+    beforeEach(() => {
+      preferencesRepository.findOne.mockResolvedValue({
+        language: "pl",
+        notificationEmail: true,
+        budgetDigestEnabled: true,
+      });
+      jest
+        .spyOn(service["i18n"], "translate")
+        .mockImplementation((key, options) => {
+          expect(options?.lang).toBe("pl");
+          if (key === "emails.notificationCopy.budget.overTitle")
+            return "Jedzenie: limit przekroczony";
+          if (key === "emails.notificationCopy.budget.overMessage")
+            return `Wydano ${(options?.args as Record<string, unknown>)?.amount}`;
+          return options?.defaultValue ?? key;
+        });
+    });
+    const alert = () =>
+      makeAlert({
+        type: NotificationType.OVER_BUDGET,
+        title: "Stored title",
+        message: "Stored message",
+        data: {
+          categoryName: "Food",
+          amount: 120,
+          limit: 100,
+          percent: 120,
+          currencyCode: "PLN",
+        },
+      });
+    it("uses localized copy in the critical email body and single-alert subject", async () => {
+      await service["sendImmediateAlertEmail"]("u1", [alert()]);
+      const [, subject, html] = emailService.sendMail.mock.calls[0];
+      expect(subject).toContain("Jedzenie: limit przekroczony");
+      expect(html).toContain("Wydano 120,00");
+      expect(html).not.toContain("Stored title");
+    });
+    it("uses the same localized copy in the weekly digest", async () => {
+      alertsRepository.find.mockResolvedValue([alert()]);
+      await service["sendDigestForUser"]("u1", [makeBudget()]);
+      const html = emailService.sendMail.mock.calls[0][2];
+      expect(html).toContain("Jedzenie: limit przekroczony");
+      expect(html).not.toContain("Stored title");
+    });
+  });
+
   describe("checkThresholdAlerts", () => {
     it("returns OVER_BUDGET alert when spending is > 100%", () => {
       const alerts = service.checkThresholdAlerts({
@@ -1066,6 +1113,9 @@ describe("BudgetAlertService", () => {
       expect(result.alertsCreated).toBeGreaterThan(0);
       expect(insertedAlerts.length).toBeGreaterThan(0);
       expect(insertedAlerts[0].type).toBe(NotificationType.OVER_BUDGET);
+      expect(insertedAlerts[0].data).toEqual(
+        expect.objectContaining({ currencyCode: budget.currencyCode }),
+      );
     });
 
     it("sends immediate email for critical alerts", async () => {

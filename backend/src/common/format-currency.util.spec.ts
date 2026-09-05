@@ -5,6 +5,12 @@ import {
 } from "./format-currency.util";
 
 describe("formatCurrency", () => {
+  it("supports a recipient locale without changing currency precision or existing defaults", () => {
+    expect(formatCurrency(1234.56, "PLN", "pl")).toContain("1234,56");
+    expect(formatCurrency(1234.567, "BHD", "pl")).toContain("1234,567");
+    expect(formatCurrency(1234, "JPY", "pl")).not.toContain(",00");
+    expect(formatCurrency(1234.56, "USD")).toContain("1,234.56");
+  });
   it("formats USD with 2 decimal places", () => {
     expect(formatCurrency(1234.56, "USD")).toContain("1,234.56");
   });

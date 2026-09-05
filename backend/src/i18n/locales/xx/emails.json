@@ -199,5 +199,92 @@
     "eyebrow": "[XX-Monize notification-XX]",
     "button": "[XX-Open in Monize-XX]",
     "footer": "[XX-You are receiving this because immediate email is on for this notification type. Change it in Settings, Notifications.-XX]"
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "[XX-{{ payee }} overdue-XX]",
+      "titleToday": "[XX-{{ payee }} due today-XX]",
+      "titleTomorrow": "[XX-{{ payee }} due tomorrow-XX]",
+      "titleInDays": "[XX-{{ payee }} due in {{ days }} days-XX]",
+      "amountDue": "[XX-{{ amount }} due on {{ date }}-XX]",
+      "amountUnavailable": "[XX-Amount unavailable (no current exchange rate), due on {{ date }}-XX]"
+    },
+    "gemSignal": {
+      "riskTitle": "[XX-{{ strategy }} switched to {{ state }}-XX]",
+      "riskMessage": "[XX-Your GEM strategy \"{{ strategy }}\" changed from {{ fromState }} to {{ toState }}. Open to review the recommendation.-XX]",
+      "allocationTitle": "[XX-{{ strategy }} changed its target-XX]",
+      "allocationMessage": "[XX-Your GEM strategy \"{{ strategy }}\" now targets {{ target }}. Open to review the recommendation.-XX]",
+      "riskOn": "[XX-risk-on-XX]",
+      "riskOff": "[XX-risk-off-XX]",
+      "roles": {
+        "US_EQUITY": "[XX-S&P 500-XX]",
+        "EX_US_EQUITY": "[XX-Developed markets ex-US-XX]",
+        "EM_EQUITY": "[XX-Emerging markets-XX]",
+        "SAFE": "[XX-Safe asset-XX]",
+        "RISK_FREE": "[XX-Risk-free benchmark-XX]"
+      },
+      "allocationMessageUnknown": "[XX-Your GEM strategy \"{{ strategy }}\" changed its target. Open to review the recommendation.-XX]"
+    },
+    "portfolioMovement": {
+      "titleUp": "[XX-Investments up {{ percent }}%-XX]",
+      "titleDown": "[XX-Investments down {{ percent }}%-XX]",
+      "messageUp": "[XX-Your investments are up {{ percent }}% today, excluding deposits and withdrawals. Open to review.-XX]",
+      "messageDown": "[XX-Your investments are down {{ percent }}% today, excluding deposits and withdrawals. Open to review.-XX]"
+    },
+    "balanceThreshold": {
+      "titleLow": "[XX-{{ account }} is below your threshold-XX]",
+      "titleHigh": "[XX-{{ account }} is above your threshold-XX]",
+      "messageLow": "[XX-{{ account }} dropped to {{ balance }}, below your {{ threshold }} threshold.-XX]",
+      "messageHigh": "[XX-{{ account }} rose to {{ balance }}, above your {{ threshold }} threshold.-XX]"
+    },
+    "system": {
+      "backupFailed": {
+        "title": "[XX-Automatic backup failed-XX]",
+        "message": "[XX-The automatic backup for {{ user }} failed: {{ error }}-XX]"
+      },
+      "backupPartial": {
+        "title": "[XX-Automatic backup incomplete-XX]",
+        "messageAttachments": "[XX-The backup for {{ user }} was written, but {{ missing }} of {{ expected }} attachments could not be included and {{ inconsistent }} did not match their metadata. Complete backups were preserved.-XX]",
+        "messagePromotion": "[XX-The daily backup for {{ user }} succeeded, but its weekly or monthly copy could not be written: {{ error }}-XX]",
+        "messageRetention": "[XX-The backup for {{ user }} succeeded, but old backup files could not be cleaned up: {{ error }}-XX]"
+      },
+      "encryptionKeyMissing": {
+        "title": "[XX-Encryption key not configured-XX]",
+        "message": "[XX-ENCRYPTION_KEY is not set, so backups are written unencrypted and secrets cannot be stored. A future release will refuse to start without it.-XX]"
+      },
+      "smtpFailure": {
+        "title": "[XX-Email delivery is failing-XX]",
+        "message": "[XX-Monize could not send email: {{ error }}. Notifications and reminders are not being delivered.-XX]"
+      },
+      "providerOutage": {
+        "title": "[XX-{{ provider }} is not responding-XX]",
+        "message": "[XX-Market data from {{ provider }} is unavailable. Prices and index data may be out of date until it answers again.-XX]"
+      },
+      "providerRecovered": {
+        "title": "[XX-{{ provider }} is answering again-XX]",
+        "message": "[XX-The outage is over and market data from {{ provider }} is updating again.-XX]"
+      },
+      "scheduledPostFailed": {
+        "title": "[XX-{{ name }} could not be posted-XX]",
+        "message": "[XX-Your scheduled transaction due {{ date }} did not post automatically: {{ error }}. You can post it manually from Bills.-XX]"
+      }
+    },
+    "budget": {
+      "overTitle": "[XX-{{ category }} is over budget-XX]",
+      "overMessage": "[XX-You have spent {{ amount }} of your {{ limit }} budget for {{ category }} ({{ percent }}%).-XX]",
+      "criticalTitle": "[XX-{{ category }} approaching limit-XX]",
+      "warningTitle": "[XX-{{ category }} reaching budget limit-XX]",
+      "thresholdMessage": "[XX-You have used {{ percent }}% of your {{ category }} budget ({{ amount }} of {{ limit }}).-XX]",
+      "projectedTitle": "[XX-{{ category }} projected to overspend-XX]",
+      "projectedMessage": "[XX-At your current pace, {{ category }} is projected to reach {{ projected }} by the end of the period (budget: {{ budgeted }}).-XX]",
+      "flexTitle": "[XX-Flex group \"{{ group }}\" at {{ percent }}%-XX]",
+      "flexMessage": "[XX-The \"{{ group }}\" flex group has used {{ spent }} of its combined {{ budgeted }} budget ({{ percent }}%).-XX]",
+      "incomeTitle": "[XX-Income below expected-XX]",
+      "incomeMessage": "[XX-Your actual income ({{ actual }}) is at {{ ratio }}% of expected income ({{ expected }}) at this point in the period.-XX]",
+      "milestoneTitle": "[XX-Budget on track-XX]",
+      "milestoneMessage": "[XX-You are {{ progress }}% through the period and have only used {{ percent }}% of your total budget. Keep it up!-XX]",
+      "seasonalTitle": "[XX-Seasonal spike expected for {{ category }}-XX]",
+      "seasonalMessage": "[XX-Last {{ month }} you spent {{ increase }}x your usual on {{ category }}. Consider adjusting your budget.-XX]"
+    }
   }
 }

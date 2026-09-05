@@ -8,9 +8,13 @@ import { roundToDecimals } from "./round.util";
  *
  * @returns Formatted string with currency symbol (e.g., "$1,234.56", "¥1,235")
  */
-export function formatCurrency(amount: number, currencyCode: string): string {
+export function formatCurrency(
+  amount: number,
+  currencyCode: string,
+  locale = "en-US",
+): string {
   try {
-    const formatter = new Intl.NumberFormat("en-US", {
+    const formatter = new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyCode,
       currencyDisplay: "narrowSymbol",

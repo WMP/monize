@@ -34,13 +34,12 @@ function notificationAccentColour(severity: string): string {
 /**
  * An immediate, one-per-event notification email (spec section 14.3).
  *
- * The shell -- greeting, the "open Monize" button, the footer -- is localized
- * through the recipient's `EmailT`; the `title` and `message` are the
- * notification row's own stored copy (its English fallback), the same text the
- * bell shows a reader with no catalog. The full localized detail lives in the
- * app, which the button links to. Both interpolated values are user-influenced
- * (a payee name, a budget name), so both go through `escapeHtml`, and `url` is a
- * server-built absolute link (`appUrl` + the validated same-origin target).
+ * The frame and the title/message are localized before rendering, using the
+ * recipient's stored language. The shared notification email composer retains
+ * stored English only for legacy rows without sufficient structured facts.
+ * Names and diagnostic errors remain literal data, so both interpolated values
+ * go through `escapeHtml`. The URL is server-built from the application origin
+ * and the validated notification target.
  */
 export function notificationImmediateTemplate(
   params: { title: string; message: string; url: string; severity: string },
@@ -800,19 +799,17 @@ export function providerRecoveryTemplate(
 
 export interface SystemAlertEmailData {
   severity: string;
-  /** The alert row's stored English title. */
+  /** Localized title, or the stored fallback for a legacy row. */
   title: string;
-  /** The alert row's stored English message -- may contain error strings. */
+  /** Localized message; diagnostic error strings remain literal. */
   message: string;
 }
 
 /**
- * The generic admin email behind `SystemAlertService`: one severity badge, the
- * alert's stored title and message, and localized framing around them. The
- * title/message travel as the row stores them (English, composed by the
- * producer), because a cron has no request locale and the facts inside them --
- * error strings, addresses -- are not translatable anyway; the greeting,
- * intro and footer render in the recipient's own language.
+ * The generic admin email behind `SystemAlertService`: a localized severity
+ * badge and frame around copy composed in this administrator's stored language.
+ * Error strings and addresses are facts, preserved verbatim and HTML-escaped
+ * together with the translated title and message.
  */
 export function systemAlertTemplate(
   firstName: string,

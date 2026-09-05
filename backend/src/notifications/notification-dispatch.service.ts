@@ -26,6 +26,7 @@ import { PushPayload } from "../push/web-push-sender.service";
 import { PushTransport } from "../push/entities/push-subscription.entity";
 import { EmailService } from "./email.service";
 import { notificationImmediateTemplate } from "./email-templates";
+import { notificationEmailCopy } from "./notification-email-copy";
 
 /**
  * The per-category push copy, as English fallbacks; the catalogue key is
@@ -426,8 +427,7 @@ export class NotificationDispatchService {
     const t = emailTranslator(this.i18n, recipient.lang);
     const html = notificationImmediateTemplate(
       {
-        title: row.title,
-        message: row.message,
+        ...notificationEmailCopy(row, t, recipient.lang),
         url: `${appUrl}${target}`,
         severity: row.severity,
       },

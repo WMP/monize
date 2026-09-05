@@ -764,8 +764,8 @@ export class BudgetsService {
           type: NotificationType.BILL_DUE,
           severity,
           // `title`/`message` are the English fallbacks for a reader with no
-          // client to render them (the email digest, an API consumer). The UI
-          // composes both from `type` and `data` in the reader's own language --
+          // client to render them (an API consumer). The UI and email composer
+          // render `type` and `data` in the recipient's own language --
           // a stored sentence cannot be translated after the fact, and the
           // missing-rate case is exactly the one a non-English reader hits.
           title: `${payeeName} due${daysUntilDue === 0 ? " today" : daysUntilDue === 1 ? " tomorrow" : ` in ${daysUntilDue} days`}`,
