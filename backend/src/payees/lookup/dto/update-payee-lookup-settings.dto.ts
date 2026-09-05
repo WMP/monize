@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsBoolean,
   IsIn,
@@ -17,6 +18,13 @@ import { PayeeLookupPreferredSource } from "../entities/payee-lookup-settings.en
 export const PAYEE_LOOKUP_PREFERRED_SOURCES: readonly PayeeLookupPreferredSource[] =
   ["google-places", "ai"];
 import { GOOGLE_PLACES_CAP } from "../google-places/google-places-cap";
+import { IsSendableApiKey } from "../google-places/google-places-key";
+
+/** Surrounding whitespace is a paste artifact, never part of a key. Trimming
+ *  it also turns an all-whitespace value into the empty string, which is the
+ *  one value that means "remove the stored key" rather than "store this". */
+const trimmed = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
 
 /**
  * What the Payee lookup settings card may change.
@@ -24,9 +32,10 @@ import { GOOGLE_PLACES_CAP } from "../google-places/google-places-cap";
  * Every field is optional and absence means "leave it alone", which is what
  * lets the card save the on/off switch without resending a key it cannot read
  * back. `apiKey: ""` is the one meaningful empty string: it clears the stored
- * key. There is no `@ValidateIf` needed for it because it carries no format
- * validator -- an API key's shape is Google's business, and the only honest
- * test of one is the Test button, which asks Google.
+ * key, and `isSendableApiKey` admits it for that reason. The only thing
+ * asserted about a key is that it can be SENT -- its format is Google's
+ * business, and the only honest test of one is the Test button, which asks
+ * Google.
  *
  * The cap bounds come from `GOOGLE_PLACES_CAP`, the same constant the CHECK
  * constraint in migration 188 and the settings form derive from.
@@ -44,8 +53,10 @@ export class UpdatePayeeLookupSettingsDto {
       "Google Places API key. Empty string removes the stored key; omit to keep it. Never returned.",
   })
   @IsOptional()
+  @Transform(trimmed)
   @IsString()
   @MaxLength(2000)
+  @IsSendableApiKey()
   apiKey?: string;
 
   @ApiPropertyOptional({
@@ -99,7 +110,9 @@ export class TestPayeeLookupKeyDto {
       "Key to test. Omit to test the key already stored (or the operator's).",
   })
   @IsOptional()
+  @Transform(trimmed)
   @IsString()
   @MaxLength(2000)
+  @IsSendableApiKey()
   apiKey?: string;
 }

@@ -2215,6 +2215,14 @@ Retry semantics     Each attempt claims its own slot. A retry after a failed
 Crash semantics     A crash after the claim and before the request spends a slot
                     for a request nobody made -- the survivable direction, since
                     the alternative over-spends a paid quota.
+Backup/restore      payee_lookup_usage is exported and restored so a month's
+                    spend follows the user's key to another machine, and it is
+                    the one table in PRESERVED_ON_RESTORE: the restore does not
+                    clear it, so ON CONFLICT DO NOTHING gives the archive's
+                    count to a machine with no row and leaves a live count
+                    alone. No restore can lower a count and hand back spent
+                    quota. google_places_instance_usage is not exported: it has
+                    no owner and every user on the deployment spends it.
 Failure response    ContactLookupOutcome.reason = "quota_exceeded" when the cap
                     is spent AND no AI provider can answer; otherwise the lookup
                     silently falls back to the AI adapter. A pinned AI provider

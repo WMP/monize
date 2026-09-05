@@ -39,7 +39,7 @@ describe('PayeeContactLookupToggle', () => {
     // Deliberately NOT hidden. The sources are configured immediately above
     // this switch, so vanishing on the last one being switched off reads as a
     // bug; an inert switch shows exactly what an automatic lookup would now do.
-    render(<PayeeContactLookupToggle />);
+    render(<PayeeContactLookupToggle lookupAvailable={false} />);
 
     const toggle = screen.getByRole('switch');
     expect(toggle).toHaveAttribute('aria-checked', 'false');
@@ -51,10 +51,24 @@ describe('PayeeContactLookupToggle', () => {
     // The preference survives: switching a source back on must restore the
     // setting the user chose, not silently leave it off.
     mockPreferences = { payeeContactLookupEnabled: true };
-    render(<PayeeContactLookupToggle />);
+    render(<PayeeContactLookupToggle lookupAvailable={false} />);
 
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
     expect(userSettingsApi.updatePreferences).not.toHaveBeenCalled();
+  });
+
+  it('names no repair while it does not know whether a source can answer', () => {
+    // Three states hide behind one false: still asking, could not ask, and
+    // asked and nothing can answer. Only the last has earned the copy that
+    // tells the reader to switch a source on -- and the first happens on every
+    // load of this screen, under a Google Places row that is fully configured.
+    mockPreferences = { payeeContactLookupEnabled: true };
+    render(<PayeeContactLookupToggle />);
+
+    const toggle = screen.getByRole('switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(toggle).toBeEnabled();
+    expect(screen.queryByText(/Switch on a source above/)).toBeNull();
   });
 
   it('renders the heading and an off switch by default', () => {

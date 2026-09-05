@@ -97,10 +97,12 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "action_history", // undo/redo log, wiped on restore (not undoable to prior state)
   "ai_insights", // regenerable AI cache
   "ai_usage_logs", // usage telemetry, not user content
-  // Google Places request counters. Restoring an older artifact would lower
-  // this month's count and hand back quota the key has already spent -- and
-  // the operator's counter belongs to the deployment, not to any user.
-  "payee_lookup_usage",
+  // The OPERATOR's Google Places counter. Deliberately not exported while
+  // `payee_lookup_usage` beside it is: this row has no `user_id`, it counts a
+  // key configured by GOOGLE_PLACES_API_KEY (deployment configuration, which
+  // no backup carries either), and every user on the instance spends it. A
+  // per-user archive writing it would let one user's restore overwrite a
+  // counter another user's lookups are still spending.
   "google_places_instance_usage",
   "exchange_rates", // global shared reference data, not per-user
   "market_index_prices", // global market reference data, refetched from the provider
@@ -435,6 +437,22 @@ export function buildExportTableQueries(
       // api_key_enc is ciphertext under this instance's ENCRYPTION_KEY, so it
       // travels decrypted and is re-encrypted by the restore.
       transformRow: aiProviderKeyTransform,
+    },
+    {
+      // The user's own Google Places counter, so a month's spend survives a
+      // move to another machine -- the key is the same key, and Google's
+      // free allowance is counted against it, not against the server.
+      //
+      // The restore deliberately does NOT clear this table first, and the
+      // insert's ON CONFLICT DO NOTHING is what makes that correct: a machine
+      // with no row (the migration this exists for) takes the archive's count,
+      // while a machine that already has one keeps its own. The live count is
+      // never lowered, because under-counting a quota is the direction that
+      // reaches a bill -- and the only way an archive's count can be the
+      // higher of the two is that the live one was lost, which is the case
+      // where there is no row to conflict with.
+      key: "payee_lookup_usage",
+      sql: "SELECT * FROM payee_lookup_usage WHERE user_id = $1",
     },
     {
       key: "monte_carlo_scenarios",

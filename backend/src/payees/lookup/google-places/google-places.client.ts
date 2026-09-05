@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ProviderHealthService } from "../../../provider-health/provider-health.service";
+import { isSendableApiKey } from "./google-places-key";
 
 /** The id this client reports under. Must match `TRACKED_PROVIDERS`. */
 export const GOOGLE_PLACES_PROVIDER = "google_places";
@@ -87,13 +88,20 @@ export interface GooglePlacesSearchRequest {
 }
 
 /**
- * Google answered, and the answer was a refusal.
+ * The request was refused, and it was certainly not billed.
  *
- * Separate from a transport failure because the two have opposite handling: a
- * rejected key is this user's configuration problem and must reach them as
- * text they can act on, while the breaker must NOT open -- the host plainly
- * answered, and one user's bad key would otherwise take Places down for every
- * user on the deployment and page the operator over it.
+ * Usually that means Google answered with a refusal; it also covers a key this
+ * client declines to send at all (`HEADER_UNSAFE`), which is the same fact one
+ * step earlier. Both are this user's configuration problem, both must reach
+ * them as text they can act on, and for both the breaker must NOT open --
+ * either the host plainly answered, or nothing was asked of it. One user's bad
+ * key would otherwise take Places down for every user on the deployment and
+ * page the operator over it.
+ *
+ * The "not billed" half is what `PayeeLookupSettingsService.testKey` reads
+ * (through `ContactLookupUnavailableError.httpStatus`) to hand the quota slot
+ * back, so a caller must not raise this for anything that may have been
+ * served.
  */
 export class GooglePlacesRejectedError extends Error {
   constructor(
@@ -149,6 +157,18 @@ export class GooglePlacesClient {
   async searchText(
     request: GooglePlacesSearchRequest,
   ): Promise<GooglePlacesResult[]> {
+    // Before the breaker is even consulted: this request cannot be built, so
+    // it is neither an outcome for the provider nor a probe worth holding. The
+    // message names the problem and NEVER the key -- which is the whole reason
+    // the check is here rather than left to `fetch`.
+    if (!isSendableApiKey(request.apiKey)) {
+      throw new GooglePlacesRejectedError(
+        400,
+        "The stored Google Places API key contains a character that cannot be " +
+          "sent in a request header. Re-enter the key.",
+      );
+    }
+
     const admission = this.health.assertAvailable(GOOGLE_PLACES_PROVIDER);
     const context = `payee contact lookup for "${request.textQuery}"`;
     const referer = this.referer();

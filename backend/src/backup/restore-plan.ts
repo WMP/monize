@@ -39,6 +39,33 @@ export interface RestoreStep {
 }
 
 /**
+ * User-scoped tables the restore deliberately does NOT clear before inserting,
+ * each with the reason it is an exception.
+ *
+ * Not clearing is normally a bug: the insert is `ON CONFLICT DO NOTHING`, so
+ * an uncleared table keeps whatever the destination already had and silently
+ * drops the archive's rows -- restore-over-existing stops reproducing the
+ * artifact, which is how `notification_preferences` once shipped. The guard in
+ * `restore-plan.spec.ts` fails any user-scoped table missing its `DELETE`, and
+ * reads this map so that an accidental omission still fails while a decided
+ * one is on the record with its argument.
+ *
+ * The bar for an entry: the table is not user CONTENT but a record of
+ * something already spent or already done, where the destination's own row is
+ * the more truthful of the two and losing the archive's is the safe outcome.
+ */
+export const PRESERVED_ON_RESTORE: ReadonlyMap<string, string> = new Map([
+  [
+    "payee_lookup_usage",
+    "Google Places requests already spent this month against the user's own " +
+      "key. A machine with no row takes the archive's count, which is what " +
+      "carries a month's spend to a new machine; a machine that has one keeps " +
+      "it, so no restore can lower a live count and hand back quota that " +
+      "Google has already billed for.",
+  ],
+]);
+
+/**
  * FK-safe insertion order. A table may only appear after every table it
  * references, unless the referencing column is listed in
  * `DEFERRED_FK_COLUMNS` and repaired by `DEFERRED_FK_REPAIRS`.
@@ -195,6 +222,17 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
   {
     table: "payee_lookup_settings",
     countKey: "payeeLookupSettings",
+    scopeToUser: true,
+  },
+  {
+    // The user's own Google Places month counters. Unlike every other step
+    // here, the restore does not clear this table first: the generic insert's
+    // ON CONFLICT DO NOTHING then means a machine with no row takes the
+    // archive's count (the migration this exists for) while a machine that
+    // already has one keeps its own, so a restore can never lower a live
+    // count and hand back quota the key has already spent.
+    table: "payee_lookup_usage",
+    countKey: "payeeLookupUsage",
     scopeToUser: true,
   },
   {

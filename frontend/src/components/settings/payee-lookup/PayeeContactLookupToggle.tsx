@@ -12,10 +12,19 @@ interface PayeeContactLookupToggleProps {
   disabled?: boolean;
   /**
    * Whether a lookup can run at all -- Google Places within its cap, or an AI
-   * provider, each switched on. Without a source the switch is shown OFF and
-   * disabled rather than hidden: the sources are configured immediately above
-   * it, so disappearing on the last one being switched off reads as a bug,
-   * while an inert switch shows exactly what an automatic lookup would now do.
+   * provider, each switched on.
+   *
+   * `false` shows the switch OFF and disabled rather than hidden: the sources
+   * are configured immediately above it, so disappearing on the last one being
+   * switched off reads as a bug, while an inert switch shows exactly what an
+   * automatic lookup would now do.
+   *
+   * `undefined` means NOT KNOWN -- the status request is still in flight, or
+   * it failed -- and renders as the ordinary live switch. The copy under
+   * `false` names a repair ("switch on a source above"), and naming a repair
+   * for a state we have not established sends the user to fix something that
+   * may not be broken: on every load of this screen it would flash under a
+   * perfectly configured Google Places row.
    */
   lookupAvailable?: boolean;
 }
@@ -36,8 +45,11 @@ interface PayeeContactLookupToggleProps {
  */
 export function PayeeContactLookupToggle({
   disabled = false,
-  lookupAvailable = false,
+  lookupAvailable,
 }: PayeeContactLookupToggleProps) {
+  // Only an established `false` withholds the switch. Deliberately not
+  // `!lookupAvailable`, which would read "not known" as "nothing can answer".
+  const usable = lookupAvailable !== false;
   const t = useTranslations('settings.payeeLookup.automatic');
   const preferences = usePreferencesStore((s) => s.preferences);
   const updatePreferencesStore = usePreferencesStore((s) => s.updatePreferences);
@@ -70,7 +82,7 @@ export function PayeeContactLookupToggle({
             {t('title')}
           </p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {lookupAvailable ? t('subtitle') : t('noSource')}
+            {usable ? t('subtitle') : t('noSource')}
           </p>
         </div>
         <ToggleSwitch
@@ -78,9 +90,9 @@ export function PayeeContactLookupToggle({
           // lookup would do. The stored preference is deliberately NOT written
           // to false: switching a source back on should restore the setting
           // the user chose, not silently leave it off.
-          checked={enabled && lookupAvailable}
+          checked={enabled && usable}
           onChange={handleToggle}
-          disabled={disabled || saving || !lookupAvailable}
+          disabled={disabled || saving || !usable}
           label={t('toggleLabel')}
         />
       </div>

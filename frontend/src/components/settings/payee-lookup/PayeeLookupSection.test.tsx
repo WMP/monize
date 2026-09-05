@@ -22,6 +22,7 @@ const refreshAvailability = vi.fn(async () => {});
 const availability = {
   available: true,
   resolved: true,
+  failed: false,
   source: 'google-places' as const,
   aiConfigured: false,
   refresh: refreshAvailability,
@@ -73,6 +74,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   availability.aiConfigured = false;
   availability.available = true;
+  availability.failed = false;
   availability.refresh = refreshAvailability;
   getConfigs.mockResolvedValue([]);
   getSettings.mockResolvedValue(settings());
@@ -603,6 +605,24 @@ describe('PayeeLookupSection', () => {
       });
       expect(auto).toBeDisabled();
       expect(auto).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('does not tell the reader to switch a source on when the status read failed', async () => {
+      // `available: false` is three states at once. The section may only pass
+      // the one it has established: a failed status read with both sources on
+      // would otherwise print "switch on a source above" over two switches
+      // that are already on, and the reader would go and fix nothing.
+      bothSources();
+      availability.available = false;
+      availability.failed = true;
+      await renderSection();
+
+      expect(screen.queryByText(/Switch on a source above/)).toBeNull();
+      expect(
+        screen.getByRole('switch', {
+          name: 'Enable automatic payee contact lookup',
+        }),
+      ).toBeEnabled();
     });
 
     it('re-reads whether a lookup can run, before the save reports success', async () => {

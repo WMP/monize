@@ -14,6 +14,18 @@ export interface ContactLookupAvailability {
   available: boolean;
   /** False until the status request settles, whether it answered or failed. */
   resolved: boolean;
+  /**
+   * The status request settled by failing.
+   *
+   * `available: false` is three states at once -- still asking, could not ask,
+   * and asked and nothing can answer -- and the surfaces that merely withhold
+   * a button are right to treat all three alike. A surface that EXPLAINS the
+   * state is not: telling a user to switch a source on, when the sources are
+   * on and it was the status read that failed, sends them to fix something
+   * that is not broken. Same distinction `useExchangeRates` draws between
+   * `ratesUnavailable` and `ratesFailed`.
+   */
+  failed: boolean;
   /** Which source would answer, for copy that names it. Null when none can. */
   source: PayeeLookupStatus['source'];
   /**
@@ -58,6 +70,7 @@ type Availability = Omit<ContactLookupAvailability, 'refresh'>;
 const fromStatus = (status: PayeeLookupStatus): Availability => ({
   available: status.available,
   resolved: true,
+  failed: false,
   source: status.source,
   aiConfigured: status.aiConfigured,
 });
@@ -70,6 +83,7 @@ const fromStatus = (status: PayeeLookupStatus): Availability => ({
 const UNAVAILABLE: Availability = {
   available: false,
   resolved: true,
+  failed: true,
   source: null,
   aiConfigured: false,
 };
@@ -78,6 +92,9 @@ export function useContactLookupAvailable(): ContactLookupAvailability {
   const [state, setState] = useState<Availability>({
     ...UNAVAILABLE,
     resolved: false,
+    // Not yet asked is not "asked and failed": only a settled request may
+    // claim either.
+    failed: false,
   });
 
   useEffect(() => {

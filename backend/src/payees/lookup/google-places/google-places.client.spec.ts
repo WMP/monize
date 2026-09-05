@@ -66,6 +66,76 @@ describe("GooglePlacesClient", () => {
       maxResults: 3,
     });
 
+  /**
+   * A key is a secret. `fetch` refuses a header value holding a control
+   * character and QUOTES THE VALUE in the `TypeError` it throws -- so before
+   * this guard, a key with one in it travelled into the application log
+   * (through `logFailure`) and into the Test button's error text. The key is
+   * encrypted at rest and never returned to the client for exactly that
+   * reason.
+   *
+   * `global.fetch` is mocked in this file, so the first test uses the REAL
+   * platform to establish the hazard: a mock cannot demonstrate a property of
+   * header construction, and without it the rest of this block would be
+   * asserting against a danger nobody has shown exists.
+   */
+  describe("a key that cannot be sent as a header", () => {
+    const SECRET = "AIza-line-one\nline-two";
+
+    it("really does leak through the platform's own error", () => {
+      expect(() => new Headers({ "X-Goog-Api-Key": SECRET })).toThrow(
+        expect.objectContaining({ message: expect.stringContaining(SECRET) }),
+      );
+    });
+
+    it("is refused without naming the key, and without calling fetch", async () => {
+      await expect(
+        client.searchText({
+          apiKey: SECRET,
+          textQuery: "Starbucks",
+          maxResults: 3,
+        }),
+      ).rejects.toMatchObject({
+        name: "GooglePlacesRejectedError",
+        status: 400,
+      });
+
+      const error = await client
+        .searchText({ apiKey: SECRET, textQuery: "Starbucks", maxResults: 3 })
+        .catch((e: Error) => e);
+      expect(String((error as Error).message)).not.toContain("line-one");
+      expect(String((error as Error).message)).not.toContain("line-two");
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("spends no breaker bookkeeping on a request it never made", () => {
+      // Not an outcome for Google: nothing was asked of it. Taking a probe
+      // slot here would hold the provider down for a key only this user has.
+      return client
+        .searchText({ apiKey: SECRET, textQuery: "Starbucks", maxResults: 3 })
+        .catch(() => {
+          expect(health.assertAvailable).not.toHaveBeenCalled();
+          expect(health.recordFailure).not.toHaveBeenCalled();
+          expect(health.recordSuccess).not.toHaveBeenCalled();
+          expect(health.logFailure).not.toHaveBeenCalled();
+        });
+    });
+
+    it("sends an ordinary key through untouched", async () => {
+      // The guard rejects control characters and nothing else: a key with a
+      // space, or a non-ASCII character, is one the platform accepts.
+      (global.fetch as jest.Mock).mockResolvedValue(okResponse({ places: [] }));
+
+      await client.searchText({
+        apiKey: "AIza key-with-space-and-\u00e9",
+        textQuery: "Starbucks",
+        maxResults: 3,
+      });
+
+      expect(global.fetch).toHaveBeenCalled();
+    });
+  });
+
   describe("the request", () => {
     it("posts the text query with the key and the field mask", async () => {
       (global.fetch as jest.Mock).mockResolvedValue(okResponse({ places: [] }));

@@ -49,6 +49,15 @@ export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
 ]);
 
 export const RULES: Record<string, TableRules> = {
+  // How many Google Places requests a month cost, and nothing else: a user id
+  // (kept as an FK everywhere here), a YYYY-MM, and a counter. Nothing about
+  // it names a payee, so nothing needs masking -- and the count is exactly
+  // what a support case about a cap would be asking to see.
+  payee_lookup_usage: {
+    user_id: keep,
+    month: keep,
+    google_places_requests: keep,
+  },
   currencies: {
     code: keep,
     name: keep,

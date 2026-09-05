@@ -89,6 +89,8 @@ export function PayeeLookupSection({
   // server's answer already folds in the spent cap and an unreadable key.
   const {
     available: lookupAvailable,
+    resolved: availabilityResolved,
+    failed: availabilityFailed,
     aiConfigured,
     refresh: refreshAvailability,
   } = useContactLookupAvailable();
@@ -391,11 +393,18 @@ export function PayeeLookupSection({
         {/* An automatic lookup with every source switched off would do
             nothing, so the toggle shows off and disabled rather than claiming
             a behaviour that cannot happen. The status is re-read after every
-            save above, so this is the server's own answer and not a stale
-            one. */}
+            save above, so this is the server's own answer and not a stale one
+            -- and `undefined` while it is unsettled or after it failed, because
+            the copy under `false` tells the reader to switch on a source, which
+            is the wrong instruction when the sources are on and it was the
+            status read that did not land. */}
         <PayeeContactLookupToggle
           disabled={disabled}
-          lookupAvailable={lookupAvailable}
+          lookupAvailable={
+            availabilityResolved && !availabilityFailed
+              ? lookupAvailable
+              : undefined
+          }
         />
       </Card>
 
