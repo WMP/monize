@@ -65,6 +65,22 @@ interface SortColumn {
   align?: 'right';
 }
 
+/**
+ * The record the two header rows are built from, keyed by sort field.
+ *
+ * The key is tied to the entry's own `field`, which a plain
+ * `Record<CreditUtilizationSortField, SortColumn>` does not do: that forces an
+ * entry to EXIST for every member of the union but lets it name a different
+ * one, so `used: { field: 'limit', label: colUsed }` type-checks. Both header
+ * rows would then render two controls keyed `limit` (a duplicate React key),
+ * tapping "Used" would sort by Credit Limit, and "Used" would be unsortable --
+ * and a test comparing header LABELS cannot see any of it, because the labels
+ * stay right. Here it is a compile error instead.
+ */
+type SortColumnsByField = {
+  [K in CreditUtilizationSortField]: SortColumn & { field: K };
+};
+
 // Utilization thresholds drive the bar colour: low (green), moderate (amber),
 // high (red). 30% / 75% mirror the common "keep utilization under 30%" guidance.
 function utilizationColour(percent: number): string {
@@ -233,8 +249,9 @@ export function CreditUtilizationReport() {
   }, [rows, sortField, sortDirection]);
 
   // Exhaustive over the sort field union, so a new field is a compile error
-  // rather than a column with no control in either header.
-  const columns: Record<CreditUtilizationSortField, SortColumn> = {
+  // rather than a column with no control in either header -- and each entry
+  // must name its own key (see `SortColumnsByField`).
+  const columns: SortColumnsByField = {
     name: { field: 'name', label: t('creditUtilization.colAccount') },
     limit: { field: 'limit', label: t('creditUtilization.colCreditLimit'), align: 'right' },
     used: { field: 'used', label: t('creditUtilization.colUsed'), align: 'right' },
@@ -555,11 +572,17 @@ export function CreditUtilizationReport() {
           `CellLabel` captions are therefore REDUNDANT with that association
           rather than a substitute for it, and deliberately so: the grid places
           the cells out of DOM order visually, so a sighted phone reader has no
-          header row to look up and needs the name beside the value. And the
-          phone reading order differs from the DOM order, which is the desktop
-          column order the grid placement overrides visually (the WCAG 1.3.2
-          tension the roles are the mitigation for). Both are properties of the
-          mechanism, not of this table. */}
+          header row to look up and needs the name beside the value.
+
+          The second is an ACCEPTED, UNMITIGATED trade-off, and the roles are
+          not what answers it: they restore the table semantics, and have no
+          effect on reading order. The DOM keeps the desktop column order
+          (account, limit, used, available, utilization) while the grid shows
+          utilization second and available last, so a screen-reader user hears
+          the headline figure fifth -- the WCAG 1.3.2 tension mechanism A
+          carries. What limits the cost is the captions: every value names its
+          own column, so each one is self-describing in whatever order it is
+          heard. Both are properties of the mechanism, not of this table. */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="overflow-x-auto">
           {/* Explicit roles: restyling `display` below `sm` strips the implicit
@@ -625,6 +648,12 @@ export function CreditUtilizationReport() {
                       unaffected either way (a wrapping box contributes no
                       minimum width); the cost is 20px of row height, and only
                       on the rows whose name actually needs it.
+
+                      `title` is therefore NOT the phone's fallback -- it is for
+                      the one width where the clamp bites and a pointer exists,
+                      a mouse-driven window under 640px. From `sm` up the name
+                      wraps in full and the tooltip only repeats what is on
+                      screen.
 
                       The account-type sub-line is bounded (22 characters at its
                       longest, in the pseudo-locale) and is left to wrap on its
