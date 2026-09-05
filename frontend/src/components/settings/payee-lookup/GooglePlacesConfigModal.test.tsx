@@ -14,6 +14,7 @@ const settings = (over: Partial<PayeeLookupSettings> = {}): PayeeLookupSettings 
   apiKeyReadable: true,
   usedThisMonth: 0,
   preferredSource: 'google-places',
+  aiProviderConfigId: null,
   encryptionAvailable: true,
   ...over,
 });

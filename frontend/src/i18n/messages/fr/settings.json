@@ -1223,13 +1223,17 @@
       "disabled": "Recherche automatique des coordonnées désactivée",
       "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
     },
-    "priority": {
-      "title": "Quelle source interroger en premier",
-      "subtitle": "Les deux sont configurées. L'autre n'est interrogée que si la première ne peut pas répondre, faute de fournisseur d'IA configuré ou parce que la limite mensuelle Google est épuisée. Si une source échoue, la recherche signale l'échec au lieu de payer l'autre en silence.",
-      "placesFirst": "Google Places d'abord",
-      "placesFirstHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
-      "aiFirst": "Fournisseur d'IA d'abord",
-      "aiFirstHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche."
+    "order": {
+      "title": "Quelle source répond en premier",
+      "subtitle": "Faites glisser une source, ou utilisez les flèches, pour changer l'ordre. La seconde n'est interrogée que si la première ne peut pas répondre, faute de configuration ou parce que la limite mensuelle Google est épuisée. Si une source échoue, la recherche signale l'échec au lieu de payer l'autre en silence.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
+      "aiTitle": "Fournisseur d'IA",
+      "aiHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche.",
+      "aiProviderLabel": "Fournisseur à utiliser",
+      "aiProviderAny": "N'importe quel fournisseur, par priorité",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
     }
   }
 }

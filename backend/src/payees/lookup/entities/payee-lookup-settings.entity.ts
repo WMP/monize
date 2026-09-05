@@ -64,6 +64,23 @@ export class PayeeLookupSettings {
   })
   preferredSource: PayeeLookupPreferredSource;
 
+  /**
+   * Which AI provider answers when AI does; `null` is "no preference", meaning
+   * every active provider in priority order.
+   *
+   * A pin rather than a preference order of its own: the assistant falls
+   * through to the next provider on failure, which is right for a chat turn and
+   * wrong for a lookup the user pays per call for. A pin that resolves to
+   * nothing (the provider was deactivated) reports `no_provider` rather than
+   * spending a model the user did not choose.
+   */
+  @Column({
+    type: "uuid",
+    name: "ai_provider_config_id",
+    nullable: true,
+  })
+  aiProviderConfigId: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

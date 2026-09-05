@@ -9,6 +9,7 @@ import { GOOGLE_PLACES_CAP } from "./google-places-cap";
 import { PayeeLookupQuotaService } from "./payee-lookup-quota.service";
 import { PayeeLookupSettingsService } from "./payee-lookup-settings.service";
 import { ContactLookupUnavailableError } from "../payee-contact-lookup.types";
+import { AiProviderConfig } from "../../../ai/entities/ai-provider-config.entity";
 
 jest.mock("../../../common/db/scoped-db", () =>
   jest
@@ -24,10 +25,14 @@ describe("PayeeLookupSettingsService", () => {
   let encryption: Record<string, jest.Mock>;
   let quota: { claim: jest.Mock; usedThisMonth: jest.Mock; release: jest.Mock };
   let places: { lookup: jest.Mock; referer: jest.Mock };
+  let aiConfigRepo: Record<string, jest.Mock>;
   let env: Record<string, unknown>;
 
   const build = () => {
-    const scoped = createScopedDbMocks([[PayeeLookupSettings, repo]]);
+    const scoped = createScopedDbMocks([
+      [PayeeLookupSettings, repo],
+      [AiProviderConfig, aiConfigRepo],
+    ]);
     return new PayeeLookupSettingsService(
       scoped.dataSource as unknown as DataSource,
       encryption as unknown as EncryptionService,
@@ -57,6 +62,7 @@ describe("PayeeLookupSettingsService", () => {
       create: jest.fn((row) => ({ ...row })),
       save: jest.fn(async (row) => row),
     };
+    aiConfigRepo = { findOne: jest.fn().mockResolvedValue(null) };
     encryption = {
       isConfigured: jest.fn().mockReturnValue(true),
       encrypt: jest.fn((value: string) => `enc(${value})`),
@@ -481,6 +487,64 @@ describe("PayeeLookupSettingsService", () => {
       );
       expect(quota.claim).not.toHaveBeenCalled();
       expect(places.lookup).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The pin names a row the client chose, so it is a server-authoritative
+   * value: a provider id belonging to somebody else must not become this
+   * user's, and the check runs inside the transaction that stores it so a
+   * rejection has written nothing.
+   */
+  describe("pinning an AI provider", () => {
+    const CONFIG_ID = "33333333-3333-4333-8333-333333333333";
+
+    it("stores an id that names one of the caller's own providers", async () => {
+      aiConfigRepo.findOne.mockResolvedValue({ id: CONFIG_ID });
+
+      await service.updateSettings(USER, { aiProviderConfigId: CONFIG_ID });
+
+      expect(aiConfigRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: CONFIG_ID, userId: USER } }),
+      );
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ aiProviderConfigId: CONFIG_ID }),
+      );
+    });
+
+    it("refuses an id that is not the caller's, and writes nothing", async () => {
+      // findOne is scoped by userId, so another user's provider answers null.
+      aiConfigRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateSettings(USER, { aiProviderConfigId: CONFIG_ID }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("clears the pin on null without consulting the provider table", async () => {
+      // Null is "no preference", not an id to verify -- looking it up would
+      // reject the one value that means "stop pinning".
+      await service.updateSettings(USER, { aiProviderConfigId: null });
+
+      expect(aiConfigRepo.findOne).not.toHaveBeenCalled();
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ aiProviderConfigId: null }),
+      );
+    });
+
+    it("leaves an existing pin alone when the field is absent", async () => {
+      // The card saves one control at a time; a patch about the cap must not
+      // silently unpin the provider.
+      repo.findOne.mockResolvedValue(
+        storedRow({ aiProviderConfigId: CONFIG_ID }),
+      );
+
+      await service.updateSettings(USER, { monthlyCap: 500 });
+
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ aiProviderConfigId: CONFIG_ID }),
+      );
     });
   });
 });

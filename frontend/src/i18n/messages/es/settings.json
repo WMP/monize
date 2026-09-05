@@ -1223,13 +1223,17 @@
       "disabled": "Búsqueda automática de contactos de beneficiarios desactivada",
       "saveFailed": "No se pudo actualizar el ajuste de búsqueda de contactos"
     },
-    "priority": {
-      "title": "Qué fuente consultar primero",
-      "subtitle": "Ambas están configuradas. La otra solo se consulta cuando la primera no puede responder, porque no hay proveedor de IA configurado o se agotó el límite mensual de Google. Si una fuente falla, la búsqueda informa del fallo en lugar de pagar la otra en silencio.",
-      "placesFirst": "Google Places primero",
-      "placesFirstHelp": "Datos de directorio, más baratos por búsqueda. Google no tiene direcciones de correo.",
-      "aiFirst": "Proveedor de IA primero",
-      "aiFirstHelp": "Puede encontrar un correo electrónico y cuesta una llamada al modelo en cada búsqueda."
+    "order": {
+      "title": "Qué fuente responde primero",
+      "subtitle": "Arrastre una fuente, o use las flechas, para cambiar el orden. La segunda solo se consulta cuando la primera no puede responder, porque no está configurada o se agotó el límite mensual de Google. Si una fuente falla, la búsqueda informa del fallo en lugar de pagar la otra en silencio.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Datos de directorio, más baratos por búsqueda. Google no tiene direcciones de correo.",
+      "aiTitle": "Proveedor de IA",
+      "aiHelp": "Puede encontrar un correo electrónico y cuesta una llamada al modelo en cada búsqueda.",
+      "aiProviderLabel": "Proveedor a usar",
+      "aiProviderAny": "Cualquier proveedor, por orden de prioridad",
+      "moveUp": "Subir",
+      "moveDown": "Bajar"
     }
   }
 }

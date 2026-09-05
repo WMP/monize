@@ -34,7 +34,8 @@
       "inactive": "Không hoạt động",
       "withoutCategory": "Không có danh mục"
     },
-    "applyDefaultCategories": "Áp dụng danh mục mặc định"
+    "applyDefaultCategories": "Áp dụng danh mục mặc định",
+    "lookupSettings": "Cài đặt tra cứu người nhận"
   },
   "list": {
     "columns": {

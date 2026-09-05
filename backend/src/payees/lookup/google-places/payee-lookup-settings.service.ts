@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
+import { AiProviderConfig } from "../../../ai/entities/ai-provider-config.entity";
 import { withScopedDb } from "../../../common/db/scoped-db";
 import { EncryptionService } from "../../../common/encryption/encryption.service";
 import { tr } from "../../../i18n/translate";
@@ -41,6 +42,11 @@ export interface UpdatePayeeLookupSettings {
   monthlyCap?: number;
   /** Which source to ask first. Meaningful only where both can answer. */
   preferredSource?: PayeeLookupPreferredSource;
+  /**
+   * Which AI provider answers; `null` clears the pin back to "no preference".
+   * Absent leaves it alone, like every other field here.
+   */
+  aiProviderConfigId?: string | null;
 }
 
 /** What the settings screen renders. Never the key itself. */
@@ -72,6 +78,12 @@ export interface PayeeLookupSettingsView {
    * first.
    */
   preferredSource: PayeeLookupPreferredSource;
+  /**
+   * The AI provider pinned for lookups, or `null` for "no preference" (every
+   * active provider, in priority order). The card offers this only when the
+   * user has more than one: with one provider there is nothing to choose.
+   */
+  aiProviderConfigId: string | null;
   /** False when the server holds no ENCRYPTION_KEY, so no key can be stored. */
   encryptionAvailable: boolean;
 }
@@ -147,6 +159,7 @@ export class PayeeLookupSettingsService {
       usedThisMonth:
         source.kind === "none" ? 0 : await this.quota.usedThisMonth(source),
       preferredSource: row?.preferredSource ?? "google-places",
+      aiProviderConfigId: row?.aiProviderConfigId ?? null,
       encryptionAvailable: this.encryption.isConfigured(),
     };
   }
@@ -195,6 +208,15 @@ export class PayeeLookupSettingsService {
       if (update.monthlyCap !== undefined) row.monthlyCap = update.monthlyCap;
       if (update.preferredSource !== undefined)
         row.preferredSource = update.preferredSource;
+      if (update.aiProviderConfigId !== undefined) {
+        // Verified against the caller's OWN configs inside the transaction
+        // that stores it: the id arrives from the client, and a provider id
+        // belonging to somebody else must not become this user's pin. Null
+        // clears it.
+        row.aiProviderConfigId = update.aiProviderConfigId
+          ? await this.assertOwnAiConfig(m, userId, update.aiProviderConfigId)
+          : null;
+      }
       if (update.apiKey !== undefined) {
         // An empty string is "remove the key"; a value is a new one. Absent is
         // "keep what is stored", which is what the form sends when the user
@@ -208,6 +230,7 @@ export class PayeeLookupSettingsService {
         row.capEnabled = update.capEnabled ?? true;
         row.monthlyCap = update.monthlyCap ?? GOOGLE_PLACES_CAP.default;
         row.preferredSource = update.preferredSource ?? "google-places";
+        row.aiProviderConfigId = update.aiProviderConfigId ?? null;
       }
       await repo.save(row);
     });
@@ -240,11 +263,13 @@ export class PayeeLookupSettingsService {
   async resolveRouting(userId: string): Promise<{
     places: ResolvedLookupSource;
     preferredSource: PayeeLookupPreferredSource;
+    aiProviderConfigId: string | null;
   }> {
     const row = await this.readRow(userId);
     return {
       places: this.sourceFrom(userId, row, this.operatorConfig()),
       preferredSource: row?.preferredSource ?? "google-places",
+      aiProviderConfigId: row?.aiProviderConfigId ?? null,
     };
   }
 
@@ -469,6 +494,32 @@ export class PayeeLookupSettingsService {
         "The Google Places connection test failed.",
       )
     );
+  }
+
+  /**
+   * The id, once proven to name one of this user's own AI providers.
+   *
+   * Runs inside the update's transaction, so the check and the write cannot be
+   * separated by a concurrent delete -- a rejection here has written nothing.
+   */
+  private async assertOwnAiConfig(
+    manager: EntityManager,
+    userId: string,
+    configId: string,
+  ): Promise<string> {
+    const owned = await manager.getRepository(AiProviderConfig).findOne({
+      where: { id: configId, userId },
+      select: { id: true },
+    });
+    if (!owned) {
+      throw new BadRequestException(
+        tr(
+          "errors.payeeLookup.unknownAiProvider",
+          "That AI provider does not exist. Choose one from your AI Settings.",
+        ),
+      );
+    }
+    return owned.id;
   }
 
   private async readRow(userId: string): Promise<PayeeLookupSettings | null> {

@@ -1223,13 +1223,17 @@
       "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
       "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ"
     },
-    "priority": {
-      "title": "Hỏi nguồn nào trước",
-      "subtitle": "Cả hai đều đã được cấu hình. Nguồn còn lại chỉ được hỏi khi nguồn đầu tiên không thể trả lời, do chưa thiết lập nhà cung cấp AI hoặc đã dùng hết hạn mức Google hằng tháng. Nếu một nguồn gặp lỗi, việc tra cứu sẽ báo lỗi thay vì âm thầm trả tiền cho nguồn kia.",
-      "placesFirst": "Google Places trước",
-      "placesFirstHelp": "Dữ liệu danh bạ, rẻ hơn cho mỗi lần tra cứu. Google không có địa chỉ email.",
-      "aiFirst": "Nhà cung cấp AI trước",
-      "aiFirstHelp": "Có thể tìm được địa chỉ email và tốn một lệnh gọi mô hình cho mỗi lần tra cứu."
+    "order": {
+      "title": "Nguồn nào trả lời trước",
+      "subtitle": "Kéo một nguồn, hoặc dùng các mũi tên, để thay đổi thứ tự. Nguồn thứ hai chỉ được hỏi khi nguồn đầu tiên không thể trả lời, do chưa được cấu hình hoặc đã dùng hết hạn mức Google hằng tháng. Nếu một nguồn gặp lỗi, việc tra cứu sẽ báo lỗi thay vì âm thầm trả tiền cho nguồn kia.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dữ liệu danh bạ, rẻ hơn cho mỗi lần tra cứu. Google không có địa chỉ email.",
+      "aiTitle": "Nhà cung cấp AI",
+      "aiHelp": "Có thể tìm được địa chỉ email và tốn một lệnh gọi mô hình cho mỗi lần tra cứu.",
+      "aiProviderLabel": "Nhà cung cấp sử dụng",
+      "aiProviderAny": "Bất kỳ nhà cung cấp nào, theo thứ tự ưu tiên",
+      "moveUp": "Di chuyển lên",
+      "moveDown": "Di chuyển xuống"
     }
   }
 }

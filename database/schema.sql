@@ -1515,6 +1515,12 @@ CREATE TABLE payee_lookup_settings (
     -- other source is still reached when this one cannot answer for a
     -- configuration or budget reason, never to paper over a failure.
     preferred_source VARCHAR(20) NOT NULL DEFAULT 'google-places',
+    -- Which AI provider answers, when AI does (migration 190). NULL = no
+    -- preference: every active provider in priority order, as before. Pinned so
+    -- a lookup cannot fall through to a model the user did not choose to pay
+    -- for. SET NULL on delete: losing the provider must not delete the Google
+    -- Places key stored beside it.
+    ai_provider_config_id UUID REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT payee_lookup_settings_monthly_cap_check

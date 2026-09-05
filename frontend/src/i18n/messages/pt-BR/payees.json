@@ -34,7 +34,8 @@
       "inactive": "Inativos",
       "withoutCategory": "Sem Categoria"
     },
-    "applyDefaultCategories": "Aplicar categorias padrão"
+    "applyDefaultCategories": "Aplicar categorias padrão",
+    "lookupSettings": "Configurações de busca de favorecidos"
   },
   "list": {
     "columns": {

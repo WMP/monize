@@ -34,7 +34,8 @@
       "inactive": "Inactifs",
       "withoutCategory": "Sans catégorie"
     },
-    "applyDefaultCategories": "Appliquer les catégories par défaut"
+    "applyDefaultCategories": "Appliquer les catégories par défaut",
+    "lookupSettings": "Paramètres de recherche de bénéficiaires"
   },
   "list": {
     "columns": {

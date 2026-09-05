@@ -34,7 +34,8 @@
       "inactive": "Inactief",
       "withoutCategory": "Zonder categorie"
     },
-    "applyDefaultCategories": "Standaardcategorieën toepassen"
+    "applyDefaultCategories": "Standaardcategorieën toepassen",
+    "lookupSettings": "Instellingen voor begunstigde opzoeken"
   },
   "list": {
     "columns": {

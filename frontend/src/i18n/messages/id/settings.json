@@ -1223,13 +1223,17 @@
       "disabled": "Pencarian kontak penerima otomatis dinonaktifkan",
       "saveFailed": "Tidak dapat memperbarui pengaturan pencarian kontak penerima"
     },
-    "priority": {
-      "title": "Sumber mana yang ditanya lebih dulu",
-      "subtitle": "Keduanya sudah dikonfigurasi. Yang lain hanya ditanya bila yang pertama tidak dapat menjawab, karena tidak ada penyedia AI yang disiapkan atau batas bulanan Google sudah habis. Jika sebuah sumber gagal, pencarian melaporkan kegagalan itu alih-alih diam-diam membayar yang lain.",
-      "placesFirst": "Google Places lebih dulu",
-      "placesFirstHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
-      "aiFirst": "Penyedia AI lebih dulu",
-      "aiFirstHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian."
+    "order": {
+      "title": "Sumber mana yang menjawab lebih dulu",
+      "subtitle": "Seret sebuah sumber, atau gunakan panah, untuk mengubah urutan. Yang kedua hanya ditanya bila yang pertama tidak dapat menjawab, karena belum dikonfigurasi atau batas bulanan Google sudah habis. Jika sebuah sumber gagal, pencarian melaporkan kegagalan itu alih-alih diam-diam membayar yang lain.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
+      "aiTitle": "Penyedia AI",
+      "aiHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian.",
+      "aiProviderLabel": "Penyedia yang digunakan",
+      "aiProviderAny": "Penyedia mana pun, sesuai prioritas",
+      "moveUp": "Naik",
+      "moveDown": "Turun"
     }
   }
 }

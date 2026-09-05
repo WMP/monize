@@ -1223,13 +1223,17 @@
       "disabled": "Automatic payee contact lookup disabled",
       "saveFailed": "Could not update the payee contact lookup setting"
     },
-    "priority": {
-      "title": "Which source to ask first",
-      "subtitle": "Both are configured. The other one is asked only when the first cannot answer, because no AI provider is set up or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.",
-      "placesFirst": "Google Places first",
-      "placesFirstHelp": "Directory facts, cheaper per lookup. Google holds no email address.",
-      "aiFirst": "AI provider first",
-      "aiFirstHelp": "Can find an email address, and costs a model call for every lookup."
+    "order": {
+      "title": "Which source answers first",
+      "subtitle": "Drag a source, or use the arrows, to change the order. The second one is asked only when the first cannot answer, because it is not configured or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Directory facts, cheaper per lookup. Google holds no email address.",
+      "aiTitle": "AI provider",
+      "aiHelp": "Can find an email address, and costs a model call for every lookup.",
+      "aiProviderLabel": "Provider to use",
+      "aiProviderAny": "Any provider, in priority order",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
     }
   }
 }

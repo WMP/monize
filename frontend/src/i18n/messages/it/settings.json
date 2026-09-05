@@ -1223,13 +1223,17 @@
       "disabled": "Ricerca automatica dei contatti disattivata",
       "saveFailed": "Impossibile aggiornare l'impostazione di ricerca dei contatti"
     },
-    "priority": {
-      "title": "Quale fonte interrogare per prima",
-      "subtitle": "Entrambe sono configurate. L'altra viene interrogata solo quando la prima non può rispondere, perché non è configurato alcun provider IA o il limite mensile di Google è esaurito. Se una fonte fallisce, la ricerca segnala l'errore invece di pagare l'altra in silenzio.",
-      "placesFirst": "Prima Google Places",
-      "placesFirstHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
-      "aiFirst": "Prima il provider IA",
-      "aiFirstHelp": "Può trovare un indirizzo email e costa una chiamata al modello a ogni ricerca."
+    "order": {
+      "title": "Quale fonte risponde per prima",
+      "subtitle": "Trascina una fonte, o usa le frecce, per cambiare l'ordine. La seconda viene interrogata solo quando la prima non può rispondere, perché non è configurata o il limite mensile di Google è esaurito. Se una fonte fallisce, la ricerca segnala l'errore invece di pagare l'altra in silenzio.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
+      "aiTitle": "Provider IA",
+      "aiHelp": "Può trovare un indirizzo email e costa una chiamata al modello a ogni ricerca.",
+      "aiProviderLabel": "Provider da usare",
+      "aiProviderAny": "Qualsiasi provider, per priorità",
+      "moveUp": "Sposta su",
+      "moveDown": "Sposta giù"
     }
   }
 }

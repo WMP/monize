@@ -154,6 +154,37 @@ vi.mock('@/components/ui/Button', () => ({
   Button: ({ children, onClick, ...rest }: any) => <button onClick={onClick} {...rest}>{children}</button>,
 }));
 
+vi.mock('@/lib/payee-lookup', () => ({
+  payeeLookupApi: {
+    getSettings: vi.fn().mockResolvedValue({
+      mode: 'none',
+      configured: false,
+      enabled: true,
+      capEnabled: true,
+      monthlyCap: 1000,
+      apiKeyMasked: null,
+      apiKeyReadable: true,
+      usedThisMonth: 0,
+      preferredSource: 'google-places',
+      aiProviderConfigId: null,
+      encryptionAvailable: true,
+    }),
+    updateSettings: vi.fn(),
+    testKey: vi.fn(),
+    getStatus: vi.fn().mockResolvedValue({
+      available: false,
+      source: null,
+      aiConfigured: false,
+      preferredSource: 'google-places',
+      googlePlaces: { mode: 'none', enabled: true, capReached: false },
+    }),
+  },
+}));
+
+vi.mock('@/lib/ai', () => ({
+  aiApi: { getConfigs: vi.fn().mockResolvedValue([]) },
+}));
+
 vi.mock('@/components/ui/Modal', () => ({
   Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
 }));
@@ -286,18 +317,41 @@ describe('PayeesPage', () => {
       render(<PayeesPage />);
       await openMaintenance();
 
-      // Four maintenance actions behind one trigger; the header itself carries
+      // Every occasional action behind one trigger; the header itself carries
       // only that trigger and the everyday New Payee button.
-      expect(screen.getAllByRole('menuitem')).toHaveLength(4);
+      expect(screen.getAllByRole('menuitem')).toHaveLength(5);
       for (const label of [
         'Auto-Merge Payees',
         'Deactivate Unused',
         'Auto-Assign Categories',
         'Apply Default Categories',
+        'Payee Lookup settings',
       ]) {
         expect(screen.getByRole('menuitem', { name: label })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: label })).toBeNull();
       }
+    });
+
+    it('opens the same Payee Lookup settings the Settings page shows', async () => {
+      // The menu item renders PayeeLookupSection itself -- one component, so
+      // the two places cannot drift into offering different controls.
+      render(<PayeesPage />);
+      await openMaintenance();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('menuitem', { name: 'Payee Lookup settings' }),
+        );
+      });
+
+      // The Modal is mocked in this file, so the dialog is its test id; what
+      // matters is that the section itself rendered inside it.
+      await waitFor(() =>
+        expect(screen.getByTestId('modal')).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Set up' }),
+      ).toBeInTheDocument();
     });
 
     it('renders New Payee and the Maintenance trigger', async () => {

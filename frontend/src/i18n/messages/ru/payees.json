@@ -34,7 +34,8 @@
       "inactive": "Неактивные",
       "withoutCategory": "Без категории"
     },
-    "applyDefaultCategories": "Применить категории по умолчанию"
+    "applyDefaultCategories": "Применить категории по умолчанию",
+    "lookupSettings": "Настройки поиска получателей"
   },
   "list": {
     "columns": {

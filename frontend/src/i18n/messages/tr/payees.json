@@ -34,7 +34,8 @@
       "inactive": "Pasif",
       "withoutCategory": "Kategorisiz"
     },
-    "applyDefaultCategories": "Varsayılan Kategorileri Uygula"
+    "applyDefaultCategories": "Varsayılan Kategorileri Uygula",
+    "lookupSettings": "Alacaklı arama ayarları"
   },
   "list": {
     "columns": {

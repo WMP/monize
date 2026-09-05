@@ -34,7 +34,8 @@
       "inactive": "निष्क्रिय",
       "withoutCategory": "बिना श्रेणी के"
     },
-    "applyDefaultCategories": "डिफ़ॉल्ट श्रेणियां लागू करें"
+    "applyDefaultCategories": "डिफ़ॉल्ट श्रेणियां लागू करें",
+    "lookupSettings": "प्राप्तकर्ता खोज सेटिंग्स"
   },
   "list": {
     "columns": {

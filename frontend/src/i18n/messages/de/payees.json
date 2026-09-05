@@ -34,7 +34,8 @@
       "inactive": "Inaktiv",
       "withoutCategory": "Ohne Kategorie"
     },
-    "applyDefaultCategories": "Standardkategorien zuweisen"
+    "applyDefaultCategories": "Standardkategorien zuweisen",
+    "lookupSettings": "Einstellungen für Zahlungsempfänger-Suche"
   },
   "list": {
     "columns": {

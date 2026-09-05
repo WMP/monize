@@ -34,7 +34,8 @@
       "inactive": "Inactive",
       "withoutCategory": "Without Category"
     },
-    "applyDefaultCategories": "Apply Default Categories"
+    "applyDefaultCategories": "Apply Default Categories",
+    "lookupSettings": "Payee Lookup settings"
   },
   "list": {
     "columns": {

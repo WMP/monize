@@ -47,6 +47,12 @@ export interface PayeeLookupSettings {
    * configuring the second later does not silently reorder the first.
    */
   preferredSource: PayeeLookupPreferredSource;
+  /**
+   * The AI provider pinned for lookups, or null for "no preference" (every
+   * active provider in priority order). Offered only when the user has more
+   * than one: with a single provider there is nothing to choose.
+   */
+  aiProviderConfigId: string | null;
   /** False when the server holds no ENCRYPTION_KEY, so no key can be stored. */
   encryptionAvailable: boolean;
 }
@@ -58,6 +64,8 @@ export interface UpdatePayeeLookupSettings {
   capEnabled?: boolean;
   monthlyCap?: number;
   preferredSource?: PayeeLookupPreferredSource;
+  /** `null` clears the pin; omit to leave it alone. */
+  aiProviderConfigId?: string | null;
 }
 
 export interface PayeeLookupKeyTestResult {

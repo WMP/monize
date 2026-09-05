@@ -1223,13 +1223,17 @@
       "disabled": "已停用自动查询收款方联系信息",
       "saveFailed": "无法更新收款方联系信息查询设置"
     },
-    "priority": {
+    "order": {
       "title": "先查询哪个来源",
-      "subtitle": "两者均已配置。只有在第一个来源无法作答时才会查询另一个，原因是未配置 AI 提供商或已用完 Google 的每月额度。如果某个来源失败，查询会报告失败，而不会默默地为另一个付费。",
-      "placesFirst": "优先使用 Google Places",
-      "placesFirstHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
-      "aiFirst": "优先使用 AI 提供商",
-      "aiFirstHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。"
+      "subtitle": "拖动某个来源，或使用箭头，即可更改顺序。只有在第一个来源未配置或已用完 Google 每月额度而无法作答时，才会查询第二个。如果某个来源失败，查询会报告失败，而不会默默地为另一个付费。",
+      "placesTitle": "Google Places",
+      "placesHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
+      "aiTitle": "AI 提供商",
+      "aiHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。",
+      "aiProviderLabel": "要使用的提供商",
+      "aiProviderAny": "任意提供商，按优先级顺序",
+      "moveUp": "上移",
+      "moveDown": "下移"
     }
   }
 }

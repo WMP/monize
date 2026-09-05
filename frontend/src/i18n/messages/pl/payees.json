@@ -34,7 +34,8 @@
       "inactive": "Nieaktywny",
       "withoutCategory": "Bez kategorii"
     },
-    "applyDefaultCategories": "Przypisz domyślne kategorie"
+    "applyDefaultCategories": "Przypisz domyślne kategorie",
+    "lookupSettings": "Ustawienia wyszukiwania odbiorców"
   },
   "list": {
     "columns": {

@@ -4,6 +4,10 @@ import { render } from '@/test/render';
 import { PayeeLookupSection } from './PayeeLookupSection';
 import type { PayeeLookupSettings } from '@/types/payee-lookup';
 
+vi.mock('@/lib/ai', () => ({
+  aiApi: { getConfigs: vi.fn() },
+}));
+
 vi.mock('@/lib/payee-lookup', () => ({
   payeeLookupApi: {
     getSettings: vi.fn(),
@@ -34,6 +38,9 @@ vi.mock('@/store/preferencesStore', () => ({
 
 import { payeeLookupApi } from '@/lib/payee-lookup';
 
+import { aiApi } from '@/lib/ai';
+
+const getConfigs = aiApi.getConfigs as unknown as Mock;
 const getSettings = payeeLookupApi.getSettings as unknown as Mock;
 const updateSettings = payeeLookupApi.updateSettings as unknown as Mock;
 
@@ -47,6 +54,7 @@ const settings = (over: Partial<PayeeLookupSettings> = {}): PayeeLookupSettings 
   apiKeyReadable: true,
   usedThisMonth: 0,
   preferredSource: 'google-places',
+  aiProviderConfigId: null,
   encryptionAvailable: true,
   ...over,
 });
@@ -60,6 +68,7 @@ async function renderSection() {
 beforeEach(() => {
   vi.clearAllMocks();
   availability.aiConfigured = false;
+  getConfigs.mockResolvedValue([]);
   getSettings.mockResolvedValue(settings());
   updateSettings.mockImplementation(async (patch) =>
     settings({ ...patch, configured: Boolean(patch.apiKey) }),
@@ -288,10 +297,11 @@ describe('PayeeLookupSection', () => {
       );
       await renderSection();
 
-      expect(screen.getByText('Which source to ask first')).toBeInTheDocument();
-      expect(
-        screen.getByRole('radio', { name: /Google Places first/ }),
-      ).toBeChecked();
+      expect(screen.getByText('Which source answers first')).toBeInTheDocument();
+      // Google Places first by default, so it is the row that cannot move up.
+      const rows = screen.getAllByRole('listitem');
+      expect(rows[0]).toHaveTextContent('Google Places');
+      expect(rows[1]).toHaveTextContent('AI provider');
     });
 
     it('saves the new order and never resends the key alongside it', async () => {
@@ -302,13 +312,79 @@ describe('PayeeLookupSection', () => {
       await renderSection();
 
       await act(async () => {
-        fireEvent.click(screen.getByRole('radio', { name: /AI provider first/ }));
+        // Moving either row is the same move in a two-item list.
+        fireEvent.click(screen.getAllByRole('button', { name: 'Move up' })[1]);
       });
 
       await waitFor(() => expect(updateSettings).toHaveBeenCalled());
       // Only the field that changed. An apiKey of '' would DELETE the stored
       // key, so a patch that carried one would silently destroy it.
       expect(updateSettings).toHaveBeenCalledWith({ preferredSource: 'ai' });
+    });
+
+    it('offers a provider choice only when there is more than one', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      // One provider is not a choice: the control would carry a single option.
+      getConfigs.mockResolvedValue([
+        { id: 'a', provider: 'anthropic', displayName: null, model: null, isActive: true },
+      ]);
+      await renderSection();
+
+      expect(screen.queryByLabelText('Provider to use')).not.toBeInTheDocument();
+    });
+
+    it('pins the chosen provider, and offers only the active ones', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      getConfigs.mockResolvedValue([
+        { id: 'a', provider: 'anthropic', displayName: 'Claude', model: 'opus', isActive: true },
+        { id: 'b', provider: 'openai', displayName: null, model: null, isActive: true },
+        // Inactive: pinning it would report no_provider on every lookup.
+        { id: 'c', provider: 'ollama', displayName: 'Local', model: null, isActive: false },
+      ]);
+      await renderSection();
+
+      const select = screen.getByLabelText('Provider to use');
+      expect(screen.queryByRole('option', { name: 'Local' })).not.toBeInTheDocument();
+      // The model is part of the name: two rows of one vendor differ only by it.
+      expect(screen.getByRole('option', { name: 'Claude (opus)' })).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.change(select, { target: { value: 'a' } });
+      });
+
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({ aiProviderConfigId: 'a' }),
+      );
+    });
+
+    it('clears the pin back to no preference', async () => {
+      availability.aiConfigured = true;
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true, aiProviderConfigId: 'a' }),
+      );
+      getConfigs.mockResolvedValue([
+        { id: 'a', provider: 'anthropic', displayName: 'Claude', model: null, isActive: true },
+        { id: 'b', provider: 'openai', displayName: null, model: null, isActive: true },
+      ]);
+      await renderSection();
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Provider to use'), {
+          target: { value: '' },
+        });
+      });
+
+      // null, not '': the empty option means "no preference", and the server
+      // reads null as clearing the pin.
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({ aiProviderConfigId: null }),
+      );
     });
   });
 });

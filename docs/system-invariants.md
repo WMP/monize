@@ -2217,7 +2217,10 @@ Crash semantics     A crash after the claim and before the request spends a slot
                     the alternative over-spends a paid quota.
 Failure response    ContactLookupOutcome.reason = "quota_exceeded" when the cap
                     is spent AND no AI provider can answer; otherwise the lookup
-                    silently falls back to the AI adapter.
+                    silently falls back to the AI adapter. A pinned AI provider
+                    (payee_lookup_settings.ai_provider_config_id) that resolves
+                    to nothing reports "no_provider" rather than falling through
+                    to a model the user did not choose.
 Required tests      Two-connection: concurrent claims over the last slot, one
                     winner, for both scopes. Present in
                     backend/test/integration/payee-lookup-quota.integration.spec.ts

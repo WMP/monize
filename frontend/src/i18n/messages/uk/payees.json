@@ -34,7 +34,8 @@
       "inactive": "Неактивні",
       "withoutCategory": "Без категорії"
     },
-    "applyDefaultCategories": "Застосувати категорії за замовчуванням"
+    "applyDefaultCategories": "Застосувати категорії за замовчуванням",
+    "lookupSettings": "Налаштування пошуку отримувачів"
   },
   "list": {
     "columns": {

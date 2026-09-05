@@ -34,7 +34,8 @@
       "inactive": "Tidak Aktif",
       "withoutCategory": "Tanpa Kategori"
     },
-    "applyDefaultCategories": "Terapkan Kategori Default"
+    "applyDefaultCategories": "Terapkan Kategori Default",
+    "lookupSettings": "Pengaturan pencarian penerima"
   },
   "list": {
     "columns": {

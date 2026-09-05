@@ -1223,13 +1223,17 @@
       "disabled": "Automatische Kontaktsuche für Zahlungsempfänger deaktiviert",
       "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden"
     },
-    "priority": {
-      "title": "Welche Quelle zuerst gefragt wird",
-      "subtitle": "Beide sind eingerichtet. Die andere wird nur gefragt, wenn die erste nicht antworten kann, weil kein KI-Anbieter eingerichtet ist oder das monatliche Google-Limit aufgebraucht ist. Schlägt eine Quelle fehl, meldet die Suche den Fehler, statt stillschweigend für die andere zu zahlen.",
-      "placesFirst": "Zuerst Google Places",
-      "placesFirstHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
-      "aiFirst": "Zuerst KI-Anbieter",
-      "aiFirstHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf."
+    "order": {
+      "title": "Welche Quelle zuerst antwortet",
+      "subtitle": "Ziehen Sie eine Quelle, oder nutzen Sie die Pfeile, um die Reihenfolge zu ändern. Die zweite wird nur gefragt, wenn die erste nicht antworten kann, weil sie nicht eingerichtet ist oder das monatliche Google-Limit aufgebraucht ist. Schlägt eine Quelle fehl, meldet die Suche den Fehler, statt stillschweigend für die andere zu zahlen.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
+      "aiTitle": "KI-Anbieter",
+      "aiHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf.",
+      "aiProviderLabel": "Zu verwendender Anbieter",
+      "aiProviderAny": "Beliebiger Anbieter, nach Priorität",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten"
     }
   }
 }

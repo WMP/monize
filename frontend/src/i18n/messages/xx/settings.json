@@ -1223,13 +1223,17 @@
       "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
       "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
     },
-    "priority": {
-      "title": "[XX-Which source to ask first-XX]",
-      "subtitle": "[XX-Both are configured. The other one is asked only when the first cannot answer, because no AI provider is set up or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.-XX]",
-      "placesFirst": "[XX-Google Places first-XX]",
-      "placesFirstHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
-      "aiFirst": "[XX-AI provider first-XX]",
-      "aiFirstHelp": "[XX-Can find an email address, and costs a model call for every lookup.-XX]"
+    "order": {
+      "title": "[XX-Which source answers first-XX]",
+      "subtitle": "[XX-Drag a source, or use the arrows, to change the order. The second one is asked only when the first cannot answer, because it is not configured or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.-XX]",
+      "placesTitle": "[XX-Google Places-XX]",
+      "placesHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
+      "aiTitle": "[XX-AI provider-XX]",
+      "aiHelp": "[XX-Can find an email address, and costs a model call for every lookup.-XX]",
+      "aiProviderLabel": "[XX-Provider to use-XX]",
+      "aiProviderAny": "[XX-Any provider, in priority order-XX]",
+      "moveUp": "[XX-Move up-XX]",
+      "moveDown": "[XX-Move down-XX]"
     }
   }
 }

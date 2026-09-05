@@ -1223,13 +1223,17 @@
       "disabled": "Automatisch contactgegevens opzoeken uitgeschakeld",
       "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken"
     },
-    "priority": {
-      "title": "Welke bron als eerste wordt geraadpleegd",
-      "subtitle": "Beide zijn ingesteld. De andere wordt alleen geraadpleegd als de eerste geen antwoord kan geven, doordat er geen AI-provider is ingesteld of de maandelijkse Google-limiet op is. Als een bron faalt, meldt de zoekopdracht die fout in plaats van stilletjes voor de andere te betalen.",
-      "placesFirst": "Eerst Google Places",
-      "placesFirstHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
-      "aiFirst": "Eerst AI-provider",
-      "aiFirstHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep."
+    "order": {
+      "title": "Welke bron als eerste antwoordt",
+      "subtitle": "Sleep een bron, of gebruik de pijlen, om de volgorde te wijzigen. De tweede wordt alleen geraadpleegd als de eerste geen antwoord kan geven, doordat die niet is ingesteld of de maandelijkse Google-limiet op is. Als een bron faalt, meldt de zoekopdracht die fout in plaats van stilletjes voor de andere te betalen.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
+      "aiTitle": "AI-provider",
+      "aiHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep.",
+      "aiProviderLabel": "Te gebruiken provider",
+      "aiProviderAny": "Elke provider, op volgorde van prioriteit",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag"
     }
   }
 }

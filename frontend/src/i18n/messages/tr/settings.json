@@ -1223,13 +1223,17 @@
       "disabled": "Otomatik alacaklı iletişim araması devre dışı bırakıldı",
       "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi"
     },
-    "priority": {
-      "title": "Önce hangi kaynağa sorulacak",
-      "subtitle": "Her ikisi de yapılandırılmış. Diğeri yalnızca ilki yanıt veremediğinde sorulur; yapay zekâ sağlayıcısı kurulmadığı veya aylık Google sınırı tükendiği için. Bir kaynak başarısız olursa arama, sessizce diğerinin ücretini ödemek yerine hatayı bildirir.",
-      "placesFirst": "Önce Google Places",
-      "placesFirstHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
-      "aiFirst": "Önce yapay zekâ sağlayıcısı",
-      "aiFirstHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır."
+    "order": {
+      "title": "Önce hangi kaynak yanıtlar",
+      "subtitle": "Sırayı değiştirmek için bir kaynağı sürükleyin veya okları kullanın. İkincisi yalnızca ilki yapılandırılmadığı ya da aylık Google sınırı tükendiği için yanıt veremediğinde sorulur. Bir kaynak başarısız olursa arama, sessizce diğerinin ücretini ödemek yerine hatayı bildirir.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
+      "aiTitle": "Yapay zekâ sağlayıcısı",
+      "aiHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır.",
+      "aiProviderLabel": "Kullanılacak sağlayıcı",
+      "aiProviderAny": "Öncelik sırasına göre herhangi bir sağlayıcı",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı"
     }
   }
 }

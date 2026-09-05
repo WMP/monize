@@ -67,22 +67,25 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
     userId: string,
     input: PayeeContactLookupInput,
   ): Promise<PayeeContactSuggestion[]> {
-    const { places: source, preferredSource } =
-      await this.settings.resolveRouting(userId);
+    const {
+      places: source,
+      preferredSource,
+      aiProviderConfigId,
+    } = await this.settings.resolveRouting(userId);
 
     // The user asked for AI first. Places is still reached -- but only if AI
     // cannot answer for a CONFIGURATION reason, which is the same asymmetry the
     // other order uses: a source that fails is reported, never papered over by
     // paying the other one.
     if (preferredSource === "ai") {
-      return this.aiFirst(userId, input, source);
+      return this.aiFirst(userId, input, source, aiProviderConfigId);
     }
 
     if (source.kind === "none") {
-      return this.ai.lookup(userId, input);
+      return this.ai.lookup(userId, input, aiProviderConfigId ?? undefined);
     }
 
-    return this.viaPlaces(userId, input, source);
+    return this.viaPlaces(userId, input, source, aiProviderConfigId);
   }
 
   /**
@@ -97,9 +100,14 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
     userId: string,
     input: PayeeContactLookupInput,
     source: ResolvedLookupSource,
+    aiProviderConfigId: string | null,
   ): Promise<PayeeContactSuggestion[]> {
     try {
-      return await this.ai.lookup(userId, input);
+      return await this.ai.lookup(
+        userId,
+        input,
+        aiProviderConfigId ?? undefined,
+      );
     } catch (error) {
       const noProvider =
         error instanceof ContactLookupUnavailableError &&
@@ -108,7 +116,7 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
       this.logger.log(
         `No AI provider configured for user ${userId}; falling back to Google Places.`,
       );
-      return this.viaPlaces(userId, input, source);
+      return this.viaPlaces(userId, input, source, aiProviderConfigId);
     }
   }
 
@@ -117,6 +125,7 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
     userId: string,
     input: PayeeContactLookupInput,
     source: Exclude<ResolvedLookupSource, { kind: "none" }>,
+    aiProviderConfigId: string | null,
   ): Promise<PayeeContactSuggestion[]> {
     if (this.health.wouldRefuse(GOOGLE_PLACES_PROVIDER)) {
       throw new ContactLookupUnavailableError(
@@ -132,7 +141,7 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
           source.kind === "user" ? `user ${userId}` : "this deployment"
         }; falling back to the AI lookup.`,
       );
-      return this.fallbackToAi(userId, input);
+      return this.fallbackToAi(userId, input, aiProviderConfigId);
     }
 
     return this.places.lookup(source.apiKey, input);
@@ -146,9 +155,14 @@ export class RoutingPayeeContactLookupProvider implements PayeeContactLookupProv
   private async fallbackToAi(
     userId: string,
     input: PayeeContactLookupInput,
+    aiProviderConfigId: string | null,
   ): Promise<PayeeContactSuggestion[]> {
     try {
-      return await this.ai.lookup(userId, input);
+      return await this.ai.lookup(
+        userId,
+        input,
+        aiProviderConfigId ?? undefined,
+      );
     } catch (error) {
       if (
         error instanceof ContactLookupUnavailableError &&

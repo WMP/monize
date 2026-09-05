@@ -34,7 +34,8 @@
       "inactive": "未啟用",
       "withoutCategory": "無類別"
     },
-    "applyDefaultCategories": "套用預設類別"
+    "applyDefaultCategories": "套用預設類別",
+    "lookupSettings": "收款人查詢設定"
   },
   "list": {
     "columns": {

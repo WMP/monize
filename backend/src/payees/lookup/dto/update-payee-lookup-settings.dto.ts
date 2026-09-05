@@ -5,9 +5,11 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from "class-validator";
 import { PayeeLookupPreferredSource } from "../entities/payee-lookup-settings.entity";
 
@@ -70,6 +72,17 @@ export class UpdatePayeeLookupSettingsDto {
   @IsOptional()
   @IsIn(PAYEE_LOOKUP_PREFERRED_SOURCES)
   preferredSource?: PayeeLookupPreferredSource;
+
+  @ApiPropertyOptional({
+    description:
+      "Which AI provider answers a lookup. Null clears the pin back to every active provider in priority order.",
+  })
+  @IsOptional()
+  // Explicitly nullable: null is the meaningful "no preference" value, and
+  // @IsUUID alone would reject it. Absent still means "leave it alone".
+  @ValidateIf((_o, value) => value !== null)
+  @IsUUID()
+  aiProviderConfigId?: string | null;
 }
 
 /** The draft key the Test button checks, when the user has typed a new one. */

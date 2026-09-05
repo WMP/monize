@@ -1223,13 +1223,17 @@
       "disabled": "Busca automática de contatos desativada",
       "saveFailed": "Não foi possível atualizar a configuração de busca de contatos"
     },
-    "priority": {
-      "title": "Qual fonte consultar primeiro",
-      "subtitle": "Ambas estão configuradas. A outra só é consultada quando a primeira não consegue responder, por não haver provedor de IA configurado ou por ter se esgotado o limite mensal do Google. Se uma fonte falhar, a busca informa a falha em vez de pagar a outra silenciosamente.",
-      "placesFirst": "Google Places primeiro",
-      "placesFirstHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
-      "aiFirst": "Provedor de IA primeiro",
-      "aiFirstHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca."
+    "order": {
+      "title": "Qual fonte responde primeiro",
+      "subtitle": "Arraste uma fonte, ou use as setas, para alterar a ordem. A segunda só é consultada quando a primeira não consegue responder, por não estar configurada ou por ter se esgotado o limite mensal do Google. Se uma fonte falhar, a busca informa a falha em vez de pagar a outra silenciosamente.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
+      "aiTitle": "Provedor de IA",
+      "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca.",
+      "aiProviderLabel": "Provedor a usar",
+      "aiProviderAny": "Qualquer provedor, por ordem de prioridade",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo"
     }
   }
 }

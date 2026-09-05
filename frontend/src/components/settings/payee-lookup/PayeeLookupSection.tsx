@@ -14,7 +14,10 @@ import type {
   PayeeLookupSettings,
   UpdatePayeeLookupSettings,
 } from '@/types/payee-lookup';
+import { aiApi } from '@/lib/ai';
+import type { AiProviderConfig } from '@/types/ai';
 import { GooglePlacesConfigModal } from './GooglePlacesConfigModal';
+import { LookupSourceOrder } from './LookupSourceOrder';
 import { PayeeContactLookupToggle } from './PayeeContactLookupToggle';
 
 /**
@@ -30,6 +33,12 @@ const GOOGLE_PLACES_SETUP_URL =
 
 interface PayeeLookupSectionProps {
   disabled?: boolean;
+  /**
+   * Outer spacing, so a host can place the section. The Settings page stacks
+   * sections and wants the bottom margin; a modal supplies its own padding and
+   * does not.
+   */
+  className?: string;
 }
 
 /**
@@ -47,17 +56,40 @@ interface PayeeLookupSectionProps {
  * is invalid until it is complete -- saving it per keystroke would store a
  * dozen broken credentials and test none of them.
  */
-export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps) {
+export function PayeeLookupSection({
+  disabled = false,
+  className = 'mb-6',
+}: PayeeLookupSectionProps) {
   const t = useTranslations('settings.payeeLookup');
   const [settings, setSettings] = useState<PayeeLookupSettings | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  // Only the ACTIVE providers: an inactive one cannot answer a lookup, so
+  // offering it would let the user pin a source that reports no_provider.
+  const [aiProviders, setAiProviders] = useState<AiProviderConfig[]>([]);
   // Whether ANY source can answer -- Places within its cap, or an AI provider.
   // The automatic-lookup toggle is about a lookup that runs by itself, so it is
   // offered only when something could actually run.
   const { available: lookupAvailable, aiConfigured } =
     useContactLookupAvailable();
+
+  useEffect(() => {
+    let active = true;
+    // Best-effort: the order list still works without it, offering no model
+    // choice rather than a broken one.
+    aiApi
+      .getConfigs()
+      .then((configs) => {
+        if (active) setAiProviders(configs.filter((c) => c.isActive));
+      })
+      .catch(() => {
+        if (active) setAiProviders([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -126,6 +158,18 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
     }
   };
 
+  const handleAiProvider = async (configId: string | null) => {
+    if (!settings || saving || settings.aiProviderConfigId === configId) return;
+    const previous = settings;
+    setSettings({ ...settings, aiProviderConfigId: configId });
+    try {
+      await save({ aiProviderConfigId: configId });
+    } catch (error) {
+      setSettings(previous);
+      toast.error(getErrorMessage(error, t('saveFailed')));
+    }
+  };
+
   const handleRemoveKey = async () => {
     try {
       await save({ apiKey: '' });
@@ -136,7 +180,7 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
 
   if (loadFailed) {
     return (
-      <Card padding="md" className="mb-6">
+      <Card padding="md" className={className}>
         <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
           {t('title')}
         </h2>
@@ -151,7 +195,7 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
 
   return (
     <>
-      <Card padding="md" className="mb-6">
+      <Card padding="md" className={className}>
         <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
           {t('title')}
         </h2>
@@ -251,41 +295,13 @@ export function PayeeLookupSection({ disabled = false }: PayeeLookupSectionProps
             one configured there is nothing to order, and offering the choice
             would imply a fallback that does not exist. */}
         {aiConfigured && settings.configured && (
-          <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {t('priority.title')}
-            </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {t('priority.subtitle')}
-            </p>
-            <div className="mt-3 flex flex-col gap-2">
-              {(['google-places', 'ai'] as const).map((option) => (
-                <label
-                  key={option}
-                  className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                >
-                  <input
-                    type="radio"
-                    name="payee-lookup-preferred-source"
-                    className="mt-0.5"
-                    checked={settings.preferredSource === option}
-                    onChange={() => handlePreferredSource(option)}
-                    disabled={disabled || saving}
-                  />
-                  <span>
-                    <span className="font-medium">
-                      {t(`priority.${option === 'ai' ? 'aiFirst' : 'placesFirst'}`)}
-                    </span>
-                    <span className="block text-gray-500 dark:text-gray-400">
-                      {t(
-                        `priority.${option === 'ai' ? 'aiFirstHelp' : 'placesFirstHelp'}`,
-                      )}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <LookupSourceOrder
+            settings={settings}
+            aiProviders={aiProviders}
+            disabled={disabled || saving}
+            onReorder={handlePreferredSource}
+            onSelectAiProvider={handleAiProvider}
+          />
         )}
 
         <PayeeContactLookupToggle

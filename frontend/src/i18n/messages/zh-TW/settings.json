@@ -1223,13 +1223,17 @@
       "disabled": "已停用自動查詢收款人聯絡資訊",
       "saveFailed": "無法更新收款人聯絡資訊查詢設定"
     },
-    "priority": {
+    "order": {
       "title": "先查詢哪個來源",
-      "subtitle": "兩者均已設定。只有在第一個來源無法作答時才會查詢另一個，原因是未設定 AI 供應商或已用完 Google 的每月額度。如果某個來源失敗，查詢會回報失敗，而不會默默地為另一個付費。",
-      "placesFirst": "優先使用 Google Places",
-      "placesFirstHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
-      "aiFirst": "優先使用 AI 供應商",
-      "aiFirstHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。"
+      "subtitle": "拖曳某個來源，或使用箭頭，即可變更順序。只有在第一個來源未設定或已用完 Google 每月額度而無法作答時，才會查詢第二個。如果某個來源失敗，查詢會回報失敗，而不會默默地為另一個付費。",
+      "placesTitle": "Google Places",
+      "placesHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
+      "aiTitle": "AI 供應商",
+      "aiHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。",
+      "aiProviderLabel": "要使用的供應商",
+      "aiProviderAny": "任何供應商，依優先順序",
+      "moveUp": "上移",
+      "moveDown": "下移"
     }
   }
 }

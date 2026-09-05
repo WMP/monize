@@ -34,7 +34,8 @@
       "inactive": "非活跃",
       "withoutCategory": "无分类"
     },
-    "applyDefaultCategories": "应用默认分类"
+    "applyDefaultCategories": "应用默认分类",
+    "lookupSettings": "收款方查询设置"
   },
   "list": {
     "columns": {

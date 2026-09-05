@@ -1223,13 +1223,17 @@
       "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
       "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
     },
-    "priority": {
-      "title": "Które źródło pytać najpierw",
-      "subtitle": "Oba są skonfigurowane. Drugie jest pytane tylko wtedy, gdy pierwsze nie może odpowiedzieć, ponieważ nie skonfigurowano dostawcy AI albo wyczerpano miesięczny limit Google. Jeśli źródło zawiedzie, wyszukiwanie zgłasza błąd, zamiast po cichu płacić za drugie.",
-      "placesFirst": "Najpierw Google Places",
-      "placesFirstHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
-      "aiFirst": "Najpierw dostawca AI",
-      "aiFirstHelp": "Może znaleźć adres e-mail i kosztuje jedno wywołanie modelu przy każdym wyszukiwaniu."
+    "order": {
+      "title": "Które źródło odpowiada najpierw",
+      "subtitle": "Przeciągnij źródło lub użyj strzałek, aby zmienić kolejność. Drugie jest pytane tylko wtedy, gdy pierwsze nie może odpowiedzieć, ponieważ nie zostało skonfigurowane albo wyczerpano miesięczny limit Google. Jeśli źródło zawiedzie, wyszukiwanie zgłasza błąd, zamiast po cichu płacić za drugie.",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
+      "aiTitle": "Dostawca AI",
+      "aiHelp": "Może znaleźć adres e-mail i kosztuje jedno wywołanie modelu przy każdym wyszukiwaniu.",
+      "aiProviderLabel": "Dostawca do użycia",
+      "aiProviderAny": "Dowolny dostawca, według priorytetu",
+      "moveUp": "W górę",
+      "moveDown": "W dół"
     }
   }
 }
