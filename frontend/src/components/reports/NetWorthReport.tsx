@@ -31,6 +31,7 @@ import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { CellLabel } from '@/components/ui/Table';
 import { exportToCsv } from '@/lib/csv-export';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
@@ -40,6 +41,63 @@ import { createLogger } from '@/lib/logger';
 const logger = createLogger('NetWorthReport');
 
 type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
+
+/**
+ * One sortable column of the table view. The four are declared once, as a
+ * record over the sort field union, and rendered by BOTH header rows -- the
+ * column header row (from `sm` up) and the phone sort strip -- so the two can
+ * never list different fields, and adding a member to the union fails `tsc`
+ * rather than stranding a phone with no control for it.
+ */
+interface SortColumn {
+  field: NetWorthSortField;
+  label: string;
+  /** Money columns are right-aligned in the column header row. */
+  align?: 'right';
+}
+
+// Today's header cell, unchanged.
+const HEADER_CLASS =
+  'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
+
+// The same sort controls in the phone strip: a wrapped row of compact chips.
+// Column alignment means nothing there -- the column header row is hidden and
+// each data row is a grid -- so every control is left-aligned and self-naming.
+// The border and card background are what say "tappable": there is no hover on
+// a touch screen, and without them the strip reads as another row of the
+// captions the cells below carry.
+const PHONE_HEADER_CLASS =
+  'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
+
+// A money cell inside a wrapped card: no padding of its own below `sm` (the
+// row supplies it and the grid does the spacing), the table cell's own padding
+// from `sm` up. Smaller type on phones.
+//
+// `whitespace-nowrap` is the one property here that is NOT phone-only, and it
+// is the single respect in which the `sm`-and-up cell differs from today's: a
+// locale that groups thousands with a space could otherwise break a figure in
+// the middle of a number, at any width.
+//
+// Width budget, measured on a hand-written CSS replica in Chromium at the
+// insets this table really gets (the report page's `px-4` plus this card's
+// `px-2`), so 272px of content at 320px and 342px at 390px. Two equal
+// `minmax(0,1fr)` tracks inside the row's own `px-4` give each money cell
+// 114px at 320px and 149px at 390px. The unit is part of the budget and is not
+// always a symbol: `formatCurrencyCompact` asks for `narrowSymbol`, which
+// falls back to the three-letter ISO code where a currency has none, so the
+// widest realistic value is a negative seven-figure `1 439 000 CHF`-shaped
+// amount -- 93.5px at `text-xs`. That leaves 20px spare at 320px, and a
+// NEGATIVE NINE-FIGURE amount (109px) still fits there.
+// Right alignment is not a containment device -- a nowrap amount longer than
+// its track overflows past the end edge whatever `text-align` says, and in the
+// right-hand track that does reopen the wrapper's sideways scroll. That is the
+// deliberate choice: `overflow-hidden` here would silently cut a figure, which
+// is worse than an honest scroll past the measured budget.
+const MONEY_CELL =
+  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
+
+/** Every caption in a wrapped cell is phone-only. */
+const CAPTION_CLASS = 'sm:hidden';
 
 export function NetWorthReport() {
   const t = useTranslations('reports');
@@ -155,6 +213,24 @@ export function NetWorthReport() {
     });
     return sorted;
   }, [chartData, sortField, sortDirection]);
+
+  // Exhaustive over the sort field union, so a new field is a compile error
+  // rather than a column with no control in either header.
+  const columns: Record<NetWorthSortField, SortColumn> = {
+    name: { field: 'name', label: t('netWorth.colMonth') },
+    assets: { field: 'assets', label: t('netWorth.colAssets'), align: 'right' },
+    liabilities: { field: 'liabilities', label: t('netWorth.colLiabilities'), align: 'right' },
+    netWorth: { field: 'netWorth', label: t('netWorth.colNetWorth'), align: 'right' },
+  };
+
+  // Their order, rendered by BOTH header rows and matched by the cells' DOM
+  // order.
+  const sortColumns: readonly SortColumn[] = [
+    columns.name,
+    columns.assets,
+    columns.liabilities,
+    columns.netWorth,
+  ];
 
   // For long ranges, explicitly specify which ticks to show so years don't repeat.
   // Ticks are keyed off the raw ISO month (sortKey, YYYY-MM-DD) so the January
@@ -362,64 +438,85 @@ export function NetWorthReport() {
             {t('netWorth.noData')}
           </p>
         ) : chartType === 'table' ? (
+          /* Below `sm` the table becomes a block and each row wraps into a
+             two-column grid so all four columns fit a phone without a
+             horizontal scroll, on two lines: the month and its net worth share
+             line 1 -- the net worth is the figure the row is read for, so it
+             takes the right half beside the month -- and assets and
+             liabilities, the two figures the net worth is made of, share line
+             2. The month is the one cell allowed to wrap, since a compact
+             amount never may. Nothing is dropped: the card carries all four
+             columns, and the row stays what it is today -- hovering, but not
+             clickable. From `sm` up it is the ordinary table. The sort controls
+             survive as their own phone-only header row, because the column
+             header row that carries them on desktop is hidden there.
+
+             Two costs of restyling one tree, both deliberate. Changing the
+             display roles drops the table semantics below `sm`, which is why
+             every value carries a `CellLabel` naming its column -- a phone
+             reader gets labelled values rather than a header association. And
+             the phone reading order differs from the DOM order, which is the
+             desktop column order the grid placement overrides visually. Both
+             are properties of the mechanism, not of this table. */
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
-                <tr>
-                  <SortableHeader<NetWorthSortField>
-                    field="name"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                  >
-                    {t('netWorth.colMonth')}
-                  </SortableHeader>
-                  <SortableHeader<NetWorthSortField>
-                    field="assets"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                  >
-                    {t('netWorth.colAssets')}
-                  </SortableHeader>
-                  <SortableHeader<NetWorthSortField>
-                    field="liabilities"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                  >
-                    {t('netWorth.colLiabilities')}
-                  </SortableHeader>
-                  <SortableHeader<NetWorthSortField>
-                    field="netWorth"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                  >
-                    {t('netWorth.colNetWorth')}
-                  </SortableHeader>
+            {/* Explicit roles: restyling `display` below `sm` strips the implicit
+                table semantics, and these put them back (inert from `sm` up). */}
+            <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
+              <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
+                {/* Phone sort strip: the same four controls, wrapped. */}
+                <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
+                  {sortColumns.map((col) => (
+                    <SortableHeader<NetWorthSortField>
+                      key={col.field}
+                      field={col.field}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className={PHONE_HEADER_CLASS}
+                    >
+                      {col.label}
+                    </SortableHeader>
+                  ))}
+                </tr>
+                <tr role="row" className="hidden sm:table-row">
+                  {sortColumns.map((col) => (
+                    <SortableHeader<NetWorthSortField>
+                      key={col.field}
+                      field={col.field}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align={col.align}
+                      className={HEADER_CLASS}
+                    >
+                      {col.label}
+                    </SortableHeader>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody role="rowgroup" className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
                 {sortedTableData.map((row) => (
-                  <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <tr
+                    key={row.name}
+                    role="row"
+                    className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
+                  >
+                    <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                       {row.name}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                    <td role="cell" className={`col-start-1 row-start-2 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{columns.assets.label}</CellLabel>
                       {formatCurrency(row.Assets)}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-red-600 dark:text-red-400">
+                    <td role="cell" className={`col-start-2 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{columns.liabilities.label}</CellLabel>
                       {formatCurrency(row.Liabilities)}
                     </td>
-                    <td className={`px-4 py-3 text-right text-sm font-medium ${row.NetWorth >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}>
+                    {/* Net worth takes the right of line 1 beside the month: it
+                        is the figure the row is read for. Its sign colouring is
+                        unchanged -- neutral at or above zero, red below. */}
+                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${row.NetWorth >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'} ${MONEY_CELL}`}>
+                      <CellLabel className={CAPTION_CLASS}>{columns.netWorth.label}</CellLabel>
                       {formatCurrency(row.NetWorth)}
                     </td>
                   </tr>
