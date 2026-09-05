@@ -43,9 +43,16 @@ interface SortColumn {
    * This column's export heading and cell. They are separate from `label`
    * because the catalogue has always carried a second set of keys for the
    * export (`csvCol*`), and this change is a layout change: it moves the
-   * export's ORDER onto the record so a column can no longer be added to the
-   * table without appearing in the export, without touching which string the
-   * export prints.
+   * export's ORDER onto the record without touching which string the export
+   * prints.
+   *
+   * What the record enforces is that every SORT FIELD is exported: it cannot
+   * enforce that every rendered cell is, because the seven value `<td>`s are
+   * written out by hand and no type ties them to `sortColumns`. An eighth cell
+   * added without a new union member would compile and ship absent from the
+   * export; what fails on that is
+   * `RecurringExpensesReport.mobileWrapped.test.tsx`, which pins the `<td>`
+   * count at seven and against the `<th>` count of each header row.
    */
   csvLabel: string;
   csvValue: (expense: RecurringExpenseItem) => string | number;
@@ -120,13 +127,18 @@ const PHONE_HEADER_CLASS =
 // The formatter is `formatCurrencyCompact` (no decimals) and the widest unit it
 // can produce is not a symbol: it asks for `narrowSymbol`, which falls back to
 // the three-letter ISO code where a currency has none, so CHF is the worst
-// case. Measured at `text-xs`, space-grouped: a seven-figure `1 456 789 CHF` is
-// 89px both as Avg Amount and, at `font-medium`, as 6-Mo Total -- the two carry
-// the same worst case here because the server derives the average from the
-// total (`totalAmount / occurrences`), so the total is the wider of the pair
-// only by its weight. Both inside the 122px track at 320px, with the widest
-// measured value overflow across every figure cell in every locale being zero.
-// The occurrence COUNT is a count over six months: `128` is 23px.
+// case. The two money cells do NOT share a worst case: the server computes
+// `averageAmount = totalAmount / occurrences` over at least the two occurrences
+// the minimum-occurrences selector floors at, so the 6-Mo Total beside it is
+// one to two orders of magnitude wider for the same row, and it is bold as
+// well. So the budget is stated on the TOTAL, at `text-xs` and `font-medium`,
+// space-grouped: seven figures `1 456 789 CHF` 89px, eight 97px, nine 104px,
+// ten `1 234 567 890 CHF` 116px -- all inside the 122px track at 320px -- and
+// eleven 124px, the first past it by 2px. Ten figures of CHF is the stated
+// ceiling at 320px; at 390px (157px tracks) even twelve fits at 131px. The
+// widest measured value overflow across every figure cell in every locale at
+// the seven-figure worst case is zero. The occurrence COUNT is a count over six
+// months: `128` is 23px.
 //
 // THREE tracks were measured and rejected: a third of the same box is 77px at
 // 320px, which the 89px seven-figure amount overflows by 12px -- in EVERY
@@ -489,7 +501,7 @@ export function RecurringExpensesReport() {
                 hands today's wrapping back from `sm` up.
 
                 Which caption goes in which track is a measurement, not a taste.
-                All 120 catalogue strings for the four captioned columns -- the
+                All 80 catalogue strings for the four captioned columns -- the
                 20 locales that DEFINE these keys, the pseudo-locale included;
                 the two lean regional variants (`en-GB`, `en-US`) inherit `en`'s
                 strings per key -- were rendered into the 122px a track gets at
