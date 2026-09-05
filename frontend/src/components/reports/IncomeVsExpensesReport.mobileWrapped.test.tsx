@@ -6,8 +6,8 @@ import { IncomeVsExpensesReport } from "./IncomeVsExpensesReport";
  * The phone layout of the Income vs Expenses table view.
  *
  * The table is ONE tree restyled by CSS (mechanism A): below `sm` the rows wrap
- * into a two-column grid and the column header row is hidden, from `sm` up it is
- * the ordinary table. jsdom applies no media queries, so both header rows and
+ * into a three-column, two-line grid and the column header row is hidden, from
+ * `sm` up it is the ordinary table. jsdom applies no media queries, so both header rows and
  * every phone caption are in the DOM here at all times -- which is exactly what
  * lets these assertions read the phone markup without emulating a viewport, and
  * why the sort controls have to be addressed by position rather than by label
@@ -180,6 +180,38 @@ describe("IncomeVsExpensesReport (phone wrapped table)", () => {
     }
   });
 
+  it("wraps each row onto two lines: month, savings and income, then rate and expenses", async () => {
+    const container = await renderTableView();
+
+    // The card is two lines tall, not three: every cell sits on line 1 or 2,
+    // and each derived figure sits under the one it derives from -- the rate
+    // under savings (spanning the first two tracks so its caption, the
+    // longest in the table, has room), the expenses under income. DOM order
+    // is the desktop column order, so the placement is read off the classes.
+    const placement = (cell: Element) => {
+      const col = /\bcol-start-(\d)\b/.exec(cell.className)?.[1];
+      const row = /\brow-start-(\d)\b/.exec(cell.className)?.[1];
+      const span = /\bcol-span-(\d)\b/.exec(cell.className)?.[1] ?? "1";
+      return `c${col}/r${row}/s${span}`;
+    };
+    for (const row of [
+      ...Array.from(container.querySelectorAll("tbody tr")),
+      ...Array.from(container.querySelectorAll("tfoot tr")),
+    ]) {
+      const [month, income, expenses, savings, rate] = Array.from(row.querySelectorAll("td"));
+      expect(row.className).toContain("grid-cols-3");
+      expect(placement(month)).toBe("c1/r1/s1");
+      expect(placement(savings)).toBe("c2/r1/s1");
+      expect(placement(income)).toBe("c3/r1/s1");
+      expect(placement(rate)).toBe("c1/r2/s2");
+      expect(placement(expenses)).toBe("c3/r2/s1");
+      // Nothing is placed on a third line.
+      for (const cell of [month, income, expenses, savings, rate]) {
+        expect(cell.className).not.toMatch(/\brow-start-3\b/);
+      }
+    }
+  });
+
   it("keeps the row a table row from sm up and a grid below it", async () => {
     const container = await renderTableView();
 
@@ -189,7 +221,7 @@ describe("IncomeVsExpensesReport (phone wrapped table)", () => {
     expect(container.querySelector("tbody")?.className).toContain("sm:table-row-group");
     expect(container.querySelector("tfoot")?.className).toContain("sm:table-footer-group");
     const row = container.querySelector("tbody tr");
-    expect(row?.className).toContain("grid grid-cols-2");
+    expect(row?.className).toContain("grid grid-cols-3");
     expect(row?.className).toContain("sm:table-row");
     // The wrapper still scrolls horizontally, which is what the table needs
     // from `sm` up on a narrow desktop window.

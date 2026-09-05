@@ -322,19 +322,23 @@ export function IncomeVsExpensesReport() {
         ) : viewType === 'table' ? (
           <>
             {/* Below `sm` the table becomes a block and each row wraps into a
-                two-column grid so all five columns fit a phone without a
-                horizontal scroll: the month and its savings share line 1,
-                income and expenses line 2, the savings rate line 3. From `sm`
-                up it is the ordinary table. The sort controls survive as their
-                own phone-only header row, because the column header row that
+                three-column grid so all five columns fit a phone without a
+                horizontal scroll, on two lines: the month, its savings and its
+                income share line 1; the savings rate (spanning the first two
+                tracks) and the expenses share line 2. Each derived figure
+                sits under the figure it derives from -- rate under savings,
+                expenses under income -- and the month is the one cell allowed
+                to wrap, since a compact amount never may. From `sm` up it is
+                the ordinary table. The sort controls survive as their own
+                phone-only header row, because the column header row that
                 carries them on desktop is hidden there.
 
                 Two costs of restyling one tree, both deliberate. Changing the
                 display roles drops the table semantics below `sm`, which is
                 why every value carries a `CellLabel` naming its column -- a
                 phone reader gets labelled values rather than a header
-                association. And Savings is read fourth but drawn second: DOM
-                order is the desktop column order, which the grid placement
+                association. And the phone reading order differs from the DOM
+                order, which is the desktop column order the grid placement
                 overrides visually. Both are properties of the mechanism, not
                 of this table. */}
             <div className="overflow-x-auto">
@@ -378,7 +382,7 @@ export function IncomeVsExpensesReport() {
                     <tr
                       key={row.name}
                       role="row"
-                      className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
+                      className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
                       onClick={() =>
                         router.push(
                           `/transactions?startDate=${row.monthStart}&endDate=${row.monthEnd}`,
@@ -388,24 +392,27 @@ export function IncomeVsExpensesReport() {
                       <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                         {row.fullName}
                       </td>
-                      <td role="cell" className={`col-start-1 row-start-2 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                      <td role="cell" className={`col-start-3 row-start-1 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colIncome')}</CellLabel>
                         {formatCurrency(row.Income)}
                       </td>
-                      <td role="cell" className={`col-start-2 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                      <td role="cell" className={`col-start-3 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colExpenses')}</CellLabel>
                         {formatCurrency(row.Expenses)}
                       </td>
-                      {/* Savings takes the right half of line 1 beside the
-                          month: it is the figure the row is read for. */}
+                      {/* Savings takes the middle of line 1 beside the month:
+                          it is the figure the row is read for. */}
                       <td
                         className={`col-start-2 row-start-1 font-medium ${row.Savings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavings')}</CellLabel>
                         {formatCurrency(row.Savings)}
                       </td>
+                      {/* The rate spans the first two tracks so its caption --
+                          the longest in the table in every locale -- has room
+                          on one line; right-aligned, it ends under Savings. */}
                       <td
-                        className={`col-start-1 row-start-3 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                        className={`col-start-1 col-span-2 row-start-2 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                         {row.SavingsRate}%
@@ -415,15 +422,15 @@ export function IncomeVsExpensesReport() {
                 </tbody>
                 <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
                   {/* The totals are the largest figures on the table, so this
-                      row wraps the same way a data row does -- two columns,
-                      each money cell captioned. */}
-                  <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
+                      row wraps the same way a data row does -- the same three
+                      tracks and placement, each money cell captioned. */}
+                  <tr role="row" className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
                     <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">{t('incomeVsExpenses.total')}</td>
-                    <td role="cell" className={`col-start-1 row-start-2 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-3 row-start-1 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colIncome')}</CellLabel>
                       {formatCurrency(totals.totalIncome)}
                     </td>
-                    <td role="cell" className={`col-start-2 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-3 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colExpenses')}</CellLabel>
                       {formatCurrency(totals.totalExpenses)}
                     </td>
@@ -434,7 +441,7 @@ export function IncomeVsExpensesReport() {
                       {formatCurrency(totals.totalSavings)}
                     </td>
                     <td
-                      className={`col-start-1 row-start-3 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                      className={`col-start-1 col-span-2 row-start-2 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                       {totals.savingsRate.toFixed(1)}%
