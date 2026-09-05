@@ -148,28 +148,38 @@ const PHONE_HEADER_CLASS =
 //
 // The formatter is `formatCurrencyCompact` (no decimals), and the widest unit
 // it can produce is not a symbol: it asks for `narrowSymbol`, which falls back
-// to the three-letter ISO code where a currency has none. Measured at
+// to the three-letter ISO code where a currency has none -- so `CHF` is the
+// worst case, wider than the weak currencies whose figures run longest (IDR,
+// VND and KRW all have a one- or two-character narrow symbol). Measured at
 // `text-xs`, a seven-figure `1 456 789 CHF` is 90px, the same figure negative
 // (the Remaining column's worst case, which also wears `font-medium`) is 94px,
-// and an eight-figure `12 345 678 CHF` is 97px -- all inside the 114px track
-// at 320px, with the widest measured overflow across every figure cell in
-// every locale being zero. In a currency with a narrow symbol the same
-// seven-figure amount is 75px. `percentUsed` is the server's own figure and
-// not the short integer an English fixture suggests: `budgets.service.ts`
+// an eight-figure `12 345 678 CHF` is 97px, and a NINE-figure
+// `-123 456 789 CHF` is 109px -- all inside the 114px track at 320px, with the
+// widest measured overflow across every figure cell in every locale being
+// zero. In a currency with a narrow symbol the same seven-figure amount is
+// 75px. `percentUsed` is the server's own figure and not the short integer an
+// English fixture suggests: `getCachedCategoryActuals` in `budgets.service.ts`
 // computes `Math.round((spent / budgeted) * 10000) / 100` per category and
-// `getFlexGroupStatus` carries it through unchanged, so it has two decimals
-// and no ceiling -- a category budgeted 10 with 12,345.678 spent renders
-// `123456.78%`, 77px at `text-xs`.
+// `getFlexGroupStatus` (in `budget-activity-reports.service.ts`) carries it
+// through unchanged, so it has two decimals and no ceiling -- a category
+// budgeted 10 with 12,345.678 spent renders `123456.78%`, 77px at `text-xs`.
 //
 // THREE tracks were measured and rejected: a third of the same box is 72px at
 // 320px, which the 90px seven-figure amount overflows by 18px. Two tracks and
 // a third line is what this box can hold.
 //
-// Where a figure did exceed its track it would overflow rather than be cut:
+// Where a figure does exceed its track it overflows rather than being cut:
 // right alignment is not a containment device -- a nowrap amount longer than
-// its track overflows past the end edge whatever `text-align` says -- and
-// `overflow-hidden` here would silently cut a figure, which is worse than a
-// crowded one. (Today, before this layout, the same reader scrolls at every
+// its track overflows past the END edge whatever `text-align` says, measured
+// in both tracks -- and `overflow-hidden` here would silently cut a figure,
+// which is worse than a crowded one. A TEN-figure `1 234 567 890 CHF` (116px)
+// is the first that does it, and the two tracks pay differently: in the LEFT
+// track the overflow spends the 12px column gap (2px of it at 320px, so
+// nothing reaches the neighbouring figure), while in the RIGHT track it leaves
+// the wrapper and reopens its sideways scroll -- measured 246px of content in
+// the 240px wrapper at 320px, and nothing at all at 390px. That is a
+// documented cost at a magnitude no measured currency reaches in a category
+// budget, not a defect. (Today, before this layout, the same reader scrolls at every
 // width and in every locale: the five-column table is 463px wide in English
 // and 585px with the widest caption per column, inside that 240px box, and its
 // figures already wrap in the middle -- `1 234` / `567 CHF` -- for rows 97px

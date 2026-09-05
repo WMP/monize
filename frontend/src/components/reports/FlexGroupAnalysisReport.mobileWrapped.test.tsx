@@ -74,11 +74,12 @@ vi.mock('recharts', () => ({
 
 /**
  * `percentUsed` is the SERVER's figure, not a rounded integer: per category
- * `budgets.service.ts` computes `Math.round((spent / budgeted) * 10000) / 100`
- * and `getFlexGroupStatus` carries it through unchanged, so it has two
- * decimals and no ceiling. The fixture derives it the same way rather than
- * hardcoding a tidy `130%`, because the width budget the phone layout is
- * measured against rests on that shape.
+ * `getCachedCategoryActuals` in `budgets.service.ts` computes
+ * `Math.round((spent / budgeted) * 10000) / 100`, and `getFlexGroupStatus`
+ * (in `budget-activity-reports.service.ts`) carries it through unchanged, so
+ * it has two decimals and no ceiling. The fixture derives it the same way
+ * rather than hardcoding a tidy `130%`, because the width budget the phone
+ * layout is measured against rests on that shape.
  */
 const percentUsed = (budgeted: number, spent: number) =>
   budgeted > 0 ? Math.round((spent / budgeted) * 10000) / 100 : 0;
