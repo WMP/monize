@@ -113,7 +113,7 @@ const PHONE_HEADER_CLASS =
 // on one line, which is the rule this report cannot bend -- a rate is not
 // money and is never rounded, truncated or clipped to fit.
 //
-// MONEY_CELL width budget, measured on a hand-written CSS replica in Chromium
+// FIGURE_CELL width budget, measured on a hand-written CSS replica in Chromium
 // at the insets this table really gets -- the report page's `px-4` and the
 // row's own `px-4`, the card contributing none -- so 256px of track at 320px
 // and 326px at 390px. Two equal `minmax(0,1fr)` tracks with the row's

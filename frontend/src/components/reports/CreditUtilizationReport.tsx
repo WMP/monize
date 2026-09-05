@@ -661,7 +661,7 @@ export function CreditUtilizationReport() {
                       today's. */}
                   <td role="cell" className="col-start-1 row-start-1 min-w-0 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                     <div className="flex flex-col">
-                      <span className="line-clamp-3 sm:line-clamp-none" title={row.name}>{row.name}</span>
+                      <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={row.name}>{row.name}</span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {accountTypeLabel(row.accountType)}
                       </span>
