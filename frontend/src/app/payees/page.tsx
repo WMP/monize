@@ -426,11 +426,18 @@ function PayeesContent() {
         {/* The Payee Lookup settings, rendered from the one section the
             Settings page uses. `padding="none"` lets the section's own Card be
             the panel rather than nesting a card inside a padded dialog. */}
+        {/* Sized to the column the same section occupies on Settings, so the
+            two places render one card rather than a wide one and a cramped
+            one. That column is the settings page's max-w-6xl main less its
+            lg:px-12, its lg:w-52 nav and the lg:gap-10 between them: 72 - 6 -
+            13 - 2.5 = 50.5rem, and max-w-3xl (48rem) is the nearest size the
+            modal offers. The next one up overshoots by 5.5rem and, with the
+            backdrop's own padding, leaves a 1024px laptop almost no margin. */}
         <Modal
           isOpen={showLookupSettings}
           onClose={() => setShowLookupSettings(false)}
           title={tLookup('title')}
-          maxWidth="lg"
+          maxWidth="3xl"
           pushHistory
         >
           <PayeeLookupSection className="" />

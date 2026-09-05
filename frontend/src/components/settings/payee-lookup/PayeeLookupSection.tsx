@@ -254,6 +254,29 @@ export function PayeeLookupSection({
           // the row is not drawn at all rather than drawn inert.
           hidden={aiConfigured ? [] : ['ai']}
           onReorder={handlePreferredSource}
+          // The switches sit beside the name they apply to: a source's on/off
+          // state is what the row IS, not one of the settings under it.
+          rowAside={{
+            'google-places': (
+              <ToggleSwitch
+                checked={settings.enabled}
+                onChange={handleToggle}
+                disabled={disabled || saving}
+                label={t('googlePlaces.toggleLabel')}
+              />
+            ),
+            ai: (
+              // Symmetric with Google Places: off means this source is not
+              // reached at all, so the user can stop paying for it without
+              // deleting a provider the assistant still uses.
+              <ToggleSwitch
+                checked={settings.aiEnabled}
+                onChange={handleAiToggle}
+                disabled={disabled || saving}
+                label={t('order.aiToggleLabel')}
+              />
+            ),
+          }}
           rowControls={{
             'google-places': (
               <div className="mt-3 space-y-3">
@@ -261,24 +284,14 @@ export function PayeeLookupSection({
                     An operator's key is a fact about the deployment, and no
                     key yet is a call to action; a key that is set up needs no
                     sentence -- the buttons and the usage count below already
-                    say so. `ml-auto` rather than `justify-between`, so the
-                    switch stays right-aligned when there is no line. */}
-                <div className="flex items-start gap-4">
-                  {(operatorManaged || !settings.configured) && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {operatorManaged
-                        ? t('googlePlaces.operatorManaged')
-                        : t('googlePlaces.notConfigured')}
-                    </p>
-                  )}
-                  <ToggleSwitch
-                    checked={settings.enabled}
-                    onChange={handleToggle}
-                    disabled={disabled || saving}
-                    label={t('googlePlaces.toggleLabel')}
-                    className="ml-auto"
-                  />
-                </div>
+                    say so. */}
+                {(operatorManaged || !settings.configured) && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {operatorManaged
+                      ? t('googlePlaces.operatorManaged')
+                      : t('googlePlaces.notConfigured')}
+                  </p>
+                )}
 
                 {/* A key that cannot be decrypted is not the same as no key:
                     say so, because the repair is to enter it again rather than
@@ -350,26 +363,13 @@ export function PayeeLookupSection({
                 )}
               </div>
             ),
-            ai: (
-              <div className="mt-3 space-y-3">
-                {/* Symmetric with the Google Places switch above: off means
-                    this source is not reached at all, so the user can stop
-                    paying for it without deleting a provider the assistant
-                    still uses. The row is drawn only where a provider exists,
-                    so a sentence saying one exists would repeat the row. */}
-                <div className="flex justify-end">
-                  <ToggleSwitch
-                    checked={settings.aiEnabled}
-                    onChange={handleAiToggle}
-                    disabled={disabled || saving}
-                    label={t('order.aiToggleLabel')}
-                  />
-                </div>
-
-                {/* Which model answers, offered only where there is a choice to
-                    make: with one provider the select would carry a single
-                    option, and with none it would name nothing. */}
-                {aiProviders.length > 1 && (
+            // Which model answers, offered only where there is a choice to
+            // make: with one provider the select would carry a single option,
+            // and with none it would name nothing. Nothing else is left under
+            // this row, so with one provider it renders no block at all.
+            ai:
+              aiProviders.length > 1 ? (
+                <div className="mt-3">
                   <Select
                     label={t('order.aiProviderLabel')}
                     value={settings.aiProviderConfigId ?? ''}
@@ -383,9 +383,8 @@ export function PayeeLookupSection({
                       })),
                     ]}
                   />
-                )}
-              </div>
-            ),
+                </div>
+              ) : null,
           }}
         />
 

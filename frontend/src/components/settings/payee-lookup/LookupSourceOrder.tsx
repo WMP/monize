@@ -24,11 +24,21 @@ interface LookupSourceOrderProps {
   onReorder: (first: PayeeLookupPreferredSource) => void;
   /**
    * Each source's own controls, rendered under its description: the Google
-   * Places key and switch, the AI provider picker. They live with the handlers
-   * that save them rather than here, so this component stays the list and
-   * nothing else.
+   * Places key buttons and usage, the AI provider picker. They live with the
+   * handlers that save them rather than here, so this component stays the list
+   * and nothing else.
    */
   rowControls?: Partial<Record<SourceRow, ReactNode>>;
+  /**
+   * The one control that belongs on the title line: each source's on/off
+   * switch.
+   *
+   * Separate from `rowControls` because its POSITION is the point. A switch is
+   * the row's primary state, so it sits beside the name it applies to, centred
+   * against the title and description as a pair -- below them it read as one
+   * more of the row's settings rather than the thing that turns the row on.
+   */
+  rowAside?: Partial<Record<SourceRow, ReactNode>>;
   /**
    * Sources with nothing to configure, left out of the list entirely.
    *
@@ -60,6 +70,7 @@ export function LookupSourceOrder({
   reorderable = true,
   onReorder,
   rowControls,
+  rowAside,
   hidden = [],
 }: LookupSourceOrderProps) {
   const t = useTranslations('settings.payeeLookup.order');
@@ -120,12 +131,21 @@ export function LookupSourceOrder({
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {t(source === 'ai' ? 'aiTitle' : 'placesTitle')}
-              </p>
-              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                {t(source === 'ai' ? 'aiHelp' : 'placesHelp')}
-              </p>
+              {/* `items-center` so the switch is centred against the title and
+                  description together, rather than pinned to the first line of
+                  a block whose height depends on how the help text wraps. */}
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {t(source === 'ai' ? 'aiTitle' : 'placesTitle')}
+                  </p>
+                  <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                    {t(source === 'ai' ? 'aiHelp' : 'placesHelp')}
+                  </p>
+                </div>
+
+                {rowAside?.[source]}
+              </div>
 
               {rowControls?.[source]}
             </div>

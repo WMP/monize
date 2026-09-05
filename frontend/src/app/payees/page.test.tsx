@@ -188,7 +188,15 @@ vi.mock('@/lib/ai', () => ({
 }));
 
 vi.mock('@/components/ui/Modal', () => ({
-  Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
+  // `maxWidth` is surfaced because one of these modals has to match a width
+  // set on another page; the real component turns it into a Tailwind class
+  // this mock never renders, so nothing else could see a change to it.
+  Modal: ({ children, isOpen, maxWidth }: any) =>
+    isOpen ? (
+      <div data-testid="modal" data-max-width={maxWidth}>
+        {children}
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/ui/UnsavedChangesDialog', () => ({
@@ -354,6 +362,14 @@ describe('PayeesPage', () => {
       expect(
         screen.getByRole('button', { name: 'Set up' }),
       ).toBeInTheDocument();
+      // And at the width the same section gets on Settings, whose content
+      // column is that page's max-w-6xl main less its lg:px-12, its lg:w-52
+      // nav and the lg:gap-10 between them (50.5rem). Sized off the default
+      // the card was half that and every row wrapped.
+      expect(screen.getByTestId('modal')).toHaveAttribute(
+        'data-max-width',
+        '3xl',
+      );
     });
 
     it('renders New Payee and the Maintenance trigger', async () => {

@@ -447,6 +447,41 @@ describe('PayeeLookupSection', () => {
       ).toBeInTheDocument();
     });
 
+    it("puts each source's switch on its title line, not among its controls", async () => {
+      // Position is the claim, and nothing else in the suite can see it: the
+      // switch reads as the row's primary state only while it sits beside the
+      // name it applies to. Below the description it looked like one more of
+      // the row's settings.
+      availability.aiConfigured = true;
+      getConfigs.mockResolvedValue([
+        { id: 'a', provider: 'anthropic', displayName: null, model: null, isActive: true },
+        { id: 'b', provider: 'openai', displayName: null, model: null, isActive: true },
+      ]);
+      getSettings.mockResolvedValue(
+        settings({ mode: 'user', configured: true }),
+      );
+      await renderSection();
+
+      const [placesRow, aiRow] = screen.getAllByRole('listitem');
+
+      const places = within(placesRow).getByRole('switch', {
+        name: 'Use Google Places for payee lookups',
+      }).parentElement!;
+      expect(places).toHaveTextContent('Google Places');
+      // The controls below it are a sibling block, not this line.
+      expect(
+        within(places).queryByRole('button', { name: 'Edit' }),
+      ).not.toBeInTheDocument();
+
+      const ai = within(aiRow).getByRole('switch', {
+        name: 'Use an AI provider for payee lookups',
+      }).parentElement!;
+      expect(ai).toHaveTextContent('Existing AI Provider');
+      expect(
+        within(ai).queryByRole('combobox', { name: 'Provider to use' }),
+      ).not.toBeInTheDocument();
+    });
+
     it('offers setup and its instructions on the row before a key exists', async () => {
       await renderSection();
 
