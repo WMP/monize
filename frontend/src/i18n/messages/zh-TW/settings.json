@@ -1188,7 +1188,6 @@
     "loadFailed": "無法載入收款人查詢設定。請重新整理頁面再試一次。",
     "googlePlaces": {
       "toggleLabel": "使用 Google Places 查詢收款人",
-      "configured": "在 Google 的商家目錄中查詢，而非透過你的 AI 供應商。",
       "notConfigured": "新增 Google Places API 金鑰，即可在 Google 的商家目錄中查詢，而非透過你的 AI 供應商。",
       "operatorManaged": "由本伺服器的管理員設定。你可以為自己的收款人關閉它。",
       "configure": "設定",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "先查詢哪個來源",
-      "subtitle": "拖曳某個來源，或使用箭頭，即可變更順序。只有在第一個來源未設定或已用完 Google 每月額度而無法作答時，才會查詢第二個。如果某個來源失敗，查詢會回報失敗，而不會默默地為另一個付費。",
-      "subtitleSingle": "設定第二個來源即可選擇先由哪個作答。在此之前，您已設定的來源會回答每一次查詢。",
       "placesTitle": "Google Places",
       "placesHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
-      "aiTitle": "AI 供應商",
+      "aiTitle": "現有 AI 供應商",
       "aiHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。",
       "aiToggleLabel": "使用 AI 供應商進行收款人查詢",
-      "aiConfigured": "使用您在 AI 設定中設定的 AI 供應商。",
       "aiProviderLabel": "要使用的供應商",
       "aiProviderAny": "任何供應商，依優先順序",
       "moveUp": "上移",

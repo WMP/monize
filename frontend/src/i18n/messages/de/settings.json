@@ -1188,7 +1188,6 @@
     "loadFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
     "googlePlaces": {
       "toggleLabel": "Google Places für die Zahlungsempfänger-Suche verwenden",
-      "configured": "Sucht Unternehmen im Google-Verzeichnis statt über deinen KI-Anbieter.",
       "notConfigured": "Füge einen Google-Places-API-Schlüssel hinzu, um Unternehmen im Google-Verzeichnis statt über deinen KI-Anbieter zu suchen.",
       "operatorManaged": "Von der Administration dieses Servers konfiguriert. Du kannst es für deine eigenen Zahlungsempfänger deaktivieren.",
       "configure": "Einrichten",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Welche Quelle zuerst antwortet",
-      "subtitle": "Ziehen Sie eine Quelle, oder nutzen Sie die Pfeile, um die Reihenfolge zu ändern. Die zweite wird nur gefragt, wenn die erste nicht antworten kann, weil sie nicht eingerichtet ist oder das monatliche Google-Limit aufgebraucht ist. Schlägt eine Quelle fehl, meldet die Suche den Fehler, statt stillschweigend für die andere zu zahlen.",
-      "subtitleSingle": "Richten Sie eine zweite Quelle ein, um zu wählen, welche zuerst antwortet. Bis dahin beantwortet die eingerichtete Quelle jede Suche.",
       "placesTitle": "Google Places",
       "placesHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
-      "aiTitle": "KI-Anbieter",
+      "aiTitle": "Vorhandener KI-Anbieter",
       "aiHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf.",
       "aiToggleLabel": "KI-Anbieter für Zahlungsempfänger-Suchen verwenden",
-      "aiConfigured": "Verwendet den in den KI-Einstellungen konfigurierten Anbieter.",
       "aiProviderLabel": "Zu verwendender Anbieter",
       "aiProviderAny": "Beliebiger Anbieter, nach Priorität",
       "moveUp": "Nach oben",

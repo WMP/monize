@@ -257,19 +257,26 @@ export function PayeeLookupSection({
           rowControls={{
             'google-places': (
               <div className="mt-3 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {operatorManaged
-                      ? t('googlePlaces.operatorManaged')
-                      : settings.configured
-                        ? t('googlePlaces.configured')
+                {/* A line here only where it says something the row does not.
+                    An operator's key is a fact about the deployment, and no
+                    key yet is a call to action; a key that is set up needs no
+                    sentence -- the buttons and the usage count below already
+                    say so. `ml-auto` rather than `justify-between`, so the
+                    switch stays right-aligned when there is no line. */}
+                <div className="flex items-start gap-4">
+                  {(operatorManaged || !settings.configured) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {operatorManaged
+                        ? t('googlePlaces.operatorManaged')
                         : t('googlePlaces.notConfigured')}
-                  </p>
+                    </p>
+                  )}
                   <ToggleSwitch
                     checked={settings.enabled}
                     onChange={handleToggle}
                     disabled={disabled || saving}
                     label={t('googlePlaces.toggleLabel')}
+                    className="ml-auto"
                   />
                 </div>
 
@@ -348,11 +355,9 @@ export function PayeeLookupSection({
                 {/* Symmetric with the Google Places switch above: off means
                     this source is not reached at all, so the user can stop
                     paying for it without deleting a provider the assistant
-                    still uses. */}
-                <div className="flex items-start justify-between gap-4">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('order.aiConfigured')}
-                  </p>
+                    still uses. The row is drawn only where a provider exists,
+                    so a sentence saying one exists would repeat the row. */}
+                <div className="flex justify-end">
                   <ToggleSwitch
                     checked={settings.aiEnabled}
                     onChange={handleAiToggle}

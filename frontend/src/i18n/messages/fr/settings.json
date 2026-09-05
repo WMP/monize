@@ -1188,7 +1188,6 @@
     "loadFailed": "Impossible de charger les paramètres de recherche de bénéficiaires. Rechargez la page pour réessayer.",
     "googlePlaces": {
       "toggleLabel": "Utiliser Google Places pour la recherche de bénéficiaires",
-      "configured": "Recherche les entreprises dans l'annuaire Google plutôt que via votre fournisseur d'IA.",
       "notConfigured": "Ajoutez une clé d'API Google Places pour rechercher les entreprises dans l'annuaire Google plutôt que via votre fournisseur d'IA.",
       "operatorManaged": "Configuré par l'administration de ce serveur. Vous pouvez le désactiver pour vos propres bénéficiaires.",
       "configure": "Configurer",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Quelle source répond en premier",
-      "subtitle": "Faites glisser une source, ou utilisez les flèches, pour changer l'ordre. La seconde n'est interrogée que si la première ne peut pas répondre, faute de configuration ou parce que la limite mensuelle Google est épuisée. Si une source échoue, la recherche signale l'échec au lieu de payer l'autre en silence.",
-      "subtitleSingle": "Configurez une seconde source pour choisir laquelle répond en premier. En attendant, celle que vous avez configurée répond à toutes les recherches.",
       "placesTitle": "Google Places",
       "placesHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
-      "aiTitle": "Fournisseur d'IA",
+      "aiTitle": "Fournisseur d'IA existant",
       "aiHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche.",
       "aiToggleLabel": "Utiliser un fournisseur d'IA pour les recherches de bénéficiaires",
-      "aiConfigured": "Utilise le fournisseur d'IA configuré dans les paramètres d'IA.",
       "aiProviderLabel": "Fournisseur à utiliser",
       "aiProviderAny": "N'importe quel fournisseur, par priorité",
       "moveUp": "Monter",

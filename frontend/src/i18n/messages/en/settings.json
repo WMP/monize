@@ -1188,7 +1188,6 @@
     "loadFailed": "Could not load the payee lookup settings. Reload the page to try again.",
     "googlePlaces": {
       "toggleLabel": "Use Google Places for payee lookups",
-      "configured": "Looks up businesses in Google's directory instead of your AI provider.",
       "notConfigured": "Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.",
       "operatorManaged": "Configured by this server's administrator. You can turn it off for your own payees.",
       "configure": "Set up",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Which source answers first",
-      "subtitle": "Drag a source, or use the arrows, to change the order. The second one is asked only when the first cannot answer, because it is not configured or the monthly Google limit is spent. If a source fails, the lookup reports the failure rather than quietly paying the other one.",
-      "subtitleSingle": "Set up a second source to choose which one answers first. Until then the one you have configured answers every lookup.",
       "placesTitle": "Google Places",
       "placesHelp": "Directory facts, cheaper per lookup. Google holds no email address.",
-      "aiTitle": "AI provider",
+      "aiTitle": "Existing AI Provider",
       "aiHelp": "Can find an email address, and costs a model call for every lookup.",
       "aiToggleLabel": "Use an AI provider for payee lookups",
-      "aiConfigured": "Uses the AI provider you have configured in AI Settings.",
       "aiProviderLabel": "Provider to use",
       "aiProviderAny": "Any provider, in priority order",
       "moveUp": "Move up",

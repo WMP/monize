@@ -1188,7 +1188,6 @@
     "loadFailed": "Não foi possível carregar as configurações de busca de favorecidos. Recarregue a página para tentar de novo.",
     "googlePlaces": {
       "toggleLabel": "Usar o Google Places na busca de favorecidos",
-      "configured": "Busca empresas no diretório do Google em vez de usar seu provedor de IA.",
       "notConfigured": "Adicione uma chave de API do Google Places para buscar empresas no diretório do Google em vez de usar seu provedor de IA.",
       "operatorManaged": "Configurado pelo administrador deste servidor. Você pode desativá-lo para seus próprios favorecidos.",
       "configure": "Configurar",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Qual fonte responde primeiro",
-      "subtitle": "Arraste uma fonte, ou use as setas, para alterar a ordem. A segunda só é consultada quando a primeira não consegue responder, por não estar configurada ou por ter se esgotado o limite mensal do Google. Se uma fonte falhar, a busca informa a falha em vez de pagar a outra silenciosamente.",
-      "subtitleSingle": "Configure uma segunda fonte para escolher qual responde primeiro. Até lá, a que você configurou responde a todas as buscas.",
       "placesTitle": "Google Places",
       "placesHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
-      "aiTitle": "Provedor de IA",
+      "aiTitle": "Provedor de IA existente",
       "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca.",
       "aiToggleLabel": "Usar um provedor de IA para as buscas de favorecidos",
-      "aiConfigured": "Usa o provedor de IA que você configurou nas Configurações de IA.",
       "aiProviderLabel": "Provedor a usar",
       "aiProviderAny": "Qualquer provedor, por ordem de prioridade",
       "moveUp": "Mover para cima",

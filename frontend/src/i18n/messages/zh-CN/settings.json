@@ -1188,7 +1188,6 @@
     "loadFailed": "无法加载收款方查询设置。请刷新页面重试。",
     "googlePlaces": {
       "toggleLabel": "使用 Google Places 查询收款方",
-      "configured": "在 Google 的商户目录中查询，而不使用你的 AI 提供方。",
       "notConfigured": "添加 Google Places API 密钥，即可在 Google 的商户目录中查询，而不使用你的 AI 提供方。",
       "operatorManaged": "由本服务器的管理员配置。你可以为自己的收款方关闭它。",
       "configure": "设置",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "先查询哪个来源",
-      "subtitle": "拖动某个来源，或使用箭头，即可更改顺序。只有在第一个来源未配置或已用完 Google 每月额度而无法作答时，才会查询第二个。如果某个来源失败，查询会报告失败，而不会默默地为另一个付费。",
-      "subtitleSingle": "设置第二个来源即可选择先由哪个作答。在此之前，您已配置的来源会回答每一次查询。",
       "placesTitle": "Google Places",
       "placesHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
-      "aiTitle": "AI 提供商",
+      "aiTitle": "现有 AI 提供商",
       "aiHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。",
       "aiToggleLabel": "使用 AI 提供商进行收款方查询",
-      "aiConfigured": "使用您在 AI 设置中配置的 AI 提供商。",
       "aiProviderLabel": "要使用的提供商",
       "aiProviderAny": "任意提供商，按优先级顺序",
       "moveUp": "上移",

@@ -1188,7 +1188,6 @@
     "loadFailed": "Impossibile caricare le impostazioni di ricerca beneficiari. Ricarica la pagina per riprovare.",
     "googlePlaces": {
       "toggleLabel": "Usa Google Places per la ricerca dei beneficiari",
-      "configured": "Cerca le attività nella directory di Google invece che tramite il tuo provider di IA.",
       "notConfigured": "Aggiungi una chiave API di Google Places per cercare le attività nella directory di Google invece che tramite il tuo provider di IA.",
       "operatorManaged": "Configurato dall'amministrazione di questo server. Puoi disattivarlo per i tuoi beneficiari.",
       "configure": "Configura",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Quale fonte risponde per prima",
-      "subtitle": "Trascina una fonte, o usa le frecce, per cambiare l'ordine. La seconda viene interrogata solo quando la prima non può rispondere, perché non è configurata o il limite mensile di Google è esaurito. Se una fonte fallisce, la ricerca segnala l'errore invece di pagare l'altra in silenzio.",
-      "subtitleSingle": "Configura una seconda fonte per scegliere quale risponde per prima. Fino ad allora, quella configurata risponde a ogni ricerca.",
       "placesTitle": "Google Places",
       "placesHelp": "Dati da elenco, più economici per ricerca. Google non ha indirizzi email.",
-      "aiTitle": "Provider IA",
+      "aiTitle": "Provider IA esistente",
       "aiHelp": "Può trovare un indirizzo email e costa una chiamata al modello a ogni ricerca.",
       "aiToggleLabel": "Usa un provider IA per le ricerche dei beneficiari",
-      "aiConfigured": "Usa il provider IA configurato in Impostazioni IA.",
       "aiProviderLabel": "Provider da usare",
       "aiProviderAny": "Qualsiasi provider, per priorità",
       "moveUp": "Sposta su",

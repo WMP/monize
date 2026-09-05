@@ -1188,7 +1188,6 @@
     "loadFailed": "Tidak dapat memuat pengaturan pencarian penerima. Muat ulang halaman untuk mencoba lagi.",
     "googlePlaces": {
       "toggleLabel": "Gunakan Google Places untuk pencarian penerima",
-      "configured": "Mencari bisnis di direktori Google, bukan lewat penyedia AI Anda.",
       "notConfigured": "Tambahkan kunci API Google Places untuk mencari bisnis di direktori Google, bukan lewat penyedia AI Anda.",
       "operatorManaged": "Dikonfigurasi oleh administrator server ini. Anda dapat menonaktifkannya untuk penerima Anda sendiri.",
       "configure": "Siapkan",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Sumber mana yang menjawab lebih dulu",
-      "subtitle": "Seret sebuah sumber, atau gunakan panah, untuk mengubah urutan. Yang kedua hanya ditanya bila yang pertama tidak dapat menjawab, karena belum dikonfigurasi atau batas bulanan Google sudah habis. Jika sebuah sumber gagal, pencarian melaporkan kegagalan itu alih-alih diam-diam membayar yang lain.",
-      "subtitleSingle": "Siapkan sumber kedua untuk memilih mana yang menjawab lebih dulu. Sampai saat itu, sumber yang sudah Anda konfigurasikan menjawab setiap pencarian.",
       "placesTitle": "Google Places",
       "placesHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
-      "aiTitle": "Penyedia AI",
+      "aiTitle": "Penyedia AI yang ada",
       "aiHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian.",
       "aiToggleLabel": "Gunakan penyedia AI untuk pencarian penerima",
-      "aiConfigured": "Menggunakan penyedia AI yang Anda konfigurasikan di Pengaturan AI.",
       "aiProviderLabel": "Penyedia yang digunakan",
       "aiProviderAny": "Penyedia mana pun, sesuai prioritas",
       "moveUp": "Naik",

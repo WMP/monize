@@ -17,7 +17,8 @@ interface LookupSourceOrderProps {
   /**
    * Whether the order is worth changing. False when only one source can answer
    * -- the rows still render, because each carries its own configuration, but
-   * moving them would imply a fallback that does not exist.
+   * the arrows and the drag go dead, because moving them would imply a
+   * fallback that does not exist.
    */
   reorderable?: boolean;
   onReorder: (first: PayeeLookupPreferredSource) => void;
@@ -98,9 +99,6 @@ export function LookupSourceOrder({
     <div>
       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
         {t('title')}
-      </p>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {reorderable ? t('subtitle') : t('subtitleSingle')}
       </p>
 
       <ol className="mt-3 space-y-2">

@@ -1188,7 +1188,6 @@
     "loadFailed": "Alacaklı arama ayarları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
     "googlePlaces": {
       "toggleLabel": "Alacaklı aramasında Google Places kullan",
-      "configured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde arar.",
       "notConfigured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde aramak için bir Google Places API anahtarı ekleyin.",
       "operatorManaged": "Bu sunucunun yöneticisi tarafından yapılandırıldı. Kendi alacaklılarınız için kapatabilirsiniz.",
       "configure": "Kur",
@@ -1225,14 +1224,11 @@
     },
     "order": {
       "title": "Önce hangi kaynak yanıtlar",
-      "subtitle": "Sırayı değiştirmek için bir kaynağı sürükleyin veya okları kullanın. İkincisi yalnızca ilki yapılandırılmadığı ya da aylık Google sınırı tükendiği için yanıt veremediğinde sorulur. Bir kaynak başarısız olursa arama, sessizce diğerinin ücretini ödemek yerine hatayı bildirir.",
-      "subtitleSingle": "Hangisinin önce yanıtlayacağını seçmek için ikinci bir kaynak ayarlayın. O zamana kadar yapılandırdığınız kaynak her aramayı yanıtlar.",
       "placesTitle": "Google Places",
       "placesHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
-      "aiTitle": "Yapay zekâ sağlayıcısı",
+      "aiTitle": "Mevcut yapay zekâ sağlayıcısı",
       "aiHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır.",
       "aiToggleLabel": "Alacaklı aramaları için yapay zekâ sağlayıcısı kullan",
-      "aiConfigured": "Yapay Zekâ Ayarları'nda yapılandırdığınız sağlayıcıyı kullanır.",
       "aiProviderLabel": "Kullanılacak sağlayıcı",
       "aiProviderAny": "Öncelik sırasına göre herhangi bir sağlayıcı",
       "moveUp": "Yukarı taşı",

@@ -312,9 +312,9 @@ describe('PayeeLookupSection', () => {
       ]) {
         expect(button).toBeDisabled();
       }
-      // And it says why, rather than leaving a dead control unexplained.
+      // The rows are still where Places gets its key, so they stay reachable.
       expect(
-        screen.getByText(/Set up a second source/),
+        screen.getByRole('button', { name: 'Set up' }),
       ).toBeInTheDocument();
     });
 
@@ -329,7 +329,7 @@ describe('PayeeLookupSection', () => {
       // Google Places first by default, so it is the row that cannot move up.
       const rows = screen.getAllByRole('listitem');
       expect(rows[0]).toHaveTextContent('Google Places');
-      expect(rows[1]).toHaveTextContent('AI provider');
+      expect(rows[1]).toHaveTextContent('Existing AI Provider');
     });
 
     it('saves the new order and never resends the key alongside it', async () => {
