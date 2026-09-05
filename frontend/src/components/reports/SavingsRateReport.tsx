@@ -101,15 +101,15 @@ const PHONE_HEADER_CLASS =
 // before this layout, the same reader scrolled at every width: the five-column
 // table is 470px wide in that 256px box.)
 //
-// The caption inside the cell takes `whitespace-normal` back: `white-space` is
-// inherited, so without it a caption with no space in it (`[XX-Expenses-XX]`
-// in the pseudo-locale) could not wrap either, and overflowed the third track
-// by 20px at 320px -- the very scroll this layout removes. A number must not
-// break; a caption may.
+// The caption inside the cell wraps even though the cell does not: `white-space`
+// is inherited, so `CellLabel` takes `whitespace-normal` back for itself (a
+// caption with no space in it, `[XX-Expenses-XX]` in the pseudo-locale, once
+// overflowed the third track by 20px at 320px -- the very scroll this layout
+// removes). A number must not break; a caption may.
 const MONEY_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:text-sm';
 
-/** Every caption in a wrapped cell: phone-only, and free to wrap. */
-const CAPTION_CLASS = 'sm:hidden whitespace-normal';
+/** Every caption in a wrapped cell is phone-only. */
+const CAPTION_CLASS = 'sm:hidden';
 
 export function SavingsRateReport() {
   const t = useTranslations('reports');
