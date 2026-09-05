@@ -21,6 +21,7 @@ import type { Budget, SavingsRatePoint } from '@/types/budget';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { CellLabel } from '@/components/ui/Table';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
@@ -29,6 +30,54 @@ import { createLogger } from '@/lib/logger';
 const logger = createLogger('SavingsRateReport');
 
 type SavingsRateSortField = 'month' | 'income' | 'expenses' | 'savings' | 'rate';
+
+/**
+ * One sortable column of the monthly-breakdown table. The five are declared
+ * once and rendered by BOTH header rows -- the column header row (from `sm`
+ * up) and the phone sort strip -- so the two can never list different fields.
+ */
+interface SortColumn {
+  field: SavingsRateSortField;
+  label: string;
+  /** Money columns are right-aligned in the column header row. */
+  align?: 'right';
+  /** The last column carries no right padding, exactly as it does today. */
+  last?: boolean;
+}
+
+// Today's header cell, unchanged. The last column has no right padding, so it
+// gets its own constant rather than a conditional that could drift from it.
+const HEADER_CLASS = 'py-2 pr-4 font-medium text-gray-500 dark:text-gray-400';
+const HEADER_CLASS_LAST = 'py-2 font-medium text-gray-500 dark:text-gray-400';
+
+// The same sort controls in the phone strip: a wrapped row of compact chips.
+// Column alignment means nothing there -- the column header row is hidden and
+// each data row is a grid -- so every control is left-aligned and self-naming.
+// The border and card background are what say "tappable": there is no hover on
+// a touch screen, and without them the strip reads as another row of the
+// captions the cells below carry.
+const PHONE_HEADER_CLASS =
+  'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
+
+// A money (or rate) cell inside a wrapped row: no padding of its own below
+// `sm` -- the row supplies the vertical inset and the grid does the spacing --
+// and this table's own cell padding from `sm` up. `sm:pr-4` is added per cell
+// rather than here, because the Rate column is last and carries none. Smaller
+// type on phones so a seven-figure amount still fits a third of the width, and
+// `whitespace-nowrap` so a locale that groups thousands with a space cannot
+// break in the middle of a number.
+//
+// The budget was measured on a hand-written CSS replica in Chromium, at the
+// insets this table really gets on a phone (the report page's `px-4` plus the
+// card's `p-4`): the three equal tracks are 77px at 320px and 101px at 390px,
+// which holds a seven-figure `pl-PL` amount (`1 234 567 zł`, 77px at
+// `text-xs`) at both widths, and a six-figure one with room to spare. Right
+// alignment is not a containment device -- a nowrap amount longer than its
+// track overflows past the end edge whatever `text-align` says -- but
+// `overflow-hidden` here would silently cut a figure, which is worse than a
+// crowded one.
+const MONEY_CELL =
+  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:py-2 sm:text-sm';
 
 export function SavingsRateReport() {
   const t = useTranslations('reports');
@@ -78,6 +127,15 @@ export function SavingsRateReport() {
     });
     return sorted;
   }, [data, sortField, sortDirection]);
+
+  // One list of sortable columns, rendered by both header rows.
+  const sortColumns: readonly SortColumn[] = [
+    { field: 'month', label: t('savingsRate.colMonth') },
+    { field: 'income', label: t('savingsRate.colIncome'), align: 'right' },
+    { field: 'expenses', label: t('savingsRate.colExpenses'), align: 'right' },
+    { field: 'savings', label: t('savingsRate.colSavings'), align: 'right' },
+    { field: 'rate', label: t('savingsRate.colRate'), align: 'right', last: true },
+  ];
 
   useEffect(() => {
     const loadBudgets = async () => {
@@ -294,71 +352,90 @@ export function SavingsRateReport() {
       {data.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('savingsRate.monthlyBreakdown')}</h3>
+          {/* Below `sm` the table becomes a block and each row wraps into a
+              three-column grid so all five columns fit a phone without a
+              horizontal scroll, on two lines: the month, its savings and its
+              income share line 1; the savings rate (spanning the first two
+              tracks) and the expenses share line 2. Each derived figure sits
+              under the figure it derives from -- rate under savings, expenses
+              under income -- and the month is the one cell allowed to wrap,
+              since a compact amount never may. No column is dropped. From `sm`
+              up it is the ordinary table, byte for byte: each cell restores
+              this table's own `py-2 pr-4` (and the Rate column's bare `py-2`),
+              which a Chromium replica confirms renders pixel-identically to
+              today at 800px. The sort controls survive as their own phone-only
+              header row, because the column header row that carries them on
+              desktop is hidden there.
+
+              Two costs of restyling one tree, both deliberate. Changing the
+              display roles drops the table semantics below `sm`, which is why
+              the roles are restated explicitly and every figure carries a
+              `CellLabel` naming its column -- the month needs none, being the
+              row's identity rather than one of its figures. And the phone
+              reading order differs from the DOM order, which is the desktop
+              column order the grid placement overrides visually. Both are
+              properties of the mechanism, not of this table. */}
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <SortableHeader<SavingsRateSortField>
-                    field="month"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    {t('savingsRate.colMonth')}
-                  </SortableHeader>
-                  <SortableHeader<SavingsRateSortField>
-                    field="income"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    {t('savingsRate.colIncome')}
-                  </SortableHeader>
-                  <SortableHeader<SavingsRateSortField>
-                    field="expenses"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    {t('savingsRate.colExpenses')}
-                  </SortableHeader>
-                  <SortableHeader<SavingsRateSortField>
-                    field="savings"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    {t('savingsRate.colSavings')}
-                  </SortableHeader>
-                  <SortableHeader<SavingsRateSortField>
-                    field="rate"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="py-2 font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    {t('savingsRate.colRate')}
-                  </SortableHeader>
+            <table role="table" className="block min-w-full text-sm sm:table">
+              <thead role="rowgroup" className="block sm:table-header-group">
+                {/* Phone sort strip: the same five controls, wrapped. */}
+                <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 pb-2 border-b border-gray-200 dark:border-gray-700 sm:hidden">
+                  {sortColumns.map((col) => (
+                    <SortableHeader<SavingsRateSortField>
+                      key={col.field}
+                      field={col.field}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className={PHONE_HEADER_CLASS}
+                    >
+                      {col.label}
+                    </SortableHeader>
+                  ))}
+                </tr>
+                <tr role="row" className="hidden border-b border-gray-200 dark:border-gray-700 sm:table-row">
+                  {sortColumns.map((col) => (
+                    <SortableHeader<SavingsRateSortField>
+                      key={col.field}
+                      field={col.field}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align={col.align}
+                      className={col.last ? HEADER_CLASS_LAST : HEADER_CLASS}
+                    >
+                      {col.label}
+                    </SortableHeader>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup" className="block sm:table-row-group">
                 {sortedData.map((point) => (
-                  <tr key={point.month} className="border-b border-gray-100 dark:border-gray-700/50">
-                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{point.month}</td>
-                    <td className="py-2 pr-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(point.income)}</td>
-                    <td className="py-2 pr-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(point.expenses)}</td>
-                    <td className={`py-2 pr-4 text-right font-medium ${gainLossColor(point.savings)}`}>
+                  <tr
+                    key={point.month}
+                    role="row"
+                    className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 py-2 border-b border-gray-100 dark:border-gray-700/50 sm:table-row sm:py-0"
+                  >
+                    <td role="cell" className="col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell sm:py-2 sm:pr-4">{point.month}</td>
+                    <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 sm:pr-4 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('savingsRate.colIncome')}</CellLabel>
+                      {formatCurrency(point.income)}
+                    </td>
+                    <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 sm:pr-4 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('savingsRate.colExpenses')}</CellLabel>
+                      {formatCurrency(point.expenses)}
+                    </td>
+                    {/* Savings takes the middle of line 1 beside the month:
+                        it is the figure the row is read for. */}
+                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(point.savings)} sm:pr-4 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('savingsRate.colSavings')}</CellLabel>
                       {formatCurrency(point.savings)}
                     </td>
-                    <td className={`py-2 text-right font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {/* The rate spans the first two tracks so it has room
+                        beneath the savings it is derived from; right-aligned,
+                        it ends under that figure. */}
+                    <td role="cell" className={`col-start-1 col-span-2 row-start-2 font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'} ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('savingsRate.colRate')}</CellLabel>
                       {point.savingsRate.toFixed(1)}%
                     </td>
                   </tr>
