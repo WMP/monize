@@ -24,7 +24,7 @@ interface LineOfCreditViewProps {
  */
 export function LineOfCreditView({ account }: LineOfCreditViewProps) {
   const t = useTranslations('accounts');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const currency = account.currencyCode;
 
   const [dailyBalances, setDailyBalances] = useState<DailyBalancePoint[]>([]);
@@ -95,7 +95,7 @@ export function LineOfCreditView({ account }: LineOfCreditViewProps) {
               {t('loanDetail.lineOfCredit.utilization')}
             </div>
             <div className="text-lg font-bold" style={{ color: utilizationColour(utilizationPercent) }}>
-              {utilizationPercent.toFixed(1)}%
+              {formatPercent(utilizationPercent, 1)}
             </div>
             <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div

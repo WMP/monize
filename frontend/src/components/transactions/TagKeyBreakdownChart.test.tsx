@@ -10,13 +10,16 @@ vi.mock('@/lib/transactions', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (val: number, currency: string) =>
-      `${currency} ${val.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (val: number, currency: string) =>
+        `${currency} ${val.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (amount: number) => amount,

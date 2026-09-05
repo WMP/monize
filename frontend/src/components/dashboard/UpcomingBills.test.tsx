@@ -12,12 +12,15 @@ vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ dateFormat: 'browser', datePattern: 'YYYY-MM-DD', formatDate: (d: string) => d }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/lib/utils', () => ({
   parseLocalDate: (d: string) => new Date(d + 'T00:00:00'),
 }));

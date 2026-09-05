@@ -8,12 +8,15 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 const mockGetDashboardSummary = vi.fn();
 vi.mock('@/lib/budgets', () => ({
   budgetsApi: {

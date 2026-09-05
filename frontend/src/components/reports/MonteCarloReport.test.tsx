@@ -31,14 +31,17 @@ vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyLabel: (n: number) => `$${n.toFixed(0)}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyLabel: (n: number) => `$${n.toFixed(0)}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/lib/format', async () => {
   const actual = await vi.importActual<typeof import('@/lib/format')>(
     '@/lib/format',

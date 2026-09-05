@@ -2,15 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { WeekendVsWeekdayReport } from './WeekendVsWeekdayReport';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
     dateRange: '3m',

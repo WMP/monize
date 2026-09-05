@@ -26,6 +26,32 @@ export function getEffectiveLocale(
 }
 
 /**
+ * Decimal places a share quantity is displayed at. Deliberately not money's
+ * four and not `formatQuantity`'s four either: fractional-share brokers and
+ * crypto-style units leave residual positions several orders below a cent, and
+ * a holdings column that rounds them away reads as flat zero. Mirrors the
+ * precision of the pure `formatShareQuantity` helper in `@/lib/format`.
+ */
+export const SHARE_QUANTITY_MAX_FRACTION_DIGITS = 8;
+
+/**
+ * The formatters a pure (non-React) helper needs to render a figure in the
+ * reader's number locale.
+ *
+ * A module that is not a component cannot call `useNumberFormat()`, and the two
+ * things it would otherwise reach for are both wrong: `toFixed` is a `.` in
+ * every locale, and `toLocaleString()` follows the *browser*, which is exactly
+ * what an explicit `numberFormat` preference exists to override. So the calling
+ * component passes these down. Structurally satisfied by the hook's own return
+ * value, so a caller can hand over what it already destructured.
+ */
+export interface NumberFormatters {
+  formatCurrency: (value: number, currencyCode?: string) => string;
+  formatNumber: (value: number, decimals?: number) => string;
+  formatPercent: (value: number, decimals?: number) => string;
+}
+
+/**
  * Module-level cache for Intl.NumberFormat instances. These objects are
  * relatively expensive to construct (each one builds a locale-specific
  * formatter), and the hook callbacks below are invoked once per cell per
@@ -221,6 +247,34 @@ export function useNumberFormat() {
   );
 
   /**
+   * Locale-aware share quantity at full precision: up to 8 decimal places with
+   * trailing zeros trimmed (minimumFractionDigits 0). The locale-aware sibling
+   * of `formatShareQuantity` in `@/lib/format` -- and the one React must use,
+   * because that pure helper renders through `toFixed`, which is `.` in every
+   * locale.
+   *
+   * Eight, not `formatQuantity`'s four: a residual position of 0.0003 shares is
+   * exactly the thing this column exists to make visible, and rounding it to
+   * four (let alone two) is how an errant share count hides. Nullish and NaN
+   * render "0" rather than an empty cell or "NaN", and a tiny negative residue
+   * that rounds to zero (e.g. -4e-15) renders "0" rather than the "-0" Intl
+   * produces for a negative zero.
+   */
+  const formatShareQuantity = useCallback(
+    (value: number | undefined | null): string => {
+      if (value === undefined || value === null || isNaN(value)) return '0';
+      const locale = getEffectiveLocale(numberFormat, language);
+      // roundToDecimals normalizes -0 to 0, so the sign never survives a
+      // residue that rounds away.
+      return getNumberFormat(locale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: SHARE_QUANTITY_MAX_FRACTION_DIGITS,
+      }).format(roundToDecimals(value, SHARE_QUANTITY_MAX_FRACTION_DIGITS));
+    },
+    [numberFormat, language]
+  );
+
+  /**
    * Locale-aware share/unit price: up to 6 decimal places with trailing zeros
    * trimmed (minimumFractionDigits 0), via Intl rather than a hand-rolled
    * trailing-zero regex. A price is not money -- it carries up to six decimals,
@@ -286,5 +340,5 @@ export function useNumberFormat() {
     [numberFormat, defaultCurrency, language]
   );
 
-  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
+  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, formatShareQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
 }

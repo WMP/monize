@@ -12,14 +12,17 @@ vi.mock('@/hooks/useWidgetConfig', () => ({
   useWidgetConfig: () => ({ config: configState.current, updateConfig }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n}`,
-    formatCurrencyCompact: (n: number) => `$${n}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n}`,
+      formatCurrencyCompact: (n: number) => `$${n}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 const getSpendingByPayee = vi.fn();
 vi.mock('@/lib/built-in-reports', () => ({
   builtInReportsApi: { getSpendingByPayee: (...a: unknown[]) => getSpendingByPayee(...a) },

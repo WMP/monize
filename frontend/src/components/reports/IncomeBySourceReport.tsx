@@ -41,7 +41,7 @@ export function IncomeBySourceReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'day' });
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { sortField, sortDirection, handleSort } = useSortableTable<IncomeSourceSortField>(
@@ -131,7 +131,7 @@ export function IncomeBySourceReport() {
     const headers = [t('incomeBySource.colSource'), t('incomeBySource.colAmount'), t('incomeBySource.colPercentOfTotal')];
     const rows = sortedTableData.map((item) => {
       const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
-      return [item.name, item.value, `${percentage.toFixed(2)}%`];
+      return [item.name, item.value, formatPercent(percentage, 2)];
     });
     exportToCsv('income-by-source', headers, rows);
   };
@@ -258,7 +258,7 @@ export function IncomeBySourceReport() {
                           {formatCurrency(item.value)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-400">
-                          {percentage.toFixed(1)}%
+                          {formatPercent(percentage, 1)}
                         </td>
                       </tr>
                     );

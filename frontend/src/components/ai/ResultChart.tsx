@@ -68,6 +68,7 @@ function sanitizeFilename(name: string): string {
 
 export function ResultChart({ type, title, data }: ResultChartProps) {
   const t = useTranslations('ai');
+  const { formatPercent } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -136,7 +137,7 @@ export function ResultChart({ type, title, data }: ResultChartProps) {
                 cy="50%"
                 outerRadius={80}
                 label={({ name, percent }: { name?: string; percent?: number }) =>
-                  `${name ?? ''} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                  `${name ?? ''} (${formatPercent(((percent ?? 0) * 100), 0)})`
                 }
               >
                 {data.map((_, index) => (

@@ -4,12 +4,15 @@ import { LoanSummaryCards } from './LoanSummaryCards';
 import { generateLoanSchedule } from '@/lib/loan-schedule';
 import { Account } from '@/types/account';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
     id: 'loan-1',

@@ -14,6 +14,7 @@ import { NotificationCategory } from "../notification-center/entities/notificati
 import { NotificationPreferenceService } from "../notification-center/notification-preference.service";
 import { EmailService } from "./email.service";
 import { billReminderTemplate } from "./email-templates";
+import { numberFormatterFor } from "../common/number-locale.util";
 import { emailTranslator } from "../i18n/email-translator";
 import { DEFAULT_LOCALE } from "../i18n/config";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
@@ -366,11 +367,15 @@ export class BillReminderService {
 
       const lang = prefs?.language || DEFAULT_LOCALE;
       const t = emailTranslator(this.i18n, lang);
+      // The amounts follow the recipient's number locale, not the server's:
+      // translated copy around an `en-US` figure is the defect in issue #1316.
+      const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
       const html = billReminderTemplate(
         user.firstName || "",
         billData,
         appUrl,
         t,
+        n,
       );
       // Counted from what the email actually lists, not from what phase one
       // selected: the two can differ, and the subject is a claim about the body.

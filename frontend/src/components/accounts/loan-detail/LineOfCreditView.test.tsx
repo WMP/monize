@@ -10,11 +10,15 @@ vi.mock('@/lib/accounts', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 
 // Keep the chart lightweight; it has its own tests.
 vi.mock('@/components/transactions/BalanceHistoryChart', () => ({

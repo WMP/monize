@@ -9,13 +9,16 @@ const configState = { current: { range: '3m', view: 'overview' as 'overview' | '
 vi.mock('@/hooks/useWidgetConfig', () => ({
   useWidgetConfig: () => ({ config: configState.current, updateConfig: vi.fn() }),
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 const getWeekendVsWeekday = vi.fn();
 vi.mock('@/lib/built-in-reports', () => ({
   builtInReportsApi: { getWeekendVsWeekday: (...a: unknown[]) => getWeekendVsWeekday(...a) },

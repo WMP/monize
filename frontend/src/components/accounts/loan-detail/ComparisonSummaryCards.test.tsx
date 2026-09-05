@@ -3,12 +3,15 @@ import { render, screen } from '@/test/render';
 import { ComparisonSummaryCards } from './ComparisonSummaryCards';
 import { compareSchedules, generateLoanSchedule } from '@/lib/loan-schedule';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 /**
  * A comparison whose baseline runs past the projection horizon, so no lifetime
  * saving exists: 500k at 6% paying 2510 a month never clears inside 50 years.

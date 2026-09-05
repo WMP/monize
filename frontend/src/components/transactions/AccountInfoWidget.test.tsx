@@ -4,12 +4,16 @@ import { AccountInfoWidget } from './AccountInfoWidget';
 import { Account } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (val: number, currency: string) => `${currency} ${val.toFixed(2)}`,
-    formatNumber: (val: number) => String(val),
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (val: number, currency: string) => `${currency} ${val.toFixed(2)}`,
+      formatNumber: (val: number) => String(val),
+    }),
+  };
+});
 
 // The loan/mortgage rows derive from the account's payment history, so the two
 // APIs that supply it are stubbed here; non-debt accounts never reach them.

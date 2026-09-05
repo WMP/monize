@@ -50,7 +50,7 @@ export function GeographicAllocationWidget({
 }: GeographicAllocationWidgetProps) {
   const t = useTranslations('dashboard');
   const tCommon = useTranslations('common');
-  const { formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<GeographicConfig>(
     WIDGET_ID,
@@ -182,7 +182,7 @@ export function GeographicAllocationWidget({
       <ChartTooltipPanel>
         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {formatCurrency(d.value)} ({d.percentage.toFixed(1)}%)
+          {formatCurrency(d.value)} ({formatPercent(d.percentage, 1)})
         </p>
       </ChartTooltipPanel>
     );
@@ -217,7 +217,7 @@ export function GeographicAllocationWidget({
                     <ChartTooltipPanel>
                       <p className="font-medium text-gray-900 dark:text-gray-100">{d.exchange}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatCurrency(d.marketValue)} ({d.percentage.toFixed(1)}%)
+                        {formatCurrency(d.marketValue)} ({formatPercent(d.percentage, 1)})
                       </p>
                     </ChartTooltipPanel>
                   );
@@ -260,7 +260,7 @@ export function GeographicAllocationWidget({
                 <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: entry.color }} />
                 <span className="text-gray-500 dark:text-gray-400 truncate">{entry.name}</span>
                 <span className="ml-auto text-gray-900 dark:text-gray-100">
-                  {entry.percentage.toFixed(0)}%
+                  {formatPercent(entry.percentage, 0)}
                 </span>
               </div>
             ))}

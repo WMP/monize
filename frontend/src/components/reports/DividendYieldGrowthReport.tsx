@@ -65,7 +65,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-dividend-yield-growth-accounts';
 
 export function DividendYieldGrowthReport() {
   const t = useTranslations('reports');
-  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
+  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent, formatPercent } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -415,7 +415,7 @@ export function DividendYieldGrowthReport() {
           `${sy.symbol} - ${sy.name}`,
           fmtValue(sy.trailing12mDividends),
           fmtValue(sy.marketValue),
-          `${sy.yield.toFixed(2)}%`,
+          formatPercent(sy.yield, 2),
           sy.frequency,
         ]),
       };
@@ -446,7 +446,7 @@ export function DividendYieldGrowthReport() {
       title: t('dividendYieldGrowth.pdfTitle'),
       subtitle: viewLabel,
       summaryCards: [
-        { label: t('dividendYieldGrowth.portfolioYield'), value: `${portfolioYield.toFixed(2)}%`, color: '#16a34a' },
+        { label: t('dividendYieldGrowth.portfolioYield'), value: formatPercent(portfolioYield, 2), color: '#16a34a' },
         { label: t('dividendYieldGrowth.trailing12mDividends'), value: fmtValue(trailing12mTotal), color: '#2563eb' },
         { label: t('dividendYieldGrowth.portfolioValue'), value: fmtValue(totalPortfolioValue), color: '#9333ea' },
         { label: t('dividendYieldGrowth.dividendPayers'), value: String(securityYields.length), color: '#111827' },
@@ -479,7 +479,7 @@ export function DividendYieldGrowthReport() {
         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
           <div className="text-sm text-green-600 dark:text-green-400">{t('dividendYieldGrowth.portfolioYield')}</div>
           <div className="text-xl font-bold text-green-700 dark:text-green-300">
-            {portfolioYield.toFixed(2)}%
+            {formatPercent(portfolioYield, 2)}
             {valuationGaps.excludedCount > 0 && (
               <span className="text-amber-600 dark:text-amber-400" aria-hidden="true"> *</span>
             )}
@@ -633,7 +633,7 @@ export function DividendYieldGrowthReport() {
                       {fmtValue(sy.marketValue)}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {sy.yield.toFixed(2)}%
+                      {formatPercent(sy.yield, 2)}
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">
                       {sy.frequency}

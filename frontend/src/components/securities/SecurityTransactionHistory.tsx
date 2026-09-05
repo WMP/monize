@@ -10,7 +10,6 @@ import { SecurityShareAdjustmentForm } from './SecurityShareAdjustmentForm';
 import { InvestmentTransactionForm } from '@/components/investments/InvestmentTransactionForm';
 import { investmentsApi } from '@/lib/investments';
 import { accountsApi } from '@/lib/accounts';
-import { formatShareQuantity } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -38,7 +37,7 @@ export function SecurityTransactionHistory({
   const t = useTranslations('securities');
   const tc = useTranslations('common');
   const { formatDate } = useDateFormat();
-  const { formatCurrency, formatCurrencyPrecise } = useNumberFormat();
+  const { formatCurrency, formatCurrencyPrecise, formatShareQuantity } = useNumberFormat();
   const [history, setHistory] = useState<SecurityTransactionHistoryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');

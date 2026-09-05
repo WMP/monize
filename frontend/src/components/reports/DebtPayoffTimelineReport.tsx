@@ -81,7 +81,7 @@ const ACCOUNT_STORAGE_KEY = 'monize-reports-debt-payoff-timeline-account';
 export function DebtPayoffTimelineReport() {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   // Today-anchored (see `loan-projection-anchor.guard.test.ts`), but still the
   // USER's today: the payoff date this report draws per account is the one the
@@ -592,7 +592,7 @@ export function DebtPayoffTimelineReport() {
         { label: t('debtPayoff.currentBalance'), value: formatCurrency(summary.currentBalance), color: '#dc2626' },
         { label: t('debtPayoff.principalPaid'), value: formatCurrency(summary.totalPrincipalPaid), color: '#16a34a' },
         { label: interestLabel(summary), value: formatCurrency(summary.totalInterest), color: '#ea580c' },
-        { label: t('debtPayoff.progress'), value: `${summary.percentPaid.toFixed(1)}%`, color: '#2563eb' },
+        { label: t('debtPayoff.progress'), value: formatPercent(summary.percentPaid, 1), color: '#2563eb' },
       ] : undefined,
       chartContainer: chartRef.current,
       tableData: { headers, rows },
@@ -718,7 +718,7 @@ export function DebtPayoffTimelineReport() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('debtPayoff.progress')}</div>
             <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-              {summary.percentPaid.toFixed(1)}%
+              {formatPercent(summary.percentPaid, 1)}
             </div>
           </div>
           {summary.projectedPayoffDate && (
@@ -875,10 +875,10 @@ export function DebtPayoffTimelineReport() {
                                 )}
                               </p>
                               <p className="text-sm text-green-600 dark:text-green-400">
-                                {t('debtPayoff.seriesPrincipal')}: {data?.principalPercent.toFixed(1)}% ({formatCurrency(data?.principalPaid ?? 0)})
+                                {t('debtPayoff.seriesPrincipal')}: {data ? formatPercent(data.principalPercent, 1) : '—'} ({formatCurrency(data?.principalPaid ?? 0)})
                               </p>
                               <p className="text-sm text-orange-500 dark:text-orange-400">
-                                {t('debtPayoff.seriesInterest')}: {data?.interestPercent.toFixed(1)}% ({formatCurrency(data?.interestPaid ?? 0)})
+                                {t('debtPayoff.seriesInterest')}: {data ? formatPercent(data.interestPercent, 1) : '—'} ({formatCurrency(data?.interestPaid ?? 0)})
                               </p>
                             </div>
                           );

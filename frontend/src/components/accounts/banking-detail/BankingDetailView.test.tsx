@@ -11,10 +11,12 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
-}));
-vi.mock('@/components/transactions/BalanceHistoryChart', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({ ...numberFormatMockDefaults(), formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
+  };
+});vi.mock('@/components/transactions/BalanceHistoryChart', () => ({
   BalanceHistoryChart: () => <div data-testid="balance-history-chart" />,
 }));
 

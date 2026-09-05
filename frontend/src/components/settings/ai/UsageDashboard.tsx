@@ -12,6 +12,7 @@ import { AI_PROVIDER_LABELS } from '@/types/ai';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { preferredCurrency } from '@/lib/default-currency';
 
 interface UsageDashboardProps {
@@ -87,6 +88,10 @@ function hasAnyCost(bucket: EstimatedCostByCurrency): boolean {
 
 export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboardProps) {
   const t = useTranslations('settings.usage');
+  // Request and token counts are read by a person, so they follow the
+  // configured number locale like every other figure -- never the browser's,
+  // which an explicit `numberFormat` preference exists to override.
+  const { formatNumber } = useNumberFormat();
   const [selectedPeriod, setSelectedPeriod] = useState<number | undefined>(30);
   const [showInHomeCurrency, setShowInHomeCurrency] = useState(true);
   const { convert } = useExchangeRates();
@@ -213,19 +218,19 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('totalRequests')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalRequests.toLocaleString()}
+            {formatNumber(usage.totalRequests, 0)}
           </p>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('inputTokens')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalInputTokens.toLocaleString()}
+            {formatNumber(usage.totalInputTokens, 0)}
           </p>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('outputTokens')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalOutputTokens.toLocaleString()}
+            {formatNumber(usage.totalOutputTokens, 0)}
           </p>
         </div>
         <div
@@ -263,9 +268,9 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
                 {usage.byProvider.map((row) => (
                   <tr key={row.provider} className="border-b border-gray-100 dark:border-gray-700/50">
                     <td className="py-2 text-gray-900 dark:text-gray-100">{resolveProviderName(row.provider, configs)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.requests.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.inputTokens.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.outputTokens.toLocaleString()}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.requests, 0)}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.inputTokens, 0)}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.outputTokens, 0)}</td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">{renderBucket(row.estimatedCostByCurrency)}</td>
                   </tr>
                 ))}
@@ -300,7 +305,7 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
                     <td className="py-2 text-gray-900 dark:text-gray-100">{resolveLogName(log.provider, log.model, configs)}</td>
                     <td className="py-2 text-gray-600 dark:text-gray-300">{log.feature}</td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">
-                      {(log.inputTokens + log.outputTokens).toLocaleString()}
+                      {formatNumber(log.inputTokens + log.outputTokens, 0)}
                     </td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">
                       {log.durationMs}ms

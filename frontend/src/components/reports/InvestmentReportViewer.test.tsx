@@ -31,14 +31,17 @@ vi.mock('@/lib/accounts', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatNumber: (n: number) => String(n),
-    formatPercent: (n: number) => `${n}%`,
-    formatCurrency: (n: number) => `$${n}`,
-  }),
-}));
-vi.mock('@/hooks/useDateFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatNumber: (n: number) => String(n),
+      formatPercent: (n: number) => `${n}%`,
+      formatCurrency: (n: number) => `$${n}`,
+    }),
+  };
+});vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ formatDate: (d: string) => d, dateFormat: 'browser', datePattern: 'YYYY-MM-DD' }),
 }));
 

@@ -7,6 +7,7 @@ import { IncomeReportsService } from "./income-reports.service";
 import { ReportCurrencyService } from "./report-currency.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { PortfolioService } from "../securities/portfolio.service";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import {
   Account,
   AccountType,
@@ -131,6 +132,7 @@ describe("MonthlyComparisonService", () => {
   let mockNetWorthService: Record<string, jest.Mock>;
   let mockPortfolioService: Record<string, jest.Mock>;
   let mockAccountsRepo: Record<string, jest.Mock>;
+  let mockUserPreferenceRepo: Record<string, jest.Mock>;
   let mockDataSource: Record<string, jest.Mock>;
 
   beforeEach(async () => {
@@ -152,12 +154,24 @@ describe("MonthlyComparisonService", () => {
     mockAccountsRepo = {
       find: jest.fn().mockResolvedValue([]),
     };
+    // The generated notes are addressed to this user, so the service reads
+    // their number-format preference to render the figures in it (issue #1316).
+    mockUserPreferenceRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        userId: mockUserId,
+        numberFormat: "en-US",
+        language: "en",
+      }),
+    };
     // The snapshot query now runs through the scoped transaction's manager;
     // the spec keeps asserting against this mock.
     mockDataSource = { query: jest.fn().mockResolvedValue([]) };
 
     ({ manager: scopedManager, dataSource: scopedDataSource } =
-      createScopedDbMocks([[Account, mockAccountsRepo as never]]));
+      createScopedDbMocks([
+        [Account, mockAccountsRepo as never],
+        [UserPreference, mockUserPreferenceRepo as never],
+      ]));
     scopedManager.query.mockImplementation((sql: string, params?: unknown[]) =>
       mockDataSource.query(sql, params),
     );

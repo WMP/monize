@@ -7,12 +7,16 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    defaultCurrency: 'USD',
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      defaultCurrency: 'USD',
+    }),
+  };
+});
 
 // Deterministic month formatting (the real hook is locale-dependent for the
 // 'browser' default). Renders YYYY-MM as MM/YYYY so headers are assertable.

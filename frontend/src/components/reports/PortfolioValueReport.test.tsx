@@ -9,17 +9,20 @@ vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    formatCurrencyCompact: (n: number, _currency?: string) => `$${n.toFixed(0)}`,
-    formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    formatCurrencyFlag: (n: number, _currency?: string) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      formatCurrencyCompact: (n: number, _currency?: string) => `$${n.toFixed(0)}`,
+      formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      formatCurrencyFlag: (n: number, _currency?: string) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (amount: number, _currency: string) => amount,

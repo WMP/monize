@@ -43,7 +43,7 @@ export function WeekendVsWeekdayReport() {
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const DAY_NAMES = tc.raw('weekdaysShort') as string[];
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const { dateRange, setDateRange, resolvedRange } = useDateRange({ defaultRange: '3m', alignment: 'day' });
   const [viewType, setViewType] = useState<'comparison' | 'byDay' | 'categories'>('comparison');
@@ -151,8 +151,8 @@ export function WeekendVsWeekdayReport() {
       ],
       chartContainer: chartRef.current,
       chartLegend: [
-        { color: resolvePdfColor(WEEKEND_COLOR), label: `${t('weekendVsWeekday.weekendLabel')} - ${formatCurrency(weekendTotal)} (${weekendPercent.toFixed(1)}%)` },
-        { color: resolvePdfColor(WEEKDAY_COLOR), label: `${t('weekendVsWeekday.weekdayLabel')} - ${formatCurrency(weekdayTotal)} (${weekdayPercent.toFixed(1)}%)` },
+        { color: resolvePdfColor(WEEKEND_COLOR), label: `${t('weekendVsWeekday.weekendLabel')} - ${formatCurrency(weekendTotal)} (${formatPercent(weekendPercent, 1)})` },
+        { color: resolvePdfColor(WEEKDAY_COLOR), label: `${t('weekendVsWeekday.weekdayLabel')} - ${formatCurrency(weekdayTotal)} (${formatPercent(weekdayPercent, 1)})` },
       ],
       filename: 'weekend-vs-weekday',
     });
@@ -293,7 +293,7 @@ export function WeekendVsWeekdayReport() {
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 dark:text-gray-400">{t('weekendVsWeekday.weekendLabel')}</div>
                   <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(weekendTotal)} ({weekendPercent.toFixed(1)}%)
+                    {formatCurrency(weekendTotal)} ({formatPercent(weekendPercent, 1)})
                   </div>
                 </div>
               </div>
@@ -302,7 +302,7 @@ export function WeekendVsWeekdayReport() {
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 dark:text-gray-400">{t('weekendVsWeekday.weekdayLabel')}</div>
                   <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(weekdayTotal)} ({(100 - weekendPercent).toFixed(1)}%)
+                    {formatCurrency(weekdayTotal)} ({formatPercent((100 - weekendPercent), 1)})
                   </div>
                 </div>
               </div>

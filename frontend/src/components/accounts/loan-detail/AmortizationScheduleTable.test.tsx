@@ -15,12 +15,15 @@ vi.mock('@/lib/csv-export', () => ({
   exportToCsv: vi.fn(),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-vi.mock('@/hooks/useDateFormat', async () => {
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});vi.mock('@/hooks/useDateFormat', async () => {
   const { format, parseISO } = await import('date-fns');
   return {
     useDateFormat: () => ({

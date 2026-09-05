@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { formatCurrency } from '@/lib/format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { formatAccountType } from '@/lib/account-utils';
 import { MnyImportOptionsInput, MnyPreview } from '@/lib/import-mny';
 import { MnyBillsPanel } from './MnyBillsPanel';
@@ -62,6 +62,7 @@ export function MnyReviewStep({
 }: MnyReviewStepProps) {
   const t = useTranslations('import');
   const tc = useTranslations('common');
+  const { formatCurrency } = useNumberFormat();
 
   const { counts, fileCounts } = preview;
   const includedCount = preview.accounts.filter(

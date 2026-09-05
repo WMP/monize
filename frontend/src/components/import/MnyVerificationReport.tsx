@@ -2,7 +2,6 @@
 
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
-import { formatCurrency } from '@/lib/format';
 import { formatAccountType } from '@/lib/account-utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { MnyImportResult } from '@/lib/import-mny';
@@ -42,7 +41,7 @@ export function MnyVerificationReport({
   const tc = useTranslations('common');
   // Share counts go through the app's own quantity formatter, so the report
   // reads in the user's number locale like every other holdings view.
-  const { formatQuantity } = useNumberFormat();
+  const { formatQuantity, formatCurrency } = useNumberFormat();
 
   const mismatches = result.verification.filter((line) => !line.matches);
   const holdingMismatches = result.holdings.filter((line) => !line.matches);

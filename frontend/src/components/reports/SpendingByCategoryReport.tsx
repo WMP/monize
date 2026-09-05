@@ -41,7 +41,7 @@ export function SpendingByCategoryReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: '3m' });
@@ -136,7 +136,7 @@ export function SpendingByCategoryReport() {
     ];
     const rows = sortedTableData.map((item) => {
       const percentage = totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0;
-      return [item.name, item.value, `${percentage.toFixed(2)}%`];
+      return [item.name, item.value, formatPercent(percentage, 2)];
     });
     exportToCsv('spending-by-category', headers, rows);
   };
@@ -263,7 +263,7 @@ export function SpendingByCategoryReport() {
                           {formatCurrency(item.value)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-400">
-                          {percentage.toFixed(1)}%
+                          {formatPercent(percentage, 1)}
                         </td>
                       </tr>
                     );

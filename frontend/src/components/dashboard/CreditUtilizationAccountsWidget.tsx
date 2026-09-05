@@ -40,7 +40,7 @@ export function CreditUtilizationAccountsWidget({
   isLoading,
 }: CreditUtilizationAccountsWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const { convert, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
@@ -115,7 +115,7 @@ export function CreditUtilizationAccountsWidget({
                     <ChartTooltipPanel>
                       <p className="font-medium text-gray-900 dark:text-gray-100">{row.name}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('creditUtilizationAccounts.utilization')}: {row.utilizationPercent.toFixed(1)}%
+                        {t('creditUtilizationAccounts.utilization')}: {formatPercent(row.utilizationPercent, 1)}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         {t('creditUtilizationAccounts.used')}:{' '}

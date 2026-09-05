@@ -289,17 +289,20 @@ vi.mock('@/lib/exchange-rates', () => ({
   CreateCurrencyData: {},
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    defaultCurrency: 'CAD',
-    formatCurrency: (amount: number, currency: string) =>
-      `${currency} ${(Math.round(amount * 100) / 100).toFixed(2)}`,
-    formatNumber: (value: number, decimals: number = 2) => value.toFixed(decimals),
-    numberLocale: 'en-US',
-    numberSeparators: { decimal: '.', group: ',' },
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      defaultCurrency: 'CAD',
+      formatCurrency: (amount: number, currency: string) =>
+        `${currency} ${(Math.round(amount * 100) / 100).toFixed(2)}`,
+      formatNumber: (value: number, decimals: number = 2) => value.toFixed(decimals),
+      numberLocale: 'en-US',
+      numberSeparators: { decimal: '.', group: ',' },
+    }),
+  };
+});
 vi.mock('@/lib/format', () => ({
   FX_RATE_DISPLAY_DECIMALS: 6,
   getCurrencySymbol: () => '$',

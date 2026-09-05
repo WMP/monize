@@ -286,3 +286,81 @@ describe('useNumberFormat with browser locale', () => {
     expect(typeof result.current.formatCurrency(100)).toBe('string');
   });
 });
+
+describe('formatShareQuantity', () => {
+  /** Render the hook with an explicit preference pair, as a real user has. */
+  const withPreferences = (numberFormat: string, language?: string) => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({
+        preferences: { numberFormat, defaultCurrency: 'USD', language },
+      }),
+    );
+    return renderHook(() => useNumberFormat()).result;
+  };
+
+  afterEach(() => {
+    vi.mocked(usePreferencesStore).mockImplementation((selector: any) =>
+      selector({ preferences: { numberFormat: 'en-US', defaultCurrency: 'USD' } }),
+    );
+  });
+
+  it('uses the configured locale, not the browser (issue #1316)', () => {
+    // The Securities list showed `755.8342` for a Polish user because it went
+    // through the pure `formatShareQuantity`, which renders via `toFixed`.
+    expect(withPreferences('pl-PL', 'pl').current.formatShareQuantity(755.8342)).toBe(
+      '755,8342',
+    );
+    expect(withPreferences('en-US', 'pl').current.formatShareQuantity(755.8342)).toBe(
+      '755.8342',
+    );
+  });
+
+  it('keeps a tiny residual position visible', () => {
+    // Eight decimals, not `formatQuantity`'s four: a residual holding is exactly
+    // what this column exists to expose, and rounding it away is silent.
+    const pl = withPreferences('pl-PL', 'pl').current;
+    expect(pl.formatShareQuantity(0.0003)).toBe('0,0003');
+    expect(pl.formatShareQuantity(0.00000001)).toBe('0,00000001');
+  });
+
+  it('trims trailing zeros', () => {
+    const en = withPreferences('en-US', 'en').current;
+    expect(en.formatShareQuantity(100)).toBe('100');
+    expect(en.formatShareQuantity(12.5)).toBe('12.5');
+  });
+
+  it('groups thousands in the reader\'s convention', () => {
+    expect(withPreferences('en-US', 'en').current.formatShareQuantity(12345)).toBe(
+      '12,345',
+    );
+    // Polish groups with a (narrow) no-break space; assert the shape rather than
+    // the exact code point, which moves between ICU versions.
+    expect(
+      withPreferences('pl-PL', 'pl').current.formatShareQuantity(12345),
+    ).toMatch(/^12[\s\u00a0\u202f]345$/);
+  });
+
+  it('renders a nullish or NaN quantity as zero, never blank or NaN', () => {
+    const en = withPreferences('en-US', 'en').current;
+    expect(en.formatShareQuantity(null)).toBe('0');
+    expect(en.formatShareQuantity(undefined)).toBe('0');
+    expect(en.formatShareQuantity(NaN)).toBe('0');
+  });
+
+  it('normalizes a negative residue that rounds to zero', () => {
+    // Intl formats -0 with a leading minus; a -4.77e-15 share residue is zero,
+    // not a short position.
+    const en = withPreferences('en-US', 'en').current;
+    expect(en.formatShareQuantity(-0)).toBe('0');
+    expect(en.formatShareQuantity(-4.77e-15)).toBe('0');
+    expect(en.formatShareQuantity(-0.000000001)).toBe('0');
+    // A real negative survives.
+    expect(en.formatShareQuantity(-0.5)).toBe('-0.5');
+  });
+
+  it('follows the UI language when numberFormat is "browser"', () => {
+    expect(
+      withPreferences('browser', 'pl').current.formatShareQuantity(755.8342),
+    ).toBe('755,8342');
+  });
+});

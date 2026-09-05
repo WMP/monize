@@ -42,7 +42,7 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
   const dayNames = tc.raw('weekdaysShort') as string[];
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<WeekendConfig>(
     WIDGET_ID,
     WEEKEND_WEEKDAY_DEFAULT,
@@ -186,7 +186,7 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {weekendPercent.toFixed(0)}%
+                {formatPercent(weekendPercent, 0)}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {t('weekendVsWeekday.weekendLabel')}

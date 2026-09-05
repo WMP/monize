@@ -30,13 +30,16 @@ vi.mock('recharts', () => ({
   ),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (amount: number) => `$${amount.toFixed(0)}`,
-    formatCurrencyAxis: (amount: number) => `$${amount}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (amount: number) => `$${amount.toFixed(0)}`,
+      formatCurrencyAxis: (amount: number) => `$${amount}`,
+    }),
+  };
+});
 vi.mock('@/hooks/useChartDateFormat', () => ({
   useChartDateFormat: () => (date: string) => date.slice(0, 7),
 }));

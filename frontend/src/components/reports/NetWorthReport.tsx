@@ -44,7 +44,7 @@ type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
 export function NetWorthReport() {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent, formatPercent } = useNumberFormat();
   const isMobile = useIsMobile();
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [chartType, setChartType] = useLocalStorage<'line' | 'bar' | 'stacked' | 'table'>(
@@ -258,7 +258,7 @@ export function NetWorthReport() {
       const assets = data?.Assets ?? 0;
       const liabilities = data?.Liabilities ?? 0;
       const total = assets + liabilities;
-      const pct = (value: number) => (total > 0 ? `${((value / total) * 100).toFixed(1)}%` : '0%');
+      const pct = (value: number) => (total > 0 ? formatPercent(((value / total) * 100), 1) : '0%');
       return (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>

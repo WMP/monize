@@ -32,7 +32,7 @@ type SavingsRateSortField = 'month' | 'income' | 'expenses' | 'savings' | 'rate'
 
 export function SavingsRateReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>('');
@@ -102,8 +102,8 @@ export function SavingsRateReport() {
     await exportToPdf({
       title: t('savingsRate.pdfTitle'),
       summaryCards: [
-        { label: t('savingsRate.pdfCurrentRate'), value: `${currentRate.toFixed(1)}%`, color: meetsTarget ? '#16a34a' : '#dc2626' },
-        { label: t('savingsRate.pdfAverageRate'), value: `${avgRate.toFixed(1)}%`, color: '#111827' },
+        { label: t('savingsRate.pdfCurrentRate'), value: formatPercent(currentRate, 1), color: meetsTarget ? '#16a34a' : '#dc2626' },
+        { label: t('savingsRate.pdfAverageRate'), value: formatPercent(avgRate, 1), color: '#111827' },
         { label: t('savingsRate.pdfTargetRate'), value: `${targetRate}%`, color: '#2563eb' },
         { label: t('savingsRate.pdfTotalSaved'), value: formatCurrency(totalSaved), color: totalSaved >= 0 ? '#16a34a' : '#dc2626' },
       ],
@@ -122,7 +122,7 @@ export function SavingsRateReport() {
           formatCurrency(point.income),
           formatCurrency(point.expenses),
           formatCurrency(point.savings),
-          `${point.savingsRate.toFixed(1)}%`,
+          formatPercent(point.savingsRate, 1),
         ]),
       }] : undefined,
       filename: 'savings-rate',
@@ -210,13 +210,13 @@ export function SavingsRateReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.currentRate')}</p>
           <p className={`text-2xl font-bold ${meetsTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {currentRate.toFixed(1)}%
+            {formatPercent(currentRate, 1)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.averageRate')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {avgRate.toFixed(1)}%
+            {formatPercent(avgRate, 1)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
@@ -359,7 +359,7 @@ export function SavingsRateReport() {
                       {formatCurrency(point.savings)}
                     </td>
                     <td className={`py-2 text-right font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {point.savingsRate.toFixed(1)}%
+                      {formatPercent(point.savingsRate, 1)}
                     </td>
                   </tr>
                 ))}

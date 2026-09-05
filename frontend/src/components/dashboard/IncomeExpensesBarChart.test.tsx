@@ -43,13 +43,16 @@ vi.mock('@/hooks/useChartDateFormat', () => ({
   useChartDateFormat: () => (d: any) => typeof d === 'string' ? d : d.toISOString().slice(0, 7),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (n: number) => n,

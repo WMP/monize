@@ -2,15 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { RealizedGainsReport } from './RealizedGainsReport';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (amount: number, _currency: string) => amount,

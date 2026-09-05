@@ -77,14 +77,18 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 // Mock number format
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-    formatNumber: (amount: number) => amount.toFixed(2),
-    formatPercent: (amount: number) => `${amount}%`,
-    defaultCurrency: 'USD',
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+      formatNumber: (amount: number) => amount.toFixed(2),
+      formatPercent: (amount: number) => `${amount}%`,
+      defaultCurrency: 'USD',
+    }),
+  };
+});
 
 // Mock budgets API
 const mockGetSummary = vi.fn();

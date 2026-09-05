@@ -14,6 +14,7 @@ import { BudgetPeriodService } from "./budget-period.service";
 import { BudgetReportsService } from "./budget-reports.service";
 import { EmailService } from "../notifications/email.service";
 import { budgetMonthlySummaryTemplate } from "../notifications/email-templates";
+import { numberFormatterFor } from "../common/number-locale.util";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { NotificationCategory } from "../notification-center/entities/notification.entity";
 import { NotificationPreferenceService } from "../notification-center/notification-preference.service";
@@ -269,12 +270,14 @@ export class BudgetPeriodCronService {
 
     const lang = prefs?.language || DEFAULT_LOCALE;
     const t = emailTranslator(this.i18n, lang);
+    const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
 
     const html = budgetMonthlySummaryTemplate(
       user.firstName || "",
       summaries,
       appUrl,
       t,
+      n,
     );
 
     const subject =

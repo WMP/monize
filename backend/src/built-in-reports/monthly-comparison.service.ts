@@ -5,6 +5,12 @@ import { SpendingReportsService } from "./spending-reports.service";
 import { IncomeReportsService } from "./income-reports.service";
 import { ReportCurrencyService } from "./report-currency.service";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import {
+  NumberT,
+  defaultNumberT,
+  numberFormatterFor,
+} from "../common/number-locale.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { PortfolioService, TopMover } from "../securities/portfolio.service";
 import {
@@ -133,12 +139,19 @@ export class MonthlyComparisonService {
     const currentMonthLabel = this.formatMonthLabel(year, monthNum);
     const previousMonthLabel = this.formatMonthLabel(prevYear, prevMonth);
 
-    // Build summary notes
+    // Build summary notes. The prose is English (these notes are not routed
+    // through a catalogue yet), but the FIGURES in it are read by this user, so
+    // they follow their configured number locale rather than the server's --
+    // issue #1316, the same rule the emails and budget alerts follow.
+    const prefs = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    );
     const notes = this.buildNotes(
       incomeExpenses,
       currentMonthLabel,
       previousMonthLabel,
       defaultCurrency,
+      numberFormatterFor(prefs?.numberFormat, prefs?.language),
     );
 
     // Build expense comparison
@@ -199,14 +212,14 @@ export class MonthlyComparisonService {
     currentLabel: string,
     previousLabel: string,
     currency: string,
+    n: NumberT = defaultNumberT,
   ): MonthlyComparisonNotes {
-    const fmt = (amount: number) =>
-      this.formatCurrencyWithSymbol(amount, currency);
+    const fmt = (amount: number) => n.formatCurrency(amount, currency);
 
     const savingsDirection =
       ie.savingsChange >= 0
-        ? `${Math.abs(ie.savingsChangePercent).toFixed(1)}% more`
-        : `${Math.abs(ie.savingsChangePercent).toFixed(1)}% less`;
+        ? `${n.formatPercent(Math.abs(ie.savingsChangePercent), 1)} more`
+        : `${n.formatPercent(Math.abs(ie.savingsChangePercent), 1)} less`;
     const savingsNote = `In ${currentLabel}, you saved ${savingsDirection} than ${previousLabel} for a total of ${fmt(ie.currentSavings)}`;
 
     const incomeDirection =
@@ -463,17 +476,6 @@ export class MonthlyComparisonService {
     return (
       Math.round(((current - previous) / Math.abs(previous)) * 10000) / 100
     );
-  }
-
-  private formatCurrencyWithSymbol(
-    amount: number,
-    currencyCode: string,
-  ): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      currencyDisplay: "narrowSymbol",
-    }).format(amount);
   }
 
   private formatMonthLabel(year: number, month: number): string {

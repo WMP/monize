@@ -42,13 +42,14 @@ function ChartTooltip({
   payload?: Array<{ payload: { name: string; value: number; percentage: number } }>;
   fmt: (v: number) => string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (active && payload && payload.length) {
     const d = payload[0].payload;
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
         <p className="text-gray-600 dark:text-gray-400">
-          {fmt(d.value)} ({d.percentage.toFixed(1)}%)
+          {fmt(d.value)} ({formatPercent(d.percentage, 1)})
         </p>
       </div>
     );
@@ -67,7 +68,7 @@ function ChartTooltip({
  */
 export function TagKeyBreakdownChart({ tagKey, params }: TagKeyBreakdownChartProps) {
   const t = useTranslations('transactions');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
 
   const [rows, setRows] = useState<GroupedTotal[]>([]);
@@ -214,7 +215,7 @@ export function TagKeyBreakdownChart({ tagKey, params }: TagKeyBreakdownChartPro
               {item.name}
             </span>
             <span className="text-gray-900 dark:text-gray-100 ml-auto">
-              {item.percentage.toFixed(1)}%
+              {formatPercent(item.percentage, 1)}
             </span>
           </div>
         ))}

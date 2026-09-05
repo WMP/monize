@@ -120,7 +120,7 @@ export function AccountBalancesBarChart({
 }: AccountBalancesBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.accountBalances.title');
-  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatNumber } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [scaleMode, setScaleMode] = useState<ScaleMode>('auto');
   const isMobile = useIsMobile();
@@ -360,7 +360,7 @@ export function AccountBalancesBarChart({
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('charts.accountBalances.accounts')}</div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">
-              {summary.accountsCount.toLocaleString()}
+              {formatNumber(summary.accountsCount, 0)}
             </div>
           </div>
         </div>

@@ -47,7 +47,7 @@ export function PayeeKeyInfoCard({
 }: PayeeKeyInfoCardProps) {
   const t = useTranslations('payeeDetail');
   const { formatDate } = useDateFormat();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatNumber } = useNumberFormat();
   const mapProvider = useMapProvider();
   // The lookup runs on the user's AI provider, so without one there is nothing
   // behind the button: it is not offered rather than offered and refused.
@@ -104,7 +104,7 @@ export function PayeeKeyInfoCard({
     {
       key: 'aliases',
       label: t('keyInfo.aliases'),
-      value: stats.aliasCount > 0 ? stats.aliasCount.toLocaleString() : null,
+      value: stats.aliasCount > 0 ? formatNumber(stats.aliasCount, 0) : null,
     },
     {
       key: 'largestTransaction',
