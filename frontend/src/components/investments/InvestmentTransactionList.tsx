@@ -142,8 +142,8 @@ interface InvestmentTransactionRowProps {
    * 480px and 639px at Normal density the actions move from inline buttons to
    * that sheet -- which also means they stop being tab-reachable there. It is
    * the price of the card, paid for the four columns above, and the cash
-   * register, the payees list and the categories list make the same trade at
-   * the same two widths, so they all behave alike. Compact density, one tap
+   * register and the payees list make the same trade at the same two widths,
+   * so they all behave alike. Compact density, one tap
    * away, is the way back to inline actions.
    *
    * Both surfaces that mount this list wrap: the Investments page and the
