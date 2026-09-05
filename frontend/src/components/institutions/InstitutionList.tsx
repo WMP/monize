@@ -57,14 +57,32 @@ export type InstitutionSortField = 'name' | 'website' | 'country' | 'accounts';
  */
 const SORT_COLUMNS = [
   { field: 'name', labelKey: 'list.columns.name', tierVisibility: '' },
-  { field: 'website', labelKey: 'list.columns.website', tierVisibility: 'hidden md:table-cell ' },
-  { field: 'country', labelKey: 'list.columns.country', tierVisibility: 'hidden sm:table-cell ' },
+  { field: 'website', labelKey: 'list.columns.website', tierVisibility: 'hidden md:table-cell' },
+  { field: 'country', labelKey: 'list.columns.country', tierVisibility: 'hidden sm:table-cell' },
   { field: 'accounts', labelKey: 'list.columns.accounts', tierVisibility: '' },
 ] as const satisfies ReadonlyArray<{
   field: InstitutionSortField;
   labelKey: string;
   tierVisibility: string;
 }>;
+
+/**
+ * The tier header cell's class string, with the separator after the visibility
+ * class supplied HERE rather than baked into the entry above.
+ *
+ * A `tierVisibility` carrying its own trailing space is a trap the compiler
+ * cannot see: written the natural way, a fifth column's `hidden lg:table-cell`
+ * would concatenate straight onto the next token as `lg:table-cellcursor-pointer`,
+ * destroying the responsive class while the bare `hidden` survived -- so that
+ * column would vanish at every width, with types, lint and a header test that
+ * compares label text all still green. Owning the space here makes an entry
+ * that omits it correct by construction, and
+ * `InstitutionList.mobileWrapped.test.tsx` reads the tokens off `classList` so
+ * a fused pair fails a test rather than only a screenshot.
+ */
+function tierHeaderClass(headerPadding: string, tierVisibility: string, sortable: boolean): string {
+  return `${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${tierVisibility ? `${tierVisibility} ` : ''}${sortable ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none' : ''}`;
+}
 
 /** What the Country column shows, including its placeholder for no country. */
 function institutionCountryText(institution: Institution): string {
@@ -392,7 +410,7 @@ export function InstitutionList({
             {SORT_COLUMNS.map(({ field, labelKey, tierVisibility }) => (
               <th
                 key={field}
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${tierVisibility}${onSort ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none' : ''}`}
+                className={tierHeaderClass(headerPadding, tierVisibility, !!onSort)}
                 onClick={onSort ? () => onSort(field) : undefined}
               >
                 {t(labelKey)}

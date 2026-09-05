@@ -278,6 +278,37 @@ describe('the institutions list on a phone', () => {
     expect(tierLabels).toEqual([...phoneLabels, 'Actions']);
   });
 
+  it('keeps each tier header cell its own responsive visibility token', () => {
+    // The tier header is built from the same list as the slim one, and its
+    // visibility class is concatenated against the next token. Read off
+    // `classList` rather than the raw string, so a missing separator --
+    // `md:table-cellcursor-pointer`, which destroys the responsive class while
+    // the bare `hidden` survives and takes the column off every width -- fails
+    // here instead of only in a screenshot.
+    setPhoneViewport(false);
+    useDensityStore.setState({ densities: { institutions: 'normal' } });
+
+    const { container } = renderList([makeInstitution()]);
+
+    const tokensByLabel = new Map(
+      Array.from(container.querySelectorAll('thead th')).map((th) => [
+        labelOf(th),
+        Array.from(th.classList),
+      ]),
+    );
+    // Website surfaces at `md` and Country at `sm`; the other two are always on.
+    expect(tokensByLabel.get('Website')).toEqual(
+      expect.arrayContaining(['hidden', 'md:table-cell', 'cursor-pointer']),
+    );
+    expect(tokensByLabel.get('Country')).toEqual(
+      expect.arrayContaining(['hidden', 'sm:table-cell', 'cursor-pointer']),
+    );
+    for (const label of ['Name', 'Accounts']) {
+      expect(tokensByLabel.get(label)).not.toContain('hidden');
+      expect(tokensByLabel.get(label)).toContain('cursor-pointer');
+    }
+  });
+
   it('still sorts from the slim header', () => {
     setPhoneViewport(true);
     useDensityStore.setState({ densities: { institutions: 'normal' } });
