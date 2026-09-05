@@ -224,13 +224,12 @@ export function NetWorthReport() {
   };
 
   // Their order, rendered by BOTH header rows and matched by the cells' DOM
-  // order.
-  const sortColumns: readonly SortColumn[] = [
-    columns.name,
-    columns.assets,
-    columns.liabilities,
-    columns.netWorth,
-  ];
+  // order. DERIVED from the record rather than re-listed: a hand-written list
+  // beside an exhaustive record is not exhaustive, so a field added to the
+  // union would compile (the record forces an entry) and still ship with no
+  // sort control in either header -- exactly the stranding the record exists to
+  // prevent. The record's declaration order is the column order.
+  const sortColumns: readonly SortColumn[] = Object.values(columns);
 
   // For long ranges, explicitly specify which ticks to show so years don't repeat.
   // Ticks are keyed off the raw ISO month (sortKey, YYYY-MM-DD) so the January
@@ -451,13 +450,20 @@ export function NetWorthReport() {
              survive as their own phone-only header row, because the column
              header row that carries them on desktop is hidden there.
 
-             Two costs of restyling one tree, both deliberate. Changing the
-             display roles drops the table semantics below `sm`, which is why
-             every value carries a `CellLabel` naming its column -- a phone
-             reader gets labelled values rather than a header association. And
-             the phone reading order differs from the DOM order, which is the
-             desktop column order the grid placement overrides visually. Both
-             are properties of the mechanism, not of this table. */
+             Two properties of restyling one tree, both deliberate. Changing the
+             `display` would drop the implicit table semantics below `sm`, so
+             the explicit ARIA roles below put them back -- the phone sort strip
+             is the header row a phone reader gets, and its four controls sit in
+             the cells' own DOM order, so the column association survives. The
+             `CellLabel` captions are therefore REDUNDANT with that association
+             rather than a substitute for it, and deliberately so: the grid
+             places the cells out of DOM order visually, so a sighted phone
+             reader has no header row to look up and needs the name beside the
+             value. A screen reader hears the column name twice. And the phone
+             reading order differs from the DOM order, which is the desktop
+             column order the grid placement overrides visually (the WCAG 1.3.2
+             tension the roles are the mitigation for). Both are properties of
+             the mechanism, not of this table. */
           <div className="overflow-x-auto">
             {/* Explicit roles: restyling `display` below `sm` strips the implicit
                 table semantics, and these put them back (inert from `sm` up). */}

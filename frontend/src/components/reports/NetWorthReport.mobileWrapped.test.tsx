@@ -284,6 +284,15 @@ describe('NetWorthReport (phone wrapped table)', () => {
     // Both rows are rendered from one list, so they cannot list different
     // fields -- assert it rather than trusting the loop.
     expect(labelsOf(columnRow)).toEqual(labelsOf(phoneRow));
+    // And no column is stranded without a control: a column the rows render is
+    // a cell, so every header row carries exactly as many controls as a data
+    // row has cells. A field added to the sort union but left out of the header
+    // list would fail here rather than reaching a phone with no way to sort or
+    // unsort by it.
+    const cellsPerRow = container.querySelectorAll('tbody tr td').length /
+      container.querySelectorAll('tbody tr').length;
+    expect(phoneRow.querySelectorAll('th')).toHaveLength(cellsPerRow);
+    expect(columnRow.querySelectorAll('th')).toHaveLength(cellsPerRow);
   });
 
   it('sorts from the phone strip, not only from the column header', async () => {
