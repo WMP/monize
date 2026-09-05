@@ -303,6 +303,9 @@ export function BudgetVsActualReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
     // Headings and row cells both come from the ordered column record, so the
     // export cannot carry the screen's old column order (see `SortColumn`).
+    // The ROWS stay in the order the server sent, not the order on screen --
+    // deliberately, and as every sibling report export does: the PDF is a
+    // report of the period, not a snapshot of a transient sort.
     const headers = sortColumns.map((col) => col.label);
     const rows = trendData.map((point) => sortColumns.map((col) => col.value(point)));
     await exportToPdf({
@@ -552,24 +555,24 @@ export function BudgetVsActualReport() {
                       >
                         <td role="cell" className={`col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell ${cellPadding(columns.month)}`}>{point.month}</td>
                         <td role="cell" className={`col-start-1 col-span-2 row-start-2 text-gray-600 dark:text-gray-400 ${cellPadding(columns.budgeted)} ${MONEY_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('budgetVsActual.colBudgeted')}</CellLabel>
+                          <CellLabel className={CAPTION_CLASS}>{columns.budgeted.label}</CellLabel>
                           {formatCurrency(point.budgeted)}
                         </td>
                         <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 ${cellPadding(columns.actual)} ${MONEY_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('budgetVsActual.colActual')}</CellLabel>
+                          <CellLabel className={CAPTION_CLASS}>{columns.actual.label}</CellLabel>
                           {formatCurrency(point.actual)}
                         </td>
                         {/* The variance takes the middle of line 1 beside the
                             month: it is the figure the row is read for. */}
                         <td role="cell" className={`col-start-2 row-start-1 font-medium ${point.variance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'} ${cellPadding(columns.variance)} ${MONEY_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('budgetVsActual.colVariance')}</CellLabel>
+                          <CellLabel className={CAPTION_CLASS}>{columns.variance.label}</CellLabel>
                           {varianceSign(point)}{formatCurrency(point.variance)}
                         </td>
                         {/* Percent used sits under the actual figure it is a
                             share of. Its caption wraps at its own space in
                             every locale, so a third-width track holds it. */}
                         <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 ${cellPadding(columns.percentUsed)} ${MONEY_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('budgetVsActual.colPercentUsed')}</CellLabel>
+                          <CellLabel className={CAPTION_CLASS}>{columns.percentUsed.label}</CellLabel>
                           {point.percentUsed}%
                         </td>
                       </tr>

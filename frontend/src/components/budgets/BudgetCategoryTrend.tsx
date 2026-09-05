@@ -99,6 +99,15 @@ export function BudgetCategoryTrend({
   formatCurrency,
 }: BudgetCategoryTrendProps) {
   const t = useTranslations('budgets');
+  // The four column labels, read once. Both the column header row (from `sm`
+  // up) and the per-cell captions that replace it on a phone come from here,
+  // so a caption cannot go on naming a column the header has renamed.
+  const columnLabels = {
+    category: t('categoryTrend.tableHeaders.category'),
+    avgBudget: t('categoryTrend.tableHeaders.avgBudget'),
+    avgActual: t('categoryTrend.tableHeaders.avgActual'),
+    avgVariance: t('categoryTrend.tableHeaders.avgVariance'),
+  };
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     () => new Set(data.map((s) => s.categoryId)),
   );
@@ -266,10 +275,10 @@ export function BudgetCategoryTrend({
         <table role="table" className="block min-w-full text-sm sm:table">
           <thead role="rowgroup" className="block sm:table-header-group">
             <tr role="row" className="hidden text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 sm:table-row">
-              <th role="columnheader" className="py-2 pr-4 font-medium">{t('categoryTrend.tableHeaders.category')}</th>
-              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{t('categoryTrend.tableHeaders.avgBudget')}</th>
-              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{t('categoryTrend.tableHeaders.avgActual')}</th>
-              <th role="columnheader" className="py-2 font-medium text-right">{t('categoryTrend.tableHeaders.avgVariance')}</th>
+              <th role="columnheader" className="py-2 pr-4 font-medium">{columnLabels.category}</th>
+              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{columnLabels.avgBudget}</th>
+              <th role="columnheader" className="py-2 pr-4 font-medium text-right">{columnLabels.avgActual}</th>
+              <th role="columnheader" className="py-2 font-medium text-right">{columnLabels.avgVariance}</th>
             </tr>
           </thead>
           <tbody role="rowgroup" className="block sm:table-row-group">
@@ -299,11 +308,11 @@ export function BudgetCategoryTrend({
                     {series.categoryName}
                   </td>
                   <td role="cell" className={`col-start-1 row-start-2 text-gray-600 dark:text-gray-400 ${CELL_PADDING} ${MONEY_CELL}`}>
-                    <CellLabel className={CAPTION_CLASS}>{t('categoryTrend.tableHeaders.avgBudget')}</CellLabel>
+                    <CellLabel className={CAPTION_CLASS}>{columnLabels.avgBudget}</CellLabel>
                     {formatCurrency(avgBudgeted)}
                   </td>
                   <td role="cell" className={`col-start-2 row-start-2 text-gray-600 dark:text-gray-400 ${CELL_PADDING} ${MONEY_CELL}`}>
-                    <CellLabel className={CAPTION_CLASS}>{t('categoryTrend.tableHeaders.avgActual')}</CellLabel>
+                    <CellLabel className={CAPTION_CLASS}>{columnLabels.avgActual}</CellLabel>
                     {formatCurrency(avgActual)}
                   </td>
                   {/* The variance takes the right of line 1 beside the
@@ -317,7 +326,7 @@ export function BudgetCategoryTrend({
                         : 'text-green-600 dark:text-green-400'
                     } ${LAST_CELL_PADDING} ${MONEY_CELL}`}
                   >
-                    <CellLabel className={CAPTION_CLASS}>{t('categoryTrend.tableHeaders.avgVariance')}</CellLabel>
+                    <CellLabel className={CAPTION_CLASS}>{columnLabels.avgVariance}</CellLabel>
                     {avgVariance > 0 ? '+' : ''}
                     {formatCurrency(avgVariance)}
                   </td>
