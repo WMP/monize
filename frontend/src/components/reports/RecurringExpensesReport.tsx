@@ -130,8 +130,10 @@ const PHONE_HEADER_CLASS =
 // case. The two money cells do NOT share a worst case: the server computes
 // `averageAmount = totalAmount / occurrences` over at least the two occurrences
 // the minimum-occurrences selector floors at, so the 6-Mo Total beside it is
-// one to two orders of magnitude wider for the same row, and it is bold as
-// well. So the budget is stated on the TOTAL, at `text-xs` and `font-medium`,
+// never narrower than the average and runs from twice it at that floor to
+// about twenty-six times it on a weekly row -- a digit or two more, on the one
+// of the pair that is also bold. So the budget is stated on the TOTAL, at
+// `text-xs` and `font-medium`,
 // space-grouped: seven figures `1 456 789 CHF` 89px, eight 97px, nine 104px,
 // ten `1 234 567 890 CHF` 116px -- all inside the 122px track at 320px -- and
 // eleven 124px, the first past it by 2px. Ten figures of CHF is the stated
@@ -266,8 +268,12 @@ export function RecurringExpensesReport() {
       csvLabel: t('recurringExpenses.csvColLastPaid'),
       // The export's own date format, unchanged. Both this and the cell's
       // `MMM d` parse the server's `YYYY-MM-DD` through `new Date(...)`, which
-      // reads it as UTC midnight -- a pre-existing off-by-one east of
-      // Greenwich, reported rather than fixed inside a layout change.
+      // reads it as UTC midnight and then formats it LOCALLY: a negative
+      // offset pushes it back into the previous day, so every reader WEST of
+      // Greenwich sees the date before the one the server sent. `parseLocalDate`
+      // (`@/lib/utils`) is what the sibling report tables use for exactly this.
+      // The defect is pre-existing on both paths and is reported rather than
+      // fixed inside a layout change, so that neither hides the other.
       csvValue: (e) => format(new Date(e.lastTransactionDate), 'yyyy-MM-dd'),
     },
   };
