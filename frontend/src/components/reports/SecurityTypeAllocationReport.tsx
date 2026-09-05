@@ -81,7 +81,7 @@ const PHONE_HEADER_CLASS =
 // columns, so the footer takes the type row's placement verbatim and a reader
 // finds the share in the same corner of both. Line 1 is the identity beside the
 // total (the figure the row is read for), line 2 the share beside the holdings
-// count; inert from `sm` up, where every row is a table row again.
+// count. Inert from `sm` up.
 const CELL_PLACEMENT: Record<SecurityTypeSortField, string> = {
   label: 'col-start-1 row-start-1',
   totalValue: 'col-start-2 row-start-1',
@@ -621,20 +621,23 @@ export function SecurityTypeAllocationReport() {
                 <React.Fragment key={item.type}>
                   <tr
                     role="row"
-                    /* The row IS the expand control, so it says whether it is
-                       open: without this the only cue is the rotated chevron,
-                       which is nothing at all to a screen reader. */
-                    aria-expanded={expandedType === item.type}
+                    /* Deliberately NO `aria-expanded`, though this row is the
+                       expand control and `role="row"` would take it: a `<tr>` is
+                       not focusable and this one carries a bare `onClick` with no
+                       key handler, so the state would announce a control a
+                       keyboard cannot operate -- a stated dead end rather than
+                       the silent one there is now. The two are one repair and it
+                       is a behaviour change: make the row operable through the
+                       repo's row-click convention (`useLongPress({ onClick })`),
+                       then state the expansion. Reported, not done here. */
                     className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer sm:table-row sm:p-0"
                     onClick={() => setExpandedType(expandedType === item.type ? null : item.type)}
                   >
-                    {/* The identity; the whole `<tr>` around it stays the click
-                        target at every width, since a button around the label
-                        would make the rest of the card dead area. A type label
-                        is bounded in practice (five known labels,
-                        or an unknown security type's raw enum name), but it
-                        still sits in a `minmax(0,1fr)` track with `min-w-0` and
-                        a clamp: the label shares its line with the colour dot
+                    {/* The identity; the `<tr>` around it stays the click target
+                        at every width. A type label is bounded in practice (five
+                        known labels, or an unknown security type's raw enum
+                        name), but it still sits in a `minmax(0,1fr)` track with
+                        `min-w-0` and a clamp: it shares its line with the dot
                         AND the chevron, 44px of the 122px track at 320px between
                         them, so the name box is a measured 78px and a raw enum
                         like `STRUCTURED_PRODUCT_NOTE` needs three lines.
@@ -642,17 +645,16 @@ export function SecurityTypeAllocationReport() {
                         clipped -- a 23-character token does not fit 78px, and
                         without it the clamp's `overflow: hidden` cuts it
                         mid-glyph with no ellipsis, which every width and
-                        overflow measurement reports as fine. Both are
-                        phone-only; from `sm` up the name box is 418px and the
-                        cell wraps exactly as it does today.
+                        overflow measurement reports as fine. Both are phone-only;
+                        from `sm` up the name box is 418px and the cell wraps
+                        exactly as it does today.
 
-                        The clamp is load-bearing for containment too, and the
-                        two jobs are easy to separate by accident: this span is
-                        a flex item WITHOUT its own `min-w-0`, so its automatic
-                        minimum size would be the unbroken token's width, which
+                        The clamp is load-bearing for containment too, and the two
+                        jobs are easy to separate by accident: this span is a flex
+                        item WITHOUT its own `min-w-0`, so its automatic minimum
+                        size would be the unbroken token's width, which
                         `break-words` does not shrink -- what zeroes it is
-                        `line-clamp-3`'s own `overflow: hidden`. (A child row's
-                        identity needs neither, being a grid item.) The chevron
+                        `line-clamp-3`'s own `overflow: hidden`. The chevron
                         keeps its rotation class and its place beside the label
                         at every width -- it is the only thing on the card that
                         says the row opens -- and `flex-shrink-0` is new and
@@ -681,10 +683,9 @@ export function SecurityTypeAllocationReport() {
                       <CellLabel className={CAPTION_CLASS}>{columns.totalValue.label}</CellLabel>
                       {formatCurrencyFull(item.totalValue, defaultCurrency)}
                     </td>
-                    {/* The share opens line 2. Its value is bounded (`100.0%`)
-                        but its CAPTION is not (`[XX-% of Portfolio-XX]` is 22
-                        characters), so it takes a full `minmax(0,1fr)` track,
-                        never an `auto` one sized by that caption. */}
+                    {/* The share opens line 2. Its value is bounded (`100.0%`) but
+                        its CAPTION is not (`[XX-% of Portfolio-XX]` is 22
+                        characters), so it takes a full `minmax(0,1fr)` track. */}
                     <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                       {item.percentage.toFixed(1)}%
@@ -715,9 +716,8 @@ export function SecurityTypeAllocationReport() {
                     >
                       {/* The identity takes the whole of line 1, and the
                           `(N accounts)` marker stays inline after the name as it
-                          is today -- exactly why this cell has no clamp: at
-                          320px a three-line clamp painted NONE of the markers,
-                          in any locale. */}
+                          is today -- exactly why this cell has no clamp: at 320px
+                          a three-line clamp painted NONE of the markers. */}
                       <td role="cell" className={`${CHILD_IDENTITY_CELL} text-gray-600 dark:text-gray-400`}>
                         {h.symbol} - {h.name}
                         {h.accountBreakdowns.length > 1 && (
@@ -730,7 +730,7 @@ export function SecurityTypeAllocationReport() {
                           share -- because from `sm` up a cell's order IS the
                           column it lands in; only the placement paints the share
                           to its left. The unknown marker and the dash are
-                          captioned like any other value. */}
+                          captioned like any other value below. */}
                       <td role="cell" className={`${CHILD_CELL_PLACEMENT.totalValue} text-gray-600 dark:text-gray-400 ${CHILD_FIGURE_CELL}`}>
                         <CellLabel className={CAPTION_CLASS}>{columns.totalValue.label}</CellLabel>
                         {value === null
@@ -749,8 +749,8 @@ export function SecurityTypeAllocationReport() {
                           holds a count of holdings on a type row and a count of
                           SHARES here. That conflation is pre-existing and
                           reported; bare, the cell would add a new one, since at
-                          `col-start-2 row-start-3` a bare number sits under this
-                          row's money figure in the same track and alignment. */}
+                          `col-start-2 row-start-3` it sits directly under this
+                          row's money figure in the same track. */}
                       <td role="cell" className={`${CHILD_CELL_PLACEMENT.count} text-gray-500 dark:text-gray-500 ${CHILD_FIGURE_CELL}`}>
                         <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
                         {h.quantity}

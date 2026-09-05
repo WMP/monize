@@ -246,20 +246,20 @@ describe('SecurityTypeAllocationReport (phone wrapped table)', () => {
     expect(container.textContent).not.toContain(`VTI - ${LONG_NAME}`);
   });
 
-  it('announces the expansion state on the row that is the control', async () => {
+  it('states no expansion the keyboard cannot reach', async () => {
     const container = await renderReport();
 
-    // The rotated chevron is the only visual cue, and it is nothing at all to
-    // a screen reader; the row is the click target, so the row carries the
-    // state. `role="row"` supports `aria-expanded`.
-    const etfs = () => findTypeRow(container, 'ETFs')!;
-    expect(etfs().getAttribute('aria-expanded')).toBe('false');
-    await act(async () => { fireEvent.click(etfs()); });
-    expect(etfs().getAttribute('aria-expanded')).toBe('true');
-    // A collapsed sibling still says so while another type is open.
-    expect(findTypeRow(container, 'Stocks')!.getAttribute('aria-expanded')).toBe('false');
-    await act(async () => { fireEvent.click(etfs()); });
-    expect(etfs().getAttribute('aria-expanded')).toBe('false');
+    // The row is the expand control and `role="row"` would take an
+    // `aria-expanded`, but a `<tr>` is not focusable and this one carries a
+    // bare `onClick` with no key handler: announcing the state would promise a
+    // control a keyboard user cannot operate. Focusability and the state are
+    // one repair, and it is a behaviour change rather than a layout one --
+    // this pins the pair so the attribute cannot arrive without the handling.
+    const etfs = findTypeRow(container, 'ETFs')!;
+    const stated = etfs.getAttribute('aria-expanded') !== null;
+    const operable =
+      etfs.hasAttribute('tabindex') || etfs.getAttribute('role') === 'button';
+    expect(stated).toBe(operable);
   });
 
   it('flips the chevron rotation class with the expansion', async () => {
