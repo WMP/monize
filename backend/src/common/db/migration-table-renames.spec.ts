@@ -28,6 +28,7 @@ import * as path from "path";
 
 import { LEGACY_TABLE_KEYS } from "../../backup/backup-format";
 import { RESTORABLE_TABLES } from "../../backup/restore-plan";
+import { compareMigrationFilenames } from "./migration-filename";
 
 const MIGRATIONS_DIR = path.join(__dirname, "../../../../database/migrations");
 const SCHEMA_SQL = path.join(__dirname, "../../../../database/schema.sql");
@@ -54,7 +55,7 @@ function migrationFiles(): string[] {
   return fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
-    .sort();
+    .sort(compareMigrationFilenames);
 }
 
 function readMigration(file: string): string {

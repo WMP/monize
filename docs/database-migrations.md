@@ -11,7 +11,8 @@ this document is the operational side.
 `backend/src/db-migrate.ts` runs on every backend start (dev and production):
 
 1. Creates the `schema_migrations` tracking table if absent.
-2. Lists `database/migrations/*.sql`, sorted by filename.
+2. Lists `database/migrations/*.sql`, in prefix order -- numeric on the prefix,
+   then the full filename (see "Filenames" below).
 3. Skips filenames already present in `schema_migrations`.
 4. For each remaining file, in order: `BEGIN`, the whole file as one query,
    `INSERT INTO schema_migrations`, `COMMIT`.
@@ -22,10 +23,57 @@ Two consequences worth internalising:
 
 - **The tracker keys off the filename, not the content.** Editing a migration
   that some database has already applied means that database never sees the new
-  content. Ship a new numbered file instead.
+  content. Ship a new timestamp-prefixed file instead. For the same reason a
+  migration is never renamed: the new name is a migration no database has
+  recorded, and it re-runs the body everywhere.
 - **A file that fails leaves no tracker row**, so the next startup re-runs the
   whole body. If the body is not idempotent, that retry fails the same way and
   the pod crash-loops.
+
+## Filenames
+
+Two prefix forms live side by side in `database/migrations/`:
+
+| Form | Example | Status |
+|---|---|---|
+| `NNN_description.sql` | `191_payee_lookup_ai_enabled.sql` | Historical. The set is frozen; nothing new is written under it, and nothing in it is renumbered. |
+| `YYYYMMDDHHMMSS_description.sql` | a migration authored at 2026-09-05 14:30:00 UTC starts 20260905143000_ | Every new migration. The prefix is the UTC second of authoring: `date -u +%Y%m%d%H%M%S`. |
+
+The counter was retired because it was a manually policed global value that
+did not scale with parallel work (issue #1277): two branches from one base both
+correctly read "the current max is 164", both correctly picked 165, and nothing
+either could do locally detected the other. Six earlier pairs had got through the
+same way. A timestamp is known before a PR exists and cannot be generated twice.
+
+**Apply order is numeric on the prefix, then the full filename**, and that rule
+is written once -- `backend/src/common/db/migration-filename.ts` -- and imported
+by the runner, the integration harnesses, the migration lint and the prefix
+check; `scripts/verify-schema.sh` reproduces it with `sort -n`, and
+`migration-filename.spec.ts` runs that pipeline against the comparator. A string
+sort agrees with numeric order today only by a coincidence of digits -- every
+historical prefix begins with 0 or 1 and every timestamp with 2 -- and the
+five-digit band scheme the issue first considered would have broken it outright
+(13120 sorts before 168 as a string). Ordering by value makes the apply order a
+fact about numbers, not leading digits; every fourteen-digit timestamp then
+follows every three-digit prefix, so the transition is additive and the
+historical files are untouched.
+
+Two consequences:
+
+- **Apply order is authoring order, not merge order.** A migration authored on
+  Monday and merged Friday replays before one authored Tuesday and merged
+  Wednesday on a fresh install, while an upgraded database ran them the other
+  way round. The counter had the same property (prefixes were assigned at
+  authoring time too); timestamps only make it visible. A migration must not
+  depend on the ordering of another *in-flight* migration.
+- **The prefix check changed shape.** `scripts/check-migration-prefixes.mjs`
+  used to require a new prefix to exceed the base branch's maximum, which a
+  later-merging older PR would now legitimately fail. It requires instead that
+  every migration a branch adds is timestamp-prefixed and names a real UTC
+  instant between the scheme's adoption and now, that no three-digit prefix
+  exceeds the highest one ever issued (`LEGACY_PREFIX_CEILING`), that nothing
+  on the base branch has gone missing, and -- as before -- that no prefix is
+  used twice outside the six grandfathered pairs.
 
 ## The idempotency rule
 
@@ -144,7 +192,7 @@ what the migration would have produced, then record it:
 SELECT filename, applied_at FROM schema_migrations ORDER BY filename DESC LIMIT 10;
 
 -- Only after confirming the schema already matches the migration's end state:
-INSERT INTO schema_migrations (filename) VALUES ('0NN_the_migration.sql')
+INSERT INTO schema_migrations (filename) VALUES ('YYYYMMDDHHMMSS_the_migration.sql')
 ON CONFLICT DO NOTHING;
 ```
 

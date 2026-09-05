@@ -145,6 +145,7 @@ implied.
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
 | INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
 | INV-RELEASE-001 | The tested, imaged and tagged revisions are one revision | partial |
+| INV-MIGRATION-001 | Migrations apply in numeric prefix order, and a new migration's prefix cannot collide | enforced |
 
 ## Imports
 
@@ -3004,6 +3005,60 @@ Status              partial
 `docs/release-integrity.md` has the full rules and gap register, including
 REL-001's blanket pass-with-no-tests rule and what still remains unenforced
 under REL-002.
+
+### INV-MIGRATION-001 -- numeric prefix order, and a prefix that cannot collide
+
+```text
+Statement           Every place that orders database/migrations/*.sql orders
+                    them by the NUMERIC value of the filename prefix, then by
+                    the full filename; and a migration added after 2026-09-05
+                    carries a YYYYMMDDHHMMSS_ prefix (the UTC second of
+                    authoring), so two authors working in parallel cannot
+                    produce the same prefix. The NNN_ files are historical:
+                    never renumbered, never added to.
+Source of truth     The filename. schema_migrations keys on it, so a rename is
+                    a migration no database has recorded.
+Enforcement         backend/src/common/db/migration-filename.ts is the one
+                    definition of the prefix grammar and the comparator; the
+                    runner (db-migrate.ts), the integration harnesses
+                    (rls-setup.ts, migration-path.integration.spec.ts,
+                    migration-table-renames.spec.ts), the migration lint and
+                    scripts/check-migration-prefixes.mjs import it (the two
+                    .mjs scripts through Node type stripping);
+                    scripts/verify-schema.sh reproduces it with `sort -n` and
+                    migration-filename.spec.ts runs that pipeline against the
+                    comparator. The same spec fails a bare .sort() over a
+                    migrations listing anywhere under backend/ or scripts/, and
+                    holds LEGACY_PREFIX_CEILING equal to the directory's real
+                    maximum in both directions. check-migration-prefixes.mjs
+                    (Documentation vs Manifests job) refuses a duplicate prefix
+                    outside the six grandfathered pairs, a new NNN_ file (by
+                    ceiling with no git, by base comparison with it), a
+                    timestamp that is not a real UTC instant between adoption
+                    and now, and a base-branch migration gone missing.
+Concurrency scope   global (one directory, every branch)
+Retry semantics     n/a
+Crash semantics     n/a
+Failure response    db-migrate refuses to start on a filename it cannot order;
+                    CI fails on any of the check's findings.
+Required tests      migration-filename.spec.ts (unit, fixture the string sort
+                    gets wrong, shell equivalence, directory, source scan);
+                    db-migrate.spec.ts (runner applies the mixed-width fixture
+                    in numeric order and refuses an unparseable name).
+Why it exists       Prefixes collided eight times under the counter (022, 068,
+                    075, 116, 117, 124, then 165 and 166 within nine hours)
+                    because two branches read the same maximum; and the
+                    runner's readdirSync(...).sort() was a string sort, correct
+                    only by the coincidence that every historical prefix begins
+                    with 0 or 1 and every timestamp with 2 (issue #1277).
+Status              enforced
+```
+
+What this does NOT claim: that apply order equals merge order. Prefixes are
+assigned at authoring time under both schemes, so a migration merged later can
+carry an earlier prefix and replay first on a fresh install. A migration must
+not depend on the ordering of another in-flight migration; nothing checks that
+beyond review.
 
 ## Candidates not yet admitted
 

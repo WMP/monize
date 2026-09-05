@@ -109,6 +109,7 @@ describe("doc path grammar", () => {
     expect(kinds("messages/{locale}/{namespace}.json")).toBe("not-path");
     expect(kinds("NNN_description.sql")).toBe("not-path");
     expect(kinds("0NN_rls_helpers_and_trigger.sql")).toBe("not-path");
+    expect(kinds("YYYYMMDDHHMMSS_description.sql")).toBe("not-path");
     expect(kinds(".../interceptors/request-context.interceptor.ts")).toBe(
       "not-path",
     );

@@ -11,7 +11,7 @@ A constraint here is usually the strongest available form of a system rule, so s
 
 ## Automatic Migrations
 
-Migrations run automatically when the backend starts (dev and production). `db-migrate`: creates a `schema_migrations` tracking table if absent, reads all `.sql` files from `migrations/`, compares against applied migrations, runs pending ones in filename order (each in a transaction), and records each success.
+Migrations run automatically when the backend starts (dev and production). `db-migrate`: creates a `schema_migrations` tracking table if absent, reads all `.sql` files from `migrations/`, compares against applied migrations, runs pending ones in prefix order (numeric on the prefix, then the full filename; each in a transaction), and records each success.
 
 **Fresh installs:** `db-init` runs `schema.sql` first (which includes `schema_migrations`), then `db-migrate` runs all migrations -- no-ops on a fresh schema because they use `IF NOT EXISTS`. **Existing installs:** `db-init` skips, `db-migrate` applies only new migrations.
 
@@ -20,9 +20,13 @@ Credentials are in the root `.env` file (`POSTGRES_DB`, `POSTGRES_USER`, `POSTGR
 
 ## Creating a New Migration
 
-1. **Create the migration file** in `database/migrations/` with the next sequential number prefix:
-   - **Read the current max from the directory** (`ls database/migrations | tail`) -- do not trust a number written in any document, including this one; they go stale.
-   - **The numeric prefix must be unique** -- `ls database/migrations | awk -F_ '{print $1}' | sort | uniq -d` should print nothing. Duplicate prefixes (historical pairs exist at `022`, `068`, `075`, `116`, `117`) leave the apply order to alphabetical tie-breaking, which is brittle.
+1. **Create the migration file** in `database/migrations/` named `YYYYMMDDHHMMSS_description.sql`, where the prefix is the **UTC** second you authored it:
+   ```bash
+   touch "database/migrations/$(date -u +%Y%m%d%H%M%S)_heal_something.sql"
+   ```
+   - **Do not take the next sequential number.** The `NNN_` prefixes are the retired scheme: a counter two branches can both read is how prefixes collided eight times (`022`, `068`, `075`, `116`, `117`, `124`, then `165` and `166` within nine hours of each other -- issue #1277). Two authors cannot generate the same second, so a timestamp needs no coordination and no check. `scripts/check-migration-prefixes.mjs` refuses a new `NNN_` file, in CI and locally (`node scripts/check-migration-prefixes.mjs`).
+   - **The three-digit files are historical and are never renumbered.** `schema_migrations` keys on the filename, so a renamed migration re-runs on every deployed database -- and `166_heal_loan_schedule_end_dates.sql` is a registered one-shot data repair whose second pass retires a schedule one payment early. The two forms coexist; apply order is **numeric on the prefix** everywhere migrations are ordered (`backend/src/common/db/migration-filename.ts` is the one definition), so every timestamp sorts after every three-digit prefix. A string sort agrees only by the coincidence that historical prefixes begin with 0 or 1 and timestamps with 2; the runner does not rely on it, and `migration-filename.spec.ts` fails on a bare `.sort()` over a migrations listing.
+   - **Apply order is authoring order, not merge order.** A migration authored earlier but merged later replays first on a fresh install while an upgraded database ran it last. That was equally true of the counter (it is exactly how the `165`/`166` pairs arose); it is only more visible now. So a migration must not depend on the ordering of another *in-flight* migration -- if yours needs an object another open PR creates, wait for that PR to merge and author yours after it.
    - Use `IF NOT EXISTS` / `IF EXISTS` to make migrations idempotent
 2. **Update `schema.sql`** to reflect the same change (so fresh installs match migrated databases)
 3. **Update the backend TypeORM entity** if the migration modifies a mapped table. DB columns are `snake_case`, entity properties `camelCase`, mapped via `@Column({ name: 'snake_case_name' })`.
@@ -51,7 +55,7 @@ Every user-owned table carries a row-level-security policy; the app emits per-tr
    **`PUBLIC` is the exception, for the same reason and not in spite of it:** it is a keyword that always resolves, so it cannot fail for a missing role. It has to be permitted, because `CREATE FUNCTION` grants `EXECUTE` to `PUBLIC` implicitly -- revoking that anywhere but the transaction that created the function leaves a window in which any role can execute a fresh `SECURITY DEFINER` function. `136_currency_global_liveness.sql` is the case.
 
 ## Migration File Conventions
-- Numbered prefix for ordering: `NNN_description.sql` (e.g., `079_securities_is_favourite.sql`)
+- Timestamp prefix for ordering: `YYYYMMDDHHMMSS_description.sql`, UTC (a migration authored at 2026-09-05 14:30:00 UTC starts 20260905143000_). The `NNN_` prefixes (e.g., `079_securities_is_favourite.sql`) are historical; do not create new ones
 - Use `ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`
 - Include a comment at the top describing the change
 - Keep migrations small and focused on a single change
