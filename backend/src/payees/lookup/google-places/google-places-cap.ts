@@ -21,6 +21,26 @@ export const GOOGLE_PLACES_CAP = {
 } as const;
 
 /**
+ * The zone whose calendar month the cap is counted in.
+ *
+ * **Google's, not ours.** The free monthly allowance resets on the first day of
+ * each month at midnight Pacific US time, so a counter that rolled over at UTC
+ * midnight released the user's whole cap seven or eight hours BEFORE Google
+ * released the allowance it is rationing. In that window every request is
+ * counted by us against a fresh month and by Google against the old one -- so a
+ * user who spends the cap in it pays for the overage, which is the one outcome
+ * a cap exists to prevent.
+ *
+ * A named zone rather than a fixed offset, because Pacific observes DST and
+ * PostgreSQL's tzdata already knows when: the boundary is 08:00 UTC in winter
+ * and 07:00 in summer, and hard-coding either is wrong for half the year.
+ *
+ * Passed as a bind parameter to `AT TIME ZONE` rather than interpolated, so the
+ * statement stays parameterized like every other in this codebase.
+ */
+export const GOOGLE_PLACES_QUOTA_TIMEZONE = "America/Los_Angeles";
+
+/**
  * A stored cap outside the range falls back to the default rather than being
  * clamped: a value the database should never have held is a fault, and
  * clamping it silently substitutes a limit nobody chose. Same rule as

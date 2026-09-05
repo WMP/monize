@@ -41,16 +41,7 @@ import {
   RestoreResult,
 } from "./backup-format";
 import { restoreAiProviderKey } from "./ai-provider-key-transport";
-
-/**
- * Backed-up tables holding an `api_key_enc` -- ciphertext under this instance's
- * ENCRYPTION_KEY, which never travels in the artifact. Each is exported with
- * the key decrypted and restored with it re-encrypted here.
- */
-const KEY_BEARING_TABLES = [
-  "ai_provider_configs",
-  "payee_lookup_settings",
-] as const;
+import { keyBearingExportTables } from "./export-table-queries";
 import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
 
@@ -561,12 +552,13 @@ export class BackupRestoreService {
     const tables = backupTables(data);
     let unusable = 0;
 
-    // Every table whose rows carry an `api_key_enc`. The transport is keyed on
-    // that column name rather than on the table, so this list is the whole of
-    // what makes a second such table work -- and a table added to the export
-    // with an encrypted key and left out of here would restore populated and
-    // unreadable, which is the exact failure the transport exists to stop.
-    for (const table of KEY_BEARING_TABLES) {
+    // Every table whose rows carry an `api_key_enc`, asked of the export rather
+    // than restated here. The transport is keyed on that column name rather
+    // than on the table, so a table added to the export with an encrypted key
+    // and left out of this loop would restore populated and unreadable --
+    // exactly the failure the transport exists to stop, and exactly what a
+    // hand-kept second copy of the list lets back in.
+    for (const table of keyBearingExportTables() as (keyof BackupData)[]) {
       const rows = tables[table];
       if (!rows || rows.length === 0) continue;
 

@@ -1521,8 +1521,9 @@ CREATE TRIGGER update_payee_lookup_settings_updated_at
     BEFORE UPDATE ON payee_lookup_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Per-user request counter for a user's own Google Places key. month is a UTC
--- 'YYYY-MM' string written by the claim statement.
+-- Per-user request counter for a user's own Google Places key. month is a
+-- Pacific 'YYYY-MM' string written by the claim statement -- Pacific because
+-- Google's free monthly allowance resets at midnight Pacific on the 1st.
 CREATE TABLE payee_lookup_usage (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     month CHAR(7) NOT NULL,

@@ -58,7 +58,7 @@ export interface PayeeLookupSettingsView {
    * because the repair is different: re-enter it.
    */
   apiKeyReadable: boolean;
-  /** Requests spent this UTC month against whichever key applies. */
+  /** Requests spent this billing month against whichever key applies. */
   usedThisMonth: number;
   /** False when the server holds no ENCRYPTION_KEY, so no key can be stored. */
   encryptionAvailable: boolean;
@@ -297,7 +297,15 @@ export class PayeeLookupSettingsService {
     draftKey?: string,
   ): Promise<{ available: boolean; error?: string }> {
     const operator = this.operatorConfig();
-    if (operator && draftKey) {
+    // Refused outright in operator mode, not merely for a draft key. There is
+    // nothing here for a user to test -- the key is the deployment's, and they
+    // cannot change it -- while a test still spends a slot off the ONE counter
+    // every user on the instance shares. Allowing it let any authenticated
+    // caller drain the deployment's month at the throttle ceiling and leave
+    // everyone else falling back to AI, which is the same reason
+    // `updateSettings` refuses an operator-managed change rather than ignoring
+    // it. Hiding the button in operator mode is not the enforcement.
+    if (operator) {
       throw new BadRequestException(
         tr(
           "errors.payeeLookup.operatorManaged",

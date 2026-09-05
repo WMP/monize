@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../../../test-helpers/scoped-db-testing";
+import { GOOGLE_PLACES_QUOTA_TIMEZONE } from "./google-places-cap";
 import {
   PayeeLookupQuotaService,
   QuotaScope,
@@ -73,7 +74,12 @@ describe("PayeeLookupQuotaService", () => {
       expect(squash(lastSql())).toContain(
         "INSERT INTO payee_lookup_usage (user_id, month, google_places_requests)",
       );
-      expect(lastParams()).toEqual(["user-1", true, 1000]);
+      expect(lastParams()).toEqual([
+        "user-1",
+        true,
+        1000,
+        GOOGLE_PLACES_QUOTA_TIMEZONE,
+      ]);
     });
 
     it("refuses to increment past the cap, in the statement itself", async () => {
@@ -93,7 +99,12 @@ describe("PayeeLookupQuotaService", () => {
     it("lets an uncapped scope through by parameter, not by a second statement", async () => {
       await service.claim({ ...userScope, capEnabled: false });
 
-      expect(lastParams()).toEqual(["user-1", false, 1000]);
+      expect(lastParams()).toEqual([
+        "user-1",
+        false,
+        1000,
+        GOOGLE_PLACES_QUOTA_TIMEZONE,
+      ]);
     });
 
     it("takes the month from the database, never from this process's clock", async () => {
@@ -102,7 +113,7 @@ describe("PayeeLookupQuotaService", () => {
       await service.claim(userScope);
 
       expect(lastSql()).toContain(
-        "to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM')",
+        "to_char(now() AT TIME ZONE $4, 'YYYY-MM')",
       );
     });
   });
@@ -116,7 +127,7 @@ describe("PayeeLookupQuotaService", () => {
       expect(squash(lastSql())).toContain(
         "INSERT INTO google_places_instance_usage (month, requests)",
       );
-      expect(lastParams()).toEqual([true, 1000]);
+      expect(lastParams()).toEqual([true, 1000, GOOGLE_PLACES_QUOTA_TIMEZONE]);
       expect(withSystemContext).toHaveBeenCalled();
     });
 

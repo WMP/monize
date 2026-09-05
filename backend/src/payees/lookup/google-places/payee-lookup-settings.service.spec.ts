@@ -395,5 +395,19 @@ describe("PayeeLookupSettingsService", () => {
         BadRequestException,
       );
     });
+
+    it("refuses a test of the operator's own key, and spends nothing", async () => {
+      // The key is the deployment's and the counter is shared, so a user
+      // testing it spends a slot every other user was going to use. At the
+      // throttle ceiling one caller drains the month; the UI hiding the button
+      // is not what stops them.
+      env.GOOGLE_PLACES_API_KEY = "operator-key";
+
+      await expect(service.testKey(USER)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(quota.claim).not.toHaveBeenCalled();
+      expect(places.lookup).not.toHaveBeenCalled();
+    });
   });
 });

@@ -29,8 +29,12 @@
 -- cap_enabled is a separate column from monthly_cap so switching the cap off
 -- and on again does not lose the number the user chose.
 --
--- The month is a UTC 'YYYY-MM' string computed by PostgreSQL inside the claim
--- statement, so every replica rolls over on one clock.
+-- The month is a 'YYYY-MM' string computed by PostgreSQL inside the claim
+-- statement, so every replica rolls over on one clock -- and it is computed in
+-- America/Los_Angeles, not UTC, because Google's free monthly allowance resets
+-- on the first of the month at midnight Pacific. Rolling over at UTC midnight
+-- would release the user's cap seven or eight hours before Google releases the
+-- allowance it rations, and every request in that window is billed.
 --
 -- api_key_enc is ciphertext under ENCRYPTION_KEY and is named to match
 -- ai_provider_configs.api_key_enc, because the backup's key transport
@@ -72,8 +76,10 @@ ALTER TABLE payee_lookup_settings ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS payee_lookup_usage (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    -- UTC calendar month, 'YYYY-MM'. Written by to_char(now() AT TIME ZONE
-    -- 'UTC', 'YYYY-MM') inside the claim so the boundary is the database's.
+    -- Pacific calendar month, 'YYYY-MM' -- Google's billing month. Written by
+    -- to_char(now() AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM') inside the
+    -- claim, so the boundary is the database's and is the same instant the
+    -- allowance being rationed resets on.
     month CHAR(7) NOT NULL,
     google_places_requests INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, month)

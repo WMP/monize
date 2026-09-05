@@ -40,7 +40,7 @@ export class PayeeLookupSettings {
   @Column({ name: "cap_enabled", default: true })
   capEnabled: boolean;
 
-  /** Requests allowed per UTC calendar month while `capEnabled`. */
+  /** Requests allowed per Pacific calendar month while `capEnabled`. */
   @Column({ type: "int", name: "monthly_cap", default: 1000 })
   monthlyCap: number;
 

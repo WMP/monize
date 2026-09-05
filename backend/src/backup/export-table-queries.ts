@@ -66,6 +66,27 @@ export interface ExportTableQuery {
 }
 
 /**
+ * Every exported table whose rows carry an `api_key_enc`, derived from the
+ * export itself rather than restated.
+ *
+ * A table gets the key transport by carrying `transformRow`, so asking which
+ * queries carry it *is* the question -- and the restore, which has to
+ * re-encrypt exactly those tables, can no longer disagree with the export
+ * about which they are. Restated as a literal it silently could:
+ * `payee_lookup_settings` was added to the export and to the restore's list by
+ * hand, and deleting it from either one broke nothing that any test could see.
+ *
+ * The marker is identity-compared, so this reports the tables that *would*
+ * receive the transform, independently of what any real one does.
+ */
+export function keyBearingExportTables(): readonly string[] {
+  const marker = (row: Record<string, unknown>) => row;
+  return buildExportTableQueries(async function* () {}, marker)
+    .filter((query) => query.transformRow === marker)
+    .map((query) => query.key);
+}
+
+/**
  * User-owned tables that are deliberately NOT part of a backup, each with the
  * reason. The coverage guard test asserts every table in the database is either
  * exported (see `BackupExportService.getBackedUpTableNames`) or listed here, so adding a new entity

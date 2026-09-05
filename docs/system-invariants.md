@@ -143,7 +143,7 @@ implied.
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
 | INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
-| INV-PAYEE-002 | Google Places requests in a UTC calendar month never exceed the cap for the key's owner | enforced |
+| INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
 | INV-RELEASE-001 | The tested, imaged and tagged revisions are one revision | partial |
 
 ## Imports
@@ -2177,9 +2177,12 @@ Status              enforced
 ### INV-PAYEE-002 -- the Google Places monthly cap is never exceeded
 
 ```text
-Statement           The number of Google Places requests made in one UTC
+Statement           The number of Google Places requests made in one PACIFIC
                     calendar month never exceeds the cap configured for the key
-                    that pays for them. A user's own key is capped per user; the
+                    that pays for them. Pacific because that is the month
+                    Google's free allowance resets on (midnight Pacific on the
+                    1st); a cap counted in any other zone rations a window that
+                    is not the one being billed. A user's own key is capped per user; the
                     operator's key (GOOGLE_PLACES_API_KEY) is capped once for
                     the whole deployment, because one key is one bill.
 Source of truth     payee_lookup_usage(user_id, month).google_places_requests
@@ -2193,9 +2196,13 @@ Enforcement         One statement per scope, in PayeeLookupQuotaService.claim: a
                     and re-evaluates against the committed value -- there is no
                     window between a read and a write. Zero rows back is the cap
                     being reached, and the caller falls back to the AI adapter.
-                    The month is to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'),
-                    evaluated by PostgreSQL, so every replica rolls over on one
-                    clock. The claim runs through runOutsideActiveScopedManager
+                    The month is to_char(now() AT TIME ZONE
+                    'America/Los_Angeles', 'YYYY-MM') -- the zone named once as
+                    GOOGLE_PLACES_QUOTA_TIMEZONE and passed as a bind parameter
+                    -- evaluated by PostgreSQL, so every replica rolls over on
+                    one clock AND on the same instant Google's allowance does.
+                    A named zone rather than a fixed offset because Pacific
+                    observes DST. The claim runs through runOutsideActiveScopedManager
                     and commits BEFORE the request leaves: Google bills an
                     attempt whatever comes back, so a slot released because the
                     request then failed would under-count what is being paid for.
@@ -2216,7 +2223,14 @@ Required tests      Two-connection: concurrent claims over the last slot, one
                     backend/test/integration/payee-lookup-quota.integration.spec.ts
                     ("has exactly one winner when two claims race over the last
                     slot", "has exactly one winner when two users race over the
-                    last slot").
+                    last slot"). The monthly reset is proven in the same file
+                    ("starts the new month at one, however much the previous
+                    month spent", both scopes) and the zone by "files the claim
+                    under the current Pacific month". Transaction independence
+                    -- the claim commits even when its caller is inside a
+                    transaction -- is
+                    payee-lookup-quota.transaction.spec.ts, because the sibling
+                    unit spec mocks that plumbing away.
 Status              enforced
 ```
 ### INV-BACKUP-001 -- a backup is complete, verified, owner-namespaced
