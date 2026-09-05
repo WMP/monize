@@ -187,6 +187,8 @@ export interface BackupData {
   monte_carlo_scenarios: Record<string, unknown>[];
   monte_carlo_cash_flows: Record<string, unknown>[];
   ai_provider_configs: Record<string, unknown>[];
+  payee_lookup_settings: Record<string, unknown>[];
+  payee_lookup_usage: Record<string, unknown>[];
   gem_strategies: Record<string, unknown>[];
   gem_strategy_accounts: Record<string, unknown>[];
   gem_strategy_assets: Record<string, unknown>[];

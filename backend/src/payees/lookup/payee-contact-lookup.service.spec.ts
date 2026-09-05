@@ -106,6 +106,7 @@ describe("PayeeContactLookupService", () => {
     expect(provider.lookup).toHaveBeenCalledWith(userId, {
       name: "Acme",
       hint: "the user's locale is en-CA; their default currency is CAD",
+      locale: { language: "en-CA", region: "CA" },
       known: undefined,
     });
   });
@@ -116,7 +117,90 @@ describe("PayeeContactLookupService", () => {
     expect(provider.lookup).toHaveBeenCalledWith(userId, {
       name: "Acme",
       hint: "Springfield",
+      locale: { language: "en-CA", region: "CA" },
       known: undefined,
+    });
+  });
+
+  describe("the structured locale beside the prose hint", () => {
+    // A model reads the sentence; Google Places takes codes. Both are derived
+    // from the one stored language tag, so they cannot describe different users.
+    it("carries no region for a language tag that names none", async () => {
+      preferenceRepo.findOne.mockResolvedValue({
+        userId,
+        payeeContactLookupEnabled: true,
+        language: "en",
+        defaultCurrency: "USD",
+      });
+
+      await service.lookup(userId, { name: "Acme" });
+
+      expect(provider.lookup).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ locale: { language: "en" } }),
+      );
+    });
+
+    it("upper-cases the region, because a CLDR region code is upper-case", async () => {
+      preferenceRepo.findOne.mockResolvedValue({
+        userId,
+        payeeContactLookupEnabled: true,
+        language: "pt-br",
+        defaultCurrency: "BRL",
+      });
+
+      await service.lookup(userId, { name: "Acme" });
+
+      expect(provider.lookup).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          locale: { language: "pt-br", region: "BR" },
+        }),
+      );
+    });
+
+    it("passes no locale at all when the user has stored no language", async () => {
+      preferenceRepo.findOne.mockResolvedValue({
+        userId,
+        payeeContactLookupEnabled: true,
+        language: null,
+        defaultCurrency: null,
+      });
+
+      await service.lookup(userId, { name: "Acme" });
+
+      expect(provider.lookup).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ locale: undefined }),
+      );
+    });
+
+    it("lets the caller override the derived locale", async () => {
+      await service.lookup(userId, {
+        name: "Acme",
+        locale: { language: "fr-FR", region: "FR" },
+      });
+
+      expect(provider.lookup).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          locale: { language: "fr-FR", region: "FR" },
+        }),
+      );
+    });
+  });
+
+  it("reports a spent quota as its own reason, not as no_provider", async () => {
+    // The two send the user to opposite repairs -- wait out or raise the
+    // Google Places cap, versus configure an AI provider they never wanted --
+    // so the coordinator must not fold one into the other.
+    provider.lookup.mockRejectedValue(
+      new ContactLookupUnavailableError("quota_exceeded"),
+    );
+
+    await expect(service.lookup(userId, { name: "Acme" })).resolves.toEqual({
+      reason: "quota_exceeded",
+      suggestions: [],
     });
   });
 

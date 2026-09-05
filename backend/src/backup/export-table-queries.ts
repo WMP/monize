@@ -49,16 +49,41 @@ export interface ExportTableQuery {
   trailingRows?: ExportRowSource;
   /**
    * Rewrites one row on its way into the document, row at a time so the memory
-   * ceiling is unchanged. There is exactly one: `ai_provider_configs` swaps its
-   * instance-key ciphertext for the plaintext key
-   * (`ai-provider-key-transport.ts`), because `ENCRYPTION_KEY` is server
-   * configuration and never travels in the file.
+   * ceiling is unchanged. Two tables use it, for one reason:
+   * `ai_provider_configs` and `payee_lookup_settings` each hold an
+   * `api_key_enc` under this instance's `ENCRYPTION_KEY`, which is server
+   * configuration and never travels in the file, so the key is swapped for its
+   * plaintext here (`ai-provider-key-transport.ts`) and re-encrypted by the
+   * restore. Both columns are named `api_key_enc` deliberately: the transport
+   * is keyed on that name, so a third such table gets this treatment by
+   * spelling its column the same way.
    *
    * Applied by both `exportJsonChunks` and `collectExportTables`, so the
    * streamed artifact and the support backup's in-memory map cannot disagree
    * about what a backup contains.
    */
   transformRow?: (row: Record<string, unknown>) => Record<string, unknown>;
+}
+
+/**
+ * Every exported table whose rows carry an `api_key_enc`, derived from the
+ * export itself rather than restated.
+ *
+ * A table gets the key transport by carrying `transformRow`, so asking which
+ * queries carry it *is* the question -- and the restore, which has to
+ * re-encrypt exactly those tables, can no longer disagree with the export
+ * about which they are. Restated as a literal it silently could:
+ * `payee_lookup_settings` was added to the export and to the restore's list by
+ * hand, and deleting it from either one broke nothing that any test could see.
+ *
+ * The marker is identity-compared, so this reports the tables that *would*
+ * receive the transform, independently of what any real one does.
+ */
+export function keyBearingExportTables(): readonly string[] {
+  const marker = (row: Record<string, unknown>) => row;
+  return buildExportTableQueries(async function* () {}, marker)
+    .filter((query) => query.transformRow === marker)
+    .map((query) => query.key);
 }
 
 /**
@@ -72,6 +97,13 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "action_history", // undo/redo log, wiped on restore (not undoable to prior state)
   "ai_insights", // regenerable AI cache
   "ai_usage_logs", // usage telemetry, not user content
+  // The OPERATOR's Google Places counter. Deliberately not exported while
+  // `payee_lookup_usage` beside it is: this row has no `user_id`, it counts a
+  // key configured by GOOGLE_PLACES_API_KEY (deployment configuration, which
+  // no backup carries either), and every user on the instance spends it. A
+  // per-user archive writing it would let one user's restore overwrite a
+  // counter another user's lookups are still spending.
+  "google_places_instance_usage",
   "exchange_rates", // global shared reference data, not per-user
   "market_index_prices", // global market reference data, refetched from the provider
   "market_index_sync", // provider fetch bookkeeping for the above
@@ -397,6 +429,30 @@ export function buildExportTableQueries(
       // re-encrypted by the restore. See ai-provider-key-transport.ts for the
       // contract, including what the artifact then contains in plaintext.
       transformRow: aiProviderKeyTransform,
+    },
+    {
+      key: "payee_lookup_settings",
+      sql: "SELECT * FROM payee_lookup_settings WHERE user_id = $1",
+      // Same contract as ai_provider_configs above, and the same column name:
+      // api_key_enc is ciphertext under this instance's ENCRYPTION_KEY, so it
+      // travels decrypted and is re-encrypted by the restore.
+      transformRow: aiProviderKeyTransform,
+    },
+    {
+      // The user's own Google Places counter, so a month's spend survives a
+      // move to another machine -- the key is the same key, and Google's
+      // free allowance is counted against it, not against the server.
+      //
+      // The restore deliberately does NOT clear this table first, and the
+      // insert's ON CONFLICT DO NOTHING is what makes that correct: a machine
+      // with no row (the migration this exists for) takes the archive's count,
+      // while a machine that already has one keeps its own. The live count is
+      // never lowered, because under-counting a quota is the direction that
+      // reaches a bill -- and the only way an archive's count can be the
+      // higher of the two is that the live one was lost, which is the case
+      // where there is no row to conflict with.
+      key: "payee_lookup_usage",
+      sql: "SELECT * FROM payee_lookup_usage WHERE user_id = $1",
     },
     {
       key: "monte_carlo_scenarios",

@@ -135,7 +135,7 @@
     "button": "查詢聯絡資訊",
     "inProgress": "正在查詢...",
     "nothingNew": "找不到新的聯絡資訊。",
-    "noProvider": "請在 AI 設定中設定 AI 供應商以查詢聯絡資訊。",
+    "noProvider": "請在收款人查詢設定中設定查詢來源，以尋找聯絡資訊。",
     "failed": "查詢無法完成，請稍後再試。",
     "dialogTitle": "確認聯絡資訊",
     "dialogSubtitle": "在您確認之前，不會為 {name} 儲存任何內容。",
@@ -146,6 +146,7 @@
     "cancel": "取消",
     "confirm": "{count, plural, other {儲存 # 項變更}}",
     "applied": "{count, plural, other {已儲存 # 項聯絡資訊}}",
-    "applyFailed": "無法儲存聯絡資訊"
+    "applyFailed": "無法儲存聯絡資訊",
+    "quotaExceeded": "本月的 Google Places 查詢次數已用完。請在收款人查詢設定中提高上限，或等到下個月。"
   }
 }

@@ -22,7 +22,7 @@ import { Category } from '@/types/category';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { payeesApi } from '@/lib/payees';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { useAiConfigured } from '@/hooks/useAiConfigured';
+import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -210,7 +210,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   // The lookup runs on the user's AI provider. With none configured there is
   // nothing behind the button, so it is not offered at all -- and the blur
   // never spends a request establishing that.
-  const { configured: aiConfigured } = useAiConfigured();
+  const { available: lookupAvailable } = useContactLookupAvailable();
   const [lookupState, setLookupState] = useState<LookupState>({ status: 'idle' });
   const [suggestedFields, setSuggestedFields] = useState<ReadonlySet<ContactLookupField>>(
     () => new Set(),
@@ -376,11 +376,11 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
       void nameField.onBlur(event);
       // Automatic only for a new payee, and only when the user opted in; an
       // existing payee's values are theirs, so a lookup there is the button.
-      if (!payee && lookupEnabled && aiConfigured) {
+      if (!payee && lookupEnabled && lookupAvailable) {
         void runLookup(event.target.value);
       }
     },
-    [nameField, payee, lookupEnabled, aiConfigured, runLookup],
+    [nameField, payee, lookupEnabled, lookupAvailable, runLookup],
   );
 
   const handleFormSubmit = useCallback((data: PayeeFormData) => {
@@ -467,7 +467,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
             onBlur={handleNameBlur}
           />
         </div>
-        {aiConfigured && (
+        {lookupAvailable && (
           <Button
             type="button"
             variant="outline"
@@ -532,7 +532,27 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {t.rich('form.lookup.noProvider', {
             link: (chunks) => (
-              <Link href="/settings/ai" className="text-blue-600 hover:underline dark:text-blue-400">
+              <Link
+                href="/settings#payee-lookup"
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
+      )}
+      {/* Its own message, not "no provider": the repair is to wait out or
+          raise the Google Places limit, which is a different screen and a
+          different decision from configuring an AI provider. */}
+      {lookupState.status === 'done' && lookupState.reason === 'quota_exceeded' && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {t.rich('form.lookup.quotaExceeded', {
+            link: (chunks) => (
+              <Link
+                href="/settings#payee-lookup"
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
                 {chunks}
               </Link>
             ),

@@ -34,7 +34,8 @@
       "inactive": "非活跃",
       "withoutCategory": "无分类"
     },
-    "applyDefaultCategories": "应用默认分类"
+    "applyDefaultCategories": "应用默认分类",
+    "lookupSettings": "收款方查询设置"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "已由查找替换：",
       "clear": "撤销查找所做的更改",
       "nothingFound": "未找到此名称的公开联系信息。",
-      "noProvider": "请在<link>AI 设置</link>中配置 AI 提供商以查找联系信息。",
-      "failed": "查找未能完成，请稍后重试。"
+      "noProvider": "请在<link>收款方查询设置</link>中配置查询来源，以查找联系信息。",
+      "failed": "查找未能完成，请稍后重试。",
+      "quotaExceeded": "本月的 Google Places 查询次数已用完。请在<link>收款方查询设置</link>中提高上限，或等到下个月。"
     }
   },
   "merge": {

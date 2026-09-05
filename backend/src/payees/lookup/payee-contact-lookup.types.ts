@@ -3,10 +3,11 @@
  * implements, the suggestion it returns, and the outcome the coordinator hands
  * to every caller (form endpoint, background enrichment, AI/MCP preview).
  *
- * The lookup is pluggable. Today the only adapter is the user's configured AI
- * provider (`AiPayeeContactLookupProvider`); a Google Places adapter would
- * implement the same interface and be selected by the module's provider
- * factory from an operator setting -- see `payee-contact-lookup.module.ts`.
+ * The lookup is pluggable, and there are two adapters: the user's configured
+ * AI provider (`AiPayeeContactLookupProvider`) and Google Places
+ * (`GooglePlacesLookupProvider`). Which one answers is decided per lookup by
+ * `RoutingPayeeContactLookupProvider`, the only implementation bound to the
+ * token -- see `payee-contact-lookup.module.ts`.
  */
 
 import { PayeeLookupContext } from "./lookup-context";
@@ -21,7 +22,9 @@ import { PayeeLookupContext } from "./lookup-context";
  *   available, or none ran). Lower trust -- see `sanitizeContactSuggestion`.
  * - `ai-relay`: the user's own agent behind the MCP relay answered. It cannot
  *   report whether it searched, so it is trusted like `ai-knowledge`.
- * - `google-places`: reserved for the Places adapter.
+ * - `google-places`: Google's business directory, via the Places adapter. A
+ *   listed fact rather than a model's recollection, so it is not in
+ *   `UNVERIFIED_CONTACT_LOOKUP_SOURCES` and carries no confidence.
  */
 export const CONTACT_LOOKUP_SOURCES = [
   "ai-web-search",
@@ -41,6 +44,16 @@ export interface PayeeContactLookupInput {
   name: string;
   /** Optional disambiguation, e.g. the user's country. Never persisted. */
   hint?: string;
+  /**
+   * The user's locale, structured rather than prose.
+   *
+   * The AI adapter folds the same facts into `hint` because a model reads
+   * sentences; a directory API takes codes, so Google Places sends
+   * `languageCode` and `regionCode` and gets localized addresses and the right
+   * country's branch of a chain. Both are derived from preferences the user
+   * has already set -- nothing new is collected.
+   */
+  locale?: { language?: string; region?: string };
   /**
    * What the caller already holds about this payee (the form's current
    * values, or the stored row). Used to pick the right organisation and the
@@ -107,16 +120,17 @@ export const PAYEE_CONTACT_LOOKUP_PROVIDER = Symbol(
 );
 
 /**
- * What a lookup attempt established. Five states, because the caller has to
+ * What a lookup attempt established. Six states, because the caller has to
  * tell the user different things: `none` is "we looked and there was nothing",
  * `failed` is "we could not look" (and must never be shown as "nothing found"),
- * `no_provider` and `disabled` each name their own fix.
+ * `no_provider`, `quota_exceeded` and `disabled` each name their own fix.
  */
 export type ContactLookupReason =
   | "ok"
   | "none"
   | "disabled"
   | "no_provider"
+  | "quota_exceeded"
   | "failed";
 
 /**
@@ -139,6 +153,13 @@ export type ContactLookupOutcome =
   | { reason: "none"; suggestions: []; detail?: undefined }
   | { reason: "disabled"; suggestions: []; detail?: undefined }
   | { reason: "no_provider"; suggestions: []; detail?: undefined }
+  /**
+   * The Google Places monthly cap is spent AND there is no AI provider to fall
+   * back to. Its own reason rather than `no_provider`, because the two send the
+   * user to opposite repairs: raise or wait out the cap, versus configure a
+   * provider they may never have wanted.
+   */
+  | { reason: "quota_exceeded"; suggestions: []; detail?: undefined }
   | {
       reason: "failed";
       suggestions: [];
@@ -157,8 +178,19 @@ export type ContactLookupOutcome =
  */
 export class ContactLookupUnavailableError extends Error {
   constructor(
-    readonly reason: "no_provider" | "failed",
+    readonly reason: "no_provider" | "quota_exceeded" | "failed",
     readonly detail?: string,
+    /**
+     * The upstream HTTP status, where the failure was an ANSWERED refusal.
+     *
+     * Absent means nobody answered -- a timeout, a transport error, an open
+     * breaker -- which is a different fact from a 4xx: the provider may still
+     * have served (and billed) the request while we failed to hear the reply.
+     * `PayeeLookupSettingsService.testKey` is the caller that needs the
+     * distinction, to decide whether the quota slot it spent should be
+     * handed back.
+     */
+    readonly httpStatus?: number,
   ) {
     super(detail ?? reason);
     this.name = "ContactLookupUnavailableError";

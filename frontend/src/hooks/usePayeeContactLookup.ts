@@ -77,6 +77,10 @@ export function usePayeeContactLookup(
           toast(t('contactLookup.nothingNew'));
         } else if (result.reason === 'no_provider') {
           toast.error(t('contactLookup.noProvider'));
+        } else if (result.reason === 'quota_exceeded') {
+          // Distinct from no_provider: the user's own Google Places limit is
+          // spent, and there is no AI provider behind it to take over.
+          toast.error(t('contactLookup.quotaExceeded'));
         } else {
           toast.error(result.detail ?? t('contactLookup.failed'));
         }

@@ -36,9 +36,13 @@ vi.mock('@/store/preferencesStore', () => ({
 
 // Whether an AI provider exists decides whether the lookup is offered at all;
 // the hook is mocked so each test states which world it is in.
-let mockAiConfigured = true;
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: mockAiConfigured, resolved: true }),
+let mockLookupAvailable = true;
+vi.mock('@/hooks/useContactLookupAvailable', () => ({
+  useContactLookupAvailable: () => ({
+    available: mockLookupAvailable,
+    resolved: true,
+    source: mockLookupAvailable ? 'ai' : null,
+  }),
 }));
 
 describe('PayeeForm', () => {
@@ -401,7 +405,7 @@ describe('PayeeForm', () => {
       lookupContact.mockReset();
       lookupContact.mockResolvedValue({ reason: 'ok', suggestions: [suggestion] } as any);
       mockLookupEnabled = true;
-      mockAiConfigured = true;
+      mockLookupAvailable = true;
     });
 
     function renderCreate() {
@@ -411,7 +415,7 @@ describe('PayeeForm', () => {
     it('offers no lookup at all when no AI provider is configured', async () => {
       // The provider is what answers, so without one the button would open on
       // nothing and the blur would spend a request establishing that.
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
       renderCreate();
 
       expect(
@@ -578,13 +582,35 @@ describe('PayeeForm', () => {
       expect(screen.queryByText(/No public contact details/)).not.toBeInTheDocument();
     });
 
-    it('explains a missing provider with a link to AI Settings', async () => {
+    it('explains a missing source with a link to the payee lookup settings', async () => {
+      // Not AI Settings: Google Places can answer this lookup too, so the fix
+      // is the section that configures either one.
       lookupContact.mockResolvedValue({ reason: 'no_provider', suggestions: [] } as any);
       renderCreate();
       await blurName('Acme');
 
-      const link = await screen.findByRole('link', { name: 'AI Settings' });
-      expect(link).toHaveAttribute('href', '/settings/ai');
+      const link = await screen.findByRole('link', {
+        name: 'Payee lookup settings',
+      });
+      expect(link).toHaveAttribute('href', '/settings#payee-lookup');
+    });
+
+    it('reports a spent monthly limit as its own reason', async () => {
+      // Distinct from no_provider: the repair is the Google Places limit, not
+      // configuring a provider the user may never have wanted.
+      lookupContact.mockResolvedValue({
+        reason: 'quota_exceeded',
+        suggestions: [],
+      } as any);
+      renderCreate();
+      await blurName('Acme');
+
+      expect(
+        await screen.findByText(/Google Places lookups are used up/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/No public contact details/),
+      ).not.toBeInTheDocument();
     });
 
     it('says when nothing was found', async () => {

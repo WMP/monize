@@ -135,7 +135,7 @@
     "button": "Buscar datos de contacto",
     "inProgress": "Buscando...",
     "nothingNew": "No se encontraron datos de contacto nuevos.",
-    "noProvider": "Configure un proveedor de IA en Ajustes de IA para buscar datos de contacto.",
+    "noProvider": "Configura una fuente en Ajustes de búsqueda de beneficiarios para encontrar datos de contacto.",
     "failed": "No se pudo completar la búsqueda. Inténtelo de nuevo más tarde.",
     "dialogTitle": "Confirmar los datos de contacto",
     "dialogSubtitle": "No se guarda nada de {name} hasta que confirme.",
@@ -146,6 +146,7 @@
     "cancel": "Cancelar",
     "confirm": "{count, plural, one {Guardar # cambio} other {Guardar # cambios}}",
     "applied": "{count, plural, one {Se guardó # dato de contacto} other {Se guardaron # datos de contacto}}",
-    "applyFailed": "No se pudieron guardar los datos de contacto"
+    "applyFailed": "No se pudieron guardar los datos de contacto",
+    "quotaExceeded": "Se han agotado las consultas de Google Places de este mes. Aumenta el límite en Ajustes de búsqueda de beneficiarios o espera al mes que viene."
   }
 }

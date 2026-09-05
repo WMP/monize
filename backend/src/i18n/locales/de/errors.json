@@ -603,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Eine andere Operation ersetzt derzeit die Daten dieses Kontos. Warten Sie, bis sie abgeschlossen ist, und versuchen Sie es erneut."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places wird von der Administration dieses Servers konfiguriert. Hier lässt sich nur die Ein/Aus-Einstellung ändern.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY ist nicht konfiguriert. Der Google-Places-API-Schlüssel kann nicht sicher gespeichert werden.",
+    "notConfigured": "Es ist kein Google-Places-API-Schlüssel konfiguriert.",
+    "capReached": "Das Anfragelimit für Google Places ist diesen Monat erreicht.",
+    "testFailed": "Der Google-Places-Verbindungstest ist fehlgeschlagen.",
+    "referrerRestricted": "Dieser Schlüssel ist auf HTTP-Referrer beschränkt, aber für diese Installation ist keine PUBLIC_APP_URL gesetzt, sodass kein Referrer gesendet wird und keine Positivliste passen kann. Setzen Sie PUBLIC_APP_URL oder beschränken Sie den Schlüssel stattdessen per IP-Adresse -- die Option, die einen serverseitigen Schlüssel tatsächlich schützt.",
+    "referrerRejected": "Google hat die HTTP-Referrer-Beschränkung dieses Schlüssels abgelehnt. Monize sendet \"{referer}\" (aus PUBLIC_APP_URL); fügen Sie genau diesen Wert zu den zulässigen Referrern hinzu und beachten Sie, dass ein Muster wie *.example.com/* nicht auf ein einfaches example.com passt. Den Schlüssel stattdessen per IP-Adresse zu beschränken ist die Option, die einen serverseitigen Schlüssel tatsächlich schützt."
   }
 }

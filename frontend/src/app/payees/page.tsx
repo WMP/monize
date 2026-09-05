@@ -14,6 +14,7 @@ import { CategoryAutoAssignDialog } from '@/components/payees/CategoryAutoAssign
 import { DeactivateUnusedPayeesDialog } from '@/components/payees/DeactivateUnusedPayeesDialog';
 import { AutoMergePayeesDialog } from '@/components/payees/AutoMergePayeesDialog';
 import { Modal } from '@/components/ui/Modal';
+import { PayeeLookupSection } from '@/components/settings/payee-lookup/PayeeLookupSection';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { payeesApi } from '@/lib/payees';
@@ -47,6 +48,8 @@ export default function PayeesPage() {
 
 function PayeesContent() {
   const t = useTranslations('payees');
+  // The dialog's title is the section's own name, so the two cannot drift.
+  const tLookup = useTranslations('settings.payeeLookup');
   const [payees, setPayees] = useState<Payee[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +57,7 @@ function PayeesContent() {
   const [showDeactivate, setShowDeactivate] = useState(false);
   const [showAutoMerge, setShowAutoMerge] = useState(false);
   const [showApplyDefaults, setShowApplyDefaults] = useState(false);
+  const [showLookupSettings, setShowLookupSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PayeeStatusFilter>('active');
   const [categoryFilter, setCategoryFilter] = useState<PayeeCategoryFilter>('all');
@@ -321,6 +325,14 @@ function PayeesContent() {
                     label: t('page.applyDefaultCategories'),
                     onSelect: () => setShowApplyDefaults(true),
                   },
+                  {
+                    // The same section Settings renders, reached from where
+                    // payees are actually worked on. One component, so the two
+                    // places cannot offer different controls.
+                    id: 'lookupSettings',
+                    label: t('page.lookupSettings'),
+                    onSelect: () => setShowLookupSettings(true),
+                  },
                 ]}
               />
               <Button onClick={openCreate}>{t('page.newPayee')}</Button>
@@ -410,6 +422,26 @@ function PayeesContent() {
             ))}
           </div>
         </div>
+
+        {/* The Payee Lookup settings, rendered from the one section the
+            Settings page uses. `padding="none"` lets the section's own Card be
+            the panel rather than nesting a card inside a padded dialog. */}
+        {/* Sized to the column the same section occupies on Settings, so the
+            two places render one card rather than a wide one and a cramped
+            one. That column is the settings page's max-w-6xl main less its
+            lg:px-12, its lg:w-52 nav and the lg:gap-10 between them: 72 - 6 -
+            13 - 2.5 = 50.5rem, and max-w-3xl (48rem) is the nearest size the
+            modal offers. The next one up overshoots by 5.5rem and, with the
+            backdrop's own padding, leaves a 1024px laptop almost no margin. */}
+        <Modal
+          isOpen={showLookupSettings}
+          onClose={() => setShowLookupSettings(false)}
+          title={tLookup('title')}
+          maxWidth="3xl"
+          pushHistory
+        >
+          <PayeeLookupSection className="" />
+        </Modal>
 
         {/* Form Modal */}
         <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="lg" className="p-6">

@@ -49,6 +49,11 @@ const WITH_CONTEXT_ALLOWLIST = [
   // (docs/specs/balance-threshold-notifications.md).
   "src/notification-center/balance-threshold-alert.service.ts",
   "src/common/interceptors/request-context.interceptor.ts",
+  // The Google Places quota claim for the OPERATOR's key. That counter belongs
+  // to the deployment rather than to whoever's lookup spent it -- there is no
+  // owner column and the table is RLS-exempt -- so the claim runs under
+  // withSystemContext. The per-user counter beside it needs no bypass.
+  "src/payees/lookup/google-places/payee-lookup-quota.service.ts",
   // Cross-replica job coordination: claimOnce/claimLease write to a global
   // claims table that belongs to no single user, from cron entry points with no
   // request to inherit an identity from -- system context by construction.

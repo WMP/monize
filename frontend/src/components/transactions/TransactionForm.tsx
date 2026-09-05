@@ -50,7 +50,7 @@ import { Account, TransferCandidate } from '@/types/account';
 import { Tag } from '@/types/tag';
 import { ReactivatePayeeDialog } from '@/components/payees/ReactivatePayeeDialog';
 import { ContactLookupDialog } from '@/components/payees/ContactLookupDialog';
-import { useAiConfigured } from '@/hooks/useAiConfigured';
+import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { usePayeeContactLookup } from '@/hooks/usePayeeContactLookup';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { buildCategoryTree } from '@/lib/categoryUtils';
@@ -204,10 +204,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   const payeeLookupEnabled = usePreferencesStore(
     (s) => s.preferences?.payeeContactLookupEnabled ?? false,
   );
-  const { configured: aiConfigured } = useAiConfigured();
+  const { available: lookupAvailable } = useContactLookupAvailable();
   // Both conditions, because either one missing makes the lookup impossible:
   // the preference is the user asking for it, the provider is what answers.
-  const offerContactLookup = payeeLookupEnabled && aiConfigured;
+  const offerContactLookup = payeeLookupEnabled && lookupAvailable;
   const contactLookup = usePayeeContactLookup({
     onApplied: (saved) =>
       setPayees((prev) => prev.map((p) => (p.id === saved.id ? saved : p))),

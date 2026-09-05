@@ -12,9 +12,13 @@ vi.mock('@/lib/payees', () => ({
 
 // Whether an AI provider exists decides whether the lookup is offered at all;
 // the hook is mocked so each test states which world it is in.
-let mockAiConfigured = true;
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: mockAiConfigured, resolved: true }),
+let mockLookupAvailable = true;
+vi.mock('@/hooks/useContactLookupAvailable', () => ({
+  useContactLookupAvailable: () => ({
+    available: mockLookupAvailable,
+    resolved: true,
+    source: mockLookupAvailable ? 'ai' : null,
+  }),
 }));
 
 const mapProvider = { current: undefined as string | undefined };
@@ -370,13 +374,13 @@ describe('PayeeKeyInfoCard contact details', () => {
       vi.mocked(toast).mockClear();
       vi.mocked(toast.success).mockClear();
       vi.mocked(toast.error).mockClear();
-      mockAiConfigured = true;
+      mockLookupAvailable = true;
     });
 
     it('offers no lookup button when no AI provider is configured', () => {
       // Nothing could answer, so the card does not offer a button whose only
       // outcome would be telling the user to configure a provider.
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
       renderCard();
 
       expect(

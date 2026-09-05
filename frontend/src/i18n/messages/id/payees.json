@@ -34,7 +34,8 @@
       "inactive": "Tidak Aktif",
       "withoutCategory": "Tanpa Kategori"
     },
-    "applyDefaultCategories": "Terapkan Kategori Default"
+    "applyDefaultCategories": "Terapkan Kategori Default",
+    "lookupSettings": "Pengaturan pencarian penerima"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Diganti oleh pencarian:",
       "clear": "Urungkan perubahan pencarian",
       "nothingFound": "Tidak ditemukan detail kontak publik untuk nama ini.",
-      "noProvider": "Konfigurasikan penyedia AI di <link>Pengaturan AI</link> untuk mencari detail kontak.",
-      "failed": "Pencarian tidak dapat diselesaikan. Coba lagi nanti."
+      "noProvider": "Siapkan sumber di <link>pengaturan pencarian penerima</link> untuk menemukan detail kontak.",
+      "failed": "Pencarian tidak dapat diselesaikan. Coba lagi nanti.",
+      "quotaExceeded": "Pencarian Google Places bulan ini sudah habis. Naikkan batasnya di <link>pengaturan pencarian penerima</link>, atau tunggu bulan depan."
     }
   },
   "merge": {

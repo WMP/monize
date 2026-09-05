@@ -842,7 +842,8 @@
     "autoBackup": "Cópia de Segurança Automática",
     "help": "Ajuda e Suporte",
     "dangerZone": "Zona de Perigo",
-    "about": "Sobre"
+    "about": "Sobre",
+    "payeeLookup": "Pesquisa de beneficiários"
   },
   "page": {
     "title": "Definições",
@@ -905,14 +906,6 @@
         "step3": "As respostas são transmitidas de volta ao chat. Um ponto de estado mostra se o seu agente está ligado.",
         "note": "Nada é executado até o seu agente estar ligado e à escuta. O chat mostra as instruções de ligação."
       }
-    },
-    "payeeLookup": {
-      "title": "Pesquisa automática dos contactos do beneficiário",
-      "subtitle": "Procura automaticamente o site, a morada, o e-mail e o número de telefone de um novo beneficiário através do seu fornecedor de IA configurado. É enviado o nome do beneficiário, juntamente com quaisquer notas, site, morada, e-mail e telefone que já tenha, para que a pesquisa distinga a empresa e o local corretos.",
-      "toggleLabel": "Ativar a pesquisa automática de contactos",
-      "enabled": "Pesquisa automática de contactos ativada",
-      "disabled": "Pesquisa automática de contactos desativada",
-      "saveFailed": "Não foi possível atualizar a definição de pesquisa de contactos"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,60 @@
       "all": "Todo o período"
     },
     "estCostTooltip": "Estimado utilizando as taxas de custo que configurou em cada fornecedor. Exclui qualquer atividade sem taxa correspondente definida."
+  },
+  "payeeLookup": {
+    "title": "Pesquisa de beneficiários",
+    "subtitle": "De onde vêm o site, a morada, o e-mail e o telefone de um beneficiário, e quando uma pesquisa é executada por si só.",
+    "saved": "Definições de pesquisa de beneficiários guardadas",
+    "saveFailed": "Não foi possível guardar as definições de pesquisa de beneficiários",
+    "loadFailed": "Não foi possível carregar as definições de pesquisa de beneficiários. Recarregue a página para tentar novamente.",
+    "googlePlaces": {
+      "toggleLabel": "Usar o Google Places na pesquisa de beneficiários",
+      "notConfigured": "Adicione uma chave de API do Google Places para pesquisar empresas no diretório da Google em vez de usar o seu fornecedor de IA.",
+      "operatorManaged": "Configurado pela administração deste servidor. Pode desativá-lo para os seus beneficiários.",
+      "configure": "Configurar",
+      "edit": "Editar",
+      "removeKey": "Remover chave",
+      "usage": "Usado este mês: {used} de {cap}",
+      "usageNoCap": "Usado este mês: {used}. Sem limite mensal.",
+      "keyUnreadable": "Este servidor não consegue ler a chave de API guardada. Acontece quando uma cópia de segurança é restaurada noutra instância, ou depois de a chave de encriptação mudar. Introduza a chave novamente para resolver.",
+      "encryptionUnavailable": "Este servidor não tem chave de encriptação configurada, por isso não é possível guardar uma chave de API em segurança. Peça à administração para configurar uma.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "O Monize envia à Google o nome do beneficiário e a morada que já tem, e não guarda lá nada.",
+      "apiKeyLabel": "Chave de API",
+      "apiKeyPlaceholder": "Cole a sua chave de API do Google Places",
+      "apiKeyHelp": "Crie uma chave na consola da Google Cloud com a Places API (New) ativada. Deixe em branco para manter a chave já guardada.",
+      "capToggleLabel": "Limitar pedidos por mês",
+      "capHelp": "A Google oferece {free} pedidos Text Search gratuitos por mês para os campos de que esta pesquisa precisa. Acima do limite, a pesquisa recorre ao seu fornecedor de IA.",
+      "capLabel": "Pedidos por mês",
+      "capRange": "Introduza um número entre {min} e {max}.",
+      "test": "Testar",
+      "testing": "A testar...",
+      "testSuccess": "A Google aceitou a chave.",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "setupInstructions": "Instruções de configuração"
+    },
+    "automatic": {
+      "title": "Pesquisa automática de contactos de beneficiários",
+      "subtitle": "Pesquisar automaticamente o site, a morada, o e-mail e o telefone de um novo beneficiário. É enviado o nome do beneficiário, juntamente com as notas, o site, a morada, o e-mail e o telefone que já tenha, para que a pesquisa distinga a empresa e o local certos.",
+      "toggleLabel": "Ativar a pesquisa automática de contactos de beneficiários",
+      "enabled": "Pesquisa automática de contactos ativada",
+      "disabled": "Pesquisa automática de contactos desativada",
+      "saveFailed": "Não foi possível atualizar a definição de pesquisa de contactos",
+      "noSource": "Ative uma fonte acima para pesquisar beneficiários automaticamente. Com ambas desativadas, nada pode responder a uma pesquisa."
+    },
+    "order": {
+      "title": "Que fonte responde primeiro",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dados de diretório, mais baratos por pesquisa. A Google não tem endereços de e-mail.",
+      "aiTitle": "Fornecedor de IA existente",
+      "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada pesquisa.",
+      "aiToggleLabel": "Utilizar um fornecedor de IA para as pesquisas de beneficiários",
+      "aiProviderLabel": "Fornecedor a utilizar",
+      "aiProviderAny": "Qualquer fornecedor, por ordem de prioridade",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo"
+    }
   }
 }

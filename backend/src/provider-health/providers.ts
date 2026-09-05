@@ -1,5 +1,10 @@
 /**
- * The outbound market-data providers whose availability is tracked.
+ * The outbound providers whose availability is tracked.
+ *
+ * Mostly market data, plus Google Places, which answers the payee contact
+ * lookup. The lookup is a user-facing request rather than a background price
+ * refresh, but the reason for a breaker is the same: a dead upstream must not
+ * be called once per payee across a whole deployment.
  *
  * The id is what goes in `provider_health.provider` and must stay stable -- it
  * is the primary key of the durable notification state, so renaming one starts
@@ -9,6 +14,7 @@
 export const TRACKED_PROVIDERS = {
   yahoo_finance: "Yahoo Finance",
   msn_finance: "MSN Finance",
+  google_places: "Google Places",
 } as const;
 
 export type TrackedProviderId = keyof typeof TRACKED_PROVIDERS;

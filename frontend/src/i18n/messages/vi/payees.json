@@ -34,7 +34,8 @@
       "inactive": "Không hoạt động",
       "withoutCategory": "Không có danh mục"
     },
-    "applyDefaultCategories": "Áp dụng danh mục mặc định"
+    "applyDefaultCategories": "Áp dụng danh mục mặc định",
+    "lookupSettings": "Cài đặt tra cứu người nhận"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Đã thay thế bởi tra cứu:",
       "clear": "Hoàn tác thay đổi của tra cứu",
       "nothingFound": "Không tìm thấy thông tin liên hệ công khai cho tên này.",
-      "noProvider": "Hãy cấu hình nhà cung cấp AI trong <link>Cài đặt AI</link> để tra cứu thông tin liên hệ.",
-      "failed": "Không thể hoàn tất tra cứu. Vui lòng thử lại sau."
+      "noProvider": "Thiết lập một nguồn trong <link>cài đặt tra cứu người nhận</link> để tìm thông tin liên hệ.",
+      "failed": "Không thể hoàn tất tra cứu. Vui lòng thử lại sau.",
+      "quotaExceeded": "Đã dùng hết lượt tra cứu Google Places trong tháng này. Hãy tăng giới hạn trong <link>cài đặt tra cứu người nhận</link>, hoặc chờ sang tháng sau."
     }
   },
   "merge": {

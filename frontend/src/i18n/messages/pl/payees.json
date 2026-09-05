@@ -34,7 +34,8 @@
       "inactive": "Nieaktywny",
       "withoutCategory": "Bez kategorii"
     },
-    "applyDefaultCategories": "Przypisz domyślne kategorie"
+    "applyDefaultCategories": "Przypisz domyślne kategorie",
+    "lookupSettings": "Ustawienia wyszukiwania odbiorców"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Zastąpione przez wyszukiwanie:",
       "clear": "Cofnij zmiany wyszukiwania",
       "nothingFound": "Nie znaleziono publicznych danych kontaktowych dla tej nazwy.",
-      "noProvider": "Skonfiguruj dostawcę AI w <link>Ustawieniach AI</link>, aby wyszukiwać dane kontaktowe.",
-      "failed": "Nie udało się ukończyć wyszukiwania. Spróbuj ponownie później."
+      "noProvider": "Skonfiguruj źródło w <link>ustawieniach wyszukiwania odbiorców</link>, aby znaleźć dane kontaktowe.",
+      "failed": "Nie udało się ukończyć wyszukiwania. Spróbuj ponownie później.",
+      "quotaExceeded": "Wyczerpano tegomiesięczne zapytania Google Places. Zwiększ limit w <link>ustawieniach wyszukiwania odbiorców</link> lub poczekaj do przyszłego miesiąca."
     }
   },
   "merge": {

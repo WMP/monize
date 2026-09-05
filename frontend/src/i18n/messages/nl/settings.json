@@ -842,7 +842,8 @@
     "autoBackup": "Automatische back-up",
     "help": "Help & ondersteuning",
     "dangerZone": "Gevarenzone",
-    "about": "Over"
+    "about": "Over",
+    "payeeLookup": "Begunstigde opzoeken"
   },
   "page": {
     "title": "Instellingen",
@@ -905,14 +906,6 @@
         "step3": "Antwoorden worden terug naar de chat gestreamd. Een statusstip toont of uw agent verbonden is.",
         "note": "Er gebeurt niets totdat uw agent verbonden is en luistert. De chat toont verbindingsinstructies."
       }
-    },
-    "payeeLookup": {
-      "title": "Contactgegevens van begunstigde automatisch opzoeken",
-      "subtitle": "Zoekt automatisch de website, het adres, het e-mailadres en het telefoonnummer van een nieuwe begunstigde op via je geconfigureerde AI-provider. De naam van de begunstigde wordt verzonden, samen met eventuele notities, website, adres, e-mailadres en telefoonnummer die al zijn opgeslagen, zodat de zoekopdracht het juiste bedrijf op de juiste locatie herkent.",
-      "toggleLabel": "Automatisch opzoeken van contactgegevens inschakelen",
-      "enabled": "Automatisch opzoeken van contactgegevens ingeschakeld",
-      "disabled": "Automatisch opzoeken van contactgegevens uitgeschakeld",
-      "saveFailed": "De instelling voor het opzoeken van contactgegevens kon niet worden bijgewerkt"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,60 @@
       "all": "Alle tijd"
     },
     "estCostTooltip": "Geschat op basis van de kostentarieven die je hebt geconfigureerd bij elke provider. Activiteit zonder bijbehorend tarief is uitgesloten."
+  },
+  "payeeLookup": {
+    "title": "Begunstigde opzoeken",
+    "subtitle": "Waar de website, het adres, het e-mailadres en het telefoonnummer van een begunstigde vandaan komen, en wanneer een zoekopdracht vanzelf loopt.",
+    "saved": "Instellingen voor begunstigde opzoeken opgeslagen",
+    "saveFailed": "Kan de instellingen voor begunstigde opzoeken niet opslaan",
+    "loadFailed": "Kan de instellingen voor begunstigde opzoeken niet laden. Laad de pagina opnieuw om het nog eens te proberen.",
+    "googlePlaces": {
+      "toggleLabel": "Google Places gebruiken voor het opzoeken van begunstigden",
+      "notConfigured": "Voeg een Google Places API-sleutel toe om bedrijven op te zoeken in de directory van Google in plaats van via je AI-provider.",
+      "operatorManaged": "Ingesteld door de beheerder van deze server. Je kunt het uitzetten voor je eigen begunstigden.",
+      "configure": "Instellen",
+      "edit": "Bewerken",
+      "removeKey": "Sleutel verwijderen",
+      "usage": "Deze maand gebruikt: {used} van {cap}",
+      "usageNoCap": "Deze maand gebruikt: {used}. Geen maandlimiet.",
+      "keyUnreadable": "Deze server kan de opgeslagen API-sleutel niet lezen. Dat gebeurt wanneer een back-up op een andere instantie wordt teruggezet, of nadat de encryptiesleutel is gewijzigd. Voer de sleutel opnieuw in om dit op te lossen.",
+      "encryptionUnavailable": "Deze server heeft geen encryptiesleutel ingesteld, dus een API-sleutel kan niet veilig worden bewaard. Vraag je beheerder er een in te stellen.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize stuurt de naam van de begunstigde en het adres dat je al hebt naar Google, en slaat daar niets op.",
+      "apiKeyLabel": "API-sleutel",
+      "apiKeyPlaceholder": "Plak je Google Places API-sleutel",
+      "apiKeyHelp": "Maak in de Google Cloud-console een sleutel met de Places API (New) ingeschakeld. Laat leeg om de al opgeslagen sleutel te behouden.",
+      "capToggleLabel": "Verzoeken per maand beperken",
+      "capHelp": "Google geeft {free} gratis Text Search-verzoeken per maand voor de velden die deze zoekopdracht nodig heeft. Boven de limiet valt het opzoeken terug op je AI-provider.",
+      "capLabel": "Verzoeken per maand",
+      "capRange": "Voer een getal tussen {min} en {max} in.",
+      "test": "Testen",
+      "testing": "Bezig met testen...",
+      "testSuccess": "Google heeft de sleutel geaccepteerd.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "setupInstructions": "Installatie-instructies"
+    },
+    "automatic": {
+      "title": "Automatisch contactgegevens van begunstigden opzoeken",
+      "subtitle": "Zoek automatisch de website, het adres, het e-mailadres en het telefoonnummer van een nieuwe begunstigde op. De naam van de begunstigde wordt verstuurd, samen met eventuele notities, website, adres, e-mailadres en telefoonnummer die er al zijn, zodat het opzoeken het juiste bedrijf en de juiste vestiging kan onderscheiden.",
+      "toggleLabel": "Automatisch contactgegevens van begunstigden opzoeken inschakelen",
+      "enabled": "Automatisch contactgegevens opzoeken ingeschakeld",
+      "disabled": "Automatisch contactgegevens opzoeken uitgeschakeld",
+      "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken",
+      "noSource": "Schakel hierboven een bron in om begunstigden automatisch op te zoeken. Met beide uit kan niets een zoekopdracht beantwoorden."
+    },
+    "order": {
+      "title": "Welke bron als eerste antwoordt",
+      "placesTitle": "Google Places",
+      "placesHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
+      "aiTitle": "Bestaande AI-provider",
+      "aiHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep.",
+      "aiToggleLabel": "Een AI-provider gebruiken voor het opzoeken van begunstigden",
+      "aiProviderLabel": "Te gebruiken provider",
+      "aiProviderAny": "Elke provider, op volgorde van prioriteit",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag"
+    }
   }
 }

@@ -59,7 +59,9 @@ every live table is either exported or named in
 - Every currency definition the user's data references, whoever created it —
   not just the ones they created. Currencies are shared, and a code without its
   definition means the restore invents a name, symbol and decimal places.
-- AI provider API keys, **decrypted**, in `api_key_plaintext`
+- AI provider API keys and the Google Places key for the payee lookup,
+  **decrypted**, in `api_key_plaintext` (both tables spell the column
+  `api_key_enc`, which is what makes one transport serve them)
   (`backend/src/backup/ai-provider-key-transport.ts`). `api_key_enc` is
   ciphertext under `ENCRYPTION_KEY`, which is server configuration and cannot
   travel — shipping the master key beside the ciphertext would make encrypting
@@ -71,7 +73,8 @@ every live table is either exported or named in
   encrypted with the user's password is fine; an unencrypted export (an OIDC
   account that has set no backup password) and an unencrypted automatic backup on
   disk are not, and `BackupExportService` logs when it writes one. The support
-  (de-identified) backup drops `ai_provider_configs` outright
+  (de-identified) backup drops `ai_provider_configs` and
+  `payee_lookup_settings` outright
   (`support-backup-rules.ts`) and must keep doing so.
 
   A key the exporting instance cannot itself decrypt travels as ciphertext,

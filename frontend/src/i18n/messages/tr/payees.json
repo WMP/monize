@@ -34,7 +34,8 @@
       "inactive": "Pasif",
       "withoutCategory": "Kategorisiz"
     },
-    "applyDefaultCategories": "Varsayılan Kategorileri Uygula"
+    "applyDefaultCategories": "Varsayılan Kategorileri Uygula",
+    "lookupSettings": "Alacaklı arama ayarları"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Arama tarafından değiştirildi:",
       "clear": "Arama değişikliklerini geri al",
       "nothingFound": "Bu ad için herkese açık iletişim bilgisi bulunamadı.",
-      "noProvider": "İletişim bilgilerini aramak için <link>Yapay Zeka Ayarları</link>'nda bir yapay zeka sağlayıcısı yapılandırın.",
-      "failed": "Arama tamamlanamadı. Daha sonra tekrar deneyin."
+      "noProvider": "İletişim bilgilerini bulmak için <link>alacaklı arama ayarları</link> bölümünde bir kaynak ayarlayın.",
+      "failed": "Arama tamamlanamadı. Daha sonra tekrar deneyin.",
+      "quotaExceeded": "Bu ayki Google Places aramaları tükendi. <link>Alacaklı arama ayarları</link> bölümünden sınırı artırın veya gelecek ayı bekleyin."
     }
   },
   "merge": {

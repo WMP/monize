@@ -40,6 +40,8 @@ export const RESTORE_LABELS: Record<string, string> = {
   monthlyAccountBalances: 'Monthly Account Balances',
   autoBackupSettings: 'Auto-Backup Settings',
   aiProviderConfigs: 'AI Provider Configurations',
+  payeeLookupSettings: 'Payee lookup settings',
+  payeeLookupUsage: 'Payee lookup usage',
   monteCarloScenarios: 'Monte Carlo Scenarios',
   monteCarloCashFlows: 'Monte Carlo Cash Flows',
   institutions: 'Institutions',

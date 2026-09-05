@@ -14,6 +14,7 @@ import { DangerZoneSection } from '@/components/settings/DangerZoneSection';
 import { BackupRestoreSection } from '@/components/settings/BackupRestoreSection';
 import { AutoBackupSection } from '@/components/settings/AutoBackupSection';
 import { ApiAccessSection } from '@/components/settings/ApiAccessSection';
+import { PayeeLookupSection } from '@/components/settings/payee-lookup/PayeeLookupSection';
 import { HelpSection } from '@/components/settings/HelpSection';
 import { AboutSection } from '@/components/settings/AboutSection';
 import { SettingsNav, SettingsSection } from '@/components/settings/SettingsNav';
@@ -39,6 +40,7 @@ const SETTINGS_SECTION_IDS = [
   { id: 'emergency-access', navKey: 'emergencyAccess', href: '/settings/emergency-access', demoVisible: false },
   { id: 'api-access', navKey: 'apiAccess', demoVisible: false },
   { id: 'ai-settings', navKey: 'aiSettings', href: '/settings/ai', demoVisible: false },
+  { id: 'payee-lookup', navKey: 'payeeLookup', demoVisible: false },
   { id: 'backup-restore', navKey: 'backupRestore', demoVisible: false },
   // Automatic backups decide what the server writes to its own filesystem, so
   // only an administrator configures them. Everyone else is enrolled on the
@@ -377,6 +379,12 @@ function OwnerSettingsView() {
                     {t('aiSettingsCard.description')}
                   </p>
                 </Link>
+              </div>
+            )}
+
+            {!isDemoMode && (
+              <div id="payee-lookup" className="scroll-mt-32 lg:scroll-mt-22">
+                <PayeeLookupSection />
               </div>
             )}
 

@@ -135,7 +135,7 @@
     "button": "Tra cứu thông tin liên hệ",
     "inProgress": "Đang tra cứu...",
     "nothingNew": "Không tìm thấy thông tin liên hệ mới.",
-    "noProvider": "Hãy cấu hình nhà cung cấp AI trong Cài đặt AI để tra cứu thông tin liên hệ.",
+    "noProvider": "Thiết lập một nguồn trong cài đặt tra cứu người nhận để tìm thông tin liên hệ.",
     "failed": "Không thể hoàn tất tra cứu. Vui lòng thử lại sau.",
     "dialogTitle": "Xác nhận thông tin liên hệ",
     "dialogSubtitle": "Không có gì được lưu cho {name} cho đến khi bạn xác nhận.",
@@ -146,6 +146,7 @@
     "cancel": "Hủy",
     "confirm": "{count, plural, other {Lưu # thay đổi}}",
     "applied": "{count, plural, other {Đã lưu # thông tin liên hệ}}",
-    "applyFailed": "Không thể lưu thông tin liên hệ"
+    "applyFailed": "Không thể lưu thông tin liên hệ",
+    "quotaExceeded": "Đã dùng hết lượt tra cứu Google Places trong tháng này. Hãy tăng giới hạn trong cài đặt tra cứu người nhận, hoặc chờ sang tháng sau."
   }
 }

@@ -34,7 +34,8 @@
       "inactive": "[XX-Inactive-XX]",
       "withoutCategory": "[XX-Without Category-XX]"
     },
-    "applyDefaultCategories": "[XX-Apply Default Categories-XX]"
+    "applyDefaultCategories": "[XX-Apply Default Categories-XX]",
+    "lookupSettings": "[XX-Payee Lookup settings-XX]"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "[XX-Replaced by lookup:-XX]",
       "clear": "[XX-Undo lookup changes-XX]",
       "nothingFound": "[XX-No public contact details were found for this name.-XX]",
-      "noProvider": "[XX-Configure an AI provider in <link>AI Settings</link> to look up contact details.-XX]",
-      "failed": "[XX-The lookup could not be completed. Try again later.-XX]"
+      "noProvider": "[XX-Set up a lookup source in <link>Payee lookup settings</link> to find contact details.-XX]",
+      "failed": "[XX-The lookup could not be completed. Try again later.-XX]",
+      "quotaExceeded": "[XX-This month's Google Places lookups are used up. Raise the limit in <link>Payee lookup settings</link>, or wait until next month.-XX]"
     }
   },
   "merge": {

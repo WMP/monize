@@ -603,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "另一项操作正在替换此账户的数据。请等待其完成后重试。"
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places 由本服务器的管理员配置。此处只能更改开启或关闭设置。",
+    "encryptionKeyNotConfigured": "未配置 ENCRYPTION_KEY，无法安全存储 Google Places API 密钥。",
+    "notConfigured": "未配置任何 Google Places API 密钥。",
+    "capReached": "本月的 Google Places 请求已达上限。",
+    "testFailed": "Google Places 连接测试失败。",
+    "referrerRestricted": "此密钥受 HTTP 引荐来源网址限制，但本部署未设置 PUBLIC_APP_URL，因此不会发送任何引荐来源网址，任何允许列表都无法匹配。请设置 PUBLIC_APP_URL，或改为按 IP 地址限制密钥——这才是真正保护服务器端密钥的选项。",
+    "referrerRejected": "Google 拒绝了此密钥的 HTTP 引荐来源网址限制。Monize 发送“{referer}”（来自 PUBLIC_APP_URL）；请将该值原样添加到密钥的允许引荐来源中，并注意 *.example.com/* 这样的模式并不匹配纯粹的 example.com。按 IP 地址限制密钥才是真正保护服务器端密钥的选项。"
   }
 }

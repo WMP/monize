@@ -842,7 +842,8 @@
     "autoBackup": "Backup Automático",
     "help": "Ajuda e Suporte",
     "dangerZone": "Zona de Perigo",
-    "about": "Sobre"
+    "about": "Sobre",
+    "payeeLookup": "Busca de favorecidos"
   },
   "page": {
     "title": "Configurações",
@@ -905,14 +906,6 @@
         "step3": "As respostas são transmitidas de volta ao chat. Um ponto de status mostra se seu agente está conectado.",
         "note": "Nada é executado até seu agente estar conectado e ouvindo. O chat mostra as instruções de conexão."
       }
-    },
-    "payeeLookup": {
-      "title": "Busca automática de dados de contato do beneficiário",
-      "subtitle": "Busca automaticamente o site, o endereço, o e-mail e o número de telefone de um novo beneficiário por meio do seu provedor de IA configurado. É enviado o nome do beneficiário, junto com quaisquer anotações, site, endereço, e-mail e telefone que ele já tenha, para que a busca distinga a empresa e o local corretos.",
-      "toggleLabel": "Ativar a busca automática de dados de contato",
-      "enabled": "Busca automática de dados de contato ativada",
-      "disabled": "Busca automática de dados de contato desativada",
-      "saveFailed": "Não foi possível atualizar a configuração de busca de dados de contato"
     }
   },
   "sharedAccessPage": {
@@ -1186,5 +1179,60 @@
       "all": "Todo o período"
     },
     "estCostTooltip": "Estimado utilizando as taxas de custo que você configurou em cada provedor. Exclui qualquer atividade sem taxa correspondente definida."
+  },
+  "payeeLookup": {
+    "title": "Busca de favorecidos",
+    "subtitle": "De onde vêm o site, o endereço, o e-mail e o telefone de um favorecido, e quando uma busca é executada sozinha.",
+    "saved": "Configurações de busca de favorecidos salvas",
+    "saveFailed": "Não foi possível salvar as configurações de busca de favorecidos",
+    "loadFailed": "Não foi possível carregar as configurações de busca de favorecidos. Recarregue a página para tentar de novo.",
+    "googlePlaces": {
+      "toggleLabel": "Usar o Google Places na busca de favorecidos",
+      "notConfigured": "Adicione uma chave de API do Google Places para buscar empresas no diretório do Google em vez de usar seu provedor de IA.",
+      "operatorManaged": "Configurado pelo administrador deste servidor. Você pode desativá-lo para seus próprios favorecidos.",
+      "configure": "Configurar",
+      "edit": "Editar",
+      "removeKey": "Remover chave",
+      "usage": "Usado este mês: {used} de {cap}",
+      "usageNoCap": "Usado este mês: {used}. Sem limite mensal.",
+      "keyUnreadable": "Este servidor não consegue ler a chave de API salva. Isso acontece quando um backup é restaurado em outra instância ou após a chave de criptografia mudar. Digite a chave novamente para corrigir.",
+      "encryptionUnavailable": "Este servidor não tem chave de criptografia configurada, então uma chave de API não pode ser guardada com segurança. Peça ao administrador para configurar uma.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "O Monize envia ao Google o nome do favorecido e o endereço que você já tem, e não guarda nada lá.",
+      "apiKeyLabel": "Chave de API",
+      "apiKeyPlaceholder": "Cole sua chave de API do Google Places",
+      "apiKeyHelp": "Crie uma chave no console do Google Cloud com a Places API (New) ativada. Deixe em branco para manter a chave já salva.",
+      "capToggleLabel": "Limitar solicitações por mês",
+      "capHelp": "O Google oferece {free} solicitações Text Search gratuitas por mês para os campos de que esta busca precisa. Acima do limite, a busca recorre ao seu provedor de IA.",
+      "capLabel": "Solicitações por mês",
+      "capRange": "Digite um número entre {min} e {max}.",
+      "test": "Testar",
+      "testing": "Testando...",
+      "testSuccess": "O Google aceitou a chave.",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "setupInstructions": "Instruções de configuração"
+    },
+    "automatic": {
+      "title": "Busca automática de contatos de favorecidos",
+      "subtitle": "Buscar automaticamente o site, o endereço, o e-mail e o telefone de um novo favorecido. O nome do favorecido é enviado, junto com as observações, o site, o endereço, o e-mail e o telefone que ele já tiver, para que a busca distinga a empresa e o local certos.",
+      "toggleLabel": "Ativar a busca automática de contatos de favorecidos",
+      "enabled": "Busca automática de contatos ativada",
+      "disabled": "Busca automática de contatos desativada",
+      "saveFailed": "Não foi possível atualizar a configuração de busca de contatos",
+      "noSource": "Ative uma fonte acima para buscar favorecidos automaticamente. Com ambas desativadas, nada pode responder a uma busca."
+    },
+    "order": {
+      "title": "Qual fonte responde primeiro",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
+      "aiTitle": "Provedor de IA existente",
+      "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca.",
+      "aiToggleLabel": "Usar um provedor de IA para as buscas de favorecidos",
+      "aiProviderLabel": "Provedor a usar",
+      "aiProviderAny": "Qualquer provedor, por ordem de prioridade",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo"
+    }
   }
 }

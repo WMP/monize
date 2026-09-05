@@ -43,11 +43,17 @@ export class AiPayeeContactLookupProvider implements PayeeContactLookupProvider 
     return this.moduleRef.get(AiService, { strict: false });
   }
 
+  /**
+   * @param onlyConfigId pin the lookup to one of the user's providers. A pin
+   *   that resolves to nothing -- the provider was deactivated -- is
+   *   `no_provider`, never a fall-through to a model the user did not choose.
+   */
   async lookup(
     userId: string,
     input: PayeeContactLookupInput,
+    onlyConfigId?: string,
   ): Promise<PayeeContactSuggestion[]> {
-    const configs = await this.aiService.getActiveConfigs(userId);
+    const configs = await this.aiService.getActiveConfigs(userId, onlyConfigId);
     if (configs.length === 0) {
       throw new ContactLookupUnavailableError("no_provider");
     }
@@ -74,6 +80,7 @@ export class AiPayeeContactLookupProvider implements PayeeContactLookupProvider 
         },
         { maxUses: PAYEE_LOOKUP_MAX_SEARCHES },
         PAYEE_LOOKUP_FEATURE,
+        onlyConfigId,
       );
     } catch (error) {
       // AiService's BadRequestExceptions are the user-actionable ones: relay

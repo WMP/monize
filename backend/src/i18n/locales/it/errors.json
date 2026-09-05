@@ -603,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Un'altra operazione sta sostituendo i dati di questo account. Attendi che termini e riprova."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places è configurato dall'amministrazione di questo server. Qui è possibile modificare solo l'impostazione di attivazione.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY non è configurata. Impossibile memorizzare in sicurezza la chiave API di Google Places.",
+    "notConfigured": "Nessuna chiave API di Google Places configurata.",
+    "capReached": "Il limite di richieste Google Places di questo mese è stato raggiunto.",
+    "testFailed": "Il test di connessione a Google Places non è riuscito.",
+    "referrerRestricted": "Questa chiave è limitata dal referrer HTTP, ma questa installazione non ha PUBLIC_APP_URL impostata, quindi non invia alcun referrer e nessun elenco di autorizzazioni può corrispondere. Imposta PUBLIC_APP_URL, oppure limita la chiave per indirizzo IP, l'opzione che protegge davvero una chiave lato server.",
+    "referrerRejected": "Google ha rifiutato la restrizione per referrer HTTP di questa chiave. Monize invia \"{referer}\" (da PUBLIC_APP_URL); aggiungi esattamente quel valore ai referrer consentiti, tenendo presente che un pattern come *.example.com/* non corrisponde a un semplice example.com. Limitare la chiave per indirizzo IP è l'opzione che protegge davvero una chiave lato server."
   }
 }

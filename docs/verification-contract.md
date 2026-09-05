@@ -130,6 +130,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-RLS-001 role privilege | supporting | -- | **required** | -- | required | -- | -- | -- |
 | INV-CACHE-001 cache invalidation | required | **required** | -- | -- | -- | -- | -- | required |
 | INV-PAYEE-001 lookup never overwrites | **required** | supporting | optional | optional | -- | -- | -- | -- |
+| INV-PAYEE-002 Google Places monthly cap | optional | supporting | **required** | -- | -- | -- | -- | -- |
 | INV-RELEASE-001 one revision | required | -- | -- | -- | -- | -- | -- | workflow self-test |
 
 Bold marks the kind that is load-bearing -- the one whose absence means the

@@ -125,7 +125,10 @@ administrator at all does nothing.
 The same shape applies to the other outbound callers -- `CurrenciesService` (FX),
 the AI providers, `UpdatesService`, `favicon.service`, `password-breach.service`.
 They are not wired to the breaker in this change, and
-`provider-call.guard.spec.ts` scopes its scan to `src/securities/` for that
+`provider-call.guard.spec.ts` scopes its scan to `src/securities/` and
+`src/payees/lookup/google-places/` (which adopted the breaker with the payee
+contact lookup, and whose rejected-key 4xx is recorded as a SUCCESS -- the host
+answered, and one user's bad key must not open a deployment-wide breaker) for that
 reason. Adopting one is: pick an id in `TRACKED_PROVIDERS`, call `assertAvailable` (or
 `tryRequest`, where the caller's contract is a `null` rather than a throw)
 before the request, `recordSuccess` on any response, `recordFailure` on a

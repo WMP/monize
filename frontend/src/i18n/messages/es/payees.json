@@ -34,7 +34,8 @@
       "inactive": "Inactivos",
       "withoutCategory": "Sin categoría"
     },
-    "applyDefaultCategories": "Aplicar categorías predeterminadas"
+    "applyDefaultCategories": "Aplicar categorías predeterminadas",
+    "lookupSettings": "Ajustes de búsqueda de beneficiarios"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Reemplazado por la búsqueda:",
       "clear": "Deshacer los cambios de la búsqueda",
       "nothingFound": "No se encontraron datos de contacto públicos para este nombre.",
-      "noProvider": "Configure un proveedor de IA en <link>Ajustes de IA</link> para buscar datos de contacto.",
-      "failed": "No se pudo completar la búsqueda. Inténtelo de nuevo más tarde."
+      "noProvider": "Configura una fuente en <link>Ajustes de búsqueda de beneficiarios</link> para encontrar datos de contacto.",
+      "failed": "No se pudo completar la búsqueda. Inténtelo de nuevo más tarde.",
+      "quotaExceeded": "Se han agotado las consultas de Google Places de este mes. Aumenta el límite en <link>Ajustes de búsqueda de beneficiarios</link> o espera al mes que viene."
     }
   },
   "merge": {

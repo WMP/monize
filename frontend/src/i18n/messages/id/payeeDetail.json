@@ -135,7 +135,7 @@
     "button": "Cari detail kontak",
     "inProgress": "Mencari...",
     "nothingNew": "Tidak ditemukan detail kontak baru.",
-    "noProvider": "Konfigurasikan penyedia AI di Pengaturan AI untuk mencari detail kontak.",
+    "noProvider": "Siapkan sumber di pengaturan pencarian penerima untuk menemukan detail kontak.",
     "failed": "Pencarian tidak dapat diselesaikan. Coba lagi nanti.",
     "dialogTitle": "Konfirmasi detail kontak",
     "dialogSubtitle": "Tidak ada yang disimpan untuk {name} sampai Anda mengonfirmasi.",
@@ -146,6 +146,7 @@
     "cancel": "Batal",
     "confirm": "{count, plural, other {Simpan # perubahan}}",
     "applied": "{count, plural, other {# detail kontak disimpan}}",
-    "applyFailed": "Tidak dapat menyimpan detail kontak"
+    "applyFailed": "Tidak dapat menyimpan detail kontak",
+    "quotaExceeded": "Pencarian Google Places bulan ini sudah habis. Naikkan batasnya di pengaturan pencarian penerima, atau tunggu bulan depan."
   }
 }

@@ -135,7 +135,7 @@
     "button": "İletişim bilgilerini ara",
     "inProgress": "Aranıyor...",
     "nothingNew": "Yeni iletişim bilgisi bulunamadı.",
-    "noProvider": "İletişim bilgilerini aramak için Yapay Zeka Ayarları'nda bir yapay zeka sağlayıcısı yapılandırın.",
+    "noProvider": "İletişim bilgilerini bulmak için alacaklı arama ayarları bölümünde bir kaynak ayarlayın.",
     "failed": "Arama tamamlanamadı. Daha sonra tekrar deneyin.",
     "dialogTitle": "İletişim bilgilerini onayla",
     "dialogSubtitle": "Siz onaylayana kadar {name} için hiçbir şey kaydedilmez.",
@@ -146,6 +146,7 @@
     "cancel": "İptal",
     "confirm": "{count, plural, other {# değişikliği kaydet}}",
     "applied": "{count, plural, other {# iletişim bilgisi kaydedildi}}",
-    "applyFailed": "İletişim bilgileri kaydedilemedi"
+    "applyFailed": "İletişim bilgileri kaydedilemedi",
+    "quotaExceeded": "Bu ayki Google Places aramaları tükendi. Alacaklı arama ayarları bölümünden sınırı artırın veya gelecek ayı bekleyin."
   }
 }

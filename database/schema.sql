@@ -1498,6 +1498,62 @@ CREATE TABLE ai_provider_configs (
 CREATE INDEX idx_ai_provider_configs_user ON ai_provider_configs(user_id);
 CREATE INDEX idx_ai_provider_configs_user_active ON ai_provider_configs(user_id, is_active);
 
+-- Payee contact lookup: Google Places configuration and request counters
+-- (migration 188). See backend/src/payees/lookup/google-places/.
+-- api_key_enc is ciphertext under ENCRYPTION_KEY, named to match
+-- ai_provider_configs.api_key_enc so the backup key transport applies.
+-- monthly_cap defaults to 1000: the free monthly allowance of Google's Text
+-- Search Enterprise SKU, which is the SKU a field mask asking for websiteUri
+-- or internationalPhoneNumber is billed at.
+CREATE TABLE payee_lookup_settings (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    api_key_enc TEXT,                     -- Encrypted Google Places API key (null = user configured none)
+    google_places_enabled BOOLEAN NOT NULL DEFAULT true,
+    -- The AI source's own switch (migration 191). Symmetric with the one
+    -- above: disabled means never reached, not even as the fallback when the
+    -- Places cap is spent.
+    ai_enabled BOOLEAN NOT NULL DEFAULT true,
+    cap_enabled BOOLEAN NOT NULL DEFAULT true,
+    monthly_cap INTEGER NOT NULL DEFAULT 1000,
+    -- Which source answers first (migration 189). An order, not a switch: the
+    -- other source is still reached when this one cannot answer for a
+    -- configuration or budget reason, never to paper over a failure.
+    preferred_source VARCHAR(20) NOT NULL DEFAULT 'google-places',
+    -- Which AI provider answers, when AI does (migration 190). NULL = no
+    -- preference: every active provider in priority order, as before. Pinned so
+    -- a lookup cannot fall through to a model the user did not choose to pay
+    -- for. SET NULL on delete: losing the provider must not delete the Google
+    -- Places key stored beside it.
+    ai_provider_config_id UUID REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payee_lookup_settings_monthly_cap_check
+        CHECK (monthly_cap BETWEEN 1 AND 1000000),
+    CONSTRAINT payee_lookup_settings_preferred_source_check
+        CHECK (preferred_source IN ('google-places', 'ai'))
+);
+
+CREATE TRIGGER update_payee_lookup_settings_updated_at
+    BEFORE UPDATE ON payee_lookup_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Per-user request counter for a user's own Google Places key. month is a
+-- Pacific 'YYYY-MM' string written by the claim statement -- Pacific because
+-- Google's free monthly allowance resets at midnight Pacific on the 1st.
+CREATE TABLE payee_lookup_usage (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    month CHAR(7) NOT NULL,
+    google_places_requests INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, month)
+);
+
+-- Request counter for the OPERATOR's key (GOOGLE_PLACES_API_KEY). No owner
+-- column: one operator key is one bill. RLS-exempt, like provider_health.
+CREATE TABLE google_places_instance_usage (
+    month CHAR(7) PRIMARY KEY,
+    requests INTEGER NOT NULL DEFAULT 0
+);
+
 -- AI Usage Logs (token usage tracking per AI request)
 CREATE TABLE ai_usage_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -2445,6 +2501,8 @@ DECLARE
         'notification_reminders',
         'notifications',
         'payee_aliases',
+        'payee_lookup_settings',
+        'payee_lookup_usage',
         'push_subscriptions',
         'scheduled_transactions',
         'securities',
@@ -2994,6 +3052,7 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --
 -- rls-exempt: currencies
 -- rls-exempt: exchange_rates
+-- rls-exempt: google_places_instance_usage
 -- rls-exempt: market_index_prices
 -- rls-exempt: market_index_sync
 -- rls-exempt: oauth_payloads

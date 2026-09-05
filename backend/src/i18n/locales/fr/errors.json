@@ -603,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Une autre operation remplace actuellement les donnees de ce compte. Attendez qu'elle se termine puis reessayez."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places est configuré par l'administration de ce serveur. Seul le réglage activé/désactivé peut être modifié ici.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY n'est pas configurée. Impossible de stocker la clé d'API Google Places en sécurité.",
+    "notConfigured": "Aucune clé d'API Google Places n'est configurée.",
+    "capReached": "La limite de requêtes Google Places de ce mois est atteinte.",
+    "testFailed": "Le test de connexion à Google Places a échoué.",
+    "referrerRestricted": "Cette clé est restreinte par référent HTTP, mais cette installation n'a pas de PUBLIC_APP_URL définie : aucun référent n'est envoyé et aucune liste d'autorisation ne peut correspondre. Définissez PUBLIC_APP_URL, ou restreignez la clé par adresse IP, l'option qui protège réellement une clé côté serveur.",
+    "referrerRejected": "Google a rejeté la restriction de référent HTTP de cette clé. Monize envoie « {referer} » (depuis PUBLIC_APP_URL) ; ajoutez exactement cette valeur aux référents autorisés, en notant qu'un motif tel que *.example.com/* ne correspond pas à un simple example.com. Restreindre la clé par adresse IP est l'option qui protège réellement une clé côté serveur."
   }
 }

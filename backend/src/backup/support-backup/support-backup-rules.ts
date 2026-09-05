@@ -33,7 +33,8 @@ export type TableRules = Record<string, ColumnRule>;
 /**
  * Tables never written to a support backup regardless of section selection.
  * `ai_provider_configs` holds encrypted API keys and endpoint URLs with zero
- * diagnostic value for a finance bug, so it is dropped wholesale. The two
+ * diagnostic value for a finance bug, so it is dropped wholesale, and
+ * `payee_lookup_settings` holds a Google Places key for the same reason. The two
  * attachment tables carry user-uploaded receipts/documents: `attachment_blobs`
  * is raw file bytes (a NOT NULL BYTEA with no useful de-identified form) and
  * `transaction_attachments` is their metadata (filenames can embed PII), so
@@ -42,11 +43,21 @@ export type TableRules = Record<string, ColumnRule>;
  */
 export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "ai_provider_configs",
+  "payee_lookup_settings",
   "transaction_attachments",
   "attachment_blobs",
 ]);
 
 export const RULES: Record<string, TableRules> = {
+  // How many Google Places requests a month cost, and nothing else: a user id
+  // (kept as an FK everywhere here), a YYYY-MM, and a counter. Nothing about
+  // it names a payee, so nothing needs masking -- and the count is exactly
+  // what a support case about a cap would be asking to see.
+  payee_lookup_usage: {
+    user_id: keep,
+    month: keep,
+    google_places_requests: keep,
+  },
   currencies: {
     code: keep,
     name: keep,

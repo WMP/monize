@@ -34,7 +34,8 @@
       "inactive": "Inactief",
       "withoutCategory": "Zonder categorie"
     },
-    "applyDefaultCategories": "Standaardcategorieën toepassen"
+    "applyDefaultCategories": "Standaardcategorieën toepassen",
+    "lookupSettings": "Instellingen voor begunstigde opzoeken"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Vervangen door de zoekopdracht:",
       "clear": "Wijzigingen van de zoekopdracht ongedaan maken",
       "nothingFound": "Er zijn geen openbare contactgegevens voor deze naam gevonden.",
-      "noProvider": "Stel een AI-provider in bij <link>AI-instellingen</link> om contactgegevens op te zoeken.",
-      "failed": "De zoekopdracht kon niet worden voltooid. Probeer het later opnieuw."
+      "noProvider": "Stel een bron in bij <link>instellingen voor begunstigde opzoeken</link> om contactgegevens te vinden.",
+      "failed": "De zoekopdracht kon niet worden voltooid. Probeer het later opnieuw.",
+      "quotaExceeded": "De Google Places-opzoekacties van deze maand zijn op. Verhoog de limiet bij <link>instellingen voor begunstigde opzoeken</link>, of wacht tot volgende maand."
     }
   },
   "merge": {

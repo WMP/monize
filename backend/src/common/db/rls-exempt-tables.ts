@@ -24,6 +24,8 @@ export const RLS_EXEMPT_TABLES: Readonly<Record<string, string>> = {
     "Global reference data keyed by ISO 4217 code; created_by_user_id is attribution, not ownership.",
   exchange_rates:
     "Global reference data with no owner column; written by the scheduled refresh under system context.",
+  google_places_instance_usage:
+    "Request counter for the operator's own Google Places key; no owner column, one key is one bill.",
   market_index_prices:
     "Global market reference data with no owner column; one index close serves every user.",
   market_index_sync:

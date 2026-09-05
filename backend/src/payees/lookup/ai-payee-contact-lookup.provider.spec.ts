@@ -89,7 +89,44 @@ describe("AiPayeeContactLookupProvider", () => {
       },
       { maxUses: PAYEE_LOOKUP_MAX_SEARCHES },
       PAYEE_LOOKUP_FEATURE,
+      // No pin: every active provider, in priority order, as before.
+      undefined,
     );
+  });
+
+  describe("pinned to one provider", () => {
+    const CONFIG_ID = "22222222-2222-4222-8222-222222222222";
+
+    it("asks only that provider", async () => {
+      await provider.lookup(userId, { name: "Acme" }, CONFIG_ID);
+
+      // The pin narrows both the availability check and the call, so a
+      // deactivated provider cannot be answered by a different one.
+      expect(aiService.getActiveConfigs).toHaveBeenCalledWith(
+        userId,
+        CONFIG_ID,
+      );
+      expect(aiService.completeWithWebSearch).toHaveBeenCalledWith(
+        userId,
+        expect.anything(),
+        expect.anything(),
+        PAYEE_LOOKUP_FEATURE,
+        CONFIG_ID,
+      );
+    });
+
+    it("is no_provider when the pinned provider can no longer answer", async () => {
+      // Deactivated rather than deleted -- the foreign key cannot see that, so
+      // the pin survives and resolves to nothing. Falling through to another
+      // model would spend a budget the user did not choose, which is the one
+      // outcome a pin exists to prevent.
+      aiService.getActiveConfigs.mockResolvedValue([]);
+
+      await expect(
+        provider.lookup(userId, { name: "Acme" }, CONFIG_ID),
+      ).rejects.toMatchObject({ reason: "no_provider" });
+      expect(aiService.completeWithWebSearch).not.toHaveBeenCalled();
+    });
   });
 
   it("flattens a multi-line name before it reaches the prompt", async () => {

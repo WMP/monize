@@ -34,7 +34,8 @@
       "inactive": "Inativos",
       "withoutCategory": "Sem Categoria"
     },
-    "applyDefaultCategories": "Aplicar categorias padrão"
+    "applyDefaultCategories": "Aplicar categorias padrão",
+    "lookupSettings": "Configurações de busca de favorecidos"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Substituído pela busca:",
       "clear": "Desfazer as alterações da busca",
       "nothingFound": "Nenhum dado de contato público foi encontrado para este nome.",
-      "noProvider": "Configure um provedor de IA nas <link>Configurações de IA</link> para buscar dados de contato.",
-      "failed": "Não foi possível concluir a busca. Tente novamente mais tarde."
+      "noProvider": "Configure uma fonte nas <link>configurações de busca de favorecidos</link> para encontrar dados de contato.",
+      "failed": "Não foi possível concluir a busca. Tente novamente mais tarde.",
+      "quotaExceeded": "As buscas do Google Places deste mês acabaram. Aumente o limite nas <link>configurações de busca de favorecidos</link> ou espere até o próximo mês."
     }
   },
   "merge": {

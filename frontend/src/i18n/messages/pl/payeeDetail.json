@@ -135,7 +135,7 @@
     "button": "Wyszukaj dane kontaktowe",
     "inProgress": "Wyszukiwanie...",
     "nothingNew": "Nie znaleziono nowych danych kontaktowych.",
-    "noProvider": "Skonfiguruj dostawcę AI w Ustawieniach AI, aby wyszukiwać dane kontaktowe.",
+    "noProvider": "Skonfiguruj źródło w ustawieniach wyszukiwania odbiorców, aby znaleźć dane kontaktowe.",
     "failed": "Nie udało się ukończyć wyszukiwania. Spróbuj ponownie później.",
     "dialogTitle": "Potwierdź dane kontaktowe",
     "dialogSubtitle": "Nic nie zostanie zapisane dla {name}, dopóki nie potwierdzisz.",
@@ -146,6 +146,7 @@
     "cancel": "Anuluj",
     "confirm": "{count, plural, one {Zapisz # zmianę} few {Zapisz # zmiany} many {Zapisz # zmian} other {Zapisz # zmiany}}",
     "applied": "{count, plural, one {Zapisano # dane kontaktowe} few {Zapisano # dane kontaktowe} many {Zapisano # danych kontaktowych} other {Zapisano # danych kontaktowych}}",
-    "applyFailed": "Nie udało się zapisać danych kontaktowych"
+    "applyFailed": "Nie udało się zapisać danych kontaktowych",
+    "quotaExceeded": "Wyczerpano tegomiesięczne zapytania Google Places. Zwiększ limit w ustawieniach wyszukiwania odbiorców lub poczekaj do przyszłego miesiąca."
   }
 }

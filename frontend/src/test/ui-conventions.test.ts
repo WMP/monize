@@ -2447,3 +2447,57 @@ describe("a date-only string reaches formatDate unwrapped", () => {
     expect(WRAPPED.test("{formatDate(preview.endDate)}")).toBe(false);
   });
 });
+
+describe("a payee contact lookup surface asks whether a lookup can run", () => {
+  /**
+   * `useAiConfigured` answers "does this user have an AI provider", which was
+   * the whole question while AI was the only lookup source. Google Places now
+   * answers the same lookup, so a surface gated on the AI hook hides its
+   * button from exactly the user this feature exists for -- one who configured
+   * Places and no AI. `useContactLookupAvailable` is the question those
+   * surfaces have to ask.
+   *
+   * The assistant is deliberately unaffected: a chat genuinely needs a model,
+   * so `AiChatBubble` and `AiBubbleToggle` keep the AI hook.
+   */
+  const LOOKUP_CALLERS =
+    /payeesApi\.lookupContact|usePayeeContactLookup|ContactLookupDialog/;
+  const AI_HOOK = /useAiConfigured/;
+
+  function lookupSurfaces(): [string, string][] {
+    return productionSources()
+      .map(([path, content]) => [path, withoutComments(content)] as [string, string])
+      .filter(([path, content]) => {
+        // The hook and the dialog's own module define these names rather than
+        // consuming them.
+        if (path.endsWith("/useContactLookupAvailable.ts")) return false;
+        if (path.endsWith("/ContactLookupDialog.tsx")) return false;
+        return LOOKUP_CALLERS.test(content);
+      });
+  }
+
+  it("finds the lookup surfaces, so the rule below is not vacuous", () => {
+    // A scan that silently matched nothing is the failure mode of every guard
+    // here, so it asserts its own subject first.
+    expect(lookupSurfaces().length).toBeGreaterThan(1);
+  });
+
+  it("gates no lookup surface on the AI-only hook", () => {
+    const offenders = lookupSurfaces()
+      .filter(([, content]) => AI_HOOK.test(content))
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+
+  it("still recognises the pattern it bans", () => {
+    // Comments are stripped first, so the paragraph above -- which has to name
+    // the banned hook to explain itself -- cannot fail its own rule.
+    const offending = `import { useAiConfigured } from '@/hooks/useAiConfigured';
+      const x = usePayeeContactLookup();`;
+    expect(LOOKUP_CALLERS.test(offending)).toBe(true);
+    expect(AI_HOOK.test(withoutComments(offending))).toBe(true);
+    expect(AI_HOOK.test(withoutComments("// useAiConfigured is banned here"))).toBe(
+      false,
+    );
+  });
+});

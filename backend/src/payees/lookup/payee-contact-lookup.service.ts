@@ -14,6 +14,26 @@ import {
   PayeeContactSuggestion,
 } from "./payee-contact-lookup.types";
 
+/**
+ * The language tag split into the two codes a directory API takes.
+ *
+ * `en-CA` gives both; a bare `en` gives a language and NO region, which is
+ * correct rather than unfortunate -- a region biases which country a bare name
+ * resolves in, and guessing one from a language would file a "Boots" in the
+ * wrong country as confidently as it files the right one.
+ *
+ * This is a search bias, not a phone-number region: the two are unrelated, and
+ * a suggested number is still normalized with no region at all (`vetCandidate`).
+ */
+function localeCodes(
+  language: string | null | undefined,
+): { language?: string; region?: string } | undefined {
+  if (!language) return undefined;
+  const [base, region] = language.split("-");
+  if (!base) return undefined;
+  return region ? { language, region: region.toUpperCase() } : { language };
+}
+
 export interface ContactLookupOptions {
   /**
    * Skip the opt-in preference. Only for a lookup the user just asked for by
@@ -27,6 +47,11 @@ export interface ContactLookupOptions {
 interface LookupPreferences {
   enabled: boolean;
   hint: string | undefined;
+  /**
+   * The same facts as `hint`, in codes rather than prose. A model reads the
+   * sentence; a directory API takes `languageCode`/`regionCode`.
+   */
+  locale: { language?: string; region?: string } | undefined;
 }
 
 /**
@@ -78,13 +103,21 @@ export class PayeeContactLookupService {
       candidates = await this.provider.lookup(userId, {
         name: input.name,
         hint: input.hint ?? preferences.hint,
+        locale: input.locale ?? preferences.locale,
         known: input.known,
       });
     } catch (error) {
       if (error instanceof ContactLookupUnavailableError) {
-        return error.reason === "no_provider"
-          ? { reason: "no_provider", suggestions: [] }
-          : { reason: "failed", suggestions: [], detail: error.detail };
+        // Three reasons, three repairs: configure a provider, wait out or raise
+        // the Google Places cap, or fix whatever the detail names. Folding any
+        // two of them together sends the user to the wrong one.
+        if (error.reason === "no_provider") {
+          return { reason: "no_provider", suggestions: [] };
+        }
+        if (error.reason === "quota_exceeded") {
+          return { reason: "quota_exceeded", suggestions: [] };
+        }
+        return { reason: "failed", suggestions: [], detail: error.detail };
       }
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
@@ -188,6 +221,7 @@ export class PayeeContactLookupService {
     return {
       enabled: prefs?.payeeContactLookupEnabled === true,
       hint: parts.length > 0 ? parts.join("; ") : undefined,
+      locale: localeCodes(prefs?.language),
     };
   }
 }
