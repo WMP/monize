@@ -282,25 +282,38 @@ export function InvestmentTransactionCardBody({
     // nowrap text to the table's minimum. On a phone that is not merely a
     // scrollbar -- mobile Chrome sizes the viewport `position: fixed` attaches
     // to from the widest content on the page.
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
-      {/* Line 1, left: the date. Uncaptioned -- it is the row's identity, and
-          it is the one column a phone-width tier row already shows. */}
-      <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
-        {formatDate(tx.transactionDate)}
-      </div>
-      {/* Line 1, middle: what was traded. The action label and the symbol
-          share a `flex-wrap` row for the reason the payee card's name row
-          does: the SYMBOL is the shrinkable one (`truncate` floors its
-          min-width at zero) while an action label cannot shrink below its own
-          words -- and these words are long ("Reinwestycja krótkoterminowych
-          zysków kapitałowych" in `pl`, 49 characters against "Buy"). Wrapping
-          lets the label take its own line instead of taking the symbol's
-          width, and `break-words` handles the locale whose single longest word
-          still overruns a 320px track. Both are self-describing, so neither
-          takes a caption; the security name hangs under them exactly as it
-          hangs under the tier's Symbol cell at Normal density. */}
+    //
+    // TWO tracks on line 1, not three, and the date rides inside the identity
+    // one. Three items there means two `auto` tracks either side of the
+    // identity, and an `auto` track takes MAX-content: at 320px a nowrap date
+    // (76px) and a six-figure Total in `pl` (150px) left the identity 69px --
+    // narrower than "krótkoterminowych" is on its own, so `break-words` did
+    // what it is there to do and shattered the action label across seven
+    // lines, 237px of row for one trade. Measured in Chromium: folding the
+    // date into the identity track takes it to 162px at 320px and 232px at
+    // 390px, no word breaks, 193px of row -- and `documentElement.scrollWidth`
+    // and the table's own still equal the viewport at 320, 390 and 800.
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
+      {/* Line 1, left: when, and what was traded. The date leads, uncaptioned
+          -- it is the row's identity and the one column a phone-width tier row
+          already shows -- and it cannot shrink, so the action label and the
+          symbol are what yield beside it.
+
+          Those two share a `flex-wrap` row for the reason the payee card's
+          name row does: the SYMBOL is the shrinkable one (`truncate` floors
+          its min-width at zero) while an action label cannot shrink below its
+          own words -- and these words are long ("Reinwestycja
+          krótkoterminowych zysków kapitałowych" in `pl`, 49 characters against
+          "Buy"). Wrapping lets the label take its own line instead of taking
+          the symbol's width, and `break-words` remains the last resort for a
+          word longer than the whole track. All three are self-describing, so
+          none takes a caption; the security name hangs under them exactly as
+          it hangs under the tier's Symbol cell at Normal density. */}
       <div className="min-w-0">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
+            {formatDate(tx.transactionDate)}
+          </span>
           <span className={`min-w-0 break-words text-sm font-medium ${actionInfo.color}`}>
             {actionInfo.label}
           </span>
@@ -311,9 +324,14 @@ export function InvestmentTransactionCardBody({
             {tx.security?.symbol || '-'}
           </span>
         </div>
+        {/* The tier's Symbol cell lets this name WRAP (it carries no
+            `whitespace-nowrap`), so cutting it to one line here would lose
+            more than the tier does. `line-clamp-2` keeps two and adds no
+            minimum width, so containment is identical to `truncate`; `title`
+            recovers the rest for a pointer and for assistive technology. */}
         {tx.security?.name && (
           <div
-            className="truncate text-xs text-gray-500 dark:text-gray-400"
+            className="line-clamp-2 text-xs text-gray-500 dark:text-gray-400"
             title={tx.security.name}
           >
             {tx.security.name}
@@ -351,7 +369,7 @@ export function InvestmentTransactionCardBody({
           is a locale-sized width input. Both of these columns are ones a phone
           cannot see at all in the tier table (Shares below `sm`, Price below
           `md`), which is what the card is for. */}
-      <div className="col-span-3 grid grid-cols-2 items-start gap-x-4">
+      <div className="col-span-2 grid grid-cols-2 items-start gap-x-4">
         <div>
           <CellLabel>{t('transactionList.sharesColumn')}</CellLabel>
           <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
@@ -375,7 +393,7 @@ export function InvestmentTransactionCardBody({
           -- one word, at most "Belum Direkonsiliasi" -- and it needs no
           caption: it names itself. `items-end` sits it on the account value's
           own line rather than centred against the caption above it. */}
-      <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
+      <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
         <div className="min-w-0">
           <CellLabel>{t('transactionList.accountColumn')}</CellLabel>
           <div

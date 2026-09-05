@@ -381,8 +381,28 @@ describe('the investment register on a phone', () => {
     // captioned neighbour starves the track beside it. Equal fr tracks stop
     // that, so this line names no `auto` track at all.
     expect(grids[1].className).not.toContain('auto');
-    // The symbol, the security name and the account name.
-    expect(row.querySelectorAll('.truncate')).toHaveLength(3);
+
+    // Line 1 has exactly ONE `auto` track -- the Total. It used to have two,
+    // with the date in its own, and an auto track takes MAX-content: at 320px
+    // a nowrap date and a six-figure `pl` Total left the identity 69px, so
+    // `break-words` shattered the longest action label across seven lines
+    // (237px of row for one trade). The date rides inside the identity track
+    // now, which measures 162px at 320px and 231px at 390px in the replica.
+    expect(grids[0].className).toContain('grid-cols-[minmax(0,1fr)_auto]');
+    expect(within(row).getByText('2024-01-15').parentElement).toBe(
+      within(row).getByText('BRK.B').parentElement,
+    );
+
+    // The symbol and the account name truncate; the SECURITY NAME does not.
+    // The tier's Symbol cell lets that name wrap (no `whitespace-nowrap`), so
+    // cutting it to one line here would lose more than the tier does --
+    // `line-clamp-2` keeps two and contains identically, because a wrapping
+    // box adds no minimum width either.
+    expect(row.querySelectorAll('.truncate')).toHaveLength(2);
+    const secName = within(row).getByText('Berkshire Hathaway Inc. Class B Common');
+    expect(secName.className).toContain('line-clamp-2');
+    expect(secName.className).not.toContain('truncate');
+    expect(secName.getAttribute('title')).toBe('Berkshire Hathaway Inc. Class B Common');
   });
 
   it('lets a long action label yield a line rather than the symbol its width', () => {
