@@ -65,7 +65,8 @@ function scheduledOccurrenceAmount(
  * `bounded` is the one thing a caller may vary, and it is layout, not meaning:
  * the tier cell has a column to sit in, while the card's chip shares a grid
  * track with a caption, so there it takes `max-w-full` and truncates its label
- * inside the chip the way `CategoryPill` does.
+ * inside the chip the way `CategoryPill` does -- `title` included, since a
+ * label a track cut has to stay recoverable.
  */
 function ScheduledCategoryMarker({
   transaction,
@@ -110,6 +111,11 @@ function ScheduledCategoryMarker({
   ) : transaction.category ? (
     <span
       className={`inline-flex text-xs font-medium rounded-full ${badgePadding}${cap}`}
+      // Only where the label can be cut: `CategoryPill` pairs its inner
+      // `truncate` with a `title`, and copying the truncation without the
+      // recovery leaves the one surface that shows a category unable to
+      // read it. The tier chip is uncut, so it keeps no attribute at all.
+      title={bounded ? transaction.category.name : undefined}
       style={{
         backgroundColor: categoryColor
           ? `color-mix(in srgb, ${categoryColor} 15%, var(--category-bg-base, #e5e7eb))`
