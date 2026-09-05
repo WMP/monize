@@ -188,13 +188,19 @@ const PHONE_HEADER_CLASS =
 // And a caption that CANNOT break is what sizes a layout like this, not the
 // money -- so every string in the catalogue for all six captioned columns (120
 // strings across 20 locales) was rendered into the 122px a track gets at
-// 320px, at `CellLabel`'s own type. NONE of them overflows: the six that need
-// a second line all have a break opportunity (`Presupuesto promedio`,
-// `Загальне відхилення`, `[XX-Total Variance-XX]`, and -- measured, not
-// assumed -- `Przekroczone/Łącznie`, which Chromium breaks after the solidus).
-// So no column takes a spanning track. Those six cells are 41px instead of
-// 29px at 320px in their own locales, which is a documented cost rather than a
-// defect: rule 2 forbids the shorter catalogue key that would avoid it.
+// 320px, at `CellLabel`'s own type. NONE of them overflows, and the six that
+// need a second line are named here in full so a catalogue edit can be
+// re-measured against a list rather than against a count: `Presupuesto
+// promedio` (es, Avg Budget), `Середнє планування` (uk, Avg Budget),
+// `Загальне відхилення` (uk, Total Variance), `[XX-Total Variance-XX]` (xx),
+// and the two -- measured, not assumed -- that Chromium breaks after the
+// solidus, `Przekroczone/Łącznie` (pl) and `Перевищення/Разом` (uk), both
+// Over/Total. So no column takes a spanning track. Those six cells are 41px
+// instead of 29px at 320px in their own locales, which is a documented cost
+// rather than a defect: rule 2 forbids the shorter catalogue key that would
+// avoid it. Over/Total is nonetheless placed in the LEFT track, because a
+// caption that one day loses its break opportunity spends the 12px column gap
+// there rather than reopening the wrapper's sideways scroll.
 const FIGURE_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:text-sm';
 
 /** Every caption in a wrapped cell is phone-only. */
