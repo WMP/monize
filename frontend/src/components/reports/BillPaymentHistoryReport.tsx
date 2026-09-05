@@ -86,9 +86,13 @@ const PHONE_HEADER_CLASS =
 // table's own `px-4 py-3` from `sm` up. Smaller type on phones so an
 // eight-figure compact amount still fits half the width.
 //
-// `whitespace-nowrap` is the one property here that is NOT phone-only, and it
-// is deliberate: `formatCurrencyCompact` groups thousands, and a locale that
-// groups them with a space (`12 345 678 CHF`) could otherwise break a figure in
+// `whitespace-nowrap` is the one property here that CHANGES the desktop
+// rendering. It is not the only unprefixed one -- `text-right` applies at every
+// width too, and must, because it is the alignment these columns already have
+// from `sm` up (the count is the exception and takes it back with
+// `sm:text-center`). The nowrap is deliberate: `formatCurrencyCompact` groups
+// thousands, and a locale that groups them with a space (`12 345 678 CHF`)
+// could otherwise break a figure in
 // the middle at any width -- which is what this table does today. Measured
 // price: at 800px the identity column gives up 5-7px to the figure columns in
 // `en`/`pl`/`de`/`xx` and nothing at all in `ru`/`id`; row heights and every
@@ -404,9 +408,11 @@ export function BillPaymentHistoryReport() {
               thing closing the card on line 3.
 
               Which caption goes in which track is a measurement, not a taste.
-              All 80 catalogue strings for the four captioned columns -- every
-              one of the 20 locales that ship a `reports` catalogue, the
-              pseudo-locale included -- were rendered into the 122px a track gets
+              All 80 catalogue strings for the four captioned columns -- the 20
+              locales that DEFINE these keys, the pseudo-locale included; 22
+              ship a `reports` catalogue, and the two lean regional variants
+              (`en-GB`, `en-US`) inherit `en`'s strings per key -- were rendered
+              into the 122px a track gets
               at 320px, at `CellLabel`'s own type. NONE overflows, and exactly
               two need a second line, both of them Last Payment: `Pembayaran
               Terakhir` (id, 125px unbroken) and `Lần thanh toán cuối` (vi,
