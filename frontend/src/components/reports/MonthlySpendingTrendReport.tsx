@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { gainLossColor } from '@/lib/format';
+import { CellLabel } from '@/components/ui/Table';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +36,51 @@ import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
 
 type MonthlySpendingSortField = 'name' | 'income' | 'expenses' | 'net';
 
+/**
+ * One sortable column of the table view. The four are declared once and
+ * rendered by BOTH header rows -- the column header row (from `sm` up) and the
+ * phone sort strip -- so the two can never list different fields.
+ */
+interface SortColumn {
+  field: MonthlySpendingSortField;
+  label: string;
+  /** Money columns are right-aligned in the column header row. */
+  align?: 'right';
+}
+
+const HEADER_CLASS =
+  'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
+
+// The same sort controls in the phone strip: a wrapped row of compact chips.
+// Column alignment means nothing there -- the column header row is hidden and
+// each data row is a grid -- so every control is left-aligned and self-naming.
+// The border and card background are what say "tappable": there is no hover on
+// a touch screen, and without them the strip reads as another row of the
+// captions the cells below carry.
+const PHONE_HEADER_CLASS =
+  'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
+
+// A money cell inside a wrapped card: no padding of its own below `sm` (the row
+// supplies it and the grid does the spacing), the table cell's own padding from
+// `sm` up. Smaller type on phones, and `whitespace-nowrap` so a locale that
+// groups thousands with a space cannot break in the middle of a number.
+//
+// Width budget, measured on a hand-CSS replica in Chromium. This report
+// formats with `formatCurrencyCompact` (no decimals, narrow symbol), so the
+// widest realistic value is far shorter than a 2dp one. Two equal
+// `minmax(0,1fr)` tracks give each money cell 138px at 320px and 173px at
+// 390px, against a negative seven-figure `pl-PL` amount (space thousands,
+// trailing currency glyph) of 79px, 88px in the totals row's bold. So both
+// widths hold a seven-figure figure with well over half the track spare, and
+// a negative NINE-figure total still fits at 320px (105px bold).
+// Right alignment is not a containment device: a nowrap
+// amount longer than its track overflows past the END edge whatever
+// `text-align` says, and in the right-hand track that does reopen the
+// wrapper's sideways scroll. That is the deliberate choice -- `overflow-hidden`
+// here would silently truncate a figure, and a scroll that appears only for an
+// amount past the budget is honest.
+const MONEY_CELL =
+  'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
 interface ChartDataItem {
   name: string;
@@ -134,6 +180,18 @@ export function MonthlySpendingTrendReport() {
     const avgIncome = chartData.length > 0 ? totalIncome / chartData.length : 0;
     return { totalExpenses, totalIncome, avgExpenses, avgIncome };
   }, [chartData]);
+
+  // The footer's Net column, named once so the figure and its sign colouring
+  // cannot be computed from two different expressions.
+  const totalNet = totals.totalIncome - totals.totalExpenses;
+
+  // One list of sortable columns, rendered by both header rows.
+  const sortColumns: readonly SortColumn[] = [
+    { field: 'name', label: t('monthlySpendingTrend.colMonth') },
+    { field: 'income', label: t('monthlySpendingTrend.colIncome'), align: 'right' },
+    { field: 'expenses', label: t('monthlySpendingTrend.colExpenses'), align: 'right' },
+    { field: 'net', label: t('monthlySpendingTrend.colNet'), align: 'right' },
+  ];
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
@@ -237,92 +295,118 @@ export function MonthlySpendingTrendReport() {
           </p>
         ) : viewType === 'table' ? (
           <>
+            {/* Below `sm` the table becomes a block and each row wraps into a
+                two-column grid so all four columns fit a phone without a
+                horizontal scroll, on two lines: the month and its net share
+                line 1 -- the net is the figure the row is read for, so it takes
+                the right half beside the month -- and income and expenses,
+                the two figures the net is made of, share line 2. The month is
+                the one cell allowed to wrap, since a compact amount never may.
+                Nothing is dropped: the card carries all four columns. From
+                `sm` up it is the ordinary table. The sort controls survive as
+                their own phone-only header row, because the column header row
+                that carries them on desktop is hidden there.
+
+                Two costs of restyling one tree, both deliberate. Changing the
+                display roles drops the table semantics below `sm`, which is
+                why every value carries a `CellLabel` naming its column -- a
+                phone reader gets labelled values rather than a header
+                association. And the phone reading order differs from the DOM
+                order, which is the desktop column order the grid placement
+                overrides visually. Both are properties of the mechanism, not
+                of this table. */}
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <SortableHeader<MonthlySpendingSortField>
-                      field="name"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                    >
-                      {t('monthlySpendingTrend.colMonth')}
-                    </SortableHeader>
-                    <SortableHeader<MonthlySpendingSortField>
-                      field="income"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                    >
-                      {t('monthlySpendingTrend.colIncome')}
-                    </SortableHeader>
-                    <SortableHeader<MonthlySpendingSortField>
-                      field="expenses"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                    >
-                      {t('monthlySpendingTrend.colExpenses')}
-                    </SortableHeader>
-                    <SortableHeader<MonthlySpendingSortField>
-                      field="net"
-                      sortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                    >
-                      {t('monthlySpendingTrend.colNet')}
-                    </SortableHeader>
+              {/* Explicit roles: restyling `display` below `sm` strips the implicit
+                  table semantics, and these put them back (inert from `sm` up). */}
+              <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
+                <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
+                  {/* Phone sort strip: the same four controls, wrapped. */}
+                  <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
+                    {sortColumns.map((col) => (
+                      <SortableHeader<MonthlySpendingSortField>
+                        key={col.field}
+                        field={col.field}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        className={PHONE_HEADER_CLASS}
+                      >
+                        {col.label}
+                      </SortableHeader>
+                    ))}
+                  </tr>
+                  <tr role="row" className="hidden sm:table-row">
+                    {sortColumns.map((col) => (
+                      <SortableHeader<MonthlySpendingSortField>
+                        key={col.field}
+                        field={col.field}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align={col.align}
+                        className={HEADER_CLASS}
+                      >
+                        {col.label}
+                      </SortableHeader>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody role="rowgroup" className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
                   {sortedTableData.map((row) => (
                     <tr
                       key={row.name}
-                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      role="row"
+                      className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 sm:table-row sm:p-0"
                       onClick={() =>
                         router.push(
                           `/transactions?startDate=${row.monthStart}&endDate=${row.monthEnd}`,
                         )
                       }
                     >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                         {row.fullName}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                      <td role="cell" className={`col-start-1 row-start-2 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                        <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colIncome')}</CellLabel>
                         {formatCurrency(row.Income)}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-red-600 dark:text-red-400">
+                      <td role="cell" className={`col-start-2 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                        <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colExpenses')}</CellLabel>
                         {formatCurrency(row.Expenses)}
                       </td>
+                      {/* Net takes the right of line 1 beside the month: it is
+                          the figure the row is read for, and its sign colouring
+                          is the same `gainLossColor` the column cell uses. */}
                       <td
-                        className={`px-4 py-3 text-right text-sm font-medium ${gainLossColor(row.Net)}`}
+                        role="cell"
+                        className={`col-start-2 row-start-1 font-medium ${gainLossColor(row.Net)} ${MONEY_CELL}`}
                       >
+                        <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colNet')}</CellLabel>
                         {formatCurrency(row.Net)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('monthlySpendingTrend.total')}</td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
+                <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
+                  {/* The totals are the largest figures on the table, so this
+                      row wraps the same way a data row does -- the same two
+                      tracks and placement, each money cell captioned. */}
+                  <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
+                    <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">{t('monthlySpendingTrend.total')}</td>
+                    <td role="cell" className={`col-start-1 row-start-2 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colIncome')}</CellLabel>
                       {formatCurrency(totals.totalIncome)}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-red-600 dark:text-red-400">
+                    <td role="cell" className={`col-start-2 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                      <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colExpenses')}</CellLabel>
                       {formatCurrency(totals.totalExpenses)}
                     </td>
                     <td
-                      className={`px-4 py-3 text-right text-sm font-bold ${gainLossColor(totals.totalIncome - totals.totalExpenses)}`}
+                      role="cell"
+                      className={`col-start-2 row-start-1 font-bold ${gainLossColor(totalNet)} ${MONEY_CELL}`}
                     >
-                      {formatCurrency(totals.totalIncome - totals.totalExpenses)}
+                      <CellLabel className="sm:hidden">{t('monthlySpendingTrend.colNet')}</CellLabel>
+                      {formatCurrency(totalNet)}
                     </td>
                   </tr>
                 </tfoot>
