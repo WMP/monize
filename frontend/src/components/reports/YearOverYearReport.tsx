@@ -31,6 +31,30 @@ import { ReportError } from "@/components/reports/ReportError";
 
 type YearOverYearSortField = string; // 'name' or any year as a string
 
+/**
+ * The transactions range a clicked month bar links to, or `null` when the datum
+ * does not name a month.
+ *
+ * `payload` is optional on recharts' `BarRectangleItem`, so a click can arrive
+ * without one and `Number(undefined)` is NaN -- which passes a bare
+ * `< 0 || > 11` range check and makes `new Date(year, NaN, 1)` an Invalid Date
+ * that `format` throws on. `Number.isInteger` rejects it. Exported because the
+ * throw happens inside a React event handler, where the test harness swallows
+ * it: only a direct call can hold this rule.
+ */
+export function monthClickRange(
+  year: number,
+  monthIndex: number,
+): { startDate: string; endDate: string } | null {
+  if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null;
+  }
+  return {
+    startDate: `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`,
+    endDate: format(endOfMonth(new Date(year, monthIndex, 1)), "yyyy-MM-dd"),
+  };
+}
+
 export function YearOverYearReport() {
   const t = useTranslations('reports');
   const router = useRouter();
@@ -110,13 +134,11 @@ export function YearOverYearReport() {
   }, [yearData]);
 
   const handleBarClick = (year: number, monthIndex: number) => {
-    if (monthIndex == null || monthIndex < 0 || monthIndex > 11) return;
-    const startDate = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
-    const lastDay = format(
-      endOfMonth(new Date(year, monthIndex, 1)),
-      "yyyy-MM-dd",
+    const range = monthClickRange(year, monthIndex);
+    if (!range) return;
+    router.push(
+      `/transactions?startDate=${range.startDate}&endDate=${range.endDate}`,
     );
-    router.push(`/transactions?startDate=${startDate}&endDate=${lastDay}`);
   };
 
   const handleExportPdf = async () => {

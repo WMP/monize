@@ -66,9 +66,13 @@ function DeltaBadge({
   const color = positive
     ? 'text-green-600 dark:text-green-400'
     : 'text-red-600 dark:text-red-400';
+  // The sign comes from the amount, never from the percentage: the server
+  // reports a flat +100 whenever the previous period was 0, so a decline from
+  // zero would otherwise render "+100.0%" in red.
+  const signedPercent = value >= 0 ? Math.abs(percent) : -Math.abs(percent);
   return (
     <span className={`text-sm font-medium ${color}`}>
-      {formatSignedPercent(percent, 1)}
+      {formatSignedPercent(signedPercent, 1)}
     </span>
   );
 }
@@ -614,7 +618,9 @@ export function MonthlyComparisonReport() {
                     layout="vertical"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                    <XAxis type="number" tickFormatter={(v: number) => formatPercent(v, 0)} tick={{ fontSize: 12 }} />
+                    {/* Fractional ticks keep a decimal: forcing 0 would print a
+                        narrow range (0.4%, 0.9%, 1.2%) as "0%", "1%", "1%". */}
+                    <XAxis type="number" tickFormatter={(v: number) => formatPercent(v, Number.isInteger(v) ? 0 : 1)} tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} />
                     <Tooltip formatter={(value) => [formatPercent(Number(value), 2), t('monthlyComparison.pdfAnnualizedReturn')]} />
                     <Bar
