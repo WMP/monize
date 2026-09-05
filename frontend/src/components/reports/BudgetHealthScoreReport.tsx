@@ -33,8 +33,9 @@ const percentUsedColor = (percentUsed: number) =>
     ? 'text-red-600 dark:text-red-400'
     : 'text-gray-600 dark:text-gray-400';
 
-// A positive impact is prefixed; nothing else is. The table cell and the PDF
-// export both state it, so it is decided here.
+// A positive impact is prefixed; nothing else is. Stated once, inside the
+// column record's `value`, which is what both the cell and the PDF export
+// render.
 const impactSign = (impact: number) => (impact > 0 ? '+' : '');
 
 type CategoryImpactSortField = 'category' | 'group' | 'percentUsed' | 'impact';
@@ -48,11 +49,18 @@ interface SortColumn {
   field: CategoryImpactSortField;
   label: string;
   /**
-   * This column's cell, as text. The PDF export builds its headings AND its
-   * row cells from the same ordered record the table renders, so the export
-   * cannot drift from the screen it exports -- reordering the record moves the
-   * two together, where a hand-listed export would keep the old order under
-   * the new headings.
+   * This column's cell, as text -- rendered by the `<td>` AND by the PDF
+   * export, which also takes its headings from this record. So the export
+   * cannot drift from the screen it exports in either respect: reordering the
+   * record moves headings and cells together, and a change to how a column
+   * prints (rounding a percentage, dropping a sign) reaches both because there
+   * is one function, not a cell and an export copy of it. The mechanism is
+   * this single call site pair, not the test -- though
+   * `BudgetHealthScoreReport.mobileWrapped.test.tsx` asserts the association
+   * as well.
+   *
+   * A column whose cell carries MARKUP renders that markup around this text
+   * (the group pill), never a second derivation of the value.
    */
   value: (cat: HealthScoreCategoryDetail) => string;
   /** The two figure columns are right-aligned in the column header row. */
@@ -508,18 +516,18 @@ export function BudgetHealthScoreReport() {
                             role="cell"
                             className={`col-start-1 row-start-1 min-w-0 break-words p-0 text-gray-900 dark:text-gray-100 sm:table-cell sm:break-normal ${cellPadding(columns.category)}`}
                           >
-                            {cat.categoryName}
+                            {columns.category.value(cat)}
                           </td>
                           <td role="cell" className={`col-start-1 row-start-2 min-w-0 p-0 sm:table-cell ${cellPadding(columns.group)}`}>
                             <span className={`px-2 py-0.5 text-xs font-medium rounded max-sm:inline-block max-sm:max-w-full ${getGroupColor(cat.categoryGroup)}`}>
-                              {getGroupLabel(cat.categoryGroup)}
+                              {columns.group.value(cat)}
                             </span>
                           </td>
                           {/* Percent used sits under the impact it is the
                               reason for. */}
                           <td className={`col-start-2 row-start-2 ${percentUsedColor(cat.percentUsed)} ${cellPadding(columns.percentUsed)} ${FIGURE_CELL}`} role="cell">
                             <CellLabel className={CAPTION_CLASS}>{columns.percentUsed.label}</CellLabel>
-                            {cat.percentUsed}%
+                            {columns.percentUsed.value(cat)}
                           </td>
                           {/* The score impact takes the right of line 1 beside
                               the category: it is the figure the row is read
@@ -527,7 +535,7 @@ export function BudgetHealthScoreReport() {
                               right padding. */}
                           <td className={`col-start-2 row-start-1 ${getImpactColor(cat.impact)} ${cellPadding(columns.impact)} ${FIGURE_CELL}`} role="cell">
                             <CellLabel className={CAPTION_CLASS}>{columns.impact.label}</CellLabel>
-                            {impactSign(cat.impact)}{cat.impact}
+                            {columns.impact.value(cat)}
                           </td>
                         </tr>
                       ))}

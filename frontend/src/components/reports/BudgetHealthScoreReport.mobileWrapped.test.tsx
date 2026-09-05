@@ -450,14 +450,19 @@ describe('BudgetHealthScoreReport (phone wrapped category impact table)', () => 
     const labels = headerLabels(container, 1);
     expect(headers).toEqual(labels);
 
-    const screenRow = findRow(container, LONG_NAME)!;
-    const screenCells = Array.from(screenRow.querySelectorAll('td')).map((td) => {
-      const caption = captionOf(td)?.textContent ?? '';
-      return (td.textContent ?? '').slice(caption.length);
-    });
+    // Each column's cell text is ONE function on the record, rendered by the
+    // `<td>` and by the export alike, so this compares the two call sites --
+    // every row and every column, since a divergence in a single column would
+    // hide behind a first-row-only check.
+    const screenRows = Array.from(container.querySelectorAll('tbody tr')).map((row) =>
+      Array.from(row.querySelectorAll('td')).map((td) => {
+        const caption = captionOf(td)?.textContent ?? '';
+        return (td.textContent ?? '').slice(caption.length);
+      }),
+    );
     // This export orders its rows by impact ascending, which is also the
-    // stored default sort, so the first exported row is the first on screen.
-    expect(rows[0]).toEqual(screenCells);
+    // stored default sort, so the exported rows are the rows on screen.
+    expect(rows).toEqual(screenRows);
     expect(rows[0]).toHaveLength(labels.length);
   });
 
