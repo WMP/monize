@@ -199,5 +199,92 @@
     "eyebrow": "Monize 알림",
     "button": "Monize에서 열기",
     "footer": "이 알림 유형에 대해 즉시 이메일이 켜져 있어 이 메일을 받았습니다. 설정, 알림에서 변경하세요."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} 결제 기한 초과",
+      "titleToday": "{{ payee }} 오늘 결제 예정",
+      "titleTomorrow": "{{ payee }} 내일 결제 예정",
+      "titleInDays": "{{ payee }} {{ days }}일 후 결제 예정",
+      "amountDue": "{{ date }}에 {{ amount }} 결제",
+      "amountUnavailable": "금액을 확인할 수 없습니다 (현재 환율 없음). 결제일 {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }}이(가) {{ state }}(으)로 전환되었습니다",
+      "riskMessage": "GEM 전략 \"{{ strategy }}\"이(가) {{ fromState }}에서 {{ toState }}(으)로 변경되었습니다. 추천을 검토하려면 여세요.",
+      "allocationTitle": "{{ strategy }}의 목표가 변경되었습니다",
+      "allocationMessage": "GEM 전략 \"{{ strategy }}\"이(가) 이제 {{ target }}을(를) 목표로 합니다. 추천을 검토하려면 여세요.",
+      "riskOn": "리스크 온",
+      "riskOff": "리스크 오프",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "미국 제외 선진시장",
+        "EM_EQUITY": "신흥시장",
+        "SAFE": "안전자산",
+        "RISK_FREE": "무위험 벤치마크"
+      },
+      "allocationMessageUnknown": "GEM 전략 “{{ strategy }}”의 투자 대상이 변경되었습니다. 열어서 권장 사항을 확인하세요."
+    },
+    "portfolioMovement": {
+      "titleUp": "투자 {{ percent }}% 상승",
+      "titleDown": "투자 {{ percent }}% 하락",
+      "messageUp": "오늘 입출금을 제외하고 투자가 {{ percent }}% 상승했습니다. 검토하려면 여세요.",
+      "messageDown": "오늘 입출금을 제외하고 투자가 {{ percent }}% 하락했습니다. 검토하려면 여세요."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }}이(가) 기준값 아래입니다",
+      "titleHigh": "{{ account }}이(가) 기준값 위입니다",
+      "messageLow": "{{ account }}이(가) {{ balance }}(으)로 떨어져 기준값 {{ threshold }} 아래입니다.",
+      "messageHigh": "{{ account }}이(가) {{ balance }}(으)로 올라 기준값 {{ threshold }} 위입니다."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "자동 백업 실패",
+        "message": "{{ user }}의 자동 백업이 실패했습니다: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "자동 백업 불완전",
+        "messageAttachments": "{{ user }}의 백업이 기록되었지만 첨부 파일 {{ expected }}개 중 {{ missing }}개를 포함하지 못했고 {{ inconsistent }}개는 메타데이터와 일치하지 않았습니다. 완전한 백업은 보존되었습니다.",
+        "messagePromotion": "{{ user }}의 일일 백업은 성공했지만 주간 또는 월간 사본을 기록하지 못했습니다: {{ error }}",
+        "messageRetention": "{{ user }}의 백업은 성공했지만 오래된 백업 파일을 정리하지 못했습니다: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "암호화 키가 설정되지 않음",
+        "message": "ENCRYPTION_KEY가 설정되어 있지 않아 백업이 암호화되지 않은 채 기록되고 비밀 정보를 저장할 수 없습니다. 향후 릴리스에서는 이 키 없이 시작되지 않습니다."
+      },
+      "smtpFailure": {
+        "title": "이메일 발송이 실패하고 있음",
+        "message": "Monize가 이메일을 보내지 못했습니다: {{ error }}. 알림과 미리 알림이 전달되지 않고 있습니다."
+      },
+      "providerOutage": {
+        "title": "{{ provider }}가 응답하지 않음",
+        "message": "{{ provider }}의 시장 데이터를 사용할 수 없습니다. 다시 응답할 때까지 가격과 지수 데이터가 오래된 상태일 수 있습니다."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }}가 다시 응답함",
+        "message": "장애가 해소되어 {{ provider }}의 시장 데이터가 다시 갱신되고 있습니다."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }}을(를) 기록하지 못했습니다",
+        "message": "{{ date }}이 만기인 예약 거래가 자동으로 기록되지 않았습니다: {{ error }}. 청구서 및 입금 화면에서 수동으로 기록할 수 있습니다."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} 예산을 초과했습니다",
+      "overMessage": "{{ category }} 예산 {{ limit }} 중 {{ amount }}을 지출했습니다({{ percent }}%).",
+      "criticalTitle": "{{ category }}이(가) 한도에 가까워지고 있습니다",
+      "warningTitle": "{{ category }}이(가) 예산 한도에 도달하고 있습니다",
+      "thresholdMessage": "{{ category }} 예산의 {{ percent }}%를 사용했습니다({{ limit }} 중 {{ amount }}).",
+      "projectedTitle": "{{ category }} 예산 초과가 예상됩니다",
+      "projectedMessage": "현재 속도라면 기간 말까지 {{ category }} 지출이 {{ projected }}에 이를 것으로 예상됩니다(예산: {{ budgeted }}).",
+      "flexTitle": "유동 그룹 “{{ group }}” {{ percent }}% 사용",
+      "flexMessage": "유동 그룹 “{{ group }}”이(가) 통합 예산 {{ budgeted }} 중 {{ spent }}을 사용했습니다({{ percent }}%).",
+      "incomeTitle": "수입이 예상보다 적습니다",
+      "incomeMessage": "현재 시점의 실제 수입({{ actual }})은 예상 수입({{ expected }})의 {{ ratio }}%입니다.",
+      "milestoneTitle": "예산이 순조롭게 진행 중입니다",
+      "milestoneMessage": "기간의 {{ progress }}%가 지났고 전체 예산의 {{ percent }}%만 사용했습니다. 계속 유지하세요!",
+      "seasonalTitle": "{{ category }}의 계절적 지출 증가가 예상됩니다",
+      "seasonalMessage": "지난 {{ month }}에 {{ category }}에 평소의 {{ increase }}배를 지출했습니다. 예산 조정을 고려해 보세요."
+    }
   }
 }

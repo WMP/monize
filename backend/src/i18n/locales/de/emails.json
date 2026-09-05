@@ -199,5 +199,92 @@
     "eyebrow": "Monize-Benachrichtigung",
     "button": "In Monize öffnen",
     "footer": "Sie erhalten dies, weil die Sofort-E-Mail für diesen Benachrichtigungstyp aktiviert ist. Ändern Sie das unter Einstellungen, Benachrichtigungen."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} überfällig",
+      "titleToday": "{{ payee }} heute fällig",
+      "titleTomorrow": "{{ payee }} morgen fällig",
+      "titleInDays": "{{ payee }} fällig in {{ days }} Tagen",
+      "amountDue": "{{ amount }} fällig am {{ date }}",
+      "amountUnavailable": "Betrag nicht verfügbar (kein aktueller Wechselkurs), fällig am {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} auf {{ state }} umgestellt",
+      "riskMessage": "Ihre GEM-Strategie \"{{ strategy }}\" ist von {{ fromState }} auf {{ toState }} gewechselt. Öffnen Sie, um die Empfehlung zu prüfen.",
+      "allocationTitle": "{{ strategy }} hat das Ziel geändert",
+      "allocationMessage": "Ihre GEM-Strategie \"{{ strategy }}\" zielt jetzt auf {{ target }}. Öffnen Sie, um die Empfehlung zu prüfen.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Entwickelte Märkte ohne USA",
+        "EM_EQUITY": "Schwellenmärkte",
+        "SAFE": "Sicheres Anlagegut",
+        "RISK_FREE": "Risikofreier Vergleichsmaßstab"
+      },
+      "allocationMessageUnknown": "Deine GEM-Strategie „{{ strategy }}“ hat ihr Ziel geändert. Öffne sie, um die Empfehlung zu prüfen."
+    },
+    "portfolioMovement": {
+      "titleUp": "Anlagen {{ percent }}% im Plus",
+      "titleDown": "Anlagen {{ percent }}% im Minus",
+      "messageUp": "Ihre Anlagen liegen heute {{ percent }}% im Plus, ohne Ein- und Auszahlungen. Öffnen Sie zur Prüfung.",
+      "messageDown": "Ihre Anlagen liegen heute {{ percent }}% im Minus, ohne Ein- und Auszahlungen. Öffnen Sie zur Prüfung."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} liegt unter Ihrem Schwellenwert",
+      "titleHigh": "{{ account }} liegt über Ihrem Schwellenwert",
+      "messageLow": "{{ account }} ist auf {{ balance }} gefallen, unter Ihren Schwellenwert von {{ threshold }}.",
+      "messageHigh": "{{ account }} ist auf {{ balance }} gestiegen, über Ihren Schwellenwert von {{ threshold }}."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Automatisches Backup fehlgeschlagen",
+        "message": "Das automatische Backup für {{ user }} ist fehlgeschlagen: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Automatisches Backup unvollständig",
+        "messageAttachments": "Das Backup für {{ user }} wurde geschrieben, aber {{ missing }} von {{ expected }} Anhängen konnten nicht aufgenommen werden und {{ inconsistent }} stimmten nicht mit ihren Metadaten überein. Vollständige Backups wurden bewahrt.",
+        "messagePromotion": "Das tägliche Backup für {{ user }} war erfolgreich, aber die wöchentliche oder monatliche Kopie konnte nicht geschrieben werden: {{ error }}",
+        "messageRetention": "Das Backup für {{ user }} war erfolgreich, aber alte Backup-Dateien konnten nicht aufgeräumt werden: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Verschlüsselungsschlüssel nicht konfiguriert",
+        "message": "ENCRYPTION_KEY ist nicht gesetzt, daher werden Backups unverschlüsselt geschrieben und Geheimnisse können nicht gespeichert werden. Eine zukünftige Version wird ohne den Schlüssel nicht mehr starten."
+      },
+      "smtpFailure": {
+        "title": "E-Mail-Zustellung schlägt fehl",
+        "message": "Monize konnte keine E-Mail senden: {{ error }}. Benachrichtigungen und Erinnerungen werden nicht zugestellt."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} antwortet nicht",
+        "message": "Marktdaten von {{ provider }} sind nicht verfügbar. Kurse und Indexdaten sind möglicherweise veraltet, bis der Anbieter wieder antwortet."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} antwortet wieder",
+        "message": "Der Ausfall ist vorbei und Marktdaten von {{ provider }} werden wieder aktualisiert."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} konnte nicht gebucht werden",
+        "message": "Ihre geplante Transaktion, fällig am {{ date }}, wurde nicht automatisch gebucht: {{ error }}. Sie können sie unter Rechnungen & Einzahlungen manuell buchen."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} liegt über dem Budget",
+      "overMessage": "Du hast {{ amount }} deines Budgets von {{ limit }} für {{ category }} ausgegeben ({{ percent }}%).",
+      "criticalTitle": "{{ category }} nähert sich dem Limit",
+      "warningTitle": "{{ category }} erreicht die Budgetgrenze",
+      "thresholdMessage": "Du hast {{ percent }}% deines Budgets für {{ category }} verbraucht ({{ amount }} von {{ limit }}).",
+      "projectedTitle": "Für {{ category }} wird eine Budgetüberschreitung erwartet",
+      "projectedMessage": "Bei deinem aktuellen Tempo werden die Ausgaben für {{ category }} bis zum Ende des Zeitraums voraussichtlich {{ projected }} erreichen (Budget: {{ budgeted }}).",
+      "flexTitle": "Flex-Gruppe „{{ group }}“ bei {{ percent }}%",
+      "flexMessage": "Die Flex-Gruppe „{{ group }}“ hat {{ spent }} ihres Gesamtbudgets von {{ budgeted }} verbraucht ({{ percent }}%).",
+      "incomeTitle": "Einkommen unter den Erwartungen",
+      "incomeMessage": "Dein tatsächliches Einkommen ({{ actual }}) beträgt {{ ratio }}% des zu diesem Zeitpunkt erwarteten Einkommens ({{ expected }}).",
+      "milestoneTitle": "Budget im Plan",
+      "milestoneMessage": "{{ progress }}% des Zeitraums sind vergangen und du hast erst {{ percent }}% deines Gesamtbudgets verbraucht. Weiter so!",
+      "seasonalTitle": "Saisonaler Ausgabenanstieg für {{ category }} erwartet",
+      "seasonalMessage": "Im letzten {{ month }} hast du für {{ category }} das {{ increase }}-Fache des üblichen Betrags ausgegeben. Erwäge eine Anpassung deines Budgets."
+    }
   }
 }

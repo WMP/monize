@@ -199,5 +199,92 @@
     "eyebrow": "Monize bildirimi",
     "button": "Monize'de aç",
     "footer": "Bu bildirim türü için anlık e-posta açık olduğundan bunu alıyorsunuz. Ayarlar, Bildirimler bölümünden değiştirin."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} gecikmiş",
+      "titleToday": "{{ payee }} bugün ödenecek",
+      "titleTomorrow": "{{ payee }} yarın ödenecek",
+      "titleInDays": "{{ payee }} {{ days }} gün içinde ödenecek",
+      "amountDue": "{{ date }} tarihinde {{ amount }} ödenecek",
+      "amountUnavailable": "Tutar kullanılamıyor (güncel döviz kuru yok), {{ date }} tarihinde ödenecek"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} {{ state }} durumuna geçti",
+      "riskMessage": "GEM stratejiniz \"{{ strategy }}\" {{ fromState }} durumundan {{ toState }} durumuna geçti. Öneriyi incelemek için açın.",
+      "allocationTitle": "{{ strategy }} hedefini değiştirdi",
+      "allocationMessage": "GEM stratejiniz \"{{ strategy }}\" artık {{ target }} hedefliyor. Öneriyi incelemek için açın.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "ABD dışı gelişmiş piyasalar",
+        "EM_EQUITY": "Gelişmekte olan piyasalar",
+        "SAFE": "Güvenli varlık",
+        "RISK_FREE": "Risksiz ölçüt"
+      },
+      "allocationMessageUnknown": "“{{ strategy }}” GEM stratejiniz hedefini değiştirdi. Öneriyi incelemek için açın."
+    },
+    "portfolioMovement": {
+      "titleUp": "Yatırımlar %{{ percent }} arttı",
+      "titleDown": "Yatırımlar %{{ percent }} azaldı",
+      "messageUp": "Yatırımlarınız bugün, para yatırma ve çekme hariç %{{ percent }} arttı. İncelemek için açın.",
+      "messageDown": "Yatırımlarınız bugün, para yatırma ve çekme hariç %{{ percent }} azaldı. İncelemek için açın."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} eşiğinizin altında",
+      "titleHigh": "{{ account }} eşiğinizin üstünde",
+      "messageLow": "{{ account }} {{ balance }} değerine düştü, {{ threshold }} eşiğinizin altında.",
+      "messageHigh": "{{ account }} {{ balance }} değerine yükseldi, {{ threshold }} eşiğinizin üstünde."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Otomatik yedekleme başarısız oldu",
+        "message": "{{ user }} için otomatik yedekleme başarısız oldu: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Otomatik yedekleme eksik",
+        "messageAttachments": "{{ user }} için yedek yazıldı, ancak {{ expected }} ekten {{ missing }} tanesi dahil edilemedi ve {{ inconsistent }} tanesi meta verileriyle eşleşmedi. Tam yedekler korundu.",
+        "messagePromotion": "{{ user }} için günlük yedekleme başarılı oldu, ancak haftalık veya aylık kopyası yazılamadı: {{ error }}",
+        "messageRetention": "{{ user }} için yedekleme başarılı oldu, ancak eski yedek dosyaları temizlenemedi: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Şifreleme anahtarı yapılandırılmamış",
+        "message": "ENCRYPTION_KEY ayarlanmadığından yedekler şifrelenmeden yazılıyor ve gizli bilgiler saklanamıyor. Gelecek bir sürüm bu anahtar olmadan başlamayacak."
+      },
+      "smtpFailure": {
+        "title": "E-posta gönderimi başarısız oluyor",
+        "message": "Monize e-posta gönderemedi: {{ error }}. Bildirimler ve hatırlatıcılar iletilemiyor."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} yanıt vermiyor",
+        "message": "{{ provider }} kaynaklı piyasa verilerine ulaşılamıyor. Sağlayıcı yeniden yanıt verene kadar fiyatlar ve endeks verileri güncel olmayabilir."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} yeniden yanıt veriyor",
+        "message": "Kesinti sona erdi ve {{ provider }} kaynaklı piyasa verileri yeniden güncelleniyor."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} kaydedilemedi",
+        "message": "Vadesi {{ date }} olan planlı işleminiz otomatik olarak kaydedilmedi: {{ error }}. Faturalar ve Mevduatlar bölümünden elle kaydedebilirsiniz."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} bütçeyi aştı",
+      "overMessage": "{{ category }} için {{ limit }} tutarındaki bütçenizin {{ amount }} tutarını harcadınız (%{{ percent }}).",
+      "criticalTitle": "{{ category }} sınıra yaklaşıyor",
+      "warningTitle": "{{ category }} bütçe sınırına ulaşıyor",
+      "thresholdMessage": "{{ category }} bütçenizin %{{ percent }} kadarını kullandınız ({{ limit }} üzerinden {{ amount }}).",
+      "projectedTitle": "{{ category }} için bütçe aşımı öngörülüyor",
+      "projectedMessage": "Mevcut hızınızla {{ category }} harcamalarının dönem sonunda {{ projected }} tutarına ulaşması bekleniyor (bütçe: {{ budgeted }}).",
+      "flexTitle": "“{{ group }}” esnek grubu %{{ percent }} seviyesinde",
+      "flexMessage": "“{{ group }}” esnek grubu toplam {{ budgeted }} bütçesinin {{ spent }} tutarını kullandı (%{{ percent }}).",
+      "incomeTitle": "Gelir beklenenin altında",
+      "incomeMessage": "Gerçek geliriniz ({{ actual }}), dönemin bu noktasında beklenen gelirin ({{ expected }}) %{{ ratio }} kadarını oluşturuyor.",
+      "milestoneTitle": "Bütçe yolunda",
+      "milestoneMessage": "Dönemin %{{ progress }} kadarı geçti ve toplam bütçenizin yalnızca %{{ percent }} kadarını kullandınız. Böyle devam edin!",
+      "seasonalTitle": "{{ category }} için mevsimsel artış bekleniyor",
+      "seasonalMessage": "Geçen {{ month }} ayında {{ category }} için normalin {{ increase }} katı harcama yaptınız. Bütçenizi ayarlamayı düşünün."
+    }
   }
 }

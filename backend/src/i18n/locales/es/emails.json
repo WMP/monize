@@ -199,5 +199,92 @@
     "eyebrow": "Notificación de Monize",
     "button": "Abrir en Monize",
     "footer": "Recibe esto porque el correo inmediato está activado para este tipo de notificación. Cámbielo en Ajustes, Notificaciones."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} vencido",
+      "titleToday": "{{ payee }} vence hoy",
+      "titleTomorrow": "{{ payee }} vence mañana",
+      "titleInDays": "{{ payee }} vence en {{ days }} días",
+      "amountDue": "{{ amount }} a pagar el {{ date }}",
+      "amountUnavailable": "Importe no disponible (no hay tipo de cambio actual), vence el {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} cambió a {{ state }}",
+      "riskMessage": "Tu estrategia GEM «{{ strategy }}» cambió de {{ fromState }} a {{ toState }}. Abre para revisar la recomendación.",
+      "allocationTitle": "{{ strategy }} cambió su objetivo",
+      "allocationMessage": "Tu estrategia GEM «{{ strategy }}» ahora apunta a {{ target }}. Abre para revisar la recomendación.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Mercados desarrollados ex-EE. UU.",
+        "EM_EQUITY": "Mercados emergentes",
+        "SAFE": "Activo seguro",
+        "RISK_FREE": "Referencia libre de riesgo"
+      },
+      "allocationMessageUnknown": "Tu estrategia GEM «{{ strategy }}» ha cambiado de objetivo. Ábrela para revisar la recomendación."
+    },
+    "portfolioMovement": {
+      "titleUp": "Inversiones al alza {{ percent }}%",
+      "titleDown": "Inversiones a la baja {{ percent }}%",
+      "messageUp": "Tus inversiones han subido un {{ percent }}% hoy, sin contar depósitos ni retiros. Abre para revisar.",
+      "messageDown": "Tus inversiones han bajado un {{ percent }}% hoy, sin contar depósitos ni retiros. Abre para revisar."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} está por debajo de tu umbral",
+      "titleHigh": "{{ account }} está por encima de tu umbral",
+      "messageLow": "{{ account }} bajó a {{ balance }}, por debajo de tu umbral de {{ threshold }}.",
+      "messageHigh": "{{ account }} subió a {{ balance }}, por encima de tu umbral de {{ threshold }}."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Error en la copia de seguridad automática",
+        "message": "La copia de seguridad automática de {{ user }} falló: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Copia de seguridad automática incompleta",
+        "messageAttachments": "La copia de seguridad de {{ user }} se escribió, pero no se pudieron incluir {{ missing }} de {{ expected }} archivos adjuntos y {{ inconsistent }} no coincidían con sus metadatos. Las copias completas se conservaron.",
+        "messagePromotion": "La copia diaria de {{ user }} se completó, pero su copia semanal o mensual no se pudo escribir: {{ error }}",
+        "messageRetention": "La copia de seguridad de {{ user }} se completó, pero los archivos de copias antiguas no se pudieron eliminar: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Clave de cifrado sin configurar",
+        "message": "ENCRYPTION_KEY no está definida, por lo que las copias de seguridad se escriben sin cifrar y no se pueden guardar secretos. Una versión futura no arrancará sin ella."
+      },
+      "smtpFailure": {
+        "title": "El envío de correo está fallando",
+        "message": "Monize no pudo enviar correo: {{ error }}. Las notificaciones y los recordatorios no se están entregando."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} no responde",
+        "message": "Los datos de mercado de {{ provider }} no están disponibles. Los precios y los datos de índices pueden estar desactualizados hasta que vuelva a responder."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} responde de nuevo",
+        "message": "La interrupción terminó y los datos de mercado de {{ provider }} se están actualizando de nuevo."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} no se pudo registrar",
+        "message": "Su transacción programada con vencimiento el {{ date }} no se registró automáticamente: {{ error }}. Puede registrarla manualmente desde Facturas y depósitos."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} supera el presupuesto",
+      "overMessage": "Has gastado {{ amount }} de tu presupuesto de {{ limit }} para {{ category }} ({{ percent }}%).",
+      "criticalTitle": "{{ category }} se acerca al límite",
+      "warningTitle": "{{ category }} está llegando al límite del presupuesto",
+      "thresholdMessage": "Has utilizado el {{ percent }}% de tu presupuesto para {{ category }} ({{ amount }} de {{ limit }}).",
+      "projectedTitle": "Se prevé que {{ category }} supere el presupuesto",
+      "projectedMessage": "A tu ritmo actual, se prevé que {{ category }} alcance {{ projected }} al final del período (presupuesto: {{ budgeted }}).",
+      "flexTitle": "Grupo flexible «{{ group }}» al {{ percent }}%",
+      "flexMessage": "El grupo flexible «{{ group }}» ha utilizado {{ spent }} de su presupuesto conjunto de {{ budgeted }} ({{ percent }}%).",
+      "incomeTitle": "Ingresos inferiores a lo esperado",
+      "incomeMessage": "Tus ingresos reales ({{ actual }}) representan el {{ ratio }}% de los ingresos esperados ({{ expected }}) en este punto del período.",
+      "milestoneTitle": "Presupuesto en buen camino",
+      "milestoneMessage": "Ha transcurrido el {{ progress }}% del período y solo has utilizado el {{ percent }}% de tu presupuesto total. ¡Sigue así!",
+      "seasonalTitle": "Se espera un aumento estacional en {{ category }}",
+      "seasonalMessage": "El pasado mes de {{ month }} gastaste {{ increase }} veces lo habitual en {{ category }}. Considera ajustar tu presupuesto."
+    }
   }
 }

@@ -199,5 +199,92 @@
     "eyebrow": "Monize の通知",
     "button": "Monize で開く",
     "footer": "この通知タイプで即時メールが有効になっているため送信されています。設定の通知で変更できます。"
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} は支払期日超過",
+      "titleToday": "{{ payee }} は今日が支払期日",
+      "titleTomorrow": "{{ payee }} は明日が支払期日",
+      "titleInDays": "{{ payee }} は{{ days }}日後が支払期日",
+      "amountDue": "{{ date }} に {{ amount }} の支払い",
+      "amountUnavailable": "金額が不明です (現在の為替レートがありません)。支払期日は {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} が {{ state }} に切り替わりました",
+      "riskMessage": "GEM戦略「{{ strategy }}」が {{ fromState }} から {{ toState }} に変わりました。推奨内容を確認するには開いてください。",
+      "allocationTitle": "{{ strategy }} の目標が変わりました",
+      "allocationMessage": "GEM戦略「{{ strategy }}」の目標が {{ target }} になりました。推奨内容を確認するには開いてください。",
+      "riskOn": "リスクオン",
+      "riskOff": "リスクオフ",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "米国除く先進国",
+        "EM_EQUITY": "新興国",
+        "SAFE": "安全資産",
+        "RISK_FREE": "無リスクのベンチマーク"
+      },
+      "allocationMessageUnknown": "GEM戦略「{{ strategy }}」の投資対象が変更されました。開いて推奨内容を確認してください。"
+    },
+    "portfolioMovement": {
+      "titleUp": "投資が {{ percent }}% 上昇",
+      "titleDown": "投資が {{ percent }}% 下落",
+      "messageUp": "本日、入出金を除いて投資が {{ percent }}% 上昇しています。確認するには開いてください。",
+      "messageDown": "本日、入出金を除いて投資が {{ percent }}% 下落しています。確認するには開いてください。"
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} がしきい値を下回っています",
+      "titleHigh": "{{ account }} がしきい値を上回っています",
+      "messageLow": "{{ account }} が {{ balance }} に下がり、しきい値 {{ threshold }} を下回りました。",
+      "messageHigh": "{{ account }} が {{ balance }} に上がり、しきい値 {{ threshold }} を上回りました。"
+    },
+    "system": {
+      "backupFailed": {
+        "title": "自動バックアップに失敗しました",
+        "message": "{{ user }} の自動バックアップに失敗しました: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "自動バックアップが不完全です",
+        "messageAttachments": "{{ user }} のバックアップは書き込まれましたが、{{ expected }} 件中 {{ missing }} 件の添付ファイルを含められず、{{ inconsistent }} 件はメタデータと一致しませんでした。完全なバックアップは保持されています。",
+        "messagePromotion": "{{ user }} の日次バックアップは成功しましたが、週次または月次のコピーを書き込めませんでした: {{ error }}",
+        "messageRetention": "{{ user }} のバックアップは成功しましたが、古いバックアップファイルを削除できませんでした: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "暗号化キーが設定されていません",
+        "message": "ENCRYPTION_KEY が設定されていないため、バックアップは暗号化されずに書き込まれ、シークレットを保存できません。将来のリリースではこのキーがないと起動しなくなります。"
+      },
+      "smtpFailure": {
+        "title": "メール送信に失敗しています",
+        "message": "Monize はメールを送信できませんでした: {{ error }}。通知やリマインダーが配信されていません。"
+      },
+      "providerOutage": {
+        "title": "{{ provider }} が応答していません",
+        "message": "{{ provider }} からの市場データを取得できません。再び応答するまで、価格や指数データが古い可能性があります。"
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} が再び応答しています",
+        "message": "障害は解消し、{{ provider }} からの市場データは再び更新されています。"
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} を記帳できませんでした",
+        "message": "{{ date }} が期日の定期取引を自動で記帳できませんでした: {{ error }}。請求書・入金の画面から手動で記帳できます。"
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }}が予算を超過しています",
+      "overMessage": "{{ category }}の予算{{ limit }}のうち{{ amount }}を支出しました（{{ percent }}%）。",
+      "criticalTitle": "{{ category }}が上限に近づいています",
+      "warningTitle": "{{ category }}が予算の上限に達しつつあります",
+      "thresholdMessage": "{{ category }}の予算の{{ percent }}%を使用しました（{{ limit }}のうち{{ amount }}）。",
+      "projectedTitle": "{{ category }}は予算を超過する見込みです",
+      "projectedMessage": "現在のペースでは、期間終了時の{{ category }}の支出は{{ projected }}に達する見込みです（予算：{{ budgeted }}）。",
+      "flexTitle": "フレックスグループ「{{ group }}」が{{ percent }}%に達しました",
+      "flexMessage": "フレックスグループ「{{ group }}」は合計予算{{ budgeted }}のうち{{ spent }}を使用しました（{{ percent }}%）。",
+      "incomeTitle": "収入が予想を下回っています",
+      "incomeMessage": "この期間の現時点で、実際の収入（{{ actual }}）は予想収入（{{ expected }}）の{{ ratio }}%です。",
+      "milestoneTitle": "予算は順調です",
+      "milestoneMessage": "期間の{{ progress }}%が経過しましたが、予算全体の{{ percent }}%しか使用していません。その調子です！",
+      "seasonalTitle": "{{ category }}の季節的な支出増加が予想されます",
+      "seasonalMessage": "前回の{{ month }}には、{{ category }}に通常の{{ increase }}倍を支出しました。予算の調整を検討してください。"
+    }
   }
 }

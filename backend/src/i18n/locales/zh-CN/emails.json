@@ -199,5 +199,92 @@
     "eyebrow": "Monize 通知",
     "button": "在 Monize 中打开",
     "footer": "您收到此邮件是因为此通知类型已开启即时邮件。可在设置、通知中更改。"
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} 已逾期",
+      "titleToday": "{{ payee }} 今天到期",
+      "titleTomorrow": "{{ payee }} 明天到期",
+      "titleInDays": "{{ payee }} 将在 {{ days }} 天后到期",
+      "amountDue": "{{ date }} 应付 {{ amount }}",
+      "amountUnavailable": "金额不可用（无当前汇率），到期日 {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} 已切换为{{ state }}",
+      "riskMessage": "您的 GEM 策略“{{ strategy }}”已从{{ fromState }}变为{{ toState }}。打开以查看建议。",
+      "allocationTitle": "{{ strategy }} 更改了目标",
+      "allocationMessage": "您的 GEM 策略“{{ strategy }}”现在的目标是 {{ target }}。打开以查看建议。",
+      "riskOn": "风险偏好",
+      "riskOff": "避险",
+      "roles": {
+        "US_EQUITY": "标普 500",
+        "EX_US_EQUITY": "除美国外的发达市场",
+        "EM_EQUITY": "新兴市场",
+        "SAFE": "避险资产",
+        "RISK_FREE": "无风险基准"
+      },
+      "allocationMessageUnknown": "您的GEM策略“{{ strategy }}”已更改目标。打开以查看建议。"
+    },
+    "portfolioMovement": {
+      "titleUp": "投资上涨 {{ percent }}%",
+      "titleDown": "投资下跌 {{ percent }}%",
+      "messageUp": "今天您的投资上涨了 {{ percent }}%（不含存入和取出）。打开以查看。",
+      "messageDown": "今天您的投资下跌了 {{ percent }}%（不含存入和取出）。打开以查看。"
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} 低于您的阈值",
+      "titleHigh": "{{ account }} 高于您的阈值",
+      "messageLow": "{{ account }} 降至 {{ balance }}，低于您的阈值 {{ threshold }}。",
+      "messageHigh": "{{ account }} 升至 {{ balance }}，高于您的阈值 {{ threshold }}。"
+    },
+    "system": {
+      "backupFailed": {
+        "title": "自动备份失败",
+        "message": "{{ user }} 的自动备份失败：{{ error }}"
+      },
+      "backupPartial": {
+        "title": "自动备份不完整",
+        "messageAttachments": "{{ user }} 的备份已写入，但 {{ expected }} 个附件中有 {{ missing }} 个无法包含，另有 {{ inconsistent }} 个与其元数据不匹配。完整备份已保留。",
+        "messagePromotion": "{{ user }} 的每日备份成功，但其每周或每月副本无法写入：{{ error }}",
+        "messageRetention": "{{ user }} 的备份成功，但旧的备份文件无法清理：{{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "未配置加密密钥",
+        "message": "未设置 ENCRYPTION_KEY，备份将以未加密方式写入，且无法保存机密信息。未来版本将在缺少该密钥时拒绝启动。"
+      },
+      "smtpFailure": {
+        "title": "邮件发送失败",
+        "message": "Monize 无法发送邮件：{{ error }}。通知和提醒未能送达。"
+      },
+      "providerOutage": {
+        "title": "{{ provider }} 无响应",
+        "message": "无法获取 {{ provider }} 的市场数据。在其恢复响应之前，价格和指数数据可能已过时。"
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} 已恢复响应",
+        "message": "故障已结束，{{ provider }} 的市场数据正在重新更新。"
+      },
+      "scheduledPostFailed": {
+        "title": "无法登记 {{ name }}",
+        "message": "您到期日为 {{ date }} 的定期交易未能自动登记：{{ error }}。您可以在“账单与存款”中手动登记。"
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }}已超出预算",
+      "overMessage": "您已在{{ category }}上支出{{ amount }}，预算为{{ limit }}（{{ percent }}%）。",
+      "criticalTitle": "{{ category }}接近限额",
+      "warningTitle": "{{ category }}即将达到预算限额",
+      "thresholdMessage": "您已使用{{ category }}预算的{{ percent }}%（{{ amount }}，总预算{{ limit }}）。",
+      "projectedTitle": "预计{{ category }}将超出预算",
+      "projectedMessage": "按目前的支出速度，预计{{ category }}在本期结束时将达到{{ projected }}（预算：{{ budgeted }}）。",
+      "flexTitle": "弹性组“{{ group }}”已达{{ percent }}%",
+      "flexMessage": "弹性组“{{ group }}”已使用{{ spent }}，总预算为{{ budgeted }}（{{ percent }}%）。",
+      "incomeTitle": "收入低于预期",
+      "incomeMessage": "在本期的这个阶段，您的实际收入（{{ actual }}）为预期收入（{{ expected }}）的{{ ratio }}%。",
+      "milestoneTitle": "预算执行良好",
+      "milestoneMessage": "本期已过去{{ progress }}%，而您仅使用了总预算的{{ percent }}%。继续保持！",
+      "seasonalTitle": "预计{{ category }}将出现季节性支出高峰",
+      "seasonalMessage": "上一个{{ month }}，您在{{ category }}上的支出是平时的{{ increase }}倍。请考虑调整预算。"
+    }
   }
 }

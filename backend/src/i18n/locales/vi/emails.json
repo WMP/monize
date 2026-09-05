@@ -199,5 +199,92 @@
     "eyebrow": "Thông báo Monize",
     "button": "Mở trong Monize",
     "footer": "Bạn nhận được email này vì email tức thì đang bật cho loại thông báo này. Thay đổi trong Cài đặt, Thông báo."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} đã quá hạn",
+      "titleToday": "{{ payee }} đến hạn hôm nay",
+      "titleTomorrow": "{{ payee }} đến hạn ngày mai",
+      "titleInDays": "{{ payee }} đến hạn sau {{ days }} ngày",
+      "amountDue": "{{ amount }} đến hạn vào {{ date }}",
+      "amountUnavailable": "Không có số tiền (không có tỷ giá hiện tại), đến hạn vào {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} đã chuyển sang {{ state }}",
+      "riskMessage": "Chiến lược GEM \"{{ strategy }}\" của bạn đã thay đổi từ {{ fromState }} sang {{ toState }}. Mở để xem lại khuyến nghị.",
+      "allocationTitle": "{{ strategy }} đã thay đổi mục tiêu",
+      "allocationMessage": "Chiến lược GEM \"{{ strategy }}\" của bạn hiện nhắm đến {{ target }}. Mở để xem lại khuyến nghị.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Thị trường phát triển ngoài Mỹ",
+        "EM_EQUITY": "Thị trường mới nổi",
+        "SAFE": "Tài sản an toàn",
+        "RISK_FREE": "Chuẩn phi rủi ro"
+      },
+      "allocationMessageUnknown": "Chiến lược GEM “{{ strategy }}” của bạn đã thay đổi mục tiêu. Mở để xem lại khuyến nghị."
+    },
+    "portfolioMovement": {
+      "titleUp": "Đầu tư tăng {{ percent }}%",
+      "titleDown": "Đầu tư giảm {{ percent }}%",
+      "messageUp": "Các khoản đầu tư của bạn hôm nay tăng {{ percent }}%, không tính nạp và rút tiền. Mở để xem lại.",
+      "messageDown": "Các khoản đầu tư của bạn hôm nay giảm {{ percent }}%, không tính nạp và rút tiền. Mở để xem lại."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} dưới ngưỡng của bạn",
+      "titleHigh": "{{ account }} trên ngưỡng của bạn",
+      "messageLow": "{{ account }} đã giảm xuống {{ balance }}, dưới ngưỡng {{ threshold }} của bạn.",
+      "messageHigh": "{{ account }} đã tăng lên {{ balance }}, trên ngưỡng {{ threshold }} của bạn."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Sao lưu tự động thất bại",
+        "message": "Sao lưu tự động cho {{ user }} đã thất bại: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Sao lưu tự động chưa hoàn chỉnh",
+        "messageAttachments": "Bản sao lưu cho {{ user }} đã được ghi, nhưng không thể đưa vào {{ missing }} trong số {{ expected }} tệp đính kèm và {{ inconsistent }} tệp không khớp với siêu dữ liệu của chúng. Các bản sao lưu đầy đủ đã được giữ nguyên.",
+        "messagePromotion": "Bản sao lưu hằng ngày cho {{ user }} đã thành công, nhưng không thể ghi bản sao hằng tuần hoặc hằng tháng: {{ error }}",
+        "messageRetention": "Bản sao lưu cho {{ user }} đã thành công, nhưng không thể dọn dẹp các tệp sao lưu cũ: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Chưa cấu hình khóa mã hóa",
+        "message": "ENCRYPTION_KEY chưa được đặt, nên các bản sao lưu được ghi không mã hóa và không thể lưu trữ thông tin bí mật. Phiên bản tương lai sẽ không khởi động nếu thiếu khóa này."
+      },
+      "smtpFailure": {
+        "title": "Gửi email đang thất bại",
+        "message": "Monize không thể gửi email: {{ error }}. Thông báo và lời nhắc không được gửi đi."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} không phản hồi",
+        "message": "Dữ liệu thị trường từ {{ provider }} hiện không khả dụng. Giá và dữ liệu chỉ số có thể lỗi thời cho đến khi nhà cung cấp phản hồi trở lại."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} đã phản hồi trở lại",
+        "message": "Sự cố đã kết thúc và dữ liệu thị trường từ {{ provider }} đang được cập nhật trở lại."
+      },
+      "scheduledPostFailed": {
+        "title": "Không thể ghi nhận {{ name }}",
+        "message": "Giao dịch định kỳ của bạn đến hạn {{ date }} đã không được ghi nhận tự động: {{ error }}. Bạn có thể ghi nhận thủ công trong mục Hóa đơn & Tiền gửi."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} đã vượt ngân sách",
+      "overMessage": "Bạn đã chi {{ amount }} trong ngân sách {{ limit }} cho {{ category }} ({{ percent }}%).",
+      "criticalTitle": "{{ category }} sắp đạt giới hạn",
+      "warningTitle": "{{ category }} đang chạm giới hạn ngân sách",
+      "thresholdMessage": "Bạn đã sử dụng {{ percent }}% ngân sách cho {{ category }} ({{ amount }} trên {{ limit }}).",
+      "projectedTitle": "Dự kiến {{ category }} sẽ vượt ngân sách",
+      "projectedMessage": "Với tốc độ hiện tại, chi tiêu cho {{ category }} dự kiến đạt {{ projected }} vào cuối kỳ (ngân sách: {{ budgeted }}).",
+      "flexTitle": "Nhóm linh hoạt “{{ group }}” ở mức {{ percent }}%",
+      "flexMessage": "Nhóm linh hoạt “{{ group }}” đã sử dụng {{ spent }} trong tổng ngân sách {{ budgeted }} ({{ percent }}%).",
+      "incomeTitle": "Thu nhập thấp hơn dự kiến",
+      "incomeMessage": "Thu nhập thực tế của bạn ({{ actual }}) bằng {{ ratio }}% thu nhập dự kiến ({{ expected }}) tại thời điểm này của kỳ.",
+      "milestoneTitle": "Ngân sách đang đúng kế hoạch",
+      "milestoneMessage": "Đã qua {{ progress }}% kỳ và bạn mới sử dụng {{ percent }}% tổng ngân sách. Hãy tiếp tục phát huy!",
+      "seasonalTitle": "Dự kiến chi tiêu cho {{ category }} tăng theo mùa",
+      "seasonalMessage": "Vào {{ month }} lần trước, bạn đã chi cho {{ category }} gấp {{ increase }} lần bình thường. Hãy cân nhắc điều chỉnh ngân sách."
+    }
   }
 }

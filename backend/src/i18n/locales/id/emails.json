@@ -199,5 +199,92 @@
     "eyebrow": "Notifikasi Monize",
     "button": "Buka di Monize",
     "footer": "Anda menerima ini karena email langsung aktif untuk jenis notifikasi ini. Ubah di Pengaturan, Notifikasi."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} terlambat",
+      "titleToday": "{{ payee }} jatuh tempo hari ini",
+      "titleTomorrow": "{{ payee }} jatuh tempo besok",
+      "titleInDays": "{{ payee }} jatuh tempo dalam {{ days }} hari",
+      "amountDue": "{{ amount }} jatuh tempo pada {{ date }}",
+      "amountUnavailable": "Jumlah tidak tersedia (tidak ada kurs saat ini), jatuh tempo pada {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} beralih ke {{ state }}",
+      "riskMessage": "Strategi GEM Anda \"{{ strategy }}\" berubah dari {{ fromState }} ke {{ toState }}. Buka untuk meninjau rekomendasinya.",
+      "allocationTitle": "{{ strategy }} mengubah targetnya",
+      "allocationMessage": "Strategi GEM Anda \"{{ strategy }}\" kini menargetkan {{ target }}. Buka untuk meninjau rekomendasinya.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Pasar maju di luar AS",
+        "EM_EQUITY": "Pasar berkembang",
+        "SAFE": "Aset aman",
+        "RISK_FREE": "Tolok ukur bebas risiko"
+      },
+      "allocationMessageUnknown": "Strategi GEM “{{ strategy }}” Anda telah mengubah targetnya. Buka untuk meninjau rekomendasi."
+    },
+    "portfolioMovement": {
+      "titleUp": "Investasi naik {{ percent }}%",
+      "titleDown": "Investasi turun {{ percent }}%",
+      "messageUp": "Investasi Anda naik {{ percent }}% hari ini, tidak termasuk setoran dan penarikan. Buka untuk meninjau.",
+      "messageDown": "Investasi Anda turun {{ percent }}% hari ini, tidak termasuk setoran dan penarikan. Buka untuk meninjau."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} di bawah ambang batas Anda",
+      "titleHigh": "{{ account }} di atas ambang batas Anda",
+      "messageLow": "{{ account }} turun menjadi {{ balance }}, di bawah ambang batas {{ threshold }} Anda.",
+      "messageHigh": "{{ account }} naik menjadi {{ balance }}, di atas ambang batas {{ threshold }} Anda."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Pencadangan otomatis gagal",
+        "message": "Pencadangan otomatis untuk {{ user }} gagal: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Pencadangan otomatis tidak lengkap",
+        "messageAttachments": "Cadangan untuk {{ user }} berhasil ditulis, tetapi {{ missing }} dari {{ expected }} lampiran tidak dapat disertakan dan {{ inconsistent }} tidak cocok dengan metadatanya. Cadangan lengkap tetap dipertahankan.",
+        "messagePromotion": "Cadangan harian untuk {{ user }} berhasil, tetapi salinan mingguan atau bulanannya tidak dapat ditulis: {{ error }}",
+        "messageRetention": "Cadangan untuk {{ user }} berhasil, tetapi berkas cadangan lama tidak dapat dibersihkan: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Kunci enkripsi belum dikonfigurasi",
+        "message": "ENCRYPTION_KEY belum disetel, sehingga cadangan ditulis tanpa enkripsi dan rahasia tidak dapat disimpan. Versi mendatang tidak akan dapat dijalankan tanpanya."
+      },
+      "smtpFailure": {
+        "title": "Pengiriman email gagal",
+        "message": "Monize tidak dapat mengirim email: {{ error }}. Notifikasi dan pengingat tidak terkirim."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} tidak merespons",
+        "message": "Data pasar dari {{ provider }} tidak tersedia. Harga dan data indeks mungkin usang sampai penyedia merespons kembali."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} merespons kembali",
+        "message": "Gangguan telah berakhir dan data pasar dari {{ provider }} diperbarui kembali."
+      },
+      "scheduledPostFailed": {
+        "title": "{{ name }} tidak dapat diposting",
+        "message": "Transaksi terjadwal Anda yang jatuh tempo {{ date }} tidak terposting secara otomatis: {{ error }}. Anda dapat mempostingnya secara manual dari Tagihan & Setoran."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }} melebihi anggaran",
+      "overMessage": "Anda telah membelanjakan {{ amount }} dari anggaran {{ limit }} untuk {{ category }} ({{ percent }}%).",
+      "criticalTitle": "{{ category }} mendekati batas",
+      "warningTitle": "{{ category }} mencapai batas anggaran",
+      "thresholdMessage": "Anda telah menggunakan {{ percent }}% anggaran {{ category }} ({{ amount }} dari {{ limit }}).",
+      "projectedTitle": "{{ category }} diperkirakan melebihi anggaran",
+      "projectedMessage": "Dengan laju saat ini, pengeluaran {{ category }} diperkirakan mencapai {{ projected }} pada akhir periode (anggaran: {{ budgeted }}).",
+      "flexTitle": "Grup fleksibel “{{ group }}” mencapai {{ percent }}%",
+      "flexMessage": "Grup fleksibel “{{ group }}” telah menggunakan {{ spent }} dari anggaran gabungan {{ budgeted }} ({{ percent }}%).",
+      "incomeTitle": "Pendapatan di bawah perkiraan",
+      "incomeMessage": "Pendapatan aktual Anda ({{ actual }}) adalah {{ ratio }}% dari pendapatan yang diharapkan ({{ expected }}) pada tahap periode ini.",
+      "milestoneTitle": "Anggaran sesuai rencana",
+      "milestoneMessage": "{{ progress }}% periode telah berlalu dan Anda baru menggunakan {{ percent }}% dari total anggaran. Pertahankan!",
+      "seasonalTitle": "Lonjakan musiman diperkirakan untuk {{ category }}",
+      "seasonalMessage": "Pada bulan {{ month }} yang lalu, pengeluaran Anda untuk {{ category }} adalah {{ increase }} kali dari biasanya. Pertimbangkan untuk menyesuaikan anggaran."
+    }
   }
 }

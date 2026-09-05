@@ -199,5 +199,92 @@
     "eyebrow": "Powiadomienie Monize",
     "button": "Otwórz w Monize",
     "footer": "Otrzymujesz tę wiadomość, ponieważ dla tego typu powiadomień włączono natychmiastowy e-mail. Zmień to w Ustawieniach, Powiadomienia."
+  },
+  "notificationCopy": {
+    "billDue": {
+      "titleOverdue": "{{ payee }} – termin minął",
+      "titleToday": "{{ payee }} – termin dzisiaj",
+      "titleTomorrow": "{{ payee }} – termin jutro",
+      "titleInDays": "{{ payee }} – termin za {{ days }} dni",
+      "amountDue": "{{ amount }} do zapłaty {{ date }}",
+      "amountUnavailable": "Kwota niedostępna (brak aktualnego kursu wymiany), termin {{ date }}"
+    },
+    "gemSignal": {
+      "riskTitle": "{{ strategy }} przełączona na {{ state }}",
+      "riskMessage": "Twoja strategia GEM \"{{ strategy }}\" zmieniła się z {{ fromState }} na {{ toState }}. Otwórz, aby przejrzeć rekomendację.",
+      "allocationTitle": "{{ strategy }} zmieniła swój cel",
+      "allocationMessage": "Twoja strategia GEM \"{{ strategy }}\" celuje teraz w {{ target }}. Otwórz, aby przejrzeć rekomendację.",
+      "riskOn": "risk-on",
+      "riskOff": "risk-off",
+      "roles": {
+        "US_EQUITY": "S&P 500",
+        "EX_US_EQUITY": "Rynki rozwinięte poza USA",
+        "EM_EQUITY": "Rynki wschodzące",
+        "SAFE": "Aktywo bezpieczne",
+        "RISK_FREE": "Benchmark wolny od ryzyka"
+      },
+      "allocationMessageUnknown": "Twoja strategia GEM „{{ strategy }}” zmieniła cel. Otwórz, aby sprawdzić rekomendację."
+    },
+    "portfolioMovement": {
+      "titleUp": "Inwestycje w górę o {{ percent }}%",
+      "titleDown": "Inwestycje w dół o {{ percent }}%",
+      "messageUp": "Twoje inwestycje są dziś wyżej o {{ percent }}%, z wyłączeniem wpłat i wypłat. Otwórz, aby przejrzeć.",
+      "messageDown": "Twoje inwestycje są dziś niżej o {{ percent }}%, z wyłączeniem wpłat i wypłat. Otwórz, aby przejrzeć."
+    },
+    "balanceThreshold": {
+      "titleLow": "{{ account }} jest poniżej Twojego progu",
+      "titleHigh": "{{ account }} jest powyżej Twojego progu",
+      "messageLow": "{{ account }} spadło do {{ balance }}, poniżej Twojego progu {{ threshold }}.",
+      "messageHigh": "{{ account }} wzrosło do {{ balance }}, powyżej Twojego progu {{ threshold }}."
+    },
+    "system": {
+      "backupFailed": {
+        "title": "Automatyczna kopia zapasowa nie powiodła się",
+        "message": "Automatyczna kopia zapasowa dla {{ user }} nie powiodła się: {{ error }}"
+      },
+      "backupPartial": {
+        "title": "Automatyczna kopia zapasowa jest niekompletna",
+        "messageAttachments": "Kopia zapasowa dla {{ user }} została zapisana, ale nie udało się dołączyć {{ missing }} z {{ expected }} załączników, a {{ inconsistent }} nie zgadzało się ze swoimi metadanymi. Kompletne kopie zapasowe zostały zachowane.",
+        "messagePromotion": "Dzienna kopia zapasowa dla {{ user }} powiodła się, ale nie udało się zapisać jej kopii tygodniowej lub miesięcznej: {{ error }}",
+        "messageRetention": "Kopia zapasowa dla {{ user }} powiodła się, ale nie udało się usunąć starych plików kopii zapasowych: {{ error }}"
+      },
+      "encryptionKeyMissing": {
+        "title": "Klucz szyfrowania nie jest skonfigurowany",
+        "message": "ENCRYPTION_KEY nie jest ustawiony, więc kopie zapasowe są zapisywane bez szyfrowania, a sekrety nie mogą być przechowywane. Przyszła wersja nie uruchomi się bez niego."
+      },
+      "smtpFailure": {
+        "title": "Wysyłanie e-maili nie działa",
+        "message": "Monize nie mógł wysłać e-maila: {{ error }}. Powiadomienia i przypomnienia nie są dostarczane."
+      },
+      "providerOutage": {
+        "title": "{{ provider }} nie odpowiada",
+        "message": "Dane rynkowe z {{ provider }} są niedostępne. Ceny i dane indeksów mogą być nieaktualne, dopóki dostawca znów nie odpowie."
+      },
+      "providerRecovered": {
+        "title": "{{ provider }} znów odpowiada",
+        "message": "Awaria minęła i dane rynkowe z {{ provider }} są znów aktualizowane."
+      },
+      "scheduledPostFailed": {
+        "title": "Nie udało się zaksięgować: {{ name }}",
+        "message": "Twoja zaplanowana transakcja z terminem {{ date }} nie została zaksięgowana automatycznie: {{ error }}. Możesz zaksięgować ją ręcznie w sekcji Rachunki i wpłaty."
+      }
+    },
+    "budget": {
+      "overTitle": "{{ category }}: przekroczony budżet",
+      "overMessage": "Wydano {{ amount }} z budżetu {{ limit }} dla kategorii {{ category }} ({{ percent }}%).",
+      "criticalTitle": "{{ category }}: zbliżasz się do limitu",
+      "warningTitle": "{{ category }}: wykorzystujesz limit budżetu",
+      "thresholdMessage": "Wykorzystano {{ percent }}% budżetu kategorii {{ category }} ({{ amount }} z {{ limit }}).",
+      "projectedTitle": "{{ category }}: przewidywane przekroczenie budżetu",
+      "projectedMessage": "Przy obecnym tempie wydatki w kategorii {{ category }} osiągną {{ projected }} do końca okresu (budżet: {{ budgeted }}).",
+      "flexTitle": "Grupa elastyczna „{{ group }}”: {{ percent }}%",
+      "flexMessage": "Grupa elastyczna „{{ group }}” wykorzystała {{ spent }} z łącznego budżetu {{ budgeted }} ({{ percent }}%).",
+      "incomeTitle": "Dochód poniżej oczekiwań",
+      "incomeMessage": "Rzeczywisty dochód ({{ actual }}) stanowi {{ ratio }}% oczekiwanego dochodu ({{ expected }}) na tym etapie okresu.",
+      "milestoneTitle": "Budżet pod kontrolą",
+      "milestoneMessage": "Upłynęło {{ progress }}% okresu, a wykorzystano tylko {{ percent }}% całego budżetu. Tak trzymaj!",
+      "seasonalTitle": "Spodziewany sezonowy wzrost wydatków: {{ category }}",
+      "seasonalMessage": "W poprzednim roku w miesiącu {{ month }} wydatki w kategorii {{ category }} były {{ increase }} razy większe niż zwykle. Rozważ dostosowanie budżetu."
+    }
   }
 }
