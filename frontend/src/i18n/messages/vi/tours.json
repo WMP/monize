@@ -77,6 +77,14 @@
           "title": "Tài khoản của bạn",
           "body": "Thêm tài khoản ngân hàng, thẻ tín dụng, khoản vay và đầu tư của bạn tại đây bằng nút được làm nổi bật. Mọi số dư và giao dịch đều thuộc về một tài khoản."
         },
+        "openAccountDetail": {
+          "title": "Mở trang chi tiết của một tài khoản",
+          "body": "Mỗi tài khoản có một trang riêng theo loại của nó. Chọn **Chi tiết** — biểu tượng con mắt trên dòng tài khoản — để mở trang đó. Trên điện thoại, nhấn giữ tài khoản rồi chọn **Chi tiết**."
+        },
+        "accountDetailView": {
+          "title": "Một trang dành riêng cho tài khoản này",
+          "body": "Trang này thay đổi theo loại tài khoản, nên tài khoản ngân hàng, thẻ tín dụng, khoản vay, tài khoản đầu tư hay tài sản đều hiển thị những con số và công cụ phù hợp nhất với nó. Bạn có thể quay lại bất cứ lúc nào bằng **Chi tiết** trong danh sách tài khoản."
+        },
         "transactions": {
           "title": "Giao dịch",
           "body": "Đây là sổ giao dịch của bạn — mọi khoản thanh toán và tiền gửi cho các tài khoản đều nằm ở đây, sẵn sàng để tìm kiếm và lọc."

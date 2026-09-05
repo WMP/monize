@@ -77,6 +77,14 @@
           "title": "Uw rekeningen",
           "body": "Voeg hier uw bank-, creditcard-, lening- en beleggingsrekeningen toe met de gemarkeerde knop. Elk saldo en elke transactie hoort bij een rekening."
         },
+        "openAccountDetail": {
+          "title": "Open de detailweergave van een rekening",
+          "body": "Elke rekening heeft een pagina die bij haar type past. Kies **Details** — het oogpictogram op een rekeningrij — om die te openen. Houd op de telefoon de rekening ingedrukt en kies **Details**."
+        },
+        "accountDetailView": {
+          "title": "Een weergave gemaakt voor deze rekening",
+          "body": "Deze pagina verandert mee met het rekeningtype, dus een bankrekening, creditcard, lening, beleggingsrekening of bezit toont elk de cijfers en hulpmiddelen die daarbij horen. Kom hier altijd terug via **Details** in de rekeningenlijst."
+        },
         "transactions": {
           "title": "Transacties",
           "body": "Dit is uw transactieoverzicht — elke betaling en storting voor uw rekeningen staat hier, klaar om te doorzoeken en te filteren."

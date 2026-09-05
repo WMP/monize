@@ -77,6 +77,14 @@
           "title": "Akun Anda",
           "body": "Tambahkan akun bank, kartu kredit, pinjaman, dan investasi Anda di sini dengan tombol yang disorot. Setiap saldo dan transaksi terkait dengan sebuah akun."
         },
+        "openAccountDetail": {
+          "title": "Buka tampilan detail sebuah akun",
+          "body": "Setiap akun punya halaman yang disesuaikan dengan jenisnya. Pilih **Detail** — ikon mata pada baris akun — untuk membukanya. Di ponsel, tekan lama akunnya lalu pilih **Detail**."
+        },
+        "accountDetailView": {
+          "title": "Tampilan yang dibuat untuk akun ini",
+          "body": "Halaman ini berubah mengikuti jenis akun, sehingga rekening bank, kartu kredit, pinjaman, akun investasi, atau aset masing-masing menampilkan angka dan alat yang paling berguna baginya. Kembali kapan saja lewat **Detail** di daftar akun."
+        },
         "transactions": {
           "title": "Transaksi",
           "body": "Ini adalah daftar transaksi Anda — setiap pembayaran dan setoran untuk akun Anda tercatat di sini, siap untuk dicari dan disaring."

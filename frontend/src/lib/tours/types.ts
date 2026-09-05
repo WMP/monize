@@ -40,8 +40,17 @@ export type TourPlacement = 'top' | 'bottom' | 'left' | 'right' | 'auto';
  * - `securitiesExist` the user has at least one active security. A tour of the
  *   security detail page has nothing to open without one, and every step after
  *   the first would be a dead end.
+ * - `accountsExist` the user has at least one open account that can open a
+ *   dedicated detail page (`hasAccountDetailView`). Deliberately its own
+ *   requirement rather than a second reading of `transactionEntry`: the two ask
+ *   different questions of the same list -- "is there something to record
+ *   against" and "is there a Details page to open" -- so tightening either one
+ *   later must not silently move the other.
  */
-export type TourRequirement = 'transactionEntry' | 'securitiesExist';
+export type TourRequirement =
+  | 'transactionEntry'
+  | 'securitiesExist'
+  | 'accountsExist';
 
 export interface TourStep {
   /** i18n leaf: tours.<i18nPrefix>.steps.<id>.{title,body}. */

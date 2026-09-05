@@ -77,6 +77,14 @@
           "title": "[XX-Your accounts-XX]",
           "body": "[XX-Add your bank, credit card, loan, and investment accounts here with the highlighted button. Every balance and transaction belongs to an account.-XX]"
         },
+        "openAccountDetail": {
+          "title": "[XX-Open an account's detailed view-XX]",
+          "body": "[XX-Each account has a page built for its type. Choose **Details** — the eye icon on an account row — to open it. On a phone, press and hold the account and choose **Details**.-XX]"
+        },
+        "accountDetailView": {
+          "title": "[XX-A view built for this account-XX]",
+          "body": "[XX-This page changes with the account type, so a bank account, credit card, loan, investment account, or asset each shows the figures and tools that suit it. Come back anytime with **Details** from the Accounts list.-XX]"
+        },
         "transactions": {
           "title": "[XX-Transactions-XX]",
           "body": "[XX-This is your transaction register — every payment and deposit for your accounts lives here, ready to search and filter.-XX]"

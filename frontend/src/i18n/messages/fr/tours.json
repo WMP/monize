@@ -77,6 +77,14 @@
           "title": "Vos comptes",
           "body": "Ajoutez ici vos comptes bancaires, cartes de crédit, prêts et comptes de placement avec le bouton mis en évidence. Chaque solde et chaque transaction appartiennent à un compte."
         },
+        "openAccountDetail": {
+          "title": "Ouvrez la vue détaillée d'un compte",
+          "body": "Chaque compte a une page adaptée à son type. Choisissez **Détails** — l'icône en forme d'œil sur la ligne d'un compte — pour l'ouvrir. Sur mobile, appuyez longuement sur le compte et choisissez **Détails**."
+        },
+        "accountDetailView": {
+          "title": "Une vue conçue pour ce compte",
+          "body": "Cette page change selon le type de compte : un compte bancaire, une carte de crédit, un prêt, un compte de placement ou un actif affichent chacun les chiffres et les outils qui leur conviennent. Revenez-y quand vous voulez avec **Détails** depuis la liste des comptes."
+        },
         "transactions": {
           "title": "Transactions",
           "body": "Voici votre registre de transactions — chaque paiement et dépôt de vos comptes s'y trouve, prêt à être recherché et filtré."

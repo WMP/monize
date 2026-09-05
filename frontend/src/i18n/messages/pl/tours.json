@@ -77,6 +77,14 @@
           "title": "Twoje konta",
           "body": "Dodaj tutaj swoje konta bankowe, karty kredytowe, pożyczki i konta inwestycyjne za pomocą wyróżnionego przycisku. Każde saldo i każda transakcja należą do jakiegoś konta."
         },
+        "openAccountDetail": {
+          "title": "Otwórz szczegółowy widok konta",
+          "body": "Każde konto ma stronę dopasowaną do swojego rodzaju. Wybierz **Szczegóły** — ikonę oka w wierszu konta — aby ją otworzyć. Na telefonie przytrzymaj konto i wybierz **Szczegóły**."
+        },
+        "accountDetailView": {
+          "title": "Widok stworzony dla tego konta",
+          "body": "Ta strona zmienia się wraz z rodzajem konta, więc konto bankowe, karta kredytowa, pożyczka, konto inwestycyjne czy składnik majątku pokazują liczby i narzędzia najbardziej dla nich przydatne. Wróć tu kiedy zechcesz przez **Szczegóły** na liście kont."
+        },
         "transactions": {
           "title": "Transakcje",
           "body": "To jest Twój rejestr transakcji — znajdziesz tu każdą płatność i wpłatę na swoich kontach, gotową do wyszukiwania i filtrowania."
