@@ -67,9 +67,12 @@ const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray
 // Column alignment means nothing there -- the column header row is hidden and
 // each data row is a grid -- so every control is left-aligned and self-naming.
 // The border is what says "tappable": there is no hover on a touch screen, and
-// the strip sits on the card's own background. (Kept identical to the sibling
-// report tables that ship this strip; the copies are one of the duplications
-// the converted-table consolidation pass folds into one home.)
+// the chip's own fill is a shade off the header band it sits on (this table's
+// `<thead>` keeps its `bg-gray-50` / `dark:bg-gray-900/50`, so the strip is on
+// that band rather than on the card, as it is on the sibling tables whose card
+// has no header band). (The class is kept identical to those siblings; the
+// copies are one of the duplications the converted-table consolidation pass
+// folds into one home -- `components/ui/` is not this change's to edit.)
 //
 // Five chips wrap to three lines at 320px in `en`/`pl`/`ru`/`id` (114px), four
 // in `de` (148px) and five in the pseudo-locale (182px) above the first row.
@@ -112,12 +115,18 @@ const PHONE_HEADER_CLASS =
 const MONEY_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
 // Last Payment is a WORD-shaped value, not a number: `format(..., 'MMM d,
-// yyyy')` renders `Sep 5, 2026` (72px), or `-` where the bill has never been
-// paid. It takes the same rendering as a figure cell -- including the nowrap,
-// because a date is one label and breaking it after `Sep` reads as two values
-// -- but it is its own constant so a change to the money budget above cannot
-// silently re-decide how a date wraps, and so the two reasons stay separable.
-const DATE_CELL = MONEY_CELL;
+// yyyy')` renders `Sep 5, 2026` (72px at `text-xs`), or `-` where the bill has
+// never been paid. It resolves to the same rendering as a figure cell today --
+// including the nowrap, because a date is one label and breaking it after `Sep`
+// reads as two values -- and it is spelled out rather than aliased to
+// `MONEY_CELL` deliberately: the two hold the same string for different
+// reasons, and an alias would carry a money-driven edit (dropping the nowrap
+// because a formatter stopped grouping, widening the type for a longer figure)
+// silently onto the date. Where the sibling `CategoryPerformanceReport`'s
+// `WORD_CELL` drops the nowrap because its word is a translated CATALOGUE
+// string that may legitimately wrap, this one is a fixed-shape date and keeps
+// it.
+const DATE_CELL = 'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
 /** Every caption in a wrapped cell is phone-only. */
 const CAPTION_CLASS = 'sm:hidden';
@@ -383,7 +392,7 @@ export function BillPaymentHistoryReport() {
 
               Three lines because five cells over two tracks cannot be fewer,
               and two tracks is what this box holds. Measured before: the table
-              is 634-686px inside a 288px wrapper at 320px (628-686px inside
+              is 628-686px inside a 288px wrapper at 320px (628-686px inside
               358px at 390px), so three of the five columns -- Average, Total
               Paid and Last Payment -- sit entirely behind a sideways scroll on
               a phone today.
@@ -394,19 +403,29 @@ export function BillPaymentHistoryReport() {
               the count it is made of on line 2, and the recency of the whole
               thing closing the card on line 3.
 
-              Which caption goes in which track is a measurement, not a taste:
-              every catalogue string for the four captioned columns was rendered
-              into the 122px a track gets at 320px, at `CellLabel`'s own type.
-              None overflows. `Pembayaran Terakhir` (id, Last Payment) is the one
-              that needs a second line, which costs that cell 41px instead of
-              29px in Indonesian -- a documented cost, since a shorter catalogue
-              key is not ours to add. Average takes the LEFT track because its
-              caption is the one with no break opportunity at all in the longest
-              locale (`Durchschnitt`, de, 12 characters; Payments' `Pembayaran`
-              is the next at 10), so a future translation that outgrows the track
-              spends the 12px column gap there rather than reopening the
-              wrapper's sideways scroll on the right. Total Paid and Last
-              Payment both carry a space in every locale and take the right.
+              Which caption goes in which track is a measurement, not a taste.
+              All 80 catalogue strings for the four captioned columns -- every
+              one of the 20 locales that ship a `reports` catalogue, the
+              pseudo-locale included -- were rendered into the 122px a track gets
+              at 320px, at `CellLabel`'s own type. NONE overflows, and exactly
+              two need a second line, both of them Last Payment: `Pembayaran
+              Terakhir` (id, 125px unbroken) and `Lần thanh toán cuối` (vi,
+              123px). Those cells are 41px instead of 29px in those two locales,
+              which is a documented cost rather than a defect -- a shorter
+              catalogue key is not this change's to add. At 390px (157px tracks)
+              nothing wraps at all.
+
+              Average takes the LEFT track because its caption is the widest with
+              no break opportunity ANYWHERE -- `Durchschnitt` (de) at 82px, ahead
+              of Payments' `Pagamentos` (pt/pt-BR) at 72px -- so a future
+              translation that outgrows the track spends the 12px column gap
+              there rather than reopening the wrapper's sideways scroll on the
+              right. Total Paid and Last Payment take the right because neither
+              has an unbreakable string in any locale: every one of them carries
+              a space or a hyphen, and the CJK captions (`总支付额`, `最終支払い`)
+              break between characters. Naming them by length would have been the
+              wrong test -- `[XX-Last Payment-XX]` is the longest of the eighty
+              and breaks at its hyphens.
 
               The bill name and the payee sub-line stay in ONE `<td>` -- they
               are the row's identity, not two columns -- and BOTH are unbounded
