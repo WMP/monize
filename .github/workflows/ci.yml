@@ -342,12 +342,14 @@ jobs:
       # install command at a chart directory that does not exist.
       - name: Verify documented paths and Helm defaults match the manifests
         run: node scripts/check-docs-manifests.mjs
-      # A migration prefix that collides with, or sorts below, one already on the
-      # base branch is applied out of order on every database that recorded the
-      # newer filename -- and `database/CLAUDE.md` stating the rule in prose did
-      # not stop a branch from taking a prefix main had meanwhile used. The
-      # ordering half needs the base ref, hence fetch-depth 0.
-      - name: Verify migration prefixes are unique and sort last
+      # A migration prefix that collides with one already on the base branch is
+      # applied out of order on every database that recorded the other filename
+      # -- and `database/CLAUDE.md` stating the rule in prose did not stop two
+      # branches from both taking the next counter value (issue #1277). New
+      # migrations therefore carry a UTC timestamp prefix, which cannot collide;
+      # this check refuses a new file named under the retired NNN_ scheme. The
+      # "what did this branch add" half needs the base ref, hence fetch-depth 0.
+      - name: Verify migration prefixes are unique and timestamp-named
         run: node scripts/check-migration-prefixes.mjs
       # The GHCR prune sweep DELETES package versions, and its predicate is the
       # only thing standing between "clear the retired per-PR tags" and

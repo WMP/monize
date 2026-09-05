@@ -29,6 +29,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+// The loader reaches the backend's own TypeScript definition, so the lint
+// orders files exactly as db-migrate applies them.
+import { compareMigrationFilenames } from "../../scripts/lib/migration-filename.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultDir = join(here, "..", "..", "database", "migrations");
@@ -693,11 +696,11 @@ export function missingOneShotMigrations(files) {
   );
 }
 
-/** Lint every `.sql` file in `dir`, sorted by filename. */
+/** Lint every `.sql` file in `dir`, in apply order (numeric prefix). */
 export function lintDirectory(dir) {
   const files = readdirSync(dir)
     .filter((f) => f.endsWith(".sql"))
-    .sort();
+    .sort(compareMigrationFilenames);
   const findings = [];
   for (const file of files) {
     const sql = readFileSync(join(dir, file), "utf8");

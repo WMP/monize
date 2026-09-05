@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { DataSource } from "typeorm";
 
+import { compareMigrationFilenames } from "@/common/db/migration-filename";
 import { withUserContext } from "@/common/db/with-context";
 import { JobClaimService, JobClaimType } from "@/common/jobs/job-claim.service";
 
@@ -23,7 +24,8 @@ import {
  *
  * This suite builds exactly that database: the committed baseline fixture (main's
  * schema.sql at the SHA named in its header, max migration 148) plus the full
- * migrations directory in filename order, `synchronize: false` throughout.
+ * migrations directory in apply order (numeric prefix), `synchronize: false`
+ * throughout.
  * Replaying the whole directory matches db-migrate's behaviour on such an install
  * -- files <= 148 are no-ops there, 149+ do the real work. Then it runs the real
  * services against the result, because "the migrations apply" and "the migrated
@@ -96,7 +98,7 @@ describe("production migration path (baseline schema + migrations)", () => {
     const files = fs
       .readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith(".sql"))
-      .sort();
+      .sort(compareMigrationFilenames);
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       try {

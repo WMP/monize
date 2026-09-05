@@ -83,10 +83,20 @@ psql_in -d db_migrations -f /tmp/schema.sql >/dev/null
 # and the schema_migrations INSERT, restore from a mid-deploy snapshot) and the
 # next boot re-runs the whole body. The static counterpart is
 # `backend/npm run migration:lint`; see docs/database-migrations.md.
+#
+# Apply order is NUMERIC on the filename prefix, then the full filename -- the
+# order `backend/src/common/db/migration-filename.ts` gives db-migrate. A shell
+# glob is a string sort, which agrees with that only while every historical
+# prefix begins with 0 or 1 and every timestamp with 2; `sort -n` reads the
+# leading digits as a number and breaks ties on the whole line, which is the
+# same rule. `migration-filename.spec.ts` runs this exact pipeline against the
+# TypeScript comparator to keep them agreeing.
+mapfile -t MIGRATION_FILES < <(ls "$REPO_ROOT/database/migrations" | grep '\.sql$' | sort -n)
+
 for pass in 1 2; do
   echo "Applying migrations on top of db_migrations (pass $pass of 2)..."
-  for f in "$REPO_ROOT"/database/migrations/*.sql; do
-    fname="$(basename "$f")"
+  for fname in "${MIGRATION_FILES[@]}"; do
+    f="$REPO_ROOT/database/migrations/$fname"
     docker cp "$f" "$CONTAINER:/tmp/migration.sql"
     if ! psql_in -d db_migrations -f /tmp/migration.sql >/dev/null 2>&1; then
       echo "FAIL: migration $fname errored when applied on top of schema.sql (pass $pass)"

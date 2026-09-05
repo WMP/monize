@@ -3,6 +3,7 @@ import * as path from "path";
 import { DataSource } from "typeorm";
 
 import { applyAppRoleGrants, provisionAppRole } from "@/common/db/app-role";
+import { compareMigrationFilenames } from "@/common/db/migration-filename";
 import { DEFAULT_APP_USER } from "@/common/db/rls-config";
 
 /**
@@ -95,7 +96,7 @@ export function findTriggerMigrations(): string[] {
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
-    .sort()
+    .sort(compareMigrationFilenames)
     .filter((f) =>
       /RETURNS\s+TRIGGER/i.test(
         stripSqlComments(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8")),
@@ -120,11 +121,11 @@ export function findRlsMigrations(includeEnable = false): string[] {
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
-    // Filename order, which is what db-migrate uses -- note that `116_*` and
-    // `117_*` each have two files, so numeric-prefix order is ambiguous and
-    // alphabetical tie-breaking is what keeps `117_security_documents` ahead of
+    // Apply order, which is what db-migrate uses: numeric prefix, then the
+    // full filename -- `116_*` and `117_*` each have two files, and that
+    // tiebreak is what keeps `117_security_documents` ahead of
     // `118_security_documents_rls`.
-    .sort();
+    .sort(compareMigrationFilenames);
 
   const rlsFiles = files.filter((f) => {
     const sql = stripSqlComments(
