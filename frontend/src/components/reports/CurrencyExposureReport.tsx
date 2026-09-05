@@ -51,15 +51,23 @@ const CURRENCY_COLOURS: Record<string, string> = {
 const FALLBACK_COLOURS = [CHART_SERIES[8], CHART_SERIES[9]];
 
 /**
- * One sortable column of the data table. The six are declared once, as a
- * record over the sort field union, and rendered by BOTH header rows -- the
- * column header row (from `sm` up) and the phone sort strip -- so the two can
- * never list different fields, and adding a member to the union fails `tsc`
- * rather than stranding a phone with no control for it.
+ * One column of the data table. The six are declared once, as a record over
+ * the sort field union, and rendered by BOTH header rows -- the column header
+ * row (from `sm` up) and the phone sort strip -- so the two can never list
+ * different fields, and adding a member to the union fails `tsc` rather than
+ * stranding a phone with no control for it.
+ *
+ * The record's declaration order IS the column order, so `value` lives here
+ * beside the label: the PDF export builds its headings AND its row cells from
+ * the same ordered list, and reordering the record moves both together.
+ * Deriving only the headings would relabel the exported columns while leaving
+ * the values in the old order -- a silently mislabelled export.
  */
 interface SortColumn {
   field: CurrencyExposureSortField;
   label: string;
+  /** The cell's text, rendered on screen and written to the PDF. */
+  value: (item: CurrencyAllocation) => string;
   /** Money, rate, percent and count columns are right-aligned on desktop. */
   align?: 'right';
 }
@@ -142,6 +150,22 @@ interface CurrencyAllocation {
   color: string;
   rate: number | null;
 }
+
+/**
+ * The rate column's text, decided once for the cell and the PDF export alike.
+ *
+ * Three states, and they must stay distinguishable: the reporting currency
+ * converts 1:1 BY DEFINITION, which is a known rate; a resolved rate prints at
+ * `FX_RATE_DISPLAY_DECIMALS`, because a rate is not money and is never rounded
+ * to four decimals; and a rate that could not be resolved is unknown, marked
+ * `-` and never rendered as a measured 1.
+ */
+const rateDisplay = (item: CurrencyAllocation, defaultCurrency: string) =>
+  item.currency === defaultCurrency
+    ? (1).toFixed(FX_RATE_DISPLAY_DECIMALS)
+    : item.rate !== null
+      ? item.rate.toFixed(FX_RATE_DISPLAY_DECIMALS)
+      : '-';
 
 function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, labelNative, labelConverted }: {
   active?: boolean;
@@ -314,12 +338,12 @@ export function CurrencyExposureReport() {
   // `defaultCurrency` as an ICU argument, so the phone captions below pass the
   // same argument and read exactly as the column header does.
   const columns: SortColumnsByField = {
-    currency: { field: 'currency', label: t('currencyExposure.colCurrency') },
-    nativeValue: { field: 'nativeValue', label: t('currencyExposure.colNativeValue'), align: 'right' },
-    rate: { field: 'rate', label: t('currencyExposure.colRate', { defaultCurrency }), align: 'right' },
-    convertedValue: { field: 'convertedValue', label: t('currencyExposure.colConvertedValue', { defaultCurrency }), align: 'right' },
-    percentage: { field: 'percentage', label: t('currencyExposure.colPortfolioPct'), align: 'right' },
-    count: { field: 'count', label: t('currencyExposure.colHoldings'), align: 'right' },
+    currency: { field: 'currency', label: t('currencyExposure.colCurrency'), value: (item) => item.currency },
+    nativeValue: { field: 'nativeValue', label: t('currencyExposure.colNativeValue'), align: 'right', value: (item) => formatCurrencyFull(item.nativeValue, item.currency) },
+    rate: { field: 'rate', label: t('currencyExposure.colRate', { defaultCurrency }), align: 'right', value: (item) => rateDisplay(item, defaultCurrency) },
+    convertedValue: { field: 'convertedValue', label: t('currencyExposure.colConvertedValue', { defaultCurrency }), align: 'right', value: (item) => formatCurrencyFull(item.convertedValue, defaultCurrency) },
+    percentage: { field: 'percentage', label: t('currencyExposure.colPortfolioPct'), align: 'right', value: (item) => `${item.percentage.toFixed(1)}%` },
+    count: { field: 'count', label: t('currencyExposure.colHoldings'), align: 'right', value: (item) => String(item.count) },
   };
 
   // Their order, rendered by BOTH header rows and matched by the cells' DOM
@@ -330,23 +354,19 @@ export function CurrencyExposureReport() {
   // prevent. The record's declaration order is the column order.
   const sortColumns: readonly SortColumn[] = Object.values(columns);
 
+  // A column's 1-based position, derived from that same order rather than
+  // written down a second time. The footer needs it (see its comment): below
+  // `sm` it drops the two columns that have no total from the DOM entirely.
+  const colIndexOf = (field: CurrencyExposureSortField) =>
+    sortColumns.findIndex((col) => col.field === field) + 1;
+
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    // The PDF's column headings are the table's, from the same record, so the
-    // export cannot drift from the screen it exports.
+    // The PDF's headings AND its row cells come from the same ordered record
+    // the table renders, so the export cannot drift from the screen it exports
+    // -- and reordering the record moves the two together.
     const headers = sortColumns.map((col) => col.label);
-    const rows = allocationData.map(item => [
-      item.currency,
-      formatCurrencyFull(item.nativeValue, item.currency),
-      item.currency === defaultCurrency
-        ? (1).toFixed(FX_RATE_DISPLAY_DECIMALS)
-        : item.rate !== null
-          ? item.rate.toFixed(FX_RATE_DISPLAY_DECIMALS)
-          : '-',
-      formatCurrencyFull(item.convertedValue, defaultCurrency),
-      `${item.percentage.toFixed(1)}%`,
-      String(item.count),
-    ]);
+    const rows = allocationData.map((item) => sortColumns.map((col) => col.value(item)));
     const accountLabel = selectedAccountIds.length > 0
       ? accounts.filter((a) => selectedAccountIds.includes(a.id)).map((a) => a.name).join(', ')
       : 'All Accounts';
@@ -514,12 +534,15 @@ export function CurrencyExposureReport() {
           Two properties of restyling one tree, both deliberate. Changing the
           `display` would drop the implicit table semantics below `sm`, so the
           explicit ARIA roles below put them back -- the phone sort strip is the
-          header row a phone reader gets, and its six controls sit in the
-          cells' own DOM order, so the column association survives. The
-          `CellLabel` captions are therefore REDUNDANT with that association
-          rather than a substitute for it, and deliberately so: the grid places
-          the cells out of DOM order visually, so a sighted phone reader has no
-          header row to look up and needs the name beside the value.
+          header row a phone reader gets, and its six controls sit in the data
+          cells' own DOM order, so the column association survives there. (The
+          footer row is the one place it would not: it drops two cells from the
+          DOM below `sm`, and states an `aria-colindex` on each of its own --
+          see its comment.) The `CellLabel` captions are therefore REDUNDANT
+          with that association rather than a substitute for it, and
+          deliberately so: the grid places the cells out of DOM order visually,
+          so a sighted phone reader has no header row to look up and needs the
+          name beside the value.
 
           The second is an ACCEPTED, UNMITIGATED trade-off, and the roles are
           not what answers it: they restore the table semantics, and have no
@@ -592,27 +615,24 @@ export function CurrencyExposureReport() {
                   </td>
                   <td role="cell" className={`col-start-1 row-start-2 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.nativeValue.label}</CellLabel>
-                    {formatCurrencyFull(item.nativeValue, item.currency)}
+                    {columns.nativeValue.value(item)}
                   </td>
                   {/* The rate is not money: six decimals, never rounded and
                       never clipped, so it keeps `whitespace-nowrap` like the
                       figures and sits in a full track of its own. `-` is the
                       marker for a rate that could not be resolved, and stays
-                      exactly that -- an unknown rate is not a measured 1. */}
+                      exactly that -- an unknown rate is not a measured 1. The
+                      decision is `rateDisplay`, shared with the PDF export. */}
                   <td role="cell" className={`col-start-2 row-start-2 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.rate.label}</CellLabel>
-                    {item.currency === defaultCurrency
-                      ? (1).toFixed(FX_RATE_DISPLAY_DECIMALS)
-                      : item.rate !== null
-                        ? item.rate.toFixed(FX_RATE_DISPLAY_DECIMALS)
-                        : '-'}
+                    {columns.rate.value(item)}
                   </td>
                   {/* The value in the reporting currency is the headline: it
                       takes the right of line 1 beside the currency, because it
                       is what the row is read for. */}
                   <td role="cell" className={`col-start-2 row-start-1 font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.convertedValue.label}</CellLabel>
-                    {formatCurrencyFull(item.convertedValue, defaultCurrency)}
+                    {columns.convertedValue.value(item)}
                   </td>
                   {/* Both values on line 3 are bounded (`100.0%` and a holdings
                       count), but their CAPTIONS are not -- `[XX-% of
@@ -621,11 +641,11 @@ export function CurrencyExposureReport() {
                       an `auto` pair sized by its captions. */}
                   <td role="cell" className={`col-start-1 row-start-3 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
-                    {item.percentage.toFixed(1)}%
+                    {columns.percentage.value(item)}
                   </td>
                   <td role="cell" className={`col-start-2 row-start-3 text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
-                    {item.count}
+                    {columns.count.value(item)}
                   </td>
                 </tr>
               ))}
@@ -634,25 +654,39 @@ export function CurrencyExposureReport() {
               {/* The totals are the largest figures on the table, so this row
                   wraps exactly the way a data row does -- the same two tracks
                   and the same placement, each figure captioned -- with "Total"
-                  standing in for the currency in the identity track. The
-                  native value and the rate have no total, and their two blank
-                  cells are `hidden` below `sm` so they claim no grid slot;
-                  from `sm` up they are the same empty table cells as today. */}
+                  standing in for the currency in the identity track. Line 2 is
+                  therefore empty here (the native value and the rate have no
+                  total, and their two blank cells are `hidden` below `sm` so
+                  they claim no grid slot); the placement stays the data row's
+                  verbatim anyway, so a reader finds each total in the column
+                  and on the line the rows below put it. The cost is one
+                  6px row gap. From `sm` up the blanks are the same empty table
+                  cells as today.
+
+                  Because those two cells leave the DOM below `sm`, this row
+                  exposes four cells where the header exposes six columns, and
+                  a screen reader placing a cell by its position would announce
+                  the grand total under "Native Value". So every cell here
+                  states its own `aria-colindex` -- which is exactly the case
+                  the attribute exists for, a row whose columns are not all
+                  present -- taken from the column record's order rather than
+                  written down again. It is correct and inert from `sm` up,
+                  where all six are present. */}
               <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
-                <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
+                <td role="cell" aria-colindex={colIndexOf('currency')} className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                   {t('currencyExposure.total')}
                 </td>
-                <td role="cell" className="hidden sm:table-cell" />
-                <td role="cell" className="hidden sm:table-cell" />
-                <td role="cell" className={`col-start-2 row-start-1 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                <td role="cell" aria-colindex={colIndexOf('nativeValue')} className="hidden sm:table-cell" />
+                <td role="cell" aria-colindex={colIndexOf('rate')} className="hidden sm:table-cell" />
+                <td role="cell" aria-colindex={colIndexOf('convertedValue')} className={`col-start-2 row-start-1 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.convertedValue.label}</CellLabel>
                   {formatCurrencyFull(totalPortfolioValue, defaultCurrency)}
                 </td>
-                <td role="cell" className={`col-start-1 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                <td role="cell" aria-colindex={colIndexOf('percentage')} className={`col-start-1 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                   100%
                 </td>
-                <td role="cell" className={`col-start-2 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                <td role="cell" aria-colindex={colIndexOf('count')} className={`col-start-2 row-start-3 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
                   {allocationData.reduce((sum, a) => sum + a.count, 0)}
                 </td>

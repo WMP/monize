@@ -236,9 +236,9 @@ describe('CurrencyExposureReport (phone wrapped table)', () => {
     expect(placement(count)).toBe('c2/r3');
 
     // The native value and the rate have no total. Their cells are `hidden`
-    // below `sm` so they occupy no grid track -- placed, they would open an
-    // empty second line and push the figures around; from `sm` up they are the
-    // same empty table cells the footer has today.
+    // below `sm` so they occupy no grid track -- placed, they would take a
+    // track from the figures beside them; from `sm` up they are the same empty
+    // table cells the footer has today.
     for (const blank of [blankNative, blankRate]) {
       expect(blank.textContent).toBe('');
       expect(blank.className).toBe('hidden sm:table-cell');
@@ -256,6 +256,37 @@ describe('CurrencyExposureReport (phone wrapped table)', () => {
     expect(footRow.textContent).toContain('CAD Value');
     expect(footRow.textContent).toContain('% of Portfolio');
     expect(footRow.textContent).toContain('Holdings');
+  });
+
+  it('keeps each total announced against its own column, though two footer cells leave the DOM', async () => {
+    const container = await renderReport();
+
+    // `display: none` takes a cell out of the accessibility tree, so below `sm`
+    // the footer exposes four cells where the header exposes six columnheaders
+    // -- and a reader placing a cell by its position would announce the grand
+    // total under "Native Value" and the holdings total under "CAD Value".
+    // Every footer cell therefore states its own column, which is exactly the
+    // case `aria-colindex` exists for.
+    const headerLabels = Array.from(
+      container.querySelectorAll('thead tr:first-child th'),
+    ).map((th) => th.textContent?.replace(/[↑↓↕]/g, '').trim());
+    expect(headerLabels).toHaveLength(6);
+
+    const footCells = Array.from(container.querySelectorAll('tfoot td'));
+    expect(footCells.map((c) => c.getAttribute('aria-colindex'))).toEqual([
+      '1', '2', '3', '4', '5', '6',
+    ]);
+
+    // And the index each total claims names the column whose caption it
+    // carries -- the association, not merely the presence of the attribute.
+    const columnOf = (cell: Element) =>
+      headerLabels[Number(cell.getAttribute('aria-colindex')) - 1];
+    const [, , , converted, pct, count] = footCells;
+    expect(columnOf(converted)).toBe('CAD Value');
+    expect(columnOf(pct)).toBe('% of Portfolio');
+    expect(columnOf(count)).toBe('Holdings');
+    // 987654.32 + 123456.78 + 1000 + 98765.43, the sum of the three rows.
+    expect(converted.textContent).toContain('CAD 1210876.53');
   });
 
   it('keeps the bounded identity exactly as it is: a colour dot beside the code', async () => {
