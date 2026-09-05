@@ -277,9 +277,9 @@ export function InvestmentTransactionCardBody({
 
   return (
     // A grid, not a flex row, and `minmax(0,1fr)` rather than a plain `1fr`: a
-    // track that may be zero lets the symbol and the security name truncate,
-    // where a flex item's `min-w-0` still contributes the full width of its
-    // nowrap text to the table's minimum. On a phone that is not merely a
+    // track that may be zero lets the symbol shrink and the security name
+    // clamp, where a flex item's `min-w-0` still contributes the full width of
+    // its nowrap text to the table's minimum. On a phone that is not merely a
     // scrollbar -- mobile Chrome sizes the viewport `position: fixed` attaches
     // to from the widest content on the page.
     //
@@ -291,8 +291,9 @@ export function InvestmentTransactionCardBody({
     // what it is there to do and shattered the action label across seven
     // lines, 237px of row for one trade. Measured in Chromium: folding the
     // date into the identity track takes it to 162px at 320px and 232px at
-    // 390px, no word breaks, 193px of row -- and `documentElement.scrollWidth`
-    // and the table's own still equal the viewport at 320, 390 and 800.
+    // 390px, with no word broken and the row down to 207px -- and
+    // `documentElement.scrollWidth` and the table's own still equal the
+    // viewport at 320, 390 and 800.
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
       {/* Line 1, left: when, and what was traded. The date leads, uncaptioned
           -- it is the row's identity and the one column a phone-width tier row
