@@ -202,10 +202,16 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
         className={`group hover:bg-gray-100 dark:hover:bg-gray-800 select-none bg-white dark:bg-gray-900 ${onEdit ? 'cursor-pointer' : ''} ${isVoid ? 'opacity-50' : ''}`}
       >
         <td className="p-0">
-          {/* The inset is the density table's `wide` scale, not a hand-picked
-              one: two insets on one screen misalign, and this register's
-              phone inset is deliberately narrower than every other table's
-              (`useTableDensity`'s `wide` entry) because it carries more. */}
+          {/* The inset is this table's own `cellPadding` -- the `wide` scale
+              it already reads -- never a hand-picked literal. That keeps the
+              card and the tier rows above and below it inset identically at
+              every density, and it keeps the value in one place: a change to
+              the scale reaches both layouts rather than one. The `wide`
+              scale's phone inset is narrower than every other table's, which
+              is why this card can hold two figures on a line at 320px. (The
+              "Today" divider between the rows spells its own padding and is
+              a shade wider; it renders in both layouts, so it is left exactly
+              as it was and noted as a follow-up.) */}
           <div className={cellPadding}>
             <InvestmentTransactionCardBody
               tx={tx}
