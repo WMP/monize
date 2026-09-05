@@ -211,8 +211,6 @@
       "description": "当我的投资账户变动超过阈值时，每天通知我一次；以市场变化和分红衡量（不含存入和取出）。",
       "enableLabel": "启用投资变动提醒",
       "thresholdLabel": "当每日变动至少达到以下值时通知",
-      "save": "保存",
-      "saved": "阈值已保存",
       "saveError": "无法保存阈值",
       "loadError": "无法加载投资提醒设置",
       "retry": "重试"

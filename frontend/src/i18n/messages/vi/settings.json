@@ -211,8 +211,6 @@
       "description": "Thông báo cho tôi mỗi ngày một lần khi các tài khoản đầu tư của tôi biến động vượt ngưỡng, được đo từ thay đổi thị trường và cổ tức (không tính nạp và rút tiền).",
       "enableLabel": "Bật cảnh báo biến động đầu tư",
       "thresholdLabel": "Thông báo khi mức biến động hằng ngày ít nhất là",
-      "save": "Lưu",
-      "saved": "Đã lưu ngưỡng",
       "saveError": "Không thể lưu ngưỡng",
       "loadError": "Không thể tải cài đặt cảnh báo đầu tư",
       "retry": "Thử lại"

@@ -211,8 +211,6 @@
       "description": "Beri tahu saya sekali sehari saat akun investasi saya bergerak melewati ambang batas, diukur dari perubahan pasar dan dividen (setoran dan penarikan dikecualikan).",
       "enableLabel": "Aktifkan peringatan pergerakan investasi",
       "thresholdLabel": "Beri tahu saat pergerakan harian minimal",
-      "save": "Simpan",
-      "saved": "Ambang batas disimpan",
       "saveError": "Tidak dapat menyimpan ambang batas",
       "loadError": "Tidak dapat memuat pengaturan peringatan investasi",
       "retry": "Coba lagi"

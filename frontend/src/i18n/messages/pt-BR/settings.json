@@ -211,8 +211,6 @@
       "description": "Avisar-me uma vez por dia quando minhas contas de investimento variarem além de um limite, medido pelas variações de mercado e dividendos (depósitos e saques são excluídos).",
       "enableLabel": "Ativar alertas de variação dos investimentos",
       "thresholdLabel": "Avisar quando a variação diária for de pelo menos",
-      "save": "Salvar",
-      "saved": "Limite salvo",
       "saveError": "Não foi possível salvar o limite",
       "loadError": "Não foi possível carregar a configuração de alertas de investimento",
       "retry": "Tentar novamente"

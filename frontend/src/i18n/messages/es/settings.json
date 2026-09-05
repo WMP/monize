@@ -211,8 +211,6 @@
       "description": "Avísame una vez al día cuando mis cuentas de inversión se muevan más allá de un umbral, medido por cambios de mercado y dividendos (los depósitos y retiros se excluyen).",
       "enableLabel": "Activar alertas de movimiento de inversiones",
       "thresholdLabel": "Avisar cuando el movimiento diario sea al menos",
-      "save": "Guardar",
-      "saved": "Umbral guardado",
       "saveError": "No se pudo guardar el umbral",
       "loadError": "No se pudo cargar la configuración de alertas de inversión",
       "retry": "Reintentar"

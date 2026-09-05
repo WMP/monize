@@ -211,8 +211,6 @@
       "description": "Avvisami una volta al giorno quando i miei conti di investimento si muovono oltre una soglia, misurata dalle variazioni di mercato e dai dividendi (versamenti e prelievi esclusi).",
       "enableLabel": "Attiva gli avvisi di variazione degli investimenti",
       "thresholdLabel": "Avvisa quando la variazione giornaliera è almeno",
-      "save": "Salva",
-      "saved": "Soglia salvata",
       "saveError": "Impossibile salvare la soglia",
       "loadError": "Impossibile caricare l'impostazione degli avvisi sugli investimenti",
       "retry": "Riprova"

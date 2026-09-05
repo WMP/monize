@@ -211,8 +211,6 @@
       "description": "Waarschuw mij eenmaal per dag wanneer mijn beleggingsrekeningen buiten een drempel bewegen, gemeten aan marktveranderingen en dividenden (stortingen en opnames worden uitgesloten).",
       "enableLabel": "Waarschuwingen voor beleggingsbewegingen inschakelen",
       "thresholdLabel": "Waarschuwen wanneer de dagelijkse beweging minstens is",
-      "save": "Opslaan",
-      "saved": "Drempel opgeslagen",
       "saveError": "Kon de drempel niet opslaan",
       "loadError": "Kon de instelling voor beleggingswaarschuwingen niet laden",
       "retry": "Opnieuw proberen"

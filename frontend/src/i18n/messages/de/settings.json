@@ -211,8 +211,6 @@
       "description": "Einmal täglich benachrichtigen, wenn sich meine Anlagekonten über einen Schwellenwert hinaus bewegen, gemessen an Marktveränderungen und Dividenden (Ein- und Auszahlungen ausgenommen).",
       "enableLabel": "Benachrichtigungen zu Anlagebewegungen aktivieren",
       "thresholdLabel": "Benachrichtigen, wenn die Tagesbewegung mindestens beträgt",
-      "save": "Speichern",
-      "saved": "Schwellenwert gespeichert",
       "saveError": "Schwellenwert konnte nicht gespeichert werden",
       "loadError": "Einstellung für Anlagewarnungen konnte nicht geladen werden",
       "retry": "Erneut versuchen"

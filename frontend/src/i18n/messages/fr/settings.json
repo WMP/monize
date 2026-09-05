@@ -211,8 +211,6 @@
       "description": "Me prévenir une fois par jour lorsque mes comptes de placement varient au-delà d'un seuil, mesuré à partir des variations de marché et des dividendes (les dépôts et retraits sont exclus).",
       "enableLabel": "Activer les alertes de variation des placements",
       "thresholdLabel": "Me prévenir lorsque la variation quotidienne atteint au moins",
-      "save": "Enregistrer",
-      "saved": "Seuil enregistré",
       "saveError": "Impossible d'enregistrer le seuil",
       "loadError": "Impossible de charger le réglage des alertes de placement",
       "retry": "Réessayer"

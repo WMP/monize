@@ -211,8 +211,6 @@
       "description": "Powiadamiaj raz dziennie, gdy moje konta inwestycyjne zmienią się poza próg, mierzony na podstawie zmian rynkowych i dywidend (wpłaty i wypłaty są wyłączone).",
       "enableLabel": "Włącz alerty o zmianach inwestycji",
       "thresholdLabel": "Powiadom, gdy dzienna zmiana wyniesie co najmniej",
-      "save": "Zapisz",
-      "saved": "Próg zapisany",
       "saveError": "Nie udało się zapisać progu",
       "loadError": "Nie udało się wczytać ustawienia alertów inwestycyjnych",
       "retry": "Ponów próbę"

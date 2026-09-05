@@ -211,8 +211,6 @@
       "description": "Yatırım hesaplarım bir eşiğin ötesinde hareket ettiğinde günde bir kez bildir; piyasa değişimleri ve temettülerden ölçülür (para yatırma ve çekmeler hariç tutulur).",
       "enableLabel": "Yatırım hareketi uyarılarını etkinleştir",
       "thresholdLabel": "Günlük hareket en az şu değere ulaştığında bildir",
-      "save": "Kaydet",
-      "saved": "Eşik kaydedildi",
       "saveError": "Eşik kaydedilemedi",
       "loadError": "Yatırım uyarısı ayarı yüklenemedi",
       "retry": "Yeniden dene"

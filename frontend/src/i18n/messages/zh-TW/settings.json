@@ -211,8 +211,6 @@
       "description": "當我的投資帳戶變動超過閾值時，每天通知我一次；以市場變化與股利衡量（不含存入與提出）。",
       "enableLabel": "啟用投資變動提醒",
       "thresholdLabel": "當每日變動至少達到以下值時通知",
-      "save": "儲存",
-      "saved": "閾值已儲存",
       "saveError": "無法儲存閾值",
       "loadError": "無法載入投資提醒設定",
       "retry": "重試"

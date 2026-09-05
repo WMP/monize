@@ -211,8 +211,6 @@
       "description": "Notify me once a day when my investment accounts move beyond a threshold, measured from market changes and dividends (deposits and withdrawals are excluded).",
       "enableLabel": "Enable investment movement alerts",
       "thresholdLabel": "Notify when the daily move is at least",
-      "save": "Save",
-      "saved": "Threshold saved",
       "saveError": "Could not save the threshold",
       "loadError": "Could not load the investment alert setting",
       "retry": "Retry"
