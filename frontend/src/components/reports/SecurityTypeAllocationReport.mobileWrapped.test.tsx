@@ -246,6 +246,22 @@ describe('SecurityTypeAllocationReport (phone wrapped table)', () => {
     expect(container.textContent).not.toContain(`VTI - ${LONG_NAME}`);
   });
 
+  it('announces the expansion state on the row that is the control', async () => {
+    const container = await renderReport();
+
+    // The rotated chevron is the only visual cue, and it is nothing at all to
+    // a screen reader; the row is the click target, so the row carries the
+    // state. `role="row"` supports `aria-expanded`.
+    const etfs = () => findTypeRow(container, 'ETFs')!;
+    expect(etfs().getAttribute('aria-expanded')).toBe('false');
+    await act(async () => { fireEvent.click(etfs()); });
+    expect(etfs().getAttribute('aria-expanded')).toBe('true');
+    // A collapsed sibling still says so while another type is open.
+    expect(findTypeRow(container, 'Stocks')!.getAttribute('aria-expanded')).toBe('false');
+    await act(async () => { fireEvent.click(etfs()); });
+    expect(etfs().getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('flips the chevron rotation class with the expansion', async () => {
     const container = await renderReport();
 
@@ -289,7 +305,12 @@ describe('SecurityTypeAllocationReport (phone wrapped table)', () => {
     const childCaptions = cellsOf(child).map(
       (td) => td.querySelector('span.sm\\:hidden')?.textContent ?? null,
     );
-    expect(childCaptions).toEqual([null, headerLabels[1], headerLabels[2], null]);
+    expect(childCaptions).toEqual([
+      null,
+      headerLabels[1],
+      headerLabels[2],
+      headerLabels[3],
+    ]);
     expect(child.className).toContain('grid grid-cols-2');
     expect(child.className).toContain('sm:table-row');
     // A child row is NOT clickable; only the type row above it is.
@@ -310,7 +331,7 @@ describe('SecurityTypeAllocationReport (phone wrapped table)', () => {
     expect(identity.textContent).toContain('(2 accounts)');
   });
 
-  it('captions a child holding\'s value and share, and leaves only the share count bare', async () => {
+  it('captions every value on a child holding row, the share count included', async () => {
     const container = await renderReport();
     await act(async () => { fireEvent.click(findTypeRow(container, 'ETFs')!); });
 
@@ -318,11 +339,13 @@ describe('SecurityTypeAllocationReport (phone wrapped table)', () => {
     expect(identity.querySelector('span.sm\\:hidden')).toBeNull();
     expect(share.textContent).toBe('% of Portfolio84.7%');
     expect(value.textContent).toBe('Total ValueCAD 1234567.89');
-    // The quantity is the ONE value with no caption: this cell sits in the
-    // Holdings column but holds a share count, so `colHoldings` beside it would
-    // label the number with something it is not.
-    expect(quantity.textContent).toBe('1244.5678');
-    expect(quantity.querySelector('span.sm\\:hidden')).toBeNull();
+    // The share count is captioned too, and the reason is placement rather
+    // than kind: it sits at `col-start-2 row-start-3`, directly under this
+    // row's money figure in the same track, size and alignment, so bare it
+    // reads as a second amount. The caption names the COLUMN, exactly as the
+    // desktop header above it does.
+    expect(quantity.textContent).toBe('Holdings1244.5678');
+    expect(quantity.querySelector('span.sm\\:hidden')).not.toBeNull();
     for (const cell of [share, value, quantity]) {
       expect(cell.className).toContain('whitespace-nowrap');
       expect(cell.className).toContain('text-right');

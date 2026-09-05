@@ -71,9 +71,8 @@ const HEADER_CLASS =
 // The same sort controls in the phone strip: a wrapped row of compact chips.
 // Column alignment means nothing there -- the column header row is hidden and
 // each data row is a grid -- so every control is left-aligned and self-naming.
-// The border and card background are what say "tappable": there is no hover on
-// a touch screen, and without them the strip reads as one more row of the
-// captions the cells below carry.
+// The border and card background are what say "tappable": there is no hover on a
+// touch screen, and without them the strip reads as one more row of captions.
 const PHONE_HEADER_CLASS =
   'rounded border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 uppercase';
 
@@ -100,7 +99,7 @@ const CELL_PLACEMENT: Record<SecurityTypeSortField, string> = {
 // the row to 152-172px. So the identity takes the whole of line 1 (256px at
 // 320px, 326px at 390px) and the three figures fall to lines 2 and 3, each in the
 // COLUMN its type-row counterpart uses -- share left, value and quantity right --
-// so the two shapes read alike down the card. Measured 114px per child row at
+// so the two shapes read alike down the card. Measured 126px per child row at
 // 320px against a 57px desktop row with the same content, with the marker
 // painted in every locale at both widths.
 const CHILD_CELL_PLACEMENT: Record<SecurityTypeSortField, string> = {
@@ -138,10 +137,10 @@ const CHILD_CELL_PLACEMENT: Record<SecurityTypeSortField, string> = {
 // and dropping `whitespace-nowrap` would let a space-grouping locale break a
 // number in half. A cut or broken figure is worse than a scroll.
 //
-// Four figure cells on ONE line was measured and does NOT fit: four equal
-// tracks are 55px at 320px, which put 298px of table in a 288px wrapper with
-// 64px of overflow on the bold grand total and left the identity 55px (an 11px
-// name box) -- and it still overflowed by 46px at 390px. So two per line.
+// Four figure cells on ONE line was measured and does NOT fit: four equal tracks
+// are 55px at 320px, putting 298px of table in a 288px wrapper with 64px of
+// overflow on the bold grand total and an 11px name box -- and still 46px of
+// overflow at 390px. So two per line.
 const FIGURE_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
@@ -175,8 +174,8 @@ const IDENTITY_CELL =
  * Containment does not need the clip the sibling reports rely on: this cell is
  * a GRID item with `min-w-0`, not a flex item, so a wrapping box contributes no
  * minimum width, and `break-words` handles the one case a wrap cannot, a single
- * unbreakable token -- measured with a 52-character one at 320px, the wrapper's
- * `scrollWidth` still equals its `clientWidth`.
+ * unbreakable token -- measured with a 52-character one at 320px, the wrapper
+ * still scrolls no wider than its client box.
  */
 const CHILD_IDENTITY_CELL =
   `${CHILD_CELL_PLACEMENT.label} min-w-0 p-0 pl-8 text-sm break-words sm:table-cell sm:px-4 sm:py-2 sm:pl-10 sm:break-normal`;
@@ -397,10 +396,9 @@ export function SecurityTypeAllocationReport() {
   // DOM order. DERIVED from the record rather than re-listed: a hand-written
   // list beside an exhaustive record is not exhaustive, so a field added to the
   // union would compile (the record forces an entry) and still ship with no
-  // sort control in either header -- exactly the stranding the record exists to
-  // prevent. The record's declaration order IS the column order, and it is
-  // today's; where a card PLACES each column is `CELL_PLACEMENT` and
-  // `CHILD_CELL_PLACEMENT`, deliberately separate decisions.
+  // sort control in either header. The record's declaration order IS the column
+  // order, and it is today's; where a card PLACES each column is
+  // `CELL_PLACEMENT` and `CHILD_CELL_PLACEMENT`, separate decisions.
   const sortColumns: readonly SortColumn[] = Object.values(columns);
 
   const handleExportPdf = async () => {
@@ -575,14 +573,14 @@ export function SecurityTypeAllocationReport() {
           row exposes all four cells at every width, so none needs an
           `aria-colindex`, and the `CellLabel` captions are REDUNDANT with that
           association rather than a substitute for it: the grid paints the cells
-          out of DOM order, so a sighted phone reader has no header row to look
-          up and needs the name beside the value. The second property is an
+          out of DOM order, so a sighted phone reader needs the name beside the
+          value. The second property is an
           ACCEPTED, UNMITIGATED trade-off the roles do not answer -- they restore
           semantics, not reading order. The DOM keeps the desktop column order
-          while a child row paints its share before its value, so a
-          screen-reader user hears the column order rather than the painted one:
-          the WCAG 1.3.2 tension mechanism A carries. The captions limit the
-          cost, since every value names its own column. */}
+          while a child row paints its share before its value, so a screen-reader
+          user hears the column order rather than the painted one: the WCAG 1.3.2
+          tension mechanism A carries. The captions limit the cost, since every
+          value names its own column. */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
@@ -623,6 +621,10 @@ export function SecurityTypeAllocationReport() {
                 <React.Fragment key={item.type}>
                   <tr
                     role="row"
+                    /* The row IS the expand control, so it says whether it is
+                       open: without this the only cue is the rotated chevron,
+                       which is nothing at all to a screen reader. */
+                    aria-expanded={expandedType === item.type}
                     className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer sm:table-row sm:p-0"
                     onClick={() => setExpandedType(expandedType === item.type ? null : item.type)}
                   >
@@ -673,16 +675,16 @@ export function SecurityTypeAllocationReport() {
                         </svg>
                       </div>
                     </td>
-                    {/* The total is the headline: the right of line 1, beside
-                        the type, because it is what the row is read for. */}
+                    {/* The total is the headline: the right of line 1, beside the
+                        type, because it is what the row is read for. */}
                     <td role="cell" className={`${CELL_PLACEMENT.totalValue} font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.totalValue.label}</CellLabel>
                       {formatCurrencyFull(item.totalValue, defaultCurrency)}
                     </td>
                     {/* The share opens line 2. Its value is bounded (`100.0%`)
                         but its CAPTION is not (`[XX-% of Portfolio-XX]` is 22
-                        characters), so it takes a full `minmax(0,1fr)` track
-                        rather than an `auto` one sized by that caption. */}
+                        characters), so it takes a full `minmax(0,1fr)` track,
+                        never an `auto` one sized by that caption. */}
                     <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                       {item.percentage.toFixed(1)}%
@@ -699,9 +701,8 @@ export function SecurityTypeAllocationReport() {
                     // holding and an unconvertible one are both UNKNOWN -- never
                     // a zero, never the unconverted number under the display
                     // currency's name. (Today `allocationData` drops such a
-                    // holding before it can become a child row at all, which is
-                    // reported as a pre-existing dead branch rather than
-                    // changed here.)
+                    // holding before it can become a child row at all: reported
+                    // as a pre-existing dead branch, not changed here.)
                     const value =
                       h.marketValue === null || h.marketValue === undefined
                         ? null
@@ -712,11 +713,11 @@ export function SecurityTypeAllocationReport() {
                       role="row"
                       className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-2 bg-gray-50/50 dark:bg-gray-900/20 sm:table-row sm:p-0"
                     >
-                      {/* The holding's identity takes the whole of line 1, and
-                          the `(N accounts)` marker stays inline after the name
-                          as it is today -- exactly why this cell has no clamp:
-                          inside the type row's two tracks at 320px a three-line
-                          clamp painted NONE of the markers, in any locale. */}
+                      {/* The identity takes the whole of line 1, and the
+                          `(N accounts)` marker stays inline after the name as it
+                          is today -- exactly why this cell has no clamp: at
+                          320px a three-line clamp painted NONE of the markers,
+                          in any locale. */}
                       <td role="cell" className={`${CHILD_IDENTITY_CELL} text-gray-600 dark:text-gray-400`}>
                         {h.symbol} - {h.name}
                         {h.accountBreakdowns.length > 1 && (
@@ -729,8 +730,7 @@ export function SecurityTypeAllocationReport() {
                           share -- because from `sm` up a cell's order IS the
                           column it lands in; only the placement paints the share
                           to its left. The unknown marker and the dash are
-                          captioned like any other value, since a bare dash under
-                          no heading says nothing on a phone. */}
+                          captioned like any other value. */}
                       <td role="cell" className={`${CHILD_CELL_PLACEMENT.totalValue} text-gray-600 dark:text-gray-400 ${CHILD_FIGURE_CELL}`}>
                         <CellLabel className={CAPTION_CLASS}>{columns.totalValue.label}</CellLabel>
                         {value === null
@@ -743,15 +743,16 @@ export function SecurityTypeAllocationReport() {
                           ? '-'
                           : `${((value / totalPortfolioValue) * 100).toFixed(1)}%`}
                       </td>
-                      {/* The one value on this table with no caption. The cell
-                          sits in the Holdings column, but what it holds is a
-                          SHARE COUNT, not a count of holdings -- so `colHoldings`
-                          beside it would read as a label for this number and
-                          assert something false, where the same word over a
-                          whole column does not. It needs a key of its own,
-                          which is out of scope here, so the gap is reported
-                          rather than papered over. */}
+                      {/* A caption names the COLUMN its cell is in, not the kind
+                          of the value, so this one is as true as the Holdings
+                          header above it on a desktop and no truer: the column
+                          holds a count of holdings on a type row and a count of
+                          SHARES here. That conflation is pre-existing and
+                          reported; bare, the cell would add a new one, since at
+                          `col-start-2 row-start-3` a bare number sits under this
+                          row's money figure in the same track and alignment. */}
                       <td role="cell" className={`${CHILD_CELL_PLACEMENT.count} text-gray-500 dark:text-gray-500 ${CHILD_FIGURE_CELL}`}>
+                        <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
                         {h.quantity}
                       </td>
                     </tr>
@@ -763,17 +764,16 @@ export function SecurityTypeAllocationReport() {
             <tfoot role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-footer-group">
               {/* The totals are the largest figures on the table, so this row
                   wraps exactly the way a TYPE row does -- same two tracks, same
-                  placement, each figure captioned -- with "Total" standing in
-                  for the type. Every column has a total, so no cell leaves the
-                  DOM below `sm`: four cells at every width. */}
+                  placement, each figure captioned -- with "Total" standing in for
+                  the type. Every column has a total, so no cell leaves the DOM
+                  below `sm`: four cells at every width. */}
               <tr role="row" className="grid grid-cols-2 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
                 <td role="cell" className={`${IDENTITY_CELL} font-bold text-gray-900 dark:text-gray-100`}>
                   {/* The same clamped span the type rows use, not a bare label:
-                      today's footer label is short in every locale, but this
-                      track's containment argument IS the clamp's `overflow:
-                      hidden` (see the type row), so a cell outside it is one
-                      long token from reopening the sideways scroll -- with
-                      nothing to show it until a locale grows one. */}
+                      this track's containment argument IS the clamp's `overflow:
+                      hidden` (see the type row), so a cell outside it is one long
+                      token from reopening the sideways scroll, with nothing to
+                      show it until a locale grows one. */}
                   <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={t('securityTypeAllocation.total')}>
                     {t('securityTypeAllocation.total')}
                   </span>
