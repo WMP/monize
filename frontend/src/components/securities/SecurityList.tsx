@@ -14,12 +14,12 @@ import { securityPositionValue } from '@/lib/security-value';
 import { useLongPress, type LongPressRowHandlers } from '@/hooks/useLongPress';
 import { RowActions } from '@/components/ui/row-actions/RowActions';
 import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
-import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { CellLabel } from '@/components/ui/Table';
 import {
   SORT_FIELDS,
+  buildSecurityActions,
   SecurityDescription,
   SecurityPriceSourceBadge,
   SecurityProviderBadge,
@@ -28,68 +28,6 @@ import {
   SecurityValueFigure,
   type SecuritySortField,
 } from './SecurityListParts';
-
-interface SecurityActionLabels {
-  edit: string;
-  activate: string;
-  deactivate: string;
-  delete: string;
-}
-
-interface SecurityActionHandlers {
-  onEdit: (security: Security) => void;
-  onToggleActive: (security: Security) => void;
-  onDelete?: (security: Security) => void;
-}
-
-/**
- * Builds the standard row actions for a security. Shared by the desktop
- * `RowActions` cell and the mobile `RowActionSheet`.
- */
-function buildSecurityActions(
-  security: Security,
-  hasHoldings: boolean,
-  hasTransactions: boolean,
-  labels: SecurityActionLabels,
-  handlers: SecurityActionHandlers,
-): RowAction[] {
-  const canDelete = !hasHoldings && !hasTransactions;
-  return [
-    {
-      key: 'edit',
-      label: labels.edit,
-      icon: 'edit',
-      tone: 'primary',
-      onClick: () => handlers.onEdit(security),
-    },
-    security.isActive
-      ? {
-          key: 'toggle',
-          label: labels.deactivate,
-          icon: 'deactivate',
-          tone: 'warning',
-          onClick: () => handlers.onToggleActive(security),
-          hidden: hasHoldings,
-        }
-      : {
-          key: 'toggle',
-          label: labels.activate,
-          icon: 'activate',
-          tone: 'success',
-          onClick: () => handlers.onToggleActive(security),
-          hidden: hasHoldings,
-        },
-    {
-      key: 'delete',
-      label: labels.delete,
-      icon: 'delete',
-      tone: 'delete',
-      destructive: true,
-      onClick: () => handlers.onDelete?.(security),
-      hidden: !canDelete || !handlers.onDelete,
-    },
-  ];
-}
 
 export type { SecuritySortField };
 
@@ -228,11 +166,11 @@ interface SecurityRowProps {
    * other eight are a word, a digit run, a three-letter code and three small
    * badges, and they sit on two further lines that shrink to nothing.
    *
-   * Six of those eleven are ones a phone-width tier row does not show at all --
-   * Exchange, Currency and Status are `hidden sm:table-cell`, Provider and
-   * Source `hidden md:table-cell`, and Actions is `hidden sm:table-cell` too --
-   * so the card is how five of them get back on screen. Actions is the sixth
-   * and the one exception: those actions are what the long-press (and
+   * Five of those eleven are ones a phone-width tier row does not show at all
+   * -- Exchange, Currency and Status are `hidden sm:table-cell`, Provider and
+   * Source `hidden md:table-cell` -- so the card is how they get back on
+   * screen. The twelfth column, Actions, is `hidden sm:table-cell` as well and
+   * is the one the card leaves out: those actions are what the long-press (and
    * right-click) sheet these same row handlers open already carries.
    *
    * The two breakpoints are not the same one. The tier row's Actions cell
@@ -275,19 +213,6 @@ const SecurityRow = memo(function SecurityRow({
   const tc = useTranslations('common');
 
   const value = securityPositionValue(shares, security.lastPrice);
-
-  const actions = buildSecurityActions(
-    security,
-    hasHoldings,
-    hasTransactions,
-    {
-      edit: tc('actions.edit'),
-      activate: t('list.actions.activate'),
-      deactivate: t('list.actions.deactivate'),
-      delete: tc('actions.delete'),
-    },
-    { onEdit, onToggleActive, onDelete },
-  );
 
   // Phone + Normal density: one wrapped card per row instead of the tier
   // table's twelve cells (see the `wrapped` prop). It is a LAYOUT mode, not a
@@ -434,6 +359,24 @@ const SecurityRow = memo(function SecurityRow({
       </tr>
     );
   }
+
+  // Built below the card branch, not above it: the row actions are consumed by
+  // the tier `RowActions` cell alone -- the card sends them to the long-press
+  // sheet the list mounts -- so building them for a wrapped row would be three
+  // objects and four catalog lookups per row, per render, on the one surface
+  // that never uses them.
+  const actions = buildSecurityActions(
+    security,
+    hasHoldings,
+    hasTransactions,
+    {
+      edit: tc('actions.edit'),
+      activate: t('list.actions.activate'),
+      deactivate: t('list.actions.deactivate'),
+      delete: tc('actions.delete'),
+    },
+    { onEdit, onToggleActive, onDelete },
+  );
 
   return (
     <tr

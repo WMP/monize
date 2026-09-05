@@ -6,6 +6,7 @@ import { DensityLevel } from '@/hooks/useTableDensity';
 import { formatCurrency } from '@/lib/format';
 import { withCurrencyCode } from '@/lib/security-detail';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import type { RowAction } from '@/components/ui/row-actions/rowAction';
 
 /**
  * The pieces of a securities row that BOTH layouts draw -- the tier table's
@@ -24,6 +25,68 @@ import { UnknownAmount } from '@/components/ui/UnknownAmount';
  * fail the guard rather than shrink the baseline; they stay put and are shared
  * as components declared there.
  */
+
+interface SecurityActionLabels {
+  edit: string;
+  activate: string;
+  deactivate: string;
+  delete: string;
+}
+
+interface SecurityActionHandlers {
+  onEdit: (security: Security) => void;
+  onToggleActive: (security: Security) => void;
+  onDelete?: (security: Security) => void;
+}
+
+/**
+ * Builds the standard row actions for a security. Shared by the desktop
+ * `RowActions` cell and the mobile `RowActionSheet`.
+ */
+export function buildSecurityActions(
+  security: Security,
+  hasHoldings: boolean,
+  hasTransactions: boolean,
+  labels: SecurityActionLabels,
+  handlers: SecurityActionHandlers,
+): RowAction[] {
+  const canDelete = !hasHoldings && !hasTransactions;
+  return [
+    {
+      key: 'edit',
+      label: labels.edit,
+      icon: 'edit',
+      tone: 'primary',
+      onClick: () => handlers.onEdit(security),
+    },
+    security.isActive
+      ? {
+          key: 'toggle',
+          label: labels.deactivate,
+          icon: 'deactivate',
+          tone: 'warning',
+          onClick: () => handlers.onToggleActive(security),
+          hidden: hasHoldings,
+        }
+      : {
+          key: 'toggle',
+          label: labels.activate,
+          icon: 'activate',
+          tone: 'success',
+          onClick: () => handlers.onToggleActive(security),
+          hidden: hasHoldings,
+        },
+    {
+      key: 'delete',
+      label: labels.delete,
+      icon: 'delete',
+      tone: 'delete',
+      destructive: true,
+      onClick: () => handlers.onDelete?.(security),
+      hidden: !canDelete || !handlers.onDelete,
+    },
+  ];
+}
 
 export type SecuritySortField =
   | 'symbol'
