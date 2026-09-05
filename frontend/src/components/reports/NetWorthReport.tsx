@@ -88,11 +88,15 @@ const PHONE_HEADER_CLASS =
 // widest realistic value is a negative seven-figure `1 439 000 CHF`-shaped
 // amount -- 93.5px at `text-xs`. That leaves 20px spare at 320px, and a
 // NEGATIVE NINE-FIGURE amount (109px) still fits there.
-// Right alignment is not a containment device -- a nowrap amount longer than
-// its track overflows past the end edge whatever `text-align` says, and in the
-// right-hand track that does reopen the wrapper's sideways scroll. That is the
-// deliberate choice: `overflow-hidden` here would silently cut a figure, which
-// is worse than an honest scroll past the measured budget.
+// Right alignment is not a containment device. Measured in Chromium at 320px
+// with a fifteen-digit amount forced into each track: the text is laid out from
+// the track's START edge and overflows past its END edge whatever `text-align`
+// says (left track 40-154, text 40-202; right track 166-280, text 166-328). In
+// the right-hand track that reopens the wrapper's sideways scroll (`scrollWidth`
+// 304 against a `clientWidth` of 272); in the left-hand one it runs over the
+// figure beside it instead. Both are the deliberate choice: `overflow-hidden`
+// here would silently cut a figure, and a figure that is cut is worse than one
+// that is crowded or an honest scroll past the measured budget.
 const MONEY_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
 
