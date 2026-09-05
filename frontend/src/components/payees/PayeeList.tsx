@@ -175,14 +175,18 @@ interface PayeeRowProps {
    * density toggle picks the layout); every other width and every other density
    * renders the tier row below, unchanged.
    *
-   * The card carries eight of this table's nine columns: the payee's logo and
-   * name, its "N uncategorized" marker, the transaction Count (captioned), the
-   * Default Category pill, the Active/Inactive pill (only where the tier table
+   * The card carries SEVEN of this table's nine columns: the payee's Name
+   * (drawn with its logo and its "N uncategorized" marker, both of which live
+   * inside the Name cell rather than being columns of their own), the
+   * transaction Count (captioned), the Default Category pill (captioned, since
+   * its no-category branch is the bare word "None" rather than a
+   * self-describing pill), the Active/Inactive pill (only where the tier table
    * would show that column, i.e. `showStatusColumn`), Last Used, Aliases and
-   * Notes. Six of those are ones a phone-width tier row does not show at all --
-   * Default Category and Status are `hidden sm:table-cell`, Count
-   * `hidden md:table-cell`, Aliases, Last Used and Created
-   * `hidden lg:table-cell` -- so the card is how they get back on screen.
+   * Notes. FIVE of those seven are ones a phone-width tier row does not show at
+   * all -- Default Category and Status are `hidden sm:table-cell`, Count
+   * `hidden md:table-cell`, Aliases and Last Used `hidden lg:table-cell` -- so
+   * the card is how they get back on screen. Name and Notes are the two a phone
+   * already shows.
    *
    * TWO columns are left out, for different reasons:
    * - **Actions**, because the long-press (and right-click) sheet these same
@@ -202,7 +206,7 @@ interface PayeeRowProps {
    * `min-[480px]`, and `wrapped` covers everything below 640px, so between
    * 480px and 639px at Normal density the actions move from inline buttons to
    * that sheet -- which also means they stop being tab-reachable there. It is
-   * the price of the card, paid for the six columns above, and the register,
+   * the price of the card, paid for the five columns above, and the register,
    * the accounts list and the categories list make the same trade at the same
    * two widths, so they all behave alike. Compact density, one tap away, is the
    * way back to inline actions.
@@ -299,14 +303,25 @@ const PayeeRow = memo(function PayeeRow({
                   {payee.transactionCount ?? 0}
                 </div>
               </div>
-              {/* Line 2 is the two self-describing pills, and its own grid for
-                  the same reason line 1 is: the category pill truncates, so it
-                  needs a track with a zero minimum rather than a flex slot.
-                  Neither pill is captioned. The status pill follows the tier
-                  table's own `showStatusColumn`, so the card shows exactly the
-                  column the table would. */}
-              <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+              {/* Line 2, and its own grid for the same reason line 1 is: the
+                  category pill truncates, so it needs a track with a zero
+                  minimum rather than a flex slot.
+
+                  The category slot IS captioned even though a pill is normally
+                  self-describing, because its other branch is not a pill: a
+                  payee with no default category renders the bare word "None",
+                  and uncaptioned that is a line saying "None" with nothing to
+                  say what of -- the column header used to do that job. The
+                  caption goes on the slot rather than on the placeholder branch
+                  alone, so the line does not change shape from row to row. The
+                  status pill needs none: "Active" and "Inactive" name
+                  themselves. It follows the tier table's own
+                  `showStatusColumn`, so the card shows exactly the column the
+                  table would, and `items-end` sits it on the pill's own line
+                  rather than centred against the caption above it. */}
+              <div className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
                 <div className="min-w-0">
+                  <CellLabel>{t('list.columns.defaultCategory')}</CellLabel>
                   <PayeeDefaultCategory
                     payee={payee}
                     density={density}

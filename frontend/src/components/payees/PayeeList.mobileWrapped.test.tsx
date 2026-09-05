@@ -171,9 +171,11 @@ describe('the payees list on a phone', () => {
     // than a table row with its columns squeezed.
     expect(rows[0].querySelectorAll('td')).toHaveLength(1);
 
-    // Eight of the nine columns, five of them ones a phone-width tier row does
+    // Seven of the nine columns, five of them ones a phone-width tier row does
     // not show at all: Default Category and Status are `hidden sm:table-cell`,
     // Count `hidden md:table-cell`, Aliases and Last Used `hidden lg:table-cell`.
+    // (Name and Notes are the two a phone already shows; Created and Actions
+    // are the two the card omits.)
     const text = rows[0].textContent ?? '';
     expect(text).toContain('Walmart');
     expect(text).toContain('12345');
@@ -256,17 +258,18 @@ describe('the payees list on a phone', () => {
     // The captions are their own nodes, above the values', so each value still
     // matches on its own -- which is what keeps `getByText('2026-08-30')`
     // addressing the date rather than a caption-plus-value blob.
-    for (const caption of ['Count', 'Last Used', 'Aliases', 'Notes']) {
+    for (const caption of ['Count', 'Default Category', 'Last Used', 'Aliases', 'Notes']) {
       expect(within(row).getByText(caption)).toBeInTheDocument();
     }
     expect(within(row).getByText('41').textContent).toBe('41');
     expect(within(row).getByText('7').textContent).toBe('7');
     expect(within(row).getByText('2026-08-30').textContent).toBe('2026-08-30');
 
-    // The name, the category pill and the status pill carry no caption: the
-    // name is the row's identity and the other two are self-describing pills.
+    // The name and the status pill carry no caption: the name is the row's
+    // identity, and "Active"/"Inactive" name themselves. Default Category is
+    // captioned despite being a pill here, because its other branch is the bare
+    // word "None" -- see the card's line-2 comment.
     expect(within(row).queryByText('Name')).not.toBeInTheDocument();
-    expect(within(row).queryByText('Default Category')).not.toBeInTheDocument();
     expect(within(row).queryByText('Status')).not.toBeInTheDocument();
   });
 
@@ -280,7 +283,11 @@ describe('the payees list on a phone', () => {
     const { container } = renderList([makePayee({ id: 'p1', name: 'Walmart' })]);
 
     const [row] = bodyRows(container);
-    expect(within(row).getByText('None')).toBeInTheDocument();
+    const none = within(row).getByText('None');
+    expect(none).toBeInTheDocument();
+    // And it is captioned: uncaptioned, this line reads "None" with nothing to
+    // say what of, because the card dropped the column header that said so.
+    expect(none.parentElement!.textContent).toBe('Default CategoryNone');
     // An unused payee has never been used and has no notes: both are "-", not
     // an empty cell.
     expect(within(row).getAllByText('-').length).toBe(2);
