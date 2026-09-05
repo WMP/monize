@@ -125,19 +125,30 @@ const PHONE_HEADER_CLASS =
 //
 // `whitespace-nowrap` is the one property here that is NOT phone-only, and it
 // is deliberate: it is the single respect in which the desktop cell differs
-// from today's. Neither figure can be broken usefully (`120%`, `+100`), and
-// `white-space` is what keeps a caption from dragging its value onto a second
-// line.
+// from today's. Both figures carry two decimals (see below), and a break at
+// the decimal separator is exactly the kind of mid-number split the sibling
+// tables ban on money; `white-space` also keeps a caption from dragging its
+// value onto a second line.
 //
 // The budget was measured on a hand-written CSS replica in Chromium, at the
 // insets this table really gets on a phone (the report page's `px-4` plus this
 // card's `p-4`): 256px of content at 320px and 326px at 390px.
 //
-// Both VALUES here are bounded -- a percentage and a signed score, four
-// characters at their widest (`120%`, `-100`, 27px and 25px at `text-xs`) --
-// but their CAPTIONS are not, and an `auto` track is sized by its caption
-// rather than by its value. So the row is two EQUAL `minmax(0,1fr)` tracks:
-// 122px each at 320px and 157px at 390px, read off `getComputedStyle`.
+// Neither VALUE is the short integer it looks like in English fixtures, and
+// only one of them is bounded. `percentUsed` is
+// `Math.round((spent / budgeted) * 10000) / 100` in `budgets.service.ts`, so
+// it carries two decimals and has no ceiling: a category budgeted 10 with
+// 12,345.678 spent renders `123456.78%`, 63px at `text-xs`. `impact` is
+// `roundToDecimals(impact, 2)` in `budget-health-reports.service.ts`, bounded
+// by its own caps to [-15, +3] -- `Math.min(overagePercent * 0.3 * weight, 15)`
+// against `Math.min((100 - percentUsed) * 0.05, 3)` -- so `-14.85` (37px) is
+// its widest form, sign included.
+//
+// Their CAPTIONS are what actually size the layout, though, since an `auto`
+// track is sized by its caption rather than by its value. So the row is two
+// EQUAL `minmax(0,1fr)` tracks: 122px each at 320px and 157px at 390px, read
+// off `getComputedStyle` -- room for both figures at their widest measured
+// forms with the caption on its own line above.
 //
 // Which caption could have forced a spanning track was decided by rendering
 // EVERY string in the catalogue for both captioned columns (40 strings across

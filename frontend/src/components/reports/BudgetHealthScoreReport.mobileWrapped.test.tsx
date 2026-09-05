@@ -56,9 +56,15 @@ vi.mock('@/components/budgets/BudgetHealthGauge', () => ({
 }));
 
 // The worst case for a phone: a 40-character category name (the UNBOUNDED
-// identity), the widest group pill in the catalogue (Uncategorized), a percent
-// used past 100 and a three-digit score impact with its sign. The percentages
-// include 100 exactly, which is NOT over budget and takes the neutral colour.
+// identity), the widest group pill in the catalogue (Uncategorized), and the
+// two figures in the shapes the API really produces rather than the tidy
+// integers an English fixture invites. `percentUsed` is
+// `Math.round((spent / budgeted) * 10000) / 100` (two decimals, no ceiling --
+// a category budgeted 10 with 12,345.678 spent is 123456.78%) and `impact` is
+// `roundToDecimals(impact, 2)` bounded by its own caps to [-15, +3], so
+// `-14.85` is its widest form. The percentages include 100 exactly, which is
+// NOT over budget and takes the neutral colour, and 80, the boundary at which
+// the under-budget bonus starts.
 const LONG_NAME = 'Groceries, Household and Personal Care Ex';
 
 const SCORE: HealthScoreResult = {
@@ -72,16 +78,20 @@ const SCORE: HealthScoreResult = {
     essentialWeightPenalty: 10,
   },
   categoryScores: [
-    { categoryId: 'c1', categoryName: LONG_NAME, percentUsed: 120, impact: -100, categoryGroup: 'NEED' },
+    { categoryId: 'c1', categoryName: LONG_NAME, percentUsed: 123456.78, impact: -14.85, categoryGroup: 'NEED' },
     { categoryId: 'c2', categoryName: 'Misc', percentUsed: 100, impact: 0, categoryGroup: null },
-    { categoryId: 'c3', categoryName: 'Savings', percentUsed: 80, impact: 100, categoryGroup: 'SAVING' },
+    { categoryId: 'c3', categoryName: 'Savings', percentUsed: 80, impact: 2.75, categoryGroup: 'SAVING' },
   ],
 };
 
 async function renderTable() {
   mockGetAll.mockResolvedValue([{ id: 'b-1', name: 'Default', isActive: true } as Budget]);
-  // A fresh object per render: the PDF export sorts `categoryScores` in place,
-  // so a shared fixture would carry one test's ordering into the next.
+  // A fresh object per render, because `handleExportPdf` sorts the response's
+  // `categoryScores` in place -- a shared fixture would carry the ordering of
+  // whichever test exported a PDF into the next one. That mutation predates
+  // this layout change and is deliberately left as found (it is reported as a
+  // follow-up, not fixed here); the copy is what keeps these tests independent
+  // of it either way.
   mockGetHealthScore.mockResolvedValue({
     ...SCORE,
     categoryScores: SCORE.categoryScores.map((c) => ({ ...c })),
@@ -129,8 +139,8 @@ describe('BudgetHealthScoreReport (phone wrapped category impact table)', () => 
     expect(row).toBeDefined();
     // Each caption sits immediately beside the value it names, as its own text
     // node, so a `getByText` on the value still matches the value node.
-    expect(rowText(row)).toContain('% Used120%');
-    expect(rowText(row)).toContain('Score Impact-100');
+    expect(rowText(row)).toContain('% Used123456.78%');
+    expect(rowText(row)).toContain('Score Impact-14.85');
     // The category name is the row's identity, not one of its figures, so it
     // carries no caption -- it is the first thing on the line and names itself.
     const nameCell = row?.querySelector('td');
@@ -415,16 +425,16 @@ describe('BudgetHealthScoreReport (phone wrapped category impact table)', () => 
 
     // Over budget is red; exactly 100% is NOT over budget and stays neutral.
     expect(overPct.className).toContain('text-red-600');
-    expect(overPct.textContent).toContain('120%');
+    expect(overPct.textContent).toContain('123456.78%');
     expect(evenPct.className).toContain('text-gray-600');
     expect(underPct.className).toContain('text-gray-600');
 
     // A positive impact is green and prefixed; a negative one is red and is
     // not; zero is neither, and takes no prefix.
     expect(underImpact.className).toContain('text-green-600');
-    expect(underImpact.textContent).toContain('+100');
+    expect(underImpact.textContent).toContain('+2.75');
     expect(overImpact.className).toContain('text-red-600');
-    expect(overImpact.textContent).toContain('-100');
+    expect(overImpact.textContent).toContain('-14.85');
     expect(evenImpact.className).toContain('text-gray-500');
     expect(evenImpact.textContent).not.toContain('+');
   });
