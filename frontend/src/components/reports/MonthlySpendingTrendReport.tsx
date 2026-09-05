@@ -185,13 +185,18 @@ export function MonthlySpendingTrendReport() {
   // cannot be computed from two different expressions.
   const totalNet = totals.totalIncome - totals.totalExpenses;
 
-  // One list of sortable columns, rendered by both header rows.
-  const sortColumns: readonly SortColumn[] = [
-    { field: 'name', label: t('monthlySpendingTrend.colMonth') },
-    { field: 'income', label: t('monthlySpendingTrend.colIncome'), align: 'right' },
-    { field: 'expenses', label: t('monthlySpendingTrend.colExpenses'), align: 'right' },
-    { field: 'net', label: t('monthlySpendingTrend.colNet'), align: 'right' },
-  ];
+  // Exhaustive over the sort field union, so a new field is a compile error
+  // rather than a column with no control in either header. The list both
+  // header rows render is DERIVED from the record, never re-listed beside it:
+  // a hand-written list next to an exhaustive record is not exhaustive. The
+  // record's declaration order is the column order.
+  const columns: Record<MonthlySpendingSortField, SortColumn> = {
+    name: { field: 'name', label: t('monthlySpendingTrend.colMonth') },
+    income: { field: 'income', label: t('monthlySpendingTrend.colIncome'), align: 'right' },
+    expenses: { field: 'expenses', label: t('monthlySpendingTrend.colExpenses'), align: 'right' },
+    net: { field: 'net', label: t('monthlySpendingTrend.colNet'), align: 'right' },
+  };
+  const sortColumns: readonly SortColumn[] = Object.values(columns);
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");

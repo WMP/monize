@@ -172,16 +172,13 @@ export function SavingsRateReport() {
   };
 
   // Their order, rendered by BOTH header rows and matched by the cells' DOM
-  // order. Every body cell takes its `sm`-and-up padding from the same record,
-  // so the header and the cells cannot disagree about which column is last and
-  // drops its right padding.
-  const sortColumns: readonly SortColumn[] = [
-    columns.month,
-    columns.income,
-    columns.expenses,
-    columns.savings,
-    columns.rate,
-  ];
+  // order. DERIVED from the record rather than re-listed: a hand-written list
+  // beside an exhaustive record is not exhaustive, so a field added to the
+  // union would compile and still ship with no sort control in either header.
+  // The record's declaration order is the column order. Every body cell takes
+  // its `sm`-and-up padding from the same record, so the header and the cells
+  // cannot disagree about which column is last and drops its right padding.
+  const sortColumns: readonly SortColumn[] = Object.values(columns);
 
   useEffect(() => {
     const loadBudgets = async () => {

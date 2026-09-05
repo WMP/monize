@@ -182,14 +182,19 @@ export function IncomeVsExpensesReport() {
     return sorted;
   }, [chartData, sortField, sortDirection]);
 
-  // One list of sortable columns, rendered by both header rows.
-  const sortColumns: readonly SortColumn[] = [
-    { field: 'name', label: t('incomeVsExpenses.colMonth') },
-    { field: 'income', label: t('incomeVsExpenses.colIncome'), align: 'right' },
-    { field: 'expenses', label: t('incomeVsExpenses.colExpenses'), align: 'right' },
-    { field: 'savings', label: t('incomeVsExpenses.colSavings'), align: 'right' },
-    { field: 'savingsRate', label: t('incomeVsExpenses.colSavingsRate'), align: 'right' },
-  ];
+  // Exhaustive over the sort field union, so a new field is a compile error
+  // rather than a column with no control in either header. The list both
+  // header rows render is DERIVED from the record, never re-listed beside it:
+  // a hand-written list next to an exhaustive record is not exhaustive. The
+  // record's declaration order is the column order.
+  const columns: Record<IncomeVsExpensesSortField, SortColumn> = {
+    name: { field: 'name', label: t('incomeVsExpenses.colMonth') },
+    income: { field: 'income', label: t('incomeVsExpenses.colIncome'), align: 'right' },
+    expenses: { field: 'expenses', label: t('incomeVsExpenses.colExpenses'), align: 'right' },
+    savings: { field: 'savings', label: t('incomeVsExpenses.colSavings'), align: 'right' },
+    savingsRate: { field: 'savingsRate', label: t('incomeVsExpenses.colSavingsRate'), align: 'right' },
+  };
+  const sortColumns: readonly SortColumn[] = Object.values(columns);
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
