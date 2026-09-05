@@ -19,6 +19,20 @@ import type { Budget, SavingsRatePoint } from '@/types/budget';
 const mockGetAll = vi.fn();
 const mockGetSavingsRate = vi.fn();
 
+// A router of this file's own, so "clicking a row navigates nowhere" is an
+// assertion about behaviour rather than about a class. Built inside the
+// factory because `vi.mock` is hoisted above the const it would close over,
+// and returned as one stable object, as the shared setup's router is.
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => {
+  const router = { push: mockPush, replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), prefetch: vi.fn() };
+  return {
+    useRouter: () => router,
+    usePathname: () => '/reports/savings-rate',
+    useSearchParams: () => new URLSearchParams(),
+  };
+});
+
 vi.mock('@/lib/budgets', () => ({
   budgetsApi: {
     getAll: (...args: any[]) => mockGetAll(...args),
@@ -340,10 +354,20 @@ describe('SavingsRateReport (phone wrapped table)', () => {
 
     // These rows have never been clickable, and wrapping them must not make
     // them so -- a card that looks tappable and does nothing is worse than a
-    // plain row.
-    for (const row of Array.from(container.querySelectorAll('tbody tr'))) {
+    // plain row, and the sibling report whose layout this copies DOES navigate
+    // from its rows, which is the thing not to inherit.
+    //
+    // Clicking is the live half of the assertion: React attaches handlers
+    // synthetically and never writes an `onclick` attribute, so an added
+    // `onClick` is invisible to a markup check.
+    const rows = Array.from(container.querySelectorAll('tbody tr'));
+    expect(rows).toHaveLength(POINTS.length);
+    for (const row of rows) {
       expect(row.className).not.toContain('cursor-pointer');
-      expect(row.getAttribute('onclick')).toBeNull();
+      await act(async () => {
+        fireEvent.click(row);
+      });
     }
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

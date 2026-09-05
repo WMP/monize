@@ -87,12 +87,19 @@ const PHONE_HEADER_CLASS =
 // insets this table really gets on a phone (the report page's `px-4` plus the
 // card's `p-4`): the three equal tracks are 77px at 320px and 101px at 390px,
 // which holds a seven-figure `pl-PL` amount (`1 234 567 zł`, 77px at
-// `text-xs`) at both widths, and a six-figure one with room to spare. Right
-// alignment is not a containment device -- a nowrap amount longer than its
-// track overflows past the end edge whatever `text-align` says, and in the
-// third track that does reopen the wrapper's sideways scroll -- but
-// `overflow-hidden` here would silently cut a figure, which is worse than a
-// crowded one.
+// `text-xs`) at both widths, and a six-figure one with room to spare.
+//
+// The unit is part of that budget, and it is not always a symbol:
+// `formatCurrencyCompact` asks for `narrowSymbol`, which falls back to the ISO
+// code where a currency has none (`1 439 000 CHF`, 89px). A seven-figure
+// amount in such a currency overflows the third track by 12px at 320px and
+// reopens the wrapper's sideways scroll; at 390px it fits. That is the
+// deliberate failure, not a missed case: right alignment is not a containment
+// device -- a nowrap amount longer than its track overflows past the end edge
+// whatever `text-align` says -- and `overflow-hidden` here would silently cut
+// a figure, which is worse than a crowded one or an honest scroll. (Today,
+// before this layout, the same reader scrolled at every width: the five-column
+// table is 470px wide in that 256px box.)
 //
 // The caption inside the cell takes `whitespace-normal` back: `white-space` is
 // inherited, so without it a caption with no space in it (`[XX-Expenses-XX]`
@@ -153,21 +160,28 @@ export function SavingsRateReport() {
     return sorted;
   }, [data, sortField, sortDirection]);
 
-  // One list of sortable columns, rendered by both header rows.
-  const sortColumns: readonly SortColumn[] = [
-    { field: 'month', label: t('savingsRate.colMonth') },
-    { field: 'income', label: t('savingsRate.colIncome'), align: 'right' },
-    { field: 'expenses', label: t('savingsRate.colExpenses'), align: 'right' },
-    { field: 'savings', label: t('savingsRate.colSavings'), align: 'right' },
-    { field: 'rate', label: t('savingsRate.colRate'), align: 'right', last: true },
-  ];
+  // The five sortable columns, keyed by field so the record is exhaustive:
+  // adding a member to `SavingsRateSortField` is a compile error here rather
+  // than a body cell that renders `undefined` in place of its padding.
+  const columns: Record<SavingsRateSortField, SortColumn> = {
+    month: { field: 'month', label: t('savingsRate.colMonth') },
+    income: { field: 'income', label: t('savingsRate.colIncome'), align: 'right' },
+    expenses: { field: 'expenses', label: t('savingsRate.colExpenses'), align: 'right' },
+    savings: { field: 'savings', label: t('savingsRate.colSavings'), align: 'right' },
+    rate: { field: 'rate', label: t('savingsRate.colRate'), align: 'right', last: true },
+  };
 
-  // Both header rows and every body cell take their `sm`-and-up padding from
-  // that one list, so the header and the cells cannot disagree about which
-  // column is last and drops its right padding.
-  const cellPaddings = Object.fromEntries(
-    sortColumns.map((col) => [col.field, cellPadding(col)]),
-  ) as Record<SavingsRateSortField, string>;
+  // Their order, rendered by BOTH header rows and matched by the cells' DOM
+  // order. Every body cell takes its `sm`-and-up padding from the same record,
+  // so the header and the cells cannot disagree about which column is last and
+  // drops its right padding.
+  const sortColumns: readonly SortColumn[] = [
+    columns.month,
+    columns.income,
+    columns.expenses,
+    columns.savings,
+    columns.rate,
+  ];
 
   useEffect(() => {
     const loadBudgets = async () => {
@@ -393,11 +407,10 @@ export function SavingsRateReport() {
               under income -- and the month is the one cell allowed to wrap,
               since a compact amount never may. No column is dropped, and no
               figure is truncated -- an amount wider than its track overflows
-              the end edge and reopens the wrapper's scroll, which is the
-              honest failure for an amount that large and does not happen for
-              any real locale at the measured budget. From `sm` up it is the
+              the end edge and reopens the wrapper's scroll, which `MONEY_CELL`
+              measures and argues for. From `sm` up it is the
               ordinary table: each cell restores this table's own `py-2 pr-4`
-              (and the Rate column's bare `py-2`) through `cellPaddings`, and a
+              (and the Rate column's bare `py-2`) through `cellPadding`, and a
               Chromium replica renders it pixel-identically to today at 800px.
               The one deliberate difference above `sm` is `whitespace-nowrap`
               on the figures, for the reason `MONEY_CELL` gives. The sort
@@ -453,25 +466,25 @@ export function SavingsRateReport() {
                     role="row"
                     className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 py-2 border-b border-gray-100 dark:border-gray-700/50 sm:table-row sm:py-0"
                   >
-                    <td role="cell" className={`col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell ${cellPaddings.month}`}>{point.month}</td>
-                    <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 ${cellPaddings.income} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-1 row-start-1 p-0 text-gray-900 dark:text-gray-100 sm:table-cell ${cellPadding(columns.month)}`}>{point.month}</td>
+                    <td role="cell" className={`col-start-3 row-start-1 text-gray-600 dark:text-gray-400 ${cellPadding(columns.income)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colIncome')}</CellLabel>
                       {formatCurrency(point.income)}
                     </td>
-                    <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 ${cellPaddings.expenses} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 ${cellPadding(columns.expenses)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colExpenses')}</CellLabel>
                       {formatCurrency(point.expenses)}
                     </td>
                     {/* Savings takes the middle of line 1 beside the month:
                         it is the figure the row is read for. */}
-                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(point.savings)} ${cellPaddings.savings} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-2 row-start-1 font-medium ${gainLossColor(point.savings)} ${cellPadding(columns.savings)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colSavings')}</CellLabel>
                       {formatCurrency(point.savings)}
                     </td>
                     {/* The rate spans the first two tracks so it has room
                         beneath the savings it is derived from; right-aligned,
                         it ends under that figure. */}
-                    <td role="cell" className={`col-start-1 col-span-2 row-start-2 font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'} ${cellPaddings.rate} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-1 col-span-2 row-start-2 font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'} ${cellPadding(columns.rate)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{t('savingsRate.colRate')}</CellLabel>
                       {point.savingsRate.toFixed(1)}%
                     </td>
