@@ -179,6 +179,14 @@ export function InvestmentSharesValue({
   );
 }
 
+/**
+ * The Price column's figure. A SPLIT records a ratio rather than a price, so
+ * an unpriced one is a dash. Everything else prints `price`, which is what the
+ * tier cell prints -- including the amount-only actions, where the column
+ * holds the cash amount rather than a per-share price. That the header
+ * overstates what the figure is for those actions is a property of the column
+ * this renderer serves, not of the layout calling it.
+ */
 export function InvestmentPriceValue({
   tx,
   formatCurrency,

@@ -117,6 +117,26 @@ interface InvestmentTransactionRowProps {
    * The three lines are: Date, Action + Symbol (+ the security name), and the
    * Total; then Shares and Price; then the Account and the status button.
    *
+   * Two of those are decisions worth stating rather than defects to fix here:
+   *
+   * - **Account is carried on both surfaces**, because it is a RESPONSIVE
+   *   column on this register rather than a structural one -- unlike the cash
+   *   register, which omits it from the DOM entirely on a single account's
+   *   page. There is no `isSingleAccountView` here and neither mount site
+   *   supplies one, so on the account detail page's panel the card repeats
+   *   that page's own account on every row. Deriving "one account" from the
+   *   rows instead would make the card and the tier table disagree about
+   *   whether the column exists; making it structural is a change to both
+   *   branches and to both callers, and is filed as a follow-up.
+   * - **Price shows whatever the tier's Price cell shows**, which for the
+   *   amount-only actions (DIVIDEND, INTEREST, CAPITAL_GAIN and their
+   *   refinements) is the cash amount rather than a per-share price, and for
+   *   the quantity-only ones (ADD_SHARES, REMOVE_SHARES) is an unrecorded
+   *   price rendered as zero. The card calls the tier's own renderer, so the
+   *   two cannot disagree; that the label overstates what the figure is, is a
+   *   pre-existing property of the column and a separate follow-up. A layout
+   *   mode does not re-decide what a value means.
+   *
    * The two breakpoints are not the same one. The tier row's Actions cell is
    * `min-[480px]`, and `wrapped` covers everything below 640px, so between
    * 480px and 639px at Normal density the actions move from inline buttons to
