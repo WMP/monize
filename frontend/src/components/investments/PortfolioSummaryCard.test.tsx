@@ -10,14 +10,17 @@ const mockGetRate = vi.fn(
 );
 let mockDefaultCurrency = 'CAD';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
-    formatSignedPercent: (n: number, decimals = 2) =>
-      `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
+      formatSignedPercent: (n: number, decimals = 2) =>
+        `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     getRate: mockGetRate,

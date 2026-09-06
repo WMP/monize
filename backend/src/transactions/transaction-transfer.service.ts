@@ -860,7 +860,12 @@ export class TransactionTransferService {
         description: `Created transfer ${formattedAmount} from ${fromAccount.name} to ${toAccount.name}`,
         descriptionKey: "createdTransfer",
         descriptionParams: {
+          // English fallback plus the structured pair the reader's client
+          // formats in their own number locale (issue #1316): a stored string
+          // outlives the request that wrote it and cannot be re-formatted.
           amount: formattedAmount,
+          amountValue: amount,
+          amountCurrency: currencyCode,
           from: fromAccount.name,
           to: toAccount.name,
         },
@@ -883,7 +888,10 @@ export class TransactionTransferService {
           description: `Created transfer ${formattedAmount} from ${nameFor(fromAccount)} to ${nameFor(toAccount)}`,
           descriptionKey: "createdTransfer",
           descriptionParams: {
+            // See above: English fallback plus the structured pair.
             amount: formattedAmount,
+            amountValue: amount,
+            amountCurrency: currencyCode,
             from: nameFor(fromAccount),
             to: nameFor(toAccount),
           },

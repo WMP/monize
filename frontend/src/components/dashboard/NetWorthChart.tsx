@@ -57,10 +57,11 @@ function NetWorthCompositionTooltip({
   formatCurrency: (v: number) => string;
   labels: { assets: string; liabilities: string; netWorth: string };
 }) {
+  const { formatPercent } = useNumberFormat();
   if (active && payload && payload.length) {
     const d = payload[0].payload;
     const total = d.assets + d.liabilities;
-    const pct = (v: number) => (total > 0 ? `${((v / total) * 100).toFixed(1)}%` : '0%');
+    const pct = (v: number) => (total > 0 ? formatPercent((v / total) * 100, 1) : '0%');
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
@@ -87,7 +88,7 @@ interface NetWorthChartProps {
 export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyLabel } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyLabel, formatPercent } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const [chartType, setChartType] = useLocalStorage<'bar' | 'stacked'>(
     'dashboard.net-worth.chartType',
@@ -191,7 +192,7 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
         <div className={`text-sm font-medium ${
           isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
         }`}>
-          {isPositive ? '+' : ''}{formatCurrency(summary!.change)} ({isPositive ? '+' : ''}{summary!.changePercent.toFixed(1)}%)
+          {isPositive ? '+' : ''}{formatCurrency(summary!.change)} ({isPositive ? '+' : ''}{formatPercent(summary!.changePercent, 1)})
         </div>
       </div>
       <div className="h-80">

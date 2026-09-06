@@ -10,12 +10,15 @@ vi.mock('@/lib/accounts', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 async function renderSimulator(props: Partial<React.ComponentProps<typeof OverpaymentSimulator>> = {}) {
   const onPlanChange = vi.fn();
   let result: ReturnType<typeof render>;

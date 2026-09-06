@@ -63,14 +63,17 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock("@/hooks/useNumberFormat", () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    defaultCurrency: "CAD",
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      defaultCurrency: "CAD",
+    }),
+};
+});
 vi.mock("@/hooks/useDateFormat", () => ({
   useDateFormat: () => ({ formatDate: (d: string) => `date(${d})` }),
 }));

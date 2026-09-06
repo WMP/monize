@@ -115,6 +115,7 @@ implied.
 | INV-AUTH-004 | A logout reports only what it achieved | enforced |
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
+| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | enforced |
 | INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
@@ -1866,6 +1867,100 @@ A removal list would be wrong structurally: the default for a new column is
 "exposed", so the defect could be introduced by a change that never touches this
 file, and the route is delegate-accessible so the leak would cross users. The
 allowlist inverts that default.
+
+### INV-DISPLAY-001 -- a figure is rendered in the reader's number locale
+
+```text
+Statement           Any number addressed to a PERSON -- money, a percentage, a
+                    share count, a price, a plain count -- is rendered in that
+                    person's effective number locale, on every surface that shows
+                    it: the app, a PDF or CSV export, an email, a notification, a
+                    generated report note. The effective locale is one
+                    resolution, shared by both layers: an explicit
+                    `user_preferences.numberFormat` wins; `"browser"` falls back
+                    to `user_preferences.language`; a language that is not a real
+                    Intl tag (`browser`, the `xx` pseudo-locale) falls through --
+                    to the browser on the client, which has one, and to
+                    DEFAULT_LOCALE on the server, which does not.
+                    A fixed locale is permitted only where the output is read by
+                    a MACHINE and the contract is documented: an LLM prompt, and
+                    the English fallback string stored on a row whose client
+                    composes its own copy from the structured payload beside it.
+                    "It is already localized" is not a defence for
+                    `toLocaleString()`: that follows the browser, and an explicit
+                    numberFormat exists to override the browser -- a reader on
+                    en-US hardware who chose pl-PL still gets `12,345`.
+Source of truth     frontend/src/hooks/useNumberFormat.ts getEffectiveLocale;
+                    backend/src/common/number-locale.util.ts resolveNumberLocale
+Enforcement         Client: every figure goes through useNumberFormat(); a pure
+                    module takes its NumberFormatters as an argument.
+                    frontend/src/test/number-locale.guard.test.ts scans src/ for
+                    four fingerprints -- a UI file importing the raw
+                    formatCurrency/formatShareQuantity from @/lib/format, a
+                    numeric toLocaleString(), a literal '%' beside an
+                    interpolation, and an Intl.NumberFormat built on 'en-US' or
+                    on `undefined` (the browser, which an explicit preference
+                    exists to override) -- with a classified allowlist and a
+                    comment stripper so the prose that has to NAME the banned
+                    patterns does not trip its own scan.
+                    The percentage scan is keyed on the literal '%' rather than
+                    on `toFixed`: written from the diff it matched only the
+                    shapes the migration had just removed and reported clean over
+                    fourteen survivors, because the codebase's commonest shape
+                    (`{percentage}%`) names no formatter at all.
+                    Server: numberFormatterFor(numberFormat, language) built from
+                    the recipient's preference row, passed into the email
+                    templates, the budget-alert and bill-due message builders,
+                    the portfolio-movement push body, the anomaly-report
+                    descriptions and the monthly-comparison notes.
+                    backend/src/common/number-locale.guard.spec.ts holds the
+                    classification of every caller of the en-US helpers (each
+                    with the reason its output is not addressed to a person),
+                    fails on a second hardcoded en-US formatter in src/, and runs
+                    the same literal-'%' scan over the server -- excluding CSS
+                    lengths, SQL LIKE wildcards and logger arguments, the last by
+                    blanking whole logger CALLS, since a multi-line log message
+                    puts the '%' nowhere near the logger call that names it.
+Concurrency scope   per reader
+Failure response    An unknown currency code costs the SYMBOL and keeps the
+                    reader's separators.
+                    A stored preference Intl cannot use at all is a different
+                    case and is resolved BEFORE any formatter is built: `en_US`,
+                    the underscore form, makes Intl.NumberFormat throw RangeError,
+                    and nothing validated the column. The server falls back to
+                    DEFAULT_LOCALE, the client to the browser (which is what an
+                    absent preference already means). Catching the throw at the
+                    call site is not enough and was the first fix's mistake: its
+                    fallback rebuilt Intl from the same locale and threw too,
+                    which 500'd a report and silently stopped that user's bill
+                    reminders and budget alerts. IsNumberLocale on the DTO stops
+                    new such values; the two fallbacks cover rows already stored.
+Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp under
+                    pl-PL and en-US, tiny residual preserved, -0 normalized;
+                    formatPercentTrimmed keeping 80 / 80.5 / 80.55 as they are;
+                    an unusable stored locale rendering rather than throwing);
+                    is-number-locale.validator.spec.ts;
+                    SecurityList.test.tsx "number locale" (the reported screen,
+                    under pl-PL, en-US chosen while the UI is Polish, browser
+                    fallback, and one case where the preference deliberately
+                    disagrees with the host locale); number-locale.guard.spec.ts
+                    (the resolver's truth table and pl-PL/en-US rendering);
+                    email-templates.spec.ts "recipient number locale" (a Polish
+                    bill reminder). A component test must not build its
+                    expectation with the same helper the component renders
+                    through -- SecurityList.test.tsx did, which is why the defect
+                    shipped green.
+Status              enforced
+```
+
+The number locale is a SEPARATE preference from the language, and that is the
+part a mechanical fix gets wrong twice over. Replacing a hardcoded `en-US` with
+`toLocaleString()` looks like a migration and is not -- it swaps one wrong locale
+for another, and the new one happens to be right on the developer's machine.
+Localizing the figure while leaving the sentence in English is right in one place
+and wrong in another: it is right inside a stored English FALLBACK a client
+overrides, and wrong as a substitute for putting the copy in a catalogue. Both
+halves are decided per surface, and the classification is what the guard holds.
 
 ### INV-MCP-001 -- identity comes from the credential on the request
 

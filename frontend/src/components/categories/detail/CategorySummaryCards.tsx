@@ -52,7 +52,7 @@ export function CategorySummaryCards({
   onTransactionsClick,
 }: CategorySummaryCardsProps) {
   const t = useTranslations('categoryDetail');
-  const { formatCurrency, formatSignedPercent } = useNumberFormat();
+  const { formatCurrency, formatSignedPercent, formatNumber } = useNumberFormat();
   const { formatDate } = useDateFormat();
 
   const { stats, category } = detail;
@@ -121,7 +121,7 @@ export function CategorySummaryCards({
     },
     {
       label: t('summary.transactions'),
-      value: stats.transactionCount.toLocaleString(),
+      value: formatNumber(stats.transactionCount, 0),
       note: firstYear ? t('summary.sinceYear', { year: firstYear }) : undefined,
       onClick: onTransactionsClick,
     },

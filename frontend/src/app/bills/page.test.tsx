@@ -129,17 +129,20 @@ vi.mock('@/lib/transactions', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    // The code is part of what a money value IS, so the mock prints it: a
-    // formatter that swallows it cannot tell a CAD figure labelled USD from a
-    // correct one, which is the defect these tests exist for (issue #1247).
-    formatCurrency: (val: number, code?: string) =>
-      code ? `${code} $${Math.abs(val).toFixed(2)}` : `$${Math.abs(val).toFixed(2)}`,
-    formatNumber: (val: number) => val.toString(),
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      // The code is part of what a money value IS, so the mock prints it: a
+      // formatter that swallows it cannot tell a CAD figure labelled USD from a
+      // correct one, which is the defect these tests exist for (issue #1247).
+      formatCurrency: (val: number, code?: string) =>
+        code ? `${code} $${Math.abs(val).toFixed(2)}` : `$${Math.abs(val).toFixed(2)}`,
+      formatNumber: (val: number) => val.toString(),
+    }),
+  };
+});
 /**
  * Rates the page's converter can see, as `FROM->TO`. Tests set it to make a
  * pair convertible or deliberately absent; empty means only same-currency

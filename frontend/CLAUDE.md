@@ -228,6 +228,63 @@ However a surface selects a category, the option list is one shape: built from `
 
 Whether a picker *offers* to create is a property of the surface, not the field: a form that can create passes the creator to **every** category picker it renders, split lines included (`SplitEditor`'s lines silently discarded unmatched text while the Category field offered "+ Create" -- issue #1187). An asynchronous create addresses the row it came from **by id** (rows can move while the request is in flight), and the new category's `isIncome` comes from what the creator returned.
 
+### A number a person reads is formatted by `useNumberFormat()`, never by `toFixed`, `toLocaleString()` or the raw `@/lib/format` helpers
+
+`useNumberFormat()` is to numbers what `useDateFormat()` is to dates: the one seam
+where the user's `numberFormat` preference decides separators, grouping, decimal
+mark and currency placement. `@/lib/format` keeps `formatCurrency` and
+`formatShareQuantity` as pure deterministic `en-US` helpers -- fine in a non-React,
+non-user-facing context, and exactly wrong in a component, which is how a Polish
+reader came to see `zl18,812.71` and `755.8342` on Securities while every other
+screen used their own convention (issue #1316).
+
+Three ways in, and the second is the one that looks like a fix and is not:
+
+- **A literal `%` beside a number** -- `` `${x.toFixed(1)}%` `` and the far
+  commoner `{percentage}%` -- writes a `.` decimal in every locale and puts the
+  `%` where English puts it (fr-FR writes `12,3 %`). Use
+  `formatPercent(value, decimals)` where the surface has decided a decimal count,
+  `formatPercentTrimmed(value)` where the value arrives already rounded (the
+  server rounds `percentUsed` to 2dp, so the same expression must still render
+  `80%`, `80.5%` and `80.55%` -- pinning a count would change the figure, which
+  is the one thing a localization fix must not do), or `formatSignedPercent`
+  where an explicit leading sign is wanted. A CSS length (`width: ${pct}%`) is
+  the one legitimate case and stays a plain number: CSS reads no locale.
+- **A bare `toLocaleString()`** follows the *browser*, and an explicit
+  `numberFormat` exists precisely to override the browser: a reader on `en-US`
+  hardware who picked `pl-PL` still gets `12,345`. Swapping a hardcoded `en-US`
+  for `toLocaleString()` is not a migration. Use `formatNumber(value, 0)` for a
+  count.
+- **The raw helpers**, imported into a component because the hook needs a hook.
+  A tooltip, a table cell and a recharts `content={<Tooltip/>}` are all React
+  components and can call it; a genuinely pure module takes the formatters as an
+  argument (`NumberFormatters`, exported from the hook -- `compareMetricRows`,
+  `MonteCarloPerformanceSummary` and `HoldingStatsTable` are the worked examples).
+
+**A share count is `formatShareQuantity`, not `formatQuantity`.** Eight decimals,
+not four: a residual position of `0.0003` shares is what the holdings column
+exists to expose, and the migration must not round it away. It normalizes the
+`-0` Intl produces for a residue that rounds to zero, and renders a nullish or
+NaN quantity as `0`.
+
+**The ISO code beside a foreign amount is not this rule.** `withCurrencyCode`
+appends it deliberately when a security's currency is not the reader's; localize
+the number *before* the suffix and leave the suffix alone.
+
+`src/test/number-locale.guard.test.ts` scans for all four fingerprints with a
+classified allowlist (a `new Date(...).toLocaleString()` is a date, which
+`useDateFormat` governs; `lib/utils.ts`'s `sv-SE` timestamps are machine-shaped).
+**Its percentage scan is keyed on the literal `%`, not on `toFixed`** -- written
+from the diff it matched only the shapes the migration had just removed and
+reported clean over fourteen survivors, because the shape that actually
+dominates names no formatter at all. A scan written from a diff sees what was
+fixed; write it from the rule.
+A component test must not build its expectation with the same helper the
+component uses -- `SecurityList.test.tsx` did, so it proved the component agreed
+with a hardcoded formatter while the screen disagreed with the user. Set a real
+preference row and assert the rendered string, including one case where the
+preference deliberately differs from the host locale.
+
 ### An account balance is coloured by its sign -- `balanceColor`, never by account type
 
 `balanceColor` (`lib/format.ts`) is the one rule: negative is red, everything else neutral. Do not add `|| isLiability` (or any `accountType` test) -- a credit card at a credit balance is not in the red, and the sign already carries the meaning. `gainLossColor` is the sibling for a *change* in value (green when up), not for a balance.
@@ -936,6 +993,20 @@ So: **`renderHook` is exported from `@/test/render` too**, wrapped in the same p
 `intl-harness.guard.test.ts` scans for the two ways round it: `render`/`renderHook` imported from `@testing-library/react`, and a `NextIntlClientProvider` built in a test. Its `ALLOWED_*` sets are deliberate exceptions -- tests that genuinely vary the locale, and the boot-path components defined by having no providers -- while `RTL_IMPORT_BASELINE` is shrink-only: 45 older tests that work today only because their subjects happen not to translate anything. Converting one means deleting its line.
 
 Fix the lookup, never the symptom. Adding a code to the ignore list only restores the silence the guard exists to remove.
+
+**A `useNumberFormat` mock spreads `numberFormatMockDefaults()`.** That hook is
+mocked in ~127 files, each with a bare factory listing the formatters its
+component used the day the test was written -- and a bare factory REPLACES the
+module, so the literal is the hook's whole surface for that file. Nothing failed
+while those lists rotted; adding a `formatPercent` call to a component turned
+thirty-nine unrelated suites red with "formatPercent is not a function", not one
+of which was a real defect. Spread `numberFormatMockDefaults()`
+(`@/test/number-format-mock`) first and override only what the case asserts on.
+The factory has to be `async` so it can `await import` the helper past
+`vi.mock`'s hoisting. The defaults are functions only: `defaultCurrency`,
+`numberFormat` and `numberLocale` are identity-bearing values a case states for
+itself, and defaulting them would change what an existing assertion is about,
+while a missing function can only ever have been a crash.
 
 **Global mocks** (`test/setup.ts`): `next/navigation` (useRouter, usePathname, useSearchParams), `react-hot-toast`, `localStorage`, `window.scrollTo`, `window.matchMedia`.
 

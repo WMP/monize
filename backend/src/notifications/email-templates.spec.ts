@@ -16,6 +16,7 @@ import {
   providerOutageTemplate,
   providerRecoveryTemplate,
 } from "./email-templates";
+import { numberFormatterFor } from "../common/number-locale.util";
 
 describe("Email Templates", () => {
   describe("testEmailTemplate()", () => {
@@ -78,6 +79,63 @@ describe("Email Templates", () => {
       expect(html).toContain("Internet Provider");
       expect(html).toContain("2024-02-20");
       expect(html).toContain("$79.99");
+    });
+
+    /**
+     * Issue #1316: the template already took the recipient's localized
+     * translator and then rendered the amount through the deterministic `en-US`
+     * helper, so Polish copy carried `zl18,812.71`. The figure follows the
+     * recipient's number preference now.
+     */
+    describe("recipient number locale", () => {
+      const polishBill = [
+        {
+          payee: "Dostawca energii",
+          amount: 18812.71,
+          dueDate: "2024-02-15",
+          currencyCode: "PLN",
+          isIncome: false,
+        },
+      ];
+
+      it("renders the amount in the recipient's convention", () => {
+        const html = billReminderTemplate(
+          "Ala",
+          polishBill,
+          "https://monize.app",
+          undefined,
+          numberFormatterFor("pl-PL", "pl"),
+        );
+
+        expect(html).toContain("812,71");
+        expect(html).toContain("z\u0142");
+        expect(html).not.toContain("18,812.71");
+      });
+
+      it("keeps the dot-decimal convention for a recipient who chose it", () => {
+        // Proves the change is a locale seam, not a hardcoded Polish one.
+        const html = billReminderTemplate(
+          "Alice",
+          polishBill,
+          "https://monize.app",
+          undefined,
+          numberFormatterFor("en-US", "pl"),
+        );
+
+        expect(html).toContain("18,812.71");
+      });
+
+      it("follows the recipient's UI language when numberFormat is 'browser'", () => {
+        const html = billReminderTemplate(
+          "Ala",
+          polishBill,
+          "https://monize.app",
+          undefined,
+          numberFormatterFor("browser", "pl"),
+        );
+
+        expect(html).toContain("812,71");
+      });
     });
 
     it("includes the appUrl link to the bills page", () => {

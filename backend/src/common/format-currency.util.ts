@@ -1,6 +1,22 @@
 import { roundToDecimals } from "./round.util";
 
 /**
+ * Deterministic `en-US` money formatting, for output read by a MACHINE.
+ *
+ * "Machine" means: an LLM prompt, and the English `description` an
+ * action-history row stores as its fallback for a reader whose client cannot
+ * localize it. Those are documented fixed-locale contracts -- a prompt wants
+ * one stable representation, and a stored English sentence cannot be
+ * translated after the fact.
+ *
+ * **Anything addressed to a person goes through `number-locale.util.ts`**
+ * instead, built from that recipient's `numberFormat` / `language`. Forcing
+ * `en-US` into a translated email put `zl18,812.71` inside Polish copy
+ * (issue #1316); `backend/src/common/number-locale.guard.spec.ts` fails on a
+ * new caller of the two helpers below outside the classified set.
+ */
+
+/**
  * Format a number as currency with the correct decimal places for the given currency code.
  * Uses Intl.NumberFormat so JPY gets 0 decimals, USD/EUR get 2, BHD gets 3, etc.
  * Pre-rounds to the currency's native decimal places to avoid IEEE 754 midpoint errors

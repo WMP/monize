@@ -106,7 +106,10 @@ describe("notification type partition", () => {
 
   it("splits every category from its declared type set, with BUDGETS the remainder", () => {
     const byCategory = Object.fromEntries(
-      Object.values(NotificationCategory).map((c) => [c, [] as NotificationType[]]),
+      Object.values(NotificationCategory).map((c) => [
+        c,
+        [] as NotificationType[],
+      ]),
     ) as Record<NotificationCategory, NotificationType[]>;
     for (const type of ALL_TYPES) {
       byCategory[notificationCategoryOf(type)].push(type);

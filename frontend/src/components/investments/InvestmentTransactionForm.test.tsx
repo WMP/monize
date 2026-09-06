@@ -9,14 +9,17 @@ import {
 } from '@/hooks/useTransactionSubmitMode';
 import toast from 'react-hot-toast';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    defaultCurrency: 'CAD',
-    formatCurrency: (n: number, c?: string) =>
-      c ? `${c} $${n.toFixed(2)}` : `$${n.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      defaultCurrency: 'CAD',
+      formatCurrency: (n: number, c?: string) =>
+        c ? `${c} $${n.toFixed(2)}` : `$${n.toFixed(2)}`,
+    }),
+  };
+});
 const getMarketRateMock = vi.fn<(from: string, to: string) => number | null>(
   () => null,
 );

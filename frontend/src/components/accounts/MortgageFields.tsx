@@ -13,6 +13,7 @@ import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 
 const logger = createLogger('MortgageFields');
 
@@ -73,6 +74,9 @@ export function MortgageFields({
 }: MortgageFieldsProps) {
   const t = useTranslations('accounts');
   const { formatDate } = useDateFormat();
+  // Money arrives as a prop; the preview's rate does not, and it is just as
+  // user-facing -- so it takes the same number locale rather than `toFixed`.
+  const { formatPercent } = useNumberFormat();
 
   const mortgagePaymentFrequencyOptions = [
     { value: 'MONTHLY', label: t('mortgageFields.frequencyOptions.monthly') },
@@ -390,7 +394,7 @@ export function MortgageFields({
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">{t('mortgageFields.previewEffectiveRate')}</span>{' '}
-                  <span className="font-medium">{mortgagePreview.effectiveAnnualRate.toFixed(2)}%</span>
+                  <span className="font-medium">{formatPercent(mortgagePreview.effectiveAnnualRate, 2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">{t('mortgageFields.previewFirstPrincipal')}</span>{' '}

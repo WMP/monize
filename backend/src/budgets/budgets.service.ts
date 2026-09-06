@@ -33,7 +33,6 @@ import {
   resolveCategorySpent,
 } from "./budget-spending.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
-import { formatCurrency } from "../common/format-currency.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
   convertingTotal,
@@ -41,6 +40,8 @@ import {
 } from "../common/converting-total";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { numberFormatterFor } from "../common/number-locale.util";
 
 export interface UpcomingBill {
   id: string;
@@ -648,6 +649,12 @@ export class BudgetsService {
    * budgets owns the producer.
    */
   async ensureBillDueNotifications(userId: string): Promise<void> {
+    // Every figure below is read by this user -- on the bell, and in the email
+    // `notificationImmediateTemplate` composes from the same string.
+    const prefs = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    );
+    const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = todayYMD();
@@ -764,15 +771,22 @@ export class BudgetsService {
           type: NotificationType.BILL_DUE,
           severity,
           // `title`/`message` are the English fallbacks for a reader with no
-          // client to render them (the email digest, an API consumer). The UI
-          // composes both from `type` and `data` in the reader's own language --
-          // a stored sentence cannot be translated after the fact, and the
-          // missing-rate case is exactly the one a non-English reader hits.
+          // client to render them. The UI composes both from `type` and `data`
+          // in the reader's own language -- a stored sentence cannot be
+          // translated after the fact, and the missing-rate case is exactly the
+          // one a non-English reader hits.
+          //
+          // The FIGURE in that fallback is still the recipient's to read, and
+          // this one is not hypothetical: PAYMENTS supports `emailNotification`,
+          // so `notificationImmediateTemplate` renders this very string into an
+          // email built with the recipient's translator. Formatting it en-US put
+          // `zl18,812.71` inside Polish copy -- issue #1316 on the one path whose
+          // English prose is not a machine format.
           title: `${payeeName} due${daysUntilDue === 0 ? " today" : daysUntilDue === 1 ? " tomorrow" : ` in ${daysUntilDue} days`}`,
           message:
             amount === null
               ? `Amount unavailable (no current exchange rate), due on ${dueDate}`
-              : `${formatCurrency(amount, occurrence.currencyCode)} due on ${dueDate}`,
+              : `${n.formatCurrency(amount, occurrence.currencyCode)} due on ${dueDate}`,
           // Structured, so the UI can compose the copy in the reader's language
           // -- and deliberately without `daysUntilDue`: "due in 3 days" was true
           // when this row was written and stops being true the next morning,

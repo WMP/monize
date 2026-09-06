@@ -41,7 +41,7 @@ export function ExpensesPieChart({
 }: ExpensesPieChartProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<RangeAccountsConfig>(
     WIDGET_ID,
@@ -225,12 +225,12 @@ export function ExpensesPieChart({
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { id: string; name: string; value: number; colour: string } }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const percentage = ((data.value / totalExpenses) * 100).toFixed(1);
+      const percentage = (data.value / totalExpenses) * 100;
       return (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
           <p className="text-gray-600 dark:text-gray-400">
-            {formatCurrency(data.value)} ({percentage}%)
+            {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
           </p>
         </div>
       );

@@ -47,7 +47,7 @@ interface IncomeSlice {
 
 export function IncomeBySourceWidget({ isLoading }: IncomeBySourceWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<IncomeBySourceConfig>(
     WIDGET_ID,
     INCOME_BY_SOURCE_DEFAULT,
@@ -91,12 +91,12 @@ export function IncomeBySourceWidget({ isLoading }: IncomeBySourceWidgetProps) {
     const payload = rawPayload as Array<{ payload: IncomeSlice }> | undefined;
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
-    const pct = totalIncome > 0 ? ((d.value / totalIncome) * 100).toFixed(1) : '0';
+    const pct = totalIncome > 0 ? (d.value / totalIncome) * 100 : 0;
     return (
       <ChartTooltipPanel>
         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
         <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(d.value)} ({pct}%)
+          {formatCurrency(d.value)} ({formatPercent(pct, 1)})
         </p>
       </ChartTooltipPanel>
     );

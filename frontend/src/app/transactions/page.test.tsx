@@ -449,13 +449,16 @@ vi.mock('@/hooks/useDateFormat', () => ({
   }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (val: number) => `$${val.toFixed(2)}`,
-    formatNumber: (val: number) => val.toString(),
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (val: number) => `$${val.toFixed(2)}`,
+      formatNumber: (val: number) => val.toString(),
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (val: number) => val,

@@ -2,21 +2,24 @@
 
 import { AccountHoldingStats } from '@/lib/monte-carlo';
 import { useTranslations } from 'next-intl';
+import type { NumberFormatters } from '@/hooks/useNumberFormat';
 
 export function HoldingStatsTable({
   data,
   loading,
-  formatCurrency,
+  formatters,
 }: {
   data: AccountHoldingStats[] | null;
   loading: boolean;
-  // Takes the value's own currency code. The market value is in the security's
-  // native currency, and formatting it with the default-currency symbol printed
-  // a USD holding as "1,000 PLN" -- a money value and its currency are one tuple
-  // (recheck RR5-004).
-  formatCurrency: (v: number, currencyCode?: string) => string;
+  // `formatCurrency` takes the value's own currency code. The market value is in
+  // the security's native currency, and formatting it with the default-currency
+  // symbol printed a USD holding as "1,000 PLN" -- a money value and its
+  // currency are one tuple (recheck RR5-004). The percentages travel with it
+  // because they are read by the same person in the same number locale.
+  formatters: NumberFormatters;
 }) {
   const t = useTranslations('reports');
+  const { formatCurrency, formatPercent } = formatters;
 
   if (loading) {
     return (
@@ -34,7 +37,7 @@ export function HoldingStatsTable({
   }
 
   const fmtPct = (v: number | null) =>
-    v == null ? '—' : `${(v * 100).toFixed(2)}%`;
+    v == null ? '—' : formatPercent(v * 100, 2);
 
   // A missing current price is unknown, not zero. Formatting `null` as currency
   // would print the locale's zero and claim the position is worthless. A present

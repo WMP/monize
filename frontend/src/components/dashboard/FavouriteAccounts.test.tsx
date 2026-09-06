@@ -20,12 +20,15 @@ vi.mock("@/store/preferencesStore", () => ({
   },
 }));
 
-vi.mock("@/hooks/useNumberFormat", () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+    }),
+};
+});
 vi.mock("@/lib/accounts", () => ({
   accountsApi: {
     reorderFavourites: vi.fn().mockResolvedValue(undefined),

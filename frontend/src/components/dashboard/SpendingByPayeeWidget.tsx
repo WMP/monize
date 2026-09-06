@@ -39,7 +39,7 @@ interface SpendingByPayeeWidgetProps {
 export function SpendingByPayeeWidget({ isLoading }: SpendingByPayeeWidgetProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<RangeConfig>(
     WIDGET_ID,
     SPENDING_BY_PAYEE_DEFAULT,
@@ -120,12 +120,12 @@ export function SpendingByPayeeWidget({ isLoading }: SpendingByPayeeWidgetProps)
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as { name: string; value: number };
-                    const pct = totalExpenses > 0 ? ((d.value / totalExpenses) * 100).toFixed(1) : '0';
+                    const pct = totalExpenses > 0 ? (d.value / totalExpenses) * 100 : 0;
                     return (
                       <ChartTooltipPanel>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
                         <p className="text-gray-600 dark:text-gray-400">
-                          {formatCurrency(d.value)} ({pct}%)
+                          {formatCurrency(d.value)} ({formatPercent(pct, 1)})
                         </p>
                       </ChartTooltipPanel>
                     );

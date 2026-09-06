@@ -18,17 +18,20 @@ vi.mock('@/components/ui/ChartViewToggle', () => ({
   ),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    formatCurrencyLabel: (n: number) => `$${n.toFixed(0)}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      formatCurrencyLabel: (n: number) => `$${n.toFixed(0)}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 const dateRangeMock = vi.hoisted(() => ({ value: '1y' }));
 const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
 vi.mock('@/hooks/useDateRange', () => ({

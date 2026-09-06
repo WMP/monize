@@ -10,16 +10,19 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    defaultCurrency: 'CAD',
-    formatCurrency: (v: number, code: string) => `${code} ${v.toFixed(2)}`,
-    formatNumber: (v: number, decimals = 2) => v.toFixed(decimals),
-    // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
-    formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      defaultCurrency: 'CAD',
+      formatCurrency: (v: number, code: string) => `${code} ${v.toFixed(2)}`,
+      formatNumber: (v: number, decimals = 2) => v.toFixed(decimals),
+      // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
+      formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
+    }),
+  };
+});
 vi.mock('@hookform/resolvers/zod', () => ({
   zodResolver: () => async (values: any) => {
     // Simple pass-through resolver that returns the raw form values

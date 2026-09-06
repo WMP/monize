@@ -3,10 +3,12 @@ import { render, screen } from '@/test/render';
 import { CashFlowMiniReport } from './CashFlowMiniReport';
 import type { MonthlyTotal } from '@/types/transaction';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({ ...numberFormatMockDefaults(), formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
+  };
+});
 const monthly: MonthlyTotal[] = [
   { month: '2026-05', total: -200, count: 4 },
   { month: '2026-06', total: 500, count: 3 },

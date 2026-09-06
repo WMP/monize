@@ -3,15 +3,18 @@ import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { DebtPayoffTimelineReport } from './DebtPayoffTimelineReport';
 import { axisTickLabel } from '@/lib/chart-sampling';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
   // `data` is serialized onto the node so a test can assert on what the chart

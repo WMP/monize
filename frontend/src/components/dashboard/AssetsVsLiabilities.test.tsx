@@ -16,12 +16,15 @@ vi.mock('recharts', () => ({
   Tooltip: () => null,
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+    }),
+  };
+});
 const months: MonthlyNetWorth[] = [
   { month: '2026-04-01', assets: 90000, liabilities: 40000, netWorth: 50000 },
   { month: '2026-05-01', assets: 120000, liabilities: 30000, netWorth: 90000 },

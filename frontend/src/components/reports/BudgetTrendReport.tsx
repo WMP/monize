@@ -24,7 +24,7 @@ import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
 
 export function BudgetTrendReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
   const [months, setMonths] = useState(12);
@@ -74,7 +74,7 @@ export function BudgetTrendReport() {
       point.month,
       formatCurrency(point.budgeted),
       formatCurrency(point.actual),
-      `${point.percentUsed}%`,
+      `${formatPercentTrimmed(point.percentUsed)}`,
     ]);
     await exportToPdf({
       title: t('budgetTrend.pdfTitle'),

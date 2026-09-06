@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 const logger = createLogger('CategoryAutoAssign');
 
 interface CategoryAutoAssignDialogProps {
@@ -39,6 +40,7 @@ export function CategoryAutoAssignDialog({
   const [isApplying, setIsApplying] = useState(false);
   const [hasPreviewLoaded, setHasPreviewLoaded] = useState(false);
   const t = useTranslations('payees');
+  const { formatPercentTrimmed } = useNumberFormat();
   const router = useRouter();
 
   // Jump to the Transactions page filtered to this payee's uncategorized
@@ -351,7 +353,7 @@ export function CategoryAutoAssignDialog({
                                   ? 'text-blue-600 dark:text-blue-400'
                                   : 'text-yellow-600 dark:text-yellow-400'
                             }`}>
-                              {suggestion.percentage}%
+                              {formatPercentTrimmed(suggestion.percentage)}
                             </span>
                           </td>
                         </tr>

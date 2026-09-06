@@ -44,7 +44,7 @@ export function BankingSummaryCards({
   onInterestClick,
 }: BankingSummaryCardsProps) {
   const t = useTranslations('accountDetail-banking');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const currency = account.currencyCode;
   const currentBalance = Number(account.currentBalance) || 0;
 
@@ -89,7 +89,7 @@ export function BankingSummaryCards({
   if (account.interestRate != null) {
     cards.push({
       label: t('summary.interestRate'),
-      value: `${account.interestRate}%`,
+      value: `${formatPercentTrimmed(account.interestRate)}`,
     });
   }
 

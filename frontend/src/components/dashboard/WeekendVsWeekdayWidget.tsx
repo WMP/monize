@@ -42,7 +42,7 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
   const dayNames = tc.raw('weekdaysShort') as string[];
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<WeekendConfig>(
     WIDGET_ID,
     WEEKEND_WEEKDAY_DEFAULT,
@@ -171,12 +171,12 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as { name: string; value: number };
-                    const pct = totalSpending > 0 ? ((d.value / totalSpending) * 100).toFixed(1) : '0';
+                    const pct = totalSpending > 0 ? (d.value / totalSpending) * 100 : 0;
                     return (
                       <ChartTooltipPanel>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
                         <p className="text-gray-600 dark:text-gray-400">
-                          {formatCurrency(d.value)} ({pct}%)
+                          {formatCurrency(d.value)} ({formatPercent(pct, 1)})
                         </p>
                       </ChartTooltipPanel>
                     );
@@ -186,7 +186,7 @@ export function WeekendVsWeekdayWidget({ isLoading }: WeekendVsWeekdayWidgetProp
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {weekendPercent.toFixed(0)}%
+                {formatPercent(weekendPercent, 0)}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {t('weekendVsWeekday.weekendLabel')}

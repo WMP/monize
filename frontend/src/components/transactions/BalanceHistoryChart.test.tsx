@@ -81,15 +81,18 @@ const mockFormatCurrencyPrecise = vi.fn(
   (n: number, _code?: string) => `$${n.toFixed(6)}`,
 );
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: mockFormatCurrency,
-    formatCurrencyPrecise: mockFormatCurrencyPrecise,
-    formatCurrencyAxis: mockFormatCurrencyAxis,
-    formatCurrencyFlag: mockFormatCurrencyFlag,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: mockFormatCurrency,
+      formatCurrencyPrecise: mockFormatCurrencyPrecise,
+      formatCurrencyAxis: mockFormatCurrencyAxis,
+      formatCurrencyFlag: mockFormatCurrencyFlag,
+    }),
+  };
+});
 describe('BalanceHistoryChart', () => {
   it('renders loading state with title and pulse skeleton', () => {
     render(

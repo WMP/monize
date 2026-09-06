@@ -3,6 +3,7 @@ import {
   PercentileBand,
   SimulationResult,
 } from '@/lib/monte-carlo';
+import type { NumberFormatters } from '@/hooks/useNumberFormat';
 
 export type RowFormat = 'currency' | 'percent' | 'number' | 'text' | 'boolean';
 
@@ -30,23 +31,40 @@ export type RowGroup = {
   rows: MetricRow[];
 };
 
-export function formatPercent(value: number | null, dp = 2): string {
+/**
+ * The locale-aware formatters this pure module needs, supplied by the caller.
+ *
+ * This module cannot call `useNumberFormat()` -- it is not a component -- and it
+ * must not reach for `toFixed`/`toLocaleString` either: the first is `.` in
+ * every locale and the second follows the *browser*, which is exactly what an
+ * explicit `numberFormat` preference overrides. So the caller passes the hook's
+ * own functions down. Percentages arrive here as fractions (0.0725 = 7.25%)
+ * while `formatPercent` takes percentage units, hence the x100 at the seam.
+ */
+export type CompareCellFormatters = NumberFormatters;
+
+export function formatPercent(
+  value: number | null,
+  formatters: Pick<CompareCellFormatters, 'formatPercent'>,
+  dp = 2,
+): string {
   if (value === null || !Number.isFinite(value)) return '—';
-  return `${(value * 100).toFixed(dp)}%`;
+  return formatters.formatPercent(value * 100, dp);
 }
 
 export function formatCellValue(
   value: number | string | boolean | null,
   format: RowFormat,
-  formatCurrency: (n: number) => string,
+  formatters: CompareCellFormatters,
 ): string {
   if (value === null) return '—';
   if (format === 'text') return String(value);
   if (format === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  if (format === 'currency') return formatCurrency(value);
-  if (format === 'percent') return formatPercent(value);
-  return value.toLocaleString();
+  if (format === 'currency') return formatters.formatCurrency(value);
+  if (format === 'percent') return formatPercent(value, formatters);
+  // A count, not money: no fixed decimals, but still the user's separators.
+  return formatters.formatNumber(value, 0);
 }
 
 const last = <T>(arr: T[] | undefined): T | null =>

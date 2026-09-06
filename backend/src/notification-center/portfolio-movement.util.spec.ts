@@ -1,7 +1,4 @@
-import {
-  MovementInputs,
-  decideMovement,
-} from "./portfolio-movement.util";
+import { MovementInputs, decideMovement } from "./portfolio-movement.util";
 
 const base = (over: Partial<MovementInputs>): MovementInputs => ({
   mvComplete: true,

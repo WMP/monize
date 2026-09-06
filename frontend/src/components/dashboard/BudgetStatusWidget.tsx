@@ -21,7 +21,7 @@ interface BudgetStatusWidgetProps {
 export function BudgetStatusWidget({ isLoading: parentLoading }: BudgetStatusWidgetProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const [summary, setSummary] = useState<DashboardBudgetSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -94,7 +94,7 @@ export function BudgetStatusWidget({ isLoading: parentLoading }: BudgetStatusWid
       <div className="mb-3">
         <div className="flex items-baseline justify-between mb-1">
           <span className={`text-xl font-bold ${budgetPercentColor(summary.percentUsed)}`}>
-            {summary.percentUsed.toFixed(0)}%
+            {formatPercent(summary.percentUsed, 0)}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {formatCurrency(summary.totalSpent)} / {formatCurrency(summary.totalBudgeted)}
@@ -132,7 +132,7 @@ export function BudgetStatusWidget({ isLoading: parentLoading }: BudgetStatusWid
                     {cat.categoryName}
                   </span>
                   <span className={`text-xs font-medium ${budgetPercentColor(cat.percentUsed)}`}>
-                    {cat.percentUsed.toFixed(0)}%
+                    {formatPercent(cat.percentUsed, 0)}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">

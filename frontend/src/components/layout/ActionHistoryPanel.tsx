@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { actionHistoryApi, type ActionHistoryItem } from '@/lib/action-history';
 import { renderActionDescription } from '@/lib/action-history-format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { clearAllCache } from '@/lib/apiCache';
 import { notifyUndoRedo, subscribeUndoRedo } from '@/lib/undoRedoSignal';
 import { createLogger } from '@/lib/logger';
@@ -43,6 +44,7 @@ function timeAgo(
 
 export function ActionHistoryPanel() {
   const t = useTranslations('layout');
+  const { formatCurrency } = useNumberFormat();
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,7 +89,7 @@ export function ActionHistoryPanel() {
       const result = await actionHistoryApi.undo();
       toast.success(
         t('actionHistory.undonePrefix', {
-          description: renderActionDescription(t, result.action),
+          description: renderActionDescription(t, result.action, formatCurrency),
         }),
       );
       clearAllCache();
@@ -116,7 +118,7 @@ export function ActionHistoryPanel() {
       const result = await actionHistoryApi.redo();
       toast.success(
         t('actionHistory.redonePrefix', {
-          description: renderActionDescription(t, result.action),
+          description: renderActionDescription(t, result.action, formatCurrency),
         }),
       );
       clearAllCache();
@@ -282,7 +284,7 @@ export function ActionHistoryPanel() {
                             item.isUndone ? 'line-through' : ''
                           }`}
                         >
-                          {renderActionDescription(t, item)}
+                          {renderActionDescription(t, item, formatCurrency)}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">

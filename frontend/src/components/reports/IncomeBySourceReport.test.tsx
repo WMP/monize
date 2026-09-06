@@ -7,15 +7,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock("@/hooks/useNumberFormat", () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: "CAD",
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: "CAD",
+    }),
+};
+});
 let mockIsValid = true;
 vi.mock("@/hooks/useDateRange", () => {
   const resolvedRange = { start: "2024-01-01", end: "2025-01-01" };
@@ -340,7 +343,11 @@ describe("IncomeBySourceReport", () => {
     });
   });
 
-  it("shows 0% percentage in legend when totalIncome is zero", async () => {
+  it("shows a zero percentage in the legend when totalIncome is zero", async () => {
+    // "0.0%", not "0%": the share is rendered at one decimal like every
+    // other row in this legend. The old code took a shortcut in this branch
+    // -- a literal `'0'` beside `.toFixed(1)` for the computed one -- so the
+    // no-data case was the only row that disagreed with its neighbours.
     // Simulate items but totalIncome = 0 (edge case data mismatch)
     mockGetIncomeBySource.mockResolvedValue({
       data: [
@@ -353,7 +360,7 @@ describe("IncomeBySourceReport", () => {
       expect(screen.getByText("Salary")).toBeInTheDocument();
     });
     // When totalIncome is 0, percentage should display as '0'
-    expect(screen.getByText("$0.00 (0%)")).toBeInTheDocument();
+    expect(screen.getByText("$0.00 (0.0%)")).toBeInTheDocument();
   });
 
   it("does not load data when isValid is false", async () => {

@@ -6,16 +6,20 @@ vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    formatPercent: (n: number, decimals = 2) => `${n.toFixed(decimals)}%`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyCompact: (n: number) => `$${Math.round(n)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      formatPercent: (n: number, decimals = 2) => `${n.toFixed(decimals)}%`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyCompact: (n: number) => `$${Math.round(n)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 
 vi.mock('@/lib/chart-colours', () => ({
   CHART_COLOURS: ['#3b82f6', '#ef4444', '#22c55e', '#f97316'],

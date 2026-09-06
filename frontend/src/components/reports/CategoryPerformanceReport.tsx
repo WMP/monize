@@ -27,7 +27,7 @@ type CategoryPerformanceSortField =
 
 export function CategoryPerformanceReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
 
   const getTrendArrow = (values: number[]): { arrow: string; color: string } => {
     if (values.length < 2) return { arrow: '--', color: 'text-gray-400' };
@@ -166,7 +166,7 @@ export function CategoryPerformanceReport() {
       row.categoryName,
       formatCurrency(row.avgBudgeted),
       formatCurrency(row.avgActual),
-      `${row.avgPercent}%`,
+      `${formatPercentTrimmed(row.avgPercent)}`,
       `${row.totalVariance > 0 ? '+' : ''}${formatCurrency(row.totalVariance)}`,
       `${row.overCount}/${row.monthCount}`,
       row.trend.arrow,
@@ -336,7 +336,7 @@ export function CategoryPerformanceReport() {
                       row.avgPercent > 80 ? 'text-yellow-600 dark:text-yellow-400' :
                       'text-green-600 dark:text-green-400'
                     }`}>
-                      {row.avgPercent}%
+                      {formatPercentTrimmed(row.avgPercent)}
                     </td>
                     <td className={`py-2.5 pr-4 text-right font-medium ${
                       row.totalVariance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'

@@ -36,7 +36,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-investment-performance-accounts';
 export function InvestmentPerformanceReport() {
   const t = useTranslations('reports');
   const mainAccountName = useMainAccountName();
-  const { formatCurrency: formatCurrencyFull, formatSignedPercent } = useNumberFormat();
+  const { formatCurrency: formatCurrencyFull, formatSignedPercent, formatPercent: formatPlainPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   // Persisted so the report opens on the accounts the user last chose.
@@ -242,7 +242,7 @@ export function InvestmentPerformanceReport() {
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {formatCurrencyFull(data.value)} ({data.percentage.toFixed(1)}%)
+            {formatCurrencyFull(data.value)} ({formatPlainPercent(data.percentage, 1)})
           </p>
         </div>
       );
@@ -600,7 +600,7 @@ export function InvestmentPerformanceReport() {
                       {formatCurrencyFull(item.value)}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {item.percentage.toFixed(1)}%
+                      {formatPlainPercent(item.percentage, 1)}
                     </div>
                   </div>
                 </div>

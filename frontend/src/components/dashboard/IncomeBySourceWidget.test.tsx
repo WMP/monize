@@ -8,13 +8,16 @@ vi.mock('recharts', async () => (await import('@/test/recharts-mock')).rechartsM
 vi.mock('@/hooks/useWidgetConfig', () => ({
   useWidgetConfig: () => ({ config: { range: '1y', chartType: 'pie' }, updateConfig: vi.fn() }),
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 const getIncomeBySource = vi.fn();
 vi.mock('@/lib/built-in-reports', () => ({
   builtInReportsApi: { getIncomeBySource: (...a: unknown[]) => getIncomeBySource(...a) },

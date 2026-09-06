@@ -101,7 +101,7 @@ export function LoanDetailView({
   exportPdfRef,
 }: LoanDetailViewProps) {
   const t = useTranslations('accounts');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const [plan, setPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlan, setLoadedPlan] = useState<OverpaymentPlan | null>(null);
@@ -285,6 +285,7 @@ export function LoanDetailView({
     const additionalTables = buildLoanReportTables({
       t,
       formatCurrency,
+      formatPercentTrimmed,
       formatChartDate,
       currencyCode: account.currencyCode,
       rateChanges,
@@ -314,7 +315,7 @@ export function LoanDetailView({
           label: t('loanDetail.summary.interestRate'),
           value:
             currentTerms.annualRate != null
-              ? `${currentTerms.annualRate}%`
+              ? formatPercentTrimmed(currentTerms.annualRate)
               : t('loanDetail.summary.notSet'),
           color: '#ea580c',
         },
@@ -476,6 +477,9 @@ export function LoanDetailView({
 interface LoanReportTableDeps {
   t(key: string, values?: Record<string, string | number>): string;
   formatCurrency(amount: number, currency?: string): string;
+  // A rate is as user-facing in the PDF as it is on screen, and this builder is
+  // a plain function, so the reader's formatter comes in as a dependency.
+  formatPercentTrimmed(value: number): string;
   formatChartDate(date: string, format: 'MMM d, yyyy'): string;
   currencyCode: string;
   rateChanges: LoanRateChange[];
@@ -491,6 +495,7 @@ interface LoanReportTableDeps {
 function buildLoanReportTables({
   t,
   formatCurrency,
+  formatPercentTrimmed,
   formatChartDate,
   currencyCode,
   rateChanges,
@@ -520,7 +525,7 @@ function buildLoanReportTables({
       ],
       rows: sortedRates.map((change) => [
         day(change.effectiveDate),
-        `${change.annualRate}%`,
+        formatPercentTrimmed(change.annualRate),
         sourceLabel(change),
         change.newPaymentAmount != null
           ? money(change.newPaymentAmount)
@@ -544,7 +549,7 @@ function buildLoanReportTables({
       money(row.interest),
       money(row.principal),
       ...(showExtra ? [row.extraPrincipal > 0 ? money(row.extraPrincipal) : '—'] : []),
-      row.annualRate != null ? `${row.annualRate}%` : '—',
+      row.annualRate != null ? formatPercentTrimmed(row.annualRate) : '—',
       money(row.balance),
     ]);
     const totalRow: (string | number)[] = [

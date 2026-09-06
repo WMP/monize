@@ -11,13 +11,16 @@ const configState = { current: { accountIds: [] as string[], view: 'region' as '
 vi.mock('@/hooks/useWidgetConfig', () => ({
   useWidgetConfig: () => ({ config: configState.current, updateConfig: vi.fn() }),
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-// A currency listed here converts to null (no rate), so its holdings are
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});// A currency listed here converts to null (no rate), so its holdings are
 // dropped from the region/exchange aggregation the way the real hook does.
 const unconvertible = { current: new Set<string>() };
 vi.mock('@/hooks/useExchangeRates', () => ({

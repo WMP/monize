@@ -15,15 +15,18 @@ vi.mock('@/components/ui/ExportDropdown', () => ({
   ),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     defaultCurrency: 'CAD',

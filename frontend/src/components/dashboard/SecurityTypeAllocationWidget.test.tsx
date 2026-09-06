@@ -15,10 +15,12 @@ const { widgetCfg } = vi.hoisted(() => ({
 vi.mock('@/hooks/useWidgetConfig', () => ({
   useWidgetConfig: () => widgetCfg,
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ formatCurrency: (n: number) => `$${n}` }),
-}));
-vi.mock('@/hooks/useExchangeRates', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({ ...numberFormatMockDefaults(), formatCurrency: (n: number) => `$${n}` }),
+  };
+});vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({ convertToDefault: (n: number) => n }),
 }));
 

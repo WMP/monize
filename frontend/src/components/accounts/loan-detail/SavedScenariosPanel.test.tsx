@@ -25,12 +25,15 @@ vi.mock('@/lib/errors', () => ({
   getErrorMessage: vi.fn((_e: unknown, fallback: string) => fallback),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/components/accounts/loan-detail/ScenarioComparisonChart', () => ({
   ScenarioComparisonChart: () => <div data-testid="scenario-chart" />,
 }));

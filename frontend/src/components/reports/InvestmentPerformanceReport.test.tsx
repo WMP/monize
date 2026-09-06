@@ -2,16 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { InvestmentPerformanceReport } from './InvestmentPerformanceReport';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
-    formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
-    formatSignedPercent: (n: number, decimals = 2) =>
-      `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
+      formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
+      formatSignedPercent: (n: number, decimals = 2) =>
+        `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
     convertToDefault: (amount: number, _currency: string) => amount,
