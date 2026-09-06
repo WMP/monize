@@ -77,6 +77,11 @@ vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
 
+const mockExportToCsv = vi.fn();
+vi.mock("@/lib/csv-export", () => ({
+  exportToCsv: (...args: any[]) => mockExportToCsv(...args),
+}));
+
 /**
  * Three rows on two accounts, chosen so the stored default sort (date,
  * descending) and an ascending sort by Account disagree -- otherwise a tap on
@@ -509,6 +514,46 @@ describe("InvestmentTransactionHistoryReport (phone wrapped rows)", () => {
     // The total is present, and the account still names the ledger.
     expect(cells[COL.total].textContent).toBe("Total$42.00");
     expect(cells[COL.account].textContent).toBe("AccountZeta Brokerage");
+  });
+
+  it("exports its headings and its cells from the same ordered record", async () => {
+    // This case lives with the phone layout because the column record is what
+    // that layout introduced: the export used to hold its headings and its
+    // cells as two adjacent literals, and now derives both from the record the
+    // two header rows and the captions are built from. A reorder there -- the
+    // natural edit, since the record drives the header rows -- would otherwise
+    // move every heading and leave the cells behind, shipping a spreadsheet
+    // with "Price" over the quantity column and nothing to catch it.
+    const container = await renderTable();
+
+    fireEvent.click(within(container).getByTitle("Export report"));
+    await act(async () => {
+      fireEvent.click(within(container).getByText("CSV"));
+    });
+
+    expect(mockExportToCsv).toHaveBeenCalledTimes(1);
+    const [filename, headers, rows] = mockExportToCsv.mock.calls[0];
+    expect(filename).toBe("investment-transactions");
+    expect(headers).toEqual(EXPECTED_LABELS);
+    // Rows follow the table's own sort (date, descending), and each cell sits
+    // under the heading that names it.
+    expect(rows).toHaveLength(3);
+    const [first] = rows;
+    expect(first[COL.date]).toBe("2025-11-20");
+    expect(first[COL.action]).toBe("Sell");
+    expect(first[COL.security]).toBe("MSFT");
+    expect(first[COL.account]).toBe("Alpha RRSP");
+    expect(first[COL.quantity]).toBe(30);
+    // The CSV writes raw numbers, which is what makes them numbers in a
+    // spreadsheet rather than text the formula-injection guard has to reason
+    // about.
+    expect(first[COL.price]).toBe(100);
+    expect(first[COL.total]).toBe(3000);
+    // The bare row's absent figures stay empty rather than becoming a dash: a
+    // dash in a numeric column is text, and a missing quantity is not a value.
+    const bare = rows.find((r: unknown[]) => r[COL.security] === "-")!;
+    expect(bare[COL.quantity]).toBe("");
+    expect(bare[COL.price]).toBe("");
   });
 
   it("renders an unnamed account as a dash rather than an empty captioned cell", async () => {

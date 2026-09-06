@@ -6,7 +6,7 @@
  * carry a `ui-conventions` baseline stay in the component file, because those
  * baselines are keyed per file.
  */
-import { InvestmentAction } from '@/types/investment';
+import { InvestmentAction, InvestmentTransaction } from '@/types/investment';
 
 export type InvestmentTxSortField = 'date' | 'action' | 'security' | 'account' | 'quantity' | 'price' | 'total';
 
@@ -28,6 +28,17 @@ export interface SortColumn {
    * the phone strip still offers its sort chip (the card shows the value).
    */
   headerClass?: string;
+  /**
+   * This column's cell in the CSV / PDF export, beside the heading the export
+   * takes from `label`. The two live on ONE entry deliberately: with the
+   * headings derived from the record and the cells written out as a separate
+   * ordered literal, reordering the record -- the natural edit, since it drives
+   * both header rows -- would move every heading and leave the cells where they
+   * were, shipping a spreadsheet with "Price" over the quantity column. Here a
+   * reorder moves both halves together. `formatted` is the PDF's rendering (the
+   * CSV writes raw numbers, which is what makes them numbers in a spreadsheet).
+   */
+  csvValue: (tx: InvestmentTransaction, formatted: boolean) => string | number;
 }
 
 /**

@@ -265,22 +265,55 @@ export function InvestmentTransactionHistoryReport() {
   }, [filteredTransactions, sortField, sortDirection, accountNameMap, getTxAmount]);
 
   // The seven sortable columns, keyed by field so the record is exhaustive and
-  // each entry must name its own key (see `SortColumnsByField`).
+  // each entry must name its own key (see `SortColumnsByField`). One entry
+  // carries a column's label, its sort field, its tier-only header classes and
+  // its export cell, so the two header rows, the phone captions and both halves
+  // of the export cannot fall out of step with each other.
   const columns = useMemo<SortColumnsByField>(() => ({
-    date: { field: 'date', label: t('investmentTransactions.colDate') },
-    action: { field: 'action', label: t('investmentTransactions.colAction') },
-    security: { field: 'security', label: t('investmentTransactions.colSecurity') },
+    date: {
+      field: 'date',
+      label: t('investmentTransactions.colDate'),
+      csvValue: (tx) => format(parseLocalDate(tx.transactionDate), 'yyyy-MM-dd'),
+    },
+    action: {
+      field: 'action',
+      label: t('investmentTransactions.colAction'),
+      csvValue: (tx) => actionLabels[tx.action],
+    },
+    security: {
+      field: 'security',
+      label: t('investmentTransactions.colSecurity'),
+      csvValue: (tx) => tx.security?.symbol || '-',
+    },
     account: {
       field: 'account',
       label: t('investmentTransactions.colAccount'),
       // Unchanged from `sm` up: the column header stays hidden until `md`, as
       // it is today. The phone strip renders the same field without it.
       headerClass: 'hidden md:table-cell',
+      csvValue: (tx) => accountNameMap.get(tx.accountId) || '-',
     },
-    quantity: { field: 'quantity', label: t('investmentTransactions.colQuantity'), align: 'right' },
-    price: { field: 'price', label: t('investmentTransactions.colPrice'), align: 'right' },
-    total: { field: 'total', label: t('investmentTransactions.colTotal'), align: 'right' },
-  }), [t]);
+    quantity: {
+      field: 'quantity',
+      label: t('investmentTransactions.colQuantity'),
+      align: 'right',
+      csvValue: (tx) => (tx.quantity != null ? Math.abs(tx.quantity) : ''),
+    },
+    price: {
+      field: 'price',
+      label: t('investmentTransactions.colPrice'),
+      align: 'right',
+      csvValue: (tx, formatted) =>
+        tx.price != null ? (formatted ? fmtValue(tx.price) : tx.price) : '',
+    },
+    total: {
+      field: 'total',
+      label: t('investmentTransactions.colTotal'),
+      align: 'right',
+      csvValue: (tx, formatted) =>
+        formatted ? fmtValue(Math.abs(tx.totalAmount)) : Math.abs(tx.totalAmount),
+    },
+  }), [t, actionLabels, accountNameMap, fmtValue]);
 
   // Their order, rendered by BOTH header rows, matched by the cells' DOM order
   // and by the export's columns. DERIVED from the record rather than re-listed:
@@ -290,21 +323,15 @@ export function InvestmentTransactionHistoryReport() {
   const sortColumns: readonly SortColumn[] = useMemo(() => Object.values(columns), [columns]);
 
   const getExportData = useCallback((formatted: boolean) => {
-    // The export's headings are the column labels, in the column order -- the
-    // same seven keys it spelled out by hand before, now from the one record
-    // that also builds the headers and the captions.
+    // Both halves from the one ordered record: the headings from each column's
+    // label and the cells from its own `csvValue`, so a reorder cannot put a
+    // heading over another column's figures.
     const headers = sortColumns.map((col) => col.label);
-    const rows: (string | number)[][] = sortedTransactions.map((tx) => [
-      format(parseLocalDate(tx.transactionDate), 'yyyy-MM-dd'),
-      actionLabels[tx.action],
-      tx.security?.symbol || '-',
-      accountNameMap.get(tx.accountId) || '-',
-      tx.quantity != null ? Math.abs(tx.quantity) : '',
-      tx.price != null ? (formatted ? fmtValue(tx.price) : tx.price) : '',
-      formatted ? fmtValue(Math.abs(tx.totalAmount)) : Math.abs(tx.totalAmount),
-    ]);
+    const rows: (string | number)[][] = sortedTransactions.map((tx) =>
+      sortColumns.map((col) => col.csvValue(tx, formatted)),
+    );
     return { headers, rows };
-  }, [sortedTransactions, accountNameMap, fmtValue, actionLabels, sortColumns]);
+  }, [sortedTransactions, sortColumns]);
 
   const handleExportCsv = useCallback(() => {
     const { headers, rows } = getExportData(false);
@@ -464,8 +491,13 @@ export function InvestmentTransactionHistoryReport() {
           </div>
           {/* Below `sm` the table becomes a block and each row wraps into a
               two-column grid of EQUAL `minmax(0,1fr)` tracks (for the reason
-              `MONEY_CELL` measures), so all SEVEN columns fit a phone without a
-              horizontal scroll, on FOUR lines:
+              `MONEY_CELL` measures), so all SEVEN columns fit a phone on FOUR
+              lines, with no horizontal scroll for any amount inside the budget
+              that constant states -- which is every ordinary figure and, in the
+              doubled-ISO form a single foreign account produces, seven figures
+              at 320px. Eight figures of that form is the one measured case
+              where the scroll reopens (294px in a 288px wrapper), and the fix
+              for it would be width, never a truncated amount:
 
                 1  security (symbol + name) | total
                 2  account                  | price
@@ -497,9 +529,12 @@ export function InvestmentTransactionHistoryReport() {
 
               The action pill is its OWN column, not a badge inside the identity
               cell, so it cannot join the security's line. It spans BOTH tracks
-              on line 3, which is a measurement rather than a taste: its longest
-              catalogue labels are 41-49 characters (`Реинвестирование
-              краткосрочного прироста капитала`, ru), and in one 122px track
+              on line 3, which is a measurement rather than a taste: across the
+              20 locales that define these keys the longest label per locale
+              runs 41-50 characters, topping out at `Reinwestycja
+              krótkoterminowych zysków kapitałowych` (pl) and
+              `Реінвестування короткострокового приросту капіталу` (uk), and in
+              one 122px track
               they stack 52-116px tall against 36px across the pair -- 235px
               rows instead of 251-283px at 320px, in every locale. Spanning also
               fills what would otherwise be an empty grid slot, and it lets
