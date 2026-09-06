@@ -173,9 +173,6 @@ describe("Support backup (integration)", () => {
     const SCHEMA_ONLY_FKS = new Set([
       "transactions.parent_transaction_id->transactions",
       "investment_transactions.linked_transaction_id->investment_transactions",
-      // A plain UUID column on the entity; schema.sql declares the FK with
-      // ON DELETE SET NULL (the sweep stops an orphaned reminder).
-      "notification_reminders.source_notification_id->notifications",
     ]);
 
     // Reverse guard: a REFS entry that matches neither a real FK nor a known

@@ -4,9 +4,15 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 
-import { NotificationSeverity, NotificationType } from "./notification.entity";
+import {
+  Notification,
+  NotificationSeverity,
+  NotificationType,
+} from "./notification.entity";
 
 /**
  * How a reminder re-delivers. The preference-level `off` from the spec's
@@ -47,6 +53,10 @@ export class NotificationReminder {
    */
   @Column({ type: "uuid", name: "source_notification_id", nullable: true })
   sourceNotificationId: string | null;
+
+  @ManyToOne(() => Notification, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "source_notification_id" })
+  sourceNotification?: Notification | null;
 
   /** Still `alert_type` in the database, as on `notifications`. */
   @Column({ type: "varchar", length: 30, name: "alert_type" })

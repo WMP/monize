@@ -53,11 +53,9 @@ const REFS: Record<string, RefRule[]> = {
       onMissing: "dropRow",
     },
   ],
-  // notification_reminders.source_notification_id is a real FK in schema.sql
-  // (ON DELETE SET NULL) that the entity models as a plain UUID column, so the
-  // entity-synced test DB has no constraint for the coverage guard to find; it
-  // is listed under SCHEMA_ONLY_FKS there. A reminder outlives its source by
-  // design (the sweep stops it), so a missing parent nulls the link.
+  // The nullable source FK is modeled by the entity and covered by the live-FK
+  // integration guard. A reminder retains its template after source deletion;
+  // the cron stops it when it sees the null reference.
   notification_reminders: [
     {
       column: "source_notification_id",
