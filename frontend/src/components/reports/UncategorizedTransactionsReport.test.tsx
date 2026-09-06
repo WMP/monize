@@ -85,9 +85,19 @@ vi.mock("@/lib/logger", () => ({
  * the phone sort chip, the column header, and (for the three captioned columns)
  * a caption in every body row -- so `getByText` matches more than one. Index is
  * the column order: date, payee, account, amount.
+ *
+ * The ROW is addressed by the class that identifies it rather than by index:
+ * the two header rows are interchangeable to `[1]`, so a swap would leave this
+ * silently tapping the phone strip instead, and an absent header (the report's
+ * empty-state branch) would throw a `TypeError` naming nothing.
  */
-const sortControl = (index: number) =>
-  document.querySelectorAll("thead tr")[1].querySelectorAll("th")[index];
+const sortControl = (index: number) => {
+  const columnHeaderRow = document.querySelector("thead tr.sm\\:table-row");
+  if (!columnHeaderRow) throw new Error("no column header row is rendered");
+  const control = columnHeaderRow.querySelectorAll("th")[index];
+  if (!control) throw new Error(`no sort control at column ${index}`);
+  return control;
+};
 
 describe("UncategorizedTransactionsReport", () => {
   beforeEach(() => {

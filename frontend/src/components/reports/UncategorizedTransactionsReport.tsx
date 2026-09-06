@@ -65,11 +65,12 @@ const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray
 // one of the duplications the converted-table consolidation pass folds into one
 // home -- `components/ui/` is not this change's to edit.
 //
-// Four chips is the narrowest strip of the converted family, but one of them is
-// a compound label: measured on the Chromium replica at 320px the strip is two
-// lines in `en`/`pl`/`ru`/`id` and three in `de` (whose
-// `Zahlungsempfänger / Beschreibung` is 214px on its own) and in the
-// pseudo-locale. That is a measured cost, not a reason to drop a control:
+// Four chips, one of them a COMPOUND label -- which is why a low chip count
+// says little about the strip's height here. Measured on the Chromium replica
+// at 320px: two lines (80px) in `en`/`pl`, three in `ru`/`id` (114px) and `de`
+// (130px, whose `Zahlungsempfänger / Beschreibung` is 214px on its own), four
+// in the pseudo-locale (148px); at 390px, two lines in every real locale but
+// `de`. That is a measured cost, not a reason to drop a control:
 // `reports.uncategorized-transactions.sort` persists any of the four, so a
 // field with no control anywhere would leave a phone POINTING at a sort with no
 // pointer back.
@@ -463,7 +464,8 @@ export function UncategorizedTransactionsReport() {
               today is restored by an `sm:` variant here: the padding by
               `sm:px-4 sm:py-3`, the account's nowrap by `sm:whitespace-nowrap`,
               the description's cap and ellipsis by `sm:truncate sm:max-w-xs`,
-              the two type sizes by `sm:text-sm`, and the wrapping by
+              all THREE cells that drop to `text-xs` below `sm` (the date, the
+              amount and the account) by `sm:text-sm`, and the wrapping by
               `sm:break-normal`. The unprefixed classes are then either what the
               cell already carried at every width (the amount's `text-right`,
               both figures' `whitespace-nowrap`) or inert once the row is a
