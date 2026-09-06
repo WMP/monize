@@ -92,3 +92,22 @@ describe("UpdatePreferencesDto map provider validation", () => {
     expect([...MAP_PROVIDERS].sort()).toEqual([...fromEntity].sort());
   });
 });
+
+describe("retired browser notification preference", () => {
+  it.each([true, false])(
+    "rejects the retired flag (%s) at the API boundary",
+    async (value) => {
+      const dto = plainToInstance(UpdatePreferencesDto, {
+        notificationBrowser: value,
+        notificationEmail: false,
+      });
+      const errors = await validate(dto, {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      expect(errors).toHaveLength(1);
+      expect(errors[0].property).toBe("notificationBrowser");
+      expect(errors[0].constraints).toHaveProperty("whitelistValidation");
+    },
+  );
+});

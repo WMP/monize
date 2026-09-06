@@ -204,9 +204,6 @@ export class UsersService {
     if (dto.notificationEmail !== undefined) {
       patch.notificationEmail = dto.notificationEmail;
     }
-    if (dto.notificationBrowser !== undefined) {
-      patch.notificationBrowser = dto.notificationBrowser;
-    }
     if (dto.gettingStartedDismissed !== undefined) {
       patch.gettingStartedDismissed = dto.gettingStartedDismissed;
     }

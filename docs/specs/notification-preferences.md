@@ -345,7 +345,8 @@ and behind a per-group toggle, defaulting off until validated on real devices.
   service worker's `push`/`notificationclick` handlers exist; `collapseTag` does
   device-side collapse; **no `actions` and no `image` are used yet**.
 - **Existing prefs:** `notification_email` (enforced), `notification_browser`
-  (persisted, gates nothing today -- a dormant hook), `budget_digest_enabled` /
+  (dormant at survey time; removed by migration 188, superseded by the
+  per-category `push` setting), `budget_digest_enabled` /
   `budget_digest_day`. No per-category, per-channel, quiet-hours or throttle
   preference exists. Settings UI: `NotificationsSection.tsx` (email toggle +
   digest + test-email, then the push panels).

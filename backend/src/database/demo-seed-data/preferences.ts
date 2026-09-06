@@ -5,7 +5,6 @@ export const demoPreferences = {
   theme: "system",
   timezone: "America/Toronto",
   notificationEmail: false,
-  notificationBrowser: false,
   twoFactorEnabled: false,
   gettingStartedDismissed: true,
   favouriteReportIds: [],

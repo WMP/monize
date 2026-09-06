@@ -145,7 +145,6 @@ export interface UserPreferences {
   colorTheme: ColorTheme;
   timezone: string; // 'browser' = use browser timezone
   notificationEmail: boolean;
-  notificationBrowser: boolean;
   twoFactorEnabled: boolean;
   gettingStartedDismissed: boolean;
   weekStartsOn: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -245,7 +244,6 @@ export interface UpdatePreferencesData {
   colorTheme?: ColorTheme;
   timezone?: string;
   notificationEmail?: boolean;
-  notificationBrowser?: boolean;
   gettingStartedDismissed?: boolean;
   weekStartsOn?: number;
   budgetDigestEnabled?: boolean;

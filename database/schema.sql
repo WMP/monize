@@ -983,7 +983,6 @@ CREATE TABLE user_preferences (
     color_theme VARCHAR(20) NOT NULL DEFAULT 'default',
     timezone VARCHAR(50) DEFAULT 'browser',
     notification_email BOOLEAN DEFAULT true,
-    notification_browser BOOLEAN DEFAULT true,
     two_factor_enabled BOOLEAN DEFAULT false,
     getting_started_dismissed BOOLEAN DEFAULT false,
     week_starts_on SMALLINT DEFAULT 1,

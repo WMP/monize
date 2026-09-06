@@ -65,7 +65,6 @@ export const RULES: Record<string, TableRules> = {
     color_theme: keep,
     timezone: konst("UTC"),
     notification_email: keep,
-    notification_browser: keep,
     two_factor_enabled: keep,
     getting_started_dismissed: keep,
     week_starts_on: keep,

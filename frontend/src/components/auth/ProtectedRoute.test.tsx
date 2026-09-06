@@ -148,7 +148,6 @@ describe('ProtectedRoute', () => {
         colorTheme: 'default',
         timezone: 'browser',
         notificationEmail: false,
-        notificationBrowser: false,
         twoFactorEnabled: false,
         gettingStartedDismissed: false,
         weekStartsOn: 1,

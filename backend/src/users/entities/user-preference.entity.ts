@@ -46,9 +46,6 @@ export class UserPreference {
   @Column({ name: "notification_email", default: true })
   notificationEmail: boolean;
 
-  @Column({ name: "notification_browser", default: true })
-  notificationBrowser: boolean;
-
   @Column({ name: "two_factor_enabled", default: false })
   twoFactorEnabled: boolean;
 

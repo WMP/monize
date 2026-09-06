@@ -125,11 +125,6 @@ export class UpdatePreferencesDto {
   @IsBoolean()
   notificationEmail?: boolean;
 
-  @ApiPropertyOptional({ description: "Receive browser notifications" })
-  @IsOptional()
-  @IsBoolean()
-  notificationBrowser?: boolean;
-
   @ApiPropertyOptional({ description: "Dismiss the Getting Started guide" })
   @IsOptional()
   @IsBoolean()

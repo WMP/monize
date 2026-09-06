@@ -49,7 +49,6 @@ const mockPreferences: UserPreferences = {
   colorTheme: 'default',
   defaultCurrency: 'CAD',
   notificationEmail: false,
-  notificationBrowser: false,
   twoFactorEnabled: false,
   gettingStartedDismissed: false,
   weekStartsOn: 1,

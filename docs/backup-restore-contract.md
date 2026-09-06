@@ -890,6 +890,12 @@ reports errors forever while the UI shows it as configured.
 
 ## 8. Cross-version and cross-instance limits
 
+The retired `user_preferences.notification_browser` column (migration 188) is
+ignored when restoring older artifacts: `insertRows` filters columns against
+`information_schema.columns` on the receiving database. Other preferences and
+the per-category push matrix are restored normally; the retired flag is never
+translated into matrix values because it did not gate delivery.
+
 Known and unresolved; none of these is a bug report waiting to be filed:
 
 - **Format version is strict equality.** Only `1` is accepted, rejected before
