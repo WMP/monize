@@ -23,11 +23,19 @@ export interface SortColumn {
   /** How the column header aligns from `sm` up; the cells restate it. */
   align?: 'right' | 'center';
   /**
-   * Tier-only classes for this column's header cell. Account carries the
-   * `hidden md:table-cell` it wears today -- on the COLUMN header row only, so
-   * the phone strip still offers its sort chip (the card shows the value).
+   * The tier this column belongs to, spelled for BOTH of its halves here so
+   * they cannot drift -- a header that returns at one breakpoint over values
+   * that return at another is a column of unlabelled figures. Account is the
+   * only column with a tier today: its header keeps the `hidden md:table-cell`
+   * it wears now (the phone strip still offers its sort chip), and its value
+   * cell is a visible grid item below `sm`, hidden from `sm` and back at `md`.
+   *
+   * Two literals rather than one interpolated breakpoint because Tailwind
+   * extracts class names from the source TEXT: a class name built at runtime
+   * emits no CSS at all.
    */
   headerClass?: string;
+  cellClass?: string;
   /**
    * This column's cell in the CSV / PDF export, beside the heading the export
    * takes from `label`. The two live on ONE entry deliberately: with the

@@ -288,9 +288,12 @@ export function InvestmentTransactionHistoryReport() {
     account: {
       field: 'account',
       label: t('investmentTransactions.colAccount'),
-      // Unchanged from `sm` up: the column header stays hidden until `md`, as
-      // it is today. The phone strip renders the same field without it.
+      // Unchanged from `sm` up: header and cell alike stay hidden until `md`,
+      // as they are today. The two halves live on this one entry so a change
+      // of tier cannot move only one of them; below `sm` the cell is a visible
+      // grid item and the phone strip carries the sort chip.
       headerClass: 'hidden md:table-cell',
+      cellClass: 'sm:hidden md:table-cell',
       csvValue: (tx) => accountNameMap.get(tx.accountId) || '-',
     },
     quantity: {
@@ -669,7 +672,7 @@ export function InvestmentTransactionHistoryReport() {
                         today's `hidden md:table-cell`. */}
                     <td
                       role="cell"
-                      className="col-start-1 row-start-2 min-w-0 break-words p-0 text-xs text-gray-500 dark:text-gray-400 sm:hidden sm:break-normal sm:px-4 sm:py-3 sm:text-sm md:table-cell"
+                      className={`col-start-1 row-start-2 min-w-0 break-words p-0 text-xs text-gray-500 dark:text-gray-400 sm:break-normal sm:px-4 sm:py-3 sm:text-sm ${columns.account.cellClass ?? ''}`}
                     >
                       <CellLabel className={CAPTION_CLASS}>{columns.account.label}</CellLabel>
                       {accountNameMap.get(tx.accountId) || '-'}

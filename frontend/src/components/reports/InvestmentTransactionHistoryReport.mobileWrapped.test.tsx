@@ -22,10 +22,21 @@ import { InvestmentTransactionHistoryReport } from "./InvestmentTransactionHisto
  * resolves to at 700px is the Chromium replica's job, not jsdom's.
  */
 
+// One router for the run, and the module's other exports beside it: a factory
+// returning a fresh object per call re-creates every `useCallback([router])`
+// each render, and a factory naming one export blanks the rest of the module
+// for the whole graph under test. This report reads neither today; the mock is
+// here so "the rows are inert" is a behaviour claim rather than an assertion
+// about an attribute React never writes.
 const mockPush = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
+vi.mock("next/navigation", () => {
+  const router = { push: mockPush, replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), prefetch: vi.fn() };
+  return {
+    useRouter: () => router,
+    usePathname: () => "/reports/investment-transactions",
+    useSearchParams: () => new URLSearchParams(),
+  };
+});
 
 vi.mock("@/hooks/useNumberFormat", () => ({
   useNumberFormat: () => ({
@@ -234,6 +245,29 @@ describe("InvestmentTransactionHistoryReport (phone wrapped rows)", () => {
     expect(accountHeader.className).toContain("md:table-cell");
     expect(accountChip.className).not.toMatch(/\bhidden\b/);
     expect(accountChip.className).not.toMatch(/md:table-cell/);
+  });
+
+  it("returns the Account header and the Account values at the SAME breakpoint", async () => {
+    const container = await renderTable();
+
+    // The two halves of one column's tier are two class strings; a header that
+    // came back at `lg` over values that came back at `md` would be a column of
+    // unlabelled account names, and nothing about either string alone can see
+    // it. Both are declared on one record entry -- assert they agree.
+    const tierOf = (el: Element) =>
+      /\b(sm|md|lg|xl|2xl):table-cell\b/.exec(el.className)?.[1] ?? null;
+
+    const accountHeader = headerRows(container)[1].querySelectorAll("th")[COL.account];
+    expect(tierOf(accountHeader)).toBe("md");
+    for (const row of bodyRows(container)) {
+      expect(tierOf(cellsOf(row)[COL.account])).toBe(tierOf(accountHeader));
+    }
+    // Every other column returns at `sm`, so the tier really is this column's.
+    for (const row of bodyRows(container)) {
+      cellsOf(row).forEach((cell, i) => {
+        if (i !== COL.account) expect(tierOf(cell)).toBe("sm");
+      });
+    }
   });
 
   it("carries the account value on EVERY row, visible below sm and hidden until md above it", async () => {
@@ -543,10 +577,15 @@ describe("InvestmentTransactionHistoryReport (phone wrapped rows)", () => {
     expect(first[COL.action]).toBe("Sell");
     expect(first[COL.security]).toBe("MSFT");
     expect(first[COL.account]).toBe("Alpha RRSP");
+    // Quantity and Total reach the CSV through `Math.abs`, which makes them
+    // numbers whatever the payload holds. Price is passed through exactly as
+    // the row holds it, as it is today -- and a `decimal(20,4)` price crosses
+    // the wire as the STRING `"100.0000"` however `InvestmentTransaction`
+    // declares it, so that cell is a number here only because the fixture
+    // follows the declared type. The CSV writer's numeric test accepts either
+    // form, so nothing is mis-escaped; the shape gap is pre-existing and is
+    // reported rather than changed inside a layout conversion.
     expect(first[COL.quantity]).toBe(30);
-    // The CSV writes raw numbers, which is what makes them numbers in a
-    // spreadsheet rather than text the formula-injection guard has to reason
-    // about.
     expect(first[COL.price]).toBe(100);
     expect(first[COL.total]).toBe(3000);
     // The bare row's absent figures stay empty rather than becoming a dash: a
