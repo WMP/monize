@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
 import { NetWorthService } from "../../net-worth/net-worth.service";
 import {
-  UserContextResolver,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
@@ -25,7 +25,7 @@ export class McpReportsTools {
     private readonly netWorthService: NetWorthService,
   ) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "generate_report",
       {
@@ -37,7 +37,7 @@ export class McpReportsTools {
           "month-comparison question. The `type` field says what each report " +
           "answers and which of the date parameters it reads. For an arbitrary " +
           "pair of ranges use compare_periods instead.",
-        inputSchema: {
+        inputSchema: z.object({
           type: z
             .enum([
               "spending_by_category",
@@ -72,26 +72,26 @@ export class McpReportsTools {
             .describe(
               "month_comparison: YYYY-MM. Defaults to the previous complete month.",
             ),
-        },
+        }),
         outputSchema: generateReportOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           if (args.type === "spending_anomalies") {
             const data = await this.reportsService.getSpendingAnomalies(
-              ctx.userId,
+              user.userId,
               args.months ?? 3,
             );
             return toolResult(data);
           }
           if (args.type === "month_comparison") {
             const data = await this.reportsService.getMonthlyComparison(
-              ctx.userId,
+              user.userId,
               args.month ?? getDefaultPreviousMonth(),
             );
             return toolResult(data);
@@ -99,7 +99,7 @@ export class McpReportsTools {
           if (args.type === "net_worth_history") {
             // Dates omitted -> getLlmHistory defaults to the last 12 months.
             const data = await this.netWorthService.getLlmHistory(
-              ctx.userId,
+              user.userId,
               args.startDate,
               args.endDate,
             );
@@ -113,35 +113,35 @@ export class McpReportsTools {
           switch (args.type) {
             case "spending_by_category":
               data = await this.reportsService.getSpendingByCategory(
-                ctx.userId,
+                user.userId,
                 startDate,
                 endDate,
               );
               break;
             case "spending_by_payee":
               data = await this.reportsService.getSpendingByPayee(
-                ctx.userId,
+                user.userId,
                 startDate,
                 endDate,
               );
               break;
             case "income_vs_expenses":
               data = await this.reportsService.getIncomeVsExpenses(
-                ctx.userId,
+                user.userId,
                 startDate,
                 endDate,
               );
               break;
             case "monthly_trend":
               data = await this.reportsService.getMonthlySpendingTrend(
-                ctx.userId,
+                user.userId,
                 startDate,
                 endDate,
               );
               break;
             case "income_by_source":
               data = await this.reportsService.getIncomeBySource(
-                ctx.userId,
+                user.userId,
                 startDate,
                 endDate,
               );

@@ -218,7 +218,7 @@
     "hideHelp": "Hide",
     "helpIntro": "Run your own MCP agent and it will answer prompts from this chat using your subscription.",
     "step1": "Create your access token",
-    "tokenStep": "First, create a Personal Access Token in <link>User Settings -> API access</link>, then use it below.",
+    "tokenStep": "First, create a Personal Access Token in <link>User Settings -> API access</link>, then use it below. Give this agent a token of its own: a token shared with another MCP client sends that client's confirmations here.",
     "claudeHeading": "Connect with Claude CLI",
     "step2": "Connect the agent to Monize using Claude CLI:",
     "allowToolsNote": "Exit Claude and restart it with this switch so it auto-approves every Monize tool call:",

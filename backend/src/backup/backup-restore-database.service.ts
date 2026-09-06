@@ -68,6 +68,22 @@ export class BackupRestoreDatabaseService {
       userId,
     ]);
 
+    // Payee lookup settings (Google Places key and cap).
+    await manager.query(
+      "DELETE FROM payee_lookup_settings WHERE user_id = $1",
+      [userId],
+    );
+    // `payee_lookup_usage` is exported and restored beside it, and is
+    // deliberately NOT cleared here. It is a record of what has been spent
+    // against a Google key, not user content: with the rows left in place the
+    // insert's ON CONFLICT DO NOTHING gives the archive's count to a machine
+    // that has none (the migration this exists for) and leaves a live count
+    // alone, so no restore can lower one and hand back quota. Deleting first
+    // would make an older archive do exactly that.
+    //
+    // `google_places_instance_usage` is not exported at all: it has no owner,
+    // and every user on the deployment spends it.
+
     // Investment data
     await manager.query(
       "DELETE FROM investment_transactions WHERE user_id = $1",
@@ -127,6 +143,13 @@ export class BackupRestoreDatabaseService {
     // here for exactly that reason.
     await manager.query(
       "DELETE FROM notification_preferences WHERE user_id = $1",
+      [userId],
+    );
+    // Portfolio-movement baseline + threshold: one row per user, restored by an
+    // insert path with the same over-existing-account hazard, so it clears here
+    // too.
+    await manager.query(
+      "DELETE FROM notification_portfolio_state WHERE user_id = $1",
       [userId],
     );
     await manager.query(

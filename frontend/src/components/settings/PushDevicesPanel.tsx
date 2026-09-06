@@ -11,15 +11,11 @@ import {
   enablePushOnThisDevice,
   classifyPushRegistration,
   getPushSupport,
-  isInstalledIosWebApp,
   pushApi,
   readRegisteredEndpoint,
   releaseLocalPushSubscription,
   retireServerRowFor,
-  PushPermissionError,
-  PushServiceError,
   defaultDeviceName,
-  pushPermissionMessageKey,
   type PushConfig,
   type PushDevice,
   type PushSupport,
@@ -28,7 +24,13 @@ import {
 } from '@/lib/push';
 import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { usePushEnable } from '@/hooks/usePushEnable';
 import { useRereadOnVisible } from '@/hooks/useRereadOnVisible';
+import {
+  notifyPushDevicesChanged,
+  subscribePushDevices,
+} from '@/lib/pushDevicesSignal';
 import { getErrorMessage } from '@/lib/errors';
 
 const logger = createLogger('PushDevices');
@@ -62,7 +64,6 @@ export function PushDevicesPanel() {
   // Android so iOS and desktop are not told to open a menu they do not have.
   const [isAndroid, setIsAndroid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEnabling, setIsEnabling] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -75,6 +76,26 @@ export function PushDevicesPanel() {
     setThisDevice(fingerprint);
     setDevicesFailed(false);
   }, []);
+
+  // Registering this browser's endpoint. Shared with the action offered from
+  // the preference matrix, so the transient-activation rule and the three
+  // refusal messages are written once (`usePushEnable`).
+  const { isEnabling, enable: handleEnable } = usePushEnable(config?.publicKey);
+
+  // Timestamps are instants, so they are rendered in the timezone and time
+  // format the reader chose in Preferences -- not the browser's, which is what
+  // a bare `toLocaleString()` reaches for.
+  const { formatDateTime } = useDateFormat();
+
+  // A registration made anywhere on this page is a registration this list has
+  // to show. The matrix's own "Enable on this device" writes the same rows.
+  useEffect(
+    () =>
+      subscribePushDevices(() => {
+        void refreshDevices().catch(() => setDevicesFailed(true));
+      }),
+    [refreshDevices],
+  );
 
   /**
    * Re-read what this browser supports whenever the user comes back to the page.
@@ -248,49 +269,6 @@ export function PushDevicesPanel() {
   );
   const liveDevices = devices.filter((device) => !device.disabledAt);
 
-  // Deliberately NOT an async function. The permission prompt only appears
-  // while the click's transient activation lasts, and iOS spends that on the
-  // first suspension -- so the work is started synchronously, before the state
-  // update, and only the reporting happens after an await. Written as
-  // `async () => { setIsEnabling(true); await enablePushOnThisDevice(...) }`
-  // this asked for a permission the user was then told they had not granted,
-  // with no prompt ever shown.
-  const handleEnable = () => {
-    if (!config?.publicKey) return;
-    const enabling = enablePushOnThisDevice(
-      config.publicKey,
-      defaultDeviceName(),
-    );
-    setIsEnabling(true);
-    void (async () => {
-      try {
-        await enabling;
-        await refreshDevices();
-        toast.success(t('toasts.enabled'));
-      } catch (error) {
-        if (error instanceof PushPermissionError) {
-          toast.error(permissionMessage(error));
-        } else if (error instanceof PushServiceError) {
-          // Permission granted, worker active, and the push service still said
-          // no. On Brave that is one privacy switch away; say which.
-          toast.error(
-            error.brave
-              ? t('toasts.pushServiceRefusedBrave')
-              : t('toasts.pushServiceRefused'),
-          );
-        } else {
-          toast.error(getErrorMessage(error, t('toasts.enableFailed')));
-        }
-      } finally {
-        setIsEnabling(false);
-      }
-    })();
-  };
-
-  /** One rule for every surface that can hit this refusal (`pushPermissionMessageKey`). */
-  const permissionMessage = (error: PushPermissionError): string =>
-    t(`toasts.${pushPermissionMessageKey(error, isInstalledIosWebApp())}`);
-
   const handleRemove = async (device: PushDevice) => {
     setRemovingId(device.id);
     try {
@@ -303,6 +281,10 @@ export function PushDevicesPanel() {
         await pushApi.removeDevice(device.id);
       }
       await refreshDevices();
+      // The matrix gates its push columns on there being a live device, so the
+      // last removal has to reach it: left stale, it kept offering toggles for
+      // a channel that could no longer deliver.
+      notifyPushDevicesChanged();
       toast.success(t('toasts.removed'));
     } catch (error) {
       toast.error(getErrorMessage(error, t('toasts.removeFailed')));
@@ -406,7 +388,15 @@ export function PushDevicesPanel() {
           {devices.map((device) => (
             <li
               key={device.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2"
+              // Deliberately NOT `flex-wrap`. The facts below the device name
+              // give the content block a wide min-content -- an endpoint digest,
+              // an agent string -- so on a wrapping row whichever device had the
+              // longest of them pushed Remove onto its own line, bottom left,
+              // while every other row kept it top right. The content column
+              // shrinks (`min-w-0`, with `truncate`/`break-all` inside it) and
+              // the action never does, which is how the token and trusted-device
+              // lists in this same page are laid out.
+              className="flex items-start justify-between gap-2 py-2"
             >
               <div className="min-w-0">
                 <p className="text-sm text-gray-900 dark:text-gray-100">
@@ -417,24 +407,76 @@ export function PushDevicesPanel() {
                     </span>
                   )}
                   {device.transport === 'unifiedpush' && (
-                    <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                    <span
+                      data-testid="push-transport-badge"
+                      className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                    >
                       {t('unifiedpushBadge')}
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {device.disabledAt
-                    ? t(`disabledReason.${device.disabledReason ?? 'GONE'}`)
-                    : t('lastSeen', {
-                        when: new Date(device.lastSeenAt).toLocaleString(),
-                      })}
-                </p>
+                {device.disabledAt && (
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                    {t(`disabledReason.${device.disabledReason ?? 'GONE'}`)}
+                  </p>
+                )}
+                {/* What tells one registration from another. `deviceName` is
+                    derived from the user agent, so several browsers on one
+                    machine share it word for word -- and a device the reader is
+                    deciding whether to REVOKE has to be identifiable before they
+                    can. The endpoint digest is the row's own identity (the
+                    endpoint itself is a delivery credential and never leaves the
+                    server), the wire says how it is reached, and the three dates
+                    say when it was added, last heard from, and last actually
+                    delivered to. */}
+                <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <DeviceFact label={t('facts.endpoint')}>
+                    <span className="font-mono break-all">
+                      {device.endpointFingerprint}
+                    </span>
+                  </DeviceFact>
+                  <DeviceFact label={t('facts.transport')}>
+                    {t(`transport.${device.transport ?? 'webpush'}`)}
+                  </DeviceFact>
+                  <DeviceFact label={t('facts.registeredIp')}>
+                    {/* Absent (an older backend) and null (the server could not
+                        determine one) are both unknown, and unknown is a state
+                        with words -- never a blank cell, and never an address
+                        nobody was at. */}
+                    {device.registeredIp ?? t('facts.unknownIp')}
+                  </DeviceFact>
+                  <DeviceFact label={t('facts.registered')}>
+                    {formatDateTime(device.createdAt)}
+                  </DeviceFact>
+                  <DeviceFact label={t('facts.lastSeen')}>
+                    {formatDateTime(device.lastSeenAt)}
+                  </DeviceFact>
+                  <DeviceFact label={t('facts.lastDelivery')}>
+                    {/* Never delivered is a state, not a blank: a device that
+                        has never received anything is exactly the one a reader
+                        is trying to find. */}
+                    {device.lastSuccessAt
+                      ? formatDateTime(device.lastSuccessAt)
+                      : t('facts.noDelivery')}
+                  </DeviceFact>
+                  {device.userAgent && (
+                    <DeviceFact label={t('facts.userAgent')}>
+                      <span
+                        className="block truncate font-mono"
+                        title={device.userAgent}
+                      >
+                        {device.userAgent}
+                      </span>
+                    </DeviceFact>
+                  )}
+                </dl>
               </div>
               <Button
-                variant="ghost"
+                variant="danger"
                 size="sm"
                 disabled={removingId === device.id}
                 onClick={() => handleRemove(device)}
+                className="flex-shrink-0"
               >
                 {t('removeButton')}
               </Button>
@@ -496,6 +538,22 @@ export function PushDevicesPanel() {
         </div>
       )}
     </PushBlock>
+  );
+}
+
+/** One labelled fact about a registered endpoint, as a `<dl>` row pair. */
+function DeviceFact({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <dt className="text-gray-400 dark:text-gray-500">{label}</dt>
+      <dd className="min-w-0 text-gray-600 dark:text-gray-300">{children}</dd>
+    </>
   );
 }
 

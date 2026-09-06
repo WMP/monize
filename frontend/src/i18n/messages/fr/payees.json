@@ -34,7 +34,8 @@
       "inactive": "Inactifs",
       "withoutCategory": "Sans catégorie"
     },
-    "applyDefaultCategories": "Appliquer les catégories par défaut"
+    "applyDefaultCategories": "Appliquer les catégories par défaut",
+    "lookupSettings": "Paramètres de recherche de bénéficiaires"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Remplacé par la recherche :",
       "clear": "Annuler les modifications de la recherche",
       "nothingFound": "Aucune coordonnée publique n'a été trouvée pour ce nom.",
-      "noProvider": "Configurez un fournisseur d'IA dans les <link>paramètres IA</link> pour rechercher les coordonnées.",
-      "failed": "La recherche n'a pas pu aboutir. Réessayez plus tard."
+      "noProvider": "Configurez une source dans les <link>paramètres de recherche de bénéficiaires</link> pour trouver des coordonnées.",
+      "failed": "La recherche n'a pas pu aboutir. Réessayez plus tard.",
+      "quotaExceeded": "Les recherches Google Places de ce mois sont épuisées. Augmentez la limite dans les <link>paramètres de recherche de bénéficiaires</link>, ou attendez le mois prochain."
     }
   },
   "merge": {
@@ -284,7 +286,9 @@
   "selectCategoryPlaceholder": "Sélectionner une catégorie...",
   "validation": {
     "nameRequired": "Le nom du bénéficiaire est requis",
-    "emailInvalid": "Saisissez une adresse e-mail valide"
+    "emailInvalid": "Saisissez une adresse e-mail valide",
+    "phoneInvalid": "Saisissez un numéro de téléphone valide",
+    "phoneNeedsCountryCode": "Ajoutez l'indicatif du pays, par exemple +1 206 448 8762"
   },
   "defaultCategoryBackfill": {
     "allConfirmTitle": "Appliquer les catégories par défaut ?",

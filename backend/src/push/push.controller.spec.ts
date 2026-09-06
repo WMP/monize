@@ -8,7 +8,22 @@ import { AdminNotificationsController } from "./admin-notifications.controller";
 import { PushConfigService } from "./push-config.service";
 import { PushSubscriptionService } from "./push-subscription.service";
 
-const CALLER = { user: { id: "user-1" } };
+/**
+ * A request as `subscribe` reads it: the JWT's user, plus the socket the
+ * address is derived from. Typed through the controller's own parameter so a
+ * fixture cannot claim a shape Express never produces.
+ */
+type PushRequest = Parameters<PushController["subscribe"]>[0];
+
+function caller(ip?: string | null): PushRequest {
+  return {
+    user: { id: "user-1" },
+    ip: ip ?? undefined,
+    socket: {},
+  } as unknown as PushRequest;
+}
+
+const CALLER = caller("203.0.113.7");
 
 describe("PushController", () => {
   let controller: PushController;
@@ -49,7 +64,7 @@ describe("PushController", () => {
     },
   );
 
-  it("passes the caller, the payload and the browser's user agent to subscribe", () => {
+  it("passes the caller, the payload, the user agent and the client address to subscribe", () => {
     const dto = { endpoint: "https://x", p256dh: "a", auth: "b" } as never;
 
     controller.subscribe(CALLER, dto, "Mozilla/5.0");
@@ -58,6 +73,7 @@ describe("PushController", () => {
       "user-1",
       dto,
       "Mozilla/5.0",
+      "203.0.113.7",
     );
   });
 
@@ -66,7 +82,28 @@ describe("PushController", () => {
 
     controller.subscribe(CALLER, dto);
 
-    expect(subscriptions.subscribe).toHaveBeenCalledWith("user-1", dto, null);
+    expect(subscriptions.subscribe).toHaveBeenCalledWith(
+      "user-1",
+      dto,
+      null,
+      "203.0.113.7",
+    );
+  });
+
+  // An address this server could not determine is unknown. Recording a
+  // placeholder would put every such registration at one fictitious location
+  // and make the column's whole point -- telling two endpoints apart -- a lie.
+  it("passes a null address when the request resolves none", () => {
+    const dto = { endpoint: "https://x", p256dh: "a", auth: "b" } as never;
+
+    controller.subscribe(caller(null), dto, "Mozilla/5.0");
+
+    expect(subscriptions.subscribe).toHaveBeenCalledWith(
+      "user-1",
+      dto,
+      "Mozilla/5.0",
+      null,
+    );
   });
 
   it("scopes a device removal to the caller", () => {

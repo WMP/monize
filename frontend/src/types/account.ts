@@ -113,6 +113,8 @@ export interface Account {
   currentBalance: number;
   creditLimit: number | null;
   interestRate: number | null;
+  lowBalanceThreshold?: number | null;
+  highBalanceThreshold?: number | null;
   isClosed: boolean;
   closedDate: string | null;
   isFavourite: boolean;

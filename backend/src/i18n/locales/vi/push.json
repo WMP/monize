@@ -15,6 +15,18 @@
     "system": {
       "title": "Thông báo hệ thống",
       "body": "Monize có một thông báo hệ thống cho bạn. Mở ứng dụng để xem chi tiết."
+    },
+    "balances": {
+      "title": "Cảnh báo số dư",
+      "body": "Số dư của một tài khoản đã vượt ngưỡng bạn đặt. Mở Monize để xem chi tiết."
+    },
+    "investments": {
+      "title": "Biến động đầu tư",
+      "body": "Các khoản đầu tư của bạn có biến động hôm nay. Mở Monize để xem chi tiết."
+    },
+    "strategies": {
+      "title": "Tín hiệu chiến lược",
+      "body": "Một trong các chiến lược của bạn đã thay đổi khuyến nghị. Mở Monize để xem chi tiết."
     }
   },
   "actions": {

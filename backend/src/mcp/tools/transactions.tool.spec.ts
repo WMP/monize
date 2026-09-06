@@ -1,7 +1,46 @@
 import { BadRequestException } from "@nestjs/common";
 import { McpTransactionsTools } from "./transactions.tool";
 import { McpWriteLimiter } from "../mcp-write-limiter";
-import { UserContextResolver } from "../mcp-context";
+import { CLIENT_CAPABILITIES_META_KEY } from "@modelcontextprotocol/server";
+import { installConfirmSupport } from "../mcp-confirm";
+import { McpRequestStateCodec } from "../mcp-request-state";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
+
+/**
+ * A builder double that mints a FRESH envelope per call, exactly as the real
+ * `AiActionBuilderService` does.
+ *
+ * The previous double returned one frozen object with no `descriptor` at all,
+ * so the two rounds of a 2026-07-28 confirmation fingerprinted `undefined`
+ * twice and agreed by construction -- which is precisely the bug that shipped:
+ * in production every round rebuilt its descriptor with a new `actionId` and
+ * `expiresAt`, the fingerprints never matched, and every confirmed write was
+ * refused. A double that cannot vary cannot show that.
+ */
+function buildActionBuilderMock(): Record<string, jest.Mock> {
+  let minted = 0;
+  const build = (type: string) =>
+    jest.fn(() => ({
+      type,
+      preview: {},
+      descriptor: {
+        type,
+        userId: "u1",
+        actionId: `action-${++minted}`,
+        expiresAt: 1_700_000_000_000 + minted,
+      },
+    }));
+  return {
+    buildCreateTransaction: build("create_transaction"),
+    buildCreateTransactions: build("create_transactions"),
+    buildCategorizeTransaction: jest.fn().mockReturnValue({}),
+    buildUpdateTransaction: build("update_transaction"),
+    buildDeleteTransaction: build("delete_transaction"),
+    buildCreateTransfer: build("create_transfer"),
+    buildUpdateTransfer: build("update_transfer"),
+    buildBatchActions: build("batch_actions"),
+  };
+}
 
 describe("McpTransactionsTools", () => {
   let tool: McpTransactionsTools;
@@ -11,7 +50,7 @@ describe("McpTransactionsTools", () => {
   let accountsService: Record<string, jest.Mock>;
   let server: {
     registerTool: jest.Mock;
-    server: { getClientCapabilities: jest.Mock; elicitInput: jest.Mock };
+    server: { getClientCapabilities: jest.Mock };
   };
   let elicitInput: jest.Mock;
   let relayService: { emitPendingAction: jest.Mock };
@@ -20,7 +59,7 @@ describe("McpTransactionsTools", () => {
   let attachmentPrepService: Record<string, jest.Mock>;
   let attachmentsService: Record<string, jest.Mock>;
   let relayAttachmentStore: Record<string, jest.Mock>;
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   const handlers: Record<string, (...args: any[]) => any> = {};
   const toolConfigs: Record<string, { description?: string }> = {};
 
@@ -74,30 +113,7 @@ describe("McpTransactionsTools", () => {
     // Default: not serving a relayed prompt, so the tool uses its normal
     // (direct MCP-client) confirmation path and the existing assertions hold.
     relayService = { emitPendingAction: jest.fn().mockReturnValue(false) };
-    actionBuilder = {
-      buildCreateTransaction: jest
-        .fn()
-        .mockReturnValue({ type: "create_transaction", preview: {} }),
-      buildCreateTransactions: jest
-        .fn()
-        .mockReturnValue({ type: "create_transactions", preview: {} }),
-      buildCategorizeTransaction: jest.fn().mockReturnValue({}),
-      buildUpdateTransaction: jest
-        .fn()
-        .mockReturnValue({ type: "update_transaction", preview: {} }),
-      buildDeleteTransaction: jest
-        .fn()
-        .mockReturnValue({ type: "delete_transaction", preview: {} }),
-      buildCreateTransfer: jest
-        .fn()
-        .mockReturnValue({ type: "create_transfer", preview: {} }),
-      buildUpdateTransfer: jest
-        .fn()
-        .mockReturnValue({ type: "update_transfer", preview: {} }),
-      buildBatchActions: jest
-        .fn()
-        .mockReturnValue({ type: "batch_actions", preview: {} }),
-    };
+    actionBuilder = buildActionBuilderMock();
     prepService = {
       prepareCreate: jest.fn(),
       prepareCreateTransfer: jest.fn().mockResolvedValue({
@@ -149,17 +165,17 @@ describe("McpTransactionsTools", () => {
         handlers[name] = handler;
         toolConfigs[name] = opts;
       }),
-      // confirmWrite() reads capabilities + elicits via server.server. Default
-      // to no elicitation capability so writes proceed (matches a client that
-      // can't show a dialog); accept/decline tests override these.
+      // confirmWrite() reads the client's advertised capabilities from the
+      // session's server and sends the dialog through the request (ctx). The
+      // default is no elicitation capability, so writes proceed (matching a
+      // client that cannot show a dialog); accept/decline tests override it.
       server: {
         getClientCapabilities: jest.fn().mockReturnValue({}),
-        elicitInput,
       },
     };
 
-    resolve = jest.fn();
-    tool.register(server as any, resolve);
+    ctx = mcpTestCtx(undefined, { elicitInput });
+    tool.register(server as any);
   });
 
   it("should register 3 tools", () => {
@@ -190,30 +206,24 @@ describe("McpTransactionsTools", () => {
     };
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["list_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
+      ctx.setUser(undefined);
+      const result = await handlers["list_transactions"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("requires read scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-      const result = await handlers["list_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
+      ctx.setUser({ userId: "u1", scopes: "write" });
+      const result = await handlers["list_transactions"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("returns the summary only and omits transactions when includeTransactions is false", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmListTransactions.mockResolvedValue(summary);
 
       const result = await handlers["list_transactions"](
         { startDate: "2026-01-01", endDate: "2026-01-31" },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
@@ -230,10 +240,10 @@ describe("McpTransactionsTools", () => {
     });
 
     it("fills in default dates when omitted", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmListTransactions.mockResolvedValue(summary);
 
-      await handlers["list_transactions"]({}, { sessionId: "s1" });
+      await handlers["list_transactions"]({}, ctx);
 
       expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
         "u1",
@@ -245,7 +255,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("attaches the raw transaction list when includeTransactions is true", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmListTransactions.mockResolvedValue(summary);
       transactionsService.getLlmTransactionRows.mockResolvedValue({
         transactions: [
@@ -268,7 +278,7 @@ describe("McpTransactionsTools", () => {
           includeTransactions: true,
           limit: 10,
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.getLlmTransactionRows).toHaveBeenCalledWith(
@@ -287,7 +297,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("resolves account, category, and payee names to IDs", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.findAll.mockResolvedValue([
         { id: "acc-1", name: "Checking" },
       ]);
@@ -306,7 +316,7 @@ describe("McpTransactionsTools", () => {
           categoryNames: ["Food"],
           payeeNames: ["Costco"],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
@@ -320,14 +330,14 @@ describe("McpTransactionsTools", () => {
     });
 
     it("errors on an unknown account name", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.findAll.mockResolvedValue([
         { id: "acc-1", name: "Checking" },
       ]);
 
       const result = await handlers["list_transactions"](
         { accountNames: ["Ghost"] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -336,7 +346,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("suggests the closest account name on a near miss", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.findAll.mockResolvedValue([
         { id: "acc-1", name: "Checking" },
         { id: "acc-2", name: "Savings" },
@@ -344,7 +354,7 @@ describe("McpTransactionsTools", () => {
 
       const result = await handlers["list_transactions"](
         { accountNames: ["Chequing"] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -352,7 +362,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("errors on an unknown category name with a did-you-mean hint", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.resolveLlmCategoryIds.mockResolvedValue({
         categoryIds: [],
         unresolved: ["Grocries"],
@@ -361,7 +371,7 @@ describe("McpTransactionsTools", () => {
 
       const result = await handlers["list_transactions"](
         { categoryNames: ["Grocries"] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -370,12 +380,12 @@ describe("McpTransactionsTools", () => {
     });
 
     it("errors on an unknown payee name", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       payeesService.findByName.mockResolvedValue(null);
 
       const result = await handlers["list_transactions"](
         { payeeNames: ["Nobody"] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -383,13 +393,13 @@ describe("McpTransactionsTools", () => {
     });
 
     it("suggests the closest payee name on a near miss", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       payeesService.findByName.mockResolvedValue(null);
       payeesService.search.mockResolvedValue([{ id: "p1", name: "Walmart" }]);
 
       const result = await handlers["list_transactions"](
         { payeeNames: ["Walmrt"] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -397,7 +407,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("passes transfersOnly through to the summary", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmListTransactions.mockResolvedValue({
         ...summary,
         transfers: {
@@ -410,7 +420,7 @@ describe("McpTransactionsTools", () => {
 
       const result = await handlers["list_transactions"](
         { transfersOnly: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
@@ -422,14 +432,14 @@ describe("McpTransactionsTools", () => {
     });
 
     it("returns safeToolError when the analytics service throws", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmListTransactions.mockRejectedValue(
         new Error("boom"),
       );
 
       const result = await handlers["list_transactions"](
         { startDate: "2026-01-01", endDate: "2026-01-31" },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -438,7 +448,7 @@ describe("McpTransactionsTools", () => {
 
   describe("compare_periods", () => {
     it("delegates to analyticsService.getLlmPeriodComparison", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
         period1: { start: "2025-12-01", end: "2025-12-31", total: 0 },
         period2: { start: "2026-01-01", end: "2026-01-31", total: 0 },
@@ -454,7 +464,7 @@ describe("McpTransactionsTools", () => {
           period2Start: "2026-01-01",
           period2End: "2026-01-31",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(analyticsService.getLlmPeriodComparison).toHaveBeenCalledWith(
@@ -467,7 +477,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("fills in all four dates when omitted", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
         period1: { start: "", end: "", total: 0 },
         period2: { start: "", end: "", total: 0 },
@@ -476,7 +486,7 @@ describe("McpTransactionsTools", () => {
         comparison: [],
       });
 
-      await handlers["compare_periods"]({}, { sessionId: "s1" });
+      await handlers["compare_periods"]({}, ctx);
 
       expect(analyticsService.getLlmPeriodComparison).toHaveBeenCalledWith(
         "u1",
@@ -507,16 +517,16 @@ describe("McpTransactionsTools", () => {
     };
 
     it("requires write scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       const result = await handlers["manage_transactions"](
         { operation: "create", items: [{ accountName: "Checking" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
 
     it("dryRun previews create rows without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       prepService.prepareCreate.mockResolvedValue({
         okPreviews: [stdPreview],
         okCreatePayee: [true],
@@ -531,7 +541,7 @@ describe("McpTransactionsTools", () => {
           items: [{ accountName: "Checking", amount: -50, date: "2025-01-15" }],
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.create).not.toHaveBeenCalled();
@@ -541,7 +551,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("creates a single standard transaction when the client cannot elicit", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       prepService.prepareCreate.mockResolvedValue({
         okPreviews: [stdPreview],
         okCreatePayee: [true],
@@ -559,7 +569,7 @@ describe("McpTransactionsTools", () => {
           operation: "create",
           items: [{ accountName: "Checking", amount: -50, date: "2025-01-15" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.create).toHaveBeenCalledTimes(1);
@@ -569,7 +579,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("creates a single transfer when the item carries toAccountName", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       const xferPreview = {
         fromAccountId: "a1",
         fromAccountName: "Checking",
@@ -615,7 +625,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.createTransfer).toHaveBeenCalledTimes(1);
@@ -634,7 +644,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("find-or-creates the payee for an unmatched transfer label and links the new id", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       const xferPreview = {
         fromAccountId: "a1",
         fromAccountName: "Checking",
@@ -683,7 +693,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(payeesService.findOrCreate).toHaveBeenCalledWith(
@@ -697,7 +707,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("bulk create (>= 6 items) emits one relay card", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       prepService.prepareCreate.mockResolvedValue({
         okPreviews: [stdPreview, stdPreview],
@@ -716,7 +726,7 @@ describe("McpTransactionsTools", () => {
             date: "2025-01-15",
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilder.buildCreateTransactions).toHaveBeenCalledTimes(1);
@@ -727,7 +737,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("bulk create (individual mode) emits one relay card per item", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       prepService.prepareCreate.mockResolvedValue({
         okPreviews: [stdPreview, stdPreview],
@@ -746,7 +756,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilder.buildCreateTransaction).toHaveBeenCalledTimes(2);
@@ -754,7 +764,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("updates a single transaction (standard) when the client cannot elicit", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       prepService.prepareUpdate.mockResolvedValue({
         kind: "standard",
         createPayee: true,
@@ -781,7 +791,7 @@ describe("McpTransactionsTools", () => {
           operation: "update",
           items: [{ transactionId: "t1", amount: -75 }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.update).toHaveBeenCalledTimes(1);
@@ -790,7 +800,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("routes a single transfer update through updateTransfer, persisting the category", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       prepService.prepareUpdate.mockResolvedValue({
         kind: "transfer",
         preview: {
@@ -820,7 +830,7 @@ describe("McpTransactionsTools", () => {
           operation: "update",
           items: [{ transactionId: "t1", categoryName: "Investments: IKE" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.updateTransfer).toHaveBeenCalledTimes(1);
@@ -832,7 +842,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("bulk update (>= 6 items) builds one batch card", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       prepService.prepareUpdateBulk.mockResolvedValue({
         okRows: [
@@ -862,7 +872,7 @@ describe("McpTransactionsTools", () => {
             categoryName: "Groceries",
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilder.buildBatchActions).toHaveBeenCalledWith(
@@ -875,7 +885,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("deletes a single transaction when the client cannot elicit", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       prepService.prepareDelete.mockResolvedValue({
         transactionId: "t1",
         accountName: "Checking",
@@ -889,7 +899,7 @@ describe("McpTransactionsTools", () => {
 
       const result = await handlers["manage_transactions"](
         { operation: "delete", items: [{ transactionId: "t1" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(transactionsService.removeAny).toHaveBeenCalledWith("u1", "t1");
@@ -898,7 +908,7 @@ describe("McpTransactionsTools", () => {
     });
 
     it("bulk delete (>= 6 items) builds one batch card", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       prepService.prepareDeleteBulk.mockResolvedValue({
         okRows: [{ transactionId: "t1" }, { transactionId: "t2" }],
@@ -914,7 +924,7 @@ describe("McpTransactionsTools", () => {
             transactionId: `t${i + 1}`,
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilder.buildBatchActions).toHaveBeenCalledWith(
@@ -989,7 +999,7 @@ describe("McpTransactionsTools", () => {
     });
 
     beforeEach(() => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
     });
 
     it("declines a single create and writes nothing", async () => {
@@ -1000,7 +1010,7 @@ describe("McpTransactionsTools", () => {
           operation: "create",
           items: [{ accountName: "Checking", amount: -50, date: "2025-01-15" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.create).not.toHaveBeenCalled();
@@ -1013,7 +1023,7 @@ describe("McpTransactionsTools", () => {
           operation: "create",
           items: [{ accountName: "Ghost", amount: -50, date: "2025-01-15" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
@@ -1036,11 +1046,168 @@ describe("McpTransactionsTools", () => {
             date: "2025-01-15",
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.create).toHaveBeenCalledTimes(2);
       const parsed = result.structuredContent as any;
       expect(parsed.ids).toEqual(["t1", "t2"]);
+    });
+
+    // On 2026-07-28 the tool answers with the question and the client calls it
+    // again with the answer. The write must happen on the second round and
+    // never on the first, and the second round must be about the same rows the
+    // user was shown.
+    describe("a 2026-07-28 write (multi round-trip)", () => {
+      const CAPS_KEY = CLIENT_CAPABILITIES_META_KEY;
+      const codec = new McpRequestStateCodec({
+        get: () => "unit-test-secret",
+      } as any);
+
+      function modernCtx(options: {
+        requestState?: unknown;
+        inputResponses?: Record<string, unknown>;
+      }) {
+        return mcpTestCtx(
+          { userId: "u1", scopes: "read,write" },
+          {
+            sessionId: undefined,
+            envelope: { [CAPS_KEY]: { elicitation: { form: {} } } },
+            requestState: options.requestState,
+            inputResponses: options.inputResponses,
+          },
+        );
+      }
+
+      const createOne = {
+        operation: "create",
+        items: [{ accountName: "Checking", amount: -50, date: "2025-01-15" }],
+      };
+
+      beforeEach(() => {
+        installConfirmSupport(server as any, codec);
+        relayService.emitPendingAction.mockReturnValue(false);
+        prepService.prepareCreate.mockResolvedValue(okStd());
+      });
+
+      it("asks and writes nothing on the first round", async () => {
+        const result = await handlers["manage_transactions"](
+          createOne,
+          modernCtx({}),
+        );
+
+        expect(result.resultType).toBe("input_required");
+        expect(result.requestState).toEqual(expect.any(String));
+        expect(transactionsService.create).not.toHaveBeenCalled();
+        // Nothing was elicited from the server side: there is no such request
+        // on this era.
+        expect(elicitInput).not.toHaveBeenCalled();
+      });
+
+      it("writes on the round the user accepted", async () => {
+        transactionsService.create.mockResolvedValue({
+          id: "t1",
+          transactionDate: "2025-01-15",
+        });
+        const asked = await handlers["manage_transactions"](
+          createOne,
+          modernCtx({}),
+        );
+        const answered = modernCtx({
+          requestState: await codec.verify(asked.requestState, {
+            mcpReq: { method: "tools/call" },
+            http: { authInfo: { clientId: "pat:t1" } },
+          } as any),
+          inputResponses: { confirm: { action: "accept", content: {} } },
+        });
+
+        const result = await handlers["manage_transactions"](
+          createOne,
+          answered,
+        );
+
+        expect(transactionsService.create).toHaveBeenCalledTimes(1);
+        expect((result.structuredContent as any).id).toBe("t1");
+      });
+
+      it("writes nothing when the user declines", async () => {
+        const asked = await handlers["manage_transactions"](
+          createOne,
+          modernCtx({}),
+        );
+        const answered = modernCtx({
+          requestState: await codec.verify(asked.requestState, {
+            mcpReq: { method: "tools/call" },
+            http: { authInfo: { clientId: "pat:t1" } },
+          } as any),
+          inputResponses: { confirm: { action: "decline" } },
+        });
+
+        const result = await handlers["manage_transactions"](
+          createOne,
+          answered,
+        );
+
+        expect(result.isError).toBe(true);
+        expect(transactionsService.create).not.toHaveBeenCalled();
+      });
+
+      // The seal proves the state is ours; it cannot prove the retry is about
+      // the same rows. A model that changed the amount between rounds would
+      // otherwise commit under a confirmation given for something else.
+      it("refuses a retry that asks about a different change", async () => {
+        const asked = await handlers["manage_transactions"](
+          createOne,
+          modernCtx({}),
+        );
+        const answered = modernCtx({
+          requestState: await codec.verify(asked.requestState, {
+            mcpReq: { method: "tools/call" },
+            http: { authInfo: { clientId: "pat:t1" } },
+          } as any),
+          inputResponses: { confirm: { action: "accept", content: {} } },
+        });
+        prepService.prepareCreate.mockResolvedValue(
+          okStd([{ ...stdPreview, amount: -999 }]),
+        );
+
+        const result = await handlers["manage_transactions"](
+          { ...createOne, items: [{ ...createOne.items[0], amount: -999 }] },
+          answered,
+        );
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain("no longer matches");
+        expect(transactionsService.create).not.toHaveBeenCalled();
+      });
+
+      // A relay turn that started between the rounds must not swallow an
+      // answer the user already gave in their own client.
+      it("does not hand a confirmed retry to the web chat", async () => {
+        const asked = await handlers["manage_transactions"](
+          createOne,
+          modernCtx({}),
+        );
+        // Only the retry round is under test: the asking round legitimately
+        // offered the card to the web chat, and nobody took it.
+        relayService.emitPendingAction.mockClear();
+        relayService.emitPendingAction.mockReturnValue(true);
+        transactionsService.create.mockResolvedValue({
+          id: "t1",
+          transactionDate: "2025-01-15",
+        });
+        const answered = modernCtx({
+          requestState: await codec.verify(asked.requestState, {
+            mcpReq: { method: "tools/call" },
+            http: { authInfo: { clientId: "pat:t1" } },
+          } as any),
+          inputResponses: { confirm: { action: "accept", content: {} } },
+        });
+
+        await handlers["manage_transactions"](createOne, answered);
+
+        expect(relayService.emitPendingAction).not.toHaveBeenCalled();
+        expect(transactionsService.create).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("declines a bulk create through confirmWrite", async () => {
@@ -1058,7 +1225,7 @@ describe("McpTransactionsTools", () => {
             date: "2025-01-15",
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.create).not.toHaveBeenCalled();
@@ -1099,7 +1266,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.createTransfer).toHaveBeenCalledTimes(1);
       const parsed = result.structuredContent as any;
@@ -1158,7 +1325,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.create).toHaveBeenCalledTimes(1);
       const parsed = result.structuredContent as any;
@@ -1178,7 +1345,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1", amount: -5 }],
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.update).not.toHaveBeenCalled();
       const parsed = result.structuredContent as any;
@@ -1198,7 +1365,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1" }],
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.removeAny).not.toHaveBeenCalled();
       const parsed = result.structuredContent as any;
@@ -1228,7 +1395,7 @@ describe("McpTransactionsTools", () => {
       });
       const result = await handlers["manage_transactions"](
         { operation: "update", items: [{ transactionId: "t1", amount: -75 }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.update).not.toHaveBeenCalled();
@@ -1265,7 +1432,7 @@ describe("McpTransactionsTools", () => {
             amount: -5 - i,
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.update).toHaveBeenCalledTimes(1);
       const parsed = result.structuredContent as any;
@@ -1285,7 +1452,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1", amount: -5 }],
           approvalMode: "bulk",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
@@ -1319,7 +1486,7 @@ describe("McpTransactionsTools", () => {
       });
       await handlers["manage_transactions"](
         { operation: "update", items: [{ transactionId: "t1", amount: 100 }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.findOrCreate).toHaveBeenCalledWith(
         "u1",
@@ -1374,7 +1541,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.update).toHaveBeenCalledTimes(2);
       const parsed = result.structuredContent as any;
@@ -1392,7 +1559,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
@@ -1411,7 +1578,7 @@ describe("McpTransactionsTools", () => {
       });
       const result = await handlers["manage_transactions"](
         { operation: "delete", items: [{ transactionId: "t1" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.removeAny).not.toHaveBeenCalled();
@@ -1432,7 +1599,7 @@ describe("McpTransactionsTools", () => {
       });
       await handlers["manage_transactions"](
         { operation: "delete", items: [{ transactionId: "t1" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(elicitInput.mock.calls[0][0].message).toContain("reconciled");
     });
@@ -1453,7 +1620,7 @@ describe("McpTransactionsTools", () => {
             transactionId: `t${i + 1}`,
           })),
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.removeAny).toHaveBeenCalledTimes(2);
       const parsed = result.structuredContent as any;
@@ -1473,7 +1640,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1" }],
           approvalMode: "bulk",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
@@ -1502,7 +1669,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1" }, { transactionId: "t2" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.removeAny).toHaveBeenCalledTimes(2);
       const parsed = result.structuredContent as any;
@@ -1565,7 +1732,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.createTransfer).toHaveBeenCalledTimes(2);
       const parsed = result.structuredContent as any;
@@ -1625,7 +1792,7 @@ describe("McpTransactionsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.updateTransfer).toHaveBeenCalledTimes(2);
       // The signed descriptor's category is committed on each card.
@@ -1664,7 +1831,7 @@ describe("McpTransactionsTools", () => {
           items: [{ transactionId: "t1" }, { transactionId: "t2" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       const parsed = result.structuredContent as any;
       expect(parsed.skipped).toHaveLength(1);
@@ -1707,7 +1874,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.create).toHaveBeenCalledWith(
         "u1",
@@ -1746,7 +1913,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.create).not.toHaveBeenCalled();
@@ -1784,7 +1951,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       // The splits ride inside the same DTO so update() rebuilds the set in
       // the same transaction under the same row lock as the scalar fields --
@@ -1838,7 +2005,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(transactionsService.update).not.toHaveBeenCalled();
@@ -1861,7 +2028,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("complete splits array");
@@ -1899,7 +2066,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       const parsed = result.structuredContent as any;
       expect(parsed.dryRun).toBe(true);
@@ -1930,7 +2097,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       const parsed = result.structuredContent as any;
       expect(parsed.dryRun).toBe(true);
@@ -1966,7 +2133,7 @@ describe("McpTransactionsTools", () => {
     };
 
     beforeEach(() => {
-      resolve.mockReturnValue({ userId: UUID_USER, scopes: "write" });
+      ctx.setUser({ userId: UUID_USER, scopes: "write" });
       prepService.prepareCreate.mockResolvedValue({
         okPreviews: [stdPreview],
         okCreatePayee: [false],
@@ -2012,7 +2179,7 @@ describe("McpTransactionsTools", () => {
             { accountName: "B", amount: -2, date: "2025-01-15" },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("one at a time");
@@ -2029,7 +2196,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("delete");
@@ -2041,7 +2208,7 @@ describe("McpTransactionsTools", () => {
           ...createArgs([{ fileData: PNG_B64, fileName: "r.png" }]),
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("dryRun");
@@ -2061,7 +2228,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("transfer");
@@ -2076,12 +2243,13 @@ describe("McpTransactionsTools", () => {
             fileName: "r.png",
           },
         ]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(both.isError).toBe(true);
-      const neither = await handlers["manage_transactions"](createArgs([{}]), {
-        sessionId: "s1",
-      });
+      const neither = await handlers["manage_transactions"](
+        createArgs([{}]),
+        ctx,
+      );
       expect(neither.isError).toBe(true);
     });
 
@@ -2089,7 +2257,7 @@ describe("McpTransactionsTools", () => {
       relayAttachmentStore.get.mockReturnValue(undefined);
       const result = await handlers["manage_transactions"](
         createArgs([{ attachmentUri: "monize-attachment://gone" }]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("expired");
@@ -2105,7 +2273,7 @@ describe("McpTransactionsTools", () => {
       });
       const result = await handlers["manage_transactions"](
         createArgs([{ attachmentUri: "csv-ref" }]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("only images and PDFs");
@@ -2114,7 +2282,7 @@ describe("McpTransactionsTools", () => {
     it("rejects fileData without fileName and unsniffable fileData", async () => {
       const noName = await handlers["manage_transactions"](
         createArgs([{ fileData: PNG_B64 }]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(noName.isError).toBe(true);
       expect(noName.content[0].text).toContain("fileName");
@@ -2126,7 +2294,7 @@ describe("McpTransactionsTools", () => {
             fileName: "x.png",
           },
         ]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(bad.isError).toBe(true);
       expect(bad.content[0].text).toContain("not a supported file type");
@@ -2135,7 +2303,7 @@ describe("McpTransactionsTools", () => {
     it("creates the transaction and persists inline attachments on direct confirm", async () => {
       const result = await handlers["manage_transactions"](
         createArgs([{ fileData: PNG_B64, fileName: "receipt.png" }]),
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(attachmentPrepService.prepareAttachments).toHaveBeenCalledWith(
@@ -2185,7 +2353,7 @@ describe("McpTransactionsTools", () => {
       });
       const result = await handlers["manage_transactions"](
         createArgs([{ attachmentUri: "monize-attachment://ref-9" }]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(relayAttachmentStore.get).toHaveBeenCalledWith(UUID_USER, "ref-9");
       expect(attachmentsService.create).toHaveBeenCalled();
@@ -2201,7 +2369,7 @@ describe("McpTransactionsTools", () => {
 
       const result = await handlers["manage_transactions"](
         createArgs([{ fileData: PNG_B64, fileName: "receipt.png" }]),
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -2213,11 +2381,43 @@ describe("McpTransactionsTools", () => {
       );
     });
 
+    // The asking round of a 2026-07-28 write parks the bytes to build its
+    // preview and then returns the question. Round two re-derives its own refs,
+    // so anything held here is a duplicate copy of every uploaded file sitting
+    // in the store until its TTL, counting against the per-user cap.
+    it("releases parked refs on the round that only asks", async () => {
+      const asking = mcpTestCtx(
+        { userId: UUID_USER, scopes: "write" },
+        {
+          sessionId: undefined,
+          envelope: {
+            [CLIENT_CAPABILITIES_META_KEY]: { elicitation: { form: {} } },
+          },
+        },
+      );
+      installConfirmSupport(
+        server as any,
+        new McpRequestStateCodec({ get: () => "unit-test-secret" } as any),
+      );
+
+      const result = await handlers["manage_transactions"](
+        createArgs([{ fileData: PNG_B64, fileName: "receipt.png" }]),
+        asking,
+      );
+
+      expect(result.resultType).toBe("input_required");
+      expect(transactionsService.create).not.toHaveBeenCalled();
+      expect(relayAttachmentStore.releaseForPrompt).toHaveBeenCalledWith(
+        UUID_USER,
+        ["fresh-1"],
+      );
+    });
+
     it("emits the card to the relay without writing when a relay prompt is in flight", async () => {
       relayService.emitPendingAction.mockReturnValue(true);
       const result = await handlers["manage_transactions"](
         createArgs([{ fileData: PNG_B64, fileName: "receipt.png" }]),
-        { sessionId: "s1" },
+        ctx,
       );
       expect(transactionsService.create).not.toHaveBeenCalled();
       expect(attachmentsService.create).not.toHaveBeenCalled();
@@ -2247,7 +2447,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(attachmentPrepService.prepareAttachments).toHaveBeenCalledWith(
@@ -2285,7 +2485,7 @@ describe("McpTransactionsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("transfer");

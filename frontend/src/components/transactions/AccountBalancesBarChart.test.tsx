@@ -41,12 +41,16 @@ vi.mock('recharts', () => ({
 const mockFormatCurrency = vi.fn((n: number, _code?: string) => `$${n.toFixed(2)}`);
 const mockFormatCurrencyAxis = vi.fn((n: number, _code?: string) => `$${n}`);
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: mockFormatCurrency,
-    formatCurrencyAxis: mockFormatCurrencyAxis,
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: mockFormatCurrency,
+      formatCurrencyAxis: mockFormatCurrencyAxis,
+    }),
+  };
+});
 
 // Control the mobile breakpoint deterministically from tests.
 const mockIsMobile = vi.fn(() => false);

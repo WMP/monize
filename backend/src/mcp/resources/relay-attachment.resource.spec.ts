@@ -1,7 +1,7 @@
 import { McpRelayAttachmentResource } from "./relay-attachment.resource";
 import { RelayAttachmentStore } from "../../ai/relay/relay-attachment.store";
 import { extractPdfText } from "../../ai/relay/pdf-text.util";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 jest.mock("../../ai/relay/pdf-text.util", () => ({
   extractPdfText: jest.fn(),
@@ -23,7 +23,7 @@ describe("McpRelayAttachmentResource", () => {
   let store: RelayAttachmentStore;
   let resource: McpRelayAttachmentResource;
   let server: { registerResource: jest.Mock };
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   let handler: (...args: any[]) => any;
 
   beforeEach(() => {
@@ -34,8 +34,8 @@ describe("McpRelayAttachmentResource", () => {
         handler = h;
       }),
     };
-    resolve = jest.fn();
-    resource.register(server as any, resolve);
+    ctx = mcpTestCtx();
+    resource.register(server as any);
   });
 
   it("registers a templated resource", () => {
@@ -48,24 +48,20 @@ describe("McpRelayAttachmentResource", () => {
   });
 
   it("returns an error when there is no user context", async () => {
-    resolve.mockReturnValue(undefined);
-    const result = await handler(uriFor("x"), { id: "x" }, { sessionId: "s1" });
+    ctx.setUser(undefined);
+    const result = await handler(uriFor("x"), { id: "x" }, ctx);
     expect(result.contents[0].text).toContain("Error");
   });
 
   it("returns an error when the read scope is missing", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-    const result = await handler(uriFor("x"), { id: "x" }, { sessionId: "s1" });
+    ctx.setUser({ userId: "u1", scopes: "write" });
+    const result = await handler(uriFor("x"), { id: "x" }, ctx);
     expect(result.contents[0].text).toContain("Insufficient scope");
   });
 
   it("returns a not-found error for an unknown or expired id", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-    const result = await handler(
-      uriFor("nope"),
-      { id: "nope" },
-      { sessionId: "s1" },
-    );
+    ctx.setUser({ userId: "u1", scopes: "read" });
+    const result = await handler(uriFor("nope"), { id: "nope" }, ctx);
     expect(result.contents[0].text).toContain("not found or expired");
   });
 
@@ -78,13 +74,9 @@ describe("McpRelayAttachmentResource", () => {
         data: PNG_BASE64,
       },
     ]);
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s1" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     expect(result.contents[0].mimeType).toBe("image/png");
     expect(result.contents[0].blob).toBe(PNG_BASE64);
     expect(result.contents[0].text).toBeUndefined();
@@ -99,13 +91,9 @@ describe("McpRelayAttachmentResource", () => {
         data: CSV_BASE64,
       },
     ]);
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s1" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     expect(result.contents[0].mimeType).toBe("text/csv");
     expect(result.contents[0].text).toBe("a,b\n1,2\n");
     expect(result.contents[0].blob).toBeUndefined();
@@ -121,13 +109,9 @@ describe("McpRelayAttachmentResource", () => {
         data: PDF_BASE64,
       },
     ]);
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s1" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     // Returned as text/plain so the agent's client never sees a PDF blob.
     expect(result.contents[0].mimeType).toBe("text/plain");
     expect(result.contents[0].text).toBe("Bank statement: balance $100");
@@ -144,13 +128,9 @@ describe("McpRelayAttachmentResource", () => {
         data: PDF_BASE64,
       },
     ]);
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s1" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     // A scanned/image-only PDF is served as raw bytes, like a picture, so a
     // vision-capable client/model can still read it.
     expect(result.contents[0].mimeType).toBe("application/pdf");
@@ -168,13 +148,9 @@ describe("McpRelayAttachmentResource", () => {
         data: PDF_BASE64,
       },
     ]);
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s1" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     // pdf-parse failing should not fail the read -- serve the raw bytes instead.
     expect(result.contents[0].mimeType).toBe("application/pdf");
     expect(result.contents[0].blob).toBe(PDF_BASE64);
@@ -190,14 +166,10 @@ describe("McpRelayAttachmentResource", () => {
         data: PNG_BASE64,
       },
     ]);
-    // A different user is resolved from the session; the id belongs to u1.
-    resolve.mockReturnValue({ userId: "u2", scopes: "read" });
+    // A different user is resolved from the request; the id belongs to u1.
+    ctx.setUser({ userId: "u2", scopes: "read" });
 
-    const result = await handler(
-      uriFor(ref.id),
-      { id: ref.id },
-      { sessionId: "s2" },
-    );
+    const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
     expect(result.contents[0].text).toContain("not found or expired");
     expect(result.contents[0].blob).toBeUndefined();
   });

@@ -365,6 +365,8 @@
     "nameConflict": "이름이 \"{{ name }}\"인 수취인이 이미 존재합니다",
     "nameRequired": "수취인 이름은 필수입니다",
     "invalidEmail": "\"{{ email }}\"은(는) 유효한 이메일 주소가 아닙니다",
+    "invalidPhone": "\"{{ phone }}\"은(는) 유효한 전화번호가 아닙니다",
+    "phoneNeedsCountryCode": "\"{{ phone }}\"에 국가 번호를 포함하세요. 예: +1 206 448 8762",
     "notFound": "ID가 {{ id }}인 수취인을 찾을 수 없습니다",
     "logoNotFound": "이 수취인에 사용할 수 있는 로고가 없습니다",
     "categoryIdsNotOwned": "사용자가 찾을 수 없거나 소유하지 않은 카테고리 ID입니다: {{ ids }}",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "다른 작업이 이 계정의 데이터를 교체하고 있습니다. 완료될 때까지 기다린 후 다시 시도하세요."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places는 이 서버의 관리자가 설정합니다. 여기서는 켜기/끄기 설정만 변경할 수 있습니다.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY가 설정되지 않았습니다. Google Places API 키를 안전하게 저장할 수 없습니다.",
+    "notConfigured": "설정된 Google Places API 키가 없습니다.",
+    "capReached": "이번 달 Google Places 요청 한도에 도달했습니다.",
+    "testFailed": "Google Places 연결 테스트에 실패했습니다.",
+    "referrerRestricted": "이 키는 HTTP 리퍼러로 제한되어 있지만 이 배포에는 PUBLIC_APP_URL이 설정되어 있지 않아 리퍼러가 전송되지 않으며 어떤 허용 목록과도 일치할 수 없습니다. PUBLIC_APP_URL을 설정하거나, 서버 측 키를 실제로 보호하는 IP 주소 제한을 사용하세요.",
+    "referrerRejected": "Google가 이 키의 HTTP 리퍼러 제한을 거부했습니다. Monize는 \"{referer}\"를 전송합니다(PUBLIC_APP_URL 기준). 해당 값을 그대로 키의 허용 리퍼러에 추가하세요. *.example.com/* 같은 패턴은 순수한 example.com과 일치하지 않습니다. 서버 측 키를 실제로 보호하는 것은 IP 주소 제한입니다."
   }
 }

@@ -33,7 +33,7 @@ export function GroupedHoldingsList({
   onCashClick,
 }: GroupedHoldingsListProps) {
   const t = useTranslations('investments');
-  const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatNumber, formatQuantity } = useNumberFormat();
+  const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatPercent: formatPlainPercent, formatQuantity } = useNumberFormat();
   const { getRate, defaultCurrency } = useExchangeRates();
 
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
@@ -66,7 +66,10 @@ export function GroupedHoldingsList({
 
   const formatPercent = (value: number | null, showSign = true) => {
     if (value === null) return '-';
-    return showSign ? formatSignedPercent(value) : `${formatNumber(value, 2)}%`;
+    // Unsigned goes through the hook's percent formatter rather than a
+    // hand-concatenated '%': the symbol's placement and spacing are the
+    // locale's to decide (fr-FR writes "12,30 %").
+    return showSign ? formatSignedPercent(value) : formatPlainPercent(value, 2);
   };
 
   const getGainLossColor = (value: number | null) => {
@@ -88,7 +91,7 @@ export function GroupedHoldingsList({
       if (rate === null) return '-';
       converted = value * rate;
     }
-    return ((converted / totalPortfolioValue) * 100).toFixed(1) + '%';
+    return formatPlainPercent((converted / totalPortfolioValue) * 100, 1);
   };
 
   // The "~ default currency" approximation under an account's total: unknown --

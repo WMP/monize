@@ -365,6 +365,8 @@
     "nameConflict": "Odbiorca o nazwie \"{{ name }}\" już istnieje",
     "nameRequired": "Nazwa odbiorcy jest wymagana",
     "invalidEmail": "\"{{ email }}\" nie jest prawidłowym adresem e-mail",
+    "invalidPhone": "\"{{ phone }}\" nie jest prawidłowym numerem telefonu",
+    "phoneNeedsCountryCode": "Podaj numer kierunkowy kraju dla \"{{ phone }}\", na przykład +1 206 448 8762",
     "notFound": "Nie znaleziono odbiorcy o ID {{ id }}",
     "logoNotFound": "Brak logo dla tego odbiorcy",
     "categoryIdsNotOwned": "Identyfikatory kategorii nie zostały znalezione lub nie należą do użytkownika: {{ ids }}",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Inna operacja wlasnie zamienia dane tego konta. Poczekaj na jej zakonczenie i sprobuj ponownie."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places jest konfigurowane przez administratora tego serwera. Można tu zmienić tylko ustawienie włączenia lub wyłączenia.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY nie jest skonfigurowany. Nie można bezpiecznie zapisać klucza API Google Places.",
+    "notConfigured": "Nie skonfigurowano żadnego klucza API Google Places.",
+    "capReached": "Osiągnięto tegomiesięczny limit zapytań Google Places.",
+    "testFailed": "Test połączenia z Google Places nie powiódł się.",
+    "referrerRestricted": "Ten klucz jest ograniczony przez odsyłacz HTTP, ale to wdrożenie nie ma ustawionego PUBLIC_APP_URL, więc nie wysyła żadnego odsyłacza i żadna lista dozwolonych nie może pasować. Ustaw PUBLIC_APP_URL albo ogranicz klucz według adresu IP -- opcji, która naprawdę chroni klucz po stronie serwera.",
+    "referrerRejected": "Google odrzucił ograniczenie odsyłacza HTTP dla tego klucza. Monize wysyła \"{referer}\" (z PUBLIC_APP_URL); dodaj dokładnie tę wartość do dozwolonych odsyłaczy, pamiętając, że wzorzec taki jak *.example.com/* nie pasuje do samego example.com. Ograniczenie klucza według adresu IP to opcja, która naprawdę chroni klucz po stronie serwera."
   }
 }

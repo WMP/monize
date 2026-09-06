@@ -53,6 +53,26 @@
     "amountDue": "{date} tarihinde {amount} ödenecek",
     "amountUnavailable": "Tutar kullanılamıyor (güncel döviz kuru yok), {date} tarihinde ödenecek"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} {state} durumuna geçti",
+    "riskMessage": "GEM stratejiniz \"{strategy}\" {fromState} durumundan {toState} durumuna geçti. Öneriyi incelemek için açın.",
+    "allocationTitle": "{strategy} hedefini değiştirdi",
+    "allocationMessage": "GEM stratejiniz \"{strategy}\" artık {target} hedefliyor. Öneriyi incelemek için açın.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Yatırımlar %{percent} arttı",
+    "titleDown": "Yatırımlar %{percent} azaldı",
+    "messageUp": "Yatırımlarınız bugün, para yatırma ve çekme hariç %{percent} arttı. İncelemek için açın.",
+    "messageDown": "Yatırımlarınız bugün, para yatırma ve çekme hariç %{percent} azaldı. İncelemek için açın."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} eşiğinizin altında",
+    "titleHigh": "{account} eşiğinizin üstünde",
+    "messageLow": "{account} {balance} değerine düştü, {threshold} eşiğinizin altında.",
+    "messageHigh": "{account} {balance} değerine yükseldi, {threshold} eşiğinizin üstünde."
+  },
   "system": {
     "backupFailed": {
       "title": "Otomatik yedekleme başarısız oldu",

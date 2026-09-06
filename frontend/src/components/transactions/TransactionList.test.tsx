@@ -25,12 +25,15 @@ vi.mock('@/hooks/useDateFormat', () => ({
   }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     error: vi.fn(),

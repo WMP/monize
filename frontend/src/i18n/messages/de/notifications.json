@@ -53,6 +53,26 @@
     "amountDue": "{amount} fällig am {date}",
     "amountUnavailable": "Betrag nicht verfügbar (kein aktueller Wechselkurs), fällig am {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} auf {state} umgestellt",
+    "riskMessage": "Ihre GEM-Strategie \"{strategy}\" ist von {fromState} auf {toState} gewechselt. Öffnen Sie, um die Empfehlung zu prüfen.",
+    "allocationTitle": "{strategy} hat das Ziel geändert",
+    "allocationMessage": "Ihre GEM-Strategie \"{strategy}\" zielt jetzt auf {target}. Öffnen Sie, um die Empfehlung zu prüfen.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Anlagen {percent}% im Plus",
+    "titleDown": "Anlagen {percent}% im Minus",
+    "messageUp": "Ihre Anlagen liegen heute {percent}% im Plus, ohne Ein- und Auszahlungen. Öffnen Sie zur Prüfung.",
+    "messageDown": "Ihre Anlagen liegen heute {percent}% im Minus, ohne Ein- und Auszahlungen. Öffnen Sie zur Prüfung."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} liegt unter Ihrem Schwellenwert",
+    "titleHigh": "{account} liegt über Ihrem Schwellenwert",
+    "messageLow": "{account} ist auf {balance} gefallen, unter Ihren Schwellenwert von {threshold}.",
+    "messageHigh": "{account} ist auf {balance} gestiegen, über Ihren Schwellenwert von {threshold}."
+  },
   "system": {
     "backupFailed": {
       "title": "Automatisches Backup fehlgeschlagen",

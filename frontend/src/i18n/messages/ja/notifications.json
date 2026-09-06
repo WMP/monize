@@ -53,6 +53,26 @@
     "amountDue": "{date} に {amount} の支払い",
     "amountUnavailable": "金額が不明です (現在の為替レートがありません)。支払期日は {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} が {state} に切り替わりました",
+    "riskMessage": "GEM戦略「{strategy}」が {fromState} から {toState} に変わりました。推奨内容を確認するには開いてください。",
+    "allocationTitle": "{strategy} の目標が変わりました",
+    "allocationMessage": "GEM戦略「{strategy}」の目標が {target} になりました。推奨内容を確認するには開いてください。",
+    "riskOn": "リスクオン",
+    "riskOff": "リスクオフ"
+  },
+  "portfolioMovement": {
+    "titleUp": "投資が {percent}% 上昇",
+    "titleDown": "投資が {percent}% 下落",
+    "messageUp": "本日、入出金を除いて投資が {percent}% 上昇しています。確認するには開いてください。",
+    "messageDown": "本日、入出金を除いて投資が {percent}% 下落しています。確認するには開いてください。"
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} がしきい値を下回っています",
+    "titleHigh": "{account} がしきい値を上回っています",
+    "messageLow": "{account} が {balance} に下がり、しきい値 {threshold} を下回りました。",
+    "messageHigh": "{account} が {balance} に上がり、しきい値 {threshold} を上回りました。"
+  },
   "system": {
     "backupFailed": {
       "title": "自動バックアップに失敗しました",

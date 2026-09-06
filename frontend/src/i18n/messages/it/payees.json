@@ -34,7 +34,8 @@
       "inactive": "Inattivi",
       "withoutCategory": "Senza categoria"
     },
-    "applyDefaultCategories": "Applica categorie predefinite"
+    "applyDefaultCategories": "Applica categorie predefinite",
+    "lookupSettings": "Impostazioni ricerca beneficiari"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Sostituito dalla ricerca:",
       "clear": "Annulla le modifiche della ricerca",
       "nothingFound": "Nessun recapito pubblico trovato per questo nome.",
-      "noProvider": "Configura un provider IA nelle <link>Impostazioni IA</link> per cercare i recapiti.",
-      "failed": "Non è stato possibile completare la ricerca. Riprova più tardi."
+      "noProvider": "Configura una fonte nelle <link>impostazioni di ricerca beneficiari</link> per trovare i contatti.",
+      "failed": "Non è stato possibile completare la ricerca. Riprova più tardi.",
+      "quotaExceeded": "Le ricerche Google Places di questo mese sono esaurite. Aumenta il limite nelle <link>impostazioni di ricerca beneficiari</link> oppure attendi il mese prossimo."
     }
   },
   "merge": {
@@ -284,7 +286,9 @@
   "selectCategoryPlaceholder": "Seleziona categoria...",
   "validation": {
     "nameRequired": "Il nome del beneficiario è obbligatorio",
-    "emailInvalid": "Inserisci un indirizzo e-mail valido"
+    "emailInvalid": "Inserisci un indirizzo e-mail valido",
+    "phoneInvalid": "Inserisci un numero di telefono valido",
+    "phoneNeedsCountryCode": "Aggiungi il prefisso internazionale, ad esempio +1 206 448 8762"
   },
   "defaultCategoryBackfill": {
     "allConfirmTitle": "Applicare le categorie predefinite?",

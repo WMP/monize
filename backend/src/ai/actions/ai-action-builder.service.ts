@@ -32,6 +32,7 @@ import {
   toSplitRowDescriptor,
   toSplitPreview,
   AiActionAttachmentPreview,
+  AiActionEnvelope,
   AttachmentRefDescriptor,
 } from "./ai-action.types";
 import {
@@ -182,7 +183,12 @@ export function transferPreviewRow(
 export class AiActionBuilderService {
   constructor(private readonly signingService: AiActionSigningService) {}
 
-  private newEnvelope(): { actionId: string; expiresAt: number } {
+  /**
+   * The per-build half of a descriptor. Typed as `AiActionEnvelope` so a new
+   * field minted here must be added to `AI_ACTION_ENVELOPE_FIELDS`, which is
+   * what the MCP confirmation fingerprint leaves out (see that constant).
+   */
+  private newEnvelope(): AiActionEnvelope {
     return {
       actionId: randomUUID(),
       expiresAt: Date.now() + AI_ACTION_TTL_MS,

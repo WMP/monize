@@ -27,6 +27,8 @@ vi.mock('@/lib/notification-preferences', async (importOriginal) => ({
   notificationPreferencesApi: {
     list: vi.fn().mockResolvedValue([]),
     update: vi.fn(),
+    getPortfolioAlert: vi.fn().mockResolvedValue({ movePercent: null }),
+    setPortfolioAlert: vi.fn().mockResolvedValue({ movePercent: null }),
   },
 }));
 

@@ -4,6 +4,7 @@ import { PushDevicesPanel } from './PushDevicesPanel';
 import toast from 'react-hot-toast';
 import { PushPermissionError, type PushDevice } from '@/lib/push';
 import { useAuthStore } from '@/store/authStore';
+import { notifyPushDevicesChanged } from '@/lib/pushDevicesSignal';
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
@@ -77,6 +78,7 @@ function device(overrides: Partial<PushDevice> = {}): PushDevice {
     createdAt: '2026-08-01T10:00:00.000Z',
     lastSeenAt: '2026-08-02T10:00:00.000Z',
     lastSuccessAt: null,
+    registeredIp: '203.0.113.7',
     disabledAt: null,
     disabledReason: null,
     ...overrides,
@@ -164,8 +166,137 @@ describe('PushDevicesPanel', () => {
 
     await screen.findByText('ntfy on Android');
     // Exactly one badge: the distributor device wears it, the browser row (an
-    // absent transport reads as web push) does not.
-    expect(screen.getAllByText('UnifiedPush')).toHaveLength(1);
+    // absent transport reads as web push) does not. Queried by test id rather
+    // than by its text, because every row now also NAMES its wire in the facts
+    // beneath it -- a text query counts both and reads as two badges.
+    expect(screen.getAllByTestId('push-transport-badge')).toHaveLength(1);
+    // And the wire is spelled out per row, distributor and browser alike --
+    // twice for the distributor, which wears the badge as well as the fact.
+    expect(screen.getAllByText('UnifiedPush')).toHaveLength(2);
+    expect(screen.getByText('Web push')).toBeInTheDocument();
+  });
+
+  it('identifies each endpoint beyond its derived device name', async () => {
+    mockListDevices.mockResolvedValue([
+      device({
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/140',
+        createdAt: '2026-08-01T10:00:00.000Z',
+        lastSeenAt: '2026-08-02T10:00:00.000Z',
+        lastSuccessAt: '2026-08-02T11:00:00.000Z',
+        registeredIp: '203.0.113.7',
+      }),
+    ]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+
+    // `deviceName` is derived from the user agent, so two browsers on one
+    // machine share it word for word. What tells the rows apart -- and what a
+    // reader needs before revoking one -- is the endpoint digest, the wire, the
+    // dates and the agent string.
+    await screen.findByText('Endpoint');
+    expect(screen.getByText(THIS_DEVICE)).toBeInTheDocument();
+    expect(screen.getByText('Delivered by')).toBeInTheDocument();
+    expect(screen.getByText('Registered')).toBeInTheDocument();
+    expect(screen.getByText('Last active')).toBeInTheDocument();
+    expect(screen.getByText('Last delivery')).toBeInTheDocument();
+    expect(screen.getByText('Registered from')).toBeInTheDocument();
+    expect(screen.getByText('203.0.113.7')).toBeInTheDocument();
+    expect(
+      screen.getByText('Mozilla/5.0 (X11; Linux x86_64) Chrome/140'),
+    ).toBeInTheDocument();
+  });
+
+  // Absent (a backend that predates the column) and null (a request whose
+  // address the server could not determine) are the same fact -- unknown -- and
+  // unknown is a state with words, never a blank cell and never an invented
+  // address.
+  it.each([
+    // `undefined` is the shape a backend predating the column sends; `null` is
+    // this backend saying it could not determine one.
+    ['the field is absent', undefined],
+    ['the server stored none', null],
+  ])('says the address is unknown when %s', async (_name, registeredIp) => {
+    mockListDevices.mockResolvedValue([device({ registeredIp })]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+
+    await screen.findByText('Registered from');
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
+  });
+
+  // A device nothing has ever reached is exactly the one a reader is hunting
+  // for, so "never" is a state with words, not a blank cell.
+  // The regression: the row wrapped. The facts under the device name give the
+  // content block a wide min-content, so on a `flex-wrap` row whichever device
+  // had the longest endpoint digest or agent string pushed Remove onto its own
+  // line -- bottom left on that one row, top right on every other, which reads
+  // as a rendering fault rather than a layout.
+  it('keeps Remove on the row, whatever the device name and facts are', async () => {
+    mockListDevices.mockResolvedValue([
+      device({
+        deviceName:
+          'A browser with a very long derived name on a very long platform',
+        userAgent:
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+      }),
+      device({ id: 'd-2', endpointFingerprint: OTHER_DEVICE, deviceName: 'B' }),
+    ]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+
+    await screen.findByText('B');
+    const rows = screen.getAllByRole('listitem');
+    for (const row of rows) {
+      expect(row.className).not.toMatch(/\bflex-wrap\b/);
+    }
+    // And the action itself never yields the width the content column does.
+    for (const button of screen.getAllByRole('button', { name: 'Remove' })) {
+      expect(button.className).toMatch(/\bflex-shrink-0\b/);
+    }
+  });
+
+  // The regression: enabling push from the preference matrix wrote a row this
+  // list never reloaded, so the panel below went on offering to enable a device
+  // that was already registered. The two surfaces hold separate copies of the
+  // list; the write announces itself to both.
+  it('reloads its list when a registration changes anywhere on the page', async () => {
+    mockListDevices.mockResolvedValue([]);
+    mockCurrentFingerprint.mockResolvedValue(null);
+
+    render(<PushDevicesPanel />);
+    await waitFor(() => expect(mockListDevices).toHaveBeenCalledTimes(1));
+
+    mockListDevices.mockResolvedValue([device()]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+    await act(async () => {
+      notifyPushDevicesChanged();
+    });
+
+    expect(await screen.findByText('Chrome on Linux')).toBeInTheDocument();
+  });
+
+  // Removing a registration is destructive, so it wears the design system's one
+  // red button rather than a hand-rolled red of its own.
+  it('draws Remove as the danger button', async () => {
+    mockListDevices.mockResolvedValue([device()]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+
+    const remove = await screen.findByRole('button', { name: 'Remove' });
+    expect(remove.className).toMatch(/\bbg-red-600\b/);
+  });
+
+  it('says so when an endpoint has never been delivered to', async () => {
+    mockListDevices.mockResolvedValue([device({ lastSuccessAt: null })]);
+    mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+    render(<PushDevicesPanel />);
+
+    expect(await screen.findByText('Nothing delivered yet')).toBeInTheDocument();
   });
 
   // The regression: a retired row is not a registration. After a rotation the

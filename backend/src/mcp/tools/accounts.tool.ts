@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { AccountsService } from "../../accounts/accounts.service";
 import { AccountType } from "../../accounts/entities/account.entity";
 import {
-  UserContextResolver,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
@@ -18,7 +18,7 @@ import { uuidString } from "./schema-fragments";
 export class McpAccountsTools {
   constructor(private readonly accountsService: AccountsService) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "list_accounts",
       {
@@ -32,7 +32,7 @@ export class McpAccountsTools {
           "transactions, with the through-today figure in `currentBalance`. " +
           "Loan and mortgage rows carry their payment schedule. `totalAccounts` " +
           "counts what is left AFTER filtering.",
-        inputSchema: {
+        inputSchema: z.object({
           accountNames: z
             .array(z.string().max(100))
             .max(100)
@@ -53,18 +53,18 @@ export class McpAccountsTools {
             .max(10)
             .optional()
             .describe("Omit to include every type."),
-        },
+        }),
         outputSchema: listAccountsOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           // Service owns the "open" default so it stays in one place.
-          const data = await this.accountsService.getLlmAccounts(ctx.userId, {
+          const data = await this.accountsService.getLlmAccounts(user.userId, {
             accountNames: args.accountNames,
             accountIds: args.accountIds,
             nameQuery: args.nameQuery,

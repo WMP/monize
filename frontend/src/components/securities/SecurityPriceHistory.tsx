@@ -14,6 +14,7 @@ import {
 } from '@/types/investment';
 import { investmentsApi } from '@/lib/investments';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useLongPress } from '@/hooks/useLongPress';
 import { RowActionSheet, type RowAction } from '@/components/ui/row-actions';
 import { getErrorMessage } from '@/lib/errors';
@@ -63,18 +64,25 @@ function getSourceColor(source: string | null): string {
  * One price cell, at the column's shared decimal count so the figures line up.
  * See `priceDecimals`: providers mix `93.239998` and `93.18` in one series, and
  * formatting each to its own precision leaves the column ragged.
+ *
+ * The shared decimal count is this helper's job; the separators are not, so it
+ * takes the reader's own `formatNumber` rather than reaching for
+ * `toLocaleString(undefined, ...)` -- that follows the *browser*, which is the
+ * thing an explicit `numberFormat` preference overrides.
  */
-function formatPrice(value: number | null, decimals: number): string {
+function formatPrice(
+  value: number | null,
+  decimals: number,
+  formatNumber: (value: number, decimals?: number) => string,
+): string {
   if (value === null || value === undefined) return '-';
-  return Number(value).toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  return formatNumber(Number(value), decimals);
 }
 
 export function SecurityPriceHistory({ security }: SecurityPriceHistoryProps) {
   const t = useTranslations('securities');
   const { formatDate, formatMonth } = useDateFormat();
+  const { formatNumber } = useNumberFormat();
   const [prices, setPrices] = useState<SecurityPrice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -387,22 +395,22 @@ export function SecurityPriceHistory({ security }: SecurityPriceHistoryProps) {
                               {formatDate(price.priceDate)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                              {formatPrice(price.closePrice, decimals)}
+                              {formatPrice(price.closePrice, decimals, formatNumber)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-right hidden lg:table-cell">
-                              {formatPrice(price.adjustedClose, decimals)}
+                              {formatPrice(price.adjustedClose, decimals, formatNumber)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-right hidden sm:table-cell">
-                              {formatPrice(price.openPrice, decimals)}
+                              {formatPrice(price.openPrice, decimals, formatNumber)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-right hidden sm:table-cell">
-                              {formatPrice(price.highPrice, decimals)}
+                              {formatPrice(price.highPrice, decimals, formatNumber)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-right hidden sm:table-cell">
-                              {formatPrice(price.lowPrice, decimals)}
+                              {formatPrice(price.lowPrice, decimals, formatNumber)}
                               </td>
                               <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-right hidden md:table-cell">
-                              {price.volume !== null ? Number(price.volume).toLocaleString() : '-'}
+                              {price.volume !== null ? formatNumber(Number(price.volume), 0) : '-'}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getSourceColor(price.source)}`}>
@@ -449,7 +457,7 @@ export function SecurityPriceHistory({ security }: SecurityPriceHistoryProps) {
       <RowActionSheet
         isOpen={!!contextPrice}
         title={contextPrice ? formatDate(contextPrice.priceDate) : ''}
-        subtitle={contextPrice ? formatPrice(contextPrice.closePrice, decimals) : undefined}
+        subtitle={contextPrice ? formatPrice(contextPrice.closePrice, decimals, formatNumber) : undefined}
         actions={contextActions}
         onClose={() => setContextPrice(undefined)}
       />

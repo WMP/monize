@@ -186,6 +186,7 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, l
   labelNative: string;
   labelConverted: string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -198,7 +199,7 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, l
         {labelConverted} {formatCurrencyFull(d.convertedValue, defaultCurrency)}
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        {d.percentage.toFixed(1)}% of portfolio ({d.count} holding{d.count !== 1 ? 's' : ''})
+        {formatPercent(d.percentage, 1)} of portfolio ({d.count} holding{d.count !== 1 ? 's' : ''})
       </p>
     </div>
   );
@@ -209,7 +210,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-currency-exposure-accounts';
 export function CurrencyExposureReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatPercent } = useNumberFormat();
   const { defaultCurrency, convertToDefault, getRate } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -353,7 +354,7 @@ export function CurrencyExposureReport() {
     nativeValue: { field: 'nativeValue', label: t('currencyExposure.colNativeValue'), align: 'right', value: (item) => formatCurrencyFull(item.nativeValue, item.currency) },
     rate: { field: 'rate', label: t('currencyExposure.colRate', { defaultCurrency }), align: 'right', value: (item) => rateDisplay(item, defaultCurrency) },
     convertedValue: { field: 'convertedValue', label: t('currencyExposure.colConvertedValue', { defaultCurrency }), align: 'right', value: (item) => formatCurrencyFull(item.convertedValue, defaultCurrency) },
-    percentage: { field: 'percentage', label: t('currencyExposure.colPortfolioPct'), align: 'right', value: (item) => `${item.percentage.toFixed(1)}%` },
+    percentage: { field: 'percentage', label: t('currencyExposure.colPortfolioPct'), align: 'right', value: (item) => formatPercent(item.percentage, 1) },
     count: { field: 'count', label: t('currencyExposure.colHoldings'), align: 'right', value: (item) => String(item.count) },
   };
 
@@ -375,7 +376,9 @@ export function CurrencyExposureReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
     // The PDF's headings AND its row cells come from the same ordered record
     // the table renders, so the export cannot drift from the screen it exports
-    // -- and reordering the record moves the two together.
+    // -- and reordering the record moves the two together. Each value function
+    // is locale-aware (percentage through formatPercent, rate through
+    // rateDisplay at FX_RATE_DISPLAY_DECIMALS), so the export matches the screen.
     const headers = sortColumns.map((col) => col.label);
     const rows = allocationData.map((item) => sortColumns.map((col) => col.value(item)));
     const accountLabel = selectedAccountIds.length > 0
@@ -383,7 +386,7 @@ export function CurrencyExposureReport() {
       : 'All Accounts';
     const legendItems = allocationData.map((item) => ({
       color: resolvePdfColor(item.color),
-      label: `${item.currency} - ${formatCurrencyFull(item.convertedValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
+      label: `${item.currency} - ${formatCurrencyFull(item.convertedValue, defaultCurrency)} (${formatPercent(item.percentage, 1)})`,
     }));
     await exportToPdf({
       title: t('page.names.currency-exposure' as Parameters<typeof t>[0]),
@@ -464,9 +467,12 @@ export function CurrencyExposureReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.homeCurrency', { defaultCurrency })}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {totalPortfolioValue > 0
-              ? ((1 - foreignCurrencyExposure / totalPortfolioValue) * 100).toFixed(1)
-              : '0.0'}%
+            {formatPercent(
+              totalPortfolioValue > 0
+                ? (1 - foreignCurrencyExposure / totalPortfolioValue) * 100
+                : 0,
+              1,
+            )}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">

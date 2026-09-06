@@ -18,6 +18,7 @@ import {
   NotificationPreferenceService,
 } from "./notification-preference.service";
 import { UpdateNotificationPreferenceDto } from "./dto/update-notification-preference.dto";
+import { UpdatePortfolioAlertDto } from "./dto/update-portfolio-alert.dto";
 
 /**
  * The per-category channel matrix, from the account's own side. Personal
@@ -41,6 +42,26 @@ export class NotificationPreferenceController {
   @Get()
   list(@Request() req: AuthenticatedRequest) {
     return this.preferences.list(req.user.id, categoriesFor(req));
+  }
+
+  /** The daily portfolio-movement threshold (INVESTMENTS). Declared before the
+   * `:category` routes so the static path is matched first. */
+  @Get("portfolio-alert")
+  async getPortfolioAlert(@Request() req: AuthenticatedRequest) {
+    return {
+      movePercent: await this.preferences.getPortfolioMovePercent(req.user.id),
+    };
+  }
+
+  @Put("portfolio-alert")
+  setPortfolioAlert(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: UpdatePortfolioAlertDto,
+  ) {
+    return this.preferences.setPortfolioMovePercent(
+      req.user.id,
+      dto.movePercent,
+    );
   }
 
   @Put(":category")

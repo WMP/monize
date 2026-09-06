@@ -15,6 +15,18 @@
     "system": {
       "title": "Pemberitahuan sistem",
       "body": "Monize memiliki pemberitahuan sistem untuk Anda. Buka aplikasi untuk detailnya."
+    },
+    "balances": {
+      "title": "Peringatan saldo",
+      "body": "Saldo sebuah akun melewati ambang batas yang Anda tetapkan. Buka Monize untuk detailnya."
+    },
+    "investments": {
+      "title": "Pergerakan investasi",
+      "body": "Investasi Anda bergerak hari ini. Buka Monize untuk detailnya."
+    },
+    "strategies": {
+      "title": "Sinyal strategi",
+      "body": "Salah satu strategi Anda mengubah rekomendasinya. Buka Monize untuk detailnya."
     }
   },
   "actions": {

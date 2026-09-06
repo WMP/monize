@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
-import { formatCurrency } from '@/lib/format';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { MnyFlaggedRow, MnyWarningSummary } from '@/lib/import-mny';
 
 interface MnyWarningsPanelProps {
@@ -131,6 +131,7 @@ export function MnyWarningsPanel({ warnings, heading }: MnyWarningsPanelProps) {
 function FlaggedRowsTable({ rows }: { rows: MnyFlaggedRow[] }) {
   const t = useTranslations('import');
   const { formatDate } = useDateFormat();
+  const { formatCurrency } = useNumberFormat();
 
   return (
     <div className="scrollbar-slim max-h-80 overflow-y-auto overflow-x-auto pr-1">

@@ -119,14 +119,17 @@ vi.mock('@/lib/errors', () => ({
   getErrorMessage: (_error: any, fallback: string) => fallback,
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (val: number, _currency?: string) => `$${val.toFixed(2)}`,
-    formatNumber: (val: number) => val.toString(),
-    defaultCurrency: 'USD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (val: number, _currency?: string) => `$${val.toFixed(2)}`,
+      formatNumber: (val: number) => val.toString(),
+      defaultCurrency: 'USD',
+    }),
+  };
+});
 vi.mock('@/components/layout/PageLayout', () => ({
   PageLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="page-layout">{children}</div>,
 }));

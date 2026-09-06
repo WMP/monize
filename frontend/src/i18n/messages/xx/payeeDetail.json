@@ -135,7 +135,7 @@
     "button": "[XX-Look up contact details-XX]",
     "inProgress": "[XX-Looking up...-XX]",
     "nothingNew": "[XX-No new contact details were found.-XX]",
-    "noProvider": "[XX-Configure an AI provider in AI Settings to look up contact details.-XX]",
+    "noProvider": "[XX-Set up a lookup source in Payee lookup settings to find contact details.-XX]",
     "failed": "[XX-The lookup could not be completed. Try again later.-XX]",
     "dialogTitle": "[XX-Confirm contact details-XX]",
     "dialogSubtitle": "[XX-Nothing is saved for {name} until you confirm.-XX]",
@@ -146,6 +146,7 @@
     "cancel": "[XX-Cancel-XX]",
     "confirm": "[XX-Save {count, plural, one {# change} other {# changes}}-XX]",
     "applied": "[XX-{count, plural, one {Saved # contact detail} other {Saved # contact details}}-XX]",
-    "applyFailed": "[XX-Could not save the contact details-XX]"
+    "applyFailed": "[XX-Could not save the contact details-XX]",
+    "quotaExceeded": "[XX-This month's Google Places lookups are used up. Raise the limit in Payee lookup settings, or wait until next month.-XX]"
   }
 }

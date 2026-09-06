@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Periode",
     "pdfChange": "Perubahan",
     "pdfAnnualizedReturn": "Imbal Hasil Disetahunkan",
-    "tooltipNetWorth": "Nilai Bersih"
+    "tooltipNetWorth": "Nilai Bersih",
+    "savingsNoteMore": "Pada {currentMonth}, Anda menghemat {percent} lebih banyak dibandingkan {previousMonth}, dengan total {amount}",
+    "savingsNoteLess": "Pada {currentMonth}, Anda menghemat {percent} lebih sedikit dibandingkan {previousMonth}, dengan total {amount}",
+    "incomeNoteMore": "Total pendapatan Anda pada {currentMonth} adalah {amount}, yaitu {diff} lebih banyak dibandingkan {previousMonth}",
+    "incomeNoteLess": "Total pendapatan Anda pada {currentMonth} adalah {amount}, yaitu {diff} lebih sedikit dibandingkan {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Total",

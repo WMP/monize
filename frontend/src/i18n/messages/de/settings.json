@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Einstellungen speichern",
-    "savingButton": "Wird gespeichert...",
     "toasts": {
       "saved": "Einstellungen gespeichert",
       "saveFailed": "Einstellungen konnten nicht gespeichert werden",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Benachrichtigungen",
+    "portfolioAlert": {
+      "title": "Wertänderung der Anlagen",
+      "description": "Einmal täglich benachrichtigen, wenn sich meine Anlagekonten über einen Schwellenwert hinaus bewegen, gemessen an Marktveränderungen und Dividenden (Ein- und Auszahlungen ausgenommen).",
+      "enableLabel": "Benachrichtigungen zu Anlagebewegungen aktivieren",
+      "thresholdLabel": "Benachrichtigen, wenn die Tagesbewegung mindestens beträgt",
+      "save": "Speichern",
+      "saved": "Schwellenwert gespeichert",
+      "saveError": "Schwellenwert konnte nicht gespeichert werden",
+      "loadError": "Einstellung für Anlagewarnungen konnte nicht geladen werden",
+      "retry": "Erneut versuchen"
+    },
     "smtpNotConfigured": "E-Mail-Benachrichtigungen sind nicht verfügbar. SMTP wurde vom Administrator nicht konfiguriert.",
     "emailNotificationsTitle": "E-Mail-Benachrichtigungen",
     "emailNotificationsDescription": "E-Mail-Erinnerungen für bevorstehende Rechnungen und Budget-Warnungen empfangen",
@@ -239,15 +248,10 @@
       "heading": "Browser-Push",
       "diagnostics": {
         "summary": "Benachrichtigungsdiagnose",
-        "intro": "Was dieser Browser und dieses Gerät Monize über Benachrichtigungen melden. Nutze die Testschaltfläche, damit Monize eine Benachrichtigung erstellt, nach der du auf deinem Gerät suchen kannst, und dann Kopieren, um den vollständigen Bericht zu senden.",
+        "intro": "Was dieser Browser und dieses Gerät Monize über Benachrichtigungen melden. Aktualisiere nach einer Einstellungsänderung und nutze dann Kopieren, um den vollständigen Bericht zu senden.",
         "refresh": "Aktualisieren",
         "copy": "Bericht kopieren",
-        "copied": "Diagnose in die Zwischenablage kopiert",
-        "localTest": "Testbenachrichtigung anzeigen",
-        "localTestRunning": "Wird geprüft…",
-        "localTestBody": "Wenn du das siehst, funktionieren Benachrichtigungen auf diesem Gerät.",
-        "localTestCreated": "Monize hat eine Benachrichtigung ohne Fehler erstellt, aber hier kann nichts bestätigen, dass das System sie tatsächlich angezeigt hat. Wenn du sie auf deinem Gerät nicht gesehen hast, blendet das System sie aus; aktiviere die Benachrichtigungen für Monize in den Geräteeinstellungen.",
-        "localTestError": "Der Test konnte auf diesem Gerät nicht ausgeführt werden ({detail})."
+        "copied": "Diagnose in die Zwischenablage kopiert"
       },
       "description": "Dieses Gerät registrieren, damit Monize es auch bei geschlossener App erreichen kann. Bisher wird auf diesem Weg nur die Testbenachrichtigung zugestellt; alles andere landet weiterhin in der Glocke.",
       "androidNotify": "Unter Android reicht eine erteilte Berechtigung nicht: Das System kann Benachrichtigungen trotzdem ausblenden. Halte das Monize-Symbol auf deinem Startbildschirm gedrückt, tippe auf App-Info, dann auf Benachrichtigungen, und stelle sicher, dass sie aktiviert sind.",
@@ -260,7 +264,6 @@
       "thisDevice": "Dieses Gerät",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Unbenanntes Gerät",
-      "lastSeen": "Zuletzt aktiv {when}",
       "noLiveDevices": "Noch kein Gerät registriert. Aktivieren Sie Push auf diesem Gerät, um einen Test zu senden.",
       "notConfigured": "Browser-Push ist auf dieser Monize-Instanz nicht verfügbar. Eine Administratorin oder ein Administrator kann es im Admin-Bereich aktivieren.",
       "disabledByAdmin": "Die Administration hat Browser-Push für diese Monize-Instanz deaktiviert.",
@@ -301,25 +304,42 @@
           "transient": "nicht zugestellt (vorübergehender Fehler); erneut versuchen",
           "unconfigured": "diese Instanz kann Push-Nachrichten derzeit nicht signieren"
         }
+      },
+      "transport": {
+        "webpush": "Web-Push",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Endpunkt",
+        "transport": "Zugestellt über",
+        "registeredIp": "Registriert von",
+        "registered": "Registriert",
+        "lastSeen": "Zuletzt aktiv",
+        "lastDelivery": "Letzte Zustellung",
+        "noDelivery": "Noch nichts zugestellt",
+        "userAgent": "Browser",
+        "unknownIp": "Unbekannt"
       }
     },
     "preferences": {
       "heading": "Wie ich benachrichtigt werde",
-      "description": "Die Glocke zeigt immer jede Benachrichtigung. Wählen Sie, welche Arten Monize zusätzlich per E-Mail oder Push sendet und wie oft.",
+      "description": "Wähle, welche Arten Monize per E-Mail oder Push sendet und wie oft.",
       "categoryHeader": "Benachrichtigung",
       "channels": {
-        "inApp": "In der App",
         "emailReport": "E-Mail (Bericht)",
         "emailNotification": "E-Mail (Warnung)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Benachrichtigungen werden über eine selbst betriebene Distributor-App wie ntfy zugestellt, statt über den Push-Dienst eines Browser-Anbieters. Registriere in dieser App einen Endpunkt, um diesen Kanal zu nutzen."
       },
       "categories": {
         "PAYMENTS": "Rechnungen und Geplantes",
         "BUDGETS": "Budgets",
-        "SYSTEM": "Systemwarnungen"
+        "SYSTEM": "Systemwarnungen",
+        "BALANCES": "Kontostände",
+        "INVESTMENTS": "Anlagewert",
+        "STRATEGIES": "Strategiesignale"
       },
-      "inAppAlways": "Immer in der Glocke sichtbar",
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",
       "saveFailed": "Diese Einstellung konnte nicht gespeichert werden",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push für {category}",
       "unifiedpushToggleLabel": "UnifiedPush für {category}",
       "emailUnavailable": "Aktivieren Sie oben die E-Mail-Benachrichtigungen, um diese per E-Mail zu senden.",
-      "pushUnavailable": "Aktivieren Sie zuerst Push auf diesem Gerät (siehe unten).",
-      "unifiedpushUnavailable": "Registriere einen UnifiedPush-Endpunkt in deiner Distributor-App, um diesen Kanal zu nutzen."
+      "pushUnavailable": "Für Push ist kein Gerät registriert, daher kann dieser Kanal nichts zustellen.",
+      "pushEnableHint": "Dieser Browser ist nicht für Push-Benachrichtigungen registriert."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Automatisches Backup",
     "help": "Hilfe & Support",
     "dangerZone": "Gefahrenbereich",
-    "about": "Über"
+    "about": "Über",
+    "payeeLookup": "Zahlungsempfänger-Suche"
   },
   "page": {
     "title": "Einstellungen",
@@ -885,14 +906,6 @@
         "step3": "Antworten werden zurück in den Chat gestreamt. Ein Statuspunkt zeigt an, ob Ihr Agent verbunden ist.",
         "note": "Es läuft nichts, bis Ihr Agent verbunden ist und zuhört. Der Chat zeigt Verbindungsanweisungen an."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatische Suche nach Kontaktangaben des Zahlungsempfängers",
-      "subtitle": "Sucht Website, Adresse, E-Mail-Adresse und Telefonnummer eines neuen Zahlungsempfängers automatisch über Ihren konfigurierten KI-Anbieter. Dabei werden der Name des Zahlungsempfängers sowie vorhandene Notizen, Website, Adresse, E-Mail-Adresse und Telefonnummer übermittelt, damit die Suche das richtige Unternehmen am richtigen Standort erkennt.",
-      "toggleLabel": "Automatische Suche nach Kontaktangaben aktivieren",
-      "enabled": "Automatische Suche nach Kontaktangaben aktiviert",
-      "disabled": "Automatische Suche nach Kontaktangaben deaktiviert",
-      "saveFailed": "Die Einstellung zur Kontaktsuche konnte nicht gespeichert werden"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Gesamter Zeitraum"
     },
     "estCostTooltip": "Geschätzt anhand der Kostensätze, die Sie für jeden Anbieter konfiguriert haben. Aktivitäten ohne passenden Satz werden nicht berücksichtigt."
+  },
+  "payeeLookup": {
+    "title": "Zahlungsempfänger-Suche",
+    "subtitle": "Woher Website, Adresse, E-Mail und Telefonnummer eines Zahlungsempfängers stammen und wann eine Suche von selbst läuft.",
+    "saved": "Einstellungen zur Zahlungsempfänger-Suche gespeichert",
+    "saveFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht gespeichert werden",
+    "loadFailed": "Einstellungen zur Zahlungsempfänger-Suche konnten nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
+    "googlePlaces": {
+      "toggleLabel": "Google Places für die Zahlungsempfänger-Suche verwenden",
+      "notConfigured": "Füge einen Google-Places-API-Schlüssel hinzu, um Unternehmen im Google-Verzeichnis statt über deinen KI-Anbieter zu suchen.",
+      "operatorManaged": "Von der Administration dieses Servers konfiguriert. Du kannst es für deine eigenen Zahlungsempfänger deaktivieren.",
+      "configure": "Einrichten",
+      "edit": "Bearbeiten",
+      "removeKey": "Schlüssel entfernen",
+      "usage": "Diesen Monat genutzt: {used} von {cap}",
+      "usageNoCap": "Diesen Monat genutzt: {used}. Kein Monatslimit.",
+      "keyUnreadable": "Der gespeicherte API-Schlüssel kann von diesem Server nicht gelesen werden. Das passiert, wenn ein Backup auf einer anderen Instanz wiederhergestellt wird oder sich der Verschlüsselungsschlüssel ändert. Gib den Schlüssel erneut ein, um das zu beheben.",
+      "encryptionUnavailable": "Auf diesem Server ist kein Verschlüsselungsschlüssel konfiguriert, daher kann kein API-Schlüssel sicher gespeichert werden. Bitte die Administration, einen einzurichten.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize sendet den Namen des Zahlungsempfängers und die bereits vorhandene Adresse an Google und speichert dort nichts.",
+      "apiKeyLabel": "API-Schlüssel",
+      "apiKeyPlaceholder": "Google-Places-API-Schlüssel einfügen",
+      "apiKeyHelp": "Erstelle in der Google Cloud Console einen Schlüssel mit aktivierter Places API (New). Lass das Feld leer, um den bereits gespeicherten Schlüssel zu behalten.",
+      "capToggleLabel": "Anfragen pro Monat begrenzen",
+      "capHelp": "Google gewährt {free} kostenlose Text-Search-Anfragen pro Monat für die Felder, die diese Suche benötigt. Über dem Limit greift die Suche auf deinen KI-Anbieter zurück.",
+      "capLabel": "Anfragen pro Monat",
+      "capRange": "Gib eine Zahl zwischen {min} und {max} ein.",
+      "test": "Testen",
+      "testing": "Wird getestet...",
+      "testSuccess": "Google hat den Schlüssel akzeptiert.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "setupInstructions": "Einrichtungsanleitung"
+    },
+    "automatic": {
+      "title": "Automatische Kontaktsuche für Zahlungsempfänger",
+      "subtitle": "Website, Adresse, E-Mail und Telefonnummer eines neuen Zahlungsempfängers automatisch nachschlagen. Der Name des Zahlungsempfängers wird gesendet, zusammen mit vorhandenen Notizen, Website, Adresse, E-Mail und Telefonnummer, damit die Suche das richtige Unternehmen und den richtigen Standort unterscheiden kann.",
+      "toggleLabel": "Automatische Kontaktsuche für Zahlungsempfänger aktivieren",
+      "enabled": "Automatische Kontaktsuche für Zahlungsempfänger aktiviert",
+      "disabled": "Automatische Kontaktsuche für Zahlungsempfänger deaktiviert",
+      "saveFailed": "Einstellung für die Kontaktsuche konnte nicht aktualisiert werden",
+      "noSource": "Schalten Sie oben eine Quelle ein, um Zahlungsempfänger automatisch zu suchen. Sind beide aus, kann nichts eine Suche beantworten."
+    },
+    "order": {
+      "title": "Welche Quelle zuerst antwortet",
+      "placesTitle": "Google Places",
+      "placesHelp": "Verzeichnisdaten, günstiger pro Suche. Google hat keine E-Mail-Adressen.",
+      "aiTitle": "Vorhandener KI-Anbieter",
+      "aiHelp": "Findet auch E-Mail-Adressen und kostet bei jeder Suche einen Modellaufruf.",
+      "aiToggleLabel": "KI-Anbieter für Zahlungsempfänger-Suchen verwenden",
+      "aiProviderLabel": "Zu verwendender Anbieter",
+      "aiProviderAny": "Beliebiger Anbieter, nach Priorität",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten"
+    }
   }
 }

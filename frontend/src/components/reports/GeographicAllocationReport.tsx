@@ -60,6 +60,7 @@ function CustomTooltip({ active, payload, formatCurrencyFull, holdingLabel }: {
   formatCurrencyFull: (v: number) => string;
   holdingLabel: (count: number) => string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   const label = 'region' in d && !('exchange' in d) ? (d as RegionAllocation).region : (d as ExchangeAllocation).exchange;
@@ -67,7 +68,7 @@ function CustomTooltip({ active, payload, formatCurrencyFull, holdingLabel }: {
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100">{label}</p>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        {formatCurrencyFull(d.marketValue)} ({('percentage' in d ? d.percentage : 0).toFixed(1)}%)
+        {formatCurrencyFull(d.marketValue)} ({formatPercent(('percentage' in d ? d.percentage : 0), 1)})
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400">{holdingLabel(d.count)}</p>
     </div>
@@ -79,7 +80,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-geographic-allocation-accounts';
 export function GeographicAllocationReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [securities, setSecurities] = useState<Security[]>([]);
@@ -259,14 +260,14 @@ export function GeographicAllocationReport() {
         chartContainer: chartRef.current,
         chartLegend: countryData.map((item) => ({
           color: resolvePdfColor(item.color),
-          label: `${item.country} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
+          label: `${item.country} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${formatPercent(item.percentage, 1)})`,
         })),
         tableData: {
           headers: [t('geographicAllocation.colCountry'), t('geographicAllocation.colMarketValue'), t('geographicAllocation.colPortfolioPct')],
           rows: sortedCountryData.map((item) => [
             item.country,
             formatCurrencyFull(item.marketValue, defaultCurrency),
-            `${item.percentage.toFixed(1)}%`,
+            formatPercent(item.percentage, 1),
           ]),
         },
         filename: 'geographic-allocation',
@@ -286,24 +287,24 @@ export function GeographicAllocationReport() {
           item.region,
           String(item.count),
           formatCurrencyFull(item.marketValue, defaultCurrency),
-          `${item.percentage.toFixed(1)}%`,
+          formatPercent(item.percentage, 1),
         ])
       : exchangeData.map(item => [
           item.exchange,
           item.country,
           String(item.count),
           formatCurrencyFull(item.marketValue, defaultCurrency),
-          `${item.percentage.toFixed(1)}%`,
+          formatPercent(item.percentage, 1),
         ]);
 
     const legendItems = viewType === 'region'
       ? regionData.map((item) => ({
           color: resolvePdfColor(item.color),
-          label: `${item.region} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
+          label: `${item.region} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${formatPercent(item.percentage, 1)})`,
         }))
       : exchangeData.map((item, idx) => ({
           color: resolvePdfColor(COUNTRY_COLOURS[idx % COUNTRY_COLOURS.length]),
-          label: `${item.exchange} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
+          label: `${item.exchange} - ${formatCurrencyFull(item.marketValue, defaultCurrency)} (${formatPercent(item.percentage, 1)})`,
         }));
 
     await exportToPdf({
@@ -595,7 +596,7 @@ export function GeographicAllocationReport() {
                       {formatCurrencyFull(item.marketValue, defaultCurrency)}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                      {item.percentage.toFixed(1)}%
+                      {formatPercent(item.percentage, 1)}
                     </td>
                   </tr>
                 ))}
@@ -745,7 +746,7 @@ export function GeographicAllocationReport() {
                         {formatCurrencyFull(item.marketValue, defaultCurrency)}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                        {item.percentage.toFixed(1)}%
+                        {formatPercent(item.percentage, 1)}
                       </td>
                     </tr>
                   ))
@@ -770,7 +771,7 @@ export function GeographicAllocationReport() {
                         {formatCurrencyFull(item.marketValue, defaultCurrency)}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                        {item.percentage.toFixed(1)}%
+                        {formatPercent(item.percentage, 1)}
                       </td>
                     </tr>
                   ))}

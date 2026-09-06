@@ -37,12 +37,15 @@ const logger = createLogger('PushDiagnostics');
  * (Android 10): all three permission APIs (`Notification.permission`,
  * `permissions.query`, `pushManager.permissionState`) read `granted`, and
  * `getNotifications()` returns the notification even while the OS suppresses its
- * display. So the panel dumps every signal for a human to read, and its
- * client-only self-test (`showNotification`, no server, no subscription) reports
- * only that the browser CREATED a notification without error -- never that the
- * system showed it, because nothing here can know that. The honest instruction
- * is to look for it and, if it is absent, enable notifications in the OS
- * settings.
+ * display. So the panel dumps every signal for a human to read, and stops there.
+ *
+ * It deliberately offers no notification of its own. It used to carry a
+ * client-only probe (`showNotification`, no server, no subscription) whose only
+ * honest verdict was "the browser created one -- go and look", which on the
+ * device where it mattered is indistinguishable from having done nothing. It sat
+ * one panel below "Send test notification", which exercises the whole delivery
+ * path and reports per device, so the weaker of two tests was the one offered
+ * next to the evidence. One test, on the path that is actually used.
  *
  * Field labels are the API identifiers being inspected, kept verbatim: this is a
  * diagnostic readout of names like `Notification.permission`, not prose to
@@ -54,19 +57,10 @@ interface DiagnosticRow {
   value: string;
 }
 
-type LocalTest =
-  | { kind: 'idle' }
-  | { kind: 'running' }
-  | { kind: 'created' }
-  | { kind: 'error'; detail: string };
-
-const TEST_DISPLAY_GRACE_MS = 400;
-
 export function PushDiagnostics() {
   const t = useTranslations('settings.notifications.push.diagnostics');
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const [rows, setRows] = useState<DiagnosticRow[]>([]);
-  const [localTest, setLocalTest] = useState<LocalTest>({ kind: 'idle' });
 
   const gather = useCallback(async (): Promise<DiagnosticRow[]> => {
     const collected: DiagnosticRow[] = [];
@@ -271,66 +265,6 @@ export function PushDiagnostics() {
   // returned to, so re-read on the way back rather than trusting the mount read.
   useRereadOnVisible(refresh);
 
-  /**
-   * Show a notification straight from the service worker, then ask the
-   * registration whether it is actually there. A created-but-absent notification
-   * is the OS suppressing display -- the exact state a web permission of
-   * `granted` cannot rule out on Android.
-   *
-   * Deliberately not async at the click boundary in the sense that matters: it
-   * requests nothing (no permission prompt), it only shows -- so there is no
-   * transient-activation constraint to respect here.
-   */
-  const runLocalTest = useCallback(async () => {
-    setLocalTest({ kind: 'running' });
-    try {
-      if (typeof Notification === 'undefined') {
-        setLocalTest({ kind: 'error', detail: 'Notification API absent' });
-        return;
-      }
-      if (Notification.permission !== 'granted') {
-        setLocalTest({
-          kind: 'error',
-          detail: `permission is ${Notification.permission}`,
-        });
-        return;
-      }
-      if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
-        setLocalTest({ kind: 'error', detail: 'no service worker' });
-        return;
-      }
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        setLocalTest({ kind: 'error', detail: 'no service worker registration' });
-        return;
-      }
-      const tag = `monize-diagnostic-${Date.now()}`;
-      await registration.showNotification('Monize', {
-        body: t('localTestBody'),
-        tag,
-        // Stay until dismissed: a desktop banner that auto-hides after a few
-        // seconds reads as "appeared for a moment and vanished", and the point
-        // of the probe is that the reader gets to look at it.
-        requireInteraction: true,
-      });
-      await new Promise((resolve) =>
-        setTimeout(resolve, TEST_DISPLAY_GRACE_MS),
-      );
-      // Close it again so the probe leaves nothing behind. Deliberately NOT a
-      // verdict: the OS suppresses the display while getNotifications still
-      // lists the notification (proven on Android 10), so a non-empty result
-      // cannot mean "the user saw it" -- and an empty one is not reliable the
-      // other way either. No web API reveals the OS notification toggle, so the
-      // honest report is "created, verify it visually", never "it works".
-      const created = await registration.getNotifications({ tag });
-      created.forEach((notification) => notification.close());
-      setLocalTest({ kind: 'created' });
-    } catch (error) {
-      logger.error('Local notification test failed', error);
-      setLocalTest({ kind: 'error', detail: getErrorMessage(error, 'failed') });
-    }
-  }, [t]);
-
   const copyReport = useCallback(async () => {
     const text = rows.map((row) => `${row.label}: ${row.value}`).join('\n');
     try {
@@ -358,31 +292,12 @@ export function PushDiagnostics() {
         <Button
           variant="outline"
           size="sm"
-          disabled={localTest.kind === 'running'}
-          onClick={() => void runLocalTest()}
-        >
-          {localTest.kind === 'running' ? t('localTestRunning') : t('localTest')}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
           disabled={rows.length === 0}
           onClick={() => void copyReport()}
         >
           {t('copy')}
         </Button>
       </div>
-
-      {localTest.kind === 'created' && (
-        <p className="mb-3 text-sm text-amber-700 dark:text-amber-400">
-          {t('localTestCreated')}
-        </p>
-      )}
-      {localTest.kind === 'error' && (
-        <p className="mb-3 text-sm text-amber-700 dark:text-amber-400">
-          {t('localTestError', { detail: localTest.detail })}
-        </p>
-      )}
 
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,auto)_minmax(0,1fr)]">
         {rows.map((row) => (

@@ -3,6 +3,7 @@
 import { PerformanceSummary } from '@/lib/monte-carlo';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { useTranslations } from 'next-intl';
+import type { NumberFormatters } from '@/hooks/useNumberFormat';
 
 export type SummaryRow = {
   label: string;
@@ -95,25 +96,28 @@ export function buildPerformanceSummaryRows(
 export function formatSummaryValue(
   v: number,
   kind: SummaryRow['format'],
-  formatCurrency: (v: number) => string,
+  formatters: NumberFormatters,
 ): string {
   if (!Number.isFinite(v)) return '—';
-  if (kind === 'currency') return formatCurrency(v);
-  if (kind === 'percent') return `${(v * 100).toFixed(2)}%`;
-  return v.toFixed(2);
+  if (kind === 'currency') return formatters.formatCurrency(v);
+  // The band values are fractions (0.1234 = 12.34%); the formatter takes
+  // percentage units.
+  if (kind === 'percent') return formatters.formatPercent(v * 100, 2);
+  // A ratio is still a number a person reads, so it takes the same separators.
+  return formatters.formatNumber(v, 2);
 }
 
 export function PerformanceSummaryTable({
   summary,
-  formatCurrency,
+  formatters,
 }: {
   summary: PerformanceSummary;
-  formatCurrency: (v: number) => string;
+  formatters: NumberFormatters;
 }) {
   const t = useTranslations('reports');
   const rows = buildPerformanceSummaryRows(summary, t as TranslationFn);
   const formatValue = (v: number, kind: SummaryRow['format']): string =>
-    formatSummaryValue(v, kind, formatCurrency);
+    formatSummaryValue(v, kind, formatters);
 
   return (
     <div className="overflow-x-auto">

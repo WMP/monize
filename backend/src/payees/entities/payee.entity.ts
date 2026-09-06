@@ -92,7 +92,13 @@ export class Payee {
   @Column({ type: "varchar", length: 255, nullable: true })
   email: string | null;
 
-  @ApiPropertyOptional({ example: "+1 206-448-8762" })
+  /**
+   * E.164 with an optional RFC 3966 extension suffix (`+12064488762`,
+   * `+442079460958;ext=12`), normalized on write by `PayeesService`. Rows
+   * written before that rule are not backfilled, so a reader formats through
+   * `formatPhoneForDisplay` rather than assuming the shape.
+   */
+  @ApiPropertyOptional({ example: "+12064488762" })
   @Column({ type: "varchar", length: 50, nullable: true })
   phone: string | null;
 

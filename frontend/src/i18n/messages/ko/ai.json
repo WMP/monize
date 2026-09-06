@@ -218,7 +218,7 @@
     "hideHelp": "숨기기",
     "helpIntro": "자체 MCP 에이전트를 실행하면 구독을 사용하여 이 채팅의 프롬프트에 응답합니다.",
     "step1": "액세스 토큰 만들기",
-    "tokenStep": "먼저 <link>사용자 설정 -> API 액세스</link>에서 Personal Access Token을 만든 다음 아래에서 사용하세요.",
+    "tokenStep": "먼저 <link>사용자 설정 -> API 액세스</link>에서 Personal Access Token을 만든 다음 아래에서 사용하세요. 이 에이전트에는 전용 토큰을 발급하세요. 다른 MCP 클라이언트와 공유한 토큰은 해당 클라이언트의 확인 요청도 여기로 보냅니다.",
     "claudeHeading": "Claude CLI로 연결",
     "step2": "Claude CLI를 사용하여 에이전트를 Monize에 연결하세요:",
     "allowToolsNote": "Claude를 종료한 후 이 스위치와 함께 다시 시작하면 모든 Monize 도구 호출이 자동으로 승인됩니다:",

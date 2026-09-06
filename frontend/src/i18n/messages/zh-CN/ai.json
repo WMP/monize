@@ -218,7 +218,7 @@
     "hideHelp": "隐藏",
     "helpIntro": "运行您自己的 MCP 代理，它将使用您的订阅来回答此聊天中的提示。",
     "step1": "创建您的访问令牌",
-    "tokenStep": "首先，在<link>用户设置 -> API 访问</link>中创建一个 Personal Access Token，然后在下面使用它。",
+    "tokenStep": "首先，在<link>用户设置 -> API 访问</link>中创建一个 Personal Access Token，然后在下面使用它。 请为该代理单独创建一个令牌：与其他 MCP 客户端共用的令牌会把那个客户端的确认请求也发到这里。",
     "claudeHeading": "使用 Claude CLI 连接",
     "step2": "使用 Claude CLI 将代理连接到 Monize：",
     "allowToolsNote": "退出 Claude 并使用此开关重新启动，使其自动批准每个 Monize 工具调用：",

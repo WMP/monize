@@ -1,20 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { MonthlyComparisonReport } from './MonthlyComparisonReport';
 
 vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyCompact: (n: number) => `$${Math.round(n)}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-    defaultCurrency: 'CAD',
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number, decimals = 2) => `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`,
+      formatPercent: (n: number, decimals = 2) => `${n.toFixed(decimals)}%`,
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyCompact: (n: number) => `$${Math.round(n)}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 
 vi.mock('@/lib/chart-colours', () => ({
   CHART_COLOURS: ['#3b82f6', '#ef4444', '#22c55e', '#f97316'],
@@ -193,8 +198,65 @@ describe('MonthlyComparisonReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Summary')).toBeInTheDocument();
     });
-    expect(screen.getByText(mockResponse.notes.savingsNote)).toBeInTheDocument();
-    expect(screen.getByText(mockResponse.notes.incomeNote)).toBeInTheDocument();
+    // The summary notes are computed client-side (locale-aware month labels
+    // and currency formatting), not read verbatim from the backend's English
+    // notes.savingsNote/incomeNote -- those exist only for the AI/MCP payload.
+    expect(screen.getByText(
+      'In January 2026, you saved 100.0% more than December 2025 for a total of $2000.00',
+    )).toBeInTheDocument();
+    expect(screen.getByText(
+      'Your total income in January 2026 was $5000.00, which is $500.00 more than December 2025',
+    )).toBeInTheDocument();
+  });
+
+  it('renders the "less" wording when savings and income fell', async () => {
+    mockGetMonthlyComparison.mockResolvedValue({
+      ...mockResponse,
+      incomeExpenses: {
+        ...mockResponse.incomeExpenses,
+        currentIncome: 4000,
+        incomeChange: -500,
+        incomeChangePercent: -11.11,
+        currentSavings: 500,
+        savingsChange: -500,
+        savingsChangePercent: -50,
+      },
+    });
+    render(<MonthlyComparisonReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Summary')).toBeInTheDocument();
+    });
+    expect(screen.getByText(
+      'In January 2026, you saved 50.0% less than December 2025 for a total of $500.00',
+    )).toBeInTheDocument();
+    expect(screen.getByText(
+      'Your total income in January 2026 was $4000.00, which is $500.00 less than December 2025',
+    )).toBeInTheDocument();
+  });
+
+  // percentChange() answers a flat +100 whenever the previous period was 0, so
+  // the badge takes its sign from the amount: a fall from zero is a red "-100.0%",
+  // never a red "+100.0%".
+  it('signs the delta badge from the amount, not the percentage', async () => {
+    mockGetMonthlyComparison.mockResolvedValue({
+      ...mockResponse,
+      incomeExpenses: {
+        ...mockResponse.incomeExpenses,
+        previousSavings: 0,
+        currentSavings: -500,
+        savingsChange: -500,
+        savingsChangePercent: 100,
+      },
+    });
+    render(<MonthlyComparisonReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Income vs Expenses')).toBeInTheDocument();
+    });
+    // Scoped to the Savings card: a legitimate "+100.0%" also appears in the
+    // expense comparison table, where the percentage really did rise.
+    const savingsCard = screen.getByText('Savings').parentElement as HTMLElement;
+    expect(within(savingsCard).getByText('-100.0%')).toBeInTheDocument();
+    expect(within(savingsCard).queryByText('+100.0%')).not.toBeInTheDocument();
   });
 
   it('renders expense comparison table with category names', async () => {

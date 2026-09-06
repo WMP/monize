@@ -136,7 +136,7 @@ describe('BudgetHealthScoreReport (phone wrapped category impact table)', () => 
     expect(row).toBeDefined();
     // Each caption sits immediately beside the value it names, as its own text
     // node, so a `getByText` on the value still matches the value node.
-    expect(rowText(row)).toContain('% Used123456.78%');
+    expect(rowText(row)).toContain('% Used123,456.78%');
     expect(rowText(row)).toContain('Score Impact-14.85');
     // The category name is the row's identity, not one of its figures, so it
     // carries no caption -- it is the first thing on the line and names itself.
@@ -422,7 +422,7 @@ describe('BudgetHealthScoreReport (phone wrapped category impact table)', () => 
 
     // Over budget is red; exactly 100% is NOT over budget and stays neutral.
     expect(overPct.className).toContain('text-red-600');
-    expect(overPct.textContent).toContain('123456.78%');
+    expect(overPct.textContent).toContain('123,456.78%');
     expect(evenPct.className).toContain('text-gray-600');
     expect(underPct.className).toContain('text-gray-600');
 

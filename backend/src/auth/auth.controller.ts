@@ -25,6 +25,7 @@ import {
 } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { rateLimit } from "../common/throttle.util";
+import { clientIpOf } from "../common/client-ip.util";
 import { Response, Request as ExpressRequest } from "express";
 
 import { AuthService } from "./auth.service";
@@ -992,8 +993,10 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const userAgent = req.headers["user-agent"] || "Unknown Device";
-    const rawIp = req.ip || req.socket?.remoteAddress;
-    const ipAddress = rawIp?.replace(/^::ffff:/, "");
+    // One reading of the client address for the whole deployment
+    // (`clientIpOf`): a second copy diverging on the `::ffff:` prefix would
+    // store the same machine under two spellings in two tables.
+    const ipAddress = clientIpOf(req) ?? undefined;
     const result = await this.authService.verify2FA(
       dto.tempToken,
       dto.code,

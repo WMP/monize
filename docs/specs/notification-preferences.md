@@ -104,10 +104,17 @@ register a distributor endpoint -- and ships live with its transport (Section 15
 bell shows *all* unread notifications, so `in_app` is not a user-toggled column
 in the first cut -- the notifications table stays the source of truth and the
 throttle below never suppresses an in-app row. The columns the user toggles are
-`email`, `push`, `unifiedpush`; the matrix still *renders* an in-app column, but
-locked on, so the grid reads as a complete matrix and a future "mute a whole
-group's bell entries" decision has an obvious home. (If that decision is later
-taken, `in_app=off` means the row is not written -- there is no hidden state.)
+`email`, `push`, `unifiedpush`.
+
+The first cut also *rendered* an in-app column, locked on, so the grid read as a
+complete matrix. That column has since been removed: a sixth of a phone's width
+spent on a column of permanent ticks is width the four real controls needed, and
+"the bell always shows every notification" is one sentence above the grid rather
+than a control that cannot be operated. Nothing about the model changed -- the
+in-app row is still always written -- and if the "mute a whole group's bell
+entries" decision is later taken, `in_app=off` means the row is not written and
+the column comes back with something to toggle. There is no hidden state either
+way.
 
 **Groups vs. what exists today.** The nine groups above are the *target*. Today
 only three of them have producers, and the code already names them:
@@ -406,8 +413,12 @@ Phase 1 (this slice):
   `notification-email-gate.guard.spec.ts` enforces both halves: no email sender
   gates on the bare master switch, and each category producer names its category.
 - `frontend/src/components/settings/NotificationPreferencesMatrix.tsx` (new) --
-  the category x channel grid (in_app locked-on, email toggle per category),
-  mounted in `NotificationsSection.tsx` in place of the single email toggle.
+  the category x channel grid (email toggle per category), mounted in
+  `NotificationsSection.tsx` in place of the single email toggle. One DOM at
+  every width: below `md` each category is a card of labelled control rows, from
+  `md` up the row wrapper becomes `contents` and its cells fall into the grid.
+  `md` rather than `sm` because `InfoTooltip` is itself desktop-only, so the
+  per-column help has to be inline prose wherever the tooltip is not rendered.
 - `frontend/src/lib/notification-preferences.ts` (new) -- api client + the
   category list + default table mirrored from the backend (contract test).
 - i18n: `settings.notifications.preferences.*` (category labels, channel
@@ -823,9 +834,69 @@ skipped (Section 4). `throttle_minutes = 0` disables the window.
 The matrix's `push` column (rendered "coming soon" in Phase 2) becomes a real
 per-category toggle. **A matrix cell cannot turn a device on** (permission needs
 a user gesture, Section on push enablement), so the column is enabled only when
-the user has >= 1 live device; otherwise it renders "enable push on this device
-first" linking to the existing push panel. The `unifiedpush` column went live with
-its transport (Section 15), gated the same way on a live UnifiedPush device.
+the user has >= 1 live device. The `unifiedpush` column went live with its
+transport (Section 15), gated the same way on a live UnifiedPush device.
+
+What the cell cannot do, a button beside it can. The matrix first rendered
+"enable push on this device first (see below)" -- a pointer, in a section that
+already contained the thing pointed at. It now renders
+`EnableThisEndpointButton`, which carries the same click-driven permission
+request the devices panel does (`usePushEnable`, one copy of the
+transient-activation rule and the three refusal messages) and keys off **this
+endpoint** rather than the account: a reader whose phone is registered has a
+working channel and still nothing on the machine in front of them, and that is
+exactly the state the old copy had no words for. It renders nothing -- hint
+included -- when it could not help: the instance does not offer push, the browser
+cannot receive it, or the endpoint is already registered.
+
+### 14.5.1 Telling one registered endpoint from another
+
+`device_name` is derived from the User-Agent (`defaultDeviceName`), so two
+browsers on one machine are listed under identical words -- and a reader
+deciding whether to REVOKE a registration has to be able to identify it first.
+The device list therefore shows, per row: the endpoint digest (the row's own
+identity; the endpoint itself is a delivery credential and never leaves the
+server), the wire, the address it was registered from, when it was registered,
+when it was last active, when it was last actually delivered to, and the agent
+string.
+
+`push_subscriptions.registered_ip INET` (migration 185) holds that address. Two
+properties are load-bearing:
+
+- **It is REGISTERED, not current.** A push travels from this server to the push
+  SERVICE, which reaches the device over a connection this deployment never
+  sees, so where a device is reachable today is not knowable here. The column is
+  written from the subscribe request and refreshed on each re-registration, at
+  the same moment `last_seen_at` moves -- the refresh arm OVERWRITES rather than
+  `COALESCE`s, because an older address under a moved `last_seen_at` would make
+  the pair a lie.
+- **Unknown is a state.** Null for a row predating the column and for a request
+  whose address the server could not determine; the client renders "Unknown"
+  rather than a blank cell or an invented address.
+
+The address is read by `clientIpOf` (`backend/src/common/client-ip.util.ts`),
+which is the deployment's one reading of a client address -- shared with the 2FA
+trusted-device path, so one machine cannot be stored under two spellings (a
+dual-stack listener reports every IPv4 client as `::ffff:<v4>`). It is the
+reader's own address, shown only to them, on an RLS-policied user-owned table;
+`push_subscriptions` stays in `EXCLUDED_FROM_EXPORT`, so it does not travel in a
+backup.
+
+**It only exists if the deployment's edge asserts it.** Every request reaches
+the backend through the Next.js proxy (`frontend/src/proxy.ts`), so the
+backend's socket peer is always that proxy; what `req.ip` resolves to is
+whatever `X-Forwarded-For` the proxy set. Next.js middleware cannot see the
+connecting socket either (`NextRequest.ip` was Vercel-only and was removed in
+Next 15), so the proxy forwards the address the operator's reverse proxy put in
+`X-Real-IP` or at the head of `X-Forwarded-For` (`assertedClientAddress`,
+`frontend/src/lib/client-address.ts`) -- and forwards NOTHING when neither is
+present, so a browser's own `X-Forwarded-For` can never pass through unaltered.
+The predecessor fell back to the literal `127.0.0.1`, which every deployment
+behind an edge that sets only `X-Forwarded-For` (Traefik, most cloud load
+balancers) then recorded against every registration and every trusted device --
+an address nobody was at, indistinguishable from a genuine loopback connection.
+A deployment fronted by nothing has no client address to record, and the column
+says so.
 
 ### 14.6 Chart-in-push (R5) -- feasibility and the security envelope
 
@@ -982,3 +1053,120 @@ there with their enforcement status).
   equal (`notification-preferences.contract.test.ts`), now over four channels.
 - The matrix's `unifiedpush` column gates on `>= 1` live UnifiedPush
   subscription, the same shape as the push column's device gating.
+
+---
+
+## 16. Maintainer decisions resolving #1291 open questions (2026-09)
+
+Section 12 recorded autonomous defaults with the caveat that a human confirms
+them before shipping to users. The maintainer answered the #1291 "Open questions"
+directly in **discussion kenlasko/monize#1291, comment dated 2026-09-01**; each
+item below cites that answer, so it is a **confirmed decision, not an AI default**.
+Where an answer expands scope beyond PR #1304 it is marked **NEW** -- a follow-on
+surface or producer, with its spec obligation named. (Per the org rule that AI
+output is auxiliary, the source of each answer is named so the next reader can
+verify it against the discussion rather than trusting this summary.)
+
+### 16.1 Product
+
+- **MVP notification types** -- every type the app supports today, plus others as
+  they make sense. PR #1304 ships the three live categories (`PAYMENTS`,
+  `BUDGETS`, `SYSTEM`); further types arrive each with its producer (Section 3).
+- **Successful auto-backups** -- no notification; failures only. Done: the only
+  backup notification types are `BACKUP_FAILED` and `BACKUP_PARTIAL`, and neither
+  announces a success.
+- **Security notifications mandatory?** -- no, opt-in. Confirms D6.
+- **History expiry** -- automatic. Done (`purgeOld`).
+- **User-configurable balance thresholds** -- yes. **NEW**: a `balances` producer
+  with per-account user thresholds. Financial, so it starts from its own spec
+  (Section 16.4).
+- **Investment / portfolio-movement alerts** -- maintainer's choice, "could be
+  useful". **NEW / optional**: an `investments`/portfolio producer. Financial,
+  its own spec (Section 16.4).
+- **Default push-content detail** -- no preference. Keep the privacy-first
+  category copy already shipped (Section 14 and "Privacy of the wire"): the wire
+  carries the category's generic copy, never an amount or a payee.
+
+### 16.2 UX
+
+- **Opening a notification marks it read** -- yes. (Verify the bell marks-on-open;
+  `markRead` exists.)
+- **"Mark all as read"** -- yes. Done (`PATCH /notifications/read-all`).
+- **Bell shows all unread**, not only important -- yes. Done.
+- **Push / notification configuration on a DEDICATED Notifications page**, not in
+  general Settings -- **NEW**: today the device and diagnostics panels
+  (`PushDevicesPanel`, `PushDiagnostics`) sit under `/settings`; they move to a
+  dedicated notifications surface.
+- **Per-device push disable while enabled elsewhere** -- yes. **NEW (small)**:
+  today `DELETE /push/subscriptions/:id` removes a subscription entirely; add a
+  disable toggle so a device is silenced without having to re-subscribe.
+
+### 16.3 Architecture
+
+- **VAPID keys persisted in the database** -- yes. Done (`push_instance_config`,
+  private half encrypted under `ENCRYPTION_KEY`).
+- **VAPID rotation** -- a sensible default: admin-triggered rotation that disables
+  stale subscriptions. Done (`rotateKeyPair`).
+- **Notification history in backup/restore** -- yes. Done.
+- **Push subscriptions in portable backups** -- **excluded, and deliberately so.**
+  `push_subscriptions` and `push_instance_config` are both in
+  `INTENTIONALLY_EXCLUDED_TABLES` (`export-table-queries.ts`), and INV-PUSH-005 is
+  `enforced` on exactly that exclusion: a subscription is instance-bound (a restored
+  one is either undeliverable or lets a test instance push to a real device), and
+  `push_instance_config` carries the encrypted VAPID private key, an instance secret
+  rather than user data. This is the maintainer's "restored/cloned-environment push
+  safety -- don't bother" answer, applied. Including them would require superseding
+  INV-PUSH-005 (an ADR), which is not done and not proposed. The earlier draft of
+  this bullet said "included -- Done"; that was wrong and is corrected here.
+- **Restored / cloned-environment push safety** -- don't bother; a developer edge
+  case. Confirms the Section 1 non-goal.
+- **Durable scheduler** -- implementer's choice. Done (a per-minute cron claiming
+  due rows through `FOR UPDATE SKIP LOCKED`, Section 13.2).
+- **Transaction -> event integrity** -- if the transaction that drives an event is
+  deleted, the event goes too. **NEW**: a notification or reminder whose subject
+  is a specific transaction is removed when that transaction is deleted. Needs a
+  bounded design (Section 16.4): which producers tie a row to a transaction id,
+  and delete-vs-null per row.
+- **Async localization** -- the recipient's chosen language. Done for the push
+  body and the email frame; the immediate-email body is producer-composed English
+  today (PR #1304 open item 2, spec Section 14).
+
+### 16.4 What still needs a spec before code
+
+These follow-on features are the ones the branch author has now asked to build,
+and each is kept behind a short approved spec (invariants, state-transition truth
+table, missing-data policy, numeric examples, test matrix) per the repository rule,
+committed before the implementation it guides. Each has a proposed spec awaiting
+maintainer approval; no code lands until the open decisions in each are confirmed.
+The measure and product decisions in each were confirmed with the requester
+(recorded in each spec's Decisions section):
+
+1. **Balance-threshold notifications** (`balances`) -- financial, **event-driven**
+   (evaluated from the post-commit balance-invalidation seam, not a daily cron).
+   `balance-threshold-notifications.md`.
+2. **Portfolio-movement notifications** (`investments`) -- financial. Daily, above a
+   user threshold, measuring the **market change net of external cash flows** (a
+   deposit does not fire; a dividend is return, not a loss).
+   `portfolio-movement-notifications.md`.
+3. **GEM recommendation-change notifications** (`strategies`) -- a change of GEM
+   recommendation between periods, with `RISK_ON <-> RISK_OFF` as its own louder
+   event. `gem-signal-change-notifications.md`.
+4. **Transaction-deletion cascade** -- not itself a calculation, but it changes what
+   a delete reverses, so it is specified with the producers whose rows it removes
+   rather than bolted on. `notification-transaction-cascade.md`. (Not in the current
+   build batch; listed here as the fourth follow-on.)
+
+The core rule #1291 fixes for every producer: fire on a **crossing** (79% -> 81%
+fires the 80% warning; 81% -> 82% -> 83% does not), never on mere observation of the
+current state. The budget producer approximates this within a period via a
+fingerprint dedupe; the balance producer uses an explicit armed latch, and GEM a
+period-over-period comparison -- each spec names its own mechanism rather than
+claiming the budget producer's applies unchanged.
+
+### 16.5 Notes carried into the design
+
+- Scheduled-transaction reminders use each bill/deposit's own
+  `reminder_days_before`. Done (`reminderWindowThrough(todayStr,
+  bill.reminderDaysBefore)`).
+- The bell's filter by **severity** and by **type** (financial vs system) is
+  preserved and must not regress (`NotificationBell`, `NotificationList`).

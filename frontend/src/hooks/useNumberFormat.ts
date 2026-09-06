@@ -26,6 +26,32 @@ export function getEffectiveLocale(
 }
 
 /**
+ * Decimal places a share quantity is displayed at. Deliberately not money's
+ * four and not `formatQuantity`'s four either: fractional-share brokers and
+ * crypto-style units leave residual positions several orders below a cent, and
+ * a holdings column that rounds them away reads as flat zero. Mirrors the
+ * precision of the pure `formatShareQuantity` helper in `@/lib/format`.
+ */
+export const SHARE_QUANTITY_MAX_FRACTION_DIGITS = 8;
+
+/**
+ * The formatters a pure (non-React) helper needs to render a figure in the
+ * reader's number locale.
+ *
+ * A module that is not a component cannot call `useNumberFormat()`, and the two
+ * things it would otherwise reach for are both wrong: `toFixed` is a `.` in
+ * every locale, and `toLocaleString()` follows the *browser*, which is exactly
+ * what an explicit `numberFormat` preference exists to override. So the calling
+ * component passes these down. Structurally satisfied by the hook's own return
+ * value, so a caller can hand over what it already destructured.
+ */
+export interface NumberFormatters {
+  formatCurrency: (value: number, currencyCode?: string) => string;
+  formatNumber: (value: number, decimals?: number) => string;
+  formatPercent: (value: number, decimals?: number) => string;
+}
+
+/**
  * Module-level cache for Intl.NumberFormat instances. These objects are
  * relatively expensive to construct (each one builds a locale-specific
  * formatter), and the hook callbacks below are invoked once per cell per
@@ -37,10 +63,44 @@ export function getEffectiveLocale(
  */
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
+/**
+ * Cache of "can `Intl` build a formatter for this tag", so the probe runs once
+ * per distinct preference value rather than once per figure.
+ */
+const localeUsable = new Map<string, boolean>();
+
+/**
+ * The locale itself, or `undefined` (the browser default) when `Intl` cannot use
+ * it.
+ *
+ * `Intl.NumberFormat` throws `RangeError` on a structurally invalid tag, and
+ * `en_US` -- the underscore form half the world writes -- is one. Nothing
+ * validates `numberFormat` on the way in, and this call sits inside render, so
+ * one such stored value took the whole screen down rather than one figure.
+ * Falling back to the browser is the honest answer here: the preference is
+ * unreadable, and the browser is what an absent preference already means.
+ * (The server's counterpart lands on `DEFAULT_LOCALE` instead, because it has no
+ * browser to fall back to.)
+ */
+function usableLocale(locale: string | undefined): string | undefined {
+  if (locale === undefined) return undefined;
+  const cached = localeUsable.get(locale);
+  if (cached !== undefined) return cached ? locale : undefined;
+  let usable = true;
+  try {
+    new Intl.NumberFormat(locale);
+  } catch {
+    usable = false;
+  }
+  localeUsable.set(locale, usable);
+  return usable ? locale : undefined;
+}
+
 function getNumberFormat(
-  locale: string | undefined,
+  rawLocale: string | undefined,
   options: Intl.NumberFormatOptions,
 ): Intl.NumberFormat {
+  const locale = usableLocale(rawLocale);
   const key = `${locale ?? ''}|${JSON.stringify(options)}`;
   let formatter = formatterCache.get(key);
   if (!formatter) {
@@ -176,6 +236,36 @@ export function useNumberFormat() {
   );
 
   /**
+   * Locale-aware percentage that keeps the precision the value already carries:
+   * 0 to `maxDecimals` fraction digits, trailing zeros trimmed. The sibling of
+   * `formatQuantity` and `formatPrice`, for percentages.
+   *
+   * `formatPercent` takes a decimal count and is right where the surface has
+   * decided one (a table column that must line up). This one is for the far
+   * commoner `{value}%` shape, where the value arrives already rounded -- the
+   * server rounds `percentUsed` to 2dp, so the same expression renders "80%",
+   * "80.5%" and "80.55%" -- and pinning a count would either add zeros the
+   * reader has not seen before or silently drop a digit. Migrating those to a
+   * fixed `formatPercent` would have changed the figure, which is the one thing
+   * a localization fix must not do.
+   *
+   * Four decimals because an interest rate is quoted to at most three or four;
+   * a value carrying more than that is a rounding defect upstream, and it is
+   * better to show it trimmed than to let the cap decide the design.
+   */
+  const formatPercentTrimmed = useCallback(
+    (value: number, maxDecimals: number = 4): string => {
+      const locale = getEffectiveLocale(numberFormat, language);
+      return getNumberFormat(locale, {
+        style: 'percent',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals,
+      }).format(value / 100); // Intl takes a fraction; call sites hold percent units
+    },
+    [numberFormat, language]
+  );
+
+  /**
    * Locale-aware signed percentage with an explicit leading sign
    * (e.g. "+12.50%", "-3.40%"). Honours the user's number-format locale for
    * grouping/decimal separators. Replaces the inline
@@ -216,6 +306,34 @@ export function useNumberFormat() {
         minimumFractionDigits: 0,
         maximumFractionDigits: 4,
       }).format(value);
+    },
+    [numberFormat, language]
+  );
+
+  /**
+   * Locale-aware share quantity at full precision: up to 8 decimal places with
+   * trailing zeros trimmed (minimumFractionDigits 0). The locale-aware sibling
+   * of `formatShareQuantity` in `@/lib/format` -- and the one React must use,
+   * because that pure helper renders through `toFixed`, which is `.` in every
+   * locale.
+   *
+   * Eight, not `formatQuantity`'s four: a residual position of 0.0003 shares is
+   * exactly the thing this column exists to make visible, and rounding it to
+   * four (let alone two) is how an errant share count hides. Nullish and NaN
+   * render "0" rather than an empty cell or "NaN", and a tiny negative residue
+   * that rounds to zero (e.g. -4e-15) renders "0" rather than the "-0" Intl
+   * produces for a negative zero.
+   */
+  const formatShareQuantity = useCallback(
+    (value: number | undefined | null): string => {
+      if (value === undefined || value === null || isNaN(value)) return '0';
+      const locale = getEffectiveLocale(numberFormat, language);
+      // roundToDecimals normalizes -0 to 0, so the sign never survives a
+      // residue that rounds away.
+      return getNumberFormat(locale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: SHARE_QUANTITY_MAX_FRACTION_DIGITS,
+      }).format(roundToDecimals(value, SHARE_QUANTITY_MAX_FRACTION_DIGITS));
     },
     [numberFormat, language]
   );
@@ -286,5 +404,5 @@ export function useNumberFormat() {
     [numberFormat, defaultCurrency, language]
   );
 
-  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
+  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatPercentTrimmed, formatSignedPercent, formatQuantity, formatShareQuantity, formatPrice, defaultCurrency, numberFormat, numberLocale, numberSeparators };
 }

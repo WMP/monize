@@ -466,7 +466,12 @@ describe("TransactionTransferService", () => {
         expect.objectContaining({
           descriptionKey: "createdTransfer",
           descriptionParams: {
+            // The English string is the fallback; the structured pair beside it
+            // is what the reader's client formats in their own number locale
+            // (issue #1316).
             amount: expect.any(String),
+            amountValue: expect.any(Number),
+            amountCurrency: expect.any(String),
             from: "Checking",
             to: "Savings",
           },

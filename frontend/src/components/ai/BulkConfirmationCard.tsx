@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PendingAction, PendingActionPreviewRow } from '@/types/ai';
+import { formatPhoneForDisplay } from '@/lib/phone-number';
 
 interface BulkConfirmationCardProps {
   action: PendingAction;
@@ -204,7 +205,15 @@ export function BulkConfirmationCard({
       // approves a change the card never showed them. The individual card draws
       // the same distinction -- and in bulk mode this row is the only card
       // there is.
-      const optional = [row.website, row.email, row.phone, row.address]
+      const optional = [
+        row.website,
+        row.email,
+        // Displayed, never the stored E.164. `undefined` still means "this edit
+        // does not touch the field" and `null` still means "cleared", so the
+        // formatter is applied only to a value that is actually there.
+        row.phone == null ? row.phone : formatPhoneForDisplay(row.phone),
+        row.address,
+      ]
         .filter((value) => value !== undefined)
         .map((value) => value || t('confirmAction.none'));
       return {

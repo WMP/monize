@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Save Preferences",
-    "savingButton": "Saving...",
     "toasts": {
       "saved": "Preferences saved",
       "saveFailed": "Failed to save preferences",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Notifications",
+    "portfolioAlert": {
+      "title": "Investment value movement",
+      "description": "Notify me once a day when my investment accounts move beyond a threshold, measured from market changes and dividends (deposits and withdrawals are excluded).",
+      "enableLabel": "Enable investment movement alerts",
+      "thresholdLabel": "Notify when the daily move is at least",
+      "save": "Save",
+      "saved": "Threshold saved",
+      "saveError": "Could not save the threshold",
+      "loadError": "Could not load the investment alert setting",
+      "retry": "Retry"
+    },
     "smtpNotConfigured": "Email notifications are not available. SMTP has not been configured by the administrator.",
     "emailNotificationsTitle": "Email Notifications",
     "emailNotificationsDescription": "Receive email reminders for upcoming bills and budget alerts",
@@ -239,15 +248,10 @@
       "heading": "Browser push",
       "diagnostics": {
         "summary": "Notification diagnostics",
-        "intro": "What this browser and device report to Monize about notifications. Use the test button to have Monize create a notification you can look for on your device, then Copy to send the full report.",
+        "intro": "What this browser and device report to Monize about notifications. Refresh after changing a setting, then Copy to send the full report.",
         "refresh": "Refresh",
         "copy": "Copy report",
-        "copied": "Diagnostics copied to clipboard",
-        "localTest": "Show a test notification",
-        "localTestRunning": "Checking…",
-        "localTestBody": "If you can see this, notifications are working on this device.",
-        "localTestCreated": "Monize created a notification without an error, but nothing here can confirm the system actually showed it. If you did not see it on your device, the system is hiding it; enable notifications for Monize in your device settings.",
-        "localTestError": "Could not run the test on this device ({detail})."
+        "copied": "Diagnostics copied to clipboard"
       },
       "description": "Register this device so Monize can reach it even when the app is closed. Only the test notification is delivered this way so far; everything else still arrives in the bell.",
       "androidNotify": "On Android, a granted permission is not enough: the system can still hide notifications. Press and hold the Monize icon on your home screen, tap App info, then Notifications, and make sure they are turned on.",
@@ -260,7 +264,6 @@
       "thisDevice": "This device",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Unnamed device",
-      "lastSeen": "Last active {when}",
       "noLiveDevices": "No device is registered yet. Enable push on this device to send a test.",
       "notConfigured": "Browser push is not available on this Monize instance. An administrator can enable it in the Admin area.",
       "disabledByAdmin": "An administrator has switched browser push off for this Monize instance.",
@@ -301,25 +304,42 @@
           "transient": "not delivered (temporary error); try again",
           "unconfigured": "this instance cannot sign push messages right now"
         }
+      },
+      "transport": {
+        "webpush": "Web push",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Endpoint",
+        "transport": "Delivered by",
+        "registeredIp": "Registered from",
+        "registered": "Registered",
+        "lastSeen": "Last active",
+        "lastDelivery": "Last delivery",
+        "noDelivery": "Nothing delivered yet",
+        "userAgent": "Browser",
+        "unknownIp": "Unknown"
       }
     },
     "preferences": {
       "heading": "How to notify me",
-      "description": "The bell always shows every notification. Choose which kinds Monize also sends by email or push, and how often.",
+      "description": "Choose which kinds Monize sends by email or push, and how often.",
       "categoryHeader": "Notification",
       "channels": {
-        "inApp": "In-app",
         "emailReport": "Email (report)",
         "emailNotification": "Email (alert)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Notifications are delivered through a distributor app you run yourself, such as ntfy, instead of a browser vendor's push service. Register an endpoint in that app to use this channel."
       },
       "categories": {
         "PAYMENTS": "Bills and scheduled",
         "BUDGETS": "Budgets",
-        "SYSTEM": "System alerts"
+        "SYSTEM": "System alerts",
+        "BALANCES": "Account balances",
+        "INVESTMENTS": "Investment value",
+        "STRATEGIES": "Strategy signals"
       },
-      "inAppAlways": "Always shown in the bell",
       "channelNotApplicable": "Not applicable for this notification type",
       "emailToggleLabel": "Report email for {category}",
       "emailNotificationToggleLabel": "Alert email for {category}",
@@ -327,8 +347,7 @@
       "unifiedpushToggleLabel": "UnifiedPush for {category}",
       "saveFailed": "Could not save that setting",
       "emailUnavailable": "Turn on email notifications above to send these by email.",
-      "pushUnavailable": "Enable push on this device first (see below).",
-      "unifiedpushUnavailable": "Register a UnifiedPush endpoint from your distributor app to use this channel.",
+      "pushUnavailable": "No device is registered for push, so this channel cannot deliver.",
       "throttle": {
         "label": "Cooldown",
         "ariaLabel": "Cooldown for {category}",
@@ -342,7 +361,8 @@
           "360": "6 hours",
           "1440": "24 hours"
         }
-      }
+      },
+      "pushEnableHint": "This browser is not registered for push notifications."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Automatic Backup",
     "help": "Help & Support",
     "dangerZone": "Danger Zone",
-    "about": "About"
+    "about": "About",
+    "payeeLookup": "Payee Lookup"
   },
   "page": {
     "title": "Settings",
@@ -885,14 +906,6 @@
         "step3": "Answers stream back into the chat. A status dot shows whether your agent is connected.",
         "note": "Nothing runs until your agent is connected and listening. The chat shows connection instructions."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatic payee contact lookup",
-      "subtitle": "Automatically look up a new payee's website, address, email and phone number through your configured AI provider. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.",
-      "toggleLabel": "Enable automatic payee contact lookup",
-      "enabled": "Automatic payee contact lookup enabled",
-      "disabled": "Automatic payee contact lookup disabled",
-      "saveFailed": "Could not update the payee contact lookup setting"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "All time"
     },
     "estCostTooltip": "Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set."
+  },
+  "payeeLookup": {
+    "title": "Payee Lookup",
+    "subtitle": "Where a payee's website, address, email and phone number come from, and when a lookup runs by itself.",
+    "saved": "Payee lookup settings saved",
+    "saveFailed": "Could not save the payee lookup settings",
+    "loadFailed": "Could not load the payee lookup settings. Reload the page to try again.",
+    "googlePlaces": {
+      "toggleLabel": "Use Google Places for payee lookups",
+      "notConfigured": "Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.",
+      "operatorManaged": "Configured by this server's administrator. You can turn it off for your own payees.",
+      "configure": "Set up",
+      "edit": "Edit",
+      "removeKey": "Remove key",
+      "usage": "Used this month: {used} of {cap}",
+      "usageNoCap": "Used this month: {used}. No monthly limit.",
+      "keyUnreadable": "The stored API key cannot be read by this server. This happens when a backup is restored onto a different instance, or after the encryption key changes. Enter the key again to fix it.",
+      "encryptionUnavailable": "This server has no encryption key configured, so an API key cannot be stored securely. Ask your administrator to set one.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize sends the payee's name, and the address you already have, to Google and stores nothing with them.",
+      "apiKeyLabel": "API key",
+      "apiKeyPlaceholder": "Paste your Google Places API key",
+      "apiKeyHelp": "Create a key in the Google Cloud console with the Places API (New) enabled. Leave this blank to keep the key you already saved.",
+      "capToggleLabel": "Limit requests each month",
+      "capHelp": "Google gives {free} free Text Search requests a month for the fields this lookup needs. Past the limit, lookups fall back to your AI provider.",
+      "capLabel": "Requests per month",
+      "capRange": "Enter a number between {min} and {max}.",
+      "test": "Test",
+      "testing": "Testing...",
+      "testSuccess": "Google accepted the key.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "setupInstructions": "Setup instructions"
+    },
+    "automatic": {
+      "title": "Automatic payee contact lookup",
+      "subtitle": "Automatically look up a new payee's website, address, email and phone number. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.",
+      "toggleLabel": "Enable automatic payee contact lookup",
+      "enabled": "Automatic payee contact lookup enabled",
+      "disabled": "Automatic payee contact lookup disabled",
+      "saveFailed": "Could not update the payee contact lookup setting",
+      "noSource": "Switch on a source above to look payees up automatically. With both off, nothing can answer a lookup."
+    },
+    "order": {
+      "title": "Which source answers first",
+      "placesTitle": "Google Places",
+      "placesHelp": "Directory facts, cheaper per lookup. Google holds no email address.",
+      "aiTitle": "Existing AI Provider",
+      "aiHelp": "Can find an email address, and costs a model call for every lookup.",
+      "aiToggleLabel": "Use an AI provider for payee lookups",
+      "aiProviderLabel": "Provider to use",
+      "aiProviderAny": "Any provider, in priority order",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    }
   }
 }

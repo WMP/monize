@@ -15,6 +15,18 @@
     "system": {
       "title": "Systeemmelding",
       "body": "Monize heeft een systeemmelding voor u. Open de app voor de details."
+    },
+    "balances": {
+      "title": "Saldowaarschuwing",
+      "body": "Een rekeningsaldo heeft een door u ingestelde drempel overschreden. Open Monize voor de details."
+    },
+    "investments": {
+      "title": "Beleggingsbeweging",
+      "body": "Uw beleggingen zijn vandaag bewogen. Open Monize voor de details."
+    },
+    "strategies": {
+      "title": "Strategiesignaal",
+      "body": "Een van uw strategieën heeft de aanbeveling gewijzigd. Open Monize voor de details."
     }
   },
   "actions": {

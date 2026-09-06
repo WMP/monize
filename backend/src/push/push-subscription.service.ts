@@ -50,6 +50,14 @@ export interface PushDeviceDto {
   endpointFingerprint: string;
   deviceName: string | null;
   userAgent: string | null;
+  /**
+   * The address the subscription was registered from, refreshed on each
+   * re-registration. Null where it predates the column or the server could not
+   * determine one -- unknown, never a placeholder. Not the device's current
+   * address: nothing is delivered to a device from here, so this deployment
+   * never sees one.
+   */
+  registeredIp: string | null;
   /** Which wire this device is on: web push, or a UnifiedPush distributor. */
   transport: PushTransport;
   createdAt: string;
@@ -170,6 +178,7 @@ export class PushSubscriptionService {
     userId: string,
     dto: CreatePushSubscriptionDto,
     userAgent: string | null,
+    registeredIp: string | null = null,
   ): Promise<PushDeviceDto> {
     const endpointHash = hashEndpoint(dto.endpoint);
 
@@ -241,6 +250,7 @@ export class PushSubscriptionService {
         dto,
         endpointHash,
         userAgent,
+        registeredIp,
         vapidPublicKey,
       });
       if (ids.length === 0) throw endpointClaimed();
@@ -278,6 +288,7 @@ export class PushSubscriptionService {
       dto: CreatePushSubscriptionDto;
       endpointHash: string;
       userAgent: string | null;
+      registeredIp: string | null;
       vapidPublicKey: string;
     },
   ): Promise<Array<{ id: string }>> {
@@ -285,14 +296,20 @@ export class PushSubscriptionService {
       const inserted = await manager.query(
         `INSERT INTO push_subscriptions
            (user_id, endpoint, endpoint_hash, p256dh, auth, device_name,
-            user_agent, vapid_public_key, transport, created_at, last_seen_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'webpush'),
+            user_agent, registered_ip, vapid_public_key, transport, created_at,
+            last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, 'webpush'),
                  CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
          ON CONFLICT (endpoint_hash) DO UPDATE
             SET p256dh = EXCLUDED.p256dh,
                 auth = EXCLUDED.auth,
                 device_name = COALESCE(EXCLUDED.device_name, push_subscriptions.device_name),
                 user_agent = EXCLUDED.user_agent,
+                -- Overwritten, not COALESCEd: a refresh IS a registration, from
+                -- wherever the browser is now, and the column's whole claim is
+                -- that it names the most recent one. Keeping an older address
+                -- under a moved last_seen_at would make the pair a lie.
+                registered_ip = EXCLUDED.registered_ip,
                 vapid_public_key = EXCLUDED.vapid_public_key,
                 transport = COALESCE(EXCLUDED.transport, push_subscriptions.transport),
                 last_seen_at = CURRENT_TIMESTAMP,
@@ -311,6 +328,7 @@ export class PushSubscriptionService {
           input.userAgent
             ? input.userAgent.slice(0, MAX_USER_AGENT_LENGTH)
             : null,
+          input.registeredIp,
           input.vapidPublicKey,
           // NULL when the client said nothing: a first registration defaults to
           // the browser wire in SQL, and a REFRESH keeps the row's wire -- a
@@ -735,6 +753,7 @@ function toDeviceDto(row: PushSubscription): PushDeviceDto {
     endpointFingerprint: row.endpointHash.slice(0, ENDPOINT_FINGERPRINT_LENGTH),
     deviceName: row.deviceName,
     userAgent: row.userAgent,
+    registeredIp: row.registeredIp ?? null,
     transport: row.transport,
     createdAt: new Date(row.createdAt).toISOString(),
     lastSeenAt: new Date(row.lastSeenAt).toISOString(),

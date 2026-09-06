@@ -34,7 +34,8 @@
       "inactive": "Inativos",
       "withoutCategory": "Sem Categoria"
     },
-    "applyDefaultCategories": "Aplicar categorias padrão"
+    "applyDefaultCategories": "Aplicar categorias padrão",
+    "lookupSettings": "Configurações de busca de favorecidos"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "Substituído pela busca:",
       "clear": "Desfazer as alterações da busca",
       "nothingFound": "Nenhum dado de contato público foi encontrado para este nome.",
-      "noProvider": "Configure um provedor de IA nas <link>Configurações de IA</link> para buscar dados de contato.",
-      "failed": "Não foi possível concluir a busca. Tente novamente mais tarde."
+      "noProvider": "Configure uma fonte nas <link>configurações de busca de favorecidos</link> para encontrar dados de contato.",
+      "failed": "Não foi possível concluir a busca. Tente novamente mais tarde.",
+      "quotaExceeded": "As buscas do Google Places deste mês acabaram. Aumente o limite nas <link>configurações de busca de favorecidos</link> ou espere até o próximo mês."
     }
   },
   "merge": {
@@ -284,7 +286,9 @@
   "selectCategoryPlaceholder": "Selecionar categoria...",
   "validation": {
     "nameRequired": "O nome do beneficiário é obrigatório",
-    "emailInvalid": "Informe um endereço de e-mail válido"
+    "emailInvalid": "Informe um endereço de e-mail válido",
+    "phoneInvalid": "Informe um número de telefone válido",
+    "phoneNeedsCountryCode": "Adicione o código do país, por exemplo +1 206 448 8762"
   },
   "defaultCategoryBackfill": {
     "allConfirmTitle": "Aplicar categorias padrão?",

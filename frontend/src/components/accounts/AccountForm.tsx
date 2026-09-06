@@ -108,6 +108,8 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   currencyCode: z.string().length(3, t('validation.currencyCodeLength')),
   openingBalance: optionalNumber,
   creditLimit: optionalNumber,
+  lowBalanceThreshold: optionalNumber.nullable(),
+  highBalanceThreshold: optionalNumber.nullable(),
   interestRate: optionalNumberWithRange(0, 100),
   description: z.string().optional(),
   accountNumber: z.string().optional(),
@@ -265,6 +267,14 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           creditLimit: account.creditLimit
             ? Math.round(Number(account.creditLimit) * 100) / 100
             : undefined,
+          lowBalanceThreshold:
+            account.lowBalanceThreshold != null
+              ? Number(account.lowBalanceThreshold)
+              : undefined,
+          highBalanceThreshold:
+            account.highBalanceThreshold != null
+              ? Number(account.highBalanceThreshold)
+              : undefined,
           interestRate: account.interestRate || undefined,
           description: account.description || undefined,
           accountNumber: account.accountNumber || undefined,
@@ -325,6 +335,16 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
       let payload = data;
+      // Editing: an emptied threshold means "clear it", so send null rather than
+      // omitting the field (which would leave the stored value untouched). Only
+      // on edit -- CreateAccountDto does not carry these fields.
+      if (account) {
+        payload = {
+          ...payload,
+          lowBalanceThreshold: payload.lowBalanceThreshold ?? null,
+          highBalanceThreshold: payload.highBalanceThreshold ?? null,
+        };
+      }
       if (!cashSectionDirty) {
         const {
           cashAccountId: _id,
@@ -356,6 +376,11 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
   const watchedOpeningBalance = useWatch({ control, name: 'openingBalance' });
   const watchedCashOpeningBalance = useWatch({ control, name: 'cashOpeningBalance' });
   const watchedCreditLimit = useWatch({ control, name: 'creditLimit' });
+  const watchedLowThreshold = useWatch({ control, name: 'lowBalanceThreshold' });
+  const watchedHighThreshold = useWatch({
+    control,
+    name: 'highBalanceThreshold',
+  });
   const watchedInterestRate = useWatch({ control, name: 'interestRate' });
   const watchedPaymentAmount = useWatch({ control, name: 'paymentAmount' });
   const watchedPaymentFrequency = useWatch({ control, name: 'paymentFrequency' });
@@ -796,6 +821,41 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           />
 
           {(isLoanAccount || isMortgageAccount) && <div />} {/* Spacer for grid alignment */}
+        </div>
+      )}
+
+      {/* Balance-threshold alerts (edit only; docs/specs/balance-threshold-notifications.md) */}
+      {account && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {t('form.balanceAlertsHeading')}
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <CurrencyInput
+              label={t('form.lowBalanceThreshold')}
+              prefix={currencySymbol}
+              value={watchedLowThreshold ?? undefined}
+              onChange={(value) =>
+                setValue('lowBalanceThreshold', value ?? null, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              error={errors.lowBalanceThreshold?.message}
+            />
+            <CurrencyInput
+              label={t('form.highBalanceThreshold')}
+              prefix={currencySymbol}
+              value={watchedHighThreshold ?? undefined}
+              onChange={(value) =>
+                setValue('highBalanceThreshold', value ?? null, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              error={errors.highBalanceThreshold?.message}
+            />
+          </div>
         </div>
       )}
 

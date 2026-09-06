@@ -1,4 +1,4 @@
-import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { ToolAnnotations } from "@modelcontextprotocol/server";
 
 /**
  * Shared MCP tool annotations.

@@ -71,7 +71,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-realized-gains-accounts';
 export function RealizedGainsReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -280,7 +280,7 @@ export function RealizedGainsReport() {
       const unknown = t('realizedGains.csvNoRate');
       const returnPct =
         costBasis !== null && gain !== null && costBasis !== 0
-          ? ((gain / costBasis) * 100).toFixed(2) + '%'
+          ? formatPercent((gain / costBasis) * 100, 2)
           : '-';
       return [
         entry.symbol || 'N/A',
@@ -293,7 +293,7 @@ export function RealizedGainsReport() {
       ];
     });
     return { headers, rows };
-  }, [sortedEntries, toDisplay, t]);
+  }, [sortedEntries, toDisplay, formatPercent, t]);
 
   const handleExportCsv = useCallback(() => {
     const { headers, rows } = getExportData();

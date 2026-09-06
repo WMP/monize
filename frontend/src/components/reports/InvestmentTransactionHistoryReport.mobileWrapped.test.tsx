@@ -38,13 +38,17 @@ vi.mock("next/navigation", () => {
   };
 });
 
-vi.mock("@/hooks/useNumberFormat", () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
     formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
     defaultCurrency: "CAD",
   }),
-}));
+  };
+});
 
 vi.mock("@/hooks/useExchangeRates", () => ({
   useExchangeRates: () => ({

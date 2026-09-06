@@ -135,7 +135,7 @@
     "button": "Cerca recapiti",
     "inProgress": "Ricerca in corso...",
     "nothingNew": "Nessun nuovo recapito trovato.",
-    "noProvider": "Configura un provider IA nelle Impostazioni IA per cercare i recapiti.",
+    "noProvider": "Configura una fonte nelle impostazioni di ricerca beneficiari per trovare i contatti.",
     "failed": "Non è stato possibile completare la ricerca. Riprova più tardi.",
     "dialogTitle": "Conferma i dati di contatto",
     "dialogSubtitle": "Nulla viene salvato per {name} finché non confermi.",
@@ -146,6 +146,7 @@
     "cancel": "Annulla",
     "confirm": "{count, plural, one {Salva # modifica} other {Salva # modifiche}}",
     "applied": "{count, plural, one {# dato di contatto salvato} other {# dati di contatto salvati}}",
-    "applyFailed": "Impossibile salvare i dati di contatto"
+    "applyFailed": "Impossibile salvare i dati di contatto",
+    "quotaExceeded": "Le ricerche Google Places di questo mese sono esaurite. Aumenta il limite nelle impostazioni di ricerca beneficiari oppure attendi il mese prossimo."
   }
 }

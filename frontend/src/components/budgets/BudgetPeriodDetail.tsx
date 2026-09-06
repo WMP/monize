@@ -6,6 +6,7 @@ import { gainLossColor } from '@/lib/format';
 import { BudgetProgressBar } from './BudgetProgressBar';
 import type { BudgetPeriod, BudgetPeriodCategory } from '@/types/budget';
 
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 interface BudgetPeriodDetailProps {
   period: BudgetPeriod;
   formatCurrency: (amount: number) => string;
@@ -28,6 +29,7 @@ export function BudgetPeriodDetail({
   formatCurrency,
 }: BudgetPeriodDetailProps) {
   const t = useTranslations('budgets');
+  const { formatPercentTrimmed } = useNumberFormat();
   const categories = period.periodCategories ?? [];
   const expenseCategories = categories.filter((pc) => !isIncomeCategory(pc));
   const incomeCategories = categories.filter((pc) => isIncomeCategory(pc));
@@ -87,7 +89,7 @@ export function BudgetPeriodDetail({
         <SummaryCard
           label={t('periodDetail.summaryCards.totalSpent')}
           value={formatCurrency(totalSpent)}
-          sublabel={`${percentUsed}%`}
+          sublabel={formatPercentTrimmed(percentUsed)}
           valueColor={percentUsed > 100 ? 'text-red-600 dark:text-red-400' : undefined}
         />
         <SummaryCard
@@ -231,6 +233,7 @@ function PeriodCategoryRow({
   isIncome?: boolean;
 }) {
   const t = useTranslations('budgets');
+  const { formatPercentTrimmed } = useNumberFormat();
   const name = getCategoryName(periodCategory);
   const budgeted = Number(periodCategory.effectiveBudget);
   const spent = Number(periodCategory.actualAmount);
@@ -268,7 +271,7 @@ function PeriodCategoryRow({
                     : 'text-green-600 dark:text-green-400'
               }`}
             >
-              {percentUsed}%
+              {formatPercentTrimmed(percentUsed)}
             </span>
           )}
         </div>

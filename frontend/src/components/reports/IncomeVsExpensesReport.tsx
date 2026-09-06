@@ -32,7 +32,6 @@ import { exportToCsv } from "@/lib/csv-export";
 import { chartColors } from "@/lib/chart-colors";
 import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useTranslations } from 'next-intl';
-
 type IncomeVsExpensesSortField = 'name' | 'income' | 'expenses' | 'savings' | 'savingsRate';
 
 /**
@@ -92,7 +91,7 @@ export function IncomeVsExpensesReport() {
   const formatChartDate = useChartDateFormat();
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, formatPercentTrimmed } =
     useNumberFormat();
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const {
@@ -204,7 +203,7 @@ export function IncomeVsExpensesReport() {
         { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
         { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
         { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
-        { label: t('incomeVsExpenses.savingsRate'), value: `${totals.savingsRate.toFixed(1)}%`, color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
+        { label: t('incomeVsExpenses.savingsRate'), value: formatPercent(totals.savingsRate, 1), color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
       ],
       chartContainer: chartRef.current,
       filename: "income-vs-expenses",
@@ -218,7 +217,7 @@ export function IncomeVsExpensesReport() {
       d.Income,
       d.Expenses,
       d.Savings,
-      `${d.SavingsRate}%`,
+      `${formatPercentTrimmed(d.SavingsRate)}`,
     ]);
     exportToCsv('income-vs-expenses', headers, rows);
   };
@@ -420,7 +419,7 @@ export function IncomeVsExpensesReport() {
                         className={`col-start-1 col-span-2 row-start-2 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                       >
                         <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
-                        {row.SavingsRate}%
+                        {formatPercentTrimmed(row.SavingsRate)}
                       </td>
                     </tr>
                   ))}
@@ -449,7 +448,7 @@ export function IncomeVsExpensesReport() {
                       className={`col-start-1 col-span-2 row-start-2 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
                     >
                       <CellLabel className="sm:hidden">{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
-                      {totals.savingsRate.toFixed(1)}%
+                      {formatPercent(totals.savingsRate, 1)}
                     </td>
                   </tr>
                 </tfoot>
@@ -575,7 +574,7 @@ export function IncomeVsExpensesReport() {
                       : "text-orange-700 dark:text-orange-300"
                   }`}
                 >
-                  {totals.savingsRate.toFixed(1)}%
+                  {formatPercent(totals.savingsRate, 1)}
                 </div>
               </div>
             </div>

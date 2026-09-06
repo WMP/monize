@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
 import { InternalServerErrorException } from "@nestjs/common";
 import {
   OAuthProviderService,
@@ -234,6 +236,28 @@ describe("OAuthProviderService", () => {
         expect(typeof ttl[artifact]).toBe("number");
         expect(ttl[artifact] as number).toBeGreaterThan(0);
       }
+    });
+
+    // RFC 9207, which the 2026-07-28 revision asks authorization servers to
+    // support (SEP-2468): the authorization response names the issuer that
+    // produced it, so a client can tell one authorization server's code from
+    // another's before redeeming it. node-oidc-provider does this itself; the
+    // check is here because it is a property MCP clients rely on, and a
+    // provider upgrade that dropped it would otherwise be invisible.
+    it("names the issuer on its authorization responses (RFC 9207)", async () => {
+      const providerLib = join(
+        dirname(require.resolve("oidc-provider/package.json")),
+        "lib",
+      );
+      expect(
+        readFileSync(
+          join(providerLib, "actions/authorization/respond.js"),
+          "utf8",
+        ),
+      ).toContain("out.iss = ctx.oidc.provider.issuer");
+      expect(
+        readFileSync(join(providerLib, "actions/discovery.js"), "utf8"),
+      ).toContain("authorization_response_iss_parameter_supported: true");
     });
 
     it("returns the same in-flight initPromise when called concurrently", async () => {

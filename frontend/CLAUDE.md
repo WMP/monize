@@ -140,6 +140,20 @@ The header's link arrays and the per-route Heroicon map are declared side by sid
 
 `ACCOUNT_TYPE_META` maps each account type to its pill classes and Heroicon; render `AccountTypePill` / `AccountTypeIcon` rather than re-deriving either. `ui-conventions.test.ts` fails on a second type-to-pill-class mapping. An account with no institution shows its type icon in the brand-badge slot (`InstitutionLogo`'s `fallbackIcon`), not a generic glyph.
 
+### Which account types have a detail page is `lib/account-detail-views.ts`
+
+`ACCOUNT_DETAIL_VIEWS` maps an account type to the view `/accounts/<id>` renders for it, and everything else about "does this account have a Details page" derives from that one registry: `resolveAccountDetailView` (the route), `hasAccountDetailView` (the row action, the tour requirement), `DETAIL_ACCOUNT_TYPES` (the key set). Three surfaces ask the question, so three copies of the list is how they come to disagree -- the account row and the route registry already held one each. `loan-rate-changes.contract.test.ts` checks the `loan` arm against `RATE_CHANGE_ACCOUNT_TYPES` and against the branch the account page actually fetches rate history in.
+
+### A tour step pinned to a dynamic route is reachable only by the user
+
+`routeMatch: '/accounts/'` names an id the tour never knew, so the engine cannot navigate there: pushing the step's `route` can never satisfy the prefix, and the step sits in its `navigating` phase behind an overlay that renders nothing -- the tour disappearing mid-run. `isStepReachable` (`lib/tours/navigation.ts`) is the one test, and both doors use it: Back walks past such a step once the user has left that route, and `TourHost` skips it rather than hanging when the user arrives any other way (they skipped the step that asks them to open the page). The step's own `route` satisfying the prefix is the ordinary case and stays navigable ('/reports?category=insights' for '/reports').
+
+A step gated by `requires` is the omit effect's to remove: the engine neither navigates to it nor skips it as unreachable while its requirement is unmet or still resolving, or the two race and a deliberate omission is reported as a degraded tour.
+
+### A coach mark parks in the corner the step is not about
+
+An `unobtrusive` anchorless step parks its card in the bottom-**right** corner, which is exactly where every list puts its row actions (`RowActions` is `justify-end`, in a sticky-right cell). A step that asks the user to click one therefore had its own card intercepting that click -- CI caught the account-detail step's card over the **Details** button at a 720px-tall viewport, and the shipped 1.13 foreign-currency tour had the same collision. Such a step sets `placement: 'left'` (the only meaning `placement` has for a corner-parked card). The card is also draggable, but a tour whose first move is "get my card out of the way" is not one to ship: park it clear. `tours.spec.ts` clicks the real row action, so the collision fails the E2E rather than the user.
+
 ### A register's category chip is `CategoryPill`
 
 `components/transactions/CategoryPill.tsx` owns the colour-mix pill and the category's optional icon (via `getIconComponent`, as tag chips do). Categories carry `icon` end-to-end -- `CategoryForm` collects it through the shared `IconPicker` (whose `onClear`/`clearLabel` props make "no icon" a real state) -- so a surface showing a category name with its colour shows its icon too, and an unset icon renders nothing, never a default glyph.
@@ -213,6 +227,63 @@ However a surface selects a category, the option list is one shape: built from `
 **A picker the user types into creates through `createCategoryFromInput` (`lib/category-create.ts`), never inline.** It owns title casing and the `Parent: Child` shorthand (create or reuse the parent, then the child), and returns every row it created so the caller can append all of them. The guard in `src/test/ui-conventions.test.ts` fails on a second `categoriesApi.create` call site outside the helper and the Categories page's own full create form.
 
 Whether a picker *offers* to create is a property of the surface, not the field: a form that can create passes the creator to **every** category picker it renders, split lines included (`SplitEditor`'s lines silently discarded unmatched text while the Category field offered "+ Create" -- issue #1187). An asynchronous create addresses the row it came from **by id** (rows can move while the request is in flight), and the new category's `isIncome` comes from what the creator returned.
+
+### A number a person reads is formatted by `useNumberFormat()`, never by `toFixed`, `toLocaleString()` or the raw `@/lib/format` helpers
+
+`useNumberFormat()` is to numbers what `useDateFormat()` is to dates: the one seam
+where the user's `numberFormat` preference decides separators, grouping, decimal
+mark and currency placement. `@/lib/format` keeps `formatCurrency` and
+`formatShareQuantity` as pure deterministic `en-US` helpers -- fine in a non-React,
+non-user-facing context, and exactly wrong in a component, which is how a Polish
+reader came to see `zl18,812.71` and `755.8342` on Securities while every other
+screen used their own convention (issue #1316).
+
+Three ways in, and the second is the one that looks like a fix and is not:
+
+- **A literal `%` beside a number** -- `` `${x.toFixed(1)}%` `` and the far
+  commoner `{percentage}%` -- writes a `.` decimal in every locale and puts the
+  `%` where English puts it (fr-FR writes `12,3 %`). Use
+  `formatPercent(value, decimals)` where the surface has decided a decimal count,
+  `formatPercentTrimmed(value)` where the value arrives already rounded (the
+  server rounds `percentUsed` to 2dp, so the same expression must still render
+  `80%`, `80.5%` and `80.55%` -- pinning a count would change the figure, which
+  is the one thing a localization fix must not do), or `formatSignedPercent`
+  where an explicit leading sign is wanted. A CSS length (`width: ${pct}%`) is
+  the one legitimate case and stays a plain number: CSS reads no locale.
+- **A bare `toLocaleString()`** follows the *browser*, and an explicit
+  `numberFormat` exists precisely to override the browser: a reader on `en-US`
+  hardware who picked `pl-PL` still gets `12,345`. Swapping a hardcoded `en-US`
+  for `toLocaleString()` is not a migration. Use `formatNumber(value, 0)` for a
+  count.
+- **The raw helpers**, imported into a component because the hook needs a hook.
+  A tooltip, a table cell and a recharts `content={<Tooltip/>}` are all React
+  components and can call it; a genuinely pure module takes the formatters as an
+  argument (`NumberFormatters`, exported from the hook -- `compareMetricRows`,
+  `MonteCarloPerformanceSummary` and `HoldingStatsTable` are the worked examples).
+
+**A share count is `formatShareQuantity`, not `formatQuantity`.** Eight decimals,
+not four: a residual position of `0.0003` shares is what the holdings column
+exists to expose, and the migration must not round it away. It normalizes the
+`-0` Intl produces for a residue that rounds to zero, and renders a nullish or
+NaN quantity as `0`.
+
+**The ISO code beside a foreign amount is not this rule.** `withCurrencyCode`
+appends it deliberately when a security's currency is not the reader's; localize
+the number *before* the suffix and leave the suffix alone.
+
+`src/test/number-locale.guard.test.ts` scans for all four fingerprints with a
+classified allowlist (a `new Date(...).toLocaleString()` is a date, which
+`useDateFormat` governs; `lib/utils.ts`'s `sv-SE` timestamps are machine-shaped).
+**Its percentage scan is keyed on the literal `%`, not on `toFixed`** -- written
+from the diff it matched only the shapes the migration had just removed and
+reported clean over fourteen survivors, because the shape that actually
+dominates names no formatter at all. A scan written from a diff sees what was
+fixed; write it from the rule.
+A component test must not build its expectation with the same helper the
+component uses -- `SecurityList.test.tsx` did, so it proved the component agreed
+with a hardcoded formatter while the screen disagreed with the user. Set a real
+preference row and assert the rendered string, including one case where the
+preference deliberately differs from the host locale.
 
 ### An account balance is coloured by its sign -- `balanceColor`, never by account type
 
@@ -326,6 +397,48 @@ Whether an unreconciled row is *overdue* is decided by `classifyStaleRow` (`lib/
 
 **A failed lookup is not a clean ledger.** `useStaleReconciliation` returns `undefined` on failure, and every consumer reads undefined as "no information" and marks nothing. An empty context instead would make an outage indistinguishable from an up-to-date ledger -- the same class of mistake as `accounts = []` on a failed request.
 
+### A phone number is shown through `formatPhoneForDisplay`, never raw
+
+`payee.phone` is stored as E.164 with an optional RFC 3966 extension suffix
+(`+12064488762`, `+442079460958;ext=12`). `formatPhoneForDisplay`
+(`lib/phone-number.ts`) is the only way it reaches a reader -- grouped, with the
+extension as ` x12` -- and it is **total**: rows written before normalization are
+not backfilled, so a value it cannot parse comes back unchanged rather than
+blanked (a stored "call the shop" is worth showing even though it cannot be
+dialled). `telHref` is the exception and takes the stored value on purpose: it
+needs the digits and the `;ext=` suffix, which it carries into the `tel:` link.
+
+The payee form validates with `normalizePhoneNumber` under the field, using the
+region from `phoneRegionFromPreferences` over the stored `numberFormat` and
+`language`. That is not belt-and-braces: both layers assert
+`backend/src/common/phone-number-cases.json`, so the field can neither block a
+number the API would store nor submit one it would refuse. The waiver is part of
+that agreement -- `buildPayeeSchema` takes the phone the payee already holds and
+passes an unchanged value, exactly as the server does, because rows written
+before normalization are not backfilled and a stricter field would make a payee
+holding free text impossible to edit at all.
+`lib/phone-number.guard.test.ts` scans for a raw `{x.phone}` render and requires
+every known display surface to reference the formatter.
+
+**An input is a display surface.** A value reaches a reader through `setValue`
+as surely as through JSX, and the lookup prefill wrote the suggestion's stored
+form into the Phone field -- so the same box formatted on load and showed
+`+442079460958;ext=12` when a lookup filled it. A loop that writes contact
+fields generically decides the phone's form at the write site
+(`field === 'phone' ? formatPhoneForDisplay(value) : value`), which the guard
+scans for; comparing the two forms is the same bug wearing a different hat, and
+reported an unchanged number as a replaced one.
+
+**Not knowing the region is a third state, and it is not a default.**
+`phoneRegion` is `undefined` while `usePreferencesStore` holds no row -- before
+the fetch lands, and after one that failed -- and the field checks nothing then,
+leaving the answer to the server, which reads the row. `null` is different: it
+is an *answer* (the preferences name no region), and it asks for a country code.
+Collapsing the two applies the `en-US` column default to a `de-DE` user and
+rejects a Berlin number the API stores happily. The shared truth table proves
+the two layers' *functions* agree; only the wiring can prove they were handed
+the same inputs, so read the whole `preferences` object, never fields off it.
+
 ### A long list -- page it, or bound it and scroll with `scrollbar-slim`
 
 A full-page list uses `components/ui/Pagination.tsx`. A list inside a card caps its height and scrolls: `scrollbar-slim max-h-* overflow-y-auto pr-1`. The thing to avoid is the *default* scrollbar, not scrolling -- on Linux/Windows the native bar inside a small card reads as a rendering fault. `scrollbar-slim` (defined in `globals.css` alongside `scrollbar-hide`) keeps a thin themed thumb.
@@ -351,9 +464,16 @@ Below `sm` a table that cannot fit five or more columns does not scroll sideways
 
 The sliding `AppHeader` always carries a `transform` (`useHideOnScroll`), which makes the header -- not the viewport -- the containing block for every `position: fixed` descendant. A panel mounted in the header (the notifications dropdown, `ActionHistoryPanel`) that anchors with `bottom-0`/`inset-0` is therefore capped at the header's own ~56px box: the full-screen notifications panel only *looked* full while rows overflowed it, and collapsed when empty. Size such a panel with an explicit height (`h-dvh` for the mobile full-screen treatment) and edge offsets that grow past the containing block; `NotificationList.test.tsx` pins the class shape.
 
-### A control that needs an AI provider is not offered without one -- `useAiConfigured()`
+### A control is not offered when nothing can answer it -- and which question to ask depends on the control
 
-A provider is the prerequisite for the payee contact lookup and the assistant alike, so every surface offering either asks `hooks/useAiConfigured.ts` and renders nothing when the answer is no: the payee form's and detail card's lookup buttons, the transaction page's quick-create confirmation, and both AI settings toggles. A control whose one possible outcome is "configure a provider first" is worse than an absent one -- it costs a click to learn nothing.
+Two hooks, because two different prerequisites. A control whose one possible outcome is "configure something first" is worse than an absent one: it costs a click to learn nothing.
+
+- **A payee contact lookup asks `hooks/useContactLookupAvailable.ts`.** Google Places can answer that lookup as well as an AI provider, so the question is "can a lookup run", never "is there a model". Gated on the AI hook instead, the button disappears for a user who configured Places and no AI -- exactly the configuration the feature exists for. The surfaces are the payee form's and detail card's lookup buttons, the transaction page's quick-create confirmation, and the automatic-lookup toggle in Settings. The guard in `src/test/ui-conventions.test.ts` fails any file that reaches a lookup API and imports `useAiConfigured`.
+
+  **A control the user is looking AT is disabled, not hidden.** The buttons on the payee form and detail card are withheld when nothing can answer, because their surface says nothing about why. The automatic-lookup toggle sits directly under the two source rows that cause the state, so switching the last source off makes it read off and disabled (with copy naming the repair) rather than vanish -- a control that disappears under the change you just made reads as a bug. It shows off without WRITING false: switching a source back on restores the setting the user chose.
+
+  **The hook is read once on mount, so the one surface that changes the answer re-reads it.** `refresh()` exists for `PayeeLookupSection` alone: it writes the switches that decide `available`, and `payeeLookupApi.updateSettings` dropping the cache does nothing for a hook already holding its value. It is awaited inside the save, while the card is still in its saving state, so the toggle never renders live against a source that was just switched off. Re-deriving availability from the settings row on the client instead is the thing not to do -- the server's answer already folds in the spent cap and a key it cannot decrypt.
+- **The assistant asks `hooks/useAiConfigured.ts`**, because a chat genuinely needs a model: the floating bubble and its own settings toggle.
 
 **A preference outlives the provider that justified it.** `aiBubbleEnabled` stays true after the last provider is deleted, so the floating chat bubble gates on the provider as well as on the opt-in; without that it sits on every page and opens a chat that can only fail. Any future preference guarding provider-backed work inherits the same pair.
 
@@ -425,6 +545,38 @@ remembered per account **and** per kind (`monize.push.promptDismissed`): the
 account for the reason the registered-endpoint marker carries one, and the kind
 because waving away the offer says nothing about wanting to know, later, that the
 browser has started blocking Monize.
+
+### A settings screen has one save contract, and it is save-on-change
+
+`PreferencesSection` had two: language, theme and colour theme persisted the
+moment they changed (each selector owns its own write, because each has work to
+do beyond it), and the other thirteen controls waited for a "Save Preferences"
+button -- with nothing on screen saying which a given control followed, so a
+change made and navigated away from was silently lost. Every field now writes as
+it changes, through `useSavedPreference` (`hooks/useSavedPreference.ts`) and the
+one `commitPreference` the section owns: optimistic local state, the PATCH, and
+on failure a revert to the value THAT change replaced plus an error toast --
+the same shape the notification toggles already used.
+
+Three properties the hook carries, each with a test:
+
+- **The patch is the one field that changed**, never a resend of everything the
+  screen holds. The bulk payload had the opposite failure mode: a field left out
+  of it was reset the next time anything else was saved.
+- **A control re-emitting the value it already holds writes nothing.** A request
+  per non-edit is a toast per non-edit.
+- **The revert closes over the value of its own change**, so two changes in
+  flight cannot restore each other's.
+
+Do not reintroduce a Save button beside auto-saving controls. Where a field
+genuinely needs one -- a multi-part form that is invalid mid-edit -- the whole
+screen takes that contract, not one control on it.
+
+**A removed control has consumers `npx vitest run` never loads.** The E2E suite
+lives in `e2e/`, outside `frontend/src`, so a green Vitest run says nothing about
+it: deleting the Save button left `e2e/tests/settings.spec.ts` clicking a button
+that no longer exists, and only CI found it. Deleting or renaming any control an
+E2E spec drives means grepping `e2e/` for its accessible name in the same commit.
 
 ### A password field declares what may be autofilled into it
 
@@ -852,6 +1004,20 @@ So: **`renderHook` is exported from `@/test/render` too**, wrapped in the same p
 `intl-harness.guard.test.ts` scans for the two ways round it: `render`/`renderHook` imported from `@testing-library/react`, and a `NextIntlClientProvider` built in a test. Its `ALLOWED_*` sets are deliberate exceptions -- tests that genuinely vary the locale, and the boot-path components defined by having no providers -- while `RTL_IMPORT_BASELINE` is shrink-only: 45 older tests that work today only because their subjects happen not to translate anything. Converting one means deleting its line.
 
 Fix the lookup, never the symptom. Adding a code to the ignore list only restores the silence the guard exists to remove.
+
+**A `useNumberFormat` mock spreads `numberFormatMockDefaults()`.** That hook is
+mocked in ~127 files, each with a bare factory listing the formatters its
+component used the day the test was written -- and a bare factory REPLACES the
+module, so the literal is the hook's whole surface for that file. Nothing failed
+while those lists rotted; adding a `formatPercent` call to a component turned
+thirty-nine unrelated suites red with "formatPercent is not a function", not one
+of which was a real defect. Spread `numberFormatMockDefaults()`
+(`@/test/number-format-mock`) first and override only what the case asserts on.
+The factory has to be `async` so it can `await import` the helper past
+`vi.mock`'s hoisting. The defaults are functions only: `defaultCurrency`,
+`numberFormat` and `numberLocale` are identity-bearing values a case states for
+itself, and defaulting them would change what an existing assertion is about,
+while a missing function can only ever have been a crash.
 
 **Global mocks** (`test/setup.ts`): `next/navigation` (useRouter, usePathname, useSearchParams), `react-hot-toast`, `localStorage`, `window.scrollTo`, `window.matchMedia`.
 

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { useSavedPreference } from '@/hooks/useSavedPreference';
 import { userSettingsApi } from '@/lib/user-settings';
 import type { MapProvider } from '@/lib/contact-links';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -117,33 +117,99 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
   const tc = useTranslations('common');
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
 
-  const [dateFormat, setDateFormat] = useState(preferences.dateFormat);
-  const [numberFormat, setNumberFormat] = useState(preferences.numberFormat);
-  const [timezone, setTimezone] = useState(preferences.timezone);
+  /**
+   * Persist one preference the moment it changes, optimistically.
+   *
+   * Every control on this screen used to save through one "Save Preferences"
+   * button EXCEPT language, theme and colour theme, which persisted on change
+   * -- so the same screen had two contracts and no way to tell which a given
+   * control followed. This is the one they all follow now.
+   *
+   * The revert is the caller's own setter closed over the value the field held
+   * before the change: an optimistic update that fails has to put back what was
+   * there, and only the caller knows what that was.
+   */
+  const commitPreference = useCallback(
+    (patch: UpdatePreferencesData, revert: () => void) => {
+      void (async () => {
+        try {
+          const updated = await userSettingsApi.updatePreferences(patch);
+          onPreferencesUpdated(updated);
+          updatePreferencesStore(updated);
+          toast.success(t('toasts.saved'));
+        } catch (error) {
+          revert();
+          toast.error(getErrorMessage(error, t('toasts.saveFailed')));
+        }
+      })();
+    },
+    [onPreferencesUpdated, updatePreferencesStore, t],
+  );
+
+  const dateFormat = useSavedPreference('dateFormat', preferences.dateFormat, commitPreference);
+  const numberFormat = useSavedPreference(
+    'numberFormat',
+    preferences.numberFormat,
+    commitPreference,
+  );
+  const timezone = useSavedPreference('timezone', preferences.timezone, commitPreference);
+  const defaultCurrency = useSavedPreference(
+    'defaultCurrency',
+    preferences.defaultCurrency,
+    commitPreference,
+  );
+  const weekStartsOn = useSavedPreference(
+    'weekStartsOn',
+    preferences.weekStartsOn ?? 1,
+    commitPreference,
+  );
+  const showCreatedAt = useSavedPreference(
+    'showCreatedAt',
+    preferences.showCreatedAt ?? false,
+    commitPreference,
+  );
+  const showWhatsNew = useSavedPreference(
+    'showWhatsNew',
+    preferences.showWhatsNew ?? true,
+    commitPreference,
+  );
+  const lockReconciledTransactions = useSavedPreference(
+    'lockReconciledTransactions',
+    preferences.lockReconciledTransactions ?? false,
+    commitPreference,
+  );
+  const timeFormat = useSavedPreference<'timeFormat', '24h' | '12h'>(
+    'timeFormat',
+    preferences.timeFormat ?? '24h',
+    commitPreference,
+  );
+  const preferredExchanges = useSavedPreference<'preferredExchanges', string[]>(
+    'preferredExchanges',
+    preferences.preferredExchanges ?? [],
+    commitPreference,
+  );
+  const defaultQuoteProvider = useSavedPreference<'defaultQuoteProvider', 'yahoo' | 'msn'>(
+    'defaultQuoteProvider',
+    preferences.defaultQuoteProvider ?? 'yahoo',
+    commitPreference,
+  );
+  const recentTransactionsLimit = useSavedPreference(
+    'recentTransactionsLimit',
+    preferences.recentTransactionsLimit ?? 5,
+    commitPreference,
+  );
+  const defaultMapProvider = useSavedPreference<'defaultMapProvider', MapProvider>(
+    'defaultMapProvider',
+    preferences.defaultMapProvider ?? 'device',
+    commitPreference,
+  );
+
+  // Theme, colour theme and language persist themselves inside their own
+  // selectors (each has work to do beyond the write -- applying the palette,
+  // switching the active locale), so these three hold display state only.
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(preferences.theme);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(preferences.colorTheme ?? 'default');
-  const [defaultCurrency, setDefaultCurrency] = useState(preferences.defaultCurrency);
-  const [weekStartsOn, setWeekStartsOn] = useState(preferences.weekStartsOn ?? 1);
-  const [showCreatedAt, setShowCreatedAt] = useState(preferences.showCreatedAt ?? false);
-  const [showWhatsNew, setShowWhatsNew] = useState(preferences.showWhatsNew ?? true);
-  const [lockReconciledTransactions, setLockReconciledTransactions] = useState(
-    preferences.lockReconciledTransactions ?? false,
-  );
-  const [timeFormat, setTimeFormat] = useState<'24h' | '12h'>(preferences.timeFormat ?? '24h');
-  const [preferredExchanges, setPreferredExchanges] = useState<string[]>(
-    preferences.preferredExchanges ?? [],
-  );
-  const [defaultQuoteProvider, setDefaultQuoteProvider] = useState<'yahoo' | 'msn'>(
-    preferences.defaultQuoteProvider ?? 'yahoo',
-  );
-  const [recentTransactionsLimit, setRecentTransactionsLimit] = useState(
-    preferences.recentTransactionsLimit ?? 5,
-  );
-  const [defaultMapProvider, setDefaultMapProvider] = useState<MapProvider>(
-    preferences.defaultMapProvider ?? 'device',
-  );
   const [language, setLanguage] = useState(preferences.language ?? 'en');
-  const [isUpdatingPreferences, setIsUpdatingPreferences] = useState(false);
 
   const [availableCurrencies, setAvailableCurrencies] = useState<CurrencyInfo[]>([]);
   const [msnReady, setMsnReady] = useState<boolean | null>(null);
@@ -166,39 +232,6 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
     }));
   }, [availableCurrencies]);
 
-  const handleUpdatePreferences = async () => {
-    setIsUpdatingPreferences(true);
-    try {
-      // Theme and colour theme are applied and persisted immediately by
-      // ThemeSelector / ColorThemeSelector (like language), so they are
-      // intentionally omitted from this bulk save.
-      const data: UpdatePreferencesData = {
-        dateFormat,
-        numberFormat,
-        timezone,
-        defaultCurrency,
-        weekStartsOn,
-        showCreatedAt,
-        showWhatsNew,
-        lockReconciledTransactions,
-        timeFormat,
-        preferredExchanges: preferredExchanges.filter(Boolean),
-        defaultQuoteProvider,
-        recentTransactionsLimit,
-        defaultMapProvider,
-      };
-
-      const updated = await userSettingsApi.updatePreferences(data);
-      onPreferencesUpdated(updated);
-      updatePreferencesStore(updated);
-      toast.success(t('toasts.saved'));
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.saveFailed')));
-    } finally {
-      setIsUpdatingPreferences(false);
-    }
-  };
-
   const browserLocale = getEffectiveLocale('browser', language);
   const numberFormatSample = new Intl.NumberFormat(browserLocale).format(1234.56);
   const dateFormatOptions = getDateFormatOptions(tc, browserLocale);
@@ -218,8 +251,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
             <Select
               label={t('defaultCurrencyLabel')}
               options={currencyOptions}
-              value={defaultCurrency}
-              onChange={(e) => setDefaultCurrency(e.target.value)}
+              value={defaultCurrency.value}
+              onChange={(e) => defaultCurrency.set(e.target.value)}
             />
           </div>
         </div>
@@ -243,8 +276,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
             <Select
               label={t('dateFormatLabel')}
               options={dateFormatOptions}
-              value={dateFormat}
-              onChange={(e) => setDateFormat(e.target.value)}
+              value={dateFormat.value}
+              onChange={(e) => dateFormat.set(e.target.value)}
             />
 
             <Select
@@ -256,23 +289,23 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                     ? t('numberFormatOptions.browser', { sample: numberFormatSample })
                     : t(o.labelKey),
               }))}
-              value={numberFormat}
-              onChange={(e) => setNumberFormat(e.target.value)}
+              value={numberFormat.value}
+              onChange={(e) => numberFormat.set(e.target.value)}
             />
 
             <Combobox
               label={t('timezoneLabel')}
               options={[{ value: 'browser', label: t('timezoneBrowserOption', { tz: getBrowserTimezone() }) }, ...TIMEZONE_OPTIONS.slice(1)]}
-              value={timezone}
-              onChange={(value) => setTimezone(value)}
+              value={timezone.value}
+              onChange={(value) => timezone.set(value)}
               placeholder={t('timezonePlaceholder')}
             />
 
             <Select
               label={t('weekStartsOnLabel')}
               options={WEEK_STARTS_ON_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-              value={String(weekStartsOn)}
-              onChange={(e) => setWeekStartsOn(Number(e.target.value))}
+              value={String(weekStartsOn.value)}
+              onChange={(e) => weekStartsOn.set(Number(e.target.value))}
             />
 
             <div className="flex items-center">
@@ -281,8 +314,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <ToggleSwitch
-                  checked={showCreatedAt}
-                  onChange={setShowCreatedAt}
+                  checked={showCreatedAt.value}
+                  onChange={showCreatedAt.set}
                   label={t('showCreatedAtLabel')}
                 />
                 <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -292,15 +325,15 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
               <InfoTooltip text={t('showCreatedAtTooltip')} />
             </div>
 
-            {showCreatedAt && (
+            {showCreatedAt.value && (
               <Select
                 label={t('timeFormatLabel')}
                 options={TIME_FORMAT_OPTIONS.map((o) => ({
                   value: o.value,
                   label: t(o.labelKey),
                 }))}
-                value={timeFormat}
-                onChange={(e) => setTimeFormat(e.target.value as '24h' | '12h')}
+                value={timeFormat.value}
+                onChange={(e) => timeFormat.set(e.target.value as '24h' | '12h')}
               />
             )}
           </div>
@@ -315,8 +348,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
               <Select
                 label={t('defaultQuoteProviderLabel')}
                 options={QUOTE_PROVIDER_OPTIONS}
-                value={defaultQuoteProvider}
-                onChange={(e) => setDefaultQuoteProvider(e.target.value as 'yahoo' | 'msn')}
+                value={defaultQuoteProvider.value}
+                onChange={(e) => defaultQuoteProvider.set(e.target.value as 'yahoo' | 'msn')}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {t('defaultQuoteProviderHelp')}
@@ -324,7 +357,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {t('msnNoIntradayNote')}
               </p>
-              {defaultQuoteProvider === 'msn' && msnReady === false && (
+              {defaultQuoteProvider.value === 'msn' && msnReady === false && (
                 <p
                   role="alert"
                   className="text-sm text-red-600 dark:text-red-400 mt-2"
@@ -349,19 +382,19 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                     options={EXCHANGE_OPTIONS
                       .filter(
                         (opt) =>
-                          !preferredExchanges.includes(opt.value) ||
-                          preferredExchanges[i] === opt.value,
+                          !preferredExchanges.value.includes(opt.value) ||
+                          preferredExchanges.value[i] === opt.value,
                       )
                       .sort((a, b) => a.label.localeCompare(b.label))}
-                    value={preferredExchanges[i] || ''}
+                    value={preferredExchanges.value[i] || ''}
                     onChange={(value) => {
-                      const updated = [...preferredExchanges];
+                      const updated = [...preferredExchanges.value];
                       if (value) {
                         updated[i] = value;
                       } else {
                         updated.splice(i, 1);
                       }
-                      setPreferredExchanges(updated.filter(Boolean));
+                      preferredExchanges.set(updated.filter(Boolean));
                     }}
                     placeholder={t('exchangePriorityPlaceholder', { n: i + 1 })}
                     alwaysShowSubtitle
@@ -381,8 +414,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
               <Select
                 label={t('recentTransactionsLabel')}
                 options={RECENT_TRANSACTIONS_LIMIT_OPTIONS}
-                value={String(recentTransactionsLimit)}
-                onChange={(e) => setRecentTransactionsLimit(Number(e.target.value))}
+                value={String(recentTransactionsLimit.value)}
+                onChange={(e) => recentTransactionsLimit.set(Number(e.target.value))}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {t('recentTransactionsHelp')}
@@ -395,8 +428,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <ToggleSwitch
-                  checked={lockReconciledTransactions}
-                  onChange={setLockReconciledTransactions}
+                  checked={lockReconciledTransactions.value}
+                  onChange={lockReconciledTransactions.set}
                   label={t('lockReconciledLabel')}
                 />
                 <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -420,9 +453,9 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                   value: option.value,
                   label: t(option.labelKey),
                 }))}
-                value={defaultMapProvider}
+                value={defaultMapProvider.value}
                 onChange={(e) =>
-                  setDefaultMapProvider(e.target.value as MapProvider)
+                  defaultMapProvider.set(e.target.value as MapProvider)
                 }
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -439,8 +472,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <ToggleSwitch
-                  checked={showWhatsNew}
-                  onChange={setShowWhatsNew}
+                  checked={showWhatsNew.value}
+                  onChange={showWhatsNew.set}
                   label={t('showWhatsNewLabel')}
                 />
                 <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -451,12 +484,6 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <Button onClick={handleUpdatePreferences} disabled={isUpdatingPreferences}>
-          {isUpdatingPreferences ? t('savingButton') : t('saveButton')}
-        </Button>
       </div>
     </div>
   );

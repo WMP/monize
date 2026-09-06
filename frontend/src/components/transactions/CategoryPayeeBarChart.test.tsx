@@ -81,13 +81,16 @@ vi.mock('@/hooks/useIsMobile', () => ({
 const mockFormatCurrency = vi.fn((n: number) => `$${n.toFixed(2)}`);
 const mockFormatCurrencyAxis = vi.fn((n: number) => `$${n}`);
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: mockFormatCurrency,
-    formatCurrencyAxis: mockFormatCurrencyAxis,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: mockFormatCurrency,
+      formatCurrencyAxis: mockFormatCurrencyAxis,
+    }),
+  };
+});
 describe('CategoryPayeeBarChart', () => {
   beforeEach(() => {
     // Reset to default USD-like 2-decimal behaviour before each test

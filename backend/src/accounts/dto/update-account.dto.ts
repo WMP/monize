@@ -121,6 +121,32 @@ export class UpdateAccountDto {
   interestRate?: number;
 
   @ApiPropertyOptional({
+    example: 50.0,
+    nullable: true,
+    description:
+      "Notify when the balance drops below this (account currency); null clears it.",
+  })
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(-999999999999)
+  @Max(999999999999)
+  lowBalanceThreshold?: number | null;
+
+  @ApiPropertyOptional({
+    example: 10000.0,
+    nullable: true,
+    description:
+      "Notify when the balance rises above this (account currency); null clears it.",
+  })
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(-999999999999)
+  @Max(999999999999)
+  highBalanceThreshold?: number | null;
+
+  @ApiPropertyOptional({
     example: true,
     description: "Whether this account is a favourite (shown in dashboard)",
   })

@@ -1,8 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { describeSkippedRows } from "../../common/bulk-create.types";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
+import type {
+  InputRequiredResult,
+  ServerContext,
+} from "@modelcontextprotocol/server";
 import { PayeesService } from "../../payees/payees.service";
+import { formatPhoneForDisplay } from "../../common/phone-number.util";
 import { contactLookupOptions } from "../../ai/actions/ai-actions.service";
 import {
   PayeeToolPrepService,
@@ -15,13 +20,19 @@ import { AiActionBuilderService } from "../../ai/actions/ai-action-builder.servi
 import { PendingAiAction } from "../../ai/actions/ai-action.types";
 import { RELAY_PREVIEW_SHOWN, emitRelayCard } from "../mcp-relay-confirm";
 import {
-  UserContextResolver,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
   safeToolError,
-  confirmWrite,
 } from "../mcp-context";
+import {
+  cardKey,
+  confirmItemsForCards,
+  confirmWrite,
+  confirmWriteMany,
+  isAsk,
+} from "../mcp-confirm";
 import { McpWriteLimiter } from "../mcp-write-limiter";
 import { getPayeesOutput, managePayeesOutput } from "../tool-output-schemas";
 import { READ_ONLY, WRITE } from "../mcp-annotations";
@@ -64,7 +75,16 @@ function contactCardLines(preview: {
   for (const [label, value] of [
     ["Address", preview.address],
     ["Email", preview.email],
-    ["Phone", preview.phone],
+    // A phone is shown the way a person reads one, never the stored E.164:
+    // the human approving this card has to recognise the number.
+    [
+      "Phone",
+      preview.phone === undefined
+        ? undefined
+        : preview.phone === null
+          ? null
+          : formatPhoneForDisplay(preview.phone),
+    ],
   ] as const) {
     if (value !== undefined) rows.push(`\n${label}: ${value ?? "(cleared)"}`);
   }
@@ -81,7 +101,7 @@ export class McpPayeesTools {
     private readonly writeLimiter: McpWriteLimiter,
   ) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "list_payees",
       {
@@ -96,7 +116,7 @@ export class McpPayeesTools {
           "`totalCount` is how many matched and `truncated` says whether " +
           "`payees` is only the first `limit` of them; never describe a " +
           "truncated list as all of the user's payees.",
-        inputSchema: {
+        inputSchema: z.object({
           search: z
             .string()
             .max(200)
@@ -127,18 +147,18 @@ export class McpPayeesTools {
           hasDefaultCategory: booleanArg()
             .optional()
             .describe("Filter on a default category."),
-        },
+        }),
         outputSchema: getPayeesOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           return toolResult(
-            await this.payeesService.getLlmPayees(ctx.userId, args),
+            await this.payeesService.getLlmPayees(user.userId, args),
           );
         } catch (err: unknown) {
           return safeToolError(err);
@@ -160,7 +180,7 @@ export class McpPayeesTools {
           "single new payee created with no contact details is looked up " +
           "before the confirmation card is shown, so the card may carry " +
           "suggestions; a batch is looked up in the background after approval.",
-        inputSchema: {
+        inputSchema: z.object({
           operation: manageOperation(),
           items: itemsArray(
             z.object({
@@ -200,19 +220,19 @@ export class McpPayeesTools {
                 .max(50)
                 .optional()
                 .describe(
-                  "Contact phone number, in whatever format the user gives.",
+                  "Contact phone number, any format with country code.",
                 ),
             }),
           ),
           approvalMode: approvalMode(),
           dryRun: dryRun(),
-        },
+        }),
         outputSchema: managePayeesOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "write");
         if (check.error) return check.result;
 
         const operation = args.operation as ManagePayeeOperation;
@@ -221,32 +241,32 @@ export class McpPayeesTools {
 
         try {
           if (args.dryRun) {
-            return this.manageDryRun(ctx.userId, operation, items);
+            return this.manageDryRun(user.userId, operation, items);
           }
           if (operation === "create") {
             return await this.manageCreate(
               server,
-              ctx.userId,
+              ctx,
+              user.userId,
               items,
               approvalMode,
-              extra.requestId,
             );
           }
           if (operation === "update") {
             return await this.manageUpdate(
               server,
-              ctx.userId,
+              ctx,
+              user.userId,
               items,
               approvalMode,
-              extra.requestId,
             );
           }
           return await this.manageDelete(
             server,
-            ctx.userId,
+            ctx,
+            user.userId,
             items,
             approvalMode,
-            extra.requestId,
           );
         } catch (err: unknown) {
           return safeToolError(err);
@@ -318,28 +338,36 @@ export class McpPayeesTools {
 
   private async emitOrConfirm(
     server: McpServer,
+    ctx: ServerContext,
     userId: string,
     pendingAction: PendingAiAction,
     confirmMessage: string,
-    requestId: unknown,
-  ): Promise<"relay" | "accepted" | "declined"> {
-    if (emitRelayCard(this.relayService, userId, pendingAction)) {
+  ): Promise<"relay" | "accepted" | "declined" | { ask: InputRequiredResult }> {
+    // Only the round that ASKS may hand the confirmation to the web chat. On a
+    // retry the human has already answered in their own client, and a relay
+    // turn that began in between would swallow that answer.
+    if (
+      !ctx.mcpReq.requestState() &&
+      emitRelayCard(this.relayService, userId, pendingAction)
+    ) {
       return "relay";
     }
     const confirmation = await confirmWrite(
       server,
+      ctx,
       confirmMessage,
-      requestId as never,
+      pendingAction.descriptor,
     );
+    if (isAsk(confirmation)) return confirmation;
     return confirmation === "declined" ? "declined" : "accepted";
   }
 
   private async manageCreate(
     server: McpServer,
+    ctx: ServerContext,
     userId: string,
     items: ManagePayeeItem[],
     approvalMode: ApprovalMode,
-    requestId: unknown,
   ) {
     if (items.length === 1) {
       const preview = await this.prepService.prepareCreatePayeeSingle(
@@ -352,11 +380,12 @@ export class McpPayeesTools {
       const action = this.actionBuilder.buildCreatePayee(userId, preview);
       const outcome = await this.emitOrConfirm(
         server,
+        ctx,
         userId,
         action,
         `Create this payee?\nName: ${preview.name}${preview.defaultCategoryName ? `\nDefault category: ${preview.defaultCategoryName}` : ""}${preview.website ? `\nWebsite: ${preview.website}` : ""}${contactCardLines(preview)}`,
-        requestId,
       );
+      if (isAsk(outcome)) return outcome.ask;
       if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
       if (outcome === "declined")
         return toolError(
@@ -394,7 +423,7 @@ export class McpPayeesTools {
       const cards = prep.okPreviews.map((p) =>
         this.actionBuilder.buildCreatePayee(userId, p),
       );
-      return this.runIndividual(server, userId, cards, requestId, prep.skipped);
+      return this.runIndividual(server, ctx, userId, cards, prep.skipped);
     }
 
     const action = this.actionBuilder.buildBatchActions(
@@ -403,14 +432,19 @@ export class McpPayeesTools {
       prep.okRows,
       prep.previewRows,
     );
-    if (emitRelayCard(this.relayService, userId, action)) {
+    if (
+      !ctx.mcpReq.requestState() &&
+      emitRelayCard(this.relayService, userId, action)
+    ) {
       return toolResult(RELAY_PREVIEW_SHOWN);
     }
     const confirmation = await confirmWrite(
       server,
+      ctx,
       `Create ${prep.okPreviews.length} payee(s)?${prep.skipped.length ? ` (${prep.skipped.length} skipped)` : ""}`,
-      requestId as never,
+      action.descriptor,
     );
+    if (isAsk(confirmation)) return confirmation.ask;
     if (confirmation === "declined")
       return toolError(
         "Cancelled: the confirmation was declined, so nothing was created.",
@@ -437,10 +471,10 @@ export class McpPayeesTools {
 
   private async manageUpdate(
     server: McpServer,
+    ctx: ServerContext,
     userId: string,
     items: ManagePayeeItem[],
     approvalMode: ApprovalMode,
-    requestId: unknown,
   ) {
     if (items.length === 1) {
       const preview = await this.prepService.prepareUpdatePayeeSingle(
@@ -452,11 +486,12 @@ export class McpPayeesTools {
       const action = this.actionBuilder.buildUpdatePayee(userId, preview);
       const outcome = await this.emitOrConfirm(
         server,
+        ctx,
         userId,
         action,
         `Apply this payee edit?\nName: ${preview.name}\nDefault category: ${preview.defaultCategoryName ?? "(none)"}${preview.website !== undefined ? `\nWebsite: ${preview.website ?? "(cleared)"}` : ""}${contactCardLines(preview)}`,
-        requestId,
       );
+      if (isAsk(outcome)) return outcome.ask;
       if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
       if (outcome === "declined")
         return toolError(
@@ -490,7 +525,7 @@ export class McpPayeesTools {
       const cards = prep.okPreviews.map((p) =>
         this.actionBuilder.buildUpdatePayee(userId, p),
       );
-      return this.runIndividual(server, userId, cards, requestId, prep.skipped);
+      return this.runIndividual(server, ctx, userId, cards, prep.skipped);
     }
 
     const action = this.actionBuilder.buildBatchActions(
@@ -499,14 +534,19 @@ export class McpPayeesTools {
       prep.okRows,
       prep.previewRows,
     );
-    if (emitRelayCard(this.relayService, userId, action)) {
+    if (
+      !ctx.mcpReq.requestState() &&
+      emitRelayCard(this.relayService, userId, action)
+    ) {
       return toolResult(RELAY_PREVIEW_SHOWN);
     }
     const confirmation = await confirmWrite(
       server,
+      ctx,
       `Apply ${prep.okPreviews.length} payee edit(s)?${prep.skipped.length ? ` (${prep.skipped.length} skipped)` : ""}`,
-      requestId as never,
+      action.descriptor,
     );
+    if (isAsk(confirmation)) return confirmation.ask;
     if (confirmation === "declined")
       return toolError(
         "Cancelled: the confirmation was declined, so nothing was changed.",
@@ -529,10 +569,10 @@ export class McpPayeesTools {
 
   private async manageDelete(
     server: McpServer,
+    ctx: ServerContext,
     userId: string,
     items: ManagePayeeItem[],
     approvalMode: ApprovalMode,
-    requestId: unknown,
   ) {
     if (items.length === 1) {
       const preview = await this.prepService.prepareDeletePayeeSingle(
@@ -544,11 +584,12 @@ export class McpPayeesTools {
       const action = this.actionBuilder.buildDeletePayee(userId, preview);
       const outcome = await this.emitOrConfirm(
         server,
+        ctx,
         userId,
         action,
         `Delete this payee?\nName: ${preview.name}`,
-        requestId,
       );
+      if (isAsk(outcome)) return outcome.ask;
       if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
       if (outcome === "declined")
         return toolError(
@@ -575,7 +616,7 @@ export class McpPayeesTools {
       const cards = prep.okPreviews.map((p) =>
         this.actionBuilder.buildDeletePayee(userId, p),
       );
-      return this.runIndividual(server, userId, cards, requestId, prep.skipped);
+      return this.runIndividual(server, ctx, userId, cards, prep.skipped);
     }
 
     const action = this.actionBuilder.buildBatchActions(
@@ -584,14 +625,19 @@ export class McpPayeesTools {
       prep.okRows,
       prep.previewRows,
     );
-    if (emitRelayCard(this.relayService, userId, action)) {
+    if (
+      !ctx.mcpReq.requestState() &&
+      emitRelayCard(this.relayService, userId, action)
+    ) {
       return toolResult(RELAY_PREVIEW_SHOWN);
     }
     const confirmation = await confirmWrite(
       server,
+      ctx,
       `Delete ${prep.okPreviews.length} payee(s)?${prep.skipped.length ? ` (${prep.skipped.length} skipped)` : ""}`,
-      requestId as never,
+      action.descriptor,
     );
+    if (isAsk(confirmation)) return confirmation.ask;
     if (confirmation === "declined")
       return toolError(
         "Cancelled: the confirmation was declined, so nothing was deleted.",
@@ -611,25 +657,33 @@ export class McpPayeesTools {
    */
   private async runIndividual(
     server: McpServer,
+    ctx: ServerContext,
     userId: string,
     cards: PendingAiAction[],
-    requestId: unknown,
     skipped: { index: number; reason: string }[],
   ) {
-    if (emitRelayCard(this.relayService, userId, cards[0])) {
+    // Only the round that asks may hand the cards to the web chat; on a retry
+    // the human has already answered in their own client.
+    if (
+      !ctx.mcpReq.requestState() &&
+      emitRelayCard(this.relayService, userId, cards[0])
+    ) {
       for (let i = 1; i < cards.length; i++) {
         emitRelayCard(this.relayService, userId, cards[i]);
       }
       return toolResult(RELAY_PREVIEW_SHOWN);
     }
+    // Every card is asked in ONE round: a round per card would be 25 rounds on
+    // a full batch, and a multi-round-trip flow is two.
+    const answers = await confirmWriteMany(
+      server,
+      ctx,
+      confirmItemsForCards(cards, (card) => this.confirmLineFor(card)),
+    );
+    if (!(answers instanceof Map)) return answers.ask;
     const ids: string[] = [];
-    for (const card of cards) {
-      const confirmation = await confirmWrite(
-        server,
-        this.confirmLineFor(card),
-        requestId as never,
-      );
-      if (confirmation === "declined") continue;
+    for (const [index, card] of cards.entries()) {
+      if (answers.get(cardKey(index)) === "declined") continue;
       const id = await this.commitCard(userId, card);
       if (id) ids.push(id);
     }

@@ -29,14 +29,18 @@ vi.mock('@/lib/csv-export', () => ({
   exportToCsv: vi.fn(),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrencyCompact: (n: number) => `$${n}`,
     formatCurrency: (n: number) => `$${n}`,
     formatCurrencyAxis: (n: number) => `$${n}`,
     defaultCurrency: 'CAD',
   }),
-}));
+  };
+});
 
 const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
 vi.mock('@/hooks/useDateRange', () => ({

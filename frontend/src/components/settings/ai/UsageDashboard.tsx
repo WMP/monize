@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type {
   AiUsageSummary,
@@ -12,6 +12,7 @@ import { AI_PROVIDER_LABELS } from '@/types/ai';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { preferredCurrency } from '@/lib/default-currency';
 
 interface UsageDashboardProps {
@@ -26,26 +27,6 @@ const PERIOD_OPTIONS = [
   { labelKey: 'periods.d90', value: 90 },
   { labelKey: 'periods.all', value: undefined },
 ];
-
-function currencyFormatter(currency: string): Intl.NumberFormat {
-  // Guard against any invalid currency code; fall back to USD so formatting
-  // never throws for users with exotic codes.
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-  } catch {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-  }
-}
 
 function providerLabel(provider: string): string {
   return AI_PROVIDER_LABELS[provider as AiProviderType] ?? provider;
@@ -87,6 +68,20 @@ function hasAnyCost(bucket: EstimatedCostByCurrency): boolean {
 
 export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboardProps) {
   const t = useTranslations('settings.usage');
+  // Request and token counts are read by a person, so they follow the
+  // configured number locale like every other figure -- never the browser's,
+  // which an explicit `numberFormat` preference exists to override.
+  const { formatNumber, formatCurrencyPrecise } = useNumberFormat();
+  /**
+   * A model call costs fractions of a cent, so this column shows 2-4 decimals
+   * rather than the currency's own two -- `formatCurrencyPrecise` expands only
+   * when the base precision would round to zero, which is the same rule.
+   * An unknown currency code loses the symbol rather than the reader's locale.
+   */
+  const formatCost = useCallback(
+    (value: number, currency: string) => formatCurrencyPrecise(value, currency, 2),
+    [formatCurrencyPrecise],
+  );
   const [selectedPeriod, setSelectedPeriod] = useState<number | undefined>(30);
   const [showInHomeCurrency, setShowInHomeCurrency] = useState(true);
   const { convert } = useExchangeRates();
@@ -135,11 +130,11 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
         if (converted === null) return '-';
         total += converted;
       }
-      return currencyFormatter(homeCurrency).format(total);
+      return formatCost(total, homeCurrency);
     }
     return Object.entries(bucket)
       .filter(([, amount]) => amount > 0)
-      .map(([currency, amount]) => currencyFormatter(currency).format(amount))
+      .map(([currency, amount]) => formatCost(amount, currency))
       .join(' + ');
   };
 
@@ -151,9 +146,9 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
     if (showInHomeCurrency) {
       const converted = convert(cost, costCurrency, homeCurrency);
       if (converted === null) return '-';
-      return currencyFormatter(homeCurrency).format(converted);
+      return formatCost(converted, homeCurrency);
     }
-    return currencyFormatter(costCurrency).format(cost);
+    return formatCost(cost, costCurrency);
   };
 
   const totalHasCost = hasAnyCost(usage.totalEstimatedCostByCurrency);
@@ -213,19 +208,19 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('totalRequests')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalRequests.toLocaleString()}
+            {formatNumber(usage.totalRequests, 0)}
           </p>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('inputTokens')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalInputTokens.toLocaleString()}
+            {formatNumber(usage.totalInputTokens, 0)}
           </p>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">{t('outputTokens')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {usage.totalOutputTokens.toLocaleString()}
+            {formatNumber(usage.totalOutputTokens, 0)}
           </p>
         </div>
         <div
@@ -263,9 +258,9 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
                 {usage.byProvider.map((row) => (
                   <tr key={row.provider} className="border-b border-gray-100 dark:border-gray-700/50">
                     <td className="py-2 text-gray-900 dark:text-gray-100">{resolveProviderName(row.provider, configs)}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.requests.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.inputTokens.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{row.outputTokens.toLocaleString()}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.requests, 0)}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.inputTokens, 0)}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.outputTokens, 0)}</td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">{renderBucket(row.estimatedCostByCurrency)}</td>
                   </tr>
                 ))}
@@ -300,7 +295,7 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
                     <td className="py-2 text-gray-900 dark:text-gray-100">{resolveLogName(log.provider, log.model, configs)}</td>
                     <td className="py-2 text-gray-600 dark:text-gray-300">{log.feature}</td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">
-                      {(log.inputTokens + log.outputTokens).toLocaleString()}
+                      {formatNumber(log.inputTokens + log.outputTokens, 0)}
                     </td>
                     <td className="py-2 text-right text-gray-600 dark:text-gray-300">
                       {log.durationMs}ms

@@ -1,12 +1,17 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import {
+  ProtocolError,
+  ProtocolErrorCode,
+  SdkError,
+  SdkErrorCode,
+} from "@modelcontextprotocol/server";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 /**
  * What this session's client has actually been observed to do with an
  * `elicitation/create` request.
  *
- * The advertised capability cannot answer this. `@modelcontextprotocol/sdk`
- * >= 1.23 rewrites the legacy 2025-06-18 shape `{"elicitation":{}}` into
+ * The advertised capability cannot answer this. The SDK rewrites the legacy
+ * 2025-06-18 shape `{"elicitation":{}}` into
  * `{"elicitation":{"form":{}}}` before `getClientCapabilities()` sees it
  * (`ElicitationCapabilitySchema`'s `z.preprocess`), so every client that
  * advertises elicitation at all now looks form-capable -- the ones that answer
@@ -22,10 +27,13 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 export type ElicitationBehaviour = "unknown" | "answers" | "silent";
 
 /**
- * Keyed on the `McpServer` because there is exactly one per MCP session
- * (`mcp-http.controller.ts` builds a fresh server per `Mcp-Session-Id`), and a
- * weak key means the record dies with the session -- no cleanup hook to forget,
- * and no way for one client's observed behaviour to be read for another's.
+ * Keyed on the `McpServer` because there is exactly one per 2025-era MCP
+ * session (`mcp-http.controller.ts` builds a fresh server per
+ * `Mcp-Session-Id`), and a weak key means the record dies with the session --
+ * no cleanup hook to forget, and no way for one client's observed behaviour to
+ * be read for another's. This memory is legacy-only: a 2026-07-28 request gets
+ * a fresh server and holds nothing between rounds, and needs none of it,
+ * because a multi round-trip confirmation has no server-side wait to save.
  */
 const observed = new WeakMap<McpServer, ElicitationBehaviour>();
 
@@ -56,18 +64,32 @@ export function recordElicitationSilent(server: McpServer): void {
  * one that matters in practice -- a client that advertises `elicitation` and
  * then answers -32601 to `elicitation/create`.
  *
+ * The two error families are separate classes in the SDK and both have to be
+ * read: a peer's refusal crosses the wire as a `ProtocolError`, while a
+ * timeout, a dropped connection or a locally refused capability is a
+ * client-side `SdkError` whose codes are strings, not numbers.
+ *
  * An unknown rejection shape is deliberately absent, so a failure nobody has
  * reasoned about refuses the write instead of waving it through.
  */
 export function clientAnsweredForItself(err: unknown): boolean {
-  const code = (err as { code?: unknown } | null | undefined)?.code;
-  return (
-    typeof code === "number" &&
-    (code === ErrorCode.ConnectionClosed ||
-      code === ErrorCode.RequestTimeout ||
-      code === ErrorCode.ParseError ||
-      code === ErrorCode.InvalidRequest ||
-      code === ErrorCode.MethodNotFound ||
-      code === ErrorCode.InvalidParams)
-  );
+  if (ProtocolError.isInstance(err)) {
+    return (
+      err.code === ProtocolErrorCode.ParseError ||
+      err.code === ProtocolErrorCode.InvalidRequest ||
+      err.code === ProtocolErrorCode.MethodNotFound ||
+      err.code === ProtocolErrorCode.InvalidParams
+    );
+  }
+  if (SdkError.isInstance(err)) {
+    return (
+      err.code === SdkErrorCode.ConnectionClosed ||
+      err.code === SdkErrorCode.RequestTimeout ||
+      // The SDK refuses locally, before any network call, when the client
+      // advertises no elicitation at all: no dialog reached a human, which is
+      // the same outcome as a client that answered for itself.
+      err.code === SdkErrorCode.CapabilityNotSupported
+    );
+  }
+  return false;
 }

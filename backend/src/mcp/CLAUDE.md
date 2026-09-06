@@ -1,21 +1,34 @@
 # MCP Server
 
-Monize exposes its financial data over the **Model Context Protocol** so MCP clients (Claude Desktop's "Add Connector", IDE agents, etc.) can query and act on a user's finances. This directory is the whole server: transport, the per-session `McpServer` factory, and the tool/resource/prompt definitions. Built on `@modelcontextprotocol/sdk` (`McpServer` + `StreamableHTTPServerTransport`).
+Monize exposes its financial data over the **Model Context Protocol** so MCP clients (Claude Desktop's "Add Connector", IDE agents, etc.) can query and act on a user's finances. This directory is the whole server: transport, the `McpServer` factory, and the tool/resource/prompt definitions. Built on the v2 SDK (`@modelcontextprotocol/server` + `@modelcontextprotocol/node`).
 
-## Architecture
+## Two protocol revisions, one definition
 
-- **Transport** (`mcp-http.controller.ts`): Streamable HTTP at `POST/GET/DELETE /mcp`. One transport + one `McpServer` per session, keyed by the `Mcp-Session-Id` header; 1h TTL, per-user cap, periodic cleanup. `@SkipCsrf()` + bearer auth only (no cookies).
-- **Auth** (`validatePat`): `Authorization: Bearer <token>`. `pat_*` tokens go through `PatService`; everything else is treated as an OAuth 2.1 access token (`OAuthProviderService`). A 401 returns `WWW-Authenticate` with `resource_metadata` (RFC 9728) pointing at `/.well-known/oauth-protected-resource`.
-- **Server factory** (`mcp-server.service.ts`): `createServer(resolve)` builds a fresh `McpServer`, sets `instructions` + capabilities, and registers every tool/resource/prompt. The server `version` is read from `backend/package.json` -- never hardcode it.
-- **Per-request user context** (`mcp-context.ts`): handlers call `resolve(extra.sessionId)` to get `{ userId, scopes }`; `userId` always comes from the session, never from tool arguments.
+`/api/v1/mcp` answers **2026-07-28** and the **2025-era** revisions from one server definition, so the two can never drift apart.
+
+- **Transport** (`mcp-http.controller.ts`): the SDK's `isLegacyRequest` decides which. A 2026-07-28 request goes to `createMcpHandler(..., { legacy: "reject" })` through `toNodeHandler`; a 2025-era one keeps the sessionful transport (one `NodeStreamableHTTPServerTransport` + one `McpServer` per `Mcp-Session-Id`, 1h TTL, per-user cap, periodic cleanup). Use the predicate, never a header check: it answers a malformed envelope, a version header without one, and header/body mismatches from the modern path with modern error codes, and a request routed the other way is refused in the wrong shape. `@SkipCsrf()` + bearer auth only (no cookies).
+- **The legacy path stays selected on purpose.** The SDK's stateless legacy fallback would serve a 2025-era client from an instance that holds nothing between rounds, and our 2025 confirmation is a server-initiated elicitation that waits.
+- **GET and DELETE are 2025-era session operations.** Without a session id they answer `405` with `Allow: POST`: the new revision has no standalone stream and no session to end.
+- **Auth** (`validatePat`): `Authorization: Bearer <token>`. `pat_*` tokens go through `PatService`; everything else is treated as an OAuth 2.1 access token (`OAuthProviderService`). A 401 returns `WWW-Authenticate` with `resource_metadata` (RFC 9728) pointing at `/.well-known/oauth-protected-resource`. A credential that cannot be identified (an OAuth grant with no id) is refused with 403 rather than served.
+- **Server factory** (`mcp-server.service.ts`): `createServer()` builds a fresh `McpServer`, sets `instructions`, capabilities, cache hints and the confirmation options, and registers every tool/resource/prompt. The modern handler calls it per request, the sessionful path once per session. It deliberately takes no era: a factory that cannot see which revision asked cannot answer them differently. The server `version` is read from `backend/package.json` -- never hardcode it.
+
+## Identity is a property of the request, not of a session
+
+A 2026-07-28 request has no session at all, and even on a 2025-era connection the bearer rides on every request. So the transport validates the credential and attaches it as the SDK's `AuthInfo` (`toAuthInfo`), and a handler reads the caller from `resolveUserContext(ctx)` -- which validates the shape rather than casting it. `userId` never comes from tool arguments, and no tool reads a session map. That is INV-MCP-001 restated per request; a 2025-era session is additionally bound to the credential that opened it.
+
+**"Which session is this" became "which caller is this"** (`callerKey`): the session id on a 2025-era connection, the credential id where there is no session. Only two things ask -- the relay claim and the observed-elicitation record -- and on a 2025-era connection nothing changes. The cost on 2026-07-28 is that two clients sharing one token share a caller key, so a user who wants the web-chat relay and a direct client at once should mint a token for the agent alone (the connect instructions say so).
 
 ## Directory layout
 
 ```
 mcp/
-  mcp-http.controller.ts     # Streamable HTTP transport + sessions + auth
+  mcp-http.controller.ts     # Streamable HTTP transport: era routing, sessions, auth
   mcp-server.service.ts      # createServer(): wires everything onto an McpServer
-  mcp-context.ts             # resolve, requireScope, toolResult/toolError, sanitization
+  mcp-context.ts             # request identity (toAuthInfo/resolveUserContext/callerKey),
+                             # requireScope, toolResult/toolError, sanitization
+  mcp-confirm.ts             # the write confirmation, in both revisions' shapes,
+                             # and the round-stable projection it fingerprints
+  mcp-request-state.ts       # the seal a multi round-trip confirmation carries
   mcp-annotations.ts         # shared tool annotation presets (READ_ONLY/CREATE/UPDATE)
   mcp-write-limiter.ts       # per-user daily write cap for mutating tools
   mcp-elicitation-support.ts # what each session's client does with elicitation
@@ -26,7 +39,7 @@ mcp/
   mcp.module.ts              # NestJS providers/imports
 ```
 
-Each tool/resource/prompt is an `@Injectable()` class with a `register(server, resolve)` method, listed in both `mcp.module.ts` (providers) and `mcp-server.service.ts` (wired into `createServer`).
+Each tool/resource/prompt is an `@Injectable()` class with a `register(server)` method, listed in both `mcp.module.ts` (providers) and `mcp-server.service.ts` (wired into `createServer`).
 
 ## Adding a tool (required format)
 
@@ -39,18 +52,18 @@ server.registerTool(
     title: "Get thing",                 // human-readable display name
     annotations: READ_ONLY,             // from mcp-annotations.ts
     description: "What it does and when to use it (guide the model).",
-    inputSchema: {                      // Zod raw shape; {} if no args
-      id: z.string().uuid().describe("Thing ID"),
-    },
+    inputSchema: z.object({             // an explicit z.object; z.object({}) if no args
+      id: uuidString().describe("Thing ID"),
+    }),
     outputSchema: getThingOutput,       // from tool-output-schemas.ts
   },
-  async (args, extra) => {
-    const ctx = resolve(extra.sessionId);
-    if (!ctx) return toolError("No user context");
-    const check = requireScope(ctx.scopes, "read");
+  async (args, ctx) => {
+    const user = resolveUserContext(ctx);
+    if (!user) return toolError("No user context");
+    const check = requireScope(user.scopes, "read");
     if (check.error) return check.result;
     try {
-      const data = await this.thingService.getLlmThing(ctx.userId, args.id);
+      const data = await this.thingService.getLlmThing(user.userId, args.id);
       return toolResult(data);
     } catch (err: unknown) {
       return safeToolError(err);        // never leak 5xx internals
@@ -59,34 +72,58 @@ server.registerTool(
 );
 ```
 
+The local is named `user`, never `ctx`: `ctx` is the SDK's request context, and the source scan in `mcp-migration.guard.spec.ts` reads the difference. A raw Zod shape still compiles (the SDK keeps a deprecated overload) but is not the supported form.
+
 Checklist for a new tool:
 
 1. Put the data logic on the **domain service** (e.g. `getLlm*`), not in the tool. Per the repo rule, the same logic is shared with the AI Assistant tool executor and both must return the same shape -- wire both surfaces in the same PR.
 2. Add the tool to its domain `tools/*.tool.ts` with the five config fields above.
 3. Add its output schema to `tool-output-schemas.ts` (conventions below) and import it.
 4. Pick the right annotation preset (below).
-5. If it mutates data, derive scope `"write"`, enforce the daily write limit via `McpWriteLimiter` (see `transactions.tool.ts`), and sanitize user strings with `stripHtml(...)` before persisting. Gate the write behind a user confirmation with `confirmWrite(server, message, extra.requestId)` (pass `extra.requestId` so the elicitation is delivered on the tool call's own SSE stream, not the standalone GET stream); persist only on `"accepted"`/`"unsupported"`, return a `toolError` without writing on `"declined"`. `"unsupported"` means no dialog reached a human -- the client still gates every tool call with its own approval prompt, so proceeding is not a consent bypass.
-   - **Relay first.** When the call is serving a prompt the user typed in the Monize web chat (reverse relay), confirm there instead: build the signed `PendingAiAction` with `AiActionBuilderService` (shared with the AI Assistant tool executor) and emit it. If the card is shown in the browser (committed via `/ai/actions/confirm` on approval), return `RELAY_PREVIEW_SHOWN` and do NOT write or `confirmWrite`; otherwise fall through to `confirmWrite`.
+5. If it mutates data, derive scope `"write"`, enforce the daily write limit via `McpWriteLimiter` (see `transactions.tool.ts`), and sanitize user strings with `stripHtml(...)` before persisting. Gate the write behind a user confirmation with `confirmWrite(server, ctx, message, action)`, passing the signed action descriptor as it is -- `confirmationFingerprint` strips the per-build fields itself (see below), so a caller neither may nor need pre-trim it. **Handle all four outcomes**: return `outcome.ask` unchanged when `isAsk(outcome)` (the question, on 2026-07-28 -- write nothing), persist on `"accepted"`/`"unsupported"`, and return a `toolError` without writing on `"declined"`. `"unsupported"` means no dialog reached a human -- the client still gates every tool call with its own approval prompt, so proceeding is not a consent bypass.
+   - **Relay first.** When the call is serving a prompt the user typed in the Monize web chat (reverse relay), confirm there instead: build the signed `PendingAiAction` with `AiActionBuilderService` (shared with the AI Assistant tool executor) and emit it. If the card is shown in the browser (committed via `/ai/actions/confirm` on approval), return `RELAY_PREVIEW_SHOWN` and do NOT write or `confirmWrite`; otherwise fall through to `confirmWrite`. Offer the card only when `ctx.mcpReq.requestState()` is absent -- a retry round already carries the user's answer.
 6. Update `mcp-server.service.ts` count and `mcp.module.ts` if it's a new provider class.
 7. Add/extend tests (below). `mcp-annotations.spec.ts` enforces that every tool has title + input/output schema + annotations with the right read/write hints -- bump `EXPECTED_TOOL_COUNT` and `WRITE_TOOLS`/`IDEMPOTENT_WRITES`.
 
+## A write is confirmed twice over, in two different shapes
+
+Every write is confirmed by a human before it is saved, and how that question is asked depends on the revision. `confirmWrite` / `confirmWriteMany` (`mcp-confirm.ts`) is the only place either shape is written.
+
+**On 2026-07-28 there is no server-initiated request, so the tool answers with the question.** Round one returns `{ ask }` -- an `input_required` result carrying a sealed `requestState` -- which the tool returns untouched, writing nothing. The client shows the dialogs and calls the tool again with the answers; round two re-derives the same items and reads them. The server holds nothing in between, which is what makes the endpoint stateless.
+
+Three properties make that round trip safe, and all three live in the seal (`mcp-request-state.ts`, verified by the SDK seam before any handler runs):
+
+- **It is bound to the credential and the method.** A confirmation cannot be replayed by another caller or against another tool. It is not single-use: the same seal and the same answer, re-sent by the same credential against the same tool inside the TTL, commits again. A client able to do that could equally have fabricated the `accept` in the first place -- the answer is client-asserted on this revision, exactly as it is on the 2025-era one -- so the seal bounds who and what, never how many times.
+- **It carries a fingerprint of what the user was shown**, recomputed on the round that writes. A retry that re-derived different rows -- a name that now resolves elsewhere, an amount the model altered -- is refused with a message telling the model to ask again. The seam can prove the state is ours and unexpired; only the fingerprint can prove it is about *this* change.
+- **What is fingerprinted is the change, not the round it was built in.** Round two is a separate tool call, so it rebuilds its descriptor: `actionId` is a fresh UUID, `expiresAt` a fresh clock reading, and an attachment's `attachmentRefId` a fresh parking slot. `roundStableAction` drops exactly those at every depth (the envelope half from `AI_ACTION_ENVELOPE_FIELDS`, so the descriptor's own declaration is the list and the compiler refuses a new per-build field that is not on it); everything that says *what* is being approved -- amounts, ids, dates, an attachment's `sha256` -- stays in. Hashing the descriptor raw is not a smaller version of this: it makes every fingerprint unique, so every confirmed write on 2026-07-28 is refused with "the confirmation no longer matches the change". `mcp-migration.guard.spec.ts` fails on the raw form, and `mcp-confirm.spec.ts` drives the **real** action builder twice -- a builder double that returns one frozen object agrees with itself no matter what is hashed, which is how the defect shipped green.
+- **It is signed, not encrypted.** The client can read the payload, so it holds a fingerprint and nothing else: no row ids, no amounts, no names.
+
+Every card's item comes from `confirmItemsForCards`, so what a card is fingerprinted under is one decision rather than one per tool.
+
+Two consequences to keep: **individual approval mode asks for every card in ONE round** (a round per card would be 25 rounds on a full batch, and the flow allows two), and **a relay card is offered only on the round that asks** -- on a retry the human has already answered in their own client, and a web-chat turn that began in between would swallow that answer.
+
+**On a 2025-era connection the server asks and waits**, exactly as it always did, through `ctx.mcpReq.elicitInput` (which relates the dialog to the tool call; a server-to-client request with no relation goes to the standalone GET stream, which a tool-calling client does not hold open). The SDK's own `legacyShim` is off: our fallback for a client that cannot show a dialog is behavioural, and a shim cannot reproduce it.
+
 ## An advertised capability is not evidence; observed behaviour is
 
-`confirmWrite` used to read `getClientCapabilities().elicitation.form` as proof that a confirmation dialog could be shown, and therefore treated every failure of that dialog as the user saying no. `@modelcontextprotocol/sdk` >= 1.23 rewrites the legacy 2025-06-18 shape `{"elicitation":{}}` into `{"elicitation":{"form":{}}}` before `getClientCapabilities()` ever sees it, so the check stopped separating a client that shows dialogs from one that answers `-32601` or never answers at all -- and every write through such a client was refused, or hung until the client abandoned the tool call. **A capability the SDK synthesizes cannot carry a decision.**
+`confirmWrite` used to read `getClientCapabilities().elicitation.form` as proof that a confirmation dialog could be shown, and therefore treated every failure of that dialog as the user saying no. The SDK rewrites the legacy 2025-06-18 shape `{"elicitation":{}}` into `{"elicitation":{"form":{}}}` before `getClientCapabilities()` ever sees it, so the check stopped separating a client that shows dialogs from one that answers `-32601` or never answers at all -- and every write through such a client was refused, or hung until the client abandoned the tool call. **A capability the SDK synthesizes cannot carry a decision.**
 
 So the outcome decides, not the advertisement:
 
 - Only a returned `action` is a user's answer. A rejection whose code says the client answered for itself (`clientAnsweredForItself` in `mcp-elicitation-support.ts`: method not found, invalid request/params, parse error, connection closed, request timeout) is `"unsupported"`; an unaccounted-for failure shape stays `"declined"`, so a case nobody has reasoned about refuses the write.
 - Behaviour is remembered per session, in a `WeakMap` keyed on the session's `McpServer` so the record dies with the session. A client caught answering for itself is not asked again (the round trip costs `CONFIRM_TIMEOUT_MS` per row otherwise); a client that has answered once is never demoted, so a later unanswered dialog on it is `"declined"`.
-- **The wait must expire before the client abandons the tool call waiting on it.** Claude's MCP tool deadline is 60s; a five-minute server-side wait produced no result at all, only an opaque client-side timeout. `mcp-context.spec.ts` fails if `CONFIRM_TIMEOUT_MS` leaves that range, and pins the SDK normalization above so it cannot silently become load-bearing again.
+- **The wait must expire before the client abandons the tool call waiting on it.** Claude's MCP tool deadline is 60s; a five-minute server-side wait produced no result at all, only an opaque client-side timeout. `mcp-confirm.spec.ts` fails if `CONFIRM_TIMEOUT_MS` leaves that range, and pins the SDK normalization above so it cannot silently become load-bearing again. A 2026-07-28 request has no server-side wait at all, so the human's window there is the seal's own TTL.
+- The record is legacy-only, and so is the memory: a 2026-07-28 request gets a fresh server and has nothing to save.
 
-## A relay turn belongs to one MCP session, for a bounded time
+## A relay turn belongs to one caller, for a bounded time
 
-The same user can have two MCP sessions at once -- the agent running the web-chat relay loop, and a direct client (Claude Desktop) they are typing at. Only one is serving a browser prompt, so **"does this write belong to the web chat" is a question about the calling session, not about the user**.
+The same user can have two MCP clients at once -- the agent running the web-chat relay loop, and a direct client (Claude Desktop) they are typing at. Only one is serving a browser prompt, so **"does this write belong to the web chat" is a question about the calling client, not about the user**.
 
-- Emit a card with `emitRelayCard(this.relayService, userId, action)` (`mcp-relay-confirm.ts`), never `relayService.emitPendingAction` directly: the helper supplies the ambient MCP session id the decision depends on. `mcp-relay-confirm.spec.ts` scans the tool sources and fails on a direct call.
-- A relay turn is a prompt **claimed by this session** (`waitForPrompt` records `claimedBy`), or one of its claims that timed out within the late-answer retention window. It is not connection liveness, not user-wide, and not unbounded in time -- each of those was tried, and each routed a direct client's confirmation into a web chat nobody was watching (the worst version captured every direct write the user made afterwards, permanently).
-- Liveness is session-scoped for the same reason: a direct client's tool calls are not evidence that another session's agent is still working.
+The caller key is the session id on a 2025-era connection and the credential id on a 2026-07-28 request (`callerKey`), because that revision has no session to ask about. Two clients on one token therefore share a key: mint the relay agent its own.
+
+- Emit a card with `emitRelayCard(this.relayService, userId, action)` (`mcp-relay-confirm.ts`), never `relayService.emitPendingAction` directly: the helper supplies the ambient caller key the decision depends on. `mcp-relay-confirm.spec.ts` scans the tool sources and fails on a direct call.
+- A relay turn is a prompt **claimed by this caller** (`waitForPrompt` records `claimedBy`), or one of its claims that timed out within the late-answer retention window. It is not connection liveness, not user-wide, and not unbounded in time -- each of those was tried, and each routed a direct client's confirmation into a web chat nobody was watching (the worst version captured every direct write the user made afterwards, permanently).
+- Liveness is caller-scoped for the same reason: a direct client's tool calls are not evidence that another caller's agent is still working.
 
 ## `toolResult` and structured content
 
@@ -172,14 +209,31 @@ There is no destructive preset for a read tool. The four `manage_*` tools take `
 
 ## Testing
 
-Tools/resources/prompts unit tests mock `registerTool`/`registerResource`/`registerPrompt` to capture the handler, then drive it with a mocked service and assert on `result.content[0].text` (parsed JSON) and `result.isError`. Plus:
+Tools/resources/prompts unit tests mock `registerTool`/`registerResource`/`registerPrompt` to capture the handler, then drive it with a mocked service and a built request context (`testing/mcp-test-context.ts`, whose `mcpTestCtx(user, options)` carries the caller as the request's own `AuthInfo`), asserting on `result.structuredContent` and `result.isError`. A spec that needs a 2026-07-28 request passes `sessionId: undefined` and an `envelope`. Plus:
 
 - `mcp-annotations.spec.ts` -- every tool has title + input/output schema + annotations with correct read/write hints (update its constants when adding a tool).
 - `tool-output-schemas.spec.ts` -- each output schema accepts a representative `toolResult` payload (incl. NaN, null, and alternate branches), and an end-to-end round-trip through the real SDK via `InMemoryTransport`.
-- `mcp-server.service.spec.ts` -- registration counts and that the advertised version tracks `package.json`.
+- `mcp-server.service.spec.ts` -- registration counts, the advertised version tracking `package.json`, the cache fields on a real listing, and the absence of the `logging` capability.
+- `mcp-eras.spec.ts` -- **both revisions, in process, against the real SDK**: a client pinned to 2026-07-28 over `handler.fetch` and a 2025-era client over `InMemoryTransport` reach the same tools and resolve the same caller, and a write is confirmed in two rounds (accepted, declined, and never answered). A mocked transport cannot show any of that.
+- `mcp-confirm.spec.ts` -- the confirmation matrix in both shapes, a seal replayed under another credential or another tool, and the fingerprint of a **real** built action holding across two rounds while still separating two different changes.
+- `mcp-migration.guard.spec.ts` -- the mechanical rules: no 1.x import, no session-shaped identity read, no tool building its own `inputRequired`, reading `inputResponses` or mapping its own confirmation cards, every tool that confirms a write handling the unanswered round, and the fingerprint taken over the round-stable projection.
 
 ## Spec compliance notes
 
-Implemented: Streamable HTTP transport, session management, OAuth 2.1 + RFC 9728 protected-resource metadata, tools (title/description/input+output schema/annotations), resources (title/description/mimeType), prompts (title/description/arguments), logging/tools/resources/prompts capabilities.
+**Revision 2026-07-28**, served beside the 2025-era revisions: the stateless per-request core (no session, no `initialize`), `server/discover`, multi round-trip write confirmation, `ttlMs`/`cacheScope` on every cacheable result, the `Mcp-Method`/`Mcp-Name` routing headers (allowed through CORS; the SDK validates them), OAuth 2.1 + RFC 9728 protected-resource metadata with the `iss` parameter (RFC 9207) on the authorization response.
 
-Intentionally not implemented: `completions` (argument autocompletion) and resource `subscribe`/`listChanged`. DNS-rebinding protection on the transport is omitted because auth is bearer-only (no ambient browser credentials to steal). Add these if a client need arises.
+Tools carry title, description, input and output schema and annotations; resources carry title, description, mimeType and a cache hint; prompts carry title, description and arguments. Declared capabilities are `tools`, `resources` and `prompts`.
+
+**Intentionally not implemented**, each because nothing asks for it yet:
+
+| Not implemented | Why |
+|---|---|
+| `logging` | Removed as a capability here: `logging/setLevel` is gone in this revision and the feature is deprecated (SEP-2577). Nothing ever sent a log notification. |
+| `subscriptions/listen`, resource `subscribe`/`listChanged` | No client subscribes, and the data behind these resources is read live. |
+| `completions` | Argument autocompletion; no client asks. |
+| The tasks extension (`io.modelcontextprotocol/tasks`) | Every tool here answers within a request. |
+| `x-mcp-header` / `Mcp-Param-*` mirroring | No tool argument needs to be visible to an intermediary. |
+| DNS-rebinding protection | Auth is bearer-only, so there are no ambient browser credentials to steal. |
+| Client ID Metadata Documents | `docs/future-plans/mcp-client-id-metadata-documents.md`; DCR still works and nothing presents a URL as its `client_id`. |
+
+The 2025-era session path is the one piece with an end date: once no client negotiates that revision, `legacy: "reject"` on the whole endpoint retires the session table and `mcp-elicitation-support.ts` with it.

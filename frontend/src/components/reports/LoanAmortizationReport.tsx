@@ -50,7 +50,7 @@ const NO_RATE_CHANGES: LoanRateChange[] = [];
 
 export function LoanAmortizationReport() {
   const t = useTranslations('reports');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
 
   const friendlyAccountType = (type: string): string => {
     switch (type) {
@@ -350,7 +350,7 @@ export function LoanAmortizationReport() {
       cards.push(
         { label: t('loanAmortization.currentBalance'), value: formatCurrency(Math.abs(selectedAccount.currentBalance), currency), color: '#dc2626' },
         { label: t('loanAmortization.originalAmount'), value: formatCurrency(summary?.originalBalance || Math.abs(selectedAccount.openingBalance), currency), color: '#111827' },
-        { label: t('loanAmortization.interestRate'), value: currentTerms.annualRate != null ? `${currentTerms.annualRate}%` : t('loanAmortization.notSet'), color: '#111827' },
+        { label: t('loanAmortization.interestRate'), value: currentTerms.annualRate != null ? `${formatPercentTrimmed(currentTerms.annualRate)}` : t('loanAmortization.notSet'), color: '#111827' },
         { label: interestLabel(summary), value: formatCurrency(summary?.totalInterest || 0, currency), color: '#ea580c' },
         { label: t('loanAmortization.paymentsMade'), value: String(historicalCount), color: '#16a34a' },
       );
@@ -514,7 +514,7 @@ export function LoanAmortizationReport() {
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('loanAmortization.interestRate')}</div>
             <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
               {currentTerms.annualRate != null
-                ? `${currentTerms.annualRate}%`
+                ? `${formatPercentTrimmed(currentTerms.annualRate)}`
                 : t('loanAmortization.notSet')}
             </div>
           </div>

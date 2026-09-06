@@ -127,6 +127,13 @@ CREATE TABLE accounts (
     statement_settlement_day INTEGER, -- last day of billing cycle (credit cards only)
     is_closed BOOLEAN DEFAULT false,
     closed_date DATE,
+    -- Balance-threshold alerts (migration 187; docs/specs/balance-threshold-notifications.md).
+    -- Thresholds in the account's own currency (NULL = off); the *_armed latches
+    -- make the crossing rule hold across evaluations (a CAS, INV-BALANCE-002).
+    low_balance_threshold NUMERIC(20, 4),
+    high_balance_threshold NUMERIC(20, 4),
+    low_alert_armed BOOLEAN NOT NULL DEFAULT false,
+    high_alert_armed BOOLEAN NOT NULL DEFAULT false,
     is_favourite BOOLEAN DEFAULT false,
     favourite_sort_order INTEGER DEFAULT 0,
     exclude_from_net_worth BOOLEAN DEFAULT false,
@@ -220,8 +227,13 @@ CREATE TABLE payees (
     logo_fetched_at TIMESTAMP,
     -- Contact information. address is free text (one field, not structured
     -- parts) because formats are locale-specific and its only consumer is a
-    -- maps link that takes a single query string. phone is stored as written --
-    -- country codes, spaces, brackets and extensions all survive.
+    -- maps link that takes a single query string. phone is stored in ONE form
+    -- whichever surface wrote it -- E.164 with an optional RFC 3966 extension
+    -- suffix (+12064488762, +442079460958;ext=12) -- so two records of the same
+    -- number compare equal and a tel: link dials the same digits either way.
+    -- Rows written before that rule are deliberately not backfilled: they hold
+    -- whatever was typed until the payee is next saved, so a reader must format
+    -- through formatPhoneForDisplay rather than assume the shape.
     address TEXT,
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -1486,6 +1498,62 @@ CREATE TABLE ai_provider_configs (
 CREATE INDEX idx_ai_provider_configs_user ON ai_provider_configs(user_id);
 CREATE INDEX idx_ai_provider_configs_user_active ON ai_provider_configs(user_id, is_active);
 
+-- Payee contact lookup: Google Places configuration and request counters
+-- (migration 188). See backend/src/payees/lookup/google-places/.
+-- api_key_enc is ciphertext under ENCRYPTION_KEY, named to match
+-- ai_provider_configs.api_key_enc so the backup key transport applies.
+-- monthly_cap defaults to 1000: the free monthly allowance of Google's Text
+-- Search Enterprise SKU, which is the SKU a field mask asking for websiteUri
+-- or internationalPhoneNumber is billed at.
+CREATE TABLE payee_lookup_settings (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    api_key_enc TEXT,                     -- Encrypted Google Places API key (null = user configured none)
+    google_places_enabled BOOLEAN NOT NULL DEFAULT true,
+    -- The AI source's own switch (migration 191). Symmetric with the one
+    -- above: disabled means never reached, not even as the fallback when the
+    -- Places cap is spent.
+    ai_enabled BOOLEAN NOT NULL DEFAULT true,
+    cap_enabled BOOLEAN NOT NULL DEFAULT true,
+    monthly_cap INTEGER NOT NULL DEFAULT 1000,
+    -- Which source answers first (migration 189). An order, not a switch: the
+    -- other source is still reached when this one cannot answer for a
+    -- configuration or budget reason, never to paper over a failure.
+    preferred_source VARCHAR(20) NOT NULL DEFAULT 'google-places',
+    -- Which AI provider answers, when AI does (migration 190). NULL = no
+    -- preference: every active provider in priority order, as before. Pinned so
+    -- a lookup cannot fall through to a model the user did not choose to pay
+    -- for. SET NULL on delete: losing the provider must not delete the Google
+    -- Places key stored beside it.
+    ai_provider_config_id UUID REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payee_lookup_settings_monthly_cap_check
+        CHECK (monthly_cap BETWEEN 1 AND 1000000),
+    CONSTRAINT payee_lookup_settings_preferred_source_check
+        CHECK (preferred_source IN ('google-places', 'ai'))
+);
+
+CREATE TRIGGER update_payee_lookup_settings_updated_at
+    BEFORE UPDATE ON payee_lookup_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Per-user request counter for a user's own Google Places key. month is a
+-- Pacific 'YYYY-MM' string written by the claim statement -- Pacific because
+-- Google's free monthly allowance resets at midnight Pacific on the 1st.
+CREATE TABLE payee_lookup_usage (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    month CHAR(7) NOT NULL,
+    google_places_requests INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, month)
+);
+
+-- Request counter for the OPERATOR's key (GOOGLE_PLACES_API_KEY). No owner
+-- column: one operator key is one bill. RLS-exempt, like provider_health.
+CREATE TABLE google_places_instance_usage (
+    month CHAR(7) PRIMARY KEY,
+    requests INTEGER NOT NULL DEFAULT 0
+);
+
 -- AI Usage Logs (token usage tracking per AI request)
 CREATE TABLE ai_usage_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1788,6 +1856,24 @@ CREATE UNIQUE INDEX idx_notification_reminders_active_source
     WHERE stopped_at IS NULL AND source_notification_id IS NOT NULL;
 
 CREATE TRIGGER update_notification_reminders_updated_at BEFORE UPDATE ON notification_reminders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Per-user state for the daily portfolio-movement notification (migration 186;
+-- docs/specs/portfolio-movement-notifications.md). The opt-in threshold plus the
+-- producer's own last-complete-value baseline. baseline_currency is a resolved
+-- reporting-currency snapshot, deliberately not a currencies(code) FK (derived,
+-- not user-entered; a currency deletion must not cascade a user's baseline).
+CREATE TABLE notification_portfolio_state (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    move_alert_percent NUMERIC(9,4),
+    baseline_value NUMERIC(20,4),
+    baseline_currency VARCHAR(3),
+    baseline_captured_on DATE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id)
+);
+
+CREATE TRIGGER update_notification_portfolio_state_updated_at BEFORE UPDATE ON notification_portfolio_state FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Triggers for budget tables updated_at
 CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2322,6 +2408,14 @@ CREATE TABLE push_subscriptions (
         CHECK (transport IN ('webpush', 'unifiedpush')),
     device_name VARCHAR(100),
     user_agent VARCHAR(255),
+    -- The address this subscription was registered from (migration 185), so the
+    -- device list can tell two browsers on one machine apart -- `device_name` is
+    -- derived from the User-Agent and is identical for both. Refreshed on each
+    -- re-registration, alongside last_seen_at, and NEVER at delivery time: a
+    -- push travels from this server to the push service, which reaches the
+    -- device over a connection this deployment does not see, so the address a
+    -- device is reachable at today is not knowable here.
+    registered_ip INET,
     -- The instance identity this subscription was minted under. A rotation
     -- makes every older subscription undeliverable -- the push service checks
     -- the VAPID signature against the key the subscription was created with --
@@ -2402,10 +2496,13 @@ DECLARE
         'loan_rate_changes',
         'loan_scenarios',
         'monte_carlo_scenarios',
+        'notification_portfolio_state',
         'notification_preferences',
         'notification_reminders',
         'notifications',
         'payee_aliases',
+        'payee_lookup_settings',
+        'payee_lookup_usage',
         'push_subscriptions',
         'scheduled_transactions',
         'securities',
@@ -2955,6 +3052,7 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --
 -- rls-exempt: currencies
 -- rls-exempt: exchange_rates
+-- rls-exempt: google_places_instance_usage
 -- rls-exempt: market_index_prices
 -- rls-exempt: market_index_sync
 -- rls-exempt: oauth_payloads
@@ -2966,7 +3064,7 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 -- Verification helper (run manually; not part of the migration's effect):
 --   SELECT tablename, policyname FROM pg_policies
 --    WHERE schemaname = 'public' ORDER BY tablename;
--- Expected: 61 policies -- 26 direct + 4 real-user-keyed (112),
+-- Expected: 62 policies -- 26 direct + 4 real-user-keyed (112),
 --           15 indirect (113), 5 special (114),
 --           2 direct for the .mny import's staging + job tables (117),
 --           1 direct for security_documents (118),
@@ -2975,8 +3073,9 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --           1 indirect for scheduled_transaction_postings (133),
 --           1 direct for the OIDC step-up claim ledger (155),
 --           1 direct for push_subscriptions (178),
---           1 direct for notification_preferences (180), and
---           1 direct for notification_reminders (182).
+--           1 direct for notification_preferences (180),
+--           1 direct for notification_reminders (182), and
+--           1 direct for notification_portfolio_state (185).
 
 -- ---------------------------------------------------------------------------
 -- Enable row-level security (migration 123).

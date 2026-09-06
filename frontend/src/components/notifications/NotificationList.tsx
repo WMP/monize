@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import type { NotificationFilters } from '@/lib/notification-filters';
 import { hasActiveNotificationFilters } from '@/lib/notification-filters';
 import { Badge } from '@/components/ui/Badge';
@@ -231,6 +232,15 @@ export function NotificationList({
   const format = useFormatter();
   const router = useRouter();
   const { formatCurrency } = useNumberFormat();
+  /**
+   * A due date rendered in the reader's own date-format preference
+   * (`DD.MM.YYYY`, `MM/DD/YYYY`, ...), never the stored `YYYY-MM-DD`. The row
+   * carries the date as a calendar string, so it goes through `formatDate` --
+   * the same helper every register and report uses -- rather than being
+   * interpolated raw, which showed a Polish reader `2026-09-15` in place of
+   * `15.09.2026`.
+   */
+  const { formatDate } = useDateFormat();
 
   /**
    * A bill-due notification's headline, in the reader's language. `null` for anything
@@ -257,11 +267,11 @@ export function NotificationList({
     const data = billDueData(notification);
     if (!data) return null;
     if (data.amount == null || data.amountComplete === false) {
-      return t('billDue.amountUnavailable', { date: data.dueDate! });
+      return t('billDue.amountUnavailable', { date: formatDate(data.dueDate!) });
     }
     return t('billDue.amountDue', {
       amount: formatCurrency(data.amount, data.currencyCode),
-      date: data.dueDate!,
+      date: formatDate(data.dueDate!),
     });
   };
 
@@ -360,13 +370,163 @@ export function NotificationList({
       case 'SCHEDULED_POST_FAILED':
         return data.dueDate
           ? t('system.scheduledPostFailed.message', {
-              date: data.dueDate,
+              date: formatDate(data.dueDate),
               error: data.error ?? '',
             })
           : null;
       default:
         return null;
     }
+  };
+
+  /**
+   * A GEM recommendation-change row, composed in the reader's language from the
+   * `data` facts the producer wrote (`docs/specs/gem-signal-change-notifications.md`).
+   * Returns null for any other type, falling back to the stored English.
+   */
+  const gemSignalData = (
+    notification: Notification,
+  ): {
+    kind?: string;
+    strategyName?: string;
+    fromState?: string;
+    toState?: string;
+    toSymbol?: string | null;
+    toRole?: string | null;
+  } | null => {
+    if (notification.type !== 'GEM_SIGNAL_CHANGED') return null;
+    return (notification.data ?? {}) as {
+      kind?: string;
+      strategyName?: string;
+      fromState?: string;
+      toState?: string;
+      toSymbol?: string | null;
+      toRole?: string | null;
+    };
+  };
+
+  const stateLabel = (state: string | undefined): string =>
+    state === 'RISK_ON' ? t('gemSignal.riskOn') : t('gemSignal.riskOff');
+
+  const gemSignalTitle = (notification: Notification): string | null => {
+    const data = gemSignalData(notification);
+    if (!data) return null;
+    const strategy = data.strategyName ?? '';
+    return data.kind === 'risk'
+      ? t('gemSignal.riskTitle', { strategy, state: stateLabel(data.toState) })
+      : t('gemSignal.allocationTitle', { strategy });
+  };
+
+  const gemSignalMessage = (notification: Notification): string | null => {
+    const data = gemSignalData(notification);
+    if (!data) return null;
+    const strategy = data.strategyName ?? '';
+    if (data.kind === 'risk') {
+      return t('gemSignal.riskMessage', {
+        strategy,
+        fromState: stateLabel(data.fromState),
+        toState: stateLabel(data.toState),
+      });
+    }
+    return t('gemSignal.allocationMessage', {
+      strategy,
+      target: data.toSymbol ?? data.toRole ?? '',
+    });
+  };
+
+  /**
+   * A daily portfolio-movement row, composed from the producer's `data`
+   * (`docs/specs/portfolio-movement-notifications.md`). The percent is already
+   * signed by direction; the copy names each direction so it reads naturally in
+   * every locale.
+   */
+  const portfolioMovementData = (
+    notification: Notification,
+  ): { direction?: string; changePercent?: number } | null => {
+    if (notification.type !== 'PORTFOLIO_MOVEMENT') return null;
+    return (notification.data ?? {}) as {
+      direction?: string;
+      changePercent?: number;
+    };
+  };
+
+  const portfolioMovementTitle = (notification: Notification): string | null => {
+    const data = portfolioMovementData(notification);
+    if (!data) return null;
+    const percent = Math.abs(data.changePercent ?? 0);
+    return data.direction === 'down'
+      ? t('portfolioMovement.titleDown', { percent })
+      : t('portfolioMovement.titleUp', { percent });
+  };
+
+  const portfolioMovementMessage = (notification: Notification): string | null => {
+    const data = portfolioMovementData(notification);
+    if (!data) return null;
+    const percent = Math.abs(data.changePercent ?? 0);
+    return data.direction === 'down'
+      ? t('portfolioMovement.messageDown', { percent })
+      : t('portfolioMovement.messageUp', { percent });
+  };
+
+  /**
+   * A balance-threshold crossing row, composed from the producer's `data`
+   * (`docs/specs/balance-threshold-notifications.md`). The amount is formatted
+   * in the account's own currency (the crossing's currency).
+   */
+  const balanceThresholdData = (
+    notification: Notification,
+  ): {
+    kind?: string;
+    accountName?: string;
+    balance?: number;
+    threshold?: number;
+    currencyCode?: string;
+  } | null => {
+    if (
+      notification.type !== 'BALANCE_BELOW_THRESHOLD' &&
+      notification.type !== 'BALANCE_ABOVE_THRESHOLD'
+    ) {
+      return null;
+    }
+    return (notification.data ?? {}) as {
+      kind?: string;
+      accountName?: string;
+      balance?: number;
+      threshold?: number;
+      currencyCode?: string;
+    };
+  };
+
+  const balanceThresholdTitle = (notification: Notification): string | null => {
+    const data = balanceThresholdData(notification);
+    if (!data) return null;
+    const account = data.accountName ?? '';
+    return notification.type === 'BALANCE_ABOVE_THRESHOLD'
+      ? t('balanceThreshold.titleHigh', { account })
+      : t('balanceThreshold.titleLow', { account });
+  };
+
+  const balanceThresholdMessage = (
+    notification: Notification,
+  ): string | null => {
+    const data = balanceThresholdData(notification);
+    if (!data) return null;
+    const account = data.accountName ?? '';
+    const money = (value: number | undefined): string =>
+      value == null
+        ? ''
+        : formatCurrency(value, data.currencyCode);
+    return notification.type === 'BALANCE_ABOVE_THRESHOLD'
+      ? t('balanceThreshold.messageHigh', {
+          account,
+          balance: money(data.balance),
+          threshold: money(data.threshold),
+        })
+      : t('balanceThreshold.messageLow', {
+          account,
+          balance: money(data.balance),
+          threshold: money(data.threshold),
+        });
   };
 
   const unreadCount = notifications.filter((a) => !a.isRead && !dismissingIds.has(a.id)).length;
@@ -603,10 +763,10 @@ export function NotificationList({
                               </span>
                             </div>
                             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {billDueTitle(notification) ?? systemAlertTitle(notification) ?? notification.title}
+                              {billDueTitle(notification) ?? systemAlertTitle(notification) ?? gemSignalTitle(notification) ?? portfolioMovementTitle(notification) ?? balanceThresholdTitle(notification) ?? notification.title}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
-                              {billDueMessage(notification) ?? systemAlertMessage(notification) ?? notification.message}
+                              {billDueMessage(notification) ?? systemAlertMessage(notification) ?? gemSignalMessage(notification) ?? portfolioMovementMessage(notification) ?? balanceThresholdMessage(notification) ?? notification.message}
                             </p>
                           </div>
                         </div>

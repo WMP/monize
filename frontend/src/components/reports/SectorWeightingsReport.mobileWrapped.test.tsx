@@ -44,12 +44,16 @@ vi.mock('@/lib/pdf-export', () => ({
 // The 2dp `formatCurrency` this table's cells really use -- it is what makes a
 // six-figure amount too wide for three money cells on one line. The compact
 // formatter beside it serves the summary cards and the chart axis only.
-vi.mock('@/hooks/useNumberFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrencyCompact: (n: number, c?: string) => `${c ?? 'CAD'} ${n.toFixed(0)}`,
     formatCurrency: (n: number, c?: string) => `${c ?? 'CAD'} ${n.toFixed(2)}`,
   }),
-}));
+  };
+});
 
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({ defaultCurrency: 'CAD' }),
@@ -153,7 +157,7 @@ describe('SectorWeightingsReport (phone wrapped table)', () => {
     expect(rowText(row)).toContain('Direct ValueCAD 0.00');
     expect(rowText(row)).toContain('ETF ValueCAD 12345.67');
     expect(rowText(row)).toContain('Total ValueCAD 12345.67');
-    expect(rowText(row)).toContain('% of Portfolio0.3%');
+    expect(rowText(row)).toContain('% of Portfolio0.4%');
     // The caption is `CellLabel` from the shared table module, phone-only.
     for (const caption of Array.from(row!.querySelectorAll('span.sm\\:hidden'))) {
       expect(caption.className).toContain('text-[10px]');

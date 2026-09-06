@@ -15,6 +15,18 @@
     "system": {
       "title": "Avis système",
       "body": "Monize a un avis système pour vous. Ouvrez l'application pour les détails."
+    },
+    "balances": {
+      "title": "Alerte de solde",
+      "body": "Le solde d'un compte a franchi un seuil que vous avez défini. Ouvrez Monize pour les détails."
+    },
+    "investments": {
+      "title": "Mouvement des placements",
+      "body": "Vos placements ont bougé aujourd'hui. Ouvrez Monize pour les détails."
+    },
+    "strategies": {
+      "title": "Signal de stratégie",
+      "body": "L'une de vos stratégies a modifié sa recommandation. Ouvrez Monize pour les détails."
     }
   },
   "actions": {

@@ -374,6 +374,8 @@
     "nameConflict": "[XX-Payee with name \"{{ name }}\" already exists-XX]",
     "nameRequired": "[XX-Payee name is required-XX]",
     "invalidEmail": "[XX-\"{{ email }}\" is not a valid email address-XX]",
+    "invalidPhone": "[XX-\"{{ phone }}\" is not a valid phone number-XX]",
+    "phoneNeedsCountryCode": "[XX-Include the country code for \"{{ phone }}\", for example +1 206 448 8762-XX]",
     "notFound": "[XX-Payee with ID {{ id }} not found-XX]",
     "logoNotFound": "[XX-No logo available for this payee-XX]",
     "categoryIdsNotOwned": "[XX-Category IDs not found or not owned by user: {{ ids }}-XX]",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "[XX-Another operation is currently replacing this account's data. Wait for it to finish and try again.-XX]"
+  },
+  "payeeLookup": {
+    "operatorManaged": "[XX-Google Places is configured by this server's administrator. Only the on/off setting can be changed here.-XX]",
+    "encryptionKeyNotConfigured": "[XX-ENCRYPTION_KEY is not configured. Cannot store the Google Places API key securely.-XX]",
+    "notConfigured": "[XX-No Google Places API key is configured.-XX]",
+    "capReached": "[XX-This month's Google Places request limit has been reached.-XX]",
+    "testFailed": "[XX-The Google Places connection test failed.-XX]",
+    "referrerRestricted": "[XX-This key is restricted by HTTP referrer, but this deployment has no PUBLIC_APP_URL set, so it sends no referrer and no allow-list can match it. Set PUBLIC_APP_URL, or restrict the key by IP address instead, which is the option that actually protects a server-side key.-XX]",
+    "referrerRejected": "[XX-Google rejected this key's HTTP referrer restriction. Monize sends \"{referer}\" (from PUBLIC_APP_URL); add exactly that to the key's allowed referrers, remembering that a pattern like *.example.com/* does not match a bare example.com. Restricting the key by IP address instead is the option that actually protects a server-side key.-XX]"
   }
 }

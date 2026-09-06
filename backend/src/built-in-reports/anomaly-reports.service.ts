@@ -3,6 +3,8 @@ import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
 import { ReportCurrencyService } from "./report-currency.service";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { NumberT, numberFormatterFor } from "../common/number-locale.util";
 import {
   SpendingAnomaliesResponse,
   SpendingAnomaly,
@@ -38,6 +40,12 @@ export class AnomalyReportsService {
   ): Promise<SpendingAnomaliesResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
+    // The anomaly descriptions are read by this user, so the figures in them
+    // follow their number locale (issue #1316).
+    const prefs = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({ where: { userId } }),
+    );
+    const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const now = new Date();
@@ -154,6 +162,7 @@ export class AnomalyReportsService {
       rateMap,
       categoryMap,
       anomalies,
+      n,
     );
 
     // 3. New payees with significant spending
@@ -198,6 +207,7 @@ export class AnomalyReportsService {
     rateMap: Map<string, number>,
     categoryMap: Map<string, Category>,
     anomalies: SpendingAnomaly[],
+    n: NumberT,
   ): void {
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -245,7 +255,7 @@ export class AnomalyReportsService {
           type: "category_spike",
           severity,
           title: `Spending spike in ${category?.name || "Uncategorized"}`,
-          description: `${Math.round(percentChange)}% increase from last month`,
+          description: `${n.formatPercent(Math.round(percentChange), 0)} increase from last month`,
           categoryId: categoryId === "uncategorized" ? undefined : categoryId,
           categoryName: category?.name || "Uncategorized",
           currentPeriodAmount: roundMoney(currentAmount),

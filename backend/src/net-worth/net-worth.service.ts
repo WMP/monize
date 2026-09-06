@@ -1,6 +1,13 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+  forwardRef,
+} from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, In, LessThanOrEqual } from "typeorm";
+import { BalanceThresholdAlertService } from "../notification-center/balance-threshold-alert.service";
 import {
   runOutsideActiveScopedManager,
   withScopedDb,
@@ -135,7 +142,16 @@ export class NetWorthService {
   /** Accounts recomputed per sweep, so a broken deployment cannot melt the pool. */
   private static readonly STALE_SWEEP_BATCH = 200;
 
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    // The balance-invalidation seam also drives balance-threshold crossings.
+    // Optional + forwardRef: the edge is on a require cycle, and a test harness
+    // that omits NotificationsModule simply skips the alert rather than failing
+    // to construct.
+    @Optional()
+    @Inject(forwardRef(() => BalanceThresholdAlertService))
+    private balanceAlerts?: BalanceThresholdAlertService,
+  ) {}
 
   /**
    * One raw statement in its own short scoped transaction -- the RLS-compliant
@@ -182,6 +198,17 @@ export class NetWorthService {
               `Net worth recalc failed for account ${accountId}: ${err.message}`,
             ),
           );
+          // The same post-commit seam drives balance-threshold crossings
+          // (docs/specs/balance-threshold-notifications.md). Independent of the
+          // recalc -- it reads the account's committed balance directly -- and
+          // isolated so a notification failure never affects the recalc.
+          this.balanceAlerts
+            ?.evaluateAccounts(userId, [accountId])
+            .catch((err) =>
+              this.logger.warn(
+                `Balance-threshold evaluation failed for account ${accountId}: ${err.message}`,
+              ),
+            );
         }, NetWorthService.RECALC_DEBOUNCE_MS),
       ),
     );

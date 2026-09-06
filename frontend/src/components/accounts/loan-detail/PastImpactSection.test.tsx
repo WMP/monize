@@ -7,12 +7,15 @@ import { deriveLoanPaymentHistory } from '@/lib/loan-history';
 import { Account } from '@/types/account';
 import { Transaction } from '@/types/transaction';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/hooks/useChartDateFormat', () => ({
   useChartDateFormat: () => (date: string) => date.slice(0, 7),
 }));

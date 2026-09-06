@@ -218,7 +218,7 @@
     "hideHelp": "Ukryj",
     "helpIntro": "Uruchom własnego agenta MCP, a będzie on odpowiadał na monity z tego czatu, korzystając z Twojej subskrypcji.",
     "step1": "Utwórz token dostępu",
-    "tokenStep": "Najpierw utwórz Personal Access Token w <link>Ustawienia użytkownika -> Dostęp do API</link>, a następnie użyj go poniżej.",
+    "tokenStep": "Najpierw utwórz Personal Access Token w <link>Ustawienia użytkownika -> Dostęp do API</link>, a następnie użyj go poniżej. Nadaj temu agentowi własny token: token współdzielony z innym klientem MCP wysyła tutaj potwierdzenia tamtego klienta.",
     "claudeHeading": "Połącz za pomocą Claude CLI",
     "step2": "Połącz agenta z Monize za pomocą Claude CLI:",
     "allowToolsNote": "Zamknij Claude i uruchom go ponownie z tym przełącznikiem, aby automatycznie zatwierdzał każde wywołanie narzędzia Monize:",

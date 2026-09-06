@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createLogger } from '@/lib/logger';
+import { assertedClientAddress } from '@/lib/client-address';
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
@@ -164,10 +165,16 @@ export async function proxy(request: NextRequest) {
 
     const headers = new Headers(request.headers);
     headers.delete('host');
-    // Overwrite X-Forwarded-For with the actual connecting client IP
-    // to prevent spoofing via client-supplied headers
-    const clientIp = request.headers.get('x-real-ip') || '127.0.0.1';
-    headers.set('x-forwarded-for', clientIp);
+    // X-Forwarded-For is REPLACED, never passed through, so a browser's own
+    // cannot reach the backend: either the edge asserted an address and that is
+    // what travels, or nothing does. The literal `127.0.0.1` this used to fall
+    // back to was worse than nothing -- every deployment whose edge sets
+    // X-Forwarded-For rather than X-Real-IP (Traefik, most load balancers)
+    // recorded loopback against every push registration and trusted device,
+    // indistinguishable from a real connection from the server itself.
+    const clientIp = assertedClientAddress(request.headers);
+    if (clientIp) headers.set('x-forwarded-for', clientIp);
+    else headers.delete('x-forwarded-for');
     // Forward resolved locale so the backend nestjs-i18n HeaderResolver picks
     // it up and renders error messages / email content in the right language.
     headers.set(LOCALE_HEADER, resolveRequestLocale(request).locale);

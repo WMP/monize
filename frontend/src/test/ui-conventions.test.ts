@@ -31,6 +31,23 @@ function productionSources(): [string, string][] {
   );
 }
 
+/**
+ * Blank out comment bodies, keeping the file's length and line breaks so
+ * reported line numbers still point at the source. Prose in this repo discusses
+ * the very patterns these scans ban -- `<button>`, `role="switch"` -- and a scan
+ * that reads its own explanation as a violation is worse than no scan, because
+ * the cheap way out of it is a weaker comment.
+ */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, " "))
+    .replace(
+      /(^|[^:])\/\/[^\n]*/g,
+      (match, before: string) =>
+        before + " ".repeat(match.length - before.length),
+    );
+}
+
 describe("date entry goes through DateInput", () => {
   /** The one file allowed to hold a raw date input -- it *is* the wrapper. */
   const WRAPPER = "/src/components/ui/DateInput.tsx";
@@ -461,22 +478,6 @@ describe("nothing interactive is nested inside a button", () => {
    * nothing is how `InfoTooltip` got here in the first place.
    */
   const INTERACTIVE = /<(button|a|select|textarea|input|InfoTooltip)[\s/>]/g;
-
-  /**
-   * Blank out comment bodies, keeping the file's length and line breaks so
-   * reported line numbers still point at the source. Prose in this repo
-   * discusses `<button>` constantly, and a scan that reads its own
-   * explanation as a violation is worse than no scan.
-   */
-  function withoutComments(source: string): string {
-    return source
-      .replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, " "))
-      .replace(
-        /(^|[^:])\/\/[^\n]*/g,
-        (match, before: string) =>
-          before + " ".repeat(match.length - before.length),
-      );
-  }
 
   /** [start, end) of every non-self-closing `<button>` element's children. */
   function buttonBodies(source: string): Array<[number, number]> {
@@ -1357,7 +1358,7 @@ describe("a toggle is ToggleSwitch", () => {
   function filesWithHandRolledToggle(): string[] {
     return productionSources()
       .filter(([path]) => path !== TOGGLE)
-      .filter(([, source]) => HAND_ROLLED.test(source))
+      .filter(([, source]) => HAND_ROLLED.test(withoutComments(source)))
       .map(([path]) => path)
       .sort();
   }
@@ -1368,6 +1369,22 @@ describe("a toggle is ToggleSwitch", () => {
       (path) => !allowed.has(path),
     );
     expect(offenders).toEqual([]);
+  });
+
+  // A scan that reads prose is a scan whose cheapest fix is a weaker comment,
+  // so it reads code only -- and that has to hold in BOTH directions, or the
+  // stripper silently blinds the rule it protects.
+  it("ignores the attribute in a comment and still catches it in markup", () => {
+    const explained = [
+      "/**",
+      ' * A second tree would double every role="switch" in the a11y tree.',
+      " */",
+      "export const x = 1;",
+    ].join("\n");
+    expect(HAND_ROLLED.test(withoutComments(explained))).toBe(false);
+    expect(
+      HAND_ROLLED.test(withoutComments('<button role="switch" />')),
+    ).toBe(true);
   });
 
   it("keeps the baseline shrink-only", () => {
@@ -2428,5 +2445,59 @@ describe("a date-only string reaches formatDate unwrapped", () => {
     // rule holds rather than that the regex stopped working.
     expect(WRAPPED.test("{formatDate(new Date(preview.endDate))}")).toBe(true);
     expect(WRAPPED.test("{formatDate(preview.endDate)}")).toBe(false);
+  });
+});
+
+describe("a payee contact lookup surface asks whether a lookup can run", () => {
+  /**
+   * `useAiConfigured` answers "does this user have an AI provider", which was
+   * the whole question while AI was the only lookup source. Google Places now
+   * answers the same lookup, so a surface gated on the AI hook hides its
+   * button from exactly the user this feature exists for -- one who configured
+   * Places and no AI. `useContactLookupAvailable` is the question those
+   * surfaces have to ask.
+   *
+   * The assistant is deliberately unaffected: a chat genuinely needs a model,
+   * so `AiChatBubble` and `AiBubbleToggle` keep the AI hook.
+   */
+  const LOOKUP_CALLERS =
+    /payeesApi\.lookupContact|usePayeeContactLookup|ContactLookupDialog/;
+  const AI_HOOK = /useAiConfigured/;
+
+  function lookupSurfaces(): [string, string][] {
+    return productionSources()
+      .map(([path, content]) => [path, withoutComments(content)] as [string, string])
+      .filter(([path, content]) => {
+        // The hook and the dialog's own module define these names rather than
+        // consuming them.
+        if (path.endsWith("/useContactLookupAvailable.ts")) return false;
+        if (path.endsWith("/ContactLookupDialog.tsx")) return false;
+        return LOOKUP_CALLERS.test(content);
+      });
+  }
+
+  it("finds the lookup surfaces, so the rule below is not vacuous", () => {
+    // A scan that silently matched nothing is the failure mode of every guard
+    // here, so it asserts its own subject first.
+    expect(lookupSurfaces().length).toBeGreaterThan(1);
+  });
+
+  it("gates no lookup surface on the AI-only hook", () => {
+    const offenders = lookupSurfaces()
+      .filter(([, content]) => AI_HOOK.test(content))
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+
+  it("still recognises the pattern it bans", () => {
+    // Comments are stripped first, so the paragraph above -- which has to name
+    // the banned hook to explain itself -- cannot fail its own rule.
+    const offending = `import { useAiConfigured } from '@/hooks/useAiConfigured';
+      const x = usePayeeContactLookup();`;
+    expect(LOOKUP_CALLERS.test(offending)).toBe(true);
+    expect(AI_HOOK.test(withoutComments(offending))).toBe(true);
+    expect(AI_HOOK.test(withoutComments("// useAiConfigured is banned here"))).toBe(
+      false,
+    );
   });
 });

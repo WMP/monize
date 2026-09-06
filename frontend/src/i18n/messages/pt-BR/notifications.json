@@ -53,6 +53,26 @@
     "amountDue": "{amount} a pagar em {date}",
     "amountUnavailable": "Valor indisponível (sem taxa de câmbio atual), vence em {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} mudou para {state}",
+    "riskMessage": "Sua estratégia GEM «{strategy}» mudou de {fromState} para {toState}. Abra para revisar a recomendação.",
+    "allocationTitle": "{strategy} alterou o alvo",
+    "allocationMessage": "Sua estratégia GEM «{strategy}» agora tem como alvo {target}. Abra para revisar a recomendação.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Investimentos em alta de {percent}%",
+    "titleDown": "Investimentos em baixa de {percent}%",
+    "messageUp": "Seus investimentos subiram {percent}% hoje, excluindo depósitos e saques. Abra para revisar.",
+    "messageDown": "Seus investimentos caíram {percent}% hoje, excluindo depósitos e saques. Abra para revisar."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} está abaixo do seu limite",
+    "titleHigh": "{account} está acima do seu limite",
+    "messageLow": "{account} caiu para {balance}, abaixo do seu limite de {threshold}.",
+    "messageHigh": "{account} subiu para {balance}, acima do seu limite de {threshold}."
+  },
   "system": {
     "backupFailed": {
       "title": "Falha no backup automático",

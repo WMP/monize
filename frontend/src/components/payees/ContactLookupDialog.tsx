@@ -11,6 +11,7 @@ import {
   type Payee,
   type PayeeContactSuggestion,
 } from '@/types/payee';
+import { formatPhoneForDisplay } from '@/lib/phone-number';
 
 /** One field the dialog offers, already decided against what the payee holds. */
 interface ProposedChange {
@@ -67,6 +68,15 @@ export function ContactLookupDialog({
         return [{ field, next, current: payee[field] ?? null }];
       })
     : [];
+
+  /**
+   * How a proposed value is SHOWN. A phone is stored as E.164 and read as
+   * grouped digits, so the row the user ticks has to carry the readable form --
+   * while `confirm` below still sends the stored one, because what is written
+   * is not what is displayed.
+   */
+  const displayValue = (field: ContactLookupField, value: string) =>
+    field === 'phone' ? formatPhoneForDisplay(value) : value;
 
   const keyOf = (change: ProposedChange) => `${selectedIndex}:${change.field}`;
   const accepted = changes.filter((change) => !excluded.has(keyOf(change)));
@@ -171,11 +181,11 @@ export function ContactLookupDialog({
                 </span>
                 {change.current && (
                   <span className="mt-1 block whitespace-pre-line text-gray-500 line-through dark:text-gray-400">
-                    {change.current}
+                    {displayValue(change.field, change.current)}
                   </span>
                 )}
                 <span className="mt-1 block whitespace-pre-line text-gray-900 dark:text-gray-100">
-                  {change.next}
+                  {displayValue(change.field, change.next)}
                 </span>
               </label>
             </li>

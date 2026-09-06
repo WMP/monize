@@ -159,11 +159,12 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, l
   labelEtf: string;
   labelTotal: string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-      <p className="font-medium text-gray-900 dark:text-gray-100">{d.sector} ({d.percentage.toFixed(1)}%)</p>
+      <p className="font-medium text-gray-900 dark:text-gray-100">{d.sector} ({formatPercent(d.percentage, 1)})</p>
       {d.direct > 0 && (
         <p className="text-sm text-blue-600 dark:text-blue-400">{labelDirect.replace('{amount}', formatCurrencyFull(d.direct, defaultCurrency))}</p>
       )}
@@ -179,7 +180,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-sector-weightings-accounts';
 
 export function SectorWeightingsReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [securities, setSecurities] = useState<Security[]>([]);
@@ -295,7 +296,7 @@ export function SectorWeightingsReport() {
       formatCurrencyFull(item.directValue, defaultCurrency),
       formatCurrencyFull(item.etfValue, defaultCurrency),
       formatCurrencyFull(item.totalValue, defaultCurrency),
-      `${item.percentage.toFixed(1)}%`,
+      formatPercent(item.percentage, 1),
     ]) : [];
     const accountLabel = selectedAccountIds.length > 0
       ? accounts.filter((a) => selectedAccountIds.includes(a.id)).map((a) => a.name).join(', ')
@@ -653,7 +654,7 @@ export function SectorWeightingsReport() {
                       `auto` one sized by that caption. */}
                   <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
-                    {item.percentage.toFixed(1)}%
+                    {formatPercent(item.percentage, 1)}
                   </td>
                 </tr>
                 );
@@ -690,9 +691,12 @@ export function SectorWeightingsReport() {
                   </td>
                   <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
-                    {data.totalPortfolioValue > 0
-                      ? ((data.unclassifiedValue / data.totalPortfolioValue) * 100).toFixed(1)
-                      : '0.0'}%
+                    {formatPercent(
+                      data.totalPortfolioValue > 0
+                        ? (data.unclassifiedValue / data.totalPortfolioValue) * 100
+                        : 0,
+                      1,
+                    )}
                   </td>
                 </tr>
               )}

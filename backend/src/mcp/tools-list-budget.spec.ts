@@ -1,6 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { McpServer } from "@modelcontextprotocol/server";
+import { Client } from "@modelcontextprotocol/client";
+import { InMemoryTransport } from "@modelcontextprotocol/client";
 import { collectToolConfigs } from "./testing/collect-tool-configs";
 import { McpServerService } from "./mcp-server.service";
 
@@ -20,31 +20,34 @@ import { McpServerService } from "./mcp-server.service";
 
 // Bytes of serialized JSON per tool in the `tools/list` result, pinned to the
 // measured size. A cap is a ratchet: lower it when a tool shrinks, and raise one
-// only as a reviewed decision.
+// only as a reviewed decision. The whole table dropped ~9% when the server moved
+// to the v2 SDK, whose Standard JSON Schema emission is more compact than the
+// 1.x converter -- the definitions did not change, so the caps came down with
+// the measurement rather than banking the slack.
 const TOOL_BYTE_BUDGET: Record<string, number> = {
-  list_accounts: 2300,
-  list_transactions: 4050,
-  compare_periods: 2150,
-  manage_transactions: 6700,
-  list_categories: 1350,
-  list_payees: 2450,
-  manage_payees: 3450,
-  generate_report: 3150,
-  get_portfolio_summary: 3500,
-  list_investment_transactions: 2750,
-  list_capital_gains: 2300,
-  lookup_securities: 1750,
-  manage_securities: 4750,
-  manage_investment_transactions: 5050,
-  list_upcoming_bills: 3400,
-  calculate: 1400,
-  get_budget_status: 2900,
-  get_next_prompt: 1600,
-  post_response: 1200,
-  report_progress: 1400,
+  list_accounts: 2050,
+  list_transactions: 3550,
+  compare_periods: 1900,
+  manage_transactions: 5950,
+  list_categories: 1200,
+  list_payees: 2150,
+  manage_payees: 3000,
+  generate_report: 2800,
+  get_portfolio_summary: 3100,
+  list_investment_transactions: 2450,
+  list_capital_gains: 2050,
+  lookup_securities: 1550,
+  manage_securities: 4200,
+  manage_investment_transactions: 4500,
+  list_upcoming_bills: 3000,
+  calculate: 1200,
+  get_budget_status: 2550,
+  get_next_prompt: 1400,
+  post_response: 1050,
+  report_progress: 1250,
 };
 
-const TOTAL_BYTE_BUDGET = 55_500;
+const TOTAL_BYTE_BUDGET = 50_500;
 const INSTRUCTIONS_BYTE_BUDGET = 2_600;
 
 /**
@@ -302,8 +305,9 @@ describe("tools/list payload budget", () => {
       noopProvider,
       noopProvider,
       noopProvider,
+      noopProvider,
     );
-    const server = service.createServer(() => undefined);
+    const server = service.createServer();
     const instructions = (server.server as any)._instructions as string;
 
     expect(typeof instructions).toBe("string");

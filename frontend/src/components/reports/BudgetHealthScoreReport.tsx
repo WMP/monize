@@ -13,6 +13,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import type { HealthScoreCategoryDetail } from '@/types/budget';
 
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 function getImpactColor(impact: number): string {
   if (impact > 0) return 'text-green-600 dark:text-green-400';
   if (impact < 0) return 'text-red-600 dark:text-red-400';
@@ -169,6 +170,7 @@ const CAPTION_CLASS = 'sm:hidden';
 
 export function BudgetHealthScoreReport() {
   const t = useTranslations('reports');
+  const { formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
 
   const getGroupLabel = (group: string | null): string => {
@@ -261,7 +263,7 @@ export function BudgetHealthScoreReport() {
     percentUsed: {
       field: 'percentUsed',
       label: t('budgetHealthScore.colPercentUsed'),
-      value: (cat) => `${cat.percentUsed}%`,
+      value: (cat) => formatPercentTrimmed(cat.percentUsed),
       align: 'right',
     },
     impact: {

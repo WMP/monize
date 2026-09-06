@@ -546,6 +546,15 @@ describe("BackupService", () => {
       "created_at",
       "updated_at",
     ],
+    payee_lookup_settings: [
+      "user_id",
+      "api_key_enc",
+      "google_places_enabled",
+      "cap_enabled",
+      "monthly_cap",
+      "created_at",
+      "updated_at",
+    ],
   };
 
   function mockQueryHandler(sql: string, params?: unknown[]) {
@@ -1702,6 +1711,7 @@ describe("BackupService", () => {
       investment_reports: [],
       import_column_mappings: [],
       monthly_account_balances: [],
+      payee_lookup_settings: [],
     };
 
     function makeInput(
@@ -2169,6 +2179,125 @@ describe("BackupService", () => {
           makeInput({
             password: "test",
             data: backupWithProviderRow({ api_key_enc: null }),
+          }),
+        );
+
+        expect(result.unusableAiProviderKeys).toBeUndefined();
+      });
+    });
+
+    /**
+     * The same transport, on the second table that uses it.
+     *
+     * `payee_lookup_settings.api_key_enc` holds a Google Places key under this
+     * instance's ENCRYPTION_KEY, and is named for the same column as
+     * `ai_provider_configs` precisely so the transport applies to it. Nothing
+     * asserted that it did: removing the table from the restore's re-encryption
+     * left the whole backup suite green, unit and integration both, while a
+     * restore wrote the PLAINTEXT key into a column named for ciphertext --
+     * after which `PayeeLookupSettingsService.resolveSource` throws on decrypt,
+     * logs, and silently falls back to AI. The user's key is gone and the
+     * screen still shows one configured.
+     */
+    describe("Google Places keys arriving from another instance", () => {
+      function backupWithLookupRow(row: Record<string, unknown>) {
+        return {
+          ...validBackupData,
+          payee_lookup_settings: [
+            {
+              user_id: userId,
+              google_places_enabled: true,
+              cap_enabled: true,
+              monthly_cap: 1000,
+              ...row,
+            },
+          ],
+        };
+      }
+
+      /** What the INSERT actually wrote into `api_key_enc`. */
+      function insertedApiKey(): unknown {
+        const call = mockQueryRunner.query.mock.calls.find(([sql]) =>
+          String(sql).includes('INSERT INTO "payee_lookup_settings"'),
+        );
+        if (!call) return undefined;
+        const [sql, params] = call as [string, unknown[]];
+        const columns = /\(([^)]*)\) VALUES/.exec(sql)?.[1] ?? "";
+        const index = columns
+          .split(",")
+          .map((c) => c.trim().replace(/"/g, ""))
+          .indexOf("api_key_enc");
+        return index === -1 ? undefined : params[index];
+      }
+
+      beforeEach(() => {
+        mockUserRepo.findOne.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      });
+
+      it("re-encrypts a plaintext key under this instance's key", async () => {
+        await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLookupRow({
+              api_key_enc: null,
+              api_key_plaintext: "AIza-places-live",
+            }),
+          }),
+        );
+
+        // Ciphertext, not the bare key: the column's name is a claim about its
+        // contents, and everything that reads it hands the value to decrypt().
+        expect(insertedApiKey()).toBe("enc:AIza-places-live");
+      });
+
+      it("never lets the plaintext reach the insert", async () => {
+        await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLookupRow({
+              api_key_enc: null,
+              api_key_plaintext: "AIza-places-live",
+            }),
+          }),
+        );
+
+        const insertParams = mockQueryRunner.query.mock.calls
+          .filter(([sql]) =>
+            String(sql).includes('INSERT INTO "payee_lookup_settings"'),
+          )
+          .flatMap(([, params]) => (params as unknown[]) ?? []);
+        expect(insertParams).not.toContain("AIza-places-live");
+      });
+
+      it("counts a foreign ciphertext it cannot read", async () => {
+        // Same reporting as the AI table: the row is restored, the key inside
+        // it is not usable here, and the user has to be told rather than left
+        // with a masked key that never works.
+        const result = await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLookupRow({
+              api_key_enc: "foreign-instance-ciphertext",
+            }),
+          }),
+        );
+
+        expect(insertedApiKey()).toBe("foreign-instance-ciphertext");
+        expect(result.unusableAiProviderKeys).toBe(1);
+      });
+
+      it("says nothing about a user who stored no key", async () => {
+        // A row exists because the user toggled Places off, or set a cap while
+        // the operator's key was in force. Nothing was lost.
+        const result = await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLookupRow({ api_key_enc: null }),
           }),
         );
 

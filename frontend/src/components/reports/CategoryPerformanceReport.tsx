@@ -222,7 +222,7 @@ const CAPTION_CLASS = 'sm:hidden';
 
 export function CategoryPerformanceReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
 
   const getTrendArrow = (values: number[]): { arrow: string; color: string } => {
     if (values.length < 2) return { arrow: '--', color: 'text-gray-400' };
@@ -377,7 +377,7 @@ export function CategoryPerformanceReport() {
     avgPercent: {
       field: 'avgPercent',
       label: t('categoryPerformance.colPercentUsed'),
-      value: (row) => `${row.avgPercent}%`,
+      value: (row) => formatPercentTrimmed(row.avgPercent),
       align: 'right',
     },
     variance: {
@@ -420,6 +420,8 @@ export function CategoryPerformanceReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
     // Headings and row cells both come from the ordered column record, so the
     // export cannot carry the screen's old column order (see `SortColumn`).
+    // Each value function is locale-aware (currency through formatCurrency,
+    // percent through formatPercentTrimmed), so the export matches the screen.
     const headers = sortColumns.map((col) => col.label);
     const rows = sortedData.map((row) => sortColumns.map((col) => col.value(row)));
     await exportToPdf({

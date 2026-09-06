@@ -485,6 +485,15 @@ export class AiService {
     request: AiCompletionRequest,
     search: AiWebSearchOptions,
     feature: string,
+    /**
+     * Restrict the attempt to ONE of the user's providers, by config id.
+     *
+     * The payee contact lookup passes it: the fall-through across providers is
+     * right for a chat turn and wrong for a lookup the user pays per call for,
+     * where "whichever answers" can silently be the expensive one. Omitted
+     * everywhere else, which keeps the priority-order behaviour untouched.
+     */
+    onlyConfigId?: string,
   ): Promise<AiWebSearchResponse> {
     const jsonRequest: AiCompletionRequest = {
       ...request,
@@ -516,6 +525,7 @@ export class AiService {
         const plain = await provider.complete(jsonRequest);
         return { ...plain, searched: false, searchCount: 0 };
       },
+      onlyConfigId,
     );
   }
 
@@ -530,8 +540,9 @@ export class AiService {
     userId: string,
     feature: string,
     attempt: (config: AiProviderConfig, isRelay: boolean) => Promise<T>,
+    onlyConfigId?: string,
   ): Promise<T> {
-    const configs = await this.getActiveConfigs(userId);
+    const configs = await this.getActiveConfigs(userId, onlyConfigId);
 
     if (configs.length === 0) {
       throw new BadRequestException(
@@ -759,7 +770,18 @@ export class AiService {
     );
   }
 
-  async getActiveConfigs(userId: string): Promise<AiProviderConfig[]> {
+  async getActiveConfigs(
+    userId: string,
+    /**
+     * Narrow the answer to one of the user's own providers.
+     *
+     * An id that matches nothing active yields an EMPTY list rather than the
+     * full one: the caller pinned a provider, and quietly answering from a
+     * different one is the outcome a pin exists to prevent. Callers surface
+     * that as "no provider", which names a repair the user can act on.
+     */
+    onlyConfigId?: string,
+  ): Promise<AiProviderConfig[]> {
     const userConfigs = await withScopedDb(this.dataSource, (manager) =>
       manager.getRepository(AiProviderConfig).find({
         where: { userId, isActive: true },
@@ -768,9 +790,15 @@ export class AiService {
     );
 
     if (userConfigs.length > 0) {
-      return userConfigs;
+      return onlyConfigId
+        ? userConfigs.filter((config) => config.id === onlyConfigId)
+        : userConfigs;
     }
 
+    // The centrally managed provider is the deployment's, not one of the
+    // user's rows, so it can carry no pin -- and a pin naming a row that no
+    // longer exists must not resolve to it.
+    if (onlyConfigId) return [];
     const defaultConfig = this.buildDefaultConfig(userId);
     return defaultConfig ? [defaultConfig] : [];
   }

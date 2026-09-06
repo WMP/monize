@@ -218,7 +218,7 @@
     "hideHelp": "Gizle",
     "helpIntro": "Kendi MCP aracınızı çalıştırın; aboneliğinizi kullanarak bu sohbetteki istemleri yanıtlar.",
     "step1": "Erişim belirtecinizi oluşturun",
-    "tokenStep": "Önce <link>Kullanıcı Ayarları -> API erişimi</link> bölümünde bir Personal Access Token oluşturun, ardından aşağıda kullanın.",
+    "tokenStep": "Önce <link>Kullanıcı Ayarları -> API erişimi</link> bölümünde bir Personal Access Token oluşturun, ardından aşağıda kullanın. Bu aracıya kendi belirtecini verin: başka bir MCP istemcisiyle paylaşılan bir belirteç, o istemcinin onaylarını buraya gönderir.",
     "claudeHeading": "Claude CLI ile bağlanın",
     "step2": "Claude CLI kullanarak aracıyı Monize'e bağlayın:",
     "allowToolsNote": "Claude'dan çıkın ve her Monize araç çağrısını otomatik onaylaması için bu anahtarla yeniden başlatın:",

@@ -22,7 +22,7 @@ import { Category } from '@/types/category';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { payeesApi } from '@/lib/payees';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { useAiConfigured } from '@/hooks/useAiConfigured';
+import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -30,13 +30,37 @@ import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 import { PayeeAliasManager } from './PayeeAliasManager';
+import {
+  formatPhoneForDisplay,
+  normalizePhoneNumber,
+  phoneRegionFromPreferences,
+} from '@/lib/phone-number';
+import type { CountryCode } from 'libphonenumber-js/max';
 
 /**
  * Exported so the validation rules can be tested directly: `PayeeForm.test.tsx`
  * mocks `zodResolver` away (so its submit handlers see real field values), which
  * makes every rule in here invisible from that suite.
  */
-export const buildPayeeSchema = (t: (key: string) => string) => z.object({
+export const buildPayeeSchema = (
+  t: (key: string) => string,
+  /**
+   * Where a number typed without a country code belongs.
+   *
+   * Three states, not two. `null` is an ANSWER -- the user's preferences name
+   * no region -- which makes a bare national number a question rather than a
+   * rejection, see the phone rule below. `undefined` is "we do not know yet",
+   * because the preferences this is derived from have not loaded, and there
+   * the field must not check at all: substituting a default would have this
+   * form reject a Berlin number the API stores happily.
+   */
+  phoneRegion: CountryCode | null | undefined,
+  /**
+   * The phone this payee already holds, as the field shows it. A value equal to
+   * it is not an edit, and is waived below.
+   */
+  currentPhone?: string,
+) => z.object({
   name: z.string().min(1, t('validation.nameRequired')).max(255),
   defaultCategoryId: z.string().optional(),
   notes: z.string().optional(),
@@ -53,7 +77,38 @@ export const buildPayeeSchema = (t: (key: string) => string) => z.object({
     .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
       message: t('validation.emailInvalid'),
     }),
-  phone: z.string().max(50).optional(),
+  // Checked here rather than left to the server so the error lands under the
+  // field, and checked by the SAME rules the server applies (both layers assert
+  // `backend/src/common/phone-number-cases.json`) so this can neither block a
+  // number the API would take nor pass one it would refuse. Refined rather than
+  // a stricter type for the reason the email above is: an emptied field submits
+  // "" and that is how a contact detail is cleared, so the blank has to pass.
+  phone: z
+    .string()
+    .max(50)
+    .optional()
+    .superRefine((value, ctx) => {
+      if (!value) return;
+      // A resent value is not an edit -- the same rule the server applies, and
+      // it has to be applied here too or the two disagree in the direction that
+      // costs the user the most: rows written before normalization are not
+      // backfilled, so a payee holding "call the shop" would be impossible to
+      // rename from this form while the API would take the change happily.
+      if (currentPhone !== undefined && value === currentPhone) return;
+      // The region is not known yet, so neither is the answer. The server
+      // reads the stored preferences and will say; guessing here is how this
+      // field would come to block a number the API accepts.
+      if (phoneRegion === undefined) return;
+      const result = normalizePhoneNumber(value, phoneRegion);
+      if (result.ok) return;
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          result.reason === 'needs-country-code'
+            ? t('validation.phoneNeedsCountryCode')
+            : t('validation.phoneInvalid'),
+      });
+    }),
 });
 
 type PayeeFormData = z.infer<ReturnType<typeof buildPayeeSchema>>;
@@ -92,6 +147,27 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   const [applyMode, setApplyMode] = useState<ApplyCategoryToTransactions>('none');
   const pendingAliasesRef = useRef<string[]>([]);
 
+  // Where a number typed without a country code belongs. The same two
+  // preferences the server reads, so the field and the API agree about which
+  // numbers are placeable.
+  //
+  // The whole ROW, not two fields off it: `preferences` is null before the
+  // fetch lands and stays null when it fails, and reading the fields
+  // individually cannot tell that apart from a row that names no region. The
+  // shared truth table proves the two layers' FUNCTIONS agree; it cannot prove
+  // they were handed the same inputs, and this is where they would not be.
+  const preferences = usePreferencesStore((s) => s.preferences);
+  const phoneRegion = useMemo(
+    () => (preferences ? phoneRegionFromPreferences(preferences) : undefined),
+    [preferences],
+  );
+  // What the field starts with, so an untouched phone is waived above.
+  const currentPhoneDisplay = formatPhoneForDisplay(payee?.phone);
+  const schema = useMemo(
+    () => buildPayeeSchema(t, phoneRegion, currentPhoneDisplay),
+    [t, phoneRegion, currentPhoneDisplay],
+  );
+
   const {
     register,
     handleSubmit,
@@ -100,7 +176,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
     watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<PayeeFormData>({
-    resolver: zodResolver(buildPayeeSchema(t)),
+    resolver: zodResolver(schema),
     defaultValues: payee
       ? {
           name: payee.name,
@@ -109,7 +185,10 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
           website: payee.website || '',
           address: payee.address || '',
           email: payee.email || '',
-          phone: payee.phone || '',
+          // Shown the way a person reads a number; the save re-normalizes it
+          // to the same stored value, so displaying it does not make the form
+          // dirty or rewrite the row.
+          phone: formatPhoneForDisplay(payee.phone),
         }
       : {
           defaultCategoryId: '',
@@ -131,7 +210,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   // The lookup runs on the user's AI provider. With none configured there is
   // nothing behind the button, so it is not offered at all -- and the blur
   // never spends a request establishing that.
-  const { configured: aiConfigured } = useAiConfigured();
+  const { available: lookupAvailable } = useContactLookupAvailable();
   const [lookupState, setLookupState] = useState<LookupState>({ status: 'idle' });
   const [suggestedFields, setSuggestedFields] = useState<ReadonlySet<ContactLookupField>>(
     () => new Set(),
@@ -212,12 +291,20 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
         for (const field of CONTACT_LOOKUP_FIELDS) {
           const value = suggestion[field];
           if (!value) continue;
+          // A suggestion arrives in the STORED form, and this field shows the
+          // read form -- the same thing `defaultValues` does above, so a phone
+          // does not read one way when the payee loads and another when a
+          // lookup fills it (`+442079460958;ext=12` is not a thing to put in
+          // front of anyone). Comparing the two forms directly is the same bug
+          // wearing a different hat: it reports a number that did not change as
+          // a replaced value.
+          const shown = field === 'phone' ? formatPhoneForDisplay(value) : value;
           const current = getValues(field) ?? '';
           if (!current) {
-            setValue(field, value, { shouldDirty: true });
+            setValue(field, shown, { shouldDirty: true });
             filled.add(field);
-          } else if (refined.has(field) && current !== value) {
-            setValue(field, value, { shouldDirty: true });
+          } else if (refined.has(field) && current !== shown) {
+            setValue(field, shown, { shouldDirty: true });
             // A second lookup replaces the first one's answer, so the value to
             // restore is still the one the user typed. An edit in between
             // clears the entry (the watcher below), and `current` is then
@@ -289,11 +376,11 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
       void nameField.onBlur(event);
       // Automatic only for a new payee, and only when the user opted in; an
       // existing payee's values are theirs, so a lookup there is the button.
-      if (!payee && lookupEnabled && aiConfigured) {
+      if (!payee && lookupEnabled && lookupAvailable) {
         void runLookup(event.target.value);
       }
     },
-    [nameField, payee, lookupEnabled, aiConfigured, runLookup],
+    [nameField, payee, lookupEnabled, lookupAvailable, runLookup],
   );
 
   const handleFormSubmit = useCallback((data: PayeeFormData) => {
@@ -380,7 +467,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
             onBlur={handleNameBlur}
           />
         </div>
-        {aiConfigured && (
+        {lookupAvailable && (
           <Button
             type="button"
             variant="outline"
@@ -445,7 +532,27 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {t.rich('form.lookup.noProvider', {
             link: (chunks) => (
-              <Link href="/settings/ai" className="text-blue-600 hover:underline dark:text-blue-400">
+              <Link
+                href="/settings#payee-lookup"
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
+      )}
+      {/* Its own message, not "no provider": the repair is to wait out or
+          raise the Google Places limit, which is a different screen and a
+          different decision from configuring an AI provider. */}
+      {lookupState.status === 'done' && lookupState.reason === 'quota_exceeded' && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {t.rich('form.lookup.quotaExceeded', {
+            link: (chunks) => (
+              <Link
+                href="/settings#payee-lookup"
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
                 {chunks}
               </Link>
             ),

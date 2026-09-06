@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Enregistrer les préférences",
-    "savingButton": "Enregistrement...",
     "toasts": {
       "saved": "Préférences enregistrées",
       "saveFailed": "Échec de l'enregistrement des préférences",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Notifications",
+    "portfolioAlert": {
+      "title": "Variation de la valeur des placements",
+      "description": "Me prévenir une fois par jour lorsque mes comptes de placement varient au-delà d'un seuil, mesuré à partir des variations de marché et des dividendes (les dépôts et retraits sont exclus).",
+      "enableLabel": "Activer les alertes de variation des placements",
+      "thresholdLabel": "Me prévenir lorsque la variation quotidienne atteint au moins",
+      "save": "Enregistrer",
+      "saved": "Seuil enregistré",
+      "saveError": "Impossible d'enregistrer le seuil",
+      "loadError": "Impossible de charger le réglage des alertes de placement",
+      "retry": "Réessayer"
+    },
     "smtpNotConfigured": "Les notifications par e-mail ne sont pas disponibles. Le SMTP n'a pas été configuré par l'administrateur.",
     "emailNotificationsTitle": "Notifications par e-mail",
     "emailNotificationsDescription": "Recevez des rappels par e-mail pour les factures à venir et les alertes de budget",
@@ -239,15 +248,10 @@
       "heading": "Push du navigateur",
       "diagnostics": {
         "summary": "Diagnostic des notifications",
-        "intro": "Ce que ce navigateur et cet appareil signalent à Monize au sujet des notifications. Utilisez le bouton de test pour que Monize crée une notification que vous pourrez rechercher sur votre appareil, puis Copier pour envoyer le rapport complet.",
+        "intro": "Ce que ce navigateur et cet appareil signalent à Monize au sujet des notifications. Actualisez après avoir modifié un réglage, puis utilisez Copier pour envoyer le rapport complet.",
         "refresh": "Actualiser",
         "copy": "Copier le rapport",
-        "copied": "Diagnostic copié dans le presse-papiers",
-        "localTest": "Afficher une notification de test",
-        "localTestRunning": "Vérification…",
-        "localTestBody": "Si vous voyez ceci, les notifications fonctionnent sur cet appareil.",
-        "localTestCreated": "Monize a créé une notification sans erreur, mais rien ici ne peut confirmer que le système l'a affichée. Si vous ne l'avez pas vue sur votre appareil, le système la masque ; activez les notifications de Monize dans les paramètres de l'appareil.",
-        "localTestError": "Impossible d'exécuter le test sur cet appareil ({detail})."
+        "copied": "Diagnostic copié dans le presse-papiers"
       },
       "description": "Enregistrez cet appareil pour que Monize puisse l'atteindre même quand l'application est fermée. Pour l'instant, seule la notification de test passe par ce canal ; tout le reste arrive toujours dans la cloche.",
       "androidNotify": "Sur Android, une autorisation accordée ne suffit pas : le système peut quand même masquer les notifications. Appuyez longuement sur l'icône Monize de votre écran d'accueil, touchez Infos sur l'appli, puis Notifications, et assurez-vous qu'elles sont activées.",
@@ -260,7 +264,6 @@
       "thisDevice": "Cet appareil",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Appareil sans nom",
-      "lastSeen": "Dernière activité {when}",
       "noLiveDevices": "Aucun appareil enregistré pour l'instant. Activez le push sur cet appareil pour envoyer un test.",
       "notConfigured": "Le push du navigateur n'est pas disponible sur cette instance Monize. Un administrateur peut l'activer dans l'espace d'administration.",
       "disabledByAdmin": "Un administrateur a désactivé le push du navigateur pour cette instance Monize.",
@@ -301,25 +304,42 @@
           "transient": "non remis (erreur temporaire) ; réessayez",
           "unconfigured": "cette instance ne peut pas signer les messages push pour le moment"
         }
+      },
+      "transport": {
+        "webpush": "Push web",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Point de terminaison",
+        "transport": "Distribué par",
+        "registeredIp": "Enregistré depuis",
+        "registered": "Enregistré le",
+        "lastSeen": "Dernière activité",
+        "lastDelivery": "Dernière remise",
+        "noDelivery": "Rien n'a encore été remis",
+        "userAgent": "Navigateur",
+        "unknownIp": "Inconnue"
       }
     },
     "preferences": {
       "heading": "Comment me notifier",
-      "description": "La cloche affiche toujours toutes les notifications. Choisissez lesquelles Monize envoie aussi par e-mail ou push, et à quelle fréquence.",
+      "description": "Choisissez les types que Monize envoie par e-mail ou push, et à quelle fréquence.",
       "categoryHeader": "Notification",
       "channels": {
-        "inApp": "Dans l'appli",
         "emailReport": "E-mail (rapport)",
         "emailNotification": "E-mail (alerte)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Les notifications passent par une application distributeur que vous hébergez vous-même, comme ntfy, au lieu du service push de l'éditeur du navigateur. Enregistrez un point de terminaison dans cette application pour utiliser ce canal."
       },
       "categories": {
         "PAYMENTS": "Factures et planifiés",
         "BUDGETS": "Budgets",
-        "SYSTEM": "Alertes système"
+        "SYSTEM": "Alertes système",
+        "BALANCES": "Soldes des comptes",
+        "INVESTMENTS": "Valeur des placements",
+        "STRATEGIES": "Signaux de stratégie"
       },
-      "inAppAlways": "Toujours visible dans la cloche",
       "channelNotApplicable": "Non applicable à ce type de notification",
       "emailToggleLabel": "E-mail (rapport) pour {category}",
       "saveFailed": "Impossible d'enregistrer ce réglage",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push pour {category}",
       "unifiedpushToggleLabel": "UnifiedPush pour {category}",
       "emailUnavailable": "Activez les notifications par e-mail ci-dessus pour les envoyer par e-mail.",
-      "pushUnavailable": "Activez d'abord le push sur cet appareil (voir ci-dessous).",
-      "unifiedpushUnavailable": "Enregistrez un point de terminaison UnifiedPush depuis votre application distributeur pour utiliser ce canal."
+      "pushUnavailable": "Aucun appareil n'est enregistré pour le push, ce canal ne peut donc rien remettre.",
+      "pushEnableHint": "Ce navigateur n'est pas enregistré pour les notifications push."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Sauvegarde automatique",
     "help": "Aide et support",
     "dangerZone": "Zone dangereuse",
-    "about": "À propos"
+    "about": "À propos",
+    "payeeLookup": "Recherche de bénéficiaires"
   },
   "page": {
     "title": "Paramètres",
@@ -885,14 +906,6 @@
         "step3": "Les réponses sont diffusées dans le chat. Un voyant d'état indique si votre agent est connecté.",
         "note": "Rien ne s'exécute tant que votre agent n'est pas connecté et à l'écoute. Le chat affiche les instructions de connexion."
       }
-    },
-    "payeeLookup": {
-      "title": "Recherche automatique des coordonnées du bénéficiaire",
-      "subtitle": "Recherche automatiquement le site web, l'adresse, l'e-mail et le numéro de téléphone d'un nouveau bénéficiaire via votre fournisseur d'IA configuré. Le nom du bénéficiaire est envoyé, ainsi que les notes, le site web, l'adresse, l'e-mail et le téléphone dont il dispose déjà, afin que la recherche distingue la bonne entreprise et le bon lieu.",
-      "toggleLabel": "Activer la recherche automatique des coordonnées",
-      "enabled": "Recherche automatique des coordonnées activée",
-      "disabled": "Recherche automatique des coordonnées désactivée",
-      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Toute la période"
     },
     "estCostTooltip": "Estimé en utilisant les tarifs que vous avez configurés sur chaque fournisseur. Exclut toute activité pour laquelle aucun tarif correspondant n'est défini."
+  },
+  "payeeLookup": {
+    "title": "Recherche de bénéficiaires",
+    "subtitle": "D'où proviennent le site web, l'adresse, l'e-mail et le téléphone d'un bénéficiaire, et quand une recherche s'exécute d'elle-même.",
+    "saved": "Paramètres de recherche de bénéficiaires enregistrés",
+    "saveFailed": "Impossible d'enregistrer les paramètres de recherche de bénéficiaires",
+    "loadFailed": "Impossible de charger les paramètres de recherche de bénéficiaires. Rechargez la page pour réessayer.",
+    "googlePlaces": {
+      "toggleLabel": "Utiliser Google Places pour la recherche de bénéficiaires",
+      "notConfigured": "Ajoutez une clé d'API Google Places pour rechercher les entreprises dans l'annuaire Google plutôt que via votre fournisseur d'IA.",
+      "operatorManaged": "Configuré par l'administration de ce serveur. Vous pouvez le désactiver pour vos propres bénéficiaires.",
+      "configure": "Configurer",
+      "edit": "Modifier",
+      "removeKey": "Supprimer la clé",
+      "usage": "Utilisé ce mois-ci : {used} sur {cap}",
+      "usageNoCap": "Utilisé ce mois-ci : {used}. Aucune limite mensuelle.",
+      "keyUnreadable": "Ce serveur ne peut pas lire la clé d'API enregistrée. Cela arrive lorsqu'une sauvegarde est restaurée sur une autre instance, ou après un changement de clé de chiffrement. Saisissez à nouveau la clé pour corriger cela.",
+      "encryptionUnavailable": "Ce serveur n'a aucune clé de chiffrement configurée : une clé d'API ne peut donc pas être stockée en sécurité. Demandez à votre administration d'en configurer une.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize envoie à Google le nom du bénéficiaire et l'adresse dont vous disposez déjà, et n'y stocke rien.",
+      "apiKeyLabel": "Clé d'API",
+      "apiKeyPlaceholder": "Collez votre clé d'API Google Places",
+      "apiKeyHelp": "Créez une clé dans la console Google Cloud avec l'API Places (New) activée. Laissez ce champ vide pour conserver la clé déjà enregistrée.",
+      "capToggleLabel": "Limiter les requêtes chaque mois",
+      "capHelp": "Google offre {free} requêtes Text Search gratuites par mois pour les champs dont cette recherche a besoin. Au-delà de la limite, la recherche revient à votre fournisseur d'IA.",
+      "capLabel": "Requêtes par mois",
+      "capRange": "Saisissez un nombre entre {min} et {max}.",
+      "test": "Tester",
+      "testing": "Test en cours...",
+      "testSuccess": "Google a accepté la clé.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "setupInstructions": "Instructions de configuration"
+    },
+    "automatic": {
+      "title": "Recherche automatique des coordonnées des bénéficiaires",
+      "subtitle": "Rechercher automatiquement le site web, l'adresse, l'e-mail et le téléphone d'un nouveau bénéficiaire. Le nom du bénéficiaire est envoyé, avec les notes, le site web, l'adresse, l'e-mail et le téléphone dont il dispose déjà, afin que la recherche distingue la bonne entreprise et le bon établissement.",
+      "toggleLabel": "Activer la recherche automatique des coordonnées",
+      "enabled": "Recherche automatique des coordonnées activée",
+      "disabled": "Recherche automatique des coordonnées désactivée",
+      "saveFailed": "Impossible de mettre à jour le paramètre de recherche des coordonnées",
+      "noSource": "Activez une source ci-dessus pour rechercher les bénéficiaires automatiquement. Les deux désactivées, rien ne peut répondre à une recherche."
+    },
+    "order": {
+      "title": "Quelle source répond en premier",
+      "placesTitle": "Google Places",
+      "placesHelp": "Données d'annuaire, moins cher par recherche. Google n'a pas d'adresse e-mail.",
+      "aiTitle": "Fournisseur d'IA existant",
+      "aiHelp": "Peut trouver une adresse e-mail et coûte un appel au modèle à chaque recherche.",
+      "aiToggleLabel": "Utiliser un fournisseur d'IA pour les recherches de bénéficiaires",
+      "aiProviderLabel": "Fournisseur à utiliser",
+      "aiProviderAny": "N'importe quel fournisseur, par priorité",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
+    }
   }
 }

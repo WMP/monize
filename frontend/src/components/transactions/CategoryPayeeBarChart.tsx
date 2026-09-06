@@ -120,7 +120,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
 }: CategoryPayeeBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.monthlyTotals.title');
-  const { formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency, formatCurrencyAxis, formatNumber } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const downloadFilename = filterLabel ? `${chartTitle} - ${filterLabel}` : chartTitle;
@@ -216,7 +216,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
         { label: t('charts.monthlyTotals.total'), value: formatCurrency(summary.total) },
         {
           label: t('charts.monthlyTotals.transactions'),
-          value: summary.totalCount.toLocaleString(),
+          value: formatNumber(summary.totalCount, 0),
         },
       ]
     : [];
@@ -404,7 +404,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('charts.monthlyTotals.transactions')}</div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">
-              {summary.totalCount.toLocaleString()}
+              {formatNumber(summary.totalCount, 0)}
             </div>
           </div>
         </div>

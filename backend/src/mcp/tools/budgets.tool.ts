@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import {
-  UserContextResolver,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
@@ -16,7 +16,7 @@ import { READ_ONLY } from "../mcp-annotations";
 export class McpBudgetsTools {
   constructor(private readonly budgetReportsService: BudgetReportsService) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "get_budget_status",
       {
@@ -27,7 +27,7 @@ export class McpBudgetsTools {
           "breakdowns, spending velocity, safe daily spend and a health score. " +
           "`velocity.safeDailySpend` is null when an upcoming bill's amount " +
           "cannot be priced; `upcomingBillsComplete` says so.",
-        inputSchema: {
+        inputSchema: z.object({
           period: z
             .string()
             .max(20)
@@ -40,18 +40,18 @@ export class McpBudgetsTools {
             .max(100)
             .optional()
             .describe("Defaults to the first active budget."),
-        },
+        }),
         outputSchema: getBudgetStatusOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           const data = await this.budgetReportsService.getLlmBudgetStatus(
-            ctx.userId,
+            user.userId,
             args.period ?? "CURRENT",
             args.budgetName,
           );

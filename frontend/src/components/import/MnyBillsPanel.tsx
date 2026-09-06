@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { formatCurrency } from '@/lib/format';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { MnyPreviewBill } from '@/lib/import-mny';
 
 interface MnyBillsPanelProps {
@@ -38,6 +38,7 @@ export function MnyBillsPanel({
   const t = useTranslations('import');
   const ts = useTranslations('scheduledTransactions');
   const { formatDate } = useDateFormat();
+  const { formatCurrency } = useNumberFormat();
 
   if (unsupported) {
     return (

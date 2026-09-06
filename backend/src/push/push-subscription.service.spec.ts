@@ -63,6 +63,7 @@ function storedDevice(overrides: Partial<PushSubscription> = {}) {
     auth: "auth-value",
     deviceName: "Pixel 9",
     userAgent: "Mozilla/5.0",
+    registeredIp: "203.0.113.7",
     vapidPublicKey: "PUB",
     createdAt: new Date("2026-08-01T10:00:00Z"),
     lastSeenAt: new Date("2026-08-02T10:00:00Z"),
@@ -72,6 +73,39 @@ function storedDevice(overrides: Partial<PushSubscription> = {}) {
     disabledReason: null,
     ...overrides,
   } as PushSubscription;
+}
+
+/**
+ * The value bound to one column of the subscribe INSERT, addressed by NAME.
+ *
+ * A positional `insert[1][8]` is a claim about the column list that nothing
+ * checks: adding `registered_ip` ahead of `transport` shifted every index by
+ * one and two assertions started reading the neighbouring value while still
+ * passing their own `toBe`. The column list is checked against `schema.sql` by
+ * `raw-sql-columns.spec.ts`; this reads the same list at run time so a spec can
+ * never disagree with it.
+ */
+function insertParam(
+  call: [unknown, unknown[]] | undefined,
+  column: string,
+): unknown {
+  expect(call).toBeDefined();
+  const sql = String(call![0]);
+  const columns = sql
+    .slice(sql.indexOf("(") + 1, sql.indexOf(")"))
+    .split(",")
+    .map((name) => name.trim());
+  const index = columns.indexOf(column);
+  expect(columns).toContain(column);
+  return call![1][index];
+}
+
+function subscribeInsert(
+  manager: ReturnType<typeof createScopedDbMocks>["manager"],
+) {
+  return (manager.query as jest.Mock).mock.calls.find(([sql]) =>
+    String(sql).includes("INSERT INTO push_subscriptions"),
+  ) as [unknown, unknown[]] | undefined;
 }
 
 describe("PushSubscriptionService", () => {
@@ -130,6 +164,44 @@ describe("PushSubscriptionService", () => {
       expect(insert![1][0]).toBe(USER);
       // A payload-supplied owner is not merely ignored: there is no field for it.
       expect(Object.keys(DTO)).not.toContain("userId");
+    });
+
+    /**
+     * The address a registration came from, so the device list can tell two
+     * browsers on one machine apart -- `device_name` is derived from the
+     * User-Agent and is identical for both.
+     *
+     * Asserted as the statement's own column list and parameter, not as a
+     * substring: a `toContain` on the SQL passes for a column named in the
+     * INSERT and never given a value.
+     */
+    it("stores the address the registration came from", async () => {
+      await service.subscribe(USER, DTO, "Mozilla/5.0", "203.0.113.7");
+
+      expect(insertParam(subscribeInsert(manager), "registered_ip")).toBe(
+        "203.0.113.7",
+      );
+    });
+
+    // A re-registration IS a registration, from wherever the browser is now, so
+    // the refresh arm overwrites rather than COALESCEs: an older address under a
+    // moved `last_seen_at` would make the pair a lie.
+    it("refreshes the address on a re-registration rather than keeping the old one", async () => {
+      await service.subscribe(USER, DTO, "Mozilla/5.0", "198.51.100.9");
+
+      const sql = String(subscribeInsert(manager)![0]);
+      expect(sql).toContain("registered_ip = EXCLUDED.registered_ip");
+      expect(sql).not.toContain(
+        "registered_ip = COALESCE(EXCLUDED.registered_ip",
+      );
+    });
+
+    // Unknown is a state: an address this server could not determine is stored
+    // as NULL rather than as a placeholder nobody was at.
+    it("stores no address when the caller supplied none", async () => {
+      await service.subscribe(USER, DTO, "Mozilla/5.0", null);
+
+      expect(insertParam(subscribeInsert(manager), "registered_ip")).toBeNull();
     });
 
     // The rule this pins, and the reason the previous shape was wrong: an
@@ -389,25 +461,22 @@ describe("PushSubscriptionService", () => {
     it("stamps the subscription with the key pair it was minted under", async () => {
       await service.subscribe(USER, DTO, null);
 
-      const insert = manager.query.mock.calls.find(([sql]) =>
-        String(sql).includes("INSERT INTO push_subscriptions"),
-      )!;
-      expect(insert[1][7]).toBe("PUB");
+      expect(insertParam(subscribeInsert(manager), "vapid_public_key")).toBe(
+        "PUB",
+      );
     });
 
     // The wire is a fact about the client that registered: a UnifiedPush client
-    // says so, a browser says nothing and gets today's only wire. Column 9 of the
-    // INSERT is `transport` (the list is checked against schema.sql by
+    // says so, a browser says nothing and gets today's only wire. Addressed by
+    // column name, never by position (the list is checked against schema.sql by
     // raw-sql-columns.spec.ts).
     it("stores the transport the client registered, defaulting a silent client to webpush", async () => {
       await service.subscribe(USER, DTO, "Mozilla/5.0");
-      const browser = manager.query.mock.calls.find(([sql]) =>
-        String(sql).includes("INSERT INTO push_subscriptions"),
-      )!;
+      const browser = subscribeInsert(manager);
       // A silent client binds NULL and the SQL defaults a NEW row to webpush;
       // on a refresh the same NULL keeps the row's existing wire instead.
-      expect(browser[1][8]).toBeNull();
-      expect(String(browser[0])).toContain("COALESCE($9, 'webpush')");
+      expect(insertParam(browser, "transport")).toBeNull();
+      expect(String(browser![0])).toContain("COALESCE($10, 'webpush')");
 
       manager.query.mockClear();
       await service.subscribe(
@@ -415,14 +484,12 @@ describe("PushSubscriptionService", () => {
         { ...DTO, transport: "unifiedpush" },
         "ntfy-android/2.11",
       );
-      const distributor = manager.query.mock.calls.find(([sql]) =>
-        String(sql).includes("INSERT INTO push_subscriptions"),
-      )!;
-      expect(distributor[1][8]).toBe("unifiedpush");
+      const distributor = subscribeInsert(manager);
+      expect(insertParam(distributor, "transport")).toBe("unifiedpush");
       // And the refresh arm keeps the stored wire when the client says nothing,
       // so a UnifiedPush distributor re-posting rotated keys without the tag is
       // not silently moved onto the webpush gate.
-      expect(String(distributor[0])).toContain(
+      expect(String(distributor![0])).toContain(
         "transport = COALESCE(EXCLUDED.transport, push_subscriptions.transport)",
       );
     });

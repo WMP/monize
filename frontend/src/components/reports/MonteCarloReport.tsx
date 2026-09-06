@@ -58,7 +58,14 @@ const logger = createLogger('MonteCarloReport');
 
 export function MonteCarloReport() {
   const t = useTranslations('reports');
-  const { formatCurrency, formatCurrencyLabel, defaultCurrency } = useNumberFormat();
+  const { formatCurrency, formatCurrencyLabel, formatNumber, formatPercent, defaultCurrency } = useNumberFormat();
+  // One bundle for the pure helpers below (the summary table, the holdings
+  // stats and the CSV rows), which format money, counts and percentages and
+  // must do all three in the reader's number locale.
+  const numberFormatters = useMemo(
+    () => ({ formatCurrency, formatNumber, formatPercent }),
+    [formatCurrency, formatNumber, formatPercent],
+  );
   const currencySymbol = useMemo(() => getCurrencySymbol(defaultCurrency), [defaultCurrency]);
   const {
     accounts,
@@ -309,11 +316,11 @@ export function MonteCarloReport() {
         headers: PERFORMANCE_SUMMARY_HEADERS,
         rows: summaryRows.map((row) => [
           row.label,
-          formatSummaryValue(row.band.p10, row.format, formatCurrency),
-          formatSummaryValue(row.band.p25, row.format, formatCurrency),
-          formatSummaryValue(row.band.p50, row.format, formatCurrency),
-          formatSummaryValue(row.band.p75, row.format, formatCurrency),
-          formatSummaryValue(row.band.p90, row.format, formatCurrency),
+          formatSummaryValue(row.band.p10, row.format, numberFormatters),
+          formatSummaryValue(row.band.p25, row.format, numberFormatters),
+          formatSummaryValue(row.band.p50, row.format, numberFormatters),
+          formatSummaryValue(row.band.p75, row.format, numberFormatters),
+          formatSummaryValue(row.band.p90, row.format, numberFormatters),
         ]),
       });
     }
@@ -321,7 +328,7 @@ export function MonteCarloReport() {
       `monte-carlo-${(form.name || 'scenario').toLowerCase().replace(/\s+/g, '-')}`,
       sections,
     );
-  }, [result, tableRows, form.name, formatCurrency, t]);
+  }, [result, tableRows, form.name, numberFormatters, t]);
 
   const handleExportPdf = useCallback(async () => {
     if (!result) return;
@@ -352,7 +359,7 @@ export function MonteCarloReport() {
         },
         {
           label: t('monteCarlo.probabilityOfDepletion'),
-          value: `${(result.finalDistribution.depletionRate * 100).toFixed(1)}%`,
+          value: formatPercent((result.finalDistribution.depletionRate * 100), 1),
           color: '#dc2626',
         },
         {
@@ -363,7 +370,7 @@ export function MonteCarloReport() {
           value:
             result.successRate == null
               ? '—'
-              : `${(result.successRate * 100).toFixed(1)}%`,
+              : formatPercent((result.successRate * 100), 1),
           color: '#16a34a',
         },
       ],
@@ -380,11 +387,11 @@ export function MonteCarloReport() {
                 rows: buildPerformanceSummaryRows(result.performanceSummary).map(
                   (row) => [
                     row.label,
-                    formatSummaryValue(row.band.p10, row.format, formatCurrency),
-                    formatSummaryValue(row.band.p25, row.format, formatCurrency),
-                    formatSummaryValue(row.band.p50, row.format, formatCurrency),
-                    formatSummaryValue(row.band.p75, row.format, formatCurrency),
-                    formatSummaryValue(row.band.p90, row.format, formatCurrency),
+                    formatSummaryValue(row.band.p10, row.format, numberFormatters),
+                    formatSummaryValue(row.band.p25, row.format, numberFormatters),
+                    formatSummaryValue(row.band.p50, row.format, numberFormatters),
+                    formatSummaryValue(row.band.p75, row.format, numberFormatters),
+                    formatSummaryValue(row.band.p90, row.format, numberFormatters),
                   ],
                 ),
               },
@@ -423,6 +430,8 @@ export function MonteCarloReport() {
     form.name,
     form.targetValue,
     formatCurrency,
+    formatPercent,
+    numberFormatters,
     defaultCurrency,
     tableRows, t,
   ]);
@@ -616,7 +625,7 @@ export function MonteCarloReport() {
                         ? t('monteCarlo.collapsedHistoricalReturns')
                         : t('monteCarlo.collapsedCustomReturns', { return: (form.expectedReturn * 100).toFixed(1), vol: (form.volatility * 100).toFixed(1) })}
                     </span>
-                    <span>{t('monteCarlo.collapsedRuns', { count: form.simulationCount.toLocaleString() })}</span>
+                    <span>{t('monteCarlo.collapsedRuns', { count: formatNumber(form.simulationCount, 0) })}</span>
                   </div>
                 </div>
               ) : (
@@ -933,7 +942,7 @@ export function MonteCarloReport() {
                 <HoldingStatsTable
                   data={holdingStats}
                   loading={holdingStatsLoading}
-                  formatCurrency={formatCurrency}
+                  formatters={numberFormatters}
                 />
               </>
             )}
@@ -1101,7 +1110,7 @@ export function MonteCarloReport() {
               />
               <SummaryStat
                 label={t('monteCarlo.probabilityOfDepletion')}
-                value={`${(result.finalDistribution.depletionRate * 100).toFixed(1)}%`}
+                value={formatPercent((result.finalDistribution.depletionRate * 100), 1)}
               />
               <SummaryStat
                 label={
@@ -1112,7 +1121,7 @@ export function MonteCarloReport() {
                 value={
                   result.successRate == null
                     ? '—'
-                    : `${(result.successRate * 100).toFixed(1)}%`
+                    : formatPercent((result.successRate * 100), 1)
                 }
               />
             </div>
@@ -1334,7 +1343,7 @@ export function MonteCarloReport() {
                 </h3>
                 <PerformanceSummaryTable
                   summary={result.performanceSummary}
-                  formatCurrency={formatCurrency}
+                  formatters={numberFormatters}
                 />
               </div>
             )}

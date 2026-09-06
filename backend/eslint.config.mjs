@@ -39,7 +39,21 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/backup/backup-restore.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
+  // Daily portfolio-movement cron: a system-context fan-out over users with a
+  // threshold, then a per-user body (withUserContext) that prices the portfolio
+  // and dispatches. No request behind it
+  // (docs/specs/portfolio-movement-notifications.md).
+  "src/notification-center/portfolio-movement-alert.service.ts",
+  // Event-driven balance-threshold evaluation: runs on the net-worth recalc's
+  // post-commit timer (no request), so it seeds its own withUserContext
+  // (docs/specs/balance-threshold-notifications.md).
+  "src/notification-center/balance-threshold-alert.service.ts",
   "src/common/interceptors/request-context.interceptor.ts",
+  // The Google Places quota claim for the OPERATOR's key. That counter belongs
+  // to the deployment rather than to whoever's lookup spent it -- there is no
+  // owner column and the table is RLS-exempt -- so the claim runs under
+  // withSystemContext. The per-user counter beside it needs no bypass.
+  "src/payees/lookup/google-places/payee-lookup-quota.service.ts",
   // Cross-replica job coordination: claimOnce/claimLease write to a global
   // claims table that belongs to no single user, from cron entry points with no
   // request to inherit an identity from -- system context by construction.
@@ -131,6 +145,11 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/securities/market-index.service.ts",
   "src/securities/securities.controller.ts",
   "src/securities/security-price.service.ts",
+  // GEM recommendation-change cron: a deployment-wide fan-out (system context
+  // to enumerate every strategy's owner) then a per-user body (withUserContext)
+  // that reuses the report materializer and dispatches a notification. No
+  // request behind it (docs/specs/gem-signal-change-notifications.md).
+  "src/strategies/gem-signal-change-alert.service.ts",
   // System alerts: every caller is a cron catch, a post-claim hook or a
   // bootstrap hook with no request behind it, so the service seeds its own
   // context -- system for the admin fan-out, user for a per-user alert

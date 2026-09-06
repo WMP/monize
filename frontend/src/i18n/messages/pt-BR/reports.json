@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Período",
     "pdfChange": "Variação",
     "pdfAnnualizedReturn": "Rentabilidade Anualizada",
-    "tooltipNetWorth": "Patrimônio Líquido"
+    "tooltipNetWorth": "Patrimônio Líquido",
+    "savingsNoteMore": "Em {currentMonth}, você economizou {percent} a mais do que em {previousMonth}, totalizando {amount}",
+    "savingsNoteLess": "Em {currentMonth}, você economizou {percent} a menos do que em {previousMonth}, totalizando {amount}",
+    "incomeNoteMore": "Sua renda total em {currentMonth} foi {amount}, ou seja, {diff} a mais do que em {previousMonth}",
+    "incomeNoteLess": "Sua renda total em {currentMonth} foi {amount}, ou seja, {diff} a menos do que em {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Total",

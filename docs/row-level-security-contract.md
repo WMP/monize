@@ -63,6 +63,7 @@ ran in `npm run test:unit` and nothing failed.
 |---|---|
 | `currencies` | Global reference data keyed by ISO 4217 code. It carries `created_by_user_id`, but that is attribution (`NULL` = system currency), not ownership: any user may reference a custom code via `accounts.currency_code`, and a `created_by_user_id` policy would hide every system currency and break those foreign keys. Per-user visibility is already expressed by `user_currency_preferences`, which **is** policied. |
 | `exchange_rates` | Global reference data with no owner column; written by the scheduled refresh under system context. |
+| `google_places_instance_usage` | The month-by-month request count against the OPERATOR's Google Places key (`GOOGLE_PLACES_API_KEY`), which pays for every user's payee contact lookups. There is no owner column because there is no owner: one key is one bill, and a per-user copy could not enforce the one cap that matters. A user who configures their own key is counted in `payee_lookup_usage`, which is policied like any user-owned table. Written under system context by the quota claim; read only by the settings status. |
 | `market_index_prices` | Global market reference data. A market index has no owner and nobody holds units of it, so one S&P 500 close serves every user. The alternative -- a per-user securities row per index -- would put a fake instrument in every holdings list and multiply provider traffic by the number of accounts. |
 | `market_index_sync` | Sync bookkeeping for that refresh; same ownership story. |
 | `oauth_payloads` | See section 3. |

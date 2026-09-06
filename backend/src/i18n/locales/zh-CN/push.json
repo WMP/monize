@@ -15,6 +15,18 @@
     "system": {
       "title": "系统通知",
       "body": "Monize 有一条系统通知给您。打开应用查看详情。"
+    },
+    "balances": {
+      "title": "余额提醒",
+      "body": "某个账户余额超过了您设置的阈值。打开 Monize 查看详情。"
+    },
+    "investments": {
+      "title": "投资变动",
+      "body": "您的投资今天发生了变动。打开 Monize 查看详情。"
+    },
+    "strategies": {
+      "title": "策略信号",
+      "body": "您的某个策略更改了推荐。打开 Monize 查看详情。"
     }
   },
   "actions": {

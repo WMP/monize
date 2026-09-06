@@ -33,7 +33,8 @@ export type TableRules = Record<string, ColumnRule>;
 /**
  * Tables never written to a support backup regardless of section selection.
  * `ai_provider_configs` holds encrypted API keys and endpoint URLs with zero
- * diagnostic value for a finance bug, so it is dropped wholesale. The two
+ * diagnostic value for a finance bug, so it is dropped wholesale, and
+ * `payee_lookup_settings` holds a Google Places key for the same reason. The two
  * attachment tables carry user-uploaded receipts/documents: `attachment_blobs`
  * is raw file bytes (a NOT NULL BYTEA with no useful de-identified form) and
  * `transaction_attachments` is their metadata (filenames can embed PII), so
@@ -42,11 +43,21 @@ export type TableRules = Record<string, ColumnRule>;
  */
 export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "ai_provider_configs",
+  "payee_lookup_settings",
   "transaction_attachments",
   "attachment_blobs",
 ]);
 
 export const RULES: Record<string, TableRules> = {
+  // How many Google Places requests a month cost, and nothing else: a user id
+  // (kept as an FK everywhere here), a YYYY-MM, and a counter. Nothing about
+  // it names a payee, so nothing needs masking -- and the count is exactly
+  // what a support case about a cap would be asking to see.
+  payee_lookup_usage: {
+    user_id: keep,
+    month: keep,
+    google_places_requests: keep,
+  },
   currencies: {
     code: keep,
     name: keep,
@@ -176,6 +187,10 @@ export const RULES: Record<string, TableRules> = {
     statement_settlement_day: keep,
     is_closed: keep,
     closed_date: keep,
+    low_balance_threshold: scale, // a money figure, scaled like every amount
+    high_balance_threshold: scale,
+    low_alert_armed: keep, // the crossing latch, a boolean
+    high_alert_armed: keep,
     is_favourite: keep,
     favourite_sort_order: keep,
     exclude_from_net_worth: keep,
@@ -574,6 +589,15 @@ export const RULES: Record<string, TableRules> = {
     last_fired_at: keep,
     fire_count: keep,
     stopped_at: keep,
+    created_at: keep,
+    updated_at: keep,
+  },
+  notification_portfolio_state: {
+    user_id: keep,
+    move_alert_percent: keep, // the user's threshold, not identifying
+    baseline_value: scale, // a money figure -- scaled like every other amount
+    baseline_currency: keep, // an ISO currency code
+    baseline_captured_on: keep, // a date
     created_at: keep,
     updated_at: keep,
   },

@@ -13,8 +13,12 @@ export const AI_ACTION_TTL_MS = 10 * 60 * 1000; // 10 minutes
 /**
  * Deterministically serialize a value with object keys sorted so the HMAC is
  * stable regardless of property insertion order. Arrays preserve order.
+ *
+ * Exported because the MCP write confirmation fingerprints the action a user
+ * approved with the same rule (`mcp-confirm.ts`): two serializations of "the
+ * same action" that disagree would let a retry commit something else.
  */
-function canonicalize(value: unknown): string {
+export function canonicalize(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }

@@ -55,12 +55,15 @@ vi.mock('@/lib/pdf-export', () => ({
 vi.mock('@/hooks/useChartDateFormat', () => ({
   useChartDateFormat: () => (d: Date) => d.toISOString().slice(0, 10),
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatSignedPercent: (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
-  }),
-}));
-vi.mock('@/lib/utils', async (importActual) => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatSignedPercent: (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
+    }),
+  };
+});vi.mock('@/lib/utils', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/utils')>()),
   parseLocalDate: (d: string) => new Date(d + 'T00:00:00'),
 }));

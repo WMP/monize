@@ -14,6 +14,7 @@ import { DangerZoneSection } from '@/components/settings/DangerZoneSection';
 import { BackupRestoreSection } from '@/components/settings/BackupRestoreSection';
 import { AutoBackupSection } from '@/components/settings/AutoBackupSection';
 import { ApiAccessSection } from '@/components/settings/ApiAccessSection';
+import { PayeeLookupSection } from '@/components/settings/payee-lookup/PayeeLookupSection';
 import { HelpSection } from '@/components/settings/HelpSection';
 import { AboutSection } from '@/components/settings/AboutSection';
 import { SettingsNav, SettingsSection } from '@/components/settings/SettingsNav';
@@ -33,19 +34,20 @@ const logger = createLogger('Settings');
 const SETTINGS_SECTION_IDS = [
   { id: 'profile', navKey: 'profile', demoVisible: false },
   { id: 'preferences', navKey: 'preferences', demoVisible: true },
-  { id: 'tours', navKey: 'tours', href: '/settings/tours', demoVisible: true },
   { id: 'notifications', navKey: 'notifications', demoVisible: true },
   { id: 'security', navKey: 'security', demoVisible: false },
   { id: 'shared-access', navKey: 'sharedAccess', href: '/settings/shared-access', demoVisible: false },
   { id: 'emergency-access', navKey: 'emergencyAccess', href: '/settings/emergency-access', demoVisible: false },
   { id: 'api-access', navKey: 'apiAccess', demoVisible: false },
   { id: 'ai-settings', navKey: 'aiSettings', href: '/settings/ai', demoVisible: false },
+  { id: 'payee-lookup', navKey: 'payeeLookup', demoVisible: false },
   { id: 'backup-restore', navKey: 'backupRestore', demoVisible: false },
   // Automatic backups decide what the server writes to its own filesystem, so
   // only an administrator configures them. Everyone else is enrolled on the
   // deployment defaults by the backend and never sees the section.
   { id: 'auto-backup', navKey: 'autoBackup', demoVisible: false, adminOnly: true },
   { id: 'help', navKey: 'help', demoVisible: false },
+  { id: 'tours', navKey: 'tours', href: '/settings/tours', demoVisible: true },
   { id: 'about', navKey: 'about', demoVisible: true },
   { id: 'danger-zone', navKey: 'dangerZone', variant: 'danger' as const, demoVisible: false },
 ] as const;
@@ -304,20 +306,6 @@ function OwnerSettingsView() {
               </div>
             )}
 
-            <div id="tours" className="scroll-mt-32 lg:scroll-mt-22">
-              <Link
-                href="/settings/tours"
-                className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                  {t('toursCard.title')}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('toursCard.description')}
-                </p>
-              </Link>
-            </div>
-
             {preferences && (
               <div id="notifications" className="scroll-mt-32 lg:scroll-mt-22">
                 <NotificationsSection
@@ -394,6 +382,12 @@ function OwnerSettingsView() {
               </div>
             )}
 
+            {!isDemoMode && (
+              <div id="payee-lookup" className="scroll-mt-32 lg:scroll-mt-22">
+                <PayeeLookupSection />
+              </div>
+            )}
+
             {!isDemoMode && user && (
               <div id="backup-restore" className="scroll-mt-32 lg:scroll-mt-22">
                 <BackupRestoreSection user={user} />
@@ -408,6 +402,20 @@ function OwnerSettingsView() {
 
             <div id="help" className="scroll-mt-32 lg:scroll-mt-22">
               <HelpSection />
+            </div>
+
+            <div id="tours" className="scroll-mt-32 lg:scroll-mt-22">
+              <Link
+                href="/settings/tours"
+                className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  {t('toursCard.title')}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t('toursCard.description')}
+                </p>
+              </Link>
             </div>
 
             <div id="about" className="scroll-mt-32 lg:scroll-mt-22">

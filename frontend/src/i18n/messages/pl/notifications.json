@@ -53,6 +53,26 @@
     "amountDue": "{amount} do zapłaty {date}",
     "amountUnavailable": "Kwota niedostępna (brak aktualnego kursu wymiany), termin {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} przełączona na {state}",
+    "riskMessage": "Twoja strategia GEM \"{strategy}\" zmieniła się z {fromState} na {toState}. Otwórz, aby przejrzeć rekomendację.",
+    "allocationTitle": "{strategy} zmieniła swój cel",
+    "allocationMessage": "Twoja strategia GEM \"{strategy}\" celuje teraz w {target}. Otwórz, aby przejrzeć rekomendację.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Inwestycje w górę o {percent}%",
+    "titleDown": "Inwestycje w dół o {percent}%",
+    "messageUp": "Twoje inwestycje są dziś wyżej o {percent}%, z wyłączeniem wpłat i wypłat. Otwórz, aby przejrzeć.",
+    "messageDown": "Twoje inwestycje są dziś niżej o {percent}%, z wyłączeniem wpłat i wypłat. Otwórz, aby przejrzeć."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} jest poniżej Twojego progu",
+    "titleHigh": "{account} jest powyżej Twojego progu",
+    "messageLow": "{account} spadło do {balance}, poniżej Twojego progu {threshold}.",
+    "messageHigh": "{account} wzrosło do {balance}, powyżej Twojego progu {threshold}."
+  },
   "system": {
     "backupFailed": {
       "title": "Automatyczna kopia zapasowa nie powiodła się",

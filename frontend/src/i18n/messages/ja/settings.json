@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "設定を保存",
-    "savingButton": "保存中...",
     "toasts": {
       "saved": "設定を保存しました",
       "saveFailed": "設定の保存に失敗しました",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "通知",
+    "portfolioAlert": {
+      "title": "投資価値の変動",
+      "description": "投資口座がしきい値を超えて変動したときに、1日1回通知します。市場の変動と配当から測定されます(入出金は除きます)。",
+      "enableLabel": "投資変動アラートを有効にする",
+      "thresholdLabel": "1日の変動が次の値以上のときに通知",
+      "save": "保存",
+      "saved": "しきい値を保存しました",
+      "saveError": "しきい値を保存できませんでした",
+      "loadError": "投資アラートの設定を読み込めませんでした",
+      "retry": "再試行"
+    },
     "smtpNotConfigured": "メール通知は利用できません。管理者がSMTPを設定していません。",
     "emailNotificationsTitle": "メール通知",
     "emailNotificationsDescription": "今後の請求書と予算アラートのメールリマインダーを受信する",
@@ -239,15 +248,10 @@
       "heading": "ブラウザープッシュ",
       "diagnostics": {
         "summary": "通知診断",
-        "intro": "このブラウザーとデバイスが通知について Monize に報告する内容です。テストボタンを押すと Monize が通知を作成するので、デバイスで探してみてください。コピーで完全なレポートを送信できます。",
+        "intro": "このブラウザーとデバイスが通知について Monize に報告している内容です。設定を変更したら更新し、「レポートをコピー」で全文を送ってください。",
         "refresh": "更新",
         "copy": "レポートをコピー",
-        "copied": "診断をクリップボードにコピーしました",
-        "localTest": "テスト通知を表示",
-        "localTestRunning": "確認中…",
-        "localTestBody": "これが見えていれば、このデバイスで通知は正常に動作しています。",
-        "localTestCreated": "Monize はエラーなく通知を作成しましたが、システムが実際に表示したかどうかはここでは確認できません。デバイスで見えなかった場合、システムが非表示にしています。デバイスの設定で Monize の通知をオンにしてください。",
-        "localTestError": "このデバイスでテストを実行できませんでした（{detail}）。"
+        "copied": "診断をクリップボードにコピーしました"
       },
       "description": "この端末を登録すると、アプリを閉じていても Monize から通知を届けられます。今のところこの経路で届くのはテスト通知だけで、それ以外はこれまでどおりベルに届きます。",
       "androidNotify": "Android では、許可を与えただけでは不十分で、システムが通知を非表示にすることがあります。ホーム画面の Monize アイコンを長押しし、アプリ情報、通知の順にタップして、オンになっていることを確認してください。",
@@ -260,7 +264,6 @@
       "thisDevice": "この端末",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "名前のない端末",
-      "lastSeen": "最終アクティブ: {when}",
       "noLiveDevices": "まだ端末が登録されていません。テストを送信するには、この端末でプッシュを有効にしてください。",
       "notConfigured": "この Monize インスタンスではブラウザープッシュを利用できません。管理者が Admin エリアで有効にできます。",
       "disabledByAdmin": "管理者がこの Monize インスタンスのブラウザープッシュを無効にしています。",
@@ -301,25 +304,42 @@
           "transient": "未配信（一時的なエラー）。もう一度お試しください",
           "unconfigured": "このインスタンスは現在プッシュメッセージに署名できません"
         }
+      },
+      "transport": {
+        "webpush": "ウェブプッシュ",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "エンドポイント",
+        "transport": "配信経路",
+        "registeredIp": "登録元",
+        "registered": "登録日時",
+        "lastSeen": "最終アクティビティ",
+        "lastDelivery": "最終配信",
+        "noDelivery": "まだ配信されていません",
+        "userAgent": "ブラウザー",
+        "unknownIp": "不明"
       }
     },
     "preferences": {
       "heading": "通知方法",
-      "description": "ベルには常にすべての通知が表示されます。Monize がメールまたはプッシュでも送信する種類と、その頻度を選択します。",
+      "description": "Monize がメールまたはプッシュで送る種類と、その頻度を選びます。",
       "categoryHeader": "通知",
       "channels": {
-        "inApp": "アプリ内",
         "emailReport": "メール（レポート）",
         "emailNotification": "メール（アラート）",
         "push": "プッシュ",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "通知は、ブラウザーベンダーのプッシュサービスではなく、ntfy などご自身で運用するディストリビューターアプリ経由で配信されます。このチャネルを使うには、そのアプリでエンドポイントを登録してください。"
       },
       "categories": {
         "PAYMENTS": "請求と予定",
         "BUDGETS": "予算",
-        "SYSTEM": "システムアラート"
+        "SYSTEM": "システムアラート",
+        "BALANCES": "口座残高",
+        "INVESTMENTS": "投資価値",
+        "STRATEGIES": "戦略シグナル"
       },
-      "inAppAlways": "ベルには常に表示されます",
       "channelNotApplicable": "この通知タイプには適用されません",
       "emailToggleLabel": "{category} のレポートメール",
       "saveFailed": "設定を保存できませんでした",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "{category} のプッシュ",
       "unifiedpushToggleLabel": "{category} の UnifiedPush",
       "emailUnavailable": "これらをメールで送信するには、上のメール通知をオンにしてください。",
-      "pushUnavailable": "まずこのデバイスでプッシュを有効にしてください（下記参照）。",
-      "unifiedpushUnavailable": "このチャネルを使用するには、ディストリビューターアプリから UnifiedPush エンドポイントを登録してください。"
+      "pushUnavailable": "プッシュに登録されたデバイスがないため、このチャネルは配信できません。",
+      "pushEnableHint": "このブラウザーはプッシュ通知に登録されていません。"
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "自動バックアップ",
     "help": "ヘルプ＆サポート",
     "dangerZone": "危険な操作",
-    "about": "このアプリについて"
+    "about": "このアプリについて",
+    "payeeLookup": "支払先検索"
   },
   "page": {
     "title": "設定",
@@ -885,14 +906,6 @@
         "step3": "応答はチャットにストリーミングされます。ステータスドットでエージェントが接続されているかを表示します。",
         "note": "エージェントが接続して待機するまで何も実行されません。チャットに接続手順が表示されます。"
       }
-    },
-    "payeeLookup": {
-      "title": "支払先の連絡先情報の自動検索",
-      "subtitle": "設定した AI プロバイダーを使って、新しい支払先のウェブサイト、住所、メールアドレス、電話番号を自動的に検索します。 支払先の名前に加えて、すでに登録されているメモ、ウェブサイト、住所、メールアドレス、電話番号も送信され、検索が正しい事業者と正しい所在地を判別できるようにします。",
-      "toggleLabel": "連絡先情報の自動検索を有効にする",
-      "enabled": "連絡先情報の自動検索を有効にしました",
-      "disabled": "連絡先情報の自動検索を無効にしました",
-      "saveFailed": "連絡先情報の検索設定を更新できませんでした"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "全期間"
     },
     "estCostTooltip": "各プロバイダーで設定したコスト率を使用して推定されています。対応する料金が設定されていないアクティビティは除外されます。"
+  },
+  "payeeLookup": {
+    "title": "支払先検索",
+    "subtitle": "支払先のウェブサイト、住所、メール、電話番号の取得元と、検索が自動的に実行されるタイミング。",
+    "saved": "支払先検索の設定を保存しました",
+    "saveFailed": "支払先検索の設定を保存できませんでした",
+    "loadFailed": "支払先検索の設定を読み込めませんでした。ページを再読み込みしてやり直してください。",
+    "googlePlaces": {
+      "toggleLabel": "支払先検索に Google Places を使う",
+      "notConfigured": "Google Places の API キーを追加すると、AI プロバイダーではなく Google のディレクトリから事業者を検索します。",
+      "operatorManaged": "このサーバーの管理者が設定しています。ご自身の支払先についてはオフにできます。",
+      "configure": "設定する",
+      "edit": "編集",
+      "removeKey": "キーを削除",
+      "usage": "今月の使用: {cap} 件中 {used} 件",
+      "usageNoCap": "今月の使用: {used} 件。月間上限なし。",
+      "keyUnreadable": "保存された API キーをこのサーバーが読み取れません。バックアップを別のインスタンスに復元した場合や、暗号化キーが変更された場合に起こります。キーを入力し直してください。",
+      "encryptionUnavailable": "このサーバーには暗号化キーが設定されていないため、API キーを安全に保存できません。管理者に設定を依頼してください。",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize は支払先の名前と、すでに登録済みの住所を Google に送信します。Google 側には何も保存しません。",
+      "apiKeyLabel": "API キー",
+      "apiKeyPlaceholder": "Google Places の API キーを貼り付け",
+      "apiKeyHelp": "Google Cloud コンソールで Places API (New) を有効にしたキーを作成してください。保存済みのキーをそのまま使う場合は空欄のままにします。",
+      "capToggleLabel": "毎月のリクエスト数を制限する",
+      "capHelp": "この検索に必要なフィールドについて、Google は毎月 {free} 件の Text Search リクエストを無料で提供します。上限を超えると、検索は AI プロバイダーに切り替わります。",
+      "capLabel": "月あたりのリクエスト数",
+      "capRange": "{min} から {max} までの数値を入力してください。",
+      "test": "テスト",
+      "testing": "テスト中...",
+      "testSuccess": "Google がキーを受け付けました。",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "setupInstructions": "セットアップ手順"
+    },
+    "automatic": {
+      "title": "支払先の連絡先を自動で検索",
+      "subtitle": "新しい支払先のウェブサイト・住所・メールアドレス・電話番号を自動で検索します。支払先の名前に加えて、すでに登録されているメモ・ウェブサイト・住所・メールアドレス・電話番号も送信され、正しい事業者と店舗を区別できるようにします。",
+      "toggleLabel": "支払先の連絡先の自動検索を有効にする",
+      "enabled": "支払先の連絡先の自動検索を有効にしました",
+      "disabled": "支払先の連絡先の自動検索を無効にしました",
+      "saveFailed": "支払先の連絡先検索の設定を更新できませんでした",
+      "noSource": "支払先を自動的に検索するには、上のいずれかのソースをオンにしてください。両方オフの場合、検索に回答できるものはありません。"
+    },
+    "order": {
+      "title": "最初に問い合わせるソース",
+      "placesTitle": "Google Places",
+      "placesHelp": "ディレクトリの事実で、1 回あたりの費用が安価です。Google はメールアドレスを保持していません。",
+      "aiTitle": "既存の AI プロバイダー",
+      "aiHelp": "メールアドレスを見つけられますが、検索のたびにモデル呼び出しの費用がかかります。",
+      "aiToggleLabel": "支払先検索に AI プロバイダーを使用する",
+      "aiProviderLabel": "使用するプロバイダー",
+      "aiProviderAny": "任意のプロバイダー（優先順位順）",
+      "moveUp": "上へ移動",
+      "moveDown": "下へ移動"
+    }
   }
 }

@@ -9,6 +9,7 @@ import {
   ROW_GROUPS,
   ScenarioContext,
   formatCellValue,
+  type CompareCellFormatters,
 } from './compareMetricRows';
 
 export type ColumnStatus = 'loading' | 'ok' | 'error' | 'missing';
@@ -24,7 +25,7 @@ export type CompareColumn = {
 
 export interface CompareMetricTableProps {
   columns: CompareColumn[];
-  formatCurrency: (value: number) => string;
+  formatters: CompareCellFormatters;
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
   onRerun: (id: string) => void;
@@ -32,7 +33,7 @@ export interface CompareMetricTableProps {
 
 export function CompareMetricTable({
   columns,
-  formatCurrency,
+  formatters,
   onRetry,
   onRemove,
   onRerun,
@@ -69,7 +70,7 @@ export function CompareMetricTable({
               key={group.key}
               group={group}
               columns={columns}
-              formatCurrency={formatCurrency}
+              formatters={formatters}
               onRetry={onRetry}
             />
           ))}
@@ -144,12 +145,12 @@ function ColumnHeader({
 function GroupBlock({
   group,
   columns,
-  formatCurrency,
+  formatters,
   onRetry,
 }: {
   group: (typeof ROW_GROUPS)[number];
   columns: CompareColumn[];
-  formatCurrency: (n: number) => string;
+  formatters: CompareCellFormatters;
   onRetry: (id: string) => void;
 }) {
   return (
@@ -228,7 +229,7 @@ function GroupBlock({
                 key={col.id}
                 className="px-3 py-1.5 text-gray-900 dark:text-gray-100"
               >
-                {formatCellValue(value, row.format, formatCurrency)}
+                {formatCellValue(value, row.format, formatters)}
               </td>
             );
           })}

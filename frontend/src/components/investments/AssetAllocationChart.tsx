@@ -125,6 +125,7 @@ function AllocationTooltip({
   foreignCurrency: string | null;
   foreignTotal: number;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const displayValue = foreignCurrency
@@ -136,7 +137,7 @@ function AllocationTooltip({
           {data.fullName}
         </p>
         <p className="text-gray-600 dark:text-gray-400">
-          {fmtVal(displayValue)} ({data.percentage.toFixed(1)}%)
+          {fmtVal(displayValue)} ({formatPercent(data.percentage, 1)})
         </p>
       </div>
     );
@@ -181,7 +182,7 @@ export function AssetAllocationChart({
   valuationComplete,
 }: AssetAllocationChartProps) {
   const t = useTranslations('investments');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
 
   const [groupBy, setGroupBy] = useState<GroupBy>('security');
@@ -606,7 +607,7 @@ export function AssetAllocationChart({
                 )}
               </span>
               <span className="text-gray-900 dark:text-gray-100 ml-auto">
-                {item.percentage.toFixed(1)}%
+                {formatPercent(item.percentage, 1)}
               </span>
             </div>
           );

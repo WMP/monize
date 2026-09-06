@@ -77,6 +77,14 @@
           "title": "I tuoi conti",
           "body": "Aggiungi qui i tuoi conti bancari, carte di credito, prestiti e di investimento con il pulsante evidenziato. Ogni saldo e transazione appartiene a un conto."
         },
+        "openAccountDetail": {
+          "title": "Apri la vista dettagliata di un conto",
+          "body": "Ogni conto ha una pagina pensata per il suo tipo. Scegli **Dettagli** — l'icona a forma di occhio sulla riga di un conto — per aprirla. Su cellulare, tieni premuto il conto e scegli **Dettagli**."
+        },
+        "accountDetailView": {
+          "title": "Una vista creata per questo conto",
+          "body": "Questa pagina cambia con il tipo di conto: un conto bancario, una carta di credito, un prestito, un conto di investimento o un bene mostrano ciascuno i dati e gli strumenti più utili. Torna qui quando vuoi con **Dettagli** dall'elenco dei conti."
+        },
         "transactions": {
           "title": "Transazioni",
           "body": "Questo è il tuo registro delle transazioni: ogni pagamento e versamento dei tuoi conti si trova qui, pronto per essere cercato e filtrato."

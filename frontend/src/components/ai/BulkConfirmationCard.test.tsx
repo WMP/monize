@@ -336,7 +336,8 @@ describe('BulkConfirmationCard', () => {
                   status: 'ok',
                   name: 'Starbucks',
                   address: '1912 Pike Pl, Seattle',
-                  phone: '+1 206-448-8762',
+                  // What the server sends: the stored E.164 form.
+                  phone: '+12064488762',
                 },
               ],
             },
@@ -347,7 +348,8 @@ describe('BulkConfirmationCard', () => {
       );
       // Address last, so the value long enough to wrap does it at the end.
       expect(
-        screen.getByText('+1 206-448-8762 · 1912 Pike Pl, Seattle'),
+        // ...shown the way a person reads a number, not as stored.
+        screen.getByText('+1 206 448 8762 · 1912 Pike Pl, Seattle'),
       ).toBeInTheDocument();
     });
 

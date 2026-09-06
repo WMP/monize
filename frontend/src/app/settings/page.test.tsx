@@ -306,6 +306,39 @@ describe('SettingsPage', () => {
     }
   });
 
+  /**
+   * The nav order and the body order are ONE order, and nothing held them
+   * together: `SETTINGS_SECTION_IDS` drives the sidebar while the sections are
+   * laid out by hand in the JSX below it, so moving a section in one place and
+   * not the other gives a nav entry that scrolls past the thing it names -- with
+   * both halves still compiling and every other test still green.
+   *
+   * Read out of the DOM in both directions rather than from the source, so it
+   * holds whatever renders: the nav's own buttons and links against the anchors
+   * they address.
+   */
+  it('lays the sections out in the order the nav lists them', async () => {
+    const { container } = render(<SettingsPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    const anchors = Array.from(container.querySelectorAll('[id].scroll-mt-32'))
+      .map((el) => el.id)
+      .filter(Boolean);
+    // The sidebar renders one item per section, in the list's order.
+    const nav = container.querySelector('nav[aria-label]');
+    const navIds = Array.from(nav?.querySelectorAll('li') ?? [])
+      .map((li) => li.textContent?.trim())
+      .filter((label): label is string => Boolean(label));
+
+    expect(anchors.length).toBeGreaterThan(3);
+    expect(navIds.length).toBe(anchors.length);
+    // Guided Tours sits immediately above About, in both.
+    expect(anchors.indexOf('tours')).toBe(anchors.indexOf('about') - 1);
+    expect(navIds.indexOf('Guided Tours')).toBe(navIds.indexOf('About') - 1);
+  });
+
   it('sets up IntersectionObserver for scroll spy', async () => {
     render(<SettingsPage />);
     await waitFor(() => {

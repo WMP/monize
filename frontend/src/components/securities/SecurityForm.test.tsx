@@ -5,10 +5,12 @@ import { Security } from '@/types/investment';
 import { investmentsApi } from '@/lib/investments';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ defaultCurrency: 'CAD' }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({ ...numberFormatMockDefaults(), defaultCurrency: 'CAD' }),
+  };
+});
 vi.mock('@hookform/resolvers/zod', () => ({
   zodResolver: () => async (values: any) => {
     const errors: any = {};

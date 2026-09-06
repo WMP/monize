@@ -644,7 +644,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
               phone: {
                 type: "string",
                 description:
-                  "create/update: the payee's contact phone number, in whatever format the user gives. update: empty string clears it.",
+                  "create/update: the payee's contact phone number, any format; include the country code. Stored as E.164. update: empty string clears it.",
               },
             },
             required: ["name"],

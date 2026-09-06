@@ -1,6 +1,6 @@
 import { escapeHtml } from "../common/escape-html.util";
-import { formatCurrency } from "../common/format-currency.util";
 import { EmailT, englishEmailT } from "../i18n/email-translator";
+import { NumberT, defaultNumberT } from "../common/number-locale.util";
 
 export function testEmailTemplate(
   firstName: string,
@@ -107,6 +107,7 @@ export function billReminderTemplate(
   bills: BillData[],
   appUrl: string,
   t: EmailT = englishEmailT,
+  n: NumberT = defaultNumberT,
 ): string {
   const safeName = escapeHtml(firstName || "there");
   const billRows = bills
@@ -118,7 +119,7 @@ export function billReminderTemplate(
           <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb;">
             <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; color: white; background: ${billTypeColour(b.isIncome)};">${escapeHtml(billTypeLabel(b.isIncome, t))}</span>
           </td>
-          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${billTypeColour(b.isIncome)}; font-weight: 500;">${b.amount === null ? escapeHtml(t("emails.billReminder.amountUnavailable", "Amount unavailable")) : formatCurrency(Math.abs(b.amount), b.currencyCode)}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${billTypeColour(b.isIncome)}; font-weight: 500;">${b.amount === null ? escapeHtml(t("emails.billReminder.amountUnavailable", "Amount unavailable")) : n.formatCurrency(Math.abs(b.amount), b.currencyCode)}</td>
         </tr>`,
     )
     .join("");
@@ -272,6 +273,9 @@ export function budgetAlertImmediateTemplate(
   `;
 }
 
+// No `NumberT` here on purpose: the digest renders each alert's own `title` and
+// `message`, which BudgetAlertService already composed in the recipient's number
+// locale. Formatting them again here would be a second decision about one figure.
 export function budgetWeeklyDigestTemplate(
   firstName: string,
   alerts: BudgetAlertData[],
@@ -379,6 +383,7 @@ export function budgetMonthlySummaryTemplate(
   summaries: MonthlySummaryData[],
   appUrl: string,
   t: EmailT = englishEmailT,
+  n: NumberT = defaultNumberT,
 ): string {
   const safeName = escapeHtml(firstName || "there");
 
@@ -401,8 +406,8 @@ export function budgetMonthlySummaryTemplate(
                 (c) =>
                   `<tr>
                     <td style="padding: 4px 8px; color: #374151; font-size: 14px;">${escapeHtml(c.categoryName)}</td>
-                    <td style="padding: 4px 8px; text-align: right; color: #dc2626; font-size: 14px; font-weight: 600;">${c.percentUsed.toFixed(0)}%</td>
-                    <td style="padding: 4px 8px; text-align: right; color: #6b7280; font-size: 14px;">${formatCurrency(c.actual, s.currencyCode)} / ${formatCurrency(c.budgeted, s.currencyCode)}</td>
+                    <td style="padding: 4px 8px; text-align: right; color: #dc2626; font-size: 14px; font-weight: 600;">${n.formatPercent(c.percentUsed, 0)}</td>
+                    <td style="padding: 4px 8px; text-align: right; color: #6b7280; font-size: 14px;">${n.formatCurrency(c.actual, s.currencyCode)} / ${n.formatCurrency(c.budgeted, s.currencyCode)}</td>
                   </tr>`,
               )
               .join("")}
@@ -415,9 +420,9 @@ export function budgetMonthlySummaryTemplate(
             `<tr>
               <td style="padding: 4px 8px; color: #374151; font-size: 14px;">${escapeHtml(c.categoryName)}</td>
               <td style="padding: 4px 8px; text-align: right; font-size: 14px;">
-                <span style="color: ${c.percentUsed > 100 ? "#dc2626" : c.percentUsed > 80 ? "#d97706" : "#059669"}; font-weight: 600;">${c.percentUsed.toFixed(0)}%</span>
+                <span style="color: ${c.percentUsed > 100 ? "#dc2626" : c.percentUsed > 80 ? "#d97706" : "#059669"}; font-weight: 600;">${n.formatPercent(c.percentUsed, 0)}</span>
               </td>
-              <td style="padding: 4px 8px; text-align: right; color: #6b7280; font-size: 14px;">${formatCurrency(c.actual, s.currencyCode)} / ${formatCurrency(c.budgeted, s.currencyCode)}</td>
+              <td style="padding: 4px 8px; text-align: right; color: #6b7280; font-size: 14px;">${n.formatCurrency(c.actual, s.currencyCode)} / ${n.formatCurrency(c.budgeted, s.currencyCode)}</td>
             </tr>`,
         )
         .join("");
@@ -437,22 +442,22 @@ export function budgetMonthlySummaryTemplate(
           <div style="display: flex; gap: 16px; margin-bottom: 12px;">
             <div>
               <span style="color: #6b7280; font-size: 12px;">${t("emails.budgetMonthlySummary.labelBudgeted", "Budgeted")}</span><br/>
-              <span style="color: #374151; font-weight: 600;">${formatCurrency(s.totalBudgeted, s.currencyCode)}</span>
+              <span style="color: #374151; font-weight: 600;">${n.formatCurrency(s.totalBudgeted, s.currencyCode)}</span>
             </div>
             <div>
               <span style="color: #6b7280; font-size: 12px;">${t("emails.budgetMonthlySummary.labelSpent", "Spent")}</span><br/>
-              <span style="color: ${percentColor}; font-weight: 600;">${formatCurrency(s.totalSpent, s.currencyCode)}</span>
+              <span style="color: ${percentColor}; font-weight: 600;">${n.formatCurrency(s.totalSpent, s.currencyCode)}</span>
             </div>
             <div>
               <span style="color: #6b7280; font-size: 12px;">${t("emails.budgetMonthlySummary.labelRemaining", "Remaining")}</span><br/>
-              <span style="color: ${s.remaining >= 0 ? "#059669" : "#dc2626"}; font-weight: 600;">${formatCurrency(s.remaining, s.currencyCode)}</span>
+              <span style="color: ${s.remaining >= 0 ? "#059669" : "#dc2626"}; font-weight: 600;">${n.formatCurrency(s.remaining, s.currencyCode)}</span>
             </div>
           </div>
 
           <div style="background: #e5e7eb; border-radius: 4px; height: 8px; margin-bottom: 8px;">
             <div style="background: ${percentColor}; border-radius: 4px; height: 8px; width: ${Math.min(s.percentUsed, 100)}%;"></div>
           </div>
-          <p style="margin: 0 0 8px 0; color: ${percentColor}; font-weight: 600; font-size: 14px;">${t("emails.budgetMonthlySummary.percentUsed", `${s.percentUsed.toFixed(1)}% used`, { percent: s.percentUsed.toFixed(1) })}</p>
+          <p style="margin: 0 0 8px 0; color: ${percentColor}; font-weight: 600; font-size: 14px;">${t("emails.budgetMonthlySummary.percentUsed", `${n.formatPercent(s.percentUsed, 1)} used`, { percent: n.formatNumber(s.percentUsed, 1) })}</p>
 
           ${healthSection}
           ${overBudgetRows}

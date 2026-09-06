@@ -401,8 +401,13 @@ async function bootstrap() {
           "Authorization",
           "Content-Type",
           "Accept",
+          // Mcp-Session-Id is 2025-era; Mcp-Method and Mcp-Name are required on
+          // every 2026-07-28 Streamable HTTP POST so intermediaries can route
+          // and authorize without parsing the JSON-RPC body.
           "Mcp-Session-Id",
           "Mcp-Protocol-Version",
+          "Mcp-Method",
+          "Mcp-Name",
         ],
         exposedHeaders: ["Mcp-Session-Id", "WWW-Authenticate"],
         maxAge: 600,

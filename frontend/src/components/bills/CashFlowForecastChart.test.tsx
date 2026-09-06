@@ -80,14 +80,17 @@ const mockFormatCurrency = vi.fn((n: number, _code?: string) => `$${n.toFixed(2)
 const mockFormatCurrencyAxis = vi.fn((n: number, _code?: string) => `$${n}`);
 const mockFormatCurrencyFlag = vi.fn((n: number, _code?: string) => `$${n}`);
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: mockFormatCurrency,
-    formatCurrencyAxis: mockFormatCurrencyAxis,
-    formatCurrencyFlag: mockFormatCurrencyFlag,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: mockFormatCurrency,
+      formatCurrencyAxis: mockFormatCurrencyAxis,
+      formatCurrencyFlag: mockFormatCurrencyFlag,
+    }),
+  };
+});
 const mockConvertToDefault = vi.fn((amount: number, _currency: string) => amount * 1.35);
 
 vi.mock('@/hooks/useExchangeRates', () => ({

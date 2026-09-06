@@ -30,6 +30,13 @@ export interface Payee {
   /** Free-text postal address. One field, not structured parts. */
   address: string | null;
   email: string | null;
+  /**
+   * E.164 with an optional RFC 3966 extension suffix (`+12064488762`,
+   * `+442079460958;ext=12`), normalized on write by every path that stores one.
+   * Render it through `formatPhoneForDisplay` (`@/lib/phone-number`), never
+   * raw: rows written before that rule are not backfilled, so this can still
+   * hold free text.
+   */
   phone: string | null;
   /**
    * When a contact lookup last got an answer for this payee (found something,
@@ -103,7 +110,20 @@ export interface PayeeAlias {
 }
 
 /** Why a contact lookup did or did not produce a suggestion. */
-export type ContactLookupReason = 'ok' | 'none' | 'disabled' | 'no_provider' | 'failed';
+/**
+ * Six outcomes, because each sends the user somewhere different: `none` is "we
+ * looked and there was nothing", `failed` is "we could not look" and must never
+ * read as nothing found, `no_provider` means configure a source,
+ * `quota_exceeded` means this month's Google Places limit is spent with no AI
+ * behind it, and `disabled` means the automatic lookup is switched off.
+ */
+export type ContactLookupReason =
+  | 'ok'
+  | 'none'
+  | 'disabled'
+  | 'no_provider'
+  | 'quota_exceeded'
+  | 'failed';
 
 export type ContactLookupField = 'website' | 'address' | 'email' | 'phone';
 export const CONTACT_LOOKUP_FIELDS: readonly ContactLookupField[] = [
@@ -126,6 +146,13 @@ export interface PayeeContactSuggestion {
   website: string | null;
   address: string | null;
   email: string | null;
+  /**
+   * E.164 with an optional RFC 3966 extension suffix (`+12064488762`,
+   * `+442079460958;ext=12`), normalized on write by every path that stores one.
+   * Render it through `formatPhoneForDisplay` (`@/lib/phone-number`), never
+   * raw: rows written before that rule are not backfilled, so this can still
+   * hold free text.
+   */
   phone: string | null;
   source: ContactLookupSource;
   confidence: 'high' | 'medium' | 'low' | null;

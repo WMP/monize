@@ -10,6 +10,10 @@ import { ScheduledTransactionsModule } from "../scheduled-transactions/scheduled
 import { SystemAlertsModule } from "../system-alerts/system-alerts.module";
 import { NotificationCenterModule } from "../notification-center/notification-center.module";
 import { PushModule } from "../push/push.module";
+import { SecuritiesModule } from "../securities/securities.module";
+import { CurrenciesModule } from "../currencies/currencies.module";
+import { PortfolioMovementAlertService } from "../notification-center/portfolio-movement-alert.service";
+import { BalanceThresholdAlertService } from "../notification-center/balance-threshold-alert.service";
 
 @Module({
   imports: [
@@ -31,6 +35,12 @@ import { PushModule } from "../push/push.module";
     // to the user's devices. PushModule is a leaf (EncryptionModule only), so no
     // forwardRef and no cycle (INV-MODULE, module-graph.spec).
     PushModule,
+    // For the portfolio-movement cron: PortfolioService (today's value) and the
+    // exchange-rate service (converting the day's external flow). Both can reach
+    // NotificationsModule back through the module graph, so both are deferred
+    // (module-graph.spec).
+    forwardRef(() => SecuritiesModule),
+    forwardRef(() => CurrenciesModule),
   ],
   providers: [
     EmailService,
@@ -40,8 +50,20 @@ import { PushModule } from "../push/push.module";
     // The reminder cron re-emits through the dispatch, so it lives on the
     // delivery side; the reminder CRUD stays in NotificationCenterModule.
     NotificationReminderCronService,
+    // Daily investment-value movement (INVESTMENTS category). It reads
+    // PortfolioService and the exchange-rate service, so it lives here where the
+    // dispatch is, not in NotificationCenterModule (which stays connection-only).
+    PortfolioMovementAlertService,
+    // Event-driven balance-threshold crossings (BALANCES category). Triggered
+    // from the post-commit balance-invalidation seam (NetWorthService), so it is
+    // exported for that module to call.
+    BalanceThresholdAlertService,
   ],
   controllers: [NotificationsController],
-  exports: [EmailService, NotificationDispatchService],
+  exports: [
+    EmailService,
+    NotificationDispatchService,
+    BalanceThresholdAlertService,
+  ],
 })
 export class NotificationsModule {}

@@ -8,22 +8,25 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatCurrencyPrecise: (n: number) => {
-      const abs = Math.abs(n);
-      let digits = 2;
-      if (n !== 0 && abs < 0.005) {
-        const exp = Math.floor(Math.log10(abs));
-        digits = Math.min(6, Math.max(2, -exp + 2));
-      }
-      return `$${n.toFixed(digits)}`;
-    },
-    formatPercent: (n: number) => `${n.toFixed(2)}%`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatCurrencyPrecise: (n: number) => {
+        const abs = Math.abs(n);
+        let digits = 2;
+        if (n !== 0 && abs < 0.005) {
+          const exp = Math.floor(Math.log10(abs));
+          digits = Math.min(6, Math.max(2, -exp + 2));
+        }
+        return `$${n.toFixed(digits)}`;
+      },
+      formatPercent: (n: number) => `${n.toFixed(2)}%`,
+    }),
+  };
+});
 vi.mock('@/store/preferencesStore', () => ({
   usePreferencesStore: (selector: any) => selector({ preferences: { defaultCurrency: 'USD' } }),
 }));

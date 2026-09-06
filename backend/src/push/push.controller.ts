@@ -23,6 +23,8 @@ import {
   PushTestResult,
 } from "./push-subscription.service";
 import { CreatePushSubscriptionDto } from "./dto/create-push-subscription.dto";
+import { Request as ExpressRequest } from "express";
+import { clientIpOf } from "../common/client-ip.util";
 
 /**
  * A user's own push devices.
@@ -70,11 +72,20 @@ export class PushController {
   @DemoRestricted()
   @ApiOperation({ summary: "Register this browser for push notifications" })
   subscribe(
-    @Request() req,
+    @Request() req: ExpressRequest & { user: { id: string } },
     @Body() dto: CreatePushSubscriptionDto,
     @Headers("user-agent") userAgent?: string,
   ): Promise<PushDeviceDto> {
-    return this.subscriptions.subscribe(req.user.id, dto, userAgent ?? null);
+    // The address is read here rather than in the service because only the
+    // controller has the request: `clientIpOf` is the deployment's one reading
+    // of it (`trust proxy` is set in main.ts), shared with the 2FA
+    // trusted-device path so one machine cannot be stored under two spellings.
+    return this.subscriptions.subscribe(
+      req.user.id,
+      dto,
+      userAgent ?? null,
+      clientIpOf(req),
+    );
   }
 
   // Restricted for the same shared-account reason as `subscribe`: the demo

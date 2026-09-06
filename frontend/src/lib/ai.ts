@@ -38,19 +38,31 @@ export const aiApi = {
 
   createConfig: async (data: CreateAiProviderConfig): Promise<AiProviderConfig> => {
     const response = await apiClient.post<AiProviderConfig>('/ai/configs', data);
+    // Also the payee lookup status: it answers "can a lookup run", which is
+    // true of an AI provider as well as of Google Places, so adding or
+    // removing one changes it.
     invalidateCache('ai:');
+    invalidateCache('payee-lookup:');
     return response.data;
   },
 
   updateConfig: async (id: string, data: UpdateAiProviderConfig): Promise<AiProviderConfig> => {
     const response = await apiClient.patch<AiProviderConfig>(`/ai/configs/${id}`, data);
+    // Also the payee lookup status: it answers "can a lookup run", which is
+    // true of an AI provider as well as of Google Places, so adding or
+    // removing one changes it.
     invalidateCache('ai:');
+    invalidateCache('payee-lookup:');
     return response.data;
   },
 
   deleteConfig: async (id: string): Promise<void> => {
     await apiClient.delete(`/ai/configs/${id}`);
+    // Also the payee lookup status: it answers "can a lookup run", which is
+    // true of an AI provider as well as of Google Places, so adding or
+    // removing one changes it.
     invalidateCache('ai:');
+    invalidateCache('payee-lookup:');
   },
 
   testConnection: async (id: string): Promise<AiConnectionTestResult> => {

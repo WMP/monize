@@ -41,7 +41,7 @@ export function IncomeBySourceReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'day' });
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { sortField, sortDirection, handleSort } = useSortableTable<IncomeSourceSortField>(
@@ -109,10 +109,10 @@ export function IncomeBySourceReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
 
     const legendItems = chartData.map((item) => {
-      const percentage = totalIncome > 0 ? ((item.value / totalIncome) * 100).toFixed(1) : '0';
+      const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
       return {
         color: item.colour,
-        label: `${item.name} - ${formatCurrency(item.value)} (${percentage}%)`,
+        label: `${item.name} - ${formatCurrency(item.value)} (${formatPercent(percentage, 1)})`,
       };
     });
 
@@ -131,7 +131,7 @@ export function IncomeBySourceReport() {
     const headers = [t('incomeBySource.colSource'), t('incomeBySource.colAmount'), t('incomeBySource.colPercentOfTotal')];
     const rows = sortedTableData.map((item) => {
       const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
-      return [item.name, item.value, `${percentage.toFixed(2)}%`];
+      return [item.name, item.value, formatPercent(percentage, 2)];
     });
     exportToCsv('income-by-source', headers, rows);
   };
@@ -146,12 +146,12 @@ export function IncomeBySourceReport() {
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { id: string; name: string; value: number } }> }) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
-    const percentage = totalIncome > 0 ? ((data.value / totalIncome) * 100).toFixed(1) : '0';
+    const percentage = totalIncome > 0 ? (data.value / totalIncome) * 100 : 0;
     return (
       <ChartTooltipPanel>
         <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
         <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(data.value)} ({percentage}%)
+          {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
         </p>
       </ChartTooltipPanel>
     );
@@ -258,7 +258,7 @@ export function IncomeBySourceReport() {
                           {formatCurrency(item.value)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-400">
-                          {percentage.toFixed(1)}%
+                          {formatPercent(percentage, 1)}
                         </td>
                       </tr>
                     );
@@ -326,7 +326,7 @@ export function IncomeBySourceReport() {
             {/* Legend */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {chartData.map((item, index) => {
-                const percentage = totalIncome > 0 ? ((item.value / totalIncome) * 100).toFixed(1) : '0';
+                const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
                 return (
                   <button
                     key={index}
@@ -345,7 +345,7 @@ export function IncomeBySourceReport() {
                         {item.name}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatCurrency(item.value)} ({percentage}%)
+                        {formatCurrency(item.value)} ({formatPercent(percentage, 1)})
                       </div>
                     </div>
                   </button>

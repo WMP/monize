@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
-import { UserContextResolver, hasScope } from "../mcp-context";
+import { resolveUserContext, hasScope } from "../mcp-context";
 import { formatDateYMD, todayYMD } from "../../common/date-utils";
 
 @Injectable()
@@ -12,17 +12,19 @@ export class McpRecentTransactionsResource {
     private readonly analyticsService: TransactionAnalyticsService,
   ) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerResource(
       "recent-transactions",
       "monize://recent-transactions",
       {
+        // Live data: a cached answer here is a stale figure, not a stale name.
+        cacheHint: { ttlMs: 0, cacheScope: "private" },
         title: "Recent transactions",
         description: "Last 30 days of transactions (summarized)",
       },
-      async (_uri, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) {
+      async (_uri, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) {
           return {
             contents: [
               {
@@ -32,7 +34,7 @@ export class McpRecentTransactionsResource {
             ],
           };
         }
-        if (!hasScope(ctx.scopes, "read")) {
+        if (!hasScope(user.scopes, "read")) {
           return {
             contents: [
               {
@@ -51,7 +53,7 @@ export class McpRecentTransactionsResource {
 
           const [result, summary] = await Promise.all([
             this.transactionsService.findAll(
-              ctx.userId,
+              user.userId,
               undefined,
               startDateStr,
               endDate,
@@ -64,7 +66,7 @@ export class McpRecentTransactionsResource {
             // DIVIDEND side-effects don't skew the MCP "recent activity"
             // summary with uncategorised spending/income.
             this.analyticsService.getSummary(
-              ctx.userId,
+              user.userId,
               undefined,
               startDateStr,
               endDate,

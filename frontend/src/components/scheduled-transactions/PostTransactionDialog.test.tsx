@@ -66,15 +66,18 @@ vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ formatDate: (d: string) => d, dateFormat: 'browser', datePattern: 'YYYY-MM-DD' }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
-    formatNumber: (n: number, d: number = 2) => n.toFixed(d),
-    // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
-    formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _c?: string) => `$${n.toFixed(2)}`,
+      formatNumber: (n: number, d: number = 2) => n.toFixed(d),
+      // Mirrors the real formatPrice: up to 6 decimals, trailing zeros trimmed.
+      formatPrice: (n: number) => n.toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
+    }),
+  };
+});
 vi.mock('@/lib/forecast', () => ({
   getProjectedBalanceAtDate: (account: any) => Number(account.currentBalance) || 0,
 }));

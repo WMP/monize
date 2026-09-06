@@ -40,7 +40,7 @@ export function CreditUtilizationTotalWidget({
 }: CreditUtilizationTotalWidgetProps) {
   const t = useTranslations('dashboard');
   const tCommon = useTranslations('common');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const { convert, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
@@ -147,7 +147,7 @@ export function CreditUtilizationTotalWidget({
                       <ChartTooltipPanel>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{slice.name}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {formatCurrency(slice.value, displayCurrency)} ({slice.percent.toFixed(1)}%)
+                          {formatCurrency(slice.value, displayCurrency)} ({formatPercent(slice.percent, 1)})
                         </p>
                       </ChartTooltipPanel>
                     );
@@ -157,7 +157,7 @@ export function CreditUtilizationTotalWidget({
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {totals.utilizationPercent.toFixed(1)}%
+                {formatPercent(totals.utilizationPercent, 1)}
               </span>
             </div>
           </div>

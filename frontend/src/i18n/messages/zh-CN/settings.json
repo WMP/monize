@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "保存偏好设置",
-    "savingButton": "保存中...",
     "toasts": {
       "saved": "偏好设置已保存",
       "saveFailed": "保存偏好设置失败",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "通知",
+    "portfolioAlert": {
+      "title": "投资价值变动",
+      "description": "当我的投资账户变动超过阈值时，每天通知我一次；以市场变化和分红衡量（不含存入和取出）。",
+      "enableLabel": "启用投资变动提醒",
+      "thresholdLabel": "当每日变动至少达到以下值时通知",
+      "save": "保存",
+      "saved": "阈值已保存",
+      "saveError": "无法保存阈值",
+      "loadError": "无法加载投资提醒设置",
+      "retry": "重试"
+    },
     "smtpNotConfigured": "邮件通知不可用。管理员尚未配置 SMTP。",
     "emailNotificationsTitle": "邮件通知",
     "emailNotificationsDescription": "接收即将到期账单和预算提醒的邮件提醒",
@@ -239,15 +248,10 @@
       "heading": "浏览器推送",
       "diagnostics": {
         "summary": "通知诊断",
-        "intro": "此浏览器和设备向 Monize 报告的关于通知的信息。使用测试按钮让 Monize 创建一条通知，你可以在设备上查找，然后点击复制以发送完整报告。",
+        "intro": "此浏览器和设备向 Monize 报告的通知相关信息。更改设置后请刷新，然后用“复制报告”发送完整报告。",
         "refresh": "刷新",
         "copy": "复制报告",
-        "copied": "已将诊断复制到剪贴板",
-        "localTest": "显示测试通知",
-        "localTestRunning": "检查中…",
-        "localTestBody": "如果你能看到这条消息，说明此设备上的通知正常工作。",
-        "localTestCreated": "Monize 已创建通知且没有报错，但这里无法确认系统是否显示了它。如果你在设备上没有看到，说明系统正在隐藏它；请在设备设置中开启 Monize 的通知。",
-        "localTestError": "无法在此设备上运行测试（{detail}）。"
+        "copied": "已将诊断复制到剪贴板"
       },
       "description": "注册此设备，Monize 即可在应用关闭时也送达通知。目前通过这条通道送达的只有测试通知，其余仍然出现在铃铛里。",
       "androidNotify": "在 Android 上，仅授予权限还不够：系统仍可能隐藏通知。长按主屏幕上的 Monize 图标，点按“应用信息”，然后“通知”，并确保已开启。",
@@ -260,7 +264,6 @@
       "thisDevice": "此设备",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "未命名设备",
-      "lastSeen": "最后活动 {when}",
       "noLiveDevices": "尚未注册任何设备。请在此设备上启用推送后再发送测试。",
       "notConfigured": "此 Monize 实例不提供浏览器推送。管理员可以在 Admin 区域启用。",
       "disabledByAdmin": "管理员已为此 Monize 实例关闭浏览器推送。",
@@ -301,25 +304,42 @@
           "transient": "未送达（临时错误）；请重试",
           "unconfigured": "此实例目前无法为推送消息签名"
         }
+      },
+      "transport": {
+        "webpush": "网页推送",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "端点",
+        "transport": "投递方式",
+        "registeredIp": "注册来源",
+        "registered": "注册时间",
+        "lastSeen": "最近活动",
+        "lastDelivery": "最近投递",
+        "noDelivery": "尚未投递过任何内容",
+        "userAgent": "浏览器",
+        "unknownIp": "未知"
       }
     },
     "preferences": {
       "heading": "如何通知我",
-      "description": "铃铛始终显示所有通知。选择 Monize 还通过邮件或推送发送哪些类型，以及频率。",
+      "description": "选择 Monize 通过邮件或推送发送哪些类型，以及发送频率。",
       "categoryHeader": "通知",
       "channels": {
-        "inApp": "应用内",
         "emailReport": "邮件（报告）",
         "emailNotification": "邮件（提醒）",
         "push": "推送",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "通知通过你自行运行的分发应用（例如 ntfy）投递，而不是浏览器厂商的推送服务。请在该应用中注册一个端点以使用此通道。"
       },
       "categories": {
         "PAYMENTS": "账单与计划",
         "BUDGETS": "预算",
-        "SYSTEM": "系统警报"
+        "SYSTEM": "系统警报",
+        "BALANCES": "账户余额",
+        "INVESTMENTS": "投资价值",
+        "STRATEGIES": "策略信号"
       },
-      "inAppAlways": "始终显示在铃铛中",
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",
       "saveFailed": "无法保存该设置",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "{category} 的推送",
       "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
       "emailUnavailable": "在上方开启邮件通知，即可通过邮件发送。",
-      "pushUnavailable": "请先在此设备上启用推送（见下方）。",
-      "unifiedpushUnavailable": "从你的分发器应用注册一个 UnifiedPush 端点以使用此通道。"
+      "pushUnavailable": "没有设备注册推送，因此此通道无法投递。",
+      "pushEnableHint": "此浏览器尚未注册推送通知。"
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "自动备份",
     "help": "帮助与支持",
     "dangerZone": "危险区域",
-    "about": "关于"
+    "about": "关于",
+    "payeeLookup": "收款方查询"
   },
   "page": {
     "title": "设置",
@@ -885,14 +906,6 @@
         "step3": "回答会流式传输回聊天。状态点显示您的代理是否已连接。",
         "note": "在您的代理连接并侦听之前，不会运行任何内容。聊天会显示连接说明。"
       }
-    },
-    "payeeLookup": {
-      "title": "自动查找收款人联系信息",
-      "subtitle": "通过您配置的 AI 提供商自动查找新收款人的网站、地址、电子邮件和电话号码。 收款人的名称会随同已保存的备注、网站、地址、电子邮件和电话一起发送，以便查询能区分正确的商家和正确的地点。",
-      "toggleLabel": "启用自动查找收款人联系信息",
-      "enabled": "已启用自动查找收款人联系信息",
-      "disabled": "已禁用自动查找收款人联系信息",
-      "saveFailed": "无法更新收款人联系信息查找设置"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "所有时间"
     },
     "estCostTooltip": "使用您在每个提供商上配置的费率估算。不包括没有匹配费率的活动。"
+  },
+  "payeeLookup": {
+    "title": "收款方查询",
+    "subtitle": "收款方的网站、地址、电子邮件和电话号码来自何处，以及查询何时自动运行。",
+    "saved": "已保存收款方查询设置",
+    "saveFailed": "无法保存收款方查询设置",
+    "loadFailed": "无法加载收款方查询设置。请刷新页面重试。",
+    "googlePlaces": {
+      "toggleLabel": "使用 Google Places 查询收款方",
+      "notConfigured": "添加 Google Places API 密钥，即可在 Google 的商户目录中查询，而不使用你的 AI 提供方。",
+      "operatorManaged": "由本服务器的管理员配置。你可以为自己的收款方关闭它。",
+      "configure": "设置",
+      "edit": "编辑",
+      "removeKey": "移除密钥",
+      "usage": "本月已用：{used}/{cap}",
+      "usageNoCap": "本月已用：{used}。无每月上限。",
+      "keyUnreadable": "本服务器无法读取已保存的 API 密钥。将备份恢复到其他实例，或加密密钥变更后会出现这种情况。请重新输入密钥以修复。",
+      "encryptionUnavailable": "本服务器未配置加密密钥，因此无法安全保存 API 密钥。请让管理员配置一个。",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize 会将收款方名称和你已有的地址发送给 Google，不会在 Google 存储任何内容。",
+      "apiKeyLabel": "API 密钥",
+      "apiKeyPlaceholder": "粘贴你的 Google Places API 密钥",
+      "apiKeyHelp": "在 Google Cloud 控制台创建密钥并启用 Places API (New)。留空则保留已保存的密钥。",
+      "capToggleLabel": "限制每月请求数",
+      "capHelp": "对于此查询所需的字段，Google 每月提供 {free} 次免费 Text Search 请求。超出上限后，查询将回退到你的 AI 提供方。",
+      "capLabel": "每月请求数",
+      "capRange": "请输入 {min} 到 {max} 之间的数字。",
+      "test": "测试",
+      "testing": "测试中...",
+      "testSuccess": "Google 已接受该密钥。",
+      "save": "保存",
+      "cancel": "取消",
+      "setupInstructions": "设置说明"
+    },
+    "automatic": {
+      "title": "自动查询收款方联系信息",
+      "subtitle": "自动查询新收款方的网站、地址、电子邮件和电话号码。系统会发送收款方名称，以及其已有的备注、网站、地址、电子邮件和电话，以便查询区分正确的商户和门店。",
+      "toggleLabel": "启用自动查询收款方联系信息",
+      "enabled": "已启用自动查询收款方联系信息",
+      "disabled": "已停用自动查询收款方联系信息",
+      "saveFailed": "无法更新收款方联系信息查询设置",
+      "noSource": "请在上方开启一个来源以自动查询收款方。两者都关闭时，没有任何来源可以回答查询。"
+    },
+    "order": {
+      "title": "先查询哪个来源",
+      "placesTitle": "Google Places",
+      "placesHelp": "目录事实，每次查询更便宜。Google 不提供电子邮件地址。",
+      "aiTitle": "现有 AI 提供商",
+      "aiHelp": "可以找到电子邮件地址，但每次查询都会产生一次模型调用费用。",
+      "aiToggleLabel": "使用 AI 提供商进行收款方查询",
+      "aiProviderLabel": "要使用的提供商",
+      "aiProviderAny": "任意提供商，按优先级顺序",
+      "moveUp": "上移",
+      "moveDown": "下移"
+    }
   }
 }

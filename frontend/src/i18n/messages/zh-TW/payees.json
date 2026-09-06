@@ -34,7 +34,8 @@
       "inactive": "未啟用",
       "withoutCategory": "無類別"
     },
-    "applyDefaultCategories": "套用預設類別"
+    "applyDefaultCategories": "套用預設類別",
+    "lookupSettings": "收款人查詢設定"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "已由查詢取代：",
       "clear": "復原查詢所做的變更",
       "nothingFound": "找不到此名稱的公開聯絡資訊。",
-      "noProvider": "請在<link>AI 設定</link>中設定 AI 供應商以查詢聯絡資訊。",
-      "failed": "查詢無法完成，請稍後再試。"
+      "noProvider": "請在<link>收款人查詢設定</link>中設定查詢來源，以尋找聯絡資訊。",
+      "failed": "查詢無法完成，請稍後再試。",
+      "quotaExceeded": "本月的 Google Places 查詢次數已用完。請在<link>收款人查詢設定</link>中提高上限，或等到下個月。"
     }
   },
   "merge": {
@@ -284,7 +286,9 @@
   "selectCategoryPlaceholder": "選擇類別...",
   "validation": {
     "nameRequired": "收款人名稱為必填",
-    "emailInvalid": "請輸入有效的電子郵件地址"
+    "emailInvalid": "請輸入有效的電子郵件地址",
+    "phoneInvalid": "請輸入有效的電話號碼",
+    "phoneNeedsCountryCode": "請加上國碼，例如 +1 206 448 8762"
   },
   "defaultCategoryBackfill": {
     "allConfirmTitle": "套用預設類別？",

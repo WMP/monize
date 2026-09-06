@@ -9,6 +9,7 @@ import { AccountsService } from "../../accounts/accounts.service";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { PayeesService } from "../../payees/payees.service";
 import type { LlmPayeeQuery } from "../../payees/llm-payee-query";
+import { formatPhoneForDisplay } from "../../common/phone-number.util";
 import {
   PayeeToolPrepService,
   ManageCreatePayeeRow,
@@ -127,7 +128,16 @@ function contactSummary(preview: {
   for (const [label, value] of [
     ["address", preview.address],
     ["email", preview.email],
-    ["phone", preview.phone],
+    // Displayed, not stored: the model quotes this line back to the user, so
+    // it carries the number a person recognises rather than bare E.164.
+    [
+      "phone",
+      preview.phone === undefined
+        ? undefined
+        : preview.phone === null
+          ? null
+          : formatPhoneForDisplay(preview.phone),
+    ],
   ] as const) {
     if (value !== undefined) parts.push(`${label} ${value ?? "cleared"}`);
   }

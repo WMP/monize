@@ -28,12 +28,16 @@ vi.mock('@/lib/pdf-export', () => ({
 // The 2dp `formatCurrency` this table's cells really use -- it is what makes a
 // six-figure amount too wide for four money cells on one line. The compact
 // formatter beside it serves the summary cards only.
-vi.mock('@/hooks/useNumberFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrencyCompact: (n: number, c?: string) => `${c ?? 'CAD'} ${n.toFixed(0)}`,
     formatCurrency: (n: number, c?: string) => `${c ?? 'CAD'} ${n.toFixed(2)}`,
   }),
-}));
+  };
+});
 
 // `JPY` is the currency with no rate: `convertToDefault` answers null for it,
 // which is how the allocation's exclusion rule is exercised below.

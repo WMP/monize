@@ -115,8 +115,11 @@ implied.
 | INV-AUTH-004 | A logout reports only what it achieved | enforced |
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
-| INV-MCP-001 | An MCP session is bound to the credential that opened it | enforced |
+| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | enforced |
+| INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
+| INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
+| INV-MCP-004 | A write happens only on the round a human answered | enforced |
 | INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | enforced |
 | INV-ATTACHMENT-001 | Available metadata resolves to committed bytes | enforced |
 | INV-BACKUP-001 | A backup file is complete, verified and owner-namespaced | enforced |
@@ -141,7 +144,9 @@ implied.
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
 | INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
+| INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
 | INV-RELEASE-001 | The tested, imaged and tagged revisions are one revision | partial |
+| INV-MIGRATION-001 | Migrations apply in numeric prefix order, and a new migration's prefix cannot collide | enforced |
 
 ## Imports
 
@@ -1863,23 +1868,133 @@ A removal list would be wrong structurally: the default for a new column is
 file, and the route is delegate-accessible so the leak would cross users. The
 allowlist inverts that default.
 
-### INV-MCP-001 -- a session is bound to its credential
+### INV-DISPLAY-001 -- a figure is rendered in the reader's number locale
 
 ```text
-Statement           An MCP session is bound to the specific credential that
-                    opened it, and the presented token's current scopes are
-                    re-read on every request.
-Enforcement         The session is bound to the credential id and scopes are
-                    re-read per request. mcp-http.controller.ts
-                    authorizeExistingSession refuses with 403 unless
-                    sessionUser.credentialId === authResult.credentialId (not just
-                    userId), and re-binds scopes: authResult.scopes on every
-                    request. validatePat runs per request, so a revoked token 401s
-                    immediately rather than at TTL.
-Concurrency scope   per session, per credential
-Failure response    403 on a mismatched credential.
-Required tests      Present: mcp-http.controller.spec.ts covers the 403
-                    credential-mismatch and session/user-mismatch cases.
+Statement           Any number addressed to a PERSON -- money, a percentage, a
+                    share count, a price, a plain count -- is rendered in that
+                    person's effective number locale, on every surface that shows
+                    it: the app, a PDF or CSV export, an email, a notification, a
+                    generated report note. The effective locale is one
+                    resolution, shared by both layers: an explicit
+                    `user_preferences.numberFormat` wins; `"browser"` falls back
+                    to `user_preferences.language`; a language that is not a real
+                    Intl tag (`browser`, the `xx` pseudo-locale) falls through --
+                    to the browser on the client, which has one, and to
+                    DEFAULT_LOCALE on the server, which does not.
+                    A fixed locale is permitted only where the output is read by
+                    a MACHINE and the contract is documented: an LLM prompt, and
+                    the English fallback string stored on a row whose client
+                    composes its own copy from the structured payload beside it.
+                    "It is already localized" is not a defence for
+                    `toLocaleString()`: that follows the browser, and an explicit
+                    numberFormat exists to override the browser -- a reader on
+                    en-US hardware who chose pl-PL still gets `12,345`.
+Source of truth     frontend/src/hooks/useNumberFormat.ts getEffectiveLocale;
+                    backend/src/common/number-locale.util.ts resolveNumberLocale
+Enforcement         Client: every figure goes through useNumberFormat(); a pure
+                    module takes its NumberFormatters as an argument.
+                    frontend/src/test/number-locale.guard.test.ts scans src/ for
+                    four fingerprints -- a UI file importing the raw
+                    formatCurrency/formatShareQuantity from @/lib/format, a
+                    numeric toLocaleString(), a literal '%' beside an
+                    interpolation, and an Intl.NumberFormat built on 'en-US' or
+                    on `undefined` (the browser, which an explicit preference
+                    exists to override) -- with a classified allowlist and a
+                    comment stripper so the prose that has to NAME the banned
+                    patterns does not trip its own scan.
+                    The percentage scan is keyed on the literal '%' rather than
+                    on `toFixed`: written from the diff it matched only the
+                    shapes the migration had just removed and reported clean over
+                    fourteen survivors, because the codebase's commonest shape
+                    (`{percentage}%`) names no formatter at all.
+                    Server: numberFormatterFor(numberFormat, language) built from
+                    the recipient's preference row, passed into the email
+                    templates, the budget-alert and bill-due message builders,
+                    the portfolio-movement push body, the anomaly-report
+                    descriptions and the monthly-comparison notes.
+                    backend/src/common/number-locale.guard.spec.ts holds the
+                    classification of every caller of the en-US helpers (each
+                    with the reason its output is not addressed to a person),
+                    fails on a second hardcoded en-US formatter in src/, and runs
+                    the same literal-'%' scan over the server -- excluding CSS
+                    lengths, SQL LIKE wildcards and logger arguments, the last by
+                    blanking whole logger CALLS, since a multi-line log message
+                    puts the '%' nowhere near the logger call that names it.
+Concurrency scope   per reader
+Failure response    An unknown currency code costs the SYMBOL and keeps the
+                    reader's separators.
+                    A stored preference Intl cannot use at all is a different
+                    case and is resolved BEFORE any formatter is built: `en_US`,
+                    the underscore form, makes Intl.NumberFormat throw RangeError,
+                    and nothing validated the column. The server falls back to
+                    DEFAULT_LOCALE, the client to the browser (which is what an
+                    absent preference already means). Catching the throw at the
+                    call site is not enough and was the first fix's mistake: its
+                    fallback rebuilt Intl from the same locale and threw too,
+                    which 500'd a report and silently stopped that user's bill
+                    reminders and budget alerts. IsNumberLocale on the DTO stops
+                    new such values; the two fallbacks cover rows already stored.
+Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp under
+                    pl-PL and en-US, tiny residual preserved, -0 normalized;
+                    formatPercentTrimmed keeping 80 / 80.5 / 80.55 as they are;
+                    an unusable stored locale rendering rather than throwing);
+                    is-number-locale.validator.spec.ts;
+                    SecurityList.test.tsx "number locale" (the reported screen,
+                    under pl-PL, en-US chosen while the UI is Polish, browser
+                    fallback, and one case where the preference deliberately
+                    disagrees with the host locale); number-locale.guard.spec.ts
+                    (the resolver's truth table and pl-PL/en-US rendering);
+                    email-templates.spec.ts "recipient number locale" (a Polish
+                    bill reminder). A component test must not build its
+                    expectation with the same helper the component renders
+                    through -- SecurityList.test.tsx did, which is why the defect
+                    shipped green.
+Status              enforced
+```
+
+The number locale is a SEPARATE preference from the language, and that is the
+part a mechanical fix gets wrong twice over. Replacing a hardcoded `en-US` with
+`toLocaleString()` looks like a migration and is not -- it swaps one wrong locale
+for another, and the new one happens to be right on the developer's machine.
+Localizing the figure while leaving the sentence in English is right in one place
+and wrong in another: it is right inside a stored English FALLBACK a client
+overrides, and wrong as a substitute for putting the copy in a catalogue. Both
+halves are decided per surface, and the classification is what the guard holds.
+
+### INV-MCP-001 -- identity comes from the credential on the request
+
+```text
+Statement           An MCP request is served as the user of the credential
+                    presented ON THAT REQUEST, with that credential's current
+                    scopes. No tool reads identity from a session, from tool
+                    arguments, or from anywhere else. A 2025-era session is
+                    additionally bound to the credential that opened it.
+Source of truth     backend/src/mcp/mcp-context.ts resolveUserContext
+Enforcement         mcp-http.controller.ts authorize() runs validatePat per
+                    request and attaches the result as the SDK AuthInfo; a
+                    handler reads it through resolveUserContext(ctx), which
+                    validates the shape rather than trusting it. A credential
+                    that cannot be identified (an OAuth grant with no id) is
+                    refused 403 rather than served, because it can be bound to
+                    nothing. On the 2025-era path authorizeExistingSession also
+                    refuses with 403 unless the session's credentialId matches
+                    the presented one (not just the userId), which is what stops
+                    a read-only token inheriting a write session's scopes. A
+                    revoked token 401s immediately rather than at session TTL.
+                    The 2026-07-28 revision has no session at all, so the
+                    per-request rule is the whole rule there.
+Concurrency scope   per request; additionally per session on the 2025-era path
+Failure response    401 for an unknown credential; 403 for one that cannot be
+                    identified or does not match its session.
+Required tests      Present: mcp-context.spec.ts covers the AuthInfo round trip,
+                    the unbindable credential, and a malformed authInfo refusing
+                    rather than resolving a partial user. mcp-http.controller.spec.ts
+                    covers the 403 credential-mismatch and session/user-mismatch
+                    cases, and asserts a 2026-07-28 request is served with its
+                    own authInfo and touches no session. mcp-eras.spec.ts drives
+                    both revisions against the real SDK and asserts the tool
+                    resolves the caller from the request.
 Status              enforced
 ```
 
@@ -1908,6 +2023,90 @@ Required tests      Present: proxy.test.ts covers the bearer probe (asserting th
                     confirmed to fail without the clause.
                     mcp-http.controller.spec.ts covers nine malformed and unknown
                     Authorization shapes across POST, GET and DELETE.
+Status              enforced
+```
+
+### INV-MCP-003 -- a write confirmation is bound to one credential and one change
+
+```text
+Statement           A confirmation a user gave authorizes exactly the change
+                    they were shown, asked of exactly the credential that was
+                    asked. It cannot be replayed by another caller, against
+                    another tool, or re-aimed at a different change. It is
+                    deliberately NOT single-use: the same seal and answer, from
+                    the same credential against the same tool inside the TTL,
+                    commits again -- the answer is client-asserted on this
+                    revision, so a client able to replay one could equally have
+                    fabricated it, and the seal bounds who and what rather than
+                    how many times.
+Source of truth     backend/src/mcp/mcp-request-state.ts,
+                    backend/src/mcp/mcp-confirm.ts
+Enforcement         On the 2026-07-28 revision the confirmation spans two calls
+                    and the server holds nothing between them, so what carries
+                    it is a signed requestState (HMAC-SHA256, ten-minute TTL)
+                    bound to the request's credential and method. The SDK seam
+                    verifies it BEFORE any handler runs and refuses a bad,
+                    expired or foreign one with -32602. The seal also carries a
+                    fingerprint of the items the user was shown; the round that
+                    writes recomputes it from what it re-derived and throws
+                    ConfirmMismatchError on any difference, so a retry that
+                    resolved a name to another row or altered an amount writes
+                    nothing. What is fingerprinted is the change and not the
+                    round it was built in: roundStableAction (mcp-confirm.ts)
+                    drops the fields the builder mints per build -- actionId and
+                    expiresAt, named once by AI_ACTION_ENVELOPE_FIELDS beside
+                    the descriptor and typed so the compiler refuses a new one
+                    off the list, plus an attachment's parking slot, whose file
+                    stays identified by sha256/filename/contentType/byteSize.
+                    Hashing the descriptor raw makes every fingerprint unique
+                    and refuses every confirmed write. The payload is signed,
+                    not encrypted, so it holds the fingerprint and nothing else.
+Concurrency scope   per confirmation flow
+Failure response    -32602 from the seam for a bad seal; a tool error naming the
+                    mismatch, with no write, for a re-aimed retry.
+Required tests      Present: mcp-confirm.spec.ts covers the ask/answer matrix, a
+                    fingerprint mismatch, a key-set mismatch, and a seal
+                    replayed under another credential or another method, and
+                    drives the REAL AiActionBuilderService twice to assert the
+                    fingerprint holds across rounds while still separating two
+                    different changes (a double that returns one frozen object
+                    agrees with itself whatever is hashed, which is how the
+                    unstable fingerprint shipped green).
+                    transactions.tool.spec.ts drives both rounds of a real write
+                    through a builder double that mints a fresh envelope per
+                    call, as the real one does.
+                    mcp-migration.guard.spec.ts asserts the sealed payload
+                    carries nothing but the fingerprint, that the fingerprint is
+                    taken over the round-stable projection, and that no tool
+                    maps its own confirmation cards.
+Status              enforced
+```
+
+### INV-MCP-004 -- a write happens only on the round a human answered
+
+```text
+Statement           A write reaches the database only after a user's answer is
+                    read. An unanswered, declined or cancelled confirmation
+                    writes nothing, on either protocol revision.
+Source of truth     backend/src/mcp/mcp-confirm.ts
+Enforcement         On 2026-07-28 the first round RETURNS the question
+                    (resultType input_required) and writes nothing; only the
+                    round carrying inputResponses can write, and anything that
+                    is not an accepted elicitation -- declined, cancelled,
+                    missing, dropped, or a response of another kind -- is read
+                    as "declined". A client that fulfils nothing never calls
+                    back, so nothing is written. On a 2025-era connection the
+                    server waits for the dialog and refuses on any answer that
+                    is not an accept, except where the client demonstrably
+                    cannot show one ("unsupported"), where the client's own
+                    per-tool approval prompt is the consent step.
+Concurrency scope   per tool call
+Failure response    A tool error naming the refusal; no write.
+Required tests      Present: mcp-confirm.spec.ts covers every non-accept answer.
+                    mcp-eras.spec.ts drives a real 2026-07-28 client that
+                    accepts, declines, and never answers, asserting the write
+                    happened only in the first case. The write-tool specs cover
+                    the same on both rounds.
 Status              enforced
 ```
 
@@ -2070,6 +2269,81 @@ Required tests      payee-contact-enrichment.service.spec.ts (COALESCE and
 Status              enforced
 ```
 
+
+### INV-PAYEE-002 -- the Google Places monthly cap is never exceeded
+
+```text
+Statement           The number of Google Places requests made in one PACIFIC
+                    calendar month never exceeds the cap configured for the key
+                    that pays for them. Pacific because that is the month
+                    Google's free allowance resets on (midnight Pacific on the
+                    1st); a cap counted in any other zone rations a window that
+                    is not the one being billed. A user's own key is capped per user; the
+                    operator's key (GOOGLE_PLACES_API_KEY) is capped once for
+                    the whole deployment, because one key is one bill.
+Source of truth     payee_lookup_usage(user_id, month).google_places_requests
+                    for a user's key; google_places_instance_usage(month).requests
+                    for the operator's.
+Enforcement         One statement per scope, in PayeeLookupQuotaService.claim: an
+                    INSERT ... ON CONFLICT DO UPDATE SET requests = requests + 1
+                    WHERE $cap_disabled OR requests < $cap, RETURNING the new
+                    count. The predicate is part of the write, so a second
+                    claimant blocks on the first's row lock inside the statement
+                    and re-evaluates against the committed value -- there is no
+                    window between a read and a write. Zero rows back is the cap
+                    being reached, and the caller falls back to the AI adapter.
+                    The month is to_char(now() AT TIME ZONE
+                    'America/Los_Angeles', 'YYYY-MM') -- the zone named once as
+                    GOOGLE_PLACES_QUOTA_TIMEZONE and passed as a bind parameter
+                    -- evaluated by PostgreSQL, so every replica rolls over on
+                    one clock AND on the same instant Google's allowance does.
+                    A named zone rather than a fixed offset because Pacific
+                    observes DST. The claim runs through runOutsideActiveScopedManager
+                    and commits BEFORE the request leaves: Google bills an
+                    attempt whatever comes back, so a slot released because the
+                    request then failed would under-count what is being paid for.
+                    The operator's counter is claimed under withSystemContext
+                    (the table is RLS-exempt, having no owner); a user's counter
+                    is an ordinary policied row.
+Concurrency scope   per user for a user's key; per deployment for the operator's
+Retry semantics     Each attempt claims its own slot. A retry after a failed
+                    request spends another, which is correct: Google billed both.
+Crash semantics     A crash after the claim and before the request spends a slot
+                    for a request nobody made -- the survivable direction, since
+                    the alternative over-spends a paid quota.
+Backup/restore      payee_lookup_usage is exported and restored so a month's
+                    spend follows the user's key to another machine, and it is
+                    the one table in PRESERVED_ON_RESTORE: the restore does not
+                    clear it, so ON CONFLICT DO NOTHING gives the archive's
+                    count to a machine with no row and leaves a live count
+                    alone. No restore can lower a count and hand back spent
+                    quota. google_places_instance_usage is not exported: it has
+                    no owner and every user on the deployment spends it.
+Failure response    ContactLookupOutcome.reason = "quota_exceeded" when the cap
+                    is spent AND no AI provider can answer; otherwise the lookup
+                    silently falls back to the AI adapter. A pinned AI provider
+                    (payee_lookup_settings.ai_provider_config_id) that resolves
+                    to nothing reports "no_provider" rather than falling through
+                    to a model the user did not choose. payee_lookup_settings.ai_enabled
+                    = false is the same answer reached earlier: the AI adapter is
+                    not asked at all, so a spent cap is "quota_exceeded" with no
+                    model call behind it, and Places being unreachable as well is
+                    "no_provider".
+Required tests      Two-connection: concurrent claims over the last slot, one
+                    winner, for both scopes. Present in
+                    backend/test/integration/payee-lookup-quota.integration.spec.ts
+                    ("has exactly one winner when two claims race over the last
+                    slot", "has exactly one winner when two users race over the
+                    last slot"). The monthly reset is proven in the same file
+                    ("starts the new month at one, however much the previous
+                    month spent", both scopes) and the zone by "files the claim
+                    under the current Pacific month". Transaction independence
+                    -- the claim commits even when its caller is inside a
+                    transaction -- is
+                    payee-lookup-quota.transaction.spec.ts, because the sibling
+                    unit spec mocks that plumbing away.
+Status              enforced
+```
 ### INV-BACKUP-001 -- a backup is complete, verified, owner-namespaced
 
 ```text
@@ -2826,6 +3100,60 @@ Status              partial
 `docs/release-integrity.md` has the full rules and gap register, including
 REL-001's blanket pass-with-no-tests rule and what still remains unenforced
 under REL-002.
+
+### INV-MIGRATION-001 -- numeric prefix order, and a prefix that cannot collide
+
+```text
+Statement           Every place that orders database/migrations/*.sql orders
+                    them by the NUMERIC value of the filename prefix, then by
+                    the full filename; and a migration added after 2026-09-05
+                    carries a YYYYMMDDHHMMSS_ prefix (the UTC second of
+                    authoring), so two authors working in parallel cannot
+                    produce the same prefix. The NNN_ files are historical:
+                    never renumbered, never added to.
+Source of truth     The filename. schema_migrations keys on it, so a rename is
+                    a migration no database has recorded.
+Enforcement         backend/src/common/db/migration-filename.ts is the one
+                    definition of the prefix grammar and the comparator; the
+                    runner (db-migrate.ts), the integration harnesses
+                    (rls-setup.ts, migration-path.integration.spec.ts,
+                    migration-table-renames.spec.ts), the migration lint and
+                    scripts/check-migration-prefixes.mjs import it (the two
+                    .mjs scripts through Node type stripping);
+                    scripts/verify-schema.sh reproduces it with `sort -n` and
+                    migration-filename.spec.ts runs that pipeline against the
+                    comparator. The same spec fails a bare .sort() over a
+                    migrations listing anywhere under backend/ or scripts/, and
+                    holds LEGACY_PREFIX_CEILING equal to the directory's real
+                    maximum in both directions. check-migration-prefixes.mjs
+                    (Documentation vs Manifests job) refuses a duplicate prefix
+                    outside the six grandfathered pairs, a new NNN_ file (by
+                    ceiling with no git, by base comparison with it), a
+                    timestamp that is not a real UTC instant between adoption
+                    and now, and a base-branch migration gone missing.
+Concurrency scope   global (one directory, every branch)
+Retry semantics     n/a
+Crash semantics     n/a
+Failure response    db-migrate refuses to start on a filename it cannot order;
+                    CI fails on any of the check's findings.
+Required tests      migration-filename.spec.ts (unit, fixture the string sort
+                    gets wrong, shell equivalence, directory, source scan);
+                    db-migrate.spec.ts (runner applies the mixed-width fixture
+                    in numeric order and refuses an unparseable name).
+Why it exists       Prefixes collided eight times under the counter (022, 068,
+                    075, 116, 117, 124, then 165 and 166 within nine hours)
+                    because two branches read the same maximum; and the
+                    runner's readdirSync(...).sort() was a string sort, correct
+                    only by the coincidence that every historical prefix begins
+                    with 0 or 1 and every timestamp with 2 (issue #1277).
+Status              enforced
+```
+
+What this does NOT claim: that apply order equals merge order. Prefixes are
+assigned at authoring time under both schemes, so a migration merged later can
+carry an earlier prefix and replay first on a fresh install. A migration must
+not depend on the ordering of another in-flight migration; nothing checks that
+beyond review.
 
 ## Candidates not yet admitted
 

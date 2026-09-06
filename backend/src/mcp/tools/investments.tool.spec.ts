@@ -1,7 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { McpInvestmentsTools } from "./investments.tool";
 import { McpWriteLimiter } from "../mcp-write-limiter";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 describe("McpInvestmentsTools", () => {
   let tool: McpInvestmentsTools;
@@ -12,12 +12,12 @@ describe("McpInvestmentsTools", () => {
   let accountsService: Record<string, jest.Mock>;
   let server: {
     registerTool: jest.Mock;
-    server: { getClientCapabilities: jest.Mock; elicitInput: jest.Mock };
+    server: { getClientCapabilities: jest.Mock };
   };
   let elicitInput: jest.Mock;
   let relayService: { emitPendingAction: jest.Mock };
   let actionBuilderRef: Record<string, jest.Mock>;
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   const handlers: Record<string, (...args: any[]) => any> = {};
 
   beforeEach(() => {
@@ -142,17 +142,17 @@ describe("McpInvestmentsTools", () => {
       registerTool: jest.fn((name, _opts, handler) => {
         handlers[name] = handler;
       }),
-      // confirmWrite() reads capabilities + elicits via server.server. Default
-      // to no elicitation capability so writes proceed (matches a client that
-      // can't show a dialog); accept/decline tests override these.
+      // confirmWrite() reads the client's advertised capabilities from the
+      // session's server and sends the dialog through the request (ctx). The
+      // default is no elicitation capability, so writes proceed (matching a
+      // client that cannot show a dialog); accept/decline tests override it.
       server: {
         getClientCapabilities: jest.fn().mockReturnValue({}),
-        elicitInput,
       },
     };
 
-    resolve = jest.fn();
-    tool.register(server as any, resolve);
+    ctx = mcpTestCtx(undefined, { elicitInput });
+    tool.register(server as any);
   });
 
   it("should register 6 tools", () => {
@@ -163,16 +163,13 @@ describe("McpInvestmentsTools", () => {
 
   describe("get_portfolio_summary", () => {
     it("should return error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["get_portfolio_summary"](
-        {},
-        { sessionId: "s1" },
-      );
+      ctx.setUser(undefined);
+      const result = await handlers["get_portfolio_summary"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("should return portfolio summary via shared getLlmSummary", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       portfolioService.getLlmSummary.mockResolvedValue({
         holdingCount: 2,
         totalPortfolioValue: 10000,
@@ -181,10 +178,7 @@ describe("McpInvestmentsTools", () => {
         allocation: [],
       });
 
-      const result = await handlers["get_portfolio_summary"](
-        {},
-        { sessionId: "s1" },
-      );
+      const result = await handlers["get_portfolio_summary"]({}, ctx);
       expect(portfolioService.getLlmSummary).toHaveBeenCalledWith(
         "u1",
         undefined,
@@ -196,7 +190,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("resolves accountNames and passes the ids to getLlmSummary", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.resolveAccountFilter.mockResolvedValue({
         accountIds: ["acc-1"],
       });
@@ -208,10 +202,7 @@ describe("McpInvestmentsTools", () => {
         allocation: [],
       });
 
-      await handlers["get_portfolio_summary"](
-        { accountNames: ["RRSP"] },
-        { sessionId: "s1" },
-      );
+      await handlers["get_portfolio_summary"]({ accountNames: ["RRSP"] }, ctx);
       expect(accountsService.resolveAccountFilter).toHaveBeenCalledWith("u1", [
         "RRSP",
       ]);
@@ -223,7 +214,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns the country and asset-class look-through when asked", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       portfolioService.getLlmSummary.mockResolvedValue({
         holdingCount: 1,
         totalPortfolioValue: 1000,
@@ -247,7 +238,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["get_portfolio_summary"](
         { includeLookThrough: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(portfolioService.getLlmSummary).toHaveBeenCalledWith(
@@ -262,24 +253,21 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns error when getLlmSummary throws", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       portfolioService.getLlmSummary.mockRejectedValue(new Error("fail"));
-      const result = await handlers["get_portfolio_summary"](
-        {},
-        { sessionId: "s1" },
-      );
+      const result = await handlers["get_portfolio_summary"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("surfaces the resolver's did-you-mean error for an unknown account", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.resolveAccountFilter.mockResolvedValue({
         error: "Unknown account: Foo. Did you mean 'RRSP'?",
       });
 
       const result = await handlers["get_portfolio_summary"](
         { accountNames: ["Foo"] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Unknown account: Foo");
@@ -289,16 +277,13 @@ describe("McpInvestmentsTools", () => {
 
   describe("list_investment_transactions", () => {
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["list_investment_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
+      ctx.setUser(undefined);
+      const result = await handlers["list_investment_transactions"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("delegates to shared getLlmInvestmentTransactions with all filters", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmInvestmentTransactions.mockResolvedValue(
         {
           transactionCount: 2,
@@ -334,7 +319,7 @@ describe("McpInvestmentsTools", () => {
           actions: ["BUY"],
           groupBy: "security",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(accountsService.resolveAccountFilter).toHaveBeenCalledWith("u1", [
@@ -357,7 +342,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("defaults groupBy to 'security' and leaves other filters undefined when no args provided", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmInvestmentTransactions.mockResolvedValue(
         {
           transactionCount: 0,
@@ -372,7 +357,7 @@ describe("McpInvestmentsTools", () => {
         },
       );
 
-      await handlers["list_investment_transactions"]({}, { sessionId: "s1" });
+      await handlers["list_investment_transactions"]({}, ctx);
 
       expect(
         investmentTransactionsService.getLlmInvestmentTransactions,
@@ -387,31 +372,28 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns a safe error on service failure", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmInvestmentTransactions.mockRejectedValue(
         new Error("boom"),
       );
 
-      const result = await handlers["list_investment_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
+      const result = await handlers["list_investment_transactions"]({}, ctx);
       expect(result.isError).toBe(true);
     });
   });
 
   describe("list_capital_gains", () => {
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
+      ctx.setUser(undefined);
       const result = await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
 
     it("delegates to shared getLlmCapitalGains with all filters", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmCapitalGains.mockResolvedValue({
         startDate: "2024-01-01",
         endDate: "2024-12-31",
@@ -451,7 +433,7 @@ describe("McpInvestmentsTools", () => {
           symbols: ["AAA"],
           groupBy: "security",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(accountsService.resolveAccountFilter).toHaveBeenCalledWith("u1", [
@@ -472,7 +454,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("defaults groupBy to 'month' when omitted", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmCapitalGains.mockResolvedValue({
         startDate: "2024-01-01",
         endDate: "2024-12-31",
@@ -485,7 +467,7 @@ describe("McpInvestmentsTools", () => {
 
       await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(
@@ -497,14 +479,14 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns a safe error on service failure", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       investmentTransactionsService.getLlmCapitalGains.mockRejectedValue(
         new Error("boom"),
       );
 
       const result = await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
@@ -516,17 +498,14 @@ describe("McpInvestmentsTools", () => {
       // A security scanner flags a parameter named `query` as a SQL-injection
       // shape; nothing here builds SQL, but one name across the read tools is
       // better than an exception to explain.
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       securitiesService.lookupSecuritiesForLlm.mockResolvedValue({
         query: "apple",
         count: 0,
         candidates: [],
       });
 
-      await handlers["lookup_securities"](
-        { search: "apple" },
-        { sessionId: "s1" },
-      );
+      await handlers["lookup_securities"]({ search: "apple" }, ctx);
 
       expect(securitiesService.lookupSecuritiesForLlm).toHaveBeenCalledWith(
         "u1",
@@ -580,18 +559,14 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["manage_securities"](createArgs, {
-        sessionId: "s1",
-      });
+      ctx.setUser(undefined);
+      const result = await handlers["manage_securities"](createArgs, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("requires the write scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      const result = await handlers["manage_securities"](createArgs, {
-        sessionId: "s1",
-      });
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const result = await handlers["manage_securities"](createArgs, ctx);
       expect(result.isError).toBe(true);
       expect(
         securityPrepService.prepareCreateSecuritySingle,
@@ -599,7 +574,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("returns a dry-run preview without persisting", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareCreateSecurities.mockResolvedValue({
         okPreviews: [securityPreview],
         okRows: [],
@@ -610,7 +585,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_securities"](
         { ...createArgs, dryRun: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(securitiesService.create).not.toHaveBeenCalled();
@@ -620,11 +595,9 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("creates a single security when the client cannot elicit", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
 
-      const result = await handlers["manage_securities"](createArgs, {
-        sessionId: "s1",
-      });
+      const result = await handlers["manage_securities"](createArgs, ctx);
 
       expect(securitiesService.create).toHaveBeenCalledWith(
         "u1",
@@ -635,10 +608,10 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("updates a single security on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       const result = await handlers["manage_securities"](
         { operation: "update", items: [{ symbol: "AAPL", isFavourite: true }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(securitiesService.update).toHaveBeenCalledWith(
         "u1",
@@ -650,7 +623,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("forwards a manual asset allocation on update", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareUpdateSecuritySingle.mockResolvedValue({
         securityId: "sec-1",
         symbol: "VBAL",
@@ -680,7 +653,7 @@ describe("McpInvestmentsTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       // The tool passes the row through to the shared prep service...
@@ -709,10 +682,10 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("deletes a single security on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       const result = await handlers["manage_securities"](
         { operation: "delete", items: [{ symbol: "AAPL" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(securitiesService.remove).toHaveBeenCalledWith("u1", "sec-1");
       const parsed = result.structuredContent as any;
@@ -720,14 +693,14 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("surfaces a 4xx lookup failure to the caller", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareCreateSecuritySingle.mockRejectedValue(
         new BadRequestException('No security found matching "ZZZZ".'),
       );
 
       const result = await handlers["manage_securities"](
         { operation: "create", items: [{ query: "ZZZZ" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(result.isError).toBe(true);
@@ -735,12 +708,10 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("shows the web-chat card via relay instead of persisting", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
 
-      const result = await handlers["manage_securities"](createArgs, {
-        sessionId: "s1",
-      });
+      const result = await handlers["manage_securities"](createArgs, ctx);
 
       expect(relayService.emitPendingAction).toHaveBeenCalled();
       expect(securitiesService.create).not.toHaveBeenCalled();
@@ -749,7 +720,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("creates multiple securities as one bulk card via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareCreateSecurities.mockResolvedValue({
         okPreviews: [securityPreview, { ...securityPreview, symbol: "MSFT" }],
         okRows: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
@@ -763,7 +734,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_securities"](
         { operation: "create", items: [{ query: "AAPL" }, { query: "MSFT" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilderRef.buildBatchActions).toHaveBeenCalledWith(
@@ -778,7 +749,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("bulk-updates multiple securities via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareUpdateSecurities.mockResolvedValue({
         okPreviews: [
           {
@@ -832,7 +803,7 @@ describe("McpInvestmentsTools", () => {
             { symbol: "MSFT", isFavourite: true },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(securitiesService.update).toHaveBeenCalledTimes(2);
@@ -840,7 +811,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("bulk-deletes multiple securities via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareDeleteSecurities.mockResolvedValue({
         okPreviews: [
           { securityId: "s1", symbol: "AAPL", name: "Apple" },
@@ -860,7 +831,7 @@ describe("McpInvestmentsTools", () => {
           operation: "delete",
           items: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(securitiesService.remove).toHaveBeenCalledTimes(2);
@@ -868,7 +839,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("individual mode commits one security card per item (non-relay)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareCreateSecurities.mockResolvedValue({
         okPreviews: [securityPreview, { ...securityPreview, symbol: "MSFT" }],
         okRows: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
@@ -886,7 +857,7 @@ describe("McpInvestmentsTools", () => {
           items: [{ query: "AAPL" }, { query: "MSFT" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(securitiesService.create).toHaveBeenCalledTimes(2);
@@ -894,7 +865,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("individual mode updates each security (non-relay commit)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareUpdateSecurities.mockResolvedValue({
         okPreviews: [
           {
@@ -934,13 +905,13 @@ describe("McpInvestmentsTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(securitiesService.update).toHaveBeenCalledTimes(2);
     });
 
     it("individual mode deletes each security (non-relay commit)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareDeleteSecurities.mockResolvedValue({
         okPreviews: [
           { securityId: "s1", symbol: "AAPL", name: "Apple" },
@@ -961,13 +932,13 @@ describe("McpInvestmentsTools", () => {
           items: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(securitiesService.remove).toHaveBeenCalledTimes(2);
     });
 
     it("declines a single update without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -975,23 +946,23 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_securities"](
         { operation: "update", items: [{ symbol: "AAPL", isFavourite: true }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(securitiesService.update).not.toHaveBeenCalled();
       expect(result.isError).toBe(true);
     });
 
     it("single update/delete go through the relay when relayed", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
 
       const upd = await handlers["manage_securities"](
         { operation: "update", items: [{ symbol: "AAPL", isFavourite: true }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       const del = await handlers["manage_securities"](
         { operation: "delete", items: [{ symbol: "AAPL" }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       expect(securitiesService.update).not.toHaveBeenCalled();
       expect(securitiesService.remove).not.toHaveBeenCalled();
@@ -1000,7 +971,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("bulk update/delete go through the relay when relayed", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       const okPrev = {
         okPreviews: [
@@ -1036,14 +1007,14 @@ describe("McpInvestmentsTools", () => {
           operation: "update",
           items: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
         },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       const del = await handlers["manage_securities"](
         {
           operation: "delete",
           items: [{ symbol: "AAPL" }, { symbol: "MSFT" }],
         },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       expect(securitiesService.update).not.toHaveBeenCalled();
       expect(securitiesService.remove).not.toHaveBeenCalled();
@@ -1052,7 +1023,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("dry-run previews update and delete without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       securityPrepService.prepareUpdateSecurities.mockResolvedValue({
         okPreviews: [],
         okRows: [],
@@ -1074,11 +1045,11 @@ describe("McpInvestmentsTools", () => {
           items: [{ symbol: "AAPL", isFavourite: true }],
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
       const del = await handlers["manage_securities"](
         { operation: "delete", items: [{ symbol: "AAPL" }], dryRun: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(securitiesService.update).not.toHaveBeenCalled();
@@ -1124,19 +1095,19 @@ describe("McpInvestmentsTools", () => {
     };
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
+      ctx.setUser(undefined);
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
 
     it("requires the write scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(
@@ -1145,7 +1116,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("creates a single transaction (name resolved internally) when the client cannot elicit", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentSingle.mockResolvedValue(
         createPreview,
       );
@@ -1156,7 +1127,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(
@@ -1175,7 +1146,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("forwards an explicit exchangeRate to the create prep (issue #744)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentSingle.mockResolvedValue(
         createPreview,
       );
@@ -1189,7 +1160,7 @@ describe("McpInvestmentsTools", () => {
           operation: "create",
           items: [{ ...createArgs.items[0], exchangeRate: 4.2514 }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(
@@ -1201,21 +1172,21 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("surfaces an unknown-account error from the single create prep", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentSingle.mockRejectedValue(
         new BadRequestException("Unknown account: Nope."),
       );
 
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Unknown account");
     });
 
     it("shows a relay card for a single create without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       investmentTransactionsService.prepareCreateInvestmentSingle.mockResolvedValue(
         createPreview,
@@ -1223,7 +1194,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       expect(relayService.emitPendingAction).toHaveBeenCalled();
@@ -1233,7 +1204,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("does not create a single transaction when the confirmation is declined", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -1244,7 +1215,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       expect(elicitInput).toHaveBeenCalled();
@@ -1253,7 +1224,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("blocks a single create when the daily write limit is exhausted", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentSingle.mockResolvedValue(
         createPreview,
       );
@@ -1263,7 +1234,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_investment_transactions"](
         createArgs,
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Daily write limit");
@@ -1271,7 +1242,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("creates a bulk batch in one card and maps skip indices back", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentBulk.mockResolvedValue(
         {
           okPreviews: [createPreview, { ...createPreview, action: "SELL" }],
@@ -1323,7 +1294,7 @@ describe("McpInvestmentsTools", () => {
             })),
           ],
         },
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       const parsed = result.structuredContent as any;
@@ -1339,7 +1310,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("errors when no bulk create row could be prepared", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareCreateInvestmentBulk.mockResolvedValue(
         { okPreviews: [], okIndex: [], previewRows: [], skipped: [] },
       );
@@ -1351,14 +1322,14 @@ describe("McpInvestmentsTools", () => {
             { accountName: "y", action: "BUY", date: "2026-01-15" },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(investmentTransactionsService.createBulk).not.toHaveBeenCalled();
     });
 
     it("emits individual cards for a bulk create in individual mode (relay)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       relayService.emitPendingAction.mockReturnValue(true);
       investmentTransactionsService.prepareCreateInvestmentBulk.mockResolvedValue(
         {
@@ -1392,7 +1363,7 @@ describe("McpInvestmentsTools", () => {
             },
           ],
         },
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       // One card per ok row, all emitted to the web chat.
@@ -1402,7 +1373,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("updates a single investment transaction", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.previewUpdateInvestmentTransaction.mockResolvedValue(
         { ...createPreview, transactionId: "it1", action: "SELL" },
       );
@@ -1413,7 +1384,7 @@ describe("McpInvestmentsTools", () => {
           operation: "update",
           items: [{ transactionId: "it1", action: "SELL", quantity: 5 }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(
@@ -1429,7 +1400,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("shows one bulk update card and writes each edit on confirm", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareUpdateInvestmentBulk.mockResolvedValue(
         {
           okRows: [
@@ -1466,7 +1437,7 @@ describe("McpInvestmentsTools", () => {
             })),
           ],
         },
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       expect(
@@ -1479,7 +1450,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("deletes a single investment transaction", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.previewDeleteInvestmentTransaction.mockResolvedValue(
         {
           transactionId: "it1",
@@ -1499,7 +1470,7 @@ describe("McpInvestmentsTools", () => {
 
       const result = await handlers["manage_investment_transactions"](
         { operation: "delete", items: [{ transactionId: "it1" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(investmentTransactionsService.remove).toHaveBeenCalledWith(
@@ -1512,7 +1483,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("shows one bulk delete card and removes each on confirm", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareDeleteInvestmentBulk.mockResolvedValue(
         {
           okRows: [{ transactionId: "it1" }, { transactionId: "it2" }],
@@ -1529,7 +1500,7 @@ describe("McpInvestmentsTools", () => {
             transactionId: `it${i + 1}`,
           })),
         },
-        { sessionId: "s1", requestId: "c1" },
+        ctx,
       );
 
       expect(
@@ -1541,7 +1512,7 @@ describe("McpInvestmentsTools", () => {
     });
 
     it("errors when no bulk delete row could be prepared", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
       investmentTransactionsService.prepareDeleteInvestmentBulk.mockResolvedValue(
         { okRows: [], okIndex: [], previewRows: [], skipped: [] },
       );
@@ -1550,7 +1521,7 @@ describe("McpInvestmentsTools", () => {
           operation: "delete",
           items: [{ transactionId: "it1" }, { transactionId: "it2" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
       expect(investmentTransactionsService.remove).not.toHaveBeenCalled();

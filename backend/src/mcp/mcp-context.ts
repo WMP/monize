@@ -1,12 +1,6 @@
 import { sanitizeToolResultStrings } from "../common/sanitization.util";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { RequestId } from "@modelcontextprotocol/sdk/types.js";
-import {
-  clientAnsweredForItself,
-  elicitationBehaviour,
-  recordElicitationAnswered,
-  recordElicitationSilent,
-} from "./mcp-elicitation-support";
+import type { AuthInfo, ServerContext } from "@modelcontextprotocol/server";
+import { ConfirmMismatchError } from "./mcp-confirm";
 
 export interface McpUserContext {
   userId: string;
@@ -15,19 +9,100 @@ export interface McpUserContext {
    * Stable identifier of the credential that authorized this request: the PAT
    * row's id, or the OAuth grant behind the access token.
    *
-   * A session is bound to one credential. Matching only `userId` let a session
-   * outlive the credential that created it: a read-only PAT presenting the
-   * session id of a session opened with a write PAT inherited the write scope,
-   * and a replacement token kept a session alive after the original was revoked
-   * (P2-004). Absent only for a context built before this field existed, which
-   * the transport treats as "cannot be matched" and refuses.
+   * Matching only `userId` let a 2025-era session outlive the credential that
+   * created it: a read-only PAT presenting the session id of a session opened
+   * with a write PAT inherited the write scope, and a replacement token kept a
+   * session alive after the original was revoked (P2-004). It is also the
+   * caller key a 2026-07-28 request has instead of a session (see
+   * `callerKey`). A context without one cannot be bound, and the transport
+   * refuses it rather than serving an unbindable credential.
    */
   credentialId?: string;
 }
 
-export type UserContextResolver = (
-  sessionId?: string,
-) => McpUserContext | undefined;
+/**
+ * The `extra` payload the transport puts on the request's `AuthInfo`, and the
+ * only place a tool handler may learn who is calling.
+ *
+ * Identity is a property of the REQUEST, not of a session: the 2026-07-28
+ * revision has no sessions at all, and even on a 2025-era connection the
+ * bearer token rides on every request, so the credential presented on THIS
+ * request decides the user and the scopes (INV-MCP-001). `userId` never comes
+ * from tool arguments.
+ */
+interface McpAuthExtra {
+  userId: string;
+  scopes: string;
+  credentialId: string;
+}
+
+/**
+ * Build the SDK `AuthInfo` the transport attaches to a validated request.
+ *
+ * Returns `undefined` for a context that carries no `credentialId` -- an OAuth
+ * grant with no id cannot be bound to anything, and an unbindable credential
+ * must be refused rather than served.
+ */
+export function toAuthInfo(
+  user: McpUserContext,
+  token: string,
+): AuthInfo | undefined {
+  if (!user.credentialId) return undefined;
+  const extra: McpAuthExtra = {
+    userId: user.userId,
+    scopes: user.scopes,
+    credentialId: user.credentialId,
+  };
+  return {
+    token,
+    clientId: user.credentialId,
+    scopes: user.scopes ? user.scopes.split(",") : [],
+    extra: extra as unknown as Record<string, unknown>,
+  };
+}
+
+/**
+ * The calling user, read from the request's own validated credential.
+ *
+ * The shape is checked rather than cast: `authInfo` is pass-through data the
+ * transport supplied, and a handler that trusted a malformed one would run
+ * with an undefined user id.
+ */
+export function resolveUserContext(
+  ctx: Pick<ServerContext, "http">,
+): McpUserContext | undefined {
+  const extra = ctx.http?.authInfo?.extra as Partial<McpAuthExtra> | undefined;
+  if (
+    typeof extra?.userId !== "string" ||
+    typeof extra.scopes !== "string" ||
+    typeof extra.credentialId !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    userId: extra.userId,
+    scopes: extra.scopes,
+    credentialId: extra.credentialId,
+  };
+}
+
+/**
+ * Which client this call belongs to, for the things that are genuinely about
+ * one connected agent rather than about the user: the web-chat relay claim and
+ * the observed elicitation behaviour.
+ *
+ * A 2025-era connection has a session id and keeps using it, so relay
+ * semantics there are unchanged. A 2026-07-28 request has no session, and the
+ * credential is the only stable per-client fact on the wire -- so two clients
+ * sharing one token share a caller key (`backend/src/mcp/CLAUDE.md`).
+ * `undefined` means "cannot prove which client", which callers must treat as a
+ * direct client, never as a relay turn.
+ */
+export function callerKey(
+  ctx: Pick<ServerContext, "sessionId" | "http">,
+): string | undefined {
+  return ctx.sessionId ?? resolveUserContext(ctx)?.credentialId;
+}
 
 export function hasScope(scopes: string, required: string): boolean {
   return scopes.split(",").includes(required);
@@ -72,6 +147,12 @@ export function toolError(message: string) {
  * all other errors return a generic message to avoid leaking internals.
  */
 export function safeToolError(err: unknown) {
+  // A confirmation that no longer matches the change is not an internal
+  // failure: it is a refusal the caller can act on, and the model needs to be
+  // told to ask again rather than to retry the same call.
+  if (err instanceof ConfirmMismatchError) {
+    return toolError(err.message);
+  }
   if (
     err &&
     typeof err === "object" &&
@@ -133,102 +214,6 @@ function normalizeNonFiniteNumbers(data: unknown): unknown {
     return result;
   }
   return data;
-}
-
-export type WriteConfirmation = "accepted" | "declined" | "unsupported";
-
-/**
- * How long the confirmation dialog may stay unanswered.
- *
- * A human needs time to read and decide, so this overrides the SDK's short
- * default request timeout -- but it must still expire BEFORE the client gives
- * up on the `tools/call` that is waiting for it. Claude's MCP tool deadline is
- * 60s, and the previous five-minute wait meant a client that never answers the
- * elicitation produced no result at all: the tool call died at the client's own
- * deadline with an opaque "timed out after 60s", no write and no explanation.
- * Staying under the client deadline is what makes every branch below reportable.
- */
-const CONFIRM_TIMEOUT_MS = 45 * 1000;
-
-/**
- * Ask the MCP client to confirm a write via elicitation -- the MCP-native
- * equivalent of the AI Assistant's approve/reject card. Returns:
- *  - "accepted": the user approved; proceed with the write.
- *  - "declined": the user answered and the answer was no (reject/cancel), or
- *    the dialog failed in a way we cannot account for; abort, so a write never
- *    happens over a user's refusal.
- *  - "unsupported": no dialog reached a human, so the caller falls back to its
- *    normal behavior. The client still gates every tool call with its own
- *    approval prompt, so this is not a consent bypass -- it is the only consent
- *    step such a client has.
- *
- * **The advertised capability is not evidence that a dialog can be shown.**
- * `@modelcontextprotocol/sdk` >= 1.23 normalizes the legacy 2025-06-18 shape
- * `{"elicitation":{}}` into `{"elicitation":{"form":{}}}` before
- * `getClientCapabilities()` ever sees it (`ElicitationCapabilitySchema`'s
- * `z.preprocess`), so `elicitation.form` is now truthy for every client that
- * advertises elicitation at all -- including the ones that answer -32601 to
- * `elicitation/create`, and the ones that never answer it. That is the whole
- * regression: on SDK <= 1.22 those clients fell through to "unsupported" and
- * wrote under their own approval prompt; afterwards the same clients looked
- * form-capable, so a failure to answer was read as the user saying no and every
- * write through Claude was refused or hung until the client's own deadline.
- * `mcp-context.spec.ts` pins the SDK's normalization so this cannot silently
- * flip back into a load-bearing check.
- *
- * So the *outcome* carries the weight, not the capability: only a returned
- * `action` is a user's answer. The pre-check is kept because a client
- * advertising no elicitation at all still deserves to skip the round trip.
- *
- * `relatedRequestId` MUST be the in-flight tool call's request id (from the
- * handler's `extra.requestId`). Over the Streamable HTTP transport, a
- * server-to-client request with no related request id is routed to the
- * standalone GET SSE stream, which a tool-calling client (Claude Desktop, IDE
- * agents) does not keep open during a `tools/call` -- so the elicitation is
- * silently dropped and never shown. Threading the tool call's id sends the
- * elicitation back over that call's own POST SSE stream, where the client is
- * listening.
- */
-export async function confirmWrite(
-  server: McpServer,
-  message: string,
-  relatedRequestId: RequestId,
-): Promise<WriteConfirmation> {
-  const capabilities = server.server.getClientCapabilities();
-  if (!capabilities?.elicitation?.form) {
-    return "unsupported";
-  }
-  // A client already caught answering for itself is not asked again: on a
-  // client that drops the request, the round trip costs CONFIRM_TIMEOUT_MS
-  // every time, which on a 25-row individual batch is the same paralysis in
-  // slow motion.
-  if (elicitationBehaviour(server) === "silent") {
-    return "unsupported";
-  }
-  try {
-    const result = await server.server.elicitInput(
-      {
-        message,
-        // No fields to collect -- the accept/decline/cancel action is the answer.
-        requestedSchema: { type: "object", properties: {} },
-      },
-      { timeout: CONFIRM_TIMEOUT_MS, relatedRequestId },
-    );
-    recordElicitationAnswered(server);
-    return result.action === "accept" ? "accepted" : "declined";
-  } catch (err) {
-    if (!clientAnsweredForItself(err)) {
-      return "declined";
-    }
-    // A client that has already shown a dialog in this session can show
-    // another, so this failure is one unanswered dialog, not a client with no
-    // human behind it -- refuse rather than fall through to the write.
-    if (elicitationBehaviour(server) === "answers") {
-      return "declined";
-    }
-    recordElicitationSilent(server);
-    return "unsupported";
-  }
 }
 
 /**

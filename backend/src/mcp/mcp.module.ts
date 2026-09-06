@@ -17,6 +17,7 @@ import { AiActionBuilderModule } from "../ai/actions/ai-action-builder.module";
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
 import { McpWriteLimiter } from "./mcp-write-limiter";
+import { McpRequestStateCodec } from "./mcp-request-state";
 
 import { McpAccountsTools } from "./tools/accounts.tool";
 import { McpTransactionsTools } from "./tools/transactions.tool";
@@ -61,6 +62,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
   providers: [
     McpServerService,
     McpWriteLimiter,
+    McpRequestStateCodec,
     McpRelayTools,
     McpAccountsTools,
     McpTransactionsTools,

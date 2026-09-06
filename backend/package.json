@@ -38,7 +38,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.75.0",
     "@aws-sdk/client-s3": "^3.1095.0",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@nestjs/common": "^11.1.12",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.12",
@@ -56,6 +57,7 @@
     "date-fns": "^4.1.0",
     "he": "^1.2.0",
     "helmet": "^8.1.0",
+    "libphonenumber-js": "^1.13.12",
     "mdb-reader": "^3.2.0",
     "nestjs-i18n": "^10.8.4",
     "nodemailer": "^9.0.1",
@@ -79,6 +81,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@modelcontextprotocol/client": "^2.0.0",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.12",

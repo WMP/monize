@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Tercihleri Kaydet",
-    "savingButton": "Kaydediliyor...",
     "toasts": {
       "saved": "Tercihler kaydedildi",
       "saveFailed": "Tercihler kaydedilemedi",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Bildirimler",
+    "portfolioAlert": {
+      "title": "Yatırım değeri değişimi",
+      "description": "Yatırım hesaplarım bir eşiğin ötesinde hareket ettiğinde günde bir kez bildir; piyasa değişimleri ve temettülerden ölçülür (para yatırma ve çekmeler hariç tutulur).",
+      "enableLabel": "Yatırım hareketi uyarılarını etkinleştir",
+      "thresholdLabel": "Günlük hareket en az şu değere ulaştığında bildir",
+      "save": "Kaydet",
+      "saved": "Eşik kaydedildi",
+      "saveError": "Eşik kaydedilemedi",
+      "loadError": "Yatırım uyarısı ayarı yüklenemedi",
+      "retry": "Yeniden dene"
+    },
     "smtpNotConfigured": "E-posta bildirimleri mevcut değil. SMTP yönetici tarafından yapılandırılmamış.",
     "emailNotificationsTitle": "E-posta Bildirimleri",
     "emailNotificationsDescription": "Yaklaşan faturalar ve bütçe uyarıları için e-posta hatırlatıcıları alın",
@@ -239,15 +248,10 @@
       "heading": "Tarayıcı anlık bildirimi",
       "diagnostics": {
         "summary": "Bildirim tanılaması",
-        "intro": "Bu tarayıcının ve cihazın bildirimler hakkında Monize'a bildirdiği bilgiler. Monize'ın cihazınızda arayabileceğiniz bir bildirim oluşturması için test düğmesini, ardından tam raporu göndermek için Kopyala'yı kullanın.",
+        "intro": "Bu tarayıcının ve cihazın bildirimler hakkında Monize'a bildirdikleri. Bir ayarı değiştirdikten sonra yenileyin, ardından tam raporu göndermek için Kopyala'yı kullanın.",
         "refresh": "Yenile",
         "copy": "Raporu kopyala",
-        "copied": "Tanılama panoya kopyalandı",
-        "localTest": "Test bildirimi göster",
-        "localTestRunning": "Kontrol ediliyor…",
-        "localTestBody": "Bunu görebiliyorsanız, bu cihazda bildirimler çalışıyor.",
-        "localTestCreated": "Monize bir bildirimi hatasız oluşturdu, ancak burada hiçbir şey sistemin onu gösterdiğini doğrulayamaz. Cihazınızda görmediyseniz sistem onu gizliyordur; cihaz ayarlarından Monize bildirimlerini açın.",
-        "localTestError": "Bu cihazda test çalıştırılamadı ({detail})."
+        "copied": "Tanılama panoya kopyalandı"
       },
       "description": "Bu cihazı kaydedin, böylece uygulama kapalıyken de Monize ona ulaşabilir. Şimdilik bu yolla yalnızca test bildirimi teslim ediliyor; diğer her şey yine zil simgesine geliyor.",
       "androidNotify": "Android'de izin vermeniz yetmez: sistem bildirimleri yine de gizleyebilir. Ana ekrandaki Monize simgesini basılı tutun, Uygulama bilgileri'ne, ardından Bildirimler'e dokunun ve açık olduklarından emin olun.",
@@ -260,7 +264,6 @@
       "thisDevice": "Bu cihaz",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Adsız cihaz",
-      "lastSeen": "Son etkinlik {when}",
       "noLiveDevices": "Henüz kayıtlı cihaz yok. Test göndermek için bu cihazda anlık bildirimleri açın.",
       "notConfigured": "Bu Monize örneğinde tarayıcı anlık bildirimi kullanılamıyor. Bir yönetici Admin bölümünden etkinleştirebilir.",
       "disabledByAdmin": "Bir yönetici bu Monize örneği için tarayıcı anlık bildirimini kapattı.",
@@ -301,25 +304,42 @@
           "transient": "iletilmedi (geçici hata); yeniden deneyin",
           "unconfigured": "bu örnek şu anda push mesajlarını imzalayamıyor"
         }
+      },
+      "transport": {
+        "webpush": "Web push",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Uç nokta",
+        "transport": "Şununla iletilir",
+        "registeredIp": "Şuradan kaydedildi",
+        "registered": "Kaydedildi",
+        "lastSeen": "Son etkinlik",
+        "lastDelivery": "Son teslimat",
+        "noDelivery": "Henüz hiçbir şey iletilmedi",
+        "userAgent": "Tarayıcı",
+        "unknownIp": "Bilinmiyor"
       }
     },
     "preferences": {
       "heading": "Beni nasıl bilgilendirelim",
-      "description": "Zil her zaman tüm bildirimleri gösterir. Monize'ın hangi türleri ayrıca e-posta veya push ile ve ne sıklıkla göndereceğini seçin.",
+      "description": "Monize'ın e-posta veya push ile hangi türleri, ne sıklıkta göndereceğini seçin.",
       "categoryHeader": "Bildirim",
       "channels": {
-        "inApp": "Uygulamada",
         "emailReport": "E-posta (rapor)",
         "emailNotification": "E-posta (uyarı)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Bildirimler, tarayıcı sağlayıcısının push hizmeti yerine ntfy gibi kendi çalıştırdığınız bir dağıtıcı uygulama üzerinden iletilir. Bu kanalı kullanmak için o uygulamada bir uç nokta kaydedin."
       },
       "categories": {
         "PAYMENTS": "Faturalar ve planlananlar",
         "BUDGETS": "Bütçeler",
-        "SYSTEM": "Sistem uyarıları"
+        "SYSTEM": "Sistem uyarıları",
+        "BALANCES": "Hesap bakiyeleri",
+        "INVESTMENTS": "Yatırım değeri",
+        "STRATEGIES": "Strateji sinyalleri"
       },
-      "inAppAlways": "Zilde her zaman görünür",
       "channelNotApplicable": "Bu bildirim türü için geçerli değil",
       "emailToggleLabel": "{category} için rapor e-postası",
       "saveFailed": "Bu ayar kaydedilemedi",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "{category} için push",
       "unifiedpushToggleLabel": "{category} için UnifiedPush",
       "emailUnavailable": "Bunları e-postayla göndermek için yukarıdan e-posta bildirimlerini açın.",
-      "pushUnavailable": "Önce bu cihazda push'u etkinleştirin (aşağıya bakın).",
-      "unifiedpushUnavailable": "Bu kanalı kullanmak için dağıtıcı uygulamanızdan bir UnifiedPush uç noktası kaydedin."
+      "pushUnavailable": "Push için kayıtlı cihaz yok, bu yüzden bu kanal hiçbir şey iletemez.",
+      "pushEnableHint": "Bu tarayıcı push bildirimleri için kayıtlı değil."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Otomatik Yedekleme",
     "help": "Yardım ve Destek",
     "dangerZone": "Tehlikeli Alan",
-    "about": "Hakkında"
+    "about": "Hakkında",
+    "payeeLookup": "Alacaklı arama"
   },
   "page": {
     "title": "Ayarlar",
@@ -885,14 +906,6 @@
         "step3": "Yanıtlar sohbete geri akışla gelir. Bir durum noktası, aracınızın bağlı olup olmadığını gösterir.",
         "note": "Aracınız bağlanıp dinlemeye başlayana kadar hiçbir şey çalışmaz. Sohbet, bağlantı talimatlarını gösterir."
       }
-    },
-    "payeeLookup": {
-      "title": "Alacaklı iletişim bilgilerini otomatik arama",
-      "subtitle": "Yeni bir alacaklının web sitesini, adresini, e-posta adresini ve telefon numarasını yapılandırdığınız yapay zeka sağlayıcısı üzerinden otomatik olarak arar. Alacaklının adı, halihazırda kayıtlı notlar, web sitesi, adres, e-posta ve telefon bilgileriyle birlikte gönderilir; böylece arama doğru işletmeyi ve doğru konumu ayırt edebilir.",
-      "toggleLabel": "İletişim bilgilerini otomatik aramayı etkinleştir",
-      "enabled": "İletişim bilgilerini otomatik arama etkinleştirildi",
-      "disabled": "İletişim bilgilerini otomatik arama devre dışı bırakıldı",
-      "saveFailed": "İletişim bilgisi arama ayarı güncellenemedi"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Tüm zamanlar"
     },
     "estCostTooltip": "Her sağlayıcıda yapılandırdığınız maliyet oranları kullanılarak tahmin edildi. Eşleşen oran ayarlanmamış aktiviteler hariçtir."
+  },
+  "payeeLookup": {
+    "title": "Alacaklı arama",
+    "subtitle": "Bir alacaklının web sitesi, adresi, e-postası ve telefon numarasının nereden geldiği ve aramanın kendiliğinden ne zaman çalıştığı.",
+    "saved": "Alacaklı arama ayarları kaydedildi",
+    "saveFailed": "Alacaklı arama ayarları kaydedilemedi",
+    "loadFailed": "Alacaklı arama ayarları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+    "googlePlaces": {
+      "toggleLabel": "Alacaklı aramasında Google Places kullan",
+      "notConfigured": "İşletmeleri yapay zekâ sağlayıcınız yerine Google rehberinde aramak için bir Google Places API anahtarı ekleyin.",
+      "operatorManaged": "Bu sunucunun yöneticisi tarafından yapılandırıldı. Kendi alacaklılarınız için kapatabilirsiniz.",
+      "configure": "Kur",
+      "edit": "Düzenle",
+      "removeKey": "Anahtarı kaldır",
+      "usage": "Bu ay kullanılan: {cap} isteğin {used} tanesi",
+      "usageNoCap": "Bu ay kullanılan: {used}. Aylık sınır yok.",
+      "keyUnreadable": "Bu sunucu kayıtlı API anahtarını okuyamıyor. Bu, bir yedek başka bir örneğe geri yüklendiğinde ya da şifreleme anahtarı değiştiğinde olur. Düzeltmek için anahtarı yeniden girin.",
+      "encryptionUnavailable": "Bu sunucuda şifreleme anahtarı yapılandırılmamış, bu yüzden bir API anahtarı güvenle saklanamaz. Yöneticinizden bir tane ayarlamasını isteyin.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize, alacaklının adını ve halihazırdaki adresi Google'a gönderir ve orada hiçbir şey saklamaz.",
+      "apiKeyLabel": "API anahtarı",
+      "apiKeyPlaceholder": "Google Places API anahtarınızı yapıştırın",
+      "apiKeyHelp": "Google Cloud konsolunda Places API (New) etkinleştirilmiş bir anahtar oluşturun. Kayıtlı anahtarı korumak için boş bırakın.",
+      "capToggleLabel": "Aylık istekleri sınırla",
+      "capHelp": "Google, bu aramanın ihtiyaç duyduğu alanlar için ayda {free} ücretsiz Text Search isteği verir. Sınırın ötesinde arama, yapay zekâ sağlayıcınıza döner.",
+      "capLabel": "Aylık istek sayısı",
+      "capRange": "{min} ile {max} arasında bir sayı girin.",
+      "test": "Test et",
+      "testing": "Test ediliyor...",
+      "testSuccess": "Google anahtarı kabul etti.",
+      "save": "Kaydet",
+      "cancel": "İptal",
+      "setupInstructions": "Kurulum talimatları"
+    },
+    "automatic": {
+      "title": "Otomatik alacaklı iletişim araması",
+      "subtitle": "Yeni bir alacaklının web sitesini, adresini, e-postasını ve telefon numarasını otomatik olarak arayın. Aramanın doğru işletmeyi ve doğru şubeyi ayırt edebilmesi için alacaklının adıyla birlikte mevcut notlar, web sitesi, adres, e-posta ve telefon da gönderilir.",
+      "toggleLabel": "Otomatik alacaklı iletişim aramasını etkinleştir",
+      "enabled": "Otomatik alacaklı iletişim araması etkinleştirildi",
+      "disabled": "Otomatik alacaklı iletişim araması devre dışı bırakıldı",
+      "saveFailed": "Alacaklı iletişim arama ayarı güncellenemedi",
+      "noSource": "Alacaklıları otomatik aramak için yukarıdan bir kaynağı açın. İkisi de kapalıyken hiçbir şey aramayı yanıtlayamaz."
+    },
+    "order": {
+      "title": "Önce hangi kaynak yanıtlar",
+      "placesTitle": "Google Places",
+      "placesHelp": "Rehber bilgileri, arama başına daha ucuz. Google e-posta adresi tutmaz.",
+      "aiTitle": "Mevcut yapay zekâ sağlayıcısı",
+      "aiHelp": "E-posta adresi bulabilir ve her aramada bir model çağrısı maliyeti vardır.",
+      "aiToggleLabel": "Alacaklı aramaları için yapay zekâ sağlayıcısı kullan",
+      "aiProviderLabel": "Kullanılacak sağlayıcı",
+      "aiProviderAny": "Öncelik sırasına göre herhangi bir sağlayıcı",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı"
+    }
   }
 }

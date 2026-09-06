@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { McpCalculateTools } from "./calculate.tool";
 
 describe("McpCalculateTools", () => {

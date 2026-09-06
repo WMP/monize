@@ -265,7 +265,7 @@ export const TransactionRow = memo(function TransactionRow({
   // The reconciliation chips live in the reconcile catalog so the register and
   // the reconcile table say the same thing about the same row.
   const tr = useTranslations('reconcile');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   // Read-only amounts, grouped in the user's number locale (en-US unchanged).
   const formatAmountLocal = useLocalizedAmount();
   const isVoid = transaction.status === TransactionStatus.VOID;
@@ -770,9 +770,9 @@ export const TransactionRow = memo(function TransactionRow({
                 }`}
                 title={
                   budgetStatus.percentUsed > 100
-                    ? `Over budget: ${budgetStatus.percentUsed.toFixed(0)}% used (${formatCurrency(budgetStatus.spent, transaction.currencyCode)} / ${formatCurrency(budgetStatus.budgeted, transaction.currencyCode)})`
+                    ? `Over budget: ${formatPercent(budgetStatus.percentUsed, 0)} used (${formatCurrency(budgetStatus.spent, transaction.currencyCode)} / ${formatCurrency(budgetStatus.budgeted, transaction.currencyCode)})`
                     : budgetStatus.percentUsed >= 80
-                      ? `Approaching limit: ${budgetStatus.percentUsed.toFixed(0)}% used (${formatCurrency(budgetStatus.remaining, transaction.currencyCode)} remaining)`
+                      ? `Approaching limit: ${formatPercent(budgetStatus.percentUsed, 0)} used (${formatCurrency(budgetStatus.remaining, transaction.currencyCode)} remaining)`
                       : undefined
                 }
               />

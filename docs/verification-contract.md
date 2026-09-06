@@ -102,8 +102,11 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-AUTH-004 truthful logout | supporting | -- | required | -- | -- | **required** | -- | required |
 | INV-ACTIVITY-001 activity attribution | supporting | -- | **required** | -- | -- | -- | -- | -- |
 | INV-PROFILE-001 allowlist | required | **required** | supporting | -- | -- | -- | -- | -- |
-| INV-MCP-001 credential binding | supporting | -- | required | -- | -- | -- | -- | -- |
+| INV-DISPLAY-001 reader's number locale | **required** | **required** | -- | -- | -- | -- | -- | optional |
+| INV-MCP-001 request identity | **required** | **required** | required | -- | -- | -- | -- | -- |
 | INV-MCP-002 transport answers MCP | **required** | -- | -- | -- | -- | -- | -- | optional |
+| INV-MCP-003 confirmation binding | **required** | **required** | -- | -- | -- | -- | -- | -- |
+| INV-MCP-004 answered before written | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-CURRENCY-001 currency delete | supporting | **required** | required | required | -- | -- | -- | optional |
 | INV-ATTACHMENT-001 bytes present | supporting | -- | required | optional | -- | **required** | **required** | required |
 | INV-BACKUP-001 backup complete | supporting | -- | required | -- | optional | **required** | **required** | required |
@@ -128,7 +131,9 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-RLS-001 role privilege | supporting | -- | **required** | -- | required | -- | -- | -- |
 | INV-CACHE-001 cache invalidation | required | **required** | -- | -- | -- | -- | -- | required |
 | INV-PAYEE-001 lookup never overwrites | **required** | supporting | optional | optional | -- | -- | -- | -- |
+| INV-PAYEE-002 Google Places monthly cap | optional | supporting | **required** | -- | -- | -- | -- | -- |
 | INV-RELEASE-001 one revision | required | -- | -- | -- | -- | -- | -- | workflow self-test |
+| INV-MIGRATION-001 numeric prefix order, collision-free prefix | required | **required** | supporting | -- | -- | -- | -- | -- |
 
 Bold marks the kind that is load-bearing -- the one whose absence means the
 invariant is unverified no matter how many others pass. `INV-PROFILE-001`'s is a

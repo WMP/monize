@@ -29,14 +29,15 @@ function AssetsTooltip({
   total: number;
   formatCurrency: (v: number) => string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (active && payload && payload.length) {
     const d = payload[0].payload;
-    const percentage = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0';
+    const percentage = total > 0 ? (d.value / total) * 100 : 0;
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
         <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
         <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(d.value)} ({percentage}%)
+          {formatCurrency(d.value)} ({formatPercent(percentage, 1)})
         </p>
       </div>
     );

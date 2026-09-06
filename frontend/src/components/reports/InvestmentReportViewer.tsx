@@ -48,7 +48,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { formatNumber, formatPercent, formatCurrency } = useNumberFormat();
+  const { formatNumber, formatPercent, formatCurrency, formatQuantity } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<InvestmentReport | null>(null);
   const [result, setResult] = useState<InvestmentReportResult | null>(null);
@@ -169,7 +169,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
       case 'percent':
         return formatPercent(Number(value), 2);
       case 'shares':
-        return Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
+        return formatQuantity(Number(value));
       case 'date':
         return formatDate(String(value));
       default:

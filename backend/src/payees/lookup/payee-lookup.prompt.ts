@@ -32,7 +32,12 @@ export const PAYEE_LOOKUP_SYSTEM_PROMPT = [
   "Use null for any field you cannot verify. Never guess, infer, or construct a value.",
   "website: the organisation's own official site -- not a directory, review site, social profile, or aggregator.",
   'address: the postal address of the head office or the most general public contact address, written as it would be on an envelope, with each part on its own line separated by \\n: street address, then city with region and postal code, then country. Example: "1373 Avenue du Mont-Royal Est\\nMontreal, Quebec H2J 1Y8\\nCanada".',
+  // The country code is not a formatting preference: a number without one is
+  // discarded rather than guessed at, because the reader's own region says
+  // nothing about where this organisation's office is. Say so, so the model
+  // knows an omission costs the whole field.
   "email and phone: public customer-contact details published by the organisation itself.",
+  "phone: always write the international country code (+44 20 7946 0958, not 020 7946 0958). A number without one is discarded, so a number you cannot write that way is one to report as null.",
   'confidence: "high", "medium" or "low".',
   "notes: one short sentence on where that match's details came from.",
   // The context rules. Each one is a way the answer can be confidently wrong

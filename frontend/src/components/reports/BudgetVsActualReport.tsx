@@ -174,7 +174,7 @@ const CAPTION_CLASS = 'sm:hidden';
 
 export function BudgetVsActualReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
   const [months, setMonths] = useState(6);
   const [viewMode, setViewMode] = useState<'overview' | 'categories'>('overview');
@@ -284,7 +284,7 @@ export function BudgetVsActualReport() {
     percentUsed: {
       field: 'percentUsed',
       label: t('budgetVsActual.colPercentUsed'),
-      value: (point) => `${point.percentUsed}%`,
+      value: (point) => formatPercentTrimmed(point.percentUsed),
       align: 'right',
       last: true,
     },
@@ -305,7 +305,9 @@ export function BudgetVsActualReport() {
     // export cannot carry the screen's old column order (see `SortColumn`).
     // The ROWS stay in the order the server sent, not the order on screen --
     // deliberately, and as every sibling report export does: the PDF is a
-    // report of the period, not a snapshot of a transient sort.
+    // report of the period, not a snapshot of a transient sort. Each value
+    // function is locale-aware (currency through formatCurrency, percent
+    // through formatPercentTrimmed), so the export matches the screen.
     const headers = sortColumns.map((col) => col.label);
     const rows = trendData.map((point) => sortColumns.map((col) => col.value(point)));
     await exportToPdf({
@@ -573,7 +575,7 @@ export function BudgetVsActualReport() {
                             every locale, so a third-width track holds it. */}
                         <td role="cell" className={`col-start-3 row-start-2 text-gray-600 dark:text-gray-400 ${cellPadding(columns.percentUsed)} ${MONEY_CELL}`}>
                           <CellLabel className={CAPTION_CLASS}>{columns.percentUsed.label}</CellLabel>
-                          {point.percentUsed}%
+                          {formatPercentTrimmed(point.percentUsed)}
                         </td>
                       </tr>
                     ))}

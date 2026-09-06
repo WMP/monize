@@ -218,7 +218,7 @@
     "hideHelp": "Masquer",
     "helpIntro": "Exécutez votre propre agent MCP et il répondra aux invites de ce chat en utilisant votre abonnement.",
     "step1": "Créez votre jeton d'accès",
-    "tokenStep": "Commencez par créer un Personal Access Token dans <link>Paramètres utilisateur -> Accès API</link>, puis utilisez-le ci-dessous.",
+    "tokenStep": "Commencez par créer un Personal Access Token dans <link>Paramètres utilisateur -> Accès API</link>, puis utilisez-le ci-dessous. Donnez à cet agent son propre jeton : un jeton partagé avec un autre client MCP envoie ici les confirmations de ce client.",
     "claudeHeading": "Se connecter avec Claude CLI",
     "step2": "Connectez l'agent à Monize à l'aide de Claude CLI :",
     "allowToolsNote": "Quittez Claude et redémarrez-le avec cette option afin qu'il approuve automatiquement chaque appel d'outil Monize :",

@@ -6,12 +6,15 @@ vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ formatDate: (d: string) => d, dateFormat: 'browser', datePattern: 'YYYY-MM-DD' }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (amount: number, currency: string) => `${currency} ${amount.toFixed(2)}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (amount: number, currency: string) => `${currency} ${amount.toFixed(2)}`,
+    }),
+  };
+});
 vi.mock('@/lib/utils', () => ({
   parseLocalDate: (d: string) => {
     const dateStr = d.includes('T') ? d.split('T')[0] : d;

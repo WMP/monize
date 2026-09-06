@@ -218,7 +218,7 @@
     "hideHelp": "Ẩn",
     "helpIntro": "Chạy tác nhân MCP của riêng bạn và nó sẽ trả lời các lời nhắc từ cuộc trò chuyện này bằng gói đăng ký của bạn.",
     "step1": "Tạo mã thông báo truy cập của bạn",
-    "tokenStep": "Trước tiên, hãy tạo một Personal Access Token trong <link>Cài đặt người dùng -> Truy cập API</link>, sau đó sử dụng nó bên dưới.",
+    "tokenStep": "Trước tiên, hãy tạo một Personal Access Token trong <link>Cài đặt người dùng -> Truy cập API</link>, sau đó sử dụng nó bên dưới. Hãy cấp cho tác nhân này một token riêng: token dùng chung với một máy khách MCP khác sẽ gửi các xác nhận của máy khách đó về đây.",
     "claudeHeading": "Kết nối bằng Claude CLI",
     "step2": "Kết nối tác nhân với Monize bằng Claude CLI:",
     "allowToolsNote": "Thoát Claude và khởi động lại với tùy chọn này để nó tự động phê duyệt mọi lệnh gọi công cụ Monize:",

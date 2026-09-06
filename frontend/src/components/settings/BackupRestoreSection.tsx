@@ -18,6 +18,7 @@ import {
 import { getErrorMessage } from '@/lib/errors';
 import { getDateStringInTimezone, resolveTimezone } from '@/lib/utils';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { downloadBlob } from '@/lib/download';
 import { User } from '@/types/auth';
 import { takeOidcReauthArtifact } from '@/lib/stepUpToken';
@@ -35,6 +36,7 @@ interface BackupRestoreSectionProps {
 
 export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const t = useTranslations('settings.backupRestore');
+  const { formatNumber } = useNumberFormat();
   const isOidc = user.authProvider === 'oidc';
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
 
@@ -643,7 +645,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                         {RESTORE_LABELS[key] ?? key}
                       </dt>
                       <dd className="font-medium text-gray-900 dark:text-gray-100">
-                        {count.toLocaleString()}
+                        {formatNumber(count, 0)}
                       </dd>
                     </div>
                   ))}
@@ -653,7 +655,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
             <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600 flex justify-between text-sm font-medium">
               <span className="text-gray-900 dark:text-gray-100">{t('restoreResult.totalRecords')}</span>
               <span className="text-gray-900 dark:text-gray-100">
-                {Object.values(restoreResult.restored).reduce((sum, n) => sum + n, 0).toLocaleString()}
+                {formatNumber(Object.values(restoreResult.restored).reduce((sum, n) => sum + n, 0), 0)}
               </span>
             </div>
 

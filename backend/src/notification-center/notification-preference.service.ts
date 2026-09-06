@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 
 import { withScopedDb } from "../common/db/scoped-db";
+import { returnedRows } from "../common/db/query-result";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { NotificationCategory } from "./entities/notification.entity";
 import { NotificationPreference } from "./entities/notification-preference.entity";
@@ -27,6 +28,9 @@ export const NOTIFICATION_PREFERENCE_CATEGORIES: readonly NotificationCategory[]
     NotificationCategory.PAYMENTS,
     NotificationCategory.BUDGETS,
     NotificationCategory.SYSTEM,
+    NotificationCategory.BALANCES,
+    NotificationCategory.INVESTMENTS,
+    NotificationCategory.STRATEGIES,
   ];
 
 /**
@@ -91,6 +95,29 @@ export const NOTIFICATION_CATEGORY_CHANNELS: Record<
   [NotificationCategory.SYSTEM]: {
     email: false,
     emailNotification: false,
+    push: true,
+    unifiedpush: true,
+  },
+  // Balance crossings, portfolio movement and GEM signal changes are all
+  // user-facing financial news (like a bill), so every channel is a live
+  // control. There is no report-mode digest for any of them yet, but the column
+  // is a real control (an immediate email report could batch them later), so it
+  // stays on rather than "not applicable".
+  [NotificationCategory.BALANCES]: {
+    email: true,
+    emailNotification: true,
+    push: true,
+    unifiedpush: true,
+  },
+  [NotificationCategory.INVESTMENTS]: {
+    email: true,
+    emailNotification: true,
+    push: true,
+    unifiedpush: true,
+  },
+  [NotificationCategory.STRATEGIES]: {
+    email: true,
+    emailNotification: true,
     push: true,
     unifiedpush: true,
   },
@@ -333,5 +360,60 @@ export class NotificationPreferenceService {
   private clampThrottle(minutes: number): number {
     if (!Number.isFinite(minutes) || minutes <= 0) return 0;
     return Math.min(THROTTLE_MAX_MINUTES, Math.trunc(minutes));
+  }
+
+  /**
+   * The user's daily portfolio-movement threshold, in percent, or `null` when
+   * the alert is off (`docs/specs/portfolio-movement-notifications.md`). Stored
+   * on `notification_portfolio_state` beside the producer's baseline.
+   */
+  async getPortfolioMovePercent(userId: string): Promise<number | null> {
+    return withScopedDb(this.dataSource, async (manager) => {
+      const rows = returnedRows<{ move_alert_percent: string | null }>(
+        await manager.query(
+          "SELECT move_alert_percent FROM notification_portfolio_state WHERE user_id = $1",
+          [userId],
+        ),
+      );
+      // A stored value at or below zero is "off" (the cron enumerates
+      // `move_alert_percent > 0`), so the GET reports it as off too rather than
+      // as an enabled 0% threshold the producer never acts on.
+      const value = rows[0]?.move_alert_percent;
+      if (value == null) return null;
+      const num = Number(value);
+      return num > 0 ? num : null;
+    });
+  }
+
+  /**
+   * Set (or clear, with `null`) the portfolio-movement threshold. Clearing the
+   * threshold also clears the baseline, so re-enabling starts a fresh baseline
+   * on the next complete run rather than comparing against a stale one.
+   */
+  async setPortfolioMovePercent(
+    userId: string,
+    percent: number | null,
+  ): Promise<{ movePercent: number | null }> {
+    await withScopedDb(this.dataSource, (manager) =>
+      percent == null
+        ? manager.query(
+            `INSERT INTO notification_portfolio_state
+               (user_id, move_alert_percent, baseline_value, baseline_currency, baseline_captured_on)
+             VALUES ($1, NULL, NULL, NULL, NULL)
+             ON CONFLICT (user_id) DO UPDATE
+               SET move_alert_percent = NULL,
+                   baseline_value = NULL,
+                   baseline_currency = NULL,
+                   baseline_captured_on = NULL`,
+            [userId],
+          )
+        : manager.query(
+            `INSERT INTO notification_portfolio_state (user_id, move_alert_percent)
+             VALUES ($1, $2)
+             ON CONFLICT (user_id) DO UPDATE SET move_alert_percent = $2`,
+            [userId, percent],
+          ),
+    );
+    return { movePercent: percent };
   }
 }

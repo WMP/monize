@@ -9,7 +9,7 @@ import { HIGHLIGHT_FLASH, HIGHLIGHT_FLASH_CELL, useScrollIntoViewWhen } from '@/
 import { SortIcon } from '@/components/ui/SortIcon';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { preferredCurrency } from '@/lib/default-currency';
-import { formatShareQuantity } from '@/lib/format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { securityPositionValue } from '@/lib/security-value';
 import { useLongPress, type LongPressRowHandlers } from '@/hooks/useLongPress';
 import { RowActions } from '@/components/ui/row-actions/RowActions';
@@ -209,6 +209,7 @@ const SecurityRow = memo(function SecurityRow({
   wrapped = false,
 }: SecurityRowProps) {
   const rowRef = useScrollIntoViewWhen<HTMLTableRowElement>(!!isHighlighted);
+  const { formatShareQuantity } = useNumberFormat();
   const t = useTranslations('securities');
   const tc = useTranslations('common');
 

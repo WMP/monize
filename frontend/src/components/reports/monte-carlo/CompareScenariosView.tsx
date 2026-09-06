@@ -56,7 +56,13 @@ export interface CompareScenariosViewProps {
 export function CompareScenariosView({ ids }: CompareScenariosViewProps) {
   const t = useTranslations('reports');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
+  // One bundle for the pure comparison module, which formats currency, counts
+  // and percentages and must do all three in the reader's number locale.
+  const cellFormatters = useMemo(
+    () => ({ formatCurrency, formatNumber, formatPercent }),
+    [formatCurrency, formatNumber, formatPercent],
+  );
 
   const dedupedIds = useMemo(() => Array.from(new Set(ids)), [ids]);
   const truncated = ids.length > MAX_COMPARE_SCENARIOS;
@@ -270,7 +276,7 @@ export function CompareScenariosView({ ids }: CompareScenariosViewProps) {
             formatCellValue(
               row.accessor({ scenario: c.scenario!, result: c.result }),
               row.format,
-              formatCurrency,
+              cellFormatters,
             ),
           ),
         ]);
@@ -304,7 +310,7 @@ export function CompareScenariosView({ ids }: CompareScenariosViewProps) {
       </div>
       <CompareMetricTable
         columns={columns}
-        formatCurrency={formatCurrency}
+        formatters={cellFormatters}
         onRetry={handleRetry}
         onRemove={handleRemove}
         onRerun={handleRerun}

@@ -21,13 +21,17 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrencyCompact: (n: number) => `$${n}`,
     formatCurrency: (n: number) => `$${n}`,
     defaultCurrency: 'CAD',
   }),
-}));
+  };
+});
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,

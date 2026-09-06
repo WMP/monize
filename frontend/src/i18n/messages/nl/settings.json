@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Voorkeuren opslaan",
-    "savingButton": "Opslaan...",
     "toasts": {
       "saved": "Voorkeuren opgeslagen",
       "saveFailed": "Opslaan van voorkeuren mislukt",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Meldingen",
+    "portfolioAlert": {
+      "title": "Waardeverandering van beleggingen",
+      "description": "Waarschuw mij eenmaal per dag wanneer mijn beleggingsrekeningen buiten een drempel bewegen, gemeten aan marktveranderingen en dividenden (stortingen en opnames worden uitgesloten).",
+      "enableLabel": "Waarschuwingen voor beleggingsbewegingen inschakelen",
+      "thresholdLabel": "Waarschuwen wanneer de dagelijkse beweging minstens is",
+      "save": "Opslaan",
+      "saved": "Drempel opgeslagen",
+      "saveError": "Kon de drempel niet opslaan",
+      "loadError": "Kon de instelling voor beleggingswaarschuwingen niet laden",
+      "retry": "Opnieuw proberen"
+    },
     "smtpNotConfigured": "E-mailmeldingen zijn niet beschikbaar. SMTP is niet geconfigureerd door de beheerder.",
     "emailNotificationsTitle": "E-mailmeldingen",
     "emailNotificationsDescription": "Ontvang e-mailherinneringen voor aankomende rekeningen en budgetwaarschuwingen",
@@ -239,15 +248,10 @@
       "heading": "Browserpush",
       "diagnostics": {
         "summary": "Meldingsdiagnose",
-        "intro": "Wat deze browser en dit apparaat aan Monize melden over meldingen. Gebruik de testknop om Monize een melding te laten maken die je op je apparaat kunt zoeken, en daarna Kopiëren om het volledige rapport te sturen.",
+        "intro": "Wat deze browser en dit apparaat aan Monize melden over meldingen. Ververs na het wijzigen van een instelling en gebruik daarna Kopiëren om het volledige rapport te versturen.",
         "refresh": "Vernieuwen",
         "copy": "Rapport kopiëren",
-        "copied": "Diagnose naar klembord gekopieerd",
-        "localTest": "Testmelding tonen",
-        "localTestRunning": "Controleren…",
-        "localTestBody": "Als je dit ziet, werken meldingen op dit apparaat.",
-        "localTestCreated": "Monize heeft een melding zonder fout aangemaakt, maar niets hier kan bevestigen dat het systeem deze heeft getoond. Als je hem niet op je apparaat zag, verbergt het systeem hem; schakel meldingen voor Monize in bij de apparaatinstellingen.",
-        "localTestError": "Kan de test niet uitvoeren op dit apparaat ({detail})."
+        "copied": "Diagnose naar klembord gekopieerd"
       },
       "description": "Registreer dit apparaat zodat Monize het ook kan bereiken als de app gesloten is. Voorlopig wordt alleen de testmelding zo bezorgd; al het andere komt nog steeds in de bel.",
       "androidNotify": "Op Android is een verleende toestemming niet genoeg: het systeem kan meldingen alsnog verbergen. Houd het Monize-pictogram op je startscherm ingedrukt, tik op App-info, dan Meldingen, en zorg dat ze aan staan.",
@@ -260,7 +264,6 @@
       "thisDevice": "Dit apparaat",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Naamloos apparaat",
-      "lastSeen": "Laatst actief {when}",
       "noLiveDevices": "Nog geen apparaat geregistreerd. Schakel push in op dit apparaat om een test te versturen.",
       "notConfigured": "Browserpush is niet beschikbaar op deze Monize-instantie. Een beheerder kan het inschakelen in het Admin-gedeelte.",
       "disabledByAdmin": "Een beheerder heeft browserpush uitgeschakeld voor deze Monize-instantie.",
@@ -301,25 +304,42 @@
           "transient": "niet afgeleverd (tijdelijke fout); probeer het opnieuw",
           "unconfigured": "deze instantie kan pushberichten nu niet ondertekenen"
         }
+      },
+      "transport": {
+        "webpush": "Webpush",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Eindpunt",
+        "transport": "Bezorgd via",
+        "registeredIp": "Geregistreerd vanaf",
+        "registered": "Geregistreerd",
+        "lastSeen": "Laatst actief",
+        "lastDelivery": "Laatste bezorging",
+        "noDelivery": "Nog niets bezorgd",
+        "userAgent": "Browser",
+        "unknownIp": "Onbekend"
       }
     },
     "preferences": {
       "heading": "Hoe ik meldingen ontvang",
-      "description": "De bel toont altijd elke melding. Kies welke soorten Monize ook per e-mail of push verstuurt, en hoe vaak.",
+      "description": "Kies welke soorten Monize per e-mail of push verstuurt, en hoe vaak.",
       "categoryHeader": "Melding",
       "channels": {
-        "inApp": "In de app",
         "emailReport": "E-mail (rapport)",
         "emailNotification": "E-mail (waarschuwing)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Meldingen worden bezorgd via een distributor-app die je zelf draait, zoals ntfy, in plaats van de pushdienst van de browserleverancier. Registreer een eindpunt in die app om dit kanaal te gebruiken."
       },
       "categories": {
         "PAYMENTS": "Rekeningen en gepland",
         "BUDGETS": "Budgetten",
-        "SYSTEM": "Systeemwaarschuwingen"
+        "SYSTEM": "Systeemwaarschuwingen",
+        "BALANCES": "Rekeningsaldi",
+        "INVESTMENTS": "Beleggingswaarde",
+        "STRATEGIES": "Strategiesignalen"
       },
-      "inAppAlways": "Altijd zichtbaar in de bel",
       "channelNotApplicable": "Niet van toepassing op dit type melding",
       "emailToggleLabel": "Rapport-e-mail voor {category}",
       "saveFailed": "Kon die instelling niet opslaan",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push voor {category}",
       "unifiedpushToggleLabel": "UnifiedPush voor {category}",
       "emailUnavailable": "Schakel hierboven e-mailmeldingen in om deze per e-mail te versturen.",
-      "pushUnavailable": "Schakel push eerst in op dit apparaat (zie hieronder).",
-      "unifiedpushUnavailable": "Registreer een UnifiedPush-endpoint vanuit je distributor-app om dit kanaal te gebruiken."
+      "pushUnavailable": "Er is geen apparaat geregistreerd voor push, dus dit kanaal kan niets bezorgen.",
+      "pushEnableHint": "Deze browser is niet geregistreerd voor pushmeldingen."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Automatische back-up",
     "help": "Help & ondersteuning",
     "dangerZone": "Gevarenzone",
-    "about": "Over"
+    "about": "Over",
+    "payeeLookup": "Begunstigde opzoeken"
   },
   "page": {
     "title": "Instellingen",
@@ -885,14 +906,6 @@
         "step3": "Antwoorden worden terug naar de chat gestreamd. Een statusstip toont of uw agent verbonden is.",
         "note": "Er gebeurt niets totdat uw agent verbonden is en luistert. De chat toont verbindingsinstructies."
       }
-    },
-    "payeeLookup": {
-      "title": "Contactgegevens van begunstigde automatisch opzoeken",
-      "subtitle": "Zoekt automatisch de website, het adres, het e-mailadres en het telefoonnummer van een nieuwe begunstigde op via je geconfigureerde AI-provider. De naam van de begunstigde wordt verzonden, samen met eventuele notities, website, adres, e-mailadres en telefoonnummer die al zijn opgeslagen, zodat de zoekopdracht het juiste bedrijf op de juiste locatie herkent.",
-      "toggleLabel": "Automatisch opzoeken van contactgegevens inschakelen",
-      "enabled": "Automatisch opzoeken van contactgegevens ingeschakeld",
-      "disabled": "Automatisch opzoeken van contactgegevens uitgeschakeld",
-      "saveFailed": "De instelling voor het opzoeken van contactgegevens kon niet worden bijgewerkt"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Alle tijd"
     },
     "estCostTooltip": "Geschat op basis van de kostentarieven die je hebt geconfigureerd bij elke provider. Activiteit zonder bijbehorend tarief is uitgesloten."
+  },
+  "payeeLookup": {
+    "title": "Begunstigde opzoeken",
+    "subtitle": "Waar de website, het adres, het e-mailadres en het telefoonnummer van een begunstigde vandaan komen, en wanneer een zoekopdracht vanzelf loopt.",
+    "saved": "Instellingen voor begunstigde opzoeken opgeslagen",
+    "saveFailed": "Kan de instellingen voor begunstigde opzoeken niet opslaan",
+    "loadFailed": "Kan de instellingen voor begunstigde opzoeken niet laden. Laad de pagina opnieuw om het nog eens te proberen.",
+    "googlePlaces": {
+      "toggleLabel": "Google Places gebruiken voor het opzoeken van begunstigden",
+      "notConfigured": "Voeg een Google Places API-sleutel toe om bedrijven op te zoeken in de directory van Google in plaats van via je AI-provider.",
+      "operatorManaged": "Ingesteld door de beheerder van deze server. Je kunt het uitzetten voor je eigen begunstigden.",
+      "configure": "Instellen",
+      "edit": "Bewerken",
+      "removeKey": "Sleutel verwijderen",
+      "usage": "Deze maand gebruikt: {used} van {cap}",
+      "usageNoCap": "Deze maand gebruikt: {used}. Geen maandlimiet.",
+      "keyUnreadable": "Deze server kan de opgeslagen API-sleutel niet lezen. Dat gebeurt wanneer een back-up op een andere instantie wordt teruggezet, of nadat de encryptiesleutel is gewijzigd. Voer de sleutel opnieuw in om dit op te lossen.",
+      "encryptionUnavailable": "Deze server heeft geen encryptiesleutel ingesteld, dus een API-sleutel kan niet veilig worden bewaard. Vraag je beheerder er een in te stellen.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize stuurt de naam van de begunstigde en het adres dat je al hebt naar Google, en slaat daar niets op.",
+      "apiKeyLabel": "API-sleutel",
+      "apiKeyPlaceholder": "Plak je Google Places API-sleutel",
+      "apiKeyHelp": "Maak in de Google Cloud-console een sleutel met de Places API (New) ingeschakeld. Laat leeg om de al opgeslagen sleutel te behouden.",
+      "capToggleLabel": "Verzoeken per maand beperken",
+      "capHelp": "Google geeft {free} gratis Text Search-verzoeken per maand voor de velden die deze zoekopdracht nodig heeft. Boven de limiet valt het opzoeken terug op je AI-provider.",
+      "capLabel": "Verzoeken per maand",
+      "capRange": "Voer een getal tussen {min} en {max} in.",
+      "test": "Testen",
+      "testing": "Bezig met testen...",
+      "testSuccess": "Google heeft de sleutel geaccepteerd.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "setupInstructions": "Installatie-instructies"
+    },
+    "automatic": {
+      "title": "Automatisch contactgegevens van begunstigden opzoeken",
+      "subtitle": "Zoek automatisch de website, het adres, het e-mailadres en het telefoonnummer van een nieuwe begunstigde op. De naam van de begunstigde wordt verstuurd, samen met eventuele notities, website, adres, e-mailadres en telefoonnummer die er al zijn, zodat het opzoeken het juiste bedrijf en de juiste vestiging kan onderscheiden.",
+      "toggleLabel": "Automatisch contactgegevens van begunstigden opzoeken inschakelen",
+      "enabled": "Automatisch contactgegevens opzoeken ingeschakeld",
+      "disabled": "Automatisch contactgegevens opzoeken uitgeschakeld",
+      "saveFailed": "Kan de instelling voor contactgegevens opzoeken niet bijwerken",
+      "noSource": "Schakel hierboven een bron in om begunstigden automatisch op te zoeken. Met beide uit kan niets een zoekopdracht beantwoorden."
+    },
+    "order": {
+      "title": "Welke bron als eerste antwoordt",
+      "placesTitle": "Google Places",
+      "placesHelp": "Gegevens uit de bedrijvengids, goedkoper per zoekopdracht. Google heeft geen e-mailadres.",
+      "aiTitle": "Bestaande AI-provider",
+      "aiHelp": "Kan een e-mailadres vinden en kost bij elke zoekopdracht een modelaanroep.",
+      "aiToggleLabel": "Een AI-provider gebruiken voor het opzoeken van begunstigden",
+      "aiProviderLabel": "Te gebruiken provider",
+      "aiProviderAny": "Elke provider, op volgorde van prioriteit",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag"
+    }
   }
 }

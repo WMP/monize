@@ -15,6 +15,18 @@
     "system": {
       "title": "Komunikat systemowy",
       "body": "Monize ma dla Ciebie komunikat systemowy. Otwórz aplikację, aby zobaczyć szczegóły."
+    },
+    "balances": {
+      "title": "Alert salda",
+      "body": "Saldo konta przekroczyło ustawiony przez Ciebie próg. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "investments": {
+      "title": "Ruch inwestycji",
+      "body": "Twoje inwestycje zmieniły się dzisiaj. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "strategies": {
+      "title": "Sygnał strategii",
+      "body": "Jedna z Twoich strategii zmieniła swoją rekomendację. Otwórz Monize, aby zobaczyć szczegóły."
     }
   },
   "actions": {

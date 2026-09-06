@@ -1,11 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import { RelayAttachmentStore } from "../../ai/relay/relay-attachment.store";
 import { extractPdfText } from "../../ai/relay/pdf-text.util";
-import { UserContextResolver, hasScope } from "../mcp-context";
+import { resolveUserContext, hasScope } from "../mcp-context";
 
 /**
  * Serves attachments a user uploaded with a relayed chat prompt. The browser
@@ -25,25 +22,27 @@ import { UserContextResolver, hasScope } from "../mcp-context";
 export class McpRelayAttachmentResource {
   constructor(private readonly attachmentStore: RelayAttachmentStore) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerResource(
       "relay-attachment",
       // Templated, with no list callback: attachments are ephemeral and
       // per-prompt, so they must not appear in resources/list.
       new ResourceTemplate("monize-attachment://{id}", { list: undefined }),
       {
+        // Live data: a cached answer here is a stale figure, not a stale name.
+        cacheHint: { ttlMs: 0, cacheScope: "private" },
         title: "Chat attachment",
         description:
           "A file the user uploaded with their current chat prompt. Read the monize-attachment:// URI from get_next_prompt's attachments to view an image or PDF.",
       },
-      async (uri, variables, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) {
+      async (uri, variables, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) {
           return {
             contents: [{ uri: uri.href, text: "Error: No user context" }],
           };
         }
-        if (!hasScope(ctx.scopes, "read")) {
+        if (!hasScope(user.scopes, "read")) {
           return {
             contents: [
               {
@@ -59,7 +58,7 @@ export class McpRelayAttachmentResource {
         const rawId = variables.id;
         const id = Array.isArray(rawId) ? rawId[0] : rawId;
         const attachment = id
-          ? this.attachmentStore.get(ctx.userId, id)
+          ? this.attachmentStore.get(user.userId, id)
           : undefined;
         if (!attachment) {
           return {

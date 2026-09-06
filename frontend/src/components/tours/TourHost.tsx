@@ -8,7 +8,7 @@ import { useTourStore } from '@/store/tourStore';
 import { toursApi } from '@/lib/tours-api';
 import { createLogger } from '@/lib/logger';
 import { findTourAnchor } from '@/lib/tours/anchors';
-import { backTargetIndex } from '@/lib/tours/navigation';
+import { backTargetIndex, isStepReachable } from '@/lib/tours/navigation';
 import {
   resolveTourRequirements,
   type TourRequirementMap,
@@ -163,6 +163,13 @@ export function TourHost() {
   useEffect(() => {
     if (!active || showingOutro || active.phase !== 'navigating') return;
     const s = active.steps[active.stepIndex];
+    // A step whose requirement this user does not meet belongs to the omit
+    // effect above. Navigating to its screen -- or skipping it as unreachable,
+    // below -- would race that removal, and a deliberate omission would be
+    // reported as a degraded tour. Also waits while the lookup is unresolved,
+    // rather than navigating somewhere the user may not be going.
+    const requirement = s.requires;
+    if (requirement && requirements?.[requirement] !== true) return;
     // Route-agnostic step (no route/routeMatch): show it wherever we are.
     if (!s.route && !s.routeMatch) {
       setPhase('waiting-anchor');
@@ -175,11 +182,30 @@ export function TourHost() {
       setPhase('waiting-anchor');
       return;
     }
+    // A step pinned to a dynamic route the engine cannot construct
+    // ('/accounts/<id>' from '/accounts') is reachable only by the user's own
+    // navigation. Getting here any other way -- they skipped the step that asks
+    // them to open the page -- means pushing `route` can never satisfy
+    // `routeMatch`, so the engine would sit in this phase behind an overlay
+    // that renders nothing. Skip the step instead of hanging the tour.
+    if (!isStepReachable(s, pathname)) {
+      skip();
+      return;
+    }
     if (s.route && active.expectedRoute !== s.route) {
       setExpectedRoute(s.route);
       router.push(s.route);
     }
-  }, [active, showingOutro, pathname, router, setPhase, setExpectedRoute]);
+  }, [
+    active,
+    showingOutro,
+    pathname,
+    requirements,
+    router,
+    setPhase,
+    setExpectedRoute,
+    skip,
+  ]);
 
   // Anchor found -> show it. Timed out -> gracefully skip the step, unless it
   // asked to stand in for itself with a centered card (`fallbackWhenMissing`),
@@ -334,7 +360,8 @@ export function TourHost() {
   // again: inside a form the user has closed, the steps before this one are
   // unreachable, and offering Back there would strand the tour.
   const canBack =
-    !showingOutro && backTargetIndex(active.steps, active.stepIndex) !== null;
+    !showingOutro &&
+    backTargetIndex(active.steps, active.stepIndex, pathname) !== null;
 
   const title = showingOutro
     ? t('controls.skippedTitle')
@@ -376,7 +403,7 @@ export function TourHost() {
         leaveFocusToForm={leaveFocusToForm}
         onNext={next}
         onDone={finish}
-        onBack={back}
+        onBack={() => back(pathname)}
         onSkip={skip}
         onEnd={() => endTour('dismissed')}
         labels={{

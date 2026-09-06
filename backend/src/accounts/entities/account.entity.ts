@@ -137,6 +137,33 @@ export class Account {
   @Column({ type: "date", name: "closed_date", nullable: true })
   closedDate: Date | null;
 
+  // Balance-threshold alerts (docs/specs/balance-threshold-notifications.md).
+  @Column({
+    type: "numeric",
+    name: "low_balance_threshold",
+    precision: 20,
+    scale: 4,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  lowBalanceThreshold: number | null;
+
+  @Column({
+    type: "numeric",
+    name: "high_balance_threshold",
+    precision: 20,
+    scale: 4,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  highBalanceThreshold: number | null;
+
+  @Column({ name: "low_alert_armed", default: false })
+  lowAlertArmed: boolean;
+
+  @Column({ name: "high_alert_armed", default: false })
+  highAlertArmed: boolean;
+
   @Column({ name: "is_favourite", default: false })
   isFavourite: boolean;
 

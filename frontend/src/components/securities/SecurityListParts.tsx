@@ -3,7 +3,7 @@
 import { useTranslations, useMessages } from 'next-intl';
 import { Security } from '@/types/investment';
 import { DensityLevel } from '@/hooks/useTableDensity';
-import { formatCurrency } from '@/lib/format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { withCurrencyCode } from '@/lib/security-detail';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
@@ -221,6 +221,7 @@ export function SecurityValueFigure({
   unknownClassName?: string;
 }) {
   const t = useTranslations('securities');
+  const { formatCurrency } = useNumberFormat();
   if (value === null) {
     return <UnknownAmount reason="noPrice" className={unknownClassName} />;
   }

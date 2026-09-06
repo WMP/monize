@@ -29,12 +29,16 @@ vi.mock('@/lib/pdf-export', () => ({
 
 // The 2dp formatter this report really uses -- it is what makes a six-figure
 // amount too wide for three money cells on one line.
-vi.mock('@/hooks/useNumberFormat', () => ({
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
   useNumberFormat: () => ({
+    ...numberFormatMockDefaults(),
     formatCurrency: (n: number, c?: string) => `${c ?? 'CAD'} ${n.toFixed(2)}`,
     formatCurrencyAxis: (n: number) => `$${n}`,
   }),
-}));
+  };
+});
 
 // CHF has no rate, so its row's money figures come back `null` and must render
 // the unknown marker rather than a measured zero.

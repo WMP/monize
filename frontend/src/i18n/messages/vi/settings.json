@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Lưu sở thích",
-    "savingButton": "Đang lưu...",
     "toasts": {
       "saved": "Đã lưu sở thích",
       "saveFailed": "Không thể lưu sở thích",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Thông báo",
+    "portfolioAlert": {
+      "title": "Biến động giá trị đầu tư",
+      "description": "Thông báo cho tôi mỗi ngày một lần khi các tài khoản đầu tư của tôi biến động vượt ngưỡng, được đo từ thay đổi thị trường và cổ tức (không tính nạp và rút tiền).",
+      "enableLabel": "Bật cảnh báo biến động đầu tư",
+      "thresholdLabel": "Thông báo khi mức biến động hằng ngày ít nhất là",
+      "save": "Lưu",
+      "saved": "Đã lưu ngưỡng",
+      "saveError": "Không thể lưu ngưỡng",
+      "loadError": "Không thể tải cài đặt cảnh báo đầu tư",
+      "retry": "Thử lại"
+    },
     "smtpNotConfigured": "Thông báo email không có sẵn. SMTP chưa được quản trị viên cấu hình.",
     "emailNotificationsTitle": "Thông báo email",
     "emailNotificationsDescription": "Nhận nhắc nhở email cho các hóa đơn sắp đến và cảnh báo ngân sách",
@@ -239,15 +248,10 @@
       "heading": "Đẩy từ trình duyệt",
       "diagnostics": {
         "summary": "Chẩn đoán thông báo",
-        "intro": "Những gì trình duyệt và thiết bị này báo cáo cho Monize về thông báo. Dùng nút kiểm tra để Monize tạo một thông báo mà bạn có thể tìm trên thiết bị, rồi Sao chép để gửi báo cáo đầy đủ.",
+        "intro": "Những gì trình duyệt và thiết bị này báo cáo cho Monize về thông báo. Hãy làm mới sau khi thay đổi một cài đặt, rồi dùng Sao chép để gửi báo cáo đầy đủ.",
         "refresh": "Làm mới",
         "copy": "Sao chép báo cáo",
-        "copied": "Đã sao chép chẩn đoán vào bảng nhớ tạm",
-        "localTest": "Hiển thị thông báo thử",
-        "localTestRunning": "Đang kiểm tra…",
-        "localTestBody": "Nếu bạn thấy điều này, thông báo đang hoạt động trên thiết bị này.",
-        "localTestCreated": "Monize đã tạo một thông báo mà không có lỗi, nhưng không có gì ở đây xác nhận hệ thống đã hiển thị nó. Nếu bạn không thấy nó trên thiết bị, hệ thống đang ẩn nó; hãy bật thông báo của Monize trong cài đặt thiết bị.",
-        "localTestError": "Không thể chạy kiểm tra trên thiết bị này ({detail})."
+        "copied": "Đã sao chép chẩn đoán vào bảng nhớ tạm"
       },
       "description": "Đăng ký thiết bị này để Monize có thể gửi tới nó ngay cả khi ứng dụng đã đóng. Hiện chỉ có thông báo thử nghiệm được gửi theo đường này; mọi thứ khác vẫn đến ở chuông.",
       "androidNotify": "Trên Android, chỉ cấp quyền là chưa đủ: hệ thống vẫn có thể ẩn thông báo. Nhấn giữ biểu tượng Monize trên màn hình chính, chạm Thông tin ứng dụng, rồi Thông báo, và đảm bảo chúng đang bật.",
@@ -260,7 +264,6 @@
       "thisDevice": "Thiết bị này",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Thiết bị chưa đặt tên",
-      "lastSeen": "Hoạt động lần cuối {when}",
       "noLiveDevices": "Chưa có thiết bị nào được đăng ký. Hãy bật đẩy trên thiết bị này để gửi thử nghiệm.",
       "notConfigured": "Đẩy từ trình duyệt không khả dụng trên phiên bản Monize này. Quản trị viên có thể bật trong khu vực Admin.",
       "disabledByAdmin": "Quản trị viên đã tắt đẩy từ trình duyệt cho phiên bản Monize này.",
@@ -301,25 +304,42 @@
           "transient": "chưa gửi được (lỗi tạm thời); thử lại",
           "unconfigured": "phiên bản này hiện không thể ký tin nhắn push"
         }
+      },
+      "transport": {
+        "webpush": "Web push",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Điểm cuối",
+        "transport": "Gửi qua",
+        "registeredIp": "Đăng ký từ",
+        "registered": "Đã đăng ký",
+        "lastSeen": "Hoạt động gần nhất",
+        "lastDelivery": "Lần gửi gần nhất",
+        "noDelivery": "Chưa gửi gì",
+        "userAgent": "Trình duyệt",
+        "unknownIp": "Không rõ"
       }
     },
     "preferences": {
       "heading": "Cách thông báo cho tôi",
-      "description": "Chuông luôn hiển thị mọi thông báo. Chọn loại nào Monize cũng gửi qua email hoặc push, và tần suất.",
+      "description": "Chọn những loại mà Monize gửi qua email hoặc push, và tần suất gửi.",
       "categoryHeader": "Thông báo",
       "channels": {
-        "inApp": "Trong ứng dụng",
         "emailReport": "Email (báo cáo)",
         "emailNotification": "Email (cảnh báo)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Thông báo được gửi qua ứng dụng phân phối do bạn tự chạy, chẳng hạn ntfy, thay vì dịch vụ push của hãng trình duyệt. Hãy đăng ký một điểm cuối trong ứng dụng đó để dùng kênh này."
       },
       "categories": {
         "PAYMENTS": "Hóa đơn và đã lên lịch",
         "BUDGETS": "Ngân sách",
-        "SYSTEM": "Cảnh báo hệ thống"
+        "SYSTEM": "Cảnh báo hệ thống",
+        "BALANCES": "Số dư tài khoản",
+        "INVESTMENTS": "Giá trị đầu tư",
+        "STRATEGIES": "Tín hiệu chiến lược"
       },
-      "inAppAlways": "Luôn hiển thị trong chuông",
       "channelNotApplicable": "Không áp dụng cho loại thông báo này",
       "emailToggleLabel": "Email báo cáo cho {category}",
       "saveFailed": "Không thể lưu cài đặt đó",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push cho {category}",
       "unifiedpushToggleLabel": "UnifiedPush cho {category}",
       "emailUnavailable": "Bật thông báo qua email ở trên để gửi chúng qua email.",
-      "pushUnavailable": "Trước tiên hãy bật push trên thiết bị này (xem bên dưới).",
-      "unifiedpushUnavailable": "Đăng ký một endpoint UnifiedPush từ ứng dụng phân phối của bạn để sử dụng kênh này."
+      "pushUnavailable": "Chưa có thiết bị nào đăng ký nhận push, nên kênh này không thể gửi được gì.",
+      "pushEnableHint": "Trình duyệt này chưa đăng ký nhận thông báo push."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Sao lưu tự động",
     "help": "Trợ giúp & Hỗ trợ",
     "dangerZone": "Khu vực nguy hiểm",
-    "about": "Giới thiệu"
+    "about": "Giới thiệu",
+    "payeeLookup": "Tra cứu người nhận"
   },
   "page": {
     "title": "Cài đặt",
@@ -885,14 +906,6 @@
         "step3": "Câu trả lời được truyền trở lại trò chuyện. Một chấm trạng thái cho biết tác nhân của bạn đã kết nối hay chưa.",
         "note": "Không có gì chạy cho đến khi tác nhân của bạn được kết nối và lắng nghe. Trò chuyện hiển thị hướng dẫn kết nối."
       }
-    },
-    "payeeLookup": {
-      "title": "Tự động tra cứu thông tin liên hệ của người nhận",
-      "subtitle": "Tự động tra cứu trang web, địa chỉ, email và số điện thoại của người nhận mới thông qua nhà cung cấp AI bạn đã cấu hình. Tên người nhận được gửi đi, cùng với mọi ghi chú, trang web, địa chỉ, email và số điện thoại đã có, để việc tra cứu phân biệt đúng doanh nghiệp và đúng địa điểm.",
-      "toggleLabel": "Bật tự động tra cứu thông tin liên hệ",
-      "enabled": "Đã bật tự động tra cứu thông tin liên hệ",
-      "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
-      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Tất cả thời gian"
     },
     "estCostTooltip": "Ước tính sử dụng tỷ lệ chi phí bạn đã cấu hình trên mỗi nhà cung cấp. Không bao gồm bất kỳ hoạt động nào mà không có tỷ lệ phù hợp được đặt."
+  },
+  "payeeLookup": {
+    "title": "Tra cứu người nhận",
+    "subtitle": "Trang web, địa chỉ, email và số điện thoại của người nhận đến từ đâu, và khi nào việc tra cứu tự chạy.",
+    "saved": "Đã lưu cài đặt tra cứu người nhận",
+    "saveFailed": "Không thể lưu cài đặt tra cứu người nhận",
+    "loadFailed": "Không thể tải cài đặt tra cứu người nhận. Hãy tải lại trang để thử lại.",
+    "googlePlaces": {
+      "toggleLabel": "Dùng Google Places để tra cứu người nhận",
+      "notConfigured": "Thêm khóa API Google Places để tra cứu doanh nghiệp trong danh bạ của Google thay vì qua nhà cung cấp AI của bạn.",
+      "operatorManaged": "Do quản trị viên máy chủ này thiết lập. Bạn có thể tắt cho những người nhận của mình.",
+      "configure": "Thiết lập",
+      "edit": "Sửa",
+      "removeKey": "Xóa khóa",
+      "usage": "Đã dùng tháng này: {used} trên {cap}",
+      "usageNoCap": "Đã dùng tháng này: {used}. Không giới hạn hằng tháng.",
+      "keyUnreadable": "Máy chủ này không đọc được khóa API đã lưu. Điều này xảy ra khi bản sao lưu được khôi phục sang máy chủ khác, hoặc sau khi khóa mã hóa thay đổi. Hãy nhập lại khóa để khắc phục.",
+      "encryptionUnavailable": "Máy chủ này chưa cấu hình khóa mã hóa nên không thể lưu khóa API an toàn. Hãy đề nghị quản trị viên thiết lập một khóa.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize gửi tên người nhận và địa chỉ bạn đã có tới Google, và không lưu gì tại đó.",
+      "apiKeyLabel": "Khóa API",
+      "apiKeyPlaceholder": "Dán khóa API Google Places của bạn",
+      "apiKeyHelp": "Tạo khóa trong Google Cloud console với Places API (New) đã bật. Để trống để giữ khóa đã lưu.",
+      "capToggleLabel": "Giới hạn số yêu cầu mỗi tháng",
+      "capHelp": "Google cung cấp {free} yêu cầu Text Search miễn phí mỗi tháng cho các trường mà tra cứu này cần. Vượt giới hạn, tra cứu sẽ quay lại nhà cung cấp AI của bạn.",
+      "capLabel": "Số yêu cầu mỗi tháng",
+      "capRange": "Hãy nhập một số từ {min} đến {max}.",
+      "test": "Kiểm tra",
+      "testing": "Đang kiểm tra...",
+      "testSuccess": "Google đã chấp nhận khóa.",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "setupInstructions": "Hướng dẫn thiết lập"
+    },
+    "automatic": {
+      "title": "Tự động tra cứu thông tin liên hệ người nhận",
+      "subtitle": "Tự động tra cứu website, địa chỉ, email và số điện thoại của người nhận mới. Tên người nhận được gửi đi, cùng với ghi chú, website, địa chỉ, email và điện thoại đã có, để việc tra cứu phân biệt đúng doanh nghiệp và đúng địa điểm.",
+      "toggleLabel": "Bật tự động tra cứu thông tin liên hệ người nhận",
+      "enabled": "Đã bật tự động tra cứu thông tin liên hệ",
+      "disabled": "Đã tắt tự động tra cứu thông tin liên hệ",
+      "saveFailed": "Không thể cập nhật cài đặt tra cứu thông tin liên hệ",
+      "noSource": "Hãy bật một nguồn ở trên để tra cứu người nhận tự động. Khi cả hai đều tắt, không có gì trả lời được yêu cầu tra cứu."
+    },
+    "order": {
+      "title": "Nguồn nào trả lời trước",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dữ liệu danh bạ, rẻ hơn cho mỗi lần tra cứu. Google không có địa chỉ email.",
+      "aiTitle": "Nhà cung cấp AI hiện có",
+      "aiHelp": "Có thể tìm được địa chỉ email và tốn một lệnh gọi mô hình cho mỗi lần tra cứu.",
+      "aiToggleLabel": "Dùng nhà cung cấp AI để tra cứu người nhận",
+      "aiProviderLabel": "Nhà cung cấp sử dụng",
+      "aiProviderAny": "Bất kỳ nhà cung cấp nào, theo thứ tự ưu tiên",
+      "moveUp": "Di chuyển lên",
+      "moveDown": "Di chuyển xuống"
+    }
   }
 }

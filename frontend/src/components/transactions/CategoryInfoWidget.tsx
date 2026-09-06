@@ -77,7 +77,7 @@ export function CategoryInfoWidget({
   const t = useTranslations('transactions');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
 
@@ -386,7 +386,7 @@ export function CategoryInfoWidget({
           <ul className="space-y-1 text-sm">
             {subcategoryShares.map((row) => {
               const label = row.name ?? t('categoryWidget.thisCategory');
-              const amount = `${formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency)} · ${Math.round(row.share * 100)}%`;
+              const amount = `${formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency)} · ${formatPercentTrimmed(Math.round(row.share * 100))}`;
               const clickable = row.id !== category.id && onSubcategoryClick;
               return (
                 <li key={row.id}>

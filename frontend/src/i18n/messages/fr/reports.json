@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Période",
     "pdfChange": "Variation",
     "pdfAnnualizedReturn": "Rendement annualisé",
-    "tooltipNetWorth": "Valeur nette"
+    "tooltipNetWorth": "Valeur nette",
+    "savingsNoteMore": "En {currentMonth}, vous avez économisé {percent} de plus qu'en {previousMonth}, soit un total de {amount}",
+    "savingsNoteLess": "En {currentMonth}, vous avez économisé {percent} de moins qu'en {previousMonth}, soit un total de {amount}",
+    "incomeNoteMore": "Votre revenu total en {currentMonth} était de {amount}, soit {diff} de plus qu'en {previousMonth}",
+    "incomeNoteLess": "Votre revenu total en {currentMonth} était de {amount}, soit {diff} de moins qu'en {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Total",

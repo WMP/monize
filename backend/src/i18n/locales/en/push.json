@@ -15,6 +15,18 @@
     "system": {
       "title": "System notice",
       "body": "Monize has a system notice for you. Open the app for the details."
+    },
+    "balances": {
+      "title": "Balance alert",
+      "body": "An account balance crossed a threshold you set. Open Monize for the details."
+    },
+    "investments": {
+      "title": "Investment movement",
+      "body": "Your investments moved today. Open Monize for the details."
+    },
+    "strategies": {
+      "title": "Strategy signal",
+      "body": "One of your strategies changed its recommendation. Open Monize for the details."
     }
   },
   "actions": {

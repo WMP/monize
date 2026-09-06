@@ -53,6 +53,26 @@
     "amountDue": "{amount} đến hạn vào {date}",
     "amountUnavailable": "Không có số tiền (không có tỷ giá hiện tại), đến hạn vào {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} đã chuyển sang {state}",
+    "riskMessage": "Chiến lược GEM \"{strategy}\" của bạn đã thay đổi từ {fromState} sang {toState}. Mở để xem lại khuyến nghị.",
+    "allocationTitle": "{strategy} đã thay đổi mục tiêu",
+    "allocationMessage": "Chiến lược GEM \"{strategy}\" của bạn hiện nhắm đến {target}. Mở để xem lại khuyến nghị.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Đầu tư tăng {percent}%",
+    "titleDown": "Đầu tư giảm {percent}%",
+    "messageUp": "Các khoản đầu tư của bạn hôm nay tăng {percent}%, không tính nạp và rút tiền. Mở để xem lại.",
+    "messageDown": "Các khoản đầu tư của bạn hôm nay giảm {percent}%, không tính nạp và rút tiền. Mở để xem lại."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} dưới ngưỡng của bạn",
+    "titleHigh": "{account} trên ngưỡng của bạn",
+    "messageLow": "{account} đã giảm xuống {balance}, dưới ngưỡng {threshold} của bạn.",
+    "messageHigh": "{account} đã tăng lên {balance}, trên ngưỡng {threshold} của bạn."
+  },
   "system": {
     "backupFailed": {
       "title": "Sao lưu tự động thất bại",

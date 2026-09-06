@@ -30,6 +30,16 @@ export interface PushDevice {
   endpointFingerprint: string;
   deviceName: string | null;
   userAgent: string | null;
+  /**
+   * The address this endpoint was registered from, refreshed on each
+   * re-registration. `null` where the server could not determine one and
+   * ABSENT on a response from a backend that predates the field -- both read as
+   * unknown, and neither is a placeholder to render as an address.
+   *
+   * It is not where the device is now: a push goes from the server to the push
+   * service, which reaches the device over a connection the server never sees.
+   */
+  registeredIp?: string | null;
   /** Which wire this device is on; absent means `'webpush'` (an older backend). */
   transport?: PushTransport;
   createdAt: string;

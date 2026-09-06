@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { toolResult, toolError } from "../mcp-context";
 import { executeCalculation } from "../../ai/query/calculate-tool";
 import { calculateOutput } from "../tool-output-schemas";
@@ -18,7 +18,7 @@ export class McpCalculateTools {
         description:
           "Server-side arithmetic on numbers from previous tool results. Use " +
           "it instead of doing the maths yourself.",
-        inputSchema: {
+        inputSchema: z.object({
           operation: z
             .enum(["percentage", "difference", "ratio", "sum", "average"])
             .describe(
@@ -34,7 +34,7 @@ export class McpCalculateTools {
             .max(200)
             .optional()
             .describe("Optional label (e.g., 'savings rate')"),
-        },
+        }),
         outputSchema: calculateOutput,
       },
       async (args) => {

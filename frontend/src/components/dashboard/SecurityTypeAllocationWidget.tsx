@@ -45,7 +45,7 @@ export function SecurityTypeAllocationWidget({
   isLoading,
 }: SecurityTypeAllocationWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const { convertToDefault } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
@@ -159,7 +159,7 @@ export function SecurityTypeAllocationWidget({
                       <ChartTooltipPanel>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{d.label}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {formatCurrency(d.totalValue)} ({d.percentage.toFixed(1)}%)
+                          {formatCurrency(d.totalValue)} ({formatPercent(d.percentage, 1)})
                         </p>
                       </ChartTooltipPanel>
                     );
@@ -174,7 +174,7 @@ export function SecurityTypeAllocationWidget({
                 <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: entry.color }} />
                 <span className="text-gray-500 dark:text-gray-400 truncate">{entry.label}</span>
                 <span className="ml-auto text-gray-900 dark:text-gray-100">
-                  {entry.percentage.toFixed(0)}%
+                  {formatPercent(entry.percentage, 0)}
                 </span>
               </div>
             ))}

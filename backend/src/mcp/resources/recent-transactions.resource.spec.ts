@@ -1,12 +1,12 @@
 import { McpRecentTransactionsResource } from "./recent-transactions.resource";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 describe("McpRecentTransactionsResource", () => {
   let resource: McpRecentTransactionsResource;
   let transactionsService: Record<string, jest.Mock>;
   let analyticsService: Record<string, jest.Mock>;
   let server: { registerResource: jest.Mock };
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   let handler: (...args: any[]) => any;
 
   beforeEach(() => {
@@ -29,8 +29,8 @@ describe("McpRecentTransactionsResource", () => {
       }),
     };
 
-    resolve = jest.fn();
-    resource.register(server as any, resolve);
+    ctx = mcpTestCtx();
+    resource.register(server as any);
   });
 
   it("should register the resource", () => {
@@ -43,23 +43,19 @@ describe("McpRecentTransactionsResource", () => {
   });
 
   it("should return error when no user context", async () => {
-    resolve.mockReturnValue(undefined);
-    const result = await handler("monize://recent-transactions", {
-      sessionId: "s1",
-    });
+    ctx.setUser(undefined);
+    const result = await handler("monize://recent-transactions", ctx);
     expect(result.contents[0].text).toContain("Error");
   });
 
   it("should return error when scope check fails", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-    const result = await handler("monize://recent-transactions", {
-      sessionId: "s1",
-    });
+    ctx.setUser({ userId: "u1", scopes: "write" });
+    const result = await handler("monize://recent-transactions", ctx);
     expect(result.contents[0].text).toContain("Insufficient scope");
   });
 
   it("should return recent transactions with summary", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
     transactionsService.findAll.mockResolvedValue({
       data: [
         {
@@ -77,9 +73,7 @@ describe("McpRecentTransactionsResource", () => {
       totalExpenses: -3000,
     });
 
-    const result = await handler("monize://recent-transactions", {
-      sessionId: "s1",
-    });
+    const result = await handler("monize://recent-transactions", ctx);
     const parsed = JSON.parse(result.contents[0].text);
     expect(parsed.summary.totalIncome).toBe(5000);
     expect(parsed.recentTransactions).toHaveLength(1);
@@ -87,7 +81,7 @@ describe("McpRecentTransactionsResource", () => {
   });
 
   it("expands split transactions into per-split rows", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
     transactionsService.findAll.mockResolvedValue({
       data: [
         {
@@ -115,9 +109,7 @@ describe("McpRecentTransactionsResource", () => {
     });
     analyticsService.getSummary.mockResolvedValue({});
 
-    const result = await handler("monize://recent-transactions", {
-      sessionId: "s1",
-    });
+    const result = await handler("monize://recent-transactions", ctx);
     const parsed = JSON.parse(result.contents[0].text);
     expect(parsed.recentTransactions).toHaveLength(3);
     const groceries = parsed.recentTransactions.find(
@@ -133,7 +125,7 @@ describe("McpRecentTransactionsResource", () => {
   });
 
   it("excludes investment-linked cash transactions from the MCP summary", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
     transactionsService.findAll.mockResolvedValue({
       data: [],
       pagination: { total: 0, hasMore: false },
@@ -143,7 +135,7 @@ describe("McpRecentTransactionsResource", () => {
       totalExpenses: 0,
     });
 
-    await handler("monize://recent-transactions", { sessionId: "s1" });
+    await handler("monize://recent-transactions", ctx);
 
     // 10th positional arg is excludeInvestmentLinked.
     const args = analyticsService.getSummary.mock.calls[0];

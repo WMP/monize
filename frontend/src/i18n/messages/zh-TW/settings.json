@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "儲存偏好設定",
-    "savingButton": "儲存中...",
     "toasts": {
       "saved": "偏好設定已儲存",
       "saveFailed": "儲存偏好設定失敗",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "通知",
+    "portfolioAlert": {
+      "title": "投資價值變動",
+      "description": "當我的投資帳戶變動超過閾值時，每天通知我一次；以市場變化與股利衡量（不含存入與提出）。",
+      "enableLabel": "啟用投資變動提醒",
+      "thresholdLabel": "當每日變動至少達到以下值時通知",
+      "save": "儲存",
+      "saved": "閾值已儲存",
+      "saveError": "無法儲存閾值",
+      "loadError": "無法載入投資提醒設定",
+      "retry": "重試"
+    },
     "smtpNotConfigured": "電子郵件通知不可用。管理員尚未設定 SMTP。",
     "emailNotificationsTitle": "電子郵件通知",
     "emailNotificationsDescription": "接收即將到期帳單和預算警示的電子郵件提醒",
@@ -239,15 +248,10 @@
       "heading": "瀏覽器推播",
       "diagnostics": {
         "summary": "通知診斷",
-        "intro": "此瀏覽器與裝置向 Monize 回報的通知相關資訊。使用測試按鈕讓 Monize 建立一則通知，你可以在裝置上尋找，然後按複製以傳送完整報告。",
+        "intro": "此瀏覽器與裝置向 Monize 回報的通知相關資訊。變更設定後請重新整理，再用「複製報告」傳送完整報告。",
         "refresh": "重新整理",
         "copy": "複製報告",
-        "copied": "已將診斷複製到剪貼簿",
-        "localTest": "顯示測試通知",
-        "localTestRunning": "檢查中…",
-        "localTestBody": "如果你能看到這則訊息，表示此裝置上的通知正常運作。",
-        "localTestCreated": "Monize 已建立通知且沒有錯誤，但這裡無法確認系統是否顯示了它。如果你在裝置上沒有看到，表示系統正在隱藏它；請在裝置設定中開啟 Monize 的通知。",
-        "localTestError": "無法在此裝置上執行測試（{detail}）。"
+        "copied": "已將診斷複製到剪貼簿"
       },
       "description": "註冊此裝置，Monize 就能在應用程式關閉時也送達通知。目前透過這條通道送達的只有測試通知，其餘仍會出現在鈴鐺裡。",
       "androidNotify": "在 Android 上，只授予權限還不夠：系統仍可能隱藏通知。長按主畫面上的 Monize 圖示，點按「應用程式資訊」，然後「通知」，並確認已開啟。",
@@ -260,7 +264,6 @@
       "thisDevice": "此裝置",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "未命名裝置",
-      "lastSeen": "最後活動 {when}",
       "noLiveDevices": "尚未註冊任何裝置。請先在此裝置啟用推播再傳送測試。",
       "notConfigured": "此 Monize 執行個體未提供瀏覽器推播。管理員可在 Admin 區域啟用。",
       "disabledByAdmin": "管理員已為此 Monize 執行個體關閉瀏覽器推播。",
@@ -301,25 +304,42 @@
           "transient": "未送達（暫時性錯誤）；請再試一次",
           "unconfigured": "此執行個體目前無法簽署推播訊息"
         }
+      },
+      "transport": {
+        "webpush": "網頁推播",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "端點",
+        "transport": "投遞方式",
+        "registeredIp": "註冊來源",
+        "registered": "註冊時間",
+        "lastSeen": "最近活動",
+        "lastDelivery": "最近投遞",
+        "noDelivery": "尚未投遞過任何內容",
+        "userAgent": "瀏覽器",
+        "unknownIp": "未知"
       }
     },
     "preferences": {
       "heading": "如何通知我",
-      "description": "鈴鐺一律顯示所有通知。選擇 Monize 還要透過電子郵件或推播傳送哪些類型，以及頻率。",
+      "description": "選擇 Monize 透過電子郵件或推播傳送哪些類型，以及傳送頻率。",
       "categoryHeader": "通知",
       "channels": {
-        "inApp": "應用程式內",
         "emailReport": "郵件（報告）",
         "emailNotification": "電子郵件（提醒）",
         "push": "推播",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "通知會透過你自行執行的分發應用程式（例如 ntfy）投遞，而非瀏覽器廠商的推播服務。請在該應用程式中註冊端點以使用此管道。"
       },
       "categories": {
         "PAYMENTS": "帳單與排程",
         "BUDGETS": "預算",
-        "SYSTEM": "系統警示"
+        "SYSTEM": "系統警示",
+        "BALANCES": "帳戶餘額",
+        "INVESTMENTS": "投資價值",
+        "STRATEGIES": "策略訊號"
       },
-      "inAppAlways": "始終顯示在鈴鐺中",
       "channelNotApplicable": "不適用於此通知類型",
       "emailToggleLabel": "{category} 的報告郵件",
       "saveFailed": "無法儲存該設定",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "{category} 的推播",
       "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
       "emailUnavailable": "在上方開啟電子郵件通知，即可透過電子郵件傳送。",
-      "pushUnavailable": "請先在此裝置上啟用推播（見下方）。",
-      "unifiedpushUnavailable": "從你的分發器應用程式註冊一個 UnifiedPush 端點以使用此頻道。"
+      "pushUnavailable": "沒有裝置註冊推播，因此此管道無法投遞。",
+      "pushEnableHint": "此瀏覽器尚未註冊推播通知。"
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "自動備份",
     "help": "說明與支援",
     "dangerZone": "危險區域",
-    "about": "關於"
+    "about": "關於",
+    "payeeLookup": "收款人查詢"
   },
   "page": {
     "title": "設定",
@@ -885,14 +906,6 @@
         "step3": "回答會串流回聊天。狀態點顯示您的代理程式是否已連線。",
         "note": "在您的代理程式連線並接聽之前，不會執行任何內容。聊天會顯示連線指示。"
       }
-    },
-    "payeeLookup": {
-      "title": "自動查詢收款人聯絡資訊",
-      "subtitle": "透過您設定的 AI 供應商自動查詢新收款人的網站、地址、電子郵件和電話號碼。 收款人的名稱會連同已儲存的備註、網站、地址、電子郵件和電話一起傳送，以便查詢能區分正確的商家和正確的地點。",
-      "toggleLabel": "啟用自動查詢收款人聯絡資訊",
-      "enabled": "已啟用自動查詢收款人聯絡資訊",
-      "disabled": "已停用自動查詢收款人聯絡資訊",
-      "saveFailed": "無法更新收款人聯絡資訊查詢設定"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "所有時間"
     },
     "estCostTooltip": "使用您在每個提供者上設定的費率進行估算。不含未設定匹配費率的活動。"
+  },
+  "payeeLookup": {
+    "title": "收款人查詢",
+    "subtitle": "收款人的網站、地址、電子郵件和電話號碼來自何處，以及查詢何時自動執行。",
+    "saved": "已儲存收款人查詢設定",
+    "saveFailed": "無法儲存收款人查詢設定",
+    "loadFailed": "無法載入收款人查詢設定。請重新整理頁面再試一次。",
+    "googlePlaces": {
+      "toggleLabel": "使用 Google Places 查詢收款人",
+      "notConfigured": "新增 Google Places API 金鑰，即可在 Google 的商家目錄中查詢，而非透過你的 AI 供應商。",
+      "operatorManaged": "由本伺服器的管理員設定。你可以為自己的收款人關閉它。",
+      "configure": "設定",
+      "edit": "編輯",
+      "removeKey": "移除金鑰",
+      "usage": "本月已用：{used}/{cap}",
+      "usageNoCap": "本月已用：{used}。無每月上限。",
+      "keyUnreadable": "本伺服器無法讀取已儲存的 API 金鑰。將備份還原到其他執行個體，或加密金鑰變更後會發生這種情況。請重新輸入金鑰以修正。",
+      "encryptionUnavailable": "本伺服器未設定加密金鑰，因此無法安全儲存 API 金鑰。請請管理員設定一組。",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize 會將收款人名稱與你已有的地址傳送給 Google，且不會在 Google 儲存任何內容。",
+      "apiKeyLabel": "API 金鑰",
+      "apiKeyPlaceholder": "貼上你的 Google Places API 金鑰",
+      "apiKeyHelp": "在 Google Cloud 主控台建立金鑰並啟用 Places API (New)。留空則保留已儲存的金鑰。",
+      "capToggleLabel": "限制每月要求數",
+      "capHelp": "針對此查詢所需的欄位，Google 每月提供 {free} 次免費 Text Search 要求。超過上限後，查詢會回退到你的 AI 供應商。",
+      "capLabel": "每月要求數",
+      "capRange": "請輸入 {min} 到 {max} 之間的數字。",
+      "test": "測試",
+      "testing": "測試中...",
+      "testSuccess": "Google 已接受該金鑰。",
+      "save": "儲存",
+      "cancel": "取消",
+      "setupInstructions": "設定說明"
+    },
+    "automatic": {
+      "title": "自動查詢收款人聯絡資訊",
+      "subtitle": "自動查詢新收款人的網站、地址、電子郵件與電話號碼。系統會傳送收款人名稱，以及其已有的備註、網站、地址、電子郵件與電話，讓查詢能分辨正確的商家與分店。",
+      "toggleLabel": "啟用自動查詢收款人聯絡資訊",
+      "enabled": "已啟用自動查詢收款人聯絡資訊",
+      "disabled": "已停用自動查詢收款人聯絡資訊",
+      "saveFailed": "無法更新收款人聯絡資訊查詢設定",
+      "noSource": "請在上方開啟一個來源以自動查詢收款人。兩者都關閉時，沒有任何來源可以回答查詢。"
+    },
+    "order": {
+      "title": "先查詢哪個來源",
+      "placesTitle": "Google Places",
+      "placesHelp": "目錄事實，每次查詢更便宜。Google 不提供電子郵件地址。",
+      "aiTitle": "現有 AI 供應商",
+      "aiHelp": "可以找到電子郵件地址，但每次查詢都會產生一次模型呼叫費用。",
+      "aiToggleLabel": "使用 AI 供應商進行收款人查詢",
+      "aiProviderLabel": "要使用的供應商",
+      "aiProviderAny": "任何供應商，依優先順序",
+      "moveUp": "上移",
+      "moveDown": "下移"
+    }
   }
 }

@@ -218,7 +218,7 @@
     "hideHelp": "非表示",
     "helpIntro": "独自の MCP エージェントを実行すると、あなたのサブスクリプションを使ってこのチャットのプロンプトに応答します。",
     "step1": "アクセストークンを作成する",
-    "tokenStep": "まず、<link>ユーザー設定 -> API アクセス</link> で Personal Access Token を作成し、下で使用してください。",
+    "tokenStep": "まず、<link>ユーザー設定 -> API アクセス</link> で Personal Access Token を作成し、下で使用してください。 このエージェント専用のトークンを作成してください。他の MCP クライアントと共有したトークンは、そのクライアントの確認もここに送ります。",
     "claudeHeading": "Claude CLI で接続する",
     "step2": "Claude CLI を使ってエージェントを Monize に接続します:",
     "allowToolsNote": "Claude を終了し、このスイッチを付けて再起動すると、すべての Monize ツール呼び出しが自動承認されます:",

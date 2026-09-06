@@ -365,6 +365,8 @@
     "nameConflict": "「{{ name }}」という名前の支払先はすでに存在します",
     "nameRequired": "支払先名は必須です",
     "invalidEmail": "\"{{ email }}\" は有効なメールアドレスではありません",
+    "invalidPhone": "\"{{ phone }}\" は有効な電話番号ではありません",
+    "phoneNeedsCountryCode": "\"{{ phone }}\" に国番号を含めてください (例: +1 206 448 8762)",
     "notFound": "ID {{ id }} の支払先が見つかりません",
     "logoNotFound": "この支払先のロゴはありません",
     "categoryIdsNotOwned": "カテゴリIDが見つからないか、ユーザーが所有していません：{{ ids }}",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "現在、別の処理がこのアカウントのデータを置き換えています。完了するまで待ってから、もう一度お試しください。"
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places はこのサーバーの管理者が設定しています。ここで変更できるのはオン/オフの設定のみです。",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY が設定されていません。Google Places の API キーを安全に保存できません。",
+    "notConfigured": "Google Places の API キーが設定されていません。",
+    "capReached": "今月の Google Places リクエスト上限に達しました。",
+    "testFailed": "Google Places の接続テストに失敗しました。",
+    "referrerRestricted": "このキーは HTTP リファラーで制限されていますが、このデプロイには PUBLIC_APP_URL が設定されていないためリファラーが送信されず、どの許可リストにも一致しません。PUBLIC_APP_URL を設定するか、サーバー側のキーを実際に保護する IP アドレスによる制限を使用してください。",
+    "referrerRejected": "Google がこのキーの HTTP リファラー制限を拒否しました。Monize は「{referer}」を送信します（PUBLIC_APP_URL より）。その値をそのままキーの許可リファラーに追加してください。*.example.com/* のようなパターンは素の example.com には一致しない点に注意してください。サーバー側のキーを実際に保護するのは、IP アドレスによる制限です。"
   }
 }

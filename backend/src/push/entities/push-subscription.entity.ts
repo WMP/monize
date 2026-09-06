@@ -89,6 +89,20 @@ export class PushSubscription {
   userAgent: string | null;
 
   /**
+   * The address this subscription was registered from, refreshed on each
+   * re-registration (the same moment `lastSeenAt` moves).
+   *
+   * It is REGISTERED, not current, and the name is the claim: a push travels
+   * from this server to the push SERVICE, which reaches the device over a
+   * connection this deployment never sees, so where a device is reachable today
+   * is not knowable here. Null for every row written before the column, and for
+   * a request whose address this server could not determine -- unknown, rather
+   * than an address nobody was at.
+   */
+  @Column({ name: "registered_ip", type: "inet", nullable: true })
+  registeredIp: string | null;
+
+  /**
    * The instance identity this subscription was minted under. A rotation makes
    * every older subscription undeliverable, so this column is what lets the
    * sender skip a stale row even if the rotation that should have disabled it

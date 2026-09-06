@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { AiRelayService } from "../../ai/relay/ai-relay.service";
 import {
-  UserContextResolver,
+  callerKey,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
@@ -34,7 +35,7 @@ import { uuidString } from "./schema-fragments";
 export class McpRelayTools {
   constructor(private readonly relayService: AiRelayService) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "get_next_prompt",
       {
@@ -50,27 +51,27 @@ export class McpRelayTools {
           "or PDF; text files are already inlined into the prompt) and " +
           "`guidance` -- follow it, and always finish the claimed prompt with " +
           "post_response.",
-        inputSchema: {},
+        inputSchema: z.object({}),
         outputSchema: getNextPromptOutput,
       },
-      async (_args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (_args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
-          // The claim is bound to THIS session: it is what makes a later write
+          // The claim is bound to THIS caller: it is what makes a later write
           // from this agent part of the relay turn, and a write from any other
-          // session of the same user a direct client's.
+          // caller of the same user a direct client's.
           const claimed = await this.relayService.waitForPrompt(
-            ctx.userId,
-            extra.sessionId,
+            user.userId,
+            callerKey(ctx),
           );
           if (!claimed) {
             // No prompt this window. If the user has gone quiet long enough,
             // tell the agent to stop looping instead of polling forever.
-            if (this.relayService.shouldStopForIdle(ctx.userId)) {
+            if (this.relayService.shouldStopForIdle(user.userId)) {
               return toolResult({ hasPrompt: false, stop: true });
             }
             return toolResult({ hasPrompt: false });
@@ -103,21 +104,21 @@ export class McpRelayTools {
           "post it, however long the task ran: a buffered answer is shown when " +
           "the chat reconnects, so it is never wasted. delivered:false means " +
           "the promptId is unknown or already answered -- only then move on.",
-        inputSchema: {
+        inputSchema: z.object({
           promptId: uuidString().describe("The promptId from get_next_prompt."),
           text: z.string().max(50000).describe("The answer to show the user."),
-        },
+        }),
         outputSchema: postResponseOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           const delivered = this.relayService.postResponse(
-            ctx.userId,
+            user.userId,
             args.promptId,
             args.text,
           );
@@ -141,26 +142,26 @@ export class McpRelayTools {
           "answer the prompt: finish with post_response. delivered:false means " +
           "only that live narration is not attached right now -- keep working; " +
           "cards and your final answer are still buffered and shown.",
-        inputSchema: {
+        inputSchema: z.object({
           promptId: uuidString().describe("The promptId from get_next_prompt."),
           text: z.string().max(2000).describe("One short status sentence."),
-        },
+        }),
         outputSchema: reportProgressOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           const delivered = this.relayService.reportProgress(
-            ctx.userId,
+            user.userId,
             args.promptId,
             args.text,
             // Re-binds the turn when an agent reconnects mid-prompt with a
-            // fresh session id; knowing the promptId is what proves ownership.
-            extra.sessionId,
+            // fresh caller key; knowing the promptId is what proves ownership.
+            callerKey(ctx),
           );
           return toolResult({ delivered });
         } catch (err: unknown) {

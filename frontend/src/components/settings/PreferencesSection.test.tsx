@@ -95,7 +95,9 @@ describe('PreferencesSection', () => {
     expect(screen.getByText('Date Format')).toBeInTheDocument();
     expect(screen.getByText('Number Format')).toBeInTheDocument();
     expect(screen.getByText('Timezone')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save Preferences' })).toBeInTheDocument();
+    // Every control here persists on change, so there is no Save button and
+    // no half-saved state between a change and a click.
+    expect(screen.queryByRole('button', { name: 'Save Preferences' })).toBeNull();
   });
 
   it('shows a help tooltip explaining the Show Create Date toggle', async () => {
@@ -117,12 +119,14 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('calls updatePreferences and shows success toast on save', async () => {
+  it('saves a change as it is made, and says so', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
+    });
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalled();
@@ -130,16 +134,26 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('shows error toast when save fails', async () => {
+  /**
+   * An optimistic write has to be able to undo itself: the control moved before
+   * the server agreed, so a refusal that left it showing the new value would
+   * report a preference the account does not hold.
+   */
+  it('puts the control back and says so when the save fails', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('fail'));
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
+    const weekStart = screen.getByLabelText('Week starts on') as HTMLSelectElement;
+    await act(async () => {
+      fireEvent.change(weekStart, { target: { value: '0' } });
+    });
+    await act(async () => {}); // drain the rejection handler
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to save preferences');
     });
+    await waitFor(() => expect(weekStart.value).toBe('1'));
   });
 
   it('sends updated recent-transactions limit when changed and saved', async () => {
@@ -150,7 +164,6 @@ describe('PreferencesSection', () => {
     fireEvent.change(screen.getByLabelText('Recent transactions in quick-fill'), {
       target: { value: '10' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -177,7 +190,6 @@ describe('PreferencesSection', () => {
       render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
       fireEvent.click(screen.getByRole('switch', { name: 'Lock reconciled transactions' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
       await waitFor(() => {
         expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -199,7 +211,6 @@ describe('PreferencesSection', () => {
     fireEvent.change(screen.getByLabelText('Map provider for addresses'), {
       target: { value: 'google' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -208,9 +219,14 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('resends the stored map provider when an unrelated preference is saved', async () => {
-    // This section bulk-PATCHes every field it owns, so one left out of the
-    // payload is silently reset the next time anything else is saved.
+  /**
+   * These two replace a pair that pinned properties of the bulk payload: that
+   * it resent every field it owned, and that a field left out of it would be
+   * reset on the next unrelated save. A per-field PATCH cannot have that
+   * defect -- it carries the one field that changed -- so what is worth pinning
+   * is the property that replaced it.
+   */
+  it('sends the changed field and nothing else', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(
@@ -220,31 +236,39 @@ describe('PreferencesSection', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
-
-    await waitFor(() => {
-      expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ defaultMapProvider: 'waze' }),
-      );
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
     });
+
+    await waitFor(() => expect(userSettingsApi.updatePreferences).toHaveBeenCalled());
+    expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith({ weekStartsOn: 0 });
   });
 
-  it('sends the stored value untouched when nothing is changed', async () => {
-      // The bulk save resends every field it owns, so a preference it forgot
-      // to include would be silently reset on the next unrelated save.
+  it('writes nothing while the reader only looks', async () => {
       (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
       const locked = { ...mockPreferences, lockReconciledTransactions: true };
 
       render(<PreferencesSection preferences={locked} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-      fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
-
-      await waitFor(() => {
-        expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
-          expect.objectContaining({ lockReconciledTransactions: true }),
-        );
-      });
+      await waitFor(() =>
+        expect(screen.getByText('Lock reconciled transactions')).toBeInTheDocument(),
+      );
+      expect(userSettingsApi.updatePreferences).not.toHaveBeenCalled();
     });
+
+  // A control re-emitting the value it already holds is not an edit, and a
+  // request per non-edit is a toast per non-edit too.
+  it('writes nothing when a control re-emits the value it already holds', async () => {
+    (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
+
+    render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '1' } });
+    });
+
+    expect(userSettingsApi.updatePreferences).not.toHaveBeenCalled();
+  });
   });
 
   /**
@@ -267,7 +291,11 @@ describe('PreferencesSection', () => {
 
     expect(screen.queryByLabelText('Portfolio change measured from')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
+    // Nothing sends it either -- driven from a change now that there is no
+    // bulk save to inspect.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
+    });
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalled();
     });
@@ -282,7 +310,6 @@ describe('PreferencesSection', () => {
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
     fireEvent.change(screen.getByLabelText('Date Format'), { target: { value: 'MM/DD/YYYY' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -297,7 +324,6 @@ describe('PreferencesSection', () => {
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
     fireEvent.change(screen.getByLabelText('Number Format'), { target: { value: 'de-DE' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -322,7 +348,6 @@ describe('PreferencesSection', () => {
     });
     fireEvent.click(screen.getByText('America/New York'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -395,7 +420,6 @@ describe('PreferencesSection', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Default Currency'), { target: { value: 'USD' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
@@ -418,16 +442,18 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('does not include theme in the bulk Save Preferences payload', async () => {
+  // The selector owns the write, so the section must not send it a second time
+  // alongside a field of its own.
+  it('never sends theme alongside another field', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
-
-    await waitFor(() => {
-      expect(userSettingsApi.updatePreferences).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
     });
+
+    await waitFor(() => expect(userSettingsApi.updatePreferences).toHaveBeenCalled());
     expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
       expect.not.objectContaining({ theme: expect.anything() }),
     );
@@ -447,16 +473,16 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('does not include colorTheme in the bulk Save Preferences payload', async () => {
+  it('never sends colorTheme alongside another field', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
-
-    await waitFor(() => {
-      expect(userSettingsApi.updatePreferences).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
     });
+
+    await waitFor(() => expect(userSettingsApi.updatePreferences).toHaveBeenCalled());
     expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
       expect.not.objectContaining({ colorTheme: expect.anything() }),
     );
@@ -477,34 +503,11 @@ describe('PreferencesSection', () => {
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
     fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
         expect.objectContaining({ weekStartsOn: 0 })
       );
-    });
-  });
-
-  it('shows Saving... text while preferences are being saved', async () => {
-    let resolvePromise: (value: unknown) => void;
-    const pendingPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-    (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockReturnValue(pendingPromise);
-
-    render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Saving...' })).toBeInTheDocument();
-    });
-
-    resolvePromise!(mockPreferences);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save Preferences' })).toBeInTheDocument();
     });
   });
 
@@ -514,7 +517,9 @@ describe('PreferencesSection', () => {
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
+    });
 
     await waitFor(() => {
       expect(mockOnPreferencesUpdated).toHaveBeenCalledWith(updatedPrefs);
@@ -545,16 +550,24 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('sends preferredExchanges when saving', async () => {
+  it('saves a preferred exchange as it is picked', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
+    const first = screen.getAllByPlaceholderText(/Priority/)[0];
+    await act(async () => {
+      fireEvent.focus(first);
+      fireEvent.change(first, { target: { value: 'London' } });
+    });
+    const option = await screen.findByText(/London Stock Exchange/i);
+    await act(async () => {
+      fireEvent.click(option);
+    });
 
     await waitFor(() => {
       expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ preferredExchanges: [] })
+        expect.objectContaining({ preferredExchanges: expect.arrayContaining(['LSE']) }),
       );
     });
   });

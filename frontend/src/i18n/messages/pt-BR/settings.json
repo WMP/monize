@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Salvar Preferências",
-    "savingButton": "Salvando...",
     "toasts": {
       "saved": "Preferências salvas",
       "saveFailed": "Falha ao salvar as preferências",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Notificações",
+    "portfolioAlert": {
+      "title": "Variação do valor dos investimentos",
+      "description": "Avisar-me uma vez por dia quando minhas contas de investimento variarem além de um limite, medido pelas variações de mercado e dividendos (depósitos e saques são excluídos).",
+      "enableLabel": "Ativar alertas de variação dos investimentos",
+      "thresholdLabel": "Avisar quando a variação diária for de pelo menos",
+      "save": "Salvar",
+      "saved": "Limite salvo",
+      "saveError": "Não foi possível salvar o limite",
+      "loadError": "Não foi possível carregar a configuração de alertas de investimento",
+      "retry": "Tentar novamente"
+    },
     "smtpNotConfigured": "As notificações por e-mail não estão disponíveis. O SMTP não foi configurado pelo administrador.",
     "emailNotificationsTitle": "Notificações por E-mail",
     "emailNotificationsDescription": "Receba lembretes por e-mail para faturas próximas e alertas de orçamento",
@@ -239,15 +248,10 @@
       "heading": "Push do navegador",
       "diagnostics": {
         "summary": "Diagnóstico de notificações",
-        "intro": "O que este navegador e dispositivo informam ao Monize sobre notificações. Use o botão de teste para o Monize criar uma notificação que você pode procurar no dispositivo e depois Copiar para enviar o relatório completo.",
+        "intro": "O que este navegador e este dispositivo informam ao Monize sobre notificações. Atualize depois de mudar uma configuração e use Copiar para enviar o relatório completo.",
         "refresh": "Atualizar",
         "copy": "Copiar relatório",
-        "copied": "Diagnóstico copiado para a área de transferência",
-        "localTest": "Mostrar uma notificação de teste",
-        "localTestRunning": "Verificando…",
-        "localTestBody": "Se você consegue ver isto, as notificações funcionam neste dispositivo.",
-        "localTestCreated": "O Monize criou uma notificação sem erro, mas nada aqui pode confirmar que o sistema a exibiu. Se você não a viu no dispositivo, o sistema está ocultando-a; ative as notificações do Monize nas configurações do dispositivo.",
-        "localTestError": "Não foi possível executar o teste neste dispositivo ({detail})."
+        "copied": "Diagnóstico copiado para a área de transferência"
       },
       "description": "Registre este dispositivo para que o Monize possa alcançá-lo mesmo com o app fechado. Por enquanto só a notificação de teste é entregue por esse caminho; todo o resto continua chegando no sininho.",
       "androidNotify": "No Android, uma permissão concedida não basta: o sistema ainda pode ocultar as notificações. Mantenha pressionado o ícone do Monize na tela inicial, toque em Informações do app, depois em Notificações, e confirme que estão ativadas.",
@@ -260,7 +264,6 @@
       "thisDevice": "Este dispositivo",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Dispositivo sem nome",
-      "lastSeen": "Última atividade {when}",
       "noLiveDevices": "Nenhum dispositivo registrado ainda. Ative o push neste dispositivo para enviar um teste.",
       "notConfigured": "O push do navegador não está disponível nesta instância do Monize. Um administrador pode ativá-lo na área Admin.",
       "disabledByAdmin": "Um administrador desativou o push do navegador nesta instância do Monize.",
@@ -301,25 +304,42 @@
           "transient": "não entregue (erro temporário); tente novamente",
           "unconfigured": "esta instância não consegue assinar mensagens push no momento"
         }
+      },
+      "transport": {
+        "webpush": "Push web",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Endpoint",
+        "transport": "Entregue por",
+        "registeredIp": "Registrado a partir de",
+        "registered": "Registrado",
+        "lastSeen": "Última atividade",
+        "lastDelivery": "Última entrega",
+        "noDelivery": "Nada entregue ainda",
+        "userAgent": "Navegador",
+        "unknownIp": "Desconhecido"
       }
     },
     "preferences": {
       "heading": "Como me notificar",
-      "description": "O sino sempre mostra todas as notificações. Escolha quais tipos o Monize também envia por e-mail ou push, e com que frequência.",
+      "description": "Escolha quais tipos o Monize envia por e-mail ou push, e com que frequência.",
       "categoryHeader": "Notificação",
       "channels": {
-        "inApp": "No app",
         "emailReport": "Email (relatório)",
         "emailNotification": "E-mail (alerta)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "As notificações são entregues por um aplicativo distribuidor que você mesmo executa, como o ntfy, em vez do serviço push do fabricante do navegador. Registre um endpoint nesse aplicativo para usar este canal."
       },
       "categories": {
         "PAYMENTS": "Contas e agendados",
         "BUDGETS": "Orçamentos",
-        "SYSTEM": "Alertas do sistema"
+        "SYSTEM": "Alertas do sistema",
+        "BALANCES": "Saldos das contas",
+        "INVESTMENTS": "Valor dos investimentos",
+        "STRATEGIES": "Sinais de estratégia"
       },
-      "inAppAlways": "Sempre visível no sino",
       "channelNotApplicable": "Não aplicável a este tipo de notificação",
       "emailToggleLabel": "Email (relatório) para {category}",
       "saveFailed": "Não foi possível salvar essa configuração",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push para {category}",
       "unifiedpushToggleLabel": "UnifiedPush para {category}",
       "emailUnavailable": "Ative acima as notificações por e-mail para enviá-las por e-mail.",
-      "pushUnavailable": "Primeiro ative o push neste dispositivo (veja abaixo).",
-      "unifiedpushUnavailable": "Registre um endpoint UnifiedPush no seu aplicativo distribuidor para usar este canal."
+      "pushUnavailable": "Nenhum dispositivo está registrado para push, então este canal não consegue entregar nada.",
+      "pushEnableHint": "Este navegador não está registrado para notificações push."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Backup Automático",
     "help": "Ajuda e Suporte",
     "dangerZone": "Zona de Perigo",
-    "about": "Sobre"
+    "about": "Sobre",
+    "payeeLookup": "Busca de favorecidos"
   },
   "page": {
     "title": "Configurações",
@@ -885,14 +906,6 @@
         "step3": "As respostas são transmitidas de volta ao chat. Um ponto de status mostra se seu agente está conectado.",
         "note": "Nada é executado até seu agente estar conectado e ouvindo. O chat mostra as instruções de conexão."
       }
-    },
-    "payeeLookup": {
-      "title": "Busca automática de dados de contato do beneficiário",
-      "subtitle": "Busca automaticamente o site, o endereço, o e-mail e o número de telefone de um novo beneficiário por meio do seu provedor de IA configurado. É enviado o nome do beneficiário, junto com quaisquer anotações, site, endereço, e-mail e telefone que ele já tenha, para que a busca distinga a empresa e o local corretos.",
-      "toggleLabel": "Ativar a busca automática de dados de contato",
-      "enabled": "Busca automática de dados de contato ativada",
-      "disabled": "Busca automática de dados de contato desativada",
-      "saveFailed": "Não foi possível atualizar a configuração de busca de dados de contato"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Todo o período"
     },
     "estCostTooltip": "Estimado utilizando as taxas de custo que você configurou em cada provedor. Exclui qualquer atividade sem taxa correspondente definida."
+  },
+  "payeeLookup": {
+    "title": "Busca de favorecidos",
+    "subtitle": "De onde vêm o site, o endereço, o e-mail e o telefone de um favorecido, e quando uma busca é executada sozinha.",
+    "saved": "Configurações de busca de favorecidos salvas",
+    "saveFailed": "Não foi possível salvar as configurações de busca de favorecidos",
+    "loadFailed": "Não foi possível carregar as configurações de busca de favorecidos. Recarregue a página para tentar de novo.",
+    "googlePlaces": {
+      "toggleLabel": "Usar o Google Places na busca de favorecidos",
+      "notConfigured": "Adicione uma chave de API do Google Places para buscar empresas no diretório do Google em vez de usar seu provedor de IA.",
+      "operatorManaged": "Configurado pelo administrador deste servidor. Você pode desativá-lo para seus próprios favorecidos.",
+      "configure": "Configurar",
+      "edit": "Editar",
+      "removeKey": "Remover chave",
+      "usage": "Usado este mês: {used} de {cap}",
+      "usageNoCap": "Usado este mês: {used}. Sem limite mensal.",
+      "keyUnreadable": "Este servidor não consegue ler a chave de API salva. Isso acontece quando um backup é restaurado em outra instância ou após a chave de criptografia mudar. Digite a chave novamente para corrigir.",
+      "encryptionUnavailable": "Este servidor não tem chave de criptografia configurada, então uma chave de API não pode ser guardada com segurança. Peça ao administrador para configurar uma.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "O Monize envia ao Google o nome do favorecido e o endereço que você já tem, e não guarda nada lá.",
+      "apiKeyLabel": "Chave de API",
+      "apiKeyPlaceholder": "Cole sua chave de API do Google Places",
+      "apiKeyHelp": "Crie uma chave no console do Google Cloud com a Places API (New) ativada. Deixe em branco para manter a chave já salva.",
+      "capToggleLabel": "Limitar solicitações por mês",
+      "capHelp": "O Google oferece {free} solicitações Text Search gratuitas por mês para os campos de que esta busca precisa. Acima do limite, a busca recorre ao seu provedor de IA.",
+      "capLabel": "Solicitações por mês",
+      "capRange": "Digite um número entre {min} e {max}.",
+      "test": "Testar",
+      "testing": "Testando...",
+      "testSuccess": "O Google aceitou a chave.",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "setupInstructions": "Instruções de configuração"
+    },
+    "automatic": {
+      "title": "Busca automática de contatos de favorecidos",
+      "subtitle": "Buscar automaticamente o site, o endereço, o e-mail e o telefone de um novo favorecido. O nome do favorecido é enviado, junto com as observações, o site, o endereço, o e-mail e o telefone que ele já tiver, para que a busca distinga a empresa e o local certos.",
+      "toggleLabel": "Ativar a busca automática de contatos de favorecidos",
+      "enabled": "Busca automática de contatos ativada",
+      "disabled": "Busca automática de contatos desativada",
+      "saveFailed": "Não foi possível atualizar a configuração de busca de contatos",
+      "noSource": "Ative uma fonte acima para buscar favorecidos automaticamente. Com ambas desativadas, nada pode responder a uma busca."
+    },
+    "order": {
+      "title": "Qual fonte responde primeiro",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dados de diretório, mais baratos por busca. O Google não tem endereços de e-mail.",
+      "aiTitle": "Provedor de IA existente",
+      "aiHelp": "Consegue encontrar um endereço de e-mail e custa uma chamada ao modelo em cada busca.",
+      "aiToggleLabel": "Usar um provedor de IA para as buscas de favorecidos",
+      "aiProviderLabel": "Provedor a usar",
+      "aiProviderAny": "Qualquer provedor, por ordem de prioridade",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo"
+    }
   }
 }

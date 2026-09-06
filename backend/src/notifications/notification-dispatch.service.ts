@@ -48,6 +48,18 @@ export const PUSH_CATEGORY_COPY: Readonly<
     title: "System notice",
     body: "Monize has a system notice for you. Open the app for the details.",
   },
+  [NotificationCategory.BALANCES]: {
+    title: "Balance alert",
+    body: "An account balance crossed a threshold you set. Open Monize for the details.",
+  },
+  [NotificationCategory.INVESTMENTS]: {
+    title: "Investment movement",
+    body: "Your investments moved today. Open Monize for the details.",
+  },
+  [NotificationCategory.STRATEGIES]: {
+    title: "Strategy signal",
+    body: "One of your strategies changed its recommendation. Open Monize for the details.",
+  },
 };
 
 export interface NotifyOptions {

@@ -155,8 +155,6 @@
       "openstreetmap": "[XX-OpenStreetMap-XX]",
       "waze": "[XX-Waze-XX]"
     },
-    "saveButton": "[XX-Save Preferences-XX]",
-    "savingButton": "[XX-Saving...-XX]",
     "toasts": {
       "saved": "[XX-Preferences saved-XX]",
       "saveFailed": "[XX-Failed to save preferences-XX]",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "[XX-Notifications-XX]",
+    "portfolioAlert": {
+      "title": "[XX-Investment value movement-XX]",
+      "description": "[XX-Notify me once a day when my investment accounts move beyond a threshold, measured from market changes and dividends (deposits and withdrawals are excluded).-XX]",
+      "enableLabel": "[XX-Enable investment movement alerts-XX]",
+      "thresholdLabel": "[XX-Notify when the daily move is at least-XX]",
+      "save": "[XX-Save-XX]",
+      "saved": "[XX-Threshold saved-XX]",
+      "saveError": "[XX-Could not save the threshold-XX]",
+      "loadError": "[XX-Could not load the investment alert setting-XX]",
+      "retry": "[XX-Retry-XX]"
+    },
     "smtpNotConfigured": "[XX-Email notifications are not available. SMTP has not been configured by the administrator.-XX]",
     "emailNotificationsTitle": "[XX-Email Notifications-XX]",
     "emailNotificationsDescription": "[XX-Receive email reminders for upcoming bills and budget alerts-XX]",
@@ -239,15 +248,10 @@
       "heading": "[XX-Browser push-XX]",
       "diagnostics": {
         "summary": "[XX-Notification diagnostics-XX]",
-        "intro": "[XX-What this browser and device report to Monize about notifications. Use the test button to have Monize create a notification you can look for on your device, then Copy to send the full report.-XX]",
+        "intro": "[XX-What this browser and device report to Monize about notifications. Refresh after changing a setting, then Copy to send the full report.-XX]",
         "refresh": "[XX-Refresh-XX]",
         "copy": "[XX-Copy report-XX]",
-        "copied": "[XX-Diagnostics copied to clipboard-XX]",
-        "localTest": "[XX-Show a test notification-XX]",
-        "localTestRunning": "[XX-Checking…-XX]",
-        "localTestBody": "[XX-If you can see this, notifications are working on this device.-XX]",
-        "localTestCreated": "[XX-Monize created a notification without an error, but nothing here can confirm the system actually showed it. If you did not see it on your device, the system is hiding it; enable notifications for Monize in your device settings.-XX]",
-        "localTestError": "[XX-Could not run the test on this device ({detail}).-XX]"
+        "copied": "[XX-Diagnostics copied to clipboard-XX]"
       },
       "description": "[XX-Register this device so Monize can reach it even when the app is closed. Only the test notification is delivered this way so far; everything else still arrives in the bell.-XX]",
       "androidNotify": "[XX-On Android, a granted permission is not enough: the system can still hide notifications. Press and hold the Monize icon on your home screen, tap App info, then Notifications, and make sure they are turned on.-XX]",
@@ -260,7 +264,6 @@
       "thisDevice": "[XX-This device-XX]",
       "unifiedpushBadge": "[XX-UnifiedPush-XX]",
       "unnamedDevice": "[XX-Unnamed device-XX]",
-      "lastSeen": "[XX-Last active {when}-XX]",
       "noLiveDevices": "[XX-No device is registered yet. Enable push on this device to send a test.-XX]",
       "notConfigured": "[XX-Browser push is not available on this Monize instance. An administrator can enable it in the Admin area.-XX]",
       "disabledByAdmin": "[XX-An administrator has switched browser push off for this Monize instance.-XX]",
@@ -301,25 +304,42 @@
           "transient": "[XX-not delivered (temporary error); try again-XX]",
           "unconfigured": "[XX-this instance cannot sign push messages right now-XX]"
         }
+      },
+      "transport": {
+        "webpush": "[XX-Web push-XX]",
+        "unifiedpush": "[XX-UnifiedPush-XX]"
+      },
+      "facts": {
+        "endpoint": "[XX-Endpoint-XX]",
+        "transport": "[XX-Delivered by-XX]",
+        "registeredIp": "[XX-Registered from-XX]",
+        "registered": "[XX-Registered-XX]",
+        "lastSeen": "[XX-Last active-XX]",
+        "lastDelivery": "[XX-Last delivery-XX]",
+        "noDelivery": "[XX-Nothing delivered yet-XX]",
+        "userAgent": "[XX-Browser-XX]",
+        "unknownIp": "[XX-Unknown-XX]"
       }
     },
     "preferences": {
       "heading": "[XX-How to notify me-XX]",
-      "description": "[XX-The bell always shows every notification. Choose which kinds Monize also sends by email or push, and how often.-XX]",
+      "description": "[XX-Choose which kinds Monize sends by email or push, and how often.-XX]",
       "categoryHeader": "[XX-Notification-XX]",
       "channels": {
-        "inApp": "[XX-In-app-XX]",
         "emailReport": "[XX-Email (report)-XX]",
         "emailNotification": "[XX-Email (alert)-XX]",
         "push": "[XX-Push-XX]",
-        "unifiedpush": "[XX-UnifiedPush-XX]"
+        "unifiedpush": "[XX-UnifiedPush-XX]",
+        "unifiedpushHint": "[XX-Notifications are delivered through a distributor app you run yourself, such as ntfy, instead of a browser vendor's push service. Register an endpoint in that app to use this channel.-XX]"
       },
       "categories": {
         "PAYMENTS": "[XX-Bills and scheduled-XX]",
         "BUDGETS": "[XX-Budgets-XX]",
-        "SYSTEM": "[XX-System alerts-XX]"
+        "SYSTEM": "[XX-System alerts-XX]",
+        "BALANCES": "[XX-Account balances-XX]",
+        "INVESTMENTS": "[XX-Investment value-XX]",
+        "STRATEGIES": "[XX-Strategy signals-XX]"
       },
-      "inAppAlways": "[XX-Always shown in the bell-XX]",
       "channelNotApplicable": "[XX-Not applicable for this notification type-XX]",
       "emailToggleLabel": "[XX-Report email for {category}-XX]",
       "emailNotificationToggleLabel": "[XX-Alert email for {category}-XX]",
@@ -327,8 +347,7 @@
       "unifiedpushToggleLabel": "[XX-UnifiedPush for {category}-XX]",
       "saveFailed": "[XX-Could not save that setting-XX]",
       "emailUnavailable": "[XX-Turn on email notifications above to send these by email.-XX]",
-      "pushUnavailable": "[XX-Enable push on this device first (see below).-XX]",
-      "unifiedpushUnavailable": "[XX-Register a UnifiedPush endpoint from your distributor app to use this channel.-XX]",
+      "pushUnavailable": "[XX-No device is registered for push, so this channel cannot deliver.-XX]",
       "throttle": {
         "label": "[XX-Cooldown-XX]",
         "ariaLabel": "[XX-Cooldown for {category}-XX]",
@@ -342,7 +361,8 @@
           "360": "[XX-6 hours-XX]",
           "1440": "[XX-24 hours-XX]"
         }
-      }
+      },
+      "pushEnableHint": "[XX-This browser is not registered for push notifications.-XX]"
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "[XX-Automatic Backup-XX]",
     "help": "[XX-Help & Support-XX]",
     "dangerZone": "[XX-Danger Zone-XX]",
-    "about": "[XX-About-XX]"
+    "about": "[XX-About-XX]",
+    "payeeLookup": "[XX-Payee Lookup-XX]"
   },
   "page": {
     "title": "[XX-Settings-XX]",
@@ -885,14 +906,6 @@
         "step3": "[XX-Answers stream back into the chat. A status dot shows whether your agent is connected.-XX]",
         "note": "[XX-Nothing runs until your agent is connected and listening. The chat shows connection instructions.-XX]"
       }
-    },
-    "payeeLookup": {
-      "title": "[XX-Automatic payee contact lookup-XX]",
-      "subtitle": "[XX-Automatically look up a new payee's website, address, email and phone number through your configured AI provider. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.-XX]",
-      "toggleLabel": "[XX-Enable automatic payee contact lookup-XX]",
-      "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
-      "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
-      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "[XX-All time-XX]"
     },
     "estCostTooltip": "[XX-Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set.-XX]"
+  },
+  "payeeLookup": {
+    "title": "[XX-Payee Lookup-XX]",
+    "subtitle": "[XX-Where a payee's website, address, email and phone number come from, and when a lookup runs by itself.-XX]",
+    "saved": "[XX-Payee lookup settings saved-XX]",
+    "saveFailed": "[XX-Could not save the payee lookup settings-XX]",
+    "loadFailed": "[XX-Could not load the payee lookup settings. Reload the page to try again.-XX]",
+    "googlePlaces": {
+      "toggleLabel": "[XX-Use Google Places for payee lookups-XX]",
+      "notConfigured": "[XX-Add a Google Places API key to look up businesses in Google's directory instead of using your AI provider.-XX]",
+      "operatorManaged": "[XX-Configured by this server's administrator. You can turn it off for your own payees.-XX]",
+      "configure": "[XX-Set up-XX]",
+      "edit": "[XX-Edit-XX]",
+      "removeKey": "[XX-Remove key-XX]",
+      "usage": "[XX-Used this month: {used} of {cap}-XX]",
+      "usageNoCap": "[XX-Used this month: {used}. No monthly limit.-XX]",
+      "keyUnreadable": "[XX-The stored API key cannot be read by this server. This happens when a backup is restored onto a different instance, or after the encryption key changes. Enter the key again to fix it.-XX]",
+      "encryptionUnavailable": "[XX-This server has no encryption key configured, so an API key cannot be stored securely. Ask your administrator to set one.-XX]",
+      "modalTitle": "[XX-Google Places-XX]",
+      "modalSubtitle": "[XX-Monize sends the payee's name, and the address you already have, to Google and stores nothing with them.-XX]",
+      "apiKeyLabel": "[XX-API key-XX]",
+      "apiKeyPlaceholder": "[XX-Paste your Google Places API key-XX]",
+      "apiKeyHelp": "[XX-Create a key in the Google Cloud console with the Places API (New) enabled. Leave this blank to keep the key you already saved.-XX]",
+      "capToggleLabel": "[XX-Limit requests each month-XX]",
+      "capHelp": "[XX-Google gives {free} free Text Search requests a month for the fields this lookup needs. Past the limit, lookups fall back to your AI provider.-XX]",
+      "capLabel": "[XX-Requests per month-XX]",
+      "capRange": "[XX-Enter a number between {min} and {max}.-XX]",
+      "test": "[XX-Test-XX]",
+      "testing": "[XX-Testing...-XX]",
+      "testSuccess": "[XX-Google accepted the key.-XX]",
+      "save": "[XX-Save-XX]",
+      "cancel": "[XX-Cancel-XX]",
+      "setupInstructions": "[XX-Setup instructions-XX]"
+    },
+    "automatic": {
+      "title": "[XX-Automatic payee contact lookup-XX]",
+      "subtitle": "[XX-Automatically look up a new payee's website, address, email and phone number. The payee's name is sent, along with any notes, website, address, email and phone it already has, so the lookup can tell the right business and the right location apart.-XX]",
+      "toggleLabel": "[XX-Enable automatic payee contact lookup-XX]",
+      "enabled": "[XX-Automatic payee contact lookup enabled-XX]",
+      "disabled": "[XX-Automatic payee contact lookup disabled-XX]",
+      "saveFailed": "[XX-Could not update the payee contact lookup setting-XX]",
+      "noSource": "[XX-Switch on a source above to look payees up automatically. With both off, nothing can answer a lookup.-XX]"
+    },
+    "order": {
+      "title": "[XX-Which source answers first-XX]",
+      "placesTitle": "[XX-Google Places-XX]",
+      "placesHelp": "[XX-Directory facts, cheaper per lookup. Google holds no email address.-XX]",
+      "aiTitle": "[XX-Existing AI Provider-XX]",
+      "aiHelp": "[XX-Can find an email address, and costs a model call for every lookup.-XX]",
+      "aiToggleLabel": "[XX-Use an AI provider for payee lookups-XX]",
+      "aiProviderLabel": "[XX-Provider to use-XX]",
+      "aiProviderAny": "[XX-Any provider, in priority order-XX]",
+      "moveUp": "[XX-Move up-XX]",
+      "moveDown": "[XX-Move down-XX]"
+    }
   }
 }

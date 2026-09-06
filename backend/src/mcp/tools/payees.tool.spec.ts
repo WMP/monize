@@ -1,7 +1,6 @@
-import { z } from "zod";
 import { McpPayeesTools } from "./payees.tool";
 import { McpWriteLimiter } from "../mcp-write-limiter";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 describe("McpPayeesTools", () => {
   let tool: McpPayeesTools;
@@ -9,12 +8,12 @@ describe("McpPayeesTools", () => {
   let prepService: Record<string, jest.Mock>;
   let server: {
     registerTool: jest.Mock;
-    server: { getClientCapabilities: jest.Mock; elicitInput: jest.Mock };
+    server: { getClientCapabilities: jest.Mock };
   };
   let elicitInput: jest.Mock;
   let relayService: { emitPendingAction: jest.Mock };
   let actionBuilder: Record<string, jest.Mock>;
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   const handlers: Record<string, (...args: any[]) => any> = {};
   const toolConfigs: Record<string, any> = {};
 
@@ -97,12 +96,11 @@ describe("McpPayeesTools", () => {
       // that can't show a dialog); the decline test overrides these.
       server: {
         getClientCapabilities: jest.fn().mockReturnValue({}),
-        elicitInput,
       },
     };
 
-    resolve = jest.fn();
-    tool.register(server as any, resolve);
+    ctx = mcpTestCtx(undefined, { elicitInput });
+    tool.register(server as any);
   });
 
   it("should register 2 tools", () => {
@@ -117,10 +115,10 @@ describe("McpPayeesTools", () => {
     };
 
     it("returns the list with its match count and truncation flag", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       payeesService.getLlmPayees.mockResolvedValue(list);
 
-      const result = await handlers["list_payees"]({}, { sessionId: "s1" });
+      const result = await handlers["list_payees"]({}, ctx);
 
       expect(payeesService.getLlmPayees).toHaveBeenCalledWith("u1", {});
       const parsed = result.structuredContent as any;
@@ -133,7 +131,7 @@ describe("McpPayeesTools", () => {
       // The tool is a thin adapter: the AI Assistant calls the same method, so
       // a filter offered here and dropped on the way down would leave the two
       // surfaces answering the same question differently.
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       payeesService.getLlmPayees.mockResolvedValue(list);
 
       const args = {
@@ -148,7 +146,7 @@ describe("McpPayeesTools", () => {
         hasPhone: true,
         hasDefaultCategory: false,
       };
-      await handlers["list_payees"](args, { sessionId: "s1" });
+      await handlers["list_payees"](args, ctx);
 
       expect(payeesService.getLlmPayees).toHaveBeenCalledWith("u1", args);
     });
@@ -158,7 +156,7 @@ describe("McpPayeesTools", () => {
       // "expected number, received string". Validation runs on the declared
       // input schema, so this asserts against that schema rather than the
       // handler, which never saw the call.
-      const schema = z.object(toolConfigs["list_payees"].inputSchema);
+      const schema = toolConfigs["list_payees"].inputSchema;
 
       expect(schema.parse({ limit: "10" }).limit).toBe(10);
       expect(schema.parse({ limit: 10 }).limit).toBe(10);
@@ -167,7 +165,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("still refuses a limit that is not a number", async () => {
-      const schema = z.object(toolConfigs["list_payees"].inputSchema);
+      const schema = toolConfigs["list_payees"].inputSchema;
 
       // "" and null must not arrive as 0: an unknown is not a measured zero.
       for (const junk of ["", "  ", "abc", null, [], true]) {
@@ -178,27 +176,27 @@ describe("McpPayeesTools", () => {
     });
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["list_payees"]({}, { sessionId: "s1" });
+      ctx.setUser(undefined);
+      const result = await handlers["list_payees"]({}, ctx);
       expect(result.isError).toBe(true);
     });
   });
 
   describe("manage_payees", () => {
     it("requires write scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "New Payee" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
 
     it("creates a single payee on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "New Payee" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.create).toHaveBeenCalledWith(
         "u1",
@@ -211,7 +209,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("passes a website through to the prep layer and the write", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayeeSingle.mockResolvedValue({
         name: "Acme",
         defaultCategoryId: null,
@@ -224,7 +222,7 @@ describe("McpPayeesTools", () => {
           operation: "create",
           items: [{ name: "Acme", website: "acme.com" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(prepService.prepareCreatePayeeSingle).toHaveBeenCalledWith(
@@ -246,7 +244,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("passes the contact fields through to the prep layer and the write", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayeeSingle.mockResolvedValue({
         name: "Acme",
         defaultCategoryId: null,
@@ -268,7 +266,7 @@ describe("McpPayeesTools", () => {
             },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(prepService.prepareCreatePayeeSingle).toHaveBeenCalledWith(
@@ -294,7 +292,7 @@ describe("McpPayeesTools", () => {
     it("shows the contact fields on the confirmation card", async () => {
       // The card is the whole point of the confirmation step: a field written
       // by the approval but absent from the text is a change nobody agreed to.
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -312,7 +310,7 @@ describe("McpPayeesTools", () => {
           operation: "create",
           items: [{ name: "Acme", address: "1 Main St" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       const card =
@@ -324,7 +322,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("says a cleared contact field is being cleared rather than omitting it", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -338,7 +336,7 @@ describe("McpPayeesTools", () => {
 
       await handlers["manage_payees"](
         { operation: "update", items: [{ name: "Acme", address: "" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       const card =
@@ -348,13 +346,13 @@ describe("McpPayeesTools", () => {
     });
 
     it("updates a single payee on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       const result = await handlers["manage_payees"](
         {
           operation: "update",
           items: [{ name: "Old", newName: "New Payee" }],
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.update).toHaveBeenCalledWith("u1", "p2", {
         name: "New Payee",
@@ -365,10 +363,10 @@ describe("McpPayeesTools", () => {
     });
 
     it("deletes a single payee on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       const result = await handlers["manage_payees"](
         { operation: "delete", items: [{ name: "Old Payee" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.remove).toHaveBeenCalledWith("u1", "p2");
       const parsed = result.structuredContent as any;
@@ -376,7 +374,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("does not write when the user declines the confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -384,7 +382,7 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "New Payee" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(prepService.prepareCreatePayeeSingle).toHaveBeenCalled();
@@ -394,12 +392,12 @@ describe("McpPayeesTools", () => {
     });
 
     it("shows a web-chat card (no write) when serving a relayed prompt", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       relayService.emitPendingAction.mockReturnValue(true);
 
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "New Payee" }] },
-        { sessionId: "s1", requestId: "call-1" },
+        ctx,
       );
 
       expect(relayService.emitPendingAction).toHaveBeenCalled();
@@ -409,7 +407,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("returns a dry-run preview without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayees.mockResolvedValue({
         okPreviews: [{ name: "New Payee" }],
         okRows: [{ name: "New Payee", defaultCategoryId: null }],
@@ -420,7 +418,7 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "New Payee" }], dryRun: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(payeesService.create).not.toHaveBeenCalled();
@@ -430,7 +428,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("creates multiple payees as one bulk card via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayees.mockResolvedValue({
         okPreviews: [
           { name: "A", defaultCategoryId: null, defaultCategoryName: null },
@@ -450,7 +448,7 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "A" }, { name: "B" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(actionBuilder.buildBatchActions).toHaveBeenCalledWith(
@@ -465,7 +463,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("bulk-updates multiple payees via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareUpdatePayees.mockResolvedValue({
         okPreviews: [
           { payeeId: "p1", name: "A", defaultCategoryId: null },
@@ -491,7 +489,7 @@ describe("McpPayeesTools", () => {
             { name: "B", newName: "B2" },
           ],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(payeesService.update).toHaveBeenCalledTimes(2);
@@ -500,7 +498,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("bulk-deletes multiple payees via confirmation", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareDeletePayees.mockResolvedValue({
         okPreviews: [
           { payeeId: "p1", name: "A" },
@@ -517,7 +515,7 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "delete", items: [{ name: "A" }, { name: "B" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(payeesService.remove).toHaveBeenCalledTimes(2);
@@ -526,7 +524,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("bulk create reports skipped rows in the summary (non-relay)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayees.mockResolvedValue({
         okPreviews: [
           { name: "A", defaultCategoryId: null, defaultCategoryName: null },
@@ -542,7 +540,7 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "A" }, { name: "B" }] },
-        { sessionId: "s1" },
+        ctx,
       );
 
       const parsed = result.structuredContent as any;
@@ -551,7 +549,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("individual mode commits one card per item (non-relay)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayees.mockResolvedValue({
         okPreviews: [
           { name: "A", defaultCategoryId: null, defaultCategoryName: null },
@@ -575,7 +573,7 @@ describe("McpPayeesTools", () => {
           items: [{ name: "A" }, { name: "B" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       // Each card is confirmed and committed individually.
@@ -585,7 +583,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("individual mode emits all cards via relay when relayed", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       relayService.emitPendingAction.mockReturnValue(true);
       prepService.prepareDeletePayees.mockResolvedValue({
         okPreviews: [
@@ -607,7 +605,7 @@ describe("McpPayeesTools", () => {
           items: [{ name: "A" }, { name: "B" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
 
       expect(relayService.emitPendingAction).toHaveBeenCalledTimes(2);
@@ -617,7 +615,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("individual mode updates each payee (non-relay commit)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareUpdatePayees.mockResolvedValue({
         okPreviews: [
           { payeeId: "p1", name: "A", defaultCategoryId: null },
@@ -641,13 +639,13 @@ describe("McpPayeesTools", () => {
           ],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.update).toHaveBeenCalledTimes(2);
     });
 
     it("individual mode deletes each payee (non-relay commit)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareDeletePayees.mockResolvedValue({
         okPreviews: [
           { payeeId: "p1", name: "A" },
@@ -668,13 +666,13 @@ describe("McpPayeesTools", () => {
           items: [{ name: "A" }, { name: "B" }],
           approvalMode: "individual",
         },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.remove).toHaveBeenCalledTimes(2);
     });
 
     it("declines a single create without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       server.server.getClientCapabilities.mockReturnValue({
         elicitation: { form: {} },
       });
@@ -682,14 +680,14 @@ describe("McpPayeesTools", () => {
 
       const result = await handlers["manage_payees"](
         { operation: "update", items: [{ name: "A", newName: "B" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(payeesService.update).not.toHaveBeenCalled();
       expect(result.isError).toBe(true);
     });
 
     it("dry-run previews update and delete without writing", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareUpdatePayees.mockResolvedValue({
         okPreviews: [],
         okRows: [],
@@ -711,11 +709,11 @@ describe("McpPayeesTools", () => {
           items: [{ name: "A", newName: "B" }],
           dryRun: true,
         },
-        { sessionId: "s1" },
+        ctx,
       );
       const del = await handlers["manage_payees"](
         { operation: "delete", items: [{ name: "A" }], dryRun: true },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(payeesService.update).not.toHaveBeenCalled();
@@ -725,16 +723,16 @@ describe("McpPayeesTools", () => {
     });
 
     it("single update/delete go through the relay when relayed", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       relayService.emitPendingAction.mockReturnValue(true);
 
       const upd = await handlers["manage_payees"](
         { operation: "update", items: [{ name: "A", newName: "B" }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       const del = await handlers["manage_payees"](
         { operation: "delete", items: [{ name: "A" }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
 
       expect(payeesService.update).not.toHaveBeenCalled();
@@ -744,7 +742,7 @@ describe("McpPayeesTools", () => {
     });
 
     it("bulk update/delete go through the relay when relayed", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       relayService.emitPendingAction.mockReturnValue(true);
       const okPrev = {
         okPreviews: [
@@ -761,11 +759,11 @@ describe("McpPayeesTools", () => {
 
       const upd = await handlers["manage_payees"](
         { operation: "update", items: [{ name: "A" }, { name: "B" }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       const del = await handlers["manage_payees"](
         { operation: "delete", items: [{ name: "A" }, { name: "B" }] },
-        { sessionId: "s1", requestId: "r1" },
+        ctx,
       );
       expect(payeesService.update).not.toHaveBeenCalled();
       expect(payeesService.remove).not.toHaveBeenCalled();
@@ -774,20 +772,20 @@ describe("McpPayeesTools", () => {
     });
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
+      ctx.setUser(undefined);
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "X" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });
 
     it("returns error when prep throws", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      ctx.setUser({ userId: "u1", scopes: "read,write" });
       prepService.prepareCreatePayeeSingle.mockRejectedValue(new Error("dup"));
       const result = await handlers["manage_payees"](
         { operation: "create", items: [{ name: "X" }] },
-        { sessionId: "s1" },
+        ctx,
       );
       expect(result.isError).toBe(true);
     });

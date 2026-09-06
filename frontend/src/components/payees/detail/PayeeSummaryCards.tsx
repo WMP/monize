@@ -53,7 +53,7 @@ export function PayeeSummaryCards({
   onUncategorizedClick,
 }: PayeeSummaryCardsProps) {
   const t = useTranslations('payeeDetail');
-  const { formatCurrency, formatSignedPercent } = useNumberFormat();
+  const { formatCurrency, formatSignedPercent, formatNumber } = useNumberFormat();
   const { formatDate } = useDateFormat();
 
   const { stats, payee } = detail;
@@ -117,7 +117,7 @@ export function PayeeSummaryCards({
     },
     {
       label: t('summary.transactions'),
-      value: stats.transactionCount.toLocaleString(),
+      value: formatNumber(stats.transactionCount, 0),
       note: firstYear ? t('summary.sinceYear', { year: firstYear }) : undefined,
     },
     {
@@ -140,7 +140,7 @@ export function PayeeSummaryCards({
   if (stats.uncategorizedCount > 0) {
     cards.push({
       label: t('summary.uncategorized'),
-      value: stats.uncategorizedCount.toLocaleString(),
+      value: formatNumber(stats.uncategorizedCount, 0),
       valueClass: 'text-yellow-600 dark:text-yellow-400',
       note: payee.defaultCategoryId
         ? t('summary.uncategorizedApply')

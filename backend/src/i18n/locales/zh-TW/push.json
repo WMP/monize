@@ -15,6 +15,18 @@
     "system": {
       "title": "系統通知",
       "body": "Monize 有一則系統通知給您。開啟應用程式查看詳細資訊。"
+    },
+    "balances": {
+      "title": "餘額提醒",
+      "body": "某個帳戶餘額超過了您設定的閾值。開啟 Monize 查看詳細資訊。"
+    },
+    "investments": {
+      "title": "投資變動",
+      "body": "您的投資今天發生了變動。開啟 Monize 查看詳細資訊。"
+    },
+    "strategies": {
+      "title": "策略訊號",
+      "body": "您的某個策略變更了建議。開啟 Monize 查看詳細資訊。"
     }
   },
   "actions": {

@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { AccountsService } from "../../accounts/accounts.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
-import { UserContextResolver, hasScope } from "../mcp-context";
+import { resolveUserContext, hasScope } from "../mcp-context";
 import { formatDateYMD, todayYMD } from "../../common/date-utils";
 
 @Injectable()
@@ -12,18 +12,20 @@ export class McpFinancialSummaryResource {
     private readonly analyticsService: TransactionAnalyticsService,
   ) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerResource(
       "financial-summary",
       "monize://financial-summary",
       {
+        // Live data: a cached answer here is a stale figure, not a stale name.
+        cacheHint: { ttlMs: 0, cacheScope: "private" },
         title: "Financial summary",
         description:
           "High-level financial snapshot: income, expenses, net worth",
       },
-      async (_uri, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) {
+      async (_uri, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) {
           return {
             contents: [
               {
@@ -33,7 +35,7 @@ export class McpFinancialSummaryResource {
             ],
           };
         }
-        if (!hasScope(ctx.scopes, "read")) {
+        if (!hasScope(user.scopes, "read")) {
           return {
             contents: [
               {
@@ -52,13 +54,13 @@ export class McpFinancialSummaryResource {
           const endDate = todayYMD();
 
           const [accountSummary, monthSummary] = await Promise.all([
-            this.accountsService.getSummary(ctx.userId),
+            this.accountsService.getSummary(user.userId),
             // Exclude investment-linked cash transactions so the MCP
             // financial snapshot's income/expense totals reflect real
             // spending -- not BUY/SELL/DIVIDEND cash movements that
             // live in the linked cash account.
             this.analyticsService.getSummary(
-              ctx.userId,
+              user.userId,
               undefined,
               startOfMonth,
               endDate,

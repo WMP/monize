@@ -2462,10 +2462,17 @@ export class TransactionsService {
       descriptionKey: "updatedTransaction",
       descriptionParams: {
         payee: finalTransaction.payeeName || "",
+        // `amount` is the deterministic English rendering, kept for a client
+        // that predates the structured pair below; `amountValue` /
+        // `amountCurrency` let the reader's client format it in their own
+        // number locale (issue #1316) -- the stored string cannot be, since
+        // this row outlives the request that wrote it.
         amount: formatCurrency(
           Number(finalTransaction.amount),
           finalTransaction.currencyCode,
         ),
+        amountValue: Number(finalTransaction.amount),
+        amountCurrency: finalTransaction.currencyCode,
       },
     });
     return finalTransaction;
@@ -3198,7 +3205,11 @@ export class TransactionsService {
             : "deletedTransaction",
       descriptionParams: {
         payee: tx.payeeName || "",
+        // See `update`: English fallback plus the structured pair the client
+        // formats in the reader's number locale.
         amount: formatCurrency(Number(tx.amount), tx.currencyCode),
+        amountValue: Number(tx.amount),
+        amountCurrency: tx.currencyCode,
       },
     });
   }

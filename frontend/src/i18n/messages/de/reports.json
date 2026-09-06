@@ -1113,7 +1113,11 @@
     "pdfPeriod": "Zeitraum",
     "pdfChange": "Änderung",
     "pdfAnnualizedReturn": "Annualisierte Rendite",
-    "tooltipNetWorth": "Reinvermögen"
+    "tooltipNetWorth": "Reinvermögen",
+    "savingsNoteMore": "Im {currentMonth} haben Sie {percent} mehr gespart als im {previousMonth}, insgesamt {amount}",
+    "savingsNoteLess": "Im {currentMonth} haben Sie {percent} weniger gespart als im {previousMonth}, insgesamt {amount}",
+    "incomeNoteMore": "Ihr Gesamteinkommen im {currentMonth} betrug {amount}, das sind {diff} mehr als im {previousMonth}",
+    "incomeNoteLess": "Ihr Gesamteinkommen im {currentMonth} betrug {amount}, das sind {diff} weniger als im {previousMonth}"
   },
   "monthlySpendingTrend": {
     "total": "Gesamt",

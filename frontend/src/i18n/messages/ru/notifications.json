@@ -53,6 +53,26 @@
     "amountDue": "{amount} к оплате {date}",
     "amountUnavailable": "Сумма недоступна (нет текущего курса обмена), срок оплаты {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} переключилась на {state}",
+    "riskMessage": "Ваша стратегия GEM «{strategy}» изменилась с {fromState} на {toState}. Откройте, чтобы просмотреть рекомендацию.",
+    "allocationTitle": "{strategy} изменила цель",
+    "allocationMessage": "Ваша стратегия GEM «{strategy}» теперь нацелена на {target}. Откройте, чтобы просмотреть рекомендацию.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Инвестиции выросли на {percent}%",
+    "titleDown": "Инвестиции упали на {percent}%",
+    "messageUp": "Ваши инвестиции сегодня выросли на {percent}%, без учёта пополнений и снятий. Откройте для просмотра.",
+    "messageDown": "Ваши инвестиции сегодня упали на {percent}%, без учёта пополнений и снятий. Откройте для просмотра."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} ниже вашего порога",
+    "titleHigh": "{account} выше вашего порога",
+    "messageLow": "{account} снизился до {balance}, ниже вашего порога {threshold}.",
+    "messageHigh": "{account} вырос до {balance}, выше вашего порога {threshold}."
+  },
   "system": {
     "backupFailed": {
       "title": "Сбой автоматического резервного копирования",

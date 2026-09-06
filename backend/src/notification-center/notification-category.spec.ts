@@ -14,9 +14,12 @@ import * as fs from "fs";
 import * as path from "path";
 
 import {
+  BALANCE_NOTIFICATION_TYPES,
+  INVESTMENT_NOTIFICATION_TYPES,
   NotificationCategory,
   NotificationSeverity,
   NotificationType,
+  STRATEGY_NOTIFICATION_TYPES,
   SYSTEM_NOTIFICATION_TYPES,
   notificationCategoryOf,
 } from "./entities/notification.entity";
@@ -101,12 +104,13 @@ describe("notification type partition", () => {
     expect(uncategorized).toEqual([]);
   });
 
-  it("splits payments, system and budgets with no type in two of them", () => {
-    const byCategory = {
-      [NotificationCategory.PAYMENTS]: [] as NotificationType[],
-      [NotificationCategory.BUDGETS]: [] as NotificationType[],
-      [NotificationCategory.SYSTEM]: [] as NotificationType[],
-    };
+  it("splits every category from its declared type set, with BUDGETS the remainder", () => {
+    const byCategory = Object.fromEntries(
+      Object.values(NotificationCategory).map((c) => [
+        c,
+        [] as NotificationType[],
+      ]),
+    ) as Record<NotificationCategory, NotificationType[]>;
     for (const type of ALL_TYPES) {
       byCategory[notificationCategoryOf(type)].push(type);
     }
@@ -121,14 +125,28 @@ describe("notification type partition", () => {
     expect(byCategory[NotificationCategory.SYSTEM].sort()).toEqual(
       [...SYSTEM_NOTIFICATION_TYPES].sort(),
     );
-    // Financial is defined as NOT IN the system list -- never a second list --
-    // so this arm is what proves the two definitions describe one partition.
+    // Each financial-detail category maps exactly its own declared type set --
+    // the inverse of `notificationCategoryOf` derived from the one list per set.
+    expect(byCategory[NotificationCategory.BALANCES].sort()).toEqual(
+      [...BALANCE_NOTIFICATION_TYPES].sort(),
+    );
+    expect(byCategory[NotificationCategory.INVESTMENTS].sort()).toEqual(
+      [...INVESTMENT_NOTIFICATION_TYPES].sort(),
+    );
+    expect(byCategory[NotificationCategory.STRATEGIES].sort()).toEqual(
+      [...STRATEGY_NOTIFICATION_TYPES].sort(),
+    );
+    // BUDGETS is the remainder: everything not in one of the explicit sets
+    // above -- never a second list, so this arm proves the partition is total.
     expect(byCategory[NotificationCategory.BUDGETS].sort()).toEqual(
       ALL_TYPES.filter(
         (t) =>
           t !== NotificationType.BILL_DUE &&
           t !== NotificationType.SCHEDULED_POST_FAILED &&
-          !SYSTEM_NOTIFICATION_TYPES.includes(t),
+          !SYSTEM_NOTIFICATION_TYPES.includes(t) &&
+          !BALANCE_NOTIFICATION_TYPES.includes(t) &&
+          !INVESTMENT_NOTIFICATION_TYPES.includes(t) &&
+          !STRATEGY_NOTIFICATION_TYPES.includes(t),
       ).sort(),
     );
   });

@@ -1,25 +1,30 @@
 import { McpRelayTools } from "./relay.tool";
 import { AiRelayService } from "../../ai/relay/ai-relay.service";
+import { mcpTestCtx } from "../testing/mcp-test-context";
 
 type Handler = (args: any, extra: any) => Promise<any>;
 
-function register(relay: Partial<AiRelayService>, scopes = "read") {
+function register(relay: Partial<AiRelayService>) {
   const handlers: Record<string, Handler> = {};
   const server = {
     registerTool: (name: string, _config: unknown, handler: Handler) => {
       handlers[name] = handler;
     },
   };
-  const resolve = (sessionId?: string) =>
-    sessionId === "no-ctx" ? undefined : { userId: "user-1", scopes };
-  new McpRelayTools(relay as AiRelayService).register(
-    server as any,
-    resolve as any,
-  );
+  new McpRelayTools(relay as AiRelayService).register(server as any);
   return handlers;
 }
 
 const parse = (result: any) => result.structuredContent as any;
+
+// The caller key a relay claim is bound to: the session id on a 2025-era
+// connection. `ctx(undefined)` is a request with no identity on it at all.
+const ctx = (
+  user: { userId: string; scopes: string } | undefined = {
+    userId: "user-1",
+    scopes: "read",
+  },
+) => mcpTestCtx(user, { sessionId: "s" });
 
 describe("McpRelayTools", () => {
   describe("get_next_prompt", () => {
@@ -32,7 +37,7 @@ describe("McpRelayTools", () => {
       const handlers = register({
         waitForPrompt: jest.fn().mockResolvedValue(claimed),
       });
-      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const result = await handlers.get_next_prompt({}, ctx());
       const body = parse(result);
       expect(body.hasPrompt).toBe(true);
       expect(body.promptId).toBe("p1");
@@ -57,7 +62,7 @@ describe("McpRelayTools", () => {
       const handlers = register({
         waitForPrompt: jest.fn().mockResolvedValue(claimed),
       });
-      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const result = await handlers.get_next_prompt({}, ctx());
       const body = parse(result);
       expect(body.attachments).toHaveLength(1);
       expect(body.attachments[0].uri).toBe("monize-attachment://att-1");
@@ -68,7 +73,7 @@ describe("McpRelayTools", () => {
         waitForPrompt: jest.fn().mockResolvedValue(null),
         shouldStopForIdle: jest.fn().mockReturnValue(false),
       });
-      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const result = await handlers.get_next_prompt({}, ctx());
       expect(parse(result)).toEqual({ hasPrompt: false });
     });
 
@@ -77,22 +82,22 @@ describe("McpRelayTools", () => {
         waitForPrompt: jest.fn().mockResolvedValue(null),
         shouldStopForIdle: jest.fn().mockReturnValue(true),
       });
-      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const result = await handlers.get_next_prompt({}, ctx());
       expect(parse(result)).toEqual({ hasPrompt: false, stop: true });
     });
 
     it("errors without user context", async () => {
       const handlers = register({});
-      const result = await handlers.get_next_prompt(
-        {},
-        { sessionId: "no-ctx" },
-      );
+      const result = await handlers.get_next_prompt({}, ctx(undefined));
       expect(result.isError).toBe(true);
     });
 
     it("errors without the read scope", async () => {
-      const handlers = register({}, "reports");
-      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const handlers = register({});
+      const result = await handlers.get_next_prompt(
+        {},
+        ctx({ userId: "user-1", scopes: "reports" }),
+      );
       expect(result.isError).toBe(true);
     });
   });
@@ -103,7 +108,7 @@ describe("McpRelayTools", () => {
       const handlers = register({ postResponse });
       const result = await handlers.post_response(
         { promptId: "p1", text: "answer" },
-        { sessionId: "s" },
+        ctx(),
       );
       expect(parse(result)).toEqual({ delivered: true });
       expect(postResponse).toHaveBeenCalledWith("user-1", "p1", "answer");
@@ -115,7 +120,7 @@ describe("McpRelayTools", () => {
       });
       const result = await handlers.post_response(
         { promptId: "p1", text: "answer" },
-        { sessionId: "s" },
+        ctx(),
       );
       expect(parse(result)).toEqual({ delivered: false });
     });
@@ -127,7 +132,7 @@ describe("McpRelayTools", () => {
       const handlers = register({ reportProgress });
       const result = await handlers.report_progress(
         { promptId: "p1", text: "looking up category" },
-        { sessionId: "s" },
+        ctx(),
       );
       expect(parse(result)).toEqual({ delivered: true });
       expect(reportProgress).toHaveBeenCalledWith(
@@ -146,16 +151,16 @@ describe("McpRelayTools", () => {
       });
       const result = await handlers.report_progress(
         { promptId: "p1", text: "late update" },
-        { sessionId: "s" },
+        ctx(),
       );
       expect(parse(result)).toEqual({ delivered: false });
     });
 
     it("requires read scope", async () => {
-      const handlers = register({}, "reports");
+      const handlers = register({});
       const result = await handlers.report_progress(
         { promptId: "p1", text: "x" },
-        { sessionId: "s" },
+        ctx({ userId: "user-1", scopes: "reports" }),
       );
       expect(result.isError).toBe(true);
     });

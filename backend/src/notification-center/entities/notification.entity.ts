@@ -40,6 +40,20 @@ export enum NotificationType {
   // under PAYMENTS, not SYSTEM. That is what makes the PAYMENTS matrix row's push
   // and alert-email real controls (it is the category's dispatching producer).
   SCHEDULED_POST_FAILED = "SCHEDULED_POST_FAILED",
+  // Per-account balance crossings (BALANCES category). budget_id NULL, no
+  // dedupe_key: the producer's armed latch is the idempotency mechanism, and a
+  // budget_id-NULL row is unconstrained by both unique indexes.
+  // See `docs/specs/balance-threshold-notifications.md`.
+  BALANCE_BELOW_THRESHOLD = "BALANCE_BELOW_THRESHOLD",
+  BALANCE_ABOVE_THRESHOLD = "BALANCE_ABOVE_THRESHOLD",
+  // A day's market-driven change in investment-account value, net of external
+  // cash flows (INVESTMENTS category). One per day per user via a dedupe_key
+  // carrying the date. See `docs/specs/portfolio-movement-notifications.md`.
+  PORTFOLIO_MOVEMENT = "PORTFOLIO_MOVEMENT",
+  // A GEM strategy's recommendation changed between periods (STRATEGIES
+  // category). `data.kind` is "risk" (RISK_ON<->RISK_OFF) or "allocation".
+  // See `docs/specs/gem-signal-change-notifications.md`.
+  GEM_SIGNAL_CHANGED = "GEM_SIGNAL_CHANGED",
 }
 
 /**
@@ -89,7 +103,30 @@ export enum NotificationCategory {
   PAYMENTS = "PAYMENTS",
   BUDGETS = "BUDGETS",
   SYSTEM = "SYSTEM",
+  // Each arrives with its producer (never a dead row): balance crossings,
+  // daily portfolio movement, GEM strategy signal changes.
+  BALANCES = "BALANCES",
+  INVESTMENTS = "INVESTMENTS",
+  STRATEGIES = "STRATEGIES",
 }
+
+/**
+ * The financial category type-partitions, written once so every consumer
+ * (the category function, its inverse, the frontend mirror) derives from one
+ * set rather than a second hand-kept list. A type absent from all of these and
+ * from {@link SYSTEM_NOTIFICATION_TYPES} and the PAYMENTS special-case falls
+ * through to BUDGETS; the category spec asserts every type maps where intended.
+ */
+export const BALANCE_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.BALANCE_BELOW_THRESHOLD,
+  NotificationType.BALANCE_ABOVE_THRESHOLD,
+];
+export const INVESTMENT_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.PORTFOLIO_MOVEMENT,
+];
+export const STRATEGY_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.GEM_SIGNAL_CHANGED,
+];
 
 /**
  * The category a type belongs to, derived rather than chosen -- and derived
@@ -118,6 +155,15 @@ export function notificationCategoryOf(
   }
   if (SYSTEM_NOTIFICATION_TYPES.includes(type)) {
     return NotificationCategory.SYSTEM;
+  }
+  if (BALANCE_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.BALANCES;
+  }
+  if (INVESTMENT_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.INVESTMENTS;
+  }
+  if (STRATEGY_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.STRATEGIES;
   }
   return NotificationCategory.BUDGETS;
 }

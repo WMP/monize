@@ -95,14 +95,17 @@ export class CreatePayeeDto {
   @ApiProperty({
     example: "+1 206-448-8762",
     required: false,
-    description: "Contact phone number, rendered as a tel link.",
+    description:
+      "Contact phone number in any format; include the country code for a number outside the account holder's own region. Stored as E.164 (+12064488762), an extension kept as an RFC 3966 suffix (+442079460958;ext=12).",
   })
   @IsOptional()
   @ValidateIf((_o, value) => value !== null && value !== "")
   @IsString()
-  // Length cap only: international numbers carry country codes, spaces,
-  // parentheses and extensions, so a format check would reject valid numbers.
-  // The value is only ever displayed and turned into a tel: href.
+  // Shape only here, on purpose. Placing a number written without a country
+  // code needs the caller's region, which a class-validator decorator cannot
+  // see, so PayeesService normalizes and refuses -- one door for the form, the
+  // AI Assistant and MCP alike. A format rule added here would be a second,
+  // weaker opinion about the same value.
   @MaxLength(50)
   @SanitizeHtml()
   phone?: string | null;

@@ -225,3 +225,21 @@ describe('mailtoHref', () => {
     expect(mailtoHref(undefined)).toBeNull();
   });
 });
+describe('telHref with a stored extension', () => {
+  it('carries the extension into the dialer, in the form tel: defines', () => {
+    // The extension is part of what has to be dialled, and dropping it hands
+    // the user a link that reaches a switchboard and stops.
+    expect(telHref('+442079460958;ext=12')).toBe('tel:+442079460958;ext=12');
+  });
+
+  it('never folds an extension into the digits', () => {
+    // The failure this avoids is a link that dials a number nobody wrote down.
+    expect(telHref('+442079460958;ext=12')).not.toBe('tel:+44207946095812');
+    expect(telHref('555 0100 ext. 12')).toBe('tel:5550100');
+  });
+
+  it('leaves a number without one exactly as it was', () => {
+    expect(telHref('+12064488762')).toBe('tel:+12064488762');
+  });
+});
+

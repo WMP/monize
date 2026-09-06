@@ -11,13 +11,16 @@ vi.mock('@/hooks/useWidgetConfig', () => ({
 vi.mock('@/hooks/useChartDateFormat', () => ({
   useChartDateFormat: () => () => 'Jan 2026',
 }));
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n}`,
-    formatCurrencyAxis: (n: number) => `$${n}`,
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n}`,
+      formatCurrencyAxis: (n: number) => `$${n}`,
+    }),
+  };
+});
 const getIncomeVsExpenses = vi.fn();
 vi.mock('@/lib/built-in-reports', () => ({
   builtInReportsApi: { getIncomeVsExpenses: (...a: unknown[]) => getIncomeVsExpenses(...a) },

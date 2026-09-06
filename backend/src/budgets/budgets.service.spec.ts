@@ -29,6 +29,7 @@ import { ScheduledTransactionOverride } from "../scheduled-transactions/entities
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { addDaysYMD, getMonthEndYMD, todayYMD } from "../common/date-utils";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -213,6 +214,17 @@ describe("BudgetsService", () => {
         [TransactionSplit, splitsRepository as never],
         [Category, categoriesRepository as never],
         [ScheduledTransaction, scheduledTransactionsRepository as never],
+        [
+          UserPreference,
+          {
+            // The copy these surfaces compose is addressed to this user, so the
+            // figures in it follow their number locale (issue #1316).
+            findOne: jest.fn().mockResolvedValue({
+              numberFormat: "en-US",
+              language: "en",
+            }),
+          } as never,
+        ],
         [ScheduledTransactionOverride, overridesRepository as never],
       ]));
     // bulkUpdateCategories saves each category through the transaction's

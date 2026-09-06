@@ -66,6 +66,10 @@ const REFERENCE_DATA: ReadonlyArray<[string, string]> = [
     'ai:',
     "the AI provider status -- whether this user has a provider that can answer a lookup at all. It follows the provider rows in Settings, which drop it themselves; a transaction cannot change it",
   ],
+  [
+    'payee-lookup:',
+    "whether a payee contact lookup can run and which source would answer it -- the Google Places configuration and cap, plus whether an AI provider exists. Its own settings writes drop it, and so does every AI provider mutation, because the answer depends on both; a transaction cannot change it",
+  ],
 ];
 
 /** Prefix literals passed to any cache call, e.g. `'accounts:all'` -> `accounts:`. */

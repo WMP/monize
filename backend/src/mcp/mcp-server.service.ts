@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { UserContextResolver } from "./mcp-context";
+import { McpServer } from "@modelcontextprotocol/server";
 import { AiRelayService } from "../ai/relay/ai-relay.service";
 import { installRelayToolActivity } from "./mcp-relay-tool-activity";
+import { installConfirmSupport } from "./mcp-confirm";
+import { McpRequestStateCodec } from "./mcp-request-state";
 import { McpAccountsTools } from "./tools/accounts.tool";
 import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
@@ -29,6 +30,13 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const backendPkg = require("../../package.json") as { version: string };
 
+/**
+ * How long a client may cache a listing (`tools/list` and its siblings) on the
+ * 2026-07-28 revision. The set of tools, prompts and resources is fixed by the
+ * running image, so the honest lifetime is "until this deployment changes".
+ */
+const LIST_TTL_MS = 60 * 60 * 1000;
+
 @Injectable()
 export class McpServerService {
   constructor(
@@ -43,6 +51,7 @@ export class McpServerService {
     private readonly budgetsTools: McpBudgetsTools,
     private readonly relayTools: McpRelayTools,
     private readonly relayService: AiRelayService,
+    private readonly requestStateCodec: McpRequestStateCodec,
     private readonly accountListResource: McpAccountListResource,
     private readonly categoryTreeResource: McpCategoryTreeResource,
     private readonly recentTransactionsResource: McpRecentTransactionsResource,
@@ -54,10 +63,20 @@ export class McpServerService {
     private readonly spendingAnalysisPrompt: McpSpendingAnalysisPrompt,
   ) {}
 
-  createServer(resolve: UserContextResolver): McpServer {
+  /**
+   * One factory for both eras, so a 2026-07-28 client and a 2025-era client can
+   * never be served a different set of tools. The modern handler calls it per
+   * request and the sessionful path once per session.
+   *
+   * It takes no era on purpose: a factory that cannot see which revision asked
+   * cannot answer them differently, which is a stronger guarantee than a
+   * parameter every branch is trusted to ignore.
+   */
+  createServer(): McpServer {
     // Surface today's date so the model can resolve relative ranges ("this
-    // month", "last 30 days") into YYYY-MM-DD without an extra round trip. The
-    // server is built per session, so this reflects the connection date.
+    // month", "last 30 days") into YYYY-MM-DD without an extra round trip. A
+    // server is built per 2025-era session and per 2026-07-28 request, so this
+    // is never staler than the connection.
     const today = new Date().toISOString().substring(0, 10);
     const server = new McpServer(
       { name: "monize", version: backendPkg.version },
@@ -88,35 +107,70 @@ export class McpServerService {
           "## Web-chat relay",
           "- When get_next_prompt hands you a prompt, its `guidance` field says how to report progress, batch work and finish the turn. Follow it.",
         ].join("\n"),
+        // `logging` is gone: the 2026-07-28 revision removed `logging/setLevel`
+        // and deprecated the logging feature itself (SEP-2577), and nothing
+        // here ever sent a log notification to a client.
         capabilities: {
-          logging: {},
           tools: {},
           resources: {},
           prompts: {},
         },
+        // What a client may cache, and for how long, on the 2026-07-28 wire.
+        // The listings change only when this image does, so they are worth an
+        // hour; `private` because a bearer scopes the response and the
+        // instructions carry today's date. A resource read is live financial
+        // data and is never cached (a resource may still set its own window
+        // with `cacheHint`, and the name-resolving ones do).
+        cacheHints: {
+          "tools/list": { ttlMs: LIST_TTL_MS, cacheScope: "private" },
+          "prompts/list": { ttlMs: LIST_TTL_MS, cacheScope: "private" },
+          "resources/list": { ttlMs: LIST_TTL_MS, cacheScope: "private" },
+          "resources/templates/list": {
+            ttlMs: LIST_TTL_MS,
+            cacheScope: "private",
+          },
+          "server/discover": { ttlMs: LIST_TTL_MS, cacheScope: "private" },
+          "resources/read": { ttlMs: 0, cacheScope: "private" },
+        },
+        // A write is confirmed in two rounds on 2026-07-28: the tool returns
+        // the question and the client calls it again with the answer. Two is
+        // the whole flow, so a third round is a client looping.
+        inputRequired: {
+          maxRounds: 2,
+          // The SDK's shim would answer an `input_required` on a 2025-era
+          // connection with real server-initiated requests -- but our 2025 path
+          // has its own fallback for a client that cannot show a dialog
+          // (mcp-elicitation-support.ts), which a shim cannot reproduce. That
+          // path asks directly instead; see `confirmWriteMany`.
+          legacyShim: false,
+        },
+        // Verified BEFORE any handler runs, so a tampered, expired or replayed
+        // confirmation is refused by the seam rather than read by a tool.
+        requestState: { verify: this.requestStateCodec.verify },
       },
     );
 
     // Stream the agent's tool calls to the web chat as live progress when this
     // session is serving a relayed prompt. Must run before the tools register.
-    installRelayToolActivity(server, resolve, this.relayService);
+    installRelayToolActivity(server, this.relayService);
+    installConfirmSupport(server, this.requestStateCodec);
 
-    this.accountsTools.register(server, resolve);
-    this.transactionsTools.register(server, resolve);
-    this.categoriesTools.register(server, resolve);
-    this.payeesTools.register(server, resolve);
-    this.reportsTools.register(server, resolve);
-    this.investmentsTools.register(server, resolve);
-    this.scheduledTools.register(server, resolve);
+    this.accountsTools.register(server);
+    this.transactionsTools.register(server);
+    this.categoriesTools.register(server);
+    this.payeesTools.register(server);
+    this.reportsTools.register(server);
+    this.investmentsTools.register(server);
+    this.scheduledTools.register(server);
     this.calculateTools.register(server);
-    this.budgetsTools.register(server, resolve);
-    this.relayTools.register(server, resolve);
+    this.budgetsTools.register(server);
+    this.relayTools.register(server);
 
-    this.accountListResource.register(server, resolve);
-    this.categoryTreeResource.register(server, resolve);
-    this.recentTransactionsResource.register(server, resolve);
-    this.financialSummaryResource.register(server, resolve);
-    this.relayAttachmentResource.register(server, resolve);
+    this.accountListResource.register(server);
+    this.categoryTreeResource.register(server);
+    this.recentTransactionsResource.register(server);
+    this.financialSummaryResource.register(server);
+    this.relayAttachmentResource.register(server);
 
     this.financialReviewPrompt.register(server);
     this.budgetCheckPrompt.register(server);

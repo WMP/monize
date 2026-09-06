@@ -53,6 +53,26 @@
     "amountDue": "{date} 應付 {amount}",
     "amountUnavailable": "金額無法取得（無目前匯率），到期日 {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} 已切換為{state}",
+    "riskMessage": "您的 GEM 策略「{strategy}」已從{fromState}變為{toState}。開啟以查看建議。",
+    "allocationTitle": "{strategy} 變更了目標",
+    "allocationMessage": "您的 GEM 策略「{strategy}」現在的目標是 {target}。開啟以查看建議。",
+    "riskOn": "風險偏好",
+    "riskOff": "避險"
+  },
+  "portfolioMovement": {
+    "titleUp": "投資上漲 {percent}%",
+    "titleDown": "投資下跌 {percent}%",
+    "messageUp": "今天您的投資上漲了 {percent}%（不含存入與提出）。開啟以查看。",
+    "messageDown": "今天您的投資下跌了 {percent}%（不含存入與提出）。開啟以查看。"
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} 低於您的閾值",
+    "titleHigh": "{account} 高於您的閾值",
+    "messageLow": "{account} 降至 {balance}，低於您的閾值 {threshold}。",
+    "messageHigh": "{account} 升至 {balance}，高於您的閾值 {threshold}。"
+  },
   "system": {
     "backupFailed": {
       "title": "自動備份失敗",

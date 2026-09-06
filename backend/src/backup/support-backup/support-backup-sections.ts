@@ -41,6 +41,7 @@ export const SECTION_TABLES: Record<SupportBackupSection, string[]> = {
     "notifications",
     "notification_preferences",
     "notification_reminders",
+    "notification_portfolio_state",
   ],
   reports: [
     "custom_reports",

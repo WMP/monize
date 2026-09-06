@@ -34,7 +34,8 @@
       "inactive": "비활성",
       "withoutCategory": "카테고리 없음"
     },
-    "applyDefaultCategories": "기본 카테고리 적용"
+    "applyDefaultCategories": "기본 카테고리 적용",
+    "lookupSettings": "거래처 조회 설정"
   },
   "list": {
     "columns": {
@@ -99,8 +100,9 @@
       "replaced": "검색으로 대체됨:",
       "clear": "검색 변경 사항 실행 취소",
       "nothingFound": "이 이름에 대한 공개 연락처 정보를 찾지 못했습니다.",
-      "noProvider": "연락처 정보를 조회하려면 <link>AI 설정</link>에서 AI 공급자를 구성하세요.",
-      "failed": "조회를 완료할 수 없습니다. 나중에 다시 시도하세요."
+      "noProvider": "연락처를 찾으려면 <link>거래처 조회 설정</link>에서 조회 소스를 설정하세요.",
+      "failed": "조회를 완료할 수 없습니다. 나중에 다시 시도하세요.",
+      "quotaExceeded": "이번 달 Google Places 조회를 모두 사용했습니다. <link>거래처 조회 설정</link>에서 한도를 늘리거나 다음 달까지 기다리세요."
     }
   },
   "merge": {
@@ -284,7 +286,9 @@
   "selectCategoryPlaceholder": "카테고리 선택...",
   "validation": {
     "nameRequired": "수취인 이름이 필요합니다",
-    "emailInvalid": "유효한 이메일 주소를 입력하세요"
+    "emailInvalid": "유효한 이메일 주소를 입력하세요",
+    "phoneInvalid": "유효한 전화번호를 입력하세요",
+    "phoneNeedsCountryCode": "국가 번호를 추가하세요. 예: +1 206 448 8762"
   },
   "defaultCategoryBackfill": {
     "allConfirmTitle": "기본 카테고리를 적용하시겠습니까?",

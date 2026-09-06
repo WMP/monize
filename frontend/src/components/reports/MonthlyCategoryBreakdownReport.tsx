@@ -306,7 +306,7 @@ function deviationClass(
 export function MonthlyCategoryBreakdownReport() {
   const router = useRouter();
   const t = useTranslations('reports');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent } = useNumberFormat();
   const { formatMonth } = useDateFormat();
   const otherExpensesLabel = t('monthlyCategoryBreakdown.otherExpenses');
   const otherIncomeLabel = t('monthlyCategoryBreakdown.otherIncome');
@@ -730,7 +730,7 @@ export function MonthlyCategoryBreakdownReport() {
     const sign = normalized > 0 ? '+' : '-';
     if (showPercentages && monthTotal > 0) {
       const pct = (Math.abs(normalized) / monthTotal) * 100;
-      return `${sign}${pct.toFixed(1)}%`;
+      return `${sign}${formatPercent(pct, 1)}`;
     }
     return `${sign} ${formatCurrency(Math.abs(normalized), currency)}`;
   };

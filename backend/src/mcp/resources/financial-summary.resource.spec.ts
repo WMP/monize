@@ -1,12 +1,12 @@
 import { McpFinancialSummaryResource } from "./financial-summary.resource";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 describe("McpFinancialSummaryResource", () => {
   let resource: McpFinancialSummaryResource;
   let accountsService: Record<string, jest.Mock>;
   let analyticsService: Record<string, jest.Mock>;
   let server: { registerResource: jest.Mock };
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   let handler: (...args: any[]) => any;
 
   beforeEach(() => {
@@ -29,8 +29,8 @@ describe("McpFinancialSummaryResource", () => {
       }),
     };
 
-    resolve = jest.fn();
-    resource.register(server as any, resolve);
+    ctx = mcpTestCtx();
+    resource.register(server as any);
   });
 
   it("should register the resource", () => {
@@ -43,23 +43,19 @@ describe("McpFinancialSummaryResource", () => {
   });
 
   it("should return error when no user context", async () => {
-    resolve.mockReturnValue(undefined);
-    const result = await handler("monize://financial-summary", {
-      sessionId: "s1",
-    });
+    ctx.setUser(undefined);
+    const result = await handler("monize://financial-summary", ctx);
     expect(result.contents[0].text).toContain("Error");
   });
 
   it("should return error when scope check fails", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-    const result = await handler("monize://financial-summary", {
-      sessionId: "s1",
-    });
+    ctx.setUser({ userId: "u1", scopes: "write" });
+    const result = await handler("monize://financial-summary", ctx);
     expect(result.contents[0].text).toContain("Insufficient scope");
   });
 
   it("should return financial summary with net worth and current month", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
     accountsService.getSummary.mockResolvedValue({
       totalAssets: 10000,
       totalLiabilities: 2000,
@@ -70,9 +66,7 @@ describe("McpFinancialSummaryResource", () => {
       totalExpenses: -3000,
     });
 
-    const result = await handler("monize://financial-summary", {
-      sessionId: "s1",
-    });
+    const result = await handler("monize://financial-summary", ctx);
     const parsed = JSON.parse(result.contents[0].text);
     expect(parsed.netWorth.netWorth).toBe(8000);
     expect(parsed.currentMonth.totalIncome).toBe(5000);
@@ -80,7 +74,7 @@ describe("McpFinancialSummaryResource", () => {
   });
 
   it("excludes investment-linked cash transactions from the MCP summary", async () => {
-    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+    ctx.setUser({ userId: "u1", scopes: "read" });
     accountsService.getSummary.mockResolvedValue({
       totalAssets: 0,
       totalLiabilities: 0,
@@ -91,7 +85,7 @@ describe("McpFinancialSummaryResource", () => {
       totalExpenses: 0,
     });
 
-    await handler("monize://financial-summary", { sessionId: "s1" });
+    await handler("monize://financial-summary", ctx);
 
     // 10th positional arg is excludeInvestmentLinked.
     const args = analyticsService.getSummary.mock.calls[0];

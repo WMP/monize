@@ -699,6 +699,23 @@ export class AccountsService {
           account.creditLimit = updateAccountDto.creditLimit;
         if (updateAccountDto.interestRate !== undefined)
           account.interestRate = updateAccountDto.interestRate;
+        // Balance thresholds: reset the latch when the threshold changes, so a
+        // newly set threshold arms cleanly on the next crossing (spec 4.1).
+        if (updateAccountDto.lowBalanceThreshold !== undefined) {
+          if (
+            account.lowBalanceThreshold !== updateAccountDto.lowBalanceThreshold
+          )
+            account.lowAlertArmed = false;
+          account.lowBalanceThreshold = updateAccountDto.lowBalanceThreshold;
+        }
+        if (updateAccountDto.highBalanceThreshold !== undefined) {
+          if (
+            account.highBalanceThreshold !==
+            updateAccountDto.highBalanceThreshold
+          )
+            account.highAlertArmed = false;
+          account.highBalanceThreshold = updateAccountDto.highBalanceThreshold;
+        }
         if (updateAccountDto.isFavourite !== undefined)
           account.isFavourite = updateAccountDto.isFavourite;
         if (updateAccountDto.excludeFromNetWorth !== undefined)

@@ -77,6 +77,14 @@
           "title": "Ihre Konten",
           "body": "Fügen Sie hier über die hervorgehobene Schaltfläche Ihre Bank-, Kreditkarten-, Kredit- und Anlagekonten hinzu. Jeder Saldo und jede Buchung gehört zu einem Konto."
         },
+        "openAccountDetail": {
+          "title": "Detailansicht eines Kontos öffnen",
+          "body": "Jedes Konto hat eine auf seinen Typ zugeschnittene Seite. Wählen Sie **Details** — das Augensymbol in einer Kontozeile — um sie zu öffnen. Auf dem Handy halten Sie das Konto gedrückt und wählen **Details**."
+        },
+        "accountDetailView": {
+          "title": "Eine auf dieses Konto zugeschnittene Ansicht",
+          "body": "Diese Seite richtet sich nach dem Kontotyp: Ein Bankkonto, eine Kreditkarte, ein Kredit, ein Anlagekonto oder ein Vermögenswert zeigt jeweils die Zahlen und Werkzeuge, die dazu passen. Über **Details** in der Kontoliste kommen Sie jederzeit hierher zurück."
+        },
         "transactions": {
           "title": "Buchungen",
           "body": "Das ist Ihr Buchungsregister — jede Zahlung und Einzahlung Ihrer Konten befindet sich hier und kann durchsucht und gefiltert werden."

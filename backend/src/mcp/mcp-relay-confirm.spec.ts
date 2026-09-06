@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { RELAY_PREVIEW_SHOWN, emitRelayCard } from "./mcp-relay-confirm";
-import { withMcpSession } from "./mcp-session-context";
+import { withMcpCaller } from "./mcp-session-context";
 import type { AiRelayService } from "../ai/relay/ai-relay.service";
 import type { PendingAiAction } from "../ai/actions/ai-action.types";
 
@@ -19,7 +19,7 @@ describe("emitRelayCard", () => {
   it("passes the ambient MCP session id through to the relay", () => {
     const relay = relayDouble();
 
-    withMcpSession("session-abc", () => {
+    withMcpCaller("session-abc", () => {
       emitRelayCard(relay as unknown as AiRelayService, "user-1", action);
     });
 

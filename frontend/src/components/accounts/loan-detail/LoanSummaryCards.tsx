@@ -52,7 +52,7 @@ export function LoanSummaryCards({
   baseline,
 }: LoanSummaryCardsProps) {
   const t = useTranslations('accounts');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const currency = account.currencyCode;
 
@@ -127,7 +127,7 @@ export function LoanSummaryCards({
       label: t('loanDetail.summary.interestRate'),
       value:
         currentAnnualRate != null
-          ? `${currentAnnualRate}%`
+          ? `${formatPercentTrimmed(currentAnnualRate)}`
           : t('loanDetail.summary.notSet'),
       note:
         effectiveRate != null

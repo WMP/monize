@@ -219,12 +219,13 @@ function CustomTooltip({ active, payload, formatCurrencyFull, getHoldingsLabel }
   formatCurrencyFull: (v: number) => string;
   getHoldingsLabel: (count: number) => string;
 }) {
+  const { formatPercent } = useNumberFormat();
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100">{d.label}</p>
-      <p className="text-sm text-gray-600 dark:text-gray-400">{formatCurrencyFull(d.totalValue)} ({d.percentage.toFixed(1)}%)</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400">{formatCurrencyFull(d.totalValue)} ({formatPercent(d.percentage, 1)})</p>
       <p className="text-sm text-gray-500 dark:text-gray-400">{getHoldingsLabel(d.count)}</p>
     </div>
   );
@@ -235,7 +236,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-security-type-allocation-accounts';
 export function SecurityTypeAllocationReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatPercent } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -412,7 +413,7 @@ export function SecurityTypeAllocationReport() {
     const rows = allocationData.map(item => [
       item.label,
       formatCurrencyFull(item.totalValue, defaultCurrency),
-      `${item.percentage.toFixed(1)}%`,
+      formatPercent(item.percentage, 1),
       String(item.count),
     ]);
     await exportToPdf({
@@ -426,7 +427,7 @@ export function SecurityTypeAllocationReport() {
       chartContainer: chartRef.current,
       chartLegend: allocationData.map((item) => ({
         color: resolvePdfColor(item.color),
-        label: `${item.label} - ${formatCurrencyFull(item.totalValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
+        label: `${item.label} - ${formatCurrencyFull(item.totalValue, defaultCurrency)} (${formatPercent(item.percentage, 1)})`,
       })),
       tableData: { headers, rows },
       filename: 'security-type-allocation',
@@ -688,7 +689,7 @@ export function SecurityTypeAllocationReport() {
                         characters), so it takes a full `minmax(0,1fr)` track. */}
                     <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
-                      {item.percentage.toFixed(1)}%
+                      {formatPercent(item.percentage, 1)}
                     </td>
                     <td role="cell" className={`${CELL_PLACEMENT.count} text-gray-600 dark:text-gray-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.count.label}</CellLabel>
@@ -741,7 +742,7 @@ export function SecurityTypeAllocationReport() {
                         <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                         {value === null || totalPortfolioValue <= 0
                           ? '-'
-                          : `${((value / totalPortfolioValue) * 100).toFixed(1)}%`}
+                          : formatPercent((value / totalPortfolioValue) * 100, 1)}
                       </td>
                       {/* A caption names the COLUMN its cell is in, not the kind
                           of the value, so this one is as true as the Holdings

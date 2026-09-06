@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@/test/render';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@/test/render';
 import { NotificationList } from './NotificationList';
 import { NO_NOTIFICATION_FILTERS } from '@/lib/notification-filters';
 import type { Notification } from '@/types/notification';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -33,6 +34,17 @@ const daysFromToday = (offset: number): string => {
   d.setDate(d.getDate() + offset);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+/**
+ * The same `YYYY-MM-DD` rendered under the `DD.MM.YYYY` preference the date
+ * tests set -- what the reader sees instead of the raw stored ISO. Kept as a
+ * plain string reshuffle so the assertion cannot pass by echoing the component's
+ * own formatter.
+ */
+const asUserDate = (ymd: string): string => {
+  const [y, m, d] = ymd.split('-');
+  return `${d}.${m}.${y}`;
 };
 
 const makeNotification = (overrides: Partial<Notification> = {}): Notification => ({
@@ -70,6 +82,21 @@ describe('NotificationList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // A due date on a notification row is a calendar string; the UI must render
+    // it in the reader's own date-format preference, never the stored ISO. The
+    // date tests below pin a concrete, non-browser pattern so the expected
+    // output is the same on every CI locale.
+    usePreferencesStore.setState({
+      preferences: { dateFormat: 'DD.MM.YYYY' } as never,
+    });
+  });
+
+  afterEach(() => {
+    // `cleanup()` first: vitest runs after-hooks in reverse registration order,
+    // so a store write here would re-render the still-mounted tree outside act
+    // (`src/test/test-hygiene.test.ts`).
+    cleanup();
+    usePreferencesStore.setState({ preferences: null });
   });
 
   // The one string on every row, and the one the rename left in English while
@@ -325,11 +352,50 @@ describe('NotificationList', () => {
     );
 
     expect(screen.getByText('Power Co due in 3 days')).toBeInTheDocument();
+    // The date is rendered in the reader's preference, not the stored ISO.
     expect(
-      screen.getByText(new RegExp(`312\\.65 due on ${daysFromToday(3)}`)),
+      screen.getByText(new RegExp(`312\\.65 due on ${asUserDate(daysFromToday(3))}`)),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(new RegExp(daysFromToday(3))),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('STORED ENGLISH TITLE')).not.toBeInTheDocument();
     expect(screen.queryByText('STORED ENGLISH MESSAGE')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The due date follows the reader's `dateFormat` preference, like every date
+   * the register and reports draw -- it was interpolated as the stored
+   * `YYYY-MM-DD`, so a reader on `DD.MM.YYYY` saw `2026-09-15` where the rest
+   * of the app shows `15.09.2026`. A different pattern than the suite default
+   * (`MM/DD/YYYY` here) proves the preference is what drives the output.
+   */
+  it('renders the due date in the reader date-format preference, not raw ISO', () => {
+    usePreferencesStore.setState({
+      preferences: { dateFormat: 'MM/DD/YYYY' } as never,
+    });
+    render(
+      <NotificationList
+        {...defaultProps}
+        notifications={[
+          billDueAlert({
+            payeeName: 'Power Co',
+            amount: 312.65,
+            amountComplete: true,
+            dueDate: daysFromToday(3),
+            currencyCode: 'USD',
+          }),
+        ]}
+      />,
+    );
+
+    const [y, m, d] = daysFromToday(3).split('-');
+    expect(
+      screen.getByText(new RegExp(`due on ${m}/${d}/${y}`)),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(new RegExp(daysFromToday(3))),
+    ).not.toBeInTheDocument();
   });
 
   it('says the amount is unavailable rather than leaving a blank or a stale figure', () => {
@@ -352,7 +418,7 @@ describe('NotificationList', () => {
     expect(screen.getByText('Monthly ETF buy due today')).toBeInTheDocument();
     expect(
       screen.getByText(
-        `Amount unavailable (no current exchange rate), due on ${daysFromToday(0)}`,
+        `Amount unavailable (no current exchange rate), due on ${asUserDate(daysFromToday(0))}`,
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText('STORED ENGLISH MESSAGE')).not.toBeInTheDocument();
@@ -808,11 +874,13 @@ describe('NotificationList', () => {
         />,
       );
       expect(screen.getByText('Rent could not be posted')).toBeInTheDocument();
+      // The due date shows in the reader's preference (01.09.2026), not 2026-09-01.
       expect(
         screen.getByText(
-          'Your scheduled transaction due 2026-09-01 did not post automatically: account is closed. You can post it manually from Bills.',
+          'Your scheduled transaction due 01.09.2026 did not post automatically: account is closed. You can post it manually from Bills.',
         ),
       ).toBeInTheDocument();
+      expect(screen.queryByText(/2026-09-01/)).not.toBeInTheDocument();
     });
 
     it('falls back to the stored English for a row without the structured payload', () => {

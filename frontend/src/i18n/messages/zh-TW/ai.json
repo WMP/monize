@@ -218,7 +218,7 @@
     "hideHelp": "隱藏",
     "helpIntro": "執行您自己的 MCP 代理程式，它將使用您的訂閱來回答此聊天中的提示。",
     "step1": "建立您的存取權杖",
-    "tokenStep": "首先，在<link>使用者設定 -> API 存取</link>中建立一個 Personal Access Token，然後在下方使用它。",
+    "tokenStep": "首先，在<link>使用者設定 -> API 存取</link>中建立一個 Personal Access Token，然後在下方使用它。 請為這個代理單獨建立一個權杖：與其他 MCP 用戶端共用的權杖會把該用戶端的確認要求也送到這裡。",
     "claudeHeading": "使用 Claude CLI 連線",
     "step2": "使用 Claude CLI 將代理程式連線到 Monize：",
     "allowToolsNote": "結束 Claude 並使用此開關重新啟動，使其自動核准每個 Monize 工具呼叫：",

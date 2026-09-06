@@ -135,7 +135,7 @@
     "button": "Kontaktangaben nachschlagen",
     "inProgress": "Wird gesucht...",
     "nothingNew": "Es wurden keine neuen Kontaktangaben gefunden.",
-    "noProvider": "Richten Sie in den KI-Einstellungen einen KI-Anbieter ein, um Kontaktangaben nachzuschlagen.",
+    "noProvider": "Richte in den Einstellungen zur Zahlungsempfänger-Suche eine Quelle ein, um Kontaktdaten zu finden.",
     "failed": "Die Suche konnte nicht abgeschlossen werden. Versuchen Sie es später erneut.",
     "dialogTitle": "Kontaktangaben bestätigen",
     "dialogSubtitle": "Für {name} wird nichts gespeichert, bevor Sie bestätigen.",
@@ -146,6 +146,7 @@
     "cancel": "Abbrechen",
     "confirm": "{count, plural, one {# Änderung speichern} other {# Änderungen speichern}}",
     "applied": "{count, plural, one {# Kontaktangabe gespeichert} other {# Kontaktangaben gespeichert}}",
-    "applyFailed": "Die Kontaktangaben konnten nicht gespeichert werden"
+    "applyFailed": "Die Kontaktangaben konnten nicht gespeichert werden",
+    "quotaExceeded": "Die Google-Places-Abfragen dieses Monats sind aufgebraucht. Erhöhe das Limit in den Einstellungen zur Zahlungsempfänger-Suche oder warte bis zum nächsten Monat."
   }
 }

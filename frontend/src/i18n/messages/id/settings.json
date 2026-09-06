@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Simpan Preferensi",
-    "savingButton": "Menyimpan...",
     "toasts": {
       "saved": "Preferensi disimpan",
       "saveFailed": "Gagal menyimpan preferensi",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Notifikasi",
+    "portfolioAlert": {
+      "title": "Pergerakan nilai investasi",
+      "description": "Beri tahu saya sekali sehari saat akun investasi saya bergerak melewati ambang batas, diukur dari perubahan pasar dan dividen (setoran dan penarikan dikecualikan).",
+      "enableLabel": "Aktifkan peringatan pergerakan investasi",
+      "thresholdLabel": "Beri tahu saat pergerakan harian minimal",
+      "save": "Simpan",
+      "saved": "Ambang batas disimpan",
+      "saveError": "Tidak dapat menyimpan ambang batas",
+      "loadError": "Tidak dapat memuat pengaturan peringatan investasi",
+      "retry": "Coba lagi"
+    },
     "smtpNotConfigured": "Notifikasi surel tidak tersedia. SMTP belum dikonfigurasi oleh administrator.",
     "emailNotificationsTitle": "Notifikasi Surel",
     "emailNotificationsDescription": "Terima pengingat surel untuk tagihan yang akan datang dan peringatan anggaran",
@@ -239,15 +248,10 @@
       "heading": "Push peramban",
       "diagnostics": {
         "summary": "Diagnostik notifikasi",
-        "intro": "Apa yang dilaporkan browser dan perangkat ini ke Monize tentang notifikasi. Gunakan tombol uji agar Monize membuat notifikasi yang bisa Anda cari di perangkat, lalu Salin untuk mengirim laporan lengkap.",
+        "intro": "Apa yang dilaporkan peramban dan perangkat ini ke Monize tentang notifikasi. Segarkan setelah mengubah pengaturan, lalu gunakan Salin untuk mengirim laporan lengkap.",
         "refresh": "Segarkan",
         "copy": "Salin laporan",
-        "copied": "Diagnostik disalin ke papan klip",
-        "localTest": "Tampilkan notifikasi uji",
-        "localTestRunning": "Memeriksa…",
-        "localTestBody": "Jika Anda melihat ini, notifikasi berfungsi di perangkat ini.",
-        "localTestCreated": "Monize membuat notifikasi tanpa kesalahan, tetapi tidak ada yang bisa memastikan sistem menampilkannya. Jika Anda tidak melihatnya di perangkat, sistem menyembunyikannya; aktifkan notifikasi Monize di pengaturan perangkat.",
-        "localTestError": "Tidak dapat menjalankan uji di perangkat ini ({detail})."
+        "copied": "Diagnostik disalin ke papan klip"
       },
       "description": "Daftarkan perangkat ini agar Monize dapat menghubunginya bahkan saat aplikasi ditutup. Untuk saat ini hanya notifikasi uji yang dikirim lewat jalur ini; sisanya tetap masuk ke bel.",
       "androidNotify": "Di Android, izin yang diberikan saja tidak cukup: sistem masih dapat menyembunyikan notifikasi. Tekan dan tahan ikon Monize di layar utama, ketuk Info aplikasi, lalu Notifikasi, dan pastikan semuanya aktif.",
@@ -260,7 +264,6 @@
       "thisDevice": "Perangkat ini",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Perangkat tanpa nama",
-      "lastSeen": "Terakhir aktif {when}",
       "noLiveDevices": "Belum ada perangkat terdaftar. Aktifkan push di perangkat ini untuk mengirim uji coba.",
       "notConfigured": "Push peramban tidak tersedia di instans Monize ini. Administrator dapat mengaktifkannya di area Admin.",
       "disabledByAdmin": "Administrator telah mematikan push peramban untuk instans Monize ini.",
@@ -301,25 +304,42 @@
           "transient": "tidak terkirim (kesalahan sementara); coba lagi",
           "unconfigured": "instans ini tidak dapat menandatangani pesan push saat ini"
         }
+      },
+      "transport": {
+        "webpush": "Push web",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Endpoint",
+        "transport": "Dikirim melalui",
+        "registeredIp": "Didaftarkan dari",
+        "registered": "Terdaftar",
+        "lastSeen": "Terakhir aktif",
+        "lastDelivery": "Pengiriman terakhir",
+        "noDelivery": "Belum ada yang dikirim",
+        "userAgent": "Peramban",
+        "unknownIp": "Tidak diketahui"
       }
     },
     "preferences": {
       "heading": "Cara memberi tahu saya",
-      "description": "Bel selalu menampilkan setiap notifikasi. Pilih jenis mana yang juga dikirim Monize melalui email atau push, dan seberapa sering.",
+      "description": "Pilih jenis mana yang dikirim Monize lewat email atau push, dan seberapa sering.",
       "categoryHeader": "Notifikasi",
       "channels": {
-        "inApp": "Dalam aplikasi",
         "emailReport": "Email (laporan)",
         "emailNotification": "Email (peringatan)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Notifikasi dikirim melalui aplikasi distributor yang Anda jalankan sendiri, seperti ntfy, alih-alih layanan push vendor peramban. Daftarkan endpoint di aplikasi tersebut untuk memakai kanal ini."
       },
       "categories": {
         "PAYMENTS": "Tagihan dan terjadwal",
         "BUDGETS": "Anggaran",
-        "SYSTEM": "Peringatan sistem"
+        "SYSTEM": "Peringatan sistem",
+        "BALANCES": "Saldo akun",
+        "INVESTMENTS": "Nilai investasi",
+        "STRATEGIES": "Sinyal strategi"
       },
-      "inAppAlways": "Selalu tampil di lonceng",
       "channelNotApplicable": "Tidak berlaku untuk jenis notifikasi ini",
       "emailToggleLabel": "Email laporan untuk {category}",
       "saveFailed": "Tidak dapat menyimpan setelan itu",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push untuk {category}",
       "unifiedpushToggleLabel": "UnifiedPush untuk {category}",
       "emailUnavailable": "Aktifkan notifikasi email di atas untuk mengirimnya melalui email.",
-      "pushUnavailable": "Aktifkan push di perangkat ini terlebih dahulu (lihat di bawah).",
-      "unifiedpushUnavailable": "Daftarkan endpoint UnifiedPush dari aplikasi distributor Anda untuk menggunakan saluran ini."
+      "pushUnavailable": "Tidak ada perangkat yang terdaftar untuk push, jadi kanal ini tidak dapat mengirim apa pun.",
+      "pushEnableHint": "Peramban ini belum terdaftar untuk notifikasi push."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Pencadangan Otomatis",
     "help": "Bantuan & Dukungan",
     "dangerZone": "Zona Berbahaya",
-    "about": "Tentang"
+    "about": "Tentang",
+    "payeeLookup": "Pencarian penerima"
   },
   "page": {
     "title": "Pengaturan",
@@ -885,14 +906,6 @@
         "step3": "Jawaban dialirkan kembali ke obrolan. Titik status menunjukkan apakah agen Anda terhubung.",
         "note": "Tidak ada yang berjalan hingga agen Anda terhubung dan mendengarkan. Obrolan menampilkan instruksi koneksi."
       }
-    },
-    "payeeLookup": {
-      "title": "Pencarian otomatis detail kontak penerima",
-      "subtitle": "Cari otomatis situs web, alamat, email, dan nomor telepon penerima baru melalui penyedia AI yang Anda konfigurasikan. Nama penerima dikirim, bersama catatan, situs web, alamat, email, dan telepon yang sudah dimilikinya, agar pencarian dapat membedakan bisnis dan lokasi yang tepat.",
-      "toggleLabel": "Aktifkan pencarian otomatis detail kontak",
-      "enabled": "Pencarian otomatis detail kontak diaktifkan",
-      "disabled": "Pencarian otomatis detail kontak dinonaktifkan",
-      "saveFailed": "Tidak dapat memperbarui pengaturan pencarian detail kontak"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Sepanjang waktu"
     },
     "estCostTooltip": "Diperkirakan menggunakan tarif biaya yang Anda konfigurasikan pada setiap penyedia. Tidak termasuk aktivitas apa pun di mana tidak ada tarif yang cocok."
+  },
+  "payeeLookup": {
+    "title": "Pencarian penerima",
+    "subtitle": "Dari mana situs web, alamat, email, dan nomor telepon penerima berasal, dan kapan pencarian berjalan sendiri.",
+    "saved": "Pengaturan pencarian penerima disimpan",
+    "saveFailed": "Tidak dapat menyimpan pengaturan pencarian penerima",
+    "loadFailed": "Tidak dapat memuat pengaturan pencarian penerima. Muat ulang halaman untuk mencoba lagi.",
+    "googlePlaces": {
+      "toggleLabel": "Gunakan Google Places untuk pencarian penerima",
+      "notConfigured": "Tambahkan kunci API Google Places untuk mencari bisnis di direktori Google, bukan lewat penyedia AI Anda.",
+      "operatorManaged": "Dikonfigurasi oleh administrator server ini. Anda dapat menonaktifkannya untuk penerima Anda sendiri.",
+      "configure": "Siapkan",
+      "edit": "Ubah",
+      "removeKey": "Hapus kunci",
+      "usage": "Terpakai bulan ini: {used} dari {cap}",
+      "usageNoCap": "Terpakai bulan ini: {used}. Tanpa batas bulanan.",
+      "keyUnreadable": "Server ini tidak dapat membaca kunci API yang tersimpan. Ini terjadi saat cadangan dipulihkan ke instance lain, atau setelah kunci enkripsi berubah. Masukkan kembali kuncinya untuk memperbaikinya.",
+      "encryptionUnavailable": "Server ini tidak memiliki kunci enkripsi, jadi kunci API tidak dapat disimpan dengan aman. Minta administrator Anda menyiapkannya.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize mengirim nama penerima dan alamat yang sudah Anda miliki ke Google, dan tidak menyimpan apa pun di sana.",
+      "apiKeyLabel": "Kunci API",
+      "apiKeyPlaceholder": "Tempel kunci API Google Places Anda",
+      "apiKeyHelp": "Buat kunci di konsol Google Cloud dengan Places API (New) diaktifkan. Biarkan kosong untuk mempertahankan kunci yang sudah disimpan.",
+      "capToggleLabel": "Batasi permintaan tiap bulan",
+      "capHelp": "Google memberikan {free} permintaan Text Search gratis per bulan untuk bidang yang dibutuhkan pencarian ini. Setelah batas, pencarian kembali ke penyedia AI Anda.",
+      "capLabel": "Permintaan per bulan",
+      "capRange": "Masukkan angka antara {min} dan {max}.",
+      "test": "Uji",
+      "testing": "Menguji...",
+      "testSuccess": "Google menerima kuncinya.",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "setupInstructions": "Petunjuk penyiapan"
+    },
+    "automatic": {
+      "title": "Pencarian kontak penerima otomatis",
+      "subtitle": "Cari otomatis situs web, alamat, email, dan nomor telepon penerima baru. Nama penerima dikirim, bersama catatan, situs web, alamat, email, dan telepon yang sudah dimilikinya, agar pencarian dapat membedakan bisnis dan lokasi yang tepat.",
+      "toggleLabel": "Aktifkan pencarian kontak penerima otomatis",
+      "enabled": "Pencarian kontak penerima otomatis diaktifkan",
+      "disabled": "Pencarian kontak penerima otomatis dinonaktifkan",
+      "saveFailed": "Tidak dapat memperbarui pengaturan pencarian kontak penerima",
+      "noSource": "Aktifkan sebuah sumber di atas untuk mencari penerima secara otomatis. Jika keduanya nonaktif, tidak ada yang dapat menjawab pencarian."
+    },
+    "order": {
+      "title": "Sumber mana yang menjawab lebih dulu",
+      "placesTitle": "Google Places",
+      "placesHelp": "Fakta direktori, lebih murah per pencarian. Google tidak menyimpan alamat email.",
+      "aiTitle": "Penyedia AI yang ada",
+      "aiHelp": "Dapat menemukan alamat email, dan memakan satu panggilan model untuk setiap pencarian.",
+      "aiToggleLabel": "Gunakan penyedia AI untuk pencarian penerima",
+      "aiProviderLabel": "Penyedia yang digunakan",
+      "aiProviderAny": "Penyedia mana pun, sesuai prioritas",
+      "moveUp": "Naik",
+      "moveDown": "Turun"
+    }
   }
 }

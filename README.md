@@ -435,7 +435,7 @@ Swagger UI is available at `/api/docs` in **development mode only** (disabled in
 - `GET /api/v1/ai/usage` - AI usage summary
 - `GET /api/v1/ai/status` - AI feature availability
 - `GET /api/v1/built-in-reports/*` - Pre-aggregated reports
-- `POST /api/v1/mcp` - MCP (Model Context Protocol) endpoint
+- `POST /api/v1/mcp` - MCP (Model Context Protocol) endpoint, serving revision 2026-07-28 and the 2025-era revisions
 - `GET /api/v1/auth/tokens` - List personal access tokens
 - `POST /api/v1/auth/tokens` - Create personal access token
 - `GET /api/v1/health/live` - Liveness probe

@@ -29,7 +29,7 @@ export class OAuthMetadataController {
       scopes_supported: [...MCP_RESOURCE_SCOPES],
       bearer_methods_supported: ["header"],
       resource_documentation:
-        "https://modelcontextprotocol.io/specification/draft/basic/authorization",
+        "https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization",
     };
   }
 }

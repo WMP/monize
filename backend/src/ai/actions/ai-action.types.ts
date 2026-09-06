@@ -105,6 +105,27 @@ interface BaseDescriptor {
 }
 
 /**
+ * The descriptor fields the builder mints FRESH on every build -- a random
+ * `actionId` and a clock-derived `expiresAt`. Everything else in a descriptor
+ * describes the change and is the same whenever the same change is re-derived.
+ *
+ * The list exists because the MCP multi round-trip confirmation fingerprints
+ * the action a user approved and re-checks it on the round that writes
+ * (`backend/src/mcp/mcp-confirm.ts`). Those two rounds are two separate tool
+ * calls, so they build two descriptors; hashing these fields would make the
+ * fingerprint differ every time and refuse every confirmed write. It is
+ * declared here, beside the descriptor, rather than restated as a literal in
+ * the consumer -- and `AiActionEnvelope` below is what makes the compiler
+ * check it: a new per-build field cannot be minted without joining the list.
+ */
+export const AI_ACTION_ENVELOPE_FIELDS = ["actionId", "expiresAt"] as const;
+
+export type AiActionEnvelopeField = (typeof AI_ACTION_ENVELOPE_FIELDS)[number];
+
+/** Exactly the fields `AI_ACTION_ENVELOPE_FIELDS` names, typed from the descriptor. */
+export type AiActionEnvelope = Pick<BaseDescriptor, AiActionEnvelopeField>;
+
+/**
  * One resolved category-split line carried on a create/update transaction
  * descriptor. Ids are resolved at preview time and covered by the signature.
  * Category splits only: the AI tool does not expose transfer/investment splits.

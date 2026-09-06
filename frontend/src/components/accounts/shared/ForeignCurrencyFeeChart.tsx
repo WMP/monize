@@ -135,7 +135,7 @@ export function ForeignCurrencyFeeChart({
 }: ForeignCurrencyFeeChartProps) {
   const t = useTranslations('accountDetail-fxFees');
   const chartTitle = t('chart.title');
-  const { formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency, formatCurrencyAxis, formatNumber } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const downloadFilename = accountName ? `${chartTitle} - ${accountName}` : chartTitle;
@@ -226,7 +226,7 @@ export function ForeignCurrencyFeeChart({
         { label: t('chart.total'), value: formatFee(summary.total) },
         {
           label: t('chart.transactions'),
-          value: summary.totalCount.toLocaleString(),
+          value: formatNumber(summary.totalCount, 0),
         },
       ]
     : [];
@@ -411,7 +411,7 @@ export function ForeignCurrencyFeeChart({
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('chart.transactions')}</div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">
-              {summary.totalCount.toLocaleString()}
+              {formatNumber(summary.totalCount, 0)}
             </div>
           </div>
         </div>

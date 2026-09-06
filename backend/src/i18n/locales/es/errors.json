@@ -365,6 +365,8 @@
     "nameConflict": "Ya existe un beneficiario con el nombre \"{{ name }}\"",
     "nameRequired": "El nombre del beneficiario es obligatorio",
     "invalidEmail": "\"{{ email }}\" no es una dirección de correo electrónico válida",
+    "invalidPhone": "\"{{ phone }}\" no es un número de teléfono válido",
+    "phoneNeedsCountryCode": "Incluya el código de país de \"{{ phone }}\", por ejemplo +1 206 448 8762",
     "notFound": "Beneficiario con ID {{ id }} no encontrado",
     "logoNotFound": "No hay logotipo disponible para este beneficiario",
     "categoryIdsNotOwned": "IDs de categoría no encontrados o no pertenecen al usuario: {{ ids }}",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Otra operacion esta reemplazando actualmente los datos de esta cuenta. Espera a que termine e intentalo de nuevo."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places lo configura la administración de este servidor. Aquí solo se puede cambiar el ajuste de activado o desactivado.",
+    "encryptionKeyNotConfigured": "ENCRYPTION_KEY no está configurada. No se puede guardar la clave de API de Google Places de forma segura.",
+    "notConfigured": "No hay ninguna clave de API de Google Places configurada.",
+    "capReached": "Se ha alcanzado el límite de solicitudes de Google Places de este mes.",
+    "testFailed": "La prueba de conexión con Google Places ha fallado.",
+    "referrerRestricted": "Esta clave está restringida por referente HTTP, pero esta instalación no tiene PUBLIC_APP_URL configurada, así que no envía ningún referente y ninguna lista de permitidos puede coincidir. Configure PUBLIC_APP_URL, o restrinja la clave por dirección IP, que es la opción que realmente protege una clave del lado del servidor.",
+    "referrerRejected": "Google rechazó la restricción de referente HTTP de esta clave. Monize envía \"{referer}\" (de PUBLIC_APP_URL); añada exactamente ese valor a los referentes permitidos, teniendo en cuenta que un patrón como *.example.com/* no coincide con un example.com simple. Restringir la clave por dirección IP es la opción que realmente protege una clave del lado del servidor."
   }
 }

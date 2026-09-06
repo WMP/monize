@@ -15,6 +15,18 @@
     "system": {
       "title": "Aviso del sistema",
       "body": "Monize tiene un aviso del sistema para ti. Abre la aplicación para ver los detalles."
+    },
+    "balances": {
+      "title": "Alerta de saldo",
+      "body": "El saldo de una cuenta ha cruzado un umbral que estableciste. Abre Monize para ver los detalles."
+    },
+    "investments": {
+      "title": "Movimiento de inversiones",
+      "body": "Tus inversiones se movieron hoy. Abre Monize para ver los detalles."
+    },
+    "strategies": {
+      "title": "Señal de estrategia",
+      "body": "Una de tus estrategias cambió su recomendación. Abre Monize para ver los detalles."
     }
   },
   "actions": {

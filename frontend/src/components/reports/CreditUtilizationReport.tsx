@@ -156,7 +156,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-credit-utilization-accounts';
 export function CreditUtilizationReport() {
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const { convert, defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -288,7 +288,7 @@ export function CreditUtilizationReport() {
       fmtOrUnknown(r.limit),
       fmtOrUnknown(r.used),
       fmtOrUnknown(r.available),
-      `${r.utilizationPercent.toFixed(1)}%`,
+      formatPercent(r.utilizationPercent, 1),
     ]);
     // A card with no rate is excluded from the totals, so the PDF marks them
     // partial rather than printing a subtotal as the whole.
@@ -300,7 +300,7 @@ export function CreditUtilizationReport() {
         { label: t('creditUtilization.totalLimit'), value: `${formatCurrency(totals.limit, displayCurrency)}${pdfPartialSuffix}`, color: '#2563eb' },
         { label: t('creditUtilization.totalUsed'), value: `${formatCurrency(totals.used, displayCurrency)}${pdfPartialSuffix}`, color: '#dc2626' },
         { label: t('creditUtilization.totalAvailable'), value: `${formatCurrency(totals.available, displayCurrency)}${pdfPartialSuffix}`, color: '#16a34a' },
-        { label: t('creditUtilization.overallUtilization'), value: `${totals.utilizationPercent.toFixed(1)}%${pdfPartialSuffix}`, color: '#ea580c' },
+        { label: t('creditUtilization.overallUtilization'), value: `${formatPercent(totals.utilizationPercent, 1)}${pdfPartialSuffix}`, color: '#ea580c' },
       ],
       chartContainer: chartRef.current,
       tableData: { headers, rows: exportRows },
@@ -407,7 +407,7 @@ export function CreditUtilizationReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('creditUtilization.overallUtilization')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {totals.utilizationPercent.toFixed(1)}%
+            {formatPercent(totals.utilizationPercent, 1)}
             {totals.excludedCount > 0 && (
               <span className="text-amber-600 dark:text-amber-400" aria-hidden="true"> *</span>
             )}
@@ -447,7 +447,7 @@ export function CreditUtilizationReport() {
                     <XAxis
                       type="number"
                       domain={[0, 100]}
-                      tickFormatter={(value: number) => `${value}%`}
+                      tickFormatter={(value: number) => `${formatPercentTrimmed(value)}`}
                       tick={{ fontSize: 12 }}
                     />
                     <YAxis
@@ -464,7 +464,7 @@ export function CreditUtilizationReport() {
                           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{row.name}</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {t('creditUtilization.tooltipUtilization')}: {row.utilizationPercent.toFixed(1)}%
+                              {t('creditUtilization.tooltipUtilization')}: {formatPercent(row.utilizationPercent, 1)}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               {t('creditUtilization.tooltipUsed')}: {fmtOrUnknown(row.used)}
@@ -517,7 +517,7 @@ export function CreditUtilizationReport() {
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                           <p className="font-medium text-gray-900 dark:text-gray-100">{slice.name}</p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {formatCurrency(slice.value, displayCurrency)} ({slice.percent.toFixed(1)}%)
+                            {formatCurrency(slice.value, displayCurrency)} ({formatPercent(slice.percent, 1)})
                           </p>
                         </div>
                       );
@@ -527,7 +527,7 @@ export function CreditUtilizationReport() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {totals.utilizationPercent.toFixed(1)}%
+                  {formatPercent(totals.utilizationPercent, 1)}
                 </span>
               </div>
             </div>
@@ -687,7 +687,7 @@ export function CreditUtilizationReport() {
                       for. Its threshold colouring is unchanged. */}
                   <td role="cell" className={`col-start-2 row-start-1 font-medium ${FIGURE_CELL}`} style={{ color: utilizationColour(row.utilizationPercent) }}>
                     <CellLabel className={CAPTION_CLASS}>{columns.utilization.label}</CellLabel>
-                    {row.utilizationPercent.toFixed(1)}%
+                    {formatPercent(row.utilizationPercent, 1)}
                   </td>
                 </tr>
               ))}
@@ -715,7 +715,7 @@ export function CreditUtilizationReport() {
                 </td>
                 <td role="cell" className={`col-start-2 row-start-1 font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.utilization.label}</CellLabel>
-                  {totals.utilizationPercent.toFixed(1)}%
+                  {formatPercent(totals.utilizationPercent, 1)}
                 </td>
               </tr>
             </tfoot>

@@ -12,9 +12,13 @@ vi.mock('@/lib/payees', () => ({
 
 // Whether an AI provider exists decides whether the lookup is offered at all;
 // the hook is mocked so each test states which world it is in.
-let mockAiConfigured = true;
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: mockAiConfigured, resolved: true }),
+let mockLookupAvailable = true;
+vi.mock('@/hooks/useContactLookupAvailable', () => ({
+  useContactLookupAvailable: () => ({
+    available: mockLookupAvailable,
+    resolved: true,
+    source: mockLookupAvailable ? 'ai' : null,
+  }),
 }));
 
 const mapProvider = { current: undefined as string | undefined };
@@ -187,20 +191,53 @@ describe('PayeeKeyInfoCard contact details', () => {
     expect(screen.queryByText('Email')).not.toBeInTheDocument();
   });
 
-  it('links a phone number to the dialer', () => {
+  it('links a phone number to the dialer, shown the way a person reads one', () => {
+    // Stored as E.164; the card is where it becomes readable.
     render(
       <PayeeKeyInfoCard
-        detail={withContact({ phone: '+1 (555) 010-1234' })}
+        detail={withContact({ phone: '+12064488762' })}
         categoryLabelMap={new Map()}
         onSelectDate={vi.fn()}
         onSelectAccount={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole('link', { name: '+1 (555) 010-1234' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '+1 206 448 8762' })).toHaveAttribute(
       'href',
-      'tel:+15550101234',
+      'tel:+12064488762',
     );
+  });
+
+  it('shows an extension and keeps it in the dialer link', () => {
+    render(
+      <PayeeKeyInfoCard
+        detail={withContact({ phone: '+442079460958;ext=12' })}
+        categoryLabelMap={new Map()}
+        onSelectDate={vi.fn()}
+        onSelectAccount={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: '+44 20 7946 0958 x12' }),
+    ).toHaveAttribute('href', 'tel:+442079460958;ext=12');
+  });
+
+  it('shows a legacy number unchanged rather than blanking it', () => {
+    // Rows written before normalization are not backfilled, so a value this
+    // build cannot parse still has to reach the reader.
+    render(
+      <PayeeKeyInfoCard
+        detail={withContact({ phone: '206-448-8762 (mobile)' })}
+        categoryLabelMap={new Map()}
+        onSelectDate={vi.fn()}
+        onSelectAccount={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: '206-448-8762 (mobile)' }),
+    ).toBeInTheDocument();
   });
 
   it('links an email to the mail composer', () => {
@@ -337,13 +374,13 @@ describe('PayeeKeyInfoCard contact details', () => {
       vi.mocked(toast).mockClear();
       vi.mocked(toast.success).mockClear();
       vi.mocked(toast.error).mockClear();
-      mockAiConfigured = true;
+      mockLookupAvailable = true;
     });
 
     it('offers no lookup button when no AI provider is configured', () => {
       // Nothing could answer, so the card does not offer a button whose only
       // outcome would be telling the user to configure a provider.
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
       renderCard();
 
       expect(

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { formatBytes } from '@/components/transactions/AttachmentsSection';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PendingAction } from '@/types/ai';
+import { formatPhoneForDisplay } from '@/lib/phone-number';
 
 interface TransactionConfirmationCardProps {
   action: PendingAction;
@@ -320,7 +321,9 @@ export function TransactionConfirmationCard({
     if (preview.phone !== undefined) {
       rows.push({
         label: t('confirmAction.phone'),
-        value: preview.phone || none,
+        // Displayed, never the stored E.164: the person approving this card has
+        // to recognise the number.
+        value: formatPhoneForDisplay(preview.phone) || none,
       });
     }
     // The contact details above came from a lookup, not from the user: say so,

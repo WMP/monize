@@ -193,12 +193,26 @@ jobs:
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
+      # The gate's own logic, before it is trusted to gate anything. It is the
+      # part that decides whether a red X means "you shipped a vulnerability"
+      # or "npmjs is down", and it costs ~100ms.
+      - name: Verify the audit gate
+        run: node --test scripts/npm-audit-gate.test.mjs
       # Blocking gate: what we actually ship. A high-severity advisory in a
       # runtime dependency fails the build.
+      #
+      # Not a bare `npm audit`: that exits 1 both for an advisory and for an
+      # advisories endpoint it could not reach, so an npmjs outage was
+      # indistinguishable from a vulnerability (twice on PR #1308, while
+      # `npm ci` in this same job resolved every package). The gate reads
+      # `--json`, retries ONLY a no-answer, and still fails if the endpoint
+      # never answers -- "we could not verify" is not "verified clean" -- but
+      # now says which of the two happened. See scripts/lib/npm-audit-gate.mjs.
       - name: Audit production dependencies (blocking)
         run: |
-          cd backend && npm ci && npm audit --audit-level=high --omit=dev
-          cd ../frontend && npm ci && npm audit --audit-level=high --omit=dev
+          (cd backend && npm ci)
+          (cd frontend && npm ci)
+          node scripts/npm-audit-gate.mjs
       # Visibility only: build tooling (eslint, jest, the Nest CLI) never
       # reaches a user, and its advisories are routinely unfixable for weeks --
       # the current one, brace-expansion GHSA-mh99-v99m-4gvg, has no patched
@@ -328,12 +342,14 @@ jobs:
       # install command at a chart directory that does not exist.
       - name: Verify documented paths and Helm defaults match the manifests
         run: node scripts/check-docs-manifests.mjs
-      # A migration prefix that collides with, or sorts below, one already on the
-      # base branch is applied out of order on every database that recorded the
-      # newer filename -- and `database/CLAUDE.md` stating the rule in prose did
-      # not stop a branch from taking a prefix main had meanwhile used. The
-      # ordering half needs the base ref, hence fetch-depth 0.
-      - name: Verify migration prefixes are unique and sort last
+      # A migration prefix that collides with one already on the base branch is
+      # applied out of order on every database that recorded the other filename
+      # -- and `database/CLAUDE.md` stating the rule in prose did not stop two
+      # branches from both taking the next counter value (issue #1277). New
+      # migrations therefore carry a UTC timestamp prefix, which cannot collide;
+      # this check refuses a new file named under the retired NNN_ scheme. The
+      # "what did this branch add" half needs the base ref, hence fetch-depth 0.
+      - name: Verify migration prefixes are unique and timestamp-named
         run: node scripts/check-migration-prefixes.mjs
       # The GHCR prune sweep DELETES package versions, and its predicate is the
       # only thing standing between "clear the retired per-PR tags" and

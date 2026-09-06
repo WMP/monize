@@ -365,6 +365,8 @@
     "nameConflict": "Người nhận với tên \"{{ name }}\" đã tồn tại",
     "nameRequired": "Tên người nhận là bắt buộc",
     "invalidEmail": "\"{{ email }}\" không phải là địa chỉ email hợp lệ",
+    "invalidPhone": "\"{{ phone }}\" không phải là số điện thoại hợp lệ",
+    "phoneNeedsCountryCode": "Hãy thêm mã quốc gia cho \"{{ phone }}\", ví dụ +1 206 448 8762",
     "notFound": "Không tìm thấy người nhận với ID {{ id }}",
     "logoNotFound": "Không có biểu trưng cho người nhận thanh toán này",
     "categoryIdsNotOwned": "Không tìm thấy ID danh mục hoặc không thuộc sở hữu của người dùng: {{ ids }}",
@@ -601,5 +603,14 @@
   },
   "maintenance": {
     "inProgress": "Mot tac vu khac dang thay the du lieu cua tai khoan nay. Hay doi hoan tat roi thu lai."
+  },
+  "payeeLookup": {
+    "operatorManaged": "Google Places do quản trị viên máy chủ này thiết lập. Tại đây chỉ có thể thay đổi cài đặt bật/tắt.",
+    "encryptionKeyNotConfigured": "Chưa cấu hình ENCRYPTION_KEY. Không thể lưu khóa API Google Places một cách an toàn.",
+    "notConfigured": "Chưa cấu hình khóa API Google Places nào.",
+    "capReached": "Đã đạt giới hạn yêu cầu Google Places của tháng này.",
+    "testFailed": "Kiểm tra kết nối Google Places thất bại.",
+    "referrerRestricted": "Khóa này bị giới hạn theo HTTP referrer, nhưng bản triển khai này chưa đặt PUBLIC_APP_URL nên không gửi referrer nào và không danh sách cho phép nào có thể khớp. Hãy đặt PUBLIC_APP_URL, hoặc giới hạn khóa theo địa chỉ IP — tùy chọn thực sự bảo vệ một khóa phía máy chủ.",
+    "referrerRejected": "Google đã từ chối giới hạn HTTP referrer của khóa này. Monize gửi \"{referer}\" (từ PUBLIC_APP_URL); hãy thêm đúng giá trị đó vào danh sách referrer được phép, lưu ý rằng mẫu như *.example.com/* không khớp với example.com trần. Giới hạn khóa theo địa chỉ IP mới là tùy chọn thực sự bảo vệ một khóa phía máy chủ."
   }
 }

@@ -1,11 +1,11 @@
 import { McpAccountsTools } from "./accounts.tool";
-import { UserContextResolver } from "../mcp-context";
+import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 describe("McpAccountsTools", () => {
   let tool: McpAccountsTools;
   let accountsService: Record<string, jest.Mock>;
   let server: { registerTool: jest.Mock };
-  let resolve: jest.MockedFunction<UserContextResolver>;
+  let ctx: McpTestContext;
   const handlers: Record<string, (...args: any[]) => any> = {};
 
   beforeEach(() => {
@@ -21,8 +21,8 @@ describe("McpAccountsTools", () => {
       }),
     };
 
-    resolve = jest.fn();
-    tool.register(server as any, resolve);
+    ctx = mcpTestCtx();
+    tool.register(server as any);
   });
 
   it("should register 1 tool", () => {
@@ -36,7 +36,7 @@ describe("McpAccountsTools", () => {
 
   describe("list_accounts", () => {
     it("passes all filter args through to the service", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.getLlmAccounts.mockResolvedValue({
         accounts: [
           {
@@ -94,7 +94,7 @@ describe("McpAccountsTools", () => {
           status: "all",
           accountTypes: ["CHEQUING", "SAVINGS"],
         },
-        { sessionId: "s1" },
+        ctx,
       );
 
       expect(accountsService.getLlmAccounts).toHaveBeenCalledWith("u1", {
@@ -120,7 +120,7 @@ describe("McpAccountsTools", () => {
     });
 
     it("delegates with undefined filters when none provided (service applies 'open' default)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.getLlmAccounts.mockResolvedValue({
         accounts: [],
         totalAssets: 0,
@@ -129,7 +129,7 @@ describe("McpAccountsTools", () => {
         totalAccounts: 0,
       });
 
-      await handlers["list_accounts"]({}, { sessionId: "s1" });
+      await handlers["list_accounts"]({}, ctx);
 
       expect(accountsService.getLlmAccounts).toHaveBeenCalledWith("u1", {
         accountNames: undefined,
@@ -141,23 +141,23 @@ describe("McpAccountsTools", () => {
     });
 
     it("returns error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["list_accounts"]({}, { sessionId: "s1" });
+      ctx.setUser(undefined);
+      const result = await handlers["list_accounts"]({}, ctx);
       expect(result.isError).toBe(true);
     });
 
     it("requires read scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-      const result = await handlers["list_accounts"]({}, { sessionId: "s1" });
+      ctx.setUser({ userId: "u1", scopes: "write" });
+      const result = await handlers["list_accounts"]({}, ctx);
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("read");
     });
 
     it("returns a safe error when the service throws", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      ctx.setUser({ userId: "u1", scopes: "read" });
       accountsService.getLlmAccounts.mockRejectedValue(new Error("DB fail"));
 
-      const result = await handlers["list_accounts"]({}, { sessionId: "s1" });
+      const result = await handlers["list_accounts"]({}, ctx);
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("An error occurred");
     });

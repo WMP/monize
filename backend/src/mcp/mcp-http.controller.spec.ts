@@ -107,6 +107,167 @@ describe("McpHttpController", () => {
     });
   });
 
+  // One endpoint serves both revisions. The routing decision is the SDK's own
+  // predicate, and everything it does not classify as legacy must reach the
+  // modern handler -- that path owns the modern error answers, so a request
+  // sent to the sessionful transport instead would be refused in the wrong
+  // shape and never reach a tool.
+  describe("protocol era routing", () => {
+    const PAT = {
+      userId: "11111111-1111-4111-8111-111111111111",
+      scopes: "read",
+      tokenId: "tok-a",
+    };
+
+    function mockRes() {
+      return {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        setHeader: jest.fn(),
+      } as any;
+    }
+
+    // The sessionful path hands the request to the real SDK transport, which
+    // writes to the Node response rather than through Express's helpers.
+    function mockNodeRes() {
+      return {
+        ...mockRes(),
+        writeHead: jest.fn().mockReturnThis(),
+        write: jest.fn().mockReturnValue(true),
+        end: jest.fn(),
+        on: jest.fn(),
+        once: jest.fn(),
+        removeListener: jest.fn(),
+        destroyed: false,
+        headersSent: false,
+      } as any;
+    }
+
+    let modernNode: jest.Mock;
+
+    beforeEach(() => {
+      patService.validateToken.mockResolvedValue(PAT);
+      modernNode = jest.fn().mockResolvedValue(undefined);
+      (controller as any).modernNode = modernNode;
+    });
+
+    it("serves a 2026-07-28 request from the modern handler, with its authInfo", async () => {
+      const body = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/list",
+        params: {
+          _meta: { "io.modelcontextprotocol/protocolVersion": "2026-07-28" },
+        },
+      };
+      const req = {
+        method: "POST",
+        url: "/api/v1/mcp",
+        headers: {
+          authorization: "Bearer pat_test",
+          "content-type": "application/json",
+          "mcp-method": "tools/list",
+        },
+        body,
+      } as any;
+      const res = mockRes();
+
+      await controller.handlePost(req, res);
+
+      expect(modernNode).toHaveBeenCalledWith(req, res, body);
+      // The identity a handler reads is the credential on THIS request.
+      expect(req.auth).toMatchObject({
+        clientId: "pat:tok-a",
+        extra: expect.objectContaining({ userId: PAT.userId }),
+      });
+      // No session is created, looked up, or bound.
+      expect((controller as any).transports.size).toBe(0);
+      expect((controller as any).sessionUsers.size).toBe(0);
+    });
+
+    it("keeps a 2025-era initialize on the sessionful path", async () => {
+      const req = {
+        method: "POST",
+        url: "/api/v1/mcp",
+        headers: {
+          authorization: "Bearer pat_test",
+          "content-type": "application/json",
+        },
+        body: {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: "2025-06-18", capabilities: {} },
+        },
+      } as any;
+
+      await controller.handlePost(req, mockNodeRes());
+
+      expect(modernNode).not.toHaveBeenCalled();
+      // The factory takes no era -- the sessionful leg is identified by the
+      // fact that it built a server of its own rather than by an argument.
+      expect(mcpServerService.createServer).toHaveBeenCalledWith();
+    });
+
+    it("routes a 2025-era request carrying a session id to that session", async () => {
+      const sessionId = "live-session";
+      const handleRequest = jest.fn();
+      (controller as any).transports.set(sessionId, {
+        sessionId,
+        handleRequest,
+        close: jest.fn().mockResolvedValue(undefined),
+      });
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, {
+        userId: PAT.userId,
+        scopes: "read",
+        credentialId: "pat:tok-a",
+      });
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+
+      const req = {
+        method: "POST",
+        url: "/api/v1/mcp",
+        headers: {
+          authorization: "Bearer pat_test",
+          "content-type": "application/json",
+          "mcp-session-id": sessionId,
+        },
+        body: { jsonrpc: "2.0", id: 2, method: "tools/list" },
+      } as any;
+
+      await controller.handlePost(req, mockRes());
+
+      expect(modernNode).not.toHaveBeenCalled();
+      expect(handleRequest).toHaveBeenCalled();
+    });
+
+    // An unbindable credential cannot be tied to a session or to a
+    // confirmation, so it is refused before either era serves it.
+    it("refuses an OAuth grant with no id", async () => {
+      patService.validateToken.mockRejectedValue(new Error("not a PAT"));
+      oauthProviderService.validateAccessToken.mockResolvedValue({
+        userId: PAT.userId,
+        scopes: "read",
+        grantId: undefined,
+      });
+
+      const req = {
+        method: "POST",
+        url: "/api/v1/mcp",
+        headers: { authorization: "Bearer oauth_token" },
+        body: {},
+      } as any;
+      const res = mockRes();
+
+      await controller.handlePost(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(modernNode).not.toHaveBeenCalled();
+      expect(req.auth).toBeUndefined();
+    });
+  });
+
   describe("handlePost", () => {
     it("should reject requests without PAT", async () => {
       const req = {
@@ -336,7 +497,7 @@ describe("McpHttpController", () => {
       );
     });
 
-    it("should reject requests without session ID", async () => {
+    it("answers 405 when no session id is present", async () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
@@ -354,7 +515,11 @@ describe("McpHttpController", () => {
 
       await controller.handleGet(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
+      // GET and DELETE are 2025-era session operations. Without a session id
+      // there is nothing to answer on either era: the 2026-07-28 revision has
+      // no standalone stream and no session to end.
+      expect(res.setHeader).toHaveBeenCalledWith("Allow", "POST");
+      expect(res.status).toHaveBeenCalledWith(405);
     });
 
     it("should reject requests with unknown session ID", async () => {
@@ -507,7 +672,7 @@ describe("McpHttpController", () => {
       );
     });
 
-    it("should reject requests without session ID", async () => {
+    it("answers 405 when no session id is present", async () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
@@ -525,7 +690,11 @@ describe("McpHttpController", () => {
 
       await controller.handleDelete(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
+      // GET and DELETE are 2025-era session operations. Without a session id
+      // there is nothing to answer on either era: the 2026-07-28 revision has
+      // no standalone stream and no session to end.
+      expect(res.setHeader).toHaveBeenCalledWith("Allow", "POST");
+      expect(res.status).toHaveBeenCalledWith(405);
     });
 
     it("should return 404 for an expired session", async () => {

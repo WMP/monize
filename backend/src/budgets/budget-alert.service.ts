@@ -38,7 +38,12 @@ import {
   resolveCategoryName,
   resolveCategorySpent,
 } from "./budget-spending.util";
-import { formatCurrency } from "../common/format-currency.util";
+import { FALLBACK_DEFAULT_CURRENCY } from "../common/default-currency.util";
+import {
+  NumberT,
+  defaultNumberT,
+  numberFormatterFor,
+} from "../common/number-locale.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 
 interface SeasonalProfile {
@@ -256,6 +261,16 @@ export class BudgetAlertService {
       periodEnd,
     );
 
+    // Every figure below is read by this budget's owner, so it is rendered in
+    // their number locale rather than the server's (issue #1316). Resolved once
+    // per budget: the `check*` methods are pure and take it as an argument.
+    const prefs = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(UserPreference).findOne({
+        where: { userId: budget.userId },
+      }),
+    );
+    const n = numberFormatterFor(prefs?.numberFormat, prefs?.language);
+
     const today = new Date();
     const startDate = new Date(periodStart);
     const endDate = new Date(periodEnd);
@@ -280,7 +295,7 @@ export class BudgetAlertService {
     for (const cat of expenseActuals) {
       if (cat.budgeted <= 0) continue;
 
-      const alerts = this.checkThresholdAlerts(cat);
+      const alerts = this.checkThresholdAlerts(cat, n);
       candidates.push(...alerts.map((a) => ({ ...a, budgetId: budget.id })));
     }
 
@@ -292,6 +307,7 @@ export class BudgetAlertService {
         cat,
         daysElapsed,
         totalDays,
+        n,
       );
       if (velocityAlert) {
         candidates.push({ ...velocityAlert, budgetId: budget.id });
@@ -299,7 +315,7 @@ export class BudgetAlertService {
     }
 
     // 3. Flex group alerts
-    const flexAlerts = this.checkFlexGroupAlerts(expenseActuals);
+    const flexAlerts = this.checkFlexGroupAlerts(expenseActuals, n);
     candidates.push(...flexAlerts.map((a) => ({ ...a, budgetId: budget.id })));
 
     // 4. Income shortfall (income-linked budgets)
@@ -308,6 +324,7 @@ export class BudgetAlertService {
         incomeActuals,
         budget.baseIncome,
         periodProgress,
+        n,
       );
       if (incomeAlert) {
         candidates.push({ ...incomeAlert, budgetId: budget.id });
@@ -319,6 +336,7 @@ export class BudgetAlertService {
       expenseActuals,
       periodProgress,
       daysRemaining,
+      n,
     );
     candidates.push(
       ...milestoneAlerts.map((a) => ({ ...a, budgetId: budget.id })),
@@ -329,6 +347,7 @@ export class BudgetAlertService {
       const seasonalAlerts = await this.checkSeasonalSpikes(
         budget.userId,
         budget,
+        n,
       );
       candidates.push(
         ...seasonalAlerts.map((a) => ({ ...a, budgetId: budget.id })),
@@ -418,7 +437,19 @@ export class BudgetAlertService {
     return { alertsCreated: savedAlerts.length, emailsSent };
   }
 
-  checkThresholdAlerts(cat: CategoryActual): AlertCandidate[] {
+  /**
+   * The `title`/`message` pair is the English fallback a reader without a
+   * localizing client sees (the digest email, an API consumer); the UI composes
+   * its own copy from `type` + `data`. The FIGURES inside it still follow the
+   * recipient's number locale, because a Polish reader misreads `zl18,812.71`
+   * whatever language the sentence around it is in (issue #1316). `n` defaults
+   * to the default-locale formatter so a caller with no preferences to hand
+   * (a unit test) is unchanged.
+   */
+  checkThresholdAlerts(
+    cat: CategoryActual,
+    n: NumberT = defaultNumberT,
+  ): AlertCandidate[] {
     const alerts: AlertCandidate[] = [];
 
     if (cat.percentUsed > 100) {
@@ -428,7 +459,7 @@ export class BudgetAlertService {
         type: NotificationType.OVER_BUDGET,
         severity: NotificationSeverity.CRITICAL,
         title: `${cat.categoryName} is over budget`,
-        message: `You have spent ${formatCurrency(cat.spent, cat.currencyCode)} of your ${formatCurrency(cat.budgeted, cat.currencyCode)} budget for ${cat.categoryName} (${cat.percentUsed.toFixed(1)}%).`,
+        message: `You have spent ${n.formatCurrency(cat.spent, cat.currencyCode)} of your ${n.formatCurrency(cat.budgeted, cat.currencyCode)} budget for ${cat.categoryName} (${n.formatPercent(cat.percentUsed, 1)}).`,
         data: {
           categoryName: cat.categoryName,
           percent: cat.percentUsed,
@@ -443,7 +474,7 @@ export class BudgetAlertService {
         type: NotificationType.THRESHOLD_CRITICAL,
         severity: NotificationSeverity.WARNING,
         title: `${cat.categoryName} approaching limit`,
-        message: `You have used ${cat.percentUsed.toFixed(1)}% of your ${cat.categoryName} budget (${formatCurrency(cat.spent, cat.currencyCode)} of ${formatCurrency(cat.budgeted, cat.currencyCode)}).`,
+        message: `You have used ${n.formatPercent(cat.percentUsed, 1)} of your ${cat.categoryName} budget (${n.formatCurrency(cat.spent, cat.currencyCode)} of ${n.formatCurrency(cat.budgeted, cat.currencyCode)}).`,
         data: {
           categoryName: cat.categoryName,
           percent: cat.percentUsed,
@@ -459,7 +490,7 @@ export class BudgetAlertService {
         type: NotificationType.THRESHOLD_WARNING,
         severity: NotificationSeverity.WARNING,
         title: `${cat.categoryName} reaching budget limit`,
-        message: `You have used ${cat.percentUsed.toFixed(1)}% of your ${cat.categoryName} budget (${formatCurrency(cat.spent, cat.currencyCode)} of ${formatCurrency(cat.budgeted, cat.currencyCode)}).`,
+        message: `You have used ${n.formatPercent(cat.percentUsed, 1)} of your ${cat.categoryName} budget (${n.formatCurrency(cat.spent, cat.currencyCode)} of ${n.formatCurrency(cat.budgeted, cat.currencyCode)}).`,
         data: {
           categoryName: cat.categoryName,
           percent: cat.percentUsed,
@@ -477,6 +508,7 @@ export class BudgetAlertService {
     cat: CategoryActual,
     daysElapsed: number,
     totalDays: number,
+    n: NumberT = defaultNumberT,
   ): AlertCandidate | null {
     const dailyRate = cat.spent / daysElapsed;
     const projectedTotal = dailyRate * totalDays;
@@ -489,7 +521,7 @@ export class BudgetAlertService {
         type: NotificationType.PROJECTED_OVERSPEND,
         severity: NotificationSeverity.WARNING,
         title: `${cat.categoryName} projected to overspend`,
-        message: `At your current pace, ${cat.categoryName} is projected to reach ${formatCurrency(projectedTotal, cat.currencyCode)} by the end of the period (budget: ${formatCurrency(cat.budgeted, cat.currencyCode)}).`,
+        message: `At your current pace, ${cat.categoryName} is projected to reach ${n.formatCurrency(projectedTotal, cat.currencyCode)} by the end of the period (budget: ${n.formatCurrency(cat.budgeted, cat.currencyCode)}).`,
         data: {
           categoryName: cat.categoryName,
           projectedTotal: roundMoney(projectedTotal),
@@ -503,7 +535,10 @@ export class BudgetAlertService {
     return null;
   }
 
-  checkFlexGroupAlerts(actuals: CategoryActual[]): AlertCandidate[] {
+  checkFlexGroupAlerts(
+    actuals: CategoryActual[],
+    n: NumberT = defaultNumberT,
+  ): AlertCandidate[] {
     const alerts: AlertCandidate[] = [];
     const flexGroups = new Map<
       string,
@@ -533,8 +568,8 @@ export class BudgetAlertService {
           budgetCategoryId: null,
           type: NotificationType.FLEX_GROUP_WARNING,
           severity: NotificationSeverity.WARNING,
-          title: `Flex group "${groupName}" at ${groupPercent.toFixed(0)}%`,
-          message: `The "${groupName}" flex group has used ${formatCurrency(group.totalSpent, group.currencyCode)} of its combined ${formatCurrency(group.totalBudgeted, group.currencyCode)} budget (${groupPercent.toFixed(1)}%).`,
+          title: `Flex group "${groupName}" at ${n.formatPercent(groupPercent, 0)}`,
+          message: `The "${groupName}" flex group has used ${n.formatCurrency(group.totalSpent, group.currencyCode)} of its combined ${n.formatCurrency(group.totalBudgeted, group.currencyCode)} budget (${n.formatPercent(groupPercent, 1)}).`,
           data: {
             flexGroup: groupName,
             totalBudgeted: group.totalBudgeted,
@@ -552,6 +587,7 @@ export class BudgetAlertService {
     incomeActuals: CategoryActual[],
     expectedIncome: number,
     periodProgress: number,
+    n: NumberT = defaultNumberT,
   ): AlertCandidate | null {
     if (periodProgress < 0.5) return null;
 
@@ -566,7 +602,13 @@ export class BudgetAlertService {
         type: NotificationType.INCOME_SHORTFALL,
         severity: NotificationSeverity.CRITICAL,
         title: "Income below expected",
-        message: `Your actual income (${formatCurrency(totalActualIncome, incomeActuals[0]?.currencyCode || "USD")}) is below ${Math.round(incomeRatio * 100)}% of expected income (${formatCurrency(expectedSoFar, incomeActuals[0]?.currencyCode || "USD")}) at this point in the period.`,
+        message: `Your actual income (${n.formatCurrency(
+          totalActualIncome,
+          incomeActuals[0]?.currencyCode || FALLBACK_DEFAULT_CURRENCY,
+        )}) is below ${n.formatPercent(Math.round(incomeRatio * 100), 0)} of expected income (${n.formatCurrency(
+          expectedSoFar,
+          incomeActuals[0]?.currencyCode || FALLBACK_DEFAULT_CURRENCY,
+        )}) at this point in the period.`,
         data: {
           actualIncome: totalActualIncome,
           expectedIncome: expectedSoFar,
@@ -583,6 +625,7 @@ export class BudgetAlertService {
     actuals: CategoryActual[],
     periodProgress: number,
     daysRemaining: number,
+    n: NumberT = defaultNumberT,
   ): AlertCandidate[] {
     if (periodProgress < 0.5 || daysRemaining <= 0) return [];
 
@@ -601,7 +644,7 @@ export class BudgetAlertService {
           type: NotificationType.POSITIVE_MILESTONE,
           severity: NotificationSeverity.SUCCESS,
           title: "Budget on track",
-          message: `You are ${Math.round(periodProgress * 100)}% through the period and have only used ${overallPercent.toFixed(1)}% of your total budget. Keep it up!`,
+          message: `You are ${n.formatPercent(Math.round(periodProgress * 100), 0)} through the period and have only used ${n.formatPercent(overallPercent, 1)} of your total budget. Keep it up!`,
           data: {
             periodProgress: Math.round(periodProgress * 100),
             percentUsed: Math.round(overallPercent * 10) / 10,
@@ -858,6 +901,7 @@ export class BudgetAlertService {
   async checkSeasonalSpikes(
     userId: string,
     budget: Budget,
+    n: NumberT = defaultNumberT,
   ): Promise<AlertCandidate[]> {
     const categories = (budget.categories || []).filter(
       (bc) => !bc.isIncome && bc.categoryId !== null && !bc.isTransfer,
@@ -893,7 +937,7 @@ export class BudgetAlertService {
           type: NotificationType.SEASONAL_SPIKE,
           severity: NotificationSeverity.INFO,
           title: `Seasonal spike expected for ${profile.categoryName}`,
-          message: `Last ${monthName} you spent ${profile.typicalIncrease.toFixed(1)}x your usual on ${profile.categoryName}. Consider adjusting your budget.`,
+          message: `Last ${monthName} you spent ${n.formatNumber(profile.typicalIncrease, 1)}x your usual on ${profile.categoryName}. Consider adjusting your budget.`,
           data: {
             categoryName: profile.categoryName,
             highMonth: nextMonthNum,

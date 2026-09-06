@@ -57,7 +57,7 @@ function getColumnMap(
 }
 
 export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle }: ReportChartProps) {
-  const { formatCurrency, formatNumber } = useNumberFormat();
+  const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const columns = tableColumns && tableColumns.length > 0 ? tableColumns : DEFAULT_TABLE_COLUMNS;
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -119,12 +119,12 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
   }) => {
     if (active && payload && payload.length) {
       const item = payload[0].payload;
-      const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0';
+      const percentage = total > 0 ? (item.value / total) * 100 : 0;
       return (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
           <p className="text-gray-600 dark:text-gray-400">
-            {formatCurrency(item.value)} ({percentage}%)
+            {formatCurrency(item.value)} ({formatPercent(percentage, 1)})
           </p>
           {item.count !== undefined && (
             <p className="text-sm text-gray-500 dark:text-gray-500">
@@ -369,7 +369,11 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
                   )}
                   {columns.includes(TableColumn.PERCENTAGE) && (
                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
-                      {item.percentage?.toFixed(1) || (total > 0 ? ((item.value / total) * 100).toFixed(1) : '0')}%
+                      {formatPercent(
+                        item.percentage ??
+                          (total > 0 ? (item.value / total) * 100 : 0),
+                        1,
+                      )}
                     </td>
                   )}
                   {columns.includes(TableColumn.COUNT) && (

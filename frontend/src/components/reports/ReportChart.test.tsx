@@ -3,14 +3,17 @@ import { render, screen, fireEvent, act } from '@/test/render';
 import { ReportChart } from './ReportChart';
 import { ReportViewType, GroupByType, TableColumn } from '@/types/custom-report';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-    formatNumber: (n: number, decimals: number) => n.toFixed(decimals),
-    defaultCurrency: 'CAD',
-  }),
-}));
-
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+      formatNumber: (n: number, decimals: number) => n.toFixed(decimals),
+      defaultCurrency: 'CAD',
+    }),
+  };
+});
 vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ dateFormat: 'browser', datePattern: 'YYYY-MM-DD',
     formatDate: (d: string) => d,

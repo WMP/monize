@@ -205,7 +205,7 @@ const CAPTION_CLASS = 'sm:hidden';
 
 export function FlexGroupAnalysisReport() {
   const t = useTranslations('reports');
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>('');
@@ -300,7 +300,7 @@ export function FlexGroupAnalysisReport() {
     percentUsed: {
       field: 'percentUsed',
       label: t('flexGroupAnalysis.colPercentUsed'),
-      value: (cat) => `${cat.percentUsed}%`,
+      value: (cat) => formatPercentTrimmed(cat.percentUsed),
       align: 'right',
       last: true,
     },
@@ -427,7 +427,7 @@ export function FlexGroupAnalysisReport() {
                   {formatCurrency(group.totalSpent)} / {formatCurrency(group.totalBudgeted)}
                 </span>
                 <span className={`font-medium ${percentUsedColor(group.percentUsed)}`}>
-                  {group.percentUsed}%
+                  {formatPercentTrimmed(group.percentUsed)}
                 </span>
               </div>
             </div>

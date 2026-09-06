@@ -53,6 +53,26 @@
     "amountDue": "{date} को {amount} देय",
     "amountUnavailable": "राशि अनुपलब्ध (कोई वर्तमान विनिमय दर नहीं), {date} को देय"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} {state} पर स्विच हो गई",
+    "riskMessage": "आपकी GEM रणनीति \"{strategy}\" {fromState} से {toState} में बदल गई। अनुशंसा की समीक्षा के लिए खोलें।",
+    "allocationTitle": "{strategy} ने अपना लक्ष्य बदला",
+    "allocationMessage": "आपकी GEM रणनीति \"{strategy}\" अब {target} को लक्षित करती है। अनुशंसा की समीक्षा के लिए खोलें।",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "निवेश {percent}% ऊपर",
+    "titleDown": "निवेश {percent}% नीचे",
+    "messageUp": "आज आपके निवेश {percent}% ऊपर हैं, जमा और निकासी को छोड़कर। समीक्षा के लिए खोलें।",
+    "messageDown": "आज आपके निवेश {percent}% नीचे हैं, जमा और निकासी को छोड़कर। समीक्षा के लिए खोलें।"
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} आपकी सीमा से नीचे है",
+    "titleHigh": "{account} आपकी सीमा से ऊपर है",
+    "messageLow": "{account} घटकर {balance} हो गया, आपकी {threshold} सीमा से नीचे।",
+    "messageHigh": "{account} बढ़कर {balance} हो गया, आपकी {threshold} सीमा से ऊपर।"
+  },
   "system": {
     "backupFailed": {
       "title": "स्वचालित बैकअप विफल",

@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
 import {
-  UserContextResolver,
+  resolveUserContext,
   requireScope,
   toolResult,
   toolError,
@@ -28,7 +28,7 @@ export class McpScheduledTools {
     private readonly scheduledService: ScheduledTransactionsService,
   ) {}
 
-  register(server: McpServer, resolve: UserContextResolver) {
+  register(server: McpServer) {
     server.registerTool(
       "list_upcoming_bills",
       {
@@ -50,7 +50,7 @@ export class McpScheduledTools {
           "unconvertible, and the partial sum then travels beside it as a " +
           "`known*Subtotal` -- quote that only as a subtotal, and use " +
           "`unknownAmountItems` and `missingRatePairs` to say why it is partial.",
-        inputSchema: {
+        inputSchema: z.object({
           days: numberArg(z.number().min(1).max(365))
             .optional()
             .default(30)
@@ -66,19 +66,19 @@ export class McpScheduledTools {
             .max(50)
             .optional()
             .describe("Account ids."),
-        },
+        }),
         outputSchema: getUpcomingBillsOutput,
       },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
+      async (args, ctx) => {
+        const user = resolveUserContext(ctx);
+        if (!user) return toolError("No user context");
+        const check = requireScope(user.scopes, "read");
         if (check.error) return check.result;
 
         try {
           const upcoming =
             await this.scheduledService.getLlmUpcomingBillsAndDeposits(
-              ctx.userId,
+              user.userId,
               {
                 days: args.days ?? 30,
                 kind: args.kind,

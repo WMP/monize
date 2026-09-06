@@ -21,6 +21,7 @@ import { PayeeContactLookupService } from "./lookup/payee-contact-lookup.service
 import { ContactLookupSuggestions } from "./lookup/payee-contact-lookup.types";
 import { PayeeContactEnrichmentService } from "./lookup/payee-contact-enrichment.service";
 import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
+import { UserPreference } from "../users/entities/user-preference.entity";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -33,6 +34,12 @@ describe("PayeesService", () => {
   let transactionsRepository: Record<string, jest.Mock>;
   let scheduledTransactionsRepository: Record<string, jest.Mock>;
   let categoriesRepository: Record<string, jest.Mock>;
+  /**
+   * The row `resolveUserPhoneRegion` reads to place a phone number written
+   * without a country code. `en-US` is the column default, so an unset test
+   * resolves the region a real user with no saved preferences would.
+   */
+  let preferencesRepository: Record<string, jest.Mock>;
   let mockDataSource: DataSourceMock;
   let mockQueryRunner: any;
   let txManager: Record<string, jest.Mock>;
@@ -158,6 +165,12 @@ describe("PayeesService", () => {
       createQueryBuilder: jest.fn(() => categoryQueryBuilderMock),
     };
 
+    preferencesRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ userId, numberFormat: "en-US", language: "en" }),
+    };
+
     const aliasQueryBuilderMock = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -192,6 +205,7 @@ describe("PayeesService", () => {
       [Transaction, transactionsRepository],
       [ScheduledTransaction, scheduledTransactionsRepository],
       [Category, categoriesRepository],
+      [UserPreference, preferencesRepository],
     ]);
     mockDataSource = dataSource;
     txManager = manager;
@@ -236,7 +250,7 @@ describe("PayeesService", () => {
       website: "https://acme.example",
       address: "1 Main St",
       email: "hi@acme.example",
-      phone: "+1 555 010 2000",
+      phone: "+1 206 448 8762",
       label: null,
       source: "ai-web-search" as const,
       confidence: "high" as const,
@@ -310,7 +324,7 @@ describe("PayeesService", () => {
       ["website", { website: "acme.example" }],
       ["address", { address: "1 Main St" }],
       ["email", { email: "hi@acme.example" }],
-      ["phone", { phone: "+1 555 010 2000" }],
+      ["phone", { phone: "+1 206 448 8762" }],
     ])("does not dispatch when %s was supplied", async (_field, extra) => {
       await service.create(userId, { name: "Acme", ...extra });
 
@@ -405,7 +419,7 @@ describe("PayeesService", () => {
           website: "https://acme.example",
           address: "1 Main St",
           email: "hi@acme.example",
-          phone: "+1 555 010 2000",
+          phone: "+1 206 448 8762",
           contactLookup: {
             source: "ai-web-search",
             attemptedAt: expect.any(Date),
@@ -751,6 +765,40 @@ describe("PayeesService", () => {
       expect(
         names(await service.getLlmPayees(userId, { hasDefaultCategory: true })),
       ).toEqual(["Amazon"]);
+    });
+
+    it("hands the model a phone in the form a person reads", async () => {
+      // A model quotes these rows back to the reader, so the same number must
+      // not read "+12064488762" in the assistant and "+1 206 448 8762" on the
+      // payee page. The stored form is how the column compares two numbers; it
+      // is not an answer to "what is their number?".
+      payeesRepository.find.mockResolvedValue([
+        { ...roster[0], phone: "+12064488762" },
+      ]);
+
+      const result = await service.getLlmPayees(userId);
+
+      expect(result.payees[0].phone).toBe("+1 206 448 8762");
+    });
+
+    it("passes a legacy value through rather than blanking it", async () => {
+      // Rows written before normalization are not backfilled, and a stored
+      // "call the shop" is worth quoting even though nobody can dial it.
+      payeesRepository.find.mockResolvedValue([
+        { ...roster[0], phone: "call the shop" },
+      ]);
+
+      const result = await service.getLlmPayees(userId);
+
+      expect(result.payees[0].phone).toBe("call the shop");
+    });
+
+    it("leaves a payee with no phone holding null, not an empty string", async () => {
+      // Absent is not blank: `hasPhone: false` and every consumer downstream
+      // read this as "there is no number", and "" is a number-shaped nothing.
+      const result = await service.getLlmPayees(userId);
+
+      expect(result.payees.find((p) => p.name === "Amazon")?.phone).toBeNull();
     });
 
     it("combines filters with the search", async () => {
@@ -2987,9 +3035,80 @@ describe("PayeesService", () => {
           expect.objectContaining({
             address: "1912 Pike Pl, Seattle",
             email: "hello@starbucks.com",
-            phone: "+1 206-448-8762",
+            // Stored in the one canonical form, whichever shape was typed.
+            phone: "+12064488762",
           }),
         );
+      });
+
+      it("places a number written without a country code in the caller's region", async () => {
+        // The user stated no country code, so the region their preferences
+        // imply is what decides -- not a guess, and not the raw string.
+        payeesRepository.findOne.mockResolvedValue(null);
+        preferencesRepository.findOne.mockResolvedValue({
+          userId,
+          numberFormat: "en-GB",
+          language: "en",
+        });
+
+        await service.create(userId, {
+          name: "Acme",
+          phone: "020 7946 0958",
+        } as any);
+
+        expect(payeesRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ phone: "+442079460958" }),
+        );
+      });
+
+      it("keeps an extension, in the one form a parser can read back", async () => {
+        payeesRepository.findOne.mockResolvedValue(null);
+
+        await service.create(userId, {
+          name: "Acme",
+          phone: "+44 20 7946 0958 ext. 12",
+        } as any);
+
+        expect(payeesRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ phone: "+442079460958;ext=12" }),
+        );
+      });
+
+      it("refuses a number it cannot read, and writes nothing", async () => {
+        payeesRepository.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.create(userId, { name: "Acme", phone: "12345" } as any),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        // The refusal has to precede the write, or a 400 would be describing a
+        // row that exists.
+        expect(payeesRepository.create).not.toHaveBeenCalled();
+        expect(txManager.save).not.toHaveBeenCalled();
+      });
+
+      it("asks for a country code when it cannot place a bare number", async () => {
+        payeesRepository.findOne.mockResolvedValue(null);
+        preferencesRepository.findOne.mockResolvedValue({
+          userId,
+          numberFormat: "browser",
+          language: "en",
+        });
+
+        await expect(
+          service.create(userId, {
+            name: "Acme",
+            phone: "020 7946 0958",
+          } as any),
+        ).rejects.toThrow(/country code/i);
+      });
+
+      it("does not read the caller's region when there is no number to place", async () => {
+        // A region is one more query and most payees carry no phone at all.
+        payeesRepository.findOne.mockResolvedValue(null);
+
+        await service.create(userId, { name: "Acme" } as any);
+
+        expect(preferencesRepository.findOne).not.toHaveBeenCalled();
       });
 
       it("stores a blank contact field as null rather than an empty string", async () => {
@@ -3024,6 +3143,60 @@ describe("PayeesService", () => {
           { id: "payee-1", userId },
           expect.objectContaining({ address: "2 New Street" }),
         );
+      });
+
+      it("normalizes a phone number the edit actually changed", async () => {
+        payeesRepository.findOne.mockResolvedValue({
+          ...mockPayee,
+          phone: "+12064488762",
+        });
+
+        await service.update(userId, "payee-1", { phone: "(416) 363-8221" });
+
+        expect(txManager.update).toHaveBeenCalledWith(
+          Payee,
+          { id: "payee-1", userId },
+          expect.objectContaining({ phone: "+14163638221" }),
+        );
+      });
+
+      it("leaves a legacy number alone when the form resends it unchanged", async () => {
+        // Rows written before normalization are not backfilled, and the form
+        // resends every field on every save. Validating a value merely PRESENT
+        // in the payload would make such a payee impossible to edit at all --
+        // the user would be refused over a number they never touched.
+        payeesRepository.findOne.mockResolvedValue({
+          ...mockPayee,
+          phone: "call the shop",
+        });
+
+        await service.update(userId, "payee-1", {
+          notes: "Pay in cash",
+          phone: "call the shop",
+        });
+
+        expect(txManager.update).toHaveBeenCalledWith(
+          Payee,
+          { id: "payee-1", userId },
+          expect.objectContaining({
+            notes: "Pay in cash",
+            phone: "call the shop",
+          }),
+        );
+        // ...and it did not even look the region up, since nothing moved.
+        expect(preferencesRepository.findOne).not.toHaveBeenCalled();
+      });
+
+      it("still refuses an edit that replaces a legacy number with a bad one", async () => {
+        payeesRepository.findOne.mockResolvedValue({
+          ...mockPayee,
+          phone: "call the shop",
+        });
+
+        await expect(
+          service.update(userId, "payee-1", { phone: "12345" }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(txManager.update).not.toHaveBeenCalled();
       });
 
       it("clears an emptied address, email and phone", async () => {
@@ -3144,16 +3317,36 @@ describe("PayeesService", () => {
           name: "Acme",
           address: "  1 Main St  ",
           email: "hi@acme.com",
-          phone: " 555 ",
+          phone: " (206) 448-8762 ",
         });
 
         expect(preview).toEqual(
           expect.objectContaining({
-            // Trimmed here, so the card shows what the commit will store.
+            // Trimmed and normalized here, so the card shows what the commit
+            // will store rather than a value the save would then change.
             address: "1 Main St",
             email: "hi@acme.com",
-            phone: "555",
+            phone: "+12064488762",
           }),
+        );
+      });
+
+      it("does not refuse an update preview over a legacy number it resends", async () => {
+        // A preview computes what the commit will do, and `update` waives a
+        // value that did not move -- so a card must not fail on one either.
+        payeesRepository.findOne.mockResolvedValue({
+          ...mockPayee,
+          phone: "call the shop",
+        });
+
+        const preview = await service.previewUpdatePayee(userId, {
+          name: "Starbucks",
+          address: "1 Main St",
+          phone: "call the shop",
+        });
+
+        expect(preview).toEqual(
+          expect.objectContaining({ phone: "call the shop" }),
         );
       });
 

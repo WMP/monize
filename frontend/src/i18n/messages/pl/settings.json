@@ -155,8 +155,6 @@
       "openstreetmap": "OpenStreetMap",
       "waze": "Waze"
     },
-    "saveButton": "Zapisz preferencje",
-    "savingButton": "Zapisywanie...",
     "toasts": {
       "saved": "Zapisano preferencje",
       "saveFailed": "Nie udało się zapisać preferencji",
@@ -208,6 +206,17 @@
   },
   "notifications": {
     "heading": "Powiadomienia",
+    "portfolioAlert": {
+      "title": "Zmiana wartości inwestycji",
+      "description": "Powiadamiaj raz dziennie, gdy moje konta inwestycyjne zmienią się poza próg, mierzony na podstawie zmian rynkowych i dywidend (wpłaty i wypłaty są wyłączone).",
+      "enableLabel": "Włącz alerty o zmianach inwestycji",
+      "thresholdLabel": "Powiadom, gdy dzienna zmiana wyniesie co najmniej",
+      "save": "Zapisz",
+      "saved": "Próg zapisany",
+      "saveError": "Nie udało się zapisać progu",
+      "loadError": "Nie udało się wczytać ustawienia alertów inwestycyjnych",
+      "retry": "Ponów próbę"
+    },
     "smtpNotConfigured": "Powiadomienia e-mail są niedostępne. Administrator nie skonfigurował SMTP.",
     "emailNotificationsTitle": "Powiadomienia e-mail",
     "emailNotificationsDescription": "Otrzymuj przypomnienia e-mail o nadchodzących rachunkach i alertach budżetowych",
@@ -239,15 +248,10 @@
       "heading": "Push w przeglądarce",
       "diagnostics": {
         "summary": "Diagnostyka powiadomień",
-        "intro": "Co ta przeglądarka i urządzenie zgłaszają Monize w sprawie powiadomień. Użyj przycisku testu, aby Monize utworzyło powiadomienie, którego możesz wypatrywać na urządzeniu, a następnie Kopiuj, aby przesłać pełny raport.",
+        "intro": "Co ta przeglądarka i to urządzenie zgłaszają Monize na temat powiadomień. Odśwież po zmianie ustawienia, a następnie użyj Kopiuj, aby wysłać pełny raport.",
         "refresh": "Odśwież",
         "copy": "Kopiuj raport",
-        "copied": "Skopiowano diagnostykę do schowka",
-        "localTest": "Pokaż testowe powiadomienie",
-        "localTestRunning": "Sprawdzanie…",
-        "localTestBody": "Jeśli to widzisz, powiadomienia działają na tym urządzeniu.",
-        "localTestCreated": "Monize utworzyło powiadomienie bez błędu, ale nic tutaj nie potwierdzi, że system faktycznie je wyświetlił. Jeśli nie widzisz go na urządzeniu, system je ukrywa; włącz powiadomienia dla Monize w ustawieniach urządzenia.",
-        "localTestError": "Nie udało się uruchomić testu na tym urządzeniu ({detail})."
+        "copied": "Skopiowano diagnostykę do schowka"
       },
       "description": "Zarejestruj to urządzenie, aby Monize mogło je powiadomić nawet przy zamkniętej aplikacji. Na razie tą drogą dostarczane jest tylko powiadomienie testowe; wszystko inne nadal trafia do dzwonka.",
       "androidNotify": "Na Androidzie sama zgoda nie wystarczy: system nadal może ukrywać powiadomienia. Przytrzymaj ikonę Monize na ekranie głównym, wybierz „O aplikacji”, potem „Powiadomienia” i upewnij się, że są włączone.",
@@ -260,7 +264,6 @@
       "thisDevice": "To urządzenie",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Urządzenie bez nazwy",
-      "lastSeen": "Ostatnia aktywność {when}",
       "noLiveDevices": "Nie zarejestrowano jeszcze żadnego urządzenia. Włącz push na tym urządzeniu, aby wysłać test.",
       "notConfigured": "Push w przeglądarce nie jest dostępny w tej instancji Monize. Administrator może go włączyć w sekcji Admin.",
       "disabledByAdmin": "Administrator wyłączył push w przeglądarce dla tej instancji Monize.",
@@ -301,25 +304,42 @@
           "transient": "nie dostarczono (błąd przejściowy); spróbuj ponownie",
           "unconfigured": "ta instancja nie może teraz podpisywać wiadomości push"
         }
+      },
+      "transport": {
+        "webpush": "Web push",
+        "unifiedpush": "UnifiedPush"
+      },
+      "facts": {
+        "endpoint": "Punkt końcowy",
+        "transport": "Dostarczane przez",
+        "registeredIp": "Zarejestrowano z",
+        "registered": "Zarejestrowano",
+        "lastSeen": "Ostatnia aktywność",
+        "lastDelivery": "Ostatnie dostarczenie",
+        "noDelivery": "Nic jeszcze nie dostarczono",
+        "userAgent": "Przeglądarka",
+        "unknownIp": "Nieznany"
       }
     },
     "preferences": {
       "heading": "Jak mnie powiadamiać",
-      "description": "Dzwonek zawsze pokazuje wszystkie powiadomienia. Wybierz, które rodzaje Monize wyśle również e-mailem lub push, i jak często.",
+      "description": "Wybierz, które rodzaje Monize wysyła e-mailem lub przez push i jak często.",
       "categoryHeader": "Powiadomienie",
       "channels": {
-        "inApp": "W aplikacji",
         "emailReport": "E-mail (raport)",
         "emailNotification": "E-mail (alert)",
         "push": "Push",
-        "unifiedpush": "UnifiedPush"
+        "unifiedpush": "UnifiedPush",
+        "unifiedpushHint": "Powiadomienia są dostarczane przez aplikację dystrybutora, którą prowadzisz samodzielnie (na przykład ntfy), zamiast przez usługę push dostawcy przeglądarki. Zarejestruj punkt końcowy w tej aplikacji, aby korzystać z tego kanału."
       },
       "categories": {
         "PAYMENTS": "Rachunki i zaplanowane",
         "BUDGETS": "Budżety",
-        "SYSTEM": "Alerty systemowe"
+        "SYSTEM": "Alerty systemowe",
+        "BALANCES": "Salda kont",
+        "INVESTMENTS": "Wartość inwestycji",
+        "STRATEGIES": "Sygnały strategii"
       },
-      "inAppAlways": "Zawsze widoczne w dzwonku",
       "channelNotApplicable": "Nie dotyczy tego typu powiadomienia",
       "emailToggleLabel": "E-mail (raport) dla: {category}",
       "saveFailed": "Nie udało się zapisać tego ustawienia",
@@ -341,8 +361,8 @@
       "pushToggleLabel": "Push dla: {category}",
       "unifiedpushToggleLabel": "UnifiedPush dla {category}",
       "emailUnavailable": "Włącz powyżej powiadomienia e-mail, aby wysyłać je e-mailem.",
-      "pushUnavailable": "Najpierw włącz push na tym urządzeniu (patrz niżej).",
-      "unifiedpushUnavailable": "Zarejestruj punkt końcowy UnifiedPush w aplikacji dystrybutora, aby korzystać z tego kanału."
+      "pushUnavailable": "Żadne urządzenie nie jest zarejestrowane do powiadomień push, więc ten kanał nic nie dostarczy.",
+      "pushEnableHint": "Ta przeglądarka nie jest zarejestrowana do powiadomień push."
     }
   },
   "help": {
@@ -822,7 +842,8 @@
     "autoBackup": "Automatyczna kopia zapasowa",
     "help": "Pomoc i wsparcie",
     "dangerZone": "Strefa zagrożenia",
-    "about": "O programie"
+    "about": "O programie",
+    "payeeLookup": "Wyszukiwanie odbiorców"
   },
   "page": {
     "title": "Ustawienia",
@@ -885,14 +906,6 @@
         "step3": "Odpowiedzi są przesyłane strumieniowo z powrotem do czatu. Kropka stanu pokazuje, czy agent jest połączony.",
         "note": "Nic się nie uruchamia, dopóki agent nie jest połączony i nie nasłuchuje. Czat wyświetla instrukcje połączenia."
       }
-    },
-    "payeeLookup": {
-      "title": "Automatyczne wyszukiwanie danych kontaktowych odbiorcy",
-      "subtitle": "Automatycznie wyszukuje stronę internetową, adres, e-mail i numer telefonu nowego odbiorcy za pomocą skonfigurowanego dostawcy AI. Wysyłana jest nazwa odbiorcy wraz z zapisanymi już notatkami, stroną internetową, adresem, e-mailem i numerem telefonu, aby wyszukiwanie rozpoznało właściwą firmę we właściwej lokalizacji.",
-      "toggleLabel": "Włącz automatyczne wyszukiwanie danych kontaktowych",
-      "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
-      "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
-      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych"
     }
   },
   "sharedAccessPage": {
@@ -1166,5 +1179,60 @@
       "all": "Cały czas"
     },
     "estCostTooltip": "Szacowane przy użyciu stawek kosztów skonfigurowanych dla każdego dostawcy. Wyklucza aktywność, dla której nie ustawiono pasującej stawki."
+  },
+  "payeeLookup": {
+    "title": "Wyszukiwanie odbiorców",
+    "subtitle": "Skąd pochodzą strona, adres, e-mail i telefon odbiorcy oraz kiedy wyszukiwanie uruchamia się samo.",
+    "saved": "Zapisano ustawienia wyszukiwania odbiorców",
+    "saveFailed": "Nie udało się zapisać ustawień wyszukiwania odbiorców",
+    "loadFailed": "Nie udało się wczytać ustawień wyszukiwania odbiorców. Odśwież stronę, aby spróbować ponownie.",
+    "googlePlaces": {
+      "toggleLabel": "Używaj Google Places do wyszukiwania odbiorców",
+      "notConfigured": "Dodaj klucz API Google Places, aby wyszukiwać firmy w katalogu Google zamiast korzystać z dostawcy AI.",
+      "operatorManaged": "Skonfigurowane przez administratora tego serwera. Możesz to wyłączyć dla własnych odbiorców.",
+      "configure": "Skonfiguruj",
+      "edit": "Edytuj",
+      "removeKey": "Usuń klucz",
+      "usage": "Wykorzystano w tym miesiącu: {used} z {cap}",
+      "usageNoCap": "Wykorzystano w tym miesiącu: {used}. Bez limitu miesięcznego.",
+      "keyUnreadable": "Ten serwer nie może odczytać zapisanego klucza API. Dzieje się tak po przywróceniu kopii zapasowej na innej instancji lub po zmianie klucza szyfrowania. Wprowadź klucz ponownie, aby to naprawić.",
+      "encryptionUnavailable": "Na tym serwerze nie skonfigurowano klucza szyfrowania, więc klucza API nie da się bezpiecznie zapisać. Poproś administratora o jego ustawienie.",
+      "modalTitle": "Google Places",
+      "modalSubtitle": "Monize wysyła do Google nazwę odbiorcy i adres, który już masz, i nic tam nie przechowuje.",
+      "apiKeyLabel": "Klucz API",
+      "apiKeyPlaceholder": "Wklej swój klucz API Google Places",
+      "apiKeyHelp": "Utwórz klucz w konsoli Google Cloud z włączonym Places API (New). Pozostaw puste, aby zachować już zapisany klucz.",
+      "capToggleLabel": "Ogranicz liczbę zapytań w miesiącu",
+      "capHelp": "Google daje {free} bezpłatnych zapytań Text Search miesięcznie dla pól potrzebnych temu wyszukiwaniu. Po przekroczeniu limitu wyszukiwanie wraca do dostawcy AI.",
+      "capLabel": "Zapytania miesięcznie",
+      "capRange": "Wprowadź liczbę z zakresu od {min} do {max}.",
+      "test": "Testuj",
+      "testing": "Testowanie...",
+      "testSuccess": "Google zaakceptował klucz.",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "setupInstructions": "Instrukcja konfiguracji"
+    },
+    "automatic": {
+      "title": "Automatyczne wyszukiwanie danych kontaktowych odbiorcy",
+      "subtitle": "Automatycznie wyszukuj stronę internetową, adres, e-mail i numer telefonu nowego odbiorcy. Wysyłana jest nazwa odbiorcy wraz z zapisanymi już notatkami, stroną, adresem, e-mailem i telefonem, aby wyszukiwanie rozróżniło właściwą firmę i właściwą lokalizację.",
+      "toggleLabel": "Włącz automatyczne wyszukiwanie danych kontaktowych odbiorcy",
+      "enabled": "Automatyczne wyszukiwanie danych kontaktowych włączone",
+      "disabled": "Automatyczne wyszukiwanie danych kontaktowych wyłączone",
+      "saveFailed": "Nie udało się zaktualizować ustawienia wyszukiwania danych kontaktowych",
+      "noSource": "Włącz powyżej jedno źródło, aby automatycznie wyszukiwać odbiorców. Przy obu wyłączonych nic nie odpowie na wyszukiwanie."
+    },
+    "order": {
+      "title": "Które źródło odpowiada najpierw",
+      "placesTitle": "Google Places",
+      "placesHelp": "Dane z katalogu, taniej za wyszukiwanie. Google nie ma adresów e-mail.",
+      "aiTitle": "Istniejący dostawca AI",
+      "aiHelp": "Może znaleźć adres e-mail i kosztuje jedno wywołanie modelu przy każdym wyszukiwaniu.",
+      "aiToggleLabel": "Używaj dostawcy AI do wyszukiwania odbiorców",
+      "aiProviderLabel": "Dostawca do użycia",
+      "aiProviderAny": "Dowolny dostawca, według priorytetu",
+      "moveUp": "W górę",
+      "moveDown": "W dół"
+    }
   }
 }

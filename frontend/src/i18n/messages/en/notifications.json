@@ -53,6 +53,26 @@
     "amountDue": "{amount} due on {date}",
     "amountUnavailable": "Amount unavailable (no current exchange rate), due on {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} switched to {state}",
+    "riskMessage": "Your GEM strategy \"{strategy}\" changed from {fromState} to {toState}. Open to review the recommendation.",
+    "allocationTitle": "{strategy} changed its target",
+    "allocationMessage": "Your GEM strategy \"{strategy}\" now targets {target}. Open to review the recommendation.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Investments up {percent}%",
+    "titleDown": "Investments down {percent}%",
+    "messageUp": "Your investments are up {percent}% today, excluding deposits and withdrawals. Open to review.",
+    "messageDown": "Your investments are down {percent}% today, excluding deposits and withdrawals. Open to review."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} is below your threshold",
+    "titleHigh": "{account} is above your threshold",
+    "messageLow": "{account} dropped to {balance}, below your {threshold} threshold.",
+    "messageHigh": "{account} rose to {balance}, above your {threshold} threshold."
+  },
   "system": {
     "backupFailed": {
       "title": "Automatic backup failed",

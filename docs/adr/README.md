@@ -68,3 +68,4 @@ are both retrospective.
 | [0001](0001-scoped-db-single-database-door.md) | `withScopedDb` is the only door to the database | accepted |
 | [0002](0002-invariant-catalog-and-enforcement-ranking.md) | Invariants are catalogued, and enforced as low in the stack as possible | accepted |
 | [0003](0003-filesystem-objects-use-id-sharding.md) | Filesystem objects use the shared ID-sharding scheme | accepted |
+| [0004](0004-mcp-two-eras-request-identity-and-mrtr-confirmation.md) | The MCP server serves two protocol revisions, with identity per request and confirmations that travel | accepted |

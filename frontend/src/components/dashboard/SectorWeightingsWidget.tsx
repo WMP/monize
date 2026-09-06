@@ -35,7 +35,7 @@ interface SectorWeightingsWidgetProps {
 
 export function SectorWeightingsWidget({ accounts, isLoading }: SectorWeightingsWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
@@ -116,7 +116,7 @@ export function SectorWeightingsWidget({ accounts, isLoading }: SectorWeightings
                         {t('sectorWeightings.etf')}: {formatCurrency(d.etf, defaultCurrency)}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {d.percentage.toFixed(1)}%
+                        {formatPercent(d.percentage, 1)}
                       </p>
                     </ChartTooltipPanel>
                   );

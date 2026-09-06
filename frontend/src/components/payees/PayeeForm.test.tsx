@@ -36,9 +36,13 @@ vi.mock('@/store/preferencesStore', () => ({
 
 // Whether an AI provider exists decides whether the lookup is offered at all;
 // the hook is mocked so each test states which world it is in.
-let mockAiConfigured = true;
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: mockAiConfigured, resolved: true }),
+let mockLookupAvailable = true;
+vi.mock('@/hooks/useContactLookupAvailable', () => ({
+  useContactLookupAvailable: () => ({
+    available: mockLookupAvailable,
+    resolved: true,
+    source: mockLookupAvailable ? 'ai' : null,
+  }),
 }));
 
 describe('PayeeForm', () => {
@@ -384,7 +388,11 @@ describe('PayeeForm', () => {
       website: 'https://acme.example',
       address: '1 Main St',
       email: 'hi@acme.example',
-      phone: '+1 555 010 2000',
+      // What the lookup service actually hands over: the STORED form. The
+      // fixture used to be "+1 555 010 2000", which no lookup can return any
+      // more and which does not parse either -- so it agreed with the field
+      // whether or not the field formatted anything.
+      phone: '+12064488762',
       source: 'ai-web-search',
       confidence: 'high',
       notes: null,
@@ -397,7 +405,7 @@ describe('PayeeForm', () => {
       lookupContact.mockReset();
       lookupContact.mockResolvedValue({ reason: 'ok', suggestions: [suggestion] } as any);
       mockLookupEnabled = true;
-      mockAiConfigured = true;
+      mockLookupAvailable = true;
     });
 
     function renderCreate() {
@@ -407,7 +415,7 @@ describe('PayeeForm', () => {
     it('offers no lookup at all when no AI provider is configured', async () => {
       // The provider is what answers, so without one the button would open on
       // nothing and the blur would spend a request establishing that.
-      mockAiConfigured = false;
+      mockLookupAvailable = false;
       renderCreate();
 
       expect(
@@ -442,9 +450,58 @@ describe('PayeeForm', () => {
       expect(lookupContact).toHaveBeenCalledWith('Acme', {}, expect.any(AbortSignal));
       expect(field('Address').value).toBe('1 Main St');
       expect(field('Email').value).toBe('hi@acme.example');
-      expect(field('Phone').value).toBe('+1 555 010 2000');
+      expect(field('Phone').value).toBe('+1 206 448 8762');
       expect(screen.getByText('Suggested by lookup:')).toBeInTheDocument();
       expect(screen.getByText('Undo lookup changes')).toBeInTheDocument();
+    });
+
+    it('shows a filled phone the way a person reads one, never the stored form', async () => {
+      // The suggestion arrives as E.164 and the field is what a person types
+      // into. Putting the stored form in it makes this input read one way when
+      // the payee loads (`defaultValues` formats) and another when a lookup
+      // fills it -- and an extension would arrive as the machine-only
+      // `;ext=` suffix, in a box labelled Phone.
+      lookupContact.mockResolvedValue({
+        reason: 'ok',
+        suggestions: [{ ...suggestion, phone: '+442079460958;ext=12' }],
+      } as any);
+      renderCreate();
+      await blurName('Acme');
+
+      await waitFor(() => expect(field('Phone').value).toBe('+44 20 7946 0958 x12'));
+      expect(field('Phone').value).not.toContain(';ext=');
+    });
+
+    it('does not call a number that did not change a replacement', async () => {
+      // The stored phone and the suggestion are the SAME number. Comparing the
+      // field (read form) against the suggestion (stored form) makes them look
+      // different, so the form rewrote the field and told the user it had
+      // replaced their value -- for a number nobody changed.
+      lookupContact.mockResolvedValue({
+        reason: 'ok',
+        suggestions: [{ ...suggestion, refined: ['phone'] }],
+      } as any);
+      const payee = {
+        id: 'p1',
+        name: 'Acme',
+        defaultCategoryId: '',
+        notes: '',
+        website: '',
+        address: '',
+        email: '',
+        phone: '+12064488762',
+      } as any;
+      await act(async () => {
+        render(<PayeeForm payee={payee} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Look up details'));
+      });
+
+      await waitFor(() => expect(lookupContact).toHaveBeenCalled());
+      expect(field('Phone').value).toBe('+1 206 448 8762');
+      expect(screen.queryByText('Replaced by lookup:')).not.toBeInTheDocument();
     });
 
     it('never overwrites a value the user typed', async () => {
@@ -454,7 +511,7 @@ describe('PayeeForm', () => {
       });
       await blurName('Acme');
 
-      await waitFor(() => expect(field('Phone').value).toBe('+1 555 010 2000'));
+      await waitFor(() => expect(field('Phone').value).toBe('+1 206 448 8762'));
       expect(field('Website').value).toBe('typed.example');
     });
 
@@ -525,13 +582,35 @@ describe('PayeeForm', () => {
       expect(screen.queryByText(/No public contact details/)).not.toBeInTheDocument();
     });
 
-    it('explains a missing provider with a link to AI Settings', async () => {
+    it('explains a missing source with a link to the payee lookup settings', async () => {
+      // Not AI Settings: Google Places can answer this lookup too, so the fix
+      // is the section that configures either one.
       lookupContact.mockResolvedValue({ reason: 'no_provider', suggestions: [] } as any);
       renderCreate();
       await blurName('Acme');
 
-      const link = await screen.findByRole('link', { name: 'AI Settings' });
-      expect(link).toHaveAttribute('href', '/settings/ai');
+      const link = await screen.findByRole('link', {
+        name: 'Payee lookup settings',
+      });
+      expect(link).toHaveAttribute('href', '/settings#payee-lookup');
+    });
+
+    it('reports a spent monthly limit as its own reason', async () => {
+      // Distinct from no_provider: the repair is the Google Places limit, not
+      // configuring a provider the user may never have wanted.
+      lookupContact.mockResolvedValue({
+        reason: 'quota_exceeded',
+        suggestions: [],
+      } as any);
+      renderCreate();
+      await blurName('Acme');
+
+      expect(
+        await screen.findByText(/Google Places lookups are used up/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/No public contact details/),
+      ).not.toBeInTheDocument();
     });
 
     it('says when nothing was found', async () => {
@@ -642,7 +721,7 @@ describe('PayeeForm', () => {
       });
       await blurName('Acme');
 
-      await waitFor(() => expect(field('Phone').value).toBe('+1 555 010 2000'));
+      await waitFor(() => expect(field('Phone').value).toBe('+1 206 448 8762'));
       expect(field('Address').value).toBe('Toronto');
       expect(screen.queryByText('Replaced by lookup:')).not.toBeInTheDocument();
     });
@@ -667,7 +746,7 @@ describe('PayeeForm', () => {
       await act(async () => {
         fireEvent.click(screen.getByText('Look up details'));
       });
-      await waitFor(() => expect(field('Phone').value).toBe('+1 555 010 2000'));
+      await waitFor(() => expect(field('Phone').value).toBe('+1 206 448 8762'));
       expect(lookupContact).toHaveBeenCalledWith(
         'Acme Renamed',
         { website: 'https://stored.example' },

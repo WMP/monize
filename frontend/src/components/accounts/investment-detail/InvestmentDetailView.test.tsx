@@ -3,9 +3,12 @@ import { render, screen, act, waitFor, fireEvent } from '@/test/render';
 import { InvestmentDetailView } from './InvestmentDetailView';
 import type { Account } from '@/types/account';
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({ ...numberFormatMockDefaults(), formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
+  };
+});
 
 // Stub the heavy portfolio components -- they have their own tests.
 vi.mock('@/components/investments/PortfolioSummaryCard', () => ({

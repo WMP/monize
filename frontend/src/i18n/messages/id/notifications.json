@@ -53,6 +53,26 @@
     "amountDue": "{amount} jatuh tempo pada {date}",
     "amountUnavailable": "Jumlah tidak tersedia (tidak ada kurs saat ini), jatuh tempo pada {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} beralih ke {state}",
+    "riskMessage": "Strategi GEM Anda \"{strategy}\" berubah dari {fromState} ke {toState}. Buka untuk meninjau rekomendasinya.",
+    "allocationTitle": "{strategy} mengubah targetnya",
+    "allocationMessage": "Strategi GEM Anda \"{strategy}\" kini menargetkan {target}. Buka untuk meninjau rekomendasinya.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Investasi naik {percent}%",
+    "titleDown": "Investasi turun {percent}%",
+    "messageUp": "Investasi Anda naik {percent}% hari ini, tidak termasuk setoran dan penarikan. Buka untuk meninjau.",
+    "messageDown": "Investasi Anda turun {percent}% hari ini, tidak termasuk setoran dan penarikan. Buka untuk meninjau."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} di bawah ambang batas Anda",
+    "titleHigh": "{account} di atas ambang batas Anda",
+    "messageLow": "{account} turun menjadi {balance}, di bawah ambang batas {threshold} Anda.",
+    "messageHigh": "{account} naik menjadi {balance}, di atas ambang batas {threshold} Anda."
+  },
   "system": {
     "backupFailed": {
       "title": "Pencadangan otomatis gagal",

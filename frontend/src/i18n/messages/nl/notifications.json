@@ -53,6 +53,26 @@
     "amountDue": "{amount} te betalen op {date}",
     "amountUnavailable": "Bedrag niet beschikbaar (geen actuele wisselkoers), te betalen op {date}"
   },
+  "gemSignal": {
+    "riskTitle": "{strategy} overgeschakeld naar {state}",
+    "riskMessage": "Uw GEM-strategie \"{strategy}\" is gewijzigd van {fromState} naar {toState}. Open om de aanbeveling te bekijken.",
+    "allocationTitle": "{strategy} heeft het doel gewijzigd",
+    "allocationMessage": "Uw GEM-strategie \"{strategy}\" richt zich nu op {target}. Open om de aanbeveling te bekijken.",
+    "riskOn": "risk-on",
+    "riskOff": "risk-off"
+  },
+  "portfolioMovement": {
+    "titleUp": "Beleggingen {percent}% hoger",
+    "titleDown": "Beleggingen {percent}% lager",
+    "messageUp": "Uw beleggingen staan vandaag {percent}% hoger, exclusief stortingen en opnames. Open om te bekijken.",
+    "messageDown": "Uw beleggingen staan vandaag {percent}% lager, exclusief stortingen en opnames. Open om te bekijken."
+  },
+  "balanceThreshold": {
+    "titleLow": "{account} ligt onder uw drempel",
+    "titleHigh": "{account} ligt boven uw drempel",
+    "messageLow": "{account} is gedaald naar {balance}, onder uw drempel van {threshold}.",
+    "messageHigh": "{account} is gestegen naar {balance}, boven uw drempel van {threshold}."
+  },
   "system": {
     "backupFailed": {
       "title": "Automatische back-up mislukt",

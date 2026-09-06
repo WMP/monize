@@ -158,7 +158,13 @@ export function telHref(phone: string | null | undefined): string | null {
   const run = phone.trim().match(/(\+?)[0-9][0-9\s()+.-]*/);
   if (!run) return null;
   const digits = run[0].replace(/\D/g, '');
-  return `tel:${run[1] ? '+' : ''}${digits}`;
+  // An extension is part of the number to dial, and `tel:` has a way to say so
+  // (RFC 3966), which is the same way the value is stored -- so it travels
+  // rather than being dropped or, worse, folded into the digits. Read from the
+  // stored suffix only: the dialable run above deliberately stops before it, so
+  // "555 0100 ext. 12" cannot become tel:555010012.
+  const ext = /;ext=([0-9]+)/.exec(phone)?.[1];
+  return `tel:${run[1] ? '+' : ''}${digits}${ext ? `;ext=${ext}` : ''}`;
 }
 
 /**

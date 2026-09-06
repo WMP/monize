@@ -29,24 +29,51 @@ describe('resolveTourRequirements', () => {
     getSecurities.mockReset().mockResolvedValue([]);
   });
 
-  it('reports both requirements met when the user has the data', async () => {
-    getAllAccounts.mockResolvedValue([{ id: 'a' }]);
+  it('reports every requirement met when the user has the data', async () => {
+    getAllAccounts.mockResolvedValue([{ id: 'a', accountType: 'CHEQUING' }]);
     getSecurities.mockResolvedValue([{ id: 's' }]);
 
     await expect(resolveTourRequirements()).resolves.toEqual({
       transactionEntry: true,
+      accountsExist: true,
       securitiesExist: true,
     });
   });
 
   it('reports each requirement independently', async () => {
-    getAllAccounts.mockResolvedValue([{ id: 'a' }]);
+    getAllAccounts.mockResolvedValue([{ id: 'a', accountType: 'CHEQUING' }]);
     getSecurities.mockResolvedValue([]);
 
     await expect(resolveTourRequirements()).resolves.toEqual({
       transactionEntry: true,
+      accountsExist: true,
       securitiesExist: false,
     });
+  });
+
+  it('reports no account to open a detail page for when the list is empty', async () => {
+    await expect(resolveTourRequirements()).resolves.toMatchObject({
+      transactionEntry: false,
+      accountsExist: false,
+    });
+  });
+
+  it('counts only accounts that have a dedicated detail page', async () => {
+    // An account type with no registered detail view has no Details action to
+    // open, so a step asking the user to open one would wait for a route change
+    // they cannot make -- even though they do have an account to record against.
+    getAllAccounts.mockResolvedValue([{ id: 'a', accountType: 'NOT_A_TYPE' }]);
+
+    await expect(resolveTourRequirements()).resolves.toMatchObject({
+      transactionEntry: true,
+      accountsExist: false,
+    });
+  });
+
+  it('asks the account list once for both of its answers', async () => {
+    // Two requests could disagree; one cannot.
+    await resolveTourRequirements();
+    expect(getAllAccounts).toHaveBeenCalledTimes(1);
   });
 
   it('asks only for active securities, as the list shows by default', async () => {
@@ -88,9 +115,23 @@ describe('resolveTourRequirements', () => {
     getAllAccounts.mockRejectedValue(new Error('offline'));
     getSecurities.mockResolvedValue([]);
 
+    // A failed account list answers neither account question, so both fall back
+    // together rather than reporting a user with no accounts.
     await expect(resolveTourRequirements()).resolves.toEqual({
       transactionEntry: true,
+      accountsExist: true,
       securitiesExist: false,
+    });
+  });
+
+  it('survives an account lookup that throws instead of rejecting', async () => {
+    getAllAccounts.mockImplementation(() => {
+      throw new TypeError('accountsApi.getAll is not a function');
+    });
+
+    await expect(resolveTourRequirements()).resolves.toMatchObject({
+      transactionEntry: true,
+      accountsExist: true,
     });
   });
 });
@@ -104,6 +145,7 @@ describe('isTourOfferable', () => {
     expect(
       isTourOfferable(tour({ requiresData: 'securitiesExist' }), {
         transactionEntry: true,
+        accountsExist: true,
         securitiesExist: true,
       }),
     ).toBe(true);
@@ -113,6 +155,7 @@ describe('isTourOfferable', () => {
     expect(
       isTourOfferable(tour({ requiresData: 'securitiesExist' }), {
         transactionEntry: true,
+        accountsExist: true,
         securitiesExist: false,
       }),
     ).toBe(false);
@@ -129,6 +172,7 @@ describe('isTourOfferable', () => {
     expect(
       isTourOfferable(tour({ requiresData: 'transactionEntry' }), {
         transactionEntry: false,
+        accountsExist: false,
         securitiesExist: true,
       }),
     ).toBe(false);

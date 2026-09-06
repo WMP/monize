@@ -3,6 +3,7 @@ import { join } from "path";
 import {
   DEFERRED_FK_COLUMNS,
   DEFERRED_FK_REPAIRS,
+  PRESERVED_ON_RESTORE,
   RESTORABLE_TABLES,
   RESTORE_PLAN,
 } from "./restore-plan";
@@ -235,27 +236,62 @@ describe("restore plan", () => {
       expect(wrong).toEqual([]);
     });
 
+    // Read once: three tests below ask what the restore actually clears, and
+    // two of them are about the same fact from opposite directions.
+    const cleared = new Set(
+      [
+        ...readFileSync(
+          join(__dirname, "backup-restore-database.service.ts"),
+          "utf8",
+        ).matchAll(/DELETE FROM (\w+) WHERE user_id/g),
+      ].map((m) => m[1]),
+    );
+
     it("pre-clears every user-scoped table before re-inserting it", () => {
       // The restore inserts with ON CONFLICT DO NOTHING, so a table not cleared
       // first keeps the destination account's existing rows and silently drops
       // the backup's -- restore-over-existing stops reproducing the artifact.
       // Every scopeToUser table therefore needs a `DELETE FROM <t> WHERE
       // user_id` in the destructive pre-clear (child tables cleared through a
-      // parent are scopeToUser:false and excluded). notification_preferences
-      // shipped without one (audit / code-review Finding).
-      const restoreSource = readFileSync(
-        join(__dirname, "backup-restore-database.service.ts"),
-        "utf8",
-      );
-      const cleared = new Set(
-        [...restoreSource.matchAll(/DELETE FROM (\w+) WHERE user_id/g)].map(
-          (m) => m[1],
-        ),
-      );
+      // parent are scopeToUser:false and excluded), unless it is a declared
+      // exception in PRESERVED_ON_RESTORE. notification_preferences shipped
+      // without one (audit / code-review Finding).
       const missing = RESTORE_PLAN.filter(
-        (step) => step.scopeToUser && !cleared.has(step.table),
+        (step) =>
+          step.scopeToUser &&
+          !cleared.has(step.table) &&
+          !PRESERVED_ON_RESTORE.has(step.table),
       ).map((step) => step.table);
       expect(missing).toEqual([]);
+    });
+
+    it("preserves only tables that are in the plan and user-scoped", () => {
+      // An entry naming a table the restore never inserts, or one whose rows
+      // are scoped through a parent, would be a waiver over nothing -- and
+      // would quietly excuse a real omission if that table were added later.
+      const byTable = new Map(RESTORE_PLAN.map((step) => [step.table, step]));
+      const wrong = [...PRESERVED_ON_RESTORE.keys()].filter(
+        (table) => byTable.get(table)?.scopeToUser !== true,
+      );
+      expect(wrong).toEqual([]);
+    });
+
+    it("gives every preserved table a reason", () => {
+      // The waiver is the argument, not the entry: a blank one is a table
+      // nobody has to justify keeping out of the pre-clear.
+      const unexplained = [...PRESERVED_ON_RESTORE.entries()]
+        .filter(([, reason]) => reason.trim().length < 40)
+        .map(([table]) => table);
+      expect(unexplained).toEqual([]);
+    });
+
+    it("does not clear a preserved table after all", () => {
+      // The map says the restore leaves these alone; a `DELETE` added later
+      // would make that false while every other test stayed green.
+      const contradicted = [...PRESERVED_ON_RESTORE.keys()].filter((table) =>
+        cleared.has(table),
+      );
+      expect(contradicted).toEqual([]);
     });
   });
 });

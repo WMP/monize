@@ -30,7 +30,13 @@ export type NotificationType =
   | 'PROVIDER_OUTAGE'
   | 'PROVIDER_RECOVERED'
   | 'SMTP_FAILURE'
-  | 'SCHEDULED_POST_FAILED';
+  | 'SCHEDULED_POST_FAILED'
+  // Balance crossings (BALANCES), daily portfolio movement (INVESTMENTS), and
+  // GEM recommendation changes (STRATEGIES). Each is financial, not system.
+  | 'BALANCE_BELOW_THRESHOLD'
+  | 'BALANCE_ABOVE_THRESHOLD'
+  | 'PORTFOLIO_MOVEMENT'
+  | 'GEM_SIGNAL_CHANGED';
 
 /** How urgent, and how it is drawn. */
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';
@@ -61,7 +67,13 @@ export type NotificationFilterCategory = 'system' | 'financial';
  * What a notification is *about*, as opposed to what produced it. Derived from
  * the type on the server -- there is no column -- and sent with every row.
  */
-export type NotificationCategory = 'PAYMENTS' | 'BUDGETS' | 'SYSTEM';
+export type NotificationCategory =
+  | 'PAYMENTS'
+  | 'BUDGETS'
+  | 'SYSTEM'
+  | 'BALANCES'
+  | 'INVESTMENTS'
+  | 'STRATEGIES';
 
 export interface Notification {
   id: string;

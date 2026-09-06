@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { PushDevicesPanel } from './PushDevicesPanel';
 import { PushDiagnostics } from './PushDiagnostics';
 import { NotificationPreferencesMatrix } from './NotificationPreferencesMatrix';
+import { PortfolioAlertControl } from './PortfolioAlertControl';
 import { userSettingsApi } from '@/lib/user-settings';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { UserPreferences } from '@/types/auth';
@@ -182,7 +183,10 @@ export function NotificationsSection({
             </>
           )}
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          {/* `pb-4` mirrors the `pt-4` every block below carries: without it the
+              next section's rule sits flush against the Send Test Email button,
+              which reads as a border on the button rather than a divider. */}
+          <div className="border-t border-gray-200 pt-4 pb-4 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
               {t('sendTestEmailDescription')}
             </p>
@@ -205,6 +209,8 @@ export function NotificationsSection({
       <NotificationPreferencesMatrix
         emailAvailable={smtpConfigured && notificationEmail}
       />
+
+      <PortfolioAlertControl />
 
       <PushDevicesPanel />
       <PushDiagnostics />
