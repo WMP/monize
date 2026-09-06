@@ -418,11 +418,13 @@ export function UncategorizedTransactionsReport() {
               lean regional variants (`en-GB`, `en-US`) inherit `en`'s strings
               per key -- were rendered into the 122px a track gets at 320px, at
               `CellLabel`'s own type. NONE overflows and NONE needs a second
-              line, in either track, at either width. The widest string with no
-              break opportunity anywhere is Amount's `Montante` (pt) at 58px,
-              two pixels ahead of Account's `Rekening` (nl) at 54px -- 64px
-              inside the track either way, so the semantic placement above wins
-              over rule 3's left-track preference rather than fighting it.
+              line, in either track, at either width. The two widest strings
+              with no break opportunity anywhere are Amount's `Montante` (pt) at
+              58px and Account's `Rekening` (nl) at 54px -- 64px and 68px of
+              headroom in a 122px track -- so rule 3's "least-breakable caption
+              in the left track" cannot bind here, and the semantic placement
+              above (the amount beside the identity, the account under it) wins
+              rather than fighting it.
 
               Both text columns are unbounded in the payload, so each sits in a
               `minmax(0,1fr)` track with `min-w-0`: a track that may be zero plus
@@ -456,12 +458,19 @@ export function UncategorizedTransactionsReport() {
               design. A row with no description and ordinary names is 88px.
 
               From `sm` up it is the ordinary table, and unlike the sibling
-              conversions there is no deliberate desktop delta at all: every cell
-              this change touches already carried its `whitespace-nowrap` and its
-              alignment at every width, so a Chromium replica renders it
-              pixel-identically to today at 800px in all six measured locales,
-              with every column width and row height unchanged at 800px and
-              1280px.
+              conversions there is no deliberate desktop delta at all. The
+              mechanism is that every declaration this table resolves at >= 640px
+              today is restored by an `sm:` variant here: the padding by
+              `sm:px-4 sm:py-3`, the account's nowrap by `sm:whitespace-nowrap`,
+              the description's cap and ellipsis by `sm:truncate sm:max-w-xs`,
+              the two type sizes by `sm:text-sm`, and the wrapping by
+              `sm:break-normal`. The unprefixed classes are then either what the
+              cell already carried at every width (the amount's `text-right`,
+              both figures' `whitespace-nowrap`) or inert once the row is a
+              `table-row` again (the grid, its gaps and the explicit
+              placements). So a Chromium replica renders it pixel-identically to
+              today at 800px in all six measured locales, with every column width
+              and row height unchanged at 800px and 1280px.
 
               Two costs of restyling one tree, both deliberate. Changing the
               display roles drops the table semantics below `sm`, which is why
