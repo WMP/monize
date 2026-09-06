@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# хвилина} few {# хвилини} many {# хвилин} other {# хвилини}}",
     "durationHours": "{hours, plural, one {# година} few {# години} many {# годин} other {# години}}",
     "cancel": "Скасувати",
-    "confirm": "Встановити нагадування"
+    "confirm": "Встановити нагадування",
+    "pageTitle": "Активні нагадування",
+    "empty": "Немає активних нагадувань",
+    "loadFailed": "Не вдалося завантажити нагадування",
+    "retry": "Спробувати ще раз",
+    "nextFire": "Наступне нагадування: {date}",
+    "openTarget": "Відкрити пов’язану сторінку",
+    "delegateUnavailable": "Поверніться до власного облікового запису, щоб керувати нагадуваннями."
   },
   "billDue": {
     "titleOverdue": "{payee}: термін минув",

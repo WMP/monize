@@ -43,7 +43,14 @@
     "durationMinutes": "[XX-{minutes, plural, one {# minute} other {# minutes}}-XX]",
     "durationHours": "[XX-{hours, plural, one {# hour} other {# hours}}-XX]",
     "cancel": "[XX-Cancel-XX]",
-    "confirm": "[XX-Set reminder-XX]"
+    "confirm": "[XX-Set reminder-XX]",
+    "pageTitle": "[XX-Active reminders-XX]",
+    "empty": "[XX-No active reminders-XX]",
+    "loadFailed": "[XX-Reminders could not be loaded-XX]",
+    "retry": "[XX-Try again-XX]",
+    "nextFire": "[XX-Next reminder: {date}-XX]",
+    "openTarget": "[XX-Open related page-XX]",
+    "delegateUnavailable": "[XX-Switch back to your own account to manage reminders.-XX]"
   },
   "billDue": {
     "titleOverdue": "[XX-{payee} overdue-XX]",

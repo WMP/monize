@@ -302,6 +302,28 @@ describe("NotificationReminderService", () => {
     });
   });
 
+  it("returns structured copy facts in the owner-only active list", async () => {
+    reminderRepo.find.mockResolvedValue([
+      {
+        ...source,
+        id: "rem-1",
+        sourceNotificationId: source.id,
+        repeatMode: ReminderRepeatMode.REPEAT,
+        intervalMinutes: 60,
+        nextFireAt: new Date("2026-09-10T12:00:00Z"),
+        createdAt: new Date("2026-09-01T12:00:00Z"),
+        lastFiredAt: null,
+        fireCount: 0,
+      },
+    ]);
+    const rows = await service.list("u1");
+    expect(rows[0].data).toEqual(source.data);
+    expect(reminderRepo.find).toHaveBeenCalledWith({
+      where: { userId: "u1", stoppedAt: expect.anything() },
+      order: { createdAt: "DESC" },
+    });
+  });
+
   describe("stop", () => {
     it("reports stopped when a live row was the caller's", async () => {
       query.mockResolvedValue([[{ id: "rem-1" }], 1]);

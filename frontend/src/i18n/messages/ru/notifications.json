@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# минута} few {# минуты} many {# минут} other {# минуты}}",
     "durationHours": "{hours, plural, one {# час} few {# часа} many {# часов} other {# часа}}",
     "cancel": "Отмена",
-    "confirm": "Установить напоминание"
+    "confirm": "Установить напоминание",
+    "pageTitle": "Активные напоминания",
+    "empty": "Нет активных напоминаний",
+    "loadFailed": "Не удалось загрузить напоминания",
+    "retry": "Повторить",
+    "nextFire": "Следующее напоминание: {date}",
+    "openTarget": "Открыть связанную страницу",
+    "delegateUnavailable": "Вернитесь в свой аккаунт, чтобы управлять напоминаниями."
   },
   "billDue": {
     "titleOverdue": "{payee}: срок оплаты прошёл",

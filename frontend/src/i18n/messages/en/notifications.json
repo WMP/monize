@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# minute} other {# minutes}}",
     "durationHours": "{hours, plural, one {# hour} other {# hours}}",
     "cancel": "Cancel",
-    "confirm": "Set reminder"
+    "confirm": "Set reminder",
+    "pageTitle": "Active reminders",
+    "empty": "No active reminders",
+    "loadFailed": "Reminders could not be loaded",
+    "retry": "Try again",
+    "nextFire": "Next reminder: {date}",
+    "openTarget": "Open related page",
+    "delegateUnavailable": "Switch back to your own account to manage reminders."
   },
   "billDue": {
     "titleOverdue": "{payee} overdue",

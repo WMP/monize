@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, other {# phút}}",
     "durationHours": "{hours, plural, other {# giờ}}",
     "cancel": "Hủy",
-    "confirm": "Đặt lời nhắc"
+    "confirm": "Đặt lời nhắc",
+    "pageTitle": "Lời nhắc đang hoạt động",
+    "empty": "Không có lời nhắc đang hoạt động",
+    "loadFailed": "Không thể tải lời nhắc",
+    "retry": "Thử lại",
+    "nextFire": "Lời nhắc tiếp theo: {date}",
+    "openTarget": "Mở trang liên quan",
+    "delegateUnavailable": "Chuyển về tài khoản của bạn để quản lý lời nhắc."
   },
   "billDue": {
     "titleOverdue": "{payee} đã quá hạn",

@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, other {# menit}}",
     "durationHours": "{hours, plural, other {# jam}}",
     "cancel": "Batal",
-    "confirm": "Atur pengingat"
+    "confirm": "Atur pengingat",
+    "pageTitle": "Pengingat aktif",
+    "empty": "Tidak ada pengingat aktif",
+    "loadFailed": "Pengingat tidak dapat dimuat",
+    "retry": "Coba lagi",
+    "nextFire": "Pengingat berikutnya: {date}",
+    "openTarget": "Buka halaman terkait",
+    "delegateUnavailable": "Kembali ke akun Anda sendiri untuk mengelola pengingat."
   },
   "billDue": {
     "titleOverdue": "{payee} terlambat",

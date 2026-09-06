@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# मिनट} other {# मिनट}}",
     "durationHours": "{hours, plural, one {# घंटा} other {# घंटे}}",
     "cancel": "रद्द करें",
-    "confirm": "अनुस्मारक सेट करें"
+    "confirm": "अनुस्मारक सेट करें",
+    "pageTitle": "सक्रिय रिमाइंडर",
+    "empty": "कोई सक्रिय रिमाइंडर नहीं",
+    "loadFailed": "रिमाइंडर लोड नहीं हो सके",
+    "retry": "फिर से कोशिश करें",
+    "nextFire": "अगला रिमाइंडर: {date}",
+    "openTarget": "संबंधित पेज खोलें",
+    "delegateUnavailable": "रिमाइंडर प्रबंधित करने के लिए अपने खाते पर वापस जाएँ।"
   },
   "billDue": {
     "titleOverdue": "{payee} अतिदेय",

@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# minuto} other {# minutos}}",
     "durationHours": "{hours, plural, one {# hora} other {# horas}}",
     "cancel": "Cancelar",
-    "confirm": "Definir lembrete"
+    "confirm": "Definir lembrete",
+    "pageTitle": "Lembretes ativos",
+    "empty": "Nenhum lembrete ativo",
+    "loadFailed": "Não foi possível carregar os lembretes",
+    "retry": "Tentar novamente",
+    "nextFire": "Próximo lembrete: {date}",
+    "openTarget": "Abrir página relacionada",
+    "delegateUnavailable": "Volte para sua própria conta para gerenciar os lembretes."
   },
   "billDue": {
     "titleOverdue": "{payee} em atraso",

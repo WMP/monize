@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, other {# 分}}",
     "durationHours": "{hours, plural, other {# 時間}}",
     "cancel": "キャンセル",
-    "confirm": "リマインダーを設定"
+    "confirm": "リマインダーを設定",
+    "pageTitle": "有効なリマインダー",
+    "empty": "有効なリマインダーはありません",
+    "loadFailed": "リマインダーを読み込めませんでした",
+    "retry": "再試行",
+    "nextFire": "次のリマインダー: {date}",
+    "openTarget": "関連ページを開く",
+    "delegateUnavailable": "リマインダーを管理するには、自分のアカウントに戻ってください。"
   },
   "billDue": {
     "titleOverdue": "{payee} は支払期日超過",

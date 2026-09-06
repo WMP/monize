@@ -80,6 +80,20 @@ describe('NotificationList', () => {
     onDeleteAll: vi.fn(),
   };
 
+  it('links to the active reminders page and closes the panel', () => {
+    render(<NotificationList {...defaultProps} />);
+    const link = screen.getByRole('link', { name: 'Active reminders' });
+    expect(link).toHaveAttribute('href', '/reminders');
+    link.addEventListener('click', (event) => event.preventDefault());
+    fireEvent.click(link);
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it('hides reminder management when the caller is a delegate', () => {
+    render(<NotificationList {...defaultProps} canManageReminders={false} />);
+    expect(screen.queryByRole('link', { name: 'Active reminders' })).not.toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     // A due date on a notification row is a calendar string; the UI must render

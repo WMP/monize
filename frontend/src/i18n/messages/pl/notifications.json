@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# minuta} few {# minuty} many {# minut} other {# minuty}}",
     "durationHours": "{hours, plural, one {# godzina} few {# godziny} many {# godzin} other {# godziny}}",
     "cancel": "Anuluj",
-    "confirm": "Ustaw przypomnienie"
+    "confirm": "Ustaw przypomnienie",
+    "pageTitle": "Aktywne przypomnienia",
+    "empty": "Brak aktywnych przypomnień",
+    "loadFailed": "Nie udało się wczytać przypomnień",
+    "retry": "Spróbuj ponownie",
+    "nextFire": "Następne przypomnienie: {date}",
+    "openTarget": "Otwórz powiązaną stronę",
+    "delegateUnavailable": "Wróć do własnego konta, aby zarządzać przypomnieniami."
   },
   "billDue": {
     "titleOverdue": "{payee} – termin minął",

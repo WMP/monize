@@ -640,7 +640,12 @@ All three doors land on `stopReminder(userId, id)` (idempotent: stopping a
 stopped reminder is a no-op, not a 404-after-the-fact):
 
 1. **From the app** -- `POST /notifications/reminders/:id/stop` (JWT), and a Stop
-   control on any bell row carrying `data.reminderId`.
+   control on any bell row carrying `data.reminderId`. The bell links to
+   `/reminders`, a standalone owner-only list of active reminders. Each row shows
+   its localized subject, interval, next occurrence and a Stop control. The
+   list reads structured template facts from the owner-scoped reminder endpoint
+   and uses the same copy composer as the bell, with the existing legacy text
+   fallback. Delegates must switch back to their own account to manage it.
 2. **From the push notification** -- a re-emitted nag's payload carries
    `reminderId` and `actions: [{ action: "stop-reminder", title }]` (the title
    rendered on the server in the recipient's locale, `push.actions.stopReminder`),
@@ -648,15 +653,15 @@ stopped reminder is a no-op, not a 404-after-the-fact):
    session cookie, which outlives the app by fifteen minutes at most, so a 401 is
    answered by one same-origin `POST /auth/refresh` (the refresh cookie is
    same-origin, path `/`) and a single retry; a stop that still fails opens the
-   app at the notification's target, where the bell carries the row's Stop
-   control -- there is no standalone reminders page. The SW `notificationclick`
+   active reminders page at `/reminders`, where each active reminder has a Stop
+   control. The SW `notificationclick`
    handler, on `event.action === "stop-reminder"`, `fetch`es that same endpoint
    same-origin with the CSRF header (read from the Cookie Store where the browser
    offers it). The handler is written now (inert until a push carries the action)
    so Phase 5 only has to populate `actions`. It checks the response: if the stop
    did not take -- a network error, or a 403 where the worker could not read the
    CSRF cookie (Firefox/Safari expose no Cookie Store to a worker) -- it opens the
-   app at the notification's target so the user can finish stopping it there,
+   active reminders page so the user can finish stopping it there,
    rather than being left with a nag that keeps firing. The fuller door #2 UX (a
    single retry, then a "could not stop -- open Monize" follow-up notification)
    ships with the Phase 5 push dispatch that actually sends the action.

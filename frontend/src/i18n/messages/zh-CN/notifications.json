@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, other {# 分钟}}",
     "durationHours": "{hours, plural, other {# 小时}}",
     "cancel": "取消",
-    "confirm": "设置提醒"
+    "confirm": "设置提醒",
+    "pageTitle": "有效提醒",
+    "empty": "没有有效提醒",
+    "loadFailed": "无法加载提醒",
+    "retry": "重试",
+    "nextFire": "下次提醒：{date}",
+    "openTarget": "打开相关页面",
+    "delegateUnavailable": "请切换回您自己的账户以管理提醒。"
   },
   "billDue": {
     "titleOverdue": "{payee} 已逾期",

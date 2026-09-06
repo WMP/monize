@@ -25,7 +25,7 @@ import {
 /** Longest `dedupe_base`, matching `notification_reminders.dedupe_base`. */
 export const DEDUPE_BASE_MAX_LENGTH = 80;
 
-/** The reminder a caller sees. The template's `data` is not returned wholesale. */
+/** Owner-only reminder view; structured facts let the UI localize its copy. */
 export interface NotificationReminderView {
   id: string;
   sourceNotificationId: string | null;
@@ -33,6 +33,7 @@ export interface NotificationReminderView {
   severity: string;
   title: string;
   message: string;
+  data?: Record<string, unknown> | null;
   target: string | null;
   repeatMode: ReminderRepeatMode;
   intervalMinutes: number;
@@ -321,6 +322,7 @@ function toReminderView(row: NotificationReminder): NotificationReminderView {
     severity: row.severity,
     title: row.title,
     message: row.message,
+    data: row.data,
     target: row.target,
     repeatMode: row.repeatMode,
     intervalMinutes: row.intervalMinutes,

@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# Minute} other {# Minuten}}",
     "durationHours": "{hours, plural, one {# Stunde} other {# Stunden}}",
     "cancel": "Abbrechen",
-    "confirm": "Erinnerung einstellen"
+    "confirm": "Erinnerung einstellen",
+    "pageTitle": "Aktive Erinnerungen",
+    "empty": "Keine aktiven Erinnerungen",
+    "loadFailed": "Erinnerungen konnten nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "nextFire": "Nächste Erinnerung: {date}",
+    "openTarget": "Zugehörige Seite öffnen",
+    "delegateUnavailable": "Wechsle zurück zu deinem eigenen Konto, um Erinnerungen zu verwalten."
   },
   "billDue": {
     "titleOverdue": "{payee} überfällig",

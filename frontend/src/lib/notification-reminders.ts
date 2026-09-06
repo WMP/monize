@@ -28,6 +28,7 @@ export interface NotificationReminder {
   severity: string;
   title: string;
   message: string;
+  data?: Record<string, unknown> | null;
   target: string | null;
   repeatMode: ReminderRepeatMode;
   intervalMinutes: number;

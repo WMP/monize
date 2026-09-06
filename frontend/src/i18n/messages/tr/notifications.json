@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# dakika} other {# dakika}}",
     "durationHours": "{hours, plural, one {# saat} other {# saat}}",
     "cancel": "İptal",
-    "confirm": "Hatırlatıcı ayarla"
+    "confirm": "Hatırlatıcı ayarla",
+    "pageTitle": "Etkin hatırlatıcılar",
+    "empty": "Etkin hatırlatıcı yok",
+    "loadFailed": "Hatırlatıcılar yüklenemedi",
+    "retry": "Tekrar dene",
+    "nextFire": "Sonraki hatırlatıcı: {date}",
+    "openTarget": "İlgili sayfayı aç",
+    "delegateUnavailable": "Hatırlatıcıları yönetmek için kendi hesabınıza dönün."
   },
   "billDue": {
     "titleOverdue": "{payee} gecikmiş",

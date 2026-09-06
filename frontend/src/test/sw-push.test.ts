@@ -646,13 +646,13 @@ describe('the Stop action on a reminder push', () => {
       '/api/v1/notifications/reminders/rem-1/stop',
       '/api/v1/auth/refresh',
     ]);
-    expect(sw.openWindow).toHaveBeenCalledWith(`${ORIGIN}/bills`);
+    expect(sw.openWindow).toHaveBeenCalledWith(`${ORIGIN}/reminders`);
   });
 
   it('does not retry a refusal that is not a session problem', async () => {
     const sw = loadServiceWorker([], fetchScript([403]));
     await sw.dispatchClick({ target: '/bills', reminderId: 'rem-1' }, 'stop-reminder');
     expect(calls).toHaveLength(1);
-    expect(sw.openWindow).toHaveBeenCalledWith(`${ORIGIN}/bills`);
+    expect(sw.openWindow).toHaveBeenCalledWith(`${ORIGIN}/reminders`);
   });
 });

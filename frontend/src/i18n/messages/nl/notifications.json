@@ -43,7 +43,14 @@
     "durationMinutes": "{minutes, plural, one {# minuut} other {# minuten}}",
     "durationHours": "{hours, plural, one {# uur} other {# uur}}",
     "cancel": "Annuleren",
-    "confirm": "Herinnering instellen"
+    "confirm": "Herinnering instellen",
+    "pageTitle": "Actieve herinneringen",
+    "empty": "Geen actieve herinneringen",
+    "loadFailed": "Herinneringen konden niet worden geladen",
+    "retry": "Opnieuw proberen",
+    "nextFire": "Volgende herinnering: {date}",
+    "openTarget": "Gerelateerde pagina openen",
+    "delegateUnavailable": "Schakel terug naar je eigen account om herinneringen te beheren."
   },
   "billDue": {
     "titleOverdue": "{payee} achterstallig",

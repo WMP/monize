@@ -415,14 +415,14 @@ self.addEventListener('notificationclick', function (event) {
   // `reminderId` on a re-emitted nag's payload, and the push handler above
   // carries the id in `data`. Silence the reminder
   // without opening a window -- unless the stop did not take, in which case open
-  // the app at the notification's target so the user can finish stopping it
+  // the active reminders page so the user can finish stopping it
   // there rather than being left with a nag that keeps firing.
   if (event.action === 'stop-reminder') {
     var reminderId = data.reminderId;
     if (typeof reminderId === 'string' && reminderId) {
       event.waitUntil(
         stopReminderFromAction(reminderId).then(function (stopped) {
-          if (!stopped) return focusOrOpen(url);
+          if (!stopped) return focusOrOpen(self.location.origin + '/reminders');
         })
       );
     }

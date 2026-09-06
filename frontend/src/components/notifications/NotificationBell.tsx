@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuthStore } from '@/store/authStore';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useClickOutside } from '@/hooks/useClickOutside';
@@ -17,6 +18,7 @@ import { NotificationList } from './NotificationList';
 
 export function NotificationBell() {
   const t = useTranslations('notifications');
+  const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const [notifications, setAlerts] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -194,6 +196,7 @@ export function NotificationBell() {
 
       {isOpen && (
         <NotificationList
+          canManageReminders={!actingAsUserId}
           notifications={visibleNotifications}
           isLoading={isLoading}
           onMarkRead={handleMarkRead}
