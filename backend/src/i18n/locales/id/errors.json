@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Deployment ini tidak memiliki ruang memori untuk pemulihan: puncak yang dimodelkan untuk satu pemulihan tidak muat dalam kontainer. Naikkan batas memori kontainer atau turunkan BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Terlalu banyak pemulihan yang sudah menunggu kapasitas pemulihan pada instalasi ini. Coba lagi sebentar.",
     "restoreQueueWaitTimeout": "Waktu tunggu kapasitas pemulihan habis: pemulihan lain masih berjalan. Coba lagi sebentar.",
-    "restoreTicketUnavailable": "Instalasi ini tidak dapat mengizinkan unggahan pemulihan."
+    "restoreTicketUnavailable": "Instalasi ini tidak dapat mengizinkan unggahan pemulihan.",
+    "invalidNotificationFields": "Notifikasi cadangan tidak valid: judul harus berupa teks; tujuan dan kunci deduplikasi harus berupa teks atau null"
   },
   "budgets": {
     "notFound": "Anggaran dengan ID {{ id }} tidak ditemukan",

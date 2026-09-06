@@ -29,6 +29,7 @@ import {
 import { resolveRestoreExpandedLimitBytes } from "./backup-limits";
 import { resolveStoredBackupPassword } from "./backup-password.util";
 import { restoreProcessingGate } from "./restore-processing-gate";
+import { validateRestoredNotifications } from "./notification-restore-bounds";
 import { RESTORE_PLAN } from "./restore-plan";
 import {
   BACKUP_VERSION,
@@ -165,6 +166,7 @@ export class BackupRestoreService {
           );
         }
 
+        validateRestoredNotifications(rawData.notifications);
         await this.verifyAuthentication(user, input);
 
         // A support (de-identified) backup restores like any other, but the data

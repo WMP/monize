@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "此部署没有用于恢复的内存余量：单次恢复的估计峰值无法容纳于容器内。请提高容器内存上限，或降低 BACKUP_RESTORE_EXPANDED_LIMIT。",
     "restoreQueueFull": "已有太多恢复操作在等待此部署的恢复处理能力。请稍后重试。",
     "restoreQueueWaitTimeout": "等待恢复处理能力超时：另一个恢复操作仍在进行。请稍后重试。",
-    "restoreTicketUnavailable": "此部署无法授权恢复上传。"
+    "restoreTicketUnavailable": "此部署无法授权恢复上传。",
+    "invalidNotificationFields": "备份中的通知无效：标题必须是文本；目标和去重键必须是文本或 null"
   },
   "budgets": {
     "notFound": "未找到 ID 为 {{ id }} 的预算",

@@ -366,8 +366,10 @@ the endpoint the same way (`releaseLocalPushSubscription`).
 ## The notifications table has one writer
 
 `NotificationService.create` (`src/notification-center/notification.service.ts`)
-is the only place a notification row is written, and
-`notification-write-door.spec.ts` fails on a second one. A producer decides
+is the only producer write door. Backup restore preserves archive IDs and
+timestamps through its own insert, using the same `notification-bounds.ts`
+helpers via `boundRestoredNotification`. For producer writes,
+`notification-write-door.spec.ts` fails on a second door. A producer decides
 *what* to say; the row's shape is not its decision. There were three writers
 with three opinions -- a raw `INSERT` for budget alerts with its own conflict
 target and no title bound, an entity `save` for bill reminders with no conflict

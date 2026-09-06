@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Questa installazione non ha margine di memoria per un ripristino: il picco stimato di un ripristino non entra nel container. Aumenta il limite di memoria del container o riduci BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Troppi ripristini sono già in attesa della capacità di ripristino di questa installazione. Riprova tra un momento.",
     "restoreQueueWaitTimeout": "Tempo scaduto in attesa della capacità di ripristino: un altro ripristino è ancora in corso. Riprova tra un momento.",
-    "restoreTicketUnavailable": "Questa installazione non può autorizzare i caricamenti di ripristino."
+    "restoreTicketUnavailable": "Questa installazione non può autorizzare i caricamenti di ripristino.",
+    "invalidNotificationFields": "Notifica del backup non valida: il titolo deve essere testo; la destinazione e la chiave di deduplicazione devono essere testo o null"
   },
   "budgets": {
     "notFound": "Budget con ID {{ id }} non trovato",

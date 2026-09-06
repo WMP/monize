@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Esta instalação não tem margem de memória para uma restauração: o pico estimado de uma restauração não cabe no contentor. Aumente o limite de memória do contentor ou reduza BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Demasiados restauros estão já à espera da capacidade de restauro desta instalação. Tente novamente dentro de um momento.",
     "restoreQueueWaitTimeout": "Tempo esgotado à espera da capacidade de restauro: outro restauro ainda está em curso. Tente novamente dentro de um momento.",
-    "restoreTicketUnavailable": "Esta instalação não pode autorizar carregamentos de restauro."
+    "restoreTicketUnavailable": "Esta instalação não pode autorizar carregamentos de restauro.",
+    "invalidNotificationFields": "Notificação inválida na cópia de segurança: o título deve ser texto; o destino e a chave de deduplicação devem ser texto ou null"
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",

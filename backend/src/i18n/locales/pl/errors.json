@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Ta instalacja nie ma zapasu pamięci na przywracanie: modelowany szczyt jednego przywracania nie mieści się w kontenerze. Zwiększ limit pamięci kontenera albo obniż BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Zbyt wiele przywracań już czeka na moc przywracania tego wdrożenia. Spróbuj ponownie za chwilę.",
     "restoreQueueWaitTimeout": "Upłynął limit czasu oczekiwania na moc przywracania: inne przywracanie nadal trwa. Spróbuj ponownie za chwilę.",
-    "restoreTicketUnavailable": "To wdrożenie nie może autoryzować przesyłania kopii do przywrócenia."
+    "restoreTicketUnavailable": "To wdrożenie nie może autoryzować przesyłania kopii do przywrócenia.",
+    "invalidNotificationFields": "Nieprawidłowe powiadomienie w kopii zapasowej: tytuł musi być tekstem, a cel i klucz deduplikacji tekstem lub wartością null"
   },
   "budgets": {
     "notFound": "Nie znaleziono budżetu o ID {{ id }}",

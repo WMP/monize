@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Diese Installation hat keinen Speicherspielraum für eine Wiederherstellung: Der modellierte Spitzenbedarf einer Wiederherstellung passt nicht in den Container. Erhöhe das Speicherlimit des Containers oder senke BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Zu viele Wiederherstellungen warten bereits auf die Wiederherstellungskapazität dieser Instanz. Versuchen Sie es in einem Moment erneut.",
     "restoreQueueWaitTimeout": "Zeitüberschreitung beim Warten auf Wiederherstellungskapazität: Eine andere Wiederherstellung läuft noch. Versuchen Sie es in einem Moment erneut.",
-    "restoreTicketUnavailable": "Diese Instanz kann Wiederherstellungs-Uploads nicht autorisieren."
+    "restoreTicketUnavailable": "Diese Instanz kann Wiederherstellungs-Uploads nicht autorisieren.",
+    "invalidNotificationFields": "Ungültige Benachrichtigung in der Sicherung: Der Titel muss Text sein; Ziel und Deduplizierungsschlüssel müssen Text oder null sein"
   },
   "budgets": {
     "notFound": "Budget mit ID {{ id }} nicht gefunden",

@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "此部署沒有用於還原的記憶體餘量：單次還原的估計峰值無法容納於容器內。請提高容器記憶體上限，或降低 BACKUP_RESTORE_EXPANDED_LIMIT。",
     "restoreQueueFull": "已有太多還原作業在等待此部署的還原處理能力。請稍後再試。",
     "restoreQueueWaitTimeout": "等待還原處理能力逾時：另一個還原作業仍在進行。請稍後再試。",
-    "restoreTicketUnavailable": "此部署無法授權還原上傳。"
+    "restoreTicketUnavailable": "此部署無法授權還原上傳。",
+    "invalidNotificationFields": "備份中的通知無效：標題必須是文字；目標和去重鍵必須是文字或 null"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",

@@ -34,12 +34,10 @@ const WRITE_ALLOWLIST: Readonly<Record<string, string>> = {
   "users/users.service.ts":
     "delete-my-data erases every table this account owns, notifications included",
   "backup/backup-restore-database.service.ts":
-    "a restore replaces every table this account owns before re-inserting -- " +
-    "and the re-insert goes through a DYNAMIC table name, so it is outside " +
-    "this scan by construction, not merely allowlisted: a restored row passes " +
-    "none of the door's bounds. INV-NOTIFY-001 is recorded as `partial` for " +
-    "exactly that, and `target` -- the one field where it has a visible " +
-    "consequence -- is re-validated at every consumer by safeNotificationTarget",
+    "restore owns IDs, timestamps and conflict handling; its dynamic insert " +
+    "calls boundRestoredNotification, using the same bounds as the producer " +
+    "door. notification-restore-bounds.spec.ts exercises that INSERT's actual " +
+    "parameters because this source scan cannot resolve dynamic table names",
 };
 
 /**

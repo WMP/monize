@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
+import { boundRestoredNotification } from "./notification-restore-bounds";
 import { BackupData, backupTables } from "./backup-format";
 import {
   DEFERRED_FK_COLUMNS,
@@ -524,7 +525,10 @@ export class BackupRestoreDatabaseService {
 
     let count = 0;
     for (const row of rows) {
-      const filteredRow = { ...row };
+      const filteredRow =
+        table === "notifications"
+          ? boundRestoredNotification(row, this.logger)
+          : { ...row };
 
       // Override user_id to ensure data stays scoped to the restoring user
       if (userId !== null && "user_id" in filteredRow) {

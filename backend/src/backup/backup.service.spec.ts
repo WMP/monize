@@ -416,11 +416,21 @@ describe("BackupService", () => {
     ],
     notifications: [
       "id",
+      "user_id",
       "budget_id",
-      "type",
-      "threshold",
+      "budget_category_id",
+      "alert_type",
+      "severity",
+      "title",
+      "message",
+      "data",
+      "target",
+      "is_read",
+      "is_email_sent",
+      "period_start",
       "created_at",
-      "updated_at",
+      "dismissed_at",
+      "dedupe_key",
     ],
     custom_reports: [
       "id",
@@ -1715,6 +1725,78 @@ describe("BackupService", () => {
         ...rest,
       };
     }
+
+    describe("notification restore field bounds", () => {
+      it("rejects malformed fields before spending an OIDC artifact or staging bytes", async () => {
+        mockUserRepo.findOne.mockResolvedValue({
+          ...mockUser,
+          authProvider: "oidc",
+          passwordHash: null,
+        });
+        const artifact = oidcArtifact();
+        await expect(
+          service.restoreData(
+            userId,
+            makeInput({
+              oidcIdToken: artifact,
+              data: {
+                ...validBackupData,
+                notifications: [{ title: "ok", target: {} }],
+              },
+            }),
+          ),
+        ).rejects.toThrow("Invalid backup notification");
+        expect(
+          mockQueryRunner.query.mock.calls.filter(([sql]) =>
+            /DELETE FROM/.test(String(sql)),
+          ),
+        ).toEqual([]);
+        expect(attachmentStorage.save).not.toHaveBeenCalled();
+        await expect(
+          service.restoreData(userId, makeInput({ oidcIdToken: artifact })),
+        ).resolves.toHaveProperty("message", "Backup restored successfully");
+      });
+
+      it.each(["notifications", "budget_alerts"])(
+        "bounds rows arriving under %s through the full restore",
+        async (table) => {
+          mockUserRepo.findOne.mockResolvedValue(mockUser);
+          (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+          const { notifications: _notifications, ...base } = validBackupData;
+          const result = await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: {
+                ...base,
+                [table]: [
+                  {
+                    id: "aaaaaaaa-0000-4000-8000-000000000001",
+                    user_id: userId,
+                    alert_type: "BILL_DUE",
+                    severity: "info",
+                    title: "t".repeat(300),
+                    message: "Original",
+                    data: {},
+                    target: "/" + "x".repeat(300),
+                    dedupe_key: "k".repeat(150),
+                    period_start: "2026-01-01",
+                  },
+                ],
+              },
+            }),
+          );
+          const call = mockQueryRunner.query.mock.calls.find(([sql]) =>
+            String(sql).includes('INSERT INTO "notifications"'),
+          );
+          const inserted = insertColumnMap(call!);
+          expect(inserted.title).toBe("t".repeat(254) + "…");
+          expect(inserted.target).toBeNull();
+          expect(inserted.dedupe_key).toBe("k".repeat(120));
+          expect(result.restored.notifications).toBe(1);
+        },
+      );
+    });
 
     /**
      * The envelope's completeness claim is the half of F3RB-001 (issue #1069)

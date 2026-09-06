@@ -216,7 +216,8 @@
     "restoreNoMemoryHeadroom": "[XX-This deployment has no memory headroom for a restore: one restore's modeled peak does not fit the container. Raise the container memory limit or lower BACKUP_RESTORE_EXPANDED_LIMIT.-XX]",
     "restoreQueueFull": "[XX-Too many restores are already waiting for this deployment's restore capacity. Retry in a moment.-XX]",
     "restoreQueueWaitTimeout": "[XX-Timed out waiting for restore capacity: another restore is still running. Retry in a moment.-XX]",
-    "restoreTicketUnavailable": "[XX-This deployment cannot authorize restore uploads.-XX]"
+    "restoreTicketUnavailable": "[XX-This deployment cannot authorize restore uploads.-XX]",
+    "invalidNotificationFields": "[XX-Invalid backup notification: title must be text; target and dedupe key must be text or null-XX]"
   },
   "budgets": {
     "notFound": "[XX-Budget with ID {{ id }} not found-XX]",

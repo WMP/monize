@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "このデプロイには復元のためのメモリ余裕がありません: 1 回の復元の推定ピークがコンテナーに収まりません。コンテナーのメモリ上限を引き上げるか、BACKUP_RESTORE_EXPANDED_LIMIT を下げてください。",
     "restoreQueueFull": "このデプロイの復元処理の空きを待っている復元が多すぎます。しばらくしてからもう一度お試しください。",
     "restoreQueueWaitTimeout": "復元処理の空き待ちがタイムアウトしました。別の復元がまだ実行中です。しばらくしてからもう一度お試しください。",
-    "restoreTicketUnavailable": "このデプロイでは復元のアップロードを承認できません。"
+    "restoreTicketUnavailable": "このデプロイでは復元のアップロードを承認できません。",
+    "invalidNotificationFields": "バックアップの通知が無効です。タイトルは文字列、リンク先と重複排除キーは文字列または null である必要があります"
   },
   "budgets": {
     "notFound": "ID {{ id }} の予算が見つかりません",

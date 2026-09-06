@@ -119,6 +119,18 @@ self-referential FK from migration 093 that nobody added to the deferred list, s
 every user who linked a property to its mortgage held a valid backup that could
 not be restored — and nothing said so until the restore ran.
 
+### Notification field bounds on restore
+
+`notification-restore-bounds.ts` validates notification title/target/dedupe-key
+types before re-authentication, attachment staging and any destructive SQL.
+The dynamic insert applies `boundRestoredNotification`, sharing the producer
+door's bounds: titles over 255 UTF-16 code units get an ellipsis, dedupe keys
+are truncated to 120, and targets over 255 are dropped rather than cut.
+Each adjustment is logged. This deliberately normalizes oversized archive
+values instead of failing with PostgreSQL 22001; source IDs (after remapping),
+timestamps and other notification fields retain the normal restore policy.
+The same-origin navigation check remains at each consumer.
+
 ## 3. Rejection happens before the destruction
 
 A restore deletes everything the user owns and then inserts the backup, in one

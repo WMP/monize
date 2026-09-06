@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Bu kurulumda geri yükleme için bellek payı yok: bir geri yüklemenin modellenen tepe kullanımı kapsayıcıya sığmıyor. Kapsayıcının bellek sınırını yükseltin veya BACKUP_RESTORE_EXPANDED_LIMIT değerini düşürün.",
     "restoreQueueFull": "Bu kurulumun geri yükleme kapasitesi için zaten çok fazla geri yükleme bekliyor. Birazdan yeniden deneyin.",
     "restoreQueueWaitTimeout": "Geri yükleme kapasitesi beklenirken zaman aşımı: başka bir geri yükleme hâlâ sürüyor. Birazdan yeniden deneyin.",
-    "restoreTicketUnavailable": "Bu kurulum geri yükleme yüklemelerini yetkilendiremiyor."
+    "restoreTicketUnavailable": "Bu kurulum geri yükleme yüklemelerini yetkilendiremiyor.",
+    "invalidNotificationFields": "Yedekte geçersiz bildirim: başlık metin olmalıdır; hedef ve tekilleştirme anahtarı metin veya null olmalıdır"
   },
   "budgets": {
     "notFound": "{{ id }} kimliğine sahip bütçe bulunamadı",

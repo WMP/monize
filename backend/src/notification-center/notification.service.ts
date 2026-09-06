@@ -16,20 +16,16 @@ import {
 } from "./entities/notification.entity";
 import { DismissNotificationsQueryDto } from "./dto/dismiss-notifications-query.dto";
 
-// The three column widths the door truncates on. Each is checked against
-// `database/schema.sql` by `notification-category.spec.ts`: a bound that is too
-// low silently shortens copy the column would have taken, and one that is too
-// high hands PostgreSQL a value it refuses with 22001 -- inside a producer's
-// never-throws catch, which is the failure the truncation exists to prevent.
-
-/** Matches notifications.title. */
-export const TITLE_MAX_LENGTH = 255;
-
-/** Matches notifications.dedupe_key. */
-export const DEDUPE_KEY_MAX_LENGTH = 120;
-
-/** Matches notifications.target. */
-export const TARGET_MAX_LENGTH = 255;
+import {
+  boundedTitle,
+  boundedDedupeKey,
+  boundedTarget,
+} from "./notification-bounds";
+export {
+  TITLE_MAX_LENGTH,
+  DEDUPE_KEY_MAX_LENGTH,
+  TARGET_MAX_LENGTH,
+} from "./notification-bounds";
 
 /** How long a dismissed or read notification is kept before the purge. */
 export const RETENTION_DAYS = 30;
@@ -154,12 +150,12 @@ export class NotificationService {
             input.budgetCategoryId ?? null,
             input.type,
             input.severity,
-            this.boundedTitle(input.type, input.title),
+            boundedTitle(input.type, input.title, this.logger),
             input.message,
             JSON.stringify(input.data ?? {}),
-            this.boundedTarget(input.type, input.target),
+            boundedTarget(input.type, input.target, this.logger),
             input.periodStart ?? todayIsoDate(),
-            this.boundedDedupeKey(input.type, input.dedupeKey),
+            boundedDedupeKey(input.type, input.dedupeKey, this.logger),
           ],
         ),
       );
@@ -397,60 +393,5 @@ export class NotificationService {
       );
     }
     return row;
-  }
-
-  /**
-   * A title the `title VARCHAR(255)` column will accept.
-   *
-   * Producers interpolate names they do not control -- a scheduled
-   * transaction's, an account's -- and an over-long one makes PostgreSQL raise
-   * 22001, which a producer's never-throws contract then swallows: the
-   * notification silently never exists, and for SCHEDULED_POST_FAILED that
-   * means the user is never told their money did not move. Truncating is the
-   * honest failure, and it happens once, here, rather than at each producer.
-   */
-  private boundedTitle(type: NotificationType, title: string): string {
-    if (title.length <= TITLE_MAX_LENGTH) return title;
-    this.logger.warn(
-      `Title for ${type} exceeds ${TITLE_MAX_LENGTH} chars and was truncated`,
-    );
-    return `${title.slice(0, TITLE_MAX_LENGTH - 1)}…`;
-  }
-
-  /**
-   * Keys are bounded by construction (type + UUID + date is well under the
-   * column); a longer one is a producer bug, reported and truncated
-   * deterministically rather than thrown, because the notification still
-   * deduping -- slightly too coarsely -- beats the sweep that raised it dying
-   * here.
-   */
-  private boundedDedupeKey(
-    type: NotificationType,
-    dedupeKey: string | null | undefined,
-  ): string | null {
-    if (dedupeKey === null || dedupeKey === undefined) return null;
-    if (dedupeKey.length <= DEDUPE_KEY_MAX_LENGTH) return dedupeKey;
-    this.logger.error(
-      `Dedupe key for ${type} exceeds ${DEDUPE_KEY_MAX_LENGTH} chars ` +
-        `and was truncated: ${dedupeKey.slice(0, 60)}...`,
-    );
-    return dedupeKey.slice(0, DEDUPE_KEY_MAX_LENGTH);
-  }
-
-  /**
-   * A truncated path points somewhere else, so an over-long target is dropped
-   * rather than cut: a notification with no link is worse than one with the
-   * right link and better than one that navigates to the wrong page.
-   */
-  private boundedTarget(
-    type: NotificationType,
-    target: string | null | undefined,
-  ): string | null {
-    if (target === null || target === undefined) return null;
-    if (target.length <= TARGET_MAX_LENGTH) return target;
-    this.logger.error(
-      `Target for ${type} exceeds ${TARGET_MAX_LENGTH} chars and was dropped`,
-    );
-    return null;
   }
 }

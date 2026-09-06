@@ -207,7 +207,8 @@
     "restoreNoMemoryHeadroom": "Deze installatie heeft geen geheugenruimte voor een restore: de gemodelleerde piek van één restore past niet in de container. Verhoog de geheugenlimiet van de container of verlaag BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Er wachten al te veel herstelbewerkingen op de herstelcapaciteit van deze installatie. Probeer het over een moment opnieuw.",
     "restoreQueueWaitTimeout": "Time-out bij het wachten op herstelcapaciteit: een andere herstelbewerking is nog bezig. Probeer het over een moment opnieuw.",
-    "restoreTicketUnavailable": "Deze installatie kan herstel-uploads niet autoriseren."
+    "restoreTicketUnavailable": "Deze installatie kan herstel-uploads niet autoriseren.",
+    "invalidNotificationFields": "Ongeldige melding in de back-up: de titel moet tekst zijn; het doel en de deduplicatiesleutel moeten tekst of null zijn"
   },
   "budgets": {
     "notFound": "Budget met ID {{ id }} niet gevonden",
