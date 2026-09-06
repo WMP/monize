@@ -549,9 +549,9 @@ data): `export-table-queries.ts`, `restore-plan.ts` after `notifications` (the
 `@Cron` every minute (the interval floor is 5, so a one-minute tick is cheap and
 precise). Every replica runs it, so the claim must be idempotent across replicas
 **without** an advisory lock -- a single conditional `UPDATE ... RETURNING`
-(bounded to `CLAIM_BATCH` rows per tick through a `FOR UPDATE SKIP LOCKED` CTE,
+(bounded to the configured claim batch per tick through a `FOR UPDATE SKIP LOCKED` CTE,
 so a replica's tick takes rows another replica is not already holding, and the
-rest go next minute; re-emits run `REEMIT_CONCURRENCY` at a time behind an
+rest go next minute; re-emits run at the configured concurrency behind an
 in-process overlap guard) is
 the mechanism (`docs/concurrency-and-idempotency.md`, "atomic delta / CAS"):
 
@@ -585,6 +585,21 @@ runs **inside the same transaction that writes the notification** (Section 13.3)
 INSERT and the `UPDATE ... SET stopped_at ... WHERE id = $1 AND stopped_at IS
 NULL` commit together. A failure rolls back both, leaving the reminder claimable
 next interval -- it delivers exactly once, never zero and never twice.
+
+### Reminder cron capacity
+
+The every-minute cron claims at most `NOTIFICATION_REMINDER_CLAIM_BATCH` due
+rows per replica (default 100, accepted range 1..10000), and re-emits at most
+`NOTIFICATION_REMINDER_REEMIT_CONCURRENCY` concurrently per replica (default 5,
+range 1..100). Both environment settings are read at backend startup; missing
+values use the defaults, and invalid or out-of-range values log a warning and
+fall back. Set them in the backend container's environment and restart it. Docker Compose
+dev/prod forward them from `.env`; Helm deployments can use `backend.extraEnv`.
+
+The `LIMIT` and `FOR UPDATE SKIP LOCKED` claim keep each tick bounded and divide
+work between replicas. Increasing the limits raises database and transport load;
+it does not remove the backlog policy. Rows beyond the claim limit stay due for
+later ticks. A tick still in flight suppresses another tick on that replica.
 
 ### 13.3 What a fire re-emits (through the dispatch seam)
 

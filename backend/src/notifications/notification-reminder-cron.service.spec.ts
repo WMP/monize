@@ -71,6 +71,40 @@ describe("NotificationReminderCronService", () => {
     jest.spyOn(service["logger"], "error").mockImplementation(() => undefined);
   });
 
+  it("uses operator limits for the claim and actual re-emit concurrency", async () => {
+    const previous = { ...process.env };
+    try {
+      process.env.NOTIFICATION_REMINDER_CLAIM_BATCH = "7";
+      process.env.NOTIFICATION_REMINDER_REEMIT_CONCURRENCY = "2";
+      const configured = new NotificationReminderCronService(
+        {} as never,
+        { dismissSupersededReminderRows: dismissSuperseded } as never,
+        { notify } as never,
+      );
+      query
+        .mockResolvedValueOnce([[], 0])
+        .mockResolvedValueOnce([
+          Array.from({ length: 7 }, (_, i) => claim({ id: `rem-${i}` })),
+          7,
+        ]);
+      let inFlight = 0;
+      let peak = 0;
+      notify.mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        inFlight -= 1;
+        return null;
+      });
+      await configured.fireDue();
+      expect(query.mock.calls[1][1]).toEqual([7]);
+      expect(peak).toBe(2);
+      expect(notify).toHaveBeenCalledTimes(7);
+    } finally {
+      process.env = previous;
+    }
+  });
+
   it("does nothing when no reminder is due", async () => {
     await service.fireDue();
     expect(notify).not.toHaveBeenCalled();

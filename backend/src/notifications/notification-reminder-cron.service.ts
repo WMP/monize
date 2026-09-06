@@ -14,6 +14,10 @@ import {
   NotificationService,
   DEDUPE_KEY_MAX_LENGTH,
 } from "../notification-center/notification.service";
+import {
+  REMINDER_CRON_LIMIT_SPECS,
+  resolveReminderCronLimits,
+} from "./reminder-cron-limits";
 import { NotificationDispatchService } from "./notification-dispatch.service";
 
 /** One claimed, due row as the atomic UPDATE returns it (snake_case, new values). */
@@ -31,10 +35,11 @@ export interface ClaimedReminderRow {
   fire_count: number;
 }
 
-/** Due rows one tick claims at most; the rest stay due and go next minute. */
-export const CLAIM_BATCH = 100;
-/** Re-emits in flight at once within a tick. */
-export const REEMIT_CONCURRENCY = 5;
+/** Default claim batch; deployments may override it at startup. */
+export const CLAIM_BATCH = REMINDER_CRON_LIMIT_SPECS.claimBatch.default;
+/** Default re-emit concurrency; deployments may override it at startup. */
+export const REEMIT_CONCURRENCY =
+  REMINDER_CRON_LIMIT_SPECS.reemitConcurrency.default;
 
 /**
  * Fires due reminders (spec section 13.2/13.3). Lives here, in the delivery
@@ -53,6 +58,7 @@ export const REEMIT_CONCURRENCY = 5;
 @Injectable()
 export class NotificationReminderCronService {
   private readonly logger = new Logger(NotificationReminderCronService.name);
+  private readonly limits = resolveReminderCronLimits(process.env, this.logger);
   /** Whether a tick is in flight on this replica (see `fireDue`). */
   private running = false;
 
@@ -118,7 +124,7 @@ export class NotificationReminderCronService {
       // Claim due rows atomically. next_fire_at is set to now + interval (not
       // previous + interval) so a cron that missed several ticks fires once and
       // reschedules, never a catch-up burst.
-      // Bounded: at most CLAIM_BATCH rows per tick (the rest are still due and
+      // Bounded by the configured claim batch (the rest are still due and
       // go next minute), and `FOR UPDATE SKIP LOCKED` so a concurrent replica's
       // tick takes different rows instead of queueing on the same ones. The
       // CTE names its column `due_id` so the RETURNING list stays unqualified.
@@ -142,7 +148,7 @@ export class NotificationReminderCronService {
                 WHERE notification_reminders.id = due.due_id
               RETURNING id, user_id, alert_type, severity, title, message,
                         data, target, dedupe_base, repeat_mode, fire_count`,
-              [CLAIM_BATCH],
+              [this.limits.claimBatch],
             ),
           ),
         ),
@@ -154,8 +160,8 @@ export class NotificationReminderCronService {
       // not skip the rest, and one stalled push endpoint (bounded per send by
       // the sender's deadline) must not hold every other user's nag behind it.
       let fired = 0;
-      for (let i = 0; i < claimed.length; i += REEMIT_CONCURRENCY) {
-        const batch = claimed.slice(i, i + REEMIT_CONCURRENCY);
+      for (let i = 0; i < claimed.length; i += this.limits.reemitConcurrency) {
+        const batch = claimed.slice(i, i + this.limits.reemitConcurrency);
         const outcomes = await Promise.allSettled(
           batch.map((claim) =>
             withUserContext(claim.user_id, () => this.reEmit(claim)),
