@@ -513,8 +513,18 @@ export function GemSettingsForm({
   return (
     <>
       <form onSubmit={submitOrReport} noValidate>
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <GemCard title={t("gem.settings.generalTitle")}>
+        {/* `grid-cols-1` rather than an implicit `auto` track: a single `auto`
+          column grows to its content's width, so a long instrument name in a
+          role picker (worse in locales with longer labels than English) pushed
+          the card -- and every `w-full` field in it -- past the phone's edge,
+          and the truncating pickers never got the chance to truncate. A
+          `minmax(0,1fr)` track (what `grid-cols-1` compiles to, like the
+          report's other grids) is capped at the container, so the fields shrink
+          and the names ellipsize instead. `min-w-0` on each card is the other
+          half: a grid item's default min-content floor would otherwise keep the
+          card from shrinking to the track. */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          <GemCard title={t("gem.settings.generalTitle")} className="min-w-0">
             <div className="space-y-3">
               <div {...tourAnchor(TOUR_ANCHORS.gemSettingsAccounts)}>
                 <MultiSelect
@@ -651,6 +661,7 @@ export function GemSettingsForm({
             tour breaking. */}
           <GemCard
             title={t("gem.settings.assetsTitle")}
+            className="min-w-0"
             {...tourAnchor(TOUR_ANCHORS.gemSettingsAssets)}
           >
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
