@@ -16,10 +16,42 @@ const conn = (over: Partial<MailboxConnection> = {}): MailboxConnection => ({
   port: 993,
   security: "tls",
   username: "receipts@example.com",
-  password: "s3cret-password",
+  auth: { kind: "password", password: "s3cret-password" },
   folder: "INBOX",
   allowPrivateHost: false,
   ...over,
+});
+
+describe("buildImapFlowOptions credentials (design 3a)", () => {
+  it("logs in with the password for a password mailbox", () => {
+    expect(buildImapFlowOptions(conn()).auth).toEqual({
+      user: "receipts@example.com",
+      pass: "s3cret-password",
+    });
+  });
+
+  it("logs in with the access token (XOAUTH2) for an OAuth2 mailbox, and no password", () => {
+    const options = buildImapFlowOptions(
+      conn({ auth: { kind: "oauth2", accessToken: "access-token-abc" } }),
+    );
+    expect(options.auth).toEqual({
+      user: "receipts@example.com",
+      accessToken: "access-token-abc",
+    });
+    expect(options.auth).not.toHaveProperty("pass");
+  });
+
+  it("keeps TLS verification and the public-only lookup for an OAuth2 mailbox", () => {
+    const options = buildImapFlowOptions(
+      conn({ auth: { kind: "oauth2", accessToken: "t" } }),
+    );
+    expect(options.secure).toBe(true);
+    expect(options.tls).toMatchObject({
+      rejectUnauthorized: true,
+      minVersion: "TLSv1.2",
+      lookup: publicOnlyLookup,
+    });
+  });
 });
 
 describe("buildImapFlowOptions (INV-RECEIPT-001, INV-RECEIPT-004)", () => {

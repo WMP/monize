@@ -31,18 +31,28 @@ import {
  * The certificate is verified; there is no switch to accept any certificate.
  */
 
-/** Where and how to connect. The password is plaintext here: never log this. */
+/**
+ * How the login is made: the mailbox's password (SASL PLAIN or LOGIN), or an
+ * OAuth2 access token (SASL XOAUTH2 or OAUTHBEARER, chosen by imapflow from what
+ * the server offers). Either is a live secret here: never log this.
+ */
+export type MailboxAuth =
+  | { readonly kind: "password"; readonly password: string }
+  | { readonly kind: "oauth2"; readonly accessToken: string };
+
+/** Where and how to connect. The credential is plaintext here: never log this. */
 export interface MailboxConnection {
   readonly host: string;
   readonly port: number;
   readonly security: "tls" | "starttls";
   readonly username: string;
-  readonly password: string;
+  readonly auth: MailboxAuth;
   readonly folder: string;
   /**
    * Whether a private, loopback or link-local address may be connected to: true
    * for an admin's mailbox or an operator-allowlisted host
-   * (`resolveMailboxHostPolicy`). False makes the connection public-only.
+   * (`resolveMailboxHostPolicy`). False makes the connection public-only, which
+   * is always the case for an OAuth2 mailbox (its host is the provider's own).
    */
   readonly allowPrivateHost: boolean;
 }
@@ -146,7 +156,10 @@ export function buildImapFlowOptions(
     // left unset imapflow would continue in cleartext).
     secure: conn.security === "tls",
     ...(conn.security === "starttls" ? { doSTARTTLS: true } : {}),
-    auth: { user: conn.username, pass: conn.password },
+    auth:
+      conn.auth.kind === "oauth2"
+        ? { user: conn.username, accessToken: conn.auth.accessToken }
+        : { user: conn.username, pass: conn.auth.password },
     // Merged into the net/tls connect options by imapflow, for the first
     // connection and for the STARTTLS upgrade alike.
     tls: {

@@ -1,6 +1,7 @@
 import { describeFetchFailure } from "../../common/http/fetch-failure.util";
 import { EMAIL_RECEIPT_LAST_ERROR_MAX_LENGTH } from "../entities/email-receipt-mailbox.entity";
 import { stripControlCharacters } from "../imap/strip-control-characters";
+import { OAuthReconnectRequiredError } from "../oauth/oauth-errors";
 
 /** The most of a server's own reply text kept in a failure line. */
 const MAX_SERVER_TEXT_CHARS = 120;
@@ -23,6 +24,33 @@ interface ImapErrorLike {
 export function mailboxSecrets(username: string, password: string): string[] {
   const plain = Buffer.from(`\u0000${username}\u0000${password}`, "utf8");
   return [password, plain.toString("base64")].filter((s) => s.length > 0);
+}
+
+/**
+ * The same for an OAuth2 login: the tokens themselves, and the base64 SASL
+ * strings a server or a library could echo. imapflow sends `XOAUTH2`
+ * (`user=<name>\x01auth=Bearer <token>\x01\x01`) or, where the server offers
+ * it, `OAUTHBEARER` (RFC 7628, which also names the host and port); both are
+ * redacted, for every token the connection held (the access token, and the
+ * refresh token it came from, rotated or not).
+ */
+export function oauthMailboxSecrets(
+  username: string,
+  tokens: readonly string[],
+  endpoint: { host: string; port: number },
+): string[] {
+  const out: string[] = [];
+  for (const token of tokens) {
+    if (token.length === 0) continue;
+    const xoauth2 = `user=${username}\u0001auth=Bearer ${token}\u0001\u0001`;
+    const oauthbearer = `n,a=${username},\u0001host=${endpoint.host}\u0001port=${endpoint.port}\u0001auth=Bearer ${token}\u0001\u0001`;
+    out.push(
+      token,
+      Buffer.from(xoauth2, "utf8").toString("base64"),
+      Buffer.from(oauthbearer, "utf8").toString("base64"),
+    );
+  }
+  return out;
 }
 
 function redact(text: string, secrets: readonly string[]): string {
@@ -51,7 +79,12 @@ export function describeMailboxFailure(
   error: unknown,
   secrets: readonly string[] = [],
 ): string {
-  const base = describeFetchFailure(error);
+  // Already a sentence written for the person (and free of secrets by
+  // construction): "Connect the mailbox again", not a class name before it.
+  const base =
+    error instanceof OAuthReconnectRequiredError
+      ? error.message
+      : describeFetchFailure(error);
   const extra: string[] = [];
   if (error !== null && typeof error === "object") {
     const e = error as ImapErrorLike;

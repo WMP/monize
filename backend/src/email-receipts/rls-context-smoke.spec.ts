@@ -182,6 +182,7 @@ describe("email receipts module RLS identity smoke (real withScopedDb)", () => {
         isConfigured: jest.fn(() => true),
       } as never,
       { testConnection: jest.fn(), fetchSince: jest.fn() } as never,
+      { obtain: jest.fn() } as never,
     );
     const imap = {
       testConnection: jest.fn(),

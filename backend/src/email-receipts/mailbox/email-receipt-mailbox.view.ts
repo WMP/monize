@@ -1,13 +1,19 @@
 import type {
   EmailReceiptAiMode,
+  EmailReceiptAuthMethod,
   EmailReceiptMailbox,
   EmailReceiptMailboxSecurity,
+  EmailReceiptOAuthProvider,
 } from "../entities/email-receipt-mailbox.entity";
 
 /**
  * What a client sees of a mailbox: every setting and the last poll's outcome,
- * and never the password (INV-RECEIPT-005) -- `passwordSet` says whether one is
- * stored. The poll cursor is the server's own bookkeeping and is not shown.
+ * and never the password or the OAuth refresh token (INV-RECEIPT-005) --
+ * `passwordSet` says whether a password is stored and `oauthConnected` whether a
+ * refresh token is (an OAuth2 mailbox without one was disconnected or revoked
+ * and needs connecting again). `authMethod` and `oauthProvider` say how the
+ * mailbox logs in; its host, port and security are the provider's own when it is
+ * `oauth2`, and its `username` is the account's address. The poll cursor is the server's own bookkeeping and is not shown.
  * `encryptionConfigured` says whether this server can encrypt a password at all,
  * so the settings screen can explain a refused save.
  */
@@ -21,7 +27,10 @@ export interface EmailReceiptMailboxView {
   enabled: boolean;
   aiMode: EmailReceiptAiMode;
   autoApply: boolean;
+  authMethod: EmailReceiptAuthMethod;
+  oauthProvider: EmailReceiptOAuthProvider | null;
   passwordSet: boolean;
+  oauthConnected: boolean;
   encryptionConfigured: boolean;
   lastPolledAt: string | null;
   lastSuccessAt: string | null;
@@ -42,7 +51,11 @@ const iso = (value: Date | null): string | null =>
 /** The view of a stored row. Built field by field so a new column is not shown by accident. */
 export function toMailboxView(
   row: EmailReceiptMailbox,
-  flags: { passwordSet: boolean; encryptionConfigured: boolean },
+  flags: {
+    passwordSet: boolean;
+    oauthConnected: boolean;
+    encryptionConfigured: boolean;
+  },
 ): EmailReceiptMailboxView {
   return {
     id: row.id,
@@ -54,7 +67,10 @@ export function toMailboxView(
     enabled: row.enabled,
     aiMode: row.aiMode,
     autoApply: row.autoApply,
+    authMethod: row.authMethod,
+    oauthProvider: row.oauthProvider ?? null,
     passwordSet: flags.passwordSet,
+    oauthConnected: flags.oauthConnected,
     encryptionConfigured: flags.encryptionConfigured,
     lastPolledAt: iso(row.lastPolledAt),
     lastSuccessAt: iso(row.lastSuccessAt),

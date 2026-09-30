@@ -5,6 +5,11 @@ import { EncryptionService } from "@/common/encryption/encryption.service";
 import { withSystemContext, withUserContext } from "@/common/db/with-context";
 import { EmailReceiptMailboxService } from "@/email-receipts/mailbox/email-receipt-mailbox.service";
 import type { ImapMailboxClient } from "@/email-receipts/imap/imap-mailbox-client";
+import { SingleUseTokenService } from "@/auth/single-use-token.service";
+import { EmailReceiptOAuthService } from "@/email-receipts/oauth/email-receipt-oauth.service";
+import { EmailReceiptOAuthConfig } from "@/email-receipts/oauth/oauth-config.service";
+import { OAuthAccessTokenService } from "@/email-receipts/oauth/oauth-access-token.service";
+import { OAuthTokenError } from "@/email-receipts/oauth/oauth-errors";
 
 import {
   cleanTables,
@@ -29,6 +34,8 @@ describe("email receipt mailbox (integration)", () => {
   let service: EmailReceiptMailboxService;
   let encryption: EncryptionService;
   let imap: jest.Mocked<ImapMailboxClient>;
+  let oauth: EmailReceiptOAuthService;
+  let tokens: { exchangeCode: jest.Mock; refresh: jest.Mock };
   let aliceId: string;
   let bobId: string;
 
@@ -63,7 +70,27 @@ describe("email receipt mailbox (integration)", () => {
       new ConfigService({ ENCRYPTION_KEY: "x".repeat(40) }),
     );
     imap = { testConnection: jest.fn(), fetchSince: jest.fn() };
-    service = new EmailReceiptMailboxService(harness.app, encryption, imap);
+    tokens = { exchangeCode: jest.fn(), refresh: jest.fn() };
+    service = new EmailReceiptMailboxService(
+      harness.app,
+      encryption,
+      imap,
+      new OAuthAccessTokenService(harness.app, encryption, tokens as never),
+    );
+    oauth = new EmailReceiptOAuthService(
+      harness.app,
+      encryption,
+      new EmailReceiptOAuthConfig(
+        new ConfigService({
+          PUBLIC_APP_URL: "https://monize.example.com",
+          EMAIL_RECEIPTS_GOOGLE_CLIENT_ID: "google-client",
+          EMAIL_RECEIPTS_GOOGLE_CLIENT_SECRET: "google-secret",
+        }),
+      ),
+      tokens as never,
+      new SingleUseTokenService(harness.app),
+      service,
+    );
   });
 
   afterAll(async () => {
@@ -217,7 +244,10 @@ describe("email receipt mailbox (integration)", () => {
   it("stores a failed poll's reason cut to 300 characters, without the password", async () => {
     await asAlice(() => service.upsert(aliceId, dto()));
     const loaded = await asAlice(() => service.loadConnection(aliceId));
-    expect(loaded?.connection.password).toBe(PASSWORD);
+    expect(loaded?.connection.auth).toEqual({
+      kind: "password",
+      password: PASSWORD,
+    });
 
     await asAlice(() =>
       service.recordPollFailure(
@@ -257,7 +287,10 @@ describe("email receipt mailbox (integration)", () => {
     expect(result.ok).toBe(false);
     expect(JSON.stringify(result)).not.toContain(PASSWORD);
     expect(imap.testConnection).toHaveBeenCalledWith(
-      expect.objectContaining({ password: PASSWORD, host: "8.8.8.8" }),
+      expect.objectContaining({
+        auth: { kind: "password", password: PASSWORD },
+        host: "8.8.8.8",
+      }),
     );
     expect(await row()).toEqual(before);
   });
@@ -309,5 +342,253 @@ describe("email receipt mailbox (integration)", () => {
       `SELECT status, email_receipt_id FROM ai_review_requests`,
     );
     expect(request).toEqual({ status: "rejected", email_receipt_id: null });
+  });
+  describe("OAuth2 mailbox (design 3a, INV-RECEIPT-005, INV-RECEIPT-007)", () => {
+    const REFRESH = "1//refresh-token-abc";
+    const ACCESS = "ya29.access-token-abc";
+    const idToken = (email: string) =>
+      [
+        Buffer.from("{}").toString("base64url"),
+        Buffer.from(JSON.stringify({ email })).toString("base64url"),
+        "sig",
+      ].join(".");
+
+    const stateFor = (userId: string) =>
+      new URL(
+        oauth.start(userId, { provider: "google" }).authorizationUrl,
+      ).searchParams.get("state") as string;
+
+    const connect = async (
+      userId: string,
+      as: <T>(fn: () => Promise<T>) => Promise<T>,
+      email = "Receipts@Example.com",
+    ) => {
+      tokens.exchangeCode.mockResolvedValueOnce({
+        accessToken: ACCESS,
+        refreshToken: REFRESH,
+        idToken: idToken(email),
+      });
+      return as(() =>
+        oauth.complete(userId, { code: "code", state: stateFor(userId) }),
+      );
+    };
+
+    it("creates an OAuth2 mailbox under RLS: ciphertext token, no password, no secret in the view", async () => {
+      const view = await connect(aliceId, asAlice);
+
+      const stored = await row();
+      expect(stored).toMatchObject({
+        host: "imap.gmail.com",
+        port: 993,
+        security: "tls",
+        username: "receipts@example.com",
+        auth_method: "oauth2",
+        oauth_provider: "google",
+        password_enc: null,
+        folder: "INBOX",
+        enabled: true,
+        ai_mode: "off",
+        auto_apply: false,
+      });
+      expect(stored.oauth_refresh_token_enc).not.toContain(REFRESH);
+      expect(encryption.decrypt(stored.oauth_refresh_token_enc)).toBe(REFRESH);
+      expect(view).toMatchObject({
+        authMethod: "oauth2",
+        oauthProvider: "google",
+        oauthConnected: true,
+        passwordSet: false,
+      });
+      const text = JSON.stringify(view);
+      expect(text).not.toContain(REFRESH);
+      expect(text).not.toContain(stored.oauth_refresh_token_enc);
+      expect(await asBob(() => service.getView(bobId))).toBeNull();
+    });
+
+    it("spends the state once, and refuses it for another user, in the real single-use table", async () => {
+      const state = stateFor(aliceId);
+      tokens.exchangeCode.mockResolvedValue({
+        accessToken: ACCESS,
+        refreshToken: REFRESH,
+        idToken: idToken("a@example.com"),
+      });
+
+      await expect(
+        asBob(() => oauth.complete(bobId, { code: "code", state })),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(await row(bobId)).toBeUndefined();
+
+      await asAlice(() => oauth.complete(aliceId, { code: "code", state }));
+      await expect(
+        asAlice(() => oauth.complete(aliceId, { code: "code", state })),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(tokens.exchangeCode).toHaveBeenCalledTimes(1);
+    });
+
+    it("switches a password mailbox to OAuth2, keeping its settings and clearing the password and the cursor", async () => {
+      await asAlice(() =>
+        service.upsert(
+          aliceId,
+          dto({ folder: "Receipts", aiMode: "on_demand", autoApply: true }),
+        ),
+      );
+      const { id } = await row();
+      await asAlice(() =>
+        service.advanceCursor(aliceId, id, {
+          uidValidity: "77",
+          lastUid: "40",
+        }),
+      );
+
+      await connect(aliceId, asAlice);
+
+      expect(await row()).toMatchObject({
+        id,
+        auth_method: "oauth2",
+        oauth_provider: "google",
+        password_enc: null,
+        folder: "Receipts",
+        ai_mode: "on_demand",
+        auto_apply: true,
+        uid_validity: null,
+        last_uid: null,
+      });
+    });
+
+    it("switches back to password login, deleting the refresh token, and needs a password to do it", async () => {
+      await connect(aliceId, asAlice);
+
+      await expect(
+        asAlice(() => service.upsert(aliceId, dto({ password: undefined }))),
+      ).rejects.toMatchObject({ status: 400 });
+      expect((await row()).auth_method).toBe("oauth2");
+
+      await asAlice(() => service.upsert(aliceId, dto()));
+      expect(await row()).toMatchObject({
+        auth_method: "password",
+        oauth_provider: null,
+        oauth_refresh_token_enc: null,
+      });
+      expect(encryption.decrypt((await row()).password_enc)).toBe(PASSWORD);
+    });
+
+    it("loads a fresh access token from the provider's host and stores a rotated refresh token", async () => {
+      await connect(aliceId, asAlice);
+      tokens.refresh.mockResolvedValue({
+        accessToken: ACCESS,
+        refreshToken: "1//rotated",
+        idToken: null,
+      });
+
+      const loaded = await asAlice(() => service.loadConnection(aliceId));
+
+      expect(tokens.refresh).toHaveBeenCalledWith("google", REFRESH);
+      expect(loaded?.connection).toMatchObject({
+        host: "imap.gmail.com",
+        auth: { kind: "oauth2", accessToken: ACCESS },
+        allowPrivateHost: false,
+      });
+      expect(encryption.decrypt((await row()).oauth_refresh_token_enc)).toBe(
+        "1//rotated",
+      );
+    });
+
+    it("drops the refresh token on invalid_grant, records the reason, and leaves the poll's list", async () => {
+      await connect(aliceId, asAlice);
+      expect(
+        (await withSystemContext(() => service.listEnabledMailboxes())).map(
+          (m) => m.userId,
+        ),
+      ).toEqual([aliceId]);
+      tokens.refresh.mockRejectedValue(
+        new OAuthTokenError("invalid_grant", 400),
+      );
+
+      const failure = await asAlice(() =>
+        service.loadConnection(aliceId),
+      ).catch((e: unknown) => e);
+      const { id: mailboxId } = await row();
+      const line = await asAlice(() =>
+        service.recordPollFailure(aliceId, mailboxId, failure, []),
+      );
+
+      expect(line).toMatch(/Connect the mailbox again/);
+      expect(await row()).toMatchObject({
+        oauth_refresh_token_enc: null,
+        auth_method: "oauth2",
+        enabled: true,
+      });
+      expect((await row()).last_error).toBe(line);
+      expect(
+        await withSystemContext(() => service.listEnabledMailboxes()),
+      ).toEqual([]);
+      const view = await asAlice(() => service.getView(aliceId));
+      expect(view).toMatchObject({ oauthConnected: false, enabled: true });
+    });
+
+    it("disconnects: deletes the token and stops the poll, keeping the row and its receipts", async () => {
+      await connect(aliceId, asAlice);
+      const { id } = await row();
+      await db.query(
+        `INSERT INTO email_receipts
+           (user_id, mailbox_id, uid_validity, uid, from_address, from_domain, subject, received_at, body_text)
+         VALUES ($1, $2, 1, 1, 'a@b', 'b', 's', now(), 't')`,
+        [aliceId, id],
+      );
+
+      await expect(asBob(() => oauth.disconnect(bobId))).rejects.toMatchObject({
+        status: 404,
+      });
+      expect((await row()).oauth_refresh_token_enc).not.toBeNull();
+
+      await asAlice(() => oauth.disconnect(aliceId));
+
+      expect(await row()).toMatchObject({
+        id,
+        oauth_refresh_token_enc: null,
+        enabled: false,
+        auth_method: "oauth2",
+      });
+      expect(await db.query(`SELECT 1 FROM email_receipts`)).toHaveLength(1);
+    });
+
+    it("changes settings for either method, resetting the cursor on a folder change only", async () => {
+      await connect(aliceId, asAlice);
+      const { id } = await row();
+      await asAlice(() =>
+        service.advanceCursor(aliceId, id, { uidValidity: "5", lastUid: "9" }),
+      );
+
+      await asAlice(() =>
+        service.updateSettings(aliceId, {
+          enabled: false,
+          aiMode: "automatic",
+          autoApply: true,
+        }),
+      );
+      expect(await row()).toMatchObject({
+        enabled: false,
+        ai_mode: "automatic",
+        auto_apply: true,
+        uid_validity: "5",
+        last_uid: "9",
+      });
+
+      const view = await asAlice(() =>
+        service.updateSettings(aliceId, { folder: "Receipts" }),
+      );
+      expect(await row()).toMatchObject({
+        folder: "Receipts",
+        uid_validity: null,
+        last_uid: null,
+      });
+      expect(view).toMatchObject({ folder: "Receipts", oauthConnected: true });
+
+      await expect(
+        asBob(() => service.updateSettings(bobId, { enabled: true })),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        asAlice(() => service.updateSettings(aliceId, {})),
+      ).rejects.toMatchObject({ status: 400 });
+    });
   });
 });

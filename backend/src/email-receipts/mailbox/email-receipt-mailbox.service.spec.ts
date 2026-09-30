@@ -9,6 +9,8 @@ import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import { User } from "../../users/entities/user.entity";
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
 import type { ImapMailboxClient } from "../imap/imap-mailbox-client";
+import { OAuthReconnectRequiredError } from "../oauth/oauth-errors";
+import type { OAuthAccessTokenService } from "../oauth/oauth-access-token.service";
 import { EmailReceiptMailboxService } from "./email-receipt-mailbox.service";
 
 jest.mock("../../common/db/scoped-db", () =>
@@ -42,6 +44,9 @@ function stored(over: Partial<EmailReceiptMailbox> = {}): EmailReceiptMailbox {
     security: "tls",
     username: "receipts@example.com",
     passwordEnc: encryption.encrypt(PASSWORD),
+    authMethod: "password",
+    oauthProvider: null,
+    oauthRefreshTokenEnc: null,
     folder: "INBOX",
     enabled: true,
     aiMode: "off",
@@ -54,6 +59,23 @@ function stored(over: Partial<EmailReceiptMailbox> = {}): EmailReceiptMailbox {
     lastErrorAt: new Date("2026-09-28T10:00:00Z"),
     createdAt: new Date("2026-09-01T00:00:00Z"),
     updatedAt: new Date("2026-09-29T10:00:00Z"),
+    ...over,
+  });
+}
+
+const REFRESH = "refresh-token-abc";
+const ACCESS = "access-token-xyz";
+
+function storedOAuth(
+  over: Partial<EmailReceiptMailbox> = {},
+): EmailReceiptMailbox {
+  return stored({
+    host: "imap.gmail.com",
+    username: "receipts@gmail.example",
+    authMethod: "oauth2",
+    oauthProvider: "google",
+    passwordEnc: null,
+    oauthRefreshTokenEnc: encryption.encrypt(REFRESH),
     ...over,
   });
 }
@@ -112,12 +134,22 @@ function setup() {
     testConnection: jest.fn(),
     fetchSince: jest.fn(),
   } as jest.Mocked<ImapMailboxClient>;
+  const oauthAccess = { obtain: jest.fn() };
   const service = new EmailReceiptMailboxService(
     dataSource as unknown as DataSource,
     encryption as never,
     imap,
+    oauthAccess as unknown as OAuthAccessTokenService,
   );
-  return { service, mailboxRepo, userRepo, manager, imap, storedQuery };
+  return {
+    service,
+    mailboxRepo,
+    userRepo,
+    manager,
+    imap,
+    storedQuery,
+    oauthAccess,
+  };
 }
 
 beforeEach(() => {
@@ -128,24 +160,24 @@ afterEach(() => jest.restoreAllMocks());
 
 describe("EmailReceiptMailboxService.getView", () => {
   it("is null when no mailbox is set up", async () => {
-    const { service, mailboxRepo } = setup();
-    mailboxRepo.findOne.mockResolvedValue(null);
+    const { service, storedQuery } = setup();
+    storedQuery.result = null;
     await expect(service.getView(USER)).resolves.toBeNull();
-    expect(mailboxRepo.findOne).toHaveBeenCalledWith({
-      where: { userId: USER },
-    });
   });
 
   it("never carries the password, and says one is stored", async () => {
-    const { service, mailboxRepo } = setup();
-    mailboxRepo.findOne.mockResolvedValue(stored());
+    const { service, storedQuery } = setup();
+    storedQuery.result = stored();
 
     const view = await service.getView(USER);
 
     expect(view).toMatchObject({
       id: "mb-1",
       host: "8.8.8.8",
+      authMethod: "password",
+      oauthProvider: null,
       passwordSet: true,
+      oauthConnected: false,
       encryptionConfigured: true,
       lastError: "old error",
       lastPolledAt: "2026-09-29T10:00:00.000Z",
@@ -158,9 +190,47 @@ describe("EmailReceiptMailboxService.getView", () => {
     expect(view).not.toHaveProperty("userId");
   });
 
+  it("shows an OAuth2 mailbox as connected, without any token or a password", async () => {
+    const { service, storedQuery } = setup();
+    storedQuery.result = stored({
+      authMethod: "oauth2",
+      oauthProvider: "google",
+      passwordEnc: null,
+      oauthRefreshTokenEnc: encryption.encrypt("refresh-token-abc"),
+    });
+
+    const view = await service.getView(USER);
+
+    expect(view).toMatchObject({
+      authMethod: "oauth2",
+      oauthProvider: "google",
+      passwordSet: false,
+      oauthConnected: true,
+    });
+    const text = JSON.stringify(view);
+    expect(text).not.toContain("refresh-token-abc");
+    expect(text).not.toContain("enc(");
+    expect(text).not.toContain("oauthRefreshTokenEnc");
+  });
+
+  it("shows a disconnected OAuth2 mailbox as not connected", async () => {
+    const { service, storedQuery } = setup();
+    storedQuery.result = stored({
+      authMethod: "oauth2",
+      oauthProvider: "microsoft",
+      passwordEnc: null,
+      oauthRefreshTokenEnc: null,
+    });
+    await expect(service.getView(USER)).resolves.toMatchObject({
+      oauthProvider: "microsoft",
+      oauthConnected: false,
+      passwordSet: false,
+    });
+  });
+
   it("reports whether this server can encrypt a password at all", async () => {
-    const { service, mailboxRepo } = setup();
-    mailboxRepo.findOne.mockResolvedValue(stored());
+    const { service, storedQuery } = setup();
+    storedQuery.result = stored();
     encryption.isConfigured.mockReturnValue(false);
     await expect(service.getView(USER)).resolves.toMatchObject({
       encryptionConfigured: false,
@@ -264,6 +334,35 @@ describe("EmailReceiptMailboxService.upsert", () => {
       uidValidity: null,
       lastUid: null,
     });
+  });
+
+  it("switches an OAuth2 mailbox to password login and deletes the refresh token", async () => {
+    const { service, mailboxRepo } = setup();
+    mailboxRepo.findOne.mockResolvedValue(storedOAuth());
+    mailboxRepo.findOneByOrFail.mockResolvedValue(stored());
+
+    await service.upsert(USER, dto({ password: PASSWORD }));
+
+    const [, patch] = mailboxRepo.update.mock.calls[0];
+    expect(patch).toMatchObject({
+      authMethod: "password",
+      oauthProvider: null,
+      oauthRefreshTokenEnc: null,
+      passwordEnc: encryption.encrypt(PASSWORD),
+    });
+  });
+
+  it("requires a password to leave OAuth2, and writes nothing without one", async () => {
+    const { service, mailboxRepo } = setup();
+    mailboxRepo.findOne.mockResolvedValue(storedOAuth());
+
+    await expect(
+      service.upsert(
+        USER,
+        dto({ host: "imap.gmail.com", username: "receipts@gmail.example" }),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(mailboxRepo.update).not.toHaveBeenCalled();
   });
 
   it("starts the poll over when the host or user name changes, given the password again", async () => {
@@ -381,6 +480,67 @@ describe("EmailReceiptMailboxService.upsert", () => {
   });
 });
 
+describe("EmailReceiptMailboxService.updateSettings", () => {
+  it("writes only the fields sent, under the row lock, for either login method", async () => {
+    const { service, mailboxRepo, storedQuery } = setup();
+    mailboxRepo.findOne.mockResolvedValue(storedOAuth());
+    storedQuery.result = storedOAuth({ enabled: false, aiMode: "automatic" });
+
+    const view = await service.updateSettings(USER, {
+      enabled: false,
+      aiMode: "automatic",
+    } as never);
+
+    expect(mailboxRepo.findOne).toHaveBeenCalledWith({
+      where: { userId: USER },
+      lock: { mode: "pessimistic_write" },
+    });
+    const [where, patch] = mailboxRepo.update.mock.calls[0];
+    expect(where).toEqual({ id: "mb-1", userId: USER });
+    expect(patch).toEqual({ enabled: false, aiMode: "automatic" });
+    expect(view).toMatchObject({ authMethod: "oauth2", enabled: false });
+  });
+
+  it("resets the cursor and the old error when the folder changes, and only then", async () => {
+    const { service, mailboxRepo, storedQuery } = setup();
+    mailboxRepo.findOne.mockResolvedValue(stored());
+    storedQuery.result = stored();
+
+    await service.updateSettings(USER, { folder: "Receipts" } as never);
+    await service.updateSettings(USER, { folder: "INBOX" } as never);
+
+    expect(mailboxRepo.update.mock.calls[0][1]).toEqual({
+      folder: "Receipts",
+      uidValidity: null,
+      lastUid: null,
+      lastError: null,
+      lastErrorAt: null,
+    });
+    expect(mailboxRepo.update.mock.calls[1][1]).toEqual({ folder: "INBOX" });
+  });
+
+  it("refuses an empty change with a 400 before touching the database", async () => {
+    const { service, mailboxRepo } = setup();
+    await expect(
+      service.updateSettings(USER, {} as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.updateSettings(USER, { folder: "  " } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(mailboxRepo.findOne).not.toHaveBeenCalled();
+    expect(mailboxRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("is a 404 for a user with no mailbox, and writes nothing", async () => {
+    const { service, mailboxRepo } = setup();
+    mailboxRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.updateSettings(USER, { enabled: true } as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(mailboxRepo.update).not.toHaveBeenCalled();
+  });
+});
+
 describe("EmailReceiptMailboxService.remove", () => {
   it("deletes the user's mailbox, then rejects the open requests raised for its emails", async () => {
     const { service, mailboxRepo, manager } = setup();
@@ -420,7 +580,7 @@ describe("EmailReceiptMailboxService.testConnection", () => {
       port: 993,
       security: "tls",
       username: "receipts@example.com",
-      password: PASSWORD,
+      auth: { kind: "password", password: PASSWORD },
       folder: "INBOX",
       allowPrivateHost: false,
     });
@@ -442,7 +602,7 @@ describe("EmailReceiptMailboxService.testConnection", () => {
         host: "8.8.8.8",
         port: 143,
         security: "starttls",
-        password: "typed-password",
+        auth: { kind: "password", password: "typed-password" },
       }),
     );
   });
@@ -562,6 +722,143 @@ describe("EmailReceiptMailboxService.testConnection", () => {
   });
 });
 
+describe("EmailReceiptMailboxService OAuth2 mailbox", () => {
+  const grant = {
+    accessToken: ACCESS,
+    secrets: [REFRESH, ACCESS],
+  };
+
+  it("tests with a fresh access token against the provider's host, not the stored one", async () => {
+    const { service, imap, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth({ host: "evil.example.com" });
+    oauthAccess.obtain.mockResolvedValue(grant);
+    imap.testConnection.mockResolvedValue({ messages: 3, uidValidity: "1" });
+
+    const result = await service.testConnection(USER);
+
+    expect(result).toEqual({ ok: true, messages: 3 });
+    expect(oauthAccess.obtain).toHaveBeenCalledWith({
+      userId: USER,
+      mailboxId: "mb-1",
+      provider: "google",
+      refreshTokenEnc: encryption.encrypt(REFRESH),
+    });
+    expect(imap.testConnection).toHaveBeenCalledWith({
+      host: "imap.gmail.com",
+      port: 993,
+      security: "tls",
+      username: "receipts@gmail.example",
+      auth: { kind: "oauth2", accessToken: ACCESS },
+      folder: "INBOX",
+      allowPrivateHost: false,
+    });
+  });
+
+  it("reports a failed test without the tokens or the SASL strings built from them", async () => {
+    const { service, imap, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth();
+    oauthAccess.obtain.mockResolvedValue(grant);
+    const sasl = Buffer.from(
+      `user=receipts@gmail.example\u0001auth=Bearer ${ACCESS}\u0001\u0001`,
+    ).toString("base64");
+    imap.testConnection.mockRejectedValue(
+      Object.assign(new Error(`AUTHENTICATE ${sasl} ${ACCESS} ${REFRESH}`), {
+        authenticationFailed: true,
+        responseText: `NO ${ACCESS}`,
+      }),
+    );
+
+    const result = await service.testConnection(USER);
+
+    expect(result.ok).toBe(false);
+    const text = JSON.stringify(result);
+    for (const secret of [ACCESS, REFRESH, sasl]) {
+      expect(text).not.toContain(secret);
+    }
+  });
+
+  it("reports a revoked sign-in as a result that says to connect again", async () => {
+    const { service, imap, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth();
+    oauthAccess.obtain.mockRejectedValue(
+      new OAuthReconnectRequiredError("Connect the mailbox again."),
+    );
+
+    const result = await service.testConnection(USER);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Connect the mailbox again."),
+    });
+    expect(imap.testConnection).not.toHaveBeenCalled();
+  });
+
+  it("uses the typed password, not OAuth2, when a draft carries one", async () => {
+    const { service, imap, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth();
+    imap.testConnection.mockResolvedValue({ messages: 0, uidValidity: "1" });
+
+    await service.testConnection(USER, {
+      host: "8.8.8.8",
+      port: 993,
+      security: "tls",
+      username: "receipts@example.com",
+      password: "typed-password",
+    } as never);
+
+    expect(oauthAccess.obtain).not.toHaveBeenCalled();
+    expect(imap.testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: { kind: "password", password: "typed-password" },
+      }),
+    );
+  });
+
+  it("loads an access token for the poll, from the provider's host, public-only", async () => {
+    const { service, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth({
+      oauthProvider: "microsoft",
+      host: "evil.example.com",
+    });
+    oauthAccess.obtain.mockResolvedValue(grant);
+
+    const loaded = await service.loadConnection(USER);
+
+    expect(loaded?.connection).toEqual({
+      host: "outlook.office365.com",
+      port: 993,
+      security: "tls",
+      username: "receipts@gmail.example",
+      auth: { kind: "oauth2", accessToken: ACCESS },
+      folder: "INBOX",
+      allowPrivateHost: false,
+    });
+    expect(loaded?.cursor).toEqual({ uidValidity: "77", lastUid: "40" });
+    // Both tokens, and the base64 SASL strings a failure line could quote.
+    expect(loaded?.secrets).toEqual(
+      expect.arrayContaining([
+        ACCESS,
+        REFRESH,
+        Buffer.from(
+          `user=receipts@gmail.example\u0001auth=Bearer ${ACCESS}\u0001\u0001`,
+        ).toString("base64"),
+      ]),
+    );
+  });
+
+  it("throws the reconnect refusal for a disconnected mailbox, for the poll to record", async () => {
+    const { service, storedQuery, oauthAccess } = setup();
+    storedQuery.result = storedOAuth({ oauthRefreshTokenEnc: null });
+    oauthAccess.obtain.mockRejectedValue(
+      new OAuthReconnectRequiredError("Connect the mailbox again."),
+    );
+
+    await expect(service.loadConnection(USER)).rejects.toBeInstanceOf(
+      OAuthReconnectRequiredError,
+    );
+  });
+});
+
 describe("EmailReceiptMailboxService.loadConnection", () => {
   it("is null when no mailbox is set up", async () => {
     const { service } = setup();
@@ -578,7 +875,7 @@ describe("EmailReceiptMailboxService.loadConnection", () => {
       mailboxId: "mb-1",
       connection: {
         host: "8.8.8.8",
-        password: PASSWORD,
+        auth: { kind: "password", password: PASSWORD },
         allowPrivateHost: false,
       },
       cursor: { uidValidity: "77", lastUid: "40" },
@@ -637,7 +934,12 @@ describe("EmailReceiptMailboxService poll bookkeeping", () => {
     await expect(service.listEnabledMailboxes()).resolves.toEqual([
       { id: "m1", userId: "u1" },
     ]);
-    expect(mailboxRepo.find.mock.calls[0][0].where).toEqual({ enabled: true });
+    // An OAuth2 mailbox is polled only while it holds a refresh token.
+    const where = mailboxRepo.find.mock.calls[0][0].where;
+    expect(where).toHaveLength(2);
+    expect(where[0]).toEqual({ enabled: true, authMethod: "password" });
+    expect(where[1]).toMatchObject({ enabled: true, authMethod: "oauth2" });
+    expect(where[1].oauthRefreshTokenEnc).toBeDefined();
   });
 
   it("advances the cursor in one conditional UPDATE keyed on the user, that never rewinds on one UIDVALIDITY", async () => {

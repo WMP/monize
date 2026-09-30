@@ -370,7 +370,17 @@
     "transactionNotFound": "[XX-That transaction was not found.-XX]",
     "linkTransfer": "[XX-A transfer cannot be linked to an email.-XX]",
     "linkVoid": "[XX-A void transaction cannot be linked to an email.-XX]",
-    "linkInvestment": "[XX-An investment transaction cannot be linked to an email.-XX]"
+    "linkInvestment": "[XX-An investment transaction cannot be linked to an email.-XX]",
+    "oauthNeedsEncryption": "[XX-This server has no encryption key configured, so a mailbox sign-in cannot be stored.-XX]",
+    "oauthProviderNotConfigured": "[XX-Sign-in with this provider is not set up on this server.-XX]",
+    "oauthStateInvalid": "[XX-This sign-in link is not valid any more. Start connecting the mailbox again.-XX]",
+    "oauthExchangeFailed": "[XX-The provider did not accept the sign-in, so the mailbox was not connected. Try connecting again.-XX]",
+    "oauthNoEmail": "[XX-The provider did not return an email address for this account, so the mailbox cannot be connected.-XX]",
+    "oauthNoRefreshToken": "[XX-The provider did not grant lasting access. Remove this app's access in your account's security settings and connect again.-XX]",
+    "oauthReconnectRequired": "[XX-The mailbox's sign-in was revoked or has expired. Connect the mailbox again in the mailbox settings.-XX]",
+    "oauthTokenUnreadable": "[XX-The stored sign-in cannot be read on this server. Connect the mailbox again in the mailbox settings.-XX]",
+    "notOAuthMailbox": "[XX-This mailbox does not sign in with Google or Microsoft.-XX]",
+    "settingsEmpty": "[XX-Send at least one setting to change.-XX]"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "[XX-Email is not configured. Emergency access cannot be enabled until SMTP is set up.-XX]",

@@ -131,6 +131,41 @@ XOAUTH2 (`imapflow` `auth: { user, accessToken }`).
 - **Disconnect** deletes the stored token; the user revokes the grant at the
   provider (the settings screen links to it).
 
+As built (`backend/src/email-receipts/oauth/`), where the implementation is more
+specific than the text above:
+
+- **`invalid_grant` deletes the stored refresh token**, not only records it: a
+  conditional UPDATE keyed on the ciphertext the call read, so a concurrent
+  reconnect is never overwritten. The mailbox keeps its row, settings and
+  receipts, `enabled` stays as the user left it, and `listEnabledMailboxes`
+  skips an OAuth2 mailbox with no token, which is how "the poll stops" holds. The
+  `last_error` line is the translated reconnect sentence. `interaction_required`,
+  `consent_required` and `login_required` are treated as `invalid_grant`;
+  `invalid_client` (the operator's client), `unavailable` and `rejected` keep the
+  token and surface as an ordinary poll failure line.
+- **The IMAP host for an OAuth2 mailbox comes from the provider table on every
+  connection**, never from the stored `host` column (which is written for display
+  only), so an access token can only go to the provider's own server.
+- **The SASL mechanism is imapflow's choice** (XOAUTH2, or OAUTHBEARER where the
+  server offers it); the redaction list covers the base64 string of both.
+- **A Microsoft tenant that is not `[A-Za-z0-9][A-Za-z0-9.-]{0,99}`** makes the
+  Microsoft provider unavailable (warned once) instead of building an endpoint
+  from it. A Microsoft refresh request repeats the scope, as that endpoint
+  expects.
+- **Credentials CHECK** (`ck_email_receipt_mailboxes_credentials`): a password
+  mailbox has a password, no provider and no refresh token; an OAuth2 mailbox has
+  a provider and no password (its refresh token may be absent: disconnected or
+  revoked).
+- **Routes** beyond `start` and `complete`: `GET .../oauth/providers`,
+  `DELETE .../oauth` (disconnect: token deleted, `enabled` false),
+  `PATCH /email-receipts/mailbox/settings` (folder, enabled, aiMode, autoApply,
+  either auth method; a folder change resets the cursor). `PUT
+  /email-receipts/mailbox` on an OAuth2 mailbox switches it to password login,
+  requires a password and deletes the refresh token.
+- **The state nonce is claimed outside any transaction of the write**, so a
+  flow whose code exchange failed stays spent and the user starts again; another
+  user's attempt is refused before the claim and cannot spend it.
+
 ## 4. Data model
 
 Four changes, one migration each (`database/migrations/`), mirrored in
