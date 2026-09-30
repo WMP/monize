@@ -966,7 +966,8 @@
     "help": "[XX-Help & Support-XX]",
     "dangerZone": "[XX-Danger Zone-XX]",
     "about": "[XX-About-XX]",
-    "payeeLookup": "[XX-Payee Lookup-XX]"
+    "payeeLookup": "[XX-Payee Lookup-XX]",
+    "bankSync": "[XX-Bank Sync-XX]"
   },
   "page": {
     "title": "[XX-Settings-XX]",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "[XX-AI Settings-XX]",
       "description": "[XX-Configure AI providers, manage API keys, and view usage statistics.-XX]"
+    },
+    "bankSyncCard": {
+      "title": "[XX-Bank Sync-XX]",
+      "description": "[XX-Connect your bank through Open Banking and import its booked transactions into your accounts.-XX]"
     },
     "delegateSecurityError": "[XX-Unable to load your security settings.-XX]",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "[XX-Any provider, in priority order-XX]",
       "moveUp": "[XX-Move up-XX]",
       "moveDown": "[XX-Move down-XX]"
+    }
+  },
+  "bankSync": {
+    "backLink": "[XX-Back to Settings-XX]",
+    "title": "[XX-Bank Sync-XX]",
+    "subtitle": "[XX-Import the booked transactions of your bank accounts through Open Banking-XX]",
+    "demoRestricted": {
+      "heading": "[XX-Restricted in Demo Mode-XX]",
+      "body": "[XX-Bank sync is disabled in demo mode.-XX]"
+    },
+    "loadFailed": {
+      "title": "[XX-Could not load bank sync-XX]",
+      "retry": "[XX-Try again-XX]"
+    },
+    "credentials": {
+      "title": "[XX-Enable Banking application-XX]",
+      "subtitle": "[XX-Monize reads your bank accounts through your own Enable Banking application. Register one in the Enable Banking control panel, then enter its application ID and private key here.-XX]",
+      "notConfigured": "[XX-No application is set up yet.-XX]",
+      "applicationId": "[XX-Application ID-XX]",
+      "keyStored": "[XX-A private key is stored.-XX]",
+      "keyMissing": "[XX-No private key is stored.-XX]",
+      "configure": "[XX-Set up credentials-XX]",
+      "edit": "[XX-Edit credentials-XX]",
+      "remove": "[XX-Remove credentials-XX]",
+      "test": "[XX-Test connection-XX]",
+      "testing": "[XX-Testing...-XX]",
+      "encryptionUnavailable": "[XX-This server has no encryption key configured, so credentials cannot be stored.-XX]",
+      "redirectUrlLabel": "[XX-Redirect URL-XX]",
+      "redirectUrlHelp": "[XX-Register this exact URL as a redirect URL in the Enable Banking control panel. Your bank sends you back to it after you authorize access.-XX]",
+      "copy": "[XX-Copy-XX]",
+      "copied": "[XX-Copied-XX]",
+      "copyFailed": "[XX-Could not copy the redirect URL-XX]",
+      "testSuccess": "[XX-The application works: {name}-XX]",
+      "testSuccessNoName": "[XX-The application works.-XX]",
+      "testRedirectMissing": "[XX-The application works, but the redirect URL above is not registered for it. Add it in the Enable Banking control panel.-XX]",
+      "testFailed": "[XX-The provider did not accept these credentials.-XX]",
+      "testError": "[XX-Could not test the credentials-XX]",
+      "saved": "[XX-Credentials saved. Use Test connection to check them.-XX]",
+      "saveFailed": "[XX-Could not save the credentials-XX]",
+      "removed": "[XX-Credentials removed-XX]",
+      "removeFailed": "[XX-Could not remove the credentials-XX]",
+      "removeConfirm": {
+        "title": "[XX-Remove credentials-XX]",
+        "message": "[XX-The stored application ID and private key are deleted from Monize. You will need to enter them again before you can connect a bank or sync.-XX]",
+        "confirm": "[XX-Remove-XX]"
+      }
+    },
+    "credentialsModal": {
+      "title": "[XX-Enable Banking credentials-XX]",
+      "subtitle": "[XX-Stored encrypted on this server. The private key is never shown again.-XX]",
+      "applicationIdLabel": "[XX-Application ID-XX]",
+      "applicationIdPlaceholder": "[XX-The ID of your Enable Banking application-XX]",
+      "applicationIdRequired": "[XX-Enter the application ID-XX]",
+      "applicationIdTooLong": "[XX-The application ID is too long-XX]",
+      "privateKeyLabel": "[XX-Private key (PEM)-XX]",
+      "privateKeyPlaceholder": "[XX-Paste the PEM private key of your application-XX]",
+      "privateKeyStoredPlaceholder": "[XX-A key is stored. Leave this empty to keep it, or paste a new one to replace it.-XX]",
+      "privateKeyHelp": "[XX-Paste the whole PEM file you downloaded when you registered the application.-XX]",
+      "privateKeyRequired": "[XX-Enter the private key-XX]",
+      "privateKeyInvalid": "[XX-This does not look like a PEM private key. It should be a block that starts with BEGIN and ends with PRIVATE KEY.-XX]",
+      "privateKeyTooLong": "[XX-The private key is too long-XX]",
+      "cancel": "[XX-Cancel-XX]",
+      "save": "[XX-Save-XX]",
+      "saving": "[XX-Saving...-XX]"
+    },
+    "connections": {
+      "title": "[XX-Connected banks-XX]",
+      "subtitle": "[XX-Each bank account is linked to one Monize account, and its booked transactions are imported into it.-XX]",
+      "connect": "[XX-Connect a bank-XX]",
+      "credentialsFirst": "[XX-Set up your Enable Banking credentials above before you connect a bank.-XX]",
+      "loadFailed": "[XX-Could not load your bank connections.-XX]",
+      "empty": {
+        "title": "[XX-No banks connected-XX]",
+        "description": "[XX-Connect a bank to import its booked transactions into your Monize accounts.-XX]"
+      }
+    },
+    "connect": {
+      "title": "[XX-Connect a bank-XX]",
+      "subtitle": "[XX-You will be sent to your bank to authorize read-only access.-XX]",
+      "countryLabel": "[XX-Country-XX]",
+      "countryPlaceholder": "[XX-Select a country-XX]",
+      "institutionLabel": "[XX-Bank-XX]",
+      "institutionPlaceholder": "[XX-Search for your bank-XX]",
+      "institutionsLoading": "[XX-Loading banks...-XX]",
+      "institutionsFailed": "[XX-Could not load the list of banks.-XX]",
+      "retry": "[XX-Try again-XX]",
+      "noInstitutions": "[XX-The provider lists no banks for this country.-XX]",
+      "psuTypeLabel": "[XX-Account holder-XX]",
+      "psuPersonal": "[XX-Personal-XX]",
+      "psuBusiness": "[XX-Business-XX]",
+      "consentDays": "[XX-{days, plural, one {This bank allows access for up to # day before you must renew it.} other {This bank allows access for up to # days before you must renew it.}}-XX]",
+      "continue": "[XX-Continue to bank-XX]",
+      "continuing": "[XX-Connecting...-XX]",
+      "cancel": "[XX-Cancel-XX]",
+      "unsafeUrl": "[XX-The bank address returned by the server is not a secure https address, so Monize did not open it.-XX]",
+      "failed": "[XX-Could not start the connection-XX]"
+    },
+    "connection": {
+      "status": {
+        "pending": "[XX-Pending-XX]",
+        "active": "[XX-Active-XX]",
+        "expired": "[XX-Expired-XX]",
+        "revoked": "[XX-Revoked-XX]",
+        "failed": "[XX-Failed-XX]"
+      },
+      "validUntil": "[XX-Access valid until {date}-XX]",
+      "expiresSoon": "[XX-Expires soon-XX]",
+      "autoSync": "[XX-Sync automatically once a day-XX]",
+      "autoSyncOn": "[XX-Automatic sync turned on-XX]",
+      "autoSyncOff": "[XX-Automatic sync turned off-XX]",
+      "autoSyncFailed": "[XX-Could not change automatic sync-XX]",
+      "renew": "[XX-Renew consent-XX]",
+      "renewFailed": "[XX-Could not start the renewal-XX]",
+      "syncAll": "[XX-Sync all-XX]",
+      "syncingAll": "[XX-Syncing...-XX]",
+      "syncAllFailed": "[XX-Could not sync this bank-XX]",
+      "disconnect": "[XX-Disconnect-XX]",
+      "disconnected": "[XX-Bank disconnected-XX]",
+      "disconnectFailed": "[XX-Could not disconnect the bank-XX]",
+      "disconnectConfirm": {
+        "title": "[XX-Disconnect {bank}-XX]",
+        "message": "[XX-Monize stops syncing this bank and asks it to end the access. Transactions already imported stay, and connecting the bank again does not import them a second time.-XX]",
+        "confirm": "[XX-Disconnect-XX]"
+      },
+      "pendingHint": "[XX-The authorization at the bank was not completed. Disconnect and connect again to retry.-XX]",
+      "noAccounts": "[XX-The bank has not reported any accounts for this connection.-XX]",
+      "accountsHeading": "[XX-Bank accounts-XX]"
+    },
+    "account": {
+      "unnamed": "[XX-Unnamed bank account-XX]",
+      "linkLabel": "[XX-Monize account-XX]",
+      "notLinked": "[XX-Not linked-XX]",
+      "noEligibleAccounts": "[XX-No open Monize account of this currency is available to link.-XX]",
+      "linkFailed": "[XX-Could not link the account-XX]",
+      "unlinked": "[XX-Account unlinked-XX]",
+      "unlinkFailed": "[XX-Could not unlink the account-XX]",
+      "syncFrom": "[XX-Importing from {date}-XX]",
+      "changeCutoff": "[XX-Change start date-XX]",
+      "syncNow": "[XX-Sync now-XX]",
+      "syncing": "[XX-Syncing...-XX]",
+      "syncFailed": "[XX-Could not sync this account-XX]",
+      "neverSynced": "[XX-Not synced yet-XX]",
+      "lastSynced": "[XX-Last synced {time}-XX]",
+      "lastSyncOk": "[XX-Succeeded-XX]",
+      "lastSyncFailed": "[XX-Failed-XX]",
+      "bankBalance": "[XX-Bank balance-XX]",
+      "bankBalanceAsOf": "[XX-{amount} as of {date}-XX]",
+      "balanceNotReported": "[XX-Not reported by the bank-XX]",
+      "balanceNotSynced": "[XX-Not synced yet-XX]",
+      "monizeBalance": "[XX-Monize balance-XX]",
+      "difference": "[XX-Difference-XX]",
+      "differenceHelp": "[XX-The bank balance is what the bank reported on the date shown. It can include transactions the bank has not booked yet, or booked after that date, so a small difference is normal between syncs.-XX]",
+      "differenceHidden": "[XX-The bank balance is in {bankCurrency} and the Monize account is in {monizeCurrency}, so no difference is shown.-XX]",
+      "deletedNote": "[XX-A transaction you delete in Monize is not imported again by a later sync, so a deleted row stays deleted.-XX]"
+    },
+    "link": {
+      "title": "[XX-Link to {account}-XX]",
+      "editTitle": "[XX-Start date for {account}-XX]",
+      "syncFromLabel": "[XX-Import transactions from-XX]",
+      "syncFromHelp": "[XX-Leave this empty and Monize starts the day after the newest transaction already in the account, or 90 days back when the account is empty.-XX]",
+      "beforeCutoff": "[XX-Transactions the bank booked before this date are never imported.-XX]",
+      "duplicateWarning": "[XX-A date earlier than the newest transaction in the account may create duplicates of transactions you already entered.-XX]",
+      "save": "[XX-Link account-XX]",
+      "saveEdit": "[XX-Save-XX]",
+      "saving": "[XX-Saving...-XX]",
+      "cancel": "[XX-Cancel-XX]",
+      "saved": "[XX-Account linked-XX]",
+      "editSaved": "[XX-Start date saved-XX]",
+      "saveFailed": "[XX-Could not save the link-XX]"
+    },
+    "sync": {
+      "summary": "[XX-{imported, plural, =0 {No transactions imported} one {# transaction imported} other {# transactions imported}}, {skipped, plural, =0 {none skipped} one {# skipped as already imported} other {# skipped as already imported}}, {refused, plural, =0 {none refused} one {# refused} other {# refused}}-XX]",
+      "summaryWithReasons": "[XX-{summary}. Refused: {reasons}-XX]",
+      "reason": {
+        "missing_date": "[XX-{count, plural, one {# without a date} other {# without a date}}-XX]",
+        "future_date": "[XX-{count, plural, one {# dated in the future} other {# dated in the future}}-XX]",
+        "invalid_amount": "[XX-{count, plural, one {# with an invalid amount} other {# with an invalid amount}}-XX]",
+        "unknown_direction": "[XX-{count, plural, one {# with an unknown direction} other {# with an unknown direction}}-XX]",
+        "currency_mismatch": "[XX-{count, plural, one {# in another currency} other {# in another currency}}-XX]",
+        "other": "[XX-{count, plural, one {# for another reason} other {# for another reason}}-XX]"
+      }
+    },
+    "callback": {
+      "title": "[XX-Connecting your bank-XX]",
+      "subtitle": "[XX-Please wait while Monize completes the connection-XX]",
+      "success": "[XX-Bank connected-XX]",
+      "successNamed": "[XX-Connected to {bank}-XX]",
+      "bankError": "[XX-Your bank did not grant access: {message}-XX]",
+      "missingState": "[XX-The bank did not return a valid response. Start the connection again.-XX]",
+      "notActive": "[XX-The connection could not be completed-XX]",
+      "failed": "[XX-Could not complete the connection-XX]"
     }
   }
 }
