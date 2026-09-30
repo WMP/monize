@@ -153,6 +153,15 @@ user            Monize API                     provider            bank
   to the existing `bank_sync_accounts` rows by `identification_hash` (stable
   across sessions), so every mapping and cut-off survives; unmatched accounts
   are added unmapped.
+- **Network access.** The redirect is a browser redirect: the bank sends the
+  user's browser to the redirect URL, and the frontend posts `code` and
+  `state` to the backend. No Enable Banking server connects to Monize, so the
+  instance needs no inbound rule, no public address and no allowlist of
+  provider IP addresses; the redirect URL only has to open in the browser the
+  user authorizes with. The backend needs outbound HTTPS to
+  `api.enablebanking.com` (port 443). Neither `docker-compose*.yml` nor the
+  Helm chart restricts egress, so the default deployment needs no change; an
+  operator who adds an egress policy allows that host.
 - **Disconnect.** Deletes the connection (and its bank accounts, by cascade)
   after asking the provider to delete the session. A provider failure on that
   call is logged and does not block the local delete: the consent expires at

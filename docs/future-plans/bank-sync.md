@@ -46,7 +46,11 @@ Status: **approved to build** (kenlasko/monize#1326, label
 4. **The provider host is fixed** (`https://api.enablebanking.com`), so no SSRF
    guard is needed; the client goes through `ProviderHealthService` like every
    other third-party call.
-5. **No new dependency.** RS256 signing is `node:crypto` (`createSign`).
+5. **No inbound access.** The consent redirect goes through the user's
+   browser, never from the provider to Monize; the only network need is
+   outbound HTTPS from the backend to `api.enablebanking.com`. The Helm chart
+   and the compose files do not restrict egress, so they are unchanged.
+6. **No new dependency.** RS256 signing is `node:crypto` (`createSign`).
 
 ## 3. Backend (`backend/src/bank-sync/`)
 
