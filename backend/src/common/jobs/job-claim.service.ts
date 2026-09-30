@@ -70,6 +70,7 @@ export const JobClaimType = {
   BankSyncAccount: "bank_sync_account",
   /** One user's daily bank sync, claimed once per UTC day (spec section 8). */
   BankSyncDaily: "bank_sync_daily",
+  EmailReceiptPoll: "email_receipt_poll",
 } as const;
 
 export type JobClaimType = (typeof JobClaimType)[keyof typeof JobClaimType];

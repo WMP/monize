@@ -111,7 +111,7 @@ function buildSummary(parsed: ParsedReceipt, parserName: string): string {
  * The description after appending the summary, or null when the transaction
  * already carries it (case-insensitive) or the result would not add to it.
  */
-function buildDescription(
+export function buildDescription(
   existing: string | null,
   summary: string,
 ): string | null {
