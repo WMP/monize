@@ -18,11 +18,12 @@ import {
   TestEmailReceiptMailboxDto,
   UpsertEmailReceiptMailboxDto,
 } from "./dto/upsert-email-receipt-mailbox.dto";
+import { EmailReceiptPollService } from "../poll/email-receipt-poll.service";
 import { EmailReceiptMailboxService } from "./email-receipt-mailbox.service";
 
 /**
  * The settings of the user's receipts mailbox (design sections 3 and 8): read,
- * replace, delete and test. Owner-only: a delegate ("acting as") session is
+ * replace, delete, test and poll now. Owner-only: a delegate ("acting as") session is
  * refused on every route, since the mailbox is the owner's own credential.
  * `userId` is the JWT's. The password is accepted on the way in and never
  * returned (INV-RECEIPT-005).
@@ -33,7 +34,10 @@ import { EmailReceiptMailboxService } from "./email-receipt-mailbox.service";
 @OwnerOnly()
 @ApiBearerAuth()
 export class EmailReceiptMailboxController {
-  constructor(private readonly mailbox: EmailReceiptMailboxService) {}
+  constructor(
+    private readonly mailbox: EmailReceiptMailboxService,
+    private readonly poll: EmailReceiptPollService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -75,5 +79,16 @@ export class EmailReceiptMailboxController {
     @Body() dto: TestEmailReceiptMailboxDto,
   ) {
     return this.mailbox.testConnection(req.user.id, dto);
+  }
+
+  @Post("poll")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Poll the mailbox now (the same code path as the schedule; a poll already running makes it a no-op)",
+  })
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  pollNow(@Request() req: { user: { id: string } }) {
+    return this.poll.pollNow(req.user.id);
   }
 }
