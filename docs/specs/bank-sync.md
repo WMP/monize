@@ -87,7 +87,7 @@ direct RLS policy, enabled in the same file.
 | Table | Key columns | Notes |
 |---|---|---|
 | `bank_sync_credentials` | `id`, `user_id`, `provider`, `application_id`, `private_key_enc` | `UNIQUE (user_id, provider)`. |
-| `bank_sync_connections` | `id`, `user_id`, `provider`, `institution_name`, `institution_country`, `status`, `auth_state_hash`, `auth_started_at`, `external_session_id`, `valid_until`, `auto_sync`, `last_error` | `status IN ('pending','active','expired','revoked','failed')`. Partial unique index on `auth_state_hash`. |
+| `bank_sync_connections` | `id`, `user_id`, `provider`, `institution_name`, `institution_country`, `psu_type`, `status`, `auth_state_hash`, `auth_started_at`, `external_session_id`, `valid_until`, `auto_sync`, `last_error` | `status IN ('pending','active','expired','revoked','failed')`. Partial unique index on `auth_state_hash`. |
 | `bank_sync_accounts` | `id`, `user_id`, `connection_id`, `external_account_id`, `identification_hash`, `display_name`, `identifier_masked`, `currency_code`, `account_id`, `sync_from_date`, `last_synced_at`, `last_success_at`, `last_sync_status`, `last_sync_error`, `last_imported_count`, `last_skipped_count`, `last_refused_count`, `bank_balance`, `bank_balance_currency`, `bank_balance_date` | `UNIQUE (connection_id, external_account_id)`; partial unique index on `account_id`; `CHECK (account_id IS NULL OR sync_from_date IS NOT NULL)`; `account_id` is `ON DELETE SET NULL`. |
 | `bank_sync_imported_transactions` | `id`, `user_id`, `account_id`, `external_key`, `transaction_id`, `booking_date`, `created_at` | `UNIQUE (account_id, external_key)`; `account_id` is `ON DELETE CASCADE`; `transaction_id` is `ON DELETE SET NULL`. |
 
@@ -169,8 +169,9 @@ refusals. Truth table (the first matching line wins):
 
 For a planned row:
 
-- **Amount.** `roundMoney(Number(abs))`, negated for a debit. Example: debit
-  `"12.345"` gives `-12.35`; credit `"1000"` gives `1000`.
+- **Amount.** `roundMoney(Number(abs))` (four decimals, the column's
+  precision), negated for a debit. Example: debit `"12.34565"` gives
+  `-12.3457`; credit `"1000"` gives `1000`; a zero debit gives `0`, not `-0`.
 - **Date.** The first valid of `booking_date`, `value_date`,
   `transaction_date`.
 - **Payee text.** Debit: the creditor's name; credit: the debtor's name;

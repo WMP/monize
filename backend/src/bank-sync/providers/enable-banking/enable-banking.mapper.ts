@@ -1,0 +1,327 @@
+import { BankSyncProviderError } from "../bank-sync-provider.errors";
+import type {
+  BankAccountDescriptor,
+  BankBalance,
+  BankInstitution,
+  BankTransaction,
+} from "../bank-sync-provider.interface";
+
+/**
+ * Enable Banking's wire JSON, turned into the provider-neutral shapes.
+ *
+ * Pure functions, and the only place this provider's field names appear
+ * (docs/future-plans/bank-sync.md, assumption 3: the names come from the
+ * provider's public API reference and are still to be checked against a
+ * sandbox application, task BS10). Two rules run through all of them:
+ *
+ * - **A field that is absent or of the wrong type is null, and a row that is
+ *   not an object is skipped. Nothing here throws for a malformed row.**
+ * - **A response whose top-level shape is wrong raises `invalid_response`**,
+ *   because reading garbage as "the bank has nothing new" would report a broken
+ *   integration as an answer.
+ *
+ * Every string is trimmed, stripped of control characters and bounded, so a
+ * hostile or broken bank cannot put an unbounded value in a row or a message.
+ */
+
+const MAX_NAME_LENGTH = 255;
+const MAX_REFERENCE_LENGTH = 255;
+const MAX_URL_LENGTH = 1000;
+const MAX_DATE_TEXT_LENGTH = 32;
+const MAX_TIMESTAMP_TEXT_LENGTH = 48;
+const MAX_TYPE_LENGTH = 32;
+/** The transaction description's own cap; the planner applies the exact one. */
+const MAX_REMITTANCE_LINE_LENGTH = 750;
+const MAX_REMITTANCE_LINES = 20;
+const MAX_PSU_TYPES = 10;
+const MAX_REDIRECT_URLS = 50;
+
+/** The last characters of an identifier that are shown; the rest is masked. */
+const MASK_VISIBLE_CHARACTERS = 4;
+/** Below this length nothing is shown: the last four would be most of it. */
+const MASK_MIN_LENGTH = 8;
+
+/** A decimal as the providers send it: digits, an optional fraction, no exponent. */
+const SIGNED_DECIMAL = /^-?\d{1,16}(\.\d{1,8})?$/;
+
+/** Enable Banking's balance types in the order they answer "what is the balance". */
+const BALANCE_TYPE_PREFERENCE = ["CLBD", "ITBD", "ITAV", "XPCD"] as const;
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Trimmed, control-character-free, bounded; null when nothing is left. */
+function text(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  // eslint-disable-next-line no-control-regex
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+  if (cleaned === "") return null;
+  return cleaned.slice(0, max);
+}
+
+/** A decimal string as sent, or null. A finite number is accepted as its text. */
+function decimalText(value: unknown): string | null {
+  const raw =
+    typeof value === "number" && Number.isFinite(value)
+      ? String(value)
+      : typeof value === "string"
+        ? value.trim()
+        : null;
+  return raw !== null && SIGNED_DECIMAL.test(raw) ? raw : null;
+}
+
+/**
+ * A code of exactly `letters` letters, upper-cased, or null. The whole value is
+ * checked before anything is cut: truncating first would read "EURO" as "EUR".
+ */
+function letterCode(value: unknown, letters: number): string | null {
+  const code = text(value, MAX_TYPE_LENGTH);
+  return code !== null && new RegExp(`^[A-Za-z]{${letters}}$`).test(code)
+    ? code.toUpperCase()
+    : null;
+}
+
+function currency(value: unknown): string | null {
+  return letterCode(value, 3);
+}
+
+/** An array of records at `key`, or `invalid_response` when it is not an array. */
+function requireArray(payload: UnknownRecord, key: string): unknown[] {
+  const value = payload[key];
+  if (!Array.isArray(value)) {
+    throw new BankSyncProviderError(
+      "invalid_response",
+      `Enable Banking returned an unreadable response: "${key}" is missing.`,
+    );
+  }
+  return value;
+}
+
+function requireObject(payload: unknown): UnknownRecord {
+  if (!isRecord(payload)) {
+    throw new BankSyncProviderError(
+      "invalid_response",
+      "Enable Banking returned an unreadable response.",
+    );
+  }
+  return payload;
+}
+
+/**
+ * An identifier reduced to its last four characters: `"**** 1234"`. Whitespace
+ * is ignored, and an identifier too short to hide anything shows nothing.
+ */
+export function maskIdentifier(value: unknown): string | null {
+  const cleaned = text(value, 64)?.replace(/\s+/g, "") ?? null;
+  if (cleaned === null) return null;
+  if (cleaned.length < MASK_MIN_LENGTH) return "****";
+  return `**** ${cleaned.slice(-MASK_VISIBLE_CHARACTERS)}`;
+}
+
+/** `GET /application`: the application's name and the redirect URLs it registered. */
+export function mapApplication(payload: unknown): {
+  applicationName: string | null;
+  redirectUrls: string[];
+} {
+  const body = requireObject(payload);
+  const urls = Array.isArray(body.redirect_urls) ? body.redirect_urls : [];
+  return {
+    applicationName: text(body.name, MAX_NAME_LENGTH),
+    redirectUrls: urls
+      .slice(0, MAX_REDIRECT_URLS)
+      .map((url) => text(url, MAX_URL_LENGTH))
+      .filter((url): url is string => url !== null),
+  };
+}
+
+/** `GET /aspsps`: the banks the provider can connect to. */
+export function mapInstitutions(payload: unknown): BankInstitution[] {
+  const body = requireObject(payload);
+  const institutions: BankInstitution[] = [];
+  for (const row of requireArray(body, "aspsps")) {
+    if (!isRecord(row)) continue;
+    const name = text(row.name, MAX_NAME_LENGTH);
+    const country = letterCode(row.country, 2);
+    if (name === null || country === null) continue;
+    const logo = text(row.logo, MAX_URL_LENGTH);
+    const validity = row.maximum_consent_validity;
+    institutions.push({
+      name,
+      country,
+      // A logo is rendered as an image source, so only an https URL is kept.
+      logoUrl: logo !== null && /^https:\/\//i.test(logo) ? logo : null,
+      psuTypes: (Array.isArray(row.psu_types) ? row.psu_types : [])
+        .slice(0, MAX_PSU_TYPES)
+        .map((type) => text(type, MAX_TYPE_LENGTH))
+        .filter((type): type is string => type !== null),
+      maximumConsentValiditySeconds:
+        typeof validity === "number" &&
+        Number.isFinite(validity) &&
+        validity > 0
+          ? Math.floor(validity)
+          : null,
+    });
+  }
+  return institutions;
+}
+
+/** `POST /auth`: the URL to send the user to. Only an https URL is accepted. */
+export function mapAuthorizationUrl(payload: unknown): string {
+  const body = requireObject(payload);
+  const url = text(body.url, 2000);
+  if (url !== null) {
+    try {
+      if (new URL(url).protocol === "https:") return url;
+    } catch {
+      // Falls through to the refusal below.
+    }
+  }
+  throw new BankSyncProviderError(
+    "invalid_response",
+    "Enable Banking returned no usable authorization URL.",
+  );
+}
+
+function mapAccount(row: unknown): BankAccountDescriptor | null {
+  if (!isRecord(row)) return null;
+  const externalAccountId = text(row.uid, MAX_REFERENCE_LENGTH);
+  if (externalAccountId === null) return null;
+  const accountId = isRecord(row.account_id) ? row.account_id : {};
+  const other = isRecord(accountId.other) ? accountId.other : {};
+  return {
+    externalAccountId,
+    identificationHash: text(row.identification_hash, MAX_REFERENCE_LENGTH),
+    displayName:
+      text(row.name, MAX_NAME_LENGTH) ?? text(row.details, MAX_NAME_LENGTH),
+    identifierMasked: maskIdentifier(accountId.iban ?? other.identification),
+    currencyCode: currency(row.currency),
+  };
+}
+
+/** `POST /sessions`: the session and the accounts it can read. */
+export function mapSession(payload: unknown): {
+  sessionId: string;
+  validUntil: Date | null;
+  accounts: BankAccountDescriptor[];
+} {
+  const body = requireObject(payload);
+  const sessionId = text(body.session_id, MAX_REFERENCE_LENGTH);
+  if (sessionId === null) {
+    throw new BankSyncProviderError(
+      "invalid_response",
+      "Enable Banking returned a session without an id.",
+    );
+  }
+  const accounts = requireArray(body, "accounts")
+    .map(mapAccount)
+    .filter((account): account is BankAccountDescriptor => account !== null);
+  const access = isRecord(body.access) ? body.access : {};
+  const validUntilText = text(access.valid_until, MAX_TIMESTAMP_TEXT_LENGTH);
+  const validUntil = validUntilText === null ? null : new Date(validUntilText);
+  return {
+    sessionId,
+    validUntil:
+      validUntil !== null && !Number.isNaN(validUntil.getTime())
+        ? validUntil
+        : null,
+    accounts,
+  };
+}
+
+function nameOf(party: unknown): string | null {
+  return isRecord(party) ? text(party.name, MAX_NAME_LENGTH) : null;
+}
+
+function remittanceLines(value: unknown): string[] {
+  const lines =
+    typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
+  return lines
+    .slice(0, MAX_REMITTANCE_LINES)
+    .map((line) => text(line, MAX_REMITTANCE_LINE_LENGTH))
+    .filter((line): line is string => line !== null);
+}
+
+/**
+ * One wire transaction, or null when the row is not an object.
+ *
+ * `booked` is true for `status === "BOOK"`. A row with no readable status is
+ * treated as booked only when it carries a `booking_date`: importing a pending
+ * row is the one mistake that cannot be undone quietly (it changes amount and
+ * identifier when it books, and would import twice), so the doubtful case
+ * resolves to "not booked" unless the bank dated the booking.
+ */
+export function mapTransaction(row: unknown): BankTransaction | null {
+  if (!isRecord(row)) return null;
+  const indicator = text(row.credit_debit_indicator, 8)?.toUpperCase();
+  const direction =
+    indicator === "CRDT" ? "credit" : indicator === "DBIT" ? "debit" : null;
+  const amount = isRecord(row.transaction_amount) ? row.transaction_amount : {};
+  const status = text(row.status, MAX_TYPE_LENGTH);
+  const bookingDate = text(row.booking_date, MAX_DATE_TEXT_LENGTH);
+  const remittance = remittanceLines(row.remittance_information);
+  return {
+    entryReference: text(row.entry_reference, MAX_REFERENCE_LENGTH),
+    transactionId: text(row.transaction_id, MAX_REFERENCE_LENGTH),
+    bankReference: text(row.reference_number, MAX_REFERENCE_LENGTH),
+    amount: decimalText(amount.amount),
+    currencyCode: currency(amount.currency),
+    direction,
+    booked:
+      status !== null ? status.toUpperCase() === "BOOK" : bookingDate !== null,
+    bookingDate,
+    valueDate: text(row.value_date, MAX_DATE_TEXT_LENGTH),
+    transactionDate: text(row.transaction_date, MAX_DATE_TEXT_LENGTH),
+    counterpartyName:
+      direction === "debit"
+        ? nameOf(row.creditor)
+        : direction === "credit"
+          ? nameOf(row.debtor)
+          : null,
+    remittance,
+  };
+}
+
+/** One page of `GET /accounts/{uid}/transactions`. */
+export function mapTransactionsPage(payload: unknown): {
+  transactions: BankTransaction[];
+  continuationKey: string | null;
+} {
+  const body = requireObject(payload);
+  return {
+    transactions: requireArray(body, "transactions")
+      .map(mapTransaction)
+      .filter((row): row is BankTransaction => row !== null),
+    continuationKey: text(body.continuation_key, 2000),
+  };
+}
+
+/**
+ * `GET /accounts/{uid}/balances`: the balance to show, or null when the bank
+ * reported none. Picked by type in the order `CLBD`, `ITBD`, `ITAV`, `XPCD`,
+ * then the first readable one.
+ */
+export function mapBalance(payload: unknown): BankBalance | null {
+  const body = requireObject(payload);
+  const readable: BankBalance[] = [];
+  for (const row of requireArray(body, "balances")) {
+    if (!isRecord(row) || !isRecord(row.balance_amount)) continue;
+    const amount = decimalText(row.balance_amount.amount);
+    const currencyCode = currency(row.balance_amount.currency);
+    if (amount === null || currencyCode === null) continue;
+    readable.push({
+      amount,
+      currencyCode,
+      referenceDate: text(row.reference_date, MAX_DATE_TEXT_LENGTH),
+      balanceType:
+        text(row.balance_type, MAX_TYPE_LENGTH)?.toUpperCase() ?? null,
+    });
+  }
+  for (const type of BALANCE_TYPE_PREFERENCE) {
+    const match = readable.find((balance) => balance.balanceType === type);
+    if (match) return match;
+  }
+  return readable[0] ?? null;
+}
