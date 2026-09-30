@@ -59,7 +59,7 @@ implied.
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
 | INV-IMPORT-002 | A retry never double-imports | enforced |
 | INV-IMPORT-003 | A category collision does not abort an import | unenforced |
-| INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | enforced |
+| INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
 | INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
 | INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
@@ -293,7 +293,13 @@ Failure response    skipped (counted in the result), never an error
 Required tests      Integration against real PostgreSQL: a second sync of the
                     same rows imports nothing; two concurrent syncs import each
                     row once (backend/test/integration/bank-sync.integration.spec.ts).
-Status              enforced
+Status              partial -- the index holds one row per external key; a
+                    bank transaction keeps one key only while the provider's
+                    entry reference is stable (docs/specs/bank-sync.md
+                    section 6). A bank that sends no entry reference on one
+                    fetch and one on a later fetch changes the key from hash:
+                    to ref: and the row is imported twice. BS10 verifies the
+                    provider's behaviour against a sandbox.
 ```
 
 A deleted transaction keeps its ledger row with `transaction_id` NULL, so a

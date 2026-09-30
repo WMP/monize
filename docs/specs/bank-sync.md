@@ -102,10 +102,11 @@ reported, shown beside the Monize balance for reconciliation. It never writes
 **Backup.** All four tables are in `INTENTIONALLY_EXCLUDED_TABLES`:
 credentials and connections are secrets and sessions under this instance's
 key; bank accounts are re-created by a new connection. The ledger is excluded
-in the first release (task BS8 exports it). The consequence, and its guard: after a
+in the first release (task BS11 exports it). The consequence, and its guard: after a
 restore into a fresh instance the ledger is empty, so the link form defaults
 the cut-off date to the day after the newest transaction in the Monize
-account (section 7), and the form warns when the user picks an earlier date.
+account (section 7), and the form says that a date earlier than the newest
+transaction in the account may import rows that are already there.
 
 ## 5. Authorization flow
 
@@ -137,11 +138,18 @@ user            Monize API                     provider            bank
 - **Consent validity.** The server reads the institution's
   `maximum_consent_validity` from the provider and asks for
   `min(maximum, 180 days)`. The client never supplies a validity.
-- **Error at the bank.** The callback with `error` (and no `code`) marks the
-  connection `failed` with the provider's description (bounded to 500
-  characters) and returns it; nothing else changes.
+- **Error at the bank.** The callback with `error` (and no `code`) records the
+  provider's description (bounded to 500 characters) in `last_error` and
+  clears the state. A first-time connection (`pending`) becomes `failed`; a
+  connection that was already `active` or `expired` keeps its status, so a
+  failed renewal never disables a working session.
 - **Re-authorization.** `POST /bank-sync/connections/:id/reauthorize` starts a
-  new flow on the same row. On success the new session's accounts are matched
+  new flow on the same row: it writes a new state hash and `auth_started_at`
+  and leaves `status` unchanged, so the current session keeps syncing until
+  the new one replaces it; the callback claims by the state hash alone. A
+  provider failure while starting it also leaves `status` unchanged. After a
+  successful re-authorization the previous provider session is revoked (best
+  effort, outside any transaction). The new session's accounts are matched
   to the existing `bank_sync_accounts` rows by `identification_hash` (stable
   across sessions), so every mapping and cut-off survives; unmatched accounts
   are added unmapped.
@@ -184,15 +192,21 @@ For a planned row:
   key is not stored there (csv-source-profiles C2).
 - **Status.** `CLEARED`: the bank has booked it.
 - **External key** (INV-BANKSYNC-001), the first that applies:
-  1. `ref:` + the provider's entry reference;
-  2. `id:` + the provider's transaction id;
-  3. `hash:` + SHA-256 hex over `date|amount|currency|direction|payee|description`,
+  1. `ref:` + the provider's entry reference (Enable Banking documents
+     `entry_reference` as unique and immutable across sessions for accounts
+     with the same identification hash);
+  2. `hash:` + SHA-256 hex over `date|amount|currency|direction|payee|description`,
      then `:` + the occurrence number of that hash among the rows of this
      fetch, counted from 0 in the order the provider returned them.
   A key longer than 255 characters is replaced by its prefix and the SHA-256
   hex of the whole value. The hash form is stable because every fetch
   requests whole days (section 7), so two identical coffees on one day are
   always `:0` and `:1`.
+
+  The provider's `transaction_id` is never part of the key: Enable Banking
+  documents it as a handle for fetching details that may change when the list
+  is fetched again. A row repeated within one fetch with the same entry
+  reference (a pagination overlap) is planned once.
 
 ## 7. Syncing one bank account
 
@@ -212,7 +226,8 @@ Steps:
    is not `active`, or `valid_until` has passed (the connection is then marked
    `expired` in the same transaction and the refusal says to renew it).
 2. **Lease.** `JobClaimService.claimLease(JobClaimType.BankSyncAccount, userId,
-   bankAccountId, 10 min)`. A refused lease is a 409 ("a sync of this account
+   bankAccountId, 30 min)`; 30 minutes covers the worst fetch, 100 pages at a
+   15 second timeout each, plus the balances. A refused lease is a 409 ("a sync of this account
    is already running"). The lease saves the provider quota; the ledger is
    what makes a race correct.
 3. **Fetch** outside any transaction: every page of booked transactions in the
@@ -223,8 +238,9 @@ Steps:
 4. **Plan** with `planBankImport` (section 6).
 5. **Write**, one `withScopedDb` transaction:
    - lock the `bank_sync_accounts` row `FOR UPDATE` and re-check it is still
-     linked to the same Monize account (a re-link during the fetch refuses the
-     whole write: nothing is written);
+     linked to the same Monize account with the same cut-off date (a re-link or
+     a new cut-off during the fetch refuses the whole write with 409: nothing
+     is written and `last_success_at` does not move);
    - lock the Monize account for a balance write, re-read it, refuse when it is
      closed, is an investment brokerage account, or its currency changed since
      the rows were planned;
@@ -245,12 +261,15 @@ Steps:
    anything was created (INV-CACHE-001), release the lease.
 7. **On failure** at any step after 2: write `last_sync_status = 'failed'` and
    a bounded, sanitized message in its own transaction, release the lease,
-   return the mapped error. A provider 401 or 403 on the session marks the
-   connection `expired`.
+   return the mapped error. A provider 403, or a 401 whose error code names
+   the session or the consent, marks the connection `expired`; any other 401
+   is a credentials refusal and leaves the connection alone.
 
 The result: `{ imported, skipped, refused: { reason: count }, pending,
 beforeCutoff, bankBalance }`. `imported > 0` is what makes the client
-invalidate its balance caches.
+invalidate its balance caches. A sync whose outcome the client could not
+learn (a timeout, a network error, a 5xx) invalidates them too and says the
+result is not known yet: the server may have committed.
 
 ## 8. The daily sync
 
@@ -284,7 +303,7 @@ fields.
 | `DELETE /bank-sync/connections/:id` | | 204 |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
 | `POST /bank-sync/accounts/:id/sync` | | the result (section 7) |
-| `POST /bank-sync/connections/:id/sync` | | one result per linked account |
+| `POST /bank-sync/connections/:id/sync` | | one entry per linked account: a result, or `{ bankAccountId, error: { code, message } }` for an account that failed |
 
 Linking refuses (400) an account the user does not own, a closed account, an
 investment brokerage account, an account already linked to another bank

@@ -143,7 +143,7 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // a restore elsewhere could not read it and a backup must never carry it
   // (INV-BANKSYNC-002); connections are provider sessions bound to this
   // instance's redirect URL and consent; bank accounts are re-created by a new
-  // connection. The ledger is excluded in the first release too (task BS8
+  // connection. The ledger is excluded in the first release too (task BS11
   // exports it): after a restore the link form defaults the cut-off date to the
   // day after the newest transaction so history is not re-imported.
   "bank_sync_credentials",

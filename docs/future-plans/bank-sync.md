@@ -127,4 +127,4 @@ reference data).
   insert; the writer composes the same helpers in one transaction instead.
 - **Pending rows as `UNRECONCILED`, replaced when booked.** Banks change the
   identifier when a row books, so the replacement needs a fuzzy match that can
-  merge two real transactions. Deferred (task BS9).
+  merge two real transactions. Deferred (task BS13).
