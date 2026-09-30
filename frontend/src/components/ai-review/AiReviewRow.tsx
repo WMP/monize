@@ -64,7 +64,20 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
             )}
           </div>
           <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {item.ruleName ? t('row.rule', { name: item.ruleName }) : t('row.manualRequest')}
+            {item.kind === 'email_receipt' ? (
+              <>
+                {item.emailReceipt
+                  ? t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
+                  : t('row.emailReceiptMissing')}{' '}
+                <Link href="/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                  {t('row.viewEmailReceipts')}
+                </Link>
+              </>
+            ) : item.ruleName ? (
+              t('row.rule', { name: item.ruleName })
+            ) : (
+              t('row.manualRequest')
+            )}
           </div>
           <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{item.instruction}</p>
           {item.agentNote && (
