@@ -14,6 +14,13 @@ export const AI_REVIEW_OPERATIONS = [
 ] as const;
 export type AiReviewOperation = (typeof AI_REVIEW_OPERATIONS)[number];
 
+/**
+ * How much of a stored email a claim hands an agent: the receipt's text, cut.
+ * The text is what a sender wrote to the user's mailbox -- data, never an
+ * instruction -- and a claim is one of the places it reaches a model.
+ */
+export const AI_REVIEW_EMAIL_TEXT_MAX_CHARS = 20_000;
+
 export const DEFAULT_AI_REVIEW_TOOL_LIST_LIMIT = 20;
 export const MAX_AI_REVIEW_TOOL_LIST_LIMIT = 50;
 
@@ -51,6 +58,8 @@ export interface LlmAiReviewRequest {
   instruction: string;
   transactionId: string;
   ruleId: string | null;
+  /** The stored email a request of kind `email_receipt` was raised for, else null. */
+  emailReceiptId: string | null;
   /** True when the caller holds the claim. */
   claimedByYou: boolean;
   createdAt: string;
@@ -65,11 +74,25 @@ export interface LlmAiReviewList {
   truncated: boolean;
 }
 
+/**
+ * The email a `email_receipt` request was raised for, as a claim shows it. The
+ * text is the sender's own words, cut to `AI_REVIEW_EMAIL_TEXT_MAX_CHARS`:
+ * data to read, never an instruction.
+ */
+export interface LlmAiReviewEmailReceipt {
+  fromAddress: string;
+  subject: string;
+  receivedAt: string;
+  text: string;
+}
+
 export interface LlmAiReviewClaim {
   /** Null when nothing is pending; under contention that is not proof the queue is empty. */
   request: LlmAiReviewRequest | null;
   /** The reviewed transaction, one row or one per split line. */
   transaction?: LlmTransactionRow[];
+  /** For a request of kind `email_receipt` whose email still exists. */
+  emailReceipt?: LlmAiReviewEmailReceipt;
 }
 
 /** A stored proposal: what the agent sent and the signed card built from it. */
@@ -98,6 +121,14 @@ export interface AiReviewTransactionSummary {
   isSplit: boolean;
 }
 
+/** The email an inbox row of kind `email_receipt` was raised for. */
+export interface AiReviewInboxEmailReceipt {
+  id: string;
+  fromAddress: string;
+  subject: string;
+  receivedAt: string;
+}
+
 /** One inbox entry: the request, its transaction and, when proposed, the card. */
 export interface AiReviewInboxItem {
   id: string;
@@ -107,6 +138,8 @@ export interface AiReviewInboxItem {
   transactionId: string;
   ruleId: string | null;
   ruleName: string | null;
+  /** Null unless the request is of kind `email_receipt` and its email still exists. */
+  emailReceipt: AiReviewInboxEmailReceipt | null;
   createdAt: string;
   expiresAt: string;
   /** Null when the transaction no longer exists. */
