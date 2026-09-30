@@ -10,6 +10,7 @@ describe("EmailReceiptMailboxController", () => {
     upsert: jest.fn(),
     remove: jest.fn(),
     testConnection: jest.fn(),
+    updateSettings: jest.fn(),
   };
   const poll = { pollNow: jest.fn() };
   const controller = new EmailReceiptMailboxController(
@@ -31,6 +32,16 @@ describe("EmailReceiptMailboxController", () => {
     const dto = { host: "h", userId: "someone-else" } as never;
     await controller.upsert(req, dto);
     expect(mailbox.upsert).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  it("changes settings for the JWT user, never for a user in the body", async () => {
+    mailbox.updateSettings.mockResolvedValue({ id: "m1" });
+    const dto = { enabled: false, userId: "someone-else" } as never;
+    await expect(controller.updateSettings(req, dto)).resolves.toEqual({
+      id: "m1",
+    });
+    expect(mailbox.updateSettings).toHaveBeenCalledWith("user-1", dto);
+    expect(Reflect.getMetadata("path", proto.updateSettings)).toBe("settings");
   });
 
   it("deletes for the JWT user", async () => {
@@ -79,5 +90,6 @@ describe("EmailReceiptMailboxController", () => {
     expect(limitOf("test")).toBe(5);
     expect(limitOf("pollNow")).toBe(3);
     expect(limitOf("upsert")).toBe(10);
+    expect(limitOf("updateSettings")).toBe(20);
   });
 });

@@ -46,7 +46,7 @@ const loaded = (
     port: 993,
     security: "tls",
     username: "receipts@example.com",
-    password: PASSWORD,
+    auth: { kind: "password", password: PASSWORD },
     folder: "INBOX",
     allowPrivateHost: false,
   },

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Put,
   Request,
@@ -18,15 +19,17 @@ import {
   TestEmailReceiptMailboxDto,
   UpsertEmailReceiptMailboxDto,
 } from "./dto/upsert-email-receipt-mailbox.dto";
+import { UpdateEmailReceiptMailboxSettingsDto } from "./dto/update-email-receipt-mailbox-settings.dto";
 import { EmailReceiptPollService } from "../poll/email-receipt-poll.service";
 import { EmailReceiptMailboxService } from "./email-receipt-mailbox.service";
 
 /**
  * The settings of the user's receipts mailbox (design sections 3 and 8): read,
- * replace, delete, test and poll now. Owner-only: a delegate ("acting as") session is
+ * replace, change a setting, delete, test and poll now. Owner-only: a delegate ("acting as") session is
  * refused on every route, since the mailbox is the owner's own credential.
  * `userId` is the JWT's. The password is accepted on the way in and never
- * returned (INV-RECEIPT-005).
+ * returned (INV-RECEIPT-005). Connecting with Google or Microsoft is
+ * `EmailReceiptOAuthController`.
  */
 @ApiTags("Email Receipts")
 @Controller("email-receipts/mailbox")
@@ -58,6 +61,19 @@ export class EmailReceiptMailboxController {
     @Body() dto: UpsertEmailReceiptMailboxDto,
   ) {
     return this.mailbox.upsert(req.user.id, dto);
+  }
+
+  @Patch("settings")
+  @ApiOperation({
+    summary:
+      "Change the folder, the poll switch, the AI mode or auto-apply of my mailbox, whichever way it logs in",
+  })
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  updateSettings(
+    @Request() req: { user: { id: string } },
+    @Body() dto: UpdateEmailReceiptMailboxSettingsDto,
+  ) {
+    return this.mailbox.updateSettings(req.user.id, dto);
   }
 
   @Delete()

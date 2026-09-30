@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { isIP } from "node:net";
-import { DataSource } from "typeorm";
+import { DataSource, IsNull, Not } from "typeorm";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { EncryptionService } from "../../common/encryption/encryption.service";
 import { tr } from "../../i18n/translate";
@@ -15,6 +15,11 @@ import {
   EmailReceiptAiMode,
   EmailReceiptMailbox,
 } from "../entities/email-receipt-mailbox.entity";
+import {
+  OAuthAccessTokenService,
+  oauthReconnectRequired,
+} from "../oauth/oauth-access-token.service";
+import { oauthProviderSpec } from "../oauth/oauth-providers";
 import {
   ImapMailboxClient,
   MailboxConnection,
@@ -29,7 +34,12 @@ import {
   TestEmailReceiptMailboxDto,
   UpsertEmailReceiptMailboxDto,
 } from "./dto/upsert-email-receipt-mailbox.dto";
-import { describeMailboxFailure, mailboxSecrets } from "./mailbox-failure.util";
+import { UpdateEmailReceiptMailboxSettingsDto } from "./dto/update-email-receipt-mailbox-settings.dto";
+import {
+  describeMailboxFailure,
+  mailboxSecrets,
+  oauthMailboxSecrets,
+} from "./mailbox-failure.util";
 import {
   EmailReceiptMailboxTestResult,
   EmailReceiptMailboxView,
@@ -44,7 +54,10 @@ const UNIQUE_VIOLATION = "23505";
 export interface LoadedEmailReceiptMailbox {
   readonly mailboxId: string;
   readonly connection: MailboxConnection;
-  /** The plaintext password, for redacting a failure line. Never log or store it. */
+  /**
+   * The plaintext credentials (the password, or the OAuth tokens) and the SASL
+   * strings built from them, for redacting a failure line. Never log or store them.
+   */
   readonly secrets: readonly string[];
   readonly cursor: MailboxCursor;
   readonly enabled: boolean;
@@ -70,6 +83,14 @@ export interface MailboxCursorUpdate {
  * (INV-RECEIPT-004), and a changed host or user name needs the password typed
  * again, so a stolen session cannot point the stored password at a server of its
  * own. All database access is `withScopedDb`, keyed on the JWT's user.
+ *
+ * An OAuth2 mailbox (design section 3a) has no password: its refresh token is
+ * stored encrypted the same way, and `loadConnection` and the connection test
+ * trade it for a fresh access token on every call (`OAuthAccessTokenService`).
+ * Its host is always the provider's own, taken from the closed table in
+ * `oauth-providers.ts` and never from the stored row, so the access token can
+ * only go to the provider's IMAP server. The connect flow itself (start,
+ * complete, disconnect) is `EmailReceiptOAuthService`.
  */
 @Injectable()
 export class EmailReceiptMailboxService {
@@ -77,13 +98,14 @@ export class EmailReceiptMailboxService {
     private readonly dataSource: DataSource,
     private readonly encryption: EncryptionService,
     private readonly imap: ImapMailboxClient,
+    private readonly oauthAccess: OAuthAccessTokenService,
   ) {}
 
   /** The user's mailbox as a client sees it, or null when none is set up. */
   async getView(userId: string): Promise<EmailReceiptMailboxView | null> {
-    const row = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(EmailReceiptMailbox).findOne({ where: { userId } }),
-    );
+    // The stored read, because `oauthConnected` is whether a refresh token is
+    // there; `toMailboxView` copies field by field, so no ciphertext leaves it.
+    const row = await this.readStored(userId);
     return row ? this.view(row) : null;
   }
 
@@ -93,6 +115,10 @@ export class EmailReceiptMailboxService {
    * since it resolves a name), and inside it, under the row lock, the password
    * rules. A change of host, user name or folder starts the poll over (the
    * cursor names messages in the old mailbox); a password alone does not.
+   *
+   * This is the password method. On an OAuth2 mailbox it switches the mailbox to
+   * password login and deletes the refresh token, so a password is required
+   * (there is none stored to keep).
    */
   async upsert(
     userId: string,
@@ -125,6 +151,9 @@ export class EmailReceiptMailboxService {
               security: dto.security,
               username,
               passwordEnc,
+              authMethod: "password",
+              oauthProvider: null,
+              oauthRefreshTokenEnc: null,
               folder,
               enabled: dto.enabled,
               aiMode: dto.aiMode,
@@ -133,6 +162,8 @@ export class EmailReceiptMailboxService {
           );
         }
 
+        const wasOAuth = existing.authMethod === "oauth2";
+        if (wasOAuth && passwordEnc === undefined) throw passwordRequired();
         const targetChanged =
           existing.host !== host || existing.username !== username;
         if (targetChanged && passwordEnc === undefined) {
@@ -152,6 +183,13 @@ export class EmailReceiptMailboxService {
             aiMode: dto.aiMode,
             autoApply: dto.autoApply,
             ...(passwordEnc === undefined ? {} : { passwordEnc }),
+            ...(wasOAuth
+              ? {
+                  authMethod: "password" as const,
+                  oauthProvider: null,
+                  oauthRefreshTokenEnc: null,
+                }
+              : {}),
             // The cursor names messages of the mailbox it was read from.
             ...(mailboxChanged ? { uidValidity: null, lastUid: null } : {}),
             // An error about the old settings says nothing about the new ones.
@@ -174,6 +212,63 @@ export class EmailReceiptMailboxService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Change the settings that do not depend on how the mailbox logs in: the
+   * folder, the poll switch, the AI mode and auto-apply, for a password mailbox
+   * and an OAuth2 one alike. Only the fields sent are written. The row is locked
+   * and read first, so a mailbox that is not there is a 404 before anything is
+   * written, and a folder change (the cursor names messages of the old folder)
+   * resets the cursor and the error about it in the same UPDATE.
+   */
+  async updateSettings(
+    userId: string,
+    dto: UpdateEmailReceiptMailboxSettingsDto,
+  ): Promise<EmailReceiptMailboxView> {
+    const folder = dto.folder?.trim() || undefined;
+    if (
+      folder === undefined &&
+      dto.enabled === undefined &&
+      dto.aiMode === undefined &&
+      dto.autoApply === undefined
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.emailReceipts.settingsEmpty",
+          "Send at least one setting to change.",
+        ),
+      );
+    }
+    await withScopedDb(this.dataSource, async (m) => {
+      const repo = m.getRepository(EmailReceiptMailbox);
+      const existing = await repo.findOne({
+        where: { userId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!existing) throw mailboxNotFound();
+      const folderChanged = folder !== undefined && folder !== existing.folder;
+      await repo.update(
+        { id: existing.id, userId },
+        {
+          ...(folder === undefined ? {} : { folder }),
+          ...(dto.enabled === undefined ? {} : { enabled: dto.enabled }),
+          ...(dto.aiMode === undefined ? {} : { aiMode: dto.aiMode }),
+          ...(dto.autoApply === undefined ? {} : { autoApply: dto.autoApply }),
+          ...(folderChanged
+            ? {
+                uidValidity: null,
+                lastUid: null,
+                lastError: null,
+                lastErrorAt: null,
+              }
+            : {}),
+        },
+      );
+    });
+    const view = await this.getView(userId);
+    if (!view) throw mailboxNotFound();
+    return view;
   }
 
   /**
@@ -206,13 +301,22 @@ export class EmailReceiptMailboxService {
    * stored password is used when none is sent, and only for the stored host and
    * user name. A host the policy refuses is a 400, like a save; a connection
    * that fails is `{ ok: false }` with a bounded line that cannot hold the
-   * password.
+   * password. An OAuth2 mailbox (and no password typed) is tested with a fresh
+   * access token, against the provider's own host; only the folder of a draft
+   * applies to it.
    */
   async testConnection(
     userId: string,
     dto?: TestEmailReceiptMailboxDto,
   ): Promise<EmailReceiptMailboxTestResult> {
     const stored = await this.readStored(userId);
+    if (stored?.authMethod === "oauth2" && !dto?.password) {
+      return this.testOAuthConnection(
+        userId,
+        stored,
+        dto?.folder?.trim() || stored.folder || DEFAULT_FOLDER,
+      );
+    }
     const host =
       dto?.host !== undefined ? normalizeHost(dto.host) : stored?.host;
     const port = dto?.port ?? stored?.port;
@@ -239,6 +343,9 @@ export class EmailReceiptMailboxService {
       if (stored.host !== host || stored.username !== username) {
         throw passwordRequiredForChange();
       }
+      // A password mailbox always has one (the credentials CHECK); the null is
+      // an OAuth2 row reached with a draft, which has none to fall back on.
+      if (stored.passwordEnc === null) throw passwordRequired();
       try {
         password = this.encryption.decrypt(stored.passwordEnc);
       } catch {
@@ -259,32 +366,60 @@ export class EmailReceiptMailboxService {
         port,
         security,
         username,
-        password,
+        auth: { kind: "password", password },
         folder,
         allowPrivateHost: policy.allowPrivate,
       });
       return { ok: true, messages: result.messages };
     } catch (error) {
-      // A refusal of the host is the caller's to see as a 400, not a test result.
-      if (error instanceof HttpException) throw error;
-      const reason = describeMailboxFailure(
-        error,
-        mailboxSecrets(username, password),
-      );
-      return {
-        ok: false,
-        error: tr(
-          "errors.emailReceipts.connectionFailed",
-          `Could not read the mailbox: ${reason}`,
-          { reason },
-        ),
-      };
+      return this.testFailure(error, mailboxSecrets(username, password));
     }
   }
 
+  /** The connection test of an OAuth2 mailbox: a fresh access token, the provider's host. */
+  private async testOAuthConnection(
+    userId: string,
+    stored: EmailReceiptMailbox,
+    folder: string,
+  ): Promise<EmailReceiptMailboxTestResult> {
+    let loaded: { connection: MailboxConnection; secrets: string[] };
+    try {
+      loaded = await this.oauthConnection(userId, stored, folder);
+    } catch (error) {
+      return this.testFailure(error, []);
+    }
+    try {
+      const result = await this.imap.testConnection(loaded.connection);
+      return { ok: true, messages: result.messages };
+    } catch (error) {
+      return this.testFailure(error, loaded.secrets);
+    }
+  }
+
+  /** A failed test as a result: a bounded line that cannot hold a credential. */
+  private testFailure(
+    error: unknown,
+    secrets: readonly string[],
+  ): EmailReceiptMailboxTestResult {
+    // A refusal of the host is the caller's to see as a 400, not a test result.
+    if (error instanceof HttpException) throw error;
+    const reason = describeMailboxFailure(error, secrets);
+    return {
+      ok: false,
+      error: tr(
+        "errors.emailReceipts.connectionFailed",
+        `Could not read the mailbox: ${reason}`,
+        { reason },
+      ),
+    };
+  }
+
   /**
-   * The user's mailbox with its password decrypted, for the poll and nothing
-   * else. Null when none is set up. A stored password this server cannot
+   * The user's mailbox with its credential ready to use, for the poll and
+   * nothing else: the password decrypted, or for an OAuth2 mailbox a fresh
+   * access token (one token request per call; `OAuthReconnectRequiredError`
+   * when the authorization is gone, which the poll records as the mailbox's
+   * error). Null when no mailbox is set up. A stored password this server cannot
    * decrypt throws, without the ciphertext or any detail in the message.
    */
   async loadConnection(
@@ -292,6 +427,17 @@ export class EmailReceiptMailboxService {
   ): Promise<LoadedEmailReceiptMailbox | null> {
     const row = await this.readStored(userId);
     if (!row) return null;
+    if (row.authMethod === "oauth2") {
+      const { connection, secrets } = await this.oauthConnection(
+        userId,
+        row,
+        row.folder,
+      );
+      return this.loaded(row, connection, secrets);
+    }
+    if (row.passwordEnc === null) {
+      throw new Error("The stored mailbox password cannot be decrypted");
+    }
     let password: string;
     try {
       password = this.encryption.decrypt(row.passwordEnc);
@@ -304,18 +450,30 @@ export class EmailReceiptMailboxService {
       port: row.port,
       ownerIsAdmin,
     });
-    return {
-      mailboxId: row.id,
-      connection: {
+    return this.loaded(
+      row,
+      {
         host: row.host,
         port: row.port,
         security: row.security,
         username: row.username,
-        password,
+        auth: { kind: "password", password },
         folder: row.folder,
         allowPrivateHost: policy.allowPrivate,
       },
-      secrets: mailboxSecrets(row.username, password),
+      mailboxSecrets(row.username, password),
+    );
+  }
+
+  private loaded(
+    row: EmailReceiptMailbox,
+    connection: MailboxConnection,
+    secrets: readonly string[],
+  ): LoadedEmailReceiptMailbox {
+    return {
+      mailboxId: row.id,
+      connection,
+      secrets,
       cursor: { uidValidity: row.uidValidity, lastUid: row.lastUid },
       enabled: row.enabled,
       aiMode: row.aiMode,
@@ -324,13 +482,55 @@ export class EmailReceiptMailboxService {
   }
 
   /**
+   * The connection of an OAuth2 mailbox: the provider's own IMAP host from the
+   * closed table (never the stored host, so the token cannot be pointed at a
+   * server of someone's choosing), public-only, with a fresh access token.
+   */
+  private async oauthConnection(
+    userId: string,
+    row: EmailReceiptMailbox,
+    folder: string,
+  ): Promise<{ connection: MailboxConnection; secrets: string[] }> {
+    if (!row.oauthProvider) throw oauthReconnectRequired();
+    const spec = oauthProviderSpec(row.oauthProvider);
+    const access = await this.oauthAccess.obtain({
+      userId,
+      mailboxId: row.id,
+      provider: row.oauthProvider,
+      refreshTokenEnc: row.oauthRefreshTokenEnc,
+    });
+    return {
+      connection: {
+        host: spec.imap.host,
+        port: spec.imap.port,
+        security: spec.imap.security,
+        username: row.username,
+        auth: { kind: "oauth2", accessToken: access.accessToken },
+        folder,
+        allowPrivateHost: false,
+      },
+      secrets: oauthMailboxSecrets(row.username, access.secrets, spec.imap),
+    };
+  }
+
+  /**
    * The enabled mailboxes of every user, for the poll's fan-out. The caller
-   * runs it under the system identity: it reads across users by design.
+   * runs it under the system identity: it reads across users by design. An
+   * OAuth2 mailbox with no refresh token (disconnected, or its grant revoked) is
+   * left out: it cannot connect, so the poll stops for it, with the reason still
+   * in its `last_error`, until the user connects it again.
    */
   async listEnabledMailboxes(): Promise<Array<{ id: string; userId: string }>> {
     const rows = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(EmailReceiptMailbox).find({
-        where: { enabled: true },
+        where: [
+          { enabled: true, authMethod: "password" },
+          {
+            enabled: true,
+            authMethod: "oauth2",
+            oauthRefreshTokenEnc: Not(IsNull()),
+          },
+        ],
         select: { id: true, userId: true },
         order: { createdAt: "ASC", id: "ASC" },
       }),
@@ -413,9 +613,12 @@ export class EmailReceiptMailboxService {
 
   private view(row: EmailReceiptMailbox): EmailReceiptMailboxView {
     return toMailboxView(row, {
-      // `password_enc` is NOT NULL and only ever written as ciphertext, so a row
-      // existing is a password being stored.
-      passwordSet: true,
+      // The credentials CHECK: a password mailbox always holds a password, an
+      // OAuth2 one never does. The refresh token is read by `readStored` (the
+      // one read that selects it), and is what `oauthConnected` reports.
+      passwordSet: row.authMethod === "password",
+      oauthConnected:
+        row.authMethod === "oauth2" && Boolean(row.oauthRefreshTokenEnc),
       encryptionConfigured: this.encryption.isConfigured(),
     });
   }
@@ -431,13 +634,14 @@ export class EmailReceiptMailboxService {
     }
   }
 
-  /** The stored row with its ciphertext, which no other read selects. */
+  /** The stored row with its ciphertexts, which no other read selects. */
   private readStored(userId: string): Promise<EmailReceiptMailbox | null> {
     return withScopedDb(this.dataSource, (m) =>
       m
         .getRepository(EmailReceiptMailbox)
         .createQueryBuilder("mailbox")
         .addSelect("mailbox.passwordEnc")
+        .addSelect("mailbox.oauthRefreshTokenEnc")
         .where("mailbox.userId = :userId", { userId })
         .getOne(),
     );

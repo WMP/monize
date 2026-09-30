@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AiModule } from "../ai/ai.module";
 import { AiReviewModule } from "../ai-review/ai-review.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
+import { SingleUseTokenModule } from "../auth/single-use-token.module";
 import { EncryptionModule } from "../common/encryption/encryption.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { EmailReceiptAiService } from "./ai/email-receipt-ai.service";
@@ -11,6 +12,11 @@ import {
 } from "./imap/imap-mailbox-client";
 import { EmailReceiptMailboxController } from "./mailbox/email-receipt-mailbox.controller";
 import { EmailReceiptMailboxService } from "./mailbox/email-receipt-mailbox.service";
+import { OAuthAccessTokenService } from "./oauth/oauth-access-token.service";
+import { EmailReceiptOAuthController } from "./oauth/email-receipt-oauth.controller";
+import { EmailReceiptOAuthService } from "./oauth/email-receipt-oauth.service";
+import { EmailReceiptOAuthConfig } from "./oauth/oauth-config.service";
+import { OAuthTokenClient } from "./oauth/oauth-token.client";
 import { EmailReceiptParsersController } from "./parsers/email-receipt-parsers.controller";
 import { EmailReceiptParsersService } from "./parsers/email-receipt-parsers.service";
 import { EmailReceiptPipelineService } from "./pipeline/email-receipt-pipeline.service";
@@ -32,12 +38,18 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
  * drafts and `AiActionsService.confirm` for the opt-in auto-apply); none of them
  * imports this module, so no `forwardRef` is needed (`module-graph.spec.ts`).
  *
- * Controller order matters: `email-receipts/mailbox` is registered before
- * `email-receipts/:id`, so the literal segment is matched first.
+ * `SingleUseTokenModule` is the one door to `single_use_tokens`: the OAuth
+ * `state` nonce is claimed there (INV-RECEIPT-007). The OAuth clients are the
+ * operator's, read from the environment by `EmailReceiptOAuthConfig`.
+ *
+ * Controller order matters: `email-receipts/mailbox` (and its `oauth` routes)
+ * is registered before `email-receipts/:id`, so the literal segment is matched
+ * first.
  */
 @Module({
   imports: [
     EncryptionModule,
+    SingleUseTokenModule,
     AiModule,
     AiReviewModule,
     AiReviewQueueModule,
@@ -45,11 +57,16 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
   ],
   controllers: [
     EmailReceiptMailboxController,
+    EmailReceiptOAuthController,
     EmailReceiptsController,
     EmailReceiptParsersController,
   ],
   providers: [
     EmailReceiptMailboxService,
+    EmailReceiptOAuthConfig,
+    OAuthTokenClient,
+    OAuthAccessTokenService,
+    EmailReceiptOAuthService,
     { provide: ImapMailboxClient, useClass: ImapFlowMailboxClient },
     EmailReceiptPipelineService,
     EmailReceiptPollService,

@@ -695,7 +695,11 @@ CREATE INDEX idx_transaction_rule_applications_transaction
 
 -- Email receipts (docs/future-plans/email-receipts.md section 4): a user's
 -- dedicated IMAP mailbox (one per user), per-merchant parsers, and the stored
--- emails. password_enc is AES-256-GCM ciphertext and never returned to a client;
+-- emails. password_enc and oauth_refresh_token_enc are AES-256-GCM ciphertext
+-- and never returned to a client; a mailbox is a password mailbox (a password, no
+-- provider) or an oauth2 one (a provider, no password; the refresh token is
+-- absent while it is disconnected), which ck_email_receipt_mailboxes_credentials
+-- holds;
 -- uid_validity and last_uid are the poll's cursor; UNIQUE (mailbox_id,
 -- uid_validity, uid) is the ingestion idempotency. email_receipts.ai_review_request_id
 -- has no foreign key: ai_review_requests references email_receipts. Defined
@@ -708,7 +712,10 @@ CREATE TABLE email_receipt_mailboxes (
     port INTEGER NOT NULL DEFAULT 993,
     security VARCHAR(10) NOT NULL DEFAULT 'tls',
     username VARCHAR(320) NOT NULL,
-    password_enc TEXT NOT NULL,
+    password_enc TEXT,
+    auth_method VARCHAR(10) NOT NULL DEFAULT 'password',
+    oauth_provider VARCHAR(12),
+    oauth_refresh_token_enc TEXT,
     folder VARCHAR(255) NOT NULL DEFAULT 'INBOX',
     enabled BOOLEAN NOT NULL DEFAULT false,
     ai_mode VARCHAR(12) NOT NULL DEFAULT 'off',
@@ -729,7 +736,22 @@ CREATE TABLE email_receipt_mailboxes (
     CONSTRAINT ck_email_receipt_mailboxes_security
       CHECK (security IN ('tls', 'starttls')),
     CONSTRAINT ck_email_receipt_mailboxes_ai_mode
-      CHECK (ai_mode IN ('off', 'on_demand', 'automatic'))
+      CHECK (ai_mode IN ('off', 'on_demand', 'automatic')),
+    CONSTRAINT ck_email_receipt_mailboxes_auth_method
+      CHECK (auth_method IN ('password', 'oauth2')),
+    CONSTRAINT ck_email_receipt_mailboxes_oauth_provider
+      CHECK (oauth_provider IS NULL OR oauth_provider IN ('google', 'microsoft')),
+    CONSTRAINT ck_email_receipt_mailboxes_credentials
+      CHECK (
+        (auth_method = 'password'
+          AND password_enc IS NOT NULL
+          AND oauth_provider IS NULL
+          AND oauth_refresh_token_enc IS NULL)
+        OR
+        (auth_method = 'oauth2'
+          AND oauth_provider IS NOT NULL
+          AND password_enc IS NULL)
+      )
 );
 
 CREATE TABLE email_receipt_parsers (
