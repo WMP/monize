@@ -964,6 +964,7 @@
     "emergencyAccess": "Emergency Access",
     "apiAccess": "API Access",
     "aiSettings": "AI Settings",
+    "emailReceipts": "Email Receipts",
     "backupRestore": "Backup & Restore",
     "help": "Help & Support",
     "dangerZone": "Danger Zone",
@@ -992,6 +993,10 @@
     "aiSettingsCard": {
       "title": "AI Settings",
       "description": "Configure AI providers, manage API keys, and view usage statistics."
+    },
+    "emailReceiptsCard": {
+      "title": "Email Receipts",
+      "description": "Connect a mailbox for order confirmations and manage the parsers that read them."
     },
     "bankSyncCard": {
       "title": "Bank Sync",
