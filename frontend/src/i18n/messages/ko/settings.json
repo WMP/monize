@@ -966,7 +966,8 @@
     "help": "도움말 및 지원",
     "dangerZone": "위험 구역",
     "about": "정보",
-    "payeeLookup": "거래처 조회"
+    "payeeLookup": "거래처 조회",
+    "bankSync": "은행 동기화"
   },
   "page": {
     "title": "설정",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "AI 설정",
       "description": "AI 제공자를 구성하고, API 키를 관리하며, 사용 통계를 확인합니다."
+    },
+    "bankSyncCard": {
+      "title": "은행 동기화",
+      "description": "오픈 뱅킹으로 은행에 연결하고 정산된 거래를 내 계정으로 가져옵니다."
     },
     "delegateSecurityError": "보안 설정을 로드할 수 없습니다.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "우선순위 순서의 모든 공급자",
       "moveUp": "위로 이동",
       "moveDown": "아래로 이동"
+    }
+  },
+  "bankSync": {
+    "backLink": "설정으로 돌아가기",
+    "title": "은행 동기화",
+    "subtitle": "오픈 뱅킹을 통해 은행 계정의 정산된 거래를 가져옵니다",
+    "demoRestricted": {
+      "heading": "데모 모드에서 제한됨",
+      "body": "데모 모드에서는 은행 동기화가 비활성화됩니다."
+    },
+    "loadFailed": {
+      "title": "은행 동기화를 불러오지 못했습니다",
+      "retry": "다시 시도"
+    },
+    "credentials": {
+      "title": "Enable Banking 애플리케이션",
+      "subtitle": "Monize는 회원님의 Enable Banking 애플리케이션을 통해 은행 계정을 읽습니다. Enable Banking 관리 패널에서 애플리케이션을 등록한 다음, 애플리케이션 ID와 개인 키를 여기에 입력하세요.",
+      "notConfigured": "아직 설정된 애플리케이션이 없습니다.",
+      "applicationId": "애플리케이션 ID",
+      "keyStored": "개인 키가 저장되어 있습니다.",
+      "keyMissing": "저장된 개인 키가 없습니다.",
+      "configure": "자격 증명 설정",
+      "edit": "자격 증명 편집",
+      "remove": "자격 증명 제거",
+      "test": "연결 테스트",
+      "testing": "테스트 중...",
+      "encryptionUnavailable": "이 서버에는 암호화 키가 구성되어 있지 않아 자격 증명을 저장할 수 없습니다.",
+      "redirectUrlLabel": "리디렉션 URL",
+      "redirectUrlHelp": "이 URL을 그대로 Enable Banking 관리 패널에 리디렉션 URL로 등록하세요. 접근을 승인하면 은행이 이 URL로 다시 안내합니다.",
+      "copy": "복사",
+      "copied": "복사됨",
+      "copyFailed": "리디렉션 URL을 복사하지 못했습니다",
+      "testSuccess": "애플리케이션이 정상 작동합니다: {name}",
+      "testSuccessNoName": "애플리케이션이 정상 작동합니다.",
+      "testRedirectMissing": "애플리케이션은 작동하지만 위의 리디렉션 URL이 등록되어 있지 않습니다. Enable Banking 관리 패널에서 추가하세요.",
+      "testFailed": "제공자가 이 자격 증명을 받아들이지 않았습니다.",
+      "testError": "자격 증명을 테스트하지 못했습니다",
+      "saved": "자격 증명을 저장했습니다. 연결 테스트로 확인하세요.",
+      "saveFailed": "자격 증명을 저장하지 못했습니다",
+      "removed": "자격 증명을 제거했습니다",
+      "removeFailed": "자격 증명을 제거하지 못했습니다",
+      "removeConfirm": {
+        "title": "자격 증명 제거",
+        "message": "저장된 애플리케이션 ID와 개인 키가 Monize에서 삭제됩니다. 은행에 연결하거나 동기화하려면 다시 입력해야 합니다.",
+        "confirm": "제거"
+      }
+    },
+    "credentialsModal": {
+      "title": "Enable Banking 자격 증명",
+      "subtitle": "이 서버에 암호화되어 저장됩니다. 개인 키는 다시 표시되지 않습니다.",
+      "applicationIdLabel": "애플리케이션 ID",
+      "applicationIdPlaceholder": "Enable Banking 애플리케이션의 ID",
+      "applicationIdRequired": "애플리케이션 ID를 입력하세요",
+      "applicationIdTooLong": "애플리케이션 ID가 너무 깁니다",
+      "privateKeyLabel": "개인 키 (PEM)",
+      "privateKeyPlaceholder": "애플리케이션의 PEM 개인 키를 붙여넣으세요",
+      "privateKeyStoredPlaceholder": "키가 저장되어 있습니다. 유지하려면 비워 두고, 교체하려면 새 키를 붙여넣으세요.",
+      "privateKeyHelp": "애플리케이션을 등록할 때 다운로드한 PEM 파일 전체를 붙여넣으세요.",
+      "privateKeyRequired": "개인 키를 입력하세요",
+      "privateKeyInvalid": "PEM 개인 키가 아닌 것 같습니다. BEGIN으로 시작하고 PRIVATE KEY로 끝나는 블록이어야 합니다.",
+      "privateKeyTooLong": "개인 키가 너무 깁니다",
+      "cancel": "취소",
+      "save": "저장",
+      "saving": "저장 중..."
+    },
+    "connections": {
+      "title": "연결된 은행",
+      "subtitle": "각 은행 계정은 Monize 계정 하나에 연결되며, 정산된 거래가 해당 계정으로 가져와집니다.",
+      "connect": "은행 연결",
+      "credentialsFirst": "은행을 연결하기 전에 위에서 Enable Banking 자격 증명을 설정하세요.",
+      "loadFailed": "은행 연결을 불러오지 못했습니다.",
+      "empty": {
+        "title": "연결된 은행이 없습니다",
+        "description": "은행을 연결하면 정산된 거래를 Monize 계정으로 가져올 수 있습니다."
+      }
+    },
+    "connect": {
+      "title": "은행 연결",
+      "subtitle": "읽기 전용 접근을 승인하기 위해 은행 사이트로 이동합니다.",
+      "countryLabel": "국가",
+      "countryPlaceholder": "국가 선택",
+      "institutionLabel": "은행",
+      "institutionPlaceholder": "은행 검색",
+      "institutionsLoading": "은행 불러오는 중...",
+      "institutionsFailed": "은행 목록을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "noInstitutions": "제공자가 이 국가의 은행을 제공하지 않습니다.",
+      "psuTypeLabel": "계좌 소유자",
+      "psuPersonal": "개인",
+      "psuBusiness": "법인",
+      "consentDays": "{days, plural, other {이 은행은 최대 #일 동안 접근을 허용하며, 그 이후에는 갱신해야 합니다.}}",
+      "continue": "은행으로 계속",
+      "continuing": "연결 중...",
+      "cancel": "취소",
+      "unsafeUrl": "서버가 반환한 은행 주소가 안전한 https 주소가 아니므로 Monize가 열지 않았습니다.",
+      "failed": "연결을 시작하지 못했습니다"
+    },
+    "connection": {
+      "status": {
+        "pending": "대기 중",
+        "active": "활성",
+        "expired": "만료됨",
+        "revoked": "취소됨",
+        "failed": "실패"
+      },
+      "validUntil": "접근 유효 기한: {date}",
+      "expiresSoon": "곧 만료됨",
+      "autoSync": "하루에 한 번 자동으로 동기화",
+      "autoSyncOn": "자동 동기화를 켰습니다",
+      "autoSyncOff": "자동 동기화를 껐습니다",
+      "autoSyncFailed": "자동 동기화를 변경하지 못했습니다",
+      "renew": "동의 갱신",
+      "renewFailed": "갱신을 시작하지 못했습니다",
+      "syncAll": "모두 동기화",
+      "syncingAll": "동기화 중...",
+      "syncAllFailed": "이 은행을 동기화하지 못했습니다",
+      "disconnect": "연결 해제",
+      "disconnected": "은행 연결을 해제했습니다",
+      "disconnectFailed": "은행 연결을 해제하지 못했습니다",
+      "disconnectConfirm": {
+        "title": "{bank} 연결 해제",
+        "message": "Monize는 이 은행의 동기화를 중단하고 은행에 접근 종료를 요청합니다. 이미 가져온 거래는 그대로 유지되며, 은행을 다시 연결해도 중복해서 가져오지 않습니다.",
+        "confirm": "연결 해제"
+      },
+      "pendingHint": "은행에서의 승인이 완료되지 않았습니다. 연결을 해제한 다음 다시 연결하여 재시도하세요.",
+      "noAccounts": "은행이 이 연결에 대한 계정을 보고하지 않았습니다.",
+      "accountsHeading": "은행 계정"
+    },
+    "account": {
+      "unnamed": "이름 없는 은행 계정",
+      "linkLabel": "Monize 계정",
+      "notLinked": "연결되지 않음",
+      "noEligibleAccounts": "연결할 수 있는 이 통화의 열린 Monize 계정이 없습니다.",
+      "linkFailed": "계정을 연결하지 못했습니다",
+      "unlinked": "계정 연결을 해제했습니다",
+      "unlinkFailed": "계정 연결을 해제하지 못했습니다",
+      "syncFrom": "{date}부터 가져오는 중",
+      "changeCutoff": "시작일 변경",
+      "syncNow": "지금 동기화",
+      "syncing": "동기화 중...",
+      "syncFailed": "이 계정을 동기화하지 못했습니다",
+      "neverSynced": "아직 동기화되지 않음",
+      "lastSynced": "마지막 동기화: {time}",
+      "lastSyncOk": "성공",
+      "lastSyncFailed": "실패",
+      "bankBalance": "은행 잔액",
+      "bankBalanceAsOf": "{date} 기준 {amount}",
+      "balanceNotReported": "은행에서 보고하지 않음",
+      "balanceNotSynced": "아직 동기화되지 않음",
+      "monizeBalance": "Monize 잔액",
+      "difference": "차이",
+      "differenceHelp": "은행 잔액은 표시된 날짜에 은행이 보고한 금액입니다. 은행이 아직 정산하지 않았거나 해당 날짜 이후에 정산한 거래가 포함될 수 있으므로, 동기화 사이에 약간의 차이가 나는 것은 정상입니다.",
+      "differenceHidden": "은행 잔액은 {bankCurrency}이고 Monize 계정은 {monizeCurrency}이므로 차이를 표시하지 않습니다.",
+      "deletedNote": "Monize에서 삭제한 거래는 이후 동기화에서 다시 가져오지 않으므로, 삭제한 행은 삭제된 상태로 유지됩니다."
+    },
+    "link": {
+      "title": "{account}에 연결",
+      "editTitle": "{account}의 시작일",
+      "syncFromLabel": "거래 가져오기 시작일",
+      "syncFromHelp": "비워 두면 Monize는 계정에 있는 가장 최근 거래의 다음 날부터 시작하며, 계정이 비어 있으면 90일 전부터 시작합니다.",
+      "beforeCutoff": "은행이 이 날짜 이전에 정산한 거래는 가져오지 않습니다.",
+      "duplicateWarning": "계정의 가장 최근 거래보다 이른 날짜를 지정하면 이미 입력한 거래가 중복될 수 있습니다.",
+      "save": "계정 연결",
+      "saveEdit": "저장",
+      "saving": "저장 중...",
+      "cancel": "취소",
+      "saved": "계정을 연결했습니다",
+      "editSaved": "시작일을 저장했습니다",
+      "saveFailed": "연결을 저장하지 못했습니다"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {가져온 거래 없음} other {거래 #건 가져옴}}, {skipped, plural, =0 {건너뜀 없음} other {이미 가져와서 #건 건너뜀}}, {refused, plural, =0 {거부됨 없음} other {#건 거부됨}}",
+      "summaryWithReasons": "{summary}. 거부 사유: {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, other {날짜 없음 #건}}",
+        "future_date": "{count, plural, other {미래 날짜 #건}}",
+        "invalid_amount": "{count, plural, other {금액이 잘못됨 #건}}",
+        "unknown_direction": "{count, plural, other {방향을 알 수 없음 #건}}",
+        "currency_mismatch": "{count, plural, other {다른 통화 #건}}",
+        "other": "{count, plural, other {기타 사유 #건}}"
+      }
+    },
+    "callback": {
+      "title": "은행에 연결하는 중",
+      "subtitle": "Monize가 연결을 완료할 때까지 기다려 주세요",
+      "success": "은행이 연결되었습니다",
+      "successNamed": "{bank}에 연결되었습니다",
+      "bankError": "은행이 접근을 허용하지 않았습니다: {message}",
+      "missingState": "은행이 올바른 응답을 반환하지 않았습니다. 연결을 다시 시작하세요.",
+      "notActive": "연결이 완료되지 않았습니다",
+      "failed": "연결을 완료하지 못했습니다"
     }
   }
 }

@@ -966,7 +966,8 @@
     "help": "Bantuan & Dukungan",
     "dangerZone": "Zona Berbahaya",
     "about": "Tentang",
-    "payeeLookup": "Pencarian penerima"
+    "payeeLookup": "Pencarian penerima",
+    "bankSync": "Sinkronisasi Bank"
   },
   "page": {
     "title": "Pengaturan",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "Pengaturan AI",
       "description": "Konfigurasikan penyedia AI, kelola kunci API, dan lihat statistik penggunaan."
+    },
+    "bankSyncCard": {
+      "title": "Sinkronisasi Bank",
+      "description": "Hubungkan bank Anda melalui Open Banking dan impor transaksi yang sudah dibukukan ke akun Anda."
     },
     "delegateSecurityError": "Tidak dapat memuat pengaturan keamanan Anda.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "Penyedia mana pun, sesuai prioritas",
       "moveUp": "Naik",
       "moveDown": "Turun"
+    }
+  },
+  "bankSync": {
+    "backLink": "Kembali ke Pengaturan",
+    "title": "Sinkronisasi Bank",
+    "subtitle": "Impor transaksi yang sudah dibukukan dari rekening bank Anda melalui Open Banking",
+    "demoRestricted": {
+      "heading": "Dibatasi dalam Mode Demo",
+      "body": "Sinkronisasi bank dinonaktifkan dalam mode demo."
+    },
+    "loadFailed": {
+      "title": "Tidak dapat memuat sinkronisasi bank",
+      "retry": "Coba lagi"
+    },
+    "credentials": {
+      "title": "Aplikasi Enable Banking",
+      "subtitle": "Monize membaca rekening bank Anda melalui aplikasi Enable Banking milik Anda sendiri. Daftarkan satu di panel kontrol Enable Banking, lalu masukkan ID aplikasi dan kunci privatnya di sini.",
+      "notConfigured": "Belum ada aplikasi yang disiapkan.",
+      "applicationId": "ID Aplikasi",
+      "keyStored": "Kunci privat tersimpan.",
+      "keyMissing": "Tidak ada kunci privat yang tersimpan.",
+      "configure": "Siapkan kredensial",
+      "edit": "Edit kredensial",
+      "remove": "Hapus kredensial",
+      "test": "Uji koneksi",
+      "testing": "Menguji...",
+      "encryptionUnavailable": "Server ini tidak memiliki kunci enkripsi yang dikonfigurasi, sehingga kredensial tidak dapat disimpan.",
+      "redirectUrlLabel": "URL Pengalihan",
+      "redirectUrlHelp": "Daftarkan URL persis ini sebagai URL pengalihan di panel kontrol Enable Banking. Bank Anda mengembalikan Anda ke URL ini setelah Anda memberi otorisasi akses.",
+      "copy": "Salin",
+      "copied": "Disalin",
+      "copyFailed": "Tidak dapat menyalin URL pengalihan",
+      "testSuccess": "Aplikasi berfungsi: {name}",
+      "testSuccessNoName": "Aplikasi berfungsi.",
+      "testRedirectMissing": "Aplikasi berfungsi, tetapi URL pengalihan di atas belum terdaftar untuknya. Tambahkan di panel kontrol Enable Banking.",
+      "testFailed": "Penyedia tidak menerima kredensial ini.",
+      "testError": "Tidak dapat menguji kredensial",
+      "saved": "Kredensial disimpan. Gunakan Uji koneksi untuk memeriksanya.",
+      "saveFailed": "Tidak dapat menyimpan kredensial",
+      "removed": "Kredensial dihapus",
+      "removeFailed": "Tidak dapat menghapus kredensial",
+      "removeConfirm": {
+        "title": "Hapus kredensial",
+        "message": "ID aplikasi dan kunci privat yang tersimpan dihapus dari Monize. Anda perlu memasukkannya lagi sebelum dapat menghubungkan bank atau menyinkronkan.",
+        "confirm": "Hapus"
+      }
+    },
+    "credentialsModal": {
+      "title": "Kredensial Enable Banking",
+      "subtitle": "Disimpan terenkripsi di server ini. Kunci privat tidak akan ditampilkan lagi.",
+      "applicationIdLabel": "ID Aplikasi",
+      "applicationIdPlaceholder": "ID aplikasi Enable Banking Anda",
+      "applicationIdRequired": "Masukkan ID aplikasi",
+      "applicationIdTooLong": "ID aplikasi terlalu panjang",
+      "privateKeyLabel": "Kunci privat (PEM)",
+      "privateKeyPlaceholder": "Tempel kunci privat PEM aplikasi Anda",
+      "privateKeyStoredPlaceholder": "Sebuah kunci tersimpan. Biarkan kosong untuk mempertahankannya, atau tempel kunci baru untuk menggantinya.",
+      "privateKeyHelp": "Tempel seluruh file PEM yang Anda unduh saat mendaftarkan aplikasi.",
+      "privateKeyRequired": "Masukkan kunci privat",
+      "privateKeyInvalid": "Ini tidak tampak seperti kunci privat PEM. Seharusnya berupa blok yang diawali dengan BEGIN dan diakhiri dengan PRIVATE KEY.",
+      "privateKeyTooLong": "Kunci privat terlalu panjang",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saving": "Menyimpan..."
+    },
+    "connections": {
+      "title": "Bank yang terhubung",
+      "subtitle": "Setiap rekening bank ditautkan ke satu akun Monize, dan transaksinya yang sudah dibukukan diimpor ke dalamnya.",
+      "connect": "Hubungkan bank",
+      "credentialsFirst": "Siapkan kredensial Enable Banking Anda di atas sebelum menghubungkan bank.",
+      "loadFailed": "Tidak dapat memuat koneksi bank Anda.",
+      "empty": {
+        "title": "Belum ada bank yang terhubung",
+        "description": "Hubungkan bank untuk mengimpor transaksinya yang sudah dibukukan ke akun Monize Anda."
+      }
+    },
+    "connect": {
+      "title": "Hubungkan bank",
+      "subtitle": "Anda akan dialihkan ke bank untuk memberi otorisasi akses hanya-baca.",
+      "countryLabel": "Negara",
+      "countryPlaceholder": "Pilih negara",
+      "institutionLabel": "Bank",
+      "institutionPlaceholder": "Cari bank Anda",
+      "institutionsLoading": "Memuat bank...",
+      "institutionsFailed": "Tidak dapat memuat daftar bank.",
+      "retry": "Coba lagi",
+      "noInstitutions": "Penyedia tidak mencantumkan bank untuk negara ini.",
+      "psuTypeLabel": "Pemegang rekening",
+      "psuPersonal": "Pribadi",
+      "psuBusiness": "Bisnis",
+      "consentDays": "{days, plural, other {Bank ini mengizinkan akses hingga # hari sebelum Anda harus memperbaruinya.}}",
+      "continue": "Lanjutkan ke bank",
+      "continuing": "Menghubungkan...",
+      "cancel": "Batal",
+      "unsafeUrl": "Alamat bank yang dikembalikan server bukan alamat https yang aman, sehingga Monize tidak membukanya.",
+      "failed": "Tidak dapat memulai koneksi"
+    },
+    "connection": {
+      "status": {
+        "pending": "Tertunda",
+        "active": "Aktif",
+        "expired": "Kedaluwarsa",
+        "revoked": "Dicabut",
+        "failed": "Gagal"
+      },
+      "validUntil": "Akses berlaku hingga {date}",
+      "expiresSoon": "Segera kedaluwarsa",
+      "autoSync": "Sinkronkan otomatis sekali sehari",
+      "autoSyncOn": "Sinkronisasi otomatis diaktifkan",
+      "autoSyncOff": "Sinkronisasi otomatis dinonaktifkan",
+      "autoSyncFailed": "Tidak dapat mengubah sinkronisasi otomatis",
+      "renew": "Perbarui persetujuan",
+      "renewFailed": "Tidak dapat memulai pembaruan",
+      "syncAll": "Sinkronkan semua",
+      "syncingAll": "Menyinkronkan...",
+      "syncAllFailed": "Tidak dapat menyinkronkan bank ini",
+      "disconnect": "Putuskan",
+      "disconnected": "Bank diputuskan",
+      "disconnectFailed": "Tidak dapat memutuskan bank",
+      "disconnectConfirm": {
+        "title": "Putuskan {bank}",
+        "message": "Monize berhenti menyinkronkan bank ini dan meminta bank mengakhiri akses. Transaksi yang sudah diimpor tetap ada, dan menghubungkan bank lagi tidak mengimpornya untuk kedua kalinya.",
+        "confirm": "Putuskan"
+      },
+      "pendingHint": "Otorisasi di bank belum diselesaikan. Putuskan lalu hubungkan lagi untuk mencoba kembali.",
+      "noAccounts": "Bank belum melaporkan rekening apa pun untuk koneksi ini.",
+      "accountsHeading": "Rekening bank"
+    },
+    "account": {
+      "unnamed": "Rekening bank tanpa nama",
+      "linkLabel": "Akun Monize",
+      "notLinked": "Belum ditautkan",
+      "noEligibleAccounts": "Tidak ada akun Monize terbuka dengan mata uang ini yang tersedia untuk ditautkan.",
+      "linkFailed": "Tidak dapat menautkan akun",
+      "unlinked": "Tautan akun dilepas",
+      "unlinkFailed": "Tidak dapat melepas tautan akun",
+      "syncFrom": "Mengimpor mulai {date}",
+      "changeCutoff": "Ubah tanggal mulai",
+      "syncNow": "Sinkronkan sekarang",
+      "syncing": "Menyinkronkan...",
+      "syncFailed": "Tidak dapat menyinkronkan akun ini",
+      "neverSynced": "Belum disinkronkan",
+      "lastSynced": "Terakhir disinkronkan {time}",
+      "lastSyncOk": "Berhasil",
+      "lastSyncFailed": "Gagal",
+      "bankBalance": "Saldo bank",
+      "bankBalanceAsOf": "{amount} per {date}",
+      "balanceNotReported": "Tidak dilaporkan oleh bank",
+      "balanceNotSynced": "Belum disinkronkan",
+      "monizeBalance": "Saldo Monize",
+      "difference": "Selisih",
+      "differenceHelp": "Saldo bank adalah saldo yang dilaporkan bank pada tanggal yang ditampilkan. Saldo ini dapat mencakup transaksi yang belum dibukukan bank, atau dibukukan setelah tanggal tersebut, sehingga selisih kecil di antara sinkronisasi adalah hal yang wajar.",
+      "differenceHidden": "Saldo bank dalam {bankCurrency} dan akun Monize dalam {monizeCurrency}, sehingga selisih tidak ditampilkan.",
+      "deletedNote": "Transaksi yang Anda hapus di Monize tidak diimpor lagi oleh sinkronisasi berikutnya, sehingga baris yang dihapus tetap terhapus."
+    },
+    "link": {
+      "title": "Tautkan ke {account}",
+      "editTitle": "Tanggal mulai untuk {account}",
+      "syncFromLabel": "Impor transaksi mulai",
+      "syncFromHelp": "Biarkan kosong dan Monize mulai sehari setelah transaksi terbaru yang sudah ada di akun, atau 90 hari ke belakang jika akun kosong.",
+      "beforeCutoff": "Transaksi yang dibukukan bank sebelum tanggal ini tidak pernah diimpor.",
+      "duplicateWarning": "Tanggal yang lebih awal dari transaksi terbaru di akun dapat membuat duplikat transaksi yang sudah Anda masukkan.",
+      "save": "Tautkan akun",
+      "saveEdit": "Simpan",
+      "saving": "Menyimpan...",
+      "cancel": "Batal",
+      "saved": "Akun ditautkan",
+      "editSaved": "Tanggal mulai disimpan",
+      "saveFailed": "Tidak dapat menyimpan tautan"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {Tidak ada transaksi yang diimpor} other {# transaksi diimpor}}, {skipped, plural, =0 {tidak ada yang dilewati} other {# dilewati karena sudah diimpor}}, {refused, plural, =0 {tidak ada yang ditolak} other {# ditolak}}",
+      "summaryWithReasons": "{summary}. Ditolak: {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, other {# tanpa tanggal}}",
+        "future_date": "{count, plural, other {# bertanggal di masa depan}}",
+        "invalid_amount": "{count, plural, other {# dengan jumlah tidak valid}}",
+        "unknown_direction": "{count, plural, other {# dengan arah tidak diketahui}}",
+        "currency_mismatch": "{count, plural, other {# dalam mata uang lain}}",
+        "other": "{count, plural, other {# karena alasan lain}}"
+      }
+    },
+    "callback": {
+      "title": "Menghubungkan bank Anda",
+      "subtitle": "Harap tunggu sementara Monize menyelesaikan koneksi",
+      "success": "Bank terhubung",
+      "successNamed": "Terhubung ke {bank}",
+      "bankError": "Bank Anda tidak memberikan akses: {message}",
+      "missingState": "Bank tidak mengembalikan respons yang valid. Mulai koneksi lagi.",
+      "notActive": "Koneksi tidak dapat diselesaikan",
+      "failed": "Tidak dapat menyelesaikan koneksi"
     }
   }
 }

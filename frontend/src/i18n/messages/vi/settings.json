@@ -966,7 +966,8 @@
     "help": "Trợ giúp & Hỗ trợ",
     "dangerZone": "Khu vực nguy hiểm",
     "about": "Giới thiệu",
-    "payeeLookup": "Tra cứu người nhận"
+    "payeeLookup": "Tra cứu người nhận",
+    "bankSync": "Đồng bộ ngân hàng"
   },
   "page": {
     "title": "Cài đặt",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "Cài đặt AI",
       "description": "Cấu hình nhà cung cấp AI, quản lý khóa API và xem số liệu thống kê sử dụng."
+    },
+    "bankSyncCard": {
+      "title": "Đồng bộ ngân hàng",
+      "description": "Kết nối ngân hàng của bạn qua Open Banking và nhập các giao dịch đã ghi sổ vào tài khoản của bạn."
     },
     "delegateSecurityError": "Không thể tải cài đặt bảo mật của bạn.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "Bất kỳ nhà cung cấp nào, theo thứ tự ưu tiên",
       "moveUp": "Di chuyển lên",
       "moveDown": "Di chuyển xuống"
+    }
+  },
+  "bankSync": {
+    "backLink": "Quay lại Cài đặt",
+    "title": "Đồng bộ ngân hàng",
+    "subtitle": "Nhập các giao dịch đã ghi sổ của tài khoản ngân hàng qua Open Banking",
+    "demoRestricted": {
+      "heading": "Bị hạn chế trong chế độ demo",
+      "body": "Đồng bộ ngân hàng bị vô hiệu hóa trong chế độ demo."
+    },
+    "loadFailed": {
+      "title": "Không thể tải đồng bộ ngân hàng",
+      "retry": "Thử lại"
+    },
+    "credentials": {
+      "title": "Ứng dụng Enable Banking",
+      "subtitle": "Monize đọc các tài khoản ngân hàng của bạn thông qua ứng dụng Enable Banking của chính bạn. Hãy đăng ký một ứng dụng trong bảng điều khiển Enable Banking, sau đó nhập ID ứng dụng và khóa riêng của nó tại đây.",
+      "notConfigured": "Chưa thiết lập ứng dụng nào.",
+      "applicationId": "ID ứng dụng",
+      "keyStored": "Đã lưu một khóa riêng.",
+      "keyMissing": "Chưa lưu khóa riêng nào.",
+      "configure": "Thiết lập thông tin đăng nhập",
+      "edit": "Sửa thông tin đăng nhập",
+      "remove": "Xóa thông tin đăng nhập",
+      "test": "Kiểm tra kết nối",
+      "testing": "Đang kiểm tra...",
+      "encryptionUnavailable": "Máy chủ này chưa cấu hình khóa mã hóa nên không thể lưu thông tin đăng nhập.",
+      "redirectUrlLabel": "URL chuyển hướng",
+      "redirectUrlHelp": "Hãy đăng ký chính xác URL này làm URL chuyển hướng trong bảng điều khiển Enable Banking. Ngân hàng sẽ đưa bạn quay lại URL này sau khi bạn cấp quyền truy cập.",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép",
+      "copyFailed": "Không thể sao chép URL chuyển hướng",
+      "testSuccess": "Ứng dụng hoạt động: {name}",
+      "testSuccessNoName": "Ứng dụng hoạt động.",
+      "testRedirectMissing": "Ứng dụng hoạt động, nhưng URL chuyển hướng ở trên chưa được đăng ký cho nó. Hãy thêm nó trong bảng điều khiển Enable Banking.",
+      "testFailed": "Nhà cung cấp không chấp nhận thông tin đăng nhập này.",
+      "testError": "Không thể kiểm tra thông tin đăng nhập",
+      "saved": "Đã lưu thông tin đăng nhập. Dùng Kiểm tra kết nối để xác minh.",
+      "saveFailed": "Không thể lưu thông tin đăng nhập",
+      "removed": "Đã xóa thông tin đăng nhập",
+      "removeFailed": "Không thể xóa thông tin đăng nhập",
+      "removeConfirm": {
+        "title": "Xóa thông tin đăng nhập",
+        "message": "ID ứng dụng và khóa riêng đã lưu sẽ bị xóa khỏi Monize. Bạn sẽ cần nhập lại chúng trước khi có thể kết nối ngân hàng hoặc đồng bộ.",
+        "confirm": "Xóa"
+      }
+    },
+    "credentialsModal": {
+      "title": "Thông tin đăng nhập Enable Banking",
+      "subtitle": "Được lưu dưới dạng mã hóa trên máy chủ này. Khóa riêng sẽ không bao giờ được hiển thị lại.",
+      "applicationIdLabel": "ID ứng dụng",
+      "applicationIdPlaceholder": "ID của ứng dụng Enable Banking của bạn",
+      "applicationIdRequired": "Nhập ID ứng dụng",
+      "applicationIdTooLong": "ID ứng dụng quá dài",
+      "privateKeyLabel": "Khóa riêng (PEM)",
+      "privateKeyPlaceholder": "Dán khóa riêng PEM của ứng dụng của bạn",
+      "privateKeyStoredPlaceholder": "Đã lưu một khóa. Để trống để giữ nguyên, hoặc dán khóa mới để thay thế.",
+      "privateKeyHelp": "Dán toàn bộ tệp PEM bạn đã tải xuống khi đăng ký ứng dụng.",
+      "privateKeyRequired": "Nhập khóa riêng",
+      "privateKeyInvalid": "Đây không giống khóa riêng PEM. Nó phải là một khối bắt đầu bằng BEGIN và kết thúc bằng PRIVATE KEY.",
+      "privateKeyTooLong": "Khóa riêng quá dài",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "saving": "Đang lưu..."
+    },
+    "connections": {
+      "title": "Ngân hàng đã kết nối",
+      "subtitle": "Mỗi tài khoản ngân hàng được liên kết với một tài khoản Monize, và các giao dịch đã ghi sổ của nó được nhập vào tài khoản đó.",
+      "connect": "Kết nối ngân hàng",
+      "credentialsFirst": "Hãy thiết lập thông tin đăng nhập Enable Banking ở trên trước khi kết nối ngân hàng.",
+      "loadFailed": "Không thể tải các kết nối ngân hàng của bạn.",
+      "empty": {
+        "title": "Chưa kết nối ngân hàng nào",
+        "description": "Kết nối ngân hàng để nhập các giao dịch đã ghi sổ vào tài khoản Monize của bạn."
+      }
+    },
+    "connect": {
+      "title": "Kết nối ngân hàng",
+      "subtitle": "Bạn sẽ được chuyển đến ngân hàng để cấp quyền truy cập chỉ đọc.",
+      "countryLabel": "Quốc gia",
+      "countryPlaceholder": "Chọn quốc gia",
+      "institutionLabel": "Ngân hàng",
+      "institutionPlaceholder": "Tìm ngân hàng của bạn",
+      "institutionsLoading": "Đang tải ngân hàng...",
+      "institutionsFailed": "Không thể tải danh sách ngân hàng.",
+      "retry": "Thử lại",
+      "noInstitutions": "Nhà cung cấp không liệt kê ngân hàng nào cho quốc gia này.",
+      "psuTypeLabel": "Chủ tài khoản",
+      "psuPersonal": "Cá nhân",
+      "psuBusiness": "Doanh nghiệp",
+      "consentDays": "{days, plural, other {Ngân hàng này cho phép truy cập tối đa # ngày trước khi bạn phải gia hạn.}}",
+      "continue": "Tiếp tục đến ngân hàng",
+      "continuing": "Đang kết nối...",
+      "cancel": "Hủy",
+      "unsafeUrl": "Địa chỉ ngân hàng do máy chủ trả về không phải địa chỉ https an toàn nên Monize không mở nó.",
+      "failed": "Không thể bắt đầu kết nối"
+    },
+    "connection": {
+      "status": {
+        "pending": "Đang chờ",
+        "active": "Đang hoạt động",
+        "expired": "Đã hết hạn",
+        "revoked": "Đã thu hồi",
+        "failed": "Thất bại"
+      },
+      "validUntil": "Quyền truy cập có hiệu lực đến {date}",
+      "expiresSoon": "Sắp hết hạn",
+      "autoSync": "Tự động đồng bộ mỗi ngày một lần",
+      "autoSyncOn": "Đã bật đồng bộ tự động",
+      "autoSyncOff": "Đã tắt đồng bộ tự động",
+      "autoSyncFailed": "Không thể thay đổi đồng bộ tự động",
+      "renew": "Gia hạn sự đồng ý",
+      "renewFailed": "Không thể bắt đầu gia hạn",
+      "syncAll": "Đồng bộ tất cả",
+      "syncingAll": "Đang đồng bộ...",
+      "syncAllFailed": "Không thể đồng bộ ngân hàng này",
+      "disconnect": "Ngắt kết nối",
+      "disconnected": "Đã ngắt kết nối ngân hàng",
+      "disconnectFailed": "Không thể ngắt kết nối ngân hàng",
+      "disconnectConfirm": {
+        "title": "Ngắt kết nối {bank}",
+        "message": "Monize ngừng đồng bộ ngân hàng này và yêu cầu ngân hàng chấm dứt quyền truy cập. Các giao dịch đã nhập vẫn được giữ lại, và kết nối lại ngân hàng sẽ không nhập chúng lần thứ hai.",
+        "confirm": "Ngắt kết nối"
+      },
+      "pendingHint": "Việc cấp quyền tại ngân hàng chưa được hoàn tất. Hãy ngắt kết nối rồi kết nối lại để thử lại.",
+      "noAccounts": "Ngân hàng chưa báo cáo tài khoản nào cho kết nối này.",
+      "accountsHeading": "Tài khoản ngân hàng"
+    },
+    "account": {
+      "unnamed": "Tài khoản ngân hàng chưa đặt tên",
+      "linkLabel": "Tài khoản Monize",
+      "notLinked": "Chưa liên kết",
+      "noEligibleAccounts": "Không có tài khoản Monize đang mở nào cùng loại tiền tệ này để liên kết.",
+      "linkFailed": "Không thể liên kết tài khoản",
+      "unlinked": "Đã hủy liên kết tài khoản",
+      "unlinkFailed": "Không thể hủy liên kết tài khoản",
+      "syncFrom": "Đang nhập từ {date}",
+      "changeCutoff": "Đổi ngày bắt đầu",
+      "syncNow": "Đồng bộ ngay",
+      "syncing": "Đang đồng bộ...",
+      "syncFailed": "Không thể đồng bộ tài khoản này",
+      "neverSynced": "Chưa đồng bộ",
+      "lastSynced": "Đồng bộ lần cuối {time}",
+      "lastSyncOk": "Thành công",
+      "lastSyncFailed": "Thất bại",
+      "bankBalance": "Số dư ngân hàng",
+      "bankBalanceAsOf": "{amount} tính đến {date}",
+      "balanceNotReported": "Ngân hàng không báo cáo",
+      "balanceNotSynced": "Chưa đồng bộ",
+      "monizeBalance": "Số dư Monize",
+      "difference": "Chênh lệch",
+      "differenceHelp": "Số dư ngân hàng là số dư mà ngân hàng đã báo cáo vào ngày được hiển thị. Số dư này có thể bao gồm các giao dịch ngân hàng chưa ghi sổ, hoặc được ghi sổ sau ngày đó, vì vậy chênh lệch nhỏ giữa các lần đồng bộ là bình thường.",
+      "differenceHidden": "Số dư ngân hàng tính bằng {bankCurrency} còn tài khoản Monize tính bằng {monizeCurrency}, nên không hiển thị chênh lệch.",
+      "deletedNote": "Giao dịch bạn xóa trong Monize sẽ không được nhập lại ở lần đồng bộ sau, nên dòng đã xóa vẫn được giữ là đã xóa."
+    },
+    "link": {
+      "title": "Liên kết với {account}",
+      "editTitle": "Ngày bắt đầu cho {account}",
+      "syncFromLabel": "Nhập giao dịch từ",
+      "syncFromHelp": "Để trống thì Monize bắt đầu từ ngày sau giao dịch mới nhất đã có trong tài khoản, hoặc lùi lại 90 ngày khi tài khoản trống.",
+      "beforeCutoff": "Các giao dịch ngân hàng đã ghi sổ trước ngày này sẽ không bao giờ được nhập.",
+      "duplicateWarning": "Ngày sớm hơn giao dịch mới nhất trong tài khoản có thể tạo ra các giao dịch trùng lặp với những giao dịch bạn đã nhập.",
+      "save": "Liên kết tài khoản",
+      "saveEdit": "Lưu",
+      "saving": "Đang lưu...",
+      "cancel": "Hủy",
+      "saved": "Đã liên kết tài khoản",
+      "editSaved": "Đã lưu ngày bắt đầu",
+      "saveFailed": "Không thể lưu liên kết"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {Không có giao dịch nào được nhập} other {Đã nhập # giao dịch}}, {skipped, plural, =0 {không bỏ qua giao dịch nào} other {bỏ qua # giao dịch vì đã nhập}}, {refused, plural, =0 {không từ chối giao dịch nào} other {từ chối #}}",
+      "summaryWithReasons": "{summary}. Bị từ chối: {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, other {# giao dịch không có ngày}}",
+        "future_date": "{count, plural, other {# giao dịch có ngày trong tương lai}}",
+        "invalid_amount": "{count, plural, other {# giao dịch có số tiền không hợp lệ}}",
+        "unknown_direction": "{count, plural, other {# giao dịch không rõ chiều}}",
+        "currency_mismatch": "{count, plural, other {# giao dịch bằng loại tiền tệ khác}}",
+        "other": "{count, plural, other {# giao dịch vì lý do khác}}"
+      }
+    },
+    "callback": {
+      "title": "Đang kết nối ngân hàng của bạn",
+      "subtitle": "Vui lòng chờ trong khi Monize hoàn tất kết nối",
+      "success": "Đã kết nối ngân hàng",
+      "successNamed": "Đã kết nối với {bank}",
+      "bankError": "Ngân hàng của bạn không cấp quyền truy cập: {message}",
+      "missingState": "Ngân hàng không trả về phản hồi hợp lệ. Hãy bắt đầu lại kết nối.",
+      "notActive": "Không thể hoàn tất kết nối",
+      "failed": "Không thể hoàn tất kết nối"
     }
   }
 }

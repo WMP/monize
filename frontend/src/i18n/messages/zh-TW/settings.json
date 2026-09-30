@@ -966,7 +966,8 @@
     "help": "說明與支援",
     "dangerZone": "危險區域",
     "about": "關於",
-    "payeeLookup": "收款人查詢"
+    "payeeLookup": "收款人查詢",
+    "bankSync": "銀行同步"
   },
   "page": {
     "title": "設定",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "AI 設定",
       "description": "設定 AI 提供者、管理 API 金鑰並查看使用統計。"
+    },
+    "bankSyncCard": {
+      "title": "銀行同步",
+      "description": "透過 Open Banking 連接您的銀行，並將其已入帳的交易匯入您的科目。"
     },
     "delegateSecurityError": "無法載入您的安全設定。",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "任何供應商，依優先順序",
       "moveUp": "上移",
       "moveDown": "下移"
+    }
+  },
+  "bankSync": {
+    "backLink": "返回設定",
+    "title": "銀行同步",
+    "subtitle": "透過 Open Banking 匯入您銀行科目中已入帳的交易",
+    "demoRestricted": {
+      "heading": "示範模式中受限",
+      "body": "示範模式中已停用銀行同步。"
+    },
+    "loadFailed": {
+      "title": "無法載入銀行同步",
+      "retry": "重試"
+    },
+    "credentials": {
+      "title": "Enable Banking 應用程式",
+      "subtitle": "Monize 透過您自己的 Enable Banking 應用程式讀取您的銀行科目。請在 Enable Banking 控制面板中註冊一個應用程式，然後在此輸入其應用程式 ID 和私密金鑰。",
+      "notConfigured": "尚未設定應用程式。",
+      "applicationId": "應用程式 ID",
+      "keyStored": "已儲存私密金鑰。",
+      "keyMissing": "未儲存私密金鑰。",
+      "configure": "設定憑證",
+      "edit": "編輯憑證",
+      "remove": "移除憑證",
+      "test": "測試連線",
+      "testing": "測試中...",
+      "encryptionUnavailable": "本伺服器未設定加密金鑰，因此無法儲存憑證。",
+      "redirectUrlLabel": "重新導向 URL",
+      "redirectUrlHelp": "請將此 URL 原樣註冊為 Enable Banking 控制面板中的重新導向 URL。您授權存取後，銀行會將您送回此 URL。",
+      "copy": "複製",
+      "copied": "已複製",
+      "copyFailed": "無法複製重新導向 URL",
+      "testSuccess": "應用程式可以正常運作：{name}",
+      "testSuccessNoName": "應用程式可以正常運作。",
+      "testRedirectMissing": "應用程式可以正常運作，但上方的重新導向 URL 尚未為其註冊。請在 Enable Banking 控制面板中新增。",
+      "testFailed": "提供者未接受這些憑證。",
+      "testError": "無法測試憑證",
+      "saved": "憑證已儲存。請使用「測試連線」進行檢查。",
+      "saveFailed": "無法儲存憑證",
+      "removed": "憑證已移除",
+      "removeFailed": "無法移除憑證",
+      "removeConfirm": {
+        "title": "移除憑證",
+        "message": "已儲存的應用程式 ID 和私密金鑰將從 Monize 中刪除。在連接銀行或同步之前，您需要重新輸入它們。",
+        "confirm": "移除"
+      }
+    },
+    "credentialsModal": {
+      "title": "Enable Banking 憑證",
+      "subtitle": "加密儲存在本伺服器上。私密金鑰不會再次顯示。",
+      "applicationIdLabel": "應用程式 ID",
+      "applicationIdPlaceholder": "您的 Enable Banking 應用程式的 ID",
+      "applicationIdRequired": "請輸入應用程式 ID",
+      "applicationIdTooLong": "應用程式 ID 過長",
+      "privateKeyLabel": "私密金鑰 (PEM)",
+      "privateKeyPlaceholder": "貼上您應用程式的 PEM 私密金鑰",
+      "privateKeyStoredPlaceholder": "已儲存一組金鑰。留空即可保留，或貼上新金鑰進行取代。",
+      "privateKeyHelp": "請貼上註冊應用程式時下載的整個 PEM 檔案。",
+      "privateKeyRequired": "請輸入私密金鑰",
+      "privateKeyInvalid": "這看起來不是 PEM 私密金鑰。它應該是以 BEGIN 開頭、以 PRIVATE KEY 結尾的一段內容。",
+      "privateKeyTooLong": "私密金鑰過長",
+      "cancel": "取消",
+      "save": "儲存",
+      "saving": "儲存中..."
+    },
+    "connections": {
+      "title": "已連接的銀行",
+      "subtitle": "每個銀行科目會關聯到一個 Monize 科目，其已入帳的交易會匯入該科目。",
+      "connect": "連接銀行",
+      "credentialsFirst": "連接銀行之前，請先在上方設定您的 Enable Banking 憑證。",
+      "loadFailed": "無法載入您的銀行連線。",
+      "empty": {
+        "title": "尚未連接銀行",
+        "description": "連接銀行，將其已入帳的交易匯入您的 Monize 科目。"
+      }
+    },
+    "connect": {
+      "title": "連接銀行",
+      "subtitle": "您將被轉到銀行頁面，授權唯讀存取。",
+      "countryLabel": "國家或地區",
+      "countryPlaceholder": "選擇國家或地區",
+      "institutionLabel": "銀行",
+      "institutionPlaceholder": "搜尋您的銀行",
+      "institutionsLoading": "載入銀行中...",
+      "institutionsFailed": "無法載入銀行清單。",
+      "retry": "重試",
+      "noInstitutions": "提供者未列出該國家或地區的銀行。",
+      "psuTypeLabel": "科目持有人",
+      "psuPersonal": "個人",
+      "psuBusiness": "企業",
+      "consentDays": "{days, plural, other {該銀行允許的存取期限最長為 # 天，之後您必須續期。}}",
+      "continue": "繼續前往銀行",
+      "continuing": "連接中...",
+      "cancel": "取消",
+      "unsafeUrl": "伺服器傳回的銀行網址不是安全的 https 網址，因此 Monize 未開啟它。",
+      "failed": "無法開始連線"
+    },
+    "connection": {
+      "status": {
+        "pending": "待處理",
+        "active": "有效",
+        "expired": "已過期",
+        "revoked": "已撤銷",
+        "failed": "失敗"
+      },
+      "validUntil": "存取有效期限至 {date}",
+      "expiresSoon": "即將過期",
+      "autoSync": "每天自動同步一次",
+      "autoSyncOn": "已開啟自動同步",
+      "autoSyncOff": "已關閉自動同步",
+      "autoSyncFailed": "無法變更自動同步",
+      "renew": "續期授權",
+      "renewFailed": "無法開始續期",
+      "syncAll": "全部同步",
+      "syncingAll": "同步中...",
+      "syncAllFailed": "無法同步此銀行",
+      "disconnect": "中斷連線",
+      "disconnected": "銀行已中斷連線",
+      "disconnectFailed": "無法中斷銀行連線",
+      "disconnectConfirm": {
+        "title": "中斷 {bank} 的連線",
+        "message": "Monize 將停止同步此銀行，並請求銀行終止存取。已匯入的交易會保留，重新連接該銀行也不會再次匯入它們。",
+        "confirm": "中斷連線"
+      },
+      "pendingHint": "銀行端的授權未完成。請中斷連線後重新連接以重試。",
+      "noAccounts": "銀行尚未回報此連線下的任何科目。",
+      "accountsHeading": "銀行科目"
+    },
+    "account": {
+      "unnamed": "未命名的銀行科目",
+      "linkLabel": "Monize 科目",
+      "notLinked": "未關聯",
+      "noEligibleAccounts": "沒有可供關聯的、使用此貨幣的未關閉 Monize 科目。",
+      "linkFailed": "無法關聯科目",
+      "unlinked": "已取消關聯科目",
+      "unlinkFailed": "無法取消關聯科目",
+      "syncFrom": "從 {date} 開始匯入",
+      "changeCutoff": "變更開始日期",
+      "syncNow": "立即同步",
+      "syncing": "同步中...",
+      "syncFailed": "無法同步此科目",
+      "neverSynced": "尚未同步",
+      "lastSynced": "上次同步：{time}",
+      "lastSyncOk": "成功",
+      "lastSyncFailed": "失敗",
+      "bankBalance": "銀行餘額",
+      "bankBalanceAsOf": "截至 {date} 為 {amount}",
+      "balanceNotReported": "銀行未回報",
+      "balanceNotSynced": "尚未同步",
+      "monizeBalance": "Monize 餘額",
+      "difference": "差額",
+      "differenceHelp": "銀行餘額是銀行在所示日期回報的餘額。它可能包含銀行尚未入帳的交易，或在該日期之後入帳的交易，因此兩次同步之間出現小額差額是正常的。",
+      "differenceHidden": "銀行餘額的貨幣為 {bankCurrency}，而 Monize 科目的貨幣為 {monizeCurrency}，因此不顯示差額。",
+      "deletedNote": "您在 Monize 中刪除的交易不會在之後的同步中再次匯入，因此已刪除的列會保持刪除狀態。"
+    },
+    "link": {
+      "title": "關聯到 {account}",
+      "editTitle": "{account} 的開始日期",
+      "syncFromLabel": "匯入交易的起始日期",
+      "syncFromHelp": "留空時，Monize 會從科目中最新一筆交易的隔天開始；如果科目為空，則回溯 90 天。",
+      "beforeCutoff": "銀行在此日期之前入帳的交易永遠不會被匯入。",
+      "duplicateWarning": "早於科目中最新交易的日期，可能會與您已輸入的交易產生重複。",
+      "save": "關聯科目",
+      "saveEdit": "儲存",
+      "saving": "儲存中...",
+      "cancel": "取消",
+      "saved": "科目已關聯",
+      "editSaved": "開始日期已儲存",
+      "saveFailed": "無法儲存關聯"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {未匯入任何交易} other {已匯入 # 筆交易}}，{skipped, plural, =0 {無跳過} other {# 筆因已匯入而跳過}}，{refused, plural, =0 {無拒絕} other {# 筆被拒絕}}",
+      "summaryWithReasons": "{summary}。拒絕原因：{reasons}",
+      "reason": {
+        "missing_date": "{count, plural, other {# 筆沒有日期}}",
+        "future_date": "{count, plural, other {# 筆日期在未來}}",
+        "invalid_amount": "{count, plural, other {# 筆金額無效}}",
+        "unknown_direction": "{count, plural, other {# 筆方向未知}}",
+        "currency_mismatch": "{count, plural, other {# 筆使用其他貨幣}}",
+        "other": "{count, plural, other {# 筆因其他原因}}"
+      }
+    },
+    "callback": {
+      "title": "正在連接您的銀行",
+      "subtitle": "請稍候，Monize 正在完成連線",
+      "success": "銀行已連接",
+      "successNamed": "已連接到 {bank}",
+      "bankError": "您的銀行未授予存取權限：{message}",
+      "missingState": "銀行未傳回有效的回應。請重新開始連線。",
+      "notActive": "無法完成連線",
+      "failed": "無法完成連線"
     }
   }
 }

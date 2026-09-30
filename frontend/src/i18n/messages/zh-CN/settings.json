@@ -966,7 +966,8 @@
     "help": "帮助与支持",
     "dangerZone": "危险区域",
     "about": "关于",
-    "payeeLookup": "收款方查询"
+    "payeeLookup": "收款方查询",
+    "bankSync": "银行同步"
   },
   "page": {
     "title": "设置",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "AI 设置",
       "description": "配置 AI 提供商、管理 API 密钥并查看使用统计。"
+    },
+    "bankSyncCard": {
+      "title": "银行同步",
+      "description": "通过 Open Banking 连接您的银行，并将其已入账的交易导入您的账户。"
     },
     "delegateSecurityError": "无法加载您的安全设置。",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "任意提供商，按优先级顺序",
       "moveUp": "上移",
       "moveDown": "下移"
+    }
+  },
+  "bankSync": {
+    "backLink": "返回设置",
+    "title": "银行同步",
+    "subtitle": "通过 Open Banking 导入您银行账户中已入账的交易",
+    "demoRestricted": {
+      "heading": "演示模式受限",
+      "body": "演示模式下已禁用银行同步。"
+    },
+    "loadFailed": {
+      "title": "无法加载银行同步",
+      "retry": "重试"
+    },
+    "credentials": {
+      "title": "Enable Banking 应用",
+      "subtitle": "Monize 通过您自己的 Enable Banking 应用读取您的银行账户。请在 Enable Banking 控制面板中注册一个应用，然后在此输入其应用 ID 和私钥。",
+      "notConfigured": "尚未设置应用。",
+      "applicationId": "应用 ID",
+      "keyStored": "已保存私钥。",
+      "keyMissing": "未保存私钥。",
+      "configure": "设置凭据",
+      "edit": "编辑凭据",
+      "remove": "移除凭据",
+      "test": "测试连接",
+      "testing": "正在测试...",
+      "encryptionUnavailable": "本服务器未配置加密密钥，因此无法保存凭据。",
+      "redirectUrlLabel": "重定向 URL",
+      "redirectUrlHelp": "请将此 URL 原样注册为 Enable Banking 控制面板中的重定向 URL。您授权访问后，银行会将您送回此 URL。",
+      "copy": "复制",
+      "copied": "已复制",
+      "copyFailed": "无法复制重定向 URL",
+      "testSuccess": "应用可以正常使用：{name}",
+      "testSuccessNoName": "应用可以正常使用。",
+      "testRedirectMissing": "应用可以正常使用，但上方的重定向 URL 尚未为其注册。请在 Enable Banking 控制面板中添加。",
+      "testFailed": "提供商未接受这些凭据。",
+      "testError": "无法测试凭据",
+      "saved": "凭据已保存。请使用“测试连接”进行检查。",
+      "saveFailed": "无法保存凭据",
+      "removed": "凭据已移除",
+      "removeFailed": "无法移除凭据",
+      "removeConfirm": {
+        "title": "移除凭据",
+        "message": "已保存的应用 ID 和私钥将从 Monize 中删除。在连接银行或同步之前，您需要重新输入它们。",
+        "confirm": "移除"
+      }
+    },
+    "credentialsModal": {
+      "title": "Enable Banking 凭据",
+      "subtitle": "加密保存在本服务器上。私钥不会再次显示。",
+      "applicationIdLabel": "应用 ID",
+      "applicationIdPlaceholder": "您的 Enable Banking 应用的 ID",
+      "applicationIdRequired": "请输入应用 ID",
+      "applicationIdTooLong": "应用 ID 过长",
+      "privateKeyLabel": "私钥 (PEM)",
+      "privateKeyPlaceholder": "粘贴您应用的 PEM 私钥",
+      "privateKeyStoredPlaceholder": "已保存一个密钥。留空即可保留，或粘贴新密钥进行替换。",
+      "privateKeyHelp": "请粘贴注册应用时下载的整个 PEM 文件。",
+      "privateKeyRequired": "请输入私钥",
+      "privateKeyInvalid": "这看起来不是 PEM 私钥。它应该是以 BEGIN 开头、以 PRIVATE KEY 结尾的一段内容。",
+      "privateKeyTooLong": "私钥过长",
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "正在保存..."
+    },
+    "connections": {
+      "title": "已连接的银行",
+      "subtitle": "每个银行账户关联到一个 Monize 账户，其已入账的交易会导入该账户。",
+      "connect": "连接银行",
+      "credentialsFirst": "连接银行之前，请先在上方设置您的 Enable Banking 凭据。",
+      "loadFailed": "无法加载您的银行连接。",
+      "empty": {
+        "title": "尚未连接银行",
+        "description": "连接银行，将其已入账的交易导入您的 Monize 账户。"
+      }
+    },
+    "connect": {
+      "title": "连接银行",
+      "subtitle": "您将被转到银行页面，授权只读访问。",
+      "countryLabel": "国家或地区",
+      "countryPlaceholder": "选择国家或地区",
+      "institutionLabel": "银行",
+      "institutionPlaceholder": "搜索您的银行",
+      "institutionsLoading": "正在加载银行...",
+      "institutionsFailed": "无法加载银行列表。",
+      "retry": "重试",
+      "noInstitutions": "提供商未列出该国家或地区的银行。",
+      "psuTypeLabel": "账户持有人",
+      "psuPersonal": "个人",
+      "psuBusiness": "企业",
+      "consentDays": "{days, plural, other {该银行允许的访问期限最长为 # 天，之后您必须续期。}}",
+      "continue": "继续前往银行",
+      "continuing": "正在连接...",
+      "cancel": "取消",
+      "unsafeUrl": "服务器返回的银行地址不是安全的 https 地址，因此 Monize 未打开它。",
+      "failed": "无法开始连接"
+    },
+    "connection": {
+      "status": {
+        "pending": "待处理",
+        "active": "有效",
+        "expired": "已过期",
+        "revoked": "已撤销",
+        "failed": "失败"
+      },
+      "validUntil": "访问有效期至 {date}",
+      "expiresSoon": "即将过期",
+      "autoSync": "每天自动同步一次",
+      "autoSyncOn": "已开启自动同步",
+      "autoSyncOff": "已关闭自动同步",
+      "autoSyncFailed": "无法更改自动同步",
+      "renew": "续期授权",
+      "renewFailed": "无法开始续期",
+      "syncAll": "全部同步",
+      "syncingAll": "正在同步...",
+      "syncAllFailed": "无法同步此银行",
+      "disconnect": "断开连接",
+      "disconnected": "银行已断开连接",
+      "disconnectFailed": "无法断开银行连接",
+      "disconnectConfirm": {
+        "title": "断开 {bank}",
+        "message": "Monize 将停止同步此银行，并请求银行终止访问。已导入的交易会保留，重新连接该银行也不会再次导入它们。",
+        "confirm": "断开连接"
+      },
+      "pendingHint": "银行端的授权未完成。请断开连接后重新连接以重试。",
+      "noAccounts": "银行尚未报告此连接下的任何账户。",
+      "accountsHeading": "银行账户"
+    },
+    "account": {
+      "unnamed": "未命名的银行账户",
+      "linkLabel": "Monize 账户",
+      "notLinked": "未关联",
+      "noEligibleAccounts": "没有可供关联的、使用此货币的未关闭 Monize 账户。",
+      "linkFailed": "无法关联账户",
+      "unlinked": "已取消关联账户",
+      "unlinkFailed": "无法取消关联账户",
+      "syncFrom": "从 {date} 开始导入",
+      "changeCutoff": "更改开始日期",
+      "syncNow": "立即同步",
+      "syncing": "正在同步...",
+      "syncFailed": "无法同步此账户",
+      "neverSynced": "尚未同步",
+      "lastSynced": "上次同步：{time}",
+      "lastSyncOk": "成功",
+      "lastSyncFailed": "失败",
+      "bankBalance": "银行余额",
+      "bankBalanceAsOf": "截至 {date} 为 {amount}",
+      "balanceNotReported": "银行未报告",
+      "balanceNotSynced": "尚未同步",
+      "monizeBalance": "Monize 余额",
+      "difference": "差额",
+      "differenceHelp": "银行余额是银行在所示日期报告的余额。它可能包含银行尚未入账的交易，或在该日期之后入账的交易，因此两次同步之间出现小额差额是正常的。",
+      "differenceHidden": "银行余额的货币为 {bankCurrency}，而 Monize 账户的货币为 {monizeCurrency}，因此不显示差额。",
+      "deletedNote": "您在 Monize 中删除的交易不会在之后的同步中再次导入，因此已删除的行会保持删除状态。"
+    },
+    "link": {
+      "title": "关联到 {account}",
+      "editTitle": "{account} 的开始日期",
+      "syncFromLabel": "导入交易的起始日期",
+      "syncFromHelp": "留空时，Monize 会从账户中最新一笔交易的次日开始；如果账户为空，则回溯 90 天。",
+      "beforeCutoff": "银行在此日期之前入账的交易永远不会被导入。",
+      "duplicateWarning": "早于账户中最新交易的日期，可能会与您已录入的交易产生重复。",
+      "save": "关联账户",
+      "saveEdit": "保存",
+      "saving": "正在保存...",
+      "cancel": "取消",
+      "saved": "账户已关联",
+      "editSaved": "开始日期已保存",
+      "saveFailed": "无法保存关联"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {未导入任何交易} other {已导入 # 笔交易}}，{skipped, plural, =0 {无跳过} other {# 笔因已导入而跳过}}，{refused, plural, =0 {无拒绝} other {# 笔被拒绝}}",
+      "summaryWithReasons": "{summary}。拒绝原因：{reasons}",
+      "reason": {
+        "missing_date": "{count, plural, other {# 笔没有日期}}",
+        "future_date": "{count, plural, other {# 笔日期在未来}}",
+        "invalid_amount": "{count, plural, other {# 笔金额无效}}",
+        "unknown_direction": "{count, plural, other {# 笔方向未知}}",
+        "currency_mismatch": "{count, plural, other {# 笔使用其他货币}}",
+        "other": "{count, plural, other {# 笔因其他原因}}"
+      }
+    },
+    "callback": {
+      "title": "正在连接您的银行",
+      "subtitle": "请稍候，Monize 正在完成连接",
+      "success": "银行已连接",
+      "successNamed": "已连接到 {bank}",
+      "bankError": "您的银行未授予访问权限：{message}",
+      "missingState": "银行未返回有效的响应。请重新开始连接。",
+      "notActive": "无法完成连接",
+      "failed": "无法完成连接"
     }
   }
 }
