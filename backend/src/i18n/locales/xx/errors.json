@@ -336,6 +336,18 @@
     "jointSplitsNotAllowed": "[XX-Split transactions in a shared account can only be managed by the owner.-XX]",
     "jointTransferRowLocked": "[XX-This is a transfer. Use the transfer editor instead.-XX]"
   },
+  "emailReceipts": {
+    "privateHostRefused": "[XX-This mail server address is a private or local network address (such as localhost, 192.168.x.x or a container name). Only an administrator can use one, unless the server operator allows that host in EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST.-XX]",
+    "invalidHost": "[XX-The mail server must be a host name or an IP address.-XX]",
+    "encryptionNotConfigured": "[XX-This server has no encryption key configured, so a mailbox password cannot be stored.-XX]",
+    "passwordRequired": "[XX-Enter the mailbox password.-XX]",
+    "passwordRequiredForChange": "[XX-Enter the mailbox password again: it is only sent to the server and user name it was saved with.-XX]",
+    "mailboxExists": "[XX-A mailbox is already set up for this account.-XX]",
+    "mailboxNotFound": "[XX-No mailbox is set up for this account.-XX]",
+    "testNeedsSettings": "[XX-Enter the server, port, security and user name to test, or save the mailbox first.-XX]",
+    "storedPasswordUnreadable": "[XX-The stored password cannot be read on this server. Enter the password again.-XX]",
+    "connectionFailed": "[XX-Could not read the mailbox: {{ reason }}-XX]"
+  },
   "emergencyAccess": {
     "smtpNotConfigured": "[XX-Email is not configured. Emergency access cannot be enabled until SMTP is set up.-XX]",
     "encryptionNotConfigured": "[XX-Encryption key is not configured. The free-form message cannot be stored securely until ENCRYPTION_KEY is set.-XX]",

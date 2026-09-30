@@ -1,7 +1,7 @@
 # Email receipts: order-confirmation emails enrich bank transactions
 
 Companion files: [`email-receipts-tasks.md`](./email-receipts-tasks.md) (the
-task list) and [`../specs/email-receipt-matching.md`](../specs/email-receipt-matching.md) (the
+task list) and `docs/specs/email-receipt-matching.md` (the
 matching and proposal arithmetic: truth tables, numerical examples, missing-data
 policy, test matrix).
 

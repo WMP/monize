@@ -1,7 +1,7 @@
 # Email receipts: agent task list
 
 > Companion to [`email-receipts.md`](./email-receipts.md) (the design) and
-> [`../specs/email-receipt-matching.md`](../specs/email-receipt-matching.md) (the arithmetic).
+> `docs/specs/email-receipt-matching.md` (the arithmetic).
 > Do the tasks in dependency order and mark each one done.
 
 ## How to use this list (read first, every session)
