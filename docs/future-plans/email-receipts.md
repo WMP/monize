@@ -28,9 +28,8 @@ user) and then runs deterministically. The AI is not called per email unless the
 user chose that.
 
 Out of scope for this branch: receipt photos and OCR (a vision pass over an
-image attachment), OAuth2 (XOAUTH2) mailbox login, more than one mailbox per
-user, POP3, and attaching the email's PDF parts to the transaction. Section 11
-records them.
+image attachment), more than one mailbox per user, POP3, and attaching the
+email's PDF parts to the transaction. Section 11 records them.
 
 ## 2. What exists, and what this composes
 
@@ -90,8 +89,47 @@ section 10.5).
 9. **The email is kept** (subject, sender, date, text up to 100,000 characters)
    until the user deletes it or deletes the mailbox. The raw MIME source and
    HTML are not stored; the HTML is converted to text at ingestion.
-10. **Owner only.** A delegate sees neither the settings nor the receipts page,
+10. **Two ways to log in**: a password (an app password for most providers) or
+    OAuth2 (XOAUTH2) for Google and Microsoft 365, section 3a.
+11. **Owner only.** A delegate sees neither the settings nor the receipts page,
     and the API refuses a delegate's session.
+
+## 3a. OAuth2 login (Google, Microsoft 365)
+
+Google and Microsoft 365 refuse a plain password on IMAP for most accounts, so
+the mailbox can instead be connected with OAuth2 and logged in with SASL
+XOAUTH2 (`imapflow` `auth: { user, accessToken }`).
+
+- **The operator registers one OAuth client per provider** and sets
+  `EMAIL_RECEIPTS_GOOGLE_CLIENT_ID` / `_CLIENT_SECRET` and
+  `EMAIL_RECEIPTS_MICROSOFT_CLIENT_ID` / `_CLIENT_SECRET` / `_TENANT`
+  (default `common`). A provider without a client is not offered. The redirect
+  URI to register is `{PUBLIC_APP_URL}/settings/email-receipts/oauth-callback`.
+- **Scopes**: Google `https://mail.google.com/ openid email` (IMAP has no
+  narrower Google scope; it is a restricted scope, so an unverified client
+  works only for the test users the operator lists); Microsoft
+  `https://outlook.office.com/IMAP.AccessAsUser.All offline_access openid email`.
+  The scope allows writing; Monize still opens the folder read-only
+  (INV-RECEIPT-001 holds by the client, not by the grant).
+- **Host is fixed** by the provider: `imap.gmail.com:993` and
+  `outlook.office365.com:993`, TLS. The user does not type a host, port or
+  password; the login name is the `email` claim of the ID token returned by the
+  token endpoint.
+- **Flow** (authorization code with PKCE): `POST
+  /email-receipts/mailbox/oauth/start {provider}` returns the authorization URL;
+  its `state` is an encrypted, expiring envelope holding the user id, the
+  provider and the PKCE verifier, and its nonce is consumed once
+  (`SingleUseTokenService`). The provider redirects the browser to the frontend
+  callback page, which posts `code` and `state` to the authenticated `POST
+  /email-receipts/mailbox/oauth/complete`. The server checks the state belongs
+  to the caller, exchanges the code, and stores the refresh token encrypted.
+- **Each connection** exchanges the refresh token for an access token and
+  stores a rotated refresh token when the provider returns one. A refused
+  refresh (`invalid_grant`: revoked, expired, password changed) is recorded as
+  the mailbox's `last_error` with the instruction to reconnect, and the poll
+  stops for that mailbox until the user reconnects.
+- **Disconnect** deletes the stored token; the user revokes the grant at the
+  provider (the settings screen links to it).
 
 ## 4. Data model
 
@@ -103,7 +141,10 @@ Four changes, one migration each (`database/migrations/`), mirrored in
 email_receipt_mailboxes              -- one per user (unique user_id)
   id, user_id
   host varchar(255), port int (1..65535), security varchar(10) 'tls'|'starttls'
-  username varchar(320), password_enc text      -- EncryptionService; never returned
+  username varchar(320), password_enc text null -- EncryptionService; never returned
+  auth_method varchar(10) default 'password'  'password'|'oauth2'
+  oauth_provider varchar(12) null  'google'|'microsoft'
+  oauth_refresh_token_enc text null             -- EncryptionService; never returned
   folder varchar(255) default 'INBOX'
   enabled bool default false
   ai_mode varchar(12) default 'off'  'off'|'on_demand'|'automatic'
@@ -260,7 +301,8 @@ What a proposal contains:
 | INV-RECEIPT-002 | A receipt is ingested once | `UNIQUE (mailbox_id, uid_validity, uid)` with `ON CONFLICT DO NOTHING`; the cursor advances in the transaction that inserts the rows |
 | INV-RECEIPT-003 | A receipt changes the ledger only through an approved (or opt-in auto-applied) card, and never moves money | The proposal is `AiReviewProposalInput` (no amount, date, account or status); it is written only by `/ai/actions/confirm` with `markApplied` in the same transaction; auto-apply calls the same `confirm` with the card it built |
 | INV-RECEIPT-004 | The mailbox connection reaches only a public address unless the owner is an admin or the operator allowed the host | The host is checked on save (IP literal, blocked names, DNS) and at connect (`publicOnlyLookup` passed as the socket's `lookup`, IP literal refused) |
-| INV-RECEIPT-005 | The password is encrypted at rest and never returned | `EncryptionService.encrypt`; the view carries `passwordSet: boolean`; the table is excluded from backups; errors are logged through `describeFetchFailure`, never with the password |
+| INV-RECEIPT-005 | The password and the OAuth refresh and access tokens are encrypted at rest (or held only in memory) and never returned | `EncryptionService.encrypt`; the view carries `passwordSet` / `oauthConnected` booleans; the table is excluded from backups; errors are logged through `describeFetchFailure`, never with a secret |
+| INV-RECEIPT-007 | An OAuth callback completes only the flow the same user started, once | The `state` envelope is encrypted, expires in 10 minutes, carries the user id checked against the JWT, and its nonce is claimed with `SingleUseTokenService` |
 | INV-RECEIPT-006 | One poll per mailbox at a time across replicas | `JobClaimService.claimLease(EmailReceiptPoll, userId, mailboxId)` around the poll, released by token |
 
 `docs/system-invariants.md` carries each with an honest status.
@@ -296,11 +338,14 @@ an MCP agent can answer a receipt request too.
 
 Environment (operator, all optional): `EMAIL_RECEIPTS_MAX_MESSAGES_PER_POLL`
 (50), `EMAIL_RECEIPTS_MAX_MESSAGE_BYTES` (2,000,000),
-`EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST` (empty).
+`EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST` (empty), and the OAuth clients of
+section 3a.
 
 ## 9. Frontend
 
-- `/settings/email-receipts`: the mailbox form (write-only password, test
+- `/settings/email-receipts`: "Connect with Google" / "Connect with Microsoft"
+  (only for a provider the operator configured) or the manual mailbox form
+  (write-only password, test
   connection, poll now, AI mode, auto-apply, last poll and last error), and the
   parsers list with an editor (name, domains, subject words, payee, patterns
   one per line, section markers, category rules, default and shipping
@@ -326,7 +371,6 @@ Environment (operator, all optional): `EMAIL_RECEIPTS_MAX_MESSAGES_PER_POLL`
 ## 11. Deliberately left for later
 
 - Receipt photos and PDF attachments (vision or OCR, then the same parser).
-- OAuth2 login for Gmail and Microsoft 365 (an app password works today).
 - Several mailboxes per user; a per-parser currency; tolerance for an amount
   that differs by an FX conversion.
 - Backing up mailboxes (credentials) and receipts.
