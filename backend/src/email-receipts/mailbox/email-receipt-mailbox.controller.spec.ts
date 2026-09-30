@@ -11,7 +11,11 @@ describe("EmailReceiptMailboxController", () => {
     remove: jest.fn(),
     testConnection: jest.fn(),
   };
-  const controller = new EmailReceiptMailboxController(mailbox as never);
+  const poll = { pollNow: jest.fn() };
+  const controller = new EmailReceiptMailboxController(
+    mailbox as never,
+    poll as never,
+  );
   const proto = EmailReceiptMailboxController.prototype;
 
   beforeEach(() => jest.clearAllMocks());
@@ -45,6 +49,13 @@ describe("EmailReceiptMailboxController", () => {
     expect(mailbox.testConnection).toHaveBeenCalledWith("user-1", dto);
   });
 
+  it("polls now for the JWT user", async () => {
+    const result = { ok: true, fetched: 2, skipped: 0, processed: 2 };
+    poll.pollNow.mockResolvedValue(result);
+    await expect(controller.pollNow(req)).resolves.toEqual(result);
+    expect(poll.pollNow).toHaveBeenCalledWith("user-1");
+  });
+
   it("is under the JWT guard and refuses a delegate session on every route", () => {
     expect(
       Reflect.getMetadata(GUARDS_METADATA, EmailReceiptMailboxController),
@@ -60,12 +71,13 @@ describe("EmailReceiptMailboxController", () => {
     }
   });
 
-  it("throttles the connection test and the save", () => {
+  it("throttles the connection test, the save and poll now", () => {
     const limitOf = (name: string) =>
       Reflect.getMetadata("THROTTLER:LIMITdefault", (proto as never)[name]) as
         | number
         | undefined;
     expect(limitOf("test")).toBe(5);
+    expect(limitOf("pollNow")).toBe(3);
     expect(limitOf("upsert")).toBe(10);
   });
 });

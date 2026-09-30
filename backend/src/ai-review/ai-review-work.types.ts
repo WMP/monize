@@ -31,6 +31,15 @@ export const MAX_AI_REVIEW_TOOL_LIST_LIMIT = 50;
  */
 export const ASSISTANT_CLAIM_KEY = "assistant";
 
+/**
+ * The claim keys of the email-receipts module (docs/future-plans/email-receipts.md
+ * section 6). A receipt's deterministic proposal is born claimed by the first
+ * and submitted under it; the AI path claims under the second. Neither equals an
+ * MCP caller key, so an agent never answers a request that is being worked on.
+ */
+export const EMAIL_RECEIPTS_CLAIM_KEY = "email-receipts";
+export const EMAIL_RECEIPTS_AI_CLAIM_KEY = "email-receipts-ai";
+
 /** One category line of a proposal, exactly as `manage_transactions` takes it. */
 export interface AiReviewSplitLine {
   categoryName: string;
