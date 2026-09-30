@@ -26,7 +26,7 @@
 | BS6 | Planner, writer and sync of one account; link routes; integration spec | BS5 | additive | [x] |
 | BS7 | Daily cron, `docs/cron-jobs.md` row | BS6 | additive | [x] |
 | BS8 | Settings pages, callback page, API client, English strings | BS6 | additive | [x] |
-| BS9 | Every other locale | BS8 | none | [ ] |
+| BS9 | Every other locale | BS8 | none | [x] |
 | BS10 | Verify the wire format against an Enable Banking sandbox application; correct the mapper and the plan's assumption 3 | BS6 | none | [ ] |
 | BS11 | Export and restore the ledger in the backup (id remap on `account_id`, `transaction_id`) | BS6 | neutral | [ ] |
 | BS12 | Notification when a connection's consent expires within 7 days, and when a daily sync fails twice in a row | BS7 | additive | [ ] |
