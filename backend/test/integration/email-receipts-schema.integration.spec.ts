@@ -30,6 +30,7 @@ describe("email receipts schema (schema.sql and migrations)", () => {
   const OWN_MIGRATIONS = [
     "add_email_receipts",
     "widen_ai_review_requests_for_email_receipts",
+    "add_email_receipt_oauth",
   ];
 
   let admin: DataSource;
@@ -198,6 +199,115 @@ describe("email receipts schema (schema.sql and migrations)", () => {
         auto_apply: false,
         uid_validity: null,
         last_uid: null,
+      });
+    });
+
+    describe("credentials (password or OAuth2)", () => {
+      const insert = (over: Record<string, unknown>) => {
+        const row: Record<string, unknown> = {
+          user_id: otherUserId,
+          host: "h",
+          username: "u",
+          ...over,
+        };
+        const cols = Object.keys(row);
+        return db.query(
+          `INSERT INTO email_receipt_mailboxes (${cols.join(", ")})
+           VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")})`,
+          cols.map((c) => row[c]),
+        );
+      };
+
+      it("defaults an existing-style insert to a password mailbox", async () => {
+        const [row] = await db.query(
+          `SELECT auth_method, oauth_provider, oauth_refresh_token_enc, password_enc
+             FROM email_receipt_mailboxes WHERE user_id = $1`,
+          [userId],
+        );
+        expect(row).toEqual({
+          auth_method: "password",
+          oauth_provider: null,
+          oauth_refresh_token_enc: null,
+          password_enc: "cipher",
+        });
+      });
+
+      it("admits a password mailbox and an OAuth2 one, with or without a refresh token", async () => {
+        await insert({ password_enc: "p" });
+        await db.query(
+          `DELETE FROM email_receipt_mailboxes WHERE user_id = $1`,
+          [otherUserId],
+        );
+        await insert({
+          auth_method: "oauth2",
+          oauth_provider: "google",
+          oauth_refresh_token_enc: "r",
+        });
+        await db.query(
+          `DELETE FROM email_receipt_mailboxes WHERE user_id = $1`,
+          [otherUserId],
+        );
+        // Disconnected or revoked: the provider stays, the token is gone.
+        await insert({ auth_method: "oauth2", oauth_provider: "microsoft" });
+      });
+
+      it("admits only the two auth methods and the two providers", async () => {
+        await expect(
+          insert({ password_enc: "p", auth_method: "kerberos" }),
+        ).rejects.toThrow(/ck_email_receipt_mailboxes_auth_method/);
+        await expect(
+          insert({
+            auth_method: "oauth2",
+            oauth_provider: "yahoo",
+          }),
+        ).rejects.toThrow(/ck_email_receipt_mailboxes_oauth_provider/);
+      });
+
+      it.each([
+        ["a password mailbox with no password", { auth_method: "password" }],
+        [
+          "a password mailbox that names a provider",
+          { password_enc: "p", oauth_provider: "google" },
+        ],
+        [
+          "a password mailbox that holds a refresh token",
+          { password_enc: "p", oauth_refresh_token_enc: "r" },
+        ],
+        [
+          "an OAuth2 mailbox with no provider",
+          { auth_method: "oauth2", oauth_refresh_token_enc: "r" },
+        ],
+        [
+          "an OAuth2 mailbox that also stores a password",
+          {
+            auth_method: "oauth2",
+            oauth_provider: "google",
+            oauth_refresh_token_enc: "r",
+            password_enc: "p",
+          },
+        ],
+      ])("refuses %s", async (_name, over) => {
+        await expect(insert(over)).rejects.toThrow(
+          /ck_email_receipt_mailboxes_credentials/,
+        );
+      });
+
+      it("refuses switching a password row to OAuth2 without clearing the password", async () => {
+        await expect(
+          db.query(
+            `UPDATE email_receipt_mailboxes
+                SET auth_method = 'oauth2', oauth_provider = 'google'
+              WHERE user_id = $1`,
+            [userId],
+          ),
+        ).rejects.toThrow(/ck_email_receipt_mailboxes_credentials/);
+        await db.query(
+          `UPDATE email_receipt_mailboxes
+              SET auth_method = 'oauth2', oauth_provider = 'google',
+                  oauth_refresh_token_enc = 'r', password_enc = NULL
+            WHERE user_id = $1`,
+          [userId],
+        );
       });
     });
 

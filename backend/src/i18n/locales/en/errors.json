@@ -374,7 +374,17 @@
     "transactionNotFound": "That transaction was not found.",
     "linkTransfer": "A transfer cannot be linked to an email.",
     "linkVoid": "A void transaction cannot be linked to an email.",
-    "linkInvestment": "An investment transaction cannot be linked to an email."
+    "linkInvestment": "An investment transaction cannot be linked to an email.",
+    "oauthNeedsEncryption": "This server has no encryption key configured, so a mailbox sign-in cannot be stored.",
+    "oauthProviderNotConfigured": "Sign-in with this provider is not set up on this server.",
+    "oauthStateInvalid": "This sign-in link is not valid any more. Start connecting the mailbox again.",
+    "oauthExchangeFailed": "The provider did not accept the sign-in, so the mailbox was not connected. Try connecting again.",
+    "oauthNoEmail": "The provider did not return an email address for this account, so the mailbox cannot be connected.",
+    "oauthNoRefreshToken": "The provider did not grant lasting access. Remove this app's access in your account's security settings and connect again.",
+    "oauthReconnectRequired": "The mailbox's sign-in was revoked or has expired. Connect the mailbox again in the mailbox settings.",
+    "oauthTokenUnreadable": "The stored sign-in cannot be read on this server. Connect the mailbox again in the mailbox settings.",
+    "notOAuthMailbox": "This mailbox does not sign in with Google or Microsoft.",
+    "settingsEmpty": "Send at least one setting to change."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",

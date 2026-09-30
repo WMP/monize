@@ -1,4 +1,9 @@
-import { describeMailboxFailure, mailboxSecrets } from "./mailbox-failure.util";
+import { OAuthReconnectRequiredError } from "../oauth/oauth-errors";
+import {
+  describeMailboxFailure,
+  mailboxSecrets,
+  oauthMailboxSecrets,
+} from "./mailbox-failure.util";
 
 describe("describeMailboxFailure (INV-RECEIPT-005)", () => {
   const PASSWORD = "hunter2-very-secret";
@@ -80,5 +85,71 @@ describe("describeMailboxFailure (INV-RECEIPT-005)", () => {
     expect(mailboxSecrets("user", "")).toEqual([
       Buffer.from("\u0000user\u0000").toString("base64"),
     ]);
+  });
+});
+
+describe("describeMailboxFailure for an OAuth2 mailbox (INV-RECEIPT-005)", () => {
+  const USER = "receipts@example.com";
+  const ACCESS = "ya29.access-token-SECRET";
+  const REFRESH = "1//refresh-token-SECRET";
+  const ENDPOINT = { host: "imap.gmail.com", port: 993 };
+  const xoauth2 = (token: string) =>
+    Buffer.from(
+      `user=${USER}\u0001auth=Bearer ${token}\u0001\u0001`,
+      "utf8",
+    ).toString("base64");
+  const oauthbearer = (token: string) =>
+    Buffer.from(
+      `n,a=${USER},\u0001host=${ENDPOINT.host}\u0001port=${ENDPOINT.port}\u0001auth=Bearer ${token}\u0001\u0001`,
+      "utf8",
+    ).toString("base64");
+
+  it("lists every token and the SASL strings built from each", () => {
+    const secrets = oauthMailboxSecrets(USER, [REFRESH, ACCESS], ENDPOINT);
+    for (const token of [REFRESH, ACCESS]) {
+      expect(secrets).toEqual(
+        expect.arrayContaining([token, xoauth2(token), oauthbearer(token)]),
+      );
+    }
+  });
+
+  it("skips an empty token", () => {
+    expect(oauthMailboxSecrets(USER, ["", ACCESS], ENDPOINT)).toHaveLength(3);
+  });
+
+  it("never contains a token or an XOAUTH2 or OAUTHBEARER string, however the error quotes them", () => {
+    const error = Object.assign(
+      new Error(
+        `AUTHENTICATE XOAUTH2 ${xoauth2(ACCESS)} / ${oauthbearer(ACCESS)} / ${ACCESS} / ${REFRESH}`,
+      ),
+      {
+        authenticationFailed: true,
+        responseText: `NO ${ACCESS}`,
+        cause: new Error(`inner ${xoauth2(REFRESH)}`),
+      },
+    );
+
+    const line = describeMailboxFailure(
+      error,
+      oauthMailboxSecrets(USER, [REFRESH, ACCESS], ENDPOINT),
+    );
+
+    for (const secret of [
+      ACCESS,
+      REFRESH,
+      xoauth2(ACCESS),
+      oauthbearer(ACCESS),
+      xoauth2(REFRESH),
+    ]) {
+      expect(line).not.toContain(secret);
+    }
+    expect(line).toContain("***");
+  });
+
+  it("passes the reconnect sentence through as it is, without a class name", () => {
+    const line = describeMailboxFailure(
+      new OAuthReconnectRequiredError("Connect the mailbox again."),
+    );
+    expect(line).toBe("Connect the mailbox again.");
   });
 });
