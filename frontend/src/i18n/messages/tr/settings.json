@@ -966,7 +966,8 @@
     "help": "Yardım ve Destek",
     "dangerZone": "Tehlikeli Alan",
     "about": "Hakkında",
-    "payeeLookup": "Alacaklı arama"
+    "payeeLookup": "Alacaklı arama",
+    "bankSync": "Banka Senkronizasyonu"
   },
   "page": {
     "title": "Ayarlar",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "AI Ayarları",
       "description": "AI sağlayıcılarını yapılandırın, API anahtarlarını yönetin ve kullanım istatistiklerini görüntüleyin."
+    },
+    "bankSyncCard": {
+      "title": "Banka Senkronizasyonu",
+      "description": "Bankanızı Open Banking üzerinden bağlayın ve hesaba işlenmiş işlemlerini hesaplarınıza aktarın."
     },
     "delegateSecurityError": "Güvenlik ayarlarınız yüklenemiyor.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "Öncelik sırasına göre herhangi bir sağlayıcı",
       "moveUp": "Yukarı taşı",
       "moveDown": "Aşağı taşı"
+    }
+  },
+  "bankSync": {
+    "backLink": "Ayarlara Dön",
+    "title": "Banka Senkronizasyonu",
+    "subtitle": "Banka hesaplarınızın hesaba işlenmiş işlemlerini Open Banking üzerinden içe aktarın",
+    "demoRestricted": {
+      "heading": "Demo Modunda Kısıtlandı",
+      "body": "Banka senkronizasyonu demo modunda devre dışıdır."
+    },
+    "loadFailed": {
+      "title": "Banka senkronizasyonu yüklenemedi",
+      "retry": "Tekrar dene"
+    },
+    "credentials": {
+      "title": "Enable Banking uygulaması",
+      "subtitle": "Monize, banka hesaplarınızı kendi Enable Banking uygulamanız üzerinden okur. Enable Banking kontrol panelinde bir uygulama kaydedin, ardından uygulama kimliğini ve özel anahtarını buraya girin.",
+      "notConfigured": "Henüz bir uygulama kurulmadı.",
+      "applicationId": "Uygulama kimliği",
+      "keyStored": "Bir özel anahtar kayıtlı.",
+      "keyMissing": "Kayıtlı özel anahtar yok.",
+      "configure": "Kimlik bilgilerini ayarla",
+      "edit": "Kimlik bilgilerini düzenle",
+      "remove": "Kimlik bilgilerini kaldır",
+      "test": "Bağlantıyı test et",
+      "testing": "Test ediliyor...",
+      "encryptionUnavailable": "Bu sunucuda yapılandırılmış bir şifreleme anahtarı olmadığından kimlik bilgileri saklanamaz.",
+      "redirectUrlLabel": "Yönlendirme URL'si",
+      "redirectUrlHelp": "Bu URL'yi tam olarak Enable Banking kontrol panelinde yönlendirme URL'si olarak kaydedin. Erişimi onayladıktan sonra bankanız sizi bu adrese geri gönderir.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "copyFailed": "Yönlendirme URL'si kopyalanamadı",
+      "testSuccess": "Uygulama çalışıyor: {name}",
+      "testSuccessNoName": "Uygulama çalışıyor.",
+      "testRedirectMissing": "Uygulama çalışıyor, ancak yukarıdaki yönlendirme URL'si bu uygulama için kayıtlı değil. Enable Banking kontrol panelinde ekleyin.",
+      "testFailed": "Sağlayıcı bu kimlik bilgilerini kabul etmedi.",
+      "testError": "Kimlik bilgileri test edilemedi",
+      "saved": "Kimlik bilgileri kaydedildi. Kontrol etmek için Bağlantıyı test et'i kullanın.",
+      "saveFailed": "Kimlik bilgileri kaydedilemedi",
+      "removed": "Kimlik bilgileri kaldırıldı",
+      "removeFailed": "Kimlik bilgileri kaldırılamadı",
+      "removeConfirm": {
+        "title": "Kimlik bilgilerini kaldır",
+        "message": "Kayıtlı uygulama kimliği ve özel anahtar Monize'den silinir. Bir banka bağlamadan veya senkronize etmeden önce bunları yeniden girmeniz gerekir.",
+        "confirm": "Kaldır"
+      }
+    },
+    "credentialsModal": {
+      "title": "Enable Banking kimlik bilgileri",
+      "subtitle": "Bu sunucuda şifrelenmiş olarak saklanır. Özel anahtar bir daha gösterilmez.",
+      "applicationIdLabel": "Uygulama kimliği",
+      "applicationIdPlaceholder": "Enable Banking uygulamanızın kimliği",
+      "applicationIdRequired": "Uygulama kimliğini girin",
+      "applicationIdTooLong": "Uygulama kimliği çok uzun",
+      "privateKeyLabel": "Özel anahtar (PEM)",
+      "privateKeyPlaceholder": "Uygulamanızın PEM özel anahtarını yapıştırın",
+      "privateKeyStoredPlaceholder": "Bir anahtar kayıtlı. Korumak için bunu boş bırakın veya değiştirmek için yenisini yapıştırın.",
+      "privateKeyHelp": "Uygulamayı kaydettiğinizde indirdiğiniz PEM dosyasının tamamını yapıştırın.",
+      "privateKeyRequired": "Özel anahtarı girin",
+      "privateKeyInvalid": "Bu bir PEM özel anahtarına benzemiyor. BEGIN ile başlayan ve PRIVATE KEY ile biten bir blok olmalıdır.",
+      "privateKeyTooLong": "Özel anahtar çok uzun",
+      "cancel": "İptal",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor..."
+    },
+    "connections": {
+      "title": "Bağlı bankalar",
+      "subtitle": "Her banka hesabı bir Monize hesabına bağlanır ve hesaba işlenmiş işlemleri o hesaba aktarılır.",
+      "connect": "Banka bağla",
+      "credentialsFirst": "Bir banka bağlamadan önce yukarıda Enable Banking kimlik bilgilerinizi ayarlayın.",
+      "loadFailed": "Banka bağlantılarınız yüklenemedi.",
+      "empty": {
+        "title": "Bağlı banka yok",
+        "description": "Hesaba işlenmiş işlemlerini Monize hesaplarınıza aktarmak için bir banka bağlayın."
+      }
+    },
+    "connect": {
+      "title": "Banka bağla",
+      "subtitle": "Salt okunur erişimi onaylamak için bankanıza yönlendirileceksiniz.",
+      "countryLabel": "Ülke",
+      "countryPlaceholder": "Bir ülke seçin",
+      "institutionLabel": "Banka",
+      "institutionPlaceholder": "Bankanızı arayın",
+      "institutionsLoading": "Bankalar yükleniyor...",
+      "institutionsFailed": "Banka listesi yüklenemedi.",
+      "retry": "Tekrar dene",
+      "noInstitutions": "Sağlayıcı bu ülke için hiçbir banka listelemiyor.",
+      "psuTypeLabel": "Hesap sahibi",
+      "psuPersonal": "Bireysel",
+      "psuBusiness": "Kurumsal",
+      "consentDays": "{days, plural, one {Bu banka, yenilemeniz gerekmeden önce en fazla # gün erişime izin verir.} other {Bu banka, yenilemeniz gerekmeden önce en fazla # gün erişime izin verir.}}",
+      "continue": "Bankaya devam et",
+      "continuing": "Bağlanıyor...",
+      "cancel": "İptal",
+      "unsafeUrl": "Sunucunun döndürdüğü banka adresi güvenli bir https adresi olmadığından Monize onu açmadı.",
+      "failed": "Bağlantı başlatılamadı"
+    },
+    "connection": {
+      "status": {
+        "pending": "Beklemede",
+        "active": "Aktif",
+        "expired": "Süresi doldu",
+        "revoked": "İptal edildi",
+        "failed": "Başarısız"
+      },
+      "validUntil": "Erişim {date} tarihine kadar geçerli",
+      "expiresSoon": "Yakında sona eriyor",
+      "autoSync": "Günde bir kez otomatik senkronize et",
+      "autoSyncOn": "Otomatik senkronizasyon açıldı",
+      "autoSyncOff": "Otomatik senkronizasyon kapatıldı",
+      "autoSyncFailed": "Otomatik senkronizasyon değiştirilemedi",
+      "renew": "Onayı yenile",
+      "renewFailed": "Yenileme başlatılamadı",
+      "syncAll": "Tümünü senkronize et",
+      "syncingAll": "Senkronize ediliyor...",
+      "syncAllFailed": "Bu banka senkronize edilemedi",
+      "disconnect": "Bağlantıyı kes",
+      "disconnected": "Banka bağlantısı kesildi",
+      "disconnectFailed": "Banka bağlantısı kesilemedi",
+      "disconnectConfirm": {
+        "title": "{bank} bağlantısını kes",
+        "message": "Monize bu bankayı senkronize etmeyi bırakır ve bankadan erişimi sonlandırmasını ister. Önceden içe aktarılan işlemler kalır ve bankayı yeniden bağlamak onları ikinci kez içe aktarmaz.",
+        "confirm": "Bağlantıyı kes"
+      },
+      "pendingHint": "Bankadaki yetkilendirme tamamlanmadı. Yeniden denemek için bağlantıyı kesip tekrar bağlayın.",
+      "noAccounts": "Banka bu bağlantı için herhangi bir hesap bildirmedi.",
+      "accountsHeading": "Banka hesapları"
+    },
+    "account": {
+      "unnamed": "Adsız banka hesabı",
+      "linkLabel": "Monize hesabı",
+      "notLinked": "Bağlı değil",
+      "noEligibleAccounts": "Bağlanabilecek, bu para biriminde açık bir Monize hesabı yok.",
+      "linkFailed": "Hesap bağlanamadı",
+      "unlinked": "Hesap bağlantısı kaldırıldı",
+      "unlinkFailed": "Hesap bağlantısı kaldırılamadı",
+      "syncFrom": "{date} tarihinden itibaren içe aktarılıyor",
+      "changeCutoff": "Başlangıç tarihini değiştir",
+      "syncNow": "Şimdi senkronize et",
+      "syncing": "Senkronize ediliyor...",
+      "syncFailed": "Bu hesap senkronize edilemedi",
+      "neverSynced": "Henüz senkronize edilmedi",
+      "lastSynced": "Son senkronizasyon: {time}",
+      "lastSyncOk": "Başarılı",
+      "lastSyncFailed": "Başarısız",
+      "bankBalance": "Banka bakiyesi",
+      "bankBalanceAsOf": "{date} itibarıyla {amount}",
+      "balanceNotReported": "Banka tarafından bildirilmedi",
+      "balanceNotSynced": "Henüz senkronize edilmedi",
+      "monizeBalance": "Monize bakiyesi",
+      "difference": "Fark",
+      "differenceHelp": "Banka bakiyesi, bankanın gösterilen tarihte bildirdiği tutardır. Bankanın henüz hesaba işlemediği veya o tarihten sonra işlediği işlemleri içerebilir, bu nedenle senkronizasyonlar arasında küçük bir fark normaldir.",
+      "differenceHidden": "Banka bakiyesi {bankCurrency}, Monize hesabı ise {monizeCurrency} cinsinden olduğundan fark gösterilmiyor.",
+      "deletedNote": "Monize'de sildiğiniz bir işlem sonraki bir senkronizasyonda yeniden içe aktarılmaz, yani silinen satır silinmiş kalır."
+    },
+    "link": {
+      "title": "{account} hesabına bağla",
+      "editTitle": "{account} için başlangıç tarihi",
+      "syncFromLabel": "İşlemleri şu tarihten itibaren içe aktar",
+      "syncFromHelp": "Boş bırakırsanız Monize, hesaptaki en yeni işlemden sonraki günden başlar; hesap boşsa 90 gün öncesinden başlar.",
+      "beforeCutoff": "Bankanın bu tarihten önce hesaba işlediği işlemler hiçbir zaman içe aktarılmaz.",
+      "duplicateWarning": "Hesaptaki en yeni işlemden önceki bir tarih, zaten girdiğiniz işlemlerin kopyalarını oluşturabilir.",
+      "save": "Hesabı bağla",
+      "saveEdit": "Kaydet",
+      "saving": "Kaydediliyor...",
+      "cancel": "İptal",
+      "saved": "Hesap bağlandı",
+      "editSaved": "Başlangıç tarihi kaydedildi",
+      "saveFailed": "Bağlantı kaydedilemedi"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {İşlem içe aktarılmadı} one {# işlem içe aktarıldı} other {# işlem içe aktarıldı}}, {skipped, plural, =0 {atlanan yok} one {# tanesi zaten içe aktarıldığı için atlandı} other {# tanesi zaten içe aktarıldığı için atlandı}}, {refused, plural, =0 {reddedilen yok} one {# tanesi reddedildi} other {# tanesi reddedildi}}",
+      "summaryWithReasons": "{summary}. Reddedilenler: {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, one {# tanesi tarihsiz} other {# tanesi tarihsiz}}",
+        "future_date": "{count, plural, one {# tanesi gelecek tarihli} other {# tanesi gelecek tarihli}}",
+        "invalid_amount": "{count, plural, one {# tanesi geçersiz tutarlı} other {# tanesi geçersiz tutarlı}}",
+        "unknown_direction": "{count, plural, one {# tanesi bilinmeyen yönlü} other {# tanesi bilinmeyen yönlü}}",
+        "currency_mismatch": "{count, plural, one {# tanesi başka para biriminde} other {# tanesi başka para biriminde}}",
+        "other": "{count, plural, one {# tanesi başka bir nedenle} other {# tanesi başka bir nedenle}}"
+      }
+    },
+    "callback": {
+      "title": "Bankanız bağlanıyor",
+      "subtitle": "Monize bağlantıyı tamamlarken lütfen bekleyin",
+      "success": "Banka bağlandı",
+      "successNamed": "{bank} bankasına bağlandı",
+      "bankError": "Bankanız erişim vermedi: {message}",
+      "missingState": "Banka geçerli bir yanıt döndürmedi. Bağlantıyı yeniden başlatın.",
+      "notActive": "Bağlantı tamamlanamadı",
+      "failed": "Bağlantı tamamlanamadı"
     }
   }
 }
