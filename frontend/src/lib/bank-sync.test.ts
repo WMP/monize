@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { AxiosError, AxiosHeaders } from 'axios';
 import apiClient from './api';
 import { bankSyncApi } from './bank-sync';
 import { clearAllCache, getCached, setCache } from './apiCache';
-import type { BankSyncResult } from '@/types/bank-sync';
+import type { BankSyncFailure, BankSyncResult } from '@/types/bank-sync';
 
 vi.mock('./api', () => ({
   default: {
@@ -25,6 +26,23 @@ function result(imported: number, bankAccountId = 'ba-1'): BankSyncResult {
     bankBalance: null,
   };
 }
+
+const failure = (bankAccountId: string): BankSyncFailure => ({
+  bankAccountId,
+  error: { code: 'unavailable', message: 'The bank did not answer.' },
+});
+
+/** An axios failure: a timeout has no response, anything else has a status. */
+const axiosFailure = (status?: number) =>
+  status === undefined
+    ? new AxiosError('timeout of 120000ms exceeded', 'ECONNABORTED')
+    : new AxiosError('failed', 'ERR_BAD_RESPONSE', undefined, undefined, {
+        status,
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+        data: {},
+      });
 
 /** Fill the caches a sync could wrongly leave alone or wrongly drop. */
 function seedCaches() {
@@ -210,12 +228,41 @@ describe('bankSyncApi', () => {
       expect(getCached('bank-sync:connections')).toBeUndefined();
     });
 
-    it('drops bank-sync but not the balances when the sync failed', async () => {
+    it('drops bank-sync but not the balances when the sync was refused', async () => {
       vi.mocked(apiClient.post).mockRejectedValue(new Error('409'));
       seedCaches();
       await expect(bankSyncApi.syncAccount('ba-1')).rejects.toThrow('409');
       expect(getCached('bank-sync:connections')).toBeUndefined();
       expect(getCached('accounts:all:false')).toBeDefined();
+    });
+
+    it.each([400, 409, 429])('keeps the balance caches for a %s refusal, which wrote nothing', async (status) => {
+      vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(status));
+      seedCaches();
+      await expect(bankSyncApi.syncAccount('ba-1')).rejects.toBeDefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('investments:summary')).toBeDefined();
+    });
+
+    it.each([undefined, 500, 502, 503, 504])(
+      'drops the balance caches and bank-sync when the outcome is unknown (%s)',
+      async (status) => {
+        vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(status));
+        seedCaches();
+        await expect(bankSyncApi.syncAccount('ba-1')).rejects.toBeDefined();
+        expect(getCached('bank-sync:connections')).toBeUndefined();
+        expect(getCached('accounts:all:false')).toBeUndefined();
+        expect(getCached('investments:summary')).toBeUndefined();
+        expect(getCached('budgets:dashboard')).toBeUndefined();
+        expect(getCached('payees:all')).toBeDefined();
+      },
+    );
+
+    it('rethrows the original error so the caller can tell the outcome is unknown', async () => {
+      const error = axiosFailure(undefined);
+      vi.mocked(apiClient.post).mockRejectedValue(error);
+      await expect(bankSyncApi.syncAccount('ba-1')).rejects.toBe(error);
     });
   });
 
@@ -248,6 +295,45 @@ describe('bankSyncApi', () => {
       });
       seedCaches();
       await bankSyncApi.syncConnection('c1');
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+    });
+    it('drops the balance caches when one account imported rows although another failed', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: [failure('ba-1'), result(2, 'ba-2')],
+      });
+      seedCaches();
+      const entries = await bankSyncApi.syncConnection('c1');
+      expect(entries).toHaveLength(2);
+      expect(getCached('accounts:all:false')).toBeUndefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+    });
+
+    it('keeps the balance caches when every account failed, but re-reads bank-sync', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: [failure('ba-1'), failure('ba-2')],
+      });
+      seedCaches();
+      await bankSyncApi.syncConnection('c1');
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+    });
+
+    it.each([undefined, 500, 504])(
+      'drops the balance caches when the outcome is unknown (%s)',
+      async (status) => {
+        vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(status));
+        seedCaches();
+        await expect(bankSyncApi.syncConnection('c1')).rejects.toBeDefined();
+        expect(getCached('accounts:all:false')).toBeUndefined();
+        expect(getCached('bank-sync:connections')).toBeUndefined();
+      },
+    );
+
+    it('keeps the balance caches for a 409 refusal of the whole connection', async () => {
+      vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(409));
+      seedCaches();
+      await expect(bankSyncApi.syncConnection('c1')).rejects.toBeDefined();
       expect(getCached('accounts:all:false')).toBeDefined();
       expect(getCached('bank-sync:connections')).toBeUndefined();
     });

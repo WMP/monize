@@ -1486,7 +1486,7 @@
         "message": "Monize ngừng đồng bộ ngân hàng này và yêu cầu ngân hàng chấm dứt quyền truy cập. Các giao dịch đã nhập vẫn được giữ lại, và kết nối lại ngân hàng sẽ không nhập chúng lần thứ hai.",
         "confirm": "Ngắt kết nối"
       },
-      "pendingHint": "Việc cấp quyền tại ngân hàng chưa được hoàn tất. Hãy ngắt kết nối rồi kết nối lại để thử lại.",
+      "pendingHint": "Việc cấp quyền tại ngân hàng chưa được hoàn tất. Hãy gia hạn sự đồng ý để thử lại; các tài khoản đã liên kết vẫn được giữ nguyên.",
       "noAccounts": "Ngân hàng chưa báo cáo tài khoản nào cho kết nối này.",
       "accountsHeading": "Tài khoản ngân hàng"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Không có giao dịch nào được nhập} other {Đã nhập # giao dịch}}, {skipped, plural, =0 {không bỏ qua giao dịch nào} other {bỏ qua # giao dịch vì đã nhập}}, {refused, plural, =0 {không từ chối giao dịch nào} other {từ chối #}}",
       "summaryWithReasons": "{summary}. Bị từ chối: {reasons}",
+      "outcomeUnknown": "Kết quả đồng bộ chưa được biết. Hãy tải lại trang để xem những gì đã được nhập.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Không thể đồng bộ: {accounts}",
+      "partialFailure": "{summary}. Không thể đồng bộ: {accounts}",
       "reason": {
         "missing_date": "{count, plural, other {# giao dịch không có ngày}}",
         "future_date": "{count, plural, other {# giao dịch có ngày trong tương lai}}",

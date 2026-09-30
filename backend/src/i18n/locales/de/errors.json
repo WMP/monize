@@ -688,6 +688,8 @@
     "notLinked": "Dieses Bankkonto ist mit keinem Konto verknüpft. Verknüpfen Sie es zuerst.",
     "syncRunning": "Eine Synchronisierung dieses Kontos läuft bereits. Versuchen Sie es gleich noch einmal.",
     "linkChanged": "Das Bankkonto wurde während des Lesens mit einem anderen Konto verknüpft. Es wurde nichts importiert; synchronisieren Sie erneut.",
+    "cutoffChanged": "Das Stichtagsdatum des Bankkontos wurde während des Lesens geändert. Es wurde nichts importiert; synchronisieren Sie erneut.",
+    "syncUnexpected": "Die Synchronisierung ist unerwartet fehlgeschlagen. Details stehen im Serverprotokoll.",
     "accountNotFound": "Dieses Konto wurde nicht gefunden.",
     "accountClosed": "Das verknüpfte Konto ist geschlossen. Öffnen Sie es erneut oder verknüpfen Sie ein anderes Konto.",
     "accountBrokerage": "Ein Investment-Maklerkonto kann keine Bankbuchungen aufnehmen. Verknüpfen Sie stattdessen das zugehörige Bargeldkonto.",

@@ -411,6 +411,37 @@ describe("Bank sync (integration)", () => {
       expect(bank).toEqual({ last_imported_count: 0, last_skipped_count: 4 });
     });
 
+    it("imports nothing when the bank changes every transaction_id between two fetches (the entry reference is the identity)", async () => {
+      bankReturns(
+        BANK_ROWS.map((r, i) => ({ ...r, transactionId: `T-a${i}` })),
+      );
+      await sync();
+      bankReturns(
+        BANK_ROWS.map((r, i) => ({ ...r, transactionId: `T-b${i}` })),
+      );
+      const second = await sync();
+      expect(second).toMatchObject({ imported: 0, skipped: 4 });
+      expect(await count("transactions")).toBe(4);
+      expect(await storedBalance()).toBe(OPENING + BANK_SUM);
+    });
+
+    it("imports a row without an entry reference once when only its transaction_id changes", async () => {
+      const bare = row({ entryReference: null, transactionId: "T-1" });
+      bankReturns([bare]);
+      await sync();
+      bankReturns([{ ...bare, transactionId: "T-2" }]);
+      const second = await sync();
+      expect(second).toMatchObject({ imported: 0, skipped: 1 });
+      expect(await count("transactions")).toBe(1);
+    });
+
+    it("plans a row repeated across pagination pages once", async () => {
+      bankReturns([...BANK_ROWS, BANK_ROWS[0], BANK_ROWS[1]]);
+      const result = await sync();
+      expect(result).toMatchObject({ imported: 4, skipped: 0 });
+      expect(await count("transactions")).toBe(4);
+    });
+
     it("imports only what is new when the bank adds a row", async () => {
       await sync();
       bankReturns([
@@ -485,6 +516,7 @@ describe("Bank sync (integration)", () => {
             userId: aliceId,
             bankAccountId,
             accountId,
+            plannedSyncFromDate: daysAgo(30),
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
@@ -643,6 +675,7 @@ describe("Bank sync (integration)", () => {
             userId: aliceId,
             bankAccountId,
             accountId,
+            plannedSyncFromDate: daysAgo(30),
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
@@ -676,6 +709,7 @@ describe("Bank sync (integration)", () => {
             userId: aliceId,
             bankAccountId,
             accountId,
+            plannedSyncFromDate: daysAgo(30),
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
@@ -685,6 +719,46 @@ describe("Bank sync (integration)", () => {
 
       expect(await count("transactions")).toBe(0);
       expect(await count("bank_sync_imported_transactions")).toBe(0);
+    });
+
+    it("refuses the whole write when the cut-off changed during the fetch, and last_success_at does not move", async () => {
+      // A first sync records a success, so there is a last_success_at to protect.
+      bankReturns([]);
+      await sync();
+      const successAt = async () =>
+        (
+          await query<{ last_success_at: Date }>(
+            `SELECT last_success_at FROM bank_sync_accounts WHERE id = $1`,
+            [bankAccountId],
+          )
+        )[0].last_success_at.getTime();
+      const before = await successAt();
+      expect(before).toBeGreaterThan(0);
+
+      // The user moves the cut-off while the bank is being read.
+      jest.spyOn(provider, "fetchTransactions").mockImplementation(async () => {
+        await db.query(
+          `UPDATE bank_sync_accounts SET sync_from_date = $2 WHERE id = $1`,
+          [bankAccountId, daysAgo(2)],
+        );
+        return BANK_ROWS;
+      });
+
+      await expect(sync()).rejects.toMatchObject({ status: 409 });
+
+      expect(await count("transactions")).toBe(0);
+      expect(await count("bank_sync_imported_transactions")).toBe(0);
+      expect(await successAt()).toBe(before);
+      expect(await storedBalance()).toBe(OPENING);
+      const [bank] = await query<{ last_sync_status: string }>(
+        `SELECT last_sync_status FROM bank_sync_accounts WHERE id = $1`,
+        [bankAccountId],
+      );
+      expect(bank.last_sync_status).toBe("failed");
+
+      // The next sync plans against the new cut-off and imports what it allows.
+      bankReturns(BANK_ROWS);
+      await expect(sync()).resolves.toMatchObject({ imported: 2 });
     });
 
     it("refuses a closed account before any row is written", async () => {
@@ -940,6 +1014,7 @@ describe("Bank sync (integration)", () => {
         credentials.save(aliceId, { applicationId: "app-1", privateKey: PEM }),
       );
       jest.spyOn(provider, "listInstitutions").mockResolvedValue([institution]);
+      jest.spyOn(provider, "revokeSession").mockResolvedValue(undefined);
       jest
         .spyOn(provider, "startAuthorization")
         .mockImplementation(async (_credentials, input) => {
@@ -1102,11 +1177,12 @@ describe("Bank sync (integration)", () => {
     it("keeps every mapping and cut-off across a re-authorization, matching by identification hash", async () => {
       // The seeded connection is active and linked (hash-1 -> Checking).
       await asAlice(() => connections.reauthorize(aliceId, connectionId));
-      const [pending] = await query<{ status: string }>(
+      const [renewing] = await query<{ status: string }>(
         `SELECT status FROM bank_sync_connections WHERE id = $1`,
         [connectionId],
       );
-      expect(pending.status).toBe("pending");
+      // The working session keeps its status while the renewal is under way.
+      expect(renewing.status).toBe("active");
 
       const view = await asAlice(() =>
         connections.completeCallback(aliceId, { state, code: "code-2" }),
@@ -1127,6 +1203,263 @@ describe("Bank sync (integration)", () => {
       const savings = view.accounts.find((a) => a.displayName === "Savings")!;
       expect(savings.accountId).toBeNull();
       expect(view.accounts).toHaveLength(2);
+    });
+  });
+
+  describe("a renewal never disables a working connection", () => {
+    let state: string;
+
+    const institution = {
+      name: "Test Bank",
+      country: "PL",
+      logoUrl: null,
+      psuTypes: ["personal"],
+      maximumConsentValiditySeconds: 90 * 24 * 3600,
+    };
+    const renewedSession = {
+      sessionId: "session-42",
+      validUntil: new Date(Date.now() + 80 * 24 * 3600 * 1000),
+      accounts: [
+        {
+          externalAccountId: "ext-1",
+          identificationHash: "hash-1",
+          displayName: "Main account",
+          identifierMasked: "**** 1234",
+          currencyCode: "PLN",
+        },
+      ],
+    };
+
+    const connectionState = async () =>
+      (
+        await query<{
+          status: string;
+          auth_state_hash: string | null;
+          external_session_id: string | null;
+          last_error: string | null;
+        }>(
+          `SELECT status, auth_state_hash, external_session_id, last_error
+             FROM bank_sync_connections WHERE id = $1`,
+          [connectionId],
+        )
+      )[0];
+
+    beforeEach(async () => {
+      jest.spyOn(provider, "listInstitutions").mockResolvedValue([institution]);
+      jest.spyOn(provider, "revokeSession").mockResolvedValue(undefined);
+      jest
+        .spyOn(provider, "startAuthorization")
+        .mockImplementation(async (_credentials, input) => {
+          state = input.state;
+          return { url: "https://bank.example/auth" };
+        });
+      jest
+        .spyOn(provider, "completeAuthorization")
+        .mockResolvedValue(renewedSession);
+    });
+
+    it("starting a renewal leaves the status and the session alone", async () => {
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      const conn = await connectionState();
+      expect(conn.status).toBe("active");
+      expect(conn.external_session_id).toBe("session-1");
+      expect(conn.auth_state_hash).toMatch(/^[0-9a-f]{64}$/);
+      // The old session still syncs.
+      await expect(sync()).resolves.toMatchObject({ imported: 4 });
+    });
+
+    it("a provider failure while starting it leaves an active connection active", async () => {
+      jest
+        .spyOn(provider, "startAuthorization")
+        .mockRejectedValue(
+          new BankSyncProviderError("unavailable", "gateway down", 503),
+        );
+      await expect(
+        asAlice(() => connections.reauthorize(aliceId, connectionId)),
+      ).rejects.toMatchObject({ status: 503 });
+      const conn = await connectionState();
+      expect(conn).toMatchObject({
+        status: "active",
+        auth_state_hash: null,
+        external_session_id: "session-1",
+        last_error: "gateway down",
+      });
+      await expect(sync()).resolves.toMatchObject({ imported: 4 });
+    });
+
+    it("an error at the bank records last_error and spends the state but keeps the status", async () => {
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      const view = await asAlice(() =>
+        connections.completeCallback(aliceId, {
+          state,
+          error: "access_denied",
+          errorDescription: "The user cancelled",
+        }),
+      );
+      expect(view).toMatchObject({
+        status: "active",
+        lastError: "The user cancelled",
+      });
+      const conn = await connectionState();
+      expect(conn).toMatchObject({
+        status: "active",
+        auth_state_hash: null,
+        external_session_id: "session-1",
+      });
+      // The state is spent.
+      await expect(
+        asAlice(() =>
+          connections.completeCallback(aliceId, { state, code: "code-1" }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("a failed code exchange keeps an active connection active and an expired one expired", async () => {
+      jest
+        .spyOn(provider, "completeAuthorization")
+        .mockRejectedValue(
+          new BankSyncProviderError("bad_request", "code already used", 422),
+        );
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      await expect(
+        asAlice(() =>
+          connections.completeCallback(aliceId, { state, code: "code-1" }),
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(await connectionState()).toMatchObject({
+        status: "active",
+        auth_state_hash: null,
+        external_session_id: "session-1",
+        last_error: "code already used",
+      });
+
+      await db.query(
+        `UPDATE bank_sync_connections SET status = 'expired' WHERE id = $1`,
+        [connectionId],
+      );
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      await expect(
+        asAlice(() =>
+          connections.completeCallback(aliceId, { state, code: "code-2" }),
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect((await connectionState()).status).toBe("expired");
+    });
+
+    it("a first-time connection whose authorization fails does become failed", async () => {
+      jest.spyOn(provider, "listInstitutions").mockResolvedValue([institution]);
+      const started = await asAlice(() =>
+        connections.start(aliceId, {
+          institutionName: "Test Bank",
+          country: "PL",
+          psuType: "personal",
+        }),
+      );
+      const view = await asAlice(() =>
+        connections.completeCallback(aliceId, {
+          state,
+          error: "access_denied",
+        }),
+      );
+      expect(view).toMatchObject({
+        id: started.connectionId,
+        status: "failed",
+      });
+    });
+
+    it("a successful renewal replaces the session and revokes the previous one", async () => {
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      const view = await asAlice(() =>
+        connections.completeCallback(aliceId, { state, code: "code-1" }),
+      );
+      expect(view.status).toBe("active");
+      expect(await connectionState()).toMatchObject({
+        status: "active",
+        external_session_id: "session-42",
+        auth_state_hash: null,
+      });
+      expect(provider.revokeSession).toHaveBeenCalledTimes(1);
+      expect(provider.revokeSession).toHaveBeenCalledWith(
+        expect.anything(),
+        "session-1",
+      );
+    });
+
+    it("renews a connection that was expired, keeping its mappings", async () => {
+      await db.query(
+        `UPDATE bank_sync_connections SET status = 'expired' WHERE id = $1`,
+        [connectionId],
+      );
+      await asAlice(() => connections.reauthorize(aliceId, connectionId));
+      expect((await connectionState()).status).toBe("expired");
+      const view = await asAlice(() =>
+        connections.completeCallback(aliceId, { state, code: "code-1" }),
+      );
+      expect(view.status).toBe("active");
+      expect(view.accounts.find((a) => a.id === bankAccountId)).toMatchObject({
+        accountId,
+      });
+    });
+  });
+
+  describe("syncing every account of a connection", () => {
+    it("answers one entry per linked account, the failed one as an error, and keeps what the others imported", async () => {
+      const second = await createTestAccount(db, aliceId, {
+        name: "Savings",
+        currencyCode: "PLN",
+      });
+      const [bank2] = await query<{ id: string }>(
+        `INSERT INTO bank_sync_accounts
+           (user_id, connection_id, external_account_id, identification_hash,
+            display_name, currency_code)
+         VALUES ($1, $2, 'ext-2', 'hash-2', 'Savings', 'PLN')
+         RETURNING id`,
+        [aliceId, connectionId],
+      );
+      await asAlice(() =>
+        bankSync.linkAccount(aliceId, bank2.id, {
+          accountId: second.id,
+          syncFromDate: daysAgo(30),
+        }),
+      );
+      jest
+        .spyOn(provider, "fetchTransactions")
+        .mockImplementation(async (_credentials, externalAccountId) => {
+          if (externalAccountId === "ext-2") {
+            throw new BankSyncProviderError("rate_limited", "429", 429);
+          }
+          return BANK_ROWS;
+        });
+
+      const entries = await asAlice(() =>
+        bankSync.syncConnection(aliceId, connectionId, null),
+      );
+
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toMatchObject({ bankAccountId, imported: 4 });
+      expect(entries[1]).toMatchObject({
+        bankAccountId: bank2.id,
+        error: { code: "rate_limited" },
+      });
+      expect(await count("transactions")).toBe(4);
+      expect(await storedBalance()).toBe(OPENING + BANK_SUM);
+      const [failed] = await query<{ last_sync_status: string }>(
+        `SELECT last_sync_status FROM bank_sync_accounts WHERE id = $1`,
+        [bank2.id],
+      );
+      expect(failed.last_sync_status).toBe("failed");
+    });
+
+    it("throws, attempting nothing, when the connection is not active", async () => {
+      await db.query(
+        `UPDATE bank_sync_connections SET status = 'failed' WHERE id = $1`,
+        [connectionId],
+      );
+      const fetch = jest.spyOn(provider, "fetchTransactions");
+      await expect(
+        asAlice(() => bankSync.syncConnection(aliceId, connectionId, null)),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(fetch).not.toHaveBeenCalled();
     });
   });
 

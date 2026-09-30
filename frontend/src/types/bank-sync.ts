@@ -139,3 +139,21 @@ export interface BankSyncResult {
     referenceDate: string | null;
   } | null;
 }
+
+/**
+ * One linked bank account that could not be synced, inside the answer to "sync
+ * every account of a connection". `error.code` is a stable machine code (the
+ * provider's error kind, `refused` or `unexpected`); `error.message` is the
+ * server's translated, safe-to-show sentence.
+ */
+export interface BankSyncFailure {
+  bankAccountId: string;
+  error: { code: string; message: string };
+}
+
+/**
+ * One entry per linked account of a connection sync: a result, or a failure.
+ * Tell them apart with `isBankSyncFailure` (`lib/bank-sync-summary.ts`); only a
+ * failure carries `error`.
+ */
+export type BankSyncConnectionEntry = BankSyncResult | BankSyncFailure;

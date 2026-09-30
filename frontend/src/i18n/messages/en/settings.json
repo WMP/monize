@@ -1486,7 +1486,7 @@
         "message": "Monize stops syncing this bank and asks it to end the access. Transactions already imported stay, and connecting the bank again does not import them a second time.",
         "confirm": "Disconnect"
       },
-      "pendingHint": "The authorization at the bank was not completed. Disconnect and connect again to retry.",
+      "pendingHint": "The authorization at the bank was not completed. Renew consent to try again; the accounts you linked are kept.",
       "noAccounts": "The bank has not reported any accounts for this connection.",
       "accountsHeading": "Bank accounts"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {No transactions imported} one {# transaction imported} other {# transactions imported}}, {skipped, plural, =0 {none skipped} one {# skipped as already imported} other {# skipped as already imported}}, {refused, plural, =0 {none refused} one {# refused} other {# refused}}",
       "summaryWithReasons": "{summary}. Refused: {reasons}",
+      "outcomeUnknown": "The result of the sync is not known yet. Reload the page to see what was imported.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Could not sync: {accounts}",
+      "partialFailure": "{summary}. Could not sync: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# without a date} other {# without a date}}",
         "future_date": "{count, plural, one {# dated in the future} other {# dated in the future}}",

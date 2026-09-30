@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   groupRefusalReasons,
+  isBankSyncFailure,
+  syncedResults,
   totalRefused,
   totalSyncResults,
 } from './bank-sync-summary';
@@ -85,5 +87,28 @@ describe('buildBankSyncCountryOptions', () => {
     const options = buildBankSyncCountryOptions('not a locale');
     expect(options).toHaveLength(BANK_SYNC_COUNTRY_CODES.length);
     expect(options.every((o) => o.label !== '')).toBe(true);
+  });
+});
+
+describe('telling a result from a failure', () => {
+  const ok = {
+    bankAccountId: 'ba-1',
+    imported: 0,
+    skipped: 0,
+    refused: {},
+    pending: 0,
+    beforeCutoff: 0,
+    bankBalance: null,
+  };
+  const failed = { bankAccountId: 'ba-2', error: { code: 'refused', message: 'Busy.' } };
+
+  it('recognises a failure by its error, and a result by its absence', () => {
+    expect(isBankSyncFailure(failed)).toBe(true);
+    expect(isBankSyncFailure(ok)).toBe(false);
+  });
+
+  it('keeps only the results, in order', () => {
+    expect(syncedResults([failed, ok, failed])).toEqual([ok]);
+    expect(syncedResults([])).toEqual([]);
   });
 });

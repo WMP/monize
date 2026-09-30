@@ -62,10 +62,13 @@ export const SECONDS_PER_DAY = 24 * 60 * 60;
 
 /**
  * How long one bank-account sync holds its lease (spec section 7 step 2). It
- * outlasts a fetch of every page, and a replica killed mid-sync stops blocking
- * the account once it lapses.
+ * outlasts the worst case of a sync: up to 100 pages of transactions at the
+ * client's 15 second timeout each (25 minutes), then the balances, so 30
+ * minutes. A lease shorter than a slow sync would let a second sync start
+ * while the first still holds the bank; a replica killed mid-sync stops
+ * blocking the account once the lease lapses.
  */
-export const SYNC_LEASE_TTL_MS = 10 * 60 * 1000;
+export const SYNC_LEASE_TTL_MS = 30 * 60 * 1000;
 
 /**
  * The re-read overlap, in days: a window starts this far before the last

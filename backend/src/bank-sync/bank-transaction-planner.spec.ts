@@ -391,33 +391,93 @@ describe("planBankImport", () => {
   });
 
   describe("external key", () => {
-    it("prefers ref: over id: and over the hash", () => {
+    it("prefers ref: over the hash", () => {
       const result = plan([
-        row({ entryReference: "E-1", transactionId: "T-1" }),
-        row({ entryReference: null, transactionId: "T-2", amount: "2" }),
+        row({ entryReference: "E-1" }),
+        row({ entryReference: null, amount: "2" }),
       ]);
-      expect(result.planned.map((p) => p.externalKey)).toEqual([
-        "ref:E-1",
-        "id:T-2",
-      ]);
+      expect(result.planned[0].externalKey).toBe("ref:E-1");
+      expect(result.planned[1].externalKey).toMatch(/^hash:[0-9a-f]{64}:0$/);
     });
 
-    it("skips a blank reference and falls through to the id", () => {
+    it("never keys on the provider's transaction id, which may change between list fetches", () => {
+      const first = plan([row({ transactionId: "T-1" })]).planned[0];
+      const second = plan([row({ transactionId: "T-2" })]).planned[0];
+      const none = plan([row({ transactionId: null })]).planned[0];
+      expect(first.externalKey).toMatch(/^hash:/);
+      expect(first.externalKey).toBe(second.externalKey);
+      expect(first.externalKey).toBe(none.externalKey);
+    });
+
+    it("keeps the ref: key when only the transaction id differs between two fetches", () => {
+      const first = plan([row({ entryReference: "E-1", transactionId: "T-1" })])
+        .planned[0];
+      const second = plan([
+        row({ entryReference: "E-1", transactionId: "T-CHANGED" }),
+      ]).planned[0];
+      expect(first.externalKey).toBe("ref:E-1");
+      expect(second.externalKey).toBe("ref:E-1");
+    });
+
+    it("skips a blank reference and falls through to the hash", () => {
       const result = plan([
         row({ entryReference: "   ", transactionId: "T-3" }),
       ]);
-      expect(result.planned[0].externalKey).toBe("id:T-3");
+      expect(result.planned[0].externalKey).toMatch(/^hash:[0-9a-f]{64}:0$/);
     });
 
-    it("trims the reference and the id", () => {
-      const result = plan([
-        row({ entryReference: "  E-9  " }),
-        row({ transactionId: " T-9 ", amount: "2" }),
-      ]);
-      expect(result.planned.map((p) => p.externalKey)).toEqual([
-        "ref:E-9",
-        "id:T-9",
-      ]);
+    it("trims the reference", () => {
+      const result = plan([row({ entryReference: "  E-9  " })]);
+      expect(result.planned[0].externalKey).toBe("ref:E-9");
+    });
+
+    describe("a row repeated within one fetch", () => {
+      it("is planned once when the entry reference repeats, the first occurrence winning", () => {
+        const result = plan([
+          row({ entryReference: "E-1", amount: "5.00" }),
+          row({ entryReference: "E-2", amount: "6.00" }),
+          row({ entryReference: "E-1", amount: "5.00" }),
+        ]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual([
+          "ref:E-1",
+          "ref:E-2",
+        ]);
+        expect(result.planned.map((p) => p.amount)).toEqual([-5, -6]);
+      });
+
+      it("compares the trimmed reference", () => {
+        const result = plan([
+          row({ entryReference: "E-1" }),
+          row({ entryReference: " E-1 " }),
+        ]);
+        expect(result.planned).toHaveLength(1);
+      });
+
+      it("counts a repeated refused row once", () => {
+        const result = plan([
+          row({ entryReference: "E-1", amount: "bad" }),
+          row({ entryReference: "E-1", amount: "bad" }),
+        ]);
+        expect(result.refused.invalid_amount).toBe(1);
+        expect(result.planned).toEqual([]);
+      });
+
+      it("never drops rows that carry no entry reference: identical coffees stay two", () => {
+        const result = plan([row(), row()]);
+        expect(result.planned.map((p) => p.externalKey.slice(-2))).toEqual([
+          ":0",
+          ":1",
+        ]);
+      });
+
+      it("does not let a pending row shadow the booked row with the same reference", () => {
+        const result = plan([
+          row({ entryReference: "E-1", booked: false }),
+          row({ entryReference: "E-1" }),
+        ]);
+        expect(result.pending).toBe(1);
+        expect(result.planned.map((p) => p.externalKey)).toEqual(["ref:E-1"]);
+      });
     });
 
     it("builds hash: + SHA-256 of date|amount|currency|direction|payee|description + :0", () => {
@@ -526,22 +586,10 @@ describe("planBankImport", () => {
         expect(key.length).toBeLessThanOrEqual(255);
       });
 
-      it("does the same for an id: key, deterministically and distinctly", () => {
-        const long = (suffix: string) => "T".repeat(300) + suffix;
-        const keys = [long("a"), long("a"), long("b")].map(
-          (transactionId) =>
-            plan([row({ transactionId })]).planned[0].externalKey,
-        );
-        expect(keys[0]).toBe(`id:${sha256(`id:${long("a")}`)}`);
-        expect(keys[0]).toBe(keys[1]);
-        expect(keys[0]).not.toBe(keys[2]);
-        expect(keys[0].length).toBeLessThanOrEqual(255);
-      });
-
       it("never produces a key over 255 characters", () => {
         const result = plan([
           row({ entryReference: "E".repeat(5000) }),
-          row({ transactionId: "T".repeat(5000), amount: "2" }),
+          row({ entryReference: "F".repeat(5000), amount: "2" }),
           row({
             amount: "3",
             counterpartyName: "N".repeat(500),

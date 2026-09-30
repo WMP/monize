@@ -1,11 +1,13 @@
 import apiClient from './api';
 import { dedupe, invalidateBalanceCaches, invalidateCache } from './apiCache';
+import { isUnknownSyncOutcome } from './bank-sync-outcome';
 import type {
   BankInstitution,
   BankSyncAccount,
   BankSyncAuthorizationStart,
   BankSyncCallbackPayload,
   BankSyncConnection,
+  BankSyncConnectionEntry,
   BankSyncCredentialsTestResult,
   BankSyncResult,
   BankSyncStatus,
@@ -17,13 +19,14 @@ import type {
 
 /**
  * A sync reads every page of the bank's booked rows before it writes, so it
- * outlasts the client's 10s default. The server's own lease is 10 minutes.
+ * outlasts the client's 10s default. The server's own lease is 30 minutes, so a
+ * sync can still be running when this gives up: see `isUnknownSyncOutcome`.
  */
 const SYNC_TIMEOUT_MS = 120_000;
 
-/** True when any of the results wrote a transaction row. */
-function wroteRows(results: readonly BankSyncResult[]): boolean {
-  return results.some((result) => result.imported > 0);
+/** True when any account of the answer wrote a transaction row. */
+function wroteRows(entries: readonly BankSyncConnectionEntry[]): boolean {
+  return entries.some((entry) => 'imported' in entry && entry.imported > 0);
 }
 
 /**
@@ -168,20 +171,31 @@ export const bankSyncApi = {
       );
       if (wroteRows([response.data])) invalidateBalanceCaches();
       return response.data;
+    } catch (error) {
+      if (isUnknownSyncOutcome(error)) invalidateBalanceCaches();
+      throw error;
     } finally {
       invalidateCache('bank-sync:');
     }
   },
 
-  syncConnection: async (id: string): Promise<BankSyncResult[]> => {
+  /**
+   * One entry per linked account: its result, or `{ bankAccountId, error }` for
+   * an account that could not be synced. Rejects only when the connection
+   * itself is unusable before any account was attempted.
+   */
+  syncConnection: async (id: string): Promise<BankSyncConnectionEntry[]> => {
     try {
-      const response = await apiClient.post<BankSyncResult[]>(
+      const response = await apiClient.post<BankSyncConnectionEntry[]>(
         `/bank-sync/connections/${id}/sync`,
         undefined,
         { timeout: SYNC_TIMEOUT_MS },
       );
       if (wroteRows(response.data)) invalidateBalanceCaches();
       return response.data;
+    } catch (error) {
+      if (isUnknownSyncOutcome(error)) invalidateBalanceCaches();
+      throw error;
     } finally {
       invalidateCache('bank-sync:');
     }

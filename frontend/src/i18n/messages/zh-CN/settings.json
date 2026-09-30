@@ -1486,7 +1486,7 @@
         "message": "Monize 将停止同步此银行，并请求银行终止访问。已导入的交易会保留，重新连接该银行也不会再次导入它们。",
         "confirm": "断开连接"
       },
-      "pendingHint": "银行端的授权未完成。请断开连接后重新连接以重试。",
+      "pendingHint": "银行端的授权未完成。请续期授权以重试；已关联的账户会保留。",
       "noAccounts": "银行尚未报告此连接下的任何账户。",
       "accountsHeading": "银行账户"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {未导入任何交易} other {已导入 # 笔交易}}，{skipped, plural, =0 {无跳过} other {# 笔因已导入而跳过}}，{refused, plural, =0 {无拒绝} other {# 笔被拒绝}}",
       "summaryWithReasons": "{summary}。拒绝原因：{reasons}",
+      "outcomeUnknown": "同步结果尚不明确。请重新加载页面，查看已导入的内容。",
+      "failedAccountItem": "{account}（{message}）",
+      "allFailed": "以下账户无法同步：{accounts}",
+      "partialFailure": "{summary}。以下账户无法同步：{accounts}",
       "reason": {
         "missing_date": "{count, plural, other {# 笔没有日期}}",
         "future_date": "{count, plural, other {# 笔日期在未来}}",

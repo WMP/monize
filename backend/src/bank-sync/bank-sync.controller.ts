@@ -32,6 +32,7 @@ import type {
   BankInstitutionView,
   BankSyncAccountView,
   BankSyncAuthorizationStartView,
+  BankSyncConnectionSyncEntry,
   BankSyncConnectionView,
   BankSyncCredentialsTestView,
   BankSyncResult,
@@ -226,7 +227,7 @@ export class BankSyncController {
     @Request() req: AuthedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Headers("user-agent") userAgent?: string,
-  ): Promise<BankSyncResult[]> {
+  ): Promise<BankSyncConnectionSyncEntry[]> {
     return this.bankSync.syncConnection(
       req.user.id,
       id,

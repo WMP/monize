@@ -1486,7 +1486,7 @@
         "message": "Monize smette di sincronizzare questa banca e le chiede di terminare l'accesso. Le transazioni già importate restano, e ricollegare la banca non le importa una seconda volta.",
         "confirm": "Scollega"
       },
-      "pendingHint": "L'autorizzazione presso la banca non è stata completata. Scollega la banca e collegala di nuovo per riprovare.",
+      "pendingHint": "L'autorizzazione presso la banca non è stata completata. Rinnova il consenso per riprovare; i conti che hai collegato vengono mantenuti.",
       "noAccounts": "La banca non ha segnalato alcun conto per questo collegamento.",
       "accountsHeading": "Conti bancari"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Nessuna transazione importata} one {# transazione importata} many {# di transazioni importate} other {# transazioni importate}}, {skipped, plural, =0 {nessuna saltata} one {# saltata perché già importata} many {# saltate perché già importate} other {# saltate perché già importate}}, {refused, plural, =0 {nessuna rifiutata} one {# rifiutata} many {# rifiutate} other {# rifiutate}}",
       "summaryWithReasons": "{summary}. Rifiutate: {reasons}",
+      "outcomeUnknown": "Il risultato della sincronizzazione non è ancora noto. Ricarica la pagina per vedere cosa è stato importato.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Impossibile sincronizzare: {accounts}",
+      "partialFailure": "{summary}. Impossibile sincronizzare: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# senza data} many {# senza data} other {# senza data}}",
         "future_date": "{count, plural, one {# con data futura} many {# con data futura} other {# con data futura}}",

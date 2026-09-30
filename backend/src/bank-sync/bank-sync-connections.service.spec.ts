@@ -113,6 +113,19 @@ describe("BankSyncConnectionsService", () => {
   const statements = (needle: string) =>
     manager.query.mock.calls.filter((call) => String(call[0]).includes(needle));
 
+  /**
+   * The statement that records a failed authorization. It fails only a
+   * `pending` (first-time) connection and leaves every other status alone.
+   */
+  const failureStatements = () => statements("last_error = $3");
+  const expectFailsOnlyPending = (sql: unknown) => {
+    expect(String(sql)).toMatch(
+      /status = CASE WHEN status = 'pending' THEN 'failed' ELSE status END/,
+    );
+    // Never an unconditional status write.
+    expect(String(sql)).not.toMatch(/status = 'failed'/);
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     credentials.resolveCredentials.mockResolvedValue(CREDS);
@@ -278,6 +291,18 @@ describe("BankSyncConnectionsService", () => {
       expect(manager.query).not.toHaveBeenCalled();
     });
 
+    it("compares the kind of access case-insensitively", async () => {
+      provider.listInstitutions.mockResolvedValue([
+        institution({ psuTypes: ["Personal", " BUSINESS "] }),
+      ]);
+      await expect(
+        service.start(USER_ID, { ...dto, psuType: "personal" }),
+      ).resolves.toMatchObject({ connectionId: CONNECTION_ID });
+      await expect(
+        service.start(USER_ID, { ...dto, psuType: "business" }),
+      ).resolves.toMatchObject({ connectionId: CONNECTION_ID });
+    });
+
     it("allows any kind of access when the bank lists none", async () => {
       provider.listInstitutions.mockResolvedValue([
         institution({ psuTypes: [] }),
@@ -296,13 +321,14 @@ describe("BankSyncConnectionsService", () => {
         ServiceUnavailableException,
       );
 
-      const failed = statements("SET status = 'failed'")[0];
+      const failed = failureStatements()[0];
       expect(failed[1]).toEqual([
         CONNECTION_ID,
         USER_ID,
         "gateway down",
         sha256(provider.startAuthorization.mock.calls[0][1].state),
       ]);
+      expectFailsOnlyPending(failed[0]);
     });
 
     it("still raises the provider's error when recording the failure fails too", async () => {
@@ -342,7 +368,13 @@ describe("BankSyncConnectionsService", () => {
 
       expect(result.connectionId).toBe(CONNECTION_ID);
       const update = statements("SET auth_state_hash = $3")[0];
-      expect(String(update[0])).toContain("status = 'pending'");
+      // A renewal writes the new state and its start time and nothing else: the
+      // status of a working connection is not its business.
+      expect(String(update[0])).toContain(
+        "auth_started_at = CURRENT_TIMESTAMP",
+      );
+      expect(String(update[0])).not.toMatch(/status/);
+      expect(String(update[0])).not.toMatch(/last_error/);
       expect(String(update[0])).not.toContain("DELETE");
       const input = provider.startAuthorization.mock.calls[0][1];
       expect(update[1]).toEqual([CONNECTION_ID, USER_ID, sha256(input.state)]);
@@ -358,7 +390,7 @@ describe("BankSyncConnectionsService", () => {
       expect(provider.startAuthorization).not.toHaveBeenCalled();
     });
 
-    it("marks the row failed when the provider refuses", async () => {
+    it("records the failure without touching the status of a working connection when the provider refuses", async () => {
       connectionRepo.findOne.mockResolvedValue(connectionRow());
       manager.query.mockResolvedValue(tuple([{ id: CONNECTION_ID }]));
       provider.startAuthorization.mockRejectedValue(
@@ -367,7 +399,8 @@ describe("BankSyncConnectionsService", () => {
       await expect(
         service.reauthorize(USER_ID, CONNECTION_ID),
       ).rejects.toBeInstanceOf(BadRequestException);
-      expect(statements("SET status = 'failed'")).toHaveLength(1);
+      expect(failureStatements()).toHaveLength(1);
+      expectFailsOnlyPending(failureStatements()[0][0]);
     });
   });
 
@@ -401,7 +434,7 @@ describe("BankSyncConnectionsService", () => {
     }
     const claimStatement = () => statements("SET auth_state_hash = NULL")[0];
 
-    it("claims by (user, hash of the state, pending, not older than the TTL)", async () => {
+    it("claims by (user, hash of the state, not older than the TTL), whatever the status", async () => {
       claimWins();
       provider.completeAuthorization.mockResolvedValue(session());
       const pending = connectionRow({ status: "pending" });
@@ -412,7 +445,8 @@ describe("BankSyncConnectionsService", () => {
       const [sql, params] = claimStatement();
       expect(String(sql)).toContain("user_id = $1");
       expect(String(sql)).toContain("auth_state_hash = $2");
-      expect(String(sql)).toContain("status = 'pending'");
+      // A renewal claims an `active` connection: the status is no condition.
+      expect(String(sql)).not.toMatch(/status/);
       expect(String(sql)).toContain("auth_started_at >");
       expect(params).toEqual([
         USER_ID,
@@ -468,8 +502,9 @@ describe("BankSyncConnectionsService", () => {
         errorDescription: "User cancelled",
       });
 
-      const failed = statements("SET status = 'failed'")[0];
+      const failed = failureStatements()[0];
       expect(failed[1]).toEqual([CONNECTION_ID, USER_ID, "User cancelled"]);
+      expectFailsOnlyPending(failed[0]);
       expect(dataSource.transaction).toHaveBeenCalledTimes(2);
       expect(provider.completeAuthorization).not.toHaveBeenCalled();
       expect(view.status).toBe("failed");
@@ -484,9 +519,7 @@ describe("BankSyncConnectionsService", () => {
         error: "access_denied",
         errorDescription: "d".repeat(900),
       });
-      expect(
-        (statements("SET status = 'failed'")[0][1] as string[])[2],
-      ).toHaveLength(500);
+      expect((failureStatements()[0][1] as string[])[2]).toHaveLength(500);
 
       manager.query.mockClear();
       claimWins();
@@ -494,9 +527,7 @@ describe("BankSyncConnectionsService", () => {
         state: STATE,
         error: "access_denied",
       });
-      expect((statements("SET status = 'failed'")[0][1] as string[])[2]).toBe(
-        "access_denied",
-      );
+      expect((failureStatements()[0][1] as string[])[2]).toBe("access_denied");
     });
 
     it("exchanges the code outside the claiming transaction, then activates", async () => {
@@ -666,14 +697,16 @@ describe("BankSyncConnectionsService", () => {
       await expect(
         service.completeCallback(USER_ID, { state: STATE, code: "c" }),
       ).rejects.toBeInstanceOf(BadRequestException);
-      const failed = statements("SET status = 'failed'")[0];
+      const failed = failureStatements().find((call) =>
+        String(call[0]).includes("IS NOT DISTINCT FROM"),
+      )!;
       expect(failed[1]).toEqual([
         CONNECTION_ID,
         USER_ID,
         "code already used",
         null,
       ]);
-      expect(String(failed[0])).toContain("IS NOT DISTINCT FROM");
+      expectFailsOnlyPending(failed[0]);
     });
 
     it("marks it failed when the credentials cannot be resolved", async () => {
@@ -684,7 +717,11 @@ describe("BankSyncConnectionsService", () => {
       await expect(
         service.completeCallback(USER_ID, { state: STATE, code: "c" }),
       ).rejects.toBeInstanceOf(BadRequestException);
-      expect(statements("SET status = 'failed'")).toHaveLength(1);
+      expect(
+        failureStatements().filter((call) =>
+          String(call[0]).includes("IS NOT DISTINCT FROM"),
+        ),
+      ).toHaveLength(1);
       expect(provider.completeAuthorization).not.toHaveBeenCalled();
     });
 
@@ -702,6 +739,125 @@ describe("BankSyncConnectionsService", () => {
 
       expect(provider.revokeSession).toHaveBeenCalledWith(CREDS, "session-9");
       expect(connectionRepo.save).not.toHaveBeenCalled();
+    });
+
+    describe("a renewal on a connection that already has a session", () => {
+      it("activates a connection that is not pending, replacing its session", async () => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        const working = connectionRow({
+          status: "active",
+          externalSessionId: "session-1",
+        });
+        connectionRepo.findOne.mockResolvedValue(working);
+
+        const view = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+
+        expect(working).toMatchObject({
+          status: "active",
+          externalSessionId: "session-9",
+        });
+        expect(view.status).toBe("active");
+      });
+
+      it("activates an expired connection", async () => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "expired", externalSessionId: "session-1" }),
+        );
+        const view = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+        expect(view.status).toBe("active");
+      });
+
+      it("revokes the previous session after the commit, outside any transaction", async () => {
+        claimWins();
+        const order: string[] = [];
+        dataSource.transaction.mockImplementation(
+          async (fn: (m: unknown) => Promise<unknown>) => {
+            order.push("tx-start");
+            const result = await fn(manager);
+            order.push("tx-end");
+            return result;
+          },
+        );
+        provider.completeAuthorization.mockResolvedValue(session());
+        provider.revokeSession.mockImplementation(async () => {
+          order.push("revoke");
+        });
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "active", externalSessionId: "session-1" }),
+        );
+
+        await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+
+        expect(provider.revokeSession).toHaveBeenCalledTimes(1);
+        expect(provider.revokeSession).toHaveBeenCalledWith(CREDS, "session-1");
+        expect(order.slice(-2)).toEqual(["tx-end", "revoke"]);
+      });
+
+      it("does not revoke when there was no previous session, or it is the same one", async () => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "pending", externalSessionId: null }),
+        );
+        await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "active", externalSessionId: "session-9" }),
+        );
+        await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+
+        expect(provider.revokeSession).not.toHaveBeenCalled();
+      });
+
+      it("still succeeds, logging safely, when revoking the previous session fails", async () => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        provider.revokeSession.mockRejectedValue(
+          new BankSyncProviderError("unavailable", "down"),
+        );
+        const warn = jest
+          .spyOn(service["logger"], "warn")
+          .mockImplementation(() => undefined);
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "active", externalSessionId: "session-1" }),
+        );
+
+        const view = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+
+        expect(view.status).toBe("active");
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0][0])).not.toContain("PEM");
+      });
+
+      it("does not revoke the previous session when activation is refused", async () => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({
+            status: "active",
+            externalSessionId: "session-1",
+            authStateHash: "newer-hash",
+          }),
+        );
+        await expect(
+          service.completeCallback(USER_ID, { state: STATE, code: "c" }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        // Only the new, unusable session is dropped; the working one stays.
+        expect(provider.revokeSession).toHaveBeenCalledTimes(1);
+        expect(provider.revokeSession).toHaveBeenCalledWith(CREDS, "session-9");
+      });
     });
 
     it("refuses activation when the connection was deleted meanwhile", async () => {

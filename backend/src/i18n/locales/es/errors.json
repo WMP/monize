@@ -688,6 +688,8 @@
     "notLinked": "Esta cuenta bancaria no está vinculada a ninguna cuenta. Vincúlala primero.",
     "syncRunning": "Ya se está sincronizando esta cuenta. Inténtalo de nuevo en un momento.",
     "linkChanged": "La cuenta bancaria se vinculó a otra cuenta mientras se leía. No se importó nada; sincroniza de nuevo.",
+    "cutoffChanged": "La fecha de corte de la cuenta bancaria cambió mientras se leía. No se importó nada; sincroniza de nuevo.",
+    "syncUnexpected": "La sincronización falló de forma inesperada. El registro del servidor tiene los detalles.",
     "accountNotFound": "No se encontró esa cuenta.",
     "accountClosed": "La cuenta vinculada está cerrada. Reábrela o vincula otra cuenta.",
     "accountBrokerage": "Una cuenta de corretaje de inversiones no puede recibir transacciones bancarias. Vincula en su lugar su cuenta de efectivo.",

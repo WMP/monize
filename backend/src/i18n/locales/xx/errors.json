@@ -688,6 +688,8 @@
     "notLinked": "[XX-This bank account is not linked to an account. Link it first.-XX]",
     "syncRunning": "[XX-A sync of this account is already running. Try again in a moment.-XX]",
     "linkChanged": "[XX-The bank account was linked to a different account while it was being read. Nothing was imported; sync again.-XX]",
+    "cutoffChanged": "[XX-The cut-off date of the bank account changed while it was being read. Nothing was imported; sync again.-XX]",
+    "syncUnexpected": "[XX-The sync failed unexpectedly. The server log has the details.-XX]",
     "accountNotFound": "[XX-That account was not found.-XX]",
     "accountClosed": "[XX-The linked account is closed. Reopen it or link another account.-XX]",
     "accountBrokerage": "[XX-An investment brokerage account cannot receive bank transactions. Link its cash account instead.-XX]",

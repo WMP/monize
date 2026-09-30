@@ -40,7 +40,12 @@ export interface BankAccountDescriptor {
 
 /** One transaction as the provider reported it, before any Monize rule. */
 export interface BankTransaction {
+  /** Unique and immutable across sessions: the duplicate key's first choice. */
   entryReference: string | null;
+  /**
+   * A handle for fetching details only; the provider may change it between two
+   * list fetches, so it never takes part in the duplicate key.
+   */
   transactionId: string | null;
   /** The bank's own reference (`reference_number`); display data only. */
   bankReference: string | null;

@@ -32,7 +32,8 @@ export const ENABLE_BANKING_PROVIDER = "enable_banking";
 /** The provider host is fixed, so no SSRF guard is needed (plan assumption 4). */
 export const ENABLE_BANKING_BASE_URL = "https://api.enablebanking.com";
 
-const REQUEST_TIMEOUT_MS = 15_000;
+/** Each request to the provider is abandoned after this long. */
+export const REQUEST_TIMEOUT_MS = 15_000;
 
 /** A fetch of transactions stops here; beyond it the sync fails rather than truncates. */
 export const MAX_TRANSACTION_PAGES = 100;

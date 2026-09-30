@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { bankSyncApi } from '@/lib/bank-sync';
+import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
 import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
 import { getErrorMessage } from '@/lib/errors';
 import type { Account } from '@/types/account';
@@ -60,6 +61,7 @@ export function BankSyncConnectionCard({
 }: BankSyncConnectionCardProps) {
   const t = useTranslations('settings.bankSync.connection');
   const tConnect = useTranslations('settings.bankSync.connect');
+  const tSync = useTranslations('settings.bankSync.sync');
   const { formatDate } = useDateFormat();
   const notifySync = useBankSyncToast();
   // Captured once: consent is measured in days, so a clock that stands still
@@ -89,7 +91,14 @@ export function BankSyncConnectionCard({
     validUntilMs - now <= EXPIRES_SOON_DAYS * DAY_MS;
   const displayStatus: BankSyncConnectionStatus =
     connection.status === 'active' && pastDue ? 'expired' : connection.status;
-  const canRenew = displayStatus === 'expired' || expiresSoon;
+  // A renewal keeps the accounts, so it is the way out of every state that is
+  // not a working connection: a lapsed consent, an authorization never
+  // completed (`pending`) and one that ended in an error (`failed`).
+  const canRenew =
+    displayStatus === 'expired' ||
+    displayStatus === 'pending' ||
+    displayStatus === 'failed' ||
+    expiresSoon;
 
   const linkedCount = connection.accounts.filter((account) => account.accountId).length;
   const canSyncAll = displayStatus === 'active' && linkedCount > 0;
@@ -143,9 +152,13 @@ export function BankSyncConnectionCard({
   const handleSyncAll = async () => {
     setSyncing(true);
     try {
-      notifySync(await bankSyncApi.syncConnection(connection.id));
+      notifySync(await bankSyncApi.syncConnection(connection.id), connection.accounts);
     } catch (error) {
-      toast.error(getErrorMessage(error, t('syncAllFailed')));
+      toast.error(
+        isUnknownSyncOutcome(error)
+          ? tSync('outcomeUnknown')
+          : getErrorMessage(error, t('syncAllFailed')),
+      );
     } finally {
       setSyncing(false);
       await onChanged();
@@ -243,14 +256,17 @@ export function BankSyncConnectionCard({
         </div>
       )}
 
-      {connection.status === 'pending' ? (
+      {connection.status === 'pending' && (
         <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
           {t('pendingHint')}
         </p>
-      ) : connection.accounts.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          {t('noAccounts')}
-        </p>
+      )}
+      {connection.accounts.length === 0 ? (
+        connection.status !== 'pending' && (
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            {t('noAccounts')}
+          </p>
+        )
       ) : (
         <div className="mt-4">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">

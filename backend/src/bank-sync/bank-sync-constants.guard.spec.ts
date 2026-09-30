@@ -1,10 +1,15 @@
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import {
+  MAX_TRANSACTION_PAGES,
+  REQUEST_TIMEOUT_MS,
+} from "./providers/enable-banking/enable-banking.client";
+import {
   BANK_SYNC_CONNECTION_STATUSES,
   BANK_SYNC_LAST_SYNC_STATUSES,
   BANK_SYNC_PROVIDERS,
   BANK_SYNC_PSU_TYPES,
+  SYNC_LEASE_TTL_MS,
 } from "./bank-sync.constants";
 
 /**
@@ -81,5 +86,18 @@ describe("bank-sync constants match the database CHECK constraints", () => {
         checkList(sql, "bank_sync_accounts", "last_sync_status").sort(),
       ).toEqual([...BANK_SYNC_LAST_SYNC_STATUSES].sort());
     });
+  });
+});
+
+describe("the per-account sync lease", () => {
+  it("outlasts the worst case of one sync: every page at the request timeout, then the balances", () => {
+    // 100 pages x 15 s is 25 minutes; the balance reads come after them. A lease
+    // that lapses earlier lets a second sync hit the bank while the first runs.
+    const worstCaseMs = (MAX_TRANSACTION_PAGES + 2) * REQUEST_TIMEOUT_MS;
+    expect(SYNC_LEASE_TTL_MS).toBeGreaterThan(worstCaseMs);
+  });
+
+  it("is 30 minutes", () => {
+    expect(SYNC_LEASE_TTL_MS).toBe(30 * 60 * 1000);
   });
 });

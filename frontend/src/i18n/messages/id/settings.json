@@ -1486,7 +1486,7 @@
         "message": "Monize berhenti menyinkronkan bank ini dan meminta bank mengakhiri akses. Transaksi yang sudah diimpor tetap ada, dan menghubungkan bank lagi tidak mengimpornya untuk kedua kalinya.",
         "confirm": "Putuskan"
       },
-      "pendingHint": "Otorisasi di bank belum diselesaikan. Putuskan lalu hubungkan lagi untuk mencoba kembali.",
+      "pendingHint": "Otorisasi di bank belum diselesaikan. Perbarui persetujuan untuk mencoba kembali; akun yang sudah ditautkan tetap tersimpan.",
       "noAccounts": "Bank belum melaporkan rekening apa pun untuk koneksi ini.",
       "accountsHeading": "Rekening bank"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Tidak ada transaksi yang diimpor} other {# transaksi diimpor}}, {skipped, plural, =0 {tidak ada yang dilewati} other {# dilewati karena sudah diimpor}}, {refused, plural, =0 {tidak ada yang ditolak} other {# ditolak}}",
       "summaryWithReasons": "{summary}. Ditolak: {reasons}",
+      "outcomeUnknown": "Hasil sinkronisasi belum diketahui. Muat ulang halaman untuk melihat apa yang diimpor.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Tidak dapat disinkronkan: {accounts}",
+      "partialFailure": "{summary}. Tidak dapat disinkronkan: {accounts}",
       "reason": {
         "missing_date": "{count, plural, other {# tanpa tanggal}}",
         "future_date": "{count, plural, other {# bertanggal di masa depan}}",

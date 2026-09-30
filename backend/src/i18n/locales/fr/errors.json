@@ -688,6 +688,8 @@
     "notLinked": "Ce compte bancaire n'est lié à aucun compte. Liez-le d'abord.",
     "syncRunning": "Une synchronisation de ce compte est déjà en cours. Réessayez dans un instant.",
     "linkChanged": "Le compte bancaire a été lié à un autre compte pendant sa lecture. Rien n'a été importé ; synchronisez à nouveau.",
+    "cutoffChanged": "La date de début de la synchronisation du compte bancaire a changé pendant sa lecture. Rien n'a été importé ; synchronisez à nouveau.",
+    "syncUnexpected": "La synchronisation a échoué de façon inattendue. Le journal du serveur contient les détails.",
     "accountNotFound": "Ce compte est introuvable.",
     "accountClosed": "Le compte lié est fermé. Rouvrez-le ou liez un autre compte.",
     "accountBrokerage": "Un compte de courtage d'investissement ne peut pas recevoir de transactions bancaires. Liez plutôt son compte de caisse.",

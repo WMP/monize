@@ -95,7 +95,7 @@ const bounded = (text: string): string =>
  *
  * **The state is single-use because claiming it clears it.** The callback's
  * conditional `UPDATE ... SET auth_state_hash = NULL ... RETURNING` is the
- * claim: it matches only this user's `pending` row whose state is unspent and
+ * claim: it matches only this user's row whose state is unspent and
  * younger than `AUTH_STATE_TTL_MS`, so a replayed, expired or foreign state
  * finds nothing and gets the same 400. Two racing callbacks cannot both match.
  *
@@ -104,8 +104,9 @@ const bounded = (text: string): string =>
  * slow bank holds no connection and no lock.
  *
  * **A failure is recorded, not swallowed.** When a provider call fails the row
- * is marked `failed` with a bounded message, and the caller still gets the
- * mapped HTTP error.
+ * records a bounded message, and the caller still gets the mapped HTTP error.
+ * Only a first-time (`pending`) connection becomes `failed`: a renewal that
+ * fails leaves an `active` or `expired` connection as it was.
  */
 @Injectable()
 export class BankSyncConnectionsService {
@@ -192,7 +193,13 @@ export class BankSyncConnectionsService {
     });
   }
 
-  /** A new authorization on the same row: a new state, status `pending`, accounts kept. */
+  /**
+   * A new authorization on the same row: a new state and its start time, and
+   * nothing else. The status is left alone, so the session that works today
+   * keeps syncing until the new one replaces it (a renewal the user abandons or
+   * the bank refuses must not disable a working connection); the accounts and
+   * their mappings are kept.
+   */
   async reauthorize(
     userId: string,
     connectionId: string,
@@ -216,9 +223,7 @@ export class BankSyncConnectionsService {
         await m.query(
           `UPDATE bank_sync_connections
               SET auth_state_hash = $3,
-                  auth_started_at = CURRENT_TIMESTAMP,
-                  status = 'pending',
-                  last_error = NULL
+                  auth_started_at = CURRENT_TIMESTAMP
             WHERE id = $1 AND user_id = $2
         RETURNING id`,
           [connectionId, userId, hashAuthState(state)],
@@ -263,6 +268,9 @@ export class BankSyncConnectionsService {
     }
 
     const claimed = await withScopedDb(this.dataSource, async (m) => {
+      // No condition on `status`: a renewal runs on a connection that is
+      // `active` (or `expired`), and a brand-new one is still `pending`. What
+      // makes the claim this user's, single-use and fresh is the state itself.
       const rows = returnedRows<{
         id: string;
         provider: BankSyncProviderName;
@@ -272,7 +280,6 @@ export class BankSyncConnectionsService {
               SET auth_state_hash = NULL
             WHERE user_id = $1
               AND auth_state_hash = $2
-              AND status = 'pending'
               AND auth_started_at > CURRENT_TIMESTAMP - ($3::text || ' milliseconds')::interval
         RETURNING id, provider`,
           [userId, hashAuthState(dto.state), String(AUTH_STATE_TTL_MS)],
@@ -281,12 +288,15 @@ export class BankSyncConnectionsService {
       const row = rows[0];
       if (!row) return null;
       // The bank's refusal is recorded in the claiming transaction: nothing else
-      // about the row changes, and nothing has to be undone.
+      // about the row changes, and nothing has to be undone. Only a first-time
+      // (`pending`) connection becomes `failed`; one that was `active` or
+      // `expired` keeps its status, so a refused renewal never disables it.
       if (errorText !== "") {
         const description = dto.errorDescription?.trim() || errorText;
         await m.query(
           `UPDATE bank_sync_connections
-              SET status = 'failed', last_error = $3
+              SET status = CASE WHEN status = 'pending' THEN 'failed' ELSE status END,
+                  last_error = $3
             WHERE id = $1 AND user_id = $2`,
           [row.id, userId, bounded(description)],
         );
@@ -324,8 +334,12 @@ export class BankSyncConnectionsService {
       throw toBankSyncException(error);
     }
 
+    let activated: {
+      view: BankSyncConnectionView;
+      previousSessionId: string | null;
+    };
     try {
-      return await this.activate(userId, claimed.id, session.sessionId, {
+      activated = await this.activate(userId, claimed.id, session.sessionId, {
         validUntil: session.validUntil,
         accounts: session.accounts,
       });
@@ -341,6 +355,20 @@ export class BankSyncConnectionsService {
       );
       throw error;
     }
+
+    // A renewal replaced the session: the previous one is asked to end now, after
+    // the commit and outside any transaction. Best effort, like a disconnect.
+    if (
+      activated.previousSessionId !== null &&
+      activated.previousSessionId !== session.sessionId
+    ) {
+      await this.revokeBestEffort(
+        userId,
+        claimed.provider,
+        activated.previousSessionId,
+      );
+    }
+    return activated.view;
   }
 
   /** Every connection of the user with its bank accounts. */
@@ -523,9 +551,12 @@ export class BankSyncConnectionsService {
       );
     }
     // An institution that lists no access types states nothing to check against.
+    // Compared case-insensitively: the provider's spelling is not ours.
     if (
       institution.psuTypes.length > 0 &&
-      !institution.psuTypes.includes(wanted.psuType)
+      !institution.psuTypes.some(
+        (type) => type.trim().toLowerCase() === wanted.psuType.toLowerCase(),
+      )
     ) {
       throw new BadRequestException(
         tr(
@@ -547,7 +578,7 @@ export class BankSyncConnectionsService {
 
   /**
    * Ask the provider for the authorization URL, after the row is committed and
-   * outside any transaction. A failure marks the row `failed`.
+   * outside any transaction. A failure is recorded by `markFailed`.
    */
   private async dispatchAuthorization(
     userId: string,
@@ -572,12 +603,14 @@ export class BankSyncConnectionsService {
   }
 
   /**
-   * Record a failed authorization on a still-pending row, and clear its state so
-   * a failed attempt cannot be claimed later. `stateHash` is the state the
-   * failed attempt held (`null` once a callback has claimed it): a newer
-   * authorization started meanwhile holds a different one, so the predicate
-   * leaves it alone. Never throws: it runs on the way out of a failure and must
-   * not replace it.
+   * Record a failed authorization and clear its state, so a failed attempt
+   * cannot be claimed later. Only a first-time (`pending`) connection becomes
+   * `failed`; one that was `active`, `expired` or already `failed` keeps its
+   * status and records `last_error` alone, so a failed renewal never disables a
+   * working session. `stateHash` is the state the failed attempt held (`null`
+   * once a callback has claimed it): a newer authorization started meanwhile
+   * holds a different one, so the predicate leaves it alone. Never throws: it
+   * runs on the way out of a failure and must not replace it.
    */
   private async markFailed(
     userId: string,
@@ -589,8 +622,10 @@ export class BankSyncConnectionsService {
       await withScopedDb(this.dataSource, async (m) => {
         await m.query(
           `UPDATE bank_sync_connections
-              SET status = 'failed', last_error = $3, auth_state_hash = NULL
-            WHERE id = $1 AND user_id = $2 AND status = 'pending'
+              SET status = CASE WHEN status = 'pending' THEN 'failed' ELSE status END,
+                  last_error = $3,
+                  auth_state_hash = NULL
+            WHERE id = $1 AND user_id = $2
               AND auth_state_hash IS NOT DISTINCT FROM $4::varchar`,
           [connectionId, userId, bounded(message), stateHash],
         );
@@ -614,7 +649,11 @@ export class BankSyncConnectionsService {
     connectionId: string,
     sessionId: string,
     session: { validUntil: Date | null; accounts: BankAccountDescriptor[] },
-  ): Promise<BankSyncConnectionView> {
+  ): Promise<{
+    view: BankSyncConnectionView;
+    /** The session this one replaces, for the caller to revoke after the commit. */
+    previousSessionId: string | null;
+  }> {
     return withScopedDb(this.dataSource, async (m) => {
       const connections = m.getRepository(BankSyncConnection);
       const connection = await connections.findOne({
@@ -623,11 +662,9 @@ export class BankSyncConnectionsService {
       });
       if (!connection) throw this.connectionNotFound(connectionId);
       // Still the authorization this callback claimed? A re-authorization
-      // started meanwhile owns the row now, and this session is not its.
-      if (
-        connection.status !== "pending" ||
-        connection.authStateHash !== null
-      ) {
+      // started meanwhile holds a new state and owns the row now, and this
+      // session is not its.
+      if (connection.authStateHash !== null) {
         throw new ConflictException(
           tr(
             "errors.bankSync.authorizationSuperseded",
@@ -636,6 +673,7 @@ export class BankSyncConnectionsService {
         );
       }
 
+      const previousSessionId = connection.externalSessionId;
       connection.status = "active";
       connection.externalSessionId = sessionId;
       connection.validUntil = session.validUntil;
@@ -652,7 +690,10 @@ export class BankSyncConnectionsService {
         where: { userId, connectionId },
         order: { createdAt: "ASC", id: "ASC" },
       });
-      return toBankSyncConnectionView(connection, accounts);
+      return {
+        view: toBankSyncConnectionView(connection, accounts),
+        previousSessionId,
+      };
     });
   }
 

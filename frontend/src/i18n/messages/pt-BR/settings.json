@@ -1486,7 +1486,7 @@
         "message": "O Monize deixa de sincronizar este banco e pede a ele que encerre o acesso. As transações já importadas permanecem, e conectar o banco de novo não as importa uma segunda vez.",
         "confirm": "Desconectar"
       },
-      "pendingHint": "A autorização no banco não foi concluída. Desconecte e conecte de novo para tentar outra vez.",
+      "pendingHint": "A autorização no banco não foi concluída. Renove o consentimento para tentar de novo; as contas vinculadas são mantidas.",
       "noAccounts": "O banco não informou nenhuma conta para esta conexão.",
       "accountsHeading": "Contas bancárias"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Nenhuma transação importada} one {# transação importada} other {# transações importadas}}, {skipped, plural, =0 {nenhuma ignorada} one {# ignorada por já ter sido importada} other {# ignoradas por já terem sido importadas}}, {refused, plural, =0 {nenhuma recusada} one {# recusada} other {# recusadas}}",
       "summaryWithReasons": "{summary}. Recusadas: {reasons}",
+      "outcomeUnknown": "O resultado da sincronização ainda não é conhecido. Recarregue a página para ver o que foi importado.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Não foi possível sincronizar: {accounts}",
+      "partialFailure": "{summary}. Não foi possível sincronizar: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# sem data} other {# sem data}}",
         "future_date": "{count, plural, one {# com data futura} other {# com data futura}}",

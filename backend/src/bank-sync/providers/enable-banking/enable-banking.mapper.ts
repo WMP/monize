@@ -252,6 +252,12 @@ function remittanceLines(value: unknown): string[] {
  * row is the one mistake that cannot be undone quietly (it changes amount and
  * identifier when it books, and would import twice), so the doubtful case
  * resolves to "not booked" unless the bank dated the booking.
+ *
+ * `entry_reference` is what Enable Banking documents as unique and immutable
+ * across sessions, so it is the row's identity (`entryReference`).
+ * `transaction_id` is documented as a handle for fetching details that may
+ * change when the list is fetched again: it is carried as `transactionId` for
+ * that use and never takes part in the duplicate key.
  */
 export function mapTransaction(row: unknown): BankTransaction | null {
   if (!isRecord(row)) return null;

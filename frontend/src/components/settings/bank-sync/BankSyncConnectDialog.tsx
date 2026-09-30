@@ -8,6 +8,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { bankSyncApi } from '@/lib/bank-sync';
+import { consentDaysToShow } from '@/lib/bank-sync-consent';
 import { buildBankSyncCountryOptions } from '@/lib/bank-sync-countries';
 import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
 import { getErrorMessage } from '@/lib/errors';
@@ -70,6 +71,8 @@ export function BankSyncConnectDialog({
   const loading = country !== '' && institutions === null && !loadFailed;
 
   const institution = institutions?.find((item) => item.name === institutionName);
+  // What the server will request, not what the bank would allow at most.
+  const consentDays = consentDaysToShow(institution?.maximumConsentValidityDays);
   const psuOptions = allowedPsuTypes(institution);
   const effectivePsuType = psuOptions.includes(psuType) ? psuType : psuOptions[0];
 
@@ -192,9 +195,9 @@ export function BankSyncConnectDialog({
                 label: type === 'personal' ? t('psuPersonal') : t('psuBusiness'),
               }))}
             />
-            {typeof institution.maximumConsentValidityDays === 'number' && (
+            {consentDays !== null && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {t('consentDays', { days: institution.maximumConsentValidityDays })}
+                {t('consentDays', { days: consentDays })}
               </p>
             )}
           </>

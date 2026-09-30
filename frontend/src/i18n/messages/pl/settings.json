@@ -1486,7 +1486,7 @@
         "message": "Monize przestaje synchronizować ten bank i prosi go o zakończenie dostępu. Zaimportowane już transakcje pozostają. Ponowne połączenie banku nie importuje ich drugi raz.",
         "confirm": "Rozłącz"
       },
-      "pendingHint": "Autoryzacja w banku nie została ukończona. Rozłącz bank i połącz go ponownie, aby spróbować jeszcze raz.",
+      "pendingHint": "Autoryzacja w banku nie została ukończona. Odnów zgodę, aby spróbować jeszcze raz; powiązane konta zostaną zachowane.",
       "noAccounts": "Bank nie zgłosił żadnych kont dla tego połączenia.",
       "accountsHeading": "Konta bankowe"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Nie zaimportowano żadnych transakcji} one {Zaimportowano # transakcję} few {Zaimportowano # transakcje} many {Zaimportowano # transakcji} other {Zaimportowano # transakcji}}, {skipped, plural, =0 {nic nie pominięto} one {pominięto # transakcję jako już zaimportowaną} few {pominięto # transakcje jako już zaimportowane} many {pominięto # transakcji jako już zaimportowanych} other {pominięto # transakcji jako już zaimportowanych}}, {refused, plural, =0 {nic nie odrzucono} one {odrzucono # transakcję} few {odrzucono # transakcje} many {odrzucono # transakcji} other {odrzucono # transakcji}}",
       "summaryWithReasons": "{summary}. Odrzucone: {reasons}",
+      "outcomeUnknown": "Wynik synchronizacji nie jest jeszcze znany. Odśwież stronę, aby zobaczyć, co zostało zaimportowane.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Nie udało się zsynchronizować: {accounts}",
+      "partialFailure": "{summary}. Nie udało się zsynchronizować: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# bez daty} few {# bez daty} many {# bez daty} other {# bez daty}}",
         "future_date": "{count, plural, one {# z datą z przyszłości} few {# z datą z przyszłości} many {# z datą z przyszłości} other {# z datą z przyszłości}}",

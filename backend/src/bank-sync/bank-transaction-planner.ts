@@ -21,6 +21,9 @@ import type { BankTransaction } from "./providers/bank-sync-provider.interface";
  *    (INV-BANKSYNC-003: never converted, never written with a foreign amount);
  * 8. otherwise planned.
  *
+ * Before the table, a booked row repeating the entry reference of an earlier
+ * booked row of the same fetch is dropped (`dropRepeatedEntryReferences`).
+ *
  * A row whose currency the provider did not report is refused as
  * `currency_mismatch` too: an unknown currency is not the account's currency,
  * and writing the amount in the account's currency on a guess is exactly what
@@ -86,7 +89,6 @@ interface Draft {
   description: string | null;
   referenceNumber: string | null;
   entryReference: string | null;
-  transactionId: string | null;
 }
 
 type Classified =
@@ -177,7 +179,6 @@ function classify(row: BankTransaction, ctx: BankImportContext): Classified {
         BANK_IMPORT_REFERENCE_MAX_LENGTH,
       ),
       entryReference: bounded(row.entryReference, Number.MAX_SAFE_INTEGER),
-      transactionId: bounded(row.transactionId, Number.MAX_SAFE_INTEGER),
     },
   };
 }
@@ -218,20 +219,61 @@ function fitKey(prefix: string, key: string): string {
 }
 
 /**
+ * A booked row's entry reference as it will be keyed (trimmed), or null when it
+ * carries none.
+ */
+function entryReferenceOf(row: BankTransaction): string | null {
+  return bounded(row.entryReference, Number.MAX_SAFE_INTEGER);
+}
+
+/**
+ * Drops a booked row whose entry reference an earlier booked row of the same
+ * fetch already carried, first occurrence winning.
+ *
+ * Enable Banking documents `entry_reference` as unique and immutable, so a
+ * repeat inside one fetch is the same bank transaction listed twice (a row
+ * repeated across two pagination pages), never two transactions. Planned as-is
+ * both would carry the same `ref:` key and the second would be counted as
+ * `skipped` by the ledger; dropping it here keeps the counts honest. It is
+ * dropped without a counter of its own: it is not a row the bank reported once.
+ * Pending rows and rows without a reference are never dropped, and a pending
+ * row cannot shadow the booked row that later carries its reference.
+ */
+function dropRepeatedEntryReferences(
+  rows: readonly BankTransaction[],
+): BankTransaction[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (!row.booked) return true;
+    const reference = entryReferenceOf(row);
+    if (reference === null) return true;
+    if (seen.has(reference)) return false;
+    seen.add(reference);
+    return true;
+  });
+}
+
+/**
  * The plan for one fetch.
  *
  * The external key is the first that applies: `ref:` + the provider's entry
- * reference; `id:` + its transaction id; otherwise `hash:` + the SHA-256 of
- * the row's content, then `:` + the occurrence number of that hash among the
- * planned rows of this fetch, counted from 0 in the order the provider returned
- * them. The hash form is stable because every fetch requests whole days, so two
- * identical coffees on one day are always `:0` and `:1`.
+ * reference (unique and immutable across sessions); otherwise `hash:` + the
+ * SHA-256 of the row's content, then `:` + the occurrence number of that hash
+ * among the planned rows of this fetch, counted from 0 in the order the
+ * provider returned them. The hash form is stable because every fetch requests
+ * whole days, so two identical coffees on one day are always `:0` and `:1`.
+ *
+ * The provider's `transaction_id` is deliberately not a key: it is a handle for
+ * fetching details and may change between two list fetches, so a key built on
+ * it would let the same bank transaction be imported twice.
  */
 export function planBankImport(
   rows: readonly BankTransaction[],
   ctx: BankImportContext,
 ): BankImportPlan {
-  const classified = rows.map((row) => classify(row, ctx));
+  const classified = dropRepeatedEntryReferences(rows).map((row) =>
+    classify(row, ctx),
+  );
 
   const refused = Object.fromEntries(
     BANK_IMPORT_REFUSAL_REASONS.map((reason) => [
@@ -269,9 +311,6 @@ export function planBankImport(
 function keyFor(draft: Draft, occurrences: Map<string, number>): string {
   if (draft.entryReference !== null) {
     return fitKey("ref:", `ref:${draft.entryReference}`);
-  }
-  if (draft.transactionId !== null) {
-    return fitKey("id:", `id:${draft.transactionId}`);
   }
   const hash = sha256Hex(hashInput(draft));
   const occurrence = occurrences.get(hash) ?? 0;

@@ -688,6 +688,8 @@
     "notLinked": "To konto bankowe nie jest powiązane z żadnym kontem. Najpierw je powiąż.",
     "syncRunning": "Synchronizacja tego konta już trwa. Spróbuj ponownie za chwilę.",
     "linkChanged": "Podczas odczytu konto bankowe zostało powiązane z innym kontem. Nic nie zaimportowano. Zsynchronizuj ponownie.",
+    "cutoffChanged": "Podczas odczytu zmieniła się data graniczna konta bankowego. Nic nie zaimportowano. Zsynchronizuj ponownie.",
+    "syncUnexpected": "Synchronizacja nieoczekiwanie się nie powiodła. Szczegóły są w dzienniku serwera.",
     "accountNotFound": "Nie znaleziono tego konta.",
     "accountClosed": "Powiązane konto jest zamknięte. Otwórz je ponownie lub powiąż inne konto.",
     "accountBrokerage": "Maklerskie konto inwestycyjne nie może przyjmować transakcji bankowych. Powiąż zamiast tego jego konto gotówkowe.",

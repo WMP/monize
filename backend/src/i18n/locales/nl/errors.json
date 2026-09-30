@@ -688,6 +688,8 @@
     "notLinked": "Deze bankrekening is niet gekoppeld aan een rekening. Koppel haar eerst.",
     "syncRunning": "Er loopt al een synchronisatie van deze rekening. Probeer het zo meteen opnieuw.",
     "linkChanged": "De bankrekening is tijdens het lezen aan een andere rekening gekoppeld. Er is niets geïmporteerd; synchroniseer opnieuw.",
+    "cutoffChanged": "De ingangsdatum van de bankrekening is tijdens het lezen gewijzigd. Er is niets geïmporteerd; synchroniseer opnieuw.",
+    "syncUnexpected": "De synchronisatie is onverwacht mislukt. Het serverlogboek bevat de details.",
     "accountNotFound": "Die rekening is niet gevonden.",
     "accountClosed": "De gekoppelde rekening is gesloten. Heropen haar of koppel een andere rekening.",
     "accountBrokerage": "Een beleggingsbrokerage-rekening kan geen banktransacties ontvangen. Koppel in plaats daarvan de bijbehorende contantenrekening.",

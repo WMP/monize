@@ -106,6 +106,8 @@ describe("BankSyncWriterService", () => {
     userId: USER_ID,
     bankAccountId: BANK_ACCOUNT_ID,
     accountId: ACCOUNT_ID,
+    // The cut-off `bankAccountRow()` holds.
+    plannedSyncFromDate: "2026-08-01",
     plannedCurrencyCode: "PLN",
     plan: plan(planned),
     balance: null,
@@ -452,6 +454,29 @@ describe("BankSyncWriterService", () => {
         ConflictException,
       );
       wroteNothing();
+    });
+
+    it("refuses when the cut-off date changed during the fetch, writing nothing", async () => {
+      linkRepo.findOne.mockResolvedValue(
+        bankAccountRow({ syncFromDate: "2026-09-01" }),
+      );
+      await expect(service.write(input([row()]))).rejects.toMatchObject({
+        status: 409,
+      });
+      wroteNothing();
+    });
+
+    it("refuses when the cut-off date was set during the fetch (none was planned)", async () => {
+      await expect(
+        service.write(input([row()], { plannedSyncFromDate: null })),
+      ).rejects.toBeInstanceOf(ConflictException);
+      wroteNothing();
+    });
+
+    it("writes when the locked cut-off date is the one the plan was made against", async () => {
+      await expect(
+        service.write(input([row()], { plannedSyncFromDate: "2026-08-01" })),
+      ).resolves.toMatchObject({ imported: 1 });
     });
 
     it("refuses when it was unlinked during the fetch", async () => {

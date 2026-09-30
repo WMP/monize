@@ -1486,7 +1486,7 @@
         "message": "Monize synchronisiert diese Bank nicht mehr und fordert sie auf, den Zugriff zu beenden. Bereits importierte Buchungen bleiben erhalten, und wenn du die Bank erneut verbindest, werden sie nicht ein zweites Mal importiert.",
         "confirm": "Trennen"
       },
-      "pendingHint": "Die Autorisierung bei der Bank wurde nicht abgeschlossen. Trenne die Verbindung und verbinde die Bank erneut, um es noch einmal zu versuchen.",
+      "pendingHint": "Die Autorisierung bei der Bank wurde nicht abgeschlossen. Erneuere die Einwilligung, um es noch einmal zu versuchen; die verknüpften Konten bleiben erhalten.",
       "noAccounts": "Die Bank hat für diese Verbindung keine Konten gemeldet.",
       "accountsHeading": "Bankkonten"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Keine Buchungen importiert} one {# Buchung importiert} other {# Buchungen importiert}}, {skipped, plural, =0 {keine übersprungen} one {# als bereits importiert übersprungen} other {# als bereits importiert übersprungen}}, {refused, plural, =0 {keine abgelehnt} one {# abgelehnt} other {# abgelehnt}}",
       "summaryWithReasons": "{summary}. Abgelehnt: {reasons}",
+      "outcomeUnknown": "Das Ergebnis der Synchronisierung ist noch nicht bekannt. Lade die Seite neu, um zu sehen, was importiert wurde.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Nicht synchronisiert werden konnten: {accounts}",
+      "partialFailure": "{summary}. Nicht synchronisiert werden konnten: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# ohne Datum} other {# ohne Datum}}",
         "future_date": "{count, plural, one {# mit Datum in der Zukunft} other {# mit Datum in der Zukunft}}",

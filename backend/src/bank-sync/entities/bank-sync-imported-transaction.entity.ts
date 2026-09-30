@@ -45,7 +45,7 @@ export class BankSyncImportedTransaction {
   @JoinColumn({ name: "account_id" })
   account?: Account;
 
-  /** `ref:`, `id:` or `hash:` key, at most 255 characters (spec section 6). */
+  /** `ref:` or `hash:` key, at most 255 characters (spec section 6). */
   @Column({ type: "varchar", name: "external_key", length: 255 })
   externalKey: string;
 

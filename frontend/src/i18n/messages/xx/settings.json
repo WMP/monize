@@ -1486,7 +1486,7 @@
         "message": "[XX-Monize stops syncing this bank and asks it to end the access. Transactions already imported stay, and connecting the bank again does not import them a second time.-XX]",
         "confirm": "[XX-Disconnect-XX]"
       },
-      "pendingHint": "[XX-The authorization at the bank was not completed. Disconnect and connect again to retry.-XX]",
+      "pendingHint": "[XX-The authorization at the bank was not completed. Renew consent to try again; the accounts you linked are kept.-XX]",
       "noAccounts": "[XX-The bank has not reported any accounts for this connection.-XX]",
       "accountsHeading": "[XX-Bank accounts-XX]"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "[XX-{imported, plural, =0 {No transactions imported} one {# transaction imported} other {# transactions imported}}, {skipped, plural, =0 {none skipped} one {# skipped as already imported} other {# skipped as already imported}}, {refused, plural, =0 {none refused} one {# refused} other {# refused}}-XX]",
       "summaryWithReasons": "[XX-{summary}. Refused: {reasons}-XX]",
+      "outcomeUnknown": "[XX-The result of the sync is not known yet. Reload the page to see what was imported.-XX]",
+      "failedAccountItem": "[XX-{account} ({message})-XX]",
+      "allFailed": "[XX-Could not sync: {accounts}-XX]",
+      "partialFailure": "[XX-{summary}. Could not sync: {accounts}-XX]",
       "reason": {
         "missing_date": "[XX-{count, plural, one {# without a date} other {# without a date}}-XX]",
         "future_date": "[XX-{count, plural, one {# dated in the future} other {# dated in the future}}-XX]",

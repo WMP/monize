@@ -193,6 +193,22 @@ describe('BankSyncConnectDialog', () => {
     expect(screen.queryByText(/before you must renew it/)).toBeNull();
   });
 
+  it('states the consent the server will request: the bank\'s maximum capped at 180 days', async () => {
+    mockListInstitutions.mockResolvedValue([
+      institution({ name: 'Long Bank', maximumConsentValidityDays: 365 }),
+      institution({ name: 'Exact Bank', maximumConsentValidityDays: 180 }),
+    ]);
+    await renderDialog();
+
+    await chooseCountry('PL');
+    await chooseBank('Long Bank');
+    expect(screen.getByText(/up to 180 days/)).toBeInTheDocument();
+    expect(screen.queryByText(/up to 365 days/)).toBeNull();
+
+    await chooseBank('Exact Bank');
+    expect(screen.getByText(/up to 180 days/)).toBeInTheDocument();
+  });
+
   it('creates the connection and sends the browser to the bank', async () => {
     mockListInstitutions.mockResolvedValue([institution()]);
     mockCreateConnection.mockResolvedValue({

@@ -1486,7 +1486,7 @@
         "message": "Monize cesse de synchroniser cette banque et lui demande de mettre fin à l'accès. Les transactions déjà importées sont conservées, et reconnecter la banque ne les importe pas une seconde fois.",
         "confirm": "Déconnecter"
       },
-      "pendingHint": "L'autorisation auprès de la banque n'a pas été terminée. Déconnectez la banque puis reconnectez-la pour réessayer.",
+      "pendingHint": "L'autorisation auprès de la banque n'a pas été terminée. Renouvelez le consentement pour réessayer ; les comptes que vous avez liés sont conservés.",
       "noAccounts": "La banque n'a signalé aucun compte pour cette connexion.",
       "accountsHeading": "Comptes bancaires"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Aucune transaction importée} one {# transaction importée} many {# de transactions importées} other {# transactions importées}}, {skipped, plural, =0 {aucune ignorée} one {# ignorée car déjà importée} many {# ignorées car déjà importées} other {# ignorées car déjà importées}}, {refused, plural, =0 {aucune refusée} one {# refusée} many {# refusées} other {# refusées}}",
       "summaryWithReasons": "{summary}. Refusées : {reasons}",
+      "outcomeUnknown": "Le résultat de la synchronisation n'est pas encore connu. Rechargez la page pour voir ce qui a été importé.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Synchronisation impossible pour : {accounts}",
+      "partialFailure": "{summary}. Synchronisation impossible pour : {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# sans date} many {# sans date} other {# sans date}}",
         "future_date": "{count, plural, one {# datée dans le futur} many {# datées dans le futur} other {# datées dans le futur}}",

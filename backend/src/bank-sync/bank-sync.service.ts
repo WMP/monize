@@ -24,8 +24,10 @@ import {
   SYNC_LEASE_TTL_MS,
   SYNC_OVERLAP_DAYS,
 } from "./bank-sync.constants";
+import type { BankSyncConnectionStatus } from "./bank-sync.constants";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import {
+  describeFailureForClient,
   describeSyncFailure,
   storedFailureMessage,
   toBankSyncException,
@@ -33,7 +35,11 @@ import {
 import { toBankSyncAccountView } from "./bank-sync-views";
 import { BankSyncWriterService } from "./bank-sync-writer.service";
 import type { NormalizedBankBalance } from "./bank-sync-writer.service";
-import type { BankSyncAccountView, BankSyncResult } from "./bank-sync.types";
+import type {
+  BankSyncAccountView,
+  BankSyncConnectionSyncEntry,
+  BankSyncResult,
+} from "./bank-sync.types";
 import { planBankImport } from "./bank-transaction-planner";
 import type { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
@@ -250,9 +256,28 @@ export class BankSyncService {
 
   /**
    * Sync one bank account (spec section 7). `psu` is the person at the keyboard
-   * for a user-present sync and `null` for the daily one.
+   * for a user-present sync and `null` for the daily one. A provider failure is
+   * answered with the HTTP exception it maps to.
    */
   async syncAccount(
+    userId: string,
+    bankAccountId: string,
+    psu: PsuContext | null,
+  ): Promise<BankSyncResult> {
+    try {
+      return await this.attemptAccountSync(userId, bankAccountId, psu);
+    } catch (error) {
+      throw toBankSyncException(error);
+    }
+  }
+
+  /**
+   * The sync itself. A failure is recorded on the bank account and rethrown
+   * as it happened, a provider failure still a `BankSyncProviderError`, so a
+   * caller that reports failures as data (`syncConnection`) keeps the provider's
+   * error kind and `syncAccount` maps it to HTTP.
+   */
+  private async attemptAccountSync(
     userId: string,
     bankAccountId: string,
     psu: PsuContext | null,
@@ -328,6 +353,7 @@ export class BankSyncService {
         userId,
         bankAccountId,
         accountId: account.id,
+        plannedSyncFromDate: link.syncFromDate,
         plannedCurrencyCode: account.currencyCode,
         plan,
         balance,
@@ -361,57 +387,79 @@ export class BankSyncService {
       const consentGone =
         isBankSyncProviderError(error) && error.kind === "session_expired";
       await this.recordFailure(userId, link, error, consentGone);
-      throw toBankSyncException(error);
+      throw error;
     } finally {
       await this.releaseLease(userId, bankAccountId, leaseToken);
     }
   }
 
   /**
-   * Sync every linked bank account of one connection, in turn. One account's
-   * failure is recorded on it and the loop goes on. When nothing succeeded, the
-   * first failure is raised rather than an empty answer that reads as "nothing
-   * new".
+   * Sync every linked bank account of one connection, in turn, and answer with
+   * one entry per linked account, in the order they were synced: the result of
+   * an account that synced, `{ bankAccountId, error: { code, message } }` for
+   * one that did not. One account's failure is recorded on it and the loop goes
+   * on, so a partial failure is reported as one instead of as the failure of
+   * the whole call (the accounts that did import already moved their balances).
+   *
+   * It throws only when the connection itself is unusable before any account
+   * is attempted: not found, not `active`, its consent lapsed, or no readable
+   * credentials. A connection with no linked account answers `[]`.
    */
   async syncConnection(
     userId: string,
     connectionId: string,
     psu: PsuContext | null,
-  ): Promise<BankSyncResult[]> {
-    const bankAccountIds = await withScopedDb(this.dataSource, async (m) => {
-      const connection = await m
-        .getRepository(BankSyncConnection)
-        .findOne({ where: { id: connectionId, userId } });
-      if (!connection) {
-        throw new NotFoundException(
-          tr(
-            "errors.bankSync.connectionNotFound",
-            `Bank connection with ID ${connectionId} not found`,
-            { id: connectionId },
-          ),
-        );
-      }
-      const rows = await m.getRepository(BankSyncAccount).find({
-        where: { userId, connectionId },
-        order: { createdAt: "ASC", id: "ASC" },
-      });
-      return rows.filter((row) => row.accountId !== null).map((row) => row.id);
-    });
+  ): Promise<BankSyncConnectionSyncEntry[]> {
+    const { connection, usable, bankAccountIds } = await withScopedDb(
+      this.dataSource,
+      async (m) => {
+        const found = await m
+          .getRepository(BankSyncConnection)
+          .findOne({ where: { id: connectionId, userId } });
+        if (!found) {
+          throw new NotFoundException(
+            tr(
+              "errors.bankSync.connectionNotFound",
+              `Bank connection with ID ${connectionId} not found`,
+              { id: connectionId },
+            ),
+          );
+        }
+        const usable = await this.connectionUsability(m, userId, found);
+        const rows = await m.getRepository(BankSyncAccount).find({
+          where: { userId, connectionId },
+          order: { createdAt: "ASC", id: "ASC" },
+        });
+        return {
+          connection: found,
+          usable,
+          bankAccountIds: rows
+            .filter((row) => row.accountId !== null)
+            .map((row) => row.id),
+        };
+      },
+    );
+    // Outside the transaction, so a lapse it just recorded is kept.
+    this.assertConnectionUsable(connection.status, usable);
+    if (bankAccountIds.length === 0) return [];
+    // Unreadable credentials fail every account the same way: say so once.
+    await this.credentials.resolveCredentials(userId, connection.provider);
 
-    const results: BankSyncResult[] = [];
-    const failures: unknown[] = [];
+    const entries: BankSyncConnectionSyncEntry[] = [];
     for (const bankAccountId of bankAccountIds) {
       try {
-        results.push(await this.syncAccount(userId, bankAccountId, psu));
+        entries.push(await this.attemptAccountSync(userId, bankAccountId, psu));
       } catch (error) {
-        failures.push(error);
+        entries.push({
+          bankAccountId,
+          error: describeFailureForClient(error),
+        });
         this.logger.warn(
           `Sync of bank account ${bankAccountId} failed: ${describeSyncFailure(error)}`,
         );
       }
     }
-    if (results.length === 0 && failures.length > 0) throw failures[0];
-    return results;
+    return entries;
   }
 
   // ---------------------------------------------------------------------------
@@ -445,31 +493,44 @@ export class BankSyncService {
         .findOne({ where: { id: link.connectionId, userId } });
       if (!connection) throw this.bankAccountNotFound(bankAccountId);
 
-      let usable: SyncContext["usable"] = "ok";
-      if (connection.status !== "active") {
-        usable = "inactive";
-      } else if (
-        connection.validUntil !== null &&
-        connection.validUntil.getTime() <= Date.now()
-      ) {
-        // The consent has lapsed: recorded in this transaction, so the refusal
-        // below is backed by the state it names. A conditional UPDATE, so a
-        // re-authorization that started meanwhile is not overwritten.
-        await m.query(
-          `UPDATE bank_sync_connections
-              SET status = 'expired'
-            WHERE id = $1 AND user_id = $2 AND status = 'active'`,
-          [connection.id, userId],
-        );
-        usable = "expired";
-      }
+      const usable = await this.connectionUsability(m, userId, connection);
       return { link, connection, account, usable };
     });
   }
 
-  /** Refuse a sync that cannot start; the message says what to do. */
-  private assertSyncable(ctx: SyncContext): void {
-    if (ctx.usable === "expired") {
+  /**
+   * Whether a connection can be read now. A lapsed consent is recorded as
+   * `expired` in the caller's transaction, so the refusal that follows is backed
+   * by the state it names; the UPDATE is conditional, so a re-authorization that
+   * started meanwhile is not overwritten.
+   */
+  private async connectionUsability(
+    m: EntityManager,
+    userId: string,
+    connection: BankSyncConnection,
+  ): Promise<SyncContext["usable"]> {
+    if (connection.status !== "active") return "inactive";
+    if (
+      connection.validUntil !== null &&
+      connection.validUntil.getTime() <= Date.now()
+    ) {
+      await m.query(
+        `UPDATE bank_sync_connections
+            SET status = 'expired'
+          WHERE id = $1 AND user_id = $2 AND status = 'active'`,
+        [connection.id, userId],
+      );
+      return "expired";
+    }
+    return "ok";
+  }
+
+  /** Refuse a connection that cannot be read; the message says what to do. */
+  private assertConnectionUsable(
+    status: BankSyncConnectionStatus,
+    usable: SyncContext["usable"],
+  ): void {
+    if (usable === "expired") {
       throw new ConflictException(
         tr(
           "errors.bankSync.consentExpired",
@@ -477,15 +538,20 @@ export class BankSyncService {
         ),
       );
     }
-    if (ctx.usable === "inactive") {
+    if (usable === "inactive") {
       throw new ConflictException(
         tr(
           "errors.bankSync.connectionNotActive",
-          `This bank connection is ${ctx.connection.status}. Renew or reconnect it before syncing.`,
-          { status: ctx.connection.status },
+          `This bank connection is ${status}. Renew or reconnect it before syncing.`,
+          { status },
         ),
       );
     }
+  }
+
+  /** Refuse a sync that cannot start; the message says what to do. */
+  private assertSyncable(ctx: SyncContext): void {
+    this.assertConnectionUsable(ctx.connection.status, ctx.usable);
     if (ctx.account.isClosed) {
       throw new BadRequestException(
         tr(

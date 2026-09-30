@@ -1486,7 +1486,7 @@
         "message": "Monize はこの銀行の同期を停止し、銀行にアクセスの終了を依頼します。すでにインポートした取引はそのまま残り、銀行に再接続しても二重にインポートされることはありません。",
         "confirm": "接続を解除"
       },
-      "pendingHint": "銀行での承認が完了しませんでした。接続を解除してから、もう一度接続してやり直してください。",
+      "pendingHint": "銀行での承認が完了しませんでした。同意を更新してやり直してください。リンク済みの口座はそのまま残ります。",
       "noAccounts": "この接続について、銀行から口座が報告されていません。",
       "accountsHeading": "銀行口座"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {インポートした取引はありません} other {# 件の取引をインポートしました}}、{skipped, plural, =0 {スキップはありません} other {# 件はインポート済みのためスキップしました}}、{refused, plural, =0 {拒否はありません} other {# 件を拒否しました}}",
       "summaryWithReasons": "{summary}。拒否の内訳: {reasons}",
+      "outcomeUnknown": "同期の結果はまだ分かりません。ページを再読み込みして、何がインポートされたか確認してください。",
+      "failedAccountItem": "{account}（{message}）",
+      "allFailed": "同期できなかった口座: {accounts}",
+      "partialFailure": "{summary}。同期できなかった口座: {accounts}",
       "reason": {
         "missing_date": "{count, plural, other {日付なし # 件}}",
         "future_date": "{count, plural, other {未来の日付 # 件}}",

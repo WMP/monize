@@ -1,4 +1,18 @@
-import type { BankSyncResult } from '@/types/bank-sync';
+import type {
+  BankSyncConnectionEntry,
+  BankSyncFailure,
+  BankSyncResult,
+} from '@/types/bank-sync';
+
+/** True for the entry of an account that could not be synced. */
+export function isBankSyncFailure(entry: BankSyncConnectionEntry): entry is BankSyncFailure {
+  return 'error' in entry && typeof entry.error === 'object' && entry.error !== null;
+}
+
+/** The entries that are results: the accounts that did sync. */
+export function syncedResults(entries: readonly BankSyncConnectionEntry[]): BankSyncResult[] {
+  return entries.filter((entry): entry is BankSyncResult => !isBankSyncFailure(entry));
+}
 
 /** What one or more syncs did, added up. */
 export interface BankSyncTotals {

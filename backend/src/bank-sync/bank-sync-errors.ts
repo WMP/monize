@@ -85,6 +85,16 @@ export function toBankSyncException(error: unknown): unknown {
     : error;
 }
 
+/** The text of an HTTP exception's response, or its own message. */
+function httpExceptionText(error: HttpException): string {
+  const body = error.getResponse();
+  return typeof body === "string"
+    ? body
+    : typeof (body as { message?: unknown }).message === "string"
+      ? (body as { message: string }).message
+      : error.message;
+}
+
 const UNEXPECTED_FAILURE_TEXT =
   "The sync failed unexpectedly. The server log has the details.";
 
@@ -101,17 +111,55 @@ export function storedFailureMessage(error: unknown): string {
   if (isBankSyncProviderError(error)) {
     text = error.message;
   } else if (error instanceof HttpException) {
-    const body = error.getResponse();
-    text =
-      typeof body === "string"
-        ? body
-        : typeof (body as { message?: unknown }).message === "string"
-          ? (body as { message: string }).message
-          : error.message;
+    text = httpExceptionText(error);
   } else {
     text = UNEXPECTED_FAILURE_TEXT;
   }
   return text.slice(0, BANK_SYNC_STORED_MESSAGE_MAX_LENGTH);
+}
+
+/**
+ * The failure of one bank account inside a "sync every account" answer: what
+ * the HTTP mapping of the same failure would have said, as data.
+ *
+ * `code` is a stable machine code: the provider's error kind
+ * (`session_expired`, `rate_limited`, ...), `refused` for a refusal Monize made
+ * itself (a lease held, a closed account, an inactive connection), and
+ * `unexpected` for anything else. `message` is translated and bounded, and is
+ * built only from text this code controls or that the provider layer promises
+ * is safe (`mapBankSyncProviderError`, an `HttpException`'s message): an
+ * unexpected error's own message never reaches a client.
+ */
+export interface BankSyncFailureDescription {
+  code: string;
+  message: string;
+}
+
+export function describeFailureForClient(
+  error: unknown,
+): BankSyncFailureDescription {
+  if (isBankSyncProviderError(error)) {
+    return {
+      code: error.kind,
+      message: httpExceptionText(mapBankSyncProviderError(error)).slice(
+        0,
+        BANK_SYNC_STORED_MESSAGE_MAX_LENGTH,
+      ),
+    };
+  }
+  if (error instanceof HttpException) {
+    return {
+      code: "refused",
+      message: httpExceptionText(error).slice(
+        0,
+        BANK_SYNC_STORED_MESSAGE_MAX_LENGTH,
+      ),
+    };
+  }
+  return {
+    code: "unexpected",
+    message: tr("errors.bankSync.syncUnexpected", UNEXPECTED_FAILURE_TEXT),
+  };
 }
 
 /** A bounded, secret-free line for the log. */

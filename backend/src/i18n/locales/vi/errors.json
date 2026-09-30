@@ -688,6 +688,8 @@
     "notLinked": "Tài khoản ngân hàng này chưa được liên kết với tài khoản nào. Hãy liên kết trước.",
     "syncRunning": "Một lần đồng bộ của tài khoản này đang chạy. Hãy thử lại sau giây lát.",
     "linkChanged": "Tài khoản ngân hàng đã được liên kết với một tài khoản khác trong lúc đang được đọc. Không có gì được nhập; hãy đồng bộ lại.",
+    "cutoffChanged": "Ngày bắt đầu của tài khoản ngân hàng đã thay đổi trong lúc đang được đọc. Không có gì được nhập; hãy đồng bộ lại.",
+    "syncUnexpected": "Đồng bộ đã thất bại ngoài dự kiến. Nhật ký máy chủ có chi tiết.",
     "accountNotFound": "Không tìm thấy tài khoản đó.",
     "accountClosed": "Tài khoản được liên kết đã đóng. Hãy mở lại hoặc liên kết tài khoản khác.",
     "accountBrokerage": "Tài khoản môi giới đầu tư không thể nhận giao dịch ngân hàng. Hãy liên kết tài khoản tiền mặt của nó.",

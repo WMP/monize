@@ -688,6 +688,8 @@
     "notLinked": "Bu banka hesabı bir hesaba bağlı değil. Önce bağlayın.",
     "syncRunning": "Bu hesabın bir senkronizasyonu zaten çalışıyor. Birazdan tekrar deneyin.",
     "linkChanged": "Banka hesabı okunurken başka bir hesaba bağlandı. Hiçbir şey içe aktarılmadı; yeniden senkronize edin.",
+    "cutoffChanged": "Banka hesabının kesim tarihi okunurken değişti. Hiçbir şey içe aktarılmadı; yeniden senkronize edin.",
+    "syncUnexpected": "Senkronizasyon beklenmedik şekilde başarısız oldu. Ayrıntılar sunucu günlüğünde.",
     "accountNotFound": "Bu hesap bulunamadı.",
     "accountClosed": "Bağlı hesap kapalı. Yeniden açın veya başka bir hesap bağlayın.",
     "accountBrokerage": "Yatırım aracı kurum hesabı banka işlemlerini alamaz. Bunun yerine nakit hesabını bağlayın.",

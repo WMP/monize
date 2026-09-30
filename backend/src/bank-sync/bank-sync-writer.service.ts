@@ -34,6 +34,13 @@ export interface BankSyncWriteInput {
   bankAccountId: string;
   /** The Monize account the sync read for; the write refuses when the link moved. */
   accountId: string;
+  /**
+   * The cut-off date (`sync_from_date`) the plan was made against, as read at
+   * step 1 of the sync; null when the link had none. The write refuses when the
+   * locked row holds another one: rows dated between the two would be planned
+   * or dropped by a cut-off the user has since replaced.
+   */
+  plannedSyncFromDate: string | null;
   /** The account currency the plan was made against; the write refuses when it moved. */
   plannedCurrencyCode: string;
   plan: BankImportPlan;
@@ -81,8 +88,9 @@ const NO_PAYEE: ResolvedPayee = {
  * writer never writes `current_balance` itself.
  *
  * **A rejected sync has not already written.** The link and the account are
- * locked and re-checked before the first insert: a re-link, a close or a
- * currency change during the fetch refuses the whole write.
+ * locked and re-checked before the first insert: a re-link, a new cut-off
+ * date, a close or a currency change during the fetch refuses the whole write
+ * (409, and `last_success_at` does not move).
  */
 @Injectable()
 export class BankSyncWriterService {
@@ -118,6 +126,15 @@ export class BankSyncWriterService {
           tr(
             "errors.bankSync.linkChanged",
             "The bank account was linked to a different account while it was being read. Nothing was imported; sync again.",
+          ),
+        );
+      }
+
+      if (link.syncFromDate !== input.plannedSyncFromDate) {
+        throw new ConflictException(
+          tr(
+            "errors.bankSync.cutoffChanged",
+            "The cut-off date of the bank account changed while it was being read. Nothing was imported; sync again.",
           ),
         );
       }

@@ -519,6 +519,8 @@ describe("BankSyncService", () => {
         userId: USER_ID,
         bankAccountId: BANK_ACCOUNT_ID,
         accountId: ACCOUNT_ID,
+        // The cut-off read at step 1, for the write to compare under its lock.
+        plannedSyncFromDate: "2026-08-01",
         plannedCurrencyCode: "PLN",
         balance: { amount: 1500.5, currencyCode: "PLN" },
       });
@@ -581,7 +583,7 @@ describe("BankSyncService", () => {
         "bank_sync_account",
         USER_ID,
         BANK_ACCOUNT_ID,
-        10 * 60 * 1000,
+        30 * 60 * 1000,
       );
       expect(jobClaims.releaseLease).toHaveBeenCalledWith(
         "bank_sync_account",
@@ -848,6 +850,15 @@ describe("BankSyncService", () => {
     const ID_B = "b0b0b0b0-0000-4000-8000-00000000000b";
     const ID_C = "b0b0b0b0-0000-4000-8000-00000000000c";
 
+    /** `syncConnection` reports failures as data, so it calls the raw attempt. */
+    const attempt = () =>
+      jest.spyOn(
+        service as unknown as {
+          attemptAccountSync: BankSyncService["syncAccount"];
+        },
+        "attemptAccountSync",
+      );
+
     function resultOf(id: string) {
       return {
         bankAccountId: id,
@@ -879,9 +890,9 @@ describe("BankSyncService", () => {
         bankAccountRow({ id: ID_B, accountId: null }),
         linked(ID_C),
       ]);
-      const spy = jest
-        .spyOn(service, "syncAccount")
-        .mockImplementation(async (_user, id) => resultOf(id));
+      const spy = attempt().mockImplementation(async (_user, id) =>
+        resultOf(id),
+      );
 
       const results = await service.syncConnection(
         USER_ID,
@@ -893,9 +904,9 @@ describe("BankSyncService", () => {
       expect(results.map((r) => r.bankAccountId)).toEqual([ID_A, ID_C]);
     });
 
-    it("carries on after one account fails and returns the others", async () => {
+    it("carries on after one account fails and answers one entry per linked account", async () => {
       linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
-      jest.spyOn(service, "syncAccount").mockImplementation(async (_u, id) => {
+      attempt().mockImplementation(async (_u, id) => {
         if (id === ID_A) throw new ConflictException("busy");
         return resultOf(id);
       });
@@ -904,17 +915,131 @@ describe("BankSyncService", () => {
         CONNECTION_ID,
         null,
       );
-      expect(results.map((r) => r.bankAccountId)).toEqual([ID_C]);
+      expect(results).toEqual([
+        {
+          bankAccountId: ID_A,
+          error: { code: "refused", message: "busy" },
+        },
+        resultOf(ID_C),
+      ]);
     });
 
-    it("raises the first failure when nothing succeeded, never an answer that reads as nothing new", async () => {
+    it("keeps the provider's error kind as the code and the HTTP mapping's translated message, end to end", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A)]);
+      provider.fetchTransactions.mockRejectedValue(
+        new BankSyncProviderError("rate_limited", "429 from the bank", 429),
+      );
+      const [failed] = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+      expect(failed).toEqual({
+        bankAccountId: ID_A,
+        error: {
+          code: "rate_limited",
+          message:
+            "The bank or the provider limited how often this account can be read. Banks allow only a few unattended reads a day; try again later.",
+        },
+      });
+      // The failure is still recorded on the bank account.
+      expect(statements("last_sync_status = 'failed'")).toHaveLength(1);
+    });
+
+    it("reports a raw provider error under its kind", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A)]);
+      attempt().mockRejectedValue(
+        new BankSyncProviderError("unavailable", "gateway down", 502),
+      );
+      const [failed] = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+      expect(failed).toEqual({
+        bankAccountId: ID_A,
+        error: {
+          code: "unavailable",
+          message:
+            "The bank sync provider did not answer. Nothing was changed; try again later.",
+        },
+      });
+    });
+
+    it("never puts an unexpected error's own text in the answer", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A)]);
+      attempt().mockRejectedValue(new Error("password=hunter2 at 10.0.0.1"));
+      const [failed] = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+      expect(failed).toEqual({
+        bankAccountId: ID_A,
+        error: {
+          code: "unexpected",
+          message:
+            "The sync failed unexpectedly. The server log has the details.",
+        },
+      });
+      expect(JSON.stringify(failed)).not.toContain("hunter2");
+    });
+
+    it("answers every failure as an entry when nothing succeeded, never as nothing new and never as a throw", async () => {
       linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
-      jest
-        .spyOn(service, "syncAccount")
-        .mockRejectedValue(new ConflictException("consent expired"));
+      attempt().mockRejectedValue(new ConflictException("consent expired"));
+      const results = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+      expect(results).toEqual([
+        {
+          bankAccountId: ID_A,
+          error: { code: "refused", message: "consent expired" },
+        },
+        {
+          bankAccountId: ID_C,
+          error: { code: "refused", message: "consent expired" },
+        },
+      ]);
+    });
+
+    it("throws before any account is attempted when the connection is not active", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
+      connectionRepo.findOne.mockResolvedValue(
+        connectionRow({ status: "failed" }),
+      );
+      const spy = attempt();
       await expect(
         service.syncConnection(USER_ID, CONNECTION_ID, null),
-      ).rejects.toThrow("consent expired");
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("throws before any account is attempted when the consent has lapsed, recording the lapse", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A)]);
+      connectionRepo.findOne.mockResolvedValue(
+        connectionRow({ validUntil: new Date(Date.now() - 1000) }),
+      );
+      const spy = attempt();
+      await expect(
+        service.syncConnection(USER_ID, CONNECTION_ID, null),
+      ).rejects.toThrow(/expired or was withdrawn/);
+      expect(spy).not.toHaveBeenCalled();
+      expect(statements("SET status = 'expired'")).toHaveLength(1);
+    });
+
+    it("throws before any account is attempted when the credentials cannot be read", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
+      credentials.resolveCredentials.mockRejectedValue(
+        new BadRequestException("no credentials"),
+      );
+      const spy = attempt();
+      await expect(
+        service.syncConnection(USER_ID, CONNECTION_ID, null),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(spy).not.toHaveBeenCalled();
     });
 
     it("answers an empty list for a connection with no linked account", async () => {

@@ -1486,7 +1486,7 @@
         "message": "Monize 將停止同步此銀行，並請求銀行終止存取。已匯入的交易會保留，重新連接該銀行也不會再次匯入它們。",
         "confirm": "中斷連線"
       },
-      "pendingHint": "銀行端的授權未完成。請中斷連線後重新連接以重試。",
+      "pendingHint": "銀行端的授權未完成。請續期授權以重試；已關聯的科目會保留。",
       "noAccounts": "銀行尚未回報此連線下的任何科目。",
       "accountsHeading": "銀行科目"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {未匯入任何交易} other {已匯入 # 筆交易}}，{skipped, plural, =0 {無跳過} other {# 筆因已匯入而跳過}}，{refused, plural, =0 {無拒絕} other {# 筆被拒絕}}",
       "summaryWithReasons": "{summary}。拒絕原因：{reasons}",
+      "outcomeUnknown": "同步結果尚不明確。請重新載入頁面，查看已匯入的內容。",
+      "failedAccountItem": "{account}（{message}）",
+      "allFailed": "以下科目無法同步：{accounts}",
+      "partialFailure": "{summary}。以下科目無法同步：{accounts}",
       "reason": {
         "missing_date": "{count, plural, other {# 筆沒有日期}}",
         "future_date": "{count, plural, other {# 筆日期在未來}}",

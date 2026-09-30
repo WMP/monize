@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { AxiosError, AxiosHeaders } from 'axios';
 import toast from 'react-hot-toast';
 import { act, fireEvent, render, screen, waitFor, within } from '@/test/render';
 import { BankSyncConnectionCard } from './BankSyncConnectionCard';
@@ -6,6 +7,7 @@ import type { Account } from '@/types/account';
 import type {
   BankSyncAccount,
   BankSyncConnection,
+  BankSyncFailure,
   BankSyncResult,
 } from '@/types/bank-sync';
 
@@ -113,6 +115,29 @@ const result = (over: Partial<BankSyncResult> = {}): BankSyncResult => ({
   ...over,
 });
 
+const failure = (bankAccountId: string, message = 'The bank did not answer.'): BankSyncFailure => ({
+  bankAccountId,
+  error: { code: 'unavailable', message },
+});
+
+/** An axios failure: a timeout has no response, a refusal or a crash has a status. */
+const axiosFailure = (status?: number) =>
+  new AxiosError(
+    'failed',
+    status === undefined ? 'ECONNABORTED' : 'ERR_BAD_RESPONSE',
+    undefined,
+    undefined,
+    status === undefined
+      ? undefined
+      : {
+          status,
+          statusText: '',
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+          data: { message: `Server said ${status}` },
+        },
+  );
+
 const originalLocation = window.location;
 const assign = vi.fn();
 
@@ -214,19 +239,44 @@ describe('BankSyncConnectionCard', () => {
       expect(screen.getByRole('button', { name: 'Renew consent' })).toBeInTheDocument();
     });
 
-    it('shows a failed connection with the bank error and no renewal', () => {
+    it('shows a failed connection with the bank error and offers to renew it', () => {
       renderCard(connection({ status: 'failed', lastError: 'Access denied at the bank', accounts: [] }));
 
       expect(screen.getByText('Failed')).toBeInTheDocument();
       expect(screen.getByText('Access denied at the bank')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Renew consent' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Renew consent' })).toBeInTheDocument();
       expect(screen.queryByRole('switch')).toBeNull();
     });
 
-    it('says a pending connection was not completed', () => {
+    it('says a pending connection was not completed, and offers to renew instead of telling the reader to disconnect', () => {
       renderCard(connection({ status: 'pending', accounts: [] }));
 
       expect(screen.getByText(/authorization at the bank was not completed/)).toBeInTheDocument();
+      expect(screen.getByText(/Renew consent to try again/)).toBeInTheDocument();
+      expect(screen.queryByText(/Disconnect and connect again/)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Renew consent' })).toBeInTheDocument();
+    });
+
+    it('shows the accounts a pending connection already has, so renewing keeps them in view', () => {
+      renderCard(
+        connection({
+          status: 'pending',
+          accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' })],
+        }),
+      );
+
+      expect(screen.getByText(/authorization at the bank was not completed/)).toBeInTheDocument();
+      expect(screen.getByText('Bank accounts')).toBeInTheDocument();
+      expect(screen.getByText('Everyday')).toBeInTheDocument();
+      // A pending connection cannot be synced.
+      expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Sync all' })).toBeNull();
+    });
+
+    it('does not say the bank reported no accounts for a pending connection that has none yet', () => {
+      renderCard(connection({ status: 'pending', accounts: [] }));
+
+      expect(screen.queryByText(/has not reported any accounts/)).toBeNull();
     });
 
     it('says the bank reported no accounts, rather than showing an empty list', () => {
@@ -243,6 +293,21 @@ describe('BankSyncConnectionCard', () => {
         authorizationUrl: 'https://bank.example/authorize?state=z',
       });
       renderCard(connection({ status: 'expired' }));
+
+      await click('Renew consent');
+
+      expect(mockReauthorize).toHaveBeenCalledWith('c1');
+      await waitFor(() =>
+        expect(assign).toHaveBeenCalledWith('https://bank.example/authorize?state=z'),
+      );
+    });
+
+    it.each(['pending', 'failed'] as const)('starts a renewal of a %s connection', async (status) => {
+      mockReauthorize.mockResolvedValue({
+        connectionId: 'c1',
+        authorizationUrl: 'https://bank.example/authorize?state=z',
+      });
+      renderCard(connection({ status }));
 
       await click('Renew consent');
 
@@ -353,6 +418,93 @@ describe('BankSyncConnectionCard', () => {
       expect(onChanged).toHaveBeenCalled();
     });
 
+    it('names the failed account in an error toast and still summarises the accounts that synced', async () => {
+      mockSyncConnection.mockResolvedValue([
+        result({ imported: 2, skipped: 1 }),
+        failure('ba-2', 'The bank sync provider did not answer.'),
+      ]);
+      const { onChanged } = renderCard(
+        connection({
+          accounts: [
+            bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' }),
+            bankAccount({ id: 'ba-2', displayName: 'Savings pot', accountId: 'a2', syncFromDate: '2026-01-01' }),
+          ],
+        }),
+      );
+
+      await click('Sync all');
+
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledTimes(1);
+      expect(toast.error).toHaveBeenCalledWith(
+        '2 transactions imported, 1 skipped as already imported, none refused. Could not sync: Savings pot (The bank sync provider did not answer.)',
+        { duration: 10000 },
+      );
+      expect(onChanged).toHaveBeenCalled();
+    });
+
+    it('names a failed account by its masked number when it has no display name, and by a label when it has neither', async () => {
+      mockSyncConnection.mockResolvedValue([failure('ba-1', 'Busy.'), failure('ba-2', 'Busy.')]);
+      renderCard(
+        connection({
+          accounts: [
+            bankAccount({ displayName: null, identifierMasked: '**** 1234', accountId: 'a1', syncFromDate: '2026-01-01' }),
+            bankAccount({
+              id: 'ba-2',
+              displayName: null,
+              identifierMasked: null,
+              accountId: 'a2',
+              syncFromDate: '2026-01-01',
+            }),
+          ],
+        }),
+      );
+
+      await click('Sync all');
+
+      expect(toast.error).toHaveBeenCalledWith(
+        'Could not sync: **** 1234 (Busy.) and Unnamed bank account (Busy.)',
+        { duration: 10000 },
+      );
+    });
+
+    it('reports every account failing as an error, never as a success with zero rows', async () => {
+      mockSyncConnection.mockResolvedValue([failure('ba-1')]);
+      renderCard(linked());
+
+      await click('Sync all');
+
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith(
+        'Could not sync: Everyday (The bank did not answer.)',
+        { duration: 10000 },
+      );
+    });
+
+    it('says the result is not known yet when the request timed out or the server crashed', async () => {
+      for (const status of [undefined, 500, 504]) {
+        vi.clearAllMocks();
+        mockSyncConnection.mockRejectedValue(axiosFailure(status));
+        const view = renderCard(linked());
+
+        await click('Sync all');
+
+        expect(toast.error).toHaveBeenCalledWith(
+          'The result of the sync is not known yet. Reload the page to see what was imported.',
+        );
+        view.unmount();
+      }
+    });
+
+    it('keeps the server message for a 4xx refusal', async () => {
+      mockSyncConnection.mockRejectedValue(axiosFailure(409));
+      renderCard(linked());
+
+      await click('Sync all');
+
+      expect(toast.error).toHaveBeenCalledWith('Server said 409');
+    });
+
     it('reports a failed sync and still reloads what the server recorded', async () => {
       mockSyncConnection.mockRejectedValue({ response: { data: { message: 'Consent expired' } } });
       const { onChanged } = renderCard(linked());
@@ -414,6 +566,21 @@ describe('BankSyncConnectionCard', () => {
       });
 
       expect(optionLabels()).toEqual(['Not linked', 'Open EUR (EUR)']);
+    });
+
+    it('excludes exactly the accounts the server refuses for ownership: another owner\'s, not one the user owns and shares out', () => {
+      renderCard(connection(), {
+        accounts: [
+          account({ id: 'mine', name: 'Mine' }),
+          // The user owns it and has shared it with someone: it stays assignable.
+          account({ id: 'shared-out', name: 'Shared out', isJoint: false, jointGranteeCount: 2 }),
+          account({ id: 'shared-out-undefined', name: 'Shared out too', isJoint: undefined, jointGranteeCount: 1 }),
+          // Another owner shared it with the user: the server answers 400 for it.
+          account({ id: 'shared-in', name: 'Shared in', isJoint: true, ownerLabel: 'Alex' }),
+        ],
+      });
+
+      expect(optionLabels()).toEqual(['Not linked', 'Mine (EUR)', 'Shared out (EUR)', 'Shared out too (EUR)']);
     });
 
     it('does not filter by currency when the bank account has none', () => {
@@ -596,6 +763,32 @@ describe('BankSyncConnectionCard', () => {
       );
     });
 
+    it('says the result is not known yet when the request timed out or the server crashed', async () => {
+      for (const status of [undefined, 500, 503]) {
+        vi.clearAllMocks();
+        mockSyncAccount.mockRejectedValue(axiosFailure(status));
+        const { onChanged, unmount } = renderCard(linked());
+
+        await click('Sync now');
+
+        expect(toast.error).toHaveBeenCalledWith(
+          'The result of the sync is not known yet. Reload the page to see what was imported.',
+        );
+        // The row is read again: it shows whatever the server recorded.
+        expect(onChanged).toHaveBeenCalled();
+        unmount();
+      }
+    });
+
+    it('keeps the server message for a 4xx refusal', async () => {
+      mockSyncAccount.mockRejectedValue(axiosFailure(409));
+      renderCard(linked());
+
+      await click('Sync now');
+
+      expect(toast.error).toHaveBeenCalledWith('Server said 409');
+    });
+
     it('shows the server message when the sync is refused, and reloads the failure it recorded', async () => {
       mockSyncAccount.mockRejectedValue({
         response: { data: { message: 'A sync of this account is already running' } },
@@ -652,6 +845,27 @@ describe('BankSyncConnectionCard', () => {
       expect(
         screen.getByText('4 transactions imported, 10 skipped as already imported, none refused'),
       ).toBeInTheDocument();
+    });
+
+    it('hides the counters of an account that was never synced, even when the server sends zeros', () => {
+      renderCard(
+        connection({
+          accounts: [
+            bankAccount({
+              accountId: 'a1',
+              syncFromDate: '2026-01-01',
+              lastSyncedAt: null,
+              lastImportedCount: 0,
+              lastSkippedCount: 0,
+              lastRefusedCount: 0,
+            }),
+          ],
+        }),
+      );
+
+      expect(screen.getByText('Not synced yet', { selector: 'span' })).toBeInTheDocument();
+      expect(screen.queryByText(/transactions? imported/)).toBeNull();
+      expect(screen.queryByText(/No transactions imported/)).toBeNull();
     });
 
     it('shows a failure with its message and no counts it does not hold', () => {

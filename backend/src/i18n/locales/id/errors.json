@@ -688,6 +688,8 @@
     "notLinked": "Rekening bank ini tidak ditautkan ke akun. Tautkan terlebih dahulu.",
     "syncRunning": "Sinkronisasi akun ini sedang berjalan. Coba lagi sebentar lagi.",
     "linkChanged": "Rekening bank ditautkan ke akun lain saat sedang dibaca. Tidak ada yang diimpor; sinkronkan lagi.",
+    "cutoffChanged": "Tanggal batas akun bank berubah saat sedang dibaca. Tidak ada yang diimpor; sinkronkan lagi.",
+    "syncUnexpected": "Sinkronisasi gagal secara tak terduga. Log server memuat rinciannya.",
     "accountNotFound": "Akun tersebut tidak ditemukan.",
     "accountClosed": "Akun yang ditautkan sudah ditutup. Buka kembali atau tautkan akun lain.",
     "accountBrokerage": "Akun pialang investasi tidak dapat menerima transaksi bank. Tautkan akun tunainya.",

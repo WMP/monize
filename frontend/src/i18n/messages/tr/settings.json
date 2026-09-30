@@ -1486,7 +1486,7 @@
         "message": "Monize bu bankayı senkronize etmeyi bırakır ve bankadan erişimi sonlandırmasını ister. Önceden içe aktarılan işlemler kalır ve bankayı yeniden bağlamak onları ikinci kez içe aktarmaz.",
         "confirm": "Bağlantıyı kes"
       },
-      "pendingHint": "Bankadaki yetkilendirme tamamlanmadı. Yeniden denemek için bağlantıyı kesip tekrar bağlayın.",
+      "pendingHint": "Bankadaki yetkilendirme tamamlanmadı. Yeniden denemek için onayı yenileyin; bağladığınız hesaplar korunur.",
       "noAccounts": "Banka bu bağlantı için herhangi bir hesap bildirmedi.",
       "accountsHeading": "Banka hesapları"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {İşlem içe aktarılmadı} one {# işlem içe aktarıldı} other {# işlem içe aktarıldı}}, {skipped, plural, =0 {atlanan yok} one {# tanesi zaten içe aktarıldığı için atlandı} other {# tanesi zaten içe aktarıldığı için atlandı}}, {refused, plural, =0 {reddedilen yok} one {# tanesi reddedildi} other {# tanesi reddedildi}}",
       "summaryWithReasons": "{summary}. Reddedilenler: {reasons}",
+      "outcomeUnknown": "Senkronizasyonun sonucu henüz bilinmiyor. Nelerin içe aktarıldığını görmek için sayfayı yeniden yükleyin.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Senkronize edilemeyenler: {accounts}",
+      "partialFailure": "{summary}. Senkronize edilemeyenler: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# tanesi tarihsiz} other {# tanesi tarihsiz}}",
         "future_date": "{count, plural, one {# tanesi gelecek tarihli} other {# tanesi gelecek tarihli}}",

@@ -688,6 +688,8 @@
     "notLinked": "Questo conto bancario non è collegato a nessun conto. Collegalo prima.",
     "syncRunning": "Una sincronizzazione di questo conto è già in corso. Riprova tra un momento.",
     "linkChanged": "Il conto bancario è stato collegato a un altro conto durante la lettura. Non è stato importato nulla; sincronizza di nuovo.",
+    "cutoffChanged": "La data di inizio del conto bancario è cambiata durante la lettura. Non è stato importato nulla; sincronizza di nuovo.",
+    "syncUnexpected": "La sincronizzazione non è riuscita in modo imprevisto. I dettagli sono nel registro del server.",
     "accountNotFound": "Quel conto non è stato trovato.",
     "accountClosed": "Il conto collegato è chiuso. Riaprilo oppure collega un altro conto.",
     "accountBrokerage": "Un conto di intermediazione di investimento non può ricevere transazioni bancarie. Collega invece il suo conto contanti.",

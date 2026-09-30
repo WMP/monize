@@ -12,6 +12,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useRelativeTime } from '@/hooks/useRelativeTime';
 import { buildAccountDropdownOptions, isInvestmentBrokerageAccount } from '@/lib/account-utils';
 import { bankSyncApi } from '@/lib/bank-sync';
+import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
 import { getErrorMessage } from '@/lib/errors';
 import { sumMoney } from '@/lib/format';
 import type { Account } from '@/types/account';
@@ -126,9 +127,11 @@ export function BankSyncAccountRow({
   const handleSync = async () => {
     setSyncing(true);
     try {
-      notifySync([await bankSyncApi.syncAccount(bankAccount.id)]);
+      notifySync([await bankSyncApi.syncAccount(bankAccount.id)], [bankAccount]);
     } catch (error) {
-      toast.error(getErrorMessage(error, t('syncFailed')));
+      toast.error(
+        isUnknownSyncOutcome(error) ? tSync('outcomeUnknown') : getErrorMessage(error, t('syncFailed')),
+      );
     } finally {
       setSyncing(false);
       // The server records a failure on the row too, so read it either way.
@@ -166,7 +169,9 @@ export function BankSyncAccountRow({
   }
 
   const name = bankAccount.displayName || bankAccount.identifierMasked || t('unnamed');
+  // The counts describe the last sync: with none, they are zeros nobody counted.
   const lastCounts =
+    bankAccount.lastSyncedAt !== null &&
     bankAccount.lastImportedCount !== null &&
     bankAccount.lastSkippedCount !== null &&
     bankAccount.lastRefusedCount !== null

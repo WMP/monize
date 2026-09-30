@@ -1486,7 +1486,7 @@
         "message": "Monize stopt met het synchroniseren van deze bank en vraagt haar de toegang te beëindigen. Al geïmporteerde transacties blijven staan, en als je de bank opnieuw koppelt, worden ze niet een tweede keer geïmporteerd.",
         "confirm": "Ontkoppelen"
       },
-      "pendingHint": "De autorisatie bij de bank is niet voltooid. Ontkoppel de bank en koppel haar opnieuw om het nog eens te proberen.",
+      "pendingHint": "De autorisatie bij de bank is niet voltooid. Verleng de toestemming om het nog eens te proberen; de gekoppelde rekeningen blijven behouden.",
       "noAccounts": "De bank heeft voor deze koppeling geen rekeningen gemeld.",
       "accountsHeading": "Bankrekeningen"
     },
@@ -1535,6 +1535,10 @@
     "sync": {
       "summary": "{imported, plural, =0 {Geen transacties geïmporteerd} one {# transactie geïmporteerd} other {# transacties geïmporteerd}}, {skipped, plural, =0 {geen overgeslagen} one {# overgeslagen omdat al geïmporteerd} other {# overgeslagen omdat al geïmporteerd}}, {refused, plural, =0 {geen geweigerd} one {# geweigerd} other {# geweigerd}}",
       "summaryWithReasons": "{summary}. Geweigerd: {reasons}",
+      "outcomeUnknown": "Het resultaat van de synchronisatie is nog niet bekend. Laad de pagina opnieuw om te zien wat er is geïmporteerd.",
+      "failedAccountItem": "{account} ({message})",
+      "allFailed": "Synchroniseren mislukt voor: {accounts}",
+      "partialFailure": "{summary}. Synchroniseren mislukt voor: {accounts}",
       "reason": {
         "missing_date": "{count, plural, one {# zonder datum} other {# zonder datum}}",
         "future_date": "{count, plural, one {# met een datum in de toekomst} other {# met een datum in de toekomst}}",
