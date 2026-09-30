@@ -966,7 +966,8 @@
     "help": "Aide et support",
     "dangerZone": "Zone dangereuse",
     "about": "À propos",
-    "payeeLookup": "Recherche de bénéficiaires"
+    "payeeLookup": "Recherche de bénéficiaires",
+    "bankSync": "Synchronisation bancaire"
   },
   "page": {
     "title": "Paramètres",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "Paramètres IA",
       "description": "Configurez les fournisseurs d'IA, gérez les clés API et consultez les statistiques d'utilisation."
+    },
+    "bankSyncCard": {
+      "title": "Synchronisation bancaire",
+      "description": "Connectez votre banque via Open Banking et importez ses transactions comptabilisées dans vos comptes."
     },
     "delegateSecurityError": "Impossible de charger vos paramètres de sécurité.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "N'importe quel fournisseur, par priorité",
       "moveUp": "Monter",
       "moveDown": "Descendre"
+    }
+  },
+  "bankSync": {
+    "backLink": "Retour aux paramètres",
+    "title": "Synchronisation bancaire",
+    "subtitle": "Importez les transactions comptabilisées de vos comptes bancaires via Open Banking",
+    "demoRestricted": {
+      "heading": "Restreint en mode démo",
+      "body": "La synchronisation bancaire est désactivée en mode démo."
+    },
+    "loadFailed": {
+      "title": "Impossible de charger la synchronisation bancaire",
+      "retry": "Réessayer"
+    },
+    "credentials": {
+      "title": "Application Enable Banking",
+      "subtitle": "Monize lit vos comptes bancaires via votre propre application Enable Banking. Enregistrez-en une dans le panneau de contrôle d'Enable Banking, puis saisissez ici son ID d'application et sa clé privée.",
+      "notConfigured": "Aucune application n'est encore configurée.",
+      "applicationId": "ID de l'application",
+      "keyStored": "Une clé privée est enregistrée.",
+      "keyMissing": "Aucune clé privée n'est enregistrée.",
+      "configure": "Configurer les identifiants",
+      "edit": "Modifier les identifiants",
+      "remove": "Supprimer les identifiants",
+      "test": "Tester la connexion",
+      "testing": "Test en cours...",
+      "encryptionUnavailable": "Ce serveur n'a aucune clé de chiffrement configurée : les identifiants ne peuvent donc pas être enregistrés.",
+      "redirectUrlLabel": "URL de redirection",
+      "redirectUrlHelp": "Enregistrez exactement cette URL comme URL de redirection dans le panneau de contrôle d'Enable Banking. Votre banque vous y renvoie après que vous avez autorisé l'accès.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "copyFailed": "Impossible de copier l'URL de redirection",
+      "testSuccess": "L'application fonctionne : {name}",
+      "testSuccessNoName": "L'application fonctionne.",
+      "testRedirectMissing": "L'application fonctionne, mais l'URL de redirection ci-dessus n'est pas enregistrée pour elle. Ajoutez-la dans le panneau de contrôle d'Enable Banking.",
+      "testFailed": "Le fournisseur n'a pas accepté ces identifiants.",
+      "testError": "Impossible de tester les identifiants",
+      "saved": "Identifiants enregistrés. Utilisez Tester la connexion pour les vérifier.",
+      "saveFailed": "Impossible d'enregistrer les identifiants",
+      "removed": "Identifiants supprimés",
+      "removeFailed": "Impossible de supprimer les identifiants",
+      "removeConfirm": {
+        "title": "Supprimer les identifiants",
+        "message": "L'ID d'application et la clé privée enregistrés sont supprimés de Monize. Vous devrez les saisir à nouveau avant de pouvoir connecter une banque ou synchroniser.",
+        "confirm": "Supprimer"
+      }
+    },
+    "credentialsModal": {
+      "title": "Identifiants Enable Banking",
+      "subtitle": "Stockés chiffrés sur ce serveur. La clé privée n'est plus jamais affichée.",
+      "applicationIdLabel": "ID de l'application",
+      "applicationIdPlaceholder": "L'ID de votre application Enable Banking",
+      "applicationIdRequired": "Saisissez l'ID de l'application",
+      "applicationIdTooLong": "L'ID de l'application est trop long",
+      "privateKeyLabel": "Clé privée (PEM)",
+      "privateKeyPlaceholder": "Collez la clé privée PEM de votre application",
+      "privateKeyStoredPlaceholder": "Une clé est enregistrée. Laissez ce champ vide pour la conserver, ou collez-en une nouvelle pour la remplacer.",
+      "privateKeyHelp": "Collez le fichier PEM complet que vous avez téléchargé lors de l'enregistrement de l'application.",
+      "privateKeyRequired": "Saisissez la clé privée",
+      "privateKeyInvalid": "Cela ne ressemble pas à une clé privée PEM. Ce doit être un bloc qui commence par BEGIN et se termine par PRIVATE KEY.",
+      "privateKeyTooLong": "La clé privée est trop longue",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Enregistrement..."
+    },
+    "connections": {
+      "title": "Banques connectées",
+      "subtitle": "Chaque compte bancaire est lié à un compte Monize, et ses transactions comptabilisées y sont importées.",
+      "connect": "Connecter une banque",
+      "credentialsFirst": "Configurez vos identifiants Enable Banking ci-dessus avant de connecter une banque.",
+      "loadFailed": "Impossible de charger vos connexions bancaires.",
+      "empty": {
+        "title": "Aucune banque connectée",
+        "description": "Connectez une banque pour importer ses transactions comptabilisées dans vos comptes Monize."
+      }
+    },
+    "connect": {
+      "title": "Connecter une banque",
+      "subtitle": "Vous serez redirigé vers votre banque pour autoriser un accès en lecture seule.",
+      "countryLabel": "Pays",
+      "countryPlaceholder": "Sélectionnez un pays",
+      "institutionLabel": "Banque",
+      "institutionPlaceholder": "Recherchez votre banque",
+      "institutionsLoading": "Chargement des banques...",
+      "institutionsFailed": "Impossible de charger la liste des banques.",
+      "retry": "Réessayer",
+      "noInstitutions": "Le fournisseur ne liste aucune banque pour ce pays.",
+      "psuTypeLabel": "Titulaire du compte",
+      "psuPersonal": "Particulier",
+      "psuBusiness": "Entreprise",
+      "consentDays": "{days, plural, one {Cette banque autorise l'accès pendant # jour au maximum avant que vous deviez le renouveler.} many {Cette banque autorise l'accès pendant # de jours au maximum avant que vous deviez le renouveler.} other {Cette banque autorise l'accès pendant # jours au maximum avant que vous deviez le renouveler.}}",
+      "continue": "Continuer vers la banque",
+      "continuing": "Connexion en cours...",
+      "cancel": "Annuler",
+      "unsafeUrl": "L'adresse de la banque renvoyée par le serveur n'est pas une adresse https sécurisée : Monize ne l'a donc pas ouverte.",
+      "failed": "Impossible de démarrer la connexion"
+    },
+    "connection": {
+      "status": {
+        "pending": "En attente",
+        "active": "Active",
+        "expired": "Expirée",
+        "revoked": "Révoquée",
+        "failed": "Échouée"
+      },
+      "validUntil": "Accès valable jusqu'au {date}",
+      "expiresSoon": "Expire bientôt",
+      "autoSync": "Synchroniser automatiquement une fois par jour",
+      "autoSyncOn": "Synchronisation automatique activée",
+      "autoSyncOff": "Synchronisation automatique désactivée",
+      "autoSyncFailed": "Impossible de modifier la synchronisation automatique",
+      "renew": "Renouveler le consentement",
+      "renewFailed": "Impossible de démarrer le renouvellement",
+      "syncAll": "Tout synchroniser",
+      "syncingAll": "Synchronisation en cours...",
+      "syncAllFailed": "Impossible de synchroniser cette banque",
+      "disconnect": "Déconnecter",
+      "disconnected": "Banque déconnectée",
+      "disconnectFailed": "Impossible de déconnecter la banque",
+      "disconnectConfirm": {
+        "title": "Déconnecter {bank}",
+        "message": "Monize cesse de synchroniser cette banque et lui demande de mettre fin à l'accès. Les transactions déjà importées sont conservées, et reconnecter la banque ne les importe pas une seconde fois.",
+        "confirm": "Déconnecter"
+      },
+      "pendingHint": "L'autorisation auprès de la banque n'a pas été terminée. Déconnectez la banque puis reconnectez-la pour réessayer.",
+      "noAccounts": "La banque n'a signalé aucun compte pour cette connexion.",
+      "accountsHeading": "Comptes bancaires"
+    },
+    "account": {
+      "unnamed": "Compte bancaire sans nom",
+      "linkLabel": "Compte Monize",
+      "notLinked": "Non lié",
+      "noEligibleAccounts": "Aucun compte Monize ouvert dans cette devise n'est disponible pour la liaison.",
+      "linkFailed": "Impossible de lier le compte",
+      "unlinked": "Compte dissocié",
+      "unlinkFailed": "Impossible de dissocier le compte",
+      "syncFrom": "Importation à partir du {date}",
+      "changeCutoff": "Modifier la date de début",
+      "syncNow": "Synchroniser maintenant",
+      "syncing": "Synchronisation en cours...",
+      "syncFailed": "Impossible de synchroniser ce compte",
+      "neverSynced": "Pas encore synchronisé",
+      "lastSynced": "Dernière synchronisation {time}",
+      "lastSyncOk": "Réussie",
+      "lastSyncFailed": "Échouée",
+      "bankBalance": "Solde de la banque",
+      "bankBalanceAsOf": "{amount} au {date}",
+      "balanceNotReported": "Non communiqué par la banque",
+      "balanceNotSynced": "Pas encore synchronisé",
+      "monizeBalance": "Solde Monize",
+      "difference": "Écart",
+      "differenceHelp": "Le solde de la banque est celui que la banque a communiqué à la date indiquée. Il peut inclure des transactions que la banque n'a pas encore comptabilisées, ou comptabilisées après cette date : un petit écart est donc normal entre deux synchronisations.",
+      "differenceHidden": "Le solde de la banque est en {bankCurrency} et le compte Monize en {monizeCurrency} : aucun écart n'est donc affiché.",
+      "deletedNote": "Une transaction que vous supprimez dans Monize n'est pas réimportée par une synchronisation ultérieure : une ligne supprimée reste donc supprimée."
+    },
+    "link": {
+      "title": "Lier à {account}",
+      "editTitle": "Date de début pour {account}",
+      "syncFromLabel": "Importer les transactions à partir du",
+      "syncFromHelp": "Laissez ce champ vide et Monize commence le lendemain de la transaction la plus récente déjà présente dans le compte, ou 90 jours en arrière lorsque le compte est vide.",
+      "beforeCutoff": "Les transactions comptabilisées par la banque avant cette date ne sont jamais importées.",
+      "duplicateWarning": "Une date antérieure à la transaction la plus récente du compte peut créer des doublons de transactions que vous avez déjà saisies.",
+      "save": "Lier le compte",
+      "saveEdit": "Enregistrer",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler",
+      "saved": "Compte lié",
+      "editSaved": "Date de début enregistrée",
+      "saveFailed": "Impossible d'enregistrer la liaison"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {Aucune transaction importée} one {# transaction importée} many {# de transactions importées} other {# transactions importées}}, {skipped, plural, =0 {aucune ignorée} one {# ignorée car déjà importée} many {# ignorées car déjà importées} other {# ignorées car déjà importées}}, {refused, plural, =0 {aucune refusée} one {# refusée} many {# refusées} other {# refusées}}",
+      "summaryWithReasons": "{summary}. Refusées : {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, one {# sans date} many {# sans date} other {# sans date}}",
+        "future_date": "{count, plural, one {# datée dans le futur} many {# datées dans le futur} other {# datées dans le futur}}",
+        "invalid_amount": "{count, plural, one {# avec un montant non valide} many {# avec un montant non valide} other {# avec un montant non valide}}",
+        "unknown_direction": "{count, plural, one {# avec un sens inconnu} many {# avec un sens inconnu} other {# avec un sens inconnu}}",
+        "currency_mismatch": "{count, plural, one {# dans une autre devise} many {# dans une autre devise} other {# dans une autre devise}}",
+        "other": "{count, plural, one {# pour une autre raison} many {# pour une autre raison} other {# pour une autre raison}}"
+      }
+    },
+    "callback": {
+      "title": "Connexion à votre banque",
+      "subtitle": "Veuillez patienter pendant que Monize termine la connexion",
+      "success": "Banque connectée",
+      "successNamed": "Connecté à {bank}",
+      "bankError": "Votre banque n'a pas accordé l'accès : {message}",
+      "missingState": "La banque n'a pas renvoyé de réponse valide. Recommencez la connexion.",
+      "notActive": "La connexion n'a pas pu être terminée",
+      "failed": "Impossible de terminer la connexion"
     }
   }
 }

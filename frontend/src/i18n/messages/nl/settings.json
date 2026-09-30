@@ -966,7 +966,8 @@
     "help": "Help & ondersteuning",
     "dangerZone": "Gevarenzone",
     "about": "Over",
-    "payeeLookup": "Begunstigde opzoeken"
+    "payeeLookup": "Begunstigde opzoeken",
+    "bankSync": "Banksynchronisatie"
   },
   "page": {
     "title": "Instellingen",
@@ -989,6 +990,10 @@
     "aiSettingsCard": {
       "title": "AI-instellingen",
       "description": "Configureer AI-providers, beheer API-sleutels en bekijk gebruiksstatistieken."
+    },
+    "bankSyncCard": {
+      "title": "Banksynchronisatie",
+      "description": "Koppel je bank via Open Banking en importeer de geboekte transacties in je rekeningen."
     },
     "delegateSecurityError": "Kan jouw beveiligingsinstellingen niet laden.",
     "toasts": {
@@ -1357,6 +1362,197 @@
       "aiProviderAny": "Elke provider, op volgorde van prioriteit",
       "moveUp": "Omhoog",
       "moveDown": "Omlaag"
+    }
+  },
+  "bankSync": {
+    "backLink": "Terug naar instellingen",
+    "title": "Banksynchronisatie",
+    "subtitle": "Importeer de geboekte transacties van je bankrekeningen via Open Banking",
+    "demoRestricted": {
+      "heading": "Beperkt in demomodus",
+      "body": "Banksynchronisatie is uitgeschakeld in demomodus."
+    },
+    "loadFailed": {
+      "title": "Kan banksynchronisatie niet laden",
+      "retry": "Opnieuw proberen"
+    },
+    "credentials": {
+      "title": "Enable Banking-applicatie",
+      "subtitle": "Monize leest je bankrekeningen via je eigen Enable Banking-applicatie. Registreer er een in het Enable Banking-controlepaneel en voer hier de applicatie-ID en de privésleutel ervan in.",
+      "notConfigured": "Er is nog geen applicatie ingesteld.",
+      "applicationId": "Applicatie-ID",
+      "keyStored": "Er is een privésleutel opgeslagen.",
+      "keyMissing": "Er is geen privésleutel opgeslagen.",
+      "configure": "Inloggegevens instellen",
+      "edit": "Inloggegevens bewerken",
+      "remove": "Inloggegevens verwijderen",
+      "test": "Verbinding testen",
+      "testing": "Testen...",
+      "encryptionUnavailable": "Deze server heeft geen encryptiesleutel ingesteld, dus inloggegevens kunnen niet worden opgeslagen.",
+      "redirectUrlLabel": "Omleidings-URL",
+      "redirectUrlHelp": "Registreer precies deze URL als omleidings-URL in het Enable Banking-controlepaneel. Je bank stuurt je er weer naartoe nadat je toegang hebt verleend.",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "copyFailed": "Kan de omleidings-URL niet kopiëren",
+      "testSuccess": "De applicatie werkt: {name}",
+      "testSuccessNoName": "De applicatie werkt.",
+      "testRedirectMissing": "De applicatie werkt, maar de omleidings-URL hierboven is er niet voor geregistreerd. Voeg hem toe in het Enable Banking-controlepaneel.",
+      "testFailed": "De provider heeft deze inloggegevens niet geaccepteerd.",
+      "testError": "Kan de inloggegevens niet testen",
+      "saved": "Inloggegevens opgeslagen. Gebruik Verbinding testen om ze te controleren.",
+      "saveFailed": "Kan de inloggegevens niet opslaan",
+      "removed": "Inloggegevens verwijderd",
+      "removeFailed": "Kan de inloggegevens niet verwijderen",
+      "removeConfirm": {
+        "title": "Inloggegevens verwijderen",
+        "message": "De opgeslagen applicatie-ID en privésleutel worden uit Monize verwijderd. Je moet ze opnieuw invoeren voordat je een bank kunt koppelen of synchroniseren.",
+        "confirm": "Verwijderen"
+      }
+    },
+    "credentialsModal": {
+      "title": "Enable Banking-inloggegevens",
+      "subtitle": "Versleuteld opgeslagen op deze server. De privésleutel wordt nooit meer getoond.",
+      "applicationIdLabel": "Applicatie-ID",
+      "applicationIdPlaceholder": "De ID van je Enable Banking-applicatie",
+      "applicationIdRequired": "Voer de applicatie-ID in",
+      "applicationIdTooLong": "De applicatie-ID is te lang",
+      "privateKeyLabel": "Privésleutel (PEM)",
+      "privateKeyPlaceholder": "Plak de PEM-privésleutel van je applicatie",
+      "privateKeyStoredPlaceholder": "Er is een sleutel opgeslagen. Laat dit leeg om hem te behouden, of plak een nieuwe om hem te vervangen.",
+      "privateKeyHelp": "Plak het hele PEM-bestand dat je hebt gedownload toen je de applicatie registreerde.",
+      "privateKeyRequired": "Voer de privésleutel in",
+      "privateKeyInvalid": "Dit lijkt geen PEM-privésleutel. Het moet een blok zijn dat begint met BEGIN en eindigt met PRIVATE KEY.",
+      "privateKeyTooLong": "De privésleutel is te lang",
+      "cancel": "Annuleren",
+      "save": "Opslaan",
+      "saving": "Bezig met opslaan..."
+    },
+    "connections": {
+      "title": "Gekoppelde banken",
+      "subtitle": "Elke bankrekening is gekoppeld aan één Monize-rekening, en de geboekte transacties ervan worden daarin geïmporteerd.",
+      "connect": "Bank koppelen",
+      "credentialsFirst": "Stel hierboven je Enable Banking-inloggegevens in voordat je een bank koppelt.",
+      "loadFailed": "Kan je bankkoppelingen niet laden.",
+      "empty": {
+        "title": "Geen banken gekoppeld",
+        "description": "Koppel een bank om de geboekte transacties ervan in je Monize-rekeningen te importeren."
+      }
+    },
+    "connect": {
+      "title": "Bank koppelen",
+      "subtitle": "Je wordt naar je bank gestuurd om toegang met alleen leesrechten te autoriseren.",
+      "countryLabel": "Land",
+      "countryPlaceholder": "Selecteer een land",
+      "institutionLabel": "Bank",
+      "institutionPlaceholder": "Zoek je bank",
+      "institutionsLoading": "Banken laden...",
+      "institutionsFailed": "Kan de lijst met banken niet laden.",
+      "retry": "Opnieuw proberen",
+      "noInstitutions": "De provider vermeldt geen banken voor dit land.",
+      "psuTypeLabel": "Rekeninghouder",
+      "psuPersonal": "Particulier",
+      "psuBusiness": "Zakelijk",
+      "consentDays": "{days, plural, one {Deze bank staat toegang toe voor maximaal # dag voordat je hem moet verlengen.} other {Deze bank staat toegang toe voor maximaal # dagen voordat je hem moet verlengen.}}",
+      "continue": "Verder naar bank",
+      "continuing": "Verbinden...",
+      "cancel": "Annuleren",
+      "unsafeUrl": "Het bankadres dat de server heeft teruggegeven is geen veilig https-adres, dus Monize heeft het niet geopend.",
+      "failed": "Kan de koppeling niet starten"
+    },
+    "connection": {
+      "status": {
+        "pending": "In behandeling",
+        "active": "Actief",
+        "expired": "Verlopen",
+        "revoked": "Ingetrokken",
+        "failed": "Mislukt"
+      },
+      "validUntil": "Toegang geldig tot {date}",
+      "expiresSoon": "Verloopt binnenkort",
+      "autoSync": "Eén keer per dag automatisch synchroniseren",
+      "autoSyncOn": "Automatische synchronisatie ingeschakeld",
+      "autoSyncOff": "Automatische synchronisatie uitgeschakeld",
+      "autoSyncFailed": "Kan de automatische synchronisatie niet wijzigen",
+      "renew": "Toestemming verlengen",
+      "renewFailed": "Kan de verlenging niet starten",
+      "syncAll": "Alles synchroniseren",
+      "syncingAll": "Synchroniseren...",
+      "syncAllFailed": "Kan deze bank niet synchroniseren",
+      "disconnect": "Ontkoppelen",
+      "disconnected": "Bank ontkoppeld",
+      "disconnectFailed": "Kan de bank niet ontkoppelen",
+      "disconnectConfirm": {
+        "title": "{bank} ontkoppelen",
+        "message": "Monize stopt met het synchroniseren van deze bank en vraagt haar de toegang te beëindigen. Al geïmporteerde transacties blijven staan, en als je de bank opnieuw koppelt, worden ze niet een tweede keer geïmporteerd.",
+        "confirm": "Ontkoppelen"
+      },
+      "pendingHint": "De autorisatie bij de bank is niet voltooid. Ontkoppel de bank en koppel haar opnieuw om het nog eens te proberen.",
+      "noAccounts": "De bank heeft voor deze koppeling geen rekeningen gemeld.",
+      "accountsHeading": "Bankrekeningen"
+    },
+    "account": {
+      "unnamed": "Naamloze bankrekening",
+      "linkLabel": "Monize-rekening",
+      "notLinked": "Niet gekoppeld",
+      "noEligibleAccounts": "Er is geen open Monize-rekening in deze valuta beschikbaar om aan te koppelen.",
+      "linkFailed": "Kan de rekening niet koppelen",
+      "unlinked": "Rekening ontkoppeld",
+      "unlinkFailed": "Kan de rekening niet ontkoppelen",
+      "syncFrom": "Importeren vanaf {date}",
+      "changeCutoff": "Begindatum wijzigen",
+      "syncNow": "Nu synchroniseren",
+      "syncing": "Synchroniseren...",
+      "syncFailed": "Kan deze rekening niet synchroniseren",
+      "neverSynced": "Nog niet gesynchroniseerd",
+      "lastSynced": "Laatst gesynchroniseerd {time}",
+      "lastSyncOk": "Geslaagd",
+      "lastSyncFailed": "Mislukt",
+      "bankBalance": "Banksaldo",
+      "bankBalanceAsOf": "{amount} per {date}",
+      "balanceNotReported": "Niet gemeld door de bank",
+      "balanceNotSynced": "Nog niet gesynchroniseerd",
+      "monizeBalance": "Monize-saldo",
+      "difference": "Verschil",
+      "differenceHelp": "Het banksaldo is wat de bank op de getoonde datum heeft gemeld. Het kan transacties bevatten die de bank nog niet heeft geboekt, of pas na die datum heeft geboekt, dus een klein verschil tussen synchronisaties is normaal.",
+      "differenceHidden": "Het banksaldo staat in {bankCurrency} en de Monize-rekening in {monizeCurrency}, dus er wordt geen verschil getoond.",
+      "deletedNote": "Een transactie die je in Monize verwijdert, wordt door een latere synchronisatie niet opnieuw geïmporteerd, dus een verwijderde rij blijft verwijderd."
+    },
+    "link": {
+      "title": "Koppelen aan {account}",
+      "editTitle": "Begindatum voor {account}",
+      "syncFromLabel": "Transacties importeren vanaf",
+      "syncFromHelp": "Laat dit leeg en Monize begint op de dag na de nieuwste transactie die al in de rekening staat, of 90 dagen terug als de rekening leeg is.",
+      "beforeCutoff": "Transacties die de bank vóór deze datum heeft geboekt, worden nooit geïmporteerd.",
+      "duplicateWarning": "Een datum vóór de nieuwste transactie in de rekening kan dubbele transacties opleveren van transacties die je al hebt ingevoerd.",
+      "save": "Rekening koppelen",
+      "saveEdit": "Opslaan",
+      "saving": "Bezig met opslaan...",
+      "cancel": "Annuleren",
+      "saved": "Rekening gekoppeld",
+      "editSaved": "Begindatum opgeslagen",
+      "saveFailed": "Kan de koppeling niet opslaan"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {Geen transacties geïmporteerd} one {# transactie geïmporteerd} other {# transacties geïmporteerd}}, {skipped, plural, =0 {geen overgeslagen} one {# overgeslagen omdat al geïmporteerd} other {# overgeslagen omdat al geïmporteerd}}, {refused, plural, =0 {geen geweigerd} one {# geweigerd} other {# geweigerd}}",
+      "summaryWithReasons": "{summary}. Geweigerd: {reasons}",
+      "reason": {
+        "missing_date": "{count, plural, one {# zonder datum} other {# zonder datum}}",
+        "future_date": "{count, plural, one {# met een datum in de toekomst} other {# met een datum in de toekomst}}",
+        "invalid_amount": "{count, plural, one {# met een ongeldig bedrag} other {# met een ongeldig bedrag}}",
+        "unknown_direction": "{count, plural, one {# met een onbekende richting} other {# met een onbekende richting}}",
+        "currency_mismatch": "{count, plural, one {# in een andere valuta} other {# in een andere valuta}}",
+        "other": "{count, plural, one {# om een andere reden} other {# om een andere reden}}"
+      }
+    },
+    "callback": {
+      "title": "Je bank koppelen",
+      "subtitle": "Even geduld terwijl Monize de koppeling voltooit",
+      "success": "Bank gekoppeld",
+      "successNamed": "Gekoppeld aan {bank}",
+      "bankError": "Je bank heeft geen toegang verleend: {message}",
+      "missingState": "De bank heeft geen geldig antwoord teruggegeven. Start de koppeling opnieuw.",
+      "notActive": "De koppeling is niet voltooid",
+      "failed": "Kan de koppeling niet voltooien"
     }
   }
 }
