@@ -61,6 +61,11 @@ const WITH_CONTEXT_ALLOWLIST = [
   // the backup's own timestamps. It moved here from `backup.service.ts` when
   // issue #1092 split the restore out; the facade no longer touches the module.
   "src/backup/backup-restore.service.ts",
+  // Daily bank sync: a system-context fan-out over users with an active,
+  // auto-sync connection, then a per-user body (withUserContext) that claims the
+  // day and syncs that user's linked bank accounts. No request behind it
+  // (docs/specs/bank-sync.md section 8).
+  "src/bank-sync/bank-sync-cron.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
   // Daily portfolio-movement cron: a system-context fan-out over users with a

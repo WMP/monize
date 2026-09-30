@@ -226,15 +226,20 @@ Steps:
      linked to the same Monize account (a re-link during the fetch refuses the
      whole write: nothing is written);
    - lock the Monize account for a balance write, re-read it, refuse when it is
-     closed or is an investment brokerage account;
+     closed, is an investment brokerage account, or its currency changed since
+     the rows were planned;
    - load the `import` rules once;
    - per planned row: insert the ledger row (`ON CONFLICT DO NOTHING
      RETURNING id`); nothing returned means `skipped`; otherwise resolve the
-     payee the way the file import does, create the transaction, point the
+     payee by name, then by alias, else insert it with
+     `ON CONFLICT (user_id, name) DO UPDATE ... RETURNING` (two syncs meeting
+     the same new counterparty converge), create the transaction, point the
      ledger row at it;
    - apply the `import` rules to the created ids, with the raw payee text;
-   - move the balance once by the sum of the created amounts, summed in
-     scaled integers, with the same past/future-date rule as a manual create;
+   - recompute the balance from the ledger with
+     `AccountsService.recalculateCurrentBalance`, which joins this
+     transaction under the lock already held (INV-BALANCE-001; the writer never
+     writes `current_balance` itself);
    - write the sync outcome on the `bank_sync_accounts` row.
 6. **After the commit**: `triggerDebouncedRecalc` for the account when
    anything was created (INV-CACHE-001), release the lease.

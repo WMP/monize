@@ -1,0 +1,927 @@
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  NotFoundException,
+} from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { DataSource } from "typeorm";
+import { Account, AccountSubType } from "../accounts/entities/account.entity";
+import { JobClaimService } from "../common/jobs/job-claim.service";
+import { NetWorthService } from "../net-worth/net-worth.service";
+import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createJobClaimMock,
+  TEST_LEASE_TOKEN,
+} from "../test-helpers/job-claim-testing";
+import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
+import {
+  BankSyncService,
+  normalizeBankBalance,
+  syncWindow,
+} from "./bank-sync.service";
+import { BankSyncWriterService } from "./bank-sync-writer.service";
+import {
+  ACCOUNT_ID,
+  BANK_ACCOUNT_ID,
+  bankAccountRow,
+  bankTransaction,
+  CONNECTION_ID,
+  connectionRow,
+  fakeProvider,
+  fakeRegistry,
+  OTHER_USER_ID,
+  USER_ID,
+} from "./bank-sync-testing";
+import { BankSyncAccount } from "./entities/bank-sync-account.entity";
+import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
+import {
+  BankSyncProviderError,
+  BankSyncProviderErrorKind,
+} from "./providers/bank-sync-provider.errors";
+import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
+
+jest.mock("../common/db/scoped-db", () =>
+  jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
+);
+
+/** Fake `Date` only: a fake `nextTick` or timer would deadlock the awaits below. */
+const NOW = new Date("2026-09-30T12:00:00.000Z");
+function pinClock() {
+  jest.useFakeTimers({
+    now: NOW,
+    doNotFake: [
+      "nextTick",
+      "queueMicrotask",
+      "setImmediate",
+      "clearImmediate",
+      "setInterval",
+      "clearInterval",
+      "setTimeout",
+      "clearTimeout",
+      "hrtime",
+      "performance",
+    ],
+  });
+}
+
+describe("syncWindow", () => {
+  const today = "2026-09-30";
+
+  it("starts at the cut-off before the first success", () => {
+    expect(
+      syncWindow({ syncFromDate: "2026-08-01", lastSuccessAt: null }, today),
+    ).toEqual({ dateFrom: "2026-08-01", dateTo: today });
+  });
+
+  it("starts a week before the last success when that is later than the cut-off", () => {
+    expect(
+      syncWindow(
+        {
+          syncFromDate: "2026-08-01",
+          lastSuccessAt: new Date("2026-09-20T23:59:00.000Z"),
+        },
+        today,
+      ),
+    ).toEqual({ dateFrom: "2026-09-13", dateTo: today });
+  });
+
+  it("never starts before the cut-off", () => {
+    expect(
+      syncWindow(
+        {
+          syncFromDate: "2026-09-19",
+          lastSuccessAt: new Date("2026-09-20T00:00:00.000Z"),
+        },
+        today,
+      ).dateFrom,
+    ).toBe("2026-09-19");
+  });
+
+  it("clamps a future cut-off to today so the request is never inverted", () => {
+    expect(
+      syncWindow({ syncFromDate: "2026-12-01", lastSuccessAt: null }, today),
+    ).toEqual({ dateFrom: today, dateTo: today });
+  });
+
+  it("starts today for a link with no cut-off", () => {
+    expect(
+      syncWindow({ syncFromDate: null, lastSuccessAt: null }, today).dateFrom,
+    ).toBe(today);
+  });
+});
+
+describe("normalizeBankBalance", () => {
+  it("is null when the bank reported none", () => {
+    expect(normalizeBankBalance(null)).toBeNull();
+  });
+
+  it("rounds to money precision and upper-cases the currency", () => {
+    expect(
+      normalizeBankBalance({
+        amount: " -1234.56789 ",
+        currencyCode: "pln",
+        referenceDate: "2026-09-29",
+        balanceType: "CLBD",
+      }),
+    ).toEqual({
+      amount: -1234.5679,
+      currencyCode: "PLN",
+      referenceDate: "2026-09-29",
+    });
+  });
+
+  it("keeps a zero balance: zero is a fact, unlike a missing one", () => {
+    expect(
+      normalizeBankBalance({
+        amount: "0",
+        currencyCode: "PLN",
+        referenceDate: null,
+        balanceType: null,
+      })?.amount,
+    ).toBe(0);
+  });
+
+  it.each(["abc", "1,5", "", "1e3", "99999999999999999"])(
+    "treats the amount %p as not reported",
+    (amount) => {
+      expect(
+        normalizeBankBalance({
+          amount,
+          currencyCode: "PLN",
+          referenceDate: null,
+          balanceType: null,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it("treats a currency that is not three letters as not reported", () => {
+    expect(
+      normalizeBankBalance({
+        amount: "1",
+        currencyCode: "PL",
+        referenceDate: null,
+        balanceType: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("drops a reference date that is not a calendar day", () => {
+    expect(
+      normalizeBankBalance({
+        amount: "1",
+        currencyCode: "PLN",
+        referenceDate: "2026-02-30",
+        balanceType: null,
+      })?.referenceDate,
+    ).toBeNull();
+  });
+});
+
+describe("BankSyncService", () => {
+  const provider = fakeProvider();
+  const registry = fakeRegistry(provider);
+  const credentials: jest.Mocked<
+    Pick<BankSyncCredentialsService, "resolveCredentials">
+  > = { resolveCredentials: jest.fn() };
+  const writer: jest.Mocked<Pick<BankSyncWriterService, "write">> = {
+    write: jest.fn(),
+  };
+  const jobClaims = createJobClaimMock();
+  const netWorth: jest.Mocked<Pick<NetWorthService, "triggerDebouncedRecalc">> =
+    { triggerDebouncedRecalc: jest.fn() };
+  const linkRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
+  const connectionRepo = { findOne: jest.fn() };
+  const accountRepo = { findOne: jest.fn() };
+  const { manager, dataSource } = createScopedDbMocks([
+    [BankSyncAccount, linkRepo],
+    [BankSyncConnection, connectionRepo],
+    [Account, accountRepo],
+  ]);
+
+  const CREDS = { applicationId: "app-1", privateKeyPem: "PEM" };
+  const OTHER_ACCOUNT_ID = "a0a0a0a0-0000-4000-8000-000000000002";
+
+  let service: BankSyncService;
+
+  const account = (over: Partial<Account> = {}): Account =>
+    ({
+      id: ACCOUNT_ID,
+      userId: USER_ID,
+      currencyCode: "PLN",
+      isClosed: false,
+      accountSubType: null,
+      ...over,
+    }) as Account;
+
+  const statements = (needle: string) =>
+    manager.query.mock.calls.filter((call) => String(call[0]).includes(needle));
+
+  beforeEach(async () => {
+    pinClock();
+    jest.clearAllMocks();
+    credentials.resolveCredentials.mockResolvedValue(CREDS);
+    jobClaims.claimLease.mockResolvedValue(TEST_LEASE_TOKEN);
+    linkRepo.findOne.mockResolvedValue(bankAccountRow());
+    linkRepo.find.mockResolvedValue([]);
+    linkRepo.save.mockImplementation(async (row: unknown) => row);
+    connectionRepo.findOne.mockResolvedValue(connectionRow());
+    accountRepo.findOne.mockResolvedValue(account());
+    manager.query.mockResolvedValue([]);
+    provider.fetchTransactions.mockResolvedValue([]);
+    provider.fetchBalance.mockResolvedValue(null);
+    writer.write.mockResolvedValue({ imported: 0, skipped: 0 });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BankSyncService,
+        { provide: DataSource, useValue: dataSource },
+        { provide: BankSyncCredentialsService, useValue: credentials },
+        { provide: BankSyncProviderRegistry, useValue: registry },
+        { provide: BankSyncWriterService, useValue: writer },
+        { provide: JobClaimService, useValue: jobClaims },
+        { provide: NetWorthService, useValue: netWorth },
+      ],
+    }).compile();
+    service = module.get(BankSyncService);
+    // Expected failures are logged by design; keep the run quiet.
+    jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+    jest.spyOn(service["logger"], "error").mockImplementation(() => undefined);
+    jest.spyOn(service["logger"], "log").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  describe("linkAccount", () => {
+    const link = (
+      dto: { accountId: string | null; syncFromDate?: string | null },
+      userId = USER_ID,
+    ) => service.linkAccount(userId, BANK_ACCOUNT_ID, dto);
+
+    beforeEach(() => {
+      linkRepo.findOne.mockResolvedValue(
+        bankAccountRow({ accountId: null, syncFromDate: null }),
+      );
+      manager.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("MAX(t.transaction_date)")
+          ? [{ newest: null }]
+          : [],
+      );
+    });
+
+    const newestTransaction = (newest: string | null) =>
+      manager.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("MAX(t.transaction_date)") ? [{ newest }] : [],
+      );
+
+    it("is 404 for a bank account that is not the caller's", async () => {
+      linkRepo.findOne.mockResolvedValue(null);
+      await expect(
+        link({ accountId: ACCOUNT_ID }, OTHER_USER_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(linkRepo.findOne).toHaveBeenCalledWith({
+        where: { id: BANK_ACCOUNT_ID, userId: OTHER_USER_ID },
+        lock: { mode: "pessimistic_write" },
+      });
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("links, defaulting the cut-off to 90 days ago for an empty account", async () => {
+      const view = await link({ accountId: ACCOUNT_ID });
+      expect(view.accountId).toBe(ACCOUNT_ID);
+      expect(view.syncFromDate).toBe("2026-07-02");
+    });
+
+    it("defaults the cut-off to the day after the newest transaction", async () => {
+      newestTransaction("2026-09-10");
+      expect((await link({ accountId: ACCOUNT_ID })).syncFromDate).toBe(
+        "2026-09-11",
+      );
+    });
+
+    it("counts only rows that move money: the default reads the shared ledger predicate", async () => {
+      await link({ accountId: ACCOUNT_ID });
+      const [sql, params] = statements("MAX(t.transaction_date)")[0];
+      expect(String(sql)).toContain("status != 'VOID'");
+      expect(String(sql)).toContain("parent_transaction_id IS NULL");
+      expect(params).toEqual([ACCOUNT_ID, USER_ID]);
+    });
+
+    it("caps a default that a future-dated row would push past today", async () => {
+      newestTransaction("2026-12-24");
+      expect((await link({ accountId: ACCOUNT_ID })).syncFromDate).toBe(
+        "2026-09-30",
+      );
+    });
+
+    it("honours the cut-off the user chose", async () => {
+      expect(
+        (await link({ accountId: ACCOUNT_ID, syncFromDate: "2026-01-15" }))
+          .syncFromDate,
+      ).toBe("2026-01-15");
+    });
+
+    it("treats a blank or null date as not chosen", async () => {
+      expect(
+        (await link({ accountId: ACCOUNT_ID, syncFromDate: "" })).syncFromDate,
+      ).toBe("2026-07-02");
+      expect(
+        (await link({ accountId: ACCOUNT_ID, syncFromDate: null }))
+          .syncFromDate,
+      ).toBe("2026-07-02");
+    });
+
+    it("unlinks without touching the accounts table", async () => {
+      linkRepo.findOne.mockResolvedValue(bankAccountRow());
+      const view = await link({ accountId: null });
+      expect(view.accountId).toBeNull();
+      expect(accountRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("refuses an account the caller does not own, writing nothing", async () => {
+      accountRepo.findOne.mockResolvedValue(null);
+      await expect(
+        link({ accountId: OTHER_ACCOUNT_ID }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(accountRepo.findOne).toHaveBeenCalledWith({
+        where: { id: OTHER_ACCOUNT_ID, userId: USER_ID },
+      });
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a closed account", async () => {
+      accountRepo.findOne.mockResolvedValue(account({ isClosed: true }));
+      await expect(link({ accountId: ACCOUNT_ID })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses an investment brokerage account", async () => {
+      accountRepo.findOne.mockResolvedValue(
+        account({ accountSubType: AccountSubType.INVESTMENT_BROKERAGE }),
+      );
+      await expect(link({ accountId: ACCOUNT_ID })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses an account whose currency differs from the bank account's known currency", async () => {
+      accountRepo.findOne.mockResolvedValue(account({ currencyCode: "EUR" }));
+      await expect(link({ accountId: ACCOUNT_ID })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("links across currency spellings, and when the bank account's currency is unknown", async () => {
+      accountRepo.findOne.mockResolvedValue(account({ currencyCode: "pln" }));
+      await expect(link({ accountId: ACCOUNT_ID })).resolves.toBeDefined();
+
+      linkRepo.findOne.mockResolvedValue(
+        bankAccountRow({
+          accountId: null,
+          syncFromDate: null,
+          currencyCode: null,
+        }),
+      );
+      accountRepo.findOne.mockResolvedValue(account({ currencyCode: "EUR" }));
+      await expect(link({ accountId: ACCOUNT_ID })).resolves.toBeDefined();
+    });
+
+    it("refuses an account already linked to another bank account", async () => {
+      manager.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("SELECT 1 FROM bank_sync_accounts")
+          ? [{ "?column?": 1 }]
+          : [],
+      );
+      await expect(link({ accountId: ACCOUNT_ID })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(linkRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("translates the partial unique index violation into the same 400", async () => {
+      linkRepo.save.mockRejectedValue(
+        Object.assign(new Error("duplicate key"), {
+          driverError: { code: "23505" },
+        }),
+      );
+      const error = await link({ accountId: ACCOUNT_ID }).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).message).toMatch(/already linked/i);
+    });
+
+    it("rethrows any other write failure", async () => {
+      linkRepo.save.mockRejectedValue(new Error("connection reset"));
+      await expect(link({ accountId: ACCOUNT_ID })).rejects.toThrow(
+        "connection reset",
+      );
+    });
+
+    describe("what a changed mapping forgets", () => {
+      const synced = () =>
+        bankAccountRow({
+          lastSuccessAt: new Date("2026-09-20T00:00:00.000Z"),
+          lastSyncedAt: new Date("2026-09-20T00:00:00.000Z"),
+          lastSyncStatus: "succeeded",
+          lastImportedCount: 5,
+          lastSkippedCount: 2,
+          lastRefusedCount: 1,
+        });
+
+      it("forgets the last success when the Monize account changes, so the window starts at the cut-off", async () => {
+        const row = synced();
+        linkRepo.findOne.mockResolvedValue(row);
+        accountRepo.findOne.mockResolvedValue(
+          account({ id: OTHER_ACCOUNT_ID }),
+        );
+        await link({ accountId: OTHER_ACCOUNT_ID });
+        expect(row).toMatchObject({
+          accountId: OTHER_ACCOUNT_ID,
+          lastSuccessAt: null,
+          lastSyncedAt: null,
+          lastSyncStatus: null,
+          lastImportedCount: 0,
+        });
+      });
+
+      it("forgets it when the cut-off moves, so an earlier date is read", async () => {
+        const row = synced();
+        linkRepo.findOne.mockResolvedValue(row);
+        await link({ accountId: ACCOUNT_ID, syncFromDate: "2026-01-01" });
+        expect(row.syncFromDate).toBe("2026-01-01");
+        expect(row.lastSuccessAt).toBeNull();
+      });
+
+      it("keeps everything when the same account and the same date are sent again", async () => {
+        const row = synced();
+        linkRepo.findOne.mockResolvedValue(row);
+        await link({ accountId: ACCOUNT_ID, syncFromDate: row.syncFromDate });
+        await link({ accountId: ACCOUNT_ID });
+        expect(row.lastSuccessAt).toEqual(new Date("2026-09-20T00:00:00.000Z"));
+        expect(row.lastImportedCount).toBe(5);
+        expect(row.syncFromDate).toBe("2026-08-01");
+      });
+    });
+  });
+
+  describe("syncAccount", () => {
+    const sync = (
+      psu: { ipAddress: string; userAgent: string } | null = null,
+    ) => service.syncAccount(USER_ID, BANK_ACCOUNT_ID, psu);
+
+    it("reads the bank, plans, writes once and reports the result", async () => {
+      provider.fetchTransactions.mockResolvedValue([
+        bankTransaction({ entryReference: "ref-1" }),
+        bankTransaction({ entryReference: "ref-2", currencyCode: "EUR" }),
+        bankTransaction({ entryReference: "ref-3", booked: false }),
+        bankTransaction({ entryReference: "ref-4", bookingDate: "2026-07-01" }),
+      ]);
+      provider.fetchBalance.mockResolvedValue({
+        amount: "1500.5",
+        currencyCode: "PLN",
+        referenceDate: "2026-09-29",
+        balanceType: "CLBD",
+      });
+      writer.write.mockResolvedValue({ imported: 1, skipped: 0 });
+
+      const result = await sync();
+
+      expect(result).toEqual({
+        bankAccountId: BANK_ACCOUNT_ID,
+        imported: 1,
+        skipped: 0,
+        refused: {
+          missing_date: 0,
+          future_date: 0,
+          invalid_amount: 0,
+          unknown_direction: 0,
+          currency_mismatch: 1,
+        },
+        pending: 1,
+        beforeCutoff: 1,
+        bankBalance: {
+          amount: "1500.5000",
+          currencyCode: "PLN",
+          referenceDate: "2026-09-29",
+        },
+      });
+      expect(writer.write).toHaveBeenCalledTimes(1);
+      const written = writer.write.mock.calls[0][0];
+      expect(written).toMatchObject({
+        userId: USER_ID,
+        bankAccountId: BANK_ACCOUNT_ID,
+        accountId: ACCOUNT_ID,
+        plannedCurrencyCode: "PLN",
+        balance: { amount: 1500.5, currencyCode: "PLN" },
+      });
+      // Only the booked, in-currency, in-window row is planned.
+      expect(written.plan.planned.map((p) => p.externalKey)).toEqual([
+        "ref:ref-1",
+      ]);
+    });
+
+    it("asks the bank for the window from the cut-off to today, forwarding the PSU context", async () => {
+      const psu = { ipAddress: "203.0.113.4", userAgent: "Mozilla/5.0" };
+      await sync(psu);
+      expect(provider.fetchTransactions).toHaveBeenCalledWith(
+        CREDS,
+        "ext-1",
+        { dateFrom: "2026-08-01", dateTo: "2026-09-30" },
+        psu,
+      );
+      expect(provider.fetchBalance).toHaveBeenCalledWith(CREDS, "ext-1", psu);
+    });
+
+    it("sends no PSU context for the unattended daily sync", async () => {
+      await sync(null);
+      expect(provider.fetchTransactions.mock.calls[0][3]).toBeNull();
+    });
+
+    it("re-reads a week before the last success", async () => {
+      linkRepo.findOne.mockResolvedValue(
+        bankAccountRow({ lastSuccessAt: new Date("2026-09-25T08:00:00.000Z") }),
+      );
+      await sync();
+      expect(provider.fetchTransactions.mock.calls[0][2]).toEqual({
+        dateFrom: "2026-09-18",
+        dateTo: "2026-09-30",
+      });
+    });
+
+    it("takes the lease before it talks to the bank and gives it back after", async () => {
+      const order: string[] = [];
+      jobClaims.claimLease.mockImplementation(async () => {
+        order.push("lease");
+        return TEST_LEASE_TOKEN;
+      });
+      provider.fetchTransactions.mockImplementation(async () => {
+        order.push("fetch");
+        return [];
+      });
+      writer.write.mockImplementation(async () => {
+        order.push("write");
+        return { imported: 0, skipped: 0 };
+      });
+      jobClaims.releaseLease.mockImplementation(async () => {
+        order.push("release");
+      });
+
+      await sync();
+
+      expect(order).toEqual(["lease", "fetch", "write", "release"]);
+      expect(jobClaims.claimLease).toHaveBeenCalledWith(
+        "bank_sync_account",
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        10 * 60 * 1000,
+      );
+      expect(jobClaims.releaseLease).toHaveBeenCalledWith(
+        "bank_sync_account",
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        TEST_LEASE_TOKEN,
+      );
+    });
+
+    it("asks nothing of the bank inside a transaction", async () => {
+      let open = 0;
+      dataSource.transaction.mockImplementation(
+        async (fn: (m: unknown) => Promise<unknown>) => {
+          open += 1;
+          try {
+            return await fn(manager);
+          } finally {
+            open -= 1;
+          }
+        },
+      );
+      const seen: number[] = [];
+      provider.fetchTransactions.mockImplementation(async () => {
+        seen.push(open);
+        return [];
+      });
+      provider.fetchBalance.mockImplementation(async () => {
+        seen.push(open);
+        return null;
+      });
+      await sync();
+      expect(seen).toEqual([0, 0]);
+    });
+
+    it("drops the derived balance state after the commit, only when something was created", async () => {
+      writer.write.mockResolvedValue({ imported: 2, skipped: 0 });
+      await sync();
+      expect(netWorth.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        ACCOUNT_ID,
+        USER_ID,
+      );
+
+      netWorth.triggerDebouncedRecalc.mockClear();
+      writer.write.mockResolvedValue({ imported: 0, skipped: 3 });
+      await sync();
+      expect(netWorth.triggerDebouncedRecalc).not.toHaveBeenCalled();
+    });
+
+    it("does not recompute after a failed write", async () => {
+      writer.write.mockRejectedValue(new Error("boom"));
+      await expect(sync()).rejects.toThrow("boom");
+      expect(netWorth.triggerDebouncedRecalc).not.toHaveBeenCalled();
+    });
+
+    it("leaves the stored balance alone when the balance read fails, and says the sync succeeded", async () => {
+      provider.fetchBalance.mockRejectedValue(
+        new BankSyncProviderError("unavailable", "balance endpoint down"),
+      );
+      const result = await sync();
+      expect(result.bankBalance).toBeNull();
+      expect(writer.write.mock.calls[0][0].balance).toBeNull();
+    });
+
+    it("treats an unusable balance as not reported", async () => {
+      provider.fetchBalance.mockResolvedValue({
+        amount: "n/a",
+        currencyCode: "PLN",
+        referenceDate: null,
+        balanceType: null,
+      });
+      expect((await sync()).bankBalance).toBeNull();
+    });
+
+    describe("refusals before the bank is asked", () => {
+      const nothingAsked = () => {
+        expect(jobClaims.claimLease).not.toHaveBeenCalled();
+        expect(provider.fetchTransactions).not.toHaveBeenCalled();
+        expect(writer.write).not.toHaveBeenCalled();
+      };
+
+      it("is 404 for a bank account that is not the caller's", async () => {
+        linkRepo.findOne.mockResolvedValue(null);
+        await expect(
+          service.syncAccount(OTHER_USER_ID, BANK_ACCOUNT_ID, null),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        nothingAsked();
+      });
+
+      it("is 409 for an unlinked bank account", async () => {
+        linkRepo.findOne.mockResolvedValue(bankAccountRow({ accountId: null }));
+        await expect(sync()).rejects.toBeInstanceOf(ConflictException);
+        nothingAsked();
+      });
+
+      it("is 409 when the linked Monize account is gone", async () => {
+        accountRepo.findOne.mockResolvedValue(null);
+        await expect(sync()).rejects.toBeInstanceOf(ConflictException);
+        nothingAsked();
+      });
+
+      it("is 404 when the connection is gone", async () => {
+        connectionRepo.findOne.mockResolvedValue(null);
+        await expect(sync()).rejects.toBeInstanceOf(NotFoundException);
+        nothingAsked();
+      });
+
+      it.each(["pending", "expired", "revoked", "failed"] as const)(
+        "refuses a %s connection, recording it on the bank account",
+        async (status) => {
+          connectionRepo.findOne.mockResolvedValue(connectionRow({ status }));
+          await expect(sync()).rejects.toBeInstanceOf(ConflictException);
+          nothingAsked();
+          expect(statements("last_sync_status = 'failed'")).toHaveLength(1);
+        },
+      );
+
+      it("marks a lapsed consent expired in the same transaction as the read, and asks to renew it", async () => {
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ validUntil: new Date("2026-09-30T11:59:59.000Z") }),
+        );
+
+        const error = await sync().catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ConflictException);
+        expect((error as ConflictException).message).toMatch(/renew/i);
+        const expire = statements("SET status = 'expired'")[0];
+        expect(String(expire[0])).toContain("status = 'active'");
+        expect(expire[1]).toEqual([CONNECTION_ID, USER_ID]);
+        nothingAsked();
+      });
+
+      it("refuses a closed account and an investment brokerage account", async () => {
+        accountRepo.findOne.mockResolvedValue(account({ isClosed: true }));
+        await expect(sync()).rejects.toBeInstanceOf(BadRequestException);
+        accountRepo.findOne.mockResolvedValue(
+          account({ accountSubType: AccountSubType.INVESTMENT_BROKERAGE }),
+        );
+        await expect(sync()).rejects.toBeInstanceOf(BadRequestException);
+        nothingAsked();
+      });
+
+      it("records a credentials failure and never takes the lease", async () => {
+        credentials.resolveCredentials.mockRejectedValue(
+          new BadRequestException("Enter your credentials"),
+        );
+        await expect(sync()).rejects.toBeInstanceOf(BadRequestException);
+        nothingAsked();
+        const failed = statements("last_sync_status = 'failed'")[0];
+        expect(failed[1]).toEqual([
+          BANK_ACCOUNT_ID,
+          USER_ID,
+          "Enter your credentials",
+        ]);
+      });
+    });
+
+    describe("the lease", () => {
+      it("is a 409 when another sync of the account holds it, and asks nothing of the bank", async () => {
+        jobClaims.claimLease.mockResolvedValue(null);
+
+        const error = await sync().catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ConflictException);
+        expect((error as ConflictException).message).toMatch(
+          /already running/i,
+        );
+        expect(provider.fetchTransactions).not.toHaveBeenCalled();
+        expect(writer.write).not.toHaveBeenCalled();
+        // Not a failure of the account, and not ours to release.
+        expect(statements("last_sync_status = 'failed'")).toHaveLength(0);
+        expect(jobClaims.releaseLease).not.toHaveBeenCalled();
+      });
+
+      it("does not mask the result when the release fails", async () => {
+        jobClaims.releaseLease.mockRejectedValue(new Error("db gone"));
+        await expect(sync()).resolves.toMatchObject({ imported: 0 });
+      });
+    });
+
+    describe("a failure after the lease", () => {
+      const cases: Array<[BankSyncProviderErrorKind, number]> = [
+        ["unauthorized", 400],
+        ["session_expired", 409],
+        ["rate_limited", 429],
+        ["bad_request", 400],
+        ["unavailable", 503],
+        ["invalid_response", 502],
+      ];
+
+      it.each(cases)(
+        "maps a %s provider failure to HTTP %i, records it and releases the lease",
+        async (kind, status) => {
+          provider.fetchTransactions.mockRejectedValue(
+            new BankSyncProviderError(kind, `provider said ${kind}`, 500),
+          );
+
+          const error = await sync().catch((e: unknown) => e);
+
+          expect((error as HttpException).getStatus()).toBe(status);
+          const failed = statements("last_sync_status = 'failed'")[0];
+          expect(failed[1]).toEqual([
+            BANK_ACCOUNT_ID,
+            USER_ID,
+            `provider said ${kind}`,
+          ]);
+          expect(jobClaims.releaseLease).toHaveBeenCalledTimes(1);
+          expect(writer.write).not.toHaveBeenCalled();
+        },
+      );
+
+      it("marks the connection expired only when the provider says the consent is gone", async () => {
+        provider.fetchTransactions.mockRejectedValue(
+          new BankSyncProviderError("session_expired", "HTTP 401", 401),
+        );
+        await expect(sync()).rejects.toBeInstanceOf(ConflictException);
+        const expire = statements("SET status = 'expired', last_error")[0];
+        expect(String(expire[0])).toContain("status = 'active'");
+        expect(expire[1]).toEqual([CONNECTION_ID, USER_ID, "HTTP 401"]);
+
+        manager.query.mockClear();
+        provider.fetchTransactions.mockRejectedValue(
+          new BankSyncProviderError("unavailable", "down"),
+        );
+        await expect(sync()).rejects.toBeDefined();
+        expect(statements("SET status = 'expired'")).toHaveLength(0);
+      });
+
+      it("records a refusal from the write and raises it, leaving the lease released", async () => {
+        writer.write.mockRejectedValue(
+          new ConflictException("linked to a different account"),
+        );
+        await expect(sync()).rejects.toBeInstanceOf(ConflictException);
+        expect(statements("last_sync_status = 'failed'")[0][1]).toEqual([
+          BANK_ACCOUNT_ID,
+          USER_ID,
+          "linked to a different account",
+        ]);
+        expect(jobClaims.releaseLease).toHaveBeenCalledTimes(1);
+      });
+
+      it("stores a fixed sentence, not the text, of an unexpected error", async () => {
+        writer.write.mockRejectedValue(
+          new Error("insert failed: password=hunter2"),
+        );
+        await expect(sync()).rejects.toThrow("hunter2");
+        const stored = statements("last_sync_status = 'failed'")[0][1][2];
+        expect(stored).not.toContain("hunter2");
+      });
+
+      it("still raises the original error when recording it fails", async () => {
+        provider.fetchTransactions.mockRejectedValue(
+          new BankSyncProviderError("unavailable", "down"),
+        );
+        manager.query.mockRejectedValue(new Error("db gone"));
+        await expect(sync()).rejects.toBeInstanceOf(HttpException);
+      });
+    });
+  });
+
+  describe("syncConnection", () => {
+    const linked = (id: string) =>
+      bankAccountRow({ id, connectionId: CONNECTION_ID });
+    const ID_A = "b0b0b0b0-0000-4000-8000-00000000000a";
+    const ID_B = "b0b0b0b0-0000-4000-8000-00000000000b";
+    const ID_C = "b0b0b0b0-0000-4000-8000-00000000000c";
+
+    function resultOf(id: string) {
+      return {
+        bankAccountId: id,
+        imported: 1,
+        skipped: 0,
+        refused: {
+          missing_date: 0,
+          future_date: 0,
+          invalid_amount: 0,
+          unknown_direction: 0,
+          currency_mismatch: 0,
+        },
+        pending: 0,
+        beforeCutoff: 0,
+        bankBalance: null,
+      };
+    }
+
+    it("is 404 for a connection that is not the caller's", async () => {
+      connectionRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.syncConnection(OTHER_USER_ID, CONNECTION_ID, null),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("syncs each linked bank account in turn and skips unlinked ones", async () => {
+      linkRepo.find.mockResolvedValue([
+        linked(ID_A),
+        bankAccountRow({ id: ID_B, accountId: null }),
+        linked(ID_C),
+      ]);
+      const spy = jest
+        .spyOn(service, "syncAccount")
+        .mockImplementation(async (_user, id) => resultOf(id));
+
+      const results = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+
+      expect(spy.mock.calls.map((call) => call[1])).toEqual([ID_A, ID_C]);
+      expect(results.map((r) => r.bankAccountId)).toEqual([ID_A, ID_C]);
+    });
+
+    it("carries on after one account fails and returns the others", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
+      jest.spyOn(service, "syncAccount").mockImplementation(async (_u, id) => {
+        if (id === ID_A) throw new ConflictException("busy");
+        return resultOf(id);
+      });
+      const results = await service.syncConnection(
+        USER_ID,
+        CONNECTION_ID,
+        null,
+      );
+      expect(results.map((r) => r.bankAccountId)).toEqual([ID_C]);
+    });
+
+    it("raises the first failure when nothing succeeded, never an answer that reads as nothing new", async () => {
+      linkRepo.find.mockResolvedValue([linked(ID_A), linked(ID_C)]);
+      jest
+        .spyOn(service, "syncAccount")
+        .mockRejectedValue(new ConflictException("consent expired"));
+      await expect(
+        service.syncConnection(USER_ID, CONNECTION_ID, null),
+      ).rejects.toThrow("consent expired");
+    });
+
+    it("answers an empty list for a connection with no linked account", async () => {
+      linkRepo.find.mockResolvedValue([bankAccountRow({ accountId: null })]);
+      await expect(
+        service.syncConnection(USER_ID, CONNECTION_ID, null),
+      ).resolves.toEqual([]);
+    });
+  });
+});

@@ -19,13 +19,13 @@
 | ID | Task | Depends on | Deploy impact | Status |
 |----|------|-----------|---------------|--------|
 | BS1 | Spec, plan and invariants merged | -- | none | [x] |
-| BS2 | Migration and `schema.sql`: four tables, indexes, RLS; entities; backup classification | BS1 | inert | [ ] |
-| BS3 | Provider interface, registry, Enable Banking JWT, client and mapper; provider-health adoption | BS1 | inert | [ ] |
-| BS4 | Credentials service and routes | BS2 | additive | [ ] |
-| BS5 | Connections: start, callback with the state CAS, re-authorize, disconnect | BS3, BS4 | additive | [ ] |
-| BS6 | Planner, writer and sync of one account; link routes; integration spec | BS5 | additive | [ ] |
-| BS7 | Daily cron, `docs/cron-jobs.md` row | BS6 | additive | [ ] |
-| BS8 | Settings pages, callback page, API client, English strings | BS6 | additive | [ ] |
+| BS2 | Migration and `schema.sql`: four tables, indexes, RLS; entities; backup classification | BS1 | inert | [x] |
+| BS3 | Provider interface, registry, Enable Banking JWT, client and mapper; provider-health adoption | BS1 | inert | [x] |
+| BS4 | Credentials service and routes | BS2 | additive | [x] |
+| BS5 | Connections: start, callback with the state CAS, re-authorize, disconnect | BS3, BS4 | additive | [x] |
+| BS6 | Planner, writer and sync of one account; link routes; integration spec | BS5 | additive | [x] |
+| BS7 | Daily cron, `docs/cron-jobs.md` row | BS6 | additive | [x] |
+| BS8 | Settings pages, callback page, API client, English strings | BS6 | additive | [x] |
 | BS9 | Every other locale | BS8 | none | [ ] |
 | BS10 | Verify the wire format against an Enable Banking sandbox application; correct the mapper and the plan's assumption 3 | BS6 | none | [ ] |
 | BS11 | Export and restore the ledger in the backup (id remap on `account_id`, `transaction_id`) | BS6 | neutral | [ ] |
