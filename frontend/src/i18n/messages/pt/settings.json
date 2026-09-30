@@ -1407,7 +1407,25 @@
         "title": "Remover credenciais",
         "message": "O ID da aplicação e a chave privada guardados são eliminados do Monize. Terá de os introduzir novamente antes de poder ligar um banco ou sincronizar.",
         "confirm": "Remover"
-      }
+      },
+      "help": {
+        "show": "Mostrar ajuda de configuração",
+        "hide": "Ocultar ajuda de configuração",
+        "whatIsTitle": "O que é o Enable Banking?",
+        "whatIsBody": "O Enable Banking é uma empresa licenciada na UE como prestador de serviços de informação sobre contas (AISP) ao abrigo de PSD2. Liga-se ao seu banco por si e dá ao Monize acesso só de leitura às suas contas, saldos e transações. Inicia sessão no seu próprio banco. O Monize e o Enable Banking nunca veem a palavra-passe do seu banco. O Enable Banking funciona com bancos do Espaço Económico Europeu.",
+        "whatIsFree": "Para uso pessoal, basta uma aplicação gratuita em modo de produção restrito. Lê apenas as contas que associar a ela no painel de controlo.",
+        "setupTitle": "Como configurar",
+        "step1": "Crie uma conta no <link>painel de controlo do Enable Banking</link>.",
+        "step2": "Crie uma aplicação. Selecione o ambiente de produção ou a sandbox para testar com um banco fictício.",
+        "step3": "Adicione à aplicação o URL de redirecionamento abaixo.",
+        "step4": "Guarde o ficheiro da chave privada (.pem) que o painel de controlo lhe dá. Mantenha este ficheiro secreto.",
+        "step5": "No painel de controlo, associe as suas próprias contas bancárias à aplicação.",
+        "step6": "Introduza aqui o ID da aplicação e o conteúdo do ficheiro da chave privada.",
+        "networkTitle": "Acesso à rede",
+        "networkBody": "Quando o banco o devolve ao Monize, o seu navegador abre o URL de redirecionamento. Os servidores do Enable Banking não se ligam ao Monize. Por isso, o Monize não tem de estar acessível a partir da internet nem dos endereços IP do Enable Banking. O URL de redirecionamento tem de abrir no navegador que usa para autorizar o acesso.",
+        "networkOutbound": "O servidor do Monize tem de conseguir ligar-se a api.enablebanking.com por HTTPS (porta 443)."
+      },
+      "modalSource": "Obtenha o ID da aplicação e a chave privada no <link>painel de controlo do Enable Banking</link>."
     },
     "credentialsModal": {
       "title": "Credenciais do Enable Banking",

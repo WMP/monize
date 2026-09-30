@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -15,6 +16,11 @@ import type {
   SaveBankSyncCredentials,
 } from '@/types/bank-sync';
 import { BankSyncCredentialsModal } from './BankSyncCredentialsModal';
+import { EnableBankingControlPanelLink } from './EnableBankingControlPanelLink';
+
+const HELP_HEADING_CLASS =
+  'mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100';
+const HELP_BODY_CLASS = 'text-sm text-gray-600 dark:text-gray-400';
 
 type TestState =
   | { kind: 'idle' }
@@ -36,6 +42,9 @@ interface BankSyncCredentialsCardProps {
  * The key is never shown, and a screen that cannot store one says so up front
  * rather than after the user has pasted it: without an encryption key on the
  * server, saving is disabled.
+ *
+ * The setup help is open while nothing is stored, because that is when the
+ * reader needs it, and folds behind a toggle once credentials exist.
  */
 export function BankSyncCredentialsCard({
   status,
@@ -47,8 +56,11 @@ export function BankSyncCredentialsCard({
   const [showRemove, setShowRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [test, setTest] = useState<TestState>({ kind: 'idle' });
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpId = useId();
 
   const credentials = status.credentials;
+  const showHelp = !credentials || helpOpen;
 
   const handleSave = async (data: SaveBankSyncCredentials) => {
     try {
@@ -121,6 +133,66 @@ export function BankSyncCredentialsCard({
           >
             {t('encryptionUnavailable')}
           </p>
+        )}
+
+        {credentials && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mb-3 -ml-3"
+            onClick={() => setHelpOpen((open) => !open)}
+            aria-expanded={helpOpen}
+            // The panel is not in the document while folded, so the button
+            // names it only while it exists.
+            aria-controls={helpOpen ? helpId : undefined}
+          >
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={`mr-1 h-4 w-4 transition-transform motion-reduce:transition-none ${
+                helpOpen ? 'rotate-180' : ''
+              }`}
+            />
+            {helpOpen ? t('help.hide') : t('help.show')}
+          </Button>
+        )}
+
+        {showHelp && (
+          <div id={helpId} className="mb-4 space-y-4">
+            <section>
+              <h3 className={HELP_HEADING_CLASS}>{t('help.whatIsTitle')}</h3>
+              <p className={HELP_BODY_CLASS}>{t('help.whatIsBody')}</p>
+              <p className={`mt-2 ${HELP_BODY_CLASS}`}>{t('help.whatIsFree')}</p>
+            </section>
+
+            <section>
+              <h3 className={HELP_HEADING_CLASS}>{t('help.setupTitle')}</h3>
+              <ol className={`list-decimal space-y-1 pl-5 ${HELP_BODY_CLASS}`}>
+                <li>
+                  {t.rich('help.step1', {
+                    link: (chunks) => (
+                      <EnableBankingControlPanelLink>
+                        {chunks}
+                      </EnableBankingControlPanelLink>
+                    ),
+                  })}
+                </li>
+                <li>{t('help.step2')}</li>
+                <li>{t('help.step3')}</li>
+                <li>{t('help.step4')}</li>
+                <li>{t('help.step5')}</li>
+                <li>{t('help.step6')}</li>
+              </ol>
+            </section>
+
+            <section>
+              <h3 className={HELP_HEADING_CLASS}>{t('help.networkTitle')}</h3>
+              <p className={HELP_BODY_CLASS}>{t('help.networkBody')}</p>
+              <p className={`mt-2 ${HELP_BODY_CLASS}`}>
+                {t('help.networkOutbound')}
+              </p>
+            </section>
+          </div>
         )}
 
         <div className="mb-4">

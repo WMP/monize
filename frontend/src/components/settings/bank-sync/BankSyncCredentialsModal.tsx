@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
 import type { SaveBankSyncCredentials } from '@/types/bank-sync';
+import { EnableBankingControlPanelLink } from './EnableBankingControlPanelLink';
 
 const APPLICATION_ID_MAX = 200;
 const PRIVATE_KEY_MAX = 20000;
@@ -79,6 +80,8 @@ export function BankSyncCredentialsModal({
   onSave,
 }: BankSyncCredentialsModalProps) {
   const t = useTranslations('settings.bankSync.credentialsModal');
+  // modalSource lives beside the card's help copy, under `credentials`.
+  const tCredentials = useTranslations('settings.bankSync.credentials');
 
   const {
     register,
@@ -106,6 +109,13 @@ export function BankSyncCredentialsModal({
       maxWidth="lg"
       pushHistory
     >
+      <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+        {tCredentials.rich('modalSource', {
+          link: (chunks) => (
+            <EnableBankingControlPanelLink>{chunks}</EnableBankingControlPanelLink>
+          ),
+        })}
+      </p>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Input
           label={t('applicationIdLabel')}

@@ -1407,7 +1407,25 @@
         "title": "[XX-Remove credentials-XX]",
         "message": "[XX-The stored application ID and private key are deleted from Monize. You will need to enter them again before you can connect a bank or sync.-XX]",
         "confirm": "[XX-Remove-XX]"
-      }
+      },
+      "help": {
+        "show": "[XX-Show setup help-XX]",
+        "hide": "[XX-Hide setup help-XX]",
+        "whatIsTitle": "[XX-What is Enable Banking?-XX]",
+        "whatIsBody": "[XX-Enable Banking is a company that is licensed in the EU as an account information service provider (AISP) under PSD2. It connects to your bank for you and gives Monize read-only access to your accounts, balances and transactions. You sign in at your own bank. Monize and Enable Banking never see your bank password. Enable Banking works with banks in the European Economic Area.-XX]",
+        "whatIsFree": "[XX-For personal use, a free application in restricted production mode is enough. It reads only the accounts that you link to it in the control panel.-XX]",
+        "setupTitle": "[XX-How to set it up-XX]",
+        "step1": "[XX-Create an account in the <link>Enable Banking control panel</link>.-XX]",
+        "step2": "[XX-Create an application. Select the production environment, or the sandbox to test with a mock bank.-XX]",
+        "step3": "[XX-Add the redirect URL below to the application.-XX]",
+        "step4": "[XX-Save the private key file (.pem) that the control panel gives you. Keep this file secret.-XX]",
+        "step5": "[XX-In the control panel, link your own bank accounts to the application.-XX]",
+        "step6": "[XX-Enter the application ID and the contents of the private key file here.-XX]",
+        "networkTitle": "[XX-Network access-XX]",
+        "networkBody": "[XX-When the bank sends you back, your browser opens the redirect URL. Enable Banking servers do not connect to Monize. Thus Monize does not have to be reachable from the internet or from Enable Banking IP addresses. The redirect URL must open in the browser that you use to authorize access.-XX]",
+        "networkOutbound": "[XX-The Monize server must be able to connect to api.enablebanking.com over HTTPS (port 443).-XX]"
+      },
+      "modalSource": "[XX-Get the application ID and the private key from the <link>Enable Banking control panel</link>.-XX]"
     },
     "credentialsModal": {
       "title": "[XX-Enable Banking credentials-XX]",

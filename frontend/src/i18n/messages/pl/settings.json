@@ -1407,7 +1407,25 @@
         "title": "Usuń dane uwierzytelniające",
         "message": "Zapisane ID aplikacji i klucz prywatny zostaną usunięte z Monize. Musisz wpisać je ponownie, zanim połączysz bank lub uruchomisz synchronizację.",
         "confirm": "Usuń"
-      }
+      },
+      "help": {
+        "show": "Pokaż pomoc w konfiguracji",
+        "hide": "Ukryj pomoc w konfiguracji",
+        "whatIsTitle": "Czym jest Enable Banking?",
+        "whatIsBody": "Enable Banking to firma z licencją w UE jako dostawca usług dostępu do informacji o rachunku (AISP) zgodnie z PSD2. Łączy się z Twoim bankiem w Twoim imieniu. Daje Monize dostęp tylko do odczytu do Twoich kont, sald i transakcji. Logujesz się w swoim banku. Monize i Enable Banking nigdy nie widzą hasła do Twojego banku. Enable Banking współpracuje z bankami w Europejskim Obszarze Gospodarczym.",
+        "whatIsFree": "Do użytku osobistego wystarczy bezpłatna aplikacja w ograniczonym trybie produkcyjnym. Aplikacja odczytuje tylko te konta, które powiążesz z nią w panelu.",
+        "setupTitle": "Jak to skonfigurować",
+        "step1": "Załóż konto w <link>panelu Enable Banking</link>.",
+        "step2": "Utwórz aplikację. Wybierz środowisko produkcyjne. Możesz też wybrać piaskownicę, aby testować z fikcyjnym bankiem.",
+        "step3": "Dodaj do aplikacji adres przekierowania podany poniżej.",
+        "step4": "Zapisz plik klucza prywatnego (.pem), który daje panel. Zachowaj ten plik w tajemnicy.",
+        "step5": "W panelu powiąż swoje konta bankowe z aplikacją.",
+        "step6": "Wpisz tutaj ID aplikacji i zawartość pliku klucza prywatnego.",
+        "networkTitle": "Dostęp sieciowy",
+        "networkBody": "Bank odsyła Cię z powrotem. Wtedy Twoja przeglądarka otwiera adres przekierowania. Serwery Enable Banking nie łączą się z Monize. Dlatego Monize nie musi być dostępne z internetu ani z adresów IP Enable Banking. Adres przekierowania musi otwierać się w przeglądarce, której używasz do udzielenia dostępu.",
+        "networkOutbound": "Serwer Monize musi mieć możliwość połączenia z api.enablebanking.com przez HTTPS (port 443)."
+      },
+      "modalSource": "ID aplikacji i klucz prywatny znajdziesz w <link>panelu Enable Banking</link>."
     },
     "credentialsModal": {
       "title": "Dane uwierzytelniające Enable Banking",

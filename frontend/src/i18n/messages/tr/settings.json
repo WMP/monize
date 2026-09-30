@@ -1407,7 +1407,25 @@
         "title": "Kimlik bilgilerini kaldır",
         "message": "Kayıtlı uygulama kimliği ve özel anahtar Monize'den silinir. Bir banka bağlamadan veya senkronize etmeden önce bunları yeniden girmeniz gerekir.",
         "confirm": "Kaldır"
-      }
+      },
+      "help": {
+        "show": "Kurulum yardımını göster",
+        "hide": "Kurulum yardımını gizle",
+        "whatIsTitle": "Enable Banking nedir?",
+        "whatIsBody": "Enable Banking, AB'de PSD2 kapsamında hesap bilgisi hizmet sağlayıcısı (AISP) olarak lisanslı bir şirkettir. Sizin adınıza bankanıza bağlanır ve Monize'ye hesaplarınıza, bakiyelerinize ve işlemlerinize salt okunur erişim verir. Kendi bankanızda oturum açarsınız. Monize ve Enable Banking banka parolanızı hiçbir zaman görmez. Enable Banking, Avrupa Ekonomik Alanı'ndaki bankalarla çalışır.",
+        "whatIsFree": "Kişisel kullanım için kısıtlı üretim modunda ücretsiz bir uygulama yeterlidir. Yalnızca kontrol panelinde ona bağladığınız hesapları okur.",
+        "setupTitle": "Nasıl kurulur",
+        "step1": "<link>Enable Banking kontrol panelinde</link> bir hesap oluşturun.",
+        "step2": "Bir uygulama oluşturun. Üretim ortamını veya sahte bir bankayla test etmek için sandbox ortamını seçin.",
+        "step3": "Aşağıdaki yönlendirme URL'sini uygulamaya ekleyin.",
+        "step4": "Kontrol panelinin verdiği özel anahtar dosyasını (.pem) kaydedin. Bu dosyayı gizli tutun.",
+        "step5": "Kontrol panelinde kendi banka hesaplarınızı uygulamaya bağlayın.",
+        "step6": "Uygulama kimliğini ve özel anahtar dosyasının içeriğini buraya girin.",
+        "networkTitle": "Ağ erişimi",
+        "networkBody": "Banka sizi geri gönderdiğinde tarayıcınız yönlendirme URL'sini açar. Enable Banking sunucuları Monize'ye bağlanmaz. Bu yüzden Monize'nin internetten veya Enable Banking IP adreslerinden erişilebilir olması gerekmez. Yönlendirme URL'si, erişimi onaylamak için kullandığınız tarayıcıda açılmalıdır.",
+        "networkOutbound": "Monize sunucusu, HTTPS (bağlantı noktası 443) üzerinden api.enablebanking.com adresine bağlanabilmelidir."
+      },
+      "modalSource": "Uygulama kimliğini ve özel anahtarı <link>Enable Banking kontrol panelinden</link> alın."
     },
     "credentialsModal": {
       "title": "Enable Banking kimlik bilgileri",

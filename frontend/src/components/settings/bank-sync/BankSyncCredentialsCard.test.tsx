@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import toast from 'react-hot-toast';
-import { act, fireEvent, render, screen, waitFor } from '@/test/render';
+import { act, fireEvent, render, screen, waitFor, within } from '@/test/render';
+import { ENABLE_BANKING_CONTROL_PANEL_URL } from '@/lib/bank-sync-links';
 import { BankSyncCredentialsCard } from './BankSyncCredentialsCard';
 import type { BankSyncStatus } from '@/types/bank-sync';
 
@@ -171,6 +172,95 @@ describe('BankSyncCredentialsCard', () => {
     await click('Cancel');
 
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  describe('setup help', () => {
+    const SHOW = 'Show setup help';
+    const HIDE = 'Hide setup help';
+
+    it('is expanded, with no toggle, while no credentials are stored', () => {
+      renderCard(status());
+
+      expect(screen.getByRole('heading', { name: 'What is Enable Banking?' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'How to set it up' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Network access' })).toBeInTheDocument();
+      expect(screen.getByText(/licensed in the EU/)).toBeInTheDocument();
+      expect(screen.getByText(/free application in restricted production mode/)).toBeInTheDocument();
+      expect(screen.getByText(/api\.enablebanking\.com over HTTPS/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: SHOW })).toBeNull();
+      expect(screen.queryByRole('button', { name: HIDE })).toBeNull();
+    });
+
+    it('lists six steps in order, the third pointing at the redirect URL block', () => {
+      renderCard(status());
+
+      const list = screen.getByRole('list');
+      const items = within(list).getAllByRole('listitem');
+      expect(list.tagName).toBe('OL');
+      expect(items).toHaveLength(6);
+      expect(items[2]).toHaveTextContent('Add the redirect URL below to the application.');
+      expect(screen.getByLabelText('Redirect URL')).toBeInTheDocument();
+    });
+
+    it('is folded behind a toggle once credentials are stored', () => {
+      renderCard(configured());
+
+      const toggle = screen.getByRole('button', { name: SHOW });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle).not.toHaveAttribute('aria-controls');
+      expect(screen.queryByRole('heading', { name: 'What is Enable Banking?' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Network access' })).toBeNull();
+    });
+
+    it('opens and folds with the toggle, naming the panel it controls while open', async () => {
+      renderCard(configured());
+
+      await click(SHOW);
+
+      const toggle = screen.getByRole('button', { name: HIDE });
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      const panelId = toggle.getAttribute('aria-controls');
+      expect(panelId).toBeTruthy();
+      const panel = document.getElementById(panelId as string);
+      expect(panel).not.toBeNull();
+      expect(
+        within(panel as HTMLElement).getByRole('heading', { name: 'What is Enable Banking?' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: SHOW })).toBeNull();
+
+      await click(HIDE);
+
+      expect(screen.getByRole('button', { name: SHOW })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
+    });
+
+    it('opens the control panel in a new tab without handing it window.opener', () => {
+      renderCard(status());
+
+      const link = screen.getByRole('link', { name: 'Enable Banking control panel' });
+      expect(link).toHaveAttribute('href', ENABLE_BANKING_CONTROL_PANEL_URL);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('keeps the subtitle plain text, with the link only in the steps', () => {
+      renderCard(status());
+
+      expect(screen.getAllByRole('link')).toHaveLength(1);
+    });
+
+    it('opens again when the credentials are removed', () => {
+      const onStatusChange = vi.fn();
+      const { rerender } = render(
+        <BankSyncCredentialsCard status={configured()} onStatusChange={onStatusChange} />,
+      );
+      expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
+
+      rerender(<BankSyncCredentialsCard status={status()} onStatusChange={onStatusChange} />);
+
+      expect(screen.getByRole('heading', { name: 'How to set it up' })).toBeInTheDocument();
+    });
   });
 
   describe('test connection', () => {

@@ -1407,7 +1407,25 @@
         "title": "자격 증명 제거",
         "message": "저장된 애플리케이션 ID와 개인 키가 Monize에서 삭제됩니다. 은행에 연결하거나 동기화하려면 다시 입력해야 합니다.",
         "confirm": "제거"
-      }
+      },
+      "help": {
+        "show": "설정 도움말 표시",
+        "hide": "설정 도움말 숨기기",
+        "whatIsTitle": "Enable Banking이란?",
+        "whatIsBody": "Enable Banking은 PSD2에 따라 EU에서 계정 정보 서비스 제공자(AISP)로 인가받은 회사입니다. 회원님을 대신해 은행에 연결하고 Monize에 계정, 잔액, 거래에 대한 읽기 전용 접근 권한을 제공합니다. 로그인은 회원님의 은행에서 직접 합니다. Monize와 Enable Banking은 은행 비밀번호를 볼 수 없습니다. Enable Banking은 유럽 경제 지역의 은행과 함께 작동합니다.",
+        "whatIsFree": "개인 용도로는 제한된 프로덕션 모드의 무료 애플리케이션이면 충분합니다. 관리 패널에서 연결한 계정만 읽습니다.",
+        "setupTitle": "설정 방법",
+        "step1": "<link>Enable Banking 관리 패널</link>에서 계정을 만드세요.",
+        "step2": "애플리케이션을 만드세요. 프로덕션 환경을 선택하거나, 가상 은행으로 테스트하려면 샌드박스를 선택하세요.",
+        "step3": "아래의 리디렉션 URL을 애플리케이션에 추가하세요.",
+        "step4": "관리 패널이 제공하는 개인 키 파일(.pem)을 저장하세요. 이 파일은 비밀로 유지하세요.",
+        "step5": "관리 패널에서 본인의 은행 계정을 애플리케이션에 연결하세요.",
+        "step6": "애플리케이션 ID와 개인 키 파일의 내용을 여기에 입력하세요.",
+        "networkTitle": "네트워크 접근",
+        "networkBody": "은행이 다시 안내하면 브라우저가 리디렉션 URL을 엽니다. Enable Banking 서버는 Monize에 연결하지 않습니다. 따라서 Monize가 인터넷이나 Enable Banking IP 주소에서 접근 가능할 필요는 없습니다. 리디렉션 URL은 접근을 승인할 때 사용하는 브라우저에서 열려야 합니다.",
+        "networkOutbound": "Monize 서버는 HTTPS(포트 443)로 api.enablebanking.com에 연결할 수 있어야 합니다."
+      },
+      "modalSource": "애플리케이션 ID와 개인 키는 <link>Enable Banking 관리 패널</link>에서 받으세요."
     },
     "credentialsModal": {
       "title": "Enable Banking 자격 증명",

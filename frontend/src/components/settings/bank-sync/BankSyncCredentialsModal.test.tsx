@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@/test/render';
+import { ENABLE_BANKING_CONTROL_PANEL_URL } from '@/lib/bank-sync-links';
 import { BankSyncCredentialsModal } from './BankSyncCredentialsModal';
 
 const PEM = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkq\n-----END PRIVATE KEY-----';
@@ -127,6 +128,18 @@ describe('BankSyncCredentialsModal', () => {
     await submit();
 
     await waitFor(() => expect(onSave).toHaveBeenCalledWith({ applicationId: 'app-1', privateKey: rsa }));
+  });
+
+  it('says where to get the credentials, linking the control panel in a new tab', () => {
+    renderModal();
+
+    expect(
+      screen.getByText(/Get the application ID and the private key from the/),
+    ).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Enable Banking control panel' });
+    expect(link).toHaveAttribute('href', ENABLE_BANKING_CONTROL_PANEL_URL);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('closes through Cancel without saving', async () => {

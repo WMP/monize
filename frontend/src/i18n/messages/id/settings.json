@@ -1407,7 +1407,25 @@
         "title": "Hapus kredensial",
         "message": "ID aplikasi dan kunci privat yang tersimpan dihapus dari Monize. Anda perlu memasukkannya lagi sebelum dapat menghubungkan bank atau menyinkronkan.",
         "confirm": "Hapus"
-      }
+      },
+      "help": {
+        "show": "Tampilkan bantuan penyiapan",
+        "hide": "Sembunyikan bantuan penyiapan",
+        "whatIsTitle": "Apa itu Enable Banking?",
+        "whatIsBody": "Enable Banking adalah perusahaan berlisensi di UE sebagai penyedia layanan informasi rekening (AISP) berdasarkan PSD2. Perusahaan ini terhubung ke bank Anda atas nama Anda dan memberi Monize akses hanya-baca ke rekening, saldo, dan transaksi Anda. Anda masuk di bank Anda sendiri. Monize dan Enable Banking tidak pernah melihat kata sandi bank Anda. Enable Banking bekerja dengan bank di Wilayah Ekonomi Eropa.",
+        "whatIsFree": "Untuk penggunaan pribadi, aplikasi gratis dalam mode produksi terbatas sudah cukup. Aplikasi ini hanya membaca rekening yang Anda tautkan kepadanya di panel kontrol.",
+        "setupTitle": "Cara menyiapkannya",
+        "step1": "Buat akun di <link>panel kontrol Enable Banking</link>.",
+        "step2": "Buat aplikasi. Pilih lingkungan produksi, atau sandbox untuk menguji dengan bank tiruan.",
+        "step3": "Tambahkan URL pengalihan di bawah ini ke aplikasi.",
+        "step4": "Simpan file kunci privat (.pem) yang diberikan panel kontrol. Jaga kerahasiaan file ini.",
+        "step5": "Di panel kontrol, tautkan rekening bank Anda sendiri ke aplikasi.",
+        "step6": "Masukkan ID aplikasi dan isi file kunci privat di sini.",
+        "networkTitle": "Akses jaringan",
+        "networkBody": "Saat bank mengembalikan Anda, browser Anda membuka URL pengalihan. Server Enable Banking tidak terhubung ke Monize. Jadi, Monize tidak perlu dapat dijangkau dari internet atau dari alamat IP Enable Banking. URL pengalihan harus terbuka di browser yang Anda gunakan untuk memberi otorisasi akses.",
+        "networkOutbound": "Server Monize harus dapat terhubung ke api.enablebanking.com melalui HTTPS (port 443)."
+      },
+      "modalSource": "Dapatkan ID aplikasi dan kunci privat dari <link>panel kontrol Enable Banking</link>."
     },
     "credentialsModal": {
       "title": "Kredensial Enable Banking",

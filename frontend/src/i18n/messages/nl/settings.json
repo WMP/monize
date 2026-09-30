@@ -1407,7 +1407,25 @@
         "title": "Inloggegevens verwijderen",
         "message": "De opgeslagen applicatie-ID en privésleutel worden uit Monize verwijderd. Je moet ze opnieuw invoeren voordat je een bank kunt koppelen of synchroniseren.",
         "confirm": "Verwijderen"
-      }
+      },
+      "help": {
+        "show": "Hulp bij instellen tonen",
+        "hide": "Hulp bij instellen verbergen",
+        "whatIsTitle": "Wat is Enable Banking?",
+        "whatIsBody": "Enable Banking is een bedrijf met een licentie in de EU als aanbieder van rekeninginformatiediensten (AISP) onder PSD2. Het maakt namens jou verbinding met je bank en geeft Monize toegang met alleen leesrechten tot je rekeningen, saldi en transacties. Je logt in bij je eigen bank. Monize en Enable Banking zien je bankwachtwoord nooit. Enable Banking werkt met banken in de Europese Economische Ruimte.",
+        "whatIsFree": "Voor persoonlijk gebruik is een gratis applicatie in beperkte productiemodus genoeg. Die leest alleen de rekeningen die je in het controlepaneel eraan koppelt.",
+        "setupTitle": "Zo stel je het in",
+        "step1": "Maak een account aan in het <link>Enable Banking-controlepaneel</link>.",
+        "step2": "Maak een applicatie aan. Kies de productieomgeving, of de sandbox om te testen met een nepbank.",
+        "step3": "Voeg de omleidings-URL hieronder toe aan de applicatie.",
+        "step4": "Sla het bestand met de privésleutel (.pem) op dat je van het controlepaneel krijgt. Houd dit bestand geheim.",
+        "step5": "Koppel in het controlepaneel je eigen bankrekeningen aan de applicatie.",
+        "step6": "Voer hier de applicatie-ID en de inhoud van het bestand met de privésleutel in.",
+        "networkTitle": "Netwerktoegang",
+        "networkBody": "Als de bank je terugstuurt, opent je browser de omleidings-URL. De servers van Enable Banking maken geen verbinding met Monize. Monize hoeft dus niet bereikbaar te zijn vanaf internet of vanaf de IP-adressen van Enable Banking. De omleidings-URL moet openen in de browser die je gebruikt om toegang te autoriseren.",
+        "networkOutbound": "De Monize-server moet via HTTPS (poort 443) verbinding kunnen maken met api.enablebanking.com."
+      },
+      "modalSource": "Haal de applicatie-ID en de privésleutel op in het <link>Enable Banking-controlepaneel</link>."
     },
     "credentialsModal": {
       "title": "Enable Banking-inloggegevens",

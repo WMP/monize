@@ -1407,7 +1407,25 @@
         "title": "移除凭据",
         "message": "已保存的应用 ID 和私钥将从 Monize 中删除。在连接银行或同步之前，您需要重新输入它们。",
         "confirm": "移除"
-      }
+      },
+      "help": {
+        "show": "显示设置帮助",
+        "hide": "隐藏设置帮助",
+        "whatIsTitle": "什么是 Enable Banking？",
+        "whatIsBody": "Enable Banking 是一家根据 PSD2 在欧盟获得账户信息服务提供商 (AISP) 许可的公司。它代您连接银行，并让 Monize 以只读方式访问您的账户、余额和交易。您在自己的银行登录。Monize 和 Enable Banking 不会看到您的银行密码。Enable Banking 支持欧洲经济区的银行。",
+        "whatIsFree": "个人使用时，处于受限生产模式的免费应用就够了。它只读取您在控制面板中关联到它的账户。",
+        "setupTitle": "设置方法",
+        "step1": "在 <link>Enable Banking 控制面板</link>中创建账户。",
+        "step2": "创建一个应用。选择生产环境，或选择沙盒以使用模拟银行测试。",
+        "step3": "将下方的重定向 URL 添加到应用。",
+        "step4": "保存控制面板提供的私钥文件 (.pem)。请妥善保密此文件。",
+        "step5": "在控制面板中，将您自己的银行账户关联到应用。",
+        "step6": "在此输入应用 ID 和私钥文件的内容。",
+        "networkTitle": "网络访问",
+        "networkBody": "银行将您送回时，您的浏览器会打开重定向 URL。Enable Banking 的服务器不会连接到 Monize。因此 Monize 不需要能从互联网或 Enable Banking 的 IP 地址访问。重定向 URL 必须能在您用于授权访问的浏览器中打开。",
+        "networkOutbound": "Monize 服务器必须能通过 HTTPS (端口 443) 连接到 api.enablebanking.com。"
+      },
+      "modalSource": "请从 <link>Enable Banking 控制面板</link>获取应用 ID 和私钥。"
     },
     "credentialsModal": {
       "title": "Enable Banking 凭据",

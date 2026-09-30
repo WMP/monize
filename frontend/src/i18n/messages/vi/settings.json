@@ -1407,7 +1407,25 @@
         "title": "Xóa thông tin đăng nhập",
         "message": "ID ứng dụng và khóa riêng đã lưu sẽ bị xóa khỏi Monize. Bạn sẽ cần nhập lại chúng trước khi có thể kết nối ngân hàng hoặc đồng bộ.",
         "confirm": "Xóa"
-      }
+      },
+      "help": {
+        "show": "Hiện trợ giúp thiết lập",
+        "hide": "Ẩn trợ giúp thiết lập",
+        "whatIsTitle": "Enable Banking là gì?",
+        "whatIsBody": "Enable Banking là một công ty được cấp phép tại EU với tư cách nhà cung cấp dịch vụ thông tin tài khoản (AISP) theo PSD2. Công ty kết nối với ngân hàng của bạn thay bạn và cấp cho Monize quyền truy cập chỉ đọc vào tài khoản, số dư và giao dịch của bạn. Bạn đăng nhập tại chính ngân hàng của mình. Monize và Enable Banking không bao giờ thấy mật khẩu ngân hàng của bạn. Enable Banking làm việc với các ngân hàng trong Khu vực Kinh tế Châu Âu.",
+        "whatIsFree": "Để dùng cá nhân, một ứng dụng miễn phí ở chế độ sản xuất hạn chế là đủ. Ứng dụng chỉ đọc các tài khoản mà bạn liên kết với nó trong bảng điều khiển.",
+        "setupTitle": "Cách thiết lập",
+        "step1": "Tạo tài khoản trong <link>bảng điều khiển Enable Banking</link>.",
+        "step2": "Tạo một ứng dụng. Chọn môi trường sản xuất, hoặc sandbox để thử với một ngân hàng giả lập.",
+        "step3": "Thêm URL chuyển hướng bên dưới vào ứng dụng.",
+        "step4": "Lưu tệp khóa riêng (.pem) mà bảng điều khiển cung cấp. Hãy giữ bí mật tệp này.",
+        "step5": "Trong bảng điều khiển, liên kết các tài khoản ngân hàng của chính bạn với ứng dụng.",
+        "step6": "Nhập ID ứng dụng và nội dung của tệp khóa riêng tại đây.",
+        "networkTitle": "Truy cập mạng",
+        "networkBody": "Khi ngân hàng đưa bạn quay lại, trình duyệt của bạn mở URL chuyển hướng. Máy chủ Enable Banking không kết nối với Monize. Vì vậy Monize không cần truy cập được từ internet hay từ địa chỉ IP của Enable Banking. URL chuyển hướng phải mở được trong trình duyệt mà bạn dùng để cấp quyền truy cập.",
+        "networkOutbound": "Máy chủ Monize phải kết nối được tới api.enablebanking.com qua HTTPS (cổng 443)."
+      },
+      "modalSource": "Lấy ID ứng dụng và khóa riêng từ <link>bảng điều khiển Enable Banking</link>."
     },
     "credentialsModal": {
       "title": "Thông tin đăng nhập Enable Banking",

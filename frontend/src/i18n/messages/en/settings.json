@@ -1407,7 +1407,25 @@
         "title": "Remove credentials",
         "message": "The stored application ID and private key are deleted from Monize. You will need to enter them again before you can connect a bank or sync.",
         "confirm": "Remove"
-      }
+      },
+      "help": {
+        "show": "Show setup help",
+        "hide": "Hide setup help",
+        "whatIsTitle": "What is Enable Banking?",
+        "whatIsBody": "Enable Banking is a company that is licensed in the EU as an account information service provider (AISP) under PSD2. It connects to your bank for you and gives Monize read-only access to your accounts, balances and transactions. You sign in at your own bank. Monize and Enable Banking never see your bank password. Enable Banking works with banks in the European Economic Area.",
+        "whatIsFree": "For personal use, a free application in restricted production mode is enough. It reads only the accounts that you link to it in the control panel.",
+        "setupTitle": "How to set it up",
+        "step1": "Create an account in the <link>Enable Banking control panel</link>.",
+        "step2": "Create an application. Select the production environment, or the sandbox to test with a mock bank.",
+        "step3": "Add the redirect URL below to the application.",
+        "step4": "Save the private key file (.pem) that the control panel gives you. Keep this file secret.",
+        "step5": "In the control panel, link your own bank accounts to the application.",
+        "step6": "Enter the application ID and the contents of the private key file here.",
+        "networkTitle": "Network access",
+        "networkBody": "When the bank sends you back, your browser opens the redirect URL. Enable Banking servers do not connect to Monize. Thus Monize does not have to be reachable from the internet or from Enable Banking IP addresses. The redirect URL must open in the browser that you use to authorize access.",
+        "networkOutbound": "The Monize server must be able to connect to api.enablebanking.com over HTTPS (port 443)."
+      },
+      "modalSource": "Get the application ID and the private key from the <link>Enable Banking control panel</link>."
     },
     "credentialsModal": {
       "title": "Enable Banking credentials",

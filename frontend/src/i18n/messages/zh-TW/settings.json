@@ -1407,7 +1407,25 @@
         "title": "移除憑證",
         "message": "已儲存的應用程式 ID 和私密金鑰將從 Monize 中刪除。在連接銀行或同步之前，您需要重新輸入它們。",
         "confirm": "移除"
-      }
+      },
+      "help": {
+        "show": "顯示設定說明",
+        "hide": "隱藏設定說明",
+        "whatIsTitle": "什麼是 Enable Banking？",
+        "whatIsBody": "Enable Banking 是一家依 PSD2 在歐盟取得科目資訊服務提供者 (AISP) 許可的公司。它代您連接銀行，並讓 Monize 以唯讀方式存取您的科目、餘額和交易。您在自己的銀行登入。Monize 和 Enable Banking 不會看到您的銀行密碼。Enable Banking 支援歐洲經濟區的銀行。",
+        "whatIsFree": "個人使用時，處於受限生產模式的免費應用程式就夠了。它只讀取您在控制面板中關聯到它的科目。",
+        "setupTitle": "設定方法",
+        "step1": "在 <link>Enable Banking 控制面板</link>中建立帳號。",
+        "step2": "建立一個應用程式。選擇生產環境，或選擇沙盒以使用模擬銀行測試。",
+        "step3": "將下方的重新導向 URL 新增到應用程式。",
+        "step4": "儲存控制面板提供的私密金鑰檔案 (.pem)。請妥善保密此檔案。",
+        "step5": "在控制面板中，將您自己的銀行科目關聯到應用程式。",
+        "step6": "在此輸入應用程式 ID 和私密金鑰檔案的內容。",
+        "networkTitle": "網路存取",
+        "networkBody": "銀行將您送回時，您的瀏覽器會開啟重新導向 URL。Enable Banking 的伺服器不會連線到 Monize。因此 Monize 不需要能從網際網路或 Enable Banking 的 IP 位址存取。重新導向 URL 必須能在您用於授權存取的瀏覽器中開啟。",
+        "networkOutbound": "Monize 伺服器必須能透過 HTTPS (連接埠 443) 連線到 api.enablebanking.com。"
+      },
+      "modalSource": "請從 <link>Enable Banking 控制面板</link>取得應用程式 ID 和私密金鑰。"
     },
     "credentialsModal": {
       "title": "Enable Banking 憑證",
