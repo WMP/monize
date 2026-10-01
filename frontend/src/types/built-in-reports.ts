@@ -450,3 +450,75 @@ export interface DuplicateTransactionsResponse {
     potentialSavings: number;
   };
 }
+
+// Cash Flow Sankey types (docs/future-plans/sankey-cash-flow.md section 6)
+export type CashFlowSankeyDepth = 1 | 2;
+
+export interface CashFlowSankeyParams extends ReportQueryParams {
+  /** The cash-flow scope; absent or empty means the server's default. */
+  accountIds?: string[];
+  depth?: CashFlowSankeyDepth;
+}
+
+export type CashFlowSankeyNodeKind =
+  | 'income'
+  | 'hub'
+  | 'expense'
+  | 'child'
+  | 'class'
+  | 'inflow'
+  | 'account'
+  | 'uncategorized'
+  | 'residual';
+
+export interface CashFlowSankeyNode {
+  /**
+   * Stable: `income:<categoryId>`, `hub`, `expense:<categoryId>`,
+   * `child:<categoryId>`, `class:savings|debt|other_accounts`,
+   * `inflow:savings|borrowed|other_accounts`, `account:<accountId>` or
+   * `account:removed`, `uncategorized:income|expense`,
+   * `residual:unspent|deficit`.
+   */
+  id: string;
+  kind: CashFlowSankeyNodeKind;
+  label: string;
+  categoryId: string | null;
+  parentCategoryId: string | null;
+  accountId: string | null;
+  color: string | null;
+  /** `null` while any component could not be converted. */
+  total: number | null;
+  knownTotal: number;
+}
+
+export interface CashFlowSankeyLink {
+  source: string;
+  target: string;
+  amount: number | null;
+  knownAmount: number;
+}
+
+export interface CashFlowSankeyResponse {
+  startDate: string;
+  endDate: string;
+  currency: string;
+  scopeAccountIds: string[];
+  nodes: CashFlowSankeyNode[];
+  links: CashFlowSankeyLink[];
+  totals: {
+    income: number | null;
+    inflows: number | null;
+    expenses: number | null;
+    outflows: number | null;
+    unspent: number | null;
+    deficit: number | null;
+  };
+  knownTotals: {
+    income: number;
+    inflows: number;
+    expenses: number;
+    outflows: number;
+  };
+  missingCurrencies: string[];
+  excludedCount: number;
+}
