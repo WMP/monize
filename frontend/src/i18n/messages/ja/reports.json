@@ -1856,6 +1856,7 @@
     "cardOutflows": "出金振替",
     "unknown": "不明",
     "knownPartOnly": "換算できた部分のみを表示しています。",
+    "netRefund": "純返金: このサブカテゴリは支出より受け取った金額のほうが多くなっています。",
     "excludedCount": "{count, plural, other {# 件の金額を換算できなかったため、上記の数値から除外しています。}}",
     "noData": "この期間の収入、支出、振替はありません",
     "range": "{start}～{end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "未分類の支出",
       "residualUnspent": "未使用",
       "residualDeficit": "残高から充当",
-      "removedAccount": "（削除された口座）"
+      "unlinkedAccount": "（リンクされていない口座）"
     }
   }
 }

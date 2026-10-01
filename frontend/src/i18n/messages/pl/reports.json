@@ -1856,6 +1856,7 @@
     "cardOutflows": "Przelewy wychodzące",
     "unknown": "Nieznane",
     "knownPartOnly": "Rysowana jest tylko część, którą udało się przeliczyć.",
+    "netRefund": "Zwrot netto: ta podkategoria przyjęła więcej, niż wydała.",
     "excludedCount": "{count, plural, one {# kwoty nie udało się przeliczyć i pominięto ją w powyższych liczbach.} few {# kwot nie udało się przeliczyć i pominięto je w powyższych liczbach.} many {# kwot nie udało się przeliczyć i pominięto je w powyższych liczbach.} other {# kwoty nie udało się przeliczyć i pominięto je w powyższych liczbach.}}",
     "noData": "Brak dochodów, wydatków i przelewów w tym okresie",
     "range": "{start} do {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Wydatki bez kategorii",
       "residualUnspent": "Niewydane",
       "residualDeficit": "Pobrane z sald",
-      "removedAccount": "(usunięte konto)"
+      "unlinkedAccount": "(niepowiązane konto)"
     }
   }
 }

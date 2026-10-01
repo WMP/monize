@@ -521,7 +521,7 @@ describe("CashFlowSankeyService", () => {
       expect(split[1][1]).toEqual([CHEQUING, SAVINGS]);
     });
 
-    it("files a leg whose counterpart was deleted under other accounts, as a removed account", async () => {
+    it("files a leg whose counterpart it cannot see under other accounts, as an unlinked account", async () => {
       useLedger({
         whole: [
           {
@@ -541,11 +541,11 @@ describe("CashFlowSankeyService", () => {
       );
 
       expect(node(result, "class:other_accounts")?.total).toBe(25);
-      const removed = node(result, "account:removed");
-      expect(removed?.label).toBe("(removed account)");
-      expect(removed?.accountId).toBeNull();
+      const unlinked = node(result, "account:unlinked");
+      expect(unlinked?.label).toBe("(unlinked account)");
+      expect(unlinked?.accountId).toBeNull();
       expect(
-        link(result, "class:other_accounts", "account:removed")?.amount,
+        link(result, "class:other_accounts", "account:unlinked")?.amount,
       ).toBe(25);
     });
   });

@@ -1783,8 +1783,9 @@ Enforcement         wholeTransferLegsQuery and splitTransferLegsQuery
                     (backend/src/built-in-reports/cash-flow-sankey.service.ts)
                     select t.account_id = ANY(scope) AND the counterpart NOT IN
                     scope in SQL; classifyCounterpart maps the type to a class.
-                    A leg whose counterpart was deleted is "Other accounts"
-                    under "(removed account)".
+                    A leg whose counterpart the reader cannot see (deleted,
+                    never linked, or a cross-owner transfer's other leg) is
+                    "Other accounts" under "(unlinked account)".
 Concurrency scope   -- (read path)
 Retry semantics     -- (read path)
 Crash semantics     -- (read path)
@@ -1848,12 +1849,14 @@ Required tests      cash-flow-sankey.service.spec.ts (the example without the US
                     row's own rate); cash-flow-sankey.integration.spec.ts (the
                     example without the rate); CashFlowSankeyReport.test.tsx (the
                     partial cards and the banner).
-Status              enforced
+Status              enforced for completeness; the disclosure INV-FX-002 asks
+                    for is owed: the response and the report do not say
+                    whether a row was converted at its own rate or at the
+                    market's, because the design's response shape has no
+                    field for it. A follow-up adds per-basis counts (the
+                    transactionRateCount / marketRateCount shape the
+                    investment transaction summary already returns).
 ```
-
-The surface does not yet say which rate converted a row (its own or the
-market's), which INV-FX-002 asks of a surface that uses both; the response shape
-in the design has no field for it.
 
 ### INV-SANKEY-005 -- the "Other" merge is drawing only
 

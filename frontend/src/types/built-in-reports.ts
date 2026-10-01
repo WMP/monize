@@ -476,7 +476,7 @@ export interface CashFlowSankeyNode {
    * Stable: `income:<categoryId>`, `hub`, `expense:<categoryId>`,
    * `child:<categoryId>`, `class:savings|debt|other_accounts`,
    * `inflow:savings|borrowed|other_accounts`, `account:<accountId>` or
-   * `account:removed`, `uncategorized:income|expense`,
+   * `account:unlinked`, `uncategorized:income|expense`,
    * `residual:unspent|deficit`.
    */
   id: string;

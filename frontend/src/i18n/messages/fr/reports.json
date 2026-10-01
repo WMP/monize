@@ -1856,6 +1856,7 @@
     "cardOutflows": "Virements émis",
     "unknown": "Inconnu",
     "knownPartOnly": "Seule la partie convertible est dessinée.",
+    "netRefund": "Remboursement net : cette sous-catégorie a reçu plus qu’elle n’a dépensé.",
     "excludedCount": "{count, plural, one {# montant n’a pas pu être converti et est exclu des chiffres ci-dessus.} other {# montants n’ont pas pu être convertis et sont exclus des chiffres ci-dessus.}}",
     "noData": "Aucun revenu, dépense ni virement pour cette période",
     "range": "{start} au {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Dépenses non catégorisées",
       "residualUnspent": "Non dépensé",
       "residualDeficit": "Puisé dans les soldes",
-      "removedAccount": "(compte supprimé)"
+      "unlinkedAccount": "(compte non lié)"
     }
   }
 }

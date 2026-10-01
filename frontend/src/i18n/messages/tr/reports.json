@@ -1856,6 +1856,7 @@
     "cardOutflows": "Giden transferler",
     "unknown": "Bilinmiyor",
     "knownPartOnly": "Yalnızca dönüştürülebilen kısım çizilir.",
+    "netRefund": "Net iade: bu alt kategori harcadığından fazlasını aldı.",
     "excludedCount": "{count, plural, one {# tutar dönüştürülemedi ve yukarıdaki rakamlara dahil edilmedi.} other {# tutar dönüştürülemedi ve yukarıdaki rakamlara dahil edilmedi.}}",
     "noData": "Bu dönemde gelir, harcama veya transfer yok",
     "range": "{start} - {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Kategorisiz giderler",
       "residualUnspent": "Harcanmayan",
       "residualDeficit": "Bakiyelerden çekilen",
-      "removedAccount": "(silinmiş hesap)"
+      "unlinkedAccount": "(bağlantısız hesap)"
     }
   }
 }

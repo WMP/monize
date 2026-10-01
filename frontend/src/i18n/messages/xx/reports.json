@@ -1856,6 +1856,7 @@
     "cardOutflows": "[XX-Transfers out-XX]",
     "unknown": "[XX-Unknown-XX]",
     "knownPartOnly": "[XX-Only the part that could be converted is drawn.-XX]",
+    "netRefund": "[XX-Net refund: this subcategory took in more than it spent.-XX]",
     "excludedCount": "[XX-{count, plural, one {# amount could not be converted and is left out of the figures above.} other {# amounts could not be converted and are left out of the figures above.}}-XX]",
     "noData": "[XX-No income, spending or transfers in this period-XX]",
     "range": "[XX-{start} to {end}-XX]",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "[XX-Uncategorized expenses-XX]",
       "residualUnspent": "[XX-Unspent-XX]",
       "residualDeficit": "[XX-Drawn from balances-XX]",
-      "removedAccount": "[XX-(removed account)-XX]"
+      "unlinkedAccount": "[XX-(unlinked account)-XX]"
     }
   }
 }

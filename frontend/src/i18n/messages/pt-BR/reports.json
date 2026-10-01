@@ -1856,6 +1856,7 @@
     "cardOutflows": "Transferências enviadas",
     "unknown": "Desconhecido",
     "knownPartOnly": "Só a parte que pôde ser convertida é desenhada.",
+    "netRefund": "Reembolso líquido: esta subcategoria recebeu mais do que gastou.",
     "excludedCount": "{count, plural, one {# valor não pôde ser convertido e ficou de fora dos números acima.} other {# valores não puderam ser convertidos e ficaram de fora dos números acima.}}",
     "noData": "Nenhuma renda, despesa ou transferência neste período",
     "range": "{start} a {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Despesas sem categoria",
       "residualUnspent": "Não gasto",
       "residualDeficit": "Retirado dos saldos",
-      "removedAccount": "(conta removida)"
+      "unlinkedAccount": "(conta não vinculada)"
     }
   }
 }

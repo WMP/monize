@@ -1856,6 +1856,7 @@
     "cardOutflows": "转出",
     "unknown": "未知",
     "knownPartOnly": "仅绘制可以换算的部分。",
+    "netRefund": "净退款：此子类别收到的金额多于支出。",
     "excludedCount": "{count, plural, other {# 笔金额无法换算，未计入上述数字。}}",
     "noData": "此期间没有收入、支出或转账",
     "range": "{start} 至 {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "未分类支出",
       "residualUnspent": "未花费",
       "residualDeficit": "动用余额",
-      "removedAccount": "（已删除账户）"
+      "unlinkedAccount": "（未关联账户）"
     }
   }
 }

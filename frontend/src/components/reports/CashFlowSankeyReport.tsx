@@ -59,7 +59,7 @@ const FIXED_NODE_KEYS: Record<string, string> = {
   'uncategorized:expense': 'uncategorizedExpense',
   'residual:unspent': 'residualUnspent',
   'residual:deficit': 'residualDeficit',
-  'account:removed': 'removedAccount',
+  'account:unlinked': 'unlinkedAccount',
 };
 
 /** Which side of the hub a node is on, for the table and the CSV. */
@@ -220,7 +220,7 @@ export function SankeyLinkShape({
       stroke={color}
       strokeOpacity={0.35}
       strokeWidth={Math.max(linkWidth, 1)}
-      strokeDasharray={payload?.incomplete ? '6 4' : undefined}
+      strokeDasharray={payload?.incomplete ? '6 4' : payload?.netRefund ? '2 3' : undefined}
     />
   );
 }
@@ -239,11 +239,14 @@ export function CashFlowSankeyReport() {
   const [chosenView, setChosenView] = useState<SankeyView | null>(null);
   const view: SankeyView = chosenView ?? (isMobile ? 'table' : 'sankey');
   const [depth, setDepth] = useState<CashFlowSankeyDepth>(1);
-  const [accountIds, setAccountIds] = useState<string[]>(NO_IDS);
+  // `null` until the reader picks: the server's default cash-flow scope, which
+  // the picker then shows as the accounts the response says it used.
+  const [accountIds, setAccountIds] = useState<string[] | null>(null);
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: 'mtd' });
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
-  const scopeKey = accountIds.join(',');
+  const requestedIds = accountIds ?? NO_IDS;
+  const scopeKey = requestedIds.join(',');
 
   const { data: accounts } = useReportData(() => accountsApi.getAll(), []);
   const { data: categories } = useReportData(() => categoriesApi.getAll(), []);
@@ -253,7 +256,7 @@ export function CashFlowSankeyReport() {
         ? builtInReportsApi.getCashFlowSankey({
             startDate: rangeStart || undefined,
             endDate: rangeEnd,
-            accountIds,
+            accountIds: requestedIds,
             depth,
           })
         : Promise.resolve(null),
@@ -318,13 +321,14 @@ export function CashFlowSankeyReport() {
         };
 
   /** A figure, its known part marked partial, or "unknown" when nothing is known. */
-  const figure = (total: number | null, known: number | null, compact = false) => {
-    const format = compact ? formatCurrencyCompact : formatCurrency;
-    if (total !== null) return format(total);
+  // Full precision wherever a figure is read against another (cards, table,
+  // PDF); only the legend, which sits beside the drawing, is compact.
+  const figure = (total: number | null, known: number | null) => {
+    if (total !== null) return formatCurrency(total);
     if (known === null) return t('sankey.unknown');
     return (
       <PartialTotal total={partOf(total, known)} displayCurrency={reportingCurrency}>
-        {format(known)}
+        {formatCurrency(known)}
       </PartialTotal>
     );
   };
@@ -449,7 +453,7 @@ export function CashFlowSankeyReport() {
   const tooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> }) => {
     const item = payload?.[0]?.payload as
       | (SankeyDrawNode & { source?: undefined })
-      | { source: SankeyDrawNode; target: SankeyDrawNode; value: number; incomplete: boolean }
+      | { source: SankeyDrawNode; target: SankeyDrawNode; value: number; incomplete: boolean; netRefund?: boolean }
       | undefined;
     if (!active || !item) return null;
     if (item.source) {
@@ -460,6 +464,7 @@ export function CashFlowSankeyReport() {
           payload={[{ name: t('sankey.colAmount'), value: item.value, color: colorOfDrawn(item.source.kind === 'hub' ? item.target : item.source) }]}
           formatValue={(value) => formatCurrency(value)}
         >
+          {item.netRefund && <p className="text-xs text-gray-600 dark:text-gray-400">{t('sankey.netRefund')}</p>}
           {item.incomplete && <p className="text-xs text-amber-600 dark:text-amber-400">{t('sankey.knownPartOnly')}</p>}
         </ChartTooltip>
       );
@@ -501,8 +506,10 @@ export function CashFlowSankeyReport() {
           />
           <ReportAccountMultiSelect
             accounts={accounts ?? []}
-            value={accountIds}
-            onChange={setAccountIds}
+            value={accountIds ?? response?.scopeAccountIds ?? NO_IDS}
+            // Clearing every account asks for the default scope again, which
+            // the picker then shows rather than an empty "all accounts".
+            onChange={(ids) => setAccountIds(ids.length > 0 ? ids : null)}
             className="w-full sm:w-56"
           />
           <div className={`${SEGMENTED_GROUP_CLASS} self-center`} role="group" aria-label={t('sankey.depthLabel')}>
@@ -656,7 +663,7 @@ export function CashFlowSankeyReport() {
                       </td>
                       <td role="cell" className={`${FIGURE_CELL} text-gray-900 dark:text-gray-100`}>
                         <CellLabel className={CAPTION_CLASS}>{t('sankey.colAmount')}</CellLabel>
-                        {figure(node.total, node.kind === 'residual' ? null : node.knownTotal, true)}
+                        {figure(node.total, node.kind === 'residual' ? null : node.knownTotal)}
                       </td>
                     </tr>
                   );

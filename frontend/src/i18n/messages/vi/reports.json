@@ -1856,6 +1856,7 @@
     "cardOutflows": "Chuyển khoản đi",
     "unknown": "Không xác định",
     "knownPartOnly": "Chỉ phần quy đổi được mới được vẽ.",
+    "netRefund": "Hoàn tiền ròng: danh mục con này nhận về nhiều hơn số đã chi.",
     "excludedCount": "{count, plural, other {# khoản tiền không thể quy đổi và bị loại khỏi các số liệu ở trên.}}",
     "noData": "Không có thu nhập, chi tiêu hoặc chuyển khoản trong kỳ này",
     "range": "{start} đến {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Chi tiêu chưa phân loại",
       "residualUnspent": "Chưa chi tiêu",
       "residualDeficit": "Rút từ số dư",
-      "removedAccount": "(tài khoản đã xóa)"
+      "unlinkedAccount": "(tài khoản chưa liên kết)"
     }
   }
 }

@@ -1856,6 +1856,7 @@
     "cardOutflows": "轉出",
     "unknown": "未知",
     "knownPartOnly": "僅繪製可以換算的部分。",
+    "netRefund": "淨退款：此子類別收到的金額多於支出。",
     "excludedCount": "{count, plural, other {# 筆金額無法換算，未計入上述數字。}}",
     "noData": "此期間沒有收入、支出或轉帳",
     "range": "{start} 至 {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "未分類支出",
       "residualUnspent": "未花費",
       "residualDeficit": "動用餘額",
-      "removedAccount": "（已刪除帳戶）"
+      "unlinkedAccount": "（未關聯帳戶）"
     }
   }
 }

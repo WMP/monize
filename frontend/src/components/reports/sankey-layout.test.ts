@@ -194,6 +194,76 @@ describe('toRechartsSankey', () => {
   });
 });
 
+describe('toRechartsSankey with a net-refund subcategory', () => {
+  /** True when the drawn links hold no cycle, which recharts cannot lay out. */
+  function acyclic(links: Array<{ source: number; target: number }>): boolean {
+    const out = new Map<number, number[]>();
+    for (const l of links) out.set(l.source, [...(out.get(l.source) ?? []), l.target]);
+    const state = new Map<number, 'open' | 'done'>();
+    const visit = (n: number): boolean => {
+      if (state.get(n) === 'done') return true;
+      if (state.get(n) === 'open') return false;
+      state.set(n, 'open');
+      const ok = (out.get(n) ?? []).every(visit);
+      state.set(n, 'done');
+      return ok;
+    };
+    return [...out.keys()].every(visit);
+  }
+
+  /**
+   * Parent B nets to 40 of spending: twelve children spend 5 each (60) and
+   * one, Rebates, takes in 20 more than it spent, so the response links it
+   * INTO B. Thirteen children overflow the child column.
+   */
+  function refundBeyondTheLimit(): CashFlowSankeyResponse {
+    const spenders = Array.from({ length: 12 }, (_, i) => node(`child:s${i}`, 5));
+    return response(
+      [node('income:a', 40), node('hub', 40), node('expense:b', 40), ...spenders, node('child:rebates', 20)],
+      [
+        link('income:a', 'hub', 40),
+        link('hub', 'expense:b', 40),
+        ...spenders.map((c) => link('expense:b', c.id, 5)),
+        link('child:rebates', 'expense:b', 20),
+      ],
+    );
+  }
+
+  it('draws the refund parent -> child, flagged, and never as a cycle', () => {
+    const drawing = toRechartsSankey(deepFreeze(refundBeyondTheLimit()), OPTIONS);
+
+    expect(acyclic(drawing.links)).toBe(true);
+    const id = (i: number) => drawing.nodes[i].id;
+    const refund = drawing.links.find((l) => id(l.target) === 'child:rebates')!;
+    expect(id(refund.source)).toBe('expense:b');
+    expect(refund.netRefund).toBe(true);
+    expect(refund.value).toBe(20);
+    // Kept out of the merge, so its marker means something, and drawn in the
+    // child column rather than beside the income sources.
+    expect(drawing.nodes.find((n) => n.id === 'child:rebates')?.column).toBe('child');
+    expect(drawing.nodes.find((n) => n.id === 'other:child')?.members).not.toContain('child:rebates');
+    expect(drawing.links.filter((l) => l.netRefund)).toHaveLength(1);
+  });
+
+  it('drops a link that would close a cycle, whatever produced it', () => {
+    const drawing = toRechartsSankey(
+      response(
+        [node('income:a', 10), node('hub', 10), node('class:b', 10), node('account:c', 10)],
+        [
+          link('income:a', 'hub', 10),
+          link('hub', 'class:b', 10),
+          link('class:b', 'account:c', 10),
+          link('account:c', 'class:b', 10),
+        ],
+      ),
+      OPTIONS,
+    );
+
+    expect(acyclic(drawing.links)).toBe(true);
+    expect(drawing.links).toHaveLength(3);
+  });
+});
+
 describe('columnOf', () => {
   it.each([
     ['income:a', 'source'],

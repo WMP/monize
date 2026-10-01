@@ -1856,6 +1856,7 @@
     "cardOutflows": "Transfer keluar",
     "unknown": "Tidak diketahui",
     "knownPartOnly": "Hanya bagian yang dapat dikonversi yang digambar.",
+    "netRefund": "Pengembalian bersih: subkategori ini menerima lebih banyak daripada yang dibelanjakan.",
     "excludedCount": "{count, plural, other {# jumlah tidak dapat dikonversi dan tidak termasuk dalam angka di atas.}}",
     "noData": "Tidak ada pemasukan, pengeluaran, atau transfer pada periode ini",
     "range": "{start} sampai {end}",
@@ -1888,7 +1889,7 @@
       "uncategorizedExpense": "Pengeluaran tanpa kategori",
       "residualUnspent": "Tidak terpakai",
       "residualDeficit": "Diambil dari saldo",
-      "removedAccount": "(rekening dihapus)"
+      "unlinkedAccount": "(rekening tidak tertaut)"
     }
   }
 }

@@ -141,8 +141,10 @@ export function categorizedRowsQuery(scope: SankeyQueryScope): BuiltQuery {
 /**
  * Whole transfer legs (`is_transfer = true`) whose own account is in scope and
  * whose counterpart is not (SANKEY-002). The counterpart is the linked row's
- * account; a leg whose linked row was deleted has none, and is "other
- * accounts" under "(removed account)" so the identity still closes. Both legs
+ * account. A leg whose linked row this reader cannot see -- deleted, never
+ * linked (an import), or the other owner's leg of a cross-owner transfer --
+ * has none, and is "other accounts" under "(unlinked account)" so the
+ * identity still closes. Both legs
  * of an internal transfer fail the counterpart predicate, so neither is read.
  */
 export function wholeTransferLegsQuery(scope: SankeyQueryScope): BuiltQuery {

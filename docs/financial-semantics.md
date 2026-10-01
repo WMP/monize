@@ -118,8 +118,9 @@ transfer leg as a flow. Its rules, from `docs/future-plans/sankey-cash-flow.md`:
 
 A leg counts once, by its own account's scope and its own signed amount
 (SANKEY-002); a transfer never enters income or expenses (INV-REPORT-003). A
-leg whose counterpart was deleted is "Other accounts" under "(removed
-account)", so the identity still closes.
+leg whose counterpart the reader cannot see (deleted, never linked, or the
+other owner's leg of a cross-owner transfer) is "Other accounts" under
+"(unlinked account)", so the identity still closes.
 
 ## 3. Exchange rates
 

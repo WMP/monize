@@ -38,6 +38,13 @@ export interface SankeyDrawLink {
   value: number;
   /** Drawn at its known part because the whole could not be converted. */
   incomplete: boolean;
+  /**
+   * A subcategory whose refunds exceed its spending. The response links it
+   * INTO its parent (so the signed child links sum to the parent's); the
+   * drawing turns it round so the child stays in the child column, and marks
+   * it so the reader is not shown a refund as spending.
+   */
+  netRefund: boolean;
 }
 
 export interface SankeyDrawing {
@@ -102,19 +109,36 @@ export function toRechartsSankey(
   const max = options.maxNodesPerColumn ?? MAX_NODES_PER_COLUMN;
   const byId = new Map(response.nodes.map((node) => [node.id, node]));
 
+  // A child -> parent link is a net refund. Drawn as the response has it, the
+  // child would sit in the first column beside the income sources, and merged
+  // into "Other" beside a sibling it would make a two-link cycle recharts'
+  // depth walk recurses on forever. It is drawn parent -> child, flagged.
+  const oriented = response.links.map((link) => {
+    const source = byId.get(link.source);
+    const target = byId.get(link.target);
+    const reversed =
+      source?.kind === 'child' && target !== undefined && target.kind !== 'child' && target.kind !== 'account';
+    return reversed
+      ? { ...link, source: link.target, target: link.source, netRefund: true }
+      : { ...link, netRefund: false };
+  });
+
   // The nodes some drawable link touches; the rest have nothing to draw.
   const drawable = new Set<string>();
-  for (const link of response.links) {
+  // A net-refund child keeps its own node, so its marker means something.
+  const keepOwnNode = new Set<string>();
+  for (const link of oriented) {
     if (drawnAmount(link.amount, link.knownAmount) <= 0) continue;
     drawable.add(link.source);
     drawable.add(link.target);
+    if (link.netRefund) keepOwnNode.add(link.target);
   }
 
   // Per column, which categories keep their own node.
   const merged = new Map<string, SankeyColumn>();
   const columns = new Map<SankeyColumn, CashFlowSankeyNode[]>();
   for (const node of response.nodes) {
-    if (!MERGEABLE.has(node.kind) || !drawable.has(node.id)) continue;
+    if (!MERGEABLE.has(node.kind) || !drawable.has(node.id) || keepOwnNode.has(node.id)) continue;
     const column = columnOf(node);
     columns.set(column, [...(columns.get(column) ?? []), node]);
   }
@@ -173,10 +197,25 @@ export function toRechartsSankey(
   };
 
   // Links in response order, with each merged endpoint redirected to its
-  // column's "Other" and two links between the same pair drawn as one.
+  // column's "Other" and two links between the same pair drawn as one. A link
+  // that would close a cycle is not drawn: recharts lays columns out by
+  // walking the links and has no cycle check.
   const drawLinks: SankeyDrawLink[] = [];
   const linkAt = new Map<string, number>();
-  for (const link of response.links) {
+  const targetsOf = new Map<number, number[]>();
+  const reaches = (from: number, to: number): boolean => {
+    const seen = new Set<number>();
+    const stack = [from];
+    while (stack.length > 0) {
+      const at = stack.pop()!;
+      if (at === to) return true;
+      if (seen.has(at)) continue;
+      seen.add(at);
+      stack.push(...(targetsOf.get(at) ?? []));
+    }
+    return false;
+  };
+  for (const link of oriented) {
     const value = drawnAmount(link.amount, link.knownAmount);
     if (value <= 0) continue;
     const source = indexFor(link.source);
@@ -188,14 +227,17 @@ export function toRechartsSankey(
     const at = linkAt.get(key);
     const incomplete = link.amount === null;
     if (at === undefined) {
+      if (reaches(target, source)) continue;
       linkAt.set(key, drawLinks.length);
-      drawLinks.push({ source, target, value, incomplete });
+      targetsOf.set(source, [...(targetsOf.get(source) ?? []), target]);
+      drawLinks.push({ source, target, value, incomplete, netRefund: link.netRefund });
     } else {
       const previous = drawLinks[at];
       drawLinks[at] = {
         ...previous,
         value: previous.value + value,
         incomplete: previous.incomplete || incomplete,
+        netRefund: previous.netRefund || link.netRefund,
       };
     }
   }

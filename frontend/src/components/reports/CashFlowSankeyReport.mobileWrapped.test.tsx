@@ -149,7 +149,7 @@ describe('CashFlowSankeyReport (phone wrapped table)', () => {
     const container = await renderTable();
     const row = container.querySelector('[data-testid="sankey-row-expense:cat-groceries"]')!;
     expect(row.textContent).toContain('DirectionMoney out');
-    expect(row.textContent).toContain('Amount$600');
+    expect(row.textContent).toContain('Amount$600.00');
     // The identity is self-describing and carries no caption.
     expect(row.querySelector('td')!.textContent).toBe('Groceries');
   });

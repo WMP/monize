@@ -55,10 +55,15 @@ vi.mock('@/components/ui/DateRangeSelector', () => ({
 }));
 
 vi.mock('@/components/reports/ReportAccountMultiSelect', () => ({
-  ReportAccountMultiSelect: ({ onChange }: { onChange: (ids: string[]) => void }) => (
-    <button data-testid="scope-picker" onClick={() => onChange(['acc-savings'])}>
-      Accounts
-    </button>
+  ReportAccountMultiSelect: ({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) => (
+    <div data-testid="scope-value" data-value={value.join(',')}>
+      <button data-testid="scope-picker" onClick={() => onChange(['acc-savings'])}>
+        Accounts
+      </button>
+      <button data-testid="scope-clear" onClick={() => onChange([])}>
+        Clear
+      </button>
+    </div>
   ),
 }));
 
@@ -386,6 +391,39 @@ describe('CashFlowSankeyReport', () => {
     expect(screen.getByRole('button', { name: 'Subcategories' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('shows the default scope the server resolved, not an empty "all accounts"', async () => {
+    await renderReport();
+
+    // The request asked for the default; the picker shows what that was.
+    expect(mockGetSankey).toHaveBeenCalledWith(expect.objectContaining({ accountIds: [] }));
+    expect(screen.getByTestId('scope-value')).toHaveAttribute('data-value', 'acc-chq,acc-usd');
+  });
+
+  it('goes back to the default scope when every account is cleared', async () => {
+    await renderReport();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('scope-picker'));
+    });
+    await waitFor(() => expect(screen.getByTestId('scope-value')).toHaveAttribute('data-value', 'acc-savings'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('scope-clear'));
+    });
+
+    await waitFor(() =>
+      expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ accountIds: [] })),
+    );
+    expect(screen.getByTestId('scope-value')).toHaveAttribute('data-value', 'acc-chq,acc-usd');
+  });
+
+  it('prints table amounts at full precision, matching the cards', async () => {
+    mockIsMobile = true;
+    await renderReport();
+
+    expect(screen.getByTestId('sankey-row-residual:unspent')).toHaveTextContent('$1,687.50');
+    expect(screen.getByTestId('sankey-row-expense:cat-dining')).toHaveTextContent('$67.50');
+  });
+
   it('asks for the scope the reader picks', async () => {
     await renderReport();
 
@@ -528,7 +566,7 @@ describe('sankeyNodeHref', () => {
     expect(sankeyNodeHref(node('account:acc-sav', 'Savings', 1, { accountId: 'acc-sav' }), response)).toBe(
       `/transactions?categoryId=transfer&accountIds=acc-sav&${range}`,
     );
-    expect(sankeyNodeHref(node('account:removed', '(removed account)', 1), response)).toBeNull();
+    expect(sankeyNodeHref(node('account:unlinked', '(unlinked account)', 1), response)).toBeNull();
   });
 
   it('gives the hub and the residual no link: they are arithmetic, not rows', () => {

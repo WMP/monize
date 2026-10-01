@@ -98,8 +98,8 @@ const DEBT_TYPES = new Set(["LOAN", "MORTGAGE", "LINE_OF_CREDIT"]);
 /**
  * The class a counterpart's type decides. A credit card is "other accounts",
  * never debt: the spending it settles was already an expense on the purchase
- * date (decision 5). An unknown or removed counterpart is "other accounts" so
- * the identity still closes (section 9).
+ * date (decision 5). A counterpart this reader cannot see is "other accounts"
+ * so the identity still closes (section 9).
  */
 export function classifyCounterpart(type: string | null): SankeyFlowClass {
   if (type && SAVINGS_TYPES.has(type)) return "savings";
@@ -129,7 +129,7 @@ export const SANKEY_FIXED_LABELS: Record<string, string> = {
   "uncategorized:expense": "Uncategorized expenses",
   "residual:unspent": "Unspent",
   "residual:deficit": "Drawn from balances",
-  "account:removed": "(removed account)",
+  "account:unlinked": "(unlinked account)",
 };
 
 export const SANKEY_NO_SUBCATEGORY_LABEL = "(no subcategory)";
@@ -307,7 +307,7 @@ export function assembleCashFlowSankey(
         accounts = new Map();
         classAccounts.set(flowClass, accounts);
       }
-      const key = row.counterpartAccountId ?? "removed";
+      const key = row.counterpartAccountId ?? "unlinked";
       let entry = accounts.get(key);
       if (!entry) {
         entry = {
@@ -501,16 +501,16 @@ export function assembleCashFlowSankey(
       const accountNodeId = `account:${accountKey}`;
       const accountMinor = toMinor(entry.bucket.agg.knownSubtotal);
       const accountComplete = entry.bucket.agg.isComplete;
-      const removed = accountKey === "removed";
+      const unlinked = accountKey === "unlinked";
       pushNode({
         id: accountNodeId,
         kind: "account",
-        label: removed
-          ? SANKEY_FIXED_LABELS["account:removed"]
-          : (entry.name ?? SANKEY_FIXED_LABELS["account:removed"]),
+        label: unlinked
+          ? SANKEY_FIXED_LABELS["account:unlinked"]
+          : (entry.name ?? SANKEY_FIXED_LABELS["account:unlinked"]),
         categoryId: null,
         parentCategoryId: null,
-        accountId: removed ? null : accountKey,
+        accountId: unlinked ? null : accountKey,
         color: null,
         knownMinor: accountMinor,
         complete: accountComplete,
