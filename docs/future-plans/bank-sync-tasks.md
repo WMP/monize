@@ -39,5 +39,17 @@
 - **BS10** is the only task that needs a real provider account. Record the
   observed field names in the plan; never paste a real account number, IBAN
   or name into the repository (use synthetic fixtures).
+- **BS10, observed so far (control panel, "Add a new application" form):**
+  - The environment is chosen per application: Sandbox (activated
+    automatically, connected to a limited set of bank sandboxes and a
+    "Mock ASPSP") or Production.
+  - The RSA key is either generated in the browser, with the private key saved
+    as a file on "Register", or generated outside the browser, with the public
+    certificate imported. The default is the browser.
+  - Redirect URLs are entered in "Allowed redirect URLs (one per line)".
+  - The settings card's steps follow this form.
+  - Still to check: the API wire format, the activation of a Production
+    application in restricted mode, the control panel URL path, and whether
+    the key file is named after the application ID.
 - **BS11** replaces the cut-off-date mitigation in spec section 4, not the
   cut-off date itself.
