@@ -39,7 +39,7 @@ No task writes to the database; there is no migration. S2 is a docs-only amendme
 | F4 | Catalog entry, lazy route entry, `reports.json` name and description, `report-definitions.test.ts` | F3 | live | [x] issue #1490 |
 | Q1 | Playwright `tests/cash-flow-sankey.spec.ts` | F4 | none | [x] issue #1490 |
 | Q2 | PDF and CSV export cases, `report-locale.guard.test.ts` green, theme contrast for the new node colours | F3 | none | [x] issue #1490 |
-| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [ ] |
+| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [x] issue #1490 |
 | D1 | Wiki Reports page row, README sample list line, `docs/system-invariants.md` SANKEY-001..005 | Q1 | none | [x] issue #1490 (README and catalog; the wiki is outside the repository) |
 | M1 | Migrate the other reports' drill-down URLs onto `buildTransactionsHref` | F1, D1 | neutral | [ ] (optional, separate proposal) |
 
