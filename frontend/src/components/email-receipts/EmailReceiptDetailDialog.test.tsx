@@ -5,7 +5,12 @@ import { EmailReceiptDetailDialog } from './EmailReceiptDetailDialog';
 import { makeDetail, PARSED_RECEIPT } from './email-receipts-fixtures';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), link: vi.fn() }));
+const txApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({ emailReceiptsApi: { receipts: api } }));
+vi.mock('@/lib/transactions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/transactions')>()),
+  transactionsApi: txApi,
+}));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
@@ -36,6 +41,12 @@ describe('EmailReceiptDetailDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.get.mockResolvedValue(makeDetail());
+    txApi.getAll.mockResolvedValue({
+      data: [
+        { id: 'tx-p', transactionDate: '2026-09-02', payeeName: 'Allegro', amount: '-25.0000', currencyCode: 'USD', description: null, isTransfer: false, isVoid: false },
+      ],
+      pagination: { page: 1, limit: 50, total: 1, totalPages: 1, hasMore: false },
+    });
   });
 
   it('loads the email and shows its headers', async () => {
@@ -187,6 +198,56 @@ describe('EmailReceiptDetailDialog', () => {
     it('shows no candidate section when there are none', async () => {
       await renderDialog();
       expect(screen.queryByText('Transactions that fit')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('choosing a transaction by hand', () => {
+    it.each(['unmatched', 'no_parser', 'parse_failed'] as const)('offers the picker for a %s email', async (status) => {
+      api.get.mockResolvedValue(makeDetail({ status }));
+      await renderDialog();
+      expect(screen.getByText('Choose the transaction')).toBeInTheDocument();
+      expect(txApi.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50 });
+    });
+
+    it.each([
+      ['ambiguous', null],
+      ['review', 'proposed'],
+      ['ignored', null],
+      ['skipped', null],
+      ['pending', null],
+    ] as const)('does not offer it for a %s email', async (status, displayState) => {
+      api.get.mockResolvedValue(makeDetail({ status, displayState }));
+      await renderDialog();
+      expect(screen.queryByText('Choose the transaction')).not.toBeInTheDocument();
+      expect(txApi.getAll).not.toHaveBeenCalled();
+    });
+
+    it('links the email to the chosen transaction and shows the updated email', async () => {
+      api.get.mockResolvedValue(makeDetail({ status: 'unmatched' }));
+      api.link.mockResolvedValue(makeDetail({ status: 'review', displayState: 'proposed', matchKind: 'manual' }));
+      await renderDialog();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Link' }));
+      });
+      await act(async () => {});
+      expect(api.link).toHaveBeenCalledWith('r-1', 'tx-p');
+      expect(toast.success).toHaveBeenCalledWith('Email linked to the transaction');
+      expect(onChanged).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Waiting for approval')).toBeInTheDocument();
+      expect(screen.queryByText('Choose the transaction')).not.toBeInTheDocument();
+    });
+
+    it('shows the server refusal and keeps the picker', async () => {
+      api.get.mockResolvedValue(makeDetail({ status: 'unmatched' }));
+      api.link.mockRejectedValue({ response: { data: { message: 'A transfer cannot be linked' } } });
+      await renderDialog();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Link' }));
+      });
+      await act(async () => {});
+      expect(screen.getByRole('alert')).toHaveTextContent('A transfer cannot be linked');
+      expect(onChanged).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Link' })).toBeEnabled();
     });
   });
 
