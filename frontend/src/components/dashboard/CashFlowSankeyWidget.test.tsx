@@ -34,9 +34,25 @@ vi.mock('@/lib/categories', () => ({
   categoriesApi: { getAll: () => Promise.resolve([]) },
 }));
 
+// The shared report picker, which orders favourites first
+// (ReportAccountMultiSelect.test.tsx); this records what the widget hands it.
+const mockPickerAccounts = vi.fn();
 vi.mock('@/components/reports/ReportAccountMultiSelect', () => ({
-  ReportAccountMultiSelect: ({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) => (
-    <button data-testid="scope-picker" data-value={value.join(',')} onClick={() => onChange(['acc-savings'])}>
+  ReportAccountMultiSelect: ({
+    accounts,
+    value,
+    onChange,
+  }: {
+    accounts: unknown[];
+    value: string[];
+    onChange: (ids: string[]) => void;
+  }) => (
+    <button
+      data-testid="scope-picker"
+      data-value={value.join(',')}
+      data-count={(mockPickerAccounts(accounts), accounts.length)}
+      onClick={() => onChange(['acc-savings'])}
+    >
       Accounts
     </button>
   ),
@@ -81,9 +97,14 @@ const RESPONSE: CashFlowSankeyResponse = {
   excludedCount: 0,
 };
 
+const ACCOUNTS = [
+  { id: 'acc-chq', name: 'Chequing', isFavourite: true, favouriteSortOrder: 1 },
+  { id: 'acc-sav', name: 'Savings', isFavourite: false, favouriteSortOrder: 0 },
+] as never[];
+
 async function renderWidget() {
   await act(async () => {
-    render(<CashFlowSankeyWidget accounts={[]} isLoading={false} />);
+    render(<CashFlowSankeyWidget accounts={ACCOUNTS} isLoading={false} />);
   });
 }
 
@@ -162,6 +183,9 @@ describe('CashFlowSankeyWidget', () => {
 
     // An empty scope is the server's default; the picker shows what it was.
     expect(screen.getByTestId('scope-picker')).toHaveAttribute('data-value', 'acc-chq,acc-sav');
+    // The dashboard's accounts, favourite flags and all, go to the shared
+    // picker, which is what lists the favourites first.
+    expect(mockPickerAccounts).toHaveBeenLastCalledWith(ACCOUNTS);
     await act(async () => {
       fireEvent.click(screen.getByTestId('scope-picker'));
     });

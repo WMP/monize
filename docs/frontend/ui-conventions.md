@@ -375,7 +375,9 @@ What the shared row encodes, for the two places that still compose by hand:
   `LabelSpacer` (`components/ui/LabelSpacer.tsx`) so what stretches is exactly
   the input's height, and hide that spacer below `sm`, where the button has no
   field beside it. Never match the padding by hand -- the figure drifts the
-  next time either control's type scale changes.
+  next time either control's type scale changes. A `DateRangeSelector` in such
+  a row takes `fillRowHeight`, which makes its presets flex items of the row so
+  they stretch with everything else (the Cash Flow Sankey toolbar).
 
 `ChartLegend` is the same trade-off answered per caller: it is one column on a
 phone by default, and `phoneColumns={2}` halves the scroll for a legend of short

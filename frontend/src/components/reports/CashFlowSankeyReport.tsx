@@ -261,7 +261,11 @@ export function CashFlowSankeyReport() {
       {/* Controls stay mounted across a reload so a date being typed keeps focus. */}
       <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-stretch justify-between">
+          {/* Every control in this row takes the row's height, which is the
+              account picker's: the presets through `fillRowHeight`, the
+              segmented pills and the view toggle by stretching. */}
           <DateRangeSelector
+            fillRowHeight
             ranges={['mtd', '1m', '3m', '6m', 'ytd', '1y']}
             value={dateRange}
             onChange={setDateRange}
@@ -279,7 +283,7 @@ export function CashFlowSankeyReport() {
             onChange={(ids) => setAccountIds(asAccountIds(ids))}
             className="w-full sm:w-56"
           />
-          <div className={`${SEGMENTED_GROUP_CLASS} self-center`} role="group" aria-label={t('sankey.depthLabel')}>
+          <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={t('sankey.depthLabel')}>
             <button type="button" aria-pressed={depth === 1} className={segmentClass(depth === 1)} onClick={() => setDepth(1)}>
               {t('sankey.depthCategories')}
             </button>
@@ -291,7 +295,6 @@ export function CashFlowSankeyReport() {
             value={view}
             onChange={(v) => setChosenView(v as SankeyView)}
             options={['sankey', 'table']}
-            className="self-center"
           />
           <ReportToolbarActions onExportPdf={handleExportPdf} onExportCsv={handleExportCsv} disabled={!data} />
         </div>

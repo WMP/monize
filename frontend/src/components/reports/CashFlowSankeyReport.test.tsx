@@ -49,7 +49,9 @@ vi.mock('@/hooks/useIsMobile', () => ({
 }));
 
 vi.mock('@/components/ui/DateRangeSelector', () => ({
-  DateRangeSelector: () => <div data-testid="date-range-selector" />,
+  DateRangeSelector: ({ fillRowHeight }: { fillRowHeight?: boolean }) => (
+    <div data-testid="date-range-selector" data-fill-row-height={String(fillRowHeight === true)} />
+  ),
 }));
 
 vi.mock('@/components/reports/ReportAccountMultiSelect', () => ({
@@ -558,6 +560,18 @@ describe('CashFlowSankeyReport', () => {
   it('offers no export for an empty period', async () => {
     await renderReport({ ...example(), nodes: [], links: [] });
     expect(screen.getByTestId('export-pdf').closest('button')).toBeDisabled();
+  });
+
+  it('gives every toolbar control the row height the account picker sets', async () => {
+    await renderReport();
+
+    const presets = screen.getByTestId('date-range-selector');
+    expect(presets).toHaveAttribute('data-fill-row-height', 'true');
+    const row = presets.parentElement!;
+    expect(row.className).toContain('items-stretch');
+    // Nothing in the row opts out of the stretch.
+    expect(row.querySelectorAll('.self-center')).toHaveLength(0);
+    expect(screen.getByRole('group', { name: 'Detail' }).className).not.toContain('self-center');
   });
 
   it('prints the help text about the default scope and card payments', async () => {
