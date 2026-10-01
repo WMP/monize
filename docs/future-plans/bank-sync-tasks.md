@@ -57,7 +57,24 @@
     redirect URL does not have to be public; restricted mode does not check
     the privacy and terms URLs (Firefly III data importer tutorial, secondary
     source).
-  - Still to check: the API wire format against a live session, and the
-    control panel URL path.
+  - Verified from the official docs: the JWT (RS256, `kid` = application
+    ID, `iss`/`aud`, a lifetime of at most 86400 s) and the wire format in
+    the plan's assumption 3.
+  - Control panel: `https://enablebanking.com/cp/applications` ("API
+    applications").
+  - Activation: "Activate by linking accounts" makes the application active
+    in restricted mode ("Using restricted applications you can only fetch
+    data from accounts linked to the application"). The authorization through
+    the API is still needed afterwards, also for the same account; an
+    unlinked account gives an empty account list.
+  - Terms: Production use is limited to linked accounts, "solely for
+    evaluation purposes or for the personal use of private individuals",
+    which matches assumption 1.
+  - Not documented: an application-level IP allowlist (only the
+    `UNAUTHORIZED_IP` code exists), and the HTTP status of most error codes.
+  - Follow-ups: send every PSU header a bank lists in `required_psu_headers`;
+    show `GET /application`'s `active` flag in the credentials test.
+  - Still to check: one real sync against a live session. Mark BS10 done
+    after it.
 - **BS11** replaces the cut-off-date mitigation in spec section 4, not the
   cut-off date itself.

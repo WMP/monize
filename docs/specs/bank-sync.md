@@ -138,6 +138,10 @@ user            Monize API                     provider            bank
 - **Consent validity.** The server reads the institution's
   `maximum_consent_validity` from the provider and asks for
   `min(maximum, 180 days)`. The client never supplies a validity.
+- **No linked accounts.** A session that returns no accounts is revoked and
+  the callback fails with `no_accounts_linked`: a Production application in
+  restricted mode returns an empty list for an account that is not linked to
+  it in the control panel ("Activate by linking accounts").
 - **Error at the bank.** The callback with `error` (and no `code`) records the
   provider's description (bounded to 500 characters) in `last_error` and
   clears the state. A first-time connection (`pending`) becomes `failed`; a
@@ -161,7 +165,12 @@ user            Monize API                     provider            bank
   user authorizes with. The backend needs outbound HTTPS to
   `api.enablebanking.com` (port 443). Neither `docker-compose*.yml` nor the
   Helm chart restricts egress, so the default deployment needs no change; an
-  operator who adds an egress policy allows that host.
+  operator who adds an egress policy allows that host. The provider can
+  still refuse the address the backend calls from: it answers
+  `UNAUTHORIZED_IP` ("Used IP address is not authorized to access the
+  resource"), which Monize reports as `ip_not_allowed`. The published
+  documentation does not describe an application-level IP restriction, so
+  the repair is to ask Enable Banking support.
 - **Disconnect.** Deletes the connection (and its bank accounts, by cascade)
   after asking the provider to delete the session. A provider failure on that
   call is logged and does not block the local delete: the consent expires at
@@ -201,9 +210,13 @@ For a planned row:
   key is not stored there (csv-source-profiles C2).
 - **Status.** `CLEARED`: the bank has booked it.
 - **External key** (INV-BANKSYNC-001), the first that applies:
-  1. `ref:` + the provider's entry reference (Enable Banking documents
-     `entry_reference` as unique and immutable across sessions for accounts
-     with the same identification hash);
+  1. `ref:` + the provider's entry reference. Enable Banking documents
+     `entry_reference` as unique and immutable for accounts with the same
+     identification hashes, and not globally unique; its FAQ adds that some
+     banks repeat values. When one fetch carries the same reference on rows
+     that differ in content, each of those rows is keyed
+     `ref:<reference>#<SHA-256 hex of its content>`, so none is lost and the
+     key does not depend on the listing order;
   2. `hash:` + SHA-256 hex over `date|amount|currency|direction|payee|description`,
      then `:` + the occurrence number of that hash among the rows of this
      fetch, counted from 0 in the order the provider returned them.
@@ -214,19 +227,25 @@ For a planned row:
 
   The provider's `transaction_id` is never part of the key: Enable Banking
   documents it as a handle for fetching details that may change when the list
-  is fetched again. A row repeated within one fetch with the same entry
-  reference (a pagination overlap) is planned once.
+  is fetched again. A booked row that repeats both the entry reference and
+  the content of an earlier booked row of the same fetch (a pagination
+  overlap) is planned once. The content is the three dates, the amount, the
+  currency, the direction, the counterparty, the remittance lines and the
+  bank reference.
 
 ## 7. Syncing one bank account
 
 Window: `date_from = max(sync_from_date, last_success_at::date - 7 days)`
 (`sync_from_date` alone before the first success), `date_to = today`. The
 overlap re-reads a week so a row the bank booked late is not missed; the
-ledger makes the re-read free.
+ledger makes the re-read free. `date_from` is sent as at most today in UTC:
+the provider reads dates in UTC and refuses a later `date_from` with
+`DATE_FROM_IN_FUTURE`.
 
 Default cut-off when a bank account is linked: the day after the newest
-non-VOID transaction in the Monize account, or today minus 90 days for an
-empty account. The user may choose another date.
+non-VOID transaction in the Monize account, or today minus 89 days for an
+empty account (one day inside the 90 days many banks serve after the first
+hour of a consent; Enable Banking FAQ). The user may choose another date.
 
 Steps:
 
@@ -243,7 +262,10 @@ Steps:
    window (bounded to 100 pages), then the balances (a balance failure is
    logged and leaves the stored balance unchanged). A user-present sync passes
    the PSU IP address and user agent, so the bank does not count it against the
-   unattended-access limit (PSD2 allows about four unattended reads a day).
+   unattended-access limit (Enable Banking FAQ: many banks allow four
+   background fetches a day, and it recommends continuing after six hours;
+   online or background is decided by the presence of the PSU headers, and a
+   bank that lists required PSU headers must receive all of them or none).
 4. **Plan** with `planBankImport` (section 6).
 5. **Write**, one `withScopedDb` transaction:
    - lock the `bank_sync_accounts` row `FOR UPDATE` and re-check it is still
@@ -270,9 +292,15 @@ Steps:
    anything was created (INV-CACHE-001), release the lease.
 7. **On failure** at any step after 2: write `last_sync_status = 'failed'` and
    a bounded, sanitized message in its own transaction, release the lease,
-   return the mapped error. A provider 403, or a 401 whose error code names
-   the session or the consent, marks the connection `expired`; any other 401
-   is a credentials refusal and leaves the connection alone.
+   return the mapped error. The provider's `error` code decides, before the
+   HTTP status: `EXPIRED_SESSION`, `REVOKED_SESSION`, `CLOSED_SESSION` and
+   `SESSION_DOES_NOT_EXIST` mark the connection `expired`; `UNAUTHORIZED_IP`
+   is `ip_not_allowed`; `NO_ACCOUNTS_ADDED` is `no_accounts_linked`;
+   `WRONG_TRANSACTIONS_PERIOD` is `period_unavailable` (set a later cut-off);
+   `ASPSP_RATE_LIMIT_EXCEEDED` and 429 are `rate_limited`; `ASPSP_ERROR`,
+   `ASPSP_TIMEOUT`, 408 and 5xx are `unavailable`. Every other 401 or 403,
+   including "Application does not exist", which carries no error code, is a
+   credentials refusal and leaves the connection alone.
 
 The result: `{ imported, skipped, refused: { reason: count }, pending,
 beforeCutoff, bankBalance }`. `imported > 0` is what makes the client

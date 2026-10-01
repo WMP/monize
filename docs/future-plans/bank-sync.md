@@ -35,14 +35,17 @@ Status: **approved to build** (kenlasko/monize#1326, label
    `POST /auth`, `POST /sessions`, `GET /sessions/{id}`,
    `DELETE /sessions/{id}`, `GET /accounts/{uid}/balances`,
    `GET /accounts/{uid}/transactions` with `date_from`, `date_to` and
-   `continuation_key`. Field names of a transaction (`entry_reference`,
-   `transaction_amount.{amount,currency}`, `credit_debit_indicator`
-   `CRDT`/`DBIT`, `status` `BOOK`/`PDNG`, `booking_date`, `value_date`,
-   `transaction_date`, `creditor.name`, `debtor.name`,
-   `remittance_information[]`, `reference_number`) are taken from the
-   provider's API reference and **must be checked against a sandbox
-   application before the release note is written** (task BS10). The adapter
-   tolerates every field being absent.
+   `continuation_key`. Field names were checked in BS10 against the provider's API
+   reference, its OpenAPI file (`/docs/api/reference/enablebanking-api.yaml`)
+   and its FAQ, not yet against a live session. Corrections: the error body
+   is `{ message, code (the HTTP status), error (the error code), detail }`,
+   and gateway refusals carry no `error`; `entry_reference` is unique per
+   account (identification hash), not globally, and some banks repeat it;
+   an account's `name` is the holder's name (`details` and `product` label
+   the account); `GET /aspsps` takes `service=AIS`; `date_from` is read in
+   UTC; `maximum_consent_validity` is in seconds; a background read is
+   limited to about four a day. The adapter tolerates every field being
+   absent.
 4. **The provider host is fixed** (`https://api.enablebanking.com`), so no SSRF
    guard is needed; the client goes through `ProviderHealthService` like every
    other third-party call.
