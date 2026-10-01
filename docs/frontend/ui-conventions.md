@@ -258,6 +258,10 @@ Every client-side use so far has been an id -- a list key, a removal handle, a t
 
 The login page pre-fills `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` from that module; the seed that creates the account reads its own copy in `backend/src/database/demo-credentials.ts`, and `demo-credentials.contract.test.ts` fails when the two drift or a second spelling appears under `src/`. Public by design, so not a secret -- but a form that pre-fills a password the seed no longer sets is a demo nobody can enter.
 
+## A link from a report to Transactions is `buildTransactionsHref`
+
+`buildTransactionsHref` (`frontend/src/lib/transactions-href.ts`) writes the parameters `useTransactionFilters` reads (`categoryId` including the `SPECIAL_CATEGORY_FILTER_IDS` pseudo-ids, `categoryType`, `accountIds`, `startDate`, `endDate`) through `URLSearchParams`. The Cash Flow Sankey uses it; the other reports still build their own URLs and migrate onto it in a separate cleanup (task M1 of `docs/future-plans/sankey-cash-flow-tasks.md`).
+
 ## A clickable table row -- `useLongPress({ onClick })`
 
 `useLongPress` takes `onClick` alongside `onLongPress`: a plain click runs the row's primary action, a 750ms press (or right-click) opens the mobile action sheet, and a click following a long-press is suppressed. Spread `getRowHandlers(item)` on the `<tr>` and add `cursor-pointer` (accounts, payees, tags, categories, securities lists all do). Do not put the click on a button around the name instead -- the rest of the row becomes dead area. Controls *inside* the row (a favourite star, `RowActions`) must `stopPropagation`.
