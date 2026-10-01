@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { Logger } from "@nestjs/common";
 import { Client, ClientConfig, Notification } from "pg";
 
+import { resolveDatabaseSsl } from "../db/database-ssl";
 import { parseRlsMode, resolveRlsDatabaseAuth } from "../db/rls-config";
 
 /**
@@ -160,13 +161,7 @@ export function resolveListenerClientConfig(
     user: username,
     password,
     database: read("DATABASE_NAME"),
-    ssl:
-      read("DATABASE_SSL") === "true"
-        ? {
-            rejectUnauthorized:
-              read("DATABASE_SSL_REJECT_UNAUTHORIZED") !== "false",
-          }
-        : false,
+    ssl: resolveDatabaseSsl(read),
     // The connection is idle between wake-ups, which is exactly the traffic a
     // NAT table or an idle-timeout on a managed endpoint drops silently. Without
     // this the replica keeps a socket it believes is live and hears nothing.

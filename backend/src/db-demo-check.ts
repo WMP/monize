@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { Client } from "pg";
 import { DEMO_USER_EMAIL } from "./database/demo-credentials";
 import { acquireDbLifecycleLock } from "./common/db/advisory-locks";
+import { resolveDatabaseSsl } from "./common/db/database-ssl";
 
 /**
  * Demo-mode startup probe: exits 0 when the demo user already exists (the
@@ -59,6 +60,7 @@ export function demoCheckClient(): Client {
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
+    ssl: resolveDatabaseSsl((name) => process.env[name]),
   });
 }
 

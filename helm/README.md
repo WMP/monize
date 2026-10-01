@@ -10,11 +10,17 @@ Monize is a two-tier application:
 
 Only the frontend is exposed externally via HTTPRoute or Ingress. The backend is accessible only within the cluster.
 
+The database is either one you run (the default) or one the chart requests from
+a PostgreSQL operator, CloudNativePG or Zalando's postgres-operator. See
+[PostgreSQL](#postgresql).
+
 ## Prerequisites
 
 - Kubernetes 1.27+
 - Helm 3.x
 - Either a Gateway API implementation (e.g., Cilium) **or** an Ingress controller
+- A PostgreSQL 16 database, **or** the CloudNativePG or Zalando postgres-operator
+  already installed in the cluster (see [PostgreSQL](#postgresql))
 
 ## Installation
 
@@ -570,6 +576,370 @@ The ordinal names are the giveaway: a Deployment's pods are
 The PersistentVolumeClaims are untouched by any of this: they are ordinary
 claims the chart creates, not `volumeClaimTemplates`, and they carry
 `helm.sh/resource-policy: keep`.
+
+### PostgreSQL
+
+The backend needs one PostgreSQL 16 database. `postgresql.provider` says who
+runs it:
+
+| `postgresql.provider` | Who runs PostgreSQL | What the chart renders for it | What you install first |
+|---|---|---|---|
+| `external` (default) | you | nothing; you set `backend.database.*` and the credentials | a database the backend can reach |
+| `cnpg` | [CloudNativePG](https://cloudnative-pg.io) | a `Cluster` (`postgresql.cnpg.io/v1`) | the CloudNativePG operator |
+| `zalando` | [Zalando postgres-operator](https://github.com/zalando/postgres-operator), which runs Patroni | a `postgresql` (`acid.zalan.do/v1`) | the Zalando postgres-operator |
+
+**The chart never installs an operator.** An operator is a cluster-wide
+installation: a controller, its RBAC and its CRDs, shared by every database in
+the cluster. A copy inside an application release would conflict with the next
+release that brought one, and Helm does not upgrade CRDs it installed. Install
+the operator from its own manifests or chart first. Without it, `helm install`
+stops at `no matches for kind "Cluster"` (or `"postgresql"`) before it creates
+anything.
+
+**Why `external` stays the default.** A default that needs a CRD fails on every
+cluster that does not have one. And an existing release upgraded under a new
+default would get a second, *empty* database beside the one that holds its data,
+with the backend pointed at the empty one. Selecting an operator is therefore a
+decision you make once, explicitly. `docs/adr/0006-postgresql-operator-is-opt-in.md`
+records the decision and the alternatives that were rejected.
+
+#### Choosing an operator
+
+Both operators run one primary and streaming replicas, and fail over to a replica
+when the primary is lost. The chart treats them as equals. These are the
+differences that matter for Monize:
+
+| | `cnpg` | `zalando` |
+|---|---|---|
+| Failover engine | CloudNativePG's instance manager; the leader is held through the Kubernetes API | Patroni in every Spilo pod; the Kubernetes API is its configuration store |
+| `DATABASE_HOST` | `<clusterName>-rw` | `<clusterName>` |
+| Credentials Secret | `<clusterName>-app` | `<owner>.<clusterName>.credentials.postgresql.acid.zalan.do`, with every `_` in the owner written as `-` |
+| TLS | encrypted and **verified** against the operator's `<clusterName>-ca` | encrypted, **not verified** unless you set `postgresql.tls.caSecret` |
+| Namespace at the `restricted` Pod Security level | allowed; the operator's default pod security context meets it | refused; needs `baseline` (see [Pod Security](#pod-security)) |
+| RLS runtime role | declared in the Cluster's `managed.roles` | the owner gets `CREATEROLE`, and `db-init` creates the role |
+| Name rule | lower case, at most 50 characters | as for `cnpg`, and it must begin with `<postgresql.zalando.teamId>-` |
+| Database backups | the operator's (Barman Cloud plugin, `ScheduledBackup`) | the operator's (WAL-G through the operator's configuration) |
+
+Use the operator your cluster already runs. Otherwise use the one your team can
+operate during an incident: the operator handles a failover, and the recovery
+after it, not Monize.
+
+These paths were checked by rendering the chart and applying the result with
+`kubectl apply --dry-run=server --validate=strict` against the CRDs of
+CloudNativePG **1.30.0** and Zalando postgres-operator **v2.0.2**, and the
+backend's side was run on a cluster against stand-in Services and Secrets with
+the names in the table and a TLS-only PostgreSQL 16. The operators themselves
+were not run in that check. Recheck the names when you run a different major
+version: the Service and Secret names above are each operator's own, and an
+operator can change them.
+
+#### Quick start
+
+Create the Secret the backend always needs first (see `backend.app` in
+`values.yaml`):
+
+```bash
+kubectl create namespace monize
+kubectl -n monize create secret generic monize-backend-secrets \
+  --from-literal=JWT_SECRET="$(openssl rand -base64 32)" \
+  --from-literal=ENCRYPTION_KEY="$(openssl rand -hex 32)"
+```
+
+CloudNativePG:
+
+```yaml
+# values-cnpg.yaml
+namespace:
+  create: false        # created above
+postgresql:
+  provider: cnpg
+backend:
+  extraEnvFrom:
+    - secretRef:
+        name: monize-backend-secrets
+```
+
+Zalando postgres-operator:
+
+```yaml
+# values-zalando.yaml
+namespace:
+  create: false        # created above; label it baseline, see Pod Security
+postgresql:
+  provider: zalando
+backend:
+  extraEnvFrom:
+    - secretRef:
+        name: monize-backend-secrets
+```
+
+```bash
+helm install monize ./helm -n monize -f values-cnpg.yaml   # or values-zalando.yaml
+kubectl -n monize get clusters.postgresql.cnpg.io,pods -w  # or postgresqls.acid.zalan.do
+```
+
+Do not set `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER` or
+`DATABASE_PASSWORD` yourself. The chart sets them, and it refuses to render when
+`backend.database.DATABASE_HOST` or `DATABASE_NAME` is also set.
+
+#### What the chart sets for you
+
+| Backend setting | `cnpg` | `zalando` |
+|---|---|---|
+| `DATABASE_HOST` | `<clusterName>-rw`, the read-write Service, always the primary | `<clusterName>`, the master Service, always the primary |
+| `DATABASE_NAME` | `postgresql.database` | `postgresql.database` |
+| `DATABASE_USER`, `DATABASE_PASSWORD` | `secretKeyRef` into `<clusterName>-app` | `secretKeyRef` into the owner's credentials Secret |
+| `DATABASE_SSL` | `"true"` | `"true"` |
+| `DATABASE_SSL_REJECT_UNAUTHORIZED` | `"true"` | `"false"`, or `"true"` with `postgresql.tls.caSecret` |
+| `DATABASE_SSL_CA_FILE` | `/etc/monize/database-ca/ca.crt`, from `<clusterName>-ca` | only with `postgresql.tls.caSecret` |
+| `DATABASE_APP_PASSWORD` | from `postgresql.appRole.passwordSecret`, when set | from `postgresql.appRole.passwordSecret`, when set |
+
+The host is always the primary and never a pooler. That is what
+`cluster.mode: multi` needs: every replica holds one `LISTEN` session, which a
+transaction-mode pooler cannot carry. The host is a short name on purpose: the
+Service is in the release's namespace, the pod's `ndots: 1` resolves a name
+without a dot through the namespace's search domain on the first query, and
+CloudNativePG's server certificate lists the short name.
+
+The credentials are `env` entries, and an `env` entry wins over `envFrom` for the
+same name. So a `DATABASE_USER` or `DATABASE_PASSWORD` left in
+`backend.extraEnvFrom` from an earlier, external database cannot point the
+backend back at it. `backend.extraEnv` comes after them in the list and can still
+override them on purpose.
+
+#### The first install, step by step
+
+1. Helm applies the operator resource with everything else. The operator starts
+   to bootstrap the cluster.
+2. The backend pod waits in `CreateContainerConfigError`, because the credentials
+   Secret does not exist yet. The kubelet retries by itself.
+3. The operator creates the Secret. The backend container starts, and `db-init`
+   connects. Until the primary accepts connections, `db-init` fails and the
+   container restarts, possibly a few times.
+4. `db-init` loads the schema into the empty database and `db-migrate` records
+   the migrations. The backend becomes ready.
+
+No step needs a manual restart. A pod that stays in `CreateContainerConfigError`
+for minutes means the operator did not create the Secret. Look at the operator
+resource's status and at the operator's log.
+
+#### High availability and failover
+
+- **`postgresql.instances: 2`** is one primary and one replica, the smallest
+  count that can fail over. `1` is accepted, and then a node drain or an operator
+  upgrade is downtime.
+- **The backend uses only the primary.** Monize does not send reads to replicas.
+- **Replication is asynchronous by default**, under both operators. A failover
+  can therefore lose the last transactions that the old primary committed and
+  had not yet sent. To make a commit wait for a replica, turn on synchronous
+  replication through the passthrough: `postgresql.cnpg.spec.postgresql.synchronous`
+  for CloudNativePG, `postgresql.zalando.spec.patroni.synchronous_mode` for
+  Zalando. Read the operator's documentation first: with too few healthy
+  replicas, synchronous commits wait.
+- **What Monize does during a failover.** The operator moves the primary Service
+  to the new primary. Connections to the old primary break, and a request in
+  flight at that moment fails once. The pool opens new connections on the next
+  query. In `cluster.mode: multi` each replica's `LISTEN` connection reconnects
+  by itself, waiting 1 s, then doubling up to 30 s
+  (`backend/src/common/cluster/pg-listener.provider.ts`), and readiness reports
+  the pod not ready until it has (INV-HA-001).
+- **Disruption budgets and spread.** Both operators create their own
+  PodDisruptionBudgets for the database pods; `backend.podDisruptionBudget`
+  covers only Monize's pods. CloudNativePG prefers to put instances on different
+  nodes by default. The Zalando operator does not (`enable_pod_antiaffinity` is
+  `false` in its default configuration), so both instances can land on one node
+  unless you change the operator's configuration.
+
+#### Backups of the database
+
+**This chart configures no database backup.** A database with replicas is still
+one database: a `DROP`, a bad migration or a lost cluster reaches every replica.
+
+Monize's own backups (Settings, automatic backups) are per-user exports. They
+are not point-in-time recovery, and they do not restore a whole deployment.
+Configure the operator's backups as well:
+
+- CloudNativePG: continuous WAL archiving and base backups to an object store,
+  through the Barman Cloud plugin or `spec.backup` (set them in
+  `postgresql.cnpg.spec`), plus a `ScheduledBackup` resource, which this chart
+  does not render.
+- Zalando: WAL-G archiving to an object store, configured in the operator's
+  configuration and the pod environment it injects, and optionally the operator's
+  logical backup.
+
+Test a restore before you rely on either.
+
+#### TLS
+
+The backend always connects to an operator's database over TLS.
+
+- **CloudNativePG** signs each Cluster's server certificate with its own CA,
+  `<clusterName>-ca`, and lists the Service names in it, the short `-rw` name
+  included. The chart mounts that CA into the backend pod and the backend
+  verifies the server against it. Only the `ca.crt` key is projected
+  (`postgresql.tls.caKey`): the same Secret holds `ca.key`, which signs
+  certificates for the whole cluster and never reaches an application pod.
+- **Zalando.** Spilo generates a self-signed certificate, and its default
+  `pg_hba` refuses connections without TLS. So the backend encrypts the
+  connection and does not verify the certificate: a client on the pod network
+  that can answer for the Service name is not detected. To verify, have the
+  operator serve a certificate from a CA you hold (`spec.tls` in the `postgresql`
+  resource, through `postgresql.zalando.spec`), make it name the host
+  `<clusterName>`, and set `postgresql.tls.caSecret` to the Secret with that CA.
+
+`DATABASE_SSL_CA_FILE` is trusted for the database connections only: the pool,
+the `LISTEN` connection and the startup scripts. The backend's other outbound
+TLS (SMTP, S3, OIDC, price providers) keeps the system trust store. If the file
+cannot be read, the backend refuses to start and names the path.
+
+#### Row-level security runtime role
+
+Leave `postgresql.appRole.passwordSecret` empty while `backend.rls.RLS_MODE` is
+`off`. To provision the unprivileged runtime role, create its Secret first:
+
+```bash
+kubectl -n monize create secret generic monize-app-role \
+  --type=kubernetes.io/basic-auth \
+  --from-literal=username=monize_app \
+  --from-literal=password="$(openssl rand -base64 32)"
+```
+
+and set `postgresql.appRole.passwordSecret: monize-app-role`. The username must
+equal `backend.rls.DATABASE_APP_USER`. The chart passes the password to the
+backend as `DATABASE_APP_PASSWORD`, and:
+
+- **CloudNativePG** creates the role from the Cluster's `managed.roles`, with the
+  attributes the backend requires (`LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+  NOBYPASSRLS NOREPLICATION NOINHERIT`). The chart uses `managed.roles` rather
+  than a `DatabaseRole` resource because it works on CloudNativePG releases
+  before 1.30 too. Do not also declare the role in a `DatabaseRole`: the Cluster's
+  `managed.roles` takes precedence and the `DatabaseRole` reports a conflict. To
+  rotate the password, change the Secret and restart the backend; label the
+  Secret `cnpg.io/reload: "true"` so the operator applies the change at once.
+- **Zalando** generates the passwords of the roles it manages and cannot take
+  yours. So the chart gives the owner `CREATEROLE`, and `db-init` creates the
+  role at startup with the same attribute list and the password from the Secret,
+  the same path the Compose deployment takes. To rotate the password, change
+  the Secret and restart the backend.
+
+The owner is never the runtime role: the chart refuses `postgresql.owner` equal
+to `backend.rls.DATABASE_APP_USER`, and refuses `postgres`.
+
+#### Pod Security
+
+The namespace this chart creates enforces the `restricted` Pod Security
+Standard by default (`namespace.podSecurityEnforce`).
+
+- **CloudNativePG** sets a default security context on its pods that meets
+  `restricted`: non-root, read-only root filesystem, no privilege escalation, all
+  capabilities dropped, the `RuntimeDefault` seccomp profile (read in the
+  operator's source). A `postgresql.cnpg.spec` that overrides
+  `securityContext` or `podSecurityContext` can break that.
+- **Zalando** does not. The operator sets no seccomp profile and drops no
+  capabilities on Spilo pods, and allows privilege escalation by default. Under
+  `restricted` the StatefulSet would create no pods while the backend waited for
+  credentials that never appear, so the chart refuses `provider: zalando` with
+  `namespace.create: true` and `podSecurityEnforce: restricted`. Set
+  `namespace.podSecurityEnforce: baseline`, or manage the namespace yourself
+  (`namespace.create: false`).
+
+#### The database outlives the release
+
+The operator resource carries `helm.sh/resource-policy: keep`, like the backend's
+claims. `helm uninstall` leaves the database running. Switching
+`postgresql.provider` to another value leaves the old cluster running too, next
+to the new one. To delete a database, delete its resource deliberately:
+
+```bash
+kubectl -n monize delete clusters.postgresql.cnpg.io monize-db   # or postgresqls.acid.zalan.do
+```
+
+Under each operator's default configuration that deletes the volumes too, and
+the data with them.
+
+Renaming `postgresql.clusterName`, `postgresql.database` or `postgresql.owner`
+on a running release is not a rename. It is a new, empty database, and the
+backend moves to it.
+
+#### Moving an existing database under an operator
+
+Changing `provider` moves no data. The new cluster starts empty, and the backend
+would fill it with a fresh schema on its first start. Move the data while the
+backend is stopped:
+
+1. Take a dump of the current database:
+   `pg_dump --format=custom --no-owner --no-privileges -f monize.dump <old-database-url>`.
+2. Upgrade with the operator selected and the backend stopped:
+   `helm upgrade monize ./helm -n monize -f values-cnpg.yaml --set backend.replicas=0`.
+   Wait until the operator reports the cluster healthy.
+3. Restore into the new primary as the owner, for example through
+   `kubectl port-forward` to the primary Service and the password from the
+   credentials Secret:
+   `pg_restore --no-owner --role=<owner> --dbname=<new-database-url> monize.dump`.
+4. Start the backend: upgrade again without `--set backend.replicas=0`. `db-init`
+   finds the schema, `db-migrate` finds the recorded migrations, and the grants
+   of the runtime role are applied again.
+
+Keep the old database until the new one has served for a while and has a backup
+of its own.
+
+#### Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `postgresql.provider` | `external`, `cnpg` or `zalando` | `external` |
+| `postgresql.clusterName` | Name of the operator resource; names its Services and Secrets | `monize-db` |
+| `postgresql.instances` | PostgreSQL instances: one primary plus replicas | `2` |
+| `postgresql.version` | PostgreSQL major version | `16` |
+| `postgresql.database` | Database the operator creates | `monize` |
+| `postgresql.owner` | Owner role the operator creates; the backend connects as it | `monize` |
+| `postgresql.storage.size` | Volume size of each instance | `10Gi` |
+| `postgresql.storage.storageClass` | StorageClass of the volumes (empty = cluster default) | `""` |
+| `postgresql.resources` | Requests and limits of each instance | See values.yaml |
+| `postgresql.tls.caSecret` | Secret with the CA of the server certificate | `<clusterName>-ca` (cnpg), none (zalando) |
+| `postgresql.tls.caKey` | Key of the certificate in that Secret | `ca.crt` |
+| `postgresql.appRole.passwordSecret` | `kubernetes.io/basic-auth` Secret of the RLS runtime role | `""` |
+| `postgresql.cnpg.imageName` | PostgreSQL image (empty = `ghcr.io/cloudnative-pg/postgresql:<version>`) | `""` |
+| `postgresql.cnpg.spec` | Merged over the rendered `Cluster` spec | `{}` |
+| `postgresql.zalando.teamId` | Zalando team; `clusterName` must begin with `<teamId>-` | `monize` |
+| `postgresql.zalando.spec` | Merged over the rendered `postgresql` spec | `{}` |
+
+`postgresql.cnpg.spec` and `postgresql.zalando.spec` reach everything the chart
+does not model: backups, monitoring, affinity, `postgresql.parameters`,
+synchronous replication. A map merges key by key; a list or a scalar replaces
+the chart's value, `0`, `false` and `""` included. The merge is not checked by
+the chart's refusals, and the backend still reads the host and the credentials
+from the names the chart derives. So do not use it to change the cluster's name,
+the database or the owner; set `postgresql.clusterName`, `postgresql.database`
+and `postgresql.owner`.
+
+The chart refuses to render, with a message that names the setting to change:
+
+- a `provider` other than `external`, `cnpg` or `zalando`;
+- an operator selected together with `backend.database.DATABASE_HOST` or
+  `DATABASE_NAME`;
+- a `clusterName` that is not a lower-case name of at most 50 characters (the
+  operators append `-rw`, `-app`, `-ca`, `-repl` and others to it, and an object
+  name is limited to 63);
+- `instances` that is not a whole number of at least 1, or an empty
+  `storage.size`;
+- a `database` or `owner` that is not a plain lower-case identifier, an owner
+  named `postgres`, or an owner equal to `backend.rls.DATABASE_APP_USER`;
+- with `zalando`: a `clusterName` that does not begin with `<teamId>-`, and the
+  `restricted` namespace described under [Pod Security](#pod-security);
+- `postgresql.appRole.passwordSecret` with `provider: external`, where it would
+  provision nothing.
+
+#### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `helm install` fails with `no matches for kind "Cluster"` or `"postgresql"` | the operator is not installed | install the operator, then install the chart again |
+| backend pod stays in `CreateContainerConfigError` | the operator has not created the credentials Secret | check the operator resource's status and the operator's log; with Zalando, check that the operator uses the default `secret_name_template` |
+| backend log: `self-signed certificate` or `unable to verify the first certificate` | `postgresql.tls.caSecret` names a CA that did not sign the server certificate | name the right CA Secret and key |
+| backend log: `Hostname/IP does not match certificate's altnames` | the server certificate does not name the host in `DATABASE_HOST` | issue the certificate for `<clusterName>` (Zalando) or keep the operator's own (CloudNativePG) |
+| backend log: `DATABASE_SSL_CA_FILE ... cannot be read` | the CA Secret or its key does not exist | check `postgresql.tls.caSecret` and `postgresql.tls.caKey` |
+| Zalando StatefulSet has no pods; events say `violates PodSecurity` | the namespace enforces `restricted` | label the namespace `pod-security.kubernetes.io/enforce=baseline` |
 
 ### Row-Level Security (RLS)
 

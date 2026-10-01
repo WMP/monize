@@ -655,21 +655,28 @@ describe("assertRuntimeRoleSafeByName", () => {
 });
 
 describe("APP_ROLE_UPSERT_SQL", () => {
+  // An attribute's own ALTER, as distinct from the password-only ALTER before
+  // it. The insufficient-privilege warning also names every NO<x>, so a check
+  // that slices from the first "ALTER ROLE" would pass on the warning alone.
+  const attributeAlter = (attribute: string) =>
+    `format('ALTER ROLE %I ${attribute}', role_name)`;
+
   it("strips privileged attributes from an already existing role", () => {
     // The ALTER is the load-bearing half: a role provisioned out of band with
     // SUPERUSER or BYPASSRLS used to keep those attributes forever, because
-    // provisioning only converged LOGIN PASSWORD.
-    const alter = APP_ROLE_UPSERT_SQL.slice(
-      APP_ROLE_UPSERT_SQL.indexOf("ALTER ROLE"),
-    );
-
+    // provisioning only converged LOGIN PASSWORD. Each now runs only when the
+    // role has drifted on that attribute (app-role.spec.ts asserts the guard),
+    // but each must still be there, before the exception handler.
+    const handlerAt = APP_ROLE_UPSERT_SQL.indexOf("EXCEPTION WHEN");
     for (const attribute of [
       "NOSUPERUSER",
       "NOCREATEDB",
       "NOCREATEROLE",
       "NOBYPASSRLS",
     ]) {
-      expect(alter).toContain(attribute);
+      const alterAt = APP_ROLE_UPSERT_SQL.indexOf(attributeAlter(attribute));
+      expect(alterAt).toBeGreaterThan(-1);
+      expect(alterAt).toBeLessThan(handlerAt);
     }
   });
 
@@ -682,9 +689,9 @@ describe("APP_ROLE_UPSERT_SQL", () => {
     );
 
     expect(create).toContain(APP_ROLE_ATTRIBUTES);
-    expect(
-      APP_ROLE_UPSERT_SQL.slice(APP_ROLE_UPSERT_SQL.indexOf("ALTER ROLE")),
-    ).toContain(APP_ROLE_ATTRIBUTES);
+    for (const attribute of APP_ROLE_ATTRIBUTES.split(/\s+/)) {
+      expect(APP_ROLE_UPSERT_SQL).toContain(attributeAlter(attribute));
+    }
   });
 
   it("still passes the password as a quoted literal, never interpolated", () => {

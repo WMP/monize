@@ -11,6 +11,7 @@ import { Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
 import * as path from "path";
+import { resolveDatabaseSsl } from "../common/db/database-ssl";
 
 dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
@@ -33,6 +34,7 @@ async function addSkipPriceUpdatesColumn() {
     username: requiredEnv("DATABASE_USER", "POSTGRES_USER"),
     password: requiredEnv("DATABASE_PASSWORD", "POSTGRES_PASSWORD"),
     database: requiredEnv("DATABASE_NAME", "POSTGRES_DB"),
+    ssl: resolveDatabaseSsl((name) => process.env[name]),
   });
 
   await dataSource.initialize();

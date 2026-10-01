@@ -1,3 +1,4 @@
+{{- include "monize.assertPostgresql" . -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,8 +11,30 @@ data:
   NODE_ENV: {{ .Values.backend.app.NODE_ENV | quote }}
   PUBLIC_APP_URL: {{ .Values.backend.app.PUBLIC_APP_URL | default (include "monize.publicAppUrl" .) | quote }}
   # Database
-  DATABASE_HOST: {{ .Values.backend.database.DATABASE_HOST | quote }}
-  DATABASE_NAME: {{ .Values.backend.database.DATABASE_NAME | quote }}
+  DATABASE_HOST: {{ include "monize.databaseHost" . | quote }}
+  DATABASE_NAME: {{ include "monize.databaseName" . | quote }}
+  {{- if include "monize.postgresManaged" . }}
+  {{- /*
+    An operator-managed database is served over TLS by both operators, and the
+    backend only uses it when told to, so it is told to. Whether it also checks
+    who answered turns on having a CA to check against: with one, a certificate
+    that does not chain to it is refused; without one -- Zalando's Spilo issues
+    a self-signed certificate -- the connection is encrypted and unverified,
+    and NOTES.txt says so.
+
+    The CA file is a PEM the backend trusts for its database connections only,
+    never for its other outbound requests; the Deployment mounts it at the path
+    named here (monize.databaseCaDir keeps the two in step).
+  */}}
+  {{- $caSecret := include "monize.databaseCaSecret" . }}
+  DATABASE_SSL: "true"
+  {{- if $caSecret }}
+  DATABASE_SSL_REJECT_UNAUTHORIZED: "true"
+  DATABASE_SSL_CA_FILE: {{ printf "%s/ca.crt" (include "monize.databaseCaDir" .) | quote }}
+  {{- else }}
+  DATABASE_SSL_REJECT_UNAUTHORIZED: "false"
+  {{- end }}
+  {{- end }}
   # Horizontal scaling. In multi the backend keeps rate limits, single-use
   # claims and the relay on rows, and wakes other replicas over LISTEN/NOTIFY --
   # so DATABASE_HOST above must reach a PostgreSQL session, not a

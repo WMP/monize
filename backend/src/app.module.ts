@@ -21,6 +21,7 @@ import { MustChangePasswordGuard } from "./auth/guards/must-change-password.guar
 import { PatScopeGuard } from "./auth/guards/pat-scope.guard";
 import { CsrfRefreshInterceptor } from "./common/interceptors/csrf-refresh.interceptor";
 import { RequestContextInterceptor } from "./common/interceptors/request-context.interceptor";
+import { resolveDatabaseSsl } from "./common/db/database-ssl";
 import { parseRlsMode, resolveRlsDatabaseAuth } from "./common/db/rls-config";
 import { ClusterModule } from "./common/cluster/cluster.module";
 import { APPLICATION_NAME } from "./common/cluster/instance-id";
@@ -118,14 +119,7 @@ import { I18nModule } from "./i18n/i18n.module";
           entities: [__dirname + "/**/*.entity{.ts,.js}"],
           synchronize: false, // Use migrations in production
           logging: ["error"],
-          ssl:
-            configService.get("DATABASE_SSL") === "true"
-              ? {
-                  rejectUnauthorized:
-                    configService.get("DATABASE_SSL_REJECT_UNAUTHORIZED") !==
-                    "false",
-                }
-              : false,
+          ssl: resolveDatabaseSsl((name) => configService.get(name)),
         };
       },
     }),

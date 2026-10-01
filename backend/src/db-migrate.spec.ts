@@ -21,6 +21,7 @@ const mockExit = jest
   .spyOn(process, "exit")
   .mockImplementation((() => {}) as any);
 
+import { Client } from "pg";
 import {
   runMigrations,
   describeSqlError,
@@ -41,11 +42,22 @@ describe("db-migrate runMigrations()", () => {
   let readFileSyncSpy: jest.SpyInstance;
   let logSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
+  let savedSsl: Record<string, string | undefined>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockConnect.mockResolvedValue(undefined);
     mockEnd.mockResolvedValue(undefined);
+
+    savedSsl = {
+      DATABASE_SSL: process.env.DATABASE_SSL,
+      DATABASE_SSL_REJECT_UNAUTHORIZED:
+        process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
+      DATABASE_SSL_CA_FILE: process.env.DATABASE_SSL_CA_FILE,
+    };
+    delete process.env.DATABASE_SSL;
+    delete process.env.DATABASE_SSL_REJECT_UNAUTHORIZED;
+    delete process.env.DATABASE_SSL_CA_FILE;
 
     // The runner logs through the Nest Logger so its output matches the rest
     // of the boot sequence; spying on console here would catch nothing.
@@ -62,12 +74,31 @@ describe("db-migrate runMigrations()", () => {
   });
 
   afterEach(() => {
+    for (const [key, value] of Object.entries(savedSsl)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
     existsSyncSpy.mockRestore();
     statSyncSpy.mockRestore();
     readdirSyncSpy.mockRestore();
     readFileSyncSpy.mockRestore();
     logSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  it("connects with the pool's TLS settings, so a server that refuses plain connections accepts it", async () => {
+    // The runner used to build its client with no `ssl`, so DATABASE_SSL=true
+    // was ignored here and a TLS-only server refused it at every start.
+    process.env.DATABASE_SSL = "true";
+
+    await runMigrations();
+
+    expect(Client).toHaveBeenCalledWith(
+      expect.objectContaining({ ssl: { rejectUnauthorized: true } }),
+    );
   });
 
   it("skips when no migrations directory is found", async () => {
