@@ -5,7 +5,7 @@
  *
  * Kept pure so the closing identity (SANKEY-001) and the once-per-leg rule
  * (SANKEY-002) can be exercised over generated ledgers without a database
- * (the property spec beside this file); which rows reach this module is the
+ * (`cash-flow-sankey.property.spec.ts`); which rows reach this module is the
  * SQL's job and the integration suite's proof.
  */
 import { FxAggregate } from "../common/fx-aggregate";
