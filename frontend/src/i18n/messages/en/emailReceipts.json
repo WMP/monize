@@ -469,6 +469,22 @@
     "textLabel": "Text of the email",
     "noText": "The email has no text."
   },
+  "picker": {
+    "heading": "Choose the transaction",
+    "help": "No transaction was matched automatically. These are your transactions from {from} to {to}, the days around the email. Choose the one it paid for.",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Payee, description or amount",
+    "searchButton": "Search",
+    "loading": "Loading transactions",
+    "error": "The transactions could not be loaded.",
+    "retry": "Try again",
+    "empty": "You have no transactions in this period that can be linked.",
+    "emptySearch": "No transaction in this period matches the search.",
+    "row": "{date}, {amount}, {payee}",
+    "noPayee": "no payee",
+    "linkButton": "Link",
+    "hasMore": "Only the first {count} are shown. Use the search to narrow the list."
+  },
   "callback": {
     "title": "Connecting the mailbox",
     "connecting": "Finishing the connection",
