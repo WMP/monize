@@ -51,6 +51,35 @@ function dayOfCurrentMonth(n: number): string {
   return `${todayYmd().slice(0, 8)}${String(n).padStart(2, '0')}`;
 }
 
+/**
+ * `count` consecutive past days, ending yesterday, all inside one month -- and
+ * whether that month is the one before the calendar's opening month.
+ *
+ * Offsets from today cross into the previous month in the first days of a
+ * month, and a day there is in the opening grid only when the grid's leading
+ * week happens to reach it (see `dayOfCurrentMonth`). Early in a month the run
+ * is the last `count` days of the previous month instead, and the spec steps
+ * the calendar back one month to show them: a month's own days are always in
+ * its grid, whatever the reader's week start.
+ */
+function pastRunInOneMonth(count: number): { days: string[]; previousMonth: boolean } {
+  const today = todayYmd();
+  const first = shiftDays(today, -count);
+  if (first.slice(0, 7) === today.slice(0, 7)) {
+    return {
+      days: Array.from({ length: count }, (_, index) => shiftDays(first, index)),
+      previousMonth: false,
+    };
+  }
+  const lastOfPrevious = shiftDays(dayOfCurrentMonth(1), -1);
+  return {
+    days: Array.from({ length: count }, (_, index) =>
+      shiftDays(lastOfPrevious, index - count + 1),
+    ),
+    previousMonth: true,
+  };
+}
+
 /** A day cell's accessible name is the date in the user's own format. */
 function dayLabel(ymd: string): string {
   return `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}/${ymd.slice(0, 4)}`;
@@ -78,6 +107,12 @@ async function switchToCalendar(page: Page) {
     await toggle.click();
     await expect(page.getByRole('grid')).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
+}
+
+/** Step the open calendar back one month, and wait for that month's grid. */
+async function showPreviousMonth(page: Page, aDayInIt: string) {
+  await page.getByRole('button', { name: 'Previous month', exact: true }).click();
+  await expect(dayCell(page, aDayInIt)).toBeVisible();
 }
 
 test.describe('Transactions calendar', () => {
@@ -197,7 +232,8 @@ test.describe('Transactions calendar', () => {
     api,
   }) => {
     const account = await createAccount(api, { name: `Cal Create ${uniqueId()}` });
-    const day = shiftDays(todayYmd(), -4);
+    // A day of the month on screen, never in the future: see `dayOfCurrentMonth`.
+    const day = dayOfCurrentMonth(1);
 
     await page.goto('/transactions');
     await switchToCalendar(page);
@@ -224,11 +260,11 @@ test.describe('Investments calendar', () => {
     authedPage: page,
     api,
   }) => {
-    const today = todayYmd();
-    const buyDay = shiftDays(today, -4);
-    const firstClose = shiftDays(today, -3);
-    const moveDay = shiftDays(today, -2);
-    const quietDay = shiftDays(today, -1);
+    // Four past days in a row, all in one month's grid: see `pastRunInOneMonth`.
+    const {
+      days: [buyDay, firstClose, moveDay, quietDay],
+      previousMonth,
+    } = pastRunInOneMonth(4);
 
     const pair = await createInvestmentAccountPair(api, {
       name: `Cal Brokerage ${uniqueId()}`,
@@ -250,6 +286,7 @@ test.describe('Investments calendar', () => {
 
     await page.goto('/investments');
     await switchToCalendar(page);
+    if (previousMonth) await showPreviousMonth(page, buyDay);
 
     // The trade is one chip, on the day it was dated.
     await expect(dayCell(page, buyDay)).toContainText(symbol);
