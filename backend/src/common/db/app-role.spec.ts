@@ -1,17 +1,43 @@
 import { Logger } from "@nestjs/common";
 import {
+  APP_ROLE_ATTRIBUTE_VIOLATIONS,
   APP_ROLE_ATTRIBUTES,
+  APP_ROLE_CONVERGE_SQL,
   APP_ROLE_GRANTS_SQL,
   RUNTIME_READ_ONLY_TABLES,
   APP_ROLE_NAME_GUC,
   APP_ROLE_PASSWORD_GUC,
   APP_ROLE_UPSERT_SQL,
+  appRoleConvergeSql,
   applyAppRoleGrants,
   provisionAppRole,
   SqlClient,
 } from "./app-role";
 import { DEFAULT_APP_USER } from "./rls-config";
 import { FORBIDDEN_RUNTIME_ATTRIBUTES } from "./runtime-role-check";
+
+/** Collapse whitespace so an assertion survives a reflow of the SQL text. */
+function flat(sql: string): string {
+  return sql.replace(/\s+/g, " ").trim();
+}
+
+/** What `APP_ROLE_UPSERT_SQL` runs when the role does not exist yet. */
+function createBranch(): string {
+  const match = APP_ROLE_UPSERT_SQL.match(
+    /IF NOT EXISTS \(SELECT FROM pg_roles WHERE rolname = role_name\) THEN\n([\s\S]*?)\n {2}ELSE\n/,
+  );
+  expect(match).not.toBeNull();
+  return flat(match![1]);
+}
+
+/** What `APP_ROLE_UPSERT_SQL` runs when the role already exists. */
+function existingRoleBranch(): string {
+  const match = APP_ROLE_UPSERT_SQL.match(
+    /\n {2}ELSE\n([\s\S]*?)\n {2}END IF;\nEXCEPTION WHEN/,
+  );
+  expect(match).not.toBeNull();
+  return flat(match![1]);
+}
 
 function makeClient() {
   const calls: Array<{ text: string; params?: unknown[] }> = [];
@@ -189,7 +215,10 @@ describe("app-role SQL", () => {
 
   it("creates the role without any RLS-exempting attribute", () => {
     // Already PostgreSQL's defaults; named so that a future edit adding
-    // SUPERUSER or BYPASSRLS has to delete an explicit NO.
+    // SUPERUSER or BYPASSRLS has to delete an explicit NO. Asserted on the CREATE
+    // statement itself: the insufficient-privilege warning also names every one
+    // of these, so a check on the whole SQL text would pass without it.
+    const create = createBranch();
     for (const attribute of [
       "NOSUPERUSER",
       "NOBYPASSRLS",
@@ -197,7 +226,7 @@ describe("app-role SQL", () => {
       "NOCREATEROLE",
       "NOREPLICATION",
     ]) {
-      expect(APP_ROLE_UPSERT_SQL).toContain(attribute);
+      expect(create).toContain(attribute);
     }
   });
 
@@ -230,6 +259,153 @@ describe("app-role SQL", () => {
     );
     expect(grantAt).toBeGreaterThan(-1);
     expect(revokeAt).toBeGreaterThan(grantAt);
+  });
+});
+
+/**
+ * An owner that is not a superuser but holds CREATEROLE (the Zalando operator's
+ * owner, an RDS-style master user) may change the password of a role it created,
+ * but PostgreSQL 16 refuses any `ALTER ROLE` that names SUPERUSER, REPLICATION or
+ * BYPASSRLS -- even as the NO-form, even when it would change nothing. The first
+ * boot's CREATE works; a combined `ALTER ROLE ... <attributes> PASSWORD` on every
+ * later boot raised insufficient_privilege, which the handler downgraded to a
+ * warning, so a rotated DATABASE_APP_PASSWORD was never applied.
+ *
+ * These assert the shape that avoids it: the password in a statement of its own,
+ * then one `ALTER ROLE` per attribute, each naming exactly that attribute and
+ * run only for a role that violates it. Only a live database proves the
+ * privilege behaviour; the integration harness runs this SQL as a superuser.
+ */
+describe("APP_ROLE_UPSERT_SQL for a role that already exists", () => {
+  const tokens = APP_ROLE_ATTRIBUTES.split(/\s+/);
+
+  /** Every `IF EXISTS (... AND (<violation>)) THEN ALTER ROLE <attribute>`. */
+  function guardedAlters(): Array<{ violation: string; attribute: string }> {
+    const guard =
+      /IF EXISTS \(SELECT FROM pg_roles WHERE rolname = role_name AND \(([^()]+)\)\) THEN EXECUTE format\('ALTER ROLE %I ([^']+)', role_name\); END IF;/g;
+    return [...existingRoleBranch().matchAll(guard)].map((match) => ({
+      violation: match[1],
+      attribute: match[2],
+    }));
+  }
+
+  it("rotates the password in a statement that names no attribute", () => {
+    const passwordStatements = existingRoleBranch()
+      .split(";")
+      .map((statement) => statement.trim())
+      .filter((statement) => statement.includes("PASSWORD"));
+
+    expect(passwordStatements).toEqual([
+      "EXECUTE format('ALTER ROLE %I PASSWORD %L', role_name, role_pw)",
+    ]);
+    for (const token of tokens) {
+      expect(passwordStatements[0]).not.toMatch(new RegExp(`\\b${token}\\b`));
+    }
+  });
+
+  it("alters the password before any attribute, so a refused attribute ALTER cannot precede it", () => {
+    const branch = existingRoleBranch();
+    expect(branch.indexOf("PASSWORD %L")).toBeGreaterThan(-1);
+    expect(branch.indexOf("PASSWORD %L")).toBeLessThan(
+      branch.indexOf("IF EXISTS"),
+    );
+  });
+
+  it("alters each attribute in its own statement, behind that attribute's violation", () => {
+    const guarded = guardedAlters();
+
+    // One guarded ALTER per token, in token order, each naming exactly one
+    // attribute (a bundled `LOGIN NOSUPERUSER` would not equal a single token).
+    expect(guarded.map((g) => g.attribute)).toEqual(tokens);
+    for (const { violation, attribute } of guarded) {
+      expect(violation).toBe(APP_ROLE_ATTRIBUTE_VIOLATIONS[attribute]);
+    }
+
+    // And nothing else alters the role: the password, then those, with no
+    // unguarded copy and no combined statement anywhere in the SQL.
+    const alters = [...APP_ROLE_UPSERT_SQL.matchAll(/ALTER ROLE %I ([^']*)'/g)];
+    expect(alters.map((match) => match[1])).toEqual(["PASSWORD %L", ...tokens]);
+    expect(APP_ROLE_UPSERT_SQL).not.toContain(
+      `ALTER ROLE %I ${APP_ROLE_ATTRIBUTES}`,
+    );
+  });
+
+  it("has a violation condition for every token of APP_ROLE_ATTRIBUTES, and no stale one", () => {
+    expect(tokens.length).toBeGreaterThan(0);
+    for (const token of tokens) {
+      const condition = APP_ROLE_ATTRIBUTE_VIOLATIONS[token];
+      expect(condition).toEqual(expect.any(String));
+      expect(APP_ROLE_CONVERGE_SQL).toContain(`AND (${condition})) THEN`);
+    }
+    expect(Object.keys(APP_ROLE_ATTRIBUTE_VIOLATIONS).sort()).toEqual(
+      [...tokens].sort(),
+    );
+  });
+
+  it("reads each NO<x> as the bare column and LOGIN as its negation", () => {
+    // A NO<x> is violated by the role HAVING x; LOGIN is violated by the role
+    // lacking it. An inverted entry would send a conforming role an ALTER on
+    // every boot (tripping the privilege refusal) or never converge a drifted one.
+    for (const token of tokens.filter((t) => t.startsWith("NO"))) {
+      expect(APP_ROLE_ATTRIBUTE_VIOLATIONS[token]).toMatch(/^rol[a-z]+$/);
+    }
+    expect(APP_ROLE_ATTRIBUTE_VIOLATIONS.LOGIN).toBe("NOT rolcanlogin");
+    expect(APP_ROLE_ATTRIBUTE_VIOLATIONS.NOINHERIT).toBe("rolinherit");
+  });
+
+  it("reads the same pg_roles column the startup verifier reads for each forbidden attribute", () => {
+    for (const { label, column } of FORBIDDEN_RUNTIME_ATTRIBUTES) {
+      expect(APP_ROLE_ATTRIBUTE_VIOLATIONS[`NO${label}`]).toBe(column);
+    }
+  });
+
+  it("builds one guarded ALTER per token in token order and refuses a token it cannot see", () => {
+    expect(
+      flat(
+        appRoleConvergeSql("LOGIN NOSUPERUSER", {
+          LOGIN: "NOT rolcanlogin",
+          NOSUPERUSER: "rolsuper",
+        }),
+      ),
+    ).toBe(
+      "IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name AND (NOT rolcanlogin)) THEN " +
+        "EXECUTE format('ALTER ROLE %I LOGIN', role_name); END IF; " +
+        "IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name AND (rolsuper)) THEN " +
+        "EXECUTE format('ALTER ROLE %I NOSUPERUSER', role_name); END IF;",
+    );
+    expect(() =>
+      appRoleConvergeSql("LOGIN NOFROBNICATE", APP_ROLE_ATTRIBUTE_VIOLATIONS),
+    ).toThrow(/NOFROBNICATE/);
+    // An inherited property name is not a mapping.
+    expect(() => appRoleConvergeSql("toString", {})).toThrow(/toString/);
+    expect(() => appRoleConvergeSql("  ", {})).toThrow(/names no attributes/);
+  });
+
+  it("keeps values out of the statements: the conditions are bare, the role is always role_name", () => {
+    for (const condition of Object.values(APP_ROLE_ATTRIBUTE_VIOLATIONS)) {
+      expect(condition).not.toMatch(/['"%$;()]/);
+    }
+    const formats = [
+      ...existingRoleBranch().matchAll(/format\('([^']*)', ([^)]*)\)/g),
+    ];
+    expect(formats).toHaveLength(tokens.length + 1);
+    for (const [, template, args] of formats) {
+      expect(args).toBe(
+        template.includes("PASSWORD") ? "role_name, role_pw" : "role_name",
+      );
+    }
+  });
+
+  it("still creates the role with APP_ROLE_ATTRIBUTES", () => {
+    expect(createBranch()).toBe(
+      `EXECUTE format('CREATE ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L', role_name, role_pw);`,
+    );
+  });
+
+  it("still degrades insufficient_privilege to a warning", () => {
+    expect(APP_ROLE_UPSERT_SQL).toMatch(
+      /\nEXCEPTION WHEN insufficient_privilege THEN\n\s+RAISE WARNING 'Insufficient privilege to create\/alter role %;/,
+    );
   });
 });
 
