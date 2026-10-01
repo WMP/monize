@@ -344,6 +344,40 @@ invalidate its balance caches. A sync whose outcome the client could not
 learn (a timeout, a network error, a 5xx) invalidates them too and says the
 result is not known yet: the server may have committed.
 
+## 7a. Preview before import
+
+`POST /bank-sync/accounts/:id/preview` runs steps 1 to 4 of section 7 and the
+read-only half of step 5, through the same functions, and writes nothing. It
+answers one row per provider row:
+
+| Field | Meaning |
+|---|---|
+| `outcome` | `new`, `duplicate` (the ledger already has its key), `refused` (with the reason), `pending`, `before_cutoff` |
+| `transactionDate`, `amount`, `currencyCode`, `payeeText`, `description`, `referenceNumber` | as the planner produced them |
+| `payeeName`, `categoryName`, `tagNames` | what the payee lookup and the `import` rules would give (`previewForRow`) |
+
+and a summary: the counts per outcome, the Monize account's current balance,
+the balance after the import (current balance plus the sum of the `new` rows,
+in scaled integers), and the bank's reported balance with the difference when
+both are known and in the same currency. The answer also carries
+`planFingerprint`: the SHA-256 of the `new` rows' keys and amounts, in key
+order.
+
+`POST /bank-sync/accounts/:id/sync` accepts an optional `planFingerprint`.
+With it, the write transaction recomputes the plan under the row lock and
+refuses with 409 when the fingerprint differs ("the bank's data changed since
+the preview; preview again"), so what is written is exactly what was shown.
+
+**When the preview is shown.** The first sync after a bank account is linked,
+or after its Monize account or cut-off date changed, opens the preview, and
+the import runs only when the user confirms it. A later "Sync now" imports
+directly and offers the preview as a second button. The daily sync never
+previews.
+
+A preview is a user-present provider read (PSU headers), so the bank does not
+count it against the background limit; it still costs a request, so the route
+is throttled like sync.
+
 ## 8. The daily sync
 
 `BankSyncCronService` runs once a day (`17 5 * * *`, UTC). The fan-out lists
@@ -376,7 +410,8 @@ fields.
 | `DELETE /bank-sync/connections/:id` | | 204 |
 | `POST /bank-sync/connections/:id/match` | | the connection, with `{ linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
-| `POST /bank-sync/accounts/:id/sync` | | the result (section 7) |
+| `POST /bank-sync/accounts/:id/preview` | | the preview (section 7a) |
+| `POST /bank-sync/accounts/:id/sync` | `{ planFingerprint? }` | the result (section 7); 409 when the fingerprint no longer matches |
 | `POST /bank-sync/connections/:id/sync` | | one entry per linked account: a result, or `{ bankAccountId, error: { code, message } }` for an account that failed |
 
 Linking refuses (400) an account the user does not own, a closed account, an
