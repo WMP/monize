@@ -32,6 +32,9 @@
     "transactionMissing": "Transaksi ini sudah tidak ada",
     "rule": "Aturan: {name}",
     "manualRequest": "Diminta secara manual",
+    "emailReceipt": "Struk surel: {subject} dari {sender}",
+    "emailReceiptMissing": "Struk surel (surel telah dihapus)",
+    "viewEmailReceipts": "Lihat struk surel",
     "agentNote": "Catatan dari asisten: {reason}",
     "dates": "Dibuat {created}, kedaluwarsa {expires}",
     "viewTransaction": "Lihat transaksi"
