@@ -15,10 +15,12 @@ Last reviewed against the code: 2026-10-01 (`docs/specs/bank-sync.md`).
 - **The operator** runs the Monize instance and stores the data in its
   database. For a personal, self-hosted instance, the operator and the user
   are the same person.
-- **Enable Banking** is a company that is licensed in the EU as an account
-  information service provider (AISP) under PSD2. It connects to the bank and
-  passes the account information to Monize. Its own terms and privacy notice
-  apply to what it processes: <https://enablebanking.com>.
+- **Enable Banking** (Enable Banking Oy, Espoo, Finland) is a registered
+  account information service provider (AISP) under PSD2, supervised by the
+  Finnish Financial Supervisory Authority (FIN-FSA). It connects to the bank
+  and passes the account information to Monize; the account data flows
+  through its service and, by its own statement, is not stored there. Its
+  terms apply to what it processes: <https://auth.enablebanking.com/terms>.
 - **The bank** authenticates the user and provides the account information.
 
 Monize does not send bank data to the Monize project, its authors or any
