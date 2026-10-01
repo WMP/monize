@@ -626,9 +626,12 @@ after it, not Monize.
 
 These paths were checked by rendering the chart and applying the result with
 `kubectl apply --dry-run=server --validate=strict` against the CRDs of
-CloudNativePG **1.30.0** and Zalando postgres-operator **v2.0.2**. Recheck them
-when you run a different major version: the Service and Secret names above are
-each operator's own, and an operator can change them.
+CloudNativePG **1.30.0** and Zalando postgres-operator **v2.0.2**, and the
+backend's side was run on a cluster against stand-in Services and Secrets with
+the names in the table and a TLS-only PostgreSQL 16. The operators themselves
+were not run in that check. Recheck the names when you run a different major
+version: the Service and Secret names above are each operator's own, and an
+operator can change them.
 
 #### Quick start
 
