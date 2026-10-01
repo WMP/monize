@@ -29,20 +29,20 @@
 | ID | Task | Depends on | Status |
 |----|------|-----------|--------|
 | P1 | Design, spec and this list | -- | [x] |
-| D1 | Migrations + `schema.sql`: the three tables, RLS, the widened `ai_review_requests` | P1 | [ ] |
-| B1 | Parser: definition types, validator, amount grammar, `parseReceipt` (pure) | P1 | [ ] |
-| B2 | Matcher and proposal builder (pure) | B1 | [ ] |
-| B3 | Dependencies `imapflow` and `mailparser`; `ImapMailboxClient`; `mail-text.util.ts`; host policy | D1 | [ ] |
-| B4 | Mailbox settings: entity, DTO, service, controller (view, upsert, delete, test, poll now) | B3 | [ ] |
-| B5 | Queue: `email_receipt` kind, `enqueueClaimed`, `claimById`, claim payload with the email | D1 | [ ] |
-| B6 | Pipeline, poll cron with lease, rematch, receipts service and controller | B2, B4, B5 | [ ] |
-| B7 | Parsers CRUD, approve, test; AI draft and AI proposal; auto-apply | B6 | [ ] |
-| B9 | OAuth2 (XOAUTH2) for Google and Microsoft 365: migration, start and complete endpoints, token refresh at connect | B7 | [ ] |
-| B8 | Docs: invariants, cron table, env vars, backup classification, layer docs | B7 | [ ] |
-| F1 | API clients and types | B7 | [ ] |
-| F2 | Settings page: mailbox form, OAuth connect buttons and callback page, parsers editor | F1, B9 | [ ] |
-| F3 | Receipts page, nav entry, inbox row for the new kind | F1 | [ ] |
-| Q1 | Translate every locale (backend and frontend) | F3 | [ ] |
+| D1 | Migrations + `schema.sql`: the three tables, RLS, the widened `ai_review_requests` | P1 | [x] |
+| B1 | Parser: definition types, validator, amount grammar, `parseReceipt` (pure) | P1 | [x] |
+| B2 | Matcher and proposal builder (pure) | B1 | [x] |
+| B3 | Dependencies `imapflow` and `mailparser`; `ImapMailboxClient`; `mail-text.util.ts`; host policy | D1 | [x] |
+| B4 | Mailbox settings: entity, DTO, service, controller (view, upsert, delete, test, poll now) | B3 | [x] |
+| B5 | Queue: `email_receipt` kind, `enqueueClaimed`, `claimById`, claim payload with the email | D1 | [x] |
+| B6 | Pipeline, poll cron with lease, rematch, receipts service and controller | B2, B4, B5 | [x] |
+| B7 | Parsers CRUD, approve, test; AI draft and AI proposal; auto-apply | B6 | [x] |
+| B9 | OAuth2 (XOAUTH2) for Google and Microsoft 365: migration, start and complete endpoints, token refresh at connect | B7 | [x] |
+| B8 | Docs: invariants, cron table, env vars, backup classification, layer docs | B7 | [x] |
+| F1 | API clients and types | B7 | [x] |
+| F2 | Settings page: mailbox form, OAuth connect buttons and callback page, parsers editor | F1, B9 | [x] |
+| F3 | Receipts page, nav entry, inbox row for the new kind | F1 | [x] |
+| Q1 | Translate every locale (backend and frontend) | F3 | [x] |
 | E1 | E2E against a test IMAP server | F3 | [ ] needs a GreenMail container in `docker-compose.e2e.yml` (a `docker-compose*` change, not done) |
 
 ## Tasks
