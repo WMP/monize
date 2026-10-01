@@ -127,6 +127,9 @@ export function BankSyncConnectDialog({
       pushHistory
     >
       <div className="space-y-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {t('whySecondAuthorization')}
+        </p>
         <Select
           label={t('countryLabel')}
           id="bank-sync-country"

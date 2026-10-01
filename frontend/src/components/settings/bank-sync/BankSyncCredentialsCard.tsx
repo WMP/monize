@@ -10,8 +10,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { bankSyncApi } from '@/lib/bank-sync';
 import {
-  BANK_SYNC_PRIVACY_TEMPLATE_URL,
-  BANK_SYNC_TERMS_TEMPLATE_URL,
+  ENABLE_BANKING_API_TERMS_URL,
   ENABLE_BANKING_SITE_URL,
 } from '@/lib/bank-sync-links';
 import { getErrorMessage } from '@/lib/errors';
@@ -20,8 +19,10 @@ import type {
   BankSyncStatus,
   SaveBankSyncCredentials,
 } from '@/types/bank-sync';
+import { BankSyncCopyButton } from './BankSyncCopyButton';
 import { BankSyncCredentialsModal } from './BankSyncCredentialsModal';
 import { BankSyncExternalLink } from './BankSyncExternalLink';
+import { BankSyncRegistrationValues } from './BankSyncRegistrationValues';
 
 const HELP_HEADING_CLASS =
   'mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100';
@@ -104,15 +105,6 @@ export function BankSyncCredentialsCard({
     }
   };
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(status.redirectUrl);
-      toast.success(t('copied'));
-    } catch {
-      toast.error(t('copyFailed'));
-    }
-  };
-
   // A Production application accepts only an https redirect URL, so an http one
   // can serve a Sandbox application at most.
   const redirectIsHttp = /^http:\/\//i.test(status.redirectUrl);
@@ -171,6 +163,15 @@ export function BankSyncCredentialsCard({
             <section>
               <h3 className={HELP_HEADING_CLASS}>{t('help.whatIsTitle')}</h3>
               <p className={HELP_BODY_CLASS}>{t('help.whatIsBody')}</p>
+              <p className={`mt-2 ${HELP_BODY_CLASS}`}>
+                {t.rich('help.dataFlow', {
+                  terms: (chunks) => (
+                    <BankSyncExternalLink href={ENABLE_BANKING_API_TERMS_URL}>
+                      {chunks}
+                    </BankSyncExternalLink>
+                  ),
+                })}
+              </p>
               <p className={`mt-2 ${HELP_BODY_CLASS}`}>{t('help.whatIsFree')}</p>
             </section>
 
@@ -190,20 +191,7 @@ export function BankSyncCredentialsCard({
                 <li>{t('help.step3')}</li>
                 <li>
                   {t('help.step4')}
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.rich('help.step4Personal', {
-                      privacy: (chunks) => (
-                        <BankSyncExternalLink href={BANK_SYNC_PRIVACY_TEMPLATE_URL}>
-                          {chunks}
-                        </BankSyncExternalLink>
-                      ),
-                      terms: (chunks) => (
-                        <BankSyncExternalLink href={BANK_SYNC_TERMS_TEMPLATE_URL}>
-                          {chunks}
-                        </BankSyncExternalLink>
-                      ),
-                    })}
-                  </p>
+                  <BankSyncRegistrationValues redirectUrl={status.redirectUrl} />
                 </li>
                 <li>{t('help.step5')}</li>
                 <li>{t('help.step6')}</li>
@@ -233,14 +221,11 @@ export function BankSyncCredentialsCard({
               readOnly
               onFocus={(event) => event.currentTarget.select()}
             />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCopy}
+            <BankSyncCopyButton
+              value={status.redirectUrl}
+              field={t('redirectUrlLabel')}
               className="shrink-0"
-            >
-              {t('copy')}
-            </Button>
+            />
           </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {t('redirectUrlHelp')}

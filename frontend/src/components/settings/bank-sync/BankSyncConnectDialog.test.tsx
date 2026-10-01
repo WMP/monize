@@ -71,6 +71,21 @@ afterEach(() => {
 });
 
 describe('BankSyncConnectDialog', () => {
+  it('explains the second authorization before anything is asked, naming the renew button', async () => {
+    await renderDialog();
+
+    const paragraph = screen.getByText(/^You authorize at your bank again here/);
+    expect(paragraph.tagName).toBe('P');
+    expect(paragraph).toHaveTextContent(
+      'You authorize at your bank again here, even if you already linked the same accounts in the Enable Banking control panel. The control panel only lists which accounts the application may read, and its consent ends the same day. This step gives Monize its own consent to read balances and transactions, for up to 180 days. When it is about to end, the connection card shows "Renew consent".',
+    );
+    // First in the body, above the first field.
+    const country = screen.getByLabelText('Country');
+    expect(
+      paragraph.compareDocumentPosition(country) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('offers the EEA countries, named in the reader\'s language', async () => {
     await renderDialog();
 
@@ -202,11 +217,11 @@ describe('BankSyncConnectDialog', () => {
 
     await chooseCountry('PL');
     await chooseBank('Long Bank');
-    expect(screen.getByText(/up to 180 days/)).toBeInTheDocument();
+    expect(screen.getByText(/This bank allows access for up to 180 days/)).toBeInTheDocument();
     expect(screen.queryByText(/up to 365 days/)).toBeNull();
 
     await chooseBank('Exact Bank');
-    expect(screen.getByText(/up to 180 days/)).toBeInTheDocument();
+    expect(screen.getByText(/This bank allows access for up to 180 days/)).toBeInTheDocument();
   });
 
   it('creates the connection and sends the browser to the bank', async () => {
