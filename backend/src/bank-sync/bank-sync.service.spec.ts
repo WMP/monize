@@ -289,10 +289,10 @@ describe("BankSyncService", () => {
       expect(linkRepo.save).not.toHaveBeenCalled();
     });
 
-    it("links, defaulting the cut-off to 90 days ago for an empty account", async () => {
+    it("links, defaulting the cut-off to DEFAULT_CUTOFF_LOOKBACK_DAYS ago for an empty account", async () => {
       const view = await link({ accountId: ACCOUNT_ID });
       expect(view.accountId).toBe(ACCOUNT_ID);
-      expect(view.syncFromDate).toBe("2026-07-02");
+      expect(view.syncFromDate).toBe("2026-07-03");
     });
 
     it("defaults the cut-off to the day after the newest transaction", async () => {
@@ -327,11 +327,11 @@ describe("BankSyncService", () => {
     it("treats a blank or null date as not chosen", async () => {
       expect(
         (await link({ accountId: ACCOUNT_ID, syncFromDate: "" })).syncFromDate,
-      ).toBe("2026-07-02");
+      ).toBe("2026-07-03");
       expect(
         (await link({ accountId: ACCOUNT_ID, syncFromDate: null }))
           .syncFromDate,
-      ).toBe("2026-07-02");
+      ).toBe("2026-07-03");
     });
 
     it("unlinks without touching the accounts table", async () => {

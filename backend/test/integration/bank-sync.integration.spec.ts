@@ -442,6 +442,23 @@ describe("Bank sync (integration)", () => {
       expect(await count("transactions")).toBe(4);
     });
 
+    it("imports two transactions a bank gave one entry reference, once each, in any order", async () => {
+      // Enable Banking's FAQ: some banks repeat an entry reference that should
+      // be unique. Dropping the second would lose a real transaction.
+      const a = row({ entryReference: "dup-1", amount: "5.00" });
+      const b = row({ entryReference: "dup-1", amount: "7.00" });
+      bankReturns([a, b]);
+      const first = await sync();
+      expect(first).toMatchObject({ imported: 2, skipped: 0 });
+      expect(await storedBalance()).toBe(OPENING - 12);
+
+      bankReturns([b, a]);
+      const second = await sync();
+      expect(second).toMatchObject({ imported: 0, skipped: 2 });
+      expect(await count("transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 12);
+    });
+
     it("imports only what is new when the bank adds a row", async () => {
       await sync();
       bankReturns([

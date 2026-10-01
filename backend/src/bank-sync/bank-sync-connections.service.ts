@@ -42,6 +42,7 @@ import type { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connect
 import { COUNTRY_CODE_PATTERN } from "./dto/list-institutions-query.dto";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
+import { BankSyncProviderError } from "./providers/bank-sync-provider.errors";
 import type {
   BankAccountDescriptor,
   BankInstitution,
@@ -323,6 +324,21 @@ export class BankSyncConnectionsService {
         claimed.provider,
       );
       session = await provider.completeAuthorization(credentials, code);
+      // A production application in restricted mode is answered with an empty
+      // list for any account that was not linked to it. Keeping that session
+      // would show a working connection with nothing to link, so it is ended
+      // and the failure says what to do.
+      if (session.accounts.length === 0) {
+        await this.revokeBestEffort(
+          userId,
+          claimed.provider,
+          session.sessionId,
+        );
+        throw new BankSyncProviderError(
+          "no_accounts_linked",
+          "The provider returned a session with no accounts.",
+        );
+      }
     } catch (error) {
       // The claim cleared the state, so this row is the one whose state is NULL.
       await this.markFailed(

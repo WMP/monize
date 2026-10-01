@@ -10,9 +10,9 @@ import type {
  * Enable Banking's wire JSON, turned into the provider-neutral shapes.
  *
  * Pure functions, and the only place this provider's field names appear
- * (docs/future-plans/bank-sync.md, assumption 3: the names come from the
- * provider's public API reference and are still to be checked against a
- * sandbox application, task BS10). Two rules run through all of them:
+ * (docs/future-plans/bank-sync.md, assumption 3: the names were checked against
+ * the provider's API reference, its OpenAPI file and its FAQ in task BS10).
+ * Two rules run through all of them:
  *
  * - **A field that is absent or of the wrong type is null, and a row that is
  *   not an object is skipped. Nothing here throws for a malformed row.**
@@ -44,8 +44,36 @@ const MASK_MIN_LENGTH = 8;
 /** A decimal as the providers send it: digits, an optional fraction, no exponent. */
 const SIGNED_DECIMAL = /^-?\d{1,16}(\.\d{1,8})?$/;
 
-/** Enable Banking's balance types in the order they answer "what is the balance". */
-const BALANCE_TYPE_PREFERENCE = ["CLBD", "ITBD", "ITAV", "XPCD"] as const;
+/**
+ * Enable Banking's balance types (`BalanceStatus`) in the order they answer
+ * "what is the balance": the booked balance, then the available ones.
+ */
+const BALANCE_TYPE_PREFERENCE = [
+  "CLBD",
+  "ITBD",
+  "ITAV",
+  "CLAV",
+  "XPCD",
+] as const;
+
+/**
+ * Balance types that are not the balance now: the start of a period
+ * (`OPBD`, `OPAV`), the end of the previous one (`PRCD`) and a balance on a
+ * later date (`FWAV`). They are never shown as the bank's balance, and a bank
+ * that reports only these has reported none.
+ */
+const NOT_CURRENT_BALANCE_TYPES: ReadonlySet<string> = new Set([
+  "OPBD",
+  "OPAV",
+  "PRCD",
+  "FWAV",
+]);
+
+/**
+ * ISO 4217 "no currency": Enable Banking sends it for a multi-currency account
+ * or when the bank states none. It is not a currency to compare with.
+ */
+const UNKNOWN_CURRENCY = "XXX";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -185,19 +213,40 @@ export function mapAuthorizationUrl(payload: unknown): string {
   );
 }
 
+/** The first identifier of `all_account_ids` that carries one. */
+function firstAccountIdentification(row: UnknownRecord): unknown {
+  const ids = Array.isArray(row.all_account_ids) ? row.all_account_ids : [];
+  return ids.find(
+    (id): id is UnknownRecord =>
+      isRecord(id) && text(id.identification, 64) !== null,
+  )?.identification;
+}
+
+/**
+ * One account of a session. `uid` is optional on the wire (absent for an
+ * account that cannot be read, e.g. blocked or closed), and such an account is
+ * skipped. `name` is the account HOLDER's name, not the account's: the label is
+ * the account's own `details`, then the bank's `product`, and the holder's name
+ * only when the bank sent neither.
+ */
 function mapAccount(row: unknown): BankAccountDescriptor | null {
   if (!isRecord(row)) return null;
   const externalAccountId = text(row.uid, MAX_REFERENCE_LENGTH);
   if (externalAccountId === null) return null;
   const accountId = isRecord(row.account_id) ? row.account_id : {};
   const other = isRecord(accountId.other) ? accountId.other : {};
+  const code = currency(row.currency);
   return {
     externalAccountId,
     identificationHash: text(row.identification_hash, MAX_REFERENCE_LENGTH),
     displayName:
-      text(row.name, MAX_NAME_LENGTH) ?? text(row.details, MAX_NAME_LENGTH),
-    identifierMasked: maskIdentifier(accountId.iban ?? other.identification),
-    currencyCode: currency(row.currency),
+      text(row.details, MAX_NAME_LENGTH) ??
+      text(row.product, MAX_NAME_LENGTH) ??
+      text(row.name, MAX_NAME_LENGTH),
+    identifierMasked: maskIdentifier(
+      accountId.iban ?? other.identification ?? firstAccountIdentification(row),
+    ),
+    currencyCode: code === UNKNOWN_CURRENCY ? null : code,
   };
 }
 
@@ -254,10 +303,14 @@ function remittanceLines(value: unknown): string[] {
  * resolves to "not booked" unless the bank dated the booking.
  *
  * `entry_reference` is what Enable Banking documents as unique and immutable
- * across sessions, so it is the row's identity (`entryReference`).
- * `transaction_id` is documented as a handle for fetching details that may
- * change when the list is fetched again: it is carried as `transactionId` for
- * that use and never takes part in the duplicate key.
+ * for accounts with the same identification hashes, so across sessions of one
+ * account it is the row's identity (`entryReference`). It is not unique across
+ * accounts, it is absent for some banks, and its FAQ says some banks repeat a
+ * value that should be unique: the planner treats a repeat with different
+ * content as two transactions. `transaction_id` is documented as a handle for
+ * fetching details that may change when the list is fetched again: it is
+ * carried as `transactionId` for that use and never takes part in the duplicate
+ * key.
  */
 export function mapTransaction(row: unknown): BankTransaction | null {
   if (!isRecord(row)) return null;
@@ -306,8 +359,9 @@ export function mapTransactionsPage(payload: unknown): {
 
 /**
  * `GET /accounts/{uid}/balances`: the balance to show, or null when the bank
- * reported none. Picked by type in the order `CLBD`, `ITBD`, `ITAV`, `XPCD`,
- * then the first readable one.
+ * reported none. Picked by type in the order `CLBD`, `ITBD`, `ITAV`, `CLAV`,
+ * `XPCD`, then the first readable one that is not an opening, previous-period
+ * or forward balance.
  */
 export function mapBalance(payload: unknown): BankBalance | null {
   const body = requireObject(payload);
@@ -329,5 +383,11 @@ export function mapBalance(payload: unknown): BankBalance | null {
     const match = readable.find((balance) => balance.balanceType === type);
     if (match) return match;
   }
-  return readable[0] ?? null;
+  return (
+    readable.find(
+      (balance) =>
+        balance.balanceType === null ||
+        !NOT_CURRENT_BALANCE_TYPES.has(balance.balanceType),
+    ) ?? null
+  );
 }

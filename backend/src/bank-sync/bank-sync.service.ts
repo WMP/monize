@@ -155,7 +155,7 @@ export class BankSyncService {
    * it. Returns the bank account.
    *
    * The cut-off defaults to the day after the newest transaction in the account
-   * (capped at today), or today minus 90 days for an empty one. Changing the
+   * (capped at today), or today minus DEFAULT_CUTOFF_LOOKBACK_DAYS for an empty one. Changing the
    * account or the cut-off forgets the last success: the window would otherwise
    * start after the old mapping's last read and skip history the new one is
    * owed. The ledger makes the re-read free.

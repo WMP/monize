@@ -79,9 +79,17 @@ describe("mapInstitutions", () => {
           {
             name: "Example Bank",
             country: "pl",
-            logo: "https://logos.example/bank.png",
+            logo: "https://enablebanking.com/brands/PL/Example%20Bank/",
             psu_types: ["personal", "business"],
-            maximum_consent_validity: 7_776_000,
+            // In seconds (GetAspspsResponse / ASPSPData); 15552000 is 180 days.
+            maximum_consent_validity: 15_552_000,
+            // Documented fields the adapter does not read.
+            auth_methods: [
+              { approach: "REDIRECT", name: "MTA", psu_type: "personal" },
+            ],
+            beta: false,
+            bic: "EXAMPLEXXX",
+            required_psu_headers: ["Psu-Ip-Address", "Psu-User-Agent"],
           },
         ],
       }),
@@ -89,9 +97,9 @@ describe("mapInstitutions", () => {
       {
         name: "Example Bank",
         country: "PL",
-        logoUrl: "https://logos.example/bank.png",
+        logoUrl: "https://enablebanking.com/brands/PL/Example%20Bank/",
         psuTypes: ["personal", "business"],
-        maximumConsentValiditySeconds: 7_776_000,
+        maximumConsentValiditySeconds: 15_552_000,
       },
     ]);
   });
@@ -196,16 +204,26 @@ describe("mapAuthorizationUrl", () => {
 });
 
 describe("mapSession", () => {
+  // The shape of an AuthorizeSessionResponse (API reference, POST /sessions),
+  // with synthetic values. `name` is the account HOLDER's name.
   const session = {
     session_id: "session-1",
     access: { valid_until: "2026-06-01T12:00:00.000000+00:00" },
+    aspsp: { name: "Example Bank", country: "PL" },
+    psu_type: "personal",
     accounts: [
       {
-        uid: "uid-1",
+        uid: "07cc67f4-45d6-494b-adac-09b5cbc7e2b5",
         identification_hash: "hash-1",
-        name: "Everyday Account",
+        identification_hashes: ["hash-1", "hash-1b"],
+        name: "Holder Name",
+        details: "Everyday Account",
+        product: "Current account",
+        usage: "PRIV",
+        cash_account_type: "CACC",
         currency: "eur",
-        account_id: { iban: "XX00 0000 0000 0000 0000 1234" },
+        account_id: { iban: "XX00000000000000001234" },
+        all_account_ids: [{ identification: "00001234", scheme_name: "BBAN" }],
       },
     ],
   };
@@ -216,7 +234,7 @@ describe("mapSession", () => {
       validUntil: new Date("2026-06-01T12:00:00.000Z"),
       accounts: [
         {
-          externalAccountId: "uid-1",
+          externalAccountId: "07cc67f4-45d6-494b-adac-09b5cbc7e2b5",
           identificationHash: "hash-1",
           displayName: "Everyday Account",
           identifierMasked: "**** 1234",
@@ -228,22 +246,47 @@ describe("mapSession", () => {
 
   it("never carries the full identifier", () => {
     const serialized = JSON.stringify(mapSession(session));
-    expect(serialized).not.toContain("0000 0000 0000");
+    expect(serialized).not.toContain("XX0000000000");
+    expect(serialized).not.toContain("Holder Name");
   });
 
-  it("falls back to `details` for the name and to other.identification for the number", () => {
+  it("labels an account with its details, then its product, and the holder's name last", () => {
+    const label = (account: Record<string, unknown>) =>
+      mapSession({ session_id: "s", accounts: [{ uid: "u", ...account }] })
+        .accounts[0].displayName;
+    expect(label({ name: "Holder", product: "Prod", details: "Pot" })).toBe(
+      "Pot",
+    );
+    expect(label({ name: "Holder", product: "Prod" })).toBe("Prod");
+    expect(label({ name: "Holder" })).toBe("Holder");
+    expect(label({})).toBeNull();
+  });
+
+  it("falls back to other.identification, then to all_account_ids, for the number", () => {
+    const number = (account: Record<string, unknown>) =>
+      mapSession({ session_id: "s", accounts: [{ uid: "u", ...account }] })
+        .accounts[0].identifierMasked;
+    expect(
+      number({ account_id: { other: { identification: "ACC-00001234567" } } }),
+    ).toBe("**** 4567");
+    expect(
+      number({
+        account_id: {},
+        all_account_ids: [
+          { scheme_name: "BBAN" },
+          { identification: "99990000", scheme_name: "BBAN" },
+        ],
+      }),
+    ).toBe("**** 0000");
+    expect(number({ all_account_ids: "x" })).toBeNull();
+  });
+
+  it("reads XXX, the ISO code for no currency, as an unknown currency", () => {
     const [account] = mapSession({
       session_id: "s",
-      accounts: [
-        {
-          uid: "uid-2",
-          details: "Savings pot",
-          account_id: { other: { identification: "ACC-00001234567" } },
-        },
-      ],
+      accounts: [{ uid: "u", currency: "xxx" }],
     }).accounts;
-    expect(account.displayName).toBe("Savings pot");
-    expect(account.identifierMasked).toBe("**** 4567");
+    expect(account.currencyCode).toBeNull();
   });
 
   it("nulls every optional field and skips a row without a uid", () => {
@@ -519,25 +562,39 @@ describe("mapBalance", () => {
     ...extra,
   });
 
-  it("picks CLBD, then ITBD, then ITAV, then XPCD", () => {
+  it("picks CLBD, then ITBD, then ITAV, then CLAV, then XPCD", () => {
     const all = [
-      balance("XPCD", "4"),
+      balance("XPCD", "5"),
+      balance("CLAV", "4"),
       balance("ITAV", "3"),
       balance("ITBD", "2"),
       balance("CLBD", "1"),
     ];
     expect(mapBalance({ balances: all })?.amount).toBe("1");
-    expect(mapBalance({ balances: all.slice(0, 3) })?.amount).toBe("2");
-    expect(mapBalance({ balances: all.slice(0, 2) })?.amount).toBe("3");
-    expect(mapBalance({ balances: all.slice(0, 1) })?.amount).toBe("4");
+    expect(mapBalance({ balances: all.slice(0, 4) })?.amount).toBe("2");
+    expect(mapBalance({ balances: all.slice(0, 3) })?.amount).toBe("3");
+    expect(mapBalance({ balances: all.slice(0, 2) })?.amount).toBe("4");
+    expect(mapBalance({ balances: all.slice(0, 1) })?.amount).toBe("5");
+  });
+
+  it("never shows an opening, previous-period or forward balance as the balance", () => {
+    for (const type of ["OPBD", "OPAV", "PRCD", "FWAV"]) {
+      expect(mapBalance({ balances: [balance(type, "7")] })).toBeNull();
+    }
+    // Skipped in favour of any balance of another type, in the bank's order.
+    expect(
+      mapBalance({
+        balances: [balance("OPBD", "7"), balance("INFO", "8")],
+      })?.amount,
+    ).toBe("8");
   });
 
   it("falls back to the first readable balance of another type", () => {
     const result = mapBalance({
       balances: [
         { balance_type: "BROKEN" },
-        balance("OTHR", "9"),
         balance("FWAV", "8"),
+        balance("OTHR", "9"),
       ],
     });
     expect(result?.amount).toBe("9");

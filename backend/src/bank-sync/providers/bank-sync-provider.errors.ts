@@ -7,17 +7,31 @@
  * - `session_expired`: the provider says the bank consent (the session) is gone
  *   or no longer allows this read. The connection is to be marked `expired` and
  *   the user re-authorizes.
+ * - `ip_not_allowed`: the provider refused the address this server calls from.
+ *   Neither the credentials nor the consent is the problem; the address the
+ *   application accepts is.
+ * - `no_accounts_linked`: the application may read no account, or the
+ *   authorization returned none (a production application in restricted mode
+ *   reads only the accounts linked to it). The user links accounts to the
+ *   application at the provider.
+ * - `period_unavailable`: the bank does not provide transactions for the window
+ *   asked for. Repeating it unchanged fails the same way; a later cut-off date
+ *   is the repair.
  * - `rate_limited`: the provider or the bank throttled the call; try later.
  * - `bad_request`: the provider rejected this request as malformed or not
  *   allowed; repeating it unchanged will fail the same way.
- * - `unavailable`: the provider did not answer (transport failure, 5xx, the
- *   circuit breaker refusing the call). Never "no new transactions".
+ * - `unavailable`: the provider or the bank did not answer (transport failure,
+ *   timeout, 5xx, a bank-side error, the circuit breaker refusing the call).
+ *   Never "no new transactions".
  * - `invalid_response`: the provider answered with a shape this build does not
  *   understand.
  */
 export type BankSyncProviderErrorKind =
   | "unauthorized"
   | "session_expired"
+  | "ip_not_allowed"
+  | "no_accounts_linked"
+  | "period_unavailable"
   | "rate_limited"
   | "bad_request"
   | "unavailable"

@@ -470,6 +470,69 @@ describe("planBankImport", () => {
         ]);
       });
 
+      it("compares the content too: a repeat that differs is a second transaction, not a duplicate", () => {
+        // Enable Banking's FAQ: some banks "provide duplicate values even
+        // though they should not". Dropping the second row would lose a real
+        // transaction without a trace.
+        const first = row({ entryReference: "E-1", amount: "5.00" });
+        const second = row({ entryReference: "E-1", amount: "6.00" });
+        const result = plan([first, second]);
+        expect(result.planned.map((p) => p.amount)).toEqual([-5, -6]);
+        const keys = result.planned.map((p) => p.externalKey);
+        expect(new Set(keys).size).toBe(2);
+        for (const key of keys) expect(key).toMatch(/^ref:E-1#[0-9a-f]{64}$/);
+      });
+
+      it("keys each row of a contested reference by its content, whatever order the bank lists them", () => {
+        const a = row({ entryReference: "E-1", amount: "5.00" });
+        const b = row({ entryReference: "E-1", amount: "6.00" });
+        const keyOf = (rows: BankTransaction[], amount: number) =>
+          plan(rows).planned.find((p) => p.amount === amount)?.externalKey;
+        expect(keyOf([a, b], -5)).toBe(keyOf([b, a], -5));
+        expect(keyOf([a, b], -6)).toBe(keyOf([b, a], -6));
+      });
+
+      it("drops an exact repeat inside a contested reference and keeps the rest", () => {
+        const result = plan([
+          row({ entryReference: "E-1", amount: "5.00" }),
+          row({ entryReference: "E-1", amount: "6.00" }),
+          row({ entryReference: "E-1", amount: "5.00" }),
+        ]);
+        expect(result.planned.map((p) => p.amount)).toEqual([-5, -6]);
+      });
+
+      it("treats another transaction_id or the same reference on another row as no difference", () => {
+        const result = plan([
+          row({ entryReference: "E-1", transactionId: "T-1" }),
+          row({ entryReference: "E-1", transactionId: "T-2" }),
+        ]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual(["ref:E-1"]);
+      });
+
+      it("keeps an uncontested reference's plain ref: key", () => {
+        const result = plan([
+          row({ entryReference: "E-1", amount: "5.00" }),
+          row({ entryReference: "E-2", amount: "6.00" }),
+        ]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual([
+          "ref:E-1",
+          "ref:E-2",
+        ]);
+      });
+
+      it("fits a long contested key to the column", () => {
+        const reference = "R".repeat(250);
+        const result = plan([
+          row({ entryReference: reference, amount: "5.00" }),
+          row({ entryReference: reference, amount: "6.00" }),
+        ]);
+        for (const { externalKey } of result.planned) {
+          expect(externalKey.length).toBeLessThanOrEqual(255);
+          expect(externalKey).toMatch(/^ref:[0-9a-f]{64}$/);
+        }
+        expect(new Set(result.planned.map((p) => p.externalKey)).size).toBe(2);
+      });
+
       it("does not let a pending row shadow the booked row with the same reference", () => {
         const result = plan([
           row({ entryReference: "E-1", booked: false }),

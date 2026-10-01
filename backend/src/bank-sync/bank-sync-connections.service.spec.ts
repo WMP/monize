@@ -406,8 +406,9 @@ describe("BankSyncConnectionsService", () => {
 
   describe("completeCallback", () => {
     const STATE = "s".repeat(43);
+    // A session with no account is refused (see below), so the default has one.
     const session = (
-      accounts: BankAccountDescriptor[] = [],
+      accounts: BankAccountDescriptor[] = [descriptor()],
     ): Awaited<ReturnType<typeof provider.completeAuthorization>> => ({
       sessionId: "session-9",
       validUntil: new Date("2026-12-01T00:00:00.000Z"),
@@ -704,6 +705,35 @@ describe("BankSyncConnectionsService", () => {
         CONNECTION_ID,
         USER_ID,
         "code already used",
+        null,
+      ]);
+      expectFailsOnlyPending(failed[0]);
+    });
+
+    it("ends a session that lists no account and fails with the no-accounts advice", async () => {
+      // A production application in restricted mode is answered with an empty
+      // list for an account that was not linked to it (Enable Banking FAQ).
+      claimWins();
+      provider.completeAuthorization.mockResolvedValue(session([]));
+      const error = await service
+        .completeCallback(USER_ID, { state: STATE, code: "c" })
+        .catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).message).toMatch(
+        /Activate by linking accounts/,
+      );
+      expect(provider.revokeSession).toHaveBeenCalledWith(CREDS, "session-9");
+      // Nothing was activated, and the row records why.
+      expect(connectionRepo.save).not.toHaveBeenCalled();
+      expect(accountRepo.save).not.toHaveBeenCalled();
+      const failed = failureStatements().find((call) =>
+        String(call[0]).includes("IS NOT DISTINCT FROM"),
+      )!;
+      expect(failed[1]).toEqual([
+        CONNECTION_ID,
+        USER_ID,
+        "The provider returned a session with no accounts.",
         null,
       ]);
       expectFailsOnlyPending(failed[0]);

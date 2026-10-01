@@ -40,6 +40,27 @@ export function mapBankSyncProviderError(
           "Your consent at the bank has expired or was withdrawn. Renew the connection to keep syncing.",
         ),
       );
+    case "ip_not_allowed":
+      return new BadRequestException(
+        tr(
+          "errors.bankSync.ipNotAllowed",
+          "Enable Banking does not accept this server's IP address for your application. Allow this server's public IP address for the application at Enable Banking (or ask Enable Banking support to), then try again.",
+        ),
+      );
+    case "no_accounts_linked":
+      return new BadRequestException(
+        tr(
+          "errors.bankSync.noAccountsLinked",
+          'Enable Banking returned no accounts for your application. A production application in restricted mode reads only the accounts linked to it: link your bank accounts to the application ("Activate by linking accounts") in the Enable Banking control panel, then connect again.',
+        ),
+      );
+    case "period_unavailable":
+      return new BadRequestException(
+        tr(
+          "errors.bankSync.periodUnavailable",
+          "The bank does not provide transactions for that period. Many banks provide only the last 90 days, except during the first hour after you authorize access. Set a later cut-off date for this bank account and sync again.",
+        ),
+      );
     case "rate_limited":
       return new HttpException(
         tr(

@@ -5,7 +5,10 @@ import {
 } from "../../../common/http/fetch-failure.util";
 import { isProviderUnavailable } from "../../../provider-health/provider-unavailable.error";
 import { ProviderHealthService } from "../../../provider-health/provider-health.service";
-import { BankSyncProviderError } from "../bank-sync-provider.errors";
+import {
+  BankSyncProviderError,
+  type BankSyncProviderErrorKind,
+} from "../bank-sync-provider.errors";
 import type {
   BankAccountDescriptor,
   BankBalance,
@@ -43,8 +46,31 @@ const MAX_ERROR_DESCRIPTION_LENGTH = 200;
 const MAX_ERROR_BODY_LENGTH = 4000;
 const MAX_PSU_HEADER_LENGTH = 256;
 
-/** A provider error code that says the bank consent, not the application, is the problem. */
-const SESSION_ERROR_CODE = /SESSION|CONSENT|ACCESS_EXPIRED/;
+/**
+ * What the `error` field of an Enable Banking `ErrorResponse` decides, from the
+ * `ErrorCode` schema of its API reference. The reference maps no code to a
+ * status, and its FAQ says to "base their logic on errors rather than response
+ * codes" because a 401 occurs for several errors, so a code outranks the status
+ * and the status decides only what carries no code (the application-level
+ * refusals, e.g. 403 "Application does not exist", have none).
+ */
+/** The consent, not the application, is gone: the user authorizes again. */
+const SESSION_GONE_CODES: ReadonlySet<string> = new Set([
+  "EXPIRED_SESSION",
+  "REVOKED_SESSION",
+  "CLOSED_SESSION",
+  "SESSION_DOES_NOT_EXIST",
+]);
+/** The application's own credentials or access are refused. */
+const CREDENTIAL_CODES: ReadonlySet<string> = new Set([
+  "UNAUTHORIZED_ACCESS",
+  "AUTHORIZATION_NOT_PROVIDED",
+]);
+/** The bank failed or did not answer; the FAQ says to retry later. */
+const BANK_UNAVAILABLE_CODES: ReadonlySet<string> = new Set([
+  "ASPSP_ERROR",
+  "ASPSP_TIMEOUT",
+]);
 
 interface RequestOptions {
   method: "GET" | "POST" | "DELETE";
@@ -52,12 +78,6 @@ interface RequestOptions {
   query?: Record<string, string>;
   body?: unknown;
   psu?: PsuContext | null;
-  /**
-   * A call made on a session's behalf (an account read). A 403 there, or a 401
-   * whose code names the session, means the consent is gone; on an
-   * application-level call the same statuses mean the credentials are wrong.
-   */
-  sessionScoped?: boolean;
   /** False for a call whose answer has no body to read (session delete). */
   readBody?: boolean;
   /** What is being done, for the one log line a transport failure earns. */
@@ -82,6 +102,29 @@ const JWT_SHAPE = /eyJ[\w-]*(?:\.[\w-]*){0,2}/g;
  */
 function redactToken(value: string, token: string): string {
   return value.split(token).join("[redacted]").replace(JWT_SHAPE, "[redacted]");
+}
+
+/** The kind of a refusal (see `SESSION_GONE_CODES`: a code outranks the status). */
+function kindOf(
+  status: number,
+  code: string | null,
+): BankSyncProviderErrorKind {
+  if (code !== null) {
+    if (SESSION_GONE_CODES.has(code)) return "session_expired";
+    if (code === "UNAUTHORIZED_IP") return "ip_not_allowed";
+    if (code === "NO_ACCOUNTS_ADDED") return "no_accounts_linked";
+    if (code === "WRONG_TRANSACTIONS_PERIOD") return "period_unavailable";
+    if (code === "ASPSP_RATE_LIMIT_EXCEEDED") return "rate_limited";
+    if (BANK_UNAVAILABLE_CODES.has(code)) return "unavailable";
+    if (CREDENTIAL_CODES.has(code)) return "unauthorized";
+  }
+  if (status === 401 || status === 403) return "unauthorized";
+  if (status === 429) return "rate_limited";
+  // 408 is in the reference's list of answers: the bank did not reply in time.
+  if (status === 408 || status >= 500) return "unavailable";
+  if (status >= 400) return "bad_request";
+  // A 1xx or 3xx that `fetch` did not follow: nothing this build expects.
+  return "invalid_response";
 }
 
 /**
@@ -124,7 +167,9 @@ export class EnableBankingProvider implements BankSyncProvider {
     const payload = await this.request(credentials, {
       method: "GET",
       path: "/aspsps",
-      query: { country },
+      // Only banks that offer account information: the list also holds banks
+      // reachable for payment initiation alone, which cannot be authorized here.
+      query: { country, service: "AIS" },
       context: `institution list for ${country}`,
     });
     return mapInstitutions(payload);
@@ -175,19 +220,24 @@ export class EnableBankingProvider implements BankSyncProvider {
     const rows: BankTransaction[] = [];
     const seenKeys = new Set<string>();
     let continuationKey: string | null = null;
+    // `date_from` is read in UTC and a date after today is refused
+    // (`DATE_FROM_IN_FUTURE`); the caller's day is the user's, which can be one
+    // ahead of UTC. Reading from the UTC day returns a superset, and the planner
+    // applies the cut-off.
+    const utcToday = new Date().toISOString().slice(0, 10);
+    const dateFrom = window.dateFrom > utcToday ? utcToday : window.dateFrom;
 
     for (let page = 0; page < MAX_TRANSACTION_PAGES; page++) {
       const payload = await this.request(credentials, {
         method: "GET",
         path: `/accounts/${encodeURIComponent(externalAccountId)}/transactions`,
         query: {
-          date_from: window.dateFrom,
+          date_from: dateFrom,
           date_to: window.dateTo,
           transaction_status: "BOOK",
           ...(continuationKey ? { continuation_key: continuationKey } : {}),
         },
         psu,
-        sessionScoped: true,
         context: "transaction fetch",
       });
       const result = mapTransactionsPage(payload);
@@ -222,7 +272,6 @@ export class EnableBankingProvider implements BankSyncProvider {
       method: "GET",
       path: `/accounts/${encodeURIComponent(externalAccountId)}/balances`,
       psu,
-      sessionScoped: true,
       context: "balance fetch",
     });
     return mapBalance(payload);
@@ -235,7 +284,6 @@ export class EnableBankingProvider implements BankSyncProvider {
     await this.request(credentials, {
       method: "DELETE",
       path: `/sessions/${encodeURIComponent(sessionId)}`,
-      sessionScoped: true,
       readBody: false,
       context: "session revocation",
     });
@@ -282,7 +330,7 @@ export class EnableBankingProvider implements BankSyncProvider {
     if (!response.ok) {
       // A complete answer with nothing left to trust: the provider is up.
       this.health.recordSuccess(ENABLE_BANKING_PROVIDER);
-      throw await this.rejection(response, options, token);
+      throw await this.rejection(response, token);
     }
 
     let payload: unknown = null;
@@ -371,14 +419,13 @@ export class EnableBankingProvider implements BankSyncProvider {
   }
 
   /**
-   * A non-2xx answer as a typed error. The provider's own `error` / `code` and
+   * A non-2xx answer as a typed error. The provider's `error` code and
    * `message` are read from the body, bounded and stripped, because "the
    * session has expired" and "this request is malformed" send the user to
    * different repairs and a bare status cannot tell them apart.
    */
   private async rejection(
     response: Response,
-    options: RequestOptions,
     token: string,
   ): Promise<BankSyncProviderError> {
     const { code, description } = await this.readError(response, token);
@@ -386,31 +433,21 @@ export class EnableBankingProvider implements BankSyncProvider {
     const detail =
       (code ? `: ${code}` : "") + (description ? ` (${description})` : "");
     const message = `Enable Banking returned HTTP ${status}${detail}`;
-
-    if (status === 401 || status === 403) {
-      const sessionGone =
-        options.sessionScoped === true &&
-        (status === 403 || (code !== null && SESSION_ERROR_CODE.test(code)));
-      return new BankSyncProviderError(
-        sessionGone ? "session_expired" : "unauthorized",
-        message,
-        status,
-        code,
-      );
-    }
-    if (status === 429) {
-      return new BankSyncProviderError("rate_limited", message, status, code);
-    }
-    if (status >= 500) {
-      return new BankSyncProviderError("unavailable", message, status, code);
-    }
-    if (status >= 400) {
-      return new BankSyncProviderError("bad_request", message, status, code);
-    }
-    // A 1xx or 3xx that `fetch` did not follow: nothing this build expects.
-    return new BankSyncProviderError("invalid_response", message, status, code);
+    return new BankSyncProviderError(
+      kindOf(status, code),
+      message,
+      status,
+      code,
+    );
   }
 
+  /**
+   * An `ErrorResponse` has `message`, an integer `code` that repeats the HTTP
+   * status, the text `error` code and a free-form `detail`. Only `error` is the
+   * provider's code: the integer is the status again, and an answer from the
+   * gateway before the application is known (an unknown application id, a
+   * missing header) carries no `error` at all.
+   */
   private async readError(
     response: Response,
     token: string,
@@ -427,17 +464,16 @@ export class EnableBankingProvider implements BankSyncProvider {
       typeof parsed === "object" && parsed !== null
         ? (parsed as Record<string, unknown>)
         : {};
-    const rawCode = typeof body.error === "string" ? body.error : body.code;
-    const rawDescription = body.message ?? body.error_description;
     return {
       code:
-        this.safeText(rawCode, MAX_ERROR_CODE_LENGTH, token)?.toUpperCase() ??
-        null,
-      description: this.safeText(
-        rawDescription,
-        MAX_ERROR_DESCRIPTION_LENGTH,
-        token,
-      ),
+        this.safeText(
+          typeof body.error === "string" ? body.error : null,
+          MAX_ERROR_CODE_LENGTH,
+          token,
+        )?.toUpperCase() ?? null,
+      description:
+        this.safeText(body.message, MAX_ERROR_DESCRIPTION_LENGTH, token) ??
+        this.safeText(body.detail, MAX_ERROR_DESCRIPTION_LENGTH, token),
     };
   }
 

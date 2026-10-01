@@ -21,8 +21,9 @@ import type { BankTransaction } from "./providers/bank-sync-provider.interface";
  *    (INV-BANKSYNC-003: never converted, never written with a foreign amount);
  * 8. otherwise planned.
  *
- * Before the table, a booked row repeating the entry reference of an earlier
- * booked row of the same fetch is dropped (`dropRepeatedEntryReferences`).
+ * Before the table, a booked row repeating the entry reference AND the content
+ * of an earlier booked row of the same fetch is dropped, and rows that share a
+ * reference but differ in content are kept apart (`resolveEntryReferences`).
  *
  * A row whose currency the provider did not report is refused as
  * `currency_mismatch` too: an unknown currency is not the account's currency,
@@ -89,6 +90,11 @@ interface Draft {
   description: string | null;
   referenceNumber: string | null;
   entryReference: string | null;
+  /**
+   * Set when the bank gave this reference to rows that differ in content, so the
+   * reference alone does not name this row (`resolveEntryReferences`).
+   */
+  referenceDiscriminator: string | null;
 }
 
 type Classified =
@@ -130,7 +136,11 @@ function sameCurrency(rowCurrency: string | null, accountCurrency: string) {
   return !!row && row === accountCurrency.trim().toUpperCase();
 }
 
-function classify(row: BankTransaction, ctx: BankImportContext): Classified {
+function classify(
+  row: BankTransaction,
+  ctx: BankImportContext,
+  referenceDiscriminator: string | null,
+): Classified {
   if (!row.booked) return { kind: "pending" };
 
   const transactionDate = firstValidDate(row);
@@ -179,6 +189,7 @@ function classify(row: BankTransaction, ctx: BankImportContext): Classified {
         BANK_IMPORT_REFERENCE_MAX_LENGTH,
       ),
       entryReference: bounded(row.entryReference, Number.MAX_SAFE_INTEGER),
+      referenceDiscriminator,
     },
   };
 }
@@ -226,38 +237,89 @@ function entryReferenceOf(row: BankTransaction): string | null {
   return bounded(row.entryReference, Number.MAX_SAFE_INTEGER);
 }
 
+/** What a row says apart from its identifiers: two listings of one transaction agree on it. */
+function contentSignature(row: BankTransaction): string {
+  return JSON.stringify([
+    row.bookingDate,
+    row.valueDate,
+    row.transactionDate,
+    row.amount,
+    row.currencyCode,
+    row.direction,
+    row.counterpartyName,
+    row.remittance,
+    row.bankReference,
+  ]);
+}
+
+/** A booked row with the discriminator (if any) its reference needs. */
+interface ResolvedRow {
+  row: BankTransaction;
+  referenceDiscriminator: string | null;
+}
+
 /**
- * Drops a booked row whose entry reference an earlier booked row of the same
- * fetch already carried, first occurrence winning.
+ * Settles what a repeated entry reference means within one fetch.
  *
- * Enable Banking documents `entry_reference` as unique and immutable, so a
- * repeat inside one fetch is the same bank transaction listed twice (a row
- * repeated across two pagination pages), never two transactions. Planned as-is
- * both would carry the same `ref:` key and the second would be counted as
- * `skipped` by the ledger; dropping it here keeps the counts honest. It is
- * dropped without a counter of its own: it is not a row the bank reported once.
+ * Enable Banking documents `entry_reference` as unique and immutable for
+ * accounts with the same identification hashes, and its FAQ adds that some
+ * banks "provide duplicate values even though they should not". So a repeat is
+ * one of two things:
+ *
+ * - the same content: the same bank transaction listed twice (a row repeated
+ *   across two pagination pages). The first occurrence wins and the repeat is
+ *   dropped without a counter of its own: it is not a row the bank reported
+ *   once;
+ * - different content: two transactions under one reference. Dropping the second
+ *   would lose a real transaction without a trace, so none of them is keyed by
+ *   the reference alone; each takes the reference plus the SHA-256 of its
+ *   content (`referenceDiscriminator`), which does not depend on the order the
+ *   bank listed them in.
+ *
  * Pending rows and rows without a reference are never dropped, and a pending
  * row cannot shadow the booked row that later carries its reference.
  */
-function dropRepeatedEntryReferences(
+function resolveEntryReferences(
   rows: readonly BankTransaction[],
-): BankTransaction[] {
-  const seen = new Set<string>();
-  return rows.filter((row) => {
-    if (!row.booked) return true;
+): ResolvedRow[] {
+  const signaturesByReference = new Map<string, Set<string>>();
+  for (const row of rows) {
+    if (!row.booked) continue;
     const reference = entryReferenceOf(row);
-    if (reference === null) return true;
-    if (seen.has(reference)) return false;
-    seen.add(reference);
-    return true;
-  });
+    if (reference === null) continue;
+    const signatures = signaturesByReference.get(reference) ?? new Set();
+    signatures.add(contentSignature(row));
+    signaturesByReference.set(reference, signatures);
+  }
+
+  const seen = new Set<string>();
+  const resolved: ResolvedRow[] = [];
+  for (const row of rows) {
+    const reference = row.booked ? entryReferenceOf(row) : null;
+    if (reference === null) {
+      resolved.push({ row, referenceDiscriminator: null });
+      continue;
+    }
+    const signature = contentSignature(row);
+    const identity = `${reference}\u0000${signature}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    const contested = (signaturesByReference.get(reference)?.size ?? 0) > 1;
+    resolved.push({
+      row,
+      referenceDiscriminator: contested ? sha256Hex(signature) : null,
+    });
+  }
+  return resolved;
 }
 
 /**
  * The plan for one fetch.
  *
  * The external key is the first that applies: `ref:` + the provider's entry
- * reference (unique and immutable across sessions); otherwise `hash:` + the
+ * reference (unique and immutable across sessions of one account), followed by
+ * `#` and the SHA-256 of the row's content when the bank gave the same reference
+ * to rows that differ; otherwise `hash:` + the
  * SHA-256 of the row's content, then `:` + the occurrence number of that hash
  * among the planned rows of this fetch, counted from 0 in the order the
  * provider returned them. The hash form is stable because every fetch requests
@@ -271,8 +333,9 @@ export function planBankImport(
   rows: readonly BankTransaction[],
   ctx: BankImportContext,
 ): BankImportPlan {
-  const classified = dropRepeatedEntryReferences(rows).map((row) =>
-    classify(row, ctx),
+  const classified = resolveEntryReferences(rows).map(
+    ({ row, referenceDiscriminator }) =>
+      classify(row, ctx, referenceDiscriminator),
   );
 
   const refused = Object.fromEntries(
@@ -310,7 +373,11 @@ export function planBankImport(
 /** The key of one planned row; `occurrences` counts the hash forms seen so far. */
 function keyFor(draft: Draft, occurrences: Map<string, number>): string {
   if (draft.entryReference !== null) {
-    return fitKey("ref:", `ref:${draft.entryReference}`);
+    const discriminator =
+      draft.referenceDiscriminator === null
+        ? ""
+        : `#${draft.referenceDiscriminator}`;
+    return fitKey("ref:", `ref:${draft.entryReference}${discriminator}`);
   }
   const hash = sha256Hex(hashInput(draft));
   const occurrence = occurrences.get(hash) ?? 0;

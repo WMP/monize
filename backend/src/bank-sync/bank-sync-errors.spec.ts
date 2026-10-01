@@ -21,6 +21,9 @@ describe("bank-sync error mapping", () => {
   const cases: Array<[BankSyncProviderErrorKind, number, unknown]> = [
     ["unauthorized", 400, BadRequestException],
     ["session_expired", 409, ConflictException],
+    ["ip_not_allowed", 400, BadRequestException],
+    ["no_accounts_linked", 400, BadRequestException],
+    ["period_unavailable", 400, BadRequestException],
     ["rate_limited", 429, HttpException],
     ["bad_request", 400, BadRequestException],
     ["unavailable", 503, ServiceUnavailableException],
@@ -34,6 +37,25 @@ describe("bank-sync error mapping", () => {
     expect(mapped.getStatus()).toBe(status);
     expect(mapped).toBeInstanceOf(type as new (...args: never[]) => Error);
   });
+
+  it.each([
+    ["ip_not_allowed", /IP address/],
+    ["no_accounts_linked", /Activate by linking accounts/],
+    ["period_unavailable", /cut-off date/],
+  ] as const)(
+    "tells the user what to fix for %s, not what the provider said",
+    (kind, advice) => {
+      const mapped = mapBankSyncProviderError(
+        new BankSyncProviderError(
+          kind,
+          "UNAUTHORIZED_IP from the provider",
+          403,
+        ),
+      );
+      expect(mapped.message).toMatch(advice);
+      expect(mapped.message).not.toContain("from the provider");
+    },
+  );
 
   it("carries the provider's bounded detail on a rejected request only", () => {
     const rejected = mapBankSyncProviderError(

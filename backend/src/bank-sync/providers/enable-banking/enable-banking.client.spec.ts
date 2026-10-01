@@ -139,8 +139,18 @@ describe("EnableBankingProvider", () => {
     });
 
     it("testCredentials maps the application", async () => {
+      // A GetApplicationResponse (API reference, GET /application).
       fetchSpy.mockResolvedValueOnce(
-        json({ name: "My App", redirect_urls: ["https://app.example/cb"] }),
+        json({
+          name: "My App",
+          description: "Personal finance",
+          kid: APPLICATION_ID,
+          environment: "PRODUCTION",
+          redirect_urls: ["https://app.example/cb"],
+          active: true,
+          countries: ["PL"],
+          services: ["AIS"],
+        }),
       );
       await expect(provider.testCredentials(credentials)).resolves.toEqual({
         applicationName: "My App",
@@ -156,7 +166,8 @@ describe("EnableBankingProvider", () => {
       const result = await provider.listInstitutions(credentials, "P&L");
 
       expect(call().url.pathname).toBe("/aspsps");
-      expect(call().url.search).toBe("?country=P%26L");
+      // Only banks offering account information (`service=AIS`).
+      expect(call().url.search).toBe("?country=P%26L&service=AIS");
       expect(result.map((bank) => bank.name)).toEqual(["Example Bank"]);
     });
 
@@ -205,10 +216,21 @@ describe("EnableBankingProvider", () => {
 
     it("completeAuthorization POSTs the code and maps the session", async () => {
       fetchSpy.mockResolvedValueOnce(
+        // An AuthorizeSessionResponse (API reference, POST /sessions).
         json({
           session_id: "session-1",
           access: { valid_until: "2026-06-01T12:00:00Z" },
-          accounts: [{ uid: "uid-1", currency: "PLN" }],
+          aspsp: { name: "Example Bank", country: "PL" },
+          psu_type: "personal",
+          accounts: [
+            {
+              uid: "uid-1",
+              identification_hash: "hash-1",
+              identification_hashes: ["hash-1"],
+              cash_account_type: "CACC",
+              currency: "PLN",
+            },
+          ],
         }),
       );
 
@@ -320,6 +342,66 @@ describe("EnableBankingProvider", () => {
       // Every page went through the breaker.
       expect(health.assertAvailable).toHaveBeenCalledTimes(3);
       expect(health.recordSuccess).toHaveBeenCalledTimes(3);
+    });
+
+    describe("date_from, which the reference reads in UTC", () => {
+      const atUtc = async (now: string, dateFrom: string, dateTo: string) => {
+        fetchSpy.mockClear();
+        jest.useFakeTimers({
+          now: new Date(now),
+          // Only the clock is faked: the request path owns timers of its own.
+          doNotFake: [
+            "nextTick",
+            "setImmediate",
+            "clearImmediate",
+            "setInterval",
+            "clearInterval",
+            "setTimeout",
+            "clearTimeout",
+            "queueMicrotask",
+          ],
+        });
+        try {
+          fetchSpy.mockResolvedValueOnce(json({ transactions: [] }));
+          await provider.fetchTransactions(
+            credentials,
+            "uid-1",
+            { dateFrom, dateTo },
+            null,
+          );
+        } finally {
+          jest.useRealTimers();
+        }
+        return {
+          from: call().url.searchParams.get("date_from"),
+          to: call().url.searchParams.get("date_to"),
+        };
+      };
+
+      it("is never after today in UTC (DATE_FROM_IN_FUTURE), even when the user's day is ahead", async () => {
+        // 23:30 UTC on the 20th is already the 21st for a user east of UTC.
+        expect(
+          await atUtc("2026-03-20T23:30:00Z", "2026-03-21", "2026-03-21"),
+        ).toEqual({
+          from: "2026-03-20",
+          to: "2026-03-21",
+        });
+      });
+
+      it("is left alone on, and before, today in UTC", async () => {
+        expect(
+          await atUtc("2026-03-21T00:30:00Z", "2026-03-21", "2026-03-21"),
+        ).toEqual({
+          from: "2026-03-21",
+          to: "2026-03-21",
+        });
+        expect(
+          await atUtc("2026-03-21T12:00:00Z", "2026-03-01", "2026-03-21"),
+        ).toEqual({
+          from: "2026-03-01",
+          to: "2026-03-21",
+        });
+      });
     });
 
     it("also drops a row that is not booked, whatever the parameter asked", async () => {
@@ -446,59 +528,174 @@ describe("EnableBankingProvider", () => {
   });
 
   describe("HTTP status mapping", () => {
-    /** An account read is session-scoped; the application check is not. */
+    /** An account read and the application check; neither is classified by who calls. */
     const sessionCall = () => provider.fetchBalance(credentials, "uid-1", null);
     const applicationCall = () => provider.testCredentials(credentials);
 
+    // The shapes are the reference's ErrorResponse: `message`, an integer
+    // `code` that repeats the HTTP status, and the text `error` (ErrorCode).
+    // The two answers without an `error` were observed from the live gateway
+    // for an unknown application id and a missing Authorization header.
     it.each([
       [
-        "401 on an application call",
-        401,
-        { error: "UNAUTHORIZED" },
-        false,
-        "unauthorized",
-      ],
-      ["403 on an application call", 403, {}, false, "unauthorized"],
-      [
-        "401 with a session code on an application call",
-        401,
-        { error: "EXPIRED_SESSION" },
-        false,
-        "unauthorized",
-      ],
-      [
-        "403 on a session call",
+        "403 'Application does not exist' (no error code) on an application call",
         403,
-        { error: "ACCESS_DENIED" },
-        true,
-        "session_expired",
+        { code: 403, message: "Application does not exist" },
+        false,
+        "unauthorized",
       ],
       [
-        "401 EXPIRED_SESSION on a session call",
-        401,
-        { error: "EXPIRED_SESSION" },
-        true,
-        "session_expired",
-      ],
-      [
-        "401 REVOKED_SESSION on a session call",
-        401,
-        { code: "revoked_session" },
-        true,
-        "session_expired",
-      ],
-      [
-        "401 with another code on a session call",
-        401,
-        { error: "INVALID_JWT" },
+        "403 'Application does not exist' (no error code) on a session call is not an expired consent",
+        403,
+        { code: 403, message: "Application does not exist" },
         true,
         "unauthorized",
       ],
-      ["401 with no body on a session call", 401, null, true, "unauthorized"],
-      ["429", 429, { message: "too many" }, true, "rate_limited"],
+      [
+        "401 without an Authorization header",
+        401,
+        { code: 401, message: "Authorization header is not provided" },
+        false,
+        "unauthorized",
+      ],
+      [
+        "401 UNAUTHORIZED_ACCESS",
+        401,
+        { code: 401, error: "UNAUTHORIZED_ACCESS", message: "Unauthorized" },
+        true,
+        "unauthorized",
+      ],
+      [
+        "403 ACCESS_DENIED on a session call is not an expired consent",
+        403,
+        { code: 403, error: "ACCESS_DENIED", message: "Access denied" },
+        true,
+        "unauthorized",
+      ],
+      [
+        "401 EXPIRED_SESSION",
+        401,
+        { code: 401, error: "EXPIRED_SESSION", message: "Session is expired" },
+        true,
+        "session_expired",
+      ],
+      [
+        "REVOKED_SESSION, whatever the status",
+        403,
+        { code: 403, error: "REVOKED_SESSION", message: "Session is revoked" },
+        true,
+        "session_expired",
+      ],
+      [
+        "CLOSED_SESSION, whatever the status",
+        422,
+        { code: 422, error: "CLOSED_SESSION", message: "Session is closed" },
+        true,
+        "session_expired",
+      ],
+      [
+        "SESSION_DOES_NOT_EXIST",
+        404,
+        { code: 404, error: "SESSION_DOES_NOT_EXIST", message: "No session" },
+        true,
+        "session_expired",
+      ],
+      [
+        "UNAUTHORIZED_IP, whatever the status",
+        403,
+        {
+          code: 403,
+          error: "UNAUTHORIZED_IP",
+          message: "Used IP address is not authorized to access the resource",
+        },
+        false,
+        "ip_not_allowed",
+      ],
+      [
+        "NO_ACCOUNTS_ADDED, whatever the status",
+        422,
+        {
+          code: 422,
+          error: "NO_ACCOUNTS_ADDED",
+          message: "No allowed accounts added to the application",
+        },
+        true,
+        "no_accounts_linked",
+      ],
+      [
+        "WRONG_TRANSACTIONS_PERIOD",
+        422,
+        {
+          code: 422,
+          error: "WRONG_TRANSACTIONS_PERIOD",
+          message: "Wrong transactions period requested",
+        },
+        true,
+        "period_unavailable",
+      ],
+      [
+        "429 ASPSP_RATE_LIMIT_EXCEEDED",
+        429,
+        {
+          code: 429,
+          error: "ASPSP_RATE_LIMIT_EXCEEDED",
+          message: "ASPSP Rate limit exceeded",
+        },
+        true,
+        "rate_limited",
+      ],
+      [
+        "ASPSP_RATE_LIMIT_EXCEEDED under another status",
+        400,
+        { code: 400, error: "ASPSP_RATE_LIMIT_EXCEEDED", message: "Slow down" },
+        true,
+        "rate_limited",
+      ],
+      ["429 with no code", 429, { message: "too many" }, true, "rate_limited"],
+      [
+        "ASPSP_ERROR is the bank failing: retry later, whatever the status",
+        400,
+        { code: 400, error: "ASPSP_ERROR", message: "Error interacting" },
+        true,
+        "unavailable",
+      ],
+      [
+        "ASPSP_TIMEOUT is the bank not answering",
+        408,
+        { code: 408, error: "ASPSP_TIMEOUT", message: "Timeout" },
+        true,
+        "unavailable",
+      ],
+      [
+        "408 with no code",
+        408,
+        { code: 408, message: "Timeout" },
+        true,
+        "unavailable",
+      ],
+      [
+        "422 PSU_HEADER_NOT_PROVIDED stays a rejected request",
+        422,
+        {
+          code: 422,
+          error: "PSU_HEADER_NOT_PROVIDED",
+          message: "Required PSU header is not provided",
+          detail: "PSU header psuIpAddress is not provided",
+        },
+        true,
+        "bad_request",
+      ],
+      [
+        "400 WRONG_CONTINUATION_KEY",
+        400,
+        { code: 400, error: "WRONG_CONTINUATION_KEY", message: "Wrong key" },
+        true,
+        "bad_request",
+      ],
       ["400", 400, { message: "bad" }, false, "bad_request"],
       ["404", 404, { message: "no such thing" }, true, "bad_request"],
       ["422", 422, {}, false, "bad_request"],
+      ["401 with no body on a session call", 401, null, true, "unauthorized"],
       ["500", 500, {}, true, "unavailable"],
       ["502", 502, "<html>bad gateway</html>", false, "unavailable"],
       ["503", 503, {}, true, "unavailable"],
@@ -520,25 +717,53 @@ describe("EnableBankingProvider", () => {
     it("carries the status, the provider's code and a bounded description", async () => {
       fetchSpy.mockResolvedValueOnce(
         json(
-          { error: "ASPSP_ERROR", message: `Bank said no. ${"x".repeat(500)}` },
+          {
+            error: "WRONG_REQUEST_PARAMETERS",
+            message: `Bank said no. ${"x".repeat(500)}`,
+          },
           400,
         ),
       );
       const error = (await errorOf(applicationCall())) as BankSyncProviderError;
-      expect(error.providerCode).toBe("ASPSP_ERROR");
+      expect(error.providerCode).toBe("WRONG_REQUEST_PARAMETERS");
       expect(error.message).toMatch(
-        /^Enable Banking returned HTTP 400: ASPSP_ERROR \(Bank said no\. x+\)$/,
+        /^Enable Banking returned HTTP 400: WRONG_REQUEST_PARAMETERS \(Bank said no\. x+\)$/,
       );
       expect(error.message.length).toBeLessThanOrEqual(300);
     });
 
-    it("reads a numeric code and strips control characters from the description", async () => {
+    it("takes the code from `error` only: the integer `code` is the status again", async () => {
       fetchSpy.mockResolvedValueOnce(
         json({ code: 400, message: "line1\nline2\u0000" }, 400),
       );
       const error = (await errorOf(applicationCall())) as BankSyncProviderError;
+      expect(error.providerCode).toBeNull();
       expect(error.message).toBe(
-        "Enable Banking returned HTTP 400: 400 (line1 line2)",
+        "Enable Banking returned HTTP 400 (line1 line2)",
+      );
+    });
+
+    it("upper-cases the error code and falls back to `detail` when there is no message", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        json(
+          { error: "psu_header_invalid", detail: "PSU header is invalid" },
+          422,
+        ),
+      );
+      const error = (await errorOf(applicationCall())) as BankSyncProviderError;
+      expect(error.providerCode).toBe("PSU_HEADER_INVALID");
+      expect(error.message).toBe(
+        "Enable Banking returned HTTP 422: PSU_HEADER_INVALID (PSU header is invalid)",
+      );
+    });
+
+    it("ignores a `detail` that is not text", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        json({ error: "WRONG_REQUEST_PARAMETERS", detail: { x: 1 } }, 400),
+      );
+      const error = (await errorOf(applicationCall())) as BankSyncProviderError;
+      expect(error.message).toBe(
+        "Enable Banking returned HTTP 400: WRONG_REQUEST_PARAMETERS",
       );
     });
 

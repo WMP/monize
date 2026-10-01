@@ -77,8 +77,13 @@ export const SYNC_LEASE_TTL_MS = 30 * 60 * 1000;
  */
 export const SYNC_OVERLAP_DAYS = 7;
 
-/** The cut-off default for a bank account linked to an empty Monize account. */
-export const DEFAULT_CUTOFF_LOOKBACK_DAYS = 90;
+/**
+ * The cut-off default for a bank account linked to an empty Monize account.
+ * One day inside the 90 days many banks serve after the first hour of a
+ * consent (Enable Banking FAQ), so the first sync does not ask for a day the
+ * bank refuses with WRONG_TRANSACTIONS_PERIOD.
+ */
+export const DEFAULT_CUTOFF_LOOKBACK_DAYS = 89;
 
 /** The width of `last_error` / `last_sync_error`; a stored message is cut to it. */
 export const BANK_SYNC_STORED_MESSAGE_MAX_LENGTH = 500;
