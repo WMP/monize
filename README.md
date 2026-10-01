@@ -68,22 +68,23 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 | Version | Highlights |
 |---------|------------|
 | 1.17 | Calendar view for transactions and investments, with day notes. Transaction rules (Tools > Rules) and an AI review inbox. Sort the register by any column. London Stock Exchange and Deutsche Börse price sources. Automatic backups copied off the machine (S3 and email). Several backend replicas with `CLUSTER_MODE=multi` |
-| 1.16 | Notifications: a type-by-channel matrix, browser push with no third party, UnifiedPush, balance thresholds. Scan paper documents into attachments and preview them in the app. Share files into Monize. Phone layout: tables become cards, swipe between views. Payee address, phone and email, with optional lookup |
-| 1.15 | An investment account is shown as one account. Brokerage CSV import. Compare securities against the market. Category detail page. Cash flow forecast over several accounts. Partial dates and remembered row density |
-| 1.14 | Microsoft Money full-file import (`.mny`). Joint accounts and transfers between two people. Security and payee detail pages. Your own asset-class allocation. GEM strategy report. Automatic backups |
+| 1.16 | Notifications: a type-by-channel matrix, browser push with no third party, UnifiedPush, balance thresholds. Scan paper documents into attachments and preview them in the app. Share files into Monize. Phone layout: tables become cards, swipe between views. Payee address, phone and email, with optional lookup. Numbers in your own convention |
+| 1.15 | An investment account is shown as one account. Brokerage CSV import. Compare securities against the market. Account Balances at any date. Category detail page. Cash flow forecast over several accounts. Partial dates and remembered row density |
+| 1.14 | Microsoft Money full-file import (`.mny`). Joint accounts and transfers between two people. Security and payee detail pages. Your own asset-class allocation. GEM strategy report. Automatic backups for each user |
 | 1.13 | Foreign-currency transactions and a fee breakdown. Transaction attachments. Guided tours and the What's New digest. Fixed-payment loan plans. Default categories that match your country |
 | 1.12 | Loan and mortgage detail page with an overpayment simulator. A dashboard you can customize, with new widgets. A detail page for every account type. KEY:VALUE tags. Geographic look-through for ETFs and funds |
-| 1.11 | Ten more languages. Fifteen colour themes. Financial institutions. Auto-merge duplicate payees. AI Assistant changes that wait for your approval. Attachments in the AI chat |
-| 1.10 | Shared access for delegates. Emergency access. Password-protected backups. Custom investment reports |
+| 1.11 | The interface translated into the languages listed under Multi-Language Support, and regional English. Fifteen colour themes. Financial institutions. Auto-merge duplicate payees. AI Assistant changes that wait for your approval. Attachments in the AI chat |
+| 1.10 | Shared access for delegates. Emergency access. Password-protected backups. Custom investment reports. Per-security transaction history. Administrators can create users |
 
 ## Features
 ### Account Management
 - Ten account types: Chequing, Savings, Credit Card, Loan, Mortgage, Line of Credit, Investment, Cash, Asset and Other
-- A detail page for each account type: balance history, recurring charges and a 90-day balance forecast for bank accounts; the statement cycle, interest and fees and a payoff calculator for credit cards; value, appreciation and an equity panel for assets
+- A detail page for each account type: balance history, recurring charges (turn one into a scheduled bill with one click) and a 90-day balance forecast for bank accounts; the statement cycle, interest and fees and a payoff calculator for credit cards; value, appreciation and an equity panel against the financing loan for assets
 - Financial institutions: group your accounts by bank or brokerage, with the institution's logo
 - An investment account is shown as one account (the brokerage and its cash), with a reconciliation status on investment transactions
 - Support for multiple currencies per account
 - Track balances, credit limits, and interest rates
+- Exclude an account from net worth
 - Credit card statement dates: configurable due date and settlement date (billing cycle closing date). After you reconcile a card, Monize offers to schedule the payment
 - Favourite accounts on dashboard with credit card date indicators
 - Account reconciliation: edit, sort and group while you reconcile, an optional lock on reconciled transactions, and highlighted overdue unreconciled transactions
@@ -94,13 +95,16 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - Split transaction support for complex transactions
 - Table or Calendar view of the register. Each day shows its transactions and, if you choose, the day's balance or its change. Day notes go on one day or across several
 - Sort the register by any column; the running balance is shown in date order
-- Search from the header on every page
+- Search from the header on every page, with amounts and dates typed your own way (`1 234,56`, `02.07.2026`)
+- Date fields take partial dates (`9-14`, `4/1/26`, month names), and "Create & New" enters many transactions in a row
 - Foreign-currency transactions: enter the amount you were charged, see and edit the rate, and see what foreign-currency fees cost you per account
-- Attachments for receipts, invoices and statements, stored in the database, on disk or in S3. Scan a paper document with the phone camera (page detection runs in your browser) and preview images and PDFs in the app
+- Transfers, one-off and scheduled, can carry a category, so they show in category reports without counting as income or expenses
+- Attachments for receipts, invoices and statements, stored in the database, on disk or in S3. Scan a paper document with the phone camera (page detection runs in your browser) and preview images and PDFs in the app. An attachment column and filter find the transactions that have no receipt
 - Transaction reconciliation and clearing
 - Bulk update and bulk delete operations with filter-based selection
 - Undo and redo your recent changes from the action history panel
-- Payees with auto-categorization rules, aliases with wildcard patterns, and merge capability, plus Auto-Merge for duplicates
+- Payees with auto-categorization rules, aliases with wildcard patterns, and merge capability, plus Auto-Merge for duplicates. Apply a payee's default category to its past transactions
+- Payee brand icons and category icons that subcategories inherit
 - A page for each payee (statistics, recurrence, seasonality, address, phone and email) and for each category (subcategories, top payees, seasonality). Payee details can be looked up through Google Places or your AI provider, and are shown for confirmation before they are saved
 - Multi-currency transactions with automatic exchange rate tracking
 - Import from CSV (including brokerage exports), OFX/QFX, and QIF (Quicken and Microsoft Money) with smart column auto-matching
@@ -114,25 +118,30 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - An AI review inbox for the transactions a rule queued
 - Transaction tags with colours and icons for flexible cross-category labelling
 - KEY:VALUE tags (for example `trip:Lisbon`): filter by key, and break Income vs Expenses and Cash Flow down by tag key
+- Tags on securities too, with the portfolio charted by tag key
 
 ### Investment Features
 - Track stocks, bonds, ETFs, mutual funds, options, GICs and cryptocurrency
-- Exchange-aware symbol resolution for North American, European and Asian markets (NYSE, NASDAQ, AMEX, ARCA, TSX, TSX-V, CSE, NEO, LSE, Frankfurt, XETRA, Euronext Paris, ASX, Tokyo, HKEX)
+- Exchange-aware symbol resolution for North American, European and Asian markets (NYSE, NASDAQ, AMEX, ARCA, BATS, TSX, TSX-V, CSE, NEO, LSE, XETRA, Frankfurt, Euronext Paris, Amsterdam, Milan, Stockholm, Tokyo, HKEX, Shanghai, Shenzhen, ASX, Korea, Taiwan, Singapore, BSE and NSE)
 - Daily price updates from Yahoo Finance, MSN, the London Stock Exchange and Deutsche Börse
-- A page for each security: position, price chart, transaction history, documents and news
-- Portfolio value and performance charts from intraday and month-to-date up to ten years, all time or a custom date range
-- Investment transactions: buy, sell, dividend, interest, reinvestment, capital gains, splits, share additions and removals, and transfers between accounts that keep the cost basis
+- A page for each security: position, price chart, documents and news
+- Per-security transaction history with a running share balance
+- Portfolio value and performance charts from intraday and month-to-date up to ten years, all time or a custom date range, with a breakdown by security
+- Calendar view of the investment register
+- Investment transactions: buy, sell, dividend, interest, reinvestment, capital gains, splits, share additions and removals, CD and bond redemptions, and transfers between accounts that keep the cost basis
 - Scheduled investment transactions
 - Asset-class and country allocation, with look-through for ETFs and funds
-- Compare securities against market indexes
+- Compare securities with each other and against market indexes
 - Manual price management: add, edit, and delete individual price entries
 - Price backfill from transaction history (uses buy/sell prices when market data unavailable)
 - Portfolio tracking with real-time valuations
 
 ### Loans and Mortgages
-- A page for each loan and mortgage: amortization schedule, interest-rate history, and overpayments recognised the way your bank applies them
-- Overpayment simulator with saved scenarios, a goal seek (work backwards from a payoff date), a fixed monthly payment plan and a chart that compares scenarios
-- Loan Amortization and Debt Payoff Timeline reports
+- A page for each loan and mortgage: a loan schedule with the real interest of each payment, interest-rate history (rate changes are detected from your payments), and overpayments recognised the way your bank applies them
+- Past Impact: what the overpayments you made have already saved
+- Overpayment simulator: shorten the term or lower the installment, saved scenarios, a goal seek (work backwards from a payoff date), a fixed monthly payment plan and a chart that compares scenarios. Exports to CSV, PNG and PDF
+- All payment frequencies, and Canadian semi-annual compounding
+- Loan Amortization Schedule, Loan Overpayment Simulator and Debt Payoff Timeline reports
 
 ### Multi-Currency Support
 - 44 currencies with built-in symbol and formatting metadata (USD, CAD, EUR, GBP, JPY, CHF, AUD, CNY and more), created on demand rather than pre-seeded
@@ -144,42 +153,51 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - Full user interface translation, including server-generated messages and emails
 - Available languages (22 locales): English (with US, Canadian and UK variants), German (Deutsch), Spanish (Español), French (Français), Hindi (हिन्दी), Indonesian (Bahasa Indonesia), Italian (Italiano), Japanese (日本語), Korean (한국어), Dutch (Nederlands), Polish (Polski), Portuguese (Português), Brazilian Portuguese (Português do Brasil), Russian (Русский), Turkish (Türkçe), Ukrainian (Українська), Vietnamese (Tiếng Việt), Simplified Chinese (简体中文) and Traditional Chinese (繁體中文)
 - Language can be chosen on the sign-in and registration screens and in Settings -> Preferences
+- Default categories in your language, matched to your country on the first run
 - Numbers follow your own convention, on screen and in the fields you type into (for example a decimal comma, or Indian lakh grouping)
 
 ### Scheduled Transactions
 - Recurring bills, deposits and transfers with 13 frequencies: once, daily, weekly, every two weeks, every four weeks, twice a month, monthly, every two months, quarterly, every four months, twice a year, yearly and every two years
+- Zero-amount reminders for bills that change every time
 - Automatic transaction entry option
 - Skip and override individual occurrences
 - Scheduled transactions in another currency
 - Bills calendar, filters, and a cash flow forecast over one or more accounts
 - Bill payment history tracking
 
-### Dashboard
-- 22 widgets that you can hide, reorder and configure (Customize)
+### Dashboard and Appearance
+- 22 widgets that you can hide, reorder and configure (time range, accounts, chart type), among them Favourite Accounts and Securities, Upcoming Bills (a list or a small calendar), Top Movers (gainers or losers, by amount or percent), Portfolio Value, Assets vs Liabilities, Credit Utilization and Favourite Reports
 - Each widget title opens its full report
-- Fifteen colour themes, each with a light and a dark variant
+- Fifteen colour themes for the whole app, each with a light and a dark variant (Settings -> Preferences)
 
 ### Reports
-- **Built-in Reports** -- 46 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills), all server-side aggregated. A sample:
+- **Built-in Reports** -- 46 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills). A sample:
   - Spending by Category / Payee
   - Income by Source
   - Monthly Spending Trend
+  - Monthly Breakdown
   - Income vs Expenses
-  - Cash Flow
-  - Year over Year Comparison
+  - Cash Flow Statement
+  - Year Over Year Comparison
   - Weekend vs Weekday Spending
-  - Spending Anomalies Detection
+  - Spending Anomalies
   - Tax Summary
-  - Recurring Expenses
+  - Recurring Expenses Tracker
+  - Account Balances (at any date, with that day's prices and exchange rates)
+  - Credit Utilization
+  - Foreign Currency Transaction Fees
+  - Security Performance
+  - Budget vs Actual
   - Bill Payment History
   - Uncategorized Transactions
   - Duplicate Transaction Finder
-- **Net Worth Report**: Historical net worth tracking with monthly snapshots
+- **Net Worth Over Time**: Historical net worth tracking with monthly snapshots
 - **Custom Reports**: Build your own reports with flexible filters
-- **Custom Investment Reports**: portfolio views with the columns Microsoft Money offered
-- **Monte Carlo retirement simulation**, with a comparison of scenarios
-- **GEM (Global Equities Momentum) strategy report**
-- Visual charts (pie, bar, line, area)
+- **Custom Investment Reports**: 40 columns in the style of Microsoft Money's portfolio views, as of any date, grouped by account, security or currency, in the native or the base currency
+- **Monte Carlo Simulation** for retirement planning, with a comparison of scenarios
+- **GEM Strategy** (Global Equities Momentum)
+- Refunds reduce the category they are filed under
+- Visual charts (pie, bar, line, area), and export to PDF and CSV
 
 ### Budget Planner
 - Create and manage budgets with per-category allocations; a wizard suggests amounts from your spending history
@@ -189,10 +207,10 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 
 ### Notifications
 - A notification bell with severity and Financial / System filters
-- A preferences grid: each notification type against each channel (email report, email alert, browser push, UnifiedPush)
+- A preferences grid: each notification type against each channel (email report, email alert, browser push, UnifiedPush), with a cooldown for each type
 - Browser push signed with your instance's own keys, with no Firebase or other third party, and UnifiedPush through a distributor you run yourself (ntfy, NextPush)
 - Bill reminders, budget alerts, account balance thresholds, daily investment value movements and GEM strategy signals
-- System alerts for administrators: a failed backup, a missing `ENCRYPTION_KEY`, a provider outage, failing SMTP
+- System alerts for administrators: a failed backup, a provider outage, failing SMTP, a weak `JWT_SECRET`
 - Reminders that repeat until you stop them, also from the push notification itself
 
 ### AI Financial Assistant
@@ -200,7 +218,7 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - **Multi-provider support**: Anthropic (Claude), OpenAI (GPT), Ollama (local models), Ollama Cloud, and any OpenAI-compatible endpoint, or your own AI subscription through the MCP relay
 - **Real-time streaming** responses via Server-Sent Events
 - **21 tools**: transactions, accounts, categories, payees, portfolio, capital gains, upcoming bills, budget status, period comparison, reports, transaction rules, a calculator that converts currencies, and charts
-- **Changes on request**: the assistant can add or change transactions, payees, securities and rules, and nothing is written until you approve it
+- **Changes on request**: the assistant can add, change or delete transactions (up to 25 in one request), split them, record investment trades, manage payees, securities and rules, set a fund's allocation and attach a receipt to a transaction. Nothing is written until you approve it
 - **Attachments and a chat bubble**: attach images, PDFs and CSV files to a question, and open the chat from any page
 - **Spending Insights**: AI analysis of your spending patterns and anomalies
 - **Per-user provider configuration** with encrypted API key storage (AES-256-GCM)
@@ -208,24 +226,38 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - **Provider fallback chain** with priority-based ordering
 - **Connection testing** to verify provider setup before use
 - **Suggested queries** for quick exploration of your financial data
-- **MCP (Model Context Protocol)** server for integration with AI-powered tools, with a one-click connector through OAuth 2.1 or a personal access token
+- **MCP (Model Context Protocol)** server for integration with AI-powered tools, with a one-click connector through OAuth 2.1 or a personal access token. MCP clients can make the same changes, each confirmed by you, within a daily write limit
 - No financial data is sent to AI providers beyond what is needed to answer the specific query
 
 ### Backup and Restore
 - Password-protected (encrypted) backups that you download and restore
-- Automatic backups for each user, with a list to download or restore from; administrators set the schedule and the retention
-- Copies of the automatic backups off the machine: to S3 (append-only) and/or by email
+- Automatic backups for each user, encrypted with your own backup password, with a list to download or restore from; administrators set the schedule and the retention
+- Backups include the attachment files, and restore across attachment storage types
+- Copies of the automatic backups off the machine, switched on in your settings: to S3 (append-only, the deployment's bucket or your own) and/or by email. Only encrypted backups are copied off the machine
 - A Support Backup: an anonymised copy of your data to attach to a bug report ([details](docs/support-backup.md))
 
 ### Sharing and Access
 - Shared access for delegates, with permissions for each section
-- Joint accounts, and transfers between two people's accounts
-- Emergency access: trusted contacts receive a one-time link if your account is untouched for a set period, after reminder emails to you
+- Joint accounts, and transfers between two people's accounts. Investment, loan, mortgage and asset accounts are read-only for the other person
+- Emergency access: if your account is untouched for a set period (14 days by default), your trusted contacts receive a one-time link, after daily reminder emails to you. You can leave them an encrypted private message. Needs email on the server
 
 ### Mobile and Guided Help
 - Install Monize as a PWA on a phone or a desktop
-- On a phone, tables become cards and a horizontal swipe moves between views
+- A layout built for the phone: nearly forty tables become cards, the register and the reports catalogue fit the width, and donut charts show their total in the centre
+- A horizontal swipe moves between views; on the register it turns the page
+- A mobile navigation drawer, sorting chips on the register, and a full-screen notification panel
+- Scan receipts with the camera, and share files from other apps into Monize
 - Guided tours of the main features, and a What's New digest after each update
+
+### Self-Hosting and Operations
+- Docker Compose files for development, production, demo and several replicas, and a Helm chart for Kubernetes
+- Several backend replicas with `CLUSTER_MODE=multi`, with PostgreSQL only and no Redis
+- Attachment storage in the database, on disk or in S3 (`ATTACHMENT_STORAGE_PROVIDER`); existing attachments are copied across when you switch
+- The automatic backup store on disk or in S3 (`BACKUP_STORAGE_PROVIDER`)
+- Optional PostgreSQL row-level security (`RLS_MODE`, off by default)
+- Admin -> Users shows the backup and attachment storage of each user; Admin -> Notifications switches on browser push
+- An "update available" banner for administrators (`UPDATE_CHECK_ENABLED`)
+- Every setting is described in [`.env.example`](.env.example)
 
 ### Security
 - OIDC (OpenID Connect) authentication (Authentik, Authelia, Pocket-ID, etc.)
@@ -236,7 +268,7 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - "Remember Me" option with configurable extended session duration (default 30 days)
 - TOTP two-factor authentication with trusted device support
 - Personal access tokens (PAT) for API and MCP access
-- Admin user management with role-based access (admin/user)
+- Admin user management with role-based access (admin/user); administrators can create users with an invite link, a set password or a one-time generated password
 - Password reset by an emailed link; an administrator can also issue a temporary password
 - Forced password change and forced 2FA policies
 - Rate limiting and request throttling
