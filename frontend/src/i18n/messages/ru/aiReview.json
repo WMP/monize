@@ -32,6 +32,9 @@
     "transactionMissing": "Эта транзакция больше не существует",
     "rule": "Правило: {name}",
     "manualRequest": "Запрошено вручную",
+    "emailReceipt": "Чек из электронной почты: {subject} от {sender}",
+    "emailReceiptMissing": "Чек из электронной почты (письмо удалено)",
+    "viewEmailReceipts": "Открыть чеки из электронной почты",
     "agentNote": "Заметка ассистента: {reason}",
     "dates": "Создан {created}, истекает {expires}",
     "viewTransaction": "Открыть транзакцию"
