@@ -256,7 +256,7 @@ describe('BankSyncCredentialsCard', () => {
       );
       expect(items[4]).toHaveTextContent(/^Select "Register"\./);
       expect(items[5]).toHaveTextContent(
-        'For "Production", the new application shows "Inactive". Select "Activate by linking accounts" and authorize your own bank accounts. Do not select "Request activation": it asks for general availability, which personal use does not need. Without linked accounts the bank returns no accounts.',
+        'For "Production", the new application shows "Inactive". Select "Activate by linking accounts", select the country, your bank and the usage type ("personal" for a personal account, "business" for a company account), and select "Link". Then sign in at your bank and authorize your accounts. Do not select "Request activation": it asks for general availability, which personal use does not need. Without linked accounts the bank returns no accounts. Later, when you connect the bank in Monize, select the same usage type.',
       );
       expect(items[6]).toHaveTextContent(
         'Enter the application ID from the application list, and load the private key file here.',

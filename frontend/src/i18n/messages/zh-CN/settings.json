@@ -1423,7 +1423,7 @@
         "step4": "输入应用名称。将下方的重定向 URL 粘贴到“Allowed redirect URLs”。对于“Production”，控制面板还要求填写描述、用于数据保护事务的电子邮件、隐私政策 URL 和条款 URL。",
         "step4Personal": "供个人使用：将应用描述为您自己自行托管的个人财务管理工具，并填写您自己的电子邮件地址。两个 URL 可以填写 Monize 提供的模板：<privacy>隐私声明</privacy>和<terms>使用条款</terms>。如果其他人也使用您的 Monize 实例，请改为发布带有您姓名的您自己的版本。在受限模式下，Enable Banking 不会检查这两个 URL。",
         "step5": "选择“Register”。浏览器会保存私钥文件 (.pem)。请妥善保密此文件。",
-        "step6": "对于“Production”，新建的应用显示“Inactive”。选择“Activate by linking accounts”，并授权您自己的银行账户。不要选择“Request activation”：它申请的是正式全面开放，个人使用并不需要。如果没有关联账户，银行不会返回任何账户。",
+        "step6": "对于“Production”，新建的应用显示“Inactive”。选择“Activate by linking accounts”，再选择国家、您的银行和使用类型（个人账户选“personal”，公司账户选“business”），然后选择“Link”。接着登录您的银行并授权您的账户。不要选择“Request activation”：它申请的是正式全面开放，个人使用并不需要。如果没有关联账户，银行不会返回任何账户。之后在 Monize 中连接银行时，请选择相同的使用类型。",
         "step7": "输入应用列表中的应用 ID，并在此加载私钥文件。",
         "sandboxNote": "Sandbox 应用中的交易是演示数据。请仅将 Sandbox 银行账户关联到 Monize 中的测试账户，不要关联到包含您真实交易的账户。",
         "networkTitle": "网络访问",
