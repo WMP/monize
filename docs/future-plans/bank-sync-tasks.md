@@ -33,10 +33,10 @@
 | BS13 | Pending rows: import as `UNRECONCILED`, replace when booked (needs its own spec for the match) | BS10 | additive | [ ] |
 | BS14 | A row whose counterparty is another synced account becomes a transfer | BS10 | additive | [ ] |
 | BS15 | MCP and AI tools: list connections, sync now (with confirmation) | BS6 | additive | [ ] |
-| BS16 | Match bank accounts to Monize accounts by account number; create a Monize account prefilled from a bank account (spec section 5a) | BS6 | additive | [ ] |
-| BS17 | Offer to set a new account's opening balance so that its balance after the first sync equals the bank's | BS16 | additive | [ ] |
-| BS18 | Preview before import, the first sync after a link change confirmed from the preview, commit refused on a changed plan fingerprint (spec section 7a) | BS6 | additive | [ ] |
-| BS19 | Show the provider's account type beside the account and warn when it does not match the Monize account's type (a card linked to a chequing account) | BS16 | additive | [ ] |
+| BS16 | Match bank accounts to Monize accounts by account number; create a Monize account prefilled from a bank account (spec section 5a) | BS6 | additive | [x] |
+| BS17 | Offer to set a new account's opening balance so that its balance after the first sync equals the bank's | BS16 | additive | [x] |
+| BS18 | Preview before import, the first sync after a link change confirmed from the preview, commit refused on a changed plan fingerprint (spec section 7a) | BS6 | additive | [x] |
+| BS19 | Show the provider's account type beside the account and warn when it does not match the Monize account's type (a card linked to a chequing account) | BS16 | additive | [x] |
 
 ## Notes per task
 

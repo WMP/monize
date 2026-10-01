@@ -200,8 +200,13 @@ callback answer lists what was linked, so the page can say so.
 **Match on request.** `POST /bank-sync/connections/:id/match` runs the same
 matching for a connection made before identifiers were stored: for each
 unlinked bank account without an identifier, it reads the account details
-from the provider first (outside any transaction), stores the identifier,
-then matches.
+from the provider first (`GET /accounts/{uid}/details`, outside any
+transaction), stores the identifier, then matches. Both the callback and this
+route answer `{ connection, linked: [{ bankAccountId, accountId }],
+suggestions: [{ bankAccountId, accountIds }] }`; two bank accounts that would
+take the same Monize account both become suggestions. The account view
+returns `accountIdentifier` to its owner (the accounts API already returns
+`account_number`), so the new-account form can prefill it.
 
 **Create from the bank account.** The account picker offers "Create a new
 account". It opens Monize's own account form, prefilled from the bank
@@ -278,7 +283,10 @@ ledger makes the re-read free. `date_from` is sent as at most today in UTC:
 the provider reads dates in UTC and refuses a later `date_from` with
 `DATE_FROM_IN_FUTURE`.
 
-Default cut-off when a bank account is linked: the day after the newest
+Default cut-off when a bank account is linked (`readLinkDefaults`, also
+served to the link dialog by `GET /bank-sync/accounts/:id/link-defaults` as
+`{ newestTransactionDate, defaultSyncFromDate }`, so the dialog and the link
+use one definition): the day after the newest
 non-VOID transaction in the Monize account, or today minus 89 days for an
 empty account (one day inside the 90 days many banks serve after the first
 hour of a consent; Enable Banking FAQ). The user may choose another date.
@@ -368,11 +376,20 @@ With it, the write transaction recomputes the plan under the row lock and
 refuses with 409 when the fingerprint differs ("the bank's data changed since
 the preview; preview again"), so what is written is exactly what was shown.
 
-**When the preview is shown.** The first sync after a bank account is linked,
-or after its Monize account or cut-off date changed, opens the preview, and
-the import runs only when the user confirms it. A later "Sync now" imports
-directly and offers the preview as a second button. The daily sync never
-previews.
+**When the preview is shown.** A bank account needs its preview while it is
+linked and `last_success_at` is NULL: after it is linked, or after its Monize
+account or cut-off date changed (the link clears `last_success_at`). The view
+carries this as `needsPreview`. Then "Sync now" opens the preview, and the
+import runs only when the user confirms it. **Nothing imports a bank account
+that needs its preview without that confirmation:** the daily sync and
+`POST /bank-sync/connections/:id/sync` skip it and report it as
+`needs_preview`. Later, "Sync now" imports directly and offers the preview as
+a second button; the daily sync never previews.
+
+The fingerprint is the SHA-256 of `JSON([[key, amount to 4 decimals], ...])`
+over the planned rows the ledger does not hold yet, sorted by key. A preview
+takes the sync lease and records nothing on the bank account; a sync refused
+for a changed fingerprint records no failure, since nothing was attempted.
 
 A preview is a user-present provider read (PSU headers), so the bank does not
 count it against the background limit; it still costs a request, so the route
@@ -405,11 +422,12 @@ fields.
 | `GET /bank-sync/connections` | | connections with their bank accounts |
 | `POST /bank-sync/connections` | `{ institutionName, country, psuType }` | `{ connectionId, authorizationUrl }` |
 | `POST /bank-sync/connections/:id/reauthorize` | | `{ connectionId, authorizationUrl }` |
-| `POST /bank-sync/callback` | `{ state, code?, error?, errorDescription? }` | the connection |
+| `POST /bank-sync/callback` | `{ state, code?, error?, errorDescription? }` | `{ connection, linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/connections/:id` | `{ autoSync }` | the connection |
 | `DELETE /bank-sync/connections/:id` | | 204 |
 | `POST /bank-sync/connections/:id/match` | | the connection, with `{ linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
+| `GET /bank-sync/accounts/:id/link-defaults?accountId=` | | `{ newestTransactionDate, defaultSyncFromDate }` (section 7) |
 | `POST /bank-sync/accounts/:id/preview` | | the preview (section 7a) |
 | `POST /bank-sync/accounts/:id/sync` | `{ planFingerprint? }` | the result (section 7); 409 when the fingerprint no longer matches |
 | `POST /bank-sync/connections/:id/sync` | | one entry per linked account: a result, or `{ bankAccountId, error: { code, message } }` for an account that failed |
@@ -444,4 +462,6 @@ currency.
 | Currency mismatch refused, nothing written (INV-BANKSYNC-003) | unit and integration |
 | Key never in a response (INV-BANKSYNC-002) | unit, response type and serializer spec |
 | Balance moved once by the created sum (INV-BALANCE-001) | integration |
+| Matcher: IBAN vs NRB, separators, several matches, currency, closed and linked accounts | unit, `bank-account-matcher.spec.ts` |
+| Preview writes nothing; preview then sync imports exactly the new rows; a changed provider answer refuses the sync | unit and integration |
 | Cron: once per user per day, failure of one user isolated | unit with the real `withScopedDb` over a mock `DataSource` (`rls-context-smoke` pattern) |
