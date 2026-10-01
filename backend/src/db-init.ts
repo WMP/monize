@@ -5,6 +5,7 @@ import * as path from "path";
 import { provisionAppRole } from "./common/db/app-role";
 import { assertRuntimeRoleSafeByName } from "./common/db/runtime-role-check";
 import { acquireDbLifecycleLock } from "./common/db/advisory-locks";
+import { resolveDatabaseSsl } from "./common/db/database-ssl";
 import { getRlsMode } from "./common/db/rls-config";
 
 const SCHEMA_FILENAME = "schema.sql";
@@ -50,6 +51,9 @@ export async function initDatabase() {
     user: requiredEnv("DATABASE_USER"),
     password: requiredEnv("DATABASE_PASSWORD"),
     database: requiredEnv("DATABASE_NAME"),
+    // The same TLS settings as the pool: a server that refuses non-TLS clients
+    // would otherwise reject this connection before the app ever starts.
+    ssl: resolveDatabaseSsl((name) => process.env[name]),
   });
 
   // Surface Postgres NOTICE/WARNING messages (e.g. the insufficient-privilege

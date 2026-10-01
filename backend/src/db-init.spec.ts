@@ -23,6 +23,7 @@ const mockExit = jest
   .spyOn(process, "exit")
   .mockImplementation((() => {}) as any);
 
+import { Client } from "pg";
 import { initDatabase } from "./db-init";
 
 /** A safe named-role facts row, in the `{ rows }` shape pg returns. */
@@ -82,6 +83,10 @@ describe("db-init initDatabase()", () => {
       DATABASE_APP_USER: process.env.DATABASE_APP_USER,
       DATABASE_APP_PASSWORD: process.env.DATABASE_APP_PASSWORD,
       RLS_MODE: process.env.RLS_MODE,
+      DATABASE_SSL: process.env.DATABASE_SSL,
+      DATABASE_SSL_REJECT_UNAUTHORIZED:
+        process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
+      DATABASE_SSL_CA_FILE: process.env.DATABASE_SSL_CA_FILE,
     };
     process.env.DATABASE_USER = "monize";
     process.env.DATABASE_PASSWORD = "owner-pw";
@@ -89,6 +94,9 @@ describe("db-init initDatabase()", () => {
     delete process.env.DATABASE_APP_USER;
     delete process.env.DATABASE_APP_PASSWORD;
     delete process.env.RLS_MODE;
+    delete process.env.DATABASE_SSL;
+    delete process.env.DATABASE_SSL_REJECT_UNAUTHORIZED;
+    delete process.env.DATABASE_SSL_CA_FILE;
 
     // The initializer logs through the Nest Logger so its output matches the
     // rest of the boot sequence; spying on console here would catch nothing.
@@ -129,6 +137,20 @@ describe("db-init initDatabase()", () => {
     handler({ message: "Insufficient privilege to create/alter role x" });
     expect(warnSpy).toHaveBeenCalledWith(
       "Postgres: Insufficient privilege to create/alter role x",
+    );
+  });
+
+  it("connects with the pool's TLS settings, so a server that refuses plain connections accepts it", async () => {
+    // This script runs before the app on every start and used to build its
+    // client with no `ssl` at all, so DATABASE_SSL=true was ignored here and a
+    // TLS-only server refused the connection before the app ever started.
+    process.env.DATABASE_SSL = "true";
+    primeQueries({ usersExist: true });
+
+    await initDatabase();
+
+    expect(Client).toHaveBeenCalledWith(
+      expect.objectContaining({ ssl: { rejectUnauthorized: true } }),
     );
   });
 
