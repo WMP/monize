@@ -367,6 +367,16 @@ export const builtInReports: Report[] = [
     ),
   },
   {
+    id: 'cash-flow-sankey',
+    category: 'insights',
+    color: 'bg-teal-500',
+    icon: (
+      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5h4c6 0 6 6 14 6M3 5v4M3 19h4c6 0 6-8 14-8M3 15v4M21 11v2" />
+      </svg>
+    ),
+  },
+  {
     id: 'foreign-currency-fees',
     category: 'insights',
     color: 'bg-amber-500',

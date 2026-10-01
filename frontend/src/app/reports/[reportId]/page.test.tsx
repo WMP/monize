@@ -70,6 +70,7 @@ vi.mock('@/components/reports/RecurringExpensesReport', () => ({ RecurringExpens
 vi.mock('@/components/reports/SpendingAnomaliesReport', () => ({ SpendingAnomaliesReport: () => <div data-testid="r-spending-anomalies" /> }));
 vi.mock('@/components/reports/WeekendVsWeekdayReport', () => ({ WeekendVsWeekdayReport: () => <div data-testid="r-weekend-weekday-spending" /> }));
 vi.mock('@/components/reports/MonthlyComparisonReport', () => ({ MonthlyComparisonReport: () => <div data-testid="r-monthly-comparison" /> }));
+vi.mock('@/components/reports/CashFlowSankeyReport', () => ({ CashFlowSankeyReport: () => <div data-testid="r-cash-flow-sankey" /> }));
 vi.mock('@/components/reports/ForeignCurrencyFeesReport', () => ({ ForeignCurrencyFeesReport: () => <div data-testid="r-foreign-currency-fees" /> }));
 vi.mock('@/components/reports/UncategorizedTransactionsReport', () => ({ UncategorizedTransactionsReport: () => <div data-testid="r-uncategorized-transactions" /> }));
 vi.mock('@/components/reports/DuplicateTransactionReport', () => ({ DuplicateTransactionReport: () => <div data-testid="r-duplicate-transactions" /> }));
@@ -115,6 +116,7 @@ const ALL_REPORT_IDS = [
   'spending-anomalies',
   'weekend-weekday-spending',
   'monthly-comparison',
+  'cash-flow-sankey',
   'foreign-currency-fees',
   'uncategorized-transactions',
   'duplicate-transactions',
