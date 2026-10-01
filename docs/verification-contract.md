@@ -95,6 +95,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-PORTCHART-001 a portfolio chart opens and closes on its figures' closes | **required** | -- | supporting | -- | -- | -- | -- | optional |
 | INV-REPORT-001 report account scope | supporting | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-REPORT-002 chart reduction | **required** | **required** | -- | -- | -- | -- | -- | -- |
+| INV-REPORT-003 a transfer leg is a named flow | **required** | -- | required | -- | -- | -- | -- | optional |
 | INV-LOAN-001 overpayment cadence | **required** | -- | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-002 no truncated total | **required** | **required** (not yet met) | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-003 compounding convention | **required** | **required** | -- | -- | -- | -- | -- | -- |

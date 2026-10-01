@@ -78,6 +78,7 @@ implied.
 | INV-INTRADAY-001 | An intraday bar is valued at its own day's positions, and a finished session closes on the daily series' figure | enforced |
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
+| INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
 | INV-LOAN-001 | A recurring overpayment's cadence is a calendar, not a payment interval | enforced |
 | INV-LOAN-002 | A schedule truncated by the projection horizon yields no lifetime total | enforced |
 | INV-LOAN-003 | One named compounding convention, from preview to projection to displayed EAR | enforced |
@@ -1675,6 +1676,55 @@ a property recomputed from a group's members (`group.every(...)`) is a property
 that was not part of what made the group, and the answer is only as good as the
 grouping. Make it part of the key, and a mixed bucket becomes unrepresentable
 rather than mislabelled.
+
+### INV-REPORT-003 -- a transfer leg is a named flow, never income, expenses or net
+
+```text
+Statement           A transfer leg appears in a report only as a NAMED FLOW, and
+                    never inside that report's income, expenses or net. A named
+                    flow is one of two things:
+                    - a tag-key bucket's tagged inflows / tagged outflows
+                      (taggedInflows / taggedOutflows), present only when the
+                      report was asked for a tag-key breakdown
+                      (docs/specs/report-tag-key-breakdown.md section 3);
+                    - a Cash Flow Sankey destination class: an outflow to
+                      "Savings & investments", "Debt payments" or "Other
+                      accounts", or an inflow "From savings & investments",
+                      "Borrowed" or "From other accounts", decided by the
+                      counterpart account's type
+                      (docs/future-plans/sankey-cash-flow.md sections 3-5).
+                    Each leg counts once, by its own account and its own sign.
+                    Without one of those two, a report excludes transfers
+                    exactly as before. Transfers never enter income, expenses or
+                    net under either model.
+Source of truth     transactions.is_transfer and
+                    transaction_splits.transfer_account_id for what a leg is;
+                    the leg's own signed amount for its direction.
+Enforcement         Every income/expense query keeps t.is_transfer = false and
+                    the split transfer-leg exclusion on every branch
+                    (income-reports.service.ts, spending-reports.service.ts and
+                    the categorized query of cash-flow-sankey.service.ts). The
+                    tag-key transfer-flow subqueries run only when tagKey is set
+                    and write only taggedInflows / taggedOutflows. The Sankey's
+                    transfer queries write only the class:* / inflow:* nodes,
+                    which its totals report as outflows / inflows beside
+                    expenses / income rather than inside them.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      income-reports.service.spec.ts: a parity spec proves the
+                    no-tagKey response unchanged and a numeric spec lands a
+                    tagged transfer in taggedInflows and not in income.
+                    cash-flow-sankey.service.spec.ts: a transfer leg lands on its
+                    class node and never in totals.income or totals.expenses.
+Status              enforced
+```
+
+The amendment widened "named flow" from the tag-key buckets to the Sankey's
+destination classes. The half that matters -- a transfer is never income -- is
+unchanged: the Sankey reports a savings transfer as an outflow beside the
+expenses, never as one of them.
 
 ### INV-LOAN-001 -- a recurring overpayment's cadence is a calendar
 
