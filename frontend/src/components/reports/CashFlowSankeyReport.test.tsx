@@ -63,10 +63,18 @@ vi.mock('@/components/reports/ReportAccountMultiSelect', () => ({
 }));
 
 vi.mock('@/components/ui/ExportDropdown', () => ({
-  ExportDropdown: ({ onExportPdf, onExportCsv }: { onExportPdf?: () => void; onExportCsv?: () => void }) => (
+  ExportDropdown: ({
+    onExportPdf,
+    onExportCsv,
+    disabled,
+  }: {
+    onExportPdf?: () => void;
+    onExportCsv?: () => void;
+    disabled?: boolean;
+  }) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
-      <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} disabled={disabled}>PDF</button>
+      <button data-testid="export-csv" onClick={onExportCsv} disabled={disabled}>CSV</button>
     </div>
   ),
 }));
@@ -213,7 +221,9 @@ function withoutRate(): CashFlowSankeyResponse {
   return {
     ...complete,
     nodes: complete.nodes.map((n) => (unknown.has(n.id) ? { ...n, total: null, knownTotal: 0 } : n)),
-    links: complete.links.map((l) => (unknown.has(l.target) ? { ...l, amount: null, knownAmount: 0 } : l)),
+    links: complete.links.map((l) =>
+      l.target !== 'hub' && unknown.has(l.target) ? { ...l, amount: null, knownAmount: 0 } : l,
+    ),
     totals: { ...complete.totals, expenses: null, unspent: null, deficit: null },
     knownTotals: { ...complete.knownTotals, expenses: 1345 },
     missingCurrencies: ['USD'],
@@ -416,6 +426,72 @@ describe('CashFlowSankeyReport', () => {
     expect(tooltip).toHaveTextContent('Only the part that could be converted is drawn.');
     expect(tooltip).toHaveTextContent('Salary to Income');
     expect(tooltip).toHaveTextContent('Amount: $5,000.00');
+  });
+
+  it('exports the PDF through the shared helper, with the cards and the full table', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+
+    expect(exportToPdf).toHaveBeenCalledTimes(1);
+    const options = vi.mocked(exportToPdf).mock.calls[0][0];
+    expect(options.title).toBe('Cash Flow Sankey');
+    expect(options.subtitle).toBe('date(2026-09-01) to date(2026-09-30)');
+    expect(options.filename).toBe('cash-flow-sankey');
+    expect(options.chartContainer).toBeInstanceOf(HTMLElement);
+    expect(options.summaryCards?.map((card) => [card.label, card.value])).toEqual([
+      ['Income', '$5,000.00'],
+      ['Transfers in', '$0.00'],
+      ['Expenses', '$1,412.50'],
+      ['Transfers out', '$1,900.00'],
+      ['Unspent', '$1,687.50'],
+    ]);
+    // Every node but the hub, from the response rather than the drawing.
+    expect(options.tableData?.rows).toHaveLength(example().nodes.length - 1);
+    expect(options.tableData?.rows[0]).toEqual(['Salary', 'Money in', '$5,000.00']);
+  });
+
+  it('marks a partial figure in the PDF cards rather than printing it as a total', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    await renderReport(withoutRate());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+
+    const cards = vi.mocked(exportToPdf).mock.calls[0][0].summaryCards ?? [];
+    expect(cards.find((card) => card.label === 'Expenses')?.value).toBe('$1,345.00*');
+    expect(cards.find((card) => card.label === 'Unspent')?.value).toBe('Unknown');
+  });
+
+  it('exports the CSV as two sections, the flows and the links, unknowns left blank', async () => {
+    await renderReport(withoutRate());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-csv'));
+    });
+
+    expect(mockExportCsvSections).toHaveBeenCalledTimes(1);
+    const [filename, sections] = mockExportCsvSections.mock.calls[0] as [
+      string,
+      Array<{ title: string; headers: string[]; rows: unknown[][] }>,
+    ];
+    expect(filename).toBe('cash-flow-sankey');
+    expect(sections.map((section) => section.title)).toEqual(['Flows', 'Links']);
+    expect(sections[0].headers).toEqual(['Flow', 'Direction', 'Amount', 'Converted amount']);
+    expect(sections[0].rows).toContainEqual(['Groceries', 'Money out', 600, 600]);
+    expect(sections[0].rows).toContainEqual(['Dining', 'Money out', null, 0]);
+    expect(sections[1].headers).toEqual(['From', 'To', 'Amount', 'Converted amount']);
+    expect(sections[1].rows).toContainEqual(['Salary', 'Income', 5000, 5000]);
+    expect(sections[1].rows).toContainEqual(['Income', 'Dining', null, 0]);
+  });
+
+  it('offers no export for an empty period', async () => {
+    await renderReport({ ...example(), nodes: [], links: [] });
+    expect(screen.getByTestId('export-pdf').closest('button')).toBeDisabled();
   });
 
   it('prints the help text about the default scope and card payments', async () => {
