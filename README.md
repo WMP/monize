@@ -9,10 +9,10 @@
 <div align="center">
 <table>
 <tr>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/dashboard-overview.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/dashboard-overview.png" width="400" alt="Dashboard Overview"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/transactions-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/transactions-page.png" width="400" alt="Transactions"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/bills-deposits-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/bills-deposits-page.png" width="400" alt="Bills & Deposits"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/investments-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/investments-page.png" width="400" alt="Investments"/></a></td>
+<td align="center"><a href="docs/images/readme/dashboard.png"><img src="docs/images/readme/dashboard.png" width="400" alt="Dashboard"/></a></td>
+<td align="center"><a href="docs/images/readme/transactions.png"><img src="docs/images/readme/transactions.png" width="400" alt="Transactions"/></a></td>
+<td align="center"><a href="docs/images/readme/bills.png"><img src="docs/images/readme/bills.png" width="400" alt="Bills & Deposits"/></a></td>
+<td align="center"><a href="docs/images/readme/investments.png"><img src="docs/images/readme/investments.png" width="400" alt="Investments"/></a></td>
 </tr>
 <tr>
 <td align="center"><b>Dashboard</b></td>
@@ -27,9 +27,13 @@ A comprehensive personal finance management application built with NestJS and Ne
 
 <div align="center">
 
-### [**Live Demo**](https://demo.monize.net) | [**Wiki**](https://github.com/kenlasko/monize/wiki) | [**Release Notes**](docs/release-notes/)
+### [**Live Demo**](https://demo.monize.net) | [**Wiki**](https://github.com/kenlasko/monize/wiki) | [**Release Notes**](docs/release-notes/) | [**Screenshots**](#screenshots)
 
 </div>
+
+<p align="center">
+  <img src="docs/images/readme/tour.gif" width="800" alt="A short tour: the dashboard, the transaction register, the calendar view and the investments page" />
+</p>
 
 ## Why This Exists?
 The personal finance ecosystem is flooded with personal finance platforms. I've tried many of them, but every single one of them had deal-breakers I couldn't work with. I finally decided to try my hand at creating my own platform that met all my criteria by using  "vibe-coding", which is a dirty word in the self-hosting community. I just wanted to see what was possible with the current state of AI. It turned out to be more successful than I ever could have imagined, which is why I'm making this available for others.
@@ -276,6 +280,114 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - CORS protection
 - Demo mode with sample data and daily resets ([try it](#try-it-with-demo-data))
 
+## Screenshots
+
+Every screenshot comes from the built-in demo data ([Try It with Demo Data](#try-it-with-demo-data)), in the dark theme. Click a picture to open it at full size.
+
+### Everyday money
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/transactions-calendar.png"><img src="docs/images/readme/transactions-calendar.png" alt="Transaction register in Calendar view, with day notes"/></a><br/><sub><b>Calendar view</b>: each day's transactions, and notes on a day or a span</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/accounts.png"><img src="docs/images/readme/accounts.png" alt="Accounts list grouped by type"/></a><br/><sub><b>Accounts</b> grouped by type, with net worth, assets and liabilities</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/account-chequing.png"><img src="docs/images/readme/account-chequing.png" alt="Chequing account page with balance history and a 90-day forecast"/></a><br/><sub><b>Bank account page</b>: balance history and a 90-day forecast</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-credit-card.png"><img src="docs/images/readme/account-credit-card.png" alt="Credit card page with the statement cycle and utilization"/></a><br/><sub><b>Credit card page</b>: statement cycle, utilization and balance history</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/payee-detail.png"><img src="docs/images/readme/payee-detail.png" alt="Payee page with monthly totals and contact details"/></a><br/><sub><b>Payee page</b>: monthly totals, address, phone and email</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/category-detail.png"><img src="docs/images/readme/category-detail.png" alt="Category page with monthly totals"/></a><br/><sub><b>Category page</b>: monthly totals, payees and subcategories</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/attachment-preview.png"><img src="docs/images/readme/attachment-preview.png" alt="A hotel invoice attached to a transaction, previewed in the app"/></a><br/><sub><b>Attachments</b>: a receipt previewed in the app</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/institutions.png"><img src="docs/images/readme/institutions.png" alt="Financial institutions list"/></a><br/><sub><b>Financial institutions</b> and the accounts at each</sub></td>
+</tr>
+</table>
+
+### Rules and tags
+
+<p align="center">
+  <img src="docs/images/readme/rules.gif" width="800" alt="Building a transaction rule and testing it on existing transactions" />
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/rules.png"><img src="docs/images/readme/rules.png" alt="List of transaction rules"/></a><br/><sub><b>Transaction rules</b> (Tools > Rules)</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/rule-editor.png"><img src="docs/images/readme/rule-editor.png" alt="Rule editor with conditions and actions"/></a><br/><sub><b>Rule editor</b>: IF conditions, THEN actions, and a test</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/tags.png"><img src="docs/images/readme/tags.png" alt="Tags with colours and icons, including KEY:VALUE tags"/></a><br/><sub><b>Tags</b> with colours and icons, including KEY:VALUE tags</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/report-tag-breakdown.png"><img src="docs/images/readme/report-tag-breakdown.png" alt="Income vs Expenses broken down by tag key"/></a><br/><sub><b>Break down by tag key</b> in Income vs Expenses</sub></td>
+</tr>
+</table>
+
+### Investments
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/security-detail.png"><img src="docs/images/readme/security-detail.png" alt="Security page with price chart and key information"/></a><br/><sub><b>Security page</b>: position, price chart and allocation</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/investments-calendar.png"><img src="docs/images/readme/investments-calendar.png" alt="Investments in Calendar view with daily values and changes"/></a><br/><sub><b>Investments calendar</b>: daily value and change</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/monte-carlo.png"><img src="docs/images/readme/monte-carlo.png" alt="Monte Carlo retirement simulation"/></a><br/><sub><b>Monte Carlo Simulation</b> with saved scenarios</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/net-worth.png"><img src="docs/images/readme/net-worth.png" alt="Net Worth Over Time report"/></a><br/><sub><b>Net Worth Over Time</b></sub></td>
+</tr>
+</table>
+
+### Loans, budgets and reports
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/account-mortgage.png"><img src="docs/images/readme/account-mortgage.png" alt="Mortgage page with the overpayment simulator and saved scenarios"/></a><br/><sub><b>Mortgage</b>: overpayment simulator and two saved scenarios</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-asset.png"><img src="docs/images/readme/account-asset.png" alt="Vehicle asset page with the equity against its car loan"/></a><br/><sub><b>Asset page</b>: value history and equity against the car loan</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/budget-wizard.png"><img src="docs/images/readme/budget-wizard.png" alt="Budget wizard suggesting amounts from spending history"/></a><br/><sub><b>Budget wizard</b>: amounts suggested from your spending history</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/budgets.png"><img src="docs/images/readme/budgets.png" alt="Monthly budget with health score and spending velocity"/></a><br/><sub><b>Budget</b>: health score, velocity and bills still to come</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/reports.png"><img src="docs/images/readme/reports.png" alt="Reports catalogue"/></a><br/><sub><b>Reports</b>: 46 built-in reports and your own</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/report-income-vs-expenses.png"><img src="docs/images/readme/report-income-vs-expenses.png" alt="Income vs Expenses report"/></a><br/><sub><b>Income vs Expenses</b></sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/report-foreign-fees.png"><img src="docs/images/readme/report-foreign-fees.png" alt="Foreign Currency Transaction Fees report"/></a><br/><sub><b>Foreign Currency Transaction Fees</b></sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-loan.png"><img src="docs/images/readme/account-loan.png" alt="Car loan page with rate history and payoff timeline"/></a><br/><sub><b>Loan page</b>: rate history, simulator and payoff timeline</sub></td>
+</tr>
+</table>
+
+### Settings and themes
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/notifications-settings.png"><img src="docs/images/readme/notifications-settings.png" alt="Notification preferences: types against channels"/></a><br/><sub><b>Notifications</b>: each type against each channel</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/theme-msmoney.png"><img src="docs/images/readme/theme-msmoney.png" alt="Dashboard in the Microsoft Money colour theme"/></a><br/><sub><b>Colour themes</b>: the dashboard in the "msmoney" palette</sub></td>
+</tr>
+</table>
+
+### On a phone
+
+<p align="center">
+  <img src="docs/images/readme/mobile.gif" width="300" alt="Phone: the navigation drawer and swiping between views" />
+</p>
+
+<table>
+<tr>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-dashboard.png"><img src="docs/images/readme/mobile-dashboard.png" alt="Phone: dashboard"/></a><br/><sub>Dashboard</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-transactions.png"><img src="docs/images/readme/mobile-transactions.png" alt="Phone: transactions as cards"/></a><br/><sub>Transactions as cards</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-calendar.png"><img src="docs/images/readme/mobile-calendar.png" alt="Phone: calendar view"/></a><br/><sub>Calendar</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-menu.png"><img src="docs/images/readme/mobile-menu.png" alt="Phone: navigation drawer"/></a><br/><sub>Navigation drawer</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-investments.png"><img src="docs/images/readme/mobile-investments.png" alt="Phone: investments"/></a><br/><sub>Investments</sub></td>
+</tr>
+<tr>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-account-mortgage.png"><img src="docs/images/readme/mobile-account-mortgage.png" alt="Phone: mortgage page"/></a><br/><sub>Mortgage</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-bills.png"><img src="docs/images/readme/mobile-bills.png" alt="Phone: bills and deposits"/></a><br/><sub>Bills & Deposits</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-report.png"><img src="docs/images/readme/mobile-report.png" alt="Phone: report with a donut chart"/></a><br/><sub>Report</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-budget.png"><img src="docs/images/readme/mobile-budget.png" alt="Phone: budget"/></a><br/><sub>Budget</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-budget-wizard.png"><img src="docs/images/readme/mobile-budget-wizard.png" alt="Phone: budget wizard"/></a><br/><sub>Budget wizard</sub></td>
+</tr>
+</table>
+
 ## Technology Stack
 
 ### Backend
@@ -351,8 +463,8 @@ monize/
 ├── database/
 │   ├── schema.sql             # Complete PostgreSQL schema
 │   └── migrations/            # Incremental schema migrations
-├── docs/                      # Contracts, guides and release notes
-├── e2e/                       # End-to-end tests
+├── docs/                      # Contracts, guides, release notes and README images
+├── e2e/                       # End-to-end tests, and the README screenshot capture (readme/)
 ├── helm/                      # Helm charts for Kubernetes
 ├── docker-compose.dev.yml     # Development environment
 ├── docker-compose.prod.yml    # Production environment
@@ -420,6 +532,11 @@ payees, about 450 transactions with splits and transfers, 10 scheduled
 transactions, 8 securities with price history and 4 custom reports. Demo mode
 turns off registration, fills in the sign-in form and resets the data every
 day at 4:00 AM UTC. The seed is in `backend/src/database/demo-seed-data/`.
+
+The screenshots in this README are made from that data by a Playwright script,
+which also adds tags, transaction rules, a budget, loans and other showcase data
+through the API. To make them again, see
+[`e2e/readme/README.md`](e2e/readme/README.md).
 
 ### Development Setup (Without Docker)
 
