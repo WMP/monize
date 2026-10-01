@@ -88,7 +88,7 @@ direct RLS policy, enabled in the same file.
 |---|---|---|
 | `bank_sync_credentials` | `id`, `user_id`, `provider`, `application_id`, `private_key_enc` | `UNIQUE (user_id, provider)`. |
 | `bank_sync_connections` | `id`, `user_id`, `provider`, `institution_name`, `institution_country`, `psu_type`, `status`, `auth_state_hash`, `auth_started_at`, `external_session_id`, `valid_until`, `auto_sync`, `last_error` | `status IN ('pending','active','expired','revoked','failed')`. Partial unique index on `auth_state_hash`. |
-| `bank_sync_accounts` | `id`, `user_id`, `connection_id`, `external_account_id`, `identification_hash`, `display_name`, `identifier_masked`, `currency_code`, `account_id`, `sync_from_date`, `last_synced_at`, `last_success_at`, `last_sync_status`, `last_sync_error`, `last_imported_count`, `last_skipped_count`, `last_refused_count`, `bank_balance`, `bank_balance_currency`, `bank_balance_date` | `UNIQUE (connection_id, external_account_id)`; partial unique index on `account_id`; `CHECK (account_id IS NULL OR sync_from_date IS NOT NULL)`; `account_id` is `ON DELETE SET NULL`. |
+| `bank_sync_accounts` | `id`, `user_id`, `connection_id`, `external_account_id`, `identification_hash`, `display_name`, `identifier_masked`, `account_identifier`, `cash_account_type`, `currency_code`, `account_id`, `sync_from_date`, `last_synced_at`, `last_success_at`, `last_sync_status`, `last_sync_error`, `last_imported_count`, `last_skipped_count`, `last_refused_count`, `bank_balance`, `bank_balance_currency`, `bank_balance_date` | `UNIQUE (connection_id, external_account_id)`; partial unique index on `account_id`; `CHECK (account_id IS NULL OR sync_from_date IS NOT NULL)`; `account_id` is `ON DELETE SET NULL`. |
 | `bank_sync_imported_transactions` | `id`, `user_id`, `account_id`, `external_key`, `transaction_id`, `booking_date`, `created_at` | `UNIQUE (account_id, external_key)`; `account_id` is `ON DELETE CASCADE`; `transaction_id` is `ON DELETE SET NULL`. |
 
 A deleted Monize transaction keeps its ledger row (with `transaction_id`
@@ -175,6 +175,42 @@ user            Monize API                     provider            bank
   after asking the provider to delete the session. A provider failure on that
   call is logged and does not block the local delete: the consent expires at
   the bank by itself.
+
+## 5a. Matching and creating Monize accounts
+
+The provider returns each bank account's full identifier (IBAN, else the
+BBAN or another scheme), its currency and its cash account type (`CACC`,
+`CARD`, `SVGS`, ...). Monize stores the identifier in
+`bank_sync_accounts.account_identifier`, normalized (spaces and dashes
+removed, upper case), and the type in `cash_account_type`. The identifier has
+the same sensitivity as `accounts.account_number`, which Monize already
+stores; `identifier_masked` stays the value shown in lists.
+
+**Automatic link.** After a callback or a re-authorization, every unlinked
+bank account with an identifier is compared with the user's own Monize
+accounts that are open, not investment brokerage, not linked to another bank
+account and in the same currency (or the bank account's currency is
+unknown). An account number matches when, normalized the same way, it equals
+the identifier, or equals the identifier without its two-letter country
+prefix (a Polish NRB is the IBAN without `PL`). Exactly one match links the
+pair through the ordinary link path, with the default cut-off (section 7);
+two or more matches link nothing and are returned as suggestions. The
+callback answer lists what was linked, so the page can say so.
+
+**Match on request.** `POST /bank-sync/connections/:id/match` runs the same
+matching for a connection made before identifiers were stored: for each
+unlinked bank account without an identifier, it reads the account details
+from the provider first (outside any transaction), stores the identifier,
+then matches.
+
+**Create from the bank account.** The account picker offers "Create a new
+account". It opens Monize's own account form, prefilled from the bank
+account: the name (the bank's account label, else the masked identifier), the
+currency, the account number (the identifier) and the type (`CARD` a credit
+card, `SVGS` a savings account, `LOAN` a loan, otherwise a chequing account).
+The opening balance is left for the user to enter. When the form saves, the
+new account is linked with the default cut-off for an empty account. Nothing
+is created until the user saves the form.
 
 ## 6. Mapping a provider row
 
@@ -338,6 +374,7 @@ fields.
 | `POST /bank-sync/callback` | `{ state, code?, error?, errorDescription? }` | the connection |
 | `PATCH /bank-sync/connections/:id` | `{ autoSync }` | the connection |
 | `DELETE /bank-sync/connections/:id` | | 204 |
+| `POST /bank-sync/connections/:id/match` | | the connection, with `{ linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
 | `POST /bank-sync/accounts/:id/sync` | | the result (section 7) |
 | `POST /bank-sync/connections/:id/sync` | | one entry per linked account: a result, or `{ bankAccountId, error: { code, message } }` for an account that failed |

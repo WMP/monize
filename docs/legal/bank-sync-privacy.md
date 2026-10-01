@@ -34,8 +34,10 @@ other third party.
 Only after the user authorizes access at their own bank, and only for the
 accounts the user selects there:
 
-- the list of accounts: name, a masked account identifier (the last four
-  characters), currency, and a provider identification hash;
+- the list of accounts: name, the account number (IBAN or another
+  identifier), currency, account type, and a provider identification hash.
+  The account number is used to match a bank account to a Monize account and
+  to prefill a new one; lists show only its last four characters;
 - booked transactions: date, amount, currency, direction, counterparty name,
   remittance information and the bank's reference;
 - the balance the bank reports.
