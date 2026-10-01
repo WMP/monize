@@ -48,8 +48,16 @@
     certificate imported. The default is the browser.
   - Redirect URLs are entered in "Allowed redirect URLs (one per line)".
   - The settings card's steps follow this form.
-  - Still to check: the API wire format, the activation of a Production
-    application in restricted mode, the control panel URL path, and whether
-    the key file is named after the application ID.
+  - The downloaded key file is named `<application id>.pem` (observed).
+  - A new Production application shows "Inactive" with two buttons:
+    "Activate by linking accounts" (restricted mode: "Only linked accounts
+    can be accessed") and "Request activation" (general availability, not
+    needed for personal use).
+  - Production redirect URLs must be https; Sandbox accepts http; the
+    redirect URL does not have to be public; restricted mode does not check
+    the privacy and terms URLs (Firefly III data importer tutorial, secondary
+    source).
+  - Still to check: the API wire format against a live session, and the
+    control panel URL path.
 - **BS11** replaces the cut-off-date mitigation in spec section 4, not the
   cut-off date itself.
