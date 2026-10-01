@@ -16,6 +16,7 @@ import { TaxRecurringReportsService } from "./tax-recurring-reports.service";
 import { DataQualityReportsService } from "./data-quality-reports.service";
 import { MonthlyComparisonService } from "./monthly-comparison.service";
 import { MonthlyCategoryBreakdownService } from "./monthly-category-breakdown.service";
+import { CashFlowSankeyService } from "./cash-flow-sankey.service";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -173,6 +174,7 @@ describe("BuiltInReportsService", () => {
           useValue: { getMonthlyComparison: jest.fn() },
         },
         MonthlyCategoryBreakdownService,
+        CashFlowSankeyService,
         { provide: DataSource, useValue: scopedDataSource },
       ],
     }).compile();
@@ -2105,6 +2107,28 @@ describe("BuiltInReportsService", () => {
       expect(result.data[0].parentName).toBe("Food & Dining");
       expect(result.data[0].isIncome).toBe(false);
       expect(result.data[0].valuesByMonth["2025-01"]).toBe(100);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getCashFlowSankey
+  // ---------------------------------------------------------------------------
+  describe("getCashFlowSankey", () => {
+    it("delegates through the facade and answers an empty scope with nothing", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      const result = await service.getCashFlowSankey(
+        mockUserId,
+        "2026-09-01",
+        "2026-09-30",
+        { depth: 1 },
+      );
+
+      expect(result.scopeAccountIds).toEqual([]);
+      expect(result.nodes).toEqual([]);
+      expect(result.links).toEqual([]);
+      expect(result.totals.unspent).toBe(0);
+      expect(result.currency).toBe("USD");
     });
   });
 });
