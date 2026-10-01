@@ -281,5 +281,14 @@
     "weekdayLabel": "평일",
     "viewOverview": "개요",
     "viewByDay": "요일별"
+  },
+  "cashFlowSankey": {
+    "title": "현금 흐름 생키",
+    "empty": "이 기간에 수입, 지출 또는 이체가 없습니다.",
+    "depth": "세부 수준",
+    "depthCategories": "카테고리",
+    "depthSubcategories": "하위 카테고리",
+    "viewDiagram": "다이어그램",
+    "viewTable": "표"
   }
 }

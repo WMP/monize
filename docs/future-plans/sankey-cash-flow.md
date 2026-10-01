@@ -246,6 +246,13 @@ known links under the incomplete banner.
   account's transfers. A subcategory that nets to a refund is drawn
   parent -> child with a "net refund" marker, the reverse of the response's
   link, so recharts' column layout sees no cycle.
+- The report keeps its range, depth, view and account scope in this browser's
+  localStorage (`SANKEY_STORAGE_KEYS`), settings only, never a figure. The
+  diagram, its renderers, tooltip and drill-down live in
+  `CashFlowSankeyDiagram.tsx`, shared with the `cash-flow-sankey` dashboard
+  widget (`frontend/src/components/dashboard/CashFlowSankeyWidget.tsx`), which
+  offers the same settings through its widget config and reads the same
+  endpoint.
 - `frontend/src/components/reports/sankey-layout.ts` + `.test.ts`: the
   merge, `MAX_NODES_PER_COLUMN`, the mapping from the response's hub-centred
   links to recharts' `{ nodes, links }` with index references.

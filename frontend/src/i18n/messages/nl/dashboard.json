@@ -281,5 +281,14 @@
     "weekdayLabel": "Weekdag",
     "viewOverview": "Overzicht",
     "viewByDay": "Per dag"
+  },
+  "cashFlowSankey": {
+    "title": "Kasstroom-Sankey",
+    "empty": "Geen inkomsten, uitgaven of overboekingen in deze periode.",
+    "depth": "Detail",
+    "depthCategories": "Categorieën",
+    "depthSubcategories": "Subcategorieën",
+    "viewDiagram": "Diagram",
+    "viewTable": "Tabel"
   }
 }

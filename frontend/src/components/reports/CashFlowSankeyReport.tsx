@@ -1,15 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { builtInReportsApi } from '@/lib/built-in-reports';
 import { accountsApi } from '@/lib/accounts';
 import { categoriesApi } from '@/lib/categories';
-import { buildCategoryColorMap, type SpecialCategoryFilterId } from '@/lib/categoryUtils';
-import { buildTransactionsHref } from '@/lib/transactions-href';
-import { chartColors } from '@/lib/chart-colors';
 import { exportCsvSections } from '@/lib/csv-export';
 import type { ConvertedTotal } from '@/lib/currency-total';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -18,6 +14,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { useReportData } from '@/hooks/useReportData';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
@@ -31,88 +28,45 @@ import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/inte
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { ReportError } from '@/components/reports/ReportError';
-import { ChartTooltip } from '@/components/reports/ChartTooltip';
 import { IncompleteDataDetails } from '@/components/reports/IncompleteDataDetails';
-import { toRechartsSankey, type SankeyDrawLink, type SankeyDrawNode } from '@/components/reports/sankey-layout';
+import {
+  CashFlowSankeyDiagram,
+  sankeyNodeHref,
+  sankeyTableRows,
+  useSankeyNodePresentation,
+  type FlowSide,
+} from '@/components/reports/CashFlowSankeyDiagram';
 import type {
   CashFlowSankeyDepth,
   CashFlowSankeyNode,
-  CashFlowSankeyResponse,
 } from '@/types/built-in-reports';
 
 type SankeyView = 'sankey' | 'table';
 
 const NO_IDS: string[] = [];
-const UNCATEGORIZED: SpecialCategoryFilterId = 'uncategorized';
-const TRANSFER: SpecialCategoryFilterId = 'transfer';
-
-/** The catalog key of each node that is neither a category nor an account. */
-const FIXED_NODE_KEYS: Record<string, string> = {
-  hub: 'hub',
-  'class:savings': 'classSavings',
-  'class:debt': 'classDebt',
-  'class:other_accounts': 'classOtherAccounts',
-  'inflow:savings': 'inflowSavings',
-  'inflow:borrowed': 'inflowBorrowed',
-  'inflow:other_accounts': 'inflowOtherAccounts',
-  'uncategorized:income': 'uncategorizedIncome',
-  'uncategorized:expense': 'uncategorizedExpense',
-  'residual:unspent': 'residualUnspent',
-  'residual:deficit': 'residualDeficit',
-  'account:unlinked': 'unlinkedAccount',
-};
-
-/** Which side of the hub a node is on, for the table and the CSV. */
-type FlowSide = 'in' | 'out' | 'detail';
-
-function sideOf(node: CashFlowSankeyNode): FlowSide {
-  if (node.kind === 'child' || node.kind === 'account') return 'detail';
-  if (
-    node.kind === 'income' ||
-    node.kind === 'inflow' ||
-    node.id === 'uncategorized:income' ||
-    node.id === 'residual:deficit'
-  ) {
-    return 'in';
-  }
-  return 'out';
-}
-
-const SIDE_ORDER: Record<FlowSide, number> = { in: 0, out: 1, detail: 2 };
 
 /**
- * Where a node drills down to, or `null` for the hub, the residual and a
- * merged "Other", which are arithmetic rather than rows anyone can list.
+ * The report's settings, kept in this browser so returning to the report
+ * draws it as it was left. Settings only: the range, the depth, the view and
+ * the scope's account ids, never a figure.
  */
-export function sankeyNodeHref(
-  node: CashFlowSankeyNode,
-  response: CashFlowSankeyResponse,
-): string | null {
-  const range = { startDate: response.startDate, endDate: response.endDate };
-  const scope = { ...range, accountIds: response.scopeAccountIds };
-  switch (node.kind) {
-    case 'income':
-    case 'expense':
-      return node.categoryId ? buildTransactionsHref({ ...scope, categoryId: node.categoryId }) : null;
-    case 'child':
-      // "(no subcategory)" is the parent's own rows, and the Transactions
-      // filter cannot ask for a category without its descendants, so it
-      // would list the whole parent under a node that is only part of it.
-      if (!node.categoryId || node.categoryId === node.parentCategoryId) return null;
-      return buildTransactionsHref({ ...scope, categoryId: node.categoryId });
-    case 'uncategorized':
-      return buildTransactionsHref({ ...scope, categoryId: UNCATEGORIZED });
-    case 'class':
-    case 'inflow':
-      return buildTransactionsHref({ ...scope, categoryId: TRANSFER });
-    case 'account':
-      return node.accountId
-        ? buildTransactionsHref({ ...range, accountIds: [node.accountId], categoryId: TRANSFER })
-        : null;
-    default:
-      return null;
-  }
-}
+export const SANKEY_STORAGE_KEYS = {
+  range: 'monize-reports-cash-flow-sankey-range',
+  depth: 'monize-reports-cash-flow-sankey-depth',
+  view: 'monize-reports-cash-flow-sankey-view',
+  accounts: 'monize-reports-cash-flow-sankey-accounts',
+} as const;
+
+// A stored value is whatever the browser hands back, so each is read through
+// a check of its shape: a hand-edited or stale entry falls back to the
+// default rather than reaching a request.
+const asDepth = (value: unknown): CashFlowSankeyDepth => (value === 2 ? 2 : 1);
+const asView = (value: unknown): SankeyView | null =>
+  value === 'sankey' || value === 'table' ? value : null;
+const asAccountIds = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.length > 0 && value.every((id) => typeof id === 'string')
+    ? value
+    : null;
 
 // The table's phone layout, as the sibling reports write it: the flow's name
 // takes line 1, its side and its amount split line 2. From `sm` up each row is
@@ -128,109 +82,6 @@ const FIGURE_CELL =
 const HEADER_CLASS =
   'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
 
-interface NodeShapeProps {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  payload?: SankeyDrawNode;
-  colorFor: (node: SankeyDrawNode) => string;
-  onSelect: (node: SankeyDrawNode) => void;
-  canSelect: (node: SankeyDrawNode) => boolean;
-  unknownLabel: string;
-}
-
-/**
- * One node: a bar in its colour (hollow when its figure is unknown) and its
- * label beside it, on the side that faces away from the hub.
- */
-export function SankeyNodeShape({
-  x = 0,
-  y = 0,
-  width = 0,
-  height = 0,
-  payload,
-  colorFor,
-  onSelect,
-  canSelect,
-  unknownLabel,
-}: NodeShapeProps) {
-  if (!payload) return null;
-  const color = colorFor(payload);
-  const selectable = canSelect(payload);
-  const labelLeft = payload.column === 'source';
-  return (
-    // A pointer target only. The diagram is one `role="img"` whose children
-    // are presentational, so a focusable link here would be a tab stop no
-    // screen reader can name; the legend's buttons and the table's rows are
-    // the keyboard and assistive-technology routes to the same drill-down.
-    <g
-      data-testid={`sankey-node-${payload.id}`}
-      data-drillable={selectable ? 'true' : undefined}
-      onClick={selectable ? () => onSelect(payload) : undefined}
-      className={selectable ? 'cursor-pointer' : undefined}
-    >
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={Math.max(height, 1)}
-        fill={payload.unknown ? chartColors.surface : color}
-        stroke={color}
-        strokeDasharray={payload.unknown ? '3 2' : undefined}
-      />
-      <text
-        x={labelLeft ? x - 6 : x + width + 6}
-        y={y + height / 2}
-        textAnchor={labelLeft ? 'end' : 'start'}
-        dominantBaseline="middle"
-        fontSize={12}
-        fill={chartColors.axis}
-      >
-        {payload.unknown && payload.node?.kind === 'residual' ? `${payload.name} (${unknownLabel})` : payload.name}
-      </text>
-    </g>
-  );
-}
-
-interface LinkShapeProps {
-  sourceX?: number;
-  targetX?: number;
-  sourceY?: number;
-  targetY?: number;
-  sourceControlX?: number;
-  targetControlX?: number;
-  linkWidth?: number;
-  payload?: { source?: SankeyDrawNode; target?: SankeyDrawNode } & Partial<SankeyDrawLink>;
-  colorFor: (node: SankeyDrawNode) => string;
-}
-
-/** One link: a band in its source's colour, dashed when only partly known. */
-export function SankeyLinkShape({
-  sourceX = 0,
-  targetX = 0,
-  sourceY = 0,
-  targetY = 0,
-  sourceControlX = 0,
-  targetControlX = 0,
-  linkWidth = 0,
-  payload,
-  colorFor,
-}: LinkShapeProps) {
-  const from = payload?.source?.kind === 'hub' ? payload?.target : payload?.source;
-  const color = from ? colorFor(from) : chartColors.neutral;
-  return (
-    <path
-      d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
-      fill="none"
-      stroke={color}
-      strokeOpacity={0.35}
-      strokeWidth={Math.max(linkWidth, 1)}
-      strokeDasharray={payload?.incomplete ? '6 4' : payload?.netRefund ? '2 3' : undefined}
-    />
-  );
-}
-
 export function CashFlowSankeyReport() {
   const t = useTranslations('reports');
   const router = useRouter();
@@ -241,15 +92,18 @@ export function CashFlowSankeyReport() {
   const { defaultCurrency } = useExchangeRates();
 
   // A phone reads the table; the diagram's columns do not reflow (decision
-  // 11). A choice the reader made wins over the default either way.
-  const [chosenView, setChosenView] = useState<SankeyView | null>(null);
-  const view: SankeyView = chosenView ?? (isMobile ? 'table' : 'sankey');
-  const [depth, setDepth] = useState<CashFlowSankeyDepth>(1);
+  // 11). A choice the reader made, kept from their last visit, wins over the
+  // default either way.
+  const [storedView, setChosenView] = useLocalStorage<SankeyView | null>(SANKEY_STORAGE_KEYS.view, null);
+  const view: SankeyView = asView(storedView) ?? (isMobile ? 'table' : 'sankey');
+  const [storedDepth, setDepth] = useLocalStorage<CashFlowSankeyDepth>(SANKEY_STORAGE_KEYS.depth, 1);
+  const depth = asDepth(storedDepth);
   // `null` until the reader picks: the server's default cash-flow scope, which
   // the picker then shows as the accounts the response says it used.
-  const [accountIds, setAccountIds] = useState<string[] | null>(null);
+  const [storedAccountIds, setAccountIds] = useLocalStorage<string[] | null>(SANKEY_STORAGE_KEYS.accounts, null);
+  const accountIds = asAccountIds(storedAccountIds);
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
-    useDateRange({ defaultRange: 'mtd' });
+    useDateRange({ defaultRange: 'mtd', storageKey: SANKEY_STORAGE_KEYS.range });
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
   const requestedIds = accountIds ?? NO_IDS;
   const scopeKey = requestedIds.join(',');
@@ -269,51 +123,11 @@ export function CashFlowSankeyReport() {
     [isValid, rangeStart, rangeEnd, scopeKey, depth],
   );
 
-  const categoryColors = useMemo(() => buildCategoryColorMap(categories ?? []), [categories]);
-
-  const labelFor = (node: CashFlowSankeyNode): string => {
-    if (node.kind === 'child' && node.categoryId === node.parentCategoryId) {
-      return t('sankey.noSubcategory');
-    }
-    const key = FIXED_NODE_KEYS[node.id];
-    return key ? t(`sankey.nodes.${key}`) : node.label;
-  };
-
-  const colorOfNode = (node: CashFlowSankeyNode): string => {
-    const own = node.categoryId ? (categoryColors.get(node.categoryId) ?? node.color) : node.color;
-    switch (node.kind) {
-      case 'income':
-      case 'expense':
-      case 'child':
-        return own ?? (sideOf(node) === 'in' ? chartColors.income : chartColors.expense);
-      case 'inflow':
-        return chartColors.income;
-      case 'uncategorized':
-        return node.id === 'uncategorized:income' ? chartColors.income : chartColors.expense;
-      case 'class':
-      case 'account':
-      case 'hub':
-        return chartColors.primary;
-      default:
-        return chartColors.neutral;
-    }
-  };
-  const colorOfDrawn = (drawn: SankeyDrawNode): string =>
-    drawn.node ? colorOfNode(drawn.node) : chartColors.neutral;
+  const { labelFor, colorOfNode } = useSankeyNodePresentation(categories);
 
   // The answer, once there is one to draw: nothing in the window is an empty
   // state, not an empty diagram.
   const data = response && response.nodes.length > 0 ? response : null;
-
-  // Drawing only: the merge works on a copy, and nothing below reads a figure
-  // from it (SANKEY-005).
-  const drawing = data
-    ? toRechartsSankey(data, {
-        labelFor,
-        otherLabel: t('sankey.other'),
-        otherColor: chartColors.neutral,
-      })
-    : null;
 
   const reportingCurrency = response?.currency ?? defaultCurrency;
 
@@ -371,22 +185,8 @@ export function CashFlowSankeyReport() {
       })
     : '';
 
-  // Every node but the hub, unmerged, in the server's order within each side.
-  const tableRows = useMemo(() => {
-    if (!data) return [];
-    const byId = new Map(data.nodes.map((n) => [n.id, n]));
-    const parentOf = new Map<string, string>();
-    for (const link of data.links) {
-      const target = byId.get(link.target);
-      const source = byId.get(link.source);
-      if (target && (target.kind === 'child' || target.kind === 'account')) parentOf.set(target.id, link.source);
-      if (source && source.kind === 'child') parentOf.set(source.id, link.target);
-    }
-    return data.nodes
-      .filter((node) => node.kind !== 'hub')
-      .map((node, order) => ({ node, order, side: sideOf(node), parent: byId.get(parentOf.get(node.id) ?? '') }))
-      .sort((a, b) => SIDE_ORDER[a.side] - SIDE_ORDER[b.side] || a.order - b.order);
-  }, [data]);
+  // Every node but the hub, unmerged (SANKEY-005).
+  const tableRows = useMemo(() => (data ? sankeyTableRows(data) : []), [data]);
 
   const sideLabel = (side: FlowSide, parent?: CashFlowSankeyNode) =>
     side === 'in'
@@ -456,53 +256,6 @@ export function CashFlowSankeyReport() {
 
   const incomplete = data && (data.missingCurrencies.length > 0 || data.excludedCount > 0) ? data : null;
 
-  const tooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> }) => {
-    const item = payload?.[0]?.payload as
-      | (SankeyDrawNode & { source?: undefined })
-      | {
-          source: SankeyDrawNode;
-          target: SankeyDrawNode;
-          value: number;
-          incomplete: boolean;
-          netRefund?: boolean;
-          placeholder?: boolean;
-        }
-      | undefined;
-    if (!active || !item) return null;
-    if (item.source) {
-      return (
-        <ChartTooltip
-          active
-          label={t('sankey.linkLabel', { source: item.source.name, target: item.target.name })}
-          payload={[{ name: t('sankey.colAmount'), value: item.value, color: colorOfDrawn(item.source.kind === 'hub' ? item.target : item.source) }]}
-          // A sliver drawn for a link nothing of which converted is not a figure.
-          formatValue={(value) => (item.placeholder ? t('sankey.unknown') : formatCurrency(value))}
-        >
-          {item.netRefund && <p className="text-xs text-gray-600 dark:text-gray-400">{t('sankey.netRefund')}</p>}
-          {item.incomplete && <p className="text-xs text-amber-600 dark:text-amber-400">{t('sankey.knownPartOnly')}</p>}
-        </ChartTooltip>
-      );
-    }
-    const drawn = item as SankeyDrawNode;
-    return (
-      <ChartTooltip
-        active
-        label={drawn.name}
-        payload={[{ name: t('sankey.colAmount'), value: drawn.value, color: colorOfDrawn(drawn) }]}
-        formatValue={(value) => formatCurrency(value)}
-      >
-        {drawn.unknown && <p className="text-xs text-amber-600 dark:text-amber-400">{t('sankey.knownPartOnly')}</p>}
-        {drawn.members.length > 0 && (
-          <ul className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-            {drawn.members.map((member) => (
-              <li key={member}>{member}</li>
-            ))}
-          </ul>
-        )}
-      </ChartTooltip>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Controls stay mounted across a reload so a date being typed keeps focus. */}
@@ -523,7 +276,7 @@ export function CashFlowSankeyReport() {
             value={accountIds ?? response?.scopeAccountIds ?? NO_IDS}
             // Clearing every account asks for the default scope again, which
             // the picker then shows rather than an empty "all accounts".
-            onChange={(ids) => setAccountIds(ids.length > 0 ? ids : null)}
+            onChange={(ids) => setAccountIds(asAccountIds(ids))}
             className="w-full sm:w-56"
           />
           <div className={`${SEGMENTED_GROUP_CLASS} self-center`} role="group" aria-label={t('sankey.depthLabel')}>
@@ -594,35 +347,16 @@ export function CashFlowSankeyReport() {
             title={t('sankey.noData')}
             description={rangeLabel || undefined}
           />
-        ) : view === 'sankey' && drawing ? (
+        ) : view === 'sankey' ? (
           <>
-            <div role="img" aria-label={ariaLabel} className="h-[32rem]">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <Sankey
-                  data={drawing}
-                  nodePadding={16}
-                  nodeWidth={12}
-                  margin={{ top: 10, right: 160, bottom: 10, left: 160 }}
-                  node={(props: object) => (
-                    <SankeyNodeShape
-                      {...(props as Omit<NodeShapeProps, 'colorFor' | 'onSelect' | 'canSelect' | 'unknownLabel'>)}
-                      colorFor={colorOfDrawn}
-                      onSelect={(drawn) => drawn.node && open(drawn.node)}
-                      canSelect={(drawn) => !!drawn.node && sankeyNodeHref(drawn.node, data) !== null}
-                      unknownLabel={t('sankey.unknown')}
-                    />
-                  )}
-                  link={(props: object) => (
-                    <SankeyLinkShape
-                      {...(props as Omit<LinkShapeProps, 'colorFor'>)}
-                      colorFor={colorOfDrawn}
-                    />
-                  )}
-                >
-                  <Tooltip content={tooltip} />
-                </Sankey>
-              </ResponsiveContainer>
-            </div>
+            <CashFlowSankeyDiagram
+              data={data}
+              categories={categories}
+              ariaLabel={ariaLabel}
+              onOpen={open}
+              heightClass="h-[32rem]"
+              labelMargin={160}
+            />
             <ChartLegend
               className="mt-6"
               phoneColumns={2}

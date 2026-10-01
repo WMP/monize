@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
-import {
-  CashFlowSankeyReport,
-  SankeyNodeShape,
-  sankeyNodeHref,
-} from './CashFlowSankeyReport';
+import { CashFlowSankeyReport, SANKEY_STORAGE_KEYS } from './CashFlowSankeyReport';
+import { SankeyNodeShape, sankeyNodeHref, sankeyTooltipItem } from './CashFlowSankeyDiagram';
 import type {
   CashFlowSankeyNode,
   CashFlowSankeyResponse,
@@ -21,10 +18,11 @@ vi.mock('@/hooks/useNumberFormat', async () => {
   return { useNumberFormat: () => ({ ...numberFormatMockDefaults() }) };
 });
 
+const mockDateRangeOptions = vi.fn();
 vi.mock('@/hooks/useDateRange', () => {
   const resolvedRange = { start: '2026-09-01', end: '2026-09-30' };
   return {
-    useDateRange: () => ({
+    useDateRange: (options: unknown) => (mockDateRangeOptions(options), {
       dateRange: 'mtd',
       setDateRange: vi.fn(),
       startDate: '',
@@ -89,12 +87,23 @@ vi.mock('@/components/ui/ExportDropdown', () => ({
 vi.mock('recharts', async () => {
   const { rechartsMock } = await import('@/test/recharts-mock');
   const base = rechartsMock();
+  // The entry shape recharts 3 builds for a Sankey (combineTooltipPayload over
+  // sankeyPayloadSearcher): the hovered item's data is one level deeper than
+  // in the other charts, under `payload.payload`.
+  const asRecharts = (props: { active: boolean; payload: Array<{ payload: unknown }> }) => ({
+    ...props,
+    payload: props.payload.map((entry) => ({
+      name: 'entry',
+      value: 0,
+      payload: { payload: entry.payload, name: 'entry', value: 0 },
+    })),
+  });
   return {
     ...base,
     Tooltip: ({ content }: { content?: (props: unknown) => React.ReactNode }) =>
       typeof content === 'function' ? (
         <div data-testid="tooltip">
-          {content({
+          {content(asRecharts({
             active: true,
             payload: [
               {
@@ -111,8 +120,8 @@ vi.mock('recharts', async () => {
                 },
               },
             ],
-          })}
-          {content({
+          }))}
+          {content(asRecharts({
             active: true,
             payload: [
               {
@@ -124,8 +133,8 @@ vi.mock('recharts', async () => {
                 },
               },
             ],
-          })}
-          {content({
+          }))}
+          {content(asRecharts({
             active: true,
             payload: [
               {
@@ -138,8 +147,8 @@ vi.mock('recharts', async () => {
                 },
               },
             ],
-          })}
-          {content({ active: false, payload: [] })}
+          }))}
+          {content(asRecharts({ active: false, payload: [] }))}
         </div>
       ) : null,
   };
@@ -265,6 +274,7 @@ describe('CashFlowSankeyReport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsMobile = false;
+    window.localStorage.clear();
   });
 
   it('shows a skeleton while the first answer is on its way', async () => {
@@ -554,6 +564,87 @@ describe('CashFlowSankeyReport', () => {
     await renderReport();
     expect(screen.getByText(/Leave a savings account out of the account filter/)).toBeInTheDocument();
     expect(screen.getByText(/A credit card payment is never a debt payment/)).toBeInTheDocument();
+  });
+});
+
+describe('the report remembers how it was left', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsMobile = false;
+    window.localStorage.clear();
+  });
+
+  it('keeps the depth, the view and the scope for the next visit', async () => {
+    await renderReport();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Subcategories' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Table'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('scope-picker'));
+    });
+
+    expect(JSON.parse(window.localStorage.getItem(SANKEY_STORAGE_KEYS.depth)!)).toBe(2);
+    expect(JSON.parse(window.localStorage.getItem(SANKEY_STORAGE_KEYS.view)!)).toBe('table');
+    expect(JSON.parse(window.localStorage.getItem(SANKEY_STORAGE_KEYS.accounts)!)).toEqual(['acc-savings']);
+    // The range persists through useDateRange's own storage.
+    expect(mockDateRangeOptions).toHaveBeenCalledWith({
+      defaultRange: 'mtd',
+      storageKey: SANKEY_STORAGE_KEYS.range,
+    });
+  });
+
+  it('opens on the stored depth, view and scope', async () => {
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.depth, '2');
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.view, '"table"');
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.accounts, '["acc-savings"]');
+
+    await renderReport();
+
+    expect(mockGetSankey).toHaveBeenCalledWith(
+      expect.objectContaining({ depth: 2, accountIds: ['acc-savings'] }),
+    );
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Subcategories' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('ignores a stored value of the wrong shape', async () => {
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.depth, '7');
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.view, '"pie"');
+    window.localStorage.setItem(SANKEY_STORAGE_KEYS.accounts, '{"id":1}');
+
+    await renderReport();
+
+    expect(mockGetSankey).toHaveBeenCalledWith(expect.objectContaining({ depth: 1, accountIds: [] }));
+    expect(screen.getByTestId('sankey')).toBeInTheDocument();
+  });
+});
+
+describe('sankeyTooltipItem', () => {
+  const node = { name: 'Groceries', id: 'expense:g', members: [], value: 5 };
+  const link = { source: { name: 'Income' }, target: { name: 'Groceries' }, value: 5, incomplete: true };
+
+  it('reads the item from the entry recharts 3 builds for a Sankey', () => {
+    expect(sankeyTooltipItem({ name: 'x', value: 5, payload: { payload: node, name: 'x', value: 5 } })).toEqual({
+      type: 'node',
+      node,
+    });
+    expect(sankeyTooltipItem({ payload: { payload: link, name: 'x', value: 5 } })).toMatchObject({
+      type: 'link',
+      value: 5,
+      incomplete: true,
+      netRefund: false,
+      placeholder: false,
+    });
+  });
+
+  it('answers no tooltip, never a crash, for anything else', () => {
+    expect(sankeyTooltipItem(undefined)).toBeNull();
+    expect(sankeyTooltipItem({ payload: { payload: { name: 'no members' } } })).toBeNull();
+    expect(sankeyTooltipItem({ payload: { name: 'x', value: 1 } })).toBeNull();
   });
 });
 

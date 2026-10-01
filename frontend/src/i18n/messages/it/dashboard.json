@@ -281,5 +281,14 @@
     "weekdayLabel": "Giorni feriali",
     "viewOverview": "Panoramica",
     "viewByDay": "Per giorno"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey dei flussi di cassa",
+    "empty": "Nessuna entrata, spesa o trasferimento in questo periodo.",
+    "depth": "Dettaglio",
+    "depthCategories": "Categorie",
+    "depthSubcategories": "Sottocategorie",
+    "viewDiagram": "Diagramma",
+    "viewTable": "Tabella"
   }
 }

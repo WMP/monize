@@ -3073,7 +3073,9 @@ describe("a dashboard widget reads a report rather than re-deriving it", () => {
  * `sankey-layout.ts`, which returns new arrays and never touches the response.
  */
 describe("the Cash Flow Sankey sums nothing beside the server", () => {
-  const SANKEY_COMPONENT = /^\/src\/components\/reports\/CashFlowSankey[^/]*\.tsx$/;
+  // The report, the diagram it shares with the dashboard widget, and the widget.
+  const SANKEY_COMPONENT =
+    /^\/src\/components\/(?:reports\/CashFlowSankey[^/]*|dashboard\/CashFlowSankeyWidget)\.tsx$/;
   const LAYOUT = "/src/components/reports/sankey-layout.ts";
   const AGGREGATES =
     /from\s+["']@\/components\/transactions\/widget-shared["']|\b(?:sumMoney|sumConverted|sumEffectiveOccurrences|netEntityTotal|summarizeInDisplayCurrency)\b|\.reduce\(/;
@@ -3089,10 +3091,17 @@ describe("the Cash Flow Sankey sums nothing beside the server", () => {
     expect(offenders()).toEqual([]);
   });
 
-  it("still finds the report component, so the rule cannot pass by accident", () => {
+  it("still finds the Sankey components, so the rule cannot pass by accident", () => {
     expect(
-      productionSources().filter(([path]) => SANKEY_COMPONENT.test(path)),
-    ).toHaveLength(1);
+      productionSources()
+        .filter(([path]) => SANKEY_COMPONENT.test(path))
+        .map(([path]) => path)
+        .sort(),
+    ).toEqual([
+      "/src/components/dashboard/CashFlowSankeyWidget.tsx",
+      "/src/components/reports/CashFlowSankeyDiagram.tsx",
+      "/src/components/reports/CashFlowSankeyReport.tsx",
+    ]);
   });
 
   it("never assigns into the response it lays out", () => {

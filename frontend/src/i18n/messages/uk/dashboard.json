@@ -281,5 +281,14 @@
     "weekdayLabel": "Будні",
     "viewOverview": "Огляд",
     "viewByDay": "За днем"
+  },
+  "cashFlowSankey": {
+    "title": "Діаграма Сенкі грошових потоків",
+    "empty": "За цей період немає доходів, витрат чи переказів.",
+    "depth": "Деталізація",
+    "depthCategories": "Категорії",
+    "depthSubcategories": "Підкатегорії",
+    "viewDiagram": "Діаграма",
+    "viewTable": "Таблиця"
   }
 }

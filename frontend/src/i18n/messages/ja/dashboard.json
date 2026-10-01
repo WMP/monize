@@ -281,5 +281,14 @@
     "weekdayLabel": "平日",
     "viewOverview": "概要",
     "viewByDay": "曜日別"
+  },
+  "cashFlowSankey": {
+    "title": "キャッシュフロー サンキー",
+    "empty": "この期間の収入、支出、振替はありません。",
+    "depth": "詳細度",
+    "depthCategories": "カテゴリ",
+    "depthSubcategories": "サブカテゴリ",
+    "viewDiagram": "図",
+    "viewTable": "テーブル"
   }
 }
