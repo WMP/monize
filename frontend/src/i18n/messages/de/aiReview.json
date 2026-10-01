@@ -32,6 +32,9 @@
     "transactionMissing": "Diese Buchung existiert nicht mehr",
     "rule": "Regel: {name}",
     "manualRequest": "Manuell angefordert",
+    "emailReceipt": "E-Mail-Beleg: {subject} von {sender}",
+    "emailReceiptMissing": "E-Mail-Beleg (die E-Mail wurde gelöscht)",
+    "viewEmailReceipts": "E-Mail-Belege anzeigen",
     "agentNote": "Hinweis des Assistenten: {reason}",
     "dates": "Erstellt {created}, läuft ab {expires}",
     "viewTransaction": "Buchung anzeigen"
