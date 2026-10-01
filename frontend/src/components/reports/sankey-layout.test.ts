@@ -158,7 +158,7 @@ describe('toRechartsSankey', () => {
     expect(drawing.nodes.find((n) => n.id === 'expense:usd')?.unknown).toBe(true);
   });
 
-  it('leaves out a node nothing drawable reaches', () => {
+  it('leaves out a known zero, but draws an unknown figure as a flagged sliver', () => {
     const drawing = toRechartsSankey(
       response(
         [node('income:a', 10), node('hub', 10), node('expense:b', 10), node('expense:zero', 0), node('residual:unspent', null)],
@@ -167,7 +167,36 @@ describe('toRechartsSankey', () => {
       OPTIONS,
     );
 
-    expect(drawing.nodes.map((n) => n.id)).toEqual(['income:a', 'hub', 'expense:b']);
+    // A known zero moved nothing; the unknown residual is drawn (hollow).
+    expect(drawing.nodes.map((n) => n.id)).toEqual(['income:a', 'hub', 'expense:b', 'residual:unspent']);
+    expect(drawing.nodes.find((n) => n.id === 'residual:unspent')?.unknown).toBe(true);
+    const residual = drawing.links.find((l) => drawing.nodes[l.target].id === 'residual:unspent')!;
+    expect(residual.placeholder).toBe(true);
+    expect(residual.incomplete).toBe(true);
+    expect(residual.value).toBeCloseTo(0.2);
+    expect(drawing.links.filter((l) => l.placeholder)).toHaveLength(1);
+  });
+
+  it('gives no sliver to a merged link that carries a known part', () => {
+    const expenses = Array.from({ length: 3 }, (_, i) => node(`expense:c${i}`, 10 - i));
+    const drawing = toRechartsSankey(
+      response(
+        [node('income:a', 30), node('hub', null), ...expenses, node('expense:usd', null)],
+        [
+          link('income:a', 'hub', 30),
+          ...expenses.map((e) => link('hub', e.id, e.total)),
+          link('hub', 'expense:usd', null, 0),
+        ],
+      ),
+      { ...OPTIONS, maxNodesPerColumn: 2 },
+    );
+
+    const other = drawing.nodes.findIndex((n) => n.id === 'other:destination');
+    const intoOther = drawing.links.find((l) => l.target === other)!;
+    expect(intoOther.value).toBe(8);
+    expect(intoOther.placeholder).toBe(false);
+    expect(intoOther.incomplete).toBe(true);
+    expect(drawing.nodes[other].unknown).toBe(true);
   });
 
   it('merges children of several parents into the child column Other, one link per parent', () => {

@@ -3,7 +3,11 @@ import { DataSource } from "typeorm";
 import { CashFlowSankeyService } from "@/built-in-reports/cash-flow-sankey.service";
 import { ReportCurrencyService } from "@/built-in-reports/report-currency.service";
 import type { CashFlowSankeyResponse } from "@/built-in-reports/dto";
-import { Account } from "@/accounts/entities/account.entity";
+import {
+  Account,
+  AccountSubType,
+  AccountType,
+} from "@/accounts/entities/account.entity";
 import {
   Transaction,
   TransactionStatus,
@@ -29,6 +33,13 @@ import {
  * The unit specs mock `manager.query` and can only assert the SQL's text; which
  * legs the transfer queries read (SANKEY-002), and that VOID rows and
  * investment-linked legs stay out (SANKEY-003), is only proven by running it.
+ * Every case runs over the same noise rows (a VOID purchase, a VOID transfer
+ * pair to savings, a BUY's generated cash leg, an investment-linked transfer
+ * leg to a brokerage sleeve, a row outside the window), and the expected
+ * figures are the design's, so a branch that admitted any of them would move
+ * a figure: the categorized branch the purchase and the BUY leg (as
+ * uncategorized spending), the whole-transfer branch the VOID pair and the
+ * investment-linked leg (as savings outflows).
  *
  * Row 7 of the example (Dining, 50.00 USD) sits in a USD chequing account in
  * scope, since a row's currency is its account's.
@@ -249,13 +260,45 @@ describe("Cash Flow Sankey (integration)", () => {
       categoryId: diningId,
     });
 
-    // Noise that must change nothing: a VOID purchase, and a row outside the
-    // window.
+    // Noise that must change nothing: a VOID purchase, a VOID transfer pair, a
+    // BUY's generated cash leg and an investment-linked transfer leg, and a
+    // row outside the window.
     await insertTransaction({
       amount: -999,
       categoryId: groceriesId,
       status: TransactionStatus.VOID,
     });
+    const voided = await insertTransfer(chequingId, savingsId, 444);
+    for (const leg of voided) {
+      await dataSource.manager.update(Transaction, leg.id, {
+        status: TransactionStatus.VOID,
+      });
+    }
+
+    const brokerageId = (
+      await createTestAccount(dataSource, userId, {
+        name: "Brokerage",
+        currencyCode: "CAD",
+      })
+    ).id;
+    await dataSource.manager.update(Account, brokerageId, {
+      accountType: AccountType.INVESTMENT,
+      accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+    });
+    // A BUY funded from chequing: the generated cash row carries no category
+    // and no transfer flag, so only the linkage keeps it out of spending.
+    const buyLeg = await insertTransaction({ amount: -250, categoryId: null });
+    // An investment action whose cash leg was posted as a transfer: only the
+    // linkage keeps it out of "Savings & investments".
+    const [linkedLeg] = await insertTransfer(chequingId, brokerageId, 300);
+    for (const cashRow of [buyLeg, linkedLeg]) {
+      await dataSource.query(
+        `INSERT INTO investment_transactions
+           (user_id, account_id, transaction_id, action, transaction_date, total_amount)
+         VALUES ($1, $2, $3, 'BUY', '2026-09-10'::DATE, $4)`,
+        [userId, brokerageId, cashRow.id, Math.abs(Number(cashRow.amount))],
+      );
+    }
     await insertTransaction({
       amount: -333,
       categoryId: groceriesId,

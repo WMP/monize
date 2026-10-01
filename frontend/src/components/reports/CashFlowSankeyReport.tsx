@@ -93,8 +93,13 @@ export function sankeyNodeHref(
   switch (node.kind) {
     case 'income':
     case 'expense':
-    case 'child':
       return node.categoryId ? buildTransactionsHref({ ...scope, categoryId: node.categoryId }) : null;
+    case 'child':
+      // "(no subcategory)" is the parent's own rows, and the Transactions
+      // filter cannot ask for a category without its descendants, so it
+      // would list the whole parent under a node that is only part of it.
+      if (!node.categoryId || node.categoryId === node.parentCategoryId) return null;
+      return buildTransactionsHref({ ...scope, categoryId: node.categoryId });
     case 'uncategorized':
       return buildTransactionsHref({ ...scope, categoryId: UNCATEGORIZED });
     case 'class':
@@ -453,7 +458,14 @@ export function CashFlowSankeyReport() {
   const tooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> }) => {
     const item = payload?.[0]?.payload as
       | (SankeyDrawNode & { source?: undefined })
-      | { source: SankeyDrawNode; target: SankeyDrawNode; value: number; incomplete: boolean; netRefund?: boolean }
+      | {
+          source: SankeyDrawNode;
+          target: SankeyDrawNode;
+          value: number;
+          incomplete: boolean;
+          netRefund?: boolean;
+          placeholder?: boolean;
+        }
       | undefined;
     if (!active || !item) return null;
     if (item.source) {
@@ -462,7 +474,8 @@ export function CashFlowSankeyReport() {
           active
           label={t('sankey.linkLabel', { source: item.source.name, target: item.target.name })}
           payload={[{ name: t('sankey.colAmount'), value: item.value, color: colorOfDrawn(item.source.kind === 'hub' ? item.target : item.source) }]}
-          formatValue={(value) => formatCurrency(value)}
+          // A sliver drawn for a link nothing of which converted is not a figure.
+          formatValue={(value) => (item.placeholder ? t('sankey.unknown') : formatCurrency(value))}
         >
           {item.netRefund && <p className="text-xs text-gray-600 dark:text-gray-400">{t('sankey.netRefund')}</p>}
           {item.incomplete && <p className="text-xs text-amber-600 dark:text-amber-400">{t('sankey.knownPartOnly')}</p>}

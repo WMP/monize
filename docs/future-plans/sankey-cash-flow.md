@@ -235,8 +235,14 @@ known links under the incomplete banner.
   `buildTransactionsHref`. v1 limitation: a class or inflow node
   (`class:*`, `inflow:*`) drills to every transfer of the scope
   (`categoryId=transfer`), which includes the internal transfers the
-  diagram hides and the other classes' legs; Transactions has no
-  counterpart-type filter to narrow it. An `account:*` node drills to that
+  diagram hides and the other classes' legs, and it misses a split's
+  transfer line (a mortgage payment's principal), because the `transfer`
+  filter reads the parent row's own transfer flag; Transactions has no
+  counterpart-type filter to narrow it or split-line filter to widen it. A
+  "(no subcategory)" node has no drill-down: the category filter always
+  includes descendants, so it would list the whole parent. An unknown
+  figure with no converted part is drawn as a hollow sliver whose tooltip
+  says "unknown". An `account:*` node drills to that
   account's transfers. A subcategory that nets to a refund is drawn
   parent -> child with a "net refund" marker, the reverse of the response's
   link, so recharts' column layout sees no cycle.

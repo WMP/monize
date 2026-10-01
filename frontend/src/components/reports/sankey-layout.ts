@@ -45,6 +45,12 @@ export interface SankeyDrawLink {
    * it so the reader is not shown a refund as spending.
    */
   netRefund: boolean;
+  /**
+   * Nothing of this link converted, so `value` is a sliver for the drawing
+   * (design section 9: an unknown figure is drawn, hollow, never dropped).
+   * The tooltip says "unknown" rather than printing the sliver.
+   */
+  placeholder: boolean;
 }
 
 export interface SankeyDrawing {
@@ -123,12 +129,24 @@ export function toRechartsSankey(
       : { ...link, netRefund: false };
   });
 
+  // A link is drawn when it carries something, or when its figure is unknown:
+  // a known zero moved nothing, an unknown one may have moved anything.
+  const isDrawn = (link: { amount: number | null; knownAmount: number }) =>
+    link.amount === null || link.amount > 0;
+  // An unknown link with no converted part is drawn as a sliver of the widest
+  // known link, so the node it reaches is on the page.
+  const widest = response.links.reduce(
+    (max, link) => Math.max(max, drawnAmount(link.amount, link.knownAmount)),
+    0,
+  );
+  const placeholderValue = widest > 0 ? widest * 0.02 : 1;
+
   // The nodes some drawable link touches; the rest have nothing to draw.
   const drawable = new Set<string>();
   // A net-refund child keeps its own node, so its marker means something.
   const keepOwnNode = new Set<string>();
   for (const link of oriented) {
-    if (drawnAmount(link.amount, link.knownAmount) <= 0) continue;
+    if (!isDrawn(link)) continue;
     drawable.add(link.source);
     drawable.add(link.target);
     if (link.netRefund) keepOwnNode.add(link.target);
@@ -216,8 +234,9 @@ export function toRechartsSankey(
     return false;
   };
   for (const link of oriented) {
-    const value = drawnAmount(link.amount, link.knownAmount);
-    if (value <= 0) continue;
+    if (!isDrawn(link)) continue;
+    // The known part only; a sliver is added below to a link that has none.
+    const value = Math.max(drawnAmount(link.amount, link.knownAmount), 0);
     const source = indexFor(link.source);
     const target = indexFor(link.target);
     if (source === undefined || target === undefined || source === target) {
@@ -230,7 +249,7 @@ export function toRechartsSankey(
       if (reaches(target, source)) continue;
       linkAt.set(key, drawLinks.length);
       targetsOf.set(source, [...(targetsOf.get(source) ?? []), target]);
-      drawLinks.push({ source, target, value, incomplete, netRefund: link.netRefund });
+      drawLinks.push({ source, target, value, incomplete, netRefund: link.netRefund, placeholder: false });
     } else {
       const previous = drawLinks[at];
       drawLinks[at] = {
@@ -241,6 +260,10 @@ export function toRechartsSankey(
       };
     }
   }
+
+  const sized = drawLinks.map((link) =>
+    link.value > 0 ? link : { ...link, value: placeholderValue, placeholder: true },
+  );
 
   // Each "Other" lists what it holds, largest first, and is unknown when any
   // member is.
@@ -263,5 +286,5 @@ export function toRechartsSankey(
     };
   });
 
-  return { nodes: finished, links: drawLinks };
+  return { nodes: finished, links: sized };
 }

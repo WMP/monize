@@ -125,6 +125,20 @@ vi.mock('recharts', async () => {
               },
             ],
           })}
+          {content({
+            active: true,
+            payload: [
+              {
+                payload: {
+                  source: { name: 'Income', kind: 'hub', node: null },
+                  target: { name: 'Unspent', kind: 'residual', node: null },
+                  value: 0.2,
+                  incomplete: true,
+                  placeholder: true,
+                },
+              },
+            ],
+          })}
           {content({ active: false, payload: [] })}
         </div>
       ) : null,
@@ -464,6 +478,10 @@ describe('CashFlowSankeyReport', () => {
     expect(tooltip).toHaveTextContent('Only the part that could be converted is drawn.');
     expect(tooltip).toHaveTextContent('Salary to Income');
     expect(tooltip).toHaveTextContent('Amount: $5,000.00');
+    // A link nothing of which converted is drawn as a sliver, never priced.
+    expect(tooltip).toHaveTextContent('Income to Unspent');
+    expect(tooltip).toHaveTextContent('Amount: Unknown');
+    expect(tooltip).not.toHaveTextContent('$0.20');
   });
 
   it('exports the PDF through the shared helper, with the cards and the full table', async () => {
@@ -567,6 +585,16 @@ describe('sankeyNodeHref', () => {
       `/transactions?categoryId=transfer&accountIds=acc-sav&${range}`,
     );
     expect(sankeyNodeHref(node('account:unlinked', '(unlinked account)', 1), response)).toBeNull();
+  });
+
+  it('links a subcategory to itself, and gives "(no subcategory)" no link', () => {
+    expect(
+      sankeyNodeHref(node('child:cat-rest', 'Restaurants', 5, { categoryId: 'cat-rest', parentCategoryId: 'cat-food' }), response),
+    ).toBe(`/transactions?categoryId=cat-rest&${scope}&${range}`);
+    // The parent's own rows: the filter would list every descendant too.
+    expect(
+      sankeyNodeHref(node('child:cat-food', '(no subcategory)', 5, { categoryId: 'cat-food', parentCategoryId: 'cat-food' }), response),
+    ).toBeNull();
   });
 
   it('gives the hub and the residual no link: they are arithmetic, not rows', () => {
