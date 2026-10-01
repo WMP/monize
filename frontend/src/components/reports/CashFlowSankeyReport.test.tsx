@@ -1,0 +1,537 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
+import {
+  CashFlowSankeyReport,
+  SankeyNodeShape,
+  sankeyNodeHref,
+} from './CashFlowSankeyReport';
+import type {
+  CashFlowSankeyNode,
+  CashFlowSankeyResponse,
+} from '@/types/built-in-reports';
+import type { SankeyDrawNode } from './sankey-layout';
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return { useNumberFormat: () => ({ ...numberFormatMockDefaults() }) };
+});
+
+vi.mock('@/hooks/useDateRange', () => {
+  const resolvedRange = { start: '2026-09-01', end: '2026-09-30' };
+  return {
+    useDateRange: () => ({
+      dateRange: 'mtd',
+      setDateRange: vi.fn(),
+      startDate: '',
+      setStartDate: vi.fn(),
+      endDate: '',
+      setEndDate: vi.fn(),
+      resolvedRange,
+      isValid: true,
+    }),
+  };
+});
+
+vi.mock('@/hooks/useDateFormat', () => ({
+  useDateFormat: () => ({ formatDate: (d: string) => `date(${d})` }),
+}));
+
+vi.mock('@/hooks/useExchangeRates', () => ({
+  useExchangeRates: () => ({ defaultCurrency: 'CAD' }),
+}));
+
+let mockIsMobile = false;
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => mockIsMobile,
+}));
+
+vi.mock('@/components/ui/DateRangeSelector', () => ({
+  DateRangeSelector: () => <div data-testid="date-range-selector" />,
+}));
+
+vi.mock('@/components/reports/ReportAccountMultiSelect', () => ({
+  ReportAccountMultiSelect: ({ onChange }: { onChange: (ids: string[]) => void }) => (
+    <button data-testid="scope-picker" onClick={() => onChange(['acc-savings'])}>
+      Accounts
+    </button>
+  ),
+}));
+
+vi.mock('@/components/ui/ExportDropdown', () => ({
+  ExportDropdown: ({ onExportPdf, onExportCsv }: { onExportPdf?: () => void; onExportCsv?: () => void }) => (
+    <div data-testid="export-dropdown">
+      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
+    </div>
+  ),
+}));
+
+// The Sankey stub serializes what it was handed; the tooltip renderer is run
+// over one node and one link so its formatting is read through the hook.
+vi.mock('recharts', async () => {
+  const { rechartsMock } = await import('@/test/recharts-mock');
+  const base = rechartsMock();
+  return {
+    ...base,
+    Tooltip: ({ content }: { content?: (props: unknown) => React.ReactNode }) =>
+      typeof content === 'function' ? (
+        <div data-testid="tooltip">
+          {content({
+            active: true,
+            payload: [
+              {
+                payload: {
+                  name: 'Other',
+                  id: 'other:destination',
+                  kind: 'other',
+                  column: 'destination',
+                  color: null,
+                  node: null,
+                  members: ['Dining', 'Gifts'],
+                  value: 12.5,
+                  unknown: true,
+                },
+              },
+            ],
+          })}
+          {content({
+            active: true,
+            payload: [
+              {
+                payload: {
+                  source: { name: 'Salary', kind: 'income', node: null },
+                  target: { name: 'Income', kind: 'hub', node: null },
+                  value: 5000,
+                  incomplete: false,
+                },
+              },
+            ],
+          })}
+          {content({ active: false, payload: [] })}
+        </div>
+      ) : null,
+  };
+});
+
+const mockGetSankey = vi.fn();
+vi.mock('@/lib/built-in-reports', () => ({
+  builtInReportsApi: {
+    getCashFlowSankey: (...args: unknown[]) => mockGetSankey(...args),
+  },
+}));
+
+vi.mock('@/lib/accounts', () => ({
+  accountsApi: { getAll: () => Promise.resolve([]) },
+}));
+
+vi.mock('@/lib/categories', () => ({
+  categoriesApi: {
+    getAll: () =>
+      Promise.resolve([
+        { id: 'cat-groceries', color: null, effectiveColor: '#00aa00' },
+      ]),
+  },
+}));
+
+vi.mock('@/lib/pdf-export', () => ({
+  exportToPdf: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockExportCsvSections = vi.fn();
+vi.mock('@/lib/csv-export', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/csv-export')>()),
+  exportCsvSections: (...args: unknown[]) => mockExportCsvSections(...args),
+}));
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
+}));
+
+function node(
+  id: string,
+  label: string,
+  total: number | null,
+  overrides: Partial<CashFlowSankeyNode> = {},
+): CashFlowSankeyNode {
+  const kind = (id === 'hub' ? 'hub' : id.split(':')[0]) as CashFlowSankeyNode['kind'];
+  return {
+    id,
+    kind,
+    label,
+    categoryId: null,
+    parentCategoryId: null,
+    accountId: null,
+    color: null,
+    total,
+    knownTotal: total ?? 0,
+    ...overrides,
+  };
+}
+
+/** The design's numerical example (section 8), complete. */
+function example(): CashFlowSankeyResponse {
+  const nodes = [
+    node('income:cat-salary', 'Salary', 5000, { categoryId: 'cat-salary' }),
+    node('hub', 'Income', 5000),
+    node('expense:cat-interest', 'Interest', 700, { categoryId: 'cat-interest' }),
+    node('expense:cat-groceries', 'Groceries', 600, { categoryId: 'cat-groceries' }),
+    node('expense:cat-dining', 'Dining', 67.5, { categoryId: 'cat-dining' }),
+    node('uncategorized:expense', 'Uncategorized expenses', 45),
+    node('class:savings', 'Savings & investments', 1000),
+    node('class:debt', 'Debt payments', 900),
+    node('residual:unspent', 'Unspent', 1687.5),
+  ];
+  return {
+    startDate: '2026-09-01',
+    endDate: '2026-09-30',
+    currency: 'CAD',
+    scopeAccountIds: ['acc-chq', 'acc-usd'],
+    nodes,
+    links: nodes
+      .filter((n) => n.kind !== 'hub')
+      .map((n) =>
+        n.kind === 'income'
+          ? { source: n.id, target: 'hub', amount: n.total, knownAmount: n.knownTotal }
+          : { source: 'hub', target: n.id, amount: n.total, knownAmount: n.knownTotal },
+      ),
+    totals: { income: 5000, inflows: 0, expenses: 1412.5, outflows: 1900, unspent: 1687.5, deficit: 0 },
+    knownTotals: { income: 5000, inflows: 0, expenses: 1412.5, outflows: 1900 },
+    missingCurrencies: [],
+    excludedCount: 0,
+  };
+}
+
+/** The same example with no USD->CAD rate: Dining, expenses and the residual unknown. */
+function withoutRate(): CashFlowSankeyResponse {
+  const complete = example();
+  const unknown = new Set(['expense:cat-dining', 'residual:unspent', 'hub']);
+  return {
+    ...complete,
+    nodes: complete.nodes.map((n) => (unknown.has(n.id) ? { ...n, total: null, knownTotal: 0 } : n)),
+    links: complete.links.map((l) => (unknown.has(l.target) ? { ...l, amount: null, knownAmount: 0 } : l)),
+    totals: { ...complete.totals, expenses: null, unspent: null, deficit: null },
+    knownTotals: { ...complete.knownTotals, expenses: 1345 },
+    missingCurrencies: ['USD'],
+    excludedCount: 1,
+  };
+}
+
+async function renderReport(response: CashFlowSankeyResponse = example()) {
+  mockGetSankey.mockResolvedValue(response);
+  let container!: HTMLElement;
+  await act(async () => {
+    ({ container } = render(<CashFlowSankeyReport />));
+  });
+  return container;
+}
+
+const sankeyNodes = () => JSON.parse(screen.getByTestId('sankey').getAttribute('data-nodes') ?? '[]') as string[];
+
+describe('CashFlowSankeyReport', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsMobile = false;
+  });
+
+  it('shows a skeleton while the first answer is on its way', async () => {
+    mockGetSankey.mockReturnValue(new Promise(() => {}));
+    await act(async () => {
+      render(<CashFlowSankeyReport />);
+    });
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+    expect(screen.queryByText('No income, spending or transfers in this period')).not.toBeInTheDocument();
+  });
+
+  it('asks for the current month at depth 1 over the default scope', async () => {
+    await renderReport();
+    expect(mockGetSankey).toHaveBeenCalledWith({
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+      accountIds: [],
+      depth: 1,
+    });
+  });
+
+  it('draws the diagram with the server labels and its totals in the accessible name', async () => {
+    await renderReport();
+
+    expect(sankeyNodes()).toEqual(
+      expect.arrayContaining(['Salary', 'Income', 'Groceries', 'Savings & investments', 'Debt payments', 'Unspent']),
+    );
+    const img = screen.getByRole('img');
+    expect(img.getAttribute('aria-label')).toBe(
+      'Cash flow diagram. Income $5,000.00, transfers in $0.00, expenses $1,412.50, transfers out $1,900.00, Unspent $1,687.50.',
+    );
+  });
+
+  it('prints the summary cards from the response totals, not from the drawing', async () => {
+    await renderReport();
+
+    expect(screen.getByTestId('sankey-card-income')).toHaveTextContent('$5,000.00');
+    expect(screen.getByTestId('sankey-card-expenses')).toHaveTextContent('$1,412.50');
+    expect(screen.getByTestId('sankey-card-outflows')).toHaveTextContent('$1,900.00');
+    expect(screen.getByTestId('sankey-card-residual')).toHaveTextContent('Unspent');
+    expect(screen.getByTestId('sankey-card-residual')).toHaveTextContent('$1,687.50');
+  });
+
+  it('captions a deficit as drawn from balances', async () => {
+    const response = example();
+    await renderReport({
+      ...response,
+      totals: { ...response.totals, unspent: 0, deficit: 600 },
+    });
+    expect(screen.getByTestId('sankey-card-residual')).toHaveTextContent('Drawn from balances');
+    expect(screen.getByTestId('sankey-card-residual')).toHaveTextContent('$600.00');
+  });
+
+  it('shows an empty state with the range when nothing moved', async () => {
+    await renderReport({ ...example(), nodes: [], links: [] });
+
+    expect(screen.getByText('No income, spending or transfers in this period')).toBeInTheDocument();
+    expect(screen.getByText('date(2026-09-01) to date(2026-09-30)')).toBeInTheDocument();
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+  });
+
+  it('defaults a phone to the table, and lets the reader switch', async () => {
+    mockIsMobile = true;
+    await renderReport();
+
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Flow Diagram'));
+    });
+    expect(screen.getByTestId('sankey')).toBeInTheDocument();
+  });
+
+  it('lists every node in the table, merged or not (SANKEY-005)', async () => {
+    const response = example();
+    const extra = Array.from({ length: 12 }, (_, i) =>
+      node(`expense:cat-x${i}`, `Extra ${i}`, 1, { categoryId: `cat-x${i}` }),
+    );
+    await renderReport({
+      ...response,
+      nodes: [...response.nodes, ...extra],
+      links: [...response.links, ...extra.map((n) => ({ source: 'hub', target: n.id, amount: 1, knownAmount: 1 }))],
+    });
+
+    // The drawing merged the smallest categories into Other...
+    // (ten categories keep their own node: the three real ones and seven extras).
+    expect(sankeyNodes()).toContain('Other');
+    expect(sankeyNodes().filter((name) => name.startsWith('Extra'))).toHaveLength(7);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Table'));
+    });
+    // ...the table did not.
+    for (let i = 0; i < 12; i += 1) {
+      expect(screen.getByText(`Extra ${i}`)).toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('row').length).toBe(response.nodes.length - 1 + 12 + 1);
+  });
+
+  it('drills from a category row into Transactions filtered to it, the scope and the range', async () => {
+    mockIsMobile = true;
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sankey-row-expense:cat-groceries'));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/transactions?categoryId=cat-groceries&accountIds=acc-chq%2Cacc-usd&startDate=2026-09-01&endDate=2026-09-30',
+    );
+  });
+
+  it('drills from the legend, and offers no link for the residual', async () => {
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Debt payments'));
+    });
+    expect(mockPush).toHaveBeenCalledWith(
+      '/transactions?categoryId=transfer&accountIds=acc-chq%2Cacc-usd&startDate=2026-09-01&endDate=2026-09-30',
+    );
+
+    const unspent = screen.getByText('Unspent', { selector: 'button *, button' });
+    expect(unspent.closest('button')).toBeDisabled();
+  });
+
+  it('asks for subcategories when the depth toggles', async () => {
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Subcategories' }));
+    });
+
+    await waitFor(() =>
+      expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ depth: 2 })),
+    );
+    expect(screen.getByRole('button', { name: 'Subcategories' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('asks for the scope the reader picks', async () => {
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('scope-picker'));
+    });
+
+    await waitFor(() =>
+      expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ accountIds: ['acc-savings'] })),
+    );
+  });
+
+  it('marks partial totals and names the missing pair and the count (SANKEY-004)', async () => {
+    await renderReport(withoutRate());
+
+    const expenses = screen.getByTestId('sankey-card-expenses');
+    expect(expenses).toHaveTextContent('$1,345.00');
+    expect(within(expenses).getByTestId('partial-total-marker')).toBeInTheDocument();
+    expect(screen.getByTestId('sankey-card-income')).toHaveTextContent('$5,000.00');
+    expect(within(screen.getByTestId('sankey-card-income')).queryByTestId('partial-total-marker')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sankey-card-residual')).toHaveTextContent('Unknown');
+
+    const banner = screen.getByTestId('incomplete-data-details');
+    expect(banner).toHaveTextContent('USD->CAD');
+    expect(screen.getByTestId('sankey-excluded-count')).toHaveTextContent(
+      '1 amount could not be converted and is left out of the figures above.',
+    );
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('expenses Unknown');
+  });
+
+  it('formats the tooltip through the number hook and lists what Other holds', async () => {
+    await renderReport();
+
+    const tooltip = screen.getByTestId('tooltip');
+    expect(tooltip).toHaveTextContent('Amount: $12.50');
+    expect(tooltip).toHaveTextContent('Dining');
+    expect(tooltip).toHaveTextContent('Gifts');
+    expect(tooltip).toHaveTextContent('Only the part that could be converted is drawn.');
+    expect(tooltip).toHaveTextContent('Salary to Income');
+    expect(tooltip).toHaveTextContent('Amount: $5,000.00');
+  });
+
+  it('prints the help text about the default scope and card payments', async () => {
+    await renderReport();
+    expect(screen.getByText(/Leave a savings account out of the account filter/)).toBeInTheDocument();
+    expect(screen.getByText(/A credit card payment is never a debt payment/)).toBeInTheDocument();
+  });
+});
+
+describe('sankeyNodeHref', () => {
+  const response = example();
+  const range = 'startDate=2026-09-01&endDate=2026-09-30';
+  const scope = 'accountIds=acc-chq%2Cacc-usd';
+
+  it('links a category to itself', () => {
+    expect(sankeyNodeHref(response.nodes[3], response)).toBe(
+      `/transactions?categoryId=cat-groceries&${scope}&${range}`,
+    );
+  });
+
+  it('links uncategorized rows to the uncategorized pseudo-id', () => {
+    expect(sankeyNodeHref(node('uncategorized:expense', 'U', 1), response)).toBe(
+      `/transactions?categoryId=uncategorized&${scope}&${range}`,
+    );
+  });
+
+  it('links a class or an inflow to the scope transfers', () => {
+    for (const id of ['class:savings', 'inflow:borrowed']) {
+      expect(sankeyNodeHref(node(id, id, 1), response)).toBe(`/transactions?categoryId=transfer&${scope}&${range}`);
+    }
+  });
+
+  it('links a counterpart account to its own transfers', () => {
+    expect(sankeyNodeHref(node('account:acc-sav', 'Savings', 1, { accountId: 'acc-sav' }), response)).toBe(
+      `/transactions?categoryId=transfer&accountIds=acc-sav&${range}`,
+    );
+    expect(sankeyNodeHref(node('account:removed', '(removed account)', 1), response)).toBeNull();
+  });
+
+  it('gives the hub and the residual no link: they are arithmetic, not rows', () => {
+    expect(sankeyNodeHref(node('hub', 'Income', 1), response)).toBeNull();
+    expect(sankeyNodeHref(node('residual:unspent', 'Unspent', 1), response)).toBeNull();
+  });
+});
+
+describe('SankeyNodeShape', () => {
+  const drawn = (overrides: Partial<SankeyDrawNode> = {}): SankeyDrawNode => ({
+    name: 'Groceries',
+    id: 'expense:cat-groceries',
+    kind: 'expense',
+    column: 'destination',
+    color: null,
+    node: null,
+    members: [],
+    value: 600,
+    unknown: false,
+    ...overrides,
+  });
+
+  it('opens a selectable node on click and on Enter', () => {
+    const onSelect = vi.fn();
+    render(
+      <svg>
+        <SankeyNodeShape
+          x={10}
+          y={10}
+          width={12}
+          height={40}
+          payload={drawn()}
+          colorFor={() => 'var(--chart-expense)'}
+          onSelect={onSelect}
+          canSelect={() => true}
+          unknownLabel="Unknown"
+        />
+      </svg>,
+    );
+
+    const shape = screen.getByRole('link', { name: 'Groceries' });
+    fireEvent.click(shape);
+    fireEvent.keyDown(shape, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledTimes(2);
+  });
+
+  it('draws an unknown residual hollow and says it is unknown', () => {
+    const residual = drawn({
+      id: 'residual:unspent',
+      name: 'Unspent',
+      kind: 'residual',
+      unknown: true,
+      node: {
+        id: 'residual:unspent',
+        kind: 'residual',
+        label: 'Unspent',
+        categoryId: null,
+        parentCategoryId: null,
+        accountId: null,
+        color: null,
+        total: null,
+        knownTotal: 0,
+      },
+    });
+    render(
+      <svg>
+        <SankeyNodeShape
+          payload={residual}
+          colorFor={() => 'var(--chart-neutral)'}
+          onSelect={vi.fn()}
+          canSelect={() => false}
+          unknownLabel="Unknown"
+        />
+      </svg>,
+    );
+
+    const shape = screen.getByTestId('sankey-node-residual:unspent');
+    expect(shape).toHaveTextContent('Unspent (Unknown)');
+    expect(shape.querySelector('rect')?.getAttribute('stroke-dasharray')).toBe('3 2');
+    expect(shape.getAttribute('role')).toBeNull();
+  });
+});

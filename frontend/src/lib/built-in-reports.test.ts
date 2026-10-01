@@ -123,4 +123,18 @@ describe('builtInReportsApi', () => {
     });
     expect(result).toEqual({ month: '2024-03', categories: [] });
   });
+
+  it('getCashFlowSankey sends the scope as one comma-separated value', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { nodes: [] } });
+    await builtInReportsApi.getCashFlowSankey({ ...params, accountIds: ['a-1', 'a-2'], depth: 2 });
+    expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/cash-flow-sankey', {
+      params: { ...params, depth: 2, accountIds: 'a-1,a-2' },
+    });
+  });
+
+  it('getCashFlowSankey leaves an empty scope to the server default', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { nodes: [] } });
+    await builtInReportsApi.getCashFlowSankey({ ...params, accountIds: [] });
+    expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/cash-flow-sankey', { params });
+  });
 });

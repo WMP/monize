@@ -89,6 +89,7 @@
     "stackedChart": "100 % gestapeltes Balkendiagramm",
     "lineChart": "Liniendiagramm",
     "areaChart": "Flächendiagramm",
+    "sankeyChart": "Flussdiagramm",
     "table": "Tabelle"
   },
   "formActions": {

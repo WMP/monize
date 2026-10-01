@@ -89,6 +89,7 @@
     "stackedChart": "Batang Bertumpuk 100%",
     "lineChart": "Diagram Garis",
     "areaChart": "Diagram Area",
+    "sankeyChart": "Diagram Aliran",
     "table": "Tabel"
   },
   "formActions": {

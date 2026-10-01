@@ -3089,6 +3089,12 @@ describe("the Cash Flow Sankey sums nothing beside the server", () => {
     expect(offenders()).toEqual([]);
   });
 
+  it("still finds the report component, so the rule cannot pass by accident", () => {
+    expect(
+      productionSources().filter(([path]) => SANKEY_COMPONENT.test(path)),
+    ).toHaveLength(1);
+  });
+
   it("never assigns into the response it lays out", () => {
     const source = withoutComments(sources[LAYOUT] ?? "");
     expect(source.length).toBeGreaterThan(0);
