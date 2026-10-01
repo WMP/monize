@@ -59,9 +59,11 @@ test.describe('Cash Flow Sankey report', () => {
     await expect(subcategories).toHaveAttribute('aria-pressed', 'true');
     await expect(diagram).toBeVisible({ timeout: 15000 });
 
-    // A category node is a link into Transactions for that category and range.
+    // A category node drills into Transactions for that category and range.
+    // The diagram is one role="img", so its nodes are pointer targets with no
+    // role of their own; they are addressed by test id.
     await page
-      .getByRole('link', { name: groceries.name, exact: true })
+      .getByTestId(`sankey-node-expense:${groceries.id}`)
       .locator('text')
       .click();
 

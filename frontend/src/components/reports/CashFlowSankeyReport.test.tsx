@@ -617,7 +617,7 @@ describe('SankeyNodeShape', () => {
     ...overrides,
   });
 
-  it('opens a selectable node on click and on Enter', () => {
+  it('opens a selectable node on click, as a pointer target inside the image', () => {
     const onSelect = vi.fn();
     render(
       <svg>
@@ -635,10 +635,13 @@ describe('SankeyNodeShape', () => {
       </svg>,
     );
 
-    const shape = screen.getByRole('link', { name: 'Groceries' });
-    fireEvent.click(shape);
-    fireEvent.keyDown(shape, { key: 'Enter' });
-    expect(onSelect).toHaveBeenCalledTimes(2);
+    const shape = screen.getByTestId('sankey-node-expense:cat-groceries');
+    fireEvent.click(shape.querySelector('text')!);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(shape).toHaveAttribute('data-drillable', 'true');
+    // Not a tab stop: inside role="img" nothing would name it.
+    expect(shape.getAttribute('tabindex')).toBeNull();
+    expect(shape.getAttribute('role')).toBeNull();
   });
 
   it('draws an unknown residual hollow and says it is unknown', () => {

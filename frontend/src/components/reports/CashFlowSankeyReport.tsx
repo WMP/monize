@@ -160,14 +160,15 @@ export function SankeyNodeShape({
   const selectable = canSelect(payload);
   const labelLeft = payload.column === 'source';
   return (
+    // A pointer target only. The diagram is one `role="img"` whose children
+    // are presentational, so a focusable link here would be a tab stop no
+    // screen reader can name; the legend's buttons and the table's rows are
+    // the keyboard and assistive-technology routes to the same drill-down.
     <g
       data-testid={`sankey-node-${payload.id}`}
+      data-drillable={selectable ? 'true' : undefined}
       onClick={selectable ? () => onSelect(payload) : undefined}
-      onKeyDown={selectable ? activateOnKey(() => onSelect(payload)) : undefined}
-      tabIndex={selectable ? 0 : undefined}
-      role={selectable ? 'link' : undefined}
-      aria-label={selectable ? payload.name : undefined}
-      className={selectable ? 'cursor-pointer focus-visible:outline-none' : undefined}
+      className={selectable ? 'cursor-pointer' : undefined}
     >
       <rect
         x={x}
