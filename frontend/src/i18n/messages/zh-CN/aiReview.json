@@ -32,6 +32,9 @@
     "transactionMissing": "此交易已不存在",
     "rule": "规则：{name}",
     "manualRequest": "手动请求",
+    "emailReceipt": "邮件收据：来自 {sender} 的 {subject}",
+    "emailReceiptMissing": "邮件收据（该邮件已被删除）",
+    "viewEmailReceipts": "查看邮件收据",
     "agentNote": "助手备注：{reason}",
     "dates": "创建于 {created}，到期于 {expires}",
     "viewTransaction": "查看交易"
