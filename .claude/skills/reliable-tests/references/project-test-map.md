@@ -99,6 +99,8 @@ Controls (a violation fails a check):
 - the source-scanning guards (`docs/verification-contract.md` section 6 and the layer documents), migration lint, schema drift, documentation checks and instruction-file ceilings;
 - `.github/workflows/pr-checklist.yml`: the PR template is ticked and the linked item carries `approved-to-build`.
 
+A guard rail for Claude Code agents only: the `PreToolUse` hook `.claude/hooks/require-reliable-tests.mjs`, registered in `.claude/settings.json`, refuses an Edit, Write, MultiEdit or NotebookEdit of a test file, a test helper or a runner configuration until the session's transcript shows this skill loaded (the Skill tool, or `/reliable-tests`). Its own tests: `node --test .claude/hooks/require-reliable-tests.test.mjs` from the repository root; CI does not run them. It does not see a file written through Bash, other agents do not run it, it lets the edit through when it cannot read its input or the transcript, and it shows that the skill was loaded, not that it was followed.
+
 Not controlled today (a reviewer is the only check):
 
 - Jest has no protection against `.only`, no layer lints `.skip` or `.only`, and nothing reports a new skip.

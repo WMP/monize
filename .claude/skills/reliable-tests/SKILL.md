@@ -9,6 +9,8 @@ AI agents write most of the code and most of the tests in this repository, so on
 
 The rules themselves live in the contract documents. Cite them by ID or section; do not restate them.
 
+Every test an agent writes in this repository, including the tests for a feature it has just implemented, goes through this skill. In Claude Code, `.claude/hooks/require-reliable-tests.mjs` refuses an edit to a test file until the skill is loaded; loading it is the start, not the proof, so the steps below still apply.
+
 ## 1. Size the work first
 
 | The change | What this skill asks |
