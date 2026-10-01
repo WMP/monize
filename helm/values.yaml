@@ -321,6 +321,14 @@ backend:
   # -- Database connection settings
   # NOTE: DATABASE_USER and DATABASE_PASSWORD must be provided via a Secret.
   # Use extraEnvFrom with a secretRef, or extraEnv with valueFrom.secretKeyRef.
+  #
+  # With postgresql.provider=cnpg or zalando the chart fills all four in itself:
+  # DATABASE_HOST and DATABASE_NAME from the operator's resource, DATABASE_USER
+  # and DATABASE_PASSWORD from the Secret the operator creates for the owner.
+  # Leave DATABASE_HOST and DATABASE_NAME empty then -- the chart refuses to
+  # render a value here next to a managed database, because a second source for
+  # the host would point the credentials of one database at another. See
+  # postgresql below.
   database:
     DATABASE_HOST: ""
     DATABASE_NAME: ""
@@ -337,6 +345,16 @@ backend:
   # DatabaseRole CRD (CloudNativePG 1.30+; see helm/README.md), or the older
   # Cluster `spec.managed.roles` stanza on pre-1.30. Startup then only applies
   # the role's grants.
+  #
+  # With postgresql.provider=cnpg or zalando the chart does that provisioning
+  # when postgresql.appRole.passwordSecret is set, and fills DATABASE_APP_PASSWORD
+  # in from that Secret -- so do not also supply DATABASE_APP_PASSWORD through
+  # extraEnvFrom (the chart's entry wins over it) or extraEnv (a later entry
+  # wins over the chart's, which is only for overriding on purpose).
+  # DATABASE_APP_USER below is still the name of that role, and the chart refuses
+  # a postgresql.owner of the same name: the owner owns the tables and is exempt
+  # from row-level security, so a runtime role that was the owner would enforce
+  # nothing.
   rls:
     # off | shadow | enforce
     RLS_MODE: "off"
@@ -652,6 +670,195 @@ cluster:
   # off-machine destination's BACKUP_S3_BUCKET: the backend refuses to start
   # when the two are one location (INV-BACKUP-007).
   backupSharedVolume: false
+
+# -- PostgreSQL, run by an operator
+#
+# `external` (the default) deploys no database: backend.database.DATABASE_HOST
+# names one you run, and DATABASE_USER and DATABASE_PASSWORD come from a Secret
+# you supply through backend.extraEnvFrom. `cnpg` and `zalando` instead ask a
+# PostgreSQL *operator* to run the database, and wire the backend to it.
+#
+# The operator is NOT installed by this chart. Operators are cluster-wide and
+# ship CRDs, which a release must neither upgrade nor, on uninstall, delete from
+# under every other database on the cluster. Install CloudNativePG or the Zalando
+# postgres-operator first, from their own manifests or charts; this chart renders
+# only the one custom resource that asks it for a cluster, and the backend's
+# connection settings. `helm template` cannot know whether the operator is there:
+# without it `helm install` fails with "no matches for kind", before anything is
+# created.
+#
+# What the chart derives, so none of it is configured twice:
+#   * DATABASE_HOST   the operator's primary Service (cnpg: <clusterName>-rw,
+#                     zalando: <clusterName>), by short name. Always the primary,
+#                     which cluster.mode=multi needs: a direct session, not a
+#                     pooler and not a replica.
+#   * DATABASE_NAME   postgresql.database.
+#   * DATABASE_USER / DATABASE_PASSWORD
+#                     the owner's credentials Secret, which the operator creates.
+#                     The backend pod waits in CreateContainerConfigError until
+#                     the Secret exists, and the kubelet retries by itself, so an
+#                     install does not need to wait for the operator to finish.
+#   * DATABASE_SSL    always on; see tls below for whether the certificate is
+#                     verified.
+#
+# The operator resource carries helm.sh/resource-policy: keep. `helm uninstall`,
+# or switching provider back to external, leaves the database running; delete the
+# resource with kubectl when the data is really to go.
+#
+# Not configured by this chart: any backup of this database. The operators have
+# their own (CNPG's Barman object-store backups and scheduled backups, Spilo's
+# WAL-E/WAL-G); set one up through cnpg.spec or zalando.spec below. Replication
+# is the operator's default (asynchronous), so a failover can lose the last
+# transactions the old primary had not yet shipped. helm/README.md has a
+# PostgreSQL section.
+postgresql:
+  # -- Who runs the database: external | cnpg | zalando
+  #
+  # external: you do; backend.database.DATABASE_HOST/DATABASE_NAME and the
+  # credentials Secret are yours to supply, and every other key in this block is
+  # ignored (except that appRole.passwordSecret is refused, since it would
+  # provision nothing).
+  # cnpg: CloudNativePG, a postgresql.cnpg.io/v1 Cluster.
+  # zalando: the Zalando postgres-operator, an acid.zalan.do/v1 postgresql.
+  provider: external
+  # -- Name of the operator's resource; also names its Services and Secrets
+  #
+  # The operators append suffixes to it to build Service and Secret names (-rw,
+  # -ro, -app, -ca, -repl, ...), and a Kubernetes name is limited to 63
+  # characters, so the chart accepts at most 50: lower case letters, digits and
+  # dashes, beginning with a letter. Renaming it later is not a rename: it is a
+  # new, empty database next to the old one.
+  clusterName: monize-db
+  # -- PostgreSQL instances: one primary plus streaming replicas
+  #
+  # 2 is the smallest count that can fail over. 1 is accepted and has no
+  # failover at all: a node drain or an operator upgrade is then downtime.
+  instances: 2
+  # -- PostgreSQL major version (Monize is developed and tested on 16)
+  #
+  # Changing it on a cluster that already holds data is a major-version upgrade,
+  # which is the operator's procedure rather than a `helm upgrade` setting; read
+  # its documentation first.
+  version: "16"
+  # -- Database the operator creates
+  database: monize
+  # -- Owner role the operator creates; the backend connects as it
+  #
+  # It owns every table, so it is exempt from row-level security and must not be
+  # the runtime role: the chart refuses "postgres" and backend.rls.DATABASE_APP_USER.
+  # Lower case letters, digits and underscores. With zalando the operator names
+  # the owner's credentials Secret after the role with every "_" replaced by
+  # "-" (a Kubernetes name cannot hold one), and the chart reads it the same way.
+  owner: monize
+  # -- Storage of each PostgreSQL instance
+  storage:
+    # -- Size of each instance's volume
+    #
+    # Sized per instance, not in total: instances: 2 and 10Gi is two 10Gi
+    # volumes. Growing it later is up to the StorageClass (allowVolumeExpansion)
+    # and the operator; shrinking is not possible.
+    size: 10Gi
+    # -- StorageClass of the volumes. Empty uses the cluster default.
+    storageClass: ""
+  # -- Resources of each PostgreSQL instance
+  #
+  # Per instance, not in total. The request is what the scheduler reserves and
+  # the limit is where the kernel kills the process: shared buffers and every
+  # connection's working memory count toward it, so a limit below what the
+  # database is configured to use (postgresql.parameters in cnpg.spec or
+  # zalando.spec) ends in an OOM kill under load rather than a clean error. These
+  # numbers suit one household's data, not a shared service. Empty ({}) leaves
+  # the operator's own default.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  # -- TLS between the backend and PostgreSQL
+  #
+  # The backend always connects over TLS to a managed database. Whether it also
+  # checks WHO answered depends on having a CA to check against:
+  #   * with a CA Secret, DATABASE_SSL_REJECT_UNAUTHORIZED=true and the CA is
+  #     mounted into the backend pod, where it is trusted for the database
+  #     connection only (DATABASE_SSL_CA_FILE) and not for any other outbound
+  #     request;
+  #   * without one, DATABASE_SSL_REJECT_UNAUTHORIZED=false: encrypted, but the
+  #     server certificate is not verified, so a client on the pod network that
+  #     can answer for the Service name is not detected.
+  tls:
+    # -- Secret holding the CA that signed the server certificate
+    #
+    # cnpg: empty uses the operator's own "<clusterName>-ca", which is the CA
+    # that signs the Cluster's server certificate, so the connection is verified
+    # without configuring anything. zalando: empty means encrypted but NOT
+    # verified, because Spilo generates a self-signed certificate; to verify,
+    # have the operator serve a certificate from a CA you hold (the postgresql
+    # resource's spec.tls, which zalando.spec below can carry) and name that CA's
+    # Secret here.
+    caSecret: ""
+    # -- Key inside the CA Secret that holds the certificate
+    #
+    # Only this key is projected into the backend pod, as ca.crt. The CNPG CA
+    # Secret also holds ca.key, which signs certificates for the whole cluster and
+    # must never reach an application pod.
+    caKey: ca.crt
+  # -- The unprivileged runtime role of row-level security (backend.rls)
+  appRole:
+    # -- kubernetes.io/basic-auth Secret for that role; empty provisions none
+    #
+    # The Secret is yours to create (a password does not belong in values), with
+    # username = backend.rls.DATABASE_APP_USER (default monize_app) and a password.
+    # When set, the chart feeds its password to the backend as DATABASE_APP_PASSWORD,
+    # and:
+    #   * cnpg: declares the role in the Cluster's managed.roles, so CNPG creates
+    #     it with that password;
+    #   * zalando: gives the owner CREATEROLE, and the backend creates the role
+    #     itself at startup with that password. Zalando generates the passwords of
+    #     the roles it manages and cannot take one from a Secret.
+    # Left empty, no role is provisioned, which is right while backend.rls.RLS_MODE
+    # is off. Refused with provider external, where it would provision nothing.
+    passwordSecret: ""
+  # -- CloudNativePG settings (provider cnpg)
+  cnpg:
+    # -- PostgreSQL image. Empty uses ghcr.io/cloudnative-pg/postgresql:<version>
+    imageName: ""
+    # -- Merged over the Cluster spec the chart renders
+    #
+    # The way to reach everything the chart does not model: backup, monitoring,
+    # affinity, postgresql.parameters, minSyncReplicas, ... A map merges key by
+    # key, so naming postgresql.parameters keeps the rest of the chart's spec; a
+    # list (managed.roles, for one) replaces the chart's whole list; a scalar
+    # replaces the chart's, 0, false and "" included.
+    #
+    # It is an escape hatch, and it is not checked: the chart's refusals look at
+    # the chart's own values, not at what is merged over them. The backend still
+    # reads its host from "<clusterName>-rw" and its credentials from
+    # "<clusterName>-app", so do not use this to change the cluster's name, the
+    # database or the owner that bootstrap.initdb creates -- set
+    # postgresql.clusterName, postgresql.database and postgresql.owner instead.
+    spec: {}
+    #   postgresql:
+    #     parameters:
+    #       max_connections: "200"
+  # -- Zalando postgres-operator settings (provider zalando)
+  zalando:
+    # -- Zalando team identifier
+    #
+    # The operator requires clusterName to begin with "<teamId>-" and rejects the
+    # manifest otherwise, so the chart refuses it first, with a message that says
+    # which of the two to change.
+    teamId: monize
+    # -- Merged over the postgresql spec the chart renders (same rules as cnpg.spec)
+    #
+    # Unchecked in the same way: the backend still reads its host from
+    # "<clusterName>" and its credentials from the "<owner>.<clusterName>..."
+    # Secret, so keep teamId, users and databases consistent with
+    # postgresql.owner and postgresql.database.
+    spec: {}
+    #   postgresql:
+    #     parameters:
+    #       max_connections: "200"
 
 # -- Ingress configuration (traditional Kubernetes Ingress)
 ingress:

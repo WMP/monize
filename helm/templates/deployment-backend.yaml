@@ -84,6 +84,12 @@ spec:
         {{- end }}
     spec:
       {{- include "monize.assertClusterMode" . }}
+      {{- /*
+        The database CA, resolved once for the mount and the volume below. Empty
+        unless an operator runs the database and there is a CA to verify against
+        (see monize.databaseCaSecret).
+      */}}
+      {{- $dbCaSecret := include "monize.databaseCaSecret" . }}
       {{- with .Values.backend.topologySpreadConstraints }}
       {{- /*
         Without this, the scheduler is free to put every replica on one node,
@@ -162,6 +168,46 @@ spec:
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
+            {{- if include "monize.postgresManaged" . }}
+            {{- /*
+              The owner's credentials, read from the Secret the operator creates.
+              They sit in `env` rather than in an envFrom because an `env` entry
+              wins over `envFrom` for the same name: a DATABASE_USER or
+              DATABASE_PASSWORD left in backend.extraEnvFrom from before the
+              database moved cannot quietly point the backend at the old one.
+              backend.extraEnv follows below and, being later in this list, can
+              still override on purpose.
+
+              Not optional. The Secret does not exist until the operator has
+              bootstrapped the cluster, so the pod sits in
+              CreateContainerConfigError until then and the kubelet retries on
+              its own -- which is the right wait: starting without credentials
+              would only be a crash loop with a worse message.
+            */}}
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monize.databaseCredentialsSecret" . | quote }}
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "monize.databaseCredentialsSecret" . | quote }}
+                  key: password
+            {{- with (.Values.postgresql.appRole | default dict).passwordSecret }}
+            {{- /*
+              The password of the row-level-security runtime role, from the
+              kubernetes.io/basic-auth Secret that also provisions the role (see
+              postgresql.appRole). The role's name is backend.rls.DATABASE_APP_USER
+              in the ConfigMap; only the secret half travels here.
+            */}}
+            - name: DATABASE_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: password
+            {{- end }}
+            {{- end }}
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -207,6 +253,13 @@ spec:
             - name: attachments
               mountPath: {{ .Values.backend.attachmentContainerDir | default "/data/attachments" }}
             {{- end }}
+            {{- if $dbCaSecret }}
+            # The CA the backend verifies the database against, mounted read-only
+            # at the directory DATABASE_SSL_CA_FILE names in the ConfigMap.
+            - name: database-ca
+              mountPath: {{ include "monize.databaseCaDir" . }}
+              readOnly: true
+            {{- end }}
             {{- with .Values.backend.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -222,6 +275,17 @@ spec:
         - name: attachments
           persistentVolumeClaim:
             claimName: {{ .Values.backend.persistence.attachments.existingClaim | default "monize-backend-attachments" }}
+        {{- end }}
+        {{- if $dbCaSecret }}
+        # Only the certificate is projected, as ca.crt. The CNPG CA Secret also
+        # holds ca.key, the key that signs certificates for the whole cluster,
+        # and mounting the Secret whole would put it in an application pod.
+        - name: database-ca
+          secret:
+            secretName: {{ $dbCaSecret | quote }}
+            items:
+              - key: {{ (.Values.postgresql.tls | default dict).caKey | default "ca.crt" | quote }}
+                path: ca.crt
         {{- end }}
         {{- with .Values.backend.extraVolumes }}
         {{- toYaml . | nindent 8 }}

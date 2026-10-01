@@ -1,0 +1,25 @@
+# The CloudNativePG render the `Helm Chart Lint & Render` job checks.
+#
+# Not a recommended configuration to copy: it is the combination that exercises
+# every template and branch postgresql.provider=cnpg turns on -- the Cluster
+# resource, the host and credentials derived from it, the CA volume projected from
+# the operator's own "<clusterName>-ca", the managed role for the row-level-security
+# runtime user and its DATABASE_APP_PASSWORD, and the cnpg.spec merge. A real
+# deployment picks among these; this file is here so none of them can silently
+# stop rendering. The operator itself is not installed by the chart, so the
+# render is checked here and not applied.
+postgresql:
+  provider: cnpg
+  # Provisions the monize_app role as a managed role of the Cluster, and feeds
+  # its password to the backend. The Secret is the operator's to create
+  # (kubernetes.io/basic-auth: username monize_app, plus a password).
+  appRole:
+    passwordSecret: monize-app-role
+  cnpg:
+    # Merged over the spec the chart renders. A map keeps the chart's own keys
+    # beside it: the Cluster must still carry instances, bootstrap and storage
+    # next to this.
+    spec:
+      postgresql:
+        parameters:
+          max_connections: "200"
