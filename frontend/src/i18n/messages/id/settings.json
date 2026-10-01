@@ -964,6 +964,7 @@
     "emergencyAccess": "Akses Darurat",
     "apiAccess": "Akses API",
     "aiSettings": "Pengaturan AI",
+    "emailReceipts": "Struk Surel",
     "backupRestore": "Cadangkan & Pulihkan",
     "help": "Bantuan & Dukungan",
     "dangerZone": "Zona Berbahaya",
@@ -992,6 +993,10 @@
     "aiSettingsCard": {
       "title": "Pengaturan AI",
       "description": "Konfigurasikan penyedia AI, kelola kunci API, dan lihat statistik penggunaan."
+    },
+    "emailReceiptsCard": {
+      "title": "Struk Surel",
+      "description": "Hubungkan kotak surel untuk konfirmasi pesanan dan kelola pengurai yang membacanya."
     },
     "bankSyncCard": {
       "title": "Sinkronisasi Bank",
