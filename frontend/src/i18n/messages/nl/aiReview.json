@@ -32,6 +32,9 @@
     "transactionMissing": "Deze transactie bestaat niet meer",
     "rule": "Regel: {name}",
     "manualRequest": "Handmatig aangevraagd",
+    "emailReceipt": "E-mailbon: {subject} van {sender}",
+    "emailReceiptMissing": "E-mailbon (de e-mail is verwijderd)",
+    "viewEmailReceipts": "E-mailbonnen bekijken",
     "agentNote": "Opmerking van de assistent: {reason}",
     "dates": "Aangemaakt op {created}, verloopt op {expires}",
     "viewTransaction": "Transactie bekijken"
