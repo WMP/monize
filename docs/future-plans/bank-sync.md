@@ -120,7 +120,23 @@ reference data).
 | Frontend | the frontend gate in `AGENTS.md` | green; bundle size within budget |
 | By hand, sandbox | an Enable Banking sandbox application, the mock ASPSP | connect, link, sync twice: the second sync reports every row as skipped |
 
-## 7. Rejected alternatives
+## 7. Other providers
+
+Compared on 2026-10-01 from the Firefly III data importer documentation
+(`docs.firefly-iii.org`, "Data providers"), which supports several of them.
+A second provider is a new directory under `providers/`.
+
+| Provider | Region | Cost for personal use | Credential | Notes |
+|---|---|---|---|---|
+| Enable Banking | EEA, PSD2 | free in restricted mode (own linked accounts only) | application ID + RSA private key | the first provider here |
+| GoCardless Bank Account Data (formerly Nordigen) | EU, UK | was free, now paid | secret ID + key | the vendor is moving away from this product; not a good next provider |
+| Lunch Flow | many, through its own aggregations | paid | one API key | an aggregator of aggregators |
+| SimpleFIN | mostly US | low fee | one token per bank connection | the simplest protocol |
+| Sophtron | US, Canada, Mexico | free for personal, non-commercial use | user ID + access key | bank linked through the vendor's widget |
+| FinTS / HBCI | Germany | free, bank-native | bank login | no aggregator; a direct bank protocol |
+| teller.io, basiq.io | US / Australia | various | API keys | not yet integrated by Firefly III either |
+
+## 8. Rejected alternatives
 
 - **A `import_key` column on `transactions`.** It would put the provider's
   identity on the core table and on every transaction path. A side table keyed
