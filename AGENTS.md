@@ -194,6 +194,7 @@ Each row is a precondition, not a reading list: when the left side describes you
 | touch a balance, a holding, a transfer, a scheduled occurrence, a loan figure or any total | `docs/financial-semantics.md`, `docs/financial-calculation-contract.md`, `docs/time-series-contract.md`, and the `docs/system-invariants.md` entries you name in the PR |
 | write anything to disk, an object store, email or a third-party provider | `docs/external-side-effects.md` |
 | add a lock, a retry, an idempotency key or a cron | `docs/concurrency-and-idempotency.md`, `docs/cron-jobs.md` |
+| test new behaviour, or write or review tests | `.claude/skills/reliable-tests/SKILL.md` |
 | write a test for an invariant, or a source-scanning guard | `docs/verification-contract.md`, `docs/testing-contract.md`, `docs/guard-tests.md` |
 | change an MCP tool or the assistant's tools | `docs/backend/mcp.md`, `docs/backend/ai-and-payees.md` |
 | open a PR or ask why something was decided | `CONTRIBUTING.md`, `docs/adr/` |
