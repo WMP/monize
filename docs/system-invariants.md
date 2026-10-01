@@ -62,6 +62,7 @@ implied.
 | INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
 | INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
+| INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
@@ -346,6 +347,30 @@ Crash semantics     --
 Failure response    refused (counted per reason in the sync result)
 Required tests      Unit: planner truth table; integration: a mismatched row
                     writes nothing.
+Status              enforced
+```
+
+### INV-BANKSYNC-004 -- nothing imports an unconfirmed bank account
+
+```text
+Statement           A bank account that needs its preview (linked, and
+                    last_success_at NULL after a link or cut-off change) is
+                    imported only by the single-account sync the user confirms
+                    from the preview; the daily sync and the sync-all route skip
+                    it.
+Source of truth     bank_sync_accounts.account_id, sync_from_date,
+                    last_success_at
+Enforcement         One predicate, bankAccountNeedsPreview, read by the account
+                    view, BankSyncService.syncConnection and the daily cron;
+                    linkAccount clears last_success_at on every link or cut-off
+                    change.
+Concurrency scope   bank account
+Retry semantics     A skipped account stays skipped until the user confirms.
+Crash semantics     --
+Failure response    needs_preview entry in the sync-all answer; a log line in
+                    the cron
+Required tests      Unit (predicate, sync-all) and integration (the cron does not
+                    import a needs-preview account).
 Status              enforced
 ```
 

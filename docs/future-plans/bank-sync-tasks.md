@@ -29,7 +29,7 @@
 | BS9 | Every other locale | BS8 | none | [x] |
 | BS10 | Verify the wire format against an Enable Banking sandbox application; correct the mapper and the plan's assumption 3 | BS6 | none | [ ] |
 | BS11 | Export and restore the ledger in the backup (id remap on `account_id`, `transaction_id`) | BS6 | neutral | [ ] |
-| BS12 | Notifications: consent reminders at 30, 14, 7, 3, 2, 1, 0 days and on expiry; daily sync outcomes (`docs/specs/bank-sync-notifications.md`) | BS7 | additive | [ ] |
+| BS12 | Notifications: consent reminders at 30, 14, 7, 3, 2, 1, 0 days and on expiry; daily sync outcomes (`docs/specs/bank-sync-notifications.md`) | BS7 | additive | [x] |
 | BS13 | Pending rows: import as `UNRECONCILED`, replace when booked (needs its own spec for the match) | BS10 | additive | [ ] |
 | BS14 | A row whose counterparty is another synced account becomes a transfer | BS10 | additive | [ ] |
 | BS15 | MCP and AI tools: list connections, sync now (with confirmation) | BS6 | additive | [ ] |

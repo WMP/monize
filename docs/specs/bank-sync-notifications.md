@@ -75,7 +75,10 @@ their channels off.
 
 `BankSyncConsentReminderService`, a cron at `23 6 * * *` (UTC). The fan-out
 (`withSystemContext`) lists `active` and `expired` connections whose
-`valid_until` lies between 7 days ago and 30 days ahead. Per user, under
+`valid_until` lies between 7 days ago and 32 days ahead (the two extra days
+cover a consent that ends later in the day than the run, and timezones up to
+14 hours either side; the day count below alone decides what is owed). Per
+user, under
 `withUserContext`:
 
 - **Days left** are counted in the user's effective timezone
@@ -87,7 +90,12 @@ their channels off.
   `dedupeKey = bsc:exp:<connection id>:<valid_until date>:<t>`. A replica that
   loses the insert gets `null` from `create` and sends nothing. A renewal
   changes `valid_until`, so the next period has new keys.
-- **Expired** (`days < 0`, or the connection is `expired`):
+- **The date in a dedupe key** is the UTC date of `valid_until`, so a user
+  who changes timezone mid-period does not mint new keys. `data.validUntil`
+  is the date in the user's zone on a reminder and the UTC date on an expiry
+  notice.
+- **Expired** (`valid_until` has passed, even earlier the same day, or the
+  connection is `expired`):
   `dedupeKey = bsc:expd:<connection id>:<valid_until date>`. The cron also
   moves an `active` connection whose `valid_until` has passed to `expired`
   with a conditional `UPDATE ... WHERE status = 'active' AND valid_until <
@@ -104,16 +112,27 @@ on 03-25 to 2027-09-21: no further reminder for the old period, the next on
 
 Written by the daily cron after each user's run, once per connection:
 
-- `BANK_SYNC_IMPORTED` per the success mode, with `data` = `{ connectionId,
-  institutionName, imported, skipped, accounts }`. Dedupe key
+- `BANK_SYNC_IMPORTED` per the success mode, written only when at least one
+  account synced, with `data` = `{ connectionId, institutionName, imported,
+  skipped, accounts }` (`accounts` is the number of accounts that synced). Dedupe key
   `bsc:imp:<connection id>:<UTC date>`.
 - `BANK_SYNC_FAILED` when one or more accounts failed for a reason other than
   an ended consent, with `data.failures` = `[{ bankAccountId, label, code }]`
-  (the masked identifier or the bank's label, never a full account number).
+  (the bank's label, else the masked identifier; a label shaped like an
+  account number, eight or more digits, is replaced by the masked
+  identifier).
   Dedupe key `bsc:fail:<connection id>:<UTC date>`.
 - A `session_expired` failure writes `BANK_SYNC_CONSENT_EXPIRED` with the
   expired key of section 4, so the user gets one expiry notice, whichever
-  path saw it first.
+  path saw it first, and the cron stops reading that connection's other
+  accounts, which would only fail the same way.
+- An account that needs its preview (`docs/specs/bank-sync.md` section 7a) is
+  skipped and logged, with no notification: its card already says so.
+- An account whose sync lost the per-account lease to another sync (a manual
+  sync running) is skipped without a failure.
+- Failure codes in `data.failures`: the provider error kinds, `credentials`
+  (unreadable or refused credentials; `unauthorized` is reported as this),
+  `refused` and `unexpected`.
 
 Every row: `target = /settings/bank-sync`. `data` holds facts (dates,
 counts, codes), never "in 3 days" text, so the client renders it in the

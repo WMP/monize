@@ -405,6 +405,10 @@ bank account of that user in turn; one account's failure is recorded on that
 account and the loop continues. Two replicas therefore sync each user once a
 day.
 
+It skips a bank account that needs its preview (section 7a) and, after each
+user's run, writes the outcome notifications of
+[`bank-sync-notifications.md`](./bank-sync-notifications.md) section 5.
+
 ## 9. API
 
 All routes: `@Controller("bank-sync")`, `AuthGuard("jwt")`, owner only (no
@@ -423,7 +427,7 @@ fields.
 | `POST /bank-sync/connections` | `{ institutionName, country, psuType }` | `{ connectionId, authorizationUrl }` |
 | `POST /bank-sync/connections/:id/reauthorize` | | `{ connectionId, authorizationUrl }` |
 | `POST /bank-sync/callback` | `{ state, code?, error?, errorDescription? }` | `{ connection, linked, suggestions }` (section 5a) |
-| `PATCH /bank-sync/connections/:id` | `{ autoSync }` | the connection |
+| `PATCH /bank-sync/connections/:id` | `{ autoSync?, notifySuccess? }` | the connection; an omitted field keeps its value |
 | `DELETE /bank-sync/connections/:id` | | 204 |
 | `POST /bank-sync/connections/:id/match` | | the connection, with `{ linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
