@@ -1119,24 +1119,54 @@ describe("BankSyncConnectionsService", () => {
       connectionRepo.findOne.mockResolvedValue(
         connectionRow({ autoSync: false }),
       );
-      const view = await service.updateConnection(
-        USER_ID,
-        CONNECTION_ID,
-        false,
-      );
+      const view = await service.updateConnection(USER_ID, CONNECTION_ID, {
+        autoSync: false,
+      });
       expect(manager.query.mock.calls[0][1]).toEqual([
         CONNECTION_ID,
         USER_ID,
         false,
+        null,
       ]);
       expect(view.autoSync).toBe(false);
+    });
+
+    it("sets only the success mode when only that is sent, and returns it", async () => {
+      manager.query.mockResolvedValue(tuple([{ id: CONNECTION_ID }]));
+      connectionRepo.findOne.mockResolvedValue(
+        connectionRow({ notifySuccess: "never" }),
+      );
+      const view = await service.updateConnection(USER_ID, CONNECTION_ID, {
+        notifySuccess: "never",
+      });
+      // COALESCE over the stored value: an omitted field passes NULL and keeps
+      // what the row holds, so one setting never resets the other.
+      expect(String(manager.query.mock.calls[0][0])).toContain(
+        "auto_sync = COALESCE($3, auto_sync)",
+      );
+      expect(manager.query.mock.calls[0][1]).toEqual([
+        CONNECTION_ID,
+        USER_ID,
+        null,
+        "never",
+      ]);
+      expect(view.notifySuccess).toBe("never");
     });
 
     it("is 404 for a connection that is not the caller's", async () => {
       manager.query.mockResolvedValue(tuple([]));
       await expect(
-        service.updateConnection(OTHER_USER_ID, CONNECTION_ID, true),
+        service.updateConnection(OTHER_USER_ID, CONNECTION_ID, {
+          autoSync: true,
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("refuses a patch that changes nothing, before any write", async () => {
+      await expect(
+        service.updateConnection(USER_ID, CONNECTION_ID, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(manager.query).not.toHaveBeenCalled();
     });
   });
 

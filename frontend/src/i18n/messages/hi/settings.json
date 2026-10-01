@@ -355,7 +355,9 @@
         "SYSTEM": "सिस्टम अलर्ट",
         "BALANCES": "खाता शेष",
         "INVESTMENTS": "निवेश मूल्य",
-        "STRATEGIES": "रणनीति संकेत"
+        "STRATEGIES": "रणनीति संकेत",
+        "BANK_SYNC": "बैंक कनेक्शन",
+        "BANK_SYNC_ACTIVITY": "बैंक सिंक के परिणाम"
       },
       "channelNotApplicable": "इस सूचना प्रकार के लिए लागू नहीं",
       "emailToggleLabel": "{category} के लिए रिपोर्ट ईमेल",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}। {suggested}",
       "matchNone": "कोई बैंक खाता नहीं जोड़ा गया: किसी की खाता संख्या आपके किसी खाते से मेल नहीं खाती।",
       "matchFailed": "बैंक खातों का मिलान नहीं हो सका",
-      "syncAllNeedsPreview": "सभी सिंक करें तब तक रुका रहता है जब तक नए जोड़े गए हर खाते का पहला आयात पुष्ट नहीं हो जाता। पूर्वावलोकन देखने के लिए उस खाते पर \"अभी सिंक करें\" का उपयोग करें।"
+      "syncAllNeedsPreview": "सभी सिंक करें तब तक रुका रहता है जब तक नए जोड़े गए हर खाते का पहला आयात पुष्ट नहीं हो जाता। पूर्वावलोकन देखने के लिए उस खाते पर \"अभी सिंक करें\" का उपयोग करें।",
+      "notifySuccess": "दैनिक सिंक के बाद सूचित करें",
+      "notifySuccessOptions": {
+        "always": "हर सिंक के बाद",
+        "when_imported": "केवल तब जब लेन-देन आयात हुए हों",
+        "never": "कभी नहीं"
+      },
+      "notifySuccessSaved": "सूचना सेटिंग सहेजी गई",
+      "notifySuccessFailed": "सूचना सेटिंग बदली नहीं जा सकी"
     },
     "account": {
       "unnamed": "बिना नाम का बैंक खाता",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# अज्ञात दिशा वाला} other {# अज्ञात दिशा वाले}}",
         "currency_mismatch": "{count, plural, one {# दूसरी मुद्रा में} other {# दूसरी मुद्रा में}}",
         "other": "{count, plural, one {# अन्य कारण से} other {# अन्य कारण से}}"
-      }
+      },
+      "needsPreview": "{accounts} का पूर्वावलोकन खोलें और पहले आयात की पुष्टि करें",
+      "withNeedsPreview": "{message}। {needsPreview}"
     },
     "callback": {
       "title": "आपका बैंक कनेक्ट हो रहा है",

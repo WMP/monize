@@ -9,7 +9,10 @@ import {
   BANK_SYNC_DEFAULT_PROVIDER,
 } from "./bank-sync.constants";
 import type { BankSyncProviderName } from "./bank-sync.constants";
-import { toBankSyncException } from "./bank-sync-errors";
+import {
+  BankSyncCredentialsUnavailableException,
+  toBankSyncException,
+} from "./bank-sync-errors";
 import type { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
 import { BankSyncCredential } from "./entities/bank-sync-credential.entity";
 import type {
@@ -191,7 +194,7 @@ export class BankSyncCredentialsService {
       }),
     );
     if (!row) {
-      throw new BadRequestException(
+      throw new BankSyncCredentialsUnavailableException(
         tr(
           "errors.bankSync.credentialsRequired",
           "Enter your provider application id and private key in the bank sync settings first.",
@@ -208,7 +211,7 @@ export class BankSyncCredentialsService {
         `Bank sync credentials for user ${userId} could not be decrypted; ` +
           "they have to be entered again.",
       );
-      throw new BadRequestException(
+      throw new BankSyncCredentialsUnavailableException(
         tr(
           "errors.bankSync.credentialsUnreadable",
           "The stored private key can no longer be read on this server. Enter the application id and the private key again.",

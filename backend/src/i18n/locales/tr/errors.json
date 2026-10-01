@@ -703,6 +703,8 @@
     "providerRejected": "Banka senkronizasyonu sağlayıcısı isteği reddetti: {{ detail }}",
     "providerUnavailable": "Banka senkronizasyonu sağlayıcısı yanıt vermedi. Hiçbir şey değiştirilmedi; daha sonra tekrar deneyin.",
     "providerInvalidResponse": "Banka senkronizasyonu sağlayıcısı, Monize'nin bu sürümünün anlamadığı bir yanıt gönderdi.",
-    "planChanged": "Bankanın verileri önizlemeden sonra değişti. Hiçbir şey içe aktarılmadı; önizlemeyi yeniden oluşturun."
+    "planChanged": "Bankanın verileri önizlemeden sonra değişti. Hiçbir şey içe aktarılmadı; önizlemeyi yeniden oluşturun.",
+    "needsPreview": "Bu banka hesabının önizlemesini açın ve otomatik olarak senkronize edilmeden önce ilk içe aktarmayı onaylayın.",
+    "nothingToUpdate": "Bir banka bağlantısını değiştirmek için autoSync veya notifySuccess gönderin."
   }
 }

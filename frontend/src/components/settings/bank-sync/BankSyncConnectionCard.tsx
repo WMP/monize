@@ -7,6 +7,7 @@ import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { bankSyncApi } from '@/lib/bank-sync';
@@ -14,9 +15,11 @@ import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
 import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
 import { getErrorMessage } from '@/lib/errors';
 import type { Account } from '@/types/account';
-import type {
-  BankSyncConnection,
-  BankSyncConnectionStatus,
+import {
+  BANK_SYNC_NOTIFY_SUCCESS_MODES,
+  type BankSyncConnection,
+  type BankSyncConnectionStatus,
+  type BankSyncNotifySuccessMode,
 } from '@/types/bank-sync';
 import { BankSyncAccountRow } from './BankSyncAccountRow';
 import { useBankSyncToast } from './useBankSyncToast';
@@ -76,11 +79,19 @@ export function BankSyncConnectionCard({
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
+  const [notifySuccess, setNotifySuccess] = useState(connection.notifySuccess);
+  const [savingNotifySuccess, setSavingNotifySuccess] = useState(false);
+
   // The server's value wins whenever a reload brings a different one.
   const [seenAutoSync, setSeenAutoSync] = useState(connection.autoSync);
   if (seenAutoSync !== connection.autoSync) {
     setSeenAutoSync(connection.autoSync);
     setAutoSync(connection.autoSync);
+  }
+  const [seenNotifySuccess, setSeenNotifySuccess] = useState(connection.notifySuccess);
+  if (seenNotifySuccess !== connection.notifySuccess) {
+    setSeenNotifySuccess(connection.notifySuccess);
+    setNotifySuccess(connection.notifySuccess);
   }
 
   const validUntilMs = connection.validUntil ? Date.parse(connection.validUntil) : NaN;
@@ -137,6 +148,24 @@ export function BankSyncConnectionCard({
       toast.error(getErrorMessage(error, t('autoSyncFailed')));
     } finally {
       setSavingAutoSync(false);
+    }
+  };
+
+  // Saved as soon as it changes, and put back to the value it replaced when the
+  // server refuses, so the control never shows a setting the server does not hold.
+  const handleNotifySuccess = async (next: BankSyncNotifySuccessMode) => {
+    if (savingNotifySuccess || next === notifySuccess) return;
+    const previous = notifySuccess;
+    setNotifySuccess(next);
+    setSavingNotifySuccess(true);
+    try {
+      await bankSyncApi.updateConnection(connection.id, { notifySuccess: next });
+      toast.success(t('notifySuccessSaved'));
+    } catch (error) {
+      setNotifySuccess(previous);
+      toast.error(getErrorMessage(error, t('notifySuccessFailed')));
+    } finally {
+      setSavingNotifySuccess(false);
     }
   };
 
@@ -306,6 +335,24 @@ export function BankSyncConnectionCard({
           <span className="text-sm text-gray-700 dark:text-gray-300">
             {t('autoSync')}
           </span>
+        </div>
+      )}
+
+      {showAutoSync && (
+        <div className="mt-3 max-w-md">
+          <Select
+            id={`notify-success-${connection.id}`}
+            label={t('notifySuccess')}
+            value={notifySuccess}
+            onChange={(event) =>
+              void handleNotifySuccess(event.target.value as BankSyncNotifySuccessMode)
+            }
+            disabled={disabled || savingNotifySuccess}
+            options={BANK_SYNC_NOTIFY_SUCCESS_MODES.map((mode) => ({
+              value: mode,
+              label: t(`notifySuccessOptions.${mode}`),
+            }))}
+          />
         </div>
       )}
 

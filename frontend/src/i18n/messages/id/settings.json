@@ -355,7 +355,9 @@
         "SYSTEM": "Peringatan sistem",
         "BALANCES": "Saldo akun",
         "INVESTMENTS": "Nilai investasi",
-        "STRATEGIES": "Sinyal strategi"
+        "STRATEGIES": "Sinyal strategi",
+        "BANK_SYNC": "Koneksi bank",
+        "BANK_SYNC_ACTIVITY": "Hasil sinkronisasi bank"
       },
       "channelNotApplicable": "Tidak berlaku untuk jenis notifikasi ini",
       "emailToggleLabel": "Email laporan untuk {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Tidak ada rekening bank yang ditautkan: tidak ada yang nomornya cocok dengan salah satu akun Anda.",
       "matchFailed": "Rekening bank tidak dapat dicocokkan",
-      "syncAllNeedsPreview": "Sinkronkan semua menunggu sampai impor pertama setiap akun yang baru ditautkan dikonfirmasi. Gunakan Sinkronkan sekarang pada akun itu untuk melihat pratinjau."
+      "syncAllNeedsPreview": "Sinkronkan semua menunggu sampai impor pertama setiap akun yang baru ditautkan dikonfirmasi. Gunakan Sinkronkan sekarang pada akun itu untuk melihat pratinjau.",
+      "notifySuccess": "Beri tahu setelah sinkronisasi harian",
+      "notifySuccessOptions": {
+        "always": "Setelah setiap sinkronisasi",
+        "when_imported": "Hanya jika ada transaksi yang diimpor",
+        "never": "Tidak pernah"
+      },
+      "notifySuccessSaved": "Pengaturan notifikasi disimpan",
+      "notifySuccessFailed": "Tidak dapat mengubah pengaturan notifikasi"
     },
     "account": {
       "unnamed": "Rekening bank tanpa nama",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {# dengan arah tidak diketahui}}",
         "currency_mismatch": "{count, plural, other {# dalam mata uang lain}}",
         "other": "{count, plural, other {# karena alasan lain}}"
-      }
+      },
+      "needsPreview": "Buka pratinjau untuk {accounts} dan konfirmasikan impor pertama",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Menghubungkan bank Anda",

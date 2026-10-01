@@ -17,6 +17,7 @@ import {
   SECONDS_PER_DAY,
 } from "./bank-sync.constants";
 import type {
+  BankSyncNotifySuccessMode,
   BankSyncPsuType,
   BankSyncProviderName,
 } from "./bank-sync.constants";
@@ -451,19 +452,42 @@ export class BankSyncConnectionsService {
     });
   }
 
+  /**
+   * Change the settings of a connection: whether the daily sync reads it and
+   * when that sync reports a successful run. Only the fields present are
+   * written (`COALESCE` over the stored value, one statement), and a patch with
+   * none is refused.
+   */
   async updateConnection(
     userId: string,
     connectionId: string,
-    autoSync: boolean,
+    patch: {
+      autoSync?: boolean;
+      notifySuccess?: BankSyncNotifySuccessMode;
+    },
   ): Promise<BankSyncConnectionView> {
+    if (patch.autoSync === undefined && patch.notifySuccess === undefined) {
+      throw new BadRequestException(
+        tr(
+          "errors.bankSync.nothingToUpdate",
+          "Send autoSync or notifySuccess to change a bank connection.",
+        ),
+      );
+    }
     const updated = await withScopedDb(this.dataSource, async (m) =>
       returnedRows<{ id: string }>(
         await m.query(
           `UPDATE bank_sync_connections
-              SET auto_sync = $3
+              SET auto_sync = COALESCE($3, auto_sync),
+                  notify_success = COALESCE($4, notify_success)
             WHERE id = $1 AND user_id = $2
         RETURNING id`,
-          [connectionId, userId, autoSync],
+          [
+            connectionId,
+            userId,
+            patch.autoSync ?? null,
+            patch.notifySuccess ?? null,
+          ],
         ),
       ),
     );

@@ -355,7 +355,9 @@
         "SYSTEM": "系統警示",
         "BALANCES": "帳戶餘額",
         "INVESTMENTS": "投資價值",
-        "STRATEGIES": "策略訊號"
+        "STRATEGIES": "策略訊號",
+        "BANK_SYNC": "銀行連線",
+        "BANK_SYNC_ACTIVITY": "銀行同步結果"
       },
       "channelNotApplicable": "不適用於此通知類型",
       "emailToggleLabel": "{category} 的報告郵件",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}。{suggested}",
       "matchNone": "沒有關聯任何銀行帳戶：沒有帳號與您的科目相符。",
       "matchFailed": "無法比對銀行帳戶",
-      "syncAllNeedsPreview": "在每個新關聯科目的首次匯入獲得確認之前，無法使用「全部同步」。請在該科目上使用「立即同步」開啟預覽。"
+      "syncAllNeedsPreview": "在每個新關聯科目的首次匯入獲得確認之前，無法使用「全部同步」。請在該科目上使用「立即同步」開啟預覽。",
+      "notifySuccess": "每日同步後通知",
+      "notifySuccessOptions": {
+        "always": "每次同步後",
+        "when_imported": "僅在匯入了交易時",
+        "never": "從不"
+      },
+      "notifySuccessSaved": "已儲存通知設定",
+      "notifySuccessFailed": "無法變更通知設定"
     },
     "account": {
       "unnamed": "未命名的銀行帳戶",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {# 筆方向未知}}",
         "currency_mismatch": "{count, plural, other {# 筆使用其他貨幣}}",
         "other": "{count, plural, other {# 筆因其他原因}}"
-      }
+      },
+      "needsPreview": "請開啟 {accounts} 的預覽並確認首次匯入",
+      "withNeedsPreview": "{message}。{needsPreview}"
     },
     "callback": {
       "title": "正在連接您的銀行",

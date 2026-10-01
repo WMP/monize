@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   groupRefusalReasons,
   isBankSyncFailure,
+  isNeedsPreviewFailure,
   syncedResults,
   totalRefused,
   totalSyncResults,
@@ -51,7 +52,28 @@ export function useBankSyncToast() {
       }
 
       const results = syncedResults(entries);
-      const failures = entries.filter(isBankSyncFailure);
+      // An account waiting for its preview was not synced and did not fail: it
+      // gets its own sentence naming what to do, not the "could not sync" list.
+      const allFailures = entries.filter(isBankSyncFailure);
+      const awaitingPreview = allFailures.filter(isNeedsPreviewFailure);
+      const failures = allFailures.filter((failure) => !isNeedsPreviewFailure(failure));
+      const nameOf = (bankAccountId: string): string => {
+        const bankAccount = accounts.find((candidate) => candidate.id === bankAccountId);
+        return (
+          bankAccount?.displayName || bankAccount?.identifierMasked || tAccount('unnamed')
+        );
+      };
+      const needsPreview =
+        awaitingPreview.length === 0
+          ? null
+          : t('needsPreview', {
+              accounts: listFormat.format(
+                awaitingPreview.map((entry) => nameOf(entry.bankAccountId)),
+              ),
+            });
+      // Appended to whatever the sync of the other accounts reported.
+      const withPreview = (message: string): string =>
+        needsPreview === null ? message : t('withNeedsPreview', { message, needsPreview });
       const totals = totalSyncResults(results);
       const refusedCount = totalRefused(totals.refused);
       const summary = t('summary', {
@@ -72,30 +94,34 @@ export function useBankSyncToast() {
             });
 
       if (failures.length === 0) {
-        if (refusedCount === 0) {
-          toast.success(summary);
+        // Nothing synced and nothing failed: only accounts waiting for their
+        // preview. That is a prompt, not a result with counts.
+        if (results.length === 0 && needsPreview !== null) {
+          toast(needsPreview, { duration: 8000 });
+        } else if (refusedCount === 0) {
+          // A prompt to act appended to a success stays up long enough to read.
+          if (needsPreview === null) toast.success(summary);
+          else toast.success(withPreview(summary), { duration: 8000 });
         } else {
-          toast.error(summaryText, { duration: 8000 });
+          toast.error(withPreview(summaryText), { duration: 8000 });
         }
         return;
       }
 
       const failedList = listFormat.format(
-        failures.map((failure) => {
-          const bankAccount = accounts.find((candidate) => candidate.id === failure.bankAccountId);
-          return t('failedAccountItem', {
-            account:
-              bankAccount?.displayName ||
-              bankAccount?.identifierMasked ||
-              tAccount('unnamed'),
+        failures.map((failure) =>
+          t('failedAccountItem', {
+            account: nameOf(failure.bankAccountId),
             message: failure.error.message,
-          });
-        }),
+          }),
+        ),
       );
       toast.error(
-        results.length === 0
-          ? t('allFailed', { accounts: failedList })
-          : t('partialFailure', { summary: summaryText, accounts: failedList }),
+        withPreview(
+          results.length === 0
+            ? t('allFailed', { accounts: failedList })
+            : t('partialFailure', { summary: summaryText, accounts: failedList }),
+        ),
         { duration: 10000 },
       );
     },

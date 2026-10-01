@@ -16,6 +16,15 @@ export type BankSyncConnectionStatus =
 /** The outcome of the last sync of one bank account. */
 export type BankSyncAccountSyncStatus = 'succeeded' | 'failed';
 
+/**
+ * When the daily sync of a connection reports a successful run
+ * (`docs/specs/bank-sync-notifications.md` section 3): after every run, only
+ * when transactions were imported, or never. Failures and consent reminders do
+ * not depend on it. Mirrors the column's CHECK.
+ */
+export const BANK_SYNC_NOTIFY_SUCCESS_MODES = ['always', 'when_imported', 'never'] as const;
+export type BankSyncNotifySuccessMode = (typeof BANK_SYNC_NOTIFY_SUCCESS_MODES)[number];
+
 /** Whose account the consent is for. */
 export type BankSyncPsuType = 'personal' | 'business';
 
@@ -102,6 +111,8 @@ export interface BankSyncConnection {
   status: BankSyncConnectionStatus;
   validUntil: string | null;
   autoSync: boolean;
+  /** When the daily sync reports a successful run. */
+  notifySuccess: BankSyncNotifySuccessMode;
   lastError: string | null;
   createdAt: string;
   accounts: BankSyncAccount[];
@@ -126,8 +137,10 @@ export interface BankSyncCallbackPayload {
   errorDescription?: string;
 }
 
+/** Send only the setting that changed; the server leaves the other as it is. */
 export interface UpdateBankSyncConnection {
-  autoSync: boolean;
+  autoSync?: boolean;
+  notifySuccess?: BankSyncNotifySuccessMode;
 }
 
 export interface UpdateBankSyncAccount {
@@ -247,8 +260,10 @@ export interface BankSyncResult {
 /**
  * One linked bank account that could not be synced, inside the answer to "sync
  * every account of a connection". `error.code` is a stable machine code (the
- * provider's error kind, `refused` or `unexpected`); `error.message` is the
- * server's translated, safe-to-show sentence.
+ * provider's error kind, `credentials`, `refused` or `unexpected`, or
+ * `needs_preview` for an account the sync skipped because its first import has
+ * not been confirmed from the preview); `error.message` is the server's
+ * translated, safe-to-show sentence.
  */
 export interface BankSyncFailure {
   bankAccountId: string;

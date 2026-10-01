@@ -170,14 +170,20 @@ export class BankSyncController {
 
   @Patch("connections/:id")
   @DemoRestricted()
-  @ApiOperation({ summary: "Turn the daily sync of a connection on or off" })
+  @ApiOperation({
+    summary:
+      "Turn the daily sync of a connection on or off, or set when it reports success",
+  })
   @ApiParam({ name: "id", description: "Connection ID" })
   updateConnection(
     @Request() req: AuthedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateBankSyncConnectionDto,
   ): Promise<BankSyncConnectionView> {
-    return this.connections.updateConnection(req.user.id, id, dto.autoSync);
+    return this.connections.updateConnection(req.user.id, id, {
+      autoSync: dto.autoSync,
+      notifySuccess: dto.notifySuccess,
+    });
   }
 
   @Delete("connections/:id")

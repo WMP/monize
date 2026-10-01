@@ -355,7 +355,9 @@
         "SYSTEM": "System alerts",
         "BALANCES": "Account balances",
         "INVESTMENTS": "Investment value",
-        "STRATEGIES": "Strategy signals"
+        "STRATEGIES": "Strategy signals",
+        "BANK_SYNC": "Bank connections",
+        "BANK_SYNC_ACTIVITY": "Bank sync results"
       },
       "channelNotApplicable": "Not applicable for this notification type",
       "emailToggleLabel": "Report email for {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "No bank account was linked: none has an account number that matches one of your accounts.",
       "matchFailed": "Could not match the bank accounts",
-      "syncAllNeedsPreview": "Sync all waits until the first import of each newly linked account is confirmed. Use Sync now on that account to preview it."
+      "syncAllNeedsPreview": "Sync all waits until the first import of each newly linked account is confirmed. Use Sync now on that account to preview it.",
+      "notifySuccess": "Notify after the daily sync",
+      "notifySuccessOptions": {
+        "always": "After every sync",
+        "when_imported": "Only when transactions were imported",
+        "never": "Never"
+      },
+      "notifySuccessSaved": "Notification setting saved",
+      "notifySuccessFailed": "Could not change the notification setting"
     },
     "account": {
       "unnamed": "Unnamed bank account",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# with an unknown direction} other {# with an unknown direction}}",
         "currency_mismatch": "{count, plural, one {# in another currency} other {# in another currency}}",
         "other": "{count, plural, one {# for another reason} other {# for another reason}}"
-      }
+      },
+      "needsPreview": "Open the preview for {accounts} and confirm the first import",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Connecting your bank",

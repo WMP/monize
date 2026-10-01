@@ -37,6 +37,22 @@ export type BankSyncLastSyncStatus =
   (typeof BANK_SYNC_LAST_SYNC_STATUSES)[number];
 
 /**
+ * How the daily sync reports a successful run on a connection (docs/specs/
+ * bank-sync-notifications.md section 3): `always` after every run, even one that
+ * imported nothing; `when_imported` only when rows were imported; `never` not at
+ * all. Failures and consent reminders do not depend on it.
+ */
+export const BANK_SYNC_NOTIFY_SUCCESS_MODES = [
+  "always",
+  "when_imported",
+  "never",
+] as const;
+export type BankSyncNotifySuccessMode =
+  (typeof BANK_SYNC_NOTIFY_SUCCESS_MODES)[number];
+export const BANK_SYNC_DEFAULT_NOTIFY_SUCCESS: BankSyncNotifySuccessMode =
+  "when_imported";
+
+/**
  * The provider a connection is made through when the request does not name one.
  * The API takes no provider parameter in the first release: one provider, so
  * one credentials row per user (docs/specs/bank-sync.md section 4).

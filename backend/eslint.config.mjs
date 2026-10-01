@@ -66,6 +66,12 @@ const WITH_CONTEXT_ALLOWLIST = [
   // day and syncs that user's linked bank accounts. No request behind it
   // (docs/specs/bank-sync.md section 8).
   "src/bank-sync/bank-sync-cron.service.ts",
+  // Daily consent reminders: a system-context fan-out over the connections
+  // whose consent ends within the window (and the users' timezones), then a
+  // per-user body (withUserContext) that writes the reminder or expiry notice and
+  // moves an elapsed `active` connection to `expired`. No request behind it
+  // (docs/specs/bank-sync-notifications.md section 4).
+  "src/bank-sync/bank-sync-consent-reminder.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
   // Daily portfolio-movement cron: a system-context fan-out over users with a

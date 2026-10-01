@@ -355,7 +355,9 @@
         "SYSTEM": "시스템 알림",
         "BALANCES": "계좌 잔액",
         "INVESTMENTS": "투자 가치",
-        "STRATEGIES": "전략 신호"
+        "STRATEGIES": "전략 신호",
+        "BANK_SYNC": "은행 연결",
+        "BANK_SYNC_ACTIVITY": "은행 동기화 결과"
       },
       "channelNotApplicable": "이 알림 유형에는 해당되지 않습니다",
       "emailToggleLabel": "{category} 보고서 이메일",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "연결된 은행 계정이 없습니다: 계정 번호가 내 계정과 일치하는 것이 없습니다.",
       "matchFailed": "은행 계정을 매칭하지 못했습니다",
-      "syncAllNeedsPreview": "새로 연결한 각 계정의 첫 번째 가져오기를 확인하기 전에는 '모두 동기화'를 사용할 수 없습니다. 해당 계정의 '지금 동기화'로 미리보기를 여세요."
+      "syncAllNeedsPreview": "새로 연결한 각 계정의 첫 번째 가져오기를 확인하기 전에는 '모두 동기화'를 사용할 수 없습니다. 해당 계정의 '지금 동기화'로 미리보기를 여세요.",
+      "notifySuccess": "일일 동기화 후 알림",
+      "notifySuccessOptions": {
+        "always": "동기화할 때마다",
+        "when_imported": "거래를 가져왔을 때만",
+        "never": "안 함"
+      },
+      "notifySuccessSaved": "알림 설정을 저장했습니다",
+      "notifySuccessFailed": "알림 설정을 변경하지 못했습니다"
     },
     "account": {
       "unnamed": "이름 없는 은행 계정",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {방향을 알 수 없음 #건}}",
         "currency_mismatch": "{count, plural, other {다른 통화 #건}}",
         "other": "{count, plural, other {기타 사유 #건}}"
-      }
+      },
+      "needsPreview": "{accounts}의 미리보기를 열어 첫 번째 가져오기를 확인하세요",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "은행에 연결하는 중",

@@ -12,6 +12,7 @@ import {
 import { User } from "../../users/entities/user.entity";
 import type {
   BankSyncConnectionStatus,
+  BankSyncNotifySuccessMode,
   BankSyncProviderName,
   BankSyncPsuType,
 } from "../bank-sync.constants";
@@ -89,6 +90,15 @@ export class BankSyncConnection {
 
   @Column({ type: "boolean", name: "auto_sync", default: true })
   autoSync: boolean;
+
+  /** How the daily sync reports a successful run (spec bank-sync-notifications section 3). */
+  @Column({
+    type: "varchar",
+    name: "notify_success",
+    length: 20,
+    default: "when_imported",
+  })
+  notifySuccess: BankSyncNotifySuccessMode;
 
   @Column({ type: "varchar", name: "last_error", length: 500, nullable: true })
   lastError: string | null;

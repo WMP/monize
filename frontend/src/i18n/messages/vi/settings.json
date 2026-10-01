@@ -355,7 +355,9 @@
         "SYSTEM": "Cảnh báo hệ thống",
         "BALANCES": "Số dư tài khoản",
         "INVESTMENTS": "Giá trị đầu tư",
-        "STRATEGIES": "Tín hiệu chiến lược"
+        "STRATEGIES": "Tín hiệu chiến lược",
+        "BANK_SYNC": "Kết nối ngân hàng",
+        "BANK_SYNC_ACTIVITY": "Kết quả đồng bộ ngân hàng"
       },
       "channelNotApplicable": "Không áp dụng cho loại thông báo này",
       "emailToggleLabel": "Email báo cáo cho {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Không có tài khoản ngân hàng nào được liên kết: không tài khoản nào có số khớp với tài khoản của bạn.",
       "matchFailed": "Không thể ghép các tài khoản ngân hàng",
-      "syncAllNeedsPreview": "Đồng bộ tất cả sẽ chờ đến khi lần nhập đầu tiên của mỗi tài khoản mới liên kết được xác nhận. Hãy dùng Đồng bộ ngay trên tài khoản đó để xem trước."
+      "syncAllNeedsPreview": "Đồng bộ tất cả sẽ chờ đến khi lần nhập đầu tiên của mỗi tài khoản mới liên kết được xác nhận. Hãy dùng Đồng bộ ngay trên tài khoản đó để xem trước.",
+      "notifySuccess": "Thông báo sau lần đồng bộ hằng ngày",
+      "notifySuccessOptions": {
+        "always": "Sau mỗi lần đồng bộ",
+        "when_imported": "Chỉ khi có giao dịch được nhập",
+        "never": "Không bao giờ"
+      },
+      "notifySuccessSaved": "Đã lưu cài đặt thông báo",
+      "notifySuccessFailed": "Không thể thay đổi cài đặt thông báo"
     },
     "account": {
       "unnamed": "Tài khoản ngân hàng chưa đặt tên",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {# giao dịch không rõ chiều}}",
         "currency_mismatch": "{count, plural, other {# giao dịch bằng loại tiền tệ khác}}",
         "other": "{count, plural, other {# giao dịch vì lý do khác}}"
-      }
+      },
+      "needsPreview": "Mở bản xem trước của {accounts} và xác nhận lần nhập đầu tiên",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Đang kết nối ngân hàng của bạn",

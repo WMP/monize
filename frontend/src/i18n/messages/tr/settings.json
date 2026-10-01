@@ -355,7 +355,9 @@
         "SYSTEM": "Sistem uyarıları",
         "BALANCES": "Hesap bakiyeleri",
         "INVESTMENTS": "Yatırım değeri",
-        "STRATEGIES": "Strateji sinyalleri"
+        "STRATEGIES": "Strateji sinyalleri",
+        "BANK_SYNC": "Banka bağlantıları",
+        "BANK_SYNC_ACTIVITY": "Banka senkronizasyonu sonuçları"
       },
       "channelNotApplicable": "Bu bildirim türü için geçerli değil",
       "emailToggleLabel": "{category} için rapor e-postası",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Hiçbir banka hesabı bağlanmadı: hiçbirinin hesap numarası hesaplarınızdan biriyle eşleşmiyor.",
       "matchFailed": "Banka hesapları eşleştirilemedi",
-      "syncAllNeedsPreview": "Tümünü senkronize et, yeni bağlanan her hesabın ilk içe aktarması onaylanana kadar bekler. Önizlemeyi açmak için o hesapta Şimdi senkronize et düğmesini kullanın."
+      "syncAllNeedsPreview": "Tümünü senkronize et, yeni bağlanan her hesabın ilk içe aktarması onaylanana kadar bekler. Önizlemeyi açmak için o hesapta Şimdi senkronize et düğmesini kullanın.",
+      "notifySuccess": "Günlük senkronizasyondan sonra bildir",
+      "notifySuccessOptions": {
+        "always": "Her senkronizasyondan sonra",
+        "when_imported": "Yalnızca işlemler içe aktarıldığında",
+        "never": "Hiçbir zaman"
+      },
+      "notifySuccessSaved": "Bildirim ayarı kaydedildi",
+      "notifySuccessFailed": "Bildirim ayarı değiştirilemedi"
     },
     "account": {
       "unnamed": "Adsız banka hesabı",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# tanesi bilinmeyen yönlü} other {# tanesi bilinmeyen yönlü}}",
         "currency_mismatch": "{count, plural, one {# tanesi başka para biriminde} other {# tanesi başka para biriminde}}",
         "other": "{count, plural, one {# tanesi başka bir nedenle} other {# tanesi başka bir nedenle}}"
-      }
+      },
+      "needsPreview": "{accounts} için önizlemeyi açın ve ilk içe aktarmayı onaylayın",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Bankanız bağlanıyor",

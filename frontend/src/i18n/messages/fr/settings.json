@@ -355,7 +355,9 @@
         "SYSTEM": "Alertes système",
         "BALANCES": "Soldes des comptes",
         "INVESTMENTS": "Valeur des placements",
-        "STRATEGIES": "Signaux de stratégie"
+        "STRATEGIES": "Signaux de stratégie",
+        "BANK_SYNC": "Connexions bancaires",
+        "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire"
       },
       "channelNotApplicable": "Non applicable à ce type de notification",
       "emailToggleLabel": "E-mail (rapport) pour {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Aucun compte bancaire n'a été lié : aucun n'a de numéro de compte correspondant à l'un de vos comptes.",
       "matchFailed": "Impossible d'associer les comptes bancaires",
-      "syncAllNeedsPreview": "« Tout synchroniser » attend que le premier import de chaque compte nouvellement lié soit confirmé. Utilisez « Synchroniser maintenant » sur ce compte pour afficher l'aperçu."
+      "syncAllNeedsPreview": "« Tout synchroniser » attend que le premier import de chaque compte nouvellement lié soit confirmé. Utilisez « Synchroniser maintenant » sur ce compte pour afficher l'aperçu.",
+      "notifySuccess": "Notifier après la synchronisation quotidienne",
+      "notifySuccessOptions": {
+        "always": "Après chaque synchronisation",
+        "when_imported": "Seulement si des transactions ont été importées",
+        "never": "Jamais"
+      },
+      "notifySuccessSaved": "Paramètre de notification enregistré",
+      "notifySuccessFailed": "Impossible de modifier le paramètre de notification"
     },
     "account": {
       "unnamed": "Compte bancaire sans nom",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# avec un sens inconnu} many {# avec un sens inconnu} other {# avec un sens inconnu}}",
         "currency_mismatch": "{count, plural, one {# dans une autre devise} many {# dans une autre devise} other {# dans une autre devise}}",
         "other": "{count, plural, one {# pour une autre raison} many {# pour une autre raison} other {# pour une autre raison}}"
-      }
+      },
+      "needsPreview": "Ouvrez l'aperçu de {accounts} et confirmez le premier import",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Connexion à votre banque",

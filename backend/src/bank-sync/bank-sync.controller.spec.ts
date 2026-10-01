@@ -255,7 +255,15 @@ describe("BankSyncController", () => {
       expect(connections.updateConnection).toHaveBeenCalledWith(
         USER_ID,
         CONNECTION_ID,
-        false,
+        { autoSync: false, notifySuccess: undefined },
+      );
+      await controller.updateConnection(req(), CONNECTION_ID, {
+        notifySuccess: "never",
+      });
+      expect(connections.updateConnection).toHaveBeenLastCalledWith(
+        USER_ID,
+        CONNECTION_ID,
+        { autoSync: undefined, notifySuccess: "never" },
       );
       await controller.disconnect(req(), CONNECTION_ID);
       expect(connections.disconnect).toHaveBeenCalledWith(
@@ -460,12 +468,31 @@ describe("BankSyncController", () => {
       }
     });
 
-    it("requires autoSync to be a boolean", async () => {
+    it("requires autoSync to be a boolean when it is sent", async () => {
       await expect(
         accepts(UpdateBankSyncConnectionDto, { autoSync: false }),
       ).resolves.toBeDefined();
       await expect(
         accepts(UpdateBankSyncConnectionDto, { autoSync: "no" }),
+      ).rejects.toBeDefined();
+    });
+
+    it("accepts exactly the three success modes", async () => {
+      for (const notifySuccess of ["always", "when_imported", "never"]) {
+        await expect(
+          accepts(UpdateBankSyncConnectionDto, { notifySuccess }),
+        ).resolves.toBeDefined();
+      }
+      for (const notifySuccess of ["sometimes", "", 1, null]) {
+        await expect(
+          accepts(UpdateBankSyncConnectionDto, { notifySuccess }),
+        ).rejects.toBeDefined();
+      }
+    });
+
+    it("refuses a key it does not know", async () => {
+      await expect(
+        accepts(UpdateBankSyncConnectionDto, { status: "active" }),
       ).rejects.toBeDefined();
     });
   });

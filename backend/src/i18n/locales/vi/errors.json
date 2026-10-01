@@ -703,6 +703,8 @@
     "providerRejected": "Nhà cung cấp đồng bộ ngân hàng đã từ chối yêu cầu: {{ detail }}",
     "providerUnavailable": "Nhà cung cấp đồng bộ ngân hàng không phản hồi. Không có gì bị thay đổi; hãy thử lại sau.",
     "providerInvalidResponse": "Nhà cung cấp đồng bộ ngân hàng đã gửi một phản hồi mà phiên bản Monize này không hiểu.",
-    "planChanged": "Dữ liệu của ngân hàng đã thay đổi kể từ bản xem trước. Chưa có gì được nhập; hãy xem trước lại."
+    "planChanged": "Dữ liệu của ngân hàng đã thay đổi kể từ bản xem trước. Chưa có gì được nhập; hãy xem trước lại.",
+    "needsPreview": "Hãy mở bản xem trước của tài khoản ngân hàng này và xác nhận lần nhập đầu tiên trước khi nó được đồng bộ tự động.",
+    "nothingToUpdate": "Hãy gửi autoSync hoặc notifySuccess để thay đổi một kết nối ngân hàng."
   }
 }

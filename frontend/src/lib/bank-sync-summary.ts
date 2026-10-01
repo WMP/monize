@@ -9,6 +9,19 @@ export function isBankSyncFailure(entry: BankSyncConnectionEntry): entry is Bank
   return 'error' in entry && typeof entry.error === 'object' && entry.error !== null;
 }
 
+/**
+ * The code of an account a sync of the whole connection skipped because its
+ * first import has not been confirmed from the preview (spec section 7a). It is
+ * not a failure of the account: nothing was read, nothing was recorded, and the
+ * way forward is the preview, which the toast names in its own sentence.
+ */
+export const BANK_SYNC_NEEDS_PREVIEW_CODE = 'needs_preview';
+
+/** True for the failure entry of an account that was skipped until its preview is confirmed. */
+export function isNeedsPreviewFailure(failure: BankSyncFailure): boolean {
+  return failure.error.code === BANK_SYNC_NEEDS_PREVIEW_CODE;
+}
+
 /** The entries that are results: the accounts that did sync. */
 export function syncedResults(entries: readonly BankSyncConnectionEntry[]): BankSyncResult[] {
   return entries.filter((entry): entry is BankSyncResult => !isBankSyncFailure(entry));

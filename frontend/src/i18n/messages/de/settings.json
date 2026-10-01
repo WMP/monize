@@ -355,7 +355,9 @@
         "SYSTEM": "Systemwarnungen",
         "BALANCES": "Kontostände",
         "INVESTMENTS": "Anlagewert",
-        "STRATEGIES": "Strategiesignale"
+        "STRATEGIES": "Strategiesignale",
+        "BANK_SYNC": "Bankverbindungen",
+        "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung"
       },
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Es wurde kein Bankkonto verknüpft: Keines hat eine Kontonummer, die zu einem deiner Konten passt.",
       "matchFailed": "Die Bankkonten konnten nicht abgeglichen werden",
-      "syncAllNeedsPreview": "„Alle synchronisieren“ ist erst möglich, wenn der erste Import jedes neu verknüpften Kontos bestätigt wurde. Verwende „Jetzt synchronisieren“ bei diesem Konto, um die Vorschau zu öffnen."
+      "syncAllNeedsPreview": "„Alle synchronisieren“ ist erst möglich, wenn der erste Import jedes neu verknüpften Kontos bestätigt wurde. Verwende „Jetzt synchronisieren“ bei diesem Konto, um die Vorschau zu öffnen.",
+      "notifySuccess": "Nach der täglichen Synchronisierung benachrichtigen",
+      "notifySuccessOptions": {
+        "always": "Nach jeder Synchronisierung",
+        "when_imported": "Nur wenn Buchungen importiert wurden",
+        "never": "Nie"
+      },
+      "notifySuccessSaved": "Benachrichtigungseinstellung gespeichert",
+      "notifySuccessFailed": "Die Benachrichtigungseinstellung konnte nicht geändert werden"
     },
     "account": {
       "unnamed": "Unbenanntes Bankkonto",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# mit unbekannter Richtung} other {# mit unbekannter Richtung}}",
         "currency_mismatch": "{count, plural, one {# in anderer Währung} other {# in anderer Währung}}",
         "other": "{count, plural, one {# aus anderem Grund} other {# aus anderem Grund}}"
-      }
+      },
+      "needsPreview": "Öffne die Vorschau für {accounts} und bestätige den ersten Import",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Deine Bank wird verbunden",

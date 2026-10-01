@@ -19,6 +19,20 @@ function moneyText(value: number | null): string | null {
 const iso = (value: Date | null): string | null =>
   value === null ? null : value.toISOString();
 
+/**
+ * Whether a bank account still needs its preview confirmed (spec section 7a):
+ * it is linked and its link has no successful sync yet. Linking, or changing
+ * the account or the cut-off, clears `last_success_at`
+ * (`BankSyncService.linkAccount`), so "no success yet" is "not confirmed". The
+ * one definition: the view, the daily sync and "sync every account" all ask it,
+ * so nothing imports an account the user has not confirmed.
+ */
+export function bankAccountNeedsPreview(
+  row: Pick<BankSyncAccount, "accountId" | "lastSuccessAt">,
+): boolean {
+  return row.accountId !== null && row.lastSuccessAt === null;
+}
+
 export function toBankSyncAccountView(
   row: BankSyncAccount,
 ): BankSyncAccountView {
@@ -41,9 +55,7 @@ export function toBankSyncAccountView(
     bankBalance: moneyText(row.bankBalance),
     bankBalanceCurrency: row.bankBalanceCurrency,
     bankBalanceDate: row.bankBalanceDate,
-    // Linking, or changing the account or the cut-off, clears last_success_at
-    // (`BankSyncService.linkAccount`), so "no success yet" is "not confirmed".
-    needsPreview: row.accountId !== null && row.lastSuccessAt === null,
+    needsPreview: bankAccountNeedsPreview(row),
   };
 }
 
@@ -60,6 +72,7 @@ export function toBankSyncConnectionView(
     status: row.status,
     validUntil: iso(row.validUntil),
     autoSync: row.autoSync,
+    notifySuccess: row.notifySuccess,
     lastError: row.lastError,
     createdAt: row.createdAt.toISOString(),
     accounts: accounts.map(toBankSyncAccountView),

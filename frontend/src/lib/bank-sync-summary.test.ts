@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  BANK_SYNC_NEEDS_PREVIEW_CODE,
   groupRefusalReasons,
   isBankSyncFailure,
+  isNeedsPreviewFailure,
   syncedResults,
   totalRefused,
   totalSyncResults,
@@ -28,6 +30,25 @@ describe('totalSyncResults', () => {
 
   it('is zero for no results', () => {
     expect(totalSyncResults([])).toEqual({ imported: 0, skipped: 0, refused: {} });
+  });
+});
+
+describe('isNeedsPreviewFailure', () => {
+  const failure = (code: string) => ({
+    bankAccountId: 'b1',
+    error: { code, message: 'm' },
+  });
+
+  it('recognises the code the server reports for an account waiting for its preview', () => {
+    // The server's constant is `NEEDS_PREVIEW_CODE` in `bank-sync-errors.ts`.
+    expect(BANK_SYNC_NEEDS_PREVIEW_CODE).toBe('needs_preview');
+    expect(isNeedsPreviewFailure(failure('needs_preview'))).toBe(true);
+  });
+
+  it('is false for every other failure, which stays a failure', () => {
+    for (const code of ['refused', 'unexpected', 'credentials', 'session_expired', 'unavailable']) {
+      expect(isNeedsPreviewFailure(failure(code))).toBe(false);
+    }
   });
 });
 

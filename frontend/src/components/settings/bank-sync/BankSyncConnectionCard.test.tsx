@@ -125,6 +125,7 @@ const connection = (over: Partial<BankSyncConnection> = {}): BankSyncConnection 
   status: 'active',
   validUntil: inDays(60),
   autoSync: false,
+  notifySuccess: 'when_imported',
   lastError: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   accounts: [bankAccount()],
@@ -425,6 +426,112 @@ describe('BankSyncConnectionCard', () => {
     });
   });
 
+  describe('the success notification setting', () => {
+    const select = () => screen.getByRole('combobox', { name: 'Notify after the daily sync' });
+
+    it('offers the three modes and shows the one the server holds', () => {
+      renderCard(connection({ notifySuccess: 'always' }));
+
+      expect(select()).toHaveValue('always');
+      expect(
+        within(select())
+          .getAllByRole('option')
+          .map((option) => [option.getAttribute('value'), option.textContent]),
+      ).toEqual([
+        ['always', 'After every sync'],
+        ['when_imported', 'Only when transactions were imported'],
+        ['never', 'Never'],
+      ]);
+    });
+
+    it('saves on change, sending only the setting that changed', async () => {
+      mockUpdateConnection.mockResolvedValue(connection({ notifySuccess: 'never' }));
+      renderCard(connection({ notifySuccess: 'when_imported' }));
+
+      await act(async () => {
+        fireEvent.change(select(), { target: { value: 'never' } });
+      });
+
+      expect(mockUpdateConnection).toHaveBeenCalledWith('c1', { notifySuccess: 'never' });
+      expect(select()).toHaveValue('never');
+      expect(toast.success).toHaveBeenCalledWith('Notification setting saved');
+    });
+
+    it('puts the setting back and says why when saving fails', async () => {
+      mockUpdateConnection.mockRejectedValue({ response: { data: { message: 'Nope' } } });
+      renderCard(connection({ notifySuccess: 'when_imported' }));
+
+      await act(async () => {
+        fireEvent.change(select(), { target: { value: 'always' } });
+      });
+
+      expect(select()).toHaveValue('when_imported');
+      expect(toast.error).toHaveBeenCalledWith('Nope');
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it('says it could not change the setting when the server gave no reason', async () => {
+      mockUpdateConnection.mockRejectedValue({ response: { data: {} } });
+      renderCard(connection({ notifySuccess: 'when_imported' }));
+
+      await act(async () => {
+        fireEvent.change(select(), { target: { value: 'never' } });
+      });
+
+      expect(select()).toHaveValue('when_imported');
+      expect(toast.error).toHaveBeenCalledWith('Could not change the notification setting');
+    });
+
+    it('does not write when the same mode is chosen again', async () => {
+      renderCard(connection({ notifySuccess: 'when_imported' }));
+      await act(async () => {
+        fireEvent.change(select(), { target: { value: 'when_imported' } });
+      });
+      expect(mockUpdateConnection).not.toHaveBeenCalled();
+    });
+
+    it('follows the server when a reload brings a different value', () => {
+      const { rerender } = renderCard(connection({ notifySuccess: 'when_imported' }));
+      rerender(
+        <BankSyncConnectionCard
+          connection={connection({ notifySuccess: 'never' })}
+          accounts={defaultAccounts}
+          linkedAccountIds={new Set()}
+          onChanged={vi.fn()}
+        />,
+      );
+      expect(select()).toHaveValue('never');
+    });
+
+    it('is not offered while the authorization is pending, when no daily sync can run', () => {
+      renderCard(connection({ status: 'pending' }));
+      expect(screen.queryByRole('combobox', { name: 'Notify after the daily sync' })).toBeNull();
+    });
+
+    it('gives each connection card its own control', () => {
+      render(
+        <>
+          <BankSyncConnectionCard
+            connection={connection({ id: 'c1' })}
+            accounts={defaultAccounts}
+            linkedAccountIds={new Set()}
+            onChanged={vi.fn()}
+          />
+          <BankSyncConnectionCard
+            connection={connection({ id: 'c2' })}
+            accounts={defaultAccounts}
+            linkedAccountIds={new Set()}
+            onChanged={vi.fn()}
+          />
+        </>,
+      );
+      const ids = screen
+        .getAllByRole('combobox', { name: 'Notify after the daily sync' })
+        .map((element) => element.id);
+      expect(new Set(ids).size).toBe(2);
+    });
+  });
+
   describe('sync all and disconnect', () => {
     const linked = () =>
       connection({ accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' })] });
@@ -512,6 +619,81 @@ describe('BankSyncConnectionCard', () => {
         'Could not sync: Everyday (The bank did not answer.)',
         { duration: 10000 },
       );
+    });
+
+    describe('an account that needs its preview (code needs_preview)', () => {
+      const needsPreview = (bankAccountId: string): BankSyncFailure => ({
+        bankAccountId,
+        error: { code: 'needs_preview', message: 'Open the preview for this bank account.' },
+      });
+      const twoLinked = () =>
+        connection({
+          accounts: [
+            bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' }),
+            bankAccount({
+              id: 'ba-2',
+              displayName: 'Savings pot',
+              accountId: 'a2',
+              syncFromDate: '2026-01-01',
+            }),
+          ],
+        });
+
+      it('names what to do in the reader\'s language, not the server\'s sentence, and is not an error', async () => {
+        mockSyncConnection.mockResolvedValue([needsPreview('ba-1')]);
+        renderCard(linked());
+
+        await click('Sync all');
+
+        expect(toast).toHaveBeenCalledWith(
+          'Open the preview for Everyday and confirm the first import',
+          { duration: 8000 },
+        );
+        expect(toast.error).not.toHaveBeenCalled();
+        expect(toast.success).not.toHaveBeenCalled();
+        const spoken = vi.mocked(toast).mock.calls.map((call) => String(call[0])).join(' ');
+        expect(spoken).not.toContain('server');
+      });
+
+      it('lists every such account in one sentence', async () => {
+        mockSyncConnection.mockResolvedValue([needsPreview('ba-1'), needsPreview('ba-2')]);
+        renderCard(twoLinked());
+
+        await click('Sync all');
+
+        expect(toast).toHaveBeenCalledWith(
+          'Open the preview for Everyday and Savings pot and confirm the first import',
+          { duration: 8000 },
+        );
+      });
+
+      it('is added to what the other accounts did, which keeps its success', async () => {
+        mockSyncConnection.mockResolvedValue([
+          result({ imported: 2, skipped: 1 }),
+          needsPreview('ba-2'),
+        ]);
+        renderCard(twoLinked());
+
+        await click('Sync all');
+
+        expect(toast.success).toHaveBeenCalledWith(
+          '2 transactions imported, 1 skipped as already imported, none refused. Open the preview for Savings pot and confirm the first import',
+          { duration: 8000 },
+        );
+        expect(toast.error).not.toHaveBeenCalled();
+      });
+
+      it('is added to a real failure beside it without becoming one', async () => {
+        mockSyncConnection.mockResolvedValue([failure('ba-1', 'Busy.'), needsPreview('ba-2')]);
+        renderCard(twoLinked());
+
+        await click('Sync all');
+
+        expect(toast.error).toHaveBeenCalledWith(
+          'Could not sync: Everyday (Busy.). Open the preview for Savings pot and confirm the first import',
+          { duration: 10000 },
+        );
+      });
     });
 
     it('says the result is not known yet when the request timed out or the server crashed', async () => {

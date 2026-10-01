@@ -7,11 +7,19 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import {
+  BankSyncAlreadyRunningException,
+  BankSyncCredentialsUnavailableException,
+  SYNC_RUNNING_CODE,
+  NEEDS_PREVIEW_CODE,
+  describeFailureForClient,
   describeSyncFailure,
+  isSyncFailureEntry,
   mapBankSyncProviderError,
+  needsPreviewFailure,
   storedFailureMessage,
   toBankSyncException,
 } from "./bank-sync-errors";
+import type { BankSyncConnectionSyncEntry } from "./bank-sync.types";
 import {
   BankSyncProviderError,
   BankSyncProviderErrorKind,
@@ -149,5 +157,61 @@ describe("bank-sync error mapping", () => {
         "fetch failed",
       );
     });
+  });
+});
+
+describe("the codes a failure is reported under", () => {
+  it("names unusable credentials 'credentials' and keeps them a 400 for an HTTP caller", () => {
+    const error = new BankSyncCredentialsUnavailableException("enter them");
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.getStatus()).toBe(400);
+    expect(describeFailureForClient(error)).toEqual({
+      code: "credentials",
+      message: "enter them",
+    });
+  });
+
+  it("names a lease held by another sync 'sync_running' and keeps it a 409", () => {
+    const error = new BankSyncAlreadyRunningException("already running");
+    expect(error).toBeInstanceOf(ConflictException);
+    expect(error.getStatus()).toBe(409);
+    expect(describeFailureForClient(error)).toEqual({
+      code: "sync_running",
+      message: "already running",
+    });
+    expect(SYNC_RUNNING_CODE).toBe("sync_running");
+    // Any other 409 stays a refusal.
+    expect(describeFailureForClient(new ConflictException("busy")).code).toBe(
+      "refused",
+    );
+  });
+
+  it("leaves every other refusal a 'refused' and a provider failure its own kind", () => {
+    expect(describeFailureForClient(new BadRequestException("x")).code).toBe(
+      "refused",
+    );
+    expect(
+      describeFailureForClient(
+        new BankSyncProviderError("session_expired", "x"),
+      ).code,
+    ).toBe("session_expired");
+  });
+
+  it("reports an account waiting for its preview under needs_preview, with a sentence of its own", () => {
+    const entry = needsPreviewFailure("b1");
+    expect(entry.bankAccountId).toBe("b1");
+    expect(entry.error.code).toBe(NEEDS_PREVIEW_CODE);
+    expect(NEEDS_PREVIEW_CODE).toBe("needs_preview");
+    expect(entry.error.message).toContain("preview");
+  });
+
+  it("tells a failure entry from a result", () => {
+    const failure: BankSyncConnectionSyncEntry = needsPreviewFailure("b1");
+    const result = {
+      bankAccountId: "b1",
+      imported: 0,
+    } as BankSyncConnectionSyncEntry;
+    expect(isSyncFailureEntry(failure)).toBe(true);
+    expect(isSyncFailureEntry(result)).toBe(false);
   });
 });

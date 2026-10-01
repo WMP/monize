@@ -9,6 +9,10 @@ import {
 import { describeFetchFailure } from "../common/http/fetch-failure.util";
 import { tr } from "../i18n/translate";
 import { BANK_SYNC_STORED_MESSAGE_MAX_LENGTH } from "./bank-sync.constants";
+import type {
+  BankSyncAccountFailure,
+  BankSyncConnectionSyncEntry,
+} from "./bank-sync.types";
 import {
   BankSyncProviderError,
   isBankSyncProviderError,
@@ -20,6 +24,29 @@ import {
  * and a log line. Every kind is mapped here so a service never decides a status
  * code ad hoc (docs/specs/bank-sync.md section 7 step 7).
  */
+
+/**
+ * The stored provider credentials cannot be used: none are stored, or the
+ * stored key can no longer be decrypted. A `BadRequestException` as before, so
+ * an HTTP caller sees the same 400; its own class so a caller that reports a
+ * failure as data (`describeFailureForClient`) can tell it from every other
+ * refusal and name it `credentials`.
+ */
+export class BankSyncCredentialsUnavailableException extends BadRequestException {}
+
+/**
+ * Another sync of the same bank account holds its lease. A 409 as before, its
+ * own class so a caller reporting failures as data can tell "someone else is
+ * syncing it" from a refusal or a failure: the daily sync neither reports nor
+ * records it (the lease holder's sync will).
+ */
+export class BankSyncAlreadyRunningException extends ConflictException {}
+
+/** The code an account is reported under while another sync of it is running. */
+export const SYNC_RUNNING_CODE = "sync_running";
+
+/** The code of a bank account the sync skipped because it needs its preview. */
+export const NEEDS_PREVIEW_CODE = "needs_preview";
 
 /** The HTTP exception a provider failure is answered with. */
 export function mapBankSyncProviderError(
@@ -139,14 +166,23 @@ export function storedFailureMessage(error: unknown): string {
   return text.slice(0, BANK_SYNC_STORED_MESSAGE_MAX_LENGTH);
 }
 
+/** True for the entry of a bank account that was not synced (it carries `error`). */
+export function isSyncFailureEntry(
+  entry: BankSyncConnectionSyncEntry,
+): entry is BankSyncAccountFailure {
+  return "error" in entry;
+}
+
 /**
  * The failure of one bank account inside a "sync every account" answer: what
  * the HTTP mapping of the same failure would have said, as data.
  *
  * `code` is a stable machine code: the provider's error kind
- * (`session_expired`, `rate_limited`, ...), `refused` for a refusal Monize made
- * itself (a lease held, a closed account, an inactive connection), and
- * `unexpected` for anything else. `message` is translated and bounded, and is
+ * (`session_expired`, `rate_limited`, ...), `credentials` when the stored
+ * credentials cannot be used, `sync_running` when another sync of the account
+ * holds its lease, `refused` for a refusal Monize made itself (a
+ * lease held, a closed account, an inactive connection), and `unexpected` for
+ * anything else. `message` is translated and bounded, and is
  * built only from text this code controls or that the provider layer promises
  * is safe (`mapBankSyncProviderError`, an `HttpException`'s message): an
  * unexpected error's own message never reaches a client.
@@ -156,6 +192,28 @@ export interface BankSyncFailureDescription {
   message: string;
 }
 
+/**
+ * The entry for a linked bank account that was not synced because it still
+ * needs its preview confirmed (spec section 7a): nothing was read or written,
+ * and nothing is recorded on the bank account. The client words its own
+ * sentence for the code; the message is the server's fallback.
+ */
+export function needsPreviewFailure(bankAccountId: string): {
+  bankAccountId: string;
+  error: BankSyncFailureDescription;
+} {
+  return {
+    bankAccountId,
+    error: {
+      code: NEEDS_PREVIEW_CODE,
+      message: tr(
+        "errors.bankSync.needsPreview",
+        "Open the preview for this bank account and confirm the first import before it is synced automatically.",
+      ),
+    },
+  };
+}
+
 export function describeFailureForClient(
   error: unknown,
 ): BankSyncFailureDescription {
@@ -163,6 +221,24 @@ export function describeFailureForClient(
     return {
       code: error.kind,
       message: httpExceptionText(mapBankSyncProviderError(error)).slice(
+        0,
+        BANK_SYNC_STORED_MESSAGE_MAX_LENGTH,
+      ),
+    };
+  }
+  if (error instanceof BankSyncAlreadyRunningException) {
+    return {
+      code: SYNC_RUNNING_CODE,
+      message: httpExceptionText(error).slice(
+        0,
+        BANK_SYNC_STORED_MESSAGE_MAX_LENGTH,
+      ),
+    };
+  }
+  if (error instanceof BankSyncCredentialsUnavailableException) {
+    return {
+      code: "credentials",
+      message: httpExceptionText(error).slice(
         0,
         BANK_SYNC_STORED_MESSAGE_MAX_LENGTH,
       ),

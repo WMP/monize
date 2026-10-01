@@ -355,7 +355,9 @@
         "SYSTEM": "Alertas do sistema",
         "BALANCES": "Saldos das contas",
         "INVESTMENTS": "Valor dos investimentos",
-        "STRATEGIES": "Sinais de estratégia"
+        "STRATEGIES": "Sinais de estratégia",
+        "BANK_SYNC": "Conexões bancárias",
+        "BANK_SYNC_ACTIVITY": "Resultados da sincronização bancária"
       },
       "channelNotApplicable": "Não aplicável a este tipo de notificação",
       "emailToggleLabel": "Email (relatório) para {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Nenhuma conta bancária foi vinculada: nenhuma tem um número de conta que corresponda a uma das suas contas.",
       "matchFailed": "Não foi possível vincular as contas bancárias por número",
-      "syncAllNeedsPreview": "Sincronizar tudo espera até que a primeira importação de cada conta recém-vinculada seja confirmada. Use Sincronizar agora nessa conta para ver a pré-visualização."
+      "syncAllNeedsPreview": "Sincronizar tudo espera até que a primeira importação de cada conta recém-vinculada seja confirmada. Use Sincronizar agora nessa conta para ver a pré-visualização.",
+      "notifySuccess": "Notificar após a sincronização diária",
+      "notifySuccessOptions": {
+        "always": "Após cada sincronização",
+        "when_imported": "Somente quando transações foram importadas",
+        "never": "Nunca"
+      },
+      "notifySuccessSaved": "Configuração de notificação salva",
+      "notifySuccessFailed": "Não foi possível alterar a configuração de notificação"
     },
     "account": {
       "unnamed": "Conta bancária sem nome",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# com sentido desconhecido} other {# com sentido desconhecido}}",
         "currency_mismatch": "{count, plural, one {# em outra moeda} other {# em outra moeda}}",
         "other": "{count, plural, one {# por outro motivo} other {# por outro motivo}}"
-      }
+      },
+      "needsPreview": "Abra a pré-visualização de {accounts} e confirme a primeira importação",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Conectando o seu banco",

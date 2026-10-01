@@ -6,7 +6,9 @@ import {
 } from "./providers/enable-banking/enable-banking.client";
 import {
   BANK_SYNC_CONNECTION_STATUSES,
+  BANK_SYNC_DEFAULT_NOTIFY_SUCCESS,
   BANK_SYNC_LAST_SYNC_STATUSES,
+  BANK_SYNC_NOTIFY_SUCCESS_MODES,
   BANK_SYNC_PROVIDERS,
   BANK_SYNC_PSU_TYPES,
   SYNC_LEASE_TTL_MS,
@@ -86,6 +88,57 @@ describe("bank-sync constants match the database CHECK constraints", () => {
         checkList(sql, "bank_sync_accounts", "last_sync_status").sort(),
       ).toEqual([...BANK_SYNC_LAST_SYNC_STATUSES].sort());
     });
+  });
+});
+
+describe("the notify_success mode list", () => {
+  // The column arrives in its own migration, so it is read from that file and
+  // from the schema, and both must list exactly BANK_SYNC_NOTIFY_SUCCESS_MODES.
+  const NOTIFY_MIGRATION_FILES = readdirSync(
+    join(DATABASE, "migrations"),
+  ).filter((name) => name.endsWith("_bank_sync_notify_success.sql"));
+  const NOTIFY_MIGRATION = NOTIFY_MIGRATION_FILES.map((name) =>
+    readFileSync(join(DATABASE, "migrations", name), "utf8"),
+  ).join("\n");
+
+  /** The quoted values of the first `notify_success IN (...)` in a SQL text. */
+  function notifyList(sql: string): string[] {
+    const match = /\bnotify_success\b\s+IN\s*\(([^)]*)\)/.exec(sql);
+    if (!match) throw new Error("no notify_success IN (...) CHECK found");
+    return match[1]
+      .split(",")
+      .map((entry) => entry.trim().replace(/^'|'$/g, ""))
+      .filter((entry) => entry.length > 0);
+  }
+
+  it("finds the migration it is checking", () => {
+    expect(NOTIFY_MIGRATION_FILES).toHaveLength(1);
+  });
+
+  it.each([
+    ["schema.sql", tableBody(SCHEMA, "bank_sync_connections")],
+    ["the migration", NOTIFY_MIGRATION],
+  ])("%s lists exactly BANK_SYNC_NOTIFY_SUCCESS_MODES", (_label, sql) => {
+    expect(notifyList(sql).sort()).toEqual(
+      [...BANK_SYNC_NOTIFY_SUCCESS_MODES].sort(),
+    );
+  });
+
+  it.each([
+    ["schema.sql", tableBody(SCHEMA, "bank_sync_connections")],
+    ["the migration", NOTIFY_MIGRATION],
+  ])("%s defaults the column to the application default", (_label, sql) => {
+    expect(sql).toMatch(
+      new RegExp(
+        `notify_success VARCHAR\\(20\\) NOT NULL DEFAULT '${BANK_SYNC_DEFAULT_NOTIFY_SUCCESS}'`,
+      ),
+    );
+  });
+
+  it("fits the column", () => {
+    for (const mode of BANK_SYNC_NOTIFY_SUCCESS_MODES) {
+      expect(mode.length).toBeLessThanOrEqual(20);
+    }
   });
 });
 

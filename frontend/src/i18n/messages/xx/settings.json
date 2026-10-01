@@ -355,7 +355,9 @@
         "SYSTEM": "[XX-System alerts-XX]",
         "BALANCES": "[XX-Account balances-XX]",
         "INVESTMENTS": "[XX-Investment value-XX]",
-        "STRATEGIES": "[XX-Strategy signals-XX]"
+        "STRATEGIES": "[XX-Strategy signals-XX]",
+        "BANK_SYNC": "[XX-Bank connections-XX]",
+        "BANK_SYNC_ACTIVITY": "[XX-Bank sync results-XX]"
       },
       "channelNotApplicable": "[XX-Not applicable for this notification type-XX]",
       "emailToggleLabel": "[XX-Report email for {category}-XX]",
@@ -1528,7 +1530,15 @@
       "matchBoth": "[XX-{linked}. {suggested}-XX]",
       "matchNone": "[XX-No bank account was linked: none has an account number that matches one of your accounts.-XX]",
       "matchFailed": "[XX-Could not match the bank accounts-XX]",
-      "syncAllNeedsPreview": "[XX-Sync all waits until the first import of each newly linked account is confirmed. Use Sync now on that account to preview it.-XX]"
+      "syncAllNeedsPreview": "[XX-Sync all waits until the first import of each newly linked account is confirmed. Use Sync now on that account to preview it.-XX]",
+      "notifySuccess": "[XX-Notify after the daily sync-XX]",
+      "notifySuccessOptions": {
+        "always": "[XX-After every sync-XX]",
+        "when_imported": "[XX-Only when transactions were imported-XX]",
+        "never": "[XX-Never-XX]"
+      },
+      "notifySuccessSaved": "[XX-Notification setting saved-XX]",
+      "notifySuccessFailed": "[XX-Could not change the notification setting-XX]"
     },
     "account": {
       "unnamed": "[XX-Unnamed bank account-XX]",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "[XX-{count, plural, one {# with an unknown direction} other {# with an unknown direction}}-XX]",
         "currency_mismatch": "[XX-{count, plural, one {# in another currency} other {# in another currency}}-XX]",
         "other": "[XX-{count, plural, one {# for another reason} other {# for another reason}}-XX]"
-      }
+      },
+      "needsPreview": "[XX-Open the preview for {accounts} and confirm the first import-XX]",
+      "withNeedsPreview": "[XX-{message}. {needsPreview}-XX]"
     },
     "callback": {
       "title": "[XX-Connecting your bank-XX]",

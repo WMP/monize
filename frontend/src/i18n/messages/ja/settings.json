@@ -355,7 +355,9 @@
         "SYSTEM": "システムアラート",
         "BALANCES": "口座残高",
         "INVESTMENTS": "投資価値",
-        "STRATEGIES": "戦略シグナル"
+        "STRATEGIES": "戦略シグナル",
+        "BANK_SYNC": "銀行接続",
+        "BANK_SYNC_ACTIVITY": "銀行同期の結果"
       },
       "channelNotApplicable": "この通知タイプには適用されません",
       "emailToggleLabel": "{category} のレポートメール",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}。{suggested}",
       "matchNone": "リンクした銀行口座はありません: あなたの口座のどれとも口座番号が一致しませんでした。",
       "matchFailed": "銀行口座を照合できませんでした",
-      "syncAllNeedsPreview": "新しくリンクした各口座の最初のインポートを確認するまで、「すべて同期」は使えません。その口座の「今すぐ同期」でプレビューを開いてください。"
+      "syncAllNeedsPreview": "新しくリンクした各口座の最初のインポートを確認するまで、「すべて同期」は使えません。その口座の「今すぐ同期」でプレビューを開いてください。",
+      "notifySuccess": "毎日の同期後に通知する",
+      "notifySuccessOptions": {
+        "always": "同期のたびに",
+        "when_imported": "取引をインポートしたときのみ",
+        "never": "通知しない"
+      },
+      "notifySuccessSaved": "通知設定を保存しました",
+      "notifySuccessFailed": "通知設定を変更できませんでした"
     },
     "account": {
       "unnamed": "名称未設定の銀行口座",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {方向が不明 # 件}}",
         "currency_mismatch": "{count, plural, other {別の通貨 # 件}}",
         "other": "{count, plural, other {その他の理由 # 件}}"
-      }
+      },
+      "needsPreview": "{accounts} のプレビューを開いて、最初のインポートを確認してください",
+      "withNeedsPreview": "{message}。{needsPreview}"
     },
     "callback": {
       "title": "銀行に接続しています",

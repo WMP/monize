@@ -1447,6 +1447,15 @@ describe("Bank sync (integration)", () => {
           syncFromDate: daysAgo(30),
         }),
       );
+      // The connection-wide sync skips an account whose first import nobody has
+      // confirmed (spec section 7a, covered by
+      // bank-sync-notifications.integration.spec.ts); these two have been.
+      await db.query(
+        `UPDATE bank_sync_accounts
+            SET last_success_at = CURRENT_TIMESTAMP - interval '1 day'
+          WHERE connection_id = $1`,
+        [connectionId],
+      );
       jest
         .spyOn(provider, "fetchTransactions")
         .mockImplementation(async (_credentials, externalAccountId) => {

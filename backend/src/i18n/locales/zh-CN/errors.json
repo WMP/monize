@@ -703,6 +703,8 @@
     "providerRejected": "银行同步提供商拒绝了该请求：{{ detail }}",
     "providerUnavailable": "银行同步提供商没有响应。未做任何更改；请稍后重试。",
     "providerInvalidResponse": "银行同步提供商发送了此版本 Monize 无法理解的响应。",
-    "planChanged": "自预览以来银行的数据已更改。未导入任何内容；请重新预览。"
+    "planChanged": "自预览以来银行的数据已更改。未导入任何内容；请重新预览。",
+    "needsPreview": "请打开此银行账户的预览，并在其被自动同步之前确认首次导入。",
+    "nothingToUpdate": "请发送 autoSync 或 notifySuccess 以更改银行连接。"
   }
 }

@@ -703,6 +703,8 @@
     "providerRejected": "De provider voor banksynchronisatie heeft het verzoek geweigerd: {{ detail }}",
     "providerUnavailable": "De provider voor banksynchronisatie heeft niet gereageerd. Er is niets gewijzigd; probeer het later opnieuw.",
     "providerInvalidResponse": "De provider voor banksynchronisatie heeft een antwoord gestuurd dat deze versie van Monize niet begrijpt.",
-    "planChanged": "De gegevens van de bank zijn gewijzigd sinds het voorbeeld. Er is niets geïmporteerd; maak het voorbeeld opnieuw."
+    "planChanged": "De gegevens van de bank zijn gewijzigd sinds het voorbeeld. Er is niets geïmporteerd; maak het voorbeeld opnieuw.",
+    "needsPreview": "Open het voorbeeld voor deze bankrekening en bevestig de eerste import voordat deze automatisch wordt gesynchroniseerd.",
+    "nothingToUpdate": "Stuur autoSync of notifySuccess om een bankkoppeling te wijzigen."
   }
 }

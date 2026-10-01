@@ -355,7 +355,9 @@
         "SYSTEM": "系统警报",
         "BALANCES": "账户余额",
         "INVESTMENTS": "投资价值",
-        "STRATEGIES": "策略信号"
+        "STRATEGIES": "策略信号",
+        "BANK_SYNC": "银行连接",
+        "BANK_SYNC_ACTIVITY": "银行同步结果"
       },
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}。{suggested}",
       "matchNone": "没有关联任何银行账户：没有账号与您的账户相匹配。",
       "matchFailed": "无法匹配银行账户",
-      "syncAllNeedsPreview": "在每个新关联账户的首次导入得到确认之前，无法使用“全部同步”。请在该账户上使用“立即同步”打开预览。"
+      "syncAllNeedsPreview": "在每个新关联账户的首次导入得到确认之前，无法使用“全部同步”。请在该账户上使用“立即同步”打开预览。",
+      "notifySuccess": "每日同步后通知",
+      "notifySuccessOptions": {
+        "always": "每次同步后",
+        "when_imported": "仅在导入了交易时",
+        "never": "从不"
+      },
+      "notifySuccessSaved": "已保存通知设置",
+      "notifySuccessFailed": "无法更改通知设置"
     },
     "account": {
       "unnamed": "未命名的银行账户",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, other {# 笔方向未知}}",
         "currency_mismatch": "{count, plural, other {# 笔使用其他货币}}",
         "other": "{count, plural, other {# 笔因其他原因}}"
-      }
+      },
+      "needsPreview": "请打开 {accounts} 的预览并确认首次导入",
+      "withNeedsPreview": "{message}。{needsPreview}"
     },
     "callback": {
       "title": "正在连接您的银行",

@@ -22,14 +22,19 @@ import { SYNC_LEASE_TTL_MS, SYNC_OVERLAP_DAYS } from "./bank-sync.constants";
 import type { BankSyncConnectionStatus } from "./bank-sync.constants";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import {
+  BankSyncAlreadyRunningException,
   describeFailureForClient,
   describeSyncFailure,
+  needsPreviewFailure,
   storedFailureMessage,
   toBankSyncException,
 } from "./bank-sync-errors";
 import { readLinkDefaults } from "./bank-sync-cutoff";
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
-import { toBankSyncAccountView } from "./bank-sync-views";
+import {
+  bankAccountNeedsPreview,
+  toBankSyncAccountView,
+} from "./bank-sync-views";
 import {
   BankSyncPlanChangedException,
   BankSyncWriterService,
@@ -312,6 +317,31 @@ export class BankSyncService {
   }
 
   /**
+   * Sync one bank account and answer as data, the way a sync of a whole
+   * connection does: the result, or `{ bankAccountId, error: { code, message } }`
+   * for a failure (`describeFailureForClient`; the provider's own error kind is
+   * kept as the code, which `syncAccount`'s HTTP mapping loses). Never throws
+   * for a sync failure. The failure is recorded on the bank account by the sync
+   * itself. The daily sync uses it to tell an ended consent from any other
+   * failure; it does not skip a bank account that needs its preview, which is
+   * the caller's decision (`bankAccountNeedsPreview`).
+   */
+  async syncAccountEntry(
+    userId: string,
+    bankAccountId: string,
+    psu: PsuContext | null,
+  ): Promise<BankSyncConnectionSyncEntry> {
+    try {
+      return await this.attemptAccountSync(userId, bankAccountId, psu);
+    } catch (error) {
+      this.logger.warn(
+        `Sync of bank account ${bankAccountId} failed: ${describeSyncFailure(error)}`,
+      );
+      return { bankAccountId, error: describeFailureForClient(error) };
+    }
+  }
+
+  /**
    * What a sync of this bank account would do now, and nothing else (spec
    * section 7a): steps 1 to 4 of a sync, then the read-only half of step 5 in
    * `BankSyncPreviewService`. It takes the same lease as a sync, so a preview
@@ -454,7 +484,7 @@ export class BankSyncService {
       SYNC_LEASE_TTL_MS,
     );
     if (leaseToken === null) {
-      throw new ConflictException(
+      throw new BankSyncAlreadyRunningException(
         tr(
           "errors.bankSync.syncRunning",
           "A sync of this account is already running. Try again in a moment.",
@@ -531,16 +561,22 @@ export class BankSyncService {
    * on, so a partial failure is reported as one instead of as the failure of
    * the whole call (the accounts that did import already moved their balances).
    *
+   * A bank account that still needs its preview confirmed (spec section 7a) is
+   * not synced: its entry is `{ bankAccountId, error: { code: "needs_preview",
+   * message } }`, nothing is read from the bank, and nothing is written or
+   * recorded on it. Only the person confirming the preview imports it.
+   *
    * It throws only when the connection itself is unusable before any account
-   * is attempted: not found, not `active`, its consent lapsed, or no readable
-   * credentials. A connection with no linked account answers `[]`.
+   * is attempted: not found, not `active`, its consent lapsed, or (when there
+   * is an account to sync) no readable credentials. A connection with no linked
+   * account answers `[]`.
    */
   async syncConnection(
     userId: string,
     connectionId: string,
     psu: PsuContext | null,
   ): Promise<BankSyncConnectionSyncEntry[]> {
-    const { connection, usable, bankAccountIds } = await withScopedDb(
+    const { connection, usable, linked } = await withScopedDb(
       this.dataSource,
       async (m) => {
         const found = await m
@@ -563,31 +599,31 @@ export class BankSyncService {
         return {
           connection: found,
           usable,
-          bankAccountIds: rows
+          linked: rows
             .filter((row) => row.accountId !== null)
-            .map((row) => row.id),
+            .map((row) => ({
+              id: row.id,
+              needsPreview: bankAccountNeedsPreview(row),
+            })),
         };
       },
     );
     // Outside the transaction, so a lapse it just recorded is kept.
     this.assertConnectionUsable(connection.status, usable);
-    if (bankAccountIds.length === 0) return [];
-    // Unreadable credentials fail every account the same way: say so once.
-    await this.credentials.resolveCredentials(userId, connection.provider);
+    if (linked.length === 0) return [];
+    // Unreadable credentials fail every account the same way: say so once. An
+    // account that only needs its preview reads nothing, so it needs none.
+    if (linked.some((account) => !account.needsPreview)) {
+      await this.credentials.resolveCredentials(userId, connection.provider);
+    }
 
     const entries: BankSyncConnectionSyncEntry[] = [];
-    for (const bankAccountId of bankAccountIds) {
-      try {
-        entries.push(await this.attemptAccountSync(userId, bankAccountId, psu));
-      } catch (error) {
-        entries.push({
-          bankAccountId,
-          error: describeFailureForClient(error),
-        });
-        this.logger.warn(
-          `Sync of bank account ${bankAccountId} failed: ${describeSyncFailure(error)}`,
-        );
-      }
+    for (const account of linked) {
+      entries.push(
+        account.needsPreview
+          ? needsPreviewFailure(account.id)
+          : await this.syncAccountEntry(userId, account.id, psu),
+      );
     }
     return entries;
   }

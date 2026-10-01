@@ -703,6 +703,8 @@
     "providerRejected": "[XX-The bank sync provider rejected the request: {{ detail }}-XX]",
     "providerUnavailable": "[XX-The bank sync provider did not answer. Nothing was changed; try again later.-XX]",
     "providerInvalidResponse": "[XX-The bank sync provider sent an answer this version of Monize does not understand.-XX]",
-    "planChanged": "[XX-The bank's data changed since the preview. Nothing was imported; preview again.-XX]"
+    "planChanged": "[XX-The bank's data changed since the preview. Nothing was imported; preview again.-XX]",
+    "needsPreview": "[XX-Open the preview for this bank account and confirm the first import before it is synced automatically.-XX]",
+    "nothingToUpdate": "[XX-Send autoSync or notifySuccess to change a bank connection.-XX]"
   }
 }

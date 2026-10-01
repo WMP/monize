@@ -16,6 +16,10 @@ import {
 } from "../test-helpers/job-claim-testing";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import {
+  BankSyncAlreadyRunningException,
+  BankSyncCredentialsUnavailableException,
+} from "./bank-sync-errors";
+import {
   BankSyncService,
   normalizeBankBalance,
   syncWindow,
@@ -755,6 +759,7 @@ describe("BankSyncService", () => {
         const error = await sync().catch((e: unknown) => e);
 
         expect(error).toBeInstanceOf(ConflictException);
+        expect(error).toBeInstanceOf(BankSyncAlreadyRunningException);
         expect((error as ConflictException).message).toMatch(
           /already running/i,
         );
@@ -1074,9 +1079,78 @@ describe("BankSyncService", () => {
     });
   });
 
+  describe("syncAccountEntry", () => {
+    const attempt = () =>
+      jest.spyOn(
+        service as unknown as {
+          attemptAccountSync: BankSyncService["syncAccount"];
+        },
+        "attemptAccountSync",
+      );
+
+    it("answers the result of a sync that worked", async () => {
+      const result = { bankAccountId: BANK_ACCOUNT_ID, imported: 2 };
+      attempt().mockResolvedValue(result as never);
+      await expect(
+        service.syncAccountEntry(USER_ID, BANK_ACCOUNT_ID, null),
+      ).resolves.toBe(result);
+    });
+
+    it("answers a failure as data with the provider's own kind as the code, never throwing", async () => {
+      attempt().mockRejectedValue(
+        new BankSyncProviderError("session_expired", "gone", 401),
+      );
+      const entry = await service.syncAccountEntry(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+      );
+      // The HTTP mapping of the same failure is a 409 that loses the kind.
+      expect(entry).toMatchObject({
+        bankAccountId: BANK_ACCOUNT_ID,
+        error: { code: "session_expired" },
+      });
+    });
+
+    it("names a lost lease 'sync_running' and records nothing on the account", async () => {
+      jobClaims.claimLease.mockResolvedValue(null);
+      const entry = await service.syncAccountEntry(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+      );
+      expect(entry).toMatchObject({
+        bankAccountId: BANK_ACCOUNT_ID,
+        error: { code: "sync_running" },
+      });
+      expect(provider.fetchTransactions).not.toHaveBeenCalled();
+      expect(statements("last_sync_status = 'failed'")).toHaveLength(0);
+    });
+
+    it("names unreadable credentials 'credentials', not a generic refusal", async () => {
+      credentials.resolveCredentials.mockRejectedValue(
+        new BankSyncCredentialsUnavailableException("no credentials"),
+      );
+      const entry = await service.syncAccountEntry(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+      );
+      expect(entry).toMatchObject({ error: { code: "credentials" } });
+    });
+  });
+
   describe("syncConnection", () => {
+    // A bank account whose first import has been confirmed (it has a success):
+    // the ones that still need their preview are built explicitly below.
     const linked = (id: string) =>
-      bankAccountRow({ id, connectionId: CONNECTION_ID });
+      bankAccountRow({
+        id,
+        connectionId: CONNECTION_ID,
+        lastSuccessAt: new Date("2026-09-20T05:00:00.000Z"),
+      });
+    const unconfirmed = (id: string) =>
+      bankAccountRow({ id, connectionId: CONNECTION_ID, lastSuccessAt: null });
     const ID_A = "b0b0b0b0-0000-4000-8000-00000000000a";
     const ID_B = "b0b0b0b0-0000-4000-8000-00000000000b";
     const ID_C = "b0b0b0b0-0000-4000-8000-00000000000c";
@@ -1271,6 +1345,72 @@ describe("BankSyncService", () => {
         service.syncConnection(USER_ID, CONNECTION_ID, null),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(spy).not.toHaveBeenCalled();
+    });
+
+    describe("a bank account that still needs its preview (spec section 7a)", () => {
+      it("is reported as needs_preview and not synced, read or recorded", async () => {
+        linkRepo.find.mockResolvedValue([
+          linked(ID_A),
+          unconfirmed(ID_B),
+          linked(ID_C),
+        ]);
+        const spy = attempt().mockImplementation(async (_user, id) =>
+          resultOf(id),
+        );
+
+        const results = await service.syncConnection(
+          USER_ID,
+          CONNECTION_ID,
+          null,
+        );
+
+        // The others sync, in order; the unconfirmed one is never attempted.
+        expect(spy.mock.calls.map((call) => call[1])).toEqual([ID_A, ID_C]);
+        expect(results).toEqual([
+          resultOf(ID_A),
+          {
+            bankAccountId: ID_B,
+            error: {
+              code: "needs_preview",
+              message: expect.stringContaining("preview"),
+            },
+          },
+          resultOf(ID_C),
+        ]);
+        expect(provider.fetchTransactions).not.toHaveBeenCalled();
+        // Nothing was attempted, so nothing is recorded as a failed sync.
+        expect(statements("last_sync_status = 'failed'")).toHaveLength(0);
+      });
+
+      it("reads nothing from the bank when every linked account needs its preview", async () => {
+        linkRepo.find.mockResolvedValue([unconfirmed(ID_A), unconfirmed(ID_B)]);
+        const spy = attempt();
+        const results = await service.syncConnection(
+          USER_ID,
+          CONNECTION_ID,
+          null,
+        );
+        expect(results.map((r) => "error" in r && r.error.code)).toEqual([
+          "needs_preview",
+          "needs_preview",
+        ]);
+        expect(spy).not.toHaveBeenCalled();
+        // Nothing to sync, so the credentials are not even resolved.
+        expect(credentials.resolveCredentials).not.toHaveBeenCalled();
+        expect(provider.fetchTransactions).not.toHaveBeenCalled();
+      });
+
+      it("still imports the account when the person confirms it through the single-account sync", async () => {
+        // The confirmation is `POST /bank-sync/accounts/:id/sync`, which is
+        // `syncAccount`: only the connection-wide route and the daily sync skip.
+        const spy = attempt().mockImplementation(async (_user, id) =>
+          resultOf(id),
+        );
+        await expect(service.syncAccount(USER_ID, ID_B, null)).resolves.toEqual(
+          resultOf(ID_B),
+        );
+        expect(spy).toHaveBeenCalledWith(USER_ID, ID_B, null, undefined);
+      });
     });
 
     it("answers an empty list for a connection with no linked account", async () => {

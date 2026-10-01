@@ -5,6 +5,7 @@ import { DataSource } from "typeorm";
 import { EncryptionService } from "../common/encryption/encryption.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
+import { BankSyncCredentialsUnavailableException } from "./bank-sync-errors";
 import {
   fakeProvider,
   fakeRegistry,
@@ -267,6 +268,10 @@ describe("BankSyncCredentialsService", () => {
       await expect(
         service.resolveCredentials(USER_ID, "enable_banking"),
       ).rejects.toBeInstanceOf(BadRequestException);
+      // Its own class: the daily sync reports it as data under 'credentials'.
+      await expect(
+        service.resolveCredentials(USER_ID, "enable_banking"),
+      ).rejects.toBeInstanceOf(BankSyncCredentialsUnavailableException);
     });
 
     it("refuses an unreadable ciphertext and logs no content", async () => {
@@ -278,7 +283,7 @@ describe("BankSyncCredentialsService", () => {
 
       await expect(
         service.resolveCredentials(USER_ID, "enable_banking"),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      ).rejects.toBeInstanceOf(BankSyncCredentialsUnavailableException);
 
       expect(warn).toHaveBeenCalledTimes(1);
       expect(String(warn.mock.calls[0][0])).not.toContain("garbage-ciphertext");

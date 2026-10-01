@@ -355,7 +355,9 @@
         "SYSTEM": "Systeemwaarschuwingen",
         "BALANCES": "Rekeningsaldi",
         "INVESTMENTS": "Beleggingswaarde",
-        "STRATEGIES": "Strategiesignalen"
+        "STRATEGIES": "Strategiesignalen",
+        "BANK_SYNC": "Bankkoppelingen",
+        "BANK_SYNC_ACTIVITY": "Resultaten van banksynchronisatie"
       },
       "channelNotApplicable": "Niet van toepassing op dit type melding",
       "emailToggleLabel": "Rapport-e-mail voor {category}",
@@ -1528,7 +1530,15 @@
       "matchBoth": "{linked}. {suggested}",
       "matchNone": "Er is geen bankrekening gekoppeld: geen enkele heeft een rekeningnummer dat overeenkomt met een van je rekeningen.",
       "matchFailed": "De bankrekeningen konden niet worden gekoppeld",
-      "syncAllNeedsPreview": "Alles synchroniseren wacht tot de eerste import van elke nieuw gekoppelde rekening is bevestigd. Gebruik Nu synchroniseren bij die rekening om het voorbeeld te openen."
+      "syncAllNeedsPreview": "Alles synchroniseren wacht tot de eerste import van elke nieuw gekoppelde rekening is bevestigd. Gebruik Nu synchroniseren bij die rekening om het voorbeeld te openen.",
+      "notifySuccess": "Melding na de dagelijkse synchronisatie",
+      "notifySuccessOptions": {
+        "always": "Na elke synchronisatie",
+        "when_imported": "Alleen als er transacties zijn geïmporteerd",
+        "never": "Nooit"
+      },
+      "notifySuccessSaved": "Meldingsinstelling opgeslagen",
+      "notifySuccessFailed": "De meldingsinstelling kon niet worden gewijzigd"
     },
     "account": {
       "unnamed": "Naamloze bankrekening",
@@ -1596,7 +1606,9 @@
         "unknown_direction": "{count, plural, one {# met een onbekende richting} other {# met een onbekende richting}}",
         "currency_mismatch": "{count, plural, one {# in een andere valuta} other {# in een andere valuta}}",
         "other": "{count, plural, one {# om een andere reden} other {# om een andere reden}}"
-      }
+      },
+      "needsPreview": "Open het voorbeeld voor {accounts} en bevestig de eerste import",
+      "withNeedsPreview": "{message}. {needsPreview}"
     },
     "callback": {
       "title": "Je bank koppelen",

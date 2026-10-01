@@ -703,6 +703,8 @@
     "providerRejected": "Penyedia sinkronisasi bank menolak permintaan: {{ detail }}",
     "providerUnavailable": "Penyedia sinkronisasi bank tidak menjawab. Tidak ada yang diubah; coba lagi nanti.",
     "providerInvalidResponse": "Penyedia sinkronisasi bank mengirim jawaban yang tidak dipahami versi Monize ini.",
-    "planChanged": "Data bank berubah sejak pratinjau. Tidak ada yang diimpor; buat pratinjau lagi."
+    "planChanged": "Data bank berubah sejak pratinjau. Tidak ada yang diimpor; buat pratinjau lagi.",
+    "needsPreview": "Buka pratinjau untuk akun bank ini dan konfirmasikan impor pertama sebelum disinkronkan secara otomatis.",
+    "nothingToUpdate": "Kirim autoSync atau notifySuccess untuk mengubah koneksi bank."
   }
 }

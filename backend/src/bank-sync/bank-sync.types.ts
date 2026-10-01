@@ -1,5 +1,6 @@
 import type {
   BankSyncConnectionStatus,
+  BankSyncNotifySuccessMode,
   BankSyncLastSyncStatus,
   BankSyncProviderName,
   BankSyncPsuType,
@@ -92,6 +93,8 @@ export interface BankSyncConnectionView {
   status: BankSyncConnectionStatus;
   validUntil: string | null;
   autoSync: boolean;
+  /** How the daily sync reports a successful run. */
+  notifySuccess: BankSyncNotifySuccessMode;
   lastError: string | null;
   createdAt: string;
   accounts: BankSyncAccountView[];

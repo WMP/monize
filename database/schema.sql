@@ -2362,12 +2362,17 @@ CREATE TABLE bank_sync_connections (
     last_error VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- How the daily sync reports a successful run (docs/specs/bank-sync-notifications.md
+    -- section 3); a column added by 20261001202917_bank_sync_notify_success.sql.
+    notify_success VARCHAR(20) NOT NULL DEFAULT 'when_imported',
     CONSTRAINT ck_bank_sync_connections_provider
       CHECK (provider IN ('enable_banking')),
     CONSTRAINT ck_bank_sync_connections_psu_type
       CHECK (psu_type IN ('personal', 'business')),
     CONSTRAINT ck_bank_sync_connections_status
-      CHECK (status IN ('pending', 'active', 'expired', 'revoked', 'failed'))
+      CHECK (status IN ('pending', 'active', 'expired', 'revoked', 'failed')),
+    CONSTRAINT ck_bank_sync_connections_notify_success
+      CHECK (notify_success IN ('always', 'when_imported', 'never'))
 );
 
 CREATE INDEX idx_bank_sync_connections_user ON bank_sync_connections(user_id);

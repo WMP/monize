@@ -703,6 +703,8 @@
     "providerRejected": "Il provider della sincronizzazione bancaria ha rifiutato la richiesta: {{ detail }}",
     "providerUnavailable": "Il provider della sincronizzazione bancaria non ha risposto. Non è stato modificato nulla; riprova più tardi.",
     "providerInvalidResponse": "Il provider della sincronizzazione bancaria ha inviato una risposta che questa versione di Monize non comprende.",
-    "planChanged": "I dati della banca sono cambiati dopo l'anteprima. Non è stato importato nulla; genera di nuovo l'anteprima."
+    "planChanged": "I dati della banca sono cambiati dopo l'anteprima. Non è stato importato nulla; genera di nuovo l'anteprima.",
+    "needsPreview": "Apri l'anteprima di questo conto bancario e conferma la prima importazione prima che venga sincronizzato automaticamente.",
+    "nothingToUpdate": "Invia autoSync o notifySuccess per modificare un collegamento bancario."
   }
 }

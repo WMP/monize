@@ -4,14 +4,17 @@ import { AccountsModule } from "../accounts/accounts.module";
 import { EncryptionModule } from "../common/encryption/encryption.module";
 import { JobClaimModule } from "../common/jobs/job-claim.module";
 import { NetWorthModule } from "../net-worth/net-worth.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { PayeesModule } from "../payees/payees.module";
 import { ProviderHealthModule } from "../provider-health/provider-health.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
 import { BankSyncConnectionsService } from "./bank-sync-connections.service";
 import { BankSyncController } from "./bank-sync.controller";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
+import { BankSyncConsentReminderService } from "./bank-sync-consent-reminder.service";
 import { BankSyncCronService } from "./bank-sync-cron.service";
 import { BankSyncMatchService } from "./bank-sync-match.service";
+import { BankSyncOutcomeNotifier } from "./bank-sync-outcome-notifier.service";
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
 import { BankSyncService } from "./bank-sync.service";
 import { BankSyncWriterService } from "./bank-sync-writer.service";
@@ -37,6 +40,11 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     PayeesModule,
     TransactionRulesModule,
     NetWorthModule,
+    // For NotificationDispatchService: the consent reminders and the daily
+    // sync's outcomes are written through it so the bank sync categories'
+    // matrix channels (immediate email, push) apply. NotificationsModule
+    // imports nothing that imports back here, so the edge is bare.
+    NotificationsModule,
   ],
   controllers: [BankSyncController],
   providers: [
@@ -48,7 +56,9 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     BankSyncPreviewService,
     BankSyncService,
     BankSyncMatchService,
+    BankSyncOutcomeNotifier,
     BankSyncCronService,
+    BankSyncConsentReminderService,
   ],
 })
 export class BankSyncModule {}

@@ -113,6 +113,7 @@ export function connectionRow(
     externalSessionId: "session-1",
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     autoSync: true,
+    notifySuccess: "when_imported",
     lastError: null,
     createdAt: new Date("2026-09-01T10:00:00.000Z"),
     updatedAt: new Date("2026-09-01T10:00:00.000Z"),
