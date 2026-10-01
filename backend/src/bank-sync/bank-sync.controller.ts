@@ -35,14 +35,19 @@ import type {
   BankSyncConnectionSyncEntry,
   BankSyncConnectionView,
   BankSyncCredentialsTestView,
+  BankSyncLinkDefaultsView,
+  BankSyncMatchedConnectionView,
+  BankSyncPreviewView,
   BankSyncResult,
   BankSyncStatusView,
 } from "./bank-sync.types";
 import { BankSyncCallbackDto } from "./dto/bank-sync-callback.dto";
 import { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connection.dto";
 import { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
+import { LinkDefaultsQueryDto } from "./dto/link-defaults-query.dto";
 import { ListInstitutionsQueryDto } from "./dto/list-institutions-query.dto";
 import { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
+import { SyncBankSyncAccountDto } from "./dto/sync-bank-sync-account.dto";
 import { UpdateBankSyncConnectionDto } from "./dto/update-bank-sync-connection.dto";
 import { psuContextOf } from "./psu-context.util";
 
@@ -55,7 +60,7 @@ type AuthedRequest = ExpressRequest & { user: { id: string } };
  * `ParseUUIDPipe`, and every write is demo-restricted.
  *
  * The routes that reach the provider or the bank (`connections`, `callback`,
- * `test`, both syncs) are throttled: each spends the user's provider quota.
+ * `test`, `match`, `preview`, both syncs) are throttled: each spends the user's provider quota.
  */
 @ApiTags("Bank sync")
 @Controller("bank-sync")
@@ -159,7 +164,7 @@ export class BankSyncController {
   completeCallback(
     @Request() req: AuthedRequest,
     @Body() dto: BankSyncCallbackDto,
-  ): Promise<BankSyncConnectionView> {
+  ): Promise<BankSyncMatchedConnectionView> {
     return this.connections.completeCallback(req.user.id, dto);
   }
 
@@ -187,6 +192,39 @@ export class BankSyncController {
     return this.connections.disconnect(req.user.id, id);
   }
 
+  @Post("connections/:id/match")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @ApiOperation({
+    summary: "Link bank accounts to the accounts their number names",
+  })
+  @ApiParam({ name: "id", description: "Connection ID" })
+  matchAccounts(
+    @Request() req: AuthedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Headers("user-agent") userAgent?: string,
+  ): Promise<BankSyncMatchedConnectionView> {
+    return this.connections.matchAccounts(
+      req.user.id,
+      id,
+      psuContextOf(req, userAgent),
+    );
+  }
+
+  @Get("accounts/:id/link-defaults")
+  @ApiOperation({
+    summary: "The cut-off date a link to an account would default to",
+  })
+  @ApiParam({ name: "id", description: "Bank account ID" })
+  linkDefaults(
+    @Request() req: AuthedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query() query: LinkDefaultsQueryDto,
+  ): Promise<BankSyncLinkDefaultsView> {
+    return this.bankSync.linkDefaults(req.user.id, id, query.accountId);
+  }
+
   @Patch("accounts/:id")
   @DemoRestricted()
   @ApiOperation({ summary: "Link a bank account to an account, or unlink it" })
@@ -199,6 +237,26 @@ export class BankSyncController {
     return this.bankSync.linkAccount(req.user.id, id, dto);
   }
 
+  @Post("accounts/:id/preview")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @ApiOperation({
+    summary: "Preview what syncing one bank account would import",
+  })
+  @ApiParam({ name: "id", description: "Bank account ID" })
+  previewAccount(
+    @Request() req: AuthedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Headers("user-agent") userAgent?: string,
+  ): Promise<BankSyncPreviewView> {
+    return this.bankSync.previewAccount(
+      req.user.id,
+      id,
+      psuContextOf(req, userAgent),
+    );
+  }
+
   @Post("accounts/:id/sync")
   @DemoRestricted()
   @HttpCode(HttpStatus.OK)
@@ -208,12 +266,14 @@ export class BankSyncController {
   syncAccount(
     @Request() req: AuthedRequest,
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto?: SyncBankSyncAccountDto,
     @Headers("user-agent") userAgent?: string,
   ): Promise<BankSyncResult> {
     return this.bankSync.syncAccount(
       req.user.id,
       id,
       psuContextOf(req, userAgent),
+      dto?.planFingerprint || undefined,
     );
   }
 

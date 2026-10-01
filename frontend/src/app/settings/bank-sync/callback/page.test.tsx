@@ -36,6 +36,13 @@ vi.mock('@/lib/bank-sync', () => ({
 
 const activeConnection = { id: 'c1', institutionName: 'Alpha Bank', status: 'active', lastError: null };
 
+/** The callback's answer: the connection and what the server linked on its own. */
+const answer = (
+  connection: object,
+  linked: { bankAccountId: string; accountId: string }[] = [],
+  suggestions: { bankAccountId: string; accountIds: string[] }[] = [],
+) => ({ connection, linked, suggestions });
+
 async function renderCallback(query: string) {
   mockSearchParams = new URLSearchParams(query);
   let view!: ReturnType<typeof render>;
@@ -62,7 +69,7 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('posts the state and code, then returns to the settings page with a success toast', async () => {
-    mockCompleteCallback.mockResolvedValue(activeConnection);
+    mockCompleteCallback.mockResolvedValue(answer(activeConnection));
 
     await renderCallback('state=s1&code=c1');
 
@@ -70,6 +77,74 @@ describe('BankSyncCallbackPage', () => {
     expect(mockCompleteCallback).toHaveBeenCalledWith({ state: 's1', code: 'c1' });
     expect(toast.success).toHaveBeenCalledWith('Connected to Alpha Bank');
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  describe('what the server linked on its own', () => {
+    const linkedOne = [{ bankAccountId: 'ba-1', accountId: 'a-1' }];
+
+    it('says how many bank accounts were linked to the account with the same number', async () => {
+      mockCompleteCallback.mockResolvedValue(answer(activeConnection, linkedOne));
+
+      await renderCallback('state=s1&code=c1');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/settings/bank-sync'));
+      expect(toast.success).toHaveBeenCalledWith('Connected to Alpha Bank');
+      expect(toast.success).toHaveBeenCalledWith(
+        '1 bank account was linked to the account with the same number. Review it before the first import.',
+        { duration: 8000 },
+      );
+    });
+
+    it('counts several', async () => {
+      mockCompleteCallback.mockResolvedValue(
+        answer(activeConnection, [...linkedOne, { bankAccountId: 'ba-2', accountId: 'a-2' }]),
+      );
+
+      await renderCallback('state=s1&code=c1');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalled());
+      expect(toast.success).toHaveBeenCalledWith(
+        '2 bank accounts were linked to the accounts with the same numbers. Review them before the first import.',
+        { duration: 8000 },
+      );
+    });
+
+    it('says when a bank account matches more than one account and was left for the person to choose', async () => {
+      mockCompleteCallback.mockResolvedValue(
+        answer(activeConnection, [], [{ bankAccountId: 'ba-1', accountIds: ['a-1', 'a-2'] }]),
+      );
+
+      await renderCallback('state=s1&code=c1');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalled());
+      expect(toast).toHaveBeenCalledWith(
+        '1 bank account matches more than one of your accounts: choose its account in the list.',
+        { duration: 8000 },
+      );
+      // Nothing was linked, so there is no claim that anything was.
+      expect(toast.success).toHaveBeenCalledTimes(1);
+    });
+
+    it('says nothing about linking when nothing was matched', async () => {
+      mockCompleteCallback.mockResolvedValue(answer(activeConnection));
+
+      await renderCallback('state=s1&code=c1');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalled());
+      expect(toast.success).toHaveBeenCalledTimes(1);
+      expect(toast).not.toHaveBeenCalled();
+    });
+
+    it('does not announce a link for a connection that did not become active', async () => {
+      mockCompleteCallback.mockResolvedValue(
+        answer({ ...activeConnection, status: 'failed', lastError: 'No' }, linkedOne),
+      );
+
+      await renderCallback('state=s1&code=c1');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalled());
+      expect(toast.success).not.toHaveBeenCalled();
+    });
   });
 
   it('takes the state and code out of the address bar before anything else', async () => {
@@ -84,11 +159,11 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('reports the bank\'s refusal, records it, and returns', async () => {
-    mockCompleteCallback.mockResolvedValue({
+    mockCompleteCallback.mockResolvedValue(answer({
       ...activeConnection,
       status: 'failed',
       lastError: 'User cancelled',
-    });
+    }));
 
     await renderCallback('state=s1&error=access_denied&error_description=User+cancelled');
 
@@ -103,7 +178,7 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('falls back to the error code when the bank gave no description', async () => {
-    mockCompleteCallback.mockResolvedValue({ ...activeConnection, status: 'failed' });
+    mockCompleteCallback.mockResolvedValue(answer({ ...activeConnection, status: 'failed' }));
 
     await renderCallback('state=s1&error=access_denied');
 
@@ -112,7 +187,7 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('bounds the bank\'s message', async () => {
-    mockCompleteCallback.mockResolvedValue({ ...activeConnection, status: 'failed' });
+    mockCompleteCallback.mockResolvedValue(answer({ ...activeConnection, status: 'failed' }));
 
     await renderCallback(`state=s1&error=e&error_description=${'x'.repeat(1000)}`);
 
@@ -143,11 +218,11 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('does not report success for a connection that did not become active', async () => {
-    mockCompleteCallback.mockResolvedValue({
+    mockCompleteCallback.mockResolvedValue(answer({
       ...activeConnection,
       status: 'failed',
       lastError: 'Consent was not granted',
-    });
+    }));
 
     await renderCallback('state=s1&code=c1');
 
@@ -157,7 +232,7 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('says the connection could not be completed when it is not active and gave no reason', async () => {
-    mockCompleteCallback.mockResolvedValue({ ...activeConnection, status: 'pending', lastError: null });
+    mockCompleteCallback.mockResolvedValue(answer({ ...activeConnection, status: 'pending', lastError: null }));
 
     await renderCallback('state=s1&code=c1');
 
@@ -191,7 +266,7 @@ describe('BankSyncCallbackPage', () => {
   });
 
   it('posts the callback exactly once, however often it re-renders', async () => {
-    mockCompleteCallback.mockResolvedValue(activeConnection);
+    mockCompleteCallback.mockResolvedValue(answer(activeConnection));
 
     const view = await renderCallback('state=s1&code=c1');
     // A new URLSearchParams instance (what stripping the query produces) and a

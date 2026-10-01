@@ -11,6 +11,8 @@ import { BankSyncConnectionsService } from "./bank-sync-connections.service";
 import { BankSyncController } from "./bank-sync.controller";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import { BankSyncCronService } from "./bank-sync-cron.service";
+import { BankSyncMatchService } from "./bank-sync-match.service";
+import { BankSyncPreviewService } from "./bank-sync-preview.service";
 import { BankSyncService } from "./bank-sync.service";
 import { BankSyncWriterService } from "./bank-sync-writer.service";
 import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
@@ -43,7 +45,9 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     BankSyncCredentialsService,
     BankSyncConnectionsService,
     BankSyncWriterService,
+    BankSyncPreviewService,
     BankSyncService,
+    BankSyncMatchService,
     BankSyncCronService,
   ],
 })

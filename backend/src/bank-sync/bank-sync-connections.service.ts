@@ -31,11 +31,14 @@ import {
   toBankSyncAccountView,
   toBankSyncConnectionView,
 } from "./bank-sync-views";
+import { BankSyncMatchService } from "./bank-sync-match.service";
 import type {
   BankInstitutionView,
   BankSyncAccountView,
   BankSyncAuthorizationStartView,
   BankSyncConnectionView,
+  BankSyncMatchedConnectionView,
+  BankSyncMatchResult,
 } from "./bank-sync.types";
 import type { BankSyncCallbackDto } from "./dto/bank-sync-callback.dto";
 import type { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connection.dto";
@@ -47,6 +50,7 @@ import type {
   BankAccountDescriptor,
   BankInstitution,
   BankSyncCredentials,
+  PsuContext,
   StartAuthorizationInput,
 } from "./providers/bank-sync-provider.interface";
 import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
@@ -117,6 +121,7 @@ export class BankSyncConnectionsService {
     private readonly dataSource: DataSource,
     private readonly credentials: BankSyncCredentialsService,
     private readonly registry: BankSyncProviderRegistry,
+    private readonly matcher: BankSyncMatchService,
   ) {}
 
   /** The banks the provider can connect to in one country. */
@@ -249,12 +254,14 @@ export class BankSyncConnectionsService {
   /**
    * The bank's redirect came back. Claim the state, then either record the
    * bank's refusal or exchange the code for a session and activate the
-   * connection.
+   * connection. After the activation commits, every unlinked bank account whose
+   * identifier names exactly one of the user's accounts is linked to it
+   * (spec section 5a); the answer lists what was linked and what is ambiguous.
    */
   async completeCallback(
     userId: string,
     dto: BankSyncCallbackDto,
-  ): Promise<BankSyncConnectionView> {
+  ): Promise<BankSyncMatchedConnectionView> {
     const errorText = dto.error?.trim() ?? "";
     const code = dto.code?.trim() ?? "";
     // Refused before the claim: a callback that says nothing must not spend a
@@ -314,7 +321,13 @@ export class BankSyncConnectionsService {
         ),
       );
     }
-    if (claimed.refused) return this.getView(userId, claimed.id);
+    if (claimed.refused) {
+      return {
+        connection: await this.getView(userId, claimed.id),
+        linked: [],
+        suggestions: [],
+      };
+    }
 
     const provider = this.registry.getByName(claimed.provider);
     let session: Awaited<ReturnType<typeof provider.completeAuthorization>>;
@@ -384,7 +397,37 @@ export class BankSyncConnectionsService {
         activated.previousSessionId,
       );
     }
-    return activated.view;
+
+    // The consent is recorded and committed: a matching failure must not undo it.
+    const matched = await this.autoLink(userId, claimed.id);
+    return {
+      connection:
+        matched.linked.length > 0
+          ? await this.getView(userId, claimed.id)
+          : activated.view,
+      ...matched,
+    };
+  }
+
+  /**
+   * Match the connection's bank accounts to the user's accounts by number and
+   * link the unambiguous ones (spec section 5a), for a connection made before
+   * identifiers were stored: an unlinked bank account without one has its
+   * details read from the provider first. `psu` is the person at the keyboard.
+   */
+  async matchAccounts(
+    userId: string,
+    connectionId: string,
+    psu: PsuContext | null,
+  ): Promise<BankSyncMatchedConnectionView> {
+    const matched = await this.matcher.match(userId, connectionId, {
+      fetchMissing: true,
+      psu,
+    });
+    return {
+      connection: await this.getView(userId, connectionId),
+      ...matched,
+    };
   }
 
   /** Every connection of the user with its bank accounts. */
@@ -485,6 +528,24 @@ export class BankSyncConnectionsService {
   }
 
   // ---------------------------------------------------------------------------
+
+  /** The automatic link after a callback; a failure is logged, never thrown. */
+  private async autoLink(
+    userId: string,
+    connectionId: string,
+  ): Promise<BankSyncMatchResult> {
+    try {
+      return await this.matcher.match(userId, connectionId, {
+        fetchMissing: false,
+        psu: null,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Matching the bank accounts of connection ${connectionId} to accounts failed: ${describeSyncFailure(error)}`,
+      );
+      return { linked: [], suggestions: [] };
+    }
+  }
 
   private requireCountry(country: string): string {
     const code =
@@ -750,6 +811,10 @@ export class BankSyncConnectionsService {
         match.displayName = descriptor.displayName ?? match.displayName;
         match.identifierMasked =
           descriptor.identifierMasked ?? match.identifierMasked;
+        match.accountIdentifier =
+          descriptor.accountIdentifier ?? match.accountIdentifier;
+        match.cashAccountType =
+          descriptor.cashAccountType ?? match.cashAccountType;
         match.currencyCode = descriptor.currencyCode ?? match.currencyCode;
         await repo.save(match);
         continue;
@@ -763,6 +828,8 @@ export class BankSyncConnectionsService {
           identificationHash: descriptor.identificationHash,
           displayName: descriptor.displayName,
           identifierMasked: descriptor.identifierMasked,
+          accountIdentifier: descriptor.accountIdentifier,
+          cashAccountType: descriptor.cashAccountType,
           currencyCode: descriptor.currencyCode,
           accountId: null,
           syncFromDate: null,

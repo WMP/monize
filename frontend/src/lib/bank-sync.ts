@@ -9,6 +9,9 @@ import type {
   BankSyncConnection,
   BankSyncConnectionEntry,
   BankSyncCredentialsTestResult,
+  BankSyncLinkDefaults,
+  BankSyncMatchedConnection,
+  BankSyncPreview,
   BankSyncResult,
   BankSyncStatus,
   CreateBankSyncConnection,
@@ -117,11 +120,15 @@ export const bankSyncApi = {
     return response.data;
   },
 
+  /**
+   * Answers with the connection and what the server linked on its own: every
+   * unlinked bank account whose number names exactly one Monize account.
+   */
   completeCallback: async (
     payload: BankSyncCallbackPayload,
-  ): Promise<BankSyncConnection> => {
+  ): Promise<BankSyncMatchedConnection> => {
     try {
-      const response = await apiClient.post<BankSyncConnection>(
+      const response = await apiClient.post<BankSyncMatchedConnection>(
         '/bank-sync/callback',
         payload,
       );
@@ -150,6 +157,42 @@ export const bankSyncApi = {
     invalidateCache('bank-sync:');
   },
 
+  /**
+   * Match the connection's bank accounts to Monize accounts by account number
+   * and link the unambiguous ones. A connection made before identifiers were
+   * kept has them read from the bank first, so this can outlast the default
+   * timeout. It links accounts but moves no balance, so it drops `bank-sync:`
+   * alone.
+   */
+  matchAccounts: async (id: string): Promise<BankSyncMatchedConnection> => {
+    try {
+      const response = await apiClient.post<BankSyncMatchedConnection>(
+        `/bank-sync/connections/${id}/match`,
+        undefined,
+        { timeout: SYNC_TIMEOUT_MS },
+      );
+      return response.data;
+    } finally {
+      invalidateCache('bank-sync:');
+    }
+  },
+
+  /**
+   * The start date a link to `accountId` would get, and the newest transaction
+   * it follows. Read on demand and never cached: the account's newest
+   * transaction is whatever it is now.
+   */
+  getLinkDefaults: async (
+    id: string,
+    accountId: string,
+  ): Promise<BankSyncLinkDefaults> =>
+    (
+      await apiClient.get<BankSyncLinkDefaults>(
+        `/bank-sync/accounts/${id}/link-defaults`,
+        { params: { accountId } },
+      )
+    ).data,
+
   updateAccount: async (
     id: string,
     data: UpdateBankSyncAccount,
@@ -162,11 +205,39 @@ export const bankSyncApi = {
     return response.data;
   },
 
-  syncAccount: async (id: string): Promise<BankSyncResult> => {
+  /**
+   * What a sync of this account would do, listed row by row; nothing is
+   * written. It reads the bank, so it takes a sync's timeout. A failure drops
+   * `bank-sync:` because the server may have recorded a lapsed consent on the
+   * connection; a success changes nothing a cache holds.
+   */
+  previewAccount: async (id: string): Promise<BankSyncPreview> => {
+    try {
+      const response = await apiClient.post<BankSyncPreview>(
+        `/bank-sync/accounts/${id}/preview`,
+        undefined,
+        { timeout: SYNC_TIMEOUT_MS },
+      );
+      return response.data;
+    } catch (error) {
+      invalidateCache('bank-sync:');
+      throw error;
+    }
+  },
+
+  /**
+   * Sync one account. With the `planFingerprint` of a preview the server
+   * imports exactly the rows that preview listed and answers 409 when the
+   * bank's data has changed since.
+   */
+  syncAccount: async (
+    id: string,
+    planFingerprint?: string,
+  ): Promise<BankSyncResult> => {
     try {
       const response = await apiClient.post<BankSyncResult>(
         `/bank-sync/accounts/${id}/sync`,
-        undefined,
+        planFingerprint ? { planFingerprint } : undefined,
         { timeout: SYNC_TIMEOUT_MS },
       );
       if (wroteRows([response.data])) invalidateBalanceCaches();

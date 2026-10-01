@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "銀行端的授權未完成。請續期授權以重試；已關聯的科目會保留。",
       "noAccounts": "銀行尚未回報此連線下的任何科目。",
-      "accountsHeading": "銀行帳戶"
+      "accountsHeading": "銀行帳戶",
+      "matchAccounts": "依帳號比對",
+      "matching": "正在比對...",
+      "matchLinked": "{count, plural, other {已將 # 個銀行帳戶關聯到號碼相同的科目}}",
+      "matchSuggested": "{count, plural, other {# 個銀行帳戶與您的多個科目相符：請自行選擇科目}}",
+      "matchBoth": "{linked}。{suggested}",
+      "matchNone": "沒有關聯任何銀行帳戶：沒有帳號與您的科目相符。",
+      "matchFailed": "無法比對銀行帳戶",
+      "syncAllNeedsPreview": "在每個新關聯科目的首次匯入獲得確認之前，無法使用「全部同步」。請在該科目上使用「立即同步」開啟預覽。"
     },
     "account": {
       "unnamed": "未命名的銀行帳戶",
@@ -1547,13 +1555,19 @@
       "difference": "差額",
       "differenceHelp": "銀行餘額是銀行在所示日期回報的餘額。它可能包含銀行尚未入帳的交易，或在該日期之後入帳的交易，因此兩次同步之間出現小額差額是正常的。",
       "differenceHidden": "銀行餘額的貨幣為 {bankCurrency}，而 Monize 科目的貨幣為 {monizeCurrency}，因此不顯示差額。",
-      "deletedNote": "您在 Monize 中刪除的交易不會在之後的同步中再次匯入，因此已刪除的列會保持刪除狀態。"
+      "deletedNote": "您在 Monize 中刪除的交易不會在之後的同步中再次匯入，因此已刪除的列會保持刪除狀態。",
+      "createNew": "新增科目",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "科目已建立並關聯",
+      "createdLinkFailed": "科目已建立，但無法關聯",
+      "preview": "預覽",
+      "firstSyncPreview": "首次匯入需透過交易預覽來確認。"
     },
     "link": {
       "title": "關聯到 {account}",
       "editTitle": "{account} 的開始日期",
       "syncFromLabel": "匯入交易的起始日期",
-      "syncFromHelp": "留空時，Monize 會從科目中最新一筆交易的隔天開始；如果科目為空，則回溯 89 天。",
+      "syncFromHelp": "已填入 Monize 預設選擇的日期。清空此欄位，Monize 會為您選擇。",
       "beforeCutoff": "銀行在此日期之前入帳的交易永遠不會被匯入。",
       "duplicateWarning": "早於科目中最新交易的日期，可能會與您已輸入的交易產生重複。",
       "save": "關聯科目",
@@ -1562,7 +1576,11 @@
       "cancel": "取消",
       "saved": "科目已關聯",
       "editSaved": "開始日期已儲存",
-      "saveFailed": "無法儲存關聯"
+      "saveFailed": "無法儲存關聯",
+      "loadingDefaults": "正在讀取科目...",
+      "defaultsFailed": "無法讀取此科目中最新的一筆交易，因此 Monize 無法判斷此開始日期是否會產生重複。",
+      "newestTransaction": "此科目中最新的交易：{date}",
+      "emptyAccount": "{days, plural, other {科目為空：匯入涵蓋最近 # 天}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {未匯入任何交易} other {已匯入 # 筆交易}}，{skipped, plural, =0 {無跳過} other {# 筆因已匯入而跳過}}，{refused, plural, =0 {無拒絕} other {# 筆被拒絕}}",
@@ -1588,7 +1606,80 @@
       "bankError": "您的銀行未授予存取權限：{message}",
       "missingState": "銀行未傳回有效的回應。請重新開始連線。",
       "notActive": "無法完成連線",
-      "failed": "無法完成連線"
+      "failed": "無法完成連線",
+      "autoLinked": "{count, plural, other {已將 # 個銀行帳戶關聯到號碼相同的科目。請在首次匯入前檢查。}}",
+      "autoSuggested": "{count, plural, other {# 個銀行帳戶與您的多個科目相符：請在清單中選擇科目。}}"
+    },
+    "accountType": {
+      "CACC": "活期存款",
+      "CARD": "銀行卡",
+      "SVGS": "儲蓄",
+      "LOAN": "貸款",
+      "other": "帳戶類型 {code}"
+    },
+    "mismatch": {
+      "bankCard": "銀行將此帳戶回報為銀行卡，但 {account} 的類型是{type}，不是{creditCard}。銀行卡的交易會被匯入類型不符的科目。",
+      "monizeCard": "{account} 的類型是{creditCard}，但銀行將此帳戶回報為：{bankType}。請確認這是正確的銀行帳戶。",
+      "confirm": "我已了解，仍然關聯這些科目"
+    },
+    "preview": {
+      "title": "匯入到 {account} 的預覽",
+      "description": "在您確認之前不會匯入任何內容。這裡是銀行回報的內容，以及 Monize 將對每筆交易執行的操作。",
+      "loading": "正在讀取銀行...",
+      "loadFailed": "無法預覽此科目",
+      "retry": "重試",
+      "close": "關閉",
+      "import": "{count, plural, =0 {確認：沒有需要匯入的新交易} other {匯入 # 筆交易}}",
+      "importing": "正在匯入...",
+      "importFailed": "無法匯入交易",
+      "planChanged": "自此預覽以來銀行的資料已變更，因此沒有匯入任何內容。預覽已重新讀取：請檢查後再次匯入。",
+      "monizeBalance": "Monize 目前餘額",
+      "balanceAfter": "匯入後的 Monize 餘額",
+      "bankBalance": "銀行餘額",
+      "bankBalanceAsOf": "截至 {date} 為 {amount}",
+      "bankBalanceNotReported": "銀行未回報",
+      "difference": "匯入後的差額",
+      "differenceHelp": "銀行餘額減去匯入後的 Monize 餘額。零表示兩者一致。銀行餘額可能包含銀行尚未入帳的交易，因此小額差異是正常的。",
+      "differenceHidden": "銀行餘額以 {bankCurrency} 計，而 Monize 科目以 {monizeCurrency} 計，因此不顯示差額。",
+      "filterLabel": "顯示交易",
+      "filter": {
+        "all": "全部",
+        "new": "新增",
+        "duplicate": "已匯入",
+        "refused": "已拒絕",
+        "pending": "待處理",
+        "before_cutoff": "早於開始日期",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "新增",
+        "duplicate": "已匯入",
+        "refused": "已拒絕",
+        "pending": "待處理",
+        "before_cutoff": "早於開始日期"
+      },
+      "refusal": {
+        "missing_date": "無日期",
+        "future_date": "日期在未來",
+        "invalid_amount": "金額無效",
+        "unknown_direction": "方向未知",
+        "currency_mismatch": "其他貨幣",
+        "other": "已拒絕"
+      },
+      "columns": {
+        "date": "日期",
+        "payee": "收款人",
+        "category": "類別",
+        "status": "狀態",
+        "amount": "金額"
+      },
+      "noPayee": "無收款人",
+      "dateUnknown": "無日期",
+      "amountUnknown": "未知",
+      "empty": {
+        "all": "銀行未傳回此期間的交易。",
+        "filtered": "此清單中沒有交易。"
+      }
     }
   }
 }

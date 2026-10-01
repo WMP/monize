@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "银行端的授权未完成。请续期授权以重试；已关联的账户会保留。",
       "noAccounts": "银行尚未报告此连接下的任何账户。",
-      "accountsHeading": "银行账户"
+      "accountsHeading": "银行账户",
+      "matchAccounts": "按账号匹配",
+      "matching": "正在匹配...",
+      "matchLinked": "{count, plural, other {已将 # 个银行账户关联到账号相同的账户}}",
+      "matchSuggested": "{count, plural, other {# 个银行账户与您的多个账户相匹配：请自行选择账户}}",
+      "matchBoth": "{linked}。{suggested}",
+      "matchNone": "没有关联任何银行账户：没有账号与您的账户相匹配。",
+      "matchFailed": "无法匹配银行账户",
+      "syncAllNeedsPreview": "在每个新关联账户的首次导入得到确认之前，无法使用“全部同步”。请在该账户上使用“立即同步”打开预览。"
     },
     "account": {
       "unnamed": "未命名的银行账户",
@@ -1547,13 +1555,19 @@
       "difference": "差额",
       "differenceHelp": "银行余额是银行在所示日期报告的余额。它可能包含银行尚未入账的交易，或在该日期之后入账的交易，因此两次同步之间出现小额差额是正常的。",
       "differenceHidden": "银行余额的货币为 {bankCurrency}，而 Monize 账户的货币为 {monizeCurrency}，因此不显示差额。",
-      "deletedNote": "您在 Monize 中删除的交易不会在之后的同步中再次导入，因此已删除的行会保持删除状态。"
+      "deletedNote": "您在 Monize 中删除的交易不会在之后的同步中再次导入，因此已删除的行会保持删除状态。",
+      "createNew": "新建账户",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "账户已创建并关联",
+      "createdLinkFailed": "账户已创建，但无法关联",
+      "preview": "预览",
+      "firstSyncPreview": "首次导入需通过交易预览来确认。"
     },
     "link": {
       "title": "关联到 {account}",
       "editTitle": "{account} 的开始日期",
       "syncFromLabel": "导入交易的起始日期",
-      "syncFromHelp": "留空时，Monize 会从账户中最新一笔交易的次日开始；如果账户为空，则回溯 89 天。",
+      "syncFromHelp": "已填入 Monize 默认选择的日期。清空该字段，Monize 会为您选择。",
       "beforeCutoff": "银行在此日期之前入账的交易永远不会被导入。",
       "duplicateWarning": "早于账户中最新交易的日期，可能会与您已录入的交易产生重复。",
       "save": "关联账户",
@@ -1562,7 +1576,11 @@
       "cancel": "取消",
       "saved": "账户已关联",
       "editSaved": "开始日期已保存",
-      "saveFailed": "无法保存关联"
+      "saveFailed": "无法保存关联",
+      "loadingDefaults": "正在读取账户...",
+      "defaultsFailed": "无法读取此账户中最新的一笔交易，因此 Monize 无法判断此开始日期是否会产生重复。",
+      "newestTransaction": "此账户中最新的交易：{date}",
+      "emptyAccount": "{days, plural, other {账户为空：导入涵盖最近 # 天}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {未导入任何交易} other {已导入 # 笔交易}}，{skipped, plural, =0 {无跳过} other {# 笔因已导入而跳过}}，{refused, plural, =0 {无拒绝} other {# 笔被拒绝}}",
@@ -1588,7 +1606,80 @@
       "bankError": "您的银行未授予访问权限：{message}",
       "missingState": "银行未返回有效的响应。请重新开始连接。",
       "notActive": "无法完成连接",
-      "failed": "无法完成连接"
+      "failed": "无法完成连接",
+      "autoLinked": "{count, plural, other {已将 # 个银行账户关联到账号相同的账户。请在首次导入前检查。}}",
+      "autoSuggested": "{count, plural, other {# 个银行账户与您的多个账户相匹配：请在列表中选择账户。}}"
+    },
+    "accountType": {
+      "CACC": "活期账户",
+      "CARD": "银行卡",
+      "SVGS": "储蓄账户",
+      "LOAN": "贷款",
+      "other": "账户类型 {code}"
+    },
+    "mismatch": {
+      "bankCard": "银行将此账户报告为银行卡，但 {account} 的类型是{type}，不是{creditCard}。银行卡的交易会被导入到类型不符的账户中。",
+      "monizeCard": "{account} 的类型是{creditCard}，但银行将此账户报告为：{bankType}。请确认这是正确的银行账户。",
+      "confirm": "我已了解，仍然关联这些账户"
+    },
+    "preview": {
+      "title": "导入到 {account} 的预览",
+      "description": "在您确认之前不会导入任何内容。这里是银行报告的内容，以及 Monize 将对每笔交易执行的操作。",
+      "loading": "正在读取银行...",
+      "loadFailed": "无法预览此账户",
+      "retry": "重试",
+      "close": "关闭",
+      "import": "{count, plural, =0 {确认：没有需要导入的新交易} other {导入 # 笔交易}}",
+      "importing": "正在导入...",
+      "importFailed": "无法导入交易",
+      "planChanged": "自此预览以来银行的数据已更改，因此没有导入任何内容。预览已重新读取：请检查后再次导入。",
+      "monizeBalance": "Monize 当前余额",
+      "balanceAfter": "导入后的 Monize 余额",
+      "bankBalance": "银行余额",
+      "bankBalanceAsOf": "截至 {date} 为 {amount}",
+      "bankBalanceNotReported": "银行未报告",
+      "difference": "导入后的差额",
+      "differenceHelp": "银行余额减去导入后的 Monize 余额。零表示两者一致。银行余额可能包含银行尚未入账的交易，因此小额差异是正常的。",
+      "differenceHidden": "银行余额以 {bankCurrency} 计，而 Monize 账户以 {monizeCurrency} 计，因此不显示差额。",
+      "filterLabel": "显示交易",
+      "filter": {
+        "all": "全部",
+        "new": "新增",
+        "duplicate": "已导入",
+        "refused": "已拒绝",
+        "pending": "待处理",
+        "before_cutoff": "早于开始日期",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "新增",
+        "duplicate": "已导入",
+        "refused": "已拒绝",
+        "pending": "待处理",
+        "before_cutoff": "早于开始日期"
+      },
+      "refusal": {
+        "missing_date": "无日期",
+        "future_date": "日期在未来",
+        "invalid_amount": "金额无效",
+        "unknown_direction": "方向未知",
+        "currency_mismatch": "其他货币",
+        "other": "已拒绝"
+      },
+      "columns": {
+        "date": "日期",
+        "payee": "收款人",
+        "category": "分类",
+        "status": "状态",
+        "amount": "金额"
+      },
+      "noPayee": "无收款人",
+      "dateUnknown": "无日期",
+      "amountUnknown": "未知",
+      "empty": {
+        "all": "银行未返回此期间的交易。",
+        "filtered": "此列表中没有交易。"
+      }
     }
   }
 }

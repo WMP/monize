@@ -702,6 +702,7 @@
     "rateLimited": "De bank of de provider heeft beperkt hoe vaak deze rekening mag worden gelezen. Banken staan maar een paar automatische uitlezingen per dag toe; probeer het later opnieuw.",
     "providerRejected": "De provider voor banksynchronisatie heeft het verzoek geweigerd: {{ detail }}",
     "providerUnavailable": "De provider voor banksynchronisatie heeft niet gereageerd. Er is niets gewijzigd; probeer het later opnieuw.",
-    "providerInvalidResponse": "De provider voor banksynchronisatie heeft een antwoord gestuurd dat deze versie van Monize niet begrijpt."
+    "providerInvalidResponse": "De provider voor banksynchronisatie heeft een antwoord gestuurd dat deze versie van Monize niet begrijpt.",
+    "planChanged": "De gegevens van de bank zijn gewijzigd sinds het voorbeeld. Er is niets geïmporteerd; maak het voorbeeld opnieuw."
   }
 }

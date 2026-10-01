@@ -14,6 +14,7 @@ import {
   SECONDS_PER_DAY,
 } from "./bank-sync.constants";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
+import { BankSyncMatchService } from "./bank-sync-match.service";
 import {
   BankSyncConnectionsService,
   consentValiditySeconds,
@@ -87,6 +88,9 @@ describe("BankSyncConnectionsService", () => {
     resolveCredentials: jest.fn(),
     redirectUrl: jest.fn(),
   };
+  const matcher: jest.Mocked<Pick<BankSyncMatchService, "match">> = {
+    match: jest.fn(),
+  };
   const connectionRepo = {
     findOne: jest.fn(),
     find: jest.fn(),
@@ -137,6 +141,7 @@ describe("BankSyncConnectionsService", () => {
       url: "https://bank.example/auth",
     });
     manager.query.mockResolvedValue([]);
+    matcher.match.mockResolvedValue({ linked: [], suggestions: [] });
     accountRepo.find.mockResolvedValue([]);
     accountRepo.create.mockImplementation((row: unknown) => row);
     accountRepo.save.mockImplementation(async (row: unknown) => row);
@@ -148,9 +153,39 @@ describe("BankSyncConnectionsService", () => {
         { provide: DataSource, useValue: dataSource },
         { provide: BankSyncCredentialsService, useValue: credentials },
         { provide: BankSyncProviderRegistry, useValue: registry },
+        { provide: BankSyncMatchService, useValue: matcher },
       ],
     }).compile();
     service = module.get(BankSyncConnectionsService);
+  });
+
+  describe("matchAccounts (POST /connections/:id/match)", () => {
+    it("matches with a provider read allowed, passing the person at the keyboard, and answers the refreshed connection", async () => {
+      const psu = { ipAddress: "203.0.113.4", userAgent: "UA" };
+      matcher.match.mockResolvedValue({
+        linked: [{ bankAccountId: BANK_ACCOUNT_ID, accountId: "acc-1" }],
+        suggestions: [],
+      });
+      connectionRepo.findOne.mockResolvedValue(connectionRow());
+      accountRepo.find.mockResolvedValue([bankAccountRow()]);
+
+      const answer = await service.matchAccounts(USER_ID, CONNECTION_ID, psu);
+
+      expect(matcher.match).toHaveBeenCalledWith(USER_ID, CONNECTION_ID, {
+        fetchMissing: true,
+        psu,
+      });
+      expect(answer.linked).toHaveLength(1);
+      expect(answer.connection.id).toBe(CONNECTION_ID);
+      expect(answer.connection.accounts).toHaveLength(1);
+    });
+
+    it("does not hide a failure of the match: the user asked for it", async () => {
+      matcher.match.mockRejectedValue(new NotFoundException("gone"));
+      await expect(
+        service.matchAccounts(USER_ID, CONNECTION_ID, null),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 
   describe("listInstitutions", () => {
@@ -421,6 +456,8 @@ describe("BankSyncConnectionsService", () => {
       identificationHash: "hash-1",
       displayName: "Main",
       identifierMasked: "**** 1234",
+      accountIdentifier: null,
+      cashAccountType: null,
       currencyCode: "PLN",
       ...over,
     });
@@ -497,7 +534,7 @@ describe("BankSyncConnectionsService", () => {
       );
       accountRepo.find.mockResolvedValue([bankAccountRow()]);
 
-      const view = await service.completeCallback(USER_ID, {
+      const { connection: view } = await service.completeCallback(USER_ID, {
         state: STATE,
         error: "access_denied",
         errorDescription: "User cancelled",
@@ -549,7 +586,7 @@ describe("BankSyncConnectionsService", () => {
       const pending = connectionRow({ status: "pending" });
       connectionRepo.findOne.mockResolvedValue(pending);
 
-      const view = await service.completeCallback(USER_ID, {
+      const { connection: view } = await service.completeCallback(USER_ID, {
         state: STATE,
         code: "code-1",
       });
@@ -569,6 +606,145 @@ describe("BankSyncConnectionsService", () => {
       expect(view.status).toBe("active");
       // The response has no session id.
       expect(JSON.stringify(view)).not.toContain("session-9");
+    });
+
+    it("stores the bank account's identifier and type on insert, and keeps known ones a session omits", async () => {
+      claimWins();
+      provider.completeAuthorization.mockResolvedValue(
+        session([
+          descriptor({
+            identificationHash: null,
+            accountIdentifier: "PL61109010140000071219812874",
+            cashAccountType: "CARD",
+          }),
+        ]),
+      );
+      connectionRepo.findOne.mockResolvedValue(
+        connectionRow({ status: "pending" }),
+      );
+      await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+      expect(accountRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountIdentifier: "PL61109010140000071219812874",
+          cashAccountType: "CARD",
+        }),
+      );
+
+      // A re-authorization that omits them keeps what was learned before.
+      const existing = bankAccountRow({
+        externalAccountId: "ext-new",
+        identificationHash: "hash-1",
+        accountIdentifier: "XX1",
+        cashAccountType: "CACC",
+      });
+      accountRepo.find.mockResolvedValue([existing]);
+      provider.completeAuthorization.mockResolvedValue(session([descriptor()]));
+      claimWins();
+      await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+      expect(existing).toMatchObject({
+        accountIdentifier: "XX1",
+        cashAccountType: "CACC",
+      });
+
+      // ... and takes the new ones when it has them.
+      provider.completeAuthorization.mockResolvedValue(
+        session([
+          descriptor({ accountIdentifier: "XX2", cashAccountType: "SVGS" }),
+        ]),
+      );
+      claimWins();
+      await service.completeCallback(USER_ID, { state: STATE, code: "c" });
+      expect(existing).toMatchObject({
+        accountIdentifier: "XX2",
+        cashAccountType: "SVGS",
+      });
+    });
+
+    describe("matching after the activation commits (spec section 5a)", () => {
+      beforeEach(() => {
+        claimWins();
+        provider.completeAuthorization.mockResolvedValue(session());
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "pending" }),
+        );
+      });
+
+      it("matches without asking the provider, after the second transaction, and answers what was linked", async () => {
+        const order: string[] = [];
+        dataSource.transaction.mockImplementation(
+          async (fn: (m: unknown) => Promise<unknown>) => {
+            order.push("tx");
+            return fn(manager);
+          },
+        );
+        matcher.match.mockImplementation(async () => {
+          order.push("match");
+          return {
+            linked: [{ bankAccountId: BANK_ACCOUNT_ID, accountId: "acc-1" }],
+            suggestions: [
+              { bankAccountId: "bank-2", accountIds: ["acc-2", "acc-3"] },
+            ],
+          };
+        });
+        accountRepo.find.mockResolvedValue([bankAccountRow()]);
+
+        const answer = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+
+        expect(matcher.match).toHaveBeenCalledWith(USER_ID, CONNECTION_ID, {
+          fetchMissing: false,
+          psu: null,
+        });
+        // claim tx, activation tx, then the match, then the refreshed view.
+        expect(order.slice(0, 3)).toEqual(["tx", "tx", "match"]);
+        expect(answer.linked).toEqual([
+          { bankAccountId: BANK_ACCOUNT_ID, accountId: "acc-1" },
+        ]);
+        expect(answer.suggestions).toEqual([
+          { bankAccountId: "bank-2", accountIds: ["acc-2", "acc-3"] },
+        ]);
+        expect(answer.connection.id).toBe(CONNECTION_ID);
+        expect(JSON.stringify(answer)).not.toContain("session-9");
+      });
+
+      it("answers nothing linked when nothing matched", async () => {
+        const answer = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+        expect(answer.linked).toEqual([]);
+        expect(answer.suggestions).toEqual([]);
+        expect(answer.connection.status).toBe("active");
+      });
+
+      it("keeps the activated connection when matching fails, logging it", async () => {
+        const warn = jest
+          .spyOn(service["logger"], "warn")
+          .mockImplementation(() => undefined);
+        matcher.match.mockRejectedValue(new Error("db down"));
+        const answer = await service.completeCallback(USER_ID, {
+          state: STATE,
+          code: "c",
+        });
+        expect(answer.connection.status).toBe("active");
+        expect(answer.linked).toEqual([]);
+        expect(warn).toHaveBeenCalledTimes(1);
+      });
+
+      it("does not match a callback the bank refused", async () => {
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ status: "failed", lastError: "No" }),
+        );
+        const answer = await service.completeCallback(USER_ID, {
+          state: STATE,
+          error: "access_denied",
+        });
+        expect(matcher.match).not.toHaveBeenCalled();
+        expect(answer).toMatchObject({ linked: [], suggestions: [] });
+        expect(answer.connection.status).toBe("failed");
+      });
     });
 
     it("inserts a new bank account unmapped", async () => {
@@ -781,7 +957,7 @@ describe("BankSyncConnectionsService", () => {
         });
         connectionRepo.findOne.mockResolvedValue(working);
 
-        const view = await service.completeCallback(USER_ID, {
+        const { connection: view } = await service.completeCallback(USER_ID, {
           state: STATE,
           code: "c",
         });
@@ -799,7 +975,7 @@ describe("BankSyncConnectionsService", () => {
         connectionRepo.findOne.mockResolvedValue(
           connectionRow({ status: "expired", externalSessionId: "session-1" }),
         );
-        const view = await service.completeCallback(USER_ID, {
+        const { connection: view } = await service.completeCallback(USER_ID, {
           state: STATE,
           code: "c",
         });
@@ -861,7 +1037,7 @@ describe("BankSyncConnectionsService", () => {
           connectionRow({ status: "active", externalSessionId: "session-1" }),
         );
 
-        const view = await service.completeCallback(USER_ID, {
+        const { connection: view } = await service.completeCallback(USER_ID, {
           state: STATE,
           code: "c",
         });

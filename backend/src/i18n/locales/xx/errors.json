@@ -702,6 +702,7 @@
     "rateLimited": "[XX-The bank or the provider limited how often this account can be read. Banks allow only a few unattended reads a day; try again later.-XX]",
     "providerRejected": "[XX-The bank sync provider rejected the request: {{ detail }}-XX]",
     "providerUnavailable": "[XX-The bank sync provider did not answer. Nothing was changed; try again later.-XX]",
-    "providerInvalidResponse": "[XX-The bank sync provider sent an answer this version of Monize does not understand.-XX]"
+    "providerInvalidResponse": "[XX-The bank sync provider sent an answer this version of Monize does not understand.-XX]",
+    "planChanged": "[XX-The bank's data changed since the preview. Nothing was imported; preview again.-XX]"
   }
 }

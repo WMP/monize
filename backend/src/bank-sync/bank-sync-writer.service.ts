@@ -19,6 +19,16 @@ import {
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
+import {
+  findExistingPayee,
+  NO_PAYEE,
+  type ResolvedPayee,
+} from "./bank-sync-payee-lookup";
+import {
+  findLedgerKeys,
+  newPlannedRows,
+  planFingerprint,
+} from "./bank-sync-plan-fingerprint";
 import type { BankImportPlan } from "./bank-transaction-planner";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 
@@ -28,6 +38,13 @@ export interface NormalizedBankBalance {
   currencyCode: string;
   referenceDate: string | null;
 }
+
+/**
+ * The preview the user confirmed no longer describes what the bank says (spec
+ * section 7a). A 409 raised before the first write; its own class so the sync
+ * that raised it does not record itself as failed: nothing was attempted.
+ */
+export class BankSyncPlanChangedException extends ConflictException {}
 
 export interface BankSyncWriteInput {
   userId: string;
@@ -46,24 +63,18 @@ export interface BankSyncWriteInput {
   plan: BankImportPlan;
   /** Null when the bank reported none: the stored balance is left alone. */
   balance: NormalizedBankBalance | null;
+  /**
+   * The fingerprint of the preview the user confirmed (`planFingerprint`). When
+   * set, the write recomputes it from the rows it is about to write, under the
+   * row lock, and refuses with `BankSyncPlanChangedException` when it differs.
+   */
+  expectedFingerprint?: string;
 }
 
 export interface BankSyncWriteOutcome {
   imported: number;
   skipped: number;
 }
-
-interface ResolvedPayee {
-  payeeId: string | null;
-  payeeName: string | null;
-  defaultCategoryId: string | null;
-}
-
-const NO_PAYEE: ResolvedPayee = {
-  payeeId: null,
-  payeeName: null,
-  defaultCategoryId: null,
-};
 
 /**
  * The single write transaction of a bank sync (docs/specs/bank-sync.md section 7
@@ -184,6 +195,31 @@ export class BankSyncWriterService {
         );
       }
 
+      // 3b. A confirmed preview: what is about to be written is what was shown.
+      //     The rows are the planned ones the ledger does not hold yet, read
+      //     under the row lock this transaction holds, so a concurrent sync of
+      //     the same account has either committed (and its rows are duplicates
+      //     now) or waits behind it.
+      if (input.expectedFingerprint !== undefined) {
+        const ledgerKeys = await findLedgerKeys(
+          m,
+          userId,
+          accountId,
+          plan.planned.map((row) => row.externalKey),
+        );
+        const actual = planFingerprint(
+          newPlannedRows(plan.planned, ledgerKeys),
+        );
+        if (actual !== input.expectedFingerprint) {
+          throw new BankSyncPlanChangedException(
+            tr(
+              "errors.bankSync.planChanged",
+              "The bank's data changed since the preview. Nothing was imported; preview again.",
+            ),
+          );
+        }
+      }
+
       // 4. The user's import rules, loaded once for the batch.
       const rules = await this.rulesApplier.loadRulesFor(m, userId, "import");
 
@@ -294,42 +330,27 @@ export class BankSyncWriterService {
     const cached = cache.get(text);
     if (cached) return cached;
 
-    let resolved: ResolvedPayee;
-    const exact = await this.payeesService.findByName(userId, text);
-    if (exact) {
+    let resolved = await findExistingPayee(this.payeesService, userId, text);
+    if (resolved === null) {
+      const rows = returnedRows<{
+        id: string;
+        name: string;
+        default_category_id: string | null;
+      }>(
+        await m.query(
+          `INSERT INTO payees (user_id, name)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id, name) DO UPDATE SET name = payees.name
+           RETURNING id, name, default_category_id`,
+          [userId, text],
+        ),
+      );
       resolved = {
-        payeeId: exact.id,
-        payeeName: exact.name,
-        defaultCategoryId: exact.defaultCategoryId,
+        payeeId: rows[0].id,
+        payeeName: rows[0].name,
+        defaultCategoryId: rows[0].default_category_id,
+        defaultCategoryName: null,
       };
-    } else {
-      const aliased = await this.payeesService.findPayeeByAlias(userId, text);
-      if (aliased) {
-        resolved = {
-          payeeId: aliased.id,
-          payeeName: aliased.name,
-          defaultCategoryId: aliased.defaultCategoryId,
-        };
-      } else {
-        const rows = returnedRows<{
-          id: string;
-          name: string;
-          default_category_id: string | null;
-        }>(
-          await m.query(
-            `INSERT INTO payees (user_id, name)
-             VALUES ($1, $2)
-             ON CONFLICT (user_id, name) DO UPDATE SET name = payees.name
-             RETURNING id, name, default_category_id`,
-            [userId, text],
-          ),
-        );
-        resolved = {
-          payeeId: rows[0].id,
-          payeeName: rows[0].name,
-          defaultCategoryId: rows[0].default_category_id,
-        };
-      }
     }
     cache.set(text, resolved);
     return resolved;

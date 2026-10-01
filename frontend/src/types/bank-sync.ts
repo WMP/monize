@@ -61,6 +61,17 @@ export interface BankSyncAccount {
   connectionId: string;
   displayName: string | null;
   identifierMasked: string | null;
+  /**
+   * The bank's full account identifier (IBAN or number), normalized. It is the
+   * owner's own data with the sensitivity of a Monize account number, and is
+   * here only to prefill a new account's number; lists show `identifierMasked`.
+   */
+  accountIdentifier: string | null;
+  /**
+   * The bank's account type (`CACC` current, `CARD`, `SVGS` savings, `LOAN`, or
+   * another code), or null when the bank stated none.
+   */
+  cashAccountType: string | null;
   currencyCode: string | null;
   /** The Monize account this bank account is mapped to, or null when unlinked. */
   accountId: string | null;
@@ -75,6 +86,12 @@ export interface BankSyncAccount {
   bankBalance: string | null;
   bankBalanceCurrency: string | null;
   bankBalanceDate: string | null;
+  /**
+   * True while the account is linked and no sync has succeeded since the link
+   * (or since its account or start date changed): the first import is confirmed
+   * from the preview (spec section 7a).
+   */
+  needsPreview: boolean;
 }
 
 export interface BankSyncConnection {
@@ -118,6 +135,93 @@ export interface UpdateBankSyncAccount {
   accountId: string | null;
   /** Sent only when the user chose a date; omitted lets the server default it. */
   syncFromDate?: string;
+}
+
+/** A bank account the server linked to the Monize account its number names. */
+export interface BankSyncLinkedMatch {
+  bankAccountId: string;
+  accountId: string;
+}
+
+/** A bank account two or more Monize accounts could be; nothing was linked. */
+export interface BankSyncMatchSuggestion {
+  bankAccountId: string;
+  accountIds: string[];
+}
+
+/**
+ * The answer to the callback and to `POST /bank-sync/connections/:id/match`
+ * (spec section 5a): the connection as it now stands, what was linked and what
+ * is ambiguous.
+ */
+export interface BankSyncMatchedConnection {
+  connection: BankSyncConnection;
+  linked: BankSyncLinkedMatch[];
+  suggestions: BankSyncMatchSuggestion[];
+}
+
+/** `GET /bank-sync/accounts/:id/link-defaults` (spec section 7). */
+export interface BankSyncLinkDefaults {
+  /** The date of the newest transaction in the account; null for an empty account. */
+  newestTransactionDate: string | null;
+  /** The start date a link made without a chosen date gets. */
+  defaultSyncFromDate: string;
+}
+
+/** What the preview says about one bank row (spec section 7a). */
+export type BankSyncPreviewOutcome =
+  | 'new'
+  | 'duplicate'
+  | 'refused'
+  | 'pending'
+  | 'before_cutoff';
+
+export interface BankSyncPreviewRow {
+  outcome: BankSyncPreviewOutcome;
+  /** Set when the outcome is `refused`. */
+  refusalReason: string | null;
+  transactionDate: string | null;
+  /** Signed money as a decimal string; null when the bank's amount was unreadable. */
+  amount: string | null;
+  currencyCode: string | null;
+  payeeText: string | null;
+  description: string | null;
+  referenceNumber: string | null;
+  /** What the payee lookup and the import rules would give; set for a `new` row. */
+  payeeName: string | null;
+  categoryName: string | null;
+  tagNames: string[];
+}
+
+export interface BankSyncPreviewSummary {
+  new: number;
+  duplicate: number;
+  refused: number;
+  refusedByReason: Record<string, number>;
+  pending: number;
+  beforeCutoff: number;
+}
+
+/** `POST /bank-sync/accounts/:id/preview`: nothing in it has been written. */
+export interface BankSyncPreview {
+  bankAccountId: string;
+  /** The Monize account's currency; every figure below is in it. */
+  currencyCode: string;
+  rows: BankSyncPreviewRow[];
+  summary: BankSyncPreviewSummary;
+  /** Decimal strings. */
+  monizeBalance: string;
+  balanceAfter: string;
+  /** What the bank reported, or null when it reported none. */
+  bankBalance: {
+    amount: string;
+    currencyCode: string;
+    referenceDate: string | null;
+  } | null;
+  /** The bank's balance minus `balanceAfter`; null unless both are known in one currency. */
+  difference: string | null;
+  /** Sent back with the sync so it imports exactly these rows. */
+  planFingerprint: string;
 }
 
 /** The outcome of syncing one bank account (spec section 7). */

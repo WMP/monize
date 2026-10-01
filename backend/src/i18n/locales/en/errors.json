@@ -702,6 +702,7 @@
     "rateLimited": "The bank or the provider limited how often this account can be read. Banks allow only a few unattended reads a day; try again later.",
     "providerRejected": "The bank sync provider rejected the request: {{ detail }}",
     "providerUnavailable": "The bank sync provider did not answer. Nothing was changed; try again later.",
-    "providerInvalidResponse": "The bank sync provider sent an answer this version of Monize does not understand."
+    "providerInvalidResponse": "The bank sync provider sent an answer this version of Monize does not understand.",
+    "planChanged": "The bank's data changed since the preview. Nothing was imported; preview again."
   }
 }

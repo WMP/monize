@@ -702,6 +702,7 @@
     "rateLimited": "Banka veya sağlayıcı bu hesabın ne sıklıkla okunabileceğini sınırladı. Bankalar günde yalnızca birkaç gözetimsiz okumaya izin verir; daha sonra tekrar deneyin.",
     "providerRejected": "Banka senkronizasyonu sağlayıcısı isteği reddetti: {{ detail }}",
     "providerUnavailable": "Banka senkronizasyonu sağlayıcısı yanıt vermedi. Hiçbir şey değiştirilmedi; daha sonra tekrar deneyin.",
-    "providerInvalidResponse": "Banka senkronizasyonu sağlayıcısı, Monize'nin bu sürümünün anlamadığı bir yanıt gönderdi."
+    "providerInvalidResponse": "Banka senkronizasyonu sağlayıcısı, Monize'nin bu sürümünün anlamadığı bir yanıt gönderdi.",
+    "planChanged": "Bankanın verileri önizlemeden sonra değişti. Hiçbir şey içe aktarılmadı; önizlemeyi yeniden oluşturun."
   }
 }

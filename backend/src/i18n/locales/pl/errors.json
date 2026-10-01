@@ -702,6 +702,7 @@
     "rateLimited": "Bank lub dostawca ograniczył częstotliwość odczytu tego konta. Banki dopuszczają tylko kilka automatycznych odczytów dziennie. Spróbuj ponownie później.",
     "providerRejected": "Dostawca synchronizacji bankowej odrzucił żądanie: {{ detail }}",
     "providerUnavailable": "Dostawca synchronizacji bankowej nie odpowiedział. Nic nie zmieniono. Spróbuj ponownie później.",
-    "providerInvalidResponse": "Dostawca synchronizacji bankowej wysłał odpowiedź, której ta wersja Monize nie rozumie."
+    "providerInvalidResponse": "Dostawca synchronizacji bankowej wysłał odpowiedź, której ta wersja Monize nie rozumie.",
+    "planChanged": "Dane banku zmieniły się od czasu podglądu. Nic nie zaimportowano; wygeneruj podgląd ponownie."
   }
 }

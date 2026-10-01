@@ -702,6 +702,7 @@
     "rateLimited": "Die Bank oder der Anbieter hat begrenzt, wie oft dieses Konto gelesen werden darf. Banken erlauben nur wenige automatische Abrufe pro Tag; versuchen Sie es später erneut.",
     "providerRejected": "Der Anbieter der Bank-Synchronisierung hat die Anfrage abgelehnt: {{ detail }}",
     "providerUnavailable": "Der Anbieter der Bank-Synchronisierung hat nicht geantwortet. Es wurde nichts geändert; versuchen Sie es später erneut.",
-    "providerInvalidResponse": "Der Anbieter der Bank-Synchronisierung hat eine Antwort gesendet, die diese Version von Monize nicht versteht."
+    "providerInvalidResponse": "Der Anbieter der Bank-Synchronisierung hat eine Antwort gesendet, die diese Version von Monize nicht versteht.",
+    "planChanged": "Die Daten der Bank haben sich seit der Vorschau geändert. Es wurde nichts importiert; erstellen Sie die Vorschau erneut."
   }
 }

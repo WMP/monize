@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Badge, type BadgeVariant } from '@/components/ui/Badge';
@@ -67,9 +67,11 @@ export function BankSyncConnectionCard({
   // Captured once: consent is measured in days, so a clock that stands still
   // for the life of the page is exact enough, and render stays pure.
   const [now] = useState(() => Date.now());
+  const syncAllHintId = useId();
   const [autoSync, setAutoSync] = useState(connection.autoSync);
   const [savingAutoSync, setSavingAutoSync] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [matching, setMatching] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -102,8 +104,15 @@ export function BankSyncConnectionCard({
 
   const linkedCount = connection.accounts.filter((account) => account.accountId).length;
   const canSyncAll = displayStatus === 'active' && linkedCount > 0;
+  // A link nobody has confirmed yet is imported from its own preview, never as
+  // part of "Sync all": that would write a first import nobody has looked at.
+  const syncAllWaitsForPreview =
+    canSyncAll && connection.accounts.some((account) => account.accountId && account.needsPreview);
   const showAutoSync = displayStatus === 'active' || displayStatus === 'expired';
-  const busy = syncing || renewing || disconnecting;
+  const busy = syncing || matching || renewing || disconnecting;
+  // Matching has nothing to do once every bank account is linked.
+  const canMatch =
+    displayStatus === 'active' && connection.accounts.some((account) => account.accountId === null);
 
   // Accounts linked to a bank account of ANOTHER row stay off this row's
   // picker; its own link stays offered so it renders as selected.
@@ -165,6 +174,32 @@ export function BankSyncConnectionCard({
     }
   };
 
+  // Link each bank account to the Monize account with the same account number.
+  // The toast says how many were linked and how many matched more than one
+  // account, which the person has to choose between.
+  const handleMatch = async () => {
+    setMatching(true);
+    try {
+      const { linked, suggestions } = await bankSyncApi.matchAccounts(connection.id);
+      const linkedText = t('matchLinked', { count: linked.length });
+      const suggestedText = t('matchSuggested', { count: suggestions.length });
+      if (linked.length > 0 && suggestions.length > 0) {
+        toast.success(t('matchBoth', { linked: linkedText, suggested: suggestedText }));
+      } else if (linked.length > 0) {
+        toast.success(linkedText);
+      } else if (suggestions.length > 0) {
+        toast(suggestedText, { duration: 8000 });
+      } else {
+        toast(t('matchNone'));
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, t('matchFailed')));
+    } finally {
+      setMatching(false);
+      await onChanged();
+    }
+  };
+
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
@@ -219,13 +254,25 @@ export function BankSyncConnectionCard({
               {t('renew')}
             </Button>
           )}
+          {canMatch && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleMatch}
+              disabled={disabled || busy}
+            >
+              {matching ? t('matching') : t('matchAccounts')}
+            </Button>
+          )}
           {canSyncAll && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleSyncAll}
-              disabled={disabled || busy}
+              disabled={disabled || busy || syncAllWaitsForPreview}
+              aria-describedby={syncAllWaitsForPreview ? syncAllHintId : undefined}
             >
               {syncing ? t('syncingAll') : t('syncAll')}
             </Button>
@@ -241,6 +288,12 @@ export function BankSyncConnectionCard({
           </Button>
         </div>
       </div>
+
+      {syncAllWaitsForPreview && (
+        <p id={syncAllHintId} className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          {t('syncAllNeedsPreview')}
+        </p>
+      )}
 
       {showAutoSync && (
         <div className="mt-3 flex items-center gap-3">

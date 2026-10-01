@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "Otorisasi di bank belum diselesaikan. Perbarui persetujuan untuk mencoba kembali; akun yang sudah ditautkan tetap tersimpan.",
       "noAccounts": "Bank belum melaporkan rekening apa pun untuk koneksi ini.",
-      "accountsHeading": "Rekening bank"
+      "accountsHeading": "Rekening bank",
+      "matchAccounts": "Cocokkan menurut nomor akun",
+      "matching": "Mencocokkan...",
+      "matchLinked": "{count, plural, other {# rekening bank ditautkan ke akun dengan nomor yang sama}}",
+      "matchSuggested": "{count, plural, other {# rekening bank cocok dengan lebih dari satu akun Anda: pilih akunnya sendiri}}",
+      "matchBoth": "{linked}. {suggested}",
+      "matchNone": "Tidak ada rekening bank yang ditautkan: tidak ada yang nomornya cocok dengan salah satu akun Anda.",
+      "matchFailed": "Rekening bank tidak dapat dicocokkan",
+      "syncAllNeedsPreview": "Sinkronkan semua menunggu sampai impor pertama setiap akun yang baru ditautkan dikonfirmasi. Gunakan Sinkronkan sekarang pada akun itu untuk melihat pratinjau."
     },
     "account": {
       "unnamed": "Rekening bank tanpa nama",
@@ -1547,13 +1555,19 @@
       "difference": "Selisih",
       "differenceHelp": "Saldo bank adalah saldo yang dilaporkan bank pada tanggal yang ditampilkan. Saldo ini dapat mencakup transaksi yang belum dibukukan bank, atau dibukukan setelah tanggal tersebut, sehingga selisih kecil di antara sinkronisasi adalah hal yang wajar.",
       "differenceHidden": "Saldo bank dalam {bankCurrency} dan akun Monize dalam {monizeCurrency}, sehingga selisih tidak ditampilkan.",
-      "deletedNote": "Transaksi yang Anda hapus di Monize tidak diimpor lagi oleh sinkronisasi berikutnya, sehingga baris yang dihapus tetap terhapus."
+      "deletedNote": "Transaksi yang Anda hapus di Monize tidak diimpor lagi oleh sinkronisasi berikutnya, sehingga baris yang dihapus tetap terhapus.",
+      "createNew": "Buat akun baru",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "Akun dibuat dan ditautkan",
+      "createdLinkFailed": "Akun dibuat, tetapi tidak dapat ditautkan",
+      "preview": "Pratinjau",
+      "firstSyncPreview": "Impor pertama dikonfirmasi dari pratinjau transaksi."
     },
     "link": {
       "title": "Tautkan ke {account}",
       "editTitle": "Tanggal mulai untuk {account}",
       "syncFromLabel": "Impor transaksi mulai",
-      "syncFromHelp": "Biarkan kosong dan Monize mulai sehari setelah transaksi terbaru yang sudah ada di akun, atau 89 hari ke belakang jika akun kosong.",
+      "syncFromHelp": "Diisi dengan tanggal yang dipilih Monize secara default. Kosongkan kolom dan Monize akan memilihnya untuk Anda.",
       "beforeCutoff": "Transaksi yang dibukukan bank sebelum tanggal ini tidak pernah diimpor.",
       "duplicateWarning": "Tanggal yang lebih awal dari transaksi terbaru di akun dapat membuat duplikat transaksi yang sudah Anda masukkan.",
       "save": "Tautkan akun",
@@ -1562,7 +1576,11 @@
       "cancel": "Batal",
       "saved": "Akun ditautkan",
       "editSaved": "Tanggal mulai disimpan",
-      "saveFailed": "Tidak dapat menyimpan tautan"
+      "saveFailed": "Tidak dapat menyimpan tautan",
+      "loadingDefaults": "Membaca akun...",
+      "defaultsFailed": "Transaksi terbaru di akun ini tidak dapat dibaca, sehingga Monize tidak dapat mengatakan apakah tanggal mulai ini dapat membuat duplikat.",
+      "newestTransaction": "Transaksi terbaru di akun ini: {date}",
+      "emptyAccount": "{days, plural, other {Akun kosong: impor mencakup # hari terakhir}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {Tidak ada transaksi yang diimpor} other {# transaksi diimpor}}, {skipped, plural, =0 {tidak ada yang dilewati} other {# dilewati karena sudah diimpor}}, {refused, plural, =0 {tidak ada yang ditolak} other {# ditolak}}",
@@ -1588,7 +1606,80 @@
       "bankError": "Bank Anda tidak memberikan akses: {message}",
       "missingState": "Bank tidak mengembalikan respons yang valid. Mulai koneksi lagi.",
       "notActive": "Koneksi tidak dapat diselesaikan",
-      "failed": "Tidak dapat menyelesaikan koneksi"
+      "failed": "Tidak dapat menyelesaikan koneksi",
+      "autoLinked": "{count, plural, other {# rekening bank ditautkan ke akun dengan nomor yang sama. Periksa sebelum impor pertama.}}",
+      "autoSuggested": "{count, plural, other {# rekening bank cocok dengan lebih dari satu akun Anda: pilih akunnya di daftar.}}"
+    },
+    "accountType": {
+      "CACC": "Rekening giro",
+      "CARD": "Kartu",
+      "SVGS": "Tabungan",
+      "LOAN": "Pinjaman",
+      "other": "Jenis akun {code}"
+    },
+    "mismatch": {
+      "bankCard": "Bank melaporkan akun ini sebagai kartu, tetapi jenis {account} adalah {type}, bukan {creditCard}. Transaksi kartu akan diimpor ke jenis akun yang salah.",
+      "monizeCard": "Jenis {account} adalah {creditCard}, tetapi bank melaporkan akun ini sebagai: {bankType}. Pastikan ini rekening bank yang benar.",
+      "confirm": "Saya mengerti, tautkan akun ini tetap"
+    },
+    "preview": {
+      "title": "Pratinjau impor ke {account}",
+      "description": "Tidak ada yang diimpor sampai Anda mengonfirmasi. Ini yang dilaporkan bank dan yang akan dilakukan Monize pada setiap transaksi.",
+      "loading": "Membaca bank...",
+      "loadFailed": "Pratinjau akun ini tidak dapat dibuat",
+      "retry": "Coba lagi",
+      "close": "Tutup",
+      "import": "{count, plural, =0 {Konfirmasi: tidak ada yang baru untuk diimpor} other {Impor # transaksi}}",
+      "importing": "Mengimpor...",
+      "importFailed": "Transaksi tidak dapat diimpor",
+      "planChanged": "Data bank berubah sejak pratinjau ini, sehingga tidak ada yang diimpor. Pratinjau dibaca ulang: periksa dan impor sekali lagi.",
+      "monizeBalance": "Saldo Monize sekarang",
+      "balanceAfter": "Saldo Monize setelah impor",
+      "bankBalance": "Saldo bank",
+      "bankBalanceAsOf": "{amount} per {date}",
+      "bankBalanceNotReported": "Tidak dilaporkan oleh bank",
+      "difference": "Selisih setelah impor",
+      "differenceHelp": "Saldo bank dikurangi saldo Monize setelah impor. Nol berarti keduanya sama. Saldo bank dapat mencakup transaksi yang belum dibukukan bank, jadi selisih kecil itu normal.",
+      "differenceHidden": "Saldo bank dalam {bankCurrency} dan akun Monize dalam {monizeCurrency}, sehingga selisih tidak ditampilkan.",
+      "filterLabel": "Tampilkan transaksi",
+      "filter": {
+        "all": "Semua",
+        "new": "Baru",
+        "duplicate": "Sudah diimpor",
+        "refused": "Ditolak",
+        "pending": "Tertunda",
+        "before_cutoff": "Sebelum tanggal mulai",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "Baru",
+        "duplicate": "Sudah diimpor",
+        "refused": "Ditolak",
+        "pending": "Tertunda",
+        "before_cutoff": "Sebelum tanggal mulai"
+      },
+      "refusal": {
+        "missing_date": "Tanpa tanggal",
+        "future_date": "Bertanggal di masa depan",
+        "invalid_amount": "Jumlah tidak valid",
+        "unknown_direction": "Arah tidak diketahui",
+        "currency_mismatch": "Mata uang lain",
+        "other": "Ditolak"
+      },
+      "columns": {
+        "date": "Tanggal",
+        "payee": "Penerima",
+        "category": "Kategori",
+        "status": "Status",
+        "amount": "Jumlah"
+      },
+      "noPayee": "Tanpa penerima",
+      "dateUnknown": "Tanpa tanggal",
+      "amountUnknown": "Tidak diketahui",
+      "empty": {
+        "all": "Bank tidak mengembalikan transaksi untuk periode ini.",
+        "filtered": "Tidak ada transaksi di daftar ini."
+      }
     }
   }
 }

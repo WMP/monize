@@ -17,8 +17,10 @@ import type { BankSyncResult } from "./bank-sync.types";
 import { BankSyncCallbackDto } from "./dto/bank-sync-callback.dto";
 import { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connection.dto";
 import { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
+import { LinkDefaultsQueryDto } from "./dto/link-defaults-query.dto";
 import { ListInstitutionsQueryDto } from "./dto/list-institutions-query.dto";
 import { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
+import { SyncBankSyncAccountDto } from "./dto/sync-bank-sync-account.dto";
 import { UpdateBankSyncConnectionDto } from "./dto/update-bank-sync-connection.dto";
 import {
   ACCOUNT_ID,
@@ -51,6 +53,7 @@ describe("BankSyncController", () => {
       | "completeCallback"
       | "updateConnection"
       | "disconnect"
+      | "matchAccounts"
     >
   > = {
     listInstitutions: jest.fn(),
@@ -60,11 +63,21 @@ describe("BankSyncController", () => {
     completeCallback: jest.fn(),
     updateConnection: jest.fn(),
     disconnect: jest.fn(),
+    matchAccounts: jest.fn(),
   };
   const bankSync: jest.Mocked<
-    Pick<BankSyncService, "linkAccount" | "syncAccount" | "syncConnection">
+    Pick<
+      BankSyncService,
+      | "linkAccount"
+      | "linkDefaults"
+      | "previewAccount"
+      | "syncAccount"
+      | "syncConnection"
+    >
   > = {
     linkAccount: jest.fn(),
+    linkDefaults: jest.fn(),
+    previewAccount: jest.fn(),
     syncAccount: jest.fn(),
     syncConnection: jest.fn(),
   };
@@ -105,7 +118,10 @@ describe("BankSyncController", () => {
       ["completeCallback", RequestMethod.POST, "callback"],
       ["updateConnection", RequestMethod.PATCH, "connections/:id"],
       ["disconnect", RequestMethod.DELETE, "connections/:id"],
+      ["matchAccounts", RequestMethod.POST, "connections/:id/match"],
+      ["linkDefaults", RequestMethod.GET, "accounts/:id/link-defaults"],
       ["linkAccount", RequestMethod.PATCH, "accounts/:id"],
+      ["previewAccount", RequestMethod.POST, "accounts/:id/preview"],
       ["syncAccount", RequestMethod.POST, "accounts/:id/sync"],
       ["syncConnection", RequestMethod.POST, "connections/:id/sync"],
     ];
@@ -156,6 +172,8 @@ describe("BankSyncController", () => {
         "startConnection",
         "reauthorize",
         "completeCallback",
+        "matchAccounts",
+        "previewAccount",
         "syncAccount",
         "syncConnection",
       ];
@@ -260,12 +278,13 @@ describe("BankSyncController", () => {
       const result = { bankAccountId: BANK_ACCOUNT_ID } as BankSyncResult;
       bankSync.syncAccount.mockResolvedValue(result);
       await expect(
-        controller.syncAccount(req(), BANK_ACCOUNT_ID, "Mozilla/5.0"),
+        controller.syncAccount(req(), BANK_ACCOUNT_ID, {}, "Mozilla/5.0"),
       ).resolves.toBe(result);
       expect(bankSync.syncAccount).toHaveBeenCalledWith(
         USER_ID,
         BANK_ACCOUNT_ID,
         { ipAddress: "203.0.113.4", userAgent: "Mozilla/5.0" },
+        undefined,
       );
       await controller.syncConnection(req(), CONNECTION_ID, "Mozilla/5.0");
       expect(bankSync.syncConnection).toHaveBeenCalledWith(
@@ -276,11 +295,59 @@ describe("BankSyncController", () => {
     });
 
     it("sends the sync as unattended when the client address is unknown", async () => {
-      await controller.syncAccount(req(null), BANK_ACCOUNT_ID, "UA");
+      await controller.syncAccount(req(null), BANK_ACCOUNT_ID, {}, "UA");
       expect(bankSync.syncAccount).toHaveBeenCalledWith(
         USER_ID,
         BANK_ACCOUNT_ID,
         null,
+        undefined,
+      );
+    });
+
+    it("passes the preview's fingerprint to the sync, and a body-less sync passes none", async () => {
+      const planFingerprint = "ab".repeat(32);
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { planFingerprint },
+        "UA",
+      );
+      expect(bankSync.syncAccount.mock.calls[0][3]).toBe(planFingerprint);
+
+      await controller.syncAccount(req(), BANK_ACCOUNT_ID, undefined, "UA");
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { planFingerprint: null },
+        "UA",
+      );
+      expect(bankSync.syncAccount.mock.calls[1][3]).toBeUndefined();
+      expect(bankSync.syncAccount.mock.calls[2][3]).toBeUndefined();
+    });
+
+    it("previews and matches as a user-present read, with the user from the JWT", async () => {
+      await controller.previewAccount(req(), BANK_ACCOUNT_ID, "Mozilla/5.0");
+      expect(bankSync.previewAccount).toHaveBeenCalledWith(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        { ipAddress: "203.0.113.4", userAgent: "Mozilla/5.0" },
+      );
+      await controller.matchAccounts(req(), CONNECTION_ID, "Mozilla/5.0");
+      expect(connections.matchAccounts).toHaveBeenCalledWith(
+        USER_ID,
+        CONNECTION_ID,
+        { ipAddress: "203.0.113.4", userAgent: "Mozilla/5.0" },
+      );
+    });
+
+    it("answers the link defaults for the account in the query", async () => {
+      await controller.linkDefaults(req(), BANK_ACCOUNT_ID, {
+        accountId: ACCOUNT_ID,
+      });
+      expect(bankSync.linkDefaults).toHaveBeenCalledWith(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        ACCOUNT_ID,
       );
     });
   });
@@ -442,6 +509,59 @@ describe("BankSyncController", () => {
           await errorsOf({ accountId: ACCOUNT_ID, syncFromDate: bad }),
         ).toEqual(["syncFromDate"]);
       }
+    });
+  });
+
+  describe("SyncBankSyncAccountDto", () => {
+    const errorsOf = async (value: object) =>
+      (
+        await validate(plainToInstance(SyncBankSyncAccountDto, value), {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        })
+      ).map((error) => error.property);
+
+    it("accepts no fingerprint, a null or blank one, and a SHA-256 hex digest", async () => {
+      expect(await errorsOf({})).toEqual([]);
+      expect(await errorsOf({ planFingerprint: null })).toEqual([]);
+      expect(await errorsOf({ planFingerprint: "" })).toEqual([]);
+      expect(await errorsOf({ planFingerprint: "0f".repeat(32) })).toEqual([]);
+    });
+
+    it("refuses anything else: wrong length, upper case, non-hex, a non-string, an unknown field", async () => {
+      for (const bad of [
+        "0f".repeat(31),
+        "0f".repeat(33),
+        "0F".repeat(32),
+        "zz".repeat(32),
+        12345,
+        ["0f".repeat(32)],
+      ]) {
+        expect(await errorsOf({ planFingerprint: bad })).toEqual([
+          "planFingerprint",
+        ]);
+      }
+      expect(await errorsOf({ other: true })).toEqual(["other"]);
+    });
+  });
+
+  describe("LinkDefaultsQueryDto", () => {
+    const errorsOf = async (value: object) =>
+      (
+        await validate(plainToInstance(LinkDefaultsQueryDto, value), {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        })
+      ).map((error) => error.property);
+
+    it("requires the account to be a UUID", async () => {
+      expect(await errorsOf({ accountId: ACCOUNT_ID })).toEqual([]);
+      expect(await errorsOf({})).toEqual(["accountId"]);
+      expect(await errorsOf({ accountId: "nope" })).toEqual(["accountId"]);
+      // A repeated key arrives as an array and is refused, not coerced.
+      expect(await errorsOf({ accountId: [ACCOUNT_ID, ACCOUNT_ID] })).toEqual([
+        "accountId",
+      ]);
     });
   });
 });

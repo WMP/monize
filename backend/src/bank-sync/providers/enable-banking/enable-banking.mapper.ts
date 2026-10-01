@@ -1,3 +1,4 @@
+import { boundedAccountIdentifier } from "../../bank-account-identifier";
 import { BankSyncProviderError } from "../bank-sync-provider.errors";
 import type {
   BankAccountDescriptor,
@@ -213,13 +214,39 @@ export function mapAuthorizationUrl(payload: unknown): string {
   );
 }
 
-/** The first identifier of `all_account_ids` that carries one. */
-function firstAccountIdentification(row: UnknownRecord): unknown {
+/** The longest cash account type kept (`bank_sync_accounts.cash_account_type`). */
+const MAX_CASH_ACCOUNT_TYPE_LENGTH = 10;
+
+/**
+ * The identifier of an account row: `account_id.iban`, else
+ * `account_id.other.identification`, else the first entry of `all_account_ids`
+ * that carries one. The first candidate that is a usable identifier wins, so an
+ * empty `iban` does not hide the number beside it.
+ */
+function accountIdentifierOf(row: UnknownRecord): string | null {
+  const accountId = isRecord(row.account_id) ? row.account_id : {};
+  const other = isRecord(accountId.other) ? accountId.other : {};
   const ids = Array.isArray(row.all_account_ids) ? row.all_account_ids : [];
-  return ids.find(
-    (id): id is UnknownRecord =>
-      isRecord(id) && text(id.identification, 64) !== null,
-  )?.identification;
+  const candidates = [
+    accountId.iban,
+    other.identification,
+    ...ids.map((id) => (isRecord(id) ? id.identification : null)),
+  ];
+  for (const candidate of candidates) {
+    const identifier = boundedAccountIdentifier(candidate);
+    if (identifier !== null) return identifier;
+  }
+  return null;
+}
+
+/** The cash account type: letters only, bounded, upper case; null otherwise. */
+function cashAccountType(value: unknown): string | null {
+  const code = text(value, MAX_TYPE_LENGTH);
+  return code !== null &&
+    code.length <= MAX_CASH_ACCOUNT_TYPE_LENGTH &&
+    /^[A-Za-z]+$/.test(code)
+    ? code.toUpperCase()
+    : null;
 }
 
 /**
@@ -229,12 +256,14 @@ function firstAccountIdentification(row: UnknownRecord): unknown {
  * the account's own `details`, then the bank's `product`, and the holder's name
  * only when the bank sent neither.
  */
-function mapAccount(row: unknown): BankAccountDescriptor | null {
+function mapAccount(
+  row: unknown,
+  fallbackUid: string | null = null,
+): BankAccountDescriptor | null {
   if (!isRecord(row)) return null;
-  const externalAccountId = text(row.uid, MAX_REFERENCE_LENGTH);
+  const externalAccountId = text(row.uid, MAX_REFERENCE_LENGTH) ?? fallbackUid;
   if (externalAccountId === null) return null;
-  const accountId = isRecord(row.account_id) ? row.account_id : {};
-  const other = isRecord(accountId.other) ? accountId.other : {};
+  const identifier = accountIdentifierOf(row);
   const code = currency(row.currency);
   return {
     externalAccountId,
@@ -243,11 +272,31 @@ function mapAccount(row: unknown): BankAccountDescriptor | null {
       text(row.details, MAX_NAME_LENGTH) ??
       text(row.product, MAX_NAME_LENGTH) ??
       text(row.name, MAX_NAME_LENGTH),
-    identifierMasked: maskIdentifier(
-      accountId.iban ?? other.identification ?? firstAccountIdentification(row),
-    ),
+    identifierMasked: maskIdentifier(identifier),
+    accountIdentifier: identifier,
+    cashAccountType: cashAccountType(row.cash_account_type),
     currencyCode: code === UNKNOWN_CURRENCY ? null : code,
   };
+}
+
+/**
+ * `GET /accounts/{uid}/details`: the same `AccountResource` a session lists. The
+ * account is the one asked for, so a response without a `uid` still names it.
+ */
+export function mapAccountDetails(
+  payload: unknown,
+  externalAccountId: string,
+): BankAccountDescriptor {
+  const descriptor = mapAccount(requireObject(payload), externalAccountId);
+  // `requireObject` has already refused a non-object, and the fallback uid
+  // makes the row mappable, so this is only the type's own guard.
+  if (descriptor === null) {
+    throw new BankSyncProviderError(
+      "invalid_response",
+      "Enable Banking returned an unreadable response.",
+    );
+  }
+  return { ...descriptor, externalAccountId };
 }
 
 /** `POST /sessions`: the session and the accounts it can read. */
@@ -265,7 +314,7 @@ export function mapSession(payload: unknown): {
     );
   }
   const accounts = requireArray(body, "accounts")
-    .map(mapAccount)
+    .map((row) => mapAccount(row))
     .filter((account): account is BankAccountDescriptor => account !== null);
   const access = isRecord(body.access) ? body.access : {};
   const validUntilText = text(access.valid_until, MAX_TIMESTAMP_TEXT_LENGTH);

@@ -248,6 +248,58 @@ describe("EnableBankingProvider", () => {
       ]);
     });
 
+    it("fetchAccountDetails GETs the encoded account's details with the PSU headers and maps the account", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        json({
+          uid: "uid/1",
+          cash_account_type: "CARD",
+          currency: "PLN",
+          identification_hash: "hash-1",
+          account_id: { other: { identification: "5276 0000 0000 2743" } },
+        }),
+      );
+
+      const account = await provider.fetchAccountDetails(credentials, "uid/1", {
+        ipAddress: "192.0.2.10",
+        userAgent: "ExampleBrowser/1.0",
+      });
+
+      const { url, init, headers } = call();
+      expect(url.pathname).toBe("/accounts/uid%2F1/details");
+      expect(init.method).toBe("GET");
+      expect(init.body).toBeUndefined();
+      expect(headers["Psu-Ip-Address"]).toBe("192.0.2.10");
+      expect(account).toMatchObject({
+        externalAccountId: "uid/1",
+        accountIdentifier: "5276000000002743",
+        identifierMasked: "**** 2743",
+        cashAccountType: "CARD",
+        currencyCode: "PLN",
+      });
+      expect(health.assertAvailable).toHaveBeenCalledTimes(1);
+      expect(health.recordSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it("fetchAccountDetails sends no PSU headers for an unattended read, and reports a refusal typed", async () => {
+      fetchSpy.mockResolvedValueOnce(json({ uid: "uid-1" }));
+      await provider.fetchAccountDetails(credentials, "uid-1", null);
+      expect(call().headers["Psu-Ip-Address"]).toBeUndefined();
+
+      fetchSpy.mockResolvedValueOnce(
+        json({ error: "EXPIRED_SESSION", message: "gone" }, 401),
+      );
+      await expect(
+        provider.fetchAccountDetails(credentials, "uid-1", null),
+      ).rejects.toMatchObject({ kind: "session_expired" });
+    });
+
+    it("fetchAccountDetails answers an unreadable body as invalid_response", async () => {
+      fetchSpy.mockResolvedValueOnce(json("not an object"));
+      await expect(
+        provider.fetchAccountDetails(credentials, "uid-1", null),
+      ).rejects.toMatchObject({ kind: "invalid_response" });
+    });
+
     it("fetchBalance reads the balances of an encoded account id", async () => {
       fetchSpy.mockResolvedValueOnce(
         json({

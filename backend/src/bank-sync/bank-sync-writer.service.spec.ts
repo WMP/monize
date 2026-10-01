@@ -17,6 +17,7 @@ import {
 } from "../transactions/entities/transaction.entity";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
 import {
+  BankSyncPlanChangedException,
   BankSyncWriteInput,
   BankSyncWriterService,
 } from "./bank-sync-writer.service";
@@ -31,6 +32,7 @@ import type {
   PlannedBankRow,
 } from "./bank-transaction-planner";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
+import { planFingerprint } from "./bank-sync-plan-fingerprint";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -535,6 +537,138 @@ describe("BankSyncWriterService", () => {
       await expect(
         service.write(input([row()], { plannedCurrencyCode: " PLN " })),
       ).resolves.toMatchObject({ imported: 1 });
+    });
+  });
+
+  describe("a confirmed preview: the fingerprint (spec section 7a)", () => {
+    const rows = () => [
+      row({ externalKey: "ref:1", amount: -12.34 }),
+      row({ externalKey: "ref:2", amount: 50 }),
+      row({ externalKey: "ref:3", amount: -0.5 }),
+    ];
+
+    /** The ledger SELECT answers with `held`; inserts win. */
+    function ledgerHolding(held: string[]) {
+      manager.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          const text = String(sql);
+          if (text.includes("SELECT external_key")) {
+            return held.map((external_key) => ({ external_key }));
+          }
+          if (text.includes("INSERT INTO bank_sync_imported_transactions")) {
+            return held.includes(String(params![2]))
+              ? []
+              : [{ id: `ledger-${String(params![2])}` }];
+          }
+          if (text.includes("INSERT INTO payees")) {
+            return [
+              { id: "p", name: String(params![1]), default_category_id: null },
+            ];
+          }
+          return [];
+        },
+      );
+    }
+
+    it("writes when the new rows are the ones the preview showed", async () => {
+      ledgerHolding(["ref:2"]);
+      const shown = planFingerprint([rows()[0], rows()[2]]);
+      await expect(
+        service.write(input(rows(), { expectedFingerprint: shown })),
+      ).resolves.toMatchObject({ imported: 2, skipped: 1 });
+    });
+
+    it("recomputes the fingerprint after the link and the account are locked, and before the first insert", async () => {
+      const order: string[] = [];
+      linkRepo.findOne.mockImplementation(async () => {
+        order.push("lock-link");
+        return bankAccountRow();
+      });
+      manager.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          const text = String(sql);
+          if (text.includes("SELECT external_key")) {
+            order.push("fingerprint");
+            return [];
+          }
+          if (text.includes("INSERT INTO bank_sync_imported_transactions")) {
+            order.push("insert");
+            return [{ id: `l-${String(params![2])}` }];
+          }
+          if (text.includes("INSERT INTO payees")) {
+            return [
+              { id: "p", name: String(params![1]), default_category_id: null },
+            ];
+          }
+          return [];
+        },
+      );
+      await service.write(
+        input(rows(), { expectedFingerprint: planFingerprint(rows()) }),
+      );
+      expect(order.slice(0, 3)).toEqual(["lock-link", "fingerprint", "insert"]);
+    });
+
+    it("refuses with 409 and writes nothing when the bank's rows changed since the preview", async () => {
+      ledgerHolding([]);
+      const shown = planFingerprint(rows());
+      const changed = [rows()[0], rows()[1]];
+      const error = await service
+        .write(input(changed, { expectedFingerprint: shown }))
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BankSyncPlanChangedException);
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).message).toMatch(/preview/i);
+      expect(
+        statements("INSERT INTO bank_sync_imported_transactions"),
+      ).toHaveLength(0);
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
+      expect(statements("last_sync_status = 'succeeded'")).toHaveLength(0);
+    });
+
+    it("refuses when an amount changed, with the same keys", async () => {
+      ledgerHolding([]);
+      const shown = planFingerprint(rows());
+      const changed = [
+        row({ externalKey: "ref:1", amount: -12.35 }),
+        rows()[1],
+        rows()[2],
+      ];
+      await expect(
+        service.write(input(changed, { expectedFingerprint: shown })),
+      ).rejects.toBeInstanceOf(BankSyncPlanChangedException);
+    });
+
+    it("refuses when a concurrent sync imported rows between the preview and this write", async () => {
+      // The preview saw three new rows; the ledger now holds ref:1.
+      const shown = planFingerprint(rows());
+      ledgerHolding(["ref:1"]);
+      await expect(
+        service.write(input(rows(), { expectedFingerprint: shown })),
+      ).rejects.toBeInstanceOf(BankSyncPlanChangedException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it("accepts a preview of nothing new for an all-duplicate plan", async () => {
+      ledgerHolding(["ref:1", "ref:2", "ref:3"]);
+      await expect(
+        service.write(
+          input(rows(), { expectedFingerprint: planFingerprint([]) }),
+        ),
+      ).resolves.toMatchObject({ imported: 0 });
+    });
+
+    it("does not read the ledger for a fingerprint when none was sent (the daily sync)", async () => {
+      await service.write(input(rows()));
+      expect(statements("SELECT external_key")).toHaveLength(0);
+    });
+
+    it("is checked after the link and currency refusals, which come first", async () => {
+      linkRepo.findOne.mockResolvedValue(bankAccountRow({ accountId: null }));
+      await expect(
+        service.write(input(rows(), { expectedFingerprint: "0".repeat(64) })),
+      ).rejects.not.toBeInstanceOf(BankSyncPlanChangedException);
     });
   });
 

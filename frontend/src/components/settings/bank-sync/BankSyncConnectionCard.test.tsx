@@ -17,6 +17,9 @@ const mockReauthorize = vi.fn();
 const mockUpdateAccount = vi.fn();
 const mockSyncAccount = vi.fn();
 const mockSyncConnection = vi.fn();
+const mockGetLinkDefaults = vi.fn();
+const mockMatchAccounts = vi.fn();
+const mockPreviewAccount = vi.fn();
 
 vi.mock('@/lib/bank-sync', () => ({
   bankSyncApi: {
@@ -26,6 +29,27 @@ vi.mock('@/lib/bank-sync', () => ({
     updateAccount: (...args: unknown[]) => mockUpdateAccount(...args),
     syncAccount: (...args: unknown[]) => mockSyncAccount(...args),
     syncConnection: (...args: unknown[]) => mockSyncConnection(...args),
+    getLinkDefaults: (...args: unknown[]) => mockGetLinkDefaults(...args),
+    matchAccounts: (...args: unknown[]) => mockMatchAccounts(...args),
+    previewAccount: (...args: unknown[]) => mockPreviewAccount(...args),
+  },
+}));
+
+vi.mock('@/hooks/useFinancialToday', () => ({
+  useFinancialToday: () => '2026-09-30',
+}));
+
+// The account form is the Accounts page's own and has its own tests; here only
+// what the row hands it (its prefill and what happens to the account it makes).
+let accountModalProps: {
+  formModal: { showForm: boolean };
+  initialValues?: Record<string, unknown>;
+  onCreated?: (created: Account) => void;
+} | null = null;
+vi.mock('@/components/accounts/AccountFormModal', () => ({
+  AccountFormModal: (props: NonNullable<typeof accountModalProps>) => {
+    accountModalProps = props;
+    return props.formModal.showForm ? <div data-testid="account-form-modal" /> : null;
   },
 }));
 
@@ -75,6 +99,8 @@ const bankAccount = (over: Partial<BankSyncAccount> = {}): BankSyncAccount => ({
   connectionId: 'c1',
   displayName: 'Everyday',
   identifierMasked: 'PL12 **** 3456',
+  accountIdentifier: null,
+  cashAccountType: null,
   currencyCode: 'EUR',
   accountId: null,
   syncFromDate: null,
@@ -87,6 +113,7 @@ const bankAccount = (over: Partial<BankSyncAccount> = {}): BankSyncAccount => ({
   bankBalance: null,
   bankBalanceCurrency: null,
   bankBalanceDate: null,
+  needsPreview: false,
   ...over,
 });
 
@@ -178,6 +205,12 @@ const optionLabels = () => Array.from(linkSelect().options).map((o) => o.textCon
 
 beforeEach(() => {
   vi.clearAllMocks();
+  accountModalProps = null;
+  // The newest transaction in the account being linked, and the default after it.
+  mockGetLinkDefaults.mockResolvedValue({
+    newestTransactionDate: '2026-02-01',
+    defaultSyncFromDate: '2026-02-02',
+  });
   Object.defineProperty(window, 'location', {
     value: { ...originalLocation, assign },
     writable: true,
@@ -565,7 +598,7 @@ describe('BankSyncConnectionCard', () => {
         linked: ['taken'],
       });
 
-      expect(optionLabels()).toEqual(['Not linked', 'Open EUR (EUR)']);
+      expect(optionLabels()).toEqual(['Not linked', 'Create a new account', 'Open EUR (EUR)']);
     });
 
     it('excludes exactly the accounts the server refuses for ownership: another owner\'s, not one the user owns and shares out', () => {
@@ -580,7 +613,13 @@ describe('BankSyncConnectionCard', () => {
         ],
       });
 
-      expect(optionLabels()).toEqual(['Not linked', 'Mine (EUR)', 'Shared out (EUR)', 'Shared out too (EUR)']);
+      expect(optionLabels()).toEqual([
+        'Not linked',
+        'Create a new account',
+        'Mine (EUR)',
+        'Shared out (EUR)',
+        'Shared out too (EUR)',
+      ]);
     });
 
     it('does not filter by currency when the bank account has none', () => {
@@ -591,7 +630,12 @@ describe('BankSyncConnectionCard', () => {
         ],
       });
 
-      expect(optionLabels()).toEqual(['Not linked', 'Dollars (USD)', 'Euros (EUR)']);
+      expect(optionLabels()).toEqual([
+        'Not linked',
+        'Create a new account',
+        'Dollars (USD)',
+        'Euros (EUR)',
+      ]);
     });
 
     it('keeps the current link selected even though it is linked', () => {
@@ -609,7 +653,7 @@ describe('BankSyncConnectionCard', () => {
       expect(screen.getByText(/No open Monize account of this currency/)).toBeInTheDocument();
     });
 
-    it('asks for the start date before linking, and links without one when left empty', async () => {
+    it('asks for the start date before linking, filled with the default the server chose', async () => {
       mockUpdateAccount.mockResolvedValue(bankAccount({ accountId: 'a2' }));
       const { onChanged } = renderCard(connection());
 
@@ -619,16 +663,35 @@ describe('BankSyncConnectionCard', () => {
 
       // Nothing is written until the dialog is confirmed.
       expect(mockUpdateAccount).not.toHaveBeenCalled();
-      expect(screen.getByText('Link to Savings')).toBeInTheDocument();
+      expect(mockGetLinkDefaults).toHaveBeenCalledWith('ba-1', 'a2');
+      expect(await screen.findByText('Link to Savings')).toBeInTheDocument();
+      expect(screen.getByLabelText('Import transactions from')).toHaveValue('2026-02-02');
       expect(screen.getByText(/never imported/)).toBeInTheDocument();
-      expect(screen.getByText(/may create duplicates/)).toBeInTheDocument();
 
       await click('Link account');
 
       await waitFor(() => expect(mockUpdateAccount).toHaveBeenCalled());
-      expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', { accountId: 'a2' });
-      expect(mockUpdateAccount.mock.calls[0][1]).not.toHaveProperty('syncFromDate');
+      expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', {
+        accountId: 'a2',
+        syncFromDate: '2026-02-02',
+      });
       await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    });
+
+    it('links without a date when the person clears the field, leaving it to the server', async () => {
+      mockUpdateAccount.mockResolvedValue(bankAccount({ accountId: 'a2' }));
+      renderCard(connection());
+
+      await act(async () => {
+        fireEvent.change(linkSelect(), { target: { value: 'a2' } });
+      });
+      fireEvent.change(await screen.findByLabelText('Import transactions from'), {
+        target: { value: '' },
+      });
+      await click('Link account');
+
+      await waitFor(() => expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', { accountId: 'a2' }));
+      expect(mockUpdateAccount.mock.calls[0][1]).not.toHaveProperty('syncFromDate');
     });
 
     it('sends the start date only when the user set one', async () => {
@@ -638,7 +701,7 @@ describe('BankSyncConnectionCard', () => {
       await act(async () => {
         fireEvent.change(linkSelect(), { target: { value: 'a2' } });
       });
-      fireEvent.change(screen.getByLabelText('Import transactions from'), {
+      fireEvent.change(await screen.findByLabelText('Import transactions from'), {
         target: { value: '2026-03-15' },
       });
       await click('Link account');
@@ -651,6 +714,106 @@ describe('BankSyncConnectionCard', () => {
       );
     });
 
+    describe('what the dialog says about the account being linked', () => {
+      const openDialog = async () => {
+        await act(async () => {
+          fireEvent.change(linkSelect(), { target: { value: 'a2' } });
+        });
+        return screen.findByLabelText('Import transactions from');
+      };
+
+      it('names the newest transaction in the account', async () => {
+        renderCard(connection());
+        await openDialog();
+        expect(screen.getByText('Newest transaction in this account: on 2026-02-01')).toBeInTheDocument();
+        expect(screen.queryByText(/The account is empty/)).not.toBeInTheDocument();
+      });
+
+      it('says the account is empty, with the number of days the server\'s default covers', async () => {
+        mockGetLinkDefaults.mockResolvedValue({
+          newestTransactionDate: null,
+          defaultSyncFromDate: '2026-09-20',
+        });
+        renderCard(connection());
+        await openDialog();
+        // Today is 2026-09-30: ten days, from the answer, not a literal.
+        expect(
+          screen.getByText('The account is empty: the import covers the last 10 days'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/Newest transaction/)).not.toBeInTheDocument();
+      });
+
+      it('warns about duplicates only for a date on or before the newest transaction', async () => {
+        renderCard(connection());
+        const input = await openDialog();
+        // The default starts the day after the newest transaction: no warning.
+        expect(screen.queryByText(/may create duplicates/)).not.toBeInTheDocument();
+
+        fireEvent.change(input, { target: { value: '2026-02-01' } });
+        expect(screen.getByText(/may create duplicates/)).toBeInTheDocument();
+
+        fireEvent.change(input, { target: { value: '2026-01-01' } });
+        expect(screen.getByText(/may create duplicates/)).toBeInTheDocument();
+
+        fireEvent.change(input, { target: { value: '2026-02-02' } });
+        expect(screen.queryByText(/may create duplicates/)).not.toBeInTheDocument();
+      });
+
+      it('does not warn about duplicates for an account with no transactions', async () => {
+        mockGetLinkDefaults.mockResolvedValue({
+          newestTransactionDate: null,
+          defaultSyncFromDate: '2026-07-03',
+        });
+        renderCard(connection());
+        const input = await openDialog();
+        fireEvent.change(input, { target: { value: '2020-01-01' } });
+        expect(screen.queryByText(/may create duplicates/)).not.toBeInTheDocument();
+      });
+
+      it('says so when the account could not be read, and claims neither an empty account nor a risk', async () => {
+        mockGetLinkDefaults.mockRejectedValue(new Error('down'));
+        mockUpdateAccount.mockResolvedValue(bankAccount({ accountId: 'a2' }));
+        renderCard(connection());
+        const input = await openDialog();
+
+        expect(screen.getByText(/Could not read the newest transaction/)).toBeInTheDocument();
+        expect(screen.queryByText(/The account is empty/)).not.toBeInTheDocument();
+        expect(input).toHaveValue('');
+
+        // The link can still be made; the server chooses the date.
+        await click('Link account');
+        await waitFor(() => expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', { accountId: 'a2' }));
+      });
+
+      it('waits for the answer before drawing the form', async () => {
+        let resolve!: (value: unknown) => void;
+        mockGetLinkDefaults.mockReturnValue(new Promise((r) => (resolve = r)));
+        renderCard(connection());
+        await act(async () => {
+          fireEvent.change(linkSelect(), { target: { value: 'a2' } });
+        });
+        expect(screen.getByText('Reading the account...')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Import transactions from')).not.toBeInTheDocument();
+
+        await act(async () => {
+          resolve({ newestTransactionDate: null, defaultSyncFromDate: '2026-07-03' });
+        });
+        expect(await screen.findByLabelText('Import transactions from')).toHaveValue('2026-07-03');
+      });
+
+      it('reads the defaults of an existing link too, to keep its date and warn about duplicates', async () => {
+        renderCard(
+          connection({ accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' })] }),
+        );
+        await click('Change start date');
+        const input = await screen.findByLabelText('Import transactions from');
+        expect(mockGetLinkDefaults).toHaveBeenCalledWith('ba-1', 'a1');
+        // The date the link holds, not the default.
+        expect(input).toHaveValue('2026-01-01');
+        expect(screen.getByText(/may create duplicates/)).toBeInTheDocument();
+      });
+    });
+
     it('keeps the dialog open and shows the server message when linking fails', async () => {
       mockUpdateAccount.mockRejectedValue({
         response: { data: { message: 'Account already linked' } },
@@ -660,6 +823,7 @@ describe('BankSyncConnectionCard', () => {
       await act(async () => {
         fireEvent.change(linkSelect(), { target: { value: 'a2' } });
       });
+      await screen.findByLabelText('Import transactions from');
       await click('Link account');
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Account already linked'));
@@ -672,6 +836,7 @@ describe('BankSyncConnectionCard', () => {
       await act(async () => {
         fireEvent.change(linkSelect(), { target: { value: 'a2' } });
       });
+      await screen.findByLabelText('Import transactions from');
       await click('Cancel');
 
       expect(mockUpdateAccount).not.toHaveBeenCalled();
@@ -699,7 +864,7 @@ describe('BankSyncConnectionCard', () => {
       );
 
       await click('Change start date');
-      const input = screen.getByLabelText('Import transactions from');
+      const input = await screen.findByLabelText('Import transactions from');
       expect(input).toHaveValue('2026-01-01');
 
       fireEvent.change(input, { target: { value: '' } });
@@ -978,6 +1143,488 @@ describe('BankSyncConnectionCard', () => {
       expect(screen.getByText('EUR 10.00')).toBeInTheDocument();
       expect(screen.queryByText('Monize balance')).toBeNull();
       expect(screen.queryByText('Difference')).toBeNull();
+    });
+  });
+
+  describe('the bank account type (BS19)', () => {
+    it('shows the type as a badge beside the masked number', () => {
+      renderCard(connection({ accounts: [bankAccount({ cashAccountType: 'CARD' })] }));
+      const line = screen.getByText('PL12 **** 3456').parentElement as HTMLElement;
+      expect(within(line).getByText('Card')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['CACC', 'Current account'],
+      ['SVGS', 'Savings'],
+      ['LOAN', 'Loan'],
+      ['card', 'Card'],
+      ['OTHR', 'Account type OTHR'],
+    ])('names %s as %s', (code, label) => {
+      renderCard(connection({ accounts: [bankAccount({ cashAccountType: code })] }));
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    it('shows no type when the bank stated none', () => {
+      renderCard(connection({ accounts: [bankAccount({ cashAccountType: null })] }));
+      expect(screen.queryByText('Card')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Account type/)).not.toBeInTheDocument();
+      expect(screen.getByText('PL12 **** 3456')).toBeInTheDocument();
+    });
+
+    it('uses the translated type as the label when the bank gave none, keeping the number beneath', () => {
+      renderCard(
+        connection({
+          accounts: [bankAccount({ displayName: null, cashAccountType: 'CARD' })],
+        }),
+      );
+      expect(screen.getAllByText('Card')).toHaveLength(2); // the label and the badge
+      expect(screen.getByText('PL12 **** 3456')).toBeInTheDocument();
+    });
+
+    it('falls back to the number, then to a generic label, when there is no label and no type', () => {
+      renderCard(connection({ accounts: [bankAccount({ displayName: null })] }));
+      expect(screen.getByText('PL12 **** 3456')).toBeInTheDocument();
+    });
+
+    it('prefers the bank\'s own label to the type', () => {
+      renderCard(connection({ accounts: [bankAccount({ displayName: 'Everyday', cashAccountType: 'CACC' })] }));
+      expect(screen.getByText('Everyday')).toBeInTheDocument();
+    });
+  });
+
+  describe('a card linked to the wrong kind of account (BS19)', () => {
+    const cardLinkedTo = (monizeType: Account['accountType'], bankType: string | null = 'CARD') =>
+      renderCard(
+        connection({
+          accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01', cashAccountType: bankType })],
+        }),
+        { accounts: [account({ id: 'a1', name: 'Checking', accountType: monizeType }), account({ id: 'a2', name: 'Savings' })] },
+      );
+
+    it('warns on the row while a card is linked to a chequing account', () => {
+      cardLinkedTo('CHEQUING');
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'The bank reports this account as a card, but the type of Checking is Chequing, not Credit Card.',
+      );
+    });
+
+    it('warns while a credit card account is linked to a bank account that is not a card', () => {
+      cardLinkedTo('CREDIT_CARD', 'CACC');
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'The type of Checking is Credit Card, but the bank reports this account as: Current account.',
+      );
+    });
+
+    it('says nothing when a card is linked to a credit card, or when the bank stated no type', () => {
+      const { unmount } = cardLinkedTo('CREDIT_CARD');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      unmount();
+      cardLinkedTo('CHEQUING', null);
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('does not warn about an account that is not linked', () => {
+      renderCard(connection({ accounts: [bankAccount({ cashAccountType: 'CARD' })] }));
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    describe('in the link dialog', () => {
+      const openDialog = async (bankType: string | null, accountId = 'a2') => {
+        mockUpdateAccount.mockResolvedValue(bankAccount({ accountId }));
+        renderCard(connection({ accounts: [bankAccount({ cashAccountType: bankType })] }), {
+          accounts: [
+            account({ id: 'a2', name: 'Savings', accountType: 'CHEQUING' }),
+            account({ id: 'cc', name: 'Visa', accountType: 'CREDIT_CARD' }),
+          ],
+        });
+        await act(async () => {
+          fireEvent.change(linkSelect(), { target: { value: accountId } });
+        });
+        await screen.findByLabelText('Import transactions from');
+      };
+      const linkButton = () => screen.getByRole('button', { name: 'Link account' });
+      const confirmation = () => screen.getByLabelText('I understand, link these accounts anyway');
+
+      it('shows an amber warning and keeps Link account off until the person confirms', async () => {
+        await openDialog('CARD');
+        expect(screen.getAllByRole('alert')[0]).toHaveTextContent(
+          'The bank reports this account as a card, but the type of Savings is Chequing',
+        );
+        expect(linkButton()).toBeDisabled();
+
+        fireEvent.click(confirmation());
+        expect(linkButton()).toBeEnabled();
+
+        fireEvent.click(confirmation());
+        expect(linkButton()).toBeDisabled();
+      });
+
+      it('links once confirmed', async () => {
+        await openDialog('CARD');
+        fireEvent.click(confirmation());
+        await click('Link account');
+        await waitFor(() => expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', expect.objectContaining({ accountId: 'a2' })));
+      });
+
+      it('also guards a credit card account linked to a bank account that is not a card', async () => {
+        await openDialog('CACC', 'cc');
+        expect(linkButton()).toBeDisabled();
+        fireEvent.click(confirmation());
+        expect(linkButton()).toBeEnabled();
+      });
+
+      it('asks nothing when the two agree, or when the bank stated no type', async () => {
+        await openDialog('CARD', 'cc');
+        expect(screen.queryByLabelText('I understand, link these accounts anyway')).not.toBeInTheDocument();
+        expect(linkButton()).toBeEnabled();
+      });
+
+      it('asks nothing for a bank account of unknown type', async () => {
+        await openDialog(null);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(linkButton()).toBeEnabled();
+      });
+
+      it('warns but does not block when only the start date of an existing link is changed', async () => {
+        renderCard(
+          connection({
+            accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01', cashAccountType: 'CARD' })],
+          }),
+          { accounts: [account({ id: 'a1', name: 'Checking', accountType: 'CHEQUING' })] },
+        );
+        await click('Change start date');
+        await screen.findByLabelText('Import transactions from');
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.queryByLabelText('I understand, link these accounts anyway')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+      });
+    });
+  });
+
+  describe('creating a new account from the bank account (BS16)', () => {
+    const create = async (bank: Partial<BankSyncAccount> = {}) => {
+      const view = renderCard(connection({ accounts: [bankAccount(bank)] }));
+      await act(async () => {
+        fireEvent.change(linkSelect(), { target: { value: '__create_new__' } });
+      });
+      return view;
+    };
+
+    it('opens Monize\'s own account form instead of linking anything', async () => {
+      await create();
+      expect(screen.getByTestId('account-form-modal')).toBeInTheDocument();
+      expect(mockUpdateAccount).not.toHaveBeenCalled();
+      expect(mockGetLinkDefaults).not.toHaveBeenCalled();
+      expect(linkSelect().value).toBe('');
+    });
+
+    it('prefills the label, currency, number and type, and leaves the opening balance empty', async () => {
+      await create({
+        displayName: 'Everyday',
+        accountIdentifier: 'PL61109010140000071219812874',
+        cashAccountType: 'SVGS',
+        currencyCode: 'EUR',
+      });
+      expect(accountModalProps?.initialValues).toEqual({
+        name: 'Everyday',
+        currencyCode: 'EUR',
+        accountNumber: 'PL61109010140000071219812874',
+        accountType: 'SAVINGS',
+        openingBalance: null,
+      });
+    });
+
+    it.each([
+      ['CARD', 'CREDIT_CARD'],
+      ['SVGS', 'SAVINGS'],
+      ['LOAN', 'LOAN'],
+      ['CACC', 'CHEQUING'],
+      ['OTHR', 'CHEQUING'],
+      [null, 'CHEQUING'],
+    ])('maps the bank type %p to the account type %s', async (bankType, expected) => {
+      await create({ cashAccountType: bankType });
+      expect(accountModalProps?.initialValues).toMatchObject({ accountType: expected });
+    });
+
+    it('names an account the bank gave no label by its translated type and masked number', async () => {
+      await create({ displayName: null, cashAccountType: 'CARD', identifierMasked: '**** 2743' });
+      expect(accountModalProps?.initialValues).toMatchObject({ name: 'Card **** 2743' });
+    });
+
+    it('names it by the masked number alone when there is no label and no type, and invents no number or currency', async () => {
+      await create({
+        displayName: null,
+        cashAccountType: null,
+        identifierMasked: '**** 2743',
+        accountIdentifier: null,
+        currencyCode: null,
+      });
+      const values = accountModalProps?.initialValues ?? {};
+      expect(values).toMatchObject({ name: '**** 2743' });
+      expect(values).not.toHaveProperty('currencyCode');
+      expect(values).not.toHaveProperty('accountNumber');
+    });
+
+    it('links the account the form saved, with the default start date, and reloads', async () => {
+      mockUpdateAccount.mockResolvedValue(bankAccount({ accountId: 'new' }));
+      const { onChanged } = await create();
+
+      await act(async () => {
+        accountModalProps?.onCreated?.(account({ id: 'new', name: 'Everyday', accountType: 'CHEQUING' }));
+      });
+
+      // No date is sent: the server defaults an empty account to 89 days back.
+      expect(mockUpdateAccount).toHaveBeenCalledWith('ba-1', { accountId: 'new' });
+      expect(toast.success).toHaveBeenCalledWith('Account created and linked');
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    });
+
+    it('says the account was created but not linked when the link is refused, and still reloads', async () => {
+      mockUpdateAccount.mockRejectedValue({ response: { data: { message: 'Currency mismatch' } } });
+      const { onChanged } = await create();
+
+      await act(async () => {
+        accountModalProps?.onCreated?.(account({ id: 'new' }));
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('Currency mismatch');
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    });
+
+    it('does not link on its own when the person changed the type to one that does not look like the bank\'s', async () => {
+      const { onChanged } = await create({ cashAccountType: 'CARD' });
+
+      await act(async () => {
+        accountModalProps?.onCreated?.(
+          account({ id: 'new', name: 'Everyday', accountType: 'CHEQUING' }),
+        );
+      });
+
+      expect(mockUpdateAccount).not.toHaveBeenCalled();
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+      // The link dialog opens for the new account, with the confirmation to tick.
+      expect(await screen.findByText('Link to Everyday')).toBeInTheDocument();
+      expect(
+        await screen.findByLabelText('I understand, link these accounts anyway'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Link account' })).toBeDisabled();
+    });
+
+    it('is offered in demo mode as disabled with the rest of the controls', () => {
+      renderCard(connection(), { disabled: true });
+      expect(linkSelect()).toBeDisabled();
+    });
+  });
+
+  describe('match by account number (BS16)', () => {
+    const matched = (linked: number, suggestions: number) => ({
+      connection: connection(),
+      linked: Array.from({ length: linked }, (_, i) => ({ bankAccountId: `b${i}`, accountId: `a${i}` })),
+      suggestions: Array.from({ length: suggestions }, (_, i) => ({
+        bankAccountId: `s${i}`,
+        accountIds: ['x', 'y'],
+      })),
+    });
+
+    it('is offered for an active connection with an unlinked bank account', () => {
+      renderCard(connection());
+      expect(screen.getByRole('button', { name: 'Match by account number' })).toBeInTheDocument();
+    });
+
+    it('is not offered when every bank account is linked, or the connection cannot be read', () => {
+      const { unmount } = renderCard(
+        connection({ accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' })] }),
+      );
+      expect(screen.queryByRole('button', { name: 'Match by account number' })).not.toBeInTheDocument();
+      unmount();
+      renderCard(connection({ status: 'expired' }));
+      expect(screen.queryByRole('button', { name: 'Match by account number' })).not.toBeInTheDocument();
+    });
+
+    it('asks the server, reloads, and says how many accounts were linked', async () => {
+      mockMatchAccounts.mockResolvedValue(matched(1, 0));
+      const { onChanged } = renderCard(connection());
+      await click('Match by account number');
+      expect(mockMatchAccounts).toHaveBeenCalledWith('c1');
+      expect(toast.success).toHaveBeenCalledWith(
+        '1 bank account was linked to the account with the same number',
+      );
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    });
+
+    it('counts several', async () => {
+      mockMatchAccounts.mockResolvedValue(matched(2, 0));
+      renderCard(connection());
+      await click('Match by account number');
+      expect(toast.success).toHaveBeenCalledWith(
+        '2 bank accounts were linked to the accounts with the same numbers',
+      );
+    });
+
+    it('says when an account matched more than one of the person\'s accounts and was left alone', async () => {
+      mockMatchAccounts.mockResolvedValue(matched(0, 1));
+      renderCard(connection());
+      await click('Match by account number');
+      expect(toast).toHaveBeenCalledWith(
+        '1 bank account matches more than one of your accounts: choose its account yourself',
+        { duration: 8000 },
+      );
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it('says both when some were linked and some are ambiguous', async () => {
+      mockMatchAccounts.mockResolvedValue(matched(1, 2));
+      renderCard(connection());
+      await click('Match by account number');
+      expect(toast.success).toHaveBeenCalledWith(
+        '1 bank account was linked to the account with the same number. 2 bank accounts match more than one of your accounts: choose their accounts yourself',
+      );
+    });
+
+    it('says when nothing matched', async () => {
+      mockMatchAccounts.mockResolvedValue(matched(0, 0));
+      renderCard(connection());
+      await click('Match by account number');
+      expect(toast).toHaveBeenCalledWith(
+        'No bank account was linked: none has an account number that matches one of your accounts.',
+      );
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it('shows the server message when the match fails, and still reloads', async () => {
+      mockMatchAccounts.mockRejectedValue({ response: { data: { message: 'The bank did not answer.' } } });
+      const { onChanged } = renderCard(connection());
+      await click('Match by account number');
+      expect(toast.error).toHaveBeenCalledWith('The bank did not answer.');
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    });
+
+    it('is off while it runs, and in demo mode', async () => {
+      let resolve!: (value: unknown) => void;
+      mockMatchAccounts.mockReturnValue(new Promise((r) => (resolve = r)));
+      renderCard(connection());
+      await click('Match by account number');
+      expect(screen.getByRole('button', { name: 'Matching...' })).toBeDisabled();
+      await act(async () => {
+        resolve(matched(0, 0));
+      });
+    });
+
+    it('is disabled in demo mode', () => {
+      renderCard(connection(), { disabled: true });
+      expect(screen.getByRole('button', { name: 'Match by account number' })).toBeDisabled();
+    });
+  });
+
+  describe('preview before the first import (BS18)', () => {
+    const linked = (over: Partial<BankSyncAccount> = {}) =>
+      connection({
+        accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01', ...over })],
+      });
+
+    const preview = (over: Record<string, unknown> = {}) => ({
+      bankAccountId: 'ba-1',
+      currencyCode: 'EUR',
+      rows: [],
+      summary: { new: 0, duplicate: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+      monizeBalance: '1000.0000',
+      balanceAfter: '1000.0000',
+      bankBalance: null,
+      difference: null,
+      planFingerprint: 'f'.repeat(64),
+      ...over,
+    });
+
+    it('opens the preview instead of syncing when the link has had no successful sync', async () => {
+      mockPreviewAccount.mockResolvedValue(preview());
+      renderCard(linked({ needsPreview: true }));
+
+      await click('Sync now');
+
+      expect(mockSyncAccount).not.toHaveBeenCalled();
+      await waitFor(() => expect(mockPreviewAccount).toHaveBeenCalledWith('ba-1'));
+      expect(await screen.findByText('Preview import into Checking')).toBeInTheDocument();
+    });
+
+    it('offers no second Preview button while Sync now is the preview, and explains why', () => {
+      renderCard(linked({ needsPreview: true }));
+      expect(screen.queryByRole('button', { name: 'Preview' })).not.toBeInTheDocument();
+      expect(screen.getByText(/first import is confirmed from a preview/)).toBeInTheDocument();
+    });
+
+    it('syncs directly after a successful sync, and offers the preview as a second button', async () => {
+      mockSyncAccount.mockResolvedValue(result({ imported: 1 }));
+      mockPreviewAccount.mockResolvedValue(preview());
+      renderCard(linked({ needsPreview: false }));
+      expect(screen.queryByText(/first import is confirmed from a preview/)).not.toBeInTheDocument();
+
+      await click('Sync now');
+      expect(mockSyncAccount).toHaveBeenCalledWith('ba-1');
+      expect(mockPreviewAccount).not.toHaveBeenCalled();
+
+      await click('Preview');
+      await waitFor(() => expect(mockPreviewAccount).toHaveBeenCalledWith('ba-1'));
+      expect(await screen.findByText('Preview import into Checking')).toBeInTheDocument();
+    });
+
+    it('imports from the preview, toasts the result, closes it and reloads', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({ summary: { new: 2, duplicate: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 } }),
+      );
+      mockSyncAccount.mockResolvedValue(result({ imported: 2 }));
+      const { onChanged } = renderCard(linked({ needsPreview: true }));
+
+      await click('Sync now');
+      await click('Import 2 transactions');
+
+      await waitFor(() => expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', 'f'.repeat(64)));
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+      expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('2 transactions imported'));
+      await waitFor(() =>
+        expect(screen.queryByText('Preview import into Checking')).not.toBeInTheDocument(),
+      );
+    });
+
+    it('holds Sync all back while a linked account is waiting for its first confirmed import, and says why', () => {
+      renderCard(linked({ needsPreview: true }));
+      const syncAll = screen.getByRole('button', { name: 'Sync all' });
+      expect(syncAll).toBeDisabled();
+      const hint = screen.getByText(/Sync all waits until the first import of each newly linked account/);
+      expect(syncAll).toHaveAttribute('aria-describedby', hint.id);
+    });
+
+    it('offers Sync all once every linked account has had a successful sync', async () => {
+      mockSyncConnection.mockResolvedValue([result()]);
+      renderCard(linked({ needsPreview: false }));
+      expect(screen.queryByText(/Sync all waits until/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sync all' })).toBeEnabled();
+      await click('Sync all');
+      expect(mockSyncConnection).toHaveBeenCalledWith('c1');
+    });
+
+    it('is not held back by an account that is not linked', () => {
+      renderCard(
+        connection({
+          accounts: [
+            bankAccount({ id: 'ba-1', accountId: 'a1', syncFromDate: '2026-01-01', needsPreview: false }),
+            bankAccount({ id: 'ba-2', accountId: null, needsPreview: false }),
+          ],
+        }),
+      );
+      expect(screen.getByRole('button', { name: 'Sync all' })).toBeEnabled();
+    });
+
+    it('reloads when the preview is closed, in case it recorded a lapsed consent', async () => {
+      mockPreviewAccount.mockResolvedValue(preview());
+      const { onChanged } = renderCard(linked({ needsPreview: true }));
+      await click('Sync now');
+      await screen.findByText('Preview import into Checking');
+      // The header's X and the footer's button are both named Close.
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).at(-1) as HTMLElement);
+      });
+      await waitFor(() => expect(onChanged).toHaveBeenCalled());
+      expect(mockSyncAccount).not.toHaveBeenCalled();
     });
   });
 });

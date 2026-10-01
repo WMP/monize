@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "은행에서의 승인이 완료되지 않았습니다. 동의를 갱신하여 다시 시도하세요. 연결한 계정은 그대로 유지됩니다.",
       "noAccounts": "은행이 이 연결에 대한 계정을 보고하지 않았습니다.",
-      "accountsHeading": "은행 계정"
+      "accountsHeading": "은행 계정",
+      "matchAccounts": "계정 번호로 매칭",
+      "matching": "매칭 중...",
+      "matchLinked": "{count, plural, other {은행 계정 #개를 번호가 같은 계정에 연결했습니다}}",
+      "matchSuggested": "{count, plural, other {은행 계정 #개가 두 개 이상의 계정과 일치합니다: 계정을 직접 선택하세요}}",
+      "matchBoth": "{linked}. {suggested}",
+      "matchNone": "연결된 은행 계정이 없습니다: 계정 번호가 내 계정과 일치하는 것이 없습니다.",
+      "matchFailed": "은행 계정을 매칭하지 못했습니다",
+      "syncAllNeedsPreview": "새로 연결한 각 계정의 첫 번째 가져오기를 확인하기 전에는 '모두 동기화'를 사용할 수 없습니다. 해당 계정의 '지금 동기화'로 미리보기를 여세요."
     },
     "account": {
       "unnamed": "이름 없는 은행 계정",
@@ -1547,13 +1555,19 @@
       "difference": "차이",
       "differenceHelp": "은행 잔액은 표시된 날짜에 은행이 보고한 금액입니다. 은행이 아직 정산하지 않았거나 해당 날짜 이후에 정산한 거래가 포함될 수 있으므로, 동기화 사이에 약간의 차이가 나는 것은 정상입니다.",
       "differenceHidden": "은행 잔액은 {bankCurrency}이고 Monize 계정은 {monizeCurrency}이므로 차이를 표시하지 않습니다.",
-      "deletedNote": "Monize에서 삭제한 거래는 이후 동기화에서 다시 가져오지 않으므로, 삭제한 행은 삭제된 상태로 유지됩니다."
+      "deletedNote": "Monize에서 삭제한 거래는 이후 동기화에서 다시 가져오지 않으므로, 삭제한 행은 삭제된 상태로 유지됩니다.",
+      "createNew": "새 계정 만들기",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "계정을 만들고 연결했습니다",
+      "createdLinkFailed": "계정은 만들었지만 연결하지 못했습니다",
+      "preview": "미리보기",
+      "firstSyncPreview": "첫 번째 가져오기는 거래 미리보기로 확인합니다."
     },
     "link": {
       "title": "{account}에 연결",
       "editTitle": "{account}의 시작일",
       "syncFromLabel": "거래 가져오기 시작일",
-      "syncFromHelp": "비워 두면 Monize는 계정에 있는 가장 최근 거래의 다음 날부터 시작하며, 계정이 비어 있으면 89일 전부터 시작합니다.",
+      "syncFromHelp": "Monize가 기본으로 고르는 날짜가 입력되어 있습니다. 입력란을 비우면 Monize가 대신 고릅니다.",
       "beforeCutoff": "은행이 이 날짜 이전에 정산한 거래는 가져오지 않습니다.",
       "duplicateWarning": "계정의 가장 최근 거래보다 이른 날짜를 지정하면 이미 입력한 거래가 중복될 수 있습니다.",
       "save": "계정 연결",
@@ -1562,7 +1576,11 @@
       "cancel": "취소",
       "saved": "계정을 연결했습니다",
       "editSaved": "시작일을 저장했습니다",
-      "saveFailed": "연결을 저장하지 못했습니다"
+      "saveFailed": "연결을 저장하지 못했습니다",
+      "loadingDefaults": "계정을 읽는 중...",
+      "defaultsFailed": "이 계정의 가장 최근 거래를 읽지 못해서, 이 시작일이 중복을 만들 수 있는지 Monize가 알 수 없습니다.",
+      "newestTransaction": "이 계정의 가장 최근 거래: {date}",
+      "emptyAccount": "{days, plural, other {계정이 비어 있습니다: 최근 #일을 가져옵니다}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {가져온 거래 없음} other {거래 #건 가져옴}}, {skipped, plural, =0 {건너뜀 없음} other {이미 가져와서 #건 건너뜀}}, {refused, plural, =0 {거부됨 없음} other {#건 거부됨}}",
@@ -1588,7 +1606,80 @@
       "bankError": "은행이 접근을 허용하지 않았습니다: {message}",
       "missingState": "은행이 올바른 응답을 반환하지 않았습니다. 연결을 다시 시작하세요.",
       "notActive": "연결이 완료되지 않았습니다",
-      "failed": "연결을 완료하지 못했습니다"
+      "failed": "연결을 완료하지 못했습니다",
+      "autoLinked": "{count, plural, other {은행 계정 #개를 번호가 같은 계정에 연결했습니다. 첫 번째 가져오기 전에 확인하세요.}}",
+      "autoSuggested": "{count, plural, other {은행 계정 #개가 두 개 이상의 계정과 일치합니다: 목록에서 계정을 선택하세요.}}"
+    },
+    "accountType": {
+      "CACC": "당좌예금",
+      "CARD": "카드",
+      "SVGS": "저축",
+      "LOAN": "대출",
+      "other": "계정 유형 {code}"
+    },
+    "mismatch": {
+      "bankCard": "은행은 이 계정을 카드로 보고하지만, {account}의 유형은 {creditCard}가 아니라 {type}입니다. 카드 거래가 잘못된 유형의 계정으로 가져와집니다.",
+      "monizeCard": "{account}의 유형은 {creditCard}이지만, 은행은 이 계정을 다음으로 보고합니다: {bankType}. 올바른 은행 계정인지 확인하세요.",
+      "confirm": "이해했습니다. 그래도 계정을 연결합니다"
+    },
+    "preview": {
+      "title": "{account}(으)로 가져오기 미리보기",
+      "description": "확인하기 전에는 아무것도 가져오지 않습니다. 은행이 보고한 내용과 Monize가 각 거래에 할 일을 보여 줍니다.",
+      "loading": "은행을 읽는 중...",
+      "loadFailed": "이 계정을 미리 볼 수 없었습니다",
+      "retry": "다시 시도",
+      "close": "닫기",
+      "import": "{count, plural, =0 {확인: 새로 가져올 거래 없음} other {거래 #건 가져오기}}",
+      "importing": "가져오는 중...",
+      "importFailed": "거래를 가져오지 못했습니다",
+      "planChanged": "이 미리보기 이후 은행 데이터가 변경되어 아무것도 가져오지 않았습니다. 미리보기를 다시 읽었습니다. 확인한 뒤 다시 가져오세요.",
+      "monizeBalance": "현재 Monize 잔액",
+      "balanceAfter": "가져온 후 Monize 잔액",
+      "bankBalance": "은행 잔액",
+      "bankBalanceAsOf": "{date} 기준 {amount}",
+      "bankBalanceNotReported": "은행에서 보고하지 않음",
+      "difference": "가져온 후 차이",
+      "differenceHelp": "은행 잔액에서 가져온 후의 Monize 잔액을 뺀 값입니다. 0이면 둘이 일치합니다. 은행 잔액에는 은행이 아직 정산하지 않은 거래가 포함될 수 있으므로 약간의 차이는 정상입니다.",
+      "differenceHidden": "은행 잔액은 {bankCurrency}이고 Monize 계정은 {monizeCurrency}이므로 차이를 표시하지 않습니다.",
+      "filterLabel": "거래 보기",
+      "filter": {
+        "all": "전체",
+        "new": "신규",
+        "duplicate": "이미 가져옴",
+        "refused": "거부됨",
+        "pending": "대기 중",
+        "before_cutoff": "시작일 이전",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "신규",
+        "duplicate": "이미 가져옴",
+        "refused": "거부됨",
+        "pending": "대기 중",
+        "before_cutoff": "시작일 이전"
+      },
+      "refusal": {
+        "missing_date": "날짜 없음",
+        "future_date": "미래 날짜",
+        "invalid_amount": "금액이 잘못됨",
+        "unknown_direction": "방향을 알 수 없음",
+        "currency_mismatch": "다른 통화",
+        "other": "거부됨"
+      },
+      "columns": {
+        "date": "날짜",
+        "payee": "수취인",
+        "category": "카테고리",
+        "status": "상태",
+        "amount": "금액"
+      },
+      "noPayee": "수취인 없음",
+      "dateUnknown": "날짜 없음",
+      "amountUnknown": "알 수 없음",
+      "empty": {
+        "all": "은행이 이 기간의 거래를 반환하지 않았습니다.",
+        "filtered": "이 목록에 거래가 없습니다."
+      }
     }
   }
 }

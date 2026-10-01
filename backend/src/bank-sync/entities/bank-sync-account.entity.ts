@@ -97,6 +97,30 @@ export class BankSyncAccount {
   })
   identifierMasked: string | null;
 
+  /**
+   * The bank account's full identifier (IBAN, else another scheme's number),
+   * normalized: spaces and dashes removed, upper case. It is what a Monize
+   * account is matched on (spec section 5a) and has the sensitivity of
+   * `accounts.account_number`. The view returns it to its owner to prefill an
+   * account created from the bank account; lists show `identifier_masked`.
+   */
+  @Column({
+    type: "varchar",
+    name: "account_identifier",
+    length: 64,
+    nullable: true,
+  })
+  accountIdentifier: string | null;
+
+  /** The provider's cash account type (`CACC`, `CARD`, `SVGS`, ...), upper case. */
+  @Column({
+    type: "varchar",
+    name: "cash_account_type",
+    length: 10,
+    nullable: true,
+  })
+  cashAccountType: string | null;
+
   /** Null when the provider did not say; each row is then checked on its own. */
   @Column({
     type: "varchar",

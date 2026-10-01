@@ -175,6 +175,40 @@ describe('bankSyncApi', () => {
       expect(getCached('payees:all')).toBeDefined();
     });
 
+    it('matchAccounts POSTs the match route with a long timeout, drops bank-sync only, and returns the answer', async () => {
+      const answer = { connection: { id: 'c1' }, linked: [], suggestions: [] };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+      seedCaches();
+      await expect(bankSyncApi.matchAccounts('c1')).resolves.toBe(answer);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/bank-sync/connections/c1/match',
+        undefined,
+        { timeout: 120_000 },
+      );
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      // Linking moves no money.
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('investments:summary')).toBeDefined();
+    });
+
+    it('a match the server refused still drops bank-sync', async () => {
+      vi.mocked(apiClient.post).mockRejectedValue(new Error('409'));
+      seedCaches();
+      await expect(bankSyncApi.matchAccounts('c1')).rejects.toThrow();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+    });
+
+    it('the callback answers the connection with what the server linked', async () => {
+      const answer = {
+        connection: { id: 'c1' },
+        linked: [{ bankAccountId: 'ba-1', accountId: 'a1' }],
+        suggestions: [],
+      };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+      await expect(bankSyncApi.completeCallback({ state: 's', code: 'c' })).resolves.toBe(answer);
+    });
+
     it('testCredentials POSTs the test route and changes no cache', async () => {
       vi.mocked(apiClient.post).mockResolvedValue({
         data: { ok: true, applicationName: 'App', redirectUrls: [] },
@@ -194,7 +228,95 @@ describe('bankSyncApi', () => {
     });
   });
 
+  describe('getLinkDefaults', () => {
+    it('GETs the link defaults of the pair and is never cached', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: { newestTransactionDate: '2026-09-10', defaultSyncFromDate: '2026-09-11' },
+      });
+      const first = await bankSyncApi.getLinkDefaults('ba-1', 'a1');
+      await bankSyncApi.getLinkDefaults('ba-1', 'a1');
+      expect(first).toEqual({
+        newestTransactionDate: '2026-09-10',
+        defaultSyncFromDate: '2026-09-11',
+      });
+      // The newest transaction is whatever it is now: every call asks again.
+      expect(apiClient.get).toHaveBeenCalledTimes(2);
+      expect(apiClient.get).toHaveBeenCalledWith('/bank-sync/accounts/ba-1/link-defaults', {
+        params: { accountId: 'a1' },
+      });
+    });
+
+    it('changes no cache', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+      seedCaches();
+      await bankSyncApi.getLinkDefaults('ba-1', 'a1');
+      expect(getCached('bank-sync:connections')).toBeDefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+    });
+  });
+
+  describe('previewAccount', () => {
+    it('POSTs the preview route with a long timeout and returns the preview', async () => {
+      const preview = { planFingerprint: 'f'.repeat(64) };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: preview });
+      await expect(bankSyncApi.previewAccount('ba-1')).resolves.toBe(preview);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/bank-sync/accounts/ba-1/preview',
+        undefined,
+        { timeout: 120_000 },
+      );
+    });
+
+    it('writes nothing, so it drops no cache when it succeeds', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+      seedCaches();
+      await bankSyncApi.previewAccount('ba-1');
+      expect(getCached('bank-sync:connections')).toBeDefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('investments:summary')).toBeDefined();
+    });
+
+    it('re-reads bank-sync, and only that, when it failed: the server may have recorded a lapsed consent', async () => {
+      vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(409));
+      seedCaches();
+      await expect(bankSyncApi.previewAccount('ba-1')).rejects.toBeInstanceOf(AxiosError);
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+    });
+  });
+
   describe('syncAccount', () => {
+    it('sends the fingerprint of the preview the person confirmed', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: result(2) });
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64));
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/bank-sync/accounts/ba-1/sync',
+        { planFingerprint: 'f'.repeat(64) },
+        { timeout: 120_000 },
+      );
+    });
+
+    it('sends no body without one', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: result(0) });
+      await bankSyncApi.syncAccount('ba-1');
+      expect(vi.mocked(apiClient.post).mock.calls[0][1]).toBeUndefined();
+    });
+
+    it('still drops the balance caches when a confirmed sync imported rows', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: result(2) });
+      seedCaches();
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64));
+      expect(getCached('accounts:all:false')).toBeUndefined();
+    });
+
+    it('keeps the balance caches when a fingerprint was refused (409): nothing was written', async () => {
+      vi.mocked(apiClient.post).mockRejectedValue(axiosFailure(409));
+      seedCaches();
+      await expect(bankSyncApi.syncAccount('ba-1', 'f'.repeat(64))).rejects.toBeInstanceOf(AxiosError);
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+    });
+
     it('POSTs the sync route with a long timeout', async () => {
       vi.mocked(apiClient.post).mockResolvedValue({ data: result(0) });
       await bankSyncApi.syncAccount('ba-1');

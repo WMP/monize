@@ -3,6 +3,7 @@ import { TRANSACTION_NOTE_MAX_LENGTH } from "../common/transaction-note";
 import {
   BANK_IMPORT_REFUSAL_REASONS,
   BankImportContext,
+  explainBankImport,
   planBankImport,
 } from "./bank-transaction-planner";
 import type { BankTransaction } from "./providers/bank-sync-provider.interface";
@@ -683,5 +684,132 @@ describe("planBankImport", () => {
       pending: 0,
       beforeCutoff: 0,
     });
+  });
+});
+
+describe("explainBankImport (the preview's view of the same classification)", () => {
+  const explain = (rows: BankTransaction[], ctx: BankImportContext = CTX) =>
+    explainBankImport(rows, ctx);
+
+  const MIXED: BankTransaction[] = [
+    row({ entryReference: "r1", amount: "12.5", counterpartyName: "Shop" }),
+    row({ entryReference: "r2", booked: false, amount: "3" }),
+    row({ entryReference: "r3", bookingDate: "2026-02-01", amount: "4" }),
+    row({ entryReference: "r4", currencyCode: "USD", amount: "5" }),
+    row({ entryReference: "r5", amount: "abc" }),
+    row({ entryReference: "r6", direction: "credit", amount: "1000" }),
+    row({ entryReference: "r7", bookingDate: null }),
+  ];
+
+  it("returns the very plan planBankImport returns: nothing the preview shows is planned differently", () => {
+    expect(explain(MIXED).plan).toEqual(planBankImport(MIXED, CTX));
+    expect(explain([]).plan).toEqual(planBankImport([], CTX));
+  });
+
+  it("lists one entry per row, in the provider's order, with its outcome", () => {
+    expect(explain(MIXED).entries.map((e) => [e.outcome, e.reason])).toEqual([
+      ["planned", null],
+      ["pending", null],
+      ["before_cutoff", null],
+      ["refused", "currency_mismatch"],
+      ["refused", "invalid_amount"],
+      ["planned", null],
+      ["refused", "missing_date"],
+    ]);
+  });
+
+  it("gives a planned entry the planner's own fields and its external key", () => {
+    const { plan, entries } = explain(MIXED);
+    expect(entries[0]).toEqual({
+      outcome: "planned",
+      reason: null,
+      externalKey: "ref:r1",
+      transactionDate: "2026-03-10",
+      amount: -12.5,
+      currencyCode: "EUR",
+      payeeText: "Shop",
+      description: null,
+      referenceNumber: null,
+    });
+    // The planned entries are the planned rows, one for one, in order.
+    expect(
+      entries.filter((e) => e.outcome === "planned").map((e) => e.externalKey),
+    ).toEqual(plan.planned.map((p) => p.externalKey));
+  });
+
+  it("reads what it can of a row it did not plan, signed and bounded, null where it cannot", () => {
+    const { entries } = explain(MIXED);
+    // pending: a debit of 3
+    expect(entries[1]).toMatchObject({
+      outcome: "pending",
+      externalKey: null,
+      transactionDate: "2026-03-10",
+      amount: -3,
+      currencyCode: "EUR",
+    });
+    // before the cut-off, still dated and signed
+    expect(entries[2]).toMatchObject({
+      outcome: "before_cutoff",
+      transactionDate: "2026-02-01",
+      amount: -4,
+    });
+    // a foreign currency is shown as the bank sent it, never as the account's
+    expect(entries[3]).toMatchObject({ currencyCode: "USD", amount: -5 });
+    // an unreadable amount is unknown, not zero
+    expect(entries[4]).toMatchObject({ outcome: "refused", amount: null });
+    // no date at all
+    expect(entries[6]).toMatchObject({ transactionDate: null });
+  });
+
+  it("does not sign an amount whose direction is unknown", () => {
+    const { entries } = explain([
+      row({ entryReference: "x", direction: null, amount: "9" }),
+    ]);
+    expect(entries[0]).toMatchObject({
+      outcome: "refused",
+      reason: "unknown_direction",
+      amount: null,
+    });
+  });
+
+  it("shows a zero amount as 0, not -0", () => {
+    const { entries } = explain([
+      row({ entryReference: "z", amount: "0", booked: false }),
+    ]);
+    expect(Object.is(entries[0].amount, 0)).toBe(true);
+  });
+
+  it("falls back to the first remittance line for the payee and joins the lines for the description", () => {
+    const { entries } = explain([
+      row({
+        entryReference: "p",
+        booked: false,
+        counterpartyName: null,
+        remittance: ["First line", "Second line"],
+        bankReference: "REF-9",
+      }),
+    ]);
+    expect(entries[0]).toMatchObject({
+      payeeText: "First line",
+      description: "First line Second line",
+      referenceNumber: "REF-9",
+    });
+  });
+
+  it("assigns the occurrence counters the way the plan does, so a duplicate coffee keeps its key", () => {
+    const coffee = row({ amount: "3", counterpartyName: "Cafe" });
+    const { plan, entries } = explain([coffee, coffee]);
+    expect(entries.map((e) => e.externalKey)).toEqual(
+      plan.planned.map((p) => p.externalKey),
+    );
+    expect(entries[0].externalKey).toMatch(/:0$/);
+    expect(entries[1].externalKey).toMatch(/:1$/);
+  });
+
+  it("lists a pagination overlap once, as the plan counts it", () => {
+    const one = row({ entryReference: "dup", amount: "7" });
+    const { plan, entries } = explain([one, { ...one }]);
+    expect(plan.planned).toHaveLength(1);
+    expect(entries).toHaveLength(1);
   });
 });

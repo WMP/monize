@@ -9,7 +9,6 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { addDaysYMD, todayYMD } from "../common/date-utils";
-import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { withScopedDb } from "../common/db/scoped-db";
 import {
   JobClaimService,
@@ -19,11 +18,7 @@ import { roundMoney } from "../common/round.util";
 import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
 import { tr } from "../i18n/translate";
 import { NetWorthService } from "../net-worth/net-worth.service";
-import {
-  DEFAULT_CUTOFF_LOOKBACK_DAYS,
-  SYNC_LEASE_TTL_MS,
-  SYNC_OVERLAP_DAYS,
-} from "./bank-sync.constants";
+import { SYNC_LEASE_TTL_MS, SYNC_OVERLAP_DAYS } from "./bank-sync.constants";
 import type { BankSyncConnectionStatus } from "./bank-sync.constants";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import {
@@ -32,15 +27,23 @@ import {
   storedFailureMessage,
   toBankSyncException,
 } from "./bank-sync-errors";
+import { readLinkDefaults } from "./bank-sync-cutoff";
+import { BankSyncPreviewService } from "./bank-sync-preview.service";
 import { toBankSyncAccountView } from "./bank-sync-views";
-import { BankSyncWriterService } from "./bank-sync-writer.service";
+import {
+  BankSyncPlanChangedException,
+  BankSyncWriterService,
+} from "./bank-sync-writer.service";
 import type { NormalizedBankBalance } from "./bank-sync-writer.service";
 import type {
   BankSyncAccountView,
   BankSyncConnectionSyncEntry,
+  BankSyncLinkDefaultsView,
+  BankSyncPreviewView,
   BankSyncResult,
 } from "./bank-sync.types";
-import { planBankImport } from "./bank-transaction-planner";
+import { explainBankImport } from "./bank-transaction-planner";
+import type { ExplainedBankImport } from "./bank-transaction-planner";
 import type { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
@@ -146,6 +149,7 @@ export class BankSyncService {
     private readonly credentials: BankSyncCredentialsService,
     private readonly registry: BankSyncProviderRegistry,
     private readonly writer: BankSyncWriterService,
+    private readonly previewer: BankSyncPreviewService,
     private readonly jobClaims: JobClaimService,
     private readonly netWorth: NetWorthService,
   ) {}
@@ -230,7 +234,7 @@ export class BankSyncService {
       const cutoff =
         requested ??
         (accountChanged || row.syncFromDate === null
-          ? await this.defaultCutoff(m, userId, account.id)
+          ? (await readLinkDefaults(m, userId, account.id)).defaultSyncFromDate
           : row.syncFromDate);
 
       if (accountChanged || cutoff !== row.syncFromDate) {
@@ -255,17 +259,89 @@ export class BankSyncService {
   }
 
   /**
+   * What linking `bankAccountId` to `accountId` would default the cut-off to,
+   * and the newest transaction that default follows (spec section 7), through
+   * `readLinkDefaults`, the function `linkAccount` itself uses. Read-only; both
+   * rows must be the caller's.
+   */
+  async linkDefaults(
+    userId: string,
+    bankAccountId: string,
+    accountId: string,
+  ): Promise<BankSyncLinkDefaultsView> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const link = await m
+        .getRepository(BankSyncAccount)
+        .findOne({ where: { id: bankAccountId, userId } });
+      if (!link) throw this.bankAccountNotFound(bankAccountId);
+      const account = await m
+        .getRepository(Account)
+        .findOne({ where: { id: accountId, userId } });
+      if (!account) {
+        throw new BadRequestException(
+          tr("errors.bankSync.accountNotFound", "That account was not found."),
+        );
+      }
+      return readLinkDefaults(m, userId, account.id);
+    });
+  }
+
+  /**
    * Sync one bank account (spec section 7). `psu` is the person at the keyboard
    * for a user-present sync and `null` for the daily one. A provider failure is
-   * answered with the HTTP exception it maps to.
+   * answered with the HTTP exception it maps to. `planFingerprint` is the one
+   * the preview returned: the write then refuses with 409, before it writes
+   * anything, when the plan it is about to write no longer matches it.
    */
   async syncAccount(
     userId: string,
     bankAccountId: string,
     psu: PsuContext | null,
+    planFingerprint?: string,
   ): Promise<BankSyncResult> {
     try {
-      return await this.attemptAccountSync(userId, bankAccountId, psu);
+      return await this.attemptAccountSync(
+        userId,
+        bankAccountId,
+        psu,
+        planFingerprint,
+      );
+    } catch (error) {
+      throw toBankSyncException(error);
+    }
+  }
+
+  /**
+   * What a sync of this bank account would do now, and nothing else (spec
+   * section 7a): steps 1 to 4 of a sync, then the read-only half of step 5 in
+   * `BankSyncPreviewService`. It takes the same lease as a sync, so a preview
+   * during a sync is a 409, and it is a user-present read (`psu`). Nothing it
+   * reads or lists is written, and a failure is not recorded on the bank
+   * account: a preview that wrote a "last sync failed" would not be one.
+   */
+  async previewAccount(
+    userId: string,
+    bankAccountId: string,
+    psu: PsuContext | null,
+  ): Promise<BankSyncPreviewView> {
+    try {
+      return await this.underLease(
+        userId,
+        bankAccountId,
+        false,
+        async ({ ctx, credentials }) => {
+          const fetched = await this.fetchAndPlan(ctx, credentials, psu);
+          return this.previewer.build({
+            userId,
+            bankAccountId,
+            accountId: ctx.account.id,
+            plannedSyncFromDate: ctx.link.syncFromDate,
+            plannedCurrencyCode: ctx.account.currencyCode,
+            explained: fetched.explained,
+            balance: fetched.balance,
+          });
+        },
+      );
     } catch (error) {
       throw toBankSyncException(error);
     }
@@ -281,9 +357,78 @@ export class BankSyncService {
     userId: string,
     bankAccountId: string,
     psu: PsuContext | null,
+    expectedFingerprint?: string,
   ): Promise<BankSyncResult> {
+    return this.underLease(
+      userId,
+      bankAccountId,
+      true,
+      async ({ ctx, credentials }) => {
+        const { account, link } = ctx;
+        const { explained, balance } = await this.fetchAndPlan(
+          ctx,
+          credentials,
+          psu,
+        );
+        const { plan } = explained;
+
+        // Step 5: the one write transaction.
+        const written = await this.writer.write({
+          userId,
+          bankAccountId,
+          accountId: account.id,
+          plannedSyncFromDate: link.syncFromDate,
+          plannedCurrencyCode: account.currencyCode,
+          plan,
+          balance,
+          expectedFingerprint,
+        });
+
+        // Step 6: after the commit, drop what depends on the balance.
+        if (written.imported > 0) {
+          this.netWorth.triggerDebouncedRecalc(account.id, userId);
+        }
+        this.logger.log(
+          `Bank account ${bankAccountId} synced: ${written.imported} imported, ${written.skipped} already imported`,
+        );
+        return {
+          bankAccountId,
+          imported: written.imported,
+          skipped: written.skipped,
+          refused: plan.refused,
+          pending: plan.pending,
+          beforeCutoff: plan.beforeCutoff,
+          bankBalance:
+            balance === null
+              ? null
+              : {
+                  amount: balance.amount.toFixed(4),
+                  currencyCode: balance.currencyCode,
+                  referenceDate: balance.referenceDate,
+                },
+        };
+      },
+    );
+  }
+
+  /**
+   * Steps 1 and 2 of a sync, around `run`: read the link, check it can be read
+   * and resolve the credentials, take the lease, run, release the lease. A
+   * failure of `run` is recorded on the bank account (step 7) when `record` is
+   * set, except a plan the user confirmed that no longer matches: nothing was
+   * attempted then. The preview passes `record = false` and writes nothing.
+   */
+  private async underLease<T>(
+    userId: string,
+    bankAccountId: string,
+    record: boolean,
+    run: (ready: {
+      ctx: SyncContext;
+      credentials: BankSyncCredentials;
+    }) => Promise<T>,
+  ): Promise<T> {
     const ctx = await this.loadContext(userId, bankAccountId);
-    const { link, connection, account } = ctx;
+    const { link, connection } = ctx;
 
     // Step 1's refusals, and the credentials, before the lease: nothing has been
     // asked of the bank yet. Each is recorded on the bank account, so the daily
@@ -296,7 +441,7 @@ export class BankSyncService {
         connection.provider,
       );
     } catch (error) {
-      await this.recordFailure(userId, link, error, false);
+      if (record) await this.recordFailure(userId, link, error, false);
       throw error;
     }
 
@@ -318,79 +463,64 @@ export class BankSyncService {
     }
 
     try {
-      const provider = this.registry.getByName(connection.provider);
-      const today = todayYMD();
-      const window = syncWindow(link, today);
-
-      // Step 3: read the bank, outside any transaction.
-      const rows = await provider.fetchTransactions(
-        credentials,
-        link.externalAccountId,
-        window,
-        psu,
-      );
-      let balance: NormalizedBankBalance | null = null;
-      try {
-        balance = normalizeBankBalance(
-          await provider.fetchBalance(credentials, link.externalAccountId, psu),
-        );
-      } catch (error) {
-        // A balance failure leaves the stored balance as it was.
-        this.logger.warn(
-          `Bank balance of bank account ${bankAccountId} could not be read: ${describeSyncFailure(error)}`,
-        );
-      }
-
-      // Step 4: plan.
-      const plan = planBankImport(rows, {
-        accountCurrencyCode: account.currencyCode,
-        syncFromDate: link.syncFromDate ?? today,
-        today,
-      });
-
-      // Step 5: the one write transaction.
-      const written = await this.writer.write({
-        userId,
-        bankAccountId,
-        accountId: account.id,
-        plannedSyncFromDate: link.syncFromDate,
-        plannedCurrencyCode: account.currencyCode,
-        plan,
-        balance,
-      });
-
-      // Step 6: after the commit, drop what depends on the balance.
-      if (written.imported > 0) {
-        this.netWorth.triggerDebouncedRecalc(account.id, userId);
-      }
-      this.logger.log(
-        `Bank account ${bankAccountId} synced: ${written.imported} imported, ${written.skipped} already imported`,
-      );
-      return {
-        bankAccountId,
-        imported: written.imported,
-        skipped: written.skipped,
-        refused: plan.refused,
-        pending: plan.pending,
-        beforeCutoff: plan.beforeCutoff,
-        bankBalance:
-          balance === null
-            ? null
-            : {
-                amount: balance.amount.toFixed(4),
-                currencyCode: balance.currencyCode,
-                referenceDate: balance.referenceDate,
-              },
-      };
+      return await run({ ctx, credentials });
     } catch (error) {
       // Step 7.
-      const consentGone =
-        isBankSyncProviderError(error) && error.kind === "session_expired";
-      await this.recordFailure(userId, link, error, consentGone);
+      if (record && !(error instanceof BankSyncPlanChangedException)) {
+        const consentGone =
+          isBankSyncProviderError(error) && error.kind === "session_expired";
+        await this.recordFailure(userId, link, error, consentGone);
+      }
       throw error;
     } finally {
       await this.releaseLease(userId, bankAccountId, leaseToken);
     }
+  }
+
+  /**
+   * Steps 3 and 4 of a sync: read the bank outside any transaction, then plan.
+   * A sync and a preview both come through here, so the preview lists exactly
+   * the plan a sync would write.
+   */
+  private async fetchAndPlan(
+    ctx: SyncContext,
+    credentials: BankSyncCredentials,
+    psu: PsuContext | null,
+  ): Promise<{
+    explained: ExplainedBankImport;
+    balance: NormalizedBankBalance | null;
+  }> {
+    const { link, connection, account } = ctx;
+    const provider = this.registry.getByName(connection.provider);
+    const today = todayYMD();
+    const window = syncWindow(link, today);
+
+    // Step 3: read the bank, outside any transaction.
+    const rows = await provider.fetchTransactions(
+      credentials,
+      link.externalAccountId,
+      window,
+      psu,
+    );
+    let balance: NormalizedBankBalance | null = null;
+    try {
+      balance = normalizeBankBalance(
+        await provider.fetchBalance(credentials, link.externalAccountId, psu),
+      );
+    } catch (error) {
+      // A balance failure leaves the stored balance as it was.
+      this.logger.warn(
+        `Bank balance of bank account ${link.id} could not be read: ${describeSyncFailure(error)}`,
+      );
+    }
+
+    // Step 4: plan.
+    const explained = explainBankImport(rows, {
+      accountCurrencyCode: account.currencyCode,
+      syncFromDate: link.syncFromDate ?? today,
+      today,
+    });
+    return { explained, balance };
   }
 
   /**
@@ -568,31 +698,6 @@ export class BankSyncService {
         ),
       );
     }
-  }
-
-  /** The cut-off for a newly linked account (spec section 7). */
-  private async defaultCutoff(
-    m: EntityManager,
-    userId: string,
-    accountId: string,
-  ): Promise<string> {
-    const today = todayYMD();
-    const rows: { newest: string | null }[] = await m.query(
-      `SELECT TO_CHAR(MAX(t.transaction_date), 'YYYY-MM-DD') AS newest
-         FROM transactions t
-        WHERE t.account_id = $1
-          AND t.user_id = $2
-          AND ${ledgerMovementPredicate("t")}`,
-      [accountId, userId],
-    );
-    const newest = rows[0]?.newest ?? null;
-    if (newest === null) {
-      return addDaysYMD(today, -DEFAULT_CUTOFF_LOOKBACK_DAYS);
-    }
-    const dayAfter = addDaysYMD(newest, 1);
-    // A future-dated newest row must not push the cut-off past today: the bank's
-    // booked rows up to now would all be "before the cut-off".
-    return dayAfter > today ? today : dayAfter;
   }
 
   /**

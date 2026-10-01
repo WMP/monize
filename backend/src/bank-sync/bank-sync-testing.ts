@@ -49,6 +49,7 @@ export function fakeProvider(): jest.Mocked<BankSyncProvider> {
     startAuthorization: jest.fn(),
     completeAuthorization: jest.fn(),
     fetchTransactions: jest.fn(),
+    fetchAccountDetails: jest.fn(),
     fetchBalance: jest.fn(),
     revokeSession: jest.fn(),
   };
@@ -130,6 +131,8 @@ export function bankAccountRow(
     identificationHash: "hash-1",
     displayName: "Main account",
     identifierMasked: "**** 1234",
+    accountIdentifier: null,
+    cashAccountType: null,
     currencyCode: "PLN",
     accountId: ACCOUNT_ID,
     syncFromDate: "2026-08-01",

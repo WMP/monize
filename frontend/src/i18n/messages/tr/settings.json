@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "Bankadaki yetkilendirme tamamlanmadı. Yeniden denemek için onayı yenileyin; bağladığınız hesaplar korunur.",
       "noAccounts": "Banka bu bağlantı için herhangi bir hesap bildirmedi.",
-      "accountsHeading": "Banka hesapları"
+      "accountsHeading": "Banka hesapları",
+      "matchAccounts": "Hesap numarasına göre eşleştir",
+      "matching": "Eşleştiriliyor...",
+      "matchLinked": "{count, plural, one {# banka hesabı aynı numaralı hesaba bağlandı} other {# banka hesabı aynı numaralı hesaplara bağlandı}}",
+      "matchSuggested": "{count, plural, one {# banka hesabı birden fazla hesabınızla eşleşiyor: hesabı kendiniz seçin} other {# banka hesabı birden fazla hesabınızla eşleşiyor: hesapları kendiniz seçin}}",
+      "matchBoth": "{linked}. {suggested}",
+      "matchNone": "Hiçbir banka hesabı bağlanmadı: hiçbirinin hesap numarası hesaplarınızdan biriyle eşleşmiyor.",
+      "matchFailed": "Banka hesapları eşleştirilemedi",
+      "syncAllNeedsPreview": "Tümünü senkronize et, yeni bağlanan her hesabın ilk içe aktarması onaylanana kadar bekler. Önizlemeyi açmak için o hesapta Şimdi senkronize et düğmesini kullanın."
     },
     "account": {
       "unnamed": "Adsız banka hesabı",
@@ -1547,13 +1555,19 @@
       "difference": "Fark",
       "differenceHelp": "Banka bakiyesi, bankanın gösterilen tarihte bildirdiği tutardır. Bankanın henüz hesaba işlemediği veya o tarihten sonra işlediği işlemleri içerebilir, bu nedenle senkronizasyonlar arasında küçük bir fark normaldir.",
       "differenceHidden": "Banka bakiyesi {bankCurrency}, Monize hesabı ise {monizeCurrency} cinsinden olduğundan fark gösterilmiyor.",
-      "deletedNote": "Monize'de sildiğiniz bir işlem sonraki bir senkronizasyonda yeniden içe aktarılmaz, yani silinen satır silinmiş kalır."
+      "deletedNote": "Monize'de sildiğiniz bir işlem sonraki bir senkronizasyonda yeniden içe aktarılmaz, yani silinen satır silinmiş kalır.",
+      "createNew": "Yeni hesap oluştur",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "Hesap oluşturuldu ve bağlandı",
+      "createdLinkFailed": "Hesap oluşturuldu ancak bağlanamadı",
+      "preview": "Önizleme",
+      "firstSyncPreview": "İlk içe aktarma, işlemlerin önizlemesiyle onaylanır."
     },
     "link": {
       "title": "{account} hesabına bağla",
       "editTitle": "{account} için başlangıç tarihi",
       "syncFromLabel": "İşlemleri şu tarihten itibaren içe aktar",
-      "syncFromHelp": "Boş bırakırsanız Monize, hesaptaki en yeni işlemden sonraki günden başlar; hesap boşsa 89 gün öncesinden başlar.",
+      "syncFromHelp": "Monize'un varsayılan olarak seçtiği tarihle dolduruldu. Alanı boşaltırsanız Monize tarihi sizin için seçer.",
       "beforeCutoff": "Bankanın bu tarihten önce hesaba işlediği işlemler hiçbir zaman içe aktarılmaz.",
       "duplicateWarning": "Hesaptaki en yeni işlemden önceki bir tarih, zaten girdiğiniz işlemlerin kopyalarını oluşturabilir.",
       "save": "Hesabı bağla",
@@ -1562,7 +1576,11 @@
       "cancel": "İptal",
       "saved": "Hesap bağlandı",
       "editSaved": "Başlangıç tarihi kaydedildi",
-      "saveFailed": "Bağlantı kaydedilemedi"
+      "saveFailed": "Bağlantı kaydedilemedi",
+      "loadingDefaults": "Hesap okunuyor...",
+      "defaultsFailed": "Bu hesaptaki en yeni işlem okunamadı; bu nedenle Monize bu başlangıç tarihinin kopyalar oluşturup oluşturmayacağını söyleyemez.",
+      "newestTransaction": "Bu hesaptaki en yeni işlem: {date}",
+      "emptyAccount": "{days, plural, one {Hesap boş: içe aktarma son günü kapsıyor} other {Hesap boş: içe aktarma son # günü kapsıyor}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {İşlem içe aktarılmadı} one {# işlem içe aktarıldı} other {# işlem içe aktarıldı}}, {skipped, plural, =0 {atlanan yok} one {# tanesi zaten içe aktarıldığı için atlandı} other {# tanesi zaten içe aktarıldığı için atlandı}}, {refused, plural, =0 {reddedilen yok} one {# tanesi reddedildi} other {# tanesi reddedildi}}",
@@ -1588,7 +1606,80 @@
       "bankError": "Bankanız erişim vermedi: {message}",
       "missingState": "Banka geçerli bir yanıt döndürmedi. Bağlantıyı yeniden başlatın.",
       "notActive": "Bağlantı tamamlanamadı",
-      "failed": "Bağlantı tamamlanamadı"
+      "failed": "Bağlantı tamamlanamadı",
+      "autoLinked": "{count, plural, one {# banka hesabı aynı numaralı hesaba bağlandı. İlk içe aktarmadan önce kontrol edin.} other {# banka hesabı aynı numaralı hesaplara bağlandı. İlk içe aktarmadan önce kontrol edin.}}",
+      "autoSuggested": "{count, plural, one {# banka hesabı birden fazla hesabınızla eşleşiyor: hesabı listeden seçin.} other {# banka hesabı birden fazla hesabınızla eşleşiyor: hesapları listeden seçin.}}"
+    },
+    "accountType": {
+      "CACC": "Vadesiz hesap",
+      "CARD": "Kart",
+      "SVGS": "Birikim hesabı",
+      "LOAN": "Kredi",
+      "other": "Hesap türü {code}"
+    },
+    "mismatch": {
+      "bankCard": "Banka bu hesabı kart olarak bildiriyor, ancak {account} hesabının türü {creditCard} değil, {type}. Bir kartın işlemleri yanlış türde bir hesaba içe aktarılırdı.",
+      "monizeCard": "{account} hesabının türü {creditCard}, ancak banka bu hesabı şöyle bildiriyor: {bankType}. Bunun doğru banka hesabı olduğunu kontrol edin.",
+      "confirm": "Anladım, yine de hesapları bağla"
+    },
+    "preview": {
+      "title": "{account} hesabına içe aktarma önizlemesi",
+      "description": "Onaylayana kadar hiçbir şey içe aktarılmaz. Bu, bankanın bildirdiği ve Monize'un her işlemle yapacağı şeydir.",
+      "loading": "Banka okunuyor...",
+      "loadFailed": "Bu hesap için önizleme yapılamadı",
+      "retry": "Tekrar dene",
+      "close": "Kapat",
+      "import": "{count, plural, =0 {Onayla: içe aktarılacak yeni bir şey yok} one {# işlemi içe aktar} other {# işlemi içe aktar}}",
+      "importing": "İçe aktarılıyor...",
+      "importFailed": "İşlemler içe aktarılamadı",
+      "planChanged": "Bankanın verileri bu önizlemeden sonra değişti, bu yüzden hiçbir şey içe aktarılmadı. Önizleme yeniden okundu: kontrol edip bir kez daha içe aktarın.",
+      "monizeBalance": "Şu anki Monize bakiyesi",
+      "balanceAfter": "İçe aktarmadan sonraki Monize bakiyesi",
+      "bankBalance": "Banka bakiyesi",
+      "bankBalanceAsOf": "{date} itibarıyla {amount}",
+      "bankBalanceNotReported": "Banka tarafından bildirilmedi",
+      "difference": "İçe aktarmadan sonraki fark",
+      "differenceHelp": "Banka bakiyesinden içe aktarmadan sonraki Monize bakiyesinin çıkarılmış hâli. Sıfır, ikisinin uyuştuğu anlamına gelir. Banka bakiyesi, bankanın henüz hesaba işlemediği işlemleri içerebilir; bu yüzden küçük bir fark normaldir.",
+      "differenceHidden": "Banka bakiyesi {bankCurrency} cinsinden, Monize hesabı ise {monizeCurrency} cinsinden; bu yüzden fark gösterilmiyor.",
+      "filterLabel": "İşlemleri göster",
+      "filter": {
+        "all": "Tümü",
+        "new": "Yeni",
+        "duplicate": "Zaten içe aktarılmış",
+        "refused": "Reddedilen",
+        "pending": "Bekleyen",
+        "before_cutoff": "Başlangıç tarihinden önce",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "Yeni",
+        "duplicate": "Zaten içe aktarılmış",
+        "refused": "Reddedildi",
+        "pending": "Bekliyor",
+        "before_cutoff": "Başlangıç tarihinden önce"
+      },
+      "refusal": {
+        "missing_date": "Tarih yok",
+        "future_date": "Gelecek tarihli",
+        "invalid_amount": "Geçersiz tutar",
+        "unknown_direction": "Bilinmeyen yön",
+        "currency_mismatch": "Başka para birimi",
+        "other": "Reddedildi"
+      },
+      "columns": {
+        "date": "Tarih",
+        "payee": "Alacaklı",
+        "category": "Kategori",
+        "status": "Durum",
+        "amount": "Miktar"
+      },
+      "noPayee": "Alacaklı yok",
+      "dateUnknown": "Tarih yok",
+      "amountUnknown": "Bilinmiyor",
+      "empty": {
+        "all": "Banka bu dönem için işlem döndürmedi.",
+        "filtered": "Bu listede işlem yok."
+      }
     }
   }
 }

@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "銀行での承認が完了しませんでした。同意を更新してやり直してください。リンク済みの口座はそのまま残ります。",
       "noAccounts": "この接続について、銀行から口座が報告されていません。",
-      "accountsHeading": "銀行口座"
+      "accountsHeading": "銀行口座",
+      "matchAccounts": "口座番号で照合",
+      "matching": "照合中...",
+      "matchLinked": "{count, plural, other {銀行口座 # 件を、同じ番号の口座にリンクしました}}",
+      "matchSuggested": "{count, plural, other {銀行口座 # 件が複数の口座に一致しました: 口座を自分で選んでください}}",
+      "matchBoth": "{linked}。{suggested}",
+      "matchNone": "リンクした銀行口座はありません: あなたの口座のどれとも口座番号が一致しませんでした。",
+      "matchFailed": "銀行口座を照合できませんでした",
+      "syncAllNeedsPreview": "新しくリンクした各口座の最初のインポートを確認するまで、「すべて同期」は使えません。その口座の「今すぐ同期」でプレビューを開いてください。"
     },
     "account": {
       "unnamed": "名称未設定の銀行口座",
@@ -1547,13 +1555,19 @@
       "difference": "差額",
       "differenceHelp": "銀行の残高は、表示されている日付に銀行が報告した残高です。銀行がまだ計上していない取引や、その日付より後に計上された取引が含まれる場合があるため、同期の合間に少額の差が出るのは正常です。",
       "differenceHidden": "銀行の残高は {bankCurrency}、Monize の口座は {monizeCurrency} のため、差額は表示されません。",
-      "deletedNote": "Monize で削除した取引は、その後の同期で再びインポートされることはなく、削除した行は削除されたままになります。"
+      "deletedNote": "Monize で削除した取引は、その後の同期で再びインポートされることはなく、削除した行は削除されたままになります。",
+      "createNew": "新しい口座を作成",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "口座を作成してリンクしました",
+      "createdLinkFailed": "口座は作成されましたが、リンクできませんでした",
+      "preview": "プレビュー",
+      "firstSyncPreview": "最初のインポートは、取引のプレビューで確認します。"
     },
     "link": {
       "title": "{account} にリンク",
       "editTitle": "{account} の開始日",
       "syncFromLabel": "取引のインポート開始日",
-      "syncFromHelp": "空欄のままにすると、Monize は口座にある最新の取引の翌日から開始します。口座が空の場合は 89 日前から開始します。",
+      "syncFromHelp": "Monize が既定で選ぶ日付が入力されています。欄を空にすると、Monize が自動で選びます。",
       "beforeCutoff": "この日付より前に銀行が計上した取引はインポートされません。",
       "duplicateWarning": "口座内の最新の取引より前の日付を指定すると、すでに入力済みの取引が重複してインポートされる可能性があります。",
       "save": "口座をリンク",
@@ -1562,7 +1576,11 @@
       "cancel": "キャンセル",
       "saved": "口座をリンクしました",
       "editSaved": "開始日を保存しました",
-      "saveFailed": "リンクを保存できませんでした"
+      "saveFailed": "リンクを保存できませんでした",
+      "loadingDefaults": "口座を読み取り中...",
+      "defaultsFailed": "この口座の最新の取引を読み取れなかったため、この開始日で重複が発生するかどうかを Monize は判断できません。",
+      "newestTransaction": "この口座の最新の取引: {date}",
+      "emptyAccount": "{days, plural, other {口座は空です: インポートは直近 # 日間が対象です}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {インポートした取引はありません} other {# 件の取引をインポートしました}}、{skipped, plural, =0 {スキップはありません} other {# 件はインポート済みのためスキップしました}}、{refused, plural, =0 {拒否はありません} other {# 件を拒否しました}}",
@@ -1588,7 +1606,80 @@
       "bankError": "銀行がアクセスを許可しませんでした: {message}",
       "missingState": "銀行から有効な応答が返されませんでした。もう一度接続を開始してください。",
       "notActive": "接続が完了しませんでした",
-      "failed": "接続を完了できませんでした"
+      "failed": "接続を完了できませんでした",
+      "autoLinked": "{count, plural, other {銀行口座 # 件を、同じ番号の口座にリンクしました。最初のインポートの前に確認してください。}}",
+      "autoSuggested": "{count, plural, other {銀行口座 # 件が複数の口座に一致しました: 一覧で口座を選んでください。}}"
+    },
+    "accountType": {
+      "CACC": "普通預金",
+      "CARD": "カード",
+      "SVGS": "貯蓄預金",
+      "LOAN": "ローン",
+      "other": "口座の種類 {code}"
+    },
+    "mismatch": {
+      "bankCard": "銀行はこの口座をカードとして報告していますが、{account} の種類は {creditCard} ではなく {type} です。カードの取引が種類の異なる口座にインポートされます。",
+      "monizeCard": "{account} の種類は {creditCard} ですが、銀行はこの口座を次のように報告しています: {bankType}。正しい銀行口座か確認してください。",
+      "confirm": "理解しました。それでも口座をリンクする"
+    },
+    "preview": {
+      "title": "{account} へのインポートのプレビュー",
+      "description": "確認するまで何もインポートされません。銀行が報告した内容と、Monize が各取引に対して行う処理を示します。",
+      "loading": "銀行を読み取り中...",
+      "loadFailed": "この口座をプレビューできませんでした",
+      "retry": "再試行",
+      "close": "閉じる",
+      "import": "{count, plural, =0 {確認: インポートする新しい取引はありません} other {# 件の取引をインポート}}",
+      "importing": "インポート中...",
+      "importFailed": "取引をインポートできませんでした",
+      "planChanged": "このプレビューの後に銀行のデータが変わったため、何もインポートされませんでした。プレビューを読み込み直しました。内容を確認して、もう一度インポートしてください。",
+      "monizeBalance": "現在の Monize の残高",
+      "balanceAfter": "インポート後の Monize の残高",
+      "bankBalance": "銀行の残高",
+      "bankBalanceAsOf": "{date} 時点で {amount}",
+      "bankBalanceNotReported": "銀行から報告されていません",
+      "difference": "インポート後の差額",
+      "differenceHelp": "銀行の残高からインポート後の Monize の残高を引いた額です。ゼロなら両者は一致しています。銀行の残高には銀行がまだ計上していない取引が含まれることがあるため、少額の差は正常です。",
+      "differenceHidden": "銀行の残高は {bankCurrency}、Monize の口座は {monizeCurrency} のため、差額は表示されません。",
+      "filterLabel": "取引を表示",
+      "filter": {
+        "all": "すべて",
+        "new": "新規",
+        "duplicate": "インポート済み",
+        "refused": "拒否",
+        "pending": "保留中",
+        "before_cutoff": "開始日より前",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "新規",
+        "duplicate": "インポート済み",
+        "refused": "拒否",
+        "pending": "保留中",
+        "before_cutoff": "開始日より前"
+      },
+      "refusal": {
+        "missing_date": "日付なし",
+        "future_date": "未来の日付",
+        "invalid_amount": "金額が無効",
+        "unknown_direction": "方向が不明",
+        "currency_mismatch": "別の通貨",
+        "other": "拒否"
+      },
+      "columns": {
+        "date": "日付",
+        "payee": "支払先",
+        "category": "カテゴリ",
+        "status": "状態",
+        "amount": "金額"
+      },
+      "noPayee": "支払先なし",
+      "dateUnknown": "日付なし",
+      "amountUnknown": "不明",
+      "empty": {
+        "all": "この期間の取引は銀行から返されませんでした。",
+        "filtered": "この一覧に取引はありません。"
+      }
     }
   }
 }

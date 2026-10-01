@@ -199,6 +199,8 @@ describe('BankSyncSettingsPage', () => {
             connectionId: 'c1',
             displayName: 'First',
             identifierMasked: null,
+            accountIdentifier: null,
+            cashAccountType: null,
             currencyCode: 'EUR',
             accountId: 'a1',
             syncFromDate: '2026-01-01',
@@ -211,12 +213,15 @@ describe('BankSyncSettingsPage', () => {
             bankBalance: null,
             bankBalanceCurrency: null,
             bankBalanceDate: null,
+            needsPreview: false,
           },
           {
             id: 'ba-2',
             connectionId: 'c1',
             displayName: 'Second',
             identifierMasked: null,
+            accountIdentifier: null,
+            cashAccountType: null,
             currencyCode: 'EUR',
             accountId: null,
             syncFromDate: null,
@@ -229,6 +234,7 @@ describe('BankSyncSettingsPage', () => {
             bankBalance: null,
             bankBalanceCurrency: null,
             bankBalanceDate: null,
+            needsPreview: false,
           },
         ],
       }),
@@ -242,12 +248,14 @@ describe('BankSyncSettingsPage', () => {
     const [first, second] = screen.getAllByLabelText('Monize account') as HTMLSelectElement[];
     expect(Array.from(first.options).map((o) => o.textContent)).toEqual([
       'Not linked',
+      'Create a new account',
       'Checking (EUR)',
       'Savings (EUR)',
     ]);
     expect(first.value).toBe('a1');
     expect(Array.from(second.options).map((o) => o.textContent)).toEqual([
       'Not linked',
+      'Create a new account',
       'Savings (EUR)',
     ]);
   });

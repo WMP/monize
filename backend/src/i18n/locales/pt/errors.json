@@ -702,6 +702,7 @@
     "rateLimited": "O banco ou o fornecedor limitou a frequência com que esta conta pode ser lida. Os bancos permitem apenas algumas leituras automáticas por dia; tente novamente mais tarde.",
     "providerRejected": "O fornecedor de sincronização bancária rejeitou o pedido: {{ detail }}",
     "providerUnavailable": "O fornecedor de sincronização bancária não respondeu. Nada foi alterado; tente novamente mais tarde.",
-    "providerInvalidResponse": "O fornecedor de sincronização bancária enviou uma resposta que esta versão do Monize não compreende."
+    "providerInvalidResponse": "O fornecedor de sincronização bancária enviou uma resposta que esta versão do Monize não compreende.",
+    "planChanged": "Os dados do banco mudaram desde a pré-visualização. Nada foi importado; gere a pré-visualização novamente."
   }
 }

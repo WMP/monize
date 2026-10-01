@@ -69,6 +69,32 @@ export interface BankImportPlan {
   beforeCutoff: number;
 }
 
+/**
+ * One provider row as the preview lists it (spec section 7a): what the planner
+ * did with it and the fields to show. `externalKey` is set only for a planned
+ * row. A row the planner did not plan carries what could be read from the wire
+ * row, `null` where nothing could.
+ */
+export interface PlanEntry {
+  outcome: "planned" | "refused" | "pending" | "before_cutoff";
+  /** Set for `refused`. */
+  reason: RefusalReason | null;
+  externalKey: string | null;
+  transactionDate: string | null;
+  /** Signed: negative for a debit; null when the amount or direction was unreadable. */
+  amount: number | null;
+  currencyCode: string | null;
+  payeeText: string | null;
+  description: string | null;
+  referenceNumber: string | null;
+}
+
+/** The plan, and one entry per provider row the planner looked at, in the provider's order. */
+export interface ExplainedBankImport {
+  plan: BankImportPlan;
+  entries: PlanEntry[];
+}
+
 export interface BankImportContext {
   /** The Monize account's currency. */
   accountCurrencyCode: string;
@@ -313,8 +339,47 @@ function resolveEntryReferences(
   return resolved;
 }
 
+/** What can be read of a row the planner did not plan, for the preview to list. */
+function unplannedEntry(row: BankTransaction, c: Classified): PlanEntry {
+  const remittance = row.remittance
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const amountText = row.amount?.trim() ?? "";
+  const magnitude = AMOUNT_PATTERN.test(amountText)
+    ? roundMoney(Number(amountText))
+    : null;
+  const signed =
+    magnitude === null ||
+    (row.direction !== "credit" && row.direction !== "debit")
+      ? null
+      : row.direction === "debit"
+        ? -magnitude
+        : magnitude;
+  return {
+    outcome:
+      c.kind === "pending"
+        ? "pending"
+        : c.kind === "beforeCutoff"
+          ? "before_cutoff"
+          : "refused",
+    reason: c.kind === "refused" ? c.reason : null,
+    externalKey: null,
+    transactionDate: firstValidDate(row),
+    amount: signed === 0 ? 0 : signed,
+    currencyCode: row.currencyCode?.trim().toUpperCase() || null,
+    payeeText:
+      bounded(row.counterpartyName, BANK_IMPORT_PAYEE_MAX_LENGTH) ??
+      bounded(remittance[0], BANK_IMPORT_PAYEE_MAX_LENGTH),
+    description: bounded(remittance.join(" "), TRANSACTION_NOTE_MAX_LENGTH),
+    referenceNumber: bounded(
+      row.bankReference,
+      BANK_IMPORT_REFERENCE_MAX_LENGTH,
+    ),
+  };
+}
+
 /**
- * The plan for one fetch.
+ * The plan for one fetch, and one entry per row the planner looked at.
  *
  * The external key is the first that applies: `ref:` + the provider's entry
  * reference (unique and immutable across sessions of one account), followed by
@@ -328,14 +393,17 @@ function resolveEntryReferences(
  * The provider's `transaction_id` is deliberately not a key: it is a handle for
  * fetching details and may change between two list fetches, so a key built on
  * it would let the same bank transaction be imported twice.
+ *
+ * This is the one classification: a sync writes `plan` and the preview lists
+ * `entries`, both from this call, so what is shown is what is planned.
  */
-export function planBankImport(
+export function explainBankImport(
   rows: readonly BankTransaction[],
   ctx: BankImportContext,
-): BankImportPlan {
-  const classified = resolveEntryReferences(rows).map(
-    ({ row, referenceDiscriminator }) =>
-      classify(row, ctx, referenceDiscriminator),
+): ExplainedBankImport {
+  const resolved = resolveEntryReferences(rows);
+  const classified = resolved.map(({ row, referenceDiscriminator }) =>
+    classify(row, ctx, referenceDiscriminator),
   );
 
   const refused = Object.fromEntries(
@@ -347,27 +415,49 @@ export function planBankImport(
   ) as Record<RefusalReason, number>;
 
   const occurrences = new Map<string, number>();
-  const planned = classified.flatMap((c): PlannedBankRow[] => {
-    if (c.kind !== "planned") return [];
+  const planned: PlannedBankRow[] = [];
+  const entries = classified.map((c, index): PlanEntry => {
+    if (c.kind !== "planned") return unplannedEntry(resolved[index].row, c);
     const { draft } = c;
-    return [
-      {
-        externalKey: keyFor(draft, occurrences),
-        transactionDate: draft.transactionDate,
-        amount: draft.amount,
-        payeeText: draft.payeeText,
-        description: draft.description,
-        referenceNumber: draft.referenceNumber,
-      },
-    ];
+    const row: PlannedBankRow = {
+      externalKey: keyFor(draft, occurrences),
+      transactionDate: draft.transactionDate,
+      amount: draft.amount,
+      payeeText: draft.payeeText,
+      description: draft.description,
+      referenceNumber: draft.referenceNumber,
+    };
+    planned.push(row);
+    return {
+      outcome: "planned",
+      reason: null,
+      externalKey: row.externalKey,
+      transactionDate: row.transactionDate,
+      amount: row.amount,
+      currencyCode: draft.currencyCode,
+      payeeText: row.payeeText,
+      description: row.description,
+      referenceNumber: row.referenceNumber,
+    };
   });
 
   return {
-    planned,
-    refused,
-    pending: classified.filter((c) => c.kind === "pending").length,
-    beforeCutoff: classified.filter((c) => c.kind === "beforeCutoff").length,
+    plan: {
+      planned,
+      refused,
+      pending: classified.filter((c) => c.kind === "pending").length,
+      beforeCutoff: classified.filter((c) => c.kind === "beforeCutoff").length,
+    },
+    entries,
   };
+}
+
+/** The plan for one fetch (see `explainBankImport`). */
+export function planBankImport(
+  rows: readonly BankTransaction[],
+  ctx: BankImportContext,
+): BankImportPlan {
+  return explainBankImport(rows, ctx).plan;
 }
 
 /** The key of one planned row; `occurrences` counts the hash forms seen so far. */

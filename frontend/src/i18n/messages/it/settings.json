@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "L'autorizzazione presso la banca non è stata completata. Rinnova il consenso per riprovare; i conti che hai collegato vengono mantenuti.",
       "noAccounts": "La banca non ha segnalato alcun conto per questo collegamento.",
-      "accountsHeading": "Conti bancari"
+      "accountsHeading": "Conti bancari",
+      "matchAccounts": "Abbina per numero di conto",
+      "matching": "Abbinamento in corso...",
+      "matchLinked": "{count, plural, one {# conto bancario è stato collegato al conto con lo stesso numero} many {# conti bancari sono stati collegati ai conti con gli stessi numeri} other {# conti bancari sono stati collegati ai conti con gli stessi numeri}}",
+      "matchSuggested": "{count, plural, one {# conto bancario corrisponde a più di uno dei tuoi conti: scegli tu il suo conto} many {# conti bancari corrispondono a più di uno dei tuoi conti: scegli tu i loro conti} other {# conti bancari corrispondono a più di uno dei tuoi conti: scegli tu i loro conti}}",
+      "matchBoth": "{linked}. {suggested}",
+      "matchNone": "Nessun conto bancario è stato collegato: nessuno ha un numero di conto che corrisponda a uno dei tuoi conti.",
+      "matchFailed": "Non è stato possibile abbinare i conti bancari",
+      "syncAllNeedsPreview": "«Sincronizza tutto» attende che la prima importazione di ogni conto appena collegato sia confermata. Usa «Sincronizza ora» su quel conto per vedere l'anteprima."
     },
     "account": {
       "unnamed": "Conto bancario senza nome",
@@ -1547,13 +1555,19 @@
       "difference": "Differenza",
       "differenceHelp": "Il saldo della banca è quello che la banca ha comunicato alla data indicata. Può includere transazioni che la banca non ha ancora contabilizzato, o che ha contabilizzato dopo quella data, quindi una piccola differenza tra una sincronizzazione e l'altra è normale.",
       "differenceHidden": "Il saldo della banca è in {bankCurrency} e il conto Monize è in {monizeCurrency}, quindi non viene mostrata alcuna differenza.",
-      "deletedNote": "Una transazione che elimini in Monize non viene importata di nuovo da una sincronizzazione successiva, quindi una riga eliminata resta eliminata."
+      "deletedNote": "Una transazione che elimini in Monize non viene importata di nuovo da una sincronizzazione successiva, quindi una riga eliminata resta eliminata.",
+      "createNew": "Crea un nuovo conto",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "Conto creato e collegato",
+      "createdLinkFailed": "Il conto è stato creato ma non è stato possibile collegarlo",
+      "preview": "Anteprima",
+      "firstSyncPreview": "La prima importazione viene confermata da un'anteprima delle transazioni."
     },
     "link": {
       "title": "Collega a {account}",
       "editTitle": "Data di inizio per {account}",
       "syncFromLabel": "Importa le transazioni dal",
-      "syncFromHelp": "Lascia vuoto e Monize parte dal giorno dopo la transazione più recente già presente nel conto, oppure da 89 giorni prima se il conto è vuoto.",
+      "syncFromHelp": "Precompilato con la data che Monize sceglie per impostazione predefinita. Svuota il campo e Monize la sceglierà per te.",
       "beforeCutoff": "Le transazioni che la banca ha contabilizzato prima di questa data non vengono mai importate.",
       "duplicateWarning": "Una data precedente alla transazione più recente del conto può creare duplicati di transazioni che hai già inserito.",
       "save": "Collega conto",
@@ -1562,7 +1576,11 @@
       "cancel": "Annulla",
       "saved": "Conto collegato",
       "editSaved": "Data di inizio salvata",
-      "saveFailed": "Impossibile salvare il collegamento"
+      "saveFailed": "Impossibile salvare il collegamento",
+      "loadingDefaults": "Lettura del conto...",
+      "defaultsFailed": "Non è stato possibile leggere la transazione più recente di questo conto, quindi Monize non può dire se questa data di inizio rischia di creare duplicati.",
+      "newestTransaction": "Transazione più recente in questo conto: {date}",
+      "emptyAccount": "{days, plural, one {Il conto è vuoto: l'importazione copre l'ultimo giorno} many {Il conto è vuoto: l'importazione copre gli ultimi # giorni} other {Il conto è vuoto: l'importazione copre gli ultimi # giorni}}"
     },
     "sync": {
       "summary": "{imported, plural, =0 {Nessuna transazione importata} one {# transazione importata} many {# di transazioni importate} other {# transazioni importate}}, {skipped, plural, =0 {nessuna saltata} one {# saltata perché già importata} many {# saltate perché già importate} other {# saltate perché già importate}}, {refused, plural, =0 {nessuna rifiutata} one {# rifiutata} many {# rifiutate} other {# rifiutate}}",
@@ -1588,7 +1606,80 @@
       "bankError": "La tua banca non ha concesso l'accesso: {message}",
       "missingState": "La banca non ha restituito una risposta valida. Avvia di nuovo il collegamento.",
       "notActive": "Il collegamento non è stato completato",
-      "failed": "Impossibile completare il collegamento"
+      "failed": "Impossibile completare il collegamento",
+      "autoLinked": "{count, plural, one {# conto bancario è stato collegato al conto con lo stesso numero. Controllalo prima della prima importazione.} many {# conti bancari sono stati collegati ai conti con gli stessi numeri. Controllali prima della prima importazione.} other {# conti bancari sono stati collegati ai conti con gli stessi numeri. Controllali prima della prima importazione.}}",
+      "autoSuggested": "{count, plural, one {# conto bancario corrisponde a più di uno dei tuoi conti: scegli il suo conto nell'elenco.} many {# conti bancari corrispondono a più di uno dei tuoi conti: scegli i loro conti nell'elenco.} other {# conti bancari corrispondono a più di uno dei tuoi conti: scegli i loro conti nell'elenco.}}"
+    },
+    "accountType": {
+      "CACC": "Conto corrente",
+      "CARD": "Carta",
+      "SVGS": "Conto di risparmio",
+      "LOAN": "Prestito",
+      "other": "Tipo di conto {code}"
+    },
+    "mismatch": {
+      "bankCard": "La banca segnala questo conto come una carta, ma il tipo di {account} è {type}, non {creditCard}. Le transazioni di una carta verrebbero importate in un tipo di conto sbagliato.",
+      "monizeCard": "Il tipo di {account} è {creditCard}, ma la banca segnala questo conto come: {bankType}. Controlla che sia il conto bancario giusto.",
+      "confirm": "Ho capito, collega comunque i conti"
+    },
+    "preview": {
+      "title": "Anteprima dell'importazione in {account}",
+      "description": "Non viene importato nulla finché non confermi. Questo è ciò che la banca segnala e ciò che Monize farebbe con ogni transazione.",
+      "loading": "Lettura della banca...",
+      "loadFailed": "Non è stato possibile mostrare l'anteprima di questo conto",
+      "retry": "Riprova",
+      "close": "Chiudi",
+      "import": "{count, plural, =0 {Conferma: niente di nuovo da importare} one {Importa # transazione} many {Importa # transazioni} other {Importa # transazioni}}",
+      "importing": "Importazione in corso...",
+      "importFailed": "Non è stato possibile importare le transazioni",
+      "planChanged": "I dati della banca sono cambiati dopo questa anteprima, quindi non è stato importato nulla. L'anteprima è stata riletta: controllala e importa di nuovo.",
+      "monizeBalance": "Saldo Monize ora",
+      "balanceAfter": "Saldo Monize dopo l'importazione",
+      "bankBalance": "Saldo della banca",
+      "bankBalanceAsOf": "{amount} al {date}",
+      "bankBalanceNotReported": "Non comunicato dalla banca",
+      "difference": "Differenza dopo l'importazione",
+      "differenceHelp": "Il saldo della banca meno il saldo Monize dopo l'importazione. Zero significa che i due coincidono. Il saldo della banca può includere transazioni che la banca non ha ancora contabilizzato, quindi una piccola differenza è normale.",
+      "differenceHidden": "Il saldo della banca è in {bankCurrency} e il conto Monize in {monizeCurrency}, quindi non viene mostrata alcuna differenza.",
+      "filterLabel": "Mostra le transazioni",
+      "filter": {
+        "all": "Tutte",
+        "new": "Nuove",
+        "duplicate": "Già importate",
+        "refused": "Rifiutate",
+        "pending": "In sospeso",
+        "before_cutoff": "Prima della data di inizio",
+        "withCount": "{label} ({count})"
+      },
+      "outcome": {
+        "new": "Nuova",
+        "duplicate": "Già importata",
+        "refused": "Rifiutata",
+        "pending": "In sospeso",
+        "before_cutoff": "Prima della data di inizio"
+      },
+      "refusal": {
+        "missing_date": "Senza data",
+        "future_date": "Con data futura",
+        "invalid_amount": "Importo non valido",
+        "unknown_direction": "Direzione sconosciuta",
+        "currency_mismatch": "Altra valuta",
+        "other": "Rifiutata"
+      },
+      "columns": {
+        "date": "Data",
+        "payee": "Beneficiario",
+        "category": "Categoria",
+        "status": "Stato",
+        "amount": "Importo"
+      },
+      "noPayee": "Nessun beneficiario",
+      "dateUnknown": "Senza data",
+      "amountUnknown": "Sconosciuto",
+      "empty": {
+        "all": "La banca non ha restituito transazioni per questo periodo.",
+        "filtered": "Nessuna transazione in questo elenco."
+      }
     }
   }
 }

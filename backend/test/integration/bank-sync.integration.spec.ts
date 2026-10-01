@@ -1047,6 +1047,8 @@ describe("Bank sync (integration)", () => {
             identificationHash: "hash-1",
             displayName: "Main account",
             identifierMasked: "**** 1234",
+            accountIdentifier: null,
+            cashAccountType: null,
             currencyCode: "PLN",
           },
           {
@@ -1054,6 +1056,8 @@ describe("Bank sync (integration)", () => {
             identificationHash: "hash-9",
             displayName: "Savings",
             identifierMasked: "**** 9999",
+            accountIdentifier: null,
+            cashAccountType: null,
             currencyCode: "PLN",
           },
         ],
@@ -1151,7 +1155,9 @@ describe("Bank sync (integration)", () => {
         asAlice(() =>
           connections.completeCallback(aliceId, { state, code: "code-1" }),
         ),
-      ).resolves.toMatchObject({ status: "active" });
+      ).resolves.toMatchObject({
+        connection: { status: "active" },
+      });
     });
 
     it("refuses a state older than 30 minutes", async () => {
@@ -1172,7 +1178,7 @@ describe("Bank sync (integration)", () => {
 
     it("records the bank's refusal and spends the state", async () => {
       const id = await start();
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, {
           state,
           error: "access_denied",
@@ -1201,7 +1207,7 @@ describe("Bank sync (integration)", () => {
       // The working session keeps its status while the renewal is under way.
       expect(renewing.status).toBe("active");
 
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, { state, code: "code-2" }),
       );
 
@@ -1242,6 +1248,8 @@ describe("Bank sync (integration)", () => {
           identificationHash: "hash-1",
           displayName: "Main account",
           identifierMasked: "**** 1234",
+          accountIdentifier: null,
+          cashAccountType: null,
           currencyCode: "PLN",
         },
       ],
@@ -1306,7 +1314,7 @@ describe("Bank sync (integration)", () => {
 
     it("an error at the bank records last_error and spends the state but keeps the status", async () => {
       await asAlice(() => connections.reauthorize(aliceId, connectionId));
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, {
           state,
           error: "access_denied",
@@ -1372,7 +1380,7 @@ describe("Bank sync (integration)", () => {
           psuType: "personal",
         }),
       );
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, {
           state,
           error: "access_denied",
@@ -1386,7 +1394,7 @@ describe("Bank sync (integration)", () => {
 
     it("a successful renewal replaces the session and revokes the previous one", async () => {
       await asAlice(() => connections.reauthorize(aliceId, connectionId));
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, { state, code: "code-1" }),
       );
       expect(view.status).toBe("active");
@@ -1409,7 +1417,7 @@ describe("Bank sync (integration)", () => {
       );
       await asAlice(() => connections.reauthorize(aliceId, connectionId));
       expect((await connectionState()).status).toBe("expired");
-      const view = await asAlice(() =>
+      const { connection: view } = await asAlice(() =>
         connections.completeCallback(aliceId, { state, code: "code-1" }),
       );
       expect(view.status).toBe("active");
@@ -1477,6 +1485,636 @@ describe("Bank sync (integration)", () => {
         asAlice(() => bankSync.syncConnection(aliceId, connectionId, null)),
       ).rejects.toMatchObject({ status: 409 });
       expect(fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("preview before import (spec section 7a)", () => {
+    const preview = () =>
+      asAlice(() => bankSync.previewAccount(aliceId, bankAccountId, null));
+    const syncWith = (planFingerprint?: string) =>
+      asAlice(() =>
+        bankSync.syncAccount(aliceId, bankAccountId, null, planFingerprint),
+      );
+
+    /** Everything a sync would have changed, in one comparable value. */
+    const snapshot = async () => ({
+      transactions: await count("transactions"),
+      ledger: await count("bank_sync_imported_transactions"),
+      payees: await count("payees"),
+      applications: await count("transaction_rule_applications"),
+      balance: await storedBalance(),
+      link: await query(
+        `SELECT last_synced_at, last_success_at, last_sync_status,
+                last_sync_error, last_imported_count, last_skipped_count,
+                last_refused_count, bank_balance, bank_balance_currency,
+                bank_balance_date, sync_from_date, account_id
+           FROM bank_sync_accounts`,
+      ),
+    });
+
+    const lastSyncStatus = async () =>
+      (
+        await query<{ last_sync_status: string | null }>(
+          `SELECT last_sync_status FROM bank_sync_accounts WHERE id = $1`,
+          [bankAccountId],
+        )
+      )[0].last_sync_status;
+
+    const groceryRule = async () => {
+      const groceries = await createTestCategory(db, aliceId, {
+        name: "Groceries",
+      });
+      await asAlice(() =>
+        rules.create(aliceId, {
+          name: "Biedronka",
+          triggers: ["import"],
+          condition: {
+            field: "payeeText",
+            op: "contains",
+            value: "biedronka",
+          },
+          actions: [{ type: "set_category", categoryId: groceries.id }],
+        } as CreateTransactionRuleDto),
+      );
+      return groceries;
+    };
+
+    it("writes nothing, for a user with payees and import rules", async () => {
+      await groceryRule();
+      await db.query(
+        `INSERT INTO payees (user_id, name) VALUES ($1, 'Employer')`,
+        [aliceId],
+      );
+      const before = await snapshot();
+
+      const view = await preview();
+
+      expect(view.summary.new).toBe(4);
+      expect(await snapshot()).toEqual(before);
+      expect(await count("transactions")).toBe(0);
+      expect(await count("bank_sync_imported_transactions")).toBe(0);
+      expect(await count("payees")).toBe(1);
+      expect(await count("transaction_rule_applications")).toBe(0);
+      expect(await storedBalance()).toBe(OPENING);
+    });
+
+    it("lists every row with its outcome, the balance after the import, and the bank's balance", async () => {
+      bankReturns([
+        ...BANK_ROWS,
+        row({ entryReference: "eur", currencyCode: "EUR" }),
+        row({ entryReference: "pending", booked: false }),
+        row({ entryReference: "old", bookingDate: daysAgo(60) }),
+      ]);
+
+      const view = await preview();
+
+      expect(view.rows.map((r) => r.outcome)).toEqual([
+        "new",
+        "new",
+        "new",
+        "new",
+        "refused",
+        "pending",
+        "before_cutoff",
+      ]);
+      expect(view.rows[4].refusalReason).toBe("currency_mismatch");
+      expect(view.summary).toMatchObject({
+        new: 4,
+        duplicate: 0,
+        refused: 1,
+        pending: 1,
+        beforeCutoff: 1,
+      });
+      expect(view.currencyCode).toBe("PLN");
+      expect(view.monizeBalance).toBe("1000.0000");
+      expect(view.balanceAfter).toBe((OPENING + BANK_SUM).toFixed(4));
+      expect(view.bankBalance).toMatchObject({
+        amount: "2137.7500",
+        currencyCode: "PLN",
+      });
+      expect(view.difference).toBe((2137.75 - (OPENING + BANK_SUM)).toFixed(4));
+      expect(view.planFingerprint).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it("lists a row the ledger already holds as a duplicate", async () => {
+      await sync();
+      bankReturns([
+        ...BANK_ROWS,
+        row({
+          entryReference: "r5",
+          amount: "9.99",
+          counterpartyName: "Cafe",
+          bookingDate: daysAgo(1),
+        }),
+      ]);
+
+      const view = await preview();
+
+      expect(view.rows.map((r) => r.outcome)).toEqual([
+        "duplicate",
+        "duplicate",
+        "duplicate",
+        "duplicate",
+        "new",
+      ]);
+      expect(view.summary).toMatchObject({ new: 1, duplicate: 4 });
+      // The balance moves by the one new row only.
+      expect(view.balanceAfter).toBe((OPENING + BANK_SUM - 9.99).toFixed(4));
+    });
+
+    it("shows the payee and the category the sync would give, without creating either", async () => {
+      await groceryRule();
+      await db.query(
+        `INSERT INTO payees (user_id, name) VALUES ($1, 'Employer')`,
+        [aliceId],
+      );
+
+      const view = await preview();
+
+      const byPayee = (text: string) =>
+        view.rows.filter((r) => r.payeeText === text);
+      expect(byPayee("Biedronka").map((r) => r.categoryName)).toEqual([
+        "Groceries",
+        "Groceries",
+      ]);
+      expect(byPayee("Employer")[0]).toMatchObject({
+        payeeName: "Employer",
+        categoryName: null,
+      });
+      // Kiosk has no payee yet: the sync would create it under the bank's text.
+      expect(byPayee("Kiosk")[0].payeeName).toBe("Kiosk");
+      expect(await count("payees")).toBe(1);
+      expect(await count("transaction_rule_applications")).toBe(0);
+    });
+
+    it("then a sync with its fingerprint imports exactly the rows it listed", async () => {
+      const view = await preview();
+      const imported = await syncWith(view.planFingerprint);
+
+      expect(imported).toMatchObject({ imported: 4, skipped: 0 });
+      expect(await storedBalance()).toBe(Number(view.balanceAfter));
+      expect(await ledgerBalance()).toBe(Number(view.balanceAfter));
+      expect(await count("transactions")).toBe(view.summary.new);
+    });
+
+    it("then a sync with its fingerprint imports only the new rows when some were imported before", async () => {
+      await sync();
+      bankReturns([
+        ...BANK_ROWS,
+        row({ entryReference: "r5", amount: "9.99", bookingDate: daysAgo(1) }),
+      ]);
+      const view = await preview();
+
+      await expect(syncWith(view.planFingerprint)).resolves.toMatchObject({
+        imported: 1,
+        skipped: 4,
+      });
+    });
+
+    it("refuses with 409 and writes nothing when the bank's answer changed between the preview and the sync", async () => {
+      const view = await preview();
+      bankReturns([
+        ...BANK_ROWS,
+        row({
+          entryReference: "late",
+          amount: "7.00",
+          bookingDate: daysAgo(1),
+        }),
+      ]);
+      const before = await snapshot();
+
+      const error = await syncWith(view.planFingerprint).catch(
+        (e: unknown) => e,
+      );
+
+      expect(error).toMatchObject({ status: 409 });
+      expect((error as Error).message).toMatch(/preview/i);
+      expect(await snapshot()).toEqual(before);
+      expect(await count("transactions")).toBe(0);
+      expect(await count("bank_sync_imported_transactions")).toBe(0);
+      expect(await storedBalance()).toBe(OPENING);
+      // Nothing was attempted, so no failed sync is recorded.
+      expect(await lastSyncStatus()).toBeNull();
+
+      // Previewing again describes the new answer, and confirming it works.
+      const again = await preview();
+      expect(again.summary.new).toBe(5);
+      expect(again.planFingerprint).not.toBe(view.planFingerprint);
+      await expect(syncWith(again.planFingerprint)).resolves.toMatchObject({
+        imported: 5,
+      });
+    });
+
+    it("refuses with 409 when an amount changed under the same keys", async () => {
+      const view = await preview();
+      bankReturns(
+        BANK_ROWS.map((r) =>
+          r.entryReference === "r1" ? { ...r, amount: "50.01" } : r,
+        ),
+      );
+      await expect(syncWith(view.planFingerprint)).rejects.toMatchObject({
+        status: 409,
+      });
+      expect(await count("transactions")).toBe(0);
+    });
+
+    it("refuses with 409 when another sync imported rows after the preview", async () => {
+      const view = await preview();
+      await sync();
+      await expect(syncWith(view.planFingerprint)).rejects.toMatchObject({
+        status: 409,
+      });
+      // The first sync's rows are the only ones written.
+      expect(await count("transactions")).toBe(4);
+    });
+
+    it("a sync without a fingerprint is unchanged: the daily sync still imports", async () => {
+      await preview();
+      await expect(syncWith()).resolves.toMatchObject({ imported: 4 });
+    });
+
+    it("a preview during a running sync is a 409, and a sync during a preview too", async () => {
+      const gated = () => {
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let started!: () => void;
+        const fetching = new Promise<void>((resolve) => {
+          started = resolve;
+        });
+        jest
+          .spyOn(provider, "fetchTransactions")
+          .mockImplementation(async () => {
+            started();
+            await gate;
+            return BANK_ROWS;
+          });
+        return { release, fetching };
+      };
+
+      const running = gated();
+      const first = sync();
+      await running.fetching;
+      await expect(preview()).rejects.toMatchObject({ status: 409 });
+      running.release();
+      await first;
+
+      const previewing = gated();
+      const second = preview();
+      await previewing.fetching;
+      await expect(sync()).rejects.toMatchObject({ status: 409 });
+      previewing.release();
+      await second;
+
+      // ... and the lease was given back.
+      jest.spyOn(provider, "fetchTransactions").mockResolvedValue(BANK_ROWS);
+      await expect(preview()).resolves.toBeDefined();
+    });
+
+    it("records no failed sync when the bank fails during a preview", async () => {
+      jest
+        .spyOn(provider, "fetchTransactions")
+        .mockRejectedValue(new BankSyncProviderError("unavailable", "down"));
+      await expect(preview()).rejects.toMatchObject({ status: 503 });
+      expect(await lastSyncStatus()).toBeNull();
+    });
+
+    it("is the caller's alone", async () => {
+      await expect(
+        asBob(() => bankSync.previewAccount(bobId, bankAccountId, null)),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("needsPreview is true until a sync succeeds, and again after a new cut-off", async () => {
+      const needs = async () =>
+        (await asAlice(() => connections.list(aliceId)))[0].accounts[0]
+          .needsPreview;
+
+      expect(await needs()).toBe(true);
+      await sync();
+      expect(await needs()).toBe(false);
+
+      await asAlice(() =>
+        bankSync.linkAccount(aliceId, bankAccountId, {
+          accountId,
+          syncFromDate: daysAgo(10),
+        }),
+      );
+      expect(await needs()).toBe(true);
+    });
+  });
+
+  describe("the cut-off a link would default to", () => {
+    it("is the day after the newest transaction, and is what linking uses", async () => {
+      const target = await createTestAccount(db, aliceId, {
+        name: "Has history",
+        currencyCode: "PLN",
+      });
+      await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+         VALUES ($1, $2, $3, -5, 'PLN', 'CLEARED'),
+                ($1, $2, $4, -7, 'PLN', 'VOID')`,
+        [aliceId, target.id, daysAgo(10), daysAgo(2)],
+      );
+      const free = await seedBank(aliceId, null, {
+        hash: "h-d",
+        external: "e-d",
+      });
+
+      const shown = await asAlice(() =>
+        bankSync.linkDefaults(aliceId, free.bankAccountId, target.id),
+      );
+      const linked = await asAlice(() =>
+        bankSync.linkAccount(aliceId, free.bankAccountId, {
+          accountId: target.id,
+        }),
+      );
+
+      expect(shown).toEqual({
+        newestTransactionDate: daysAgo(10),
+        defaultSyncFromDate: daysAgo(9),
+      });
+      expect(linked.syncFromDate).toBe(shown.defaultSyncFromDate);
+    });
+
+    it("is the lookback window with no newest transaction for an empty account", async () => {
+      const empty = await createTestAccount(db, aliceId, {
+        name: "Empty",
+        currencyCode: "PLN",
+      });
+      const free = await seedBank(aliceId, null, {
+        hash: "h-e",
+        external: "e-e",
+      });
+      await expect(
+        asAlice(() =>
+          bankSync.linkDefaults(aliceId, free.bankAccountId, empty.id),
+        ),
+      ).resolves.toEqual({
+        newestTransactionDate: null,
+        defaultSyncFromDate: daysAgo(89),
+      });
+    });
+
+    it("refuses another user's bank account and another user's account", async () => {
+      await expect(
+        asBob(() => bankSync.linkDefaults(bobId, bankAccountId, accountId)),
+      ).rejects.toMatchObject({ status: 404 });
+      const bobAccount = await createTestAccount(db, bobId, {
+        name: "Bob",
+        currencyCode: "PLN",
+      });
+      await expect(
+        asAlice(() =>
+          bankSync.linkDefaults(aliceId, bankAccountId, bobAccount.id),
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+  });
+
+  describe("matching bank accounts to accounts by number (spec section 5a)", () => {
+    const IBAN = "PL61109010140000071219812874";
+    const NRB = "61 1090 1014 0000 0712 1981 2874";
+    let freeConnectionId: string;
+    let freeBankId: string;
+    let target: { id: string };
+
+    const identify = (
+      bankId: string,
+      identifier: string | null,
+      type: string | null = "CACC",
+    ) =>
+      db.query(
+        `UPDATE bank_sync_accounts
+            SET account_identifier = $2, cash_account_type = $3 WHERE id = $1`,
+        [bankId, identifier, type],
+      );
+
+    const monizeAccount = async (
+      name: string,
+      number: string | null,
+      userId = aliceId,
+    ) => {
+      const created = await createTestAccount(db, userId, {
+        name,
+        currencyCode: "PLN",
+      });
+      await db.query(`UPDATE accounts SET account_number = $2 WHERE id = $1`, [
+        created.id,
+        number,
+      ]);
+      return created;
+    };
+
+    beforeEach(async () => {
+      ({ connectionId: freeConnectionId, bankAccountId: freeBankId } =
+        await seedBank(aliceId, null, { hash: "h-m", external: "e-m" }));
+      await identify(freeBankId, IBAN);
+      target = await monizeAccount("Everyday", NRB);
+    });
+
+    const match = () =>
+      asAlice(() => connections.matchAccounts(aliceId, freeConnectionId, null));
+    const linkOf = async (bankId: string) =>
+      (
+        await query<{
+          account_id: string | null;
+          sync_from_date: string | null;
+        }>(
+          `SELECT account_id, TO_CHAR(sync_from_date, 'YYYY-MM-DD') AS sync_from_date
+             FROM bank_sync_accounts WHERE id = $1`,
+          [bankId],
+        )
+      )[0];
+
+    it("auto-links the one account whose NRB is the IBAN without its prefix, with the default cut-off", async () => {
+      const answer = await match();
+
+      expect(answer.linked).toEqual([
+        { bankAccountId: freeBankId, accountId: target.id },
+      ]);
+      expect(answer.suggestions).toEqual([]);
+      expect(await linkOf(freeBankId)).toEqual({
+        account_id: target.id,
+        sync_from_date: daysAgo(89),
+      });
+      expect(
+        answer.connection.accounts.find((a) => a.id === freeBankId),
+      ).toMatchObject({ accountId: target.id, needsPreview: true });
+    });
+
+    it("links across the callback: a session that lists the identifier links the account after the activation", async () => {
+      await asAlice(() =>
+        credentials.save(aliceId, { applicationId: "app-1", privateKey: PEM }),
+      );
+      let state = "";
+      jest.spyOn(provider, "listInstitutions").mockResolvedValue([
+        {
+          name: "Test Bank",
+          country: "PL",
+          logoUrl: null,
+          psuTypes: ["personal"],
+          maximumConsentValiditySeconds: 90 * 24 * 3600,
+        },
+      ]);
+      jest
+        .spyOn(provider, "startAuthorization")
+        .mockImplementation(async (_c, input) => {
+          state = input.state;
+          return { url: "https://bank.example/auth" };
+        });
+      jest.spyOn(provider, "completeAuthorization").mockResolvedValue({
+        sessionId: "session-77",
+        validUntil: new Date(Date.now() + 80 * 24 * 3600 * 1000),
+        accounts: [
+          {
+            externalAccountId: "ext-card",
+            identificationHash: "hash-card",
+            displayName: null,
+            identifierMasked: "**** 2743",
+            accountIdentifier: "5276000000002743",
+            cashAccountType: "CARD",
+            currencyCode: "PLN",
+          },
+          {
+            externalAccountId: "ext-main",
+            identificationHash: "hash-main",
+            displayName: null,
+            identifierMasked: "**** 2874",
+            accountIdentifier: IBAN,
+            cashAccountType: "CACC",
+            currencyCode: "PLN",
+          },
+        ],
+      });
+      await asAlice(() =>
+        connections.start(aliceId, {
+          institutionName: "Test Bank",
+          country: "PL",
+          psuType: "personal",
+        }),
+      );
+
+      const answer = await asAlice(() =>
+        connections.completeCallback(aliceId, { state, code: "code-1" }),
+      );
+
+      expect(answer.linked).toHaveLength(1);
+      expect(answer.linked[0].accountId).toBe(target.id);
+      const accounts = answer.connection.accounts;
+      expect(
+        accounts.find((a) => a.id === answer.linked[0].bankAccountId),
+      ).toMatchObject({
+        cashAccountType: "CACC",
+        accountId: target.id,
+        syncFromDate: daysAgo(89),
+      });
+      // The card account has no Monize account with its number: it stays unlinked.
+      expect(accounts.find((a) => a.cashAccountType === "CARD")).toMatchObject({
+        accountId: null,
+      });
+      expect(answer.suggestions).toEqual([]);
+      // The identifier is stored for later matching.
+      const [stored] = await query<{ account_identifier: string }>(
+        `SELECT account_identifier FROM bank_sync_accounts
+          WHERE external_account_id = 'ext-card'`,
+      );
+      expect(stored.account_identifier).toBe("5276000000002743");
+      expect(
+        accounts.find((a) => a.cashAccountType === "CARD")?.accountIdentifier,
+      ).toBe("5276000000002743");
+    });
+
+    it("links nothing and suggests both when two accounts carry the number", async () => {
+      const twin = await monizeAccount("Twin", IBAN);
+
+      const answer = await match();
+
+      expect(answer.linked).toEqual([]);
+      expect(answer.suggestions).toEqual([
+        {
+          bankAccountId: freeBankId,
+          accountIds: expect.arrayContaining([target.id, twin.id]),
+        },
+      ]);
+      expect((await linkOf(freeBankId)).account_id).toBeNull();
+    });
+
+    it("does not offer a closed account, another currency, another user's account or one linked elsewhere", async () => {
+      await db.query(`UPDATE accounts SET is_closed = true WHERE id = $1`, [
+        target.id,
+      ]);
+      const euro = await monizeAccount("Euro", NRB);
+      await db.query(
+        `UPDATE accounts SET currency_code = 'EUR' WHERE id = $1`,
+        [euro.id],
+      );
+      await monizeAccount("Bob", NRB, bobId);
+
+      await expect(match()).resolves.toMatchObject({
+        linked: [],
+        suggestions: [],
+      });
+
+      // Reopen it, but link it to another bank account first.
+      await db.query(`UPDATE accounts SET is_closed = false WHERE id = $1`, [
+        target.id,
+      ]);
+      await seedBank(aliceId, target.id, { hash: "h-n", external: "e-n" });
+      await expect(match()).resolves.toMatchObject({
+        linked: [],
+        suggestions: [],
+      });
+    });
+
+    it("reads a bank account's details from the provider when it has no identifier yet, then links", async () => {
+      await asAlice(() =>
+        credentials.save(aliceId, { applicationId: "app-1", privateKey: PEM }),
+      );
+      await identify(freeBankId, null, null);
+      const details = jest
+        .spyOn(provider, "fetchAccountDetails")
+        .mockResolvedValue({
+          externalAccountId: "e-m",
+          identificationHash: "h-m",
+          displayName: null,
+          identifierMasked: "**** 2874",
+          accountIdentifier: IBAN,
+          cashAccountType: "CACC",
+          currencyCode: "PLN",
+        });
+
+      const answer = await asAlice(() =>
+        connections.matchAccounts(aliceId, freeConnectionId, {
+          ipAddress: "203.0.113.4",
+          userAgent: "UA",
+        }),
+      );
+
+      expect(details).toHaveBeenCalledWith(
+        expect.objectContaining({ applicationId: "app-1" }),
+        "e-m",
+        { ipAddress: "203.0.113.4", userAgent: "UA" },
+      );
+      expect(answer.linked).toHaveLength(1);
+      const [stored] = await query<{
+        account_identifier: string;
+        cash_account_type: string;
+      }>(
+        `SELECT account_identifier, cash_account_type FROM bank_sync_accounts WHERE id = $1`,
+        [freeBankId],
+      );
+      expect(stored).toEqual({
+        account_identifier: IBAN,
+        cash_account_type: "CACC",
+      });
+    });
+
+    it("is the caller's alone", async () => {
+      await expect(
+        asBob(() => connections.matchAccounts(bobId, freeConnectionId, null)),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 

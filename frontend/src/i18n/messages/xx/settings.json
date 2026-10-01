@@ -1520,7 +1520,15 @@
       },
       "pendingHint": "[XX-The authorization at the bank was not completed. Renew consent to try again; the accounts you linked are kept.-XX]",
       "noAccounts": "[XX-The bank has not reported any accounts for this connection.-XX]",
-      "accountsHeading": "[XX-Bank accounts-XX]"
+      "accountsHeading": "[XX-Bank accounts-XX]",
+      "matchAccounts": "[XX-Match by account number-XX]",
+      "matching": "[XX-Matching...-XX]",
+      "matchLinked": "[XX-{count, plural, one {# bank account was linked to the account with the same number} other {# bank accounts were linked to the accounts with the same numbers}}-XX]",
+      "matchSuggested": "[XX-{count, plural, one {# bank account matches more than one of your accounts: choose its account yourself} other {# bank accounts match more than one of your accounts: choose their accounts yourself}}-XX]",
+      "matchBoth": "[XX-{linked}. {suggested}-XX]",
+      "matchNone": "[XX-No bank account was linked: none has an account number that matches one of your accounts.-XX]",
+      "matchFailed": "[XX-Could not match the bank accounts-XX]",
+      "syncAllNeedsPreview": "[XX-Sync all waits until the first import of each newly linked account is confirmed. Use Sync now on that account to preview it.-XX]"
     },
     "account": {
       "unnamed": "[XX-Unnamed bank account-XX]",
@@ -1547,13 +1555,19 @@
       "difference": "[XX-Difference-XX]",
       "differenceHelp": "[XX-The bank balance is what the bank reported on the date shown. It can include transactions the bank has not booked yet, or booked after that date, so a small difference is normal between syncs.-XX]",
       "differenceHidden": "[XX-The bank balance is in {bankCurrency} and the Monize account is in {monizeCurrency}, so no difference is shown.-XX]",
-      "deletedNote": "[XX-A transaction you delete in Monize is not imported again by a later sync, so a deleted row stays deleted.-XX]"
+      "deletedNote": "[XX-A transaction you delete in Monize is not imported again by a later sync, so a deleted row stays deleted.-XX]",
+      "createNew": "[XX-Create a new account-XX]",
+      "suggestedName": "[XX-{type} {number}-XX]",
+      "createdLinked": "[XX-Account created and linked-XX]",
+      "createdLinkFailed": "[XX-The account was created but could not be linked-XX]",
+      "preview": "[XX-Preview-XX]",
+      "firstSyncPreview": "[XX-The first import is confirmed from a preview of the transactions.-XX]"
     },
     "link": {
       "title": "[XX-Link to {account}-XX]",
       "editTitle": "[XX-Start date for {account}-XX]",
       "syncFromLabel": "[XX-Import transactions from-XX]",
-      "syncFromHelp": "[XX-Leave this empty and Monize starts the day after the newest transaction already in the account, or 89 days back when the account is empty.-XX]",
+      "syncFromHelp": "[XX-Filled in with the date Monize chooses by default. Clear the field and Monize chooses it for you.-XX]",
       "beforeCutoff": "[XX-Transactions the bank booked before this date are never imported.-XX]",
       "duplicateWarning": "[XX-A date earlier than the newest transaction in the account may create duplicates of transactions you already entered.-XX]",
       "save": "[XX-Link account-XX]",
@@ -1562,7 +1576,11 @@
       "cancel": "[XX-Cancel-XX]",
       "saved": "[XX-Account linked-XX]",
       "editSaved": "[XX-Start date saved-XX]",
-      "saveFailed": "[XX-Could not save the link-XX]"
+      "saveFailed": "[XX-Could not save the link-XX]",
+      "loadingDefaults": "[XX-Reading the account...-XX]",
+      "defaultsFailed": "[XX-Could not read the newest transaction in this account, so Monize cannot say whether this start date may create duplicates.-XX]",
+      "newestTransaction": "[XX-Newest transaction in this account: {date}-XX]",
+      "emptyAccount": "[XX-{days, plural, one {The account is empty: the import covers the last day} other {The account is empty: the import covers the last # days}}-XX]"
     },
     "sync": {
       "summary": "[XX-{imported, plural, =0 {No transactions imported} one {# transaction imported} other {# transactions imported}}, {skipped, plural, =0 {none skipped} one {# skipped as already imported} other {# skipped as already imported}}, {refused, plural, =0 {none refused} one {# refused} other {# refused}}-XX]",
@@ -1588,7 +1606,80 @@
       "bankError": "[XX-Your bank did not grant access: {message}-XX]",
       "missingState": "[XX-The bank did not return a valid response. Start the connection again.-XX]",
       "notActive": "[XX-The connection could not be completed-XX]",
-      "failed": "[XX-Could not complete the connection-XX]"
+      "failed": "[XX-Could not complete the connection-XX]",
+      "autoLinked": "[XX-{count, plural, one {# bank account was linked to the account with the same number. Review it before the first import.} other {# bank accounts were linked to the accounts with the same numbers. Review them before the first import.}}-XX]",
+      "autoSuggested": "[XX-{count, plural, one {# bank account matches more than one of your accounts: choose its account in the list.} other {# bank accounts match more than one of your accounts: choose their accounts in the list.}}-XX]"
+    },
+    "accountType": {
+      "CACC": "[XX-Current account-XX]",
+      "CARD": "[XX-Card-XX]",
+      "SVGS": "[XX-Savings-XX]",
+      "LOAN": "[XX-Loan-XX]",
+      "other": "[XX-Account type {code}-XX]"
+    },
+    "mismatch": {
+      "bankCard": "[XX-The bank reports this account as a card, but the type of {account} is {type}, not {creditCard}. A card's transactions would be imported into the wrong kind of account.-XX]",
+      "monizeCard": "[XX-The type of {account} is {creditCard}, but the bank reports this account as: {bankType}. Check that this is the right bank account.-XX]",
+      "confirm": "[XX-I understand, link these accounts anyway-XX]"
+    },
+    "preview": {
+      "title": "[XX-Preview import into {account}-XX]",
+      "description": "[XX-Nothing is imported until you confirm. This is what the bank reports and what Monize would do with each transaction.-XX]",
+      "loading": "[XX-Reading the bank...-XX]",
+      "loadFailed": "[XX-Could not preview this account-XX]",
+      "retry": "[XX-Try again-XX]",
+      "close": "[XX-Close-XX]",
+      "import": "[XX-{count, plural, =0 {Confirm: nothing new to import} one {Import # transaction} other {Import # transactions}}-XX]",
+      "importing": "[XX-Importing...-XX]",
+      "importFailed": "[XX-Could not import the transactions-XX]",
+      "planChanged": "[XX-The bank's data changed since this preview, so nothing was imported. The preview was read again: check it and import once more.-XX]",
+      "monizeBalance": "[XX-Monize balance now-XX]",
+      "balanceAfter": "[XX-Monize balance after the import-XX]",
+      "bankBalance": "[XX-Bank balance-XX]",
+      "bankBalanceAsOf": "[XX-{amount} as of {date}-XX]",
+      "bankBalanceNotReported": "[XX-Not reported by the bank-XX]",
+      "difference": "[XX-Difference after the import-XX]",
+      "differenceHelp": "[XX-The bank balance minus the Monize balance after the import. Zero means the two agree. The bank balance can include transactions the bank has not booked yet, so a small difference is normal.-XX]",
+      "differenceHidden": "[XX-The bank balance is in {bankCurrency} and the Monize account is in {monizeCurrency}, so no difference is shown.-XX]",
+      "filterLabel": "[XX-Show transactions-XX]",
+      "filter": {
+        "all": "[XX-All-XX]",
+        "new": "[XX-New-XX]",
+        "duplicate": "[XX-Already imported-XX]",
+        "refused": "[XX-Refused-XX]",
+        "pending": "[XX-Pending-XX]",
+        "before_cutoff": "[XX-Before the start date-XX]",
+        "withCount": "[XX-{label} ({count})-XX]"
+      },
+      "outcome": {
+        "new": "[XX-New-XX]",
+        "duplicate": "[XX-Already imported-XX]",
+        "refused": "[XX-Refused-XX]",
+        "pending": "[XX-Pending-XX]",
+        "before_cutoff": "[XX-Before the start date-XX]"
+      },
+      "refusal": {
+        "missing_date": "[XX-No date-XX]",
+        "future_date": "[XX-Dated in the future-XX]",
+        "invalid_amount": "[XX-Invalid amount-XX]",
+        "unknown_direction": "[XX-Unknown direction-XX]",
+        "currency_mismatch": "[XX-Other currency-XX]",
+        "other": "[XX-Refused-XX]"
+      },
+      "columns": {
+        "date": "[XX-Date-XX]",
+        "payee": "[XX-Payee-XX]",
+        "category": "[XX-Category-XX]",
+        "status": "[XX-Status-XX]",
+        "amount": "[XX-Amount-XX]"
+      },
+      "noPayee": "[XX-No payee-XX]",
+      "dateUnknown": "[XX-No date-XX]",
+      "amountUnknown": "[XX-Unknown-XX]",
+      "empty": {
+        "all": "[XX-The bank returned no transactions for this period.-XX]",
+        "filtered": "[XX-No transactions in this list.-XX]"
+      }
     }
   }
 }

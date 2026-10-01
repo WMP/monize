@@ -702,6 +702,7 @@
     "rateLimited": "银行或提供商限制了读取此账户的频率。银行每天只允许少量无人值守的读取；请稍后重试。",
     "providerRejected": "银行同步提供商拒绝了该请求：{{ detail }}",
     "providerUnavailable": "银行同步提供商没有响应。未做任何更改；请稍后重试。",
-    "providerInvalidResponse": "银行同步提供商发送了此版本 Monize 无法理解的响应。"
+    "providerInvalidResponse": "银行同步提供商发送了此版本 Monize 无法理解的响应。",
+    "planChanged": "自预览以来银行的数据已更改。未导入任何内容；请重新预览。"
   }
 }

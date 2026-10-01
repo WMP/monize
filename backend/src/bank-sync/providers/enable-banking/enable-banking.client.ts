@@ -21,6 +21,7 @@ import type {
 } from "../bank-sync-provider.interface";
 import { signEnableBankingJwt } from "./enable-banking-jwt";
 import {
+  mapAccountDetails,
   mapApplication,
   mapAuthorizationUrl,
   mapBalance,
@@ -261,6 +262,20 @@ export class EnableBankingProvider implements BankSyncProvider {
       "invalid_response",
       `Enable Banking returned more than ${MAX_TRANSACTION_PAGES} pages of transactions.`,
     );
+  }
+
+  async fetchAccountDetails(
+    credentials: BankSyncCredentials,
+    externalAccountId: string,
+    psu: PsuContext | null,
+  ): Promise<BankAccountDescriptor> {
+    const payload = await this.request(credentials, {
+      method: "GET",
+      path: `/accounts/${encodeURIComponent(externalAccountId)}/details`,
+      psu,
+      context: "account details fetch",
+    });
+    return mapAccountDetails(payload, externalAccountId);
   }
 
   async fetchBalance(

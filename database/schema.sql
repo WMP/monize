@@ -2388,6 +2388,8 @@ CREATE TABLE bank_sync_accounts (
     identification_hash VARCHAR(255),
     display_name VARCHAR(255),
     identifier_masked VARCHAR(50),
+    account_identifier VARCHAR(64),
+    cash_account_type VARCHAR(10),
     currency_code VARCHAR(3),
     account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     sync_from_date DATE,

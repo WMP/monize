@@ -1,6 +1,7 @@
 import { BankSyncProviderError } from "../bank-sync-provider.errors";
 import {
   maskIdentifier,
+  mapAccountDetails,
   mapApplication,
   mapAuthorizationUrl,
   mapBalance,
@@ -238,16 +239,20 @@ describe("mapSession", () => {
           identificationHash: "hash-1",
           displayName: "Everyday Account",
           identifierMasked: "**** 1234",
+          accountIdentifier: "XX00000000000000001234",
+          cashAccountType: "CACC",
           currencyCode: "EUR",
         },
       ],
     });
   });
 
-  it("never carries the full identifier", () => {
-    const serialized = JSON.stringify(mapSession(session));
-    expect(serialized).not.toContain("XX0000000000");
-    expect(serialized).not.toContain("Holder Name");
+  it("keeps the full identifier only in accountIdentifier, never in the label or the mask", () => {
+    const [account] = mapSession(session).accounts;
+    const { accountIdentifier, ...shown } = account;
+    expect(accountIdentifier).toBe("XX00000000000000001234");
+    expect(JSON.stringify(shown)).not.toContain("XX0000000000");
+    expect(JSON.stringify(account)).not.toContain("Holder Name");
   });
 
   it("labels an account with its details, then its product, and the holder's name last", () => {
@@ -305,9 +310,91 @@ describe("mapSession", () => {
         identificationHash: null,
         displayName: null,
         identifierMasked: null,
+        accountIdentifier: null,
+        cashAccountType: null,
         currencyCode: null,
       },
     ]);
+  });
+
+  describe("the identifier (spec section 5a)", () => {
+    const identifier = (account: Record<string, unknown>) =>
+      mapSession({ session_id: "s", accounts: [{ uid: "u", ...account }] })
+        .accounts[0].accountIdentifier;
+
+    it("is the IBAN, normalized: spaces and dashes removed, upper case", () => {
+      expect(
+        identifier({
+          account_id: { iban: "pl61 1090-1014 0000 0712 1981 2874" },
+        }),
+      ).toBe("PL61109010140000071219812874");
+    });
+
+    it("is account_id.other.identification when there is no IBAN", () => {
+      expect(
+        identifier({
+          account_id: { other: { identification: "61 1090 1014-0000" } },
+          all_account_ids: [{ identification: "ignored" }],
+        }),
+      ).toBe("6110901014" + "0000");
+    });
+
+    it("is the first all_account_ids entry that carries one when account_id has none", () => {
+      expect(
+        identifier({
+          account_id: {},
+          all_account_ids: [
+            { scheme_name: "BBAN" },
+            { identification: "ab 12", scheme_name: "BBAN" },
+            { identification: "zz" },
+          ],
+        }),
+      ).toBe("AB12");
+    });
+
+    it("does not let an empty IBAN hide the number beside it", () => {
+      expect(
+        identifier({
+          account_id: { iban: "  ", other: { identification: "12-34" } },
+        }),
+      ).toBe("1234");
+    });
+
+    it("is null when the bank gave none, or only something unusable", () => {
+      expect(identifier({})).toBeNull();
+      expect(identifier({ account_id: { iban: 5 } })).toBeNull();
+      expect(identifier({ account_id: { iban: " - " } })).toBeNull();
+    });
+
+    it("is bounded to 64 characters: longer is no identifier, not a cut one", () => {
+      expect(identifier({ account_id: { iban: "1".repeat(64) } })).toBe(
+        "1".repeat(64),
+      );
+      expect(identifier({ account_id: { iban: "1".repeat(65) } })).toBeNull();
+    });
+  });
+
+  describe("the account type", () => {
+    const type = (value: unknown) =>
+      mapSession({
+        session_id: "s",
+        accounts: [{ uid: "u", cash_account_type: value }],
+      }).accounts[0].cashAccountType;
+
+    it.each([
+      ["CARD", "CARD"],
+      ["card", "CARD"],
+      [" svgs ", "SVGS"],
+    ])("reads %p as %p", (value, expected) => {
+      expect(type(value)).toBe(expected);
+    });
+
+    it.each([null, 5, "", "C4RD", "CARD CARD", "ABCDEFGHIJK", {}])(
+      "is null for %p",
+      (value) => {
+        expect(type(value)).toBeNull();
+      },
+    );
   });
 
   it("has a null validUntil when the expiry is absent or unreadable", () => {
@@ -334,6 +421,61 @@ describe("mapSession", () => {
     { session_id: "s", accounts: "x" },
   ])("raises invalid_response for %p", (payload) => {
     expect(() => mapSession(payload)).toThrow(expect.objectContaining(invalid));
+  });
+});
+
+describe("mapAccountDetails", () => {
+  // GET /accounts/{uid}/details answers one AccountResource, synthetic values.
+  const details = {
+    uid: "11111111-2222-4333-8444-555555555555",
+    identification_hash: "hash-2",
+    name: "Holder Name",
+    cash_account_type: "CARD",
+    currency: "pln",
+    account_id: { other: { identification: "5276 0000 0000 2743" } },
+  };
+
+  it("maps the account like a session lists it", () => {
+    expect(
+      mapAccountDetails(details, "11111111-2222-4333-8444-555555555555"),
+    ).toEqual({
+      externalAccountId: "11111111-2222-4333-8444-555555555555",
+      identificationHash: "hash-2",
+      displayName: "Holder Name",
+      identifierMasked: "**** 2743",
+      accountIdentifier: "5276000000002743",
+      cashAccountType: "CARD",
+      currencyCode: "PLN",
+    });
+  });
+
+  it("names the account that was asked for, even when the answer has no uid or another one", () => {
+    const { uid: _uid, ...withoutUid } = details;
+    expect(mapAccountDetails(withoutUid, "ext-asked").externalAccountId).toBe(
+      "ext-asked",
+    );
+    expect(
+      mapAccountDetails({ ...details, uid: "other" }, "ext-asked")
+        .externalAccountId,
+    ).toBe("ext-asked");
+  });
+
+  it("nulls what the bank did not say", () => {
+    expect(mapAccountDetails({}, "ext-1")).toEqual({
+      externalAccountId: "ext-1",
+      identificationHash: null,
+      displayName: null,
+      identifierMasked: null,
+      accountIdentifier: null,
+      cashAccountType: null,
+      currencyCode: null,
+    });
+  });
+
+  it.each([null, "x", 5, []])("raises invalid_response for %p", (payload) => {
+    expect(() => mapAccountDetails(payload, "ext-1")).toThrow(
+      expect.objectContaining(invalid),
+    );
   });
 });
 

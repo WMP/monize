@@ -54,7 +54,7 @@ function CallbackContent() {
 
     const complete = async () => {
       try {
-        const connection = await bankSyncApi.completeCallback({
+        const { connection, linked, suggestions } = await bankSyncApi.completeCallback({
           state,
           ...(code ? { code } : {}),
           ...(error ? { error } : {}),
@@ -69,6 +69,14 @@ function CallbackContent() {
               ? t('successNamed', { bank: connection.institutionName })
               : t('success'),
           );
+          // The server linked every bank account whose number names exactly one
+          // of the user's accounts. Say so, so the first import is not a surprise.
+          if (linked.length > 0) {
+            toast.success(t('autoLinked', { count: linked.length }), { duration: 8000 });
+          }
+          if (suggestions.length > 0) {
+            toast(t('autoSuggested', { count: suggestions.length }), { duration: 8000 });
+          }
         } else {
           toast.error(connection.lastError || t('notActive'));
         }

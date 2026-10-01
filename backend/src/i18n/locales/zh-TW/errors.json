@@ -702,6 +702,7 @@
     "rateLimited": "銀行或提供者限制了讀取此科目的頻率。銀行每天只允許少量無人值守的讀取；請稍後再試。",
     "providerRejected": "銀行同步提供者拒絕了該要求：{{ detail }}",
     "providerUnavailable": "銀行同步提供者沒有回應。未做任何變更；請稍後再試。",
-    "providerInvalidResponse": "銀行同步提供者傳送了此版本 Monize 無法理解的回應。"
+    "providerInvalidResponse": "銀行同步提供者傳送了此版本 Monize 無法理解的回應。",
+    "planChanged": "自預覽以來銀行的資料已變更。未匯入任何內容；請重新預覽。"
   }
 }

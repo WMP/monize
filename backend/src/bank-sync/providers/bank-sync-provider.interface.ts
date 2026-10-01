@@ -35,6 +35,14 @@ export interface BankAccountDescriptor {
   displayName: string | null;
   /** An IBAN or number reduced to its last four characters, e.g. "**** 1234". */
   identifierMasked: string | null;
+  /**
+   * The full identifier (IBAN, else another scheme's number), normalized: spaces
+   * and dashes removed, upper case, at most 64 characters. What a Monize account
+   * is matched on (spec section 5a); null when the bank gave none.
+   */
+  accountIdentifier: string | null;
+  /** The bank's cash account type (`CACC`, `CARD`, `SVGS`, ...), upper case; null when unstated. */
+  cashAccountType: string | null;
   currencyCode: string | null;
 }
 
@@ -130,6 +138,17 @@ export interface BankSyncProvider {
     window: { dateFrom: string; dateTo: string },
     psu: PsuContext | null,
   ): Promise<BankTransaction[]>;
+
+  /**
+   * One account's details as the session listed them (identifier, type,
+   * currency, label), for a bank account stored before the identifier was kept.
+   * A user-present read passes the PSU context like the other reads.
+   */
+  fetchAccountDetails(
+    credentials: BankSyncCredentials,
+    externalAccountId: string,
+    psu: PsuContext | null,
+  ): Promise<BankAccountDescriptor>;
 
   /** The balance to show beside Monize's, or null when the bank reported none. */
   fetchBalance(

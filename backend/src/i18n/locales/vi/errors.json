@@ -702,6 +702,7 @@
     "rateLimited": "Ngân hàng hoặc nhà cung cấp đã giới hạn tần suất đọc tài khoản này. Ngân hàng chỉ cho phép vài lần đọc tự động mỗi ngày; hãy thử lại sau.",
     "providerRejected": "Nhà cung cấp đồng bộ ngân hàng đã từ chối yêu cầu: {{ detail }}",
     "providerUnavailable": "Nhà cung cấp đồng bộ ngân hàng không phản hồi. Không có gì bị thay đổi; hãy thử lại sau.",
-    "providerInvalidResponse": "Nhà cung cấp đồng bộ ngân hàng đã gửi một phản hồi mà phiên bản Monize này không hiểu."
+    "providerInvalidResponse": "Nhà cung cấp đồng bộ ngân hàng đã gửi một phản hồi mà phiên bản Monize này không hiểu.",
+    "planChanged": "Dữ liệu của ngân hàng đã thay đổi kể từ bản xem trước. Chưa có gì được nhập; hãy xem trước lại."
   }
 }

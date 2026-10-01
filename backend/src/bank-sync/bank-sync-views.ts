@@ -27,6 +27,8 @@ export function toBankSyncAccountView(
     connectionId: row.connectionId,
     displayName: row.displayName,
     identifierMasked: row.identifierMasked,
+    accountIdentifier: row.accountIdentifier,
+    cashAccountType: row.cashAccountType,
     currencyCode: row.currencyCode,
     accountId: row.accountId,
     syncFromDate: row.syncFromDate,
@@ -39,6 +41,9 @@ export function toBankSyncAccountView(
     bankBalance: moneyText(row.bankBalance),
     bankBalanceCurrency: row.bankBalanceCurrency,
     bankBalanceDate: row.bankBalanceDate,
+    // Linking, or changing the account or the cut-off, clears last_success_at
+    // (`BankSyncService.linkAccount`), so "no success yet" is "not confirmed".
+    needsPreview: row.accountId !== null && row.lastSuccessAt === null,
   };
 }
 
