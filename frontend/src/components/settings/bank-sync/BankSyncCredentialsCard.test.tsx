@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import toast from 'react-hot-toast';
 import { act, fireEvent, render, screen, waitFor, within } from '@/test/render';
-import { ENABLE_BANKING_CONTROL_PANEL_URL } from '@/lib/bank-sync-links';
+import {
+  BANK_SYNC_PRIVACY_TEMPLATE_URL,
+  BANK_SYNC_TERMS_TEMPLATE_URL,
+  ENABLE_BANKING_SITE_URL,
+} from '@/lib/bank-sync-links';
 import { BankSyncCredentialsCard } from './BankSyncCredentialsCard';
 import type { BankSyncStatus } from '@/types/bank-sync';
 
@@ -75,6 +79,45 @@ describe('BankSyncCredentialsCard', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(REDIRECT);
     expect(toast.success).toHaveBeenCalledWith('Copied');
+  });
+
+  it('says the redirect URL does not have to be reachable from the internet', () => {
+    renderCard(status());
+
+    expect(
+      screen.getByText(
+        'The redirect URL does not have to be reachable from the internet. Only your browser opens it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  describe('redirect URL scheme', () => {
+    const WARNING =
+      'A "Production" application accepts only an https redirect URL. This one uses http, so it works only with a "Sandbox" application. Set PUBLIC_APP_URL to the https address of Monize.';
+
+    it('warns that an http redirect URL works only with a Sandbox application', () => {
+      renderCard(status({ redirectUrl: 'http://monize.example/settings/bank-sync/callback' }));
+
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
+    });
+
+    it('reads the scheme case-insensitively', () => {
+      renderCard(status({ redirectUrl: 'HTTP://monize.example/settings/bank-sync/callback' }));
+
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
+    });
+
+    it('does not warn about an https redirect URL', () => {
+      renderCard(status());
+
+      expect(screen.queryByText(WARNING)).toBeNull();
+    });
+
+    it('does not mistake an https URL that merely contains http:// for an http one', () => {
+      renderCard(status({ redirectUrl: 'https://monize.example/?next=http://elsewhere' }));
+
+      expect(screen.queryByText(WARNING)).toBeNull();
+    });
   });
 
   it('reports a copy that failed', async () => {
@@ -191,15 +234,81 @@ describe('BankSyncCredentialsCard', () => {
       expect(screen.queryByRole('button', { name: HIDE })).toBeNull();
     });
 
-    it('lists six steps in order, the third pointing at the redirect URL block', () => {
+    it('lists seven steps in order, the link in the first and the redirect URL in the fourth', () => {
       renderCard(status());
 
       const list = screen.getByRole('list');
       const items = within(list).getAllByRole('listitem');
       expect(list.tagName).toBe('OL');
-      expect(items).toHaveLength(6);
-      expect(items[2]).toHaveTextContent('Add the redirect URL below to the application.');
+      expect(items).toHaveLength(7);
+      expect(items[0]).toHaveTextContent(
+        'Create an account at Enable Banking (select "Get Started" and wait for the confirmation email). Then sign in to the control panel and open "API applications".',
+      );
+      expect(
+        within(items[0]).getByRole('link', { name: 'Enable Banking' }),
+      ).toHaveAttribute('href', ENABLE_BANKING_SITE_URL);
+      expect(items[1]).toHaveTextContent(
+        'Select "Production". Monize reads your real bank accounts only through a Production application. Select "Sandbox" only if you want to try the connection first: it shows only demo data from test banks.',
+      );
+      expect(items[2]).toHaveTextContent('Keep "Generate in the browser" for the private key.');
+      expect(items[3]).toHaveTextContent(
+        'Enter an application name. Paste the redirect URL below into "Allowed redirect URLs". For "Production", the control panel also requires a description, an email for data protection matters, a privacy URL and a terms URL.',
+      );
+      expect(items[4]).toHaveTextContent(/^Select "Register"\./);
+      expect(items[5]).toHaveTextContent(
+        'For "Production", the new application shows "Inactive". Select "Activate by linking accounts" and authorize your own bank accounts. Do not select "Request activation": it asks for general availability, which personal use does not need. Without linked accounts the bank returns no accounts.',
+      );
+      expect(items[6]).toHaveTextContent(
+        'Enter the application ID from the application list, and load the private key file here.',
+      );
+      expect(within(list).getAllByRole('link')).toHaveLength(3);
       expect(screen.getByLabelText('Redirect URL')).toBeInTheDocument();
+    });
+
+    it('gives the personal-use advice for step four as a sub-paragraph of that step', () => {
+      renderCard(status());
+
+      const items = within(screen.getByRole('list')).getAllByRole('listitem');
+      const advice = within(items[3]).getByText(/^For personal use: describe the application/);
+      expect(advice.tagName).toBe('P');
+      expect(advice).toHaveTextContent(
+        'For personal use: describe the application as your own self-hosted personal finance manager and enter your own email address. For the two URLs you can enter the Monize templates: privacy notice and terms of use. If other people use your Monize instance, publish your own version with your name instead. In restricted mode, Enable Banking does not check these two URLs.',
+      );
+      expect(within(items[2]).queryByText(/For personal use/)).toBeNull();
+    });
+
+    it('links the privacy and terms templates in step four, in a new tab', () => {
+      renderCard(status());
+
+      const items = within(screen.getByRole('list')).getAllByRole('listitem');
+      const privacy = within(items[3]).getByRole('link', { name: 'privacy notice' });
+      const terms = within(items[3]).getByRole('link', { name: 'terms of use' });
+      expect(privacy).toHaveAttribute('href', BANK_SYNC_PRIVACY_TEMPLATE_URL);
+      expect(terms).toHaveAttribute('href', BANK_SYNC_TERMS_TEMPLATE_URL);
+      for (const link of [privacy, terms]) {
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
+    });
+
+    it('warns after the steps that Sandbox transactions are demo data', () => {
+      renderCard(status());
+
+      const list = screen.getByRole('list');
+      const note = screen.getByText(
+        'Transactions from a Sandbox application are demo data. Link a Sandbox bank account only to a test account in Monize, not to an account that holds your real transactions.',
+      );
+      expect(note.tagName).toBe('P');
+      expect(list.contains(note)).toBe(false);
+      expect(
+        list.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('does not show the Sandbox note while the help is folded', () => {
+      renderCard(configured());
+
+      expect(screen.queryByText(/Transactions from a Sandbox application/)).toBeNull();
     });
 
     it('is folded behind a toggle once credentials are stored', () => {
@@ -235,19 +344,20 @@ describe('BankSyncCredentialsCard', () => {
       expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
     });
 
-    it('opens the control panel in a new tab without handing it window.opener', () => {
+    it('opens the Enable Banking site from step one in a new tab without handing it window.opener', () => {
       renderCard(status());
 
-      const link = screen.getByRole('link', { name: 'Enable Banking control panel' });
-      expect(link).toHaveAttribute('href', ENABLE_BANKING_CONTROL_PANEL_URL);
+      const link = screen.getByRole('link', { name: 'Enable Banking' });
+      expect(link).toHaveAttribute('href', ENABLE_BANKING_SITE_URL);
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
-    it('keeps the subtitle plain text, with the link only in the steps', () => {
+    it('keeps the subtitle plain text, with the links only in the steps', () => {
       renderCard(status());
 
-      expect(screen.getAllByRole('link')).toHaveLength(1);
+      expect(screen.getAllByRole('link')).toHaveLength(3);
+      expect(within(screen.getByRole('list')).getAllByRole('link')).toHaveLength(3);
     });
 
     it('opens again when the credentials are removed', () => {

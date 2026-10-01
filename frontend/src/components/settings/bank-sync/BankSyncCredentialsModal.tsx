@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,11 +10,15 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
+import { isUuid } from '@/lib/uuid';
 import type { SaveBankSyncCredentials } from '@/types/bank-sync';
 import { EnableBankingControlPanelLink } from './EnableBankingControlPanelLink';
 
 const APPLICATION_ID_MAX = 200;
 const PRIVATE_KEY_MAX = 20000;
+/** A PEM private key is about 2 KB; anything past this is not the key file. */
+const KEY_FILE_MAX_BYTES = 16 * 1024;
+const KEY_FILE_ACCEPT = '.pem,.key,application/x-pem-file,text/plain';
 
 type Translate = (key: string) => string;
 
@@ -86,11 +91,55 @@ export function BankSyncCredentialsModal({
   const {
     register,
     handleSubmit,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(buildSchema(t, privateKeySet)),
     defaultValues: { applicationId: applicationId ?? '', privateKey: '' },
   });
+
+  const keyFileInputRef = useRef<HTMLInputElement>(null);
+  // Set by the file loader, not by the schema: it describes the file, not the
+  // field's content, so it clears on the next file rather than on validation.
+  const [keyFileError, setKeyFileError] = useState<string | null>(null);
+
+  /**
+   * Fills the key field from the file the user picked. The content is never
+   * logged. The input is reset afterwards so choosing the same file again
+   * fires another change event.
+   */
+  const handleKeyFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (file.size > KEY_FILE_MAX_BYTES) {
+      setKeyFileError(t('keyFileTooLarge'));
+      return;
+    }
+
+    let content: string;
+    try {
+      content = await file.text();
+    } catch {
+      setKeyFileError(t('keyFileReadFailed'));
+      return;
+    }
+
+    setKeyFileError(null);
+    setValue('privateKey', content, { shouldDirty: true, shouldValidate: true });
+
+    // A convenience only: Enable Banking names the downloaded key file
+    // <application-id>.pem (confirmed against the control panel), so an empty
+    // ID field is filled from the file name. The user can edit it, and an ID
+    // they already typed is never overwritten.
+    const idFromName = file.name.replace(/\.[^.]*$/, '');
+    if (getValues('applicationId').trim() === '' && isUuid(idFromName)) {
+      setValue('applicationId', idFromName, { shouldDirty: true, shouldValidate: true });
+    }
+  };
 
   const submit = handleSubmit(async (data) => {
     const update: SaveBankSyncCredentials = { applicationId: data.applicationId };
@@ -153,9 +202,27 @@ export function BankSyncCredentialsModal({
             }
             {...register('privateKey')}
           />
-          {errors.privateKey?.message ? (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {errors.privateKey.message}
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => keyFileInputRef.current?.click()}
+            >
+              {t('loadKeyFile')}
+            </Button>
+            <input
+              ref={keyFileInputRef}
+              type="file"
+              accept={KEY_FILE_ACCEPT}
+              className="hidden"
+              aria-label={t('loadKeyFile')}
+              onChange={handleKeyFile}
+            />
+          </div>
+          {keyFileError || errors.privateKey?.message ? (
+            <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {keyFileError ?? errors.privateKey?.message}
             </p>
           ) : (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

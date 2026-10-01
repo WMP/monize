@@ -9,6 +9,11 @@ import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { bankSyncApi } from '@/lib/bank-sync';
+import {
+  BANK_SYNC_PRIVACY_TEMPLATE_URL,
+  BANK_SYNC_TERMS_TEMPLATE_URL,
+  ENABLE_BANKING_SITE_URL,
+} from '@/lib/bank-sync-links';
 import { getErrorMessage } from '@/lib/errors';
 import type {
   BankSyncCredentialsTestResult,
@@ -16,7 +21,7 @@ import type {
   SaveBankSyncCredentials,
 } from '@/types/bank-sync';
 import { BankSyncCredentialsModal } from './BankSyncCredentialsModal';
-import { EnableBankingControlPanelLink } from './EnableBankingControlPanelLink';
+import { BankSyncExternalLink } from './BankSyncExternalLink';
 
 const HELP_HEADING_CLASS =
   'mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100';
@@ -108,6 +113,10 @@ export function BankSyncCredentialsCard({
     }
   };
 
+  // A Production application accepts only an https redirect URL, so an http one
+  // can serve a Sandbox application at most.
+  const redirectIsHttp = /^http:\/\//i.test(status.redirectUrl);
+
   // The redirect URL is only known to be unregistered when the provider listed
   // some and ours is not among them. An empty list says nothing.
   const redirectMissing =
@@ -171,18 +180,38 @@ export function BankSyncCredentialsCard({
                 <li>
                   {t.rich('help.step1', {
                     link: (chunks) => (
-                      <EnableBankingControlPanelLink>
+                      <BankSyncExternalLink href={ENABLE_BANKING_SITE_URL}>
                         {chunks}
-                      </EnableBankingControlPanelLink>
+                      </BankSyncExternalLink>
                     ),
                   })}
                 </li>
                 <li>{t('help.step2')}</li>
                 <li>{t('help.step3')}</li>
-                <li>{t('help.step4')}</li>
+                <li>
+                  {t('help.step4')}
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.rich('help.step4Personal', {
+                      privacy: (chunks) => (
+                        <BankSyncExternalLink href={BANK_SYNC_PRIVACY_TEMPLATE_URL}>
+                          {chunks}
+                        </BankSyncExternalLink>
+                      ),
+                      terms: (chunks) => (
+                        <BankSyncExternalLink href={BANK_SYNC_TERMS_TEMPLATE_URL}>
+                          {chunks}
+                        </BankSyncExternalLink>
+                      ),
+                    })}
+                  </p>
+                </li>
                 <li>{t('help.step5')}</li>
                 <li>{t('help.step6')}</li>
+                <li>{t('help.step7')}</li>
               </ol>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {t('help.sandboxNote')}
+              </p>
             </section>
 
             <section>
@@ -216,6 +245,14 @@ export function BankSyncCredentialsCard({
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {t('redirectUrlHelp')}
           </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('redirectUrlNotPublic')}
+          </p>
+          {redirectIsHttp && (
+            <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+              {t('redirectUrlHttpWarning')}
+            </p>
+          )}
         </div>
 
         {credentials ? (
