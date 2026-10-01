@@ -33,9 +33,9 @@ first implementation of `BankSyncProvider`; nothing outside
 `backend/src/bank-sync/providers/enable-banking/` knows its wire format.
 
 Out of scope for the first release (tasks in the task list): pending rows,
-transfers between two synced accounts, splits, a notification when consent is
-about to expire, the ledger in the backup, MCP and AI tools, payment
-initiation.
+transfers between two synced accounts, splits, the ledger in the backup, MCP and AI tools, payment
+initiation. Notifications (consent reminders and sync outcomes) are specified
+in [`bank-sync-notifications.md`](./bank-sync-notifications.md).
 
 ## 2. Terms
 
