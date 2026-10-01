@@ -7,8 +7,8 @@ investment accounts, to debt payments, with what was unspent or drawn from
 balances closing the diagram. The task list is
 [`sankey-cash-flow-tasks.md`](./sankey-cash-flow-tasks.md).
 
-Status: **proposal**. It needs its own discussion with the `approved-to-build`
-label before any task starts (`CONTRIBUTING.md`). It reports money and
+Status: **approved and built** (v1, issue #1490, which also answered K1 and
+K2 in section 13). It reports money and
 classifies transfer legs, which no report does outside the tag-key
 breakdown, so sections 4 to 8 are the specification
 `docs/financial-calculation-contract.md` section 9 asks for and section 5
@@ -268,7 +268,15 @@ known links under the incomplete banner.
 - No migration of the 56 existing drill-down URL sites onto
   `buildTransactionsHref` (decision 9).
 
-## 13. Open questions
+## 13. Open questions (answered)
+
+Both were answered as the plan proposed: **K1**, the default scope includes
+`SAVINGS` and the report's help text documents the lever; **K2**, a credit-card
+payment is "Other accounts" when the card is out of scope and internal when it
+is in scope.
+
+The catalog admits the five invariants of section 5 as `INV-SANKEY-001` to
+`INV-SANKEY-005` in `docs/system-invariants.md`.
 
 - **K1.** Should the default scope include `SAVINGS`? Including it makes a
   chequing-to-savings transfer internal and hides saving; excluding it shows

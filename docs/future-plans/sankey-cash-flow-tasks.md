@@ -29,18 +29,18 @@ No task writes to the database; there is no migration. S2 is a docs-only amendme
 
 | ID | Task | Depends on | Deploy impact | Status |
 |----|------|-----------|---------------|--------|
-| S1 | Discussion agreeing `sankey-cash-flow.md`; label `approved-to-build`; K1 and K2 answered | -- | none | [ ] |
-| S2 | Amend INV-REPORT-003 in `docs/system-invariants.md` and `docs/specs/report-tag-key-breakdown.md` ("named flow" covers a destination class) | S1 | none | [ ] |
-| B1 | `CashFlowSankeyService` (scope, income, expense, outflow, inflow queries; residual; links; SANKEY-001..004), DTO, controller route, facade method, `sankey-branches.guard.spec.ts` (SANKEY-003) | S2 | inert | [ ] |
-| B2 | Property test over generated ledgers for SANKEY-001 and the integration suite on real PostgreSQL | B1 | none | [ ] |
-| F1 | `buildTransactionsHref` helper + test | S1 | none | [ ] |
-| F2 | `sankey-layout.ts` (hub-centred links to recharts shape; "Other" merge; `MAX_NODES_PER_COLUMN`) + test; the `ui-conventions.test.ts` case (SANKEY-005) | S1 | none | [ ] |
-| F3 | `CashFlowSankeyReport` component with diagram, table twin, legend, tooltip, toolbar, drill-down, phone default; API client and types | B1, F1, F2 | inert | [ ] |
-| F4 | Catalog entry, lazy route entry, `reports.json` name and description, `report-definitions.test.ts` | F3 | live | [ ] |
-| Q1 | Playwright `tests/cash-flow-sankey.spec.ts` | F4 | none | [ ] |
-| Q2 | PDF and CSV export cases, `report-locale.guard.test.ts` green, theme contrast for the new node colours | F3 | none | [ ] |
+| S1 | Discussion agreeing `sankey-cash-flow.md`; label `approved-to-build`; K1 and K2 answered | -- | none | [x] issue #1490 |
+| S2 | Amend INV-REPORT-003 in `docs/system-invariants.md` and `docs/specs/report-tag-key-breakdown.md` ("named flow" covers a destination class) | S1 | none | [x] issue #1490 |
+| B1 | `CashFlowSankeyService` (scope, income, expense, outflow, inflow queries; residual; links; SANKEY-001..004), DTO, controller route, facade method, `sankey-branches.guard.spec.ts` (SANKEY-003) | S2 | inert | [x] issue #1490 |
+| B2 | Property test over generated ledgers for SANKEY-001 and the integration suite on real PostgreSQL | B1 | none | [x] issue #1490 |
+| F1 | `buildTransactionsHref` helper + test | S1 | none | [x] issue #1490 |
+| F2 | `sankey-layout.ts` (hub-centred links to recharts shape; "Other" merge; `MAX_NODES_PER_COLUMN`) + test; the `ui-conventions.test.ts` case (SANKEY-005) | S1 | none | [x] issue #1490 |
+| F3 | `CashFlowSankeyReport` component with diagram, table twin, legend, tooltip, toolbar, drill-down, phone default; API client and types | B1, F1, F2 | inert | [x] issue #1490 |
+| F4 | Catalog entry, lazy route entry, `reports.json` name and description, `report-definitions.test.ts` | F3 | live | [x] issue #1490 |
+| Q1 | Playwright `tests/cash-flow-sankey.spec.ts` | F4 | none | [x] issue #1490 |
+| Q2 | PDF and CSV export cases, `report-locale.guard.test.ts` green, theme contrast for the new node colours | F3 | none | [x] issue #1490 |
 | Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [ ] |
-| D1 | Wiki Reports page row, README sample list line, `docs/system-invariants.md` SANKEY-001..005 | Q1 | none | [ ] |
+| D1 | Wiki Reports page row, README sample list line, `docs/system-invariants.md` SANKEY-001..005 | Q1 | none | [x] issue #1490 (README and catalog; the wiki is outside the repository) |
 | M1 | Migrate the other reports' drill-down URLs onto `buildTransactionsHref` | F1, D1 | neutral | [ ] (optional, separate proposal) |
 
 **Why F1 and F2 depend only on S1:** both are pure client helpers with their own tests; they can be built in parallel with B1 and meet at F3.
