@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ParsedReceiptView } from '@/components/email-receipts/ParsedReceiptView';
+import { ReceiptTransactionPicker } from '@/components/email-receipts/ReceiptTransactionPicker';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -18,9 +19,12 @@ import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { isReceiptActionable, readParsedReceipt } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
-import type { EmailReceiptDetail } from '@/types/email-receipts';
+import type { EmailReceiptDetail, EmailReceiptStatus } from '@/types/email-receipts';
 
 const logger = createLogger('EmailReceiptDetail');
+
+/** States in which the email has no transaction and no candidates to choose from. */
+const PICKABLE_STATUSES: readonly EmailReceiptStatus[] = ['unmatched', 'no_parser', 'parse_failed'];
 
 interface EmailReceiptDetailDialogProps {
   receiptId: string;
@@ -112,6 +116,8 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
     const { detail } = state;
     const parsed = readParsedReceipt(detail.parsed);
     const canLink = detail.candidates.length > 0 && isReceiptActionable(detail);
+    // An email the matcher could not tie to a transaction can be tied by hand.
+    const canPick = PICKABLE_STATUSES.includes(detail.status) && isReceiptActionable(detail);
     const reasonKey = detail.statusReason ? `reasons.${detail.statusReason}` : null;
 
     body = (
@@ -232,12 +238,17 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
                 </li>
               ))}
             </ul>
-            {linkError && (
-              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                {linkError}
-              </p>
-            )}
           </section>
+        )}
+
+        {canPick && (
+          <ReceiptTransactionPicker receivedAt={detail.receivedAt} linkingId={linkingId} onLink={(id) => void handleLink(id)} />
+        )}
+
+        {linkError && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {linkError}
+          </p>
         )}
 
         <section aria-labelledby="receipt-text-heading" className="space-y-2">

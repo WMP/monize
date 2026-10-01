@@ -261,10 +261,18 @@ describe('EmailReceiptsManager', () => {
       expect(await allActions('Order no parser')).not.toContain('Draft parser with AI');
     });
 
-    it('offers choosing a transaction only for an ambiguous email', async () => {
+    it('offers choosing a transaction for an email the matcher could not tie to one', async () => {
       await renderManager();
       expect(await allActions('Order ambiguous')).toContain('Choose transaction');
-      expect(await allActions('Order unmatched')).not.toContain('Choose transaction');
+      expect(await allActions('Order unmatched')).toContain('Choose transaction');
+      expect(await allActions('Order no parser')).toContain('Choose transaction');
+    });
+
+    it('offers no choosing once there is a proposal, or for a closed email', async () => {
+      await renderManager();
+      for (const subject of ['Order proposed', 'Order applied', 'Order ignored', 'Order skipped', 'Order pending']) {
+        expect(await allActions(subject), subject).not.toContain('Choose transaction');
+      }
     });
 
     it('offers nothing that changes an applied, ignored or skipped email but view and delete', async () => {

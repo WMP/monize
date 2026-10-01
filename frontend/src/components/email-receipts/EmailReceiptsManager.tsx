@@ -27,12 +27,16 @@ import {
   EMAIL_RECEIPT_STATUSES,
   type EmailReceiptAiMode,
   type EmailReceiptListItem,
+  type EmailReceiptStatus,
 } from '@/types/email-receipts';
 
 const logger = createLogger('EmailReceipts');
 
 const FILTERS = ['all', ...EMAIL_RECEIPT_STATUSES] as const;
 type ReceiptFilter = (typeof FILTERS)[number];
+
+/** States from which the detail dialog can link the email to a transaction. */
+const LINKABLE_STATUSES: readonly EmailReceiptStatus[] = ['ambiguous', 'unmatched', 'no_parser', 'parse_failed'];
 
 /** The list answers one filter; `items === null` is a request that failed. */
 interface LoadedList {
@@ -239,9 +243,9 @@ export function EmailReceiptsManager() {
         icon: 'transactions',
         tone: 'primary',
         onClick: () => setDetailId(receipt.id),
-        // The candidates are the transactions that could be linked, and only an
-        // ambiguous email has any.
-        hidden: receipt.status !== 'ambiguous',
+        // The candidates of an ambiguous email, or the picker of one the matcher
+        // could not tie to a transaction.
+        hidden: !LINKABLE_STATUSES.includes(receipt.status),
         disabled,
       },
       {

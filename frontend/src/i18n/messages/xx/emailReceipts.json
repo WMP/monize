@@ -469,6 +469,22 @@
     "textLabel": "[XX-Text of the email-XX]",
     "noText": "[XX-The email has no text.-XX]"
   },
+  "picker": {
+    "heading": "[XX-Choose the transaction-XX]",
+    "help": "[XX-No transaction was matched automatically. These are your transactions from {from} to {to}, the days around the email. Choose the one it paid for.-XX]",
+    "searchLabel": "[XX-Search-XX]",
+    "searchPlaceholder": "[XX-Payee, description or amount-XX]",
+    "searchButton": "[XX-Search-XX]",
+    "loading": "[XX-Loading transactions-XX]",
+    "error": "[XX-The transactions could not be loaded.-XX]",
+    "retry": "[XX-Try again-XX]",
+    "empty": "[XX-You have no transactions in this period that can be linked.-XX]",
+    "emptySearch": "[XX-No transaction in this period matches the search.-XX]",
+    "row": "[XX-{date}, {amount}, {payee}-XX]",
+    "noPayee": "[XX-no payee-XX]",
+    "linkButton": "[XX-Link-XX]",
+    "hasMore": "[XX-Only the first {count} are shown. Use the search to narrow the list.-XX]"
+  },
   "callback": {
     "title": "[XX-Connecting the mailbox-XX]",
     "connecting": "[XX-Finishing the connection-XX]",
