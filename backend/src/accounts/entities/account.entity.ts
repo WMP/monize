@@ -14,6 +14,7 @@ import { Payee } from "../../payees/entities/payee.entity";
 import { ScheduledTransaction } from "../../scheduled-transactions/entities/scheduled-transaction.entity";
 import { User } from "../../users/entities/user.entity";
 import { Institution } from "../../institutions/entities/institution.entity";
+import { MortgageType } from "../mortgage-type.util";
 
 export enum AccountType {
   CHEQUING = "CHEQUING",
@@ -332,6 +333,16 @@ export class Account {
 
   @Column({ name: "is_variable_rate", default: false })
   isVariableRate: boolean;
+
+  // Null on non-mortgage rows, and on a mortgage written by a release that
+  // predates the column; such a row is read from the two flags above.
+  @Column({
+    type: "varchar",
+    length: 20,
+    name: "mortgage_type",
+    nullable: true,
+  })
+  mortgageType: MortgageType | null;
 
   @Column({ type: "integer", name: "term_months", nullable: true })
   termMonths: number | null;

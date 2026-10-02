@@ -32,7 +32,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | ID | Issue | Task | Depends on | Deploy class | Status |
 |----|-------|------|-----------|--------------|--------|
 | S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [ ] |
-| P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [ ] |
+| P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] |
 | P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [ ] |
 | P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [ ] |
 | P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [ ] |
@@ -63,6 +63,8 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 - `mortgage_type VARCHAR(20)` nullable, CHECK over the four values of spec decision 1; backfill per spec table 4.2 for `account_type = 'MORTGAGE'` only. Fix the wrong "uses monthly compounding" comment on `is_variable_rate` in `schema.sql` in the same commit.
 - The backup rule keeps the column; action history records it beside the two booleans; the demo seed writes it.
+- `MORTGAGE_TYPES` and `MortgageType` land here in `backend/src/accounts/mortgage-type.util.ts`, because the entity's field is typed by them; P1-B2 adds the traits and accessors to that file.
+- The backfill reads a NULL flag as false, as `getPeriodicRate` does, so a Canadian row with a null `is_variable_rate` is `CANADIAN_FIXED`.
 - Acceptance: `migration:lint`, `scripts/verify-schema.sh`, `check-migration-prefixes`; a migration test asserts one account per row of table 4.2 lands on its type.
 - Inert: nothing reads the column until P1-B3.
 
