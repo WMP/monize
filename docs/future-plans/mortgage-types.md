@@ -51,7 +51,7 @@ issue #1501. Each task is a sub-issue (#1502 to #1514), one PR each.
 
 ## 3. Decisions
 
-The ten decisions are in spec section 3. The ones that decide the shape of the
+The eleven decisions are in spec section 3. The ones that decide the shape of the
 work:
 
 1. The column is nullable in Phase 1 and read through `mortgageTypeFromFlags`
@@ -65,6 +65,9 @@ work:
 4. The new methods compute at storage precision (`roundMoney`, 4dp), like the
    annuity engine (spec decision 7).
 5. An INTEREST_ONLY template keeps its principal line, at 0 (spec section 9).
+6. `accounts.payment_amount` is null for LINEAR and INTEREST_ONLY; every
+   surface asks for a dated installment instead (spec decision 11 and
+   section 5.6, which lists every reader and the task that changes it).
 
 ## 4. Phases
 
@@ -91,6 +94,7 @@ the booleans it reads.
 | No new boolean caller | shrink-only flags guard (`mortgage-type-flags.guard.spec.ts`) | P1-B2, deleted in P3-B1 |
 | Dated debt on a rate change | `datedLoanDebt` called from both rate-change paths | P1-B3 |
 | Every figure matches the spec | fixtures copied from spec section 7 | P2-B1, P2-F1 |
+| No stored constant payment for LINEAR or INTEREST_ONLY | CHECK on `accounts.payment_amount`; every reader in spec table 5.6 asks for a dated installment | P2-B1, P2-F1 |
 
 ## 6. Assumptions, restated for a fresh session
 
@@ -112,6 +116,7 @@ the booleans it reads.
 | --- | --- |
 | A consumer keeps reading the booleans and disagrees with the type after a save | `flagsFromMortgageType` writes both columns on every save in Phases 1 and 2; the flags guard names every remaining reader |
 | A rollback after P3-B1 finds no booleans | P3-B1 waits one release after Phase 1 (section 4) |
+| A surface shows the first installment as "the payment" of a LINEAR mortgage long after it fell | `payment_amount` is null for these methods (spec decision 11) and spec table 5.6 assigns every reader to P2-B1 or P2-F1 |
 | A LINEAR installment grows after a rate rise and the posting refuses to grow the parent | spec 5.2: the confirmed sync and template advancement target the method installment; P2-B1 tests the sequence |
 | A residue payment of a fraction of a cent after the last LINEAR installment | spec decision 8, asserted by the 7.1 fixture |
 | An E2E spec drives the old checkboxes | P1-F2 greps `e2e/` for the old accessible names |

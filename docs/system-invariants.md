@@ -2313,6 +2313,7 @@ Known gaps          The PAYMENT is not part of this invariant: a rate change
                     Interest is unaffected -- it is debt x rate.
 Status              enforced
 ```
+
 ### INV-LOAN-007 -- one amortization method per mortgage type
 
 ```text
@@ -2339,9 +2340,12 @@ Enforcement         None yet; the type does not exist. Every mortgage is priced
                     calculateMortgageAmortization, resolveInstallment, the
                     rate-change paths and generateLoanSchedule; the parity
                     fixture mortgage-type-cases.json read by both layers; a
-                    shrink-only guard naming every remaining boolean caller; and
-                    the CHECK on accounts.mortgage_type reconciled with
-                    MORTGAGE_TYPES by a contract spec.
+                    shrink-only guard naming every remaining boolean caller; the
+                    CHECK on accounts.mortgage_type reconciled with
+                    MORTGAGE_TYPES by a contract spec; and a CHECK keeping
+                    accounts.payment_amount null for LINEAR and INTEREST_ONLY,
+                    which have no constant payment, so every surface asks for
+                    a dated installment instead (spec section 5.6).
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)

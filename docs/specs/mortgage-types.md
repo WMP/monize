@@ -38,7 +38,7 @@ and accelerated frequencies for the new methods (section 6.4).
 | `N` | Scheduled payment count, `round(amortization_months * ppy / 12)`. |
 | `r(d)` | Periodic rate on date `d`: `effectiveAnnualRateOn(d)` (INV-LOAN-006) turned into a per-period rate by the type's compounding trait (section 4.1). |
 | `debt(d)` | The ledger debt through `d`, inclusive: `datedLoanDebt`, the canonical as-of sum INV-LOAN-006 already prices from. |
-| `k(d)` | Payment number of the due date `d`, counting `payment_start_date` as 1 (INV-LOAN-005) and stepping with `calculateNextDueDate`. |
+| `k(d)` | The number of calendar due dates on or before `d`: the calendar starts at `payment_start_date` (payment 1, INV-LOAN-005) and steps with `calculateNextDueDate` at `payment_frequency`. Defined for any `d`, including one off the calendar (a template whose next due date the user moved): 2025-07-10 on a calendar of firsts of the month has `k` 19, the same as 2025-07-01. |
 | `remaining(d)` | `N - k(d) + 1`: the scheduled payments from `d` to the term end, `d` included. Derived from the calendar: the formula takes no count of postings as input, so a missed or extra posting does not move the term end. |
 | `c` | The constant principal of a LINEAR mortgage, `roundMoney(P / N)`. |
 | "installment" | principal + interest for one due date, excluding any standing extra-principal line. |
@@ -50,7 +50,7 @@ explains why.
 
 ## 3. Decisions
 
-Decisions 1 to 6 were agreed in #1486; 7 to 10 are made here.
+Decisions 1 to 6 were agreed in #1486; 7 to 11 are made here.
 
 1. **Four types**, stored in `accounts.mortgage_type`: `ANNUITY` (default),
    `CANADIAN_FIXED`, `LINEAR`, `INTEREST_ONLY`. There is no
@@ -78,9 +78,11 @@ Decisions 1 to 6 were agreed in #1486; 7 to 10 are made here.
    a rate change moves only the interest. Truth table in section 4.3.
 5. **Rate-change recalculation reads `debt(effectiveDate)`**, the as-of query
    the installment pricing uses. `recalculatePaymentForRate` and
-   `buildScheduledUpdate` (`backend/src/loan-rate-changes/loan-rate-changes.service.ts`)
-   read `account.currentBalance` today, a through-today read model that is
-   stale for a future-dated change. Fixed in P1-B3 for ANNUITY and
+   `buildScheduledUpdate` (`backend/src/loan-rate-changes/loan-rate-changes.service.ts`),
+   and the mortgage rate update in
+   `backend/src/accounts/loan-mortgage-account.service.ts`
+   (`UpdateMortgageRateDto`), read `account.currentBalance` today, a
+   through-today read model that is stale for a future-dated change. Fixed in P1-B3 for ANNUITY and
    CANADIAN_FIXED, before the new methods depend on it.
 6. **Expand now, contract later** (`database/CLAUDE.md`): the column is
    nullable in Phase 1 and read through `mortgageTypeFromFlags` when null; it
@@ -98,18 +100,22 @@ Decisions 1 to 6 were agreed in #1486; 7 to 10 are made here.
    money precision the codebase does not have. A ledger whose installments
    were recorded at statement cents (imported, or typed from the bank's
    statement) is priced from what it holds; section 7.2 asserts that case too.
-8. **The final LINEAR SHORTEN_TERM installment absorbs the rounding residue.**
-   `c` differs from `P / N`, so the ledger can reach the last scheduled
-   principal with a few hundredths of a cent per payment left over (0.0106
-   in the worked example; up to half a cent per payment when installments
-   were recorded at statement cents). An installment is the final one, and
-   its principal is the whole `debt(d)`, when
-   `debt(d) - c <= roundMoney(N * 0.005)` -- half a cent per scheduled
-   payment, the largest residue a constant principal quoted at cents can
-   leave over the whole term, and a fortiori the largest a 4dp one can. That
-   is INV-LOAN-004's residual final payment for this method. The rule sits in
-   the method's principal function on both layers, and the 7.1 fixture asserts
-   that no residue payment follows on 2050-07-01.
+8. **The final LINEAR SHORTEN_TERM installment absorbs a small leftover.**
+   An installment is the final one, and its principal is the whole
+   `debt(d)`, when `debt(d) - c <= roundMoney(N * 0.005)` (1.80 in the worked
+   example). The bound is sized for rounding: `c` differs from `P / N`, so
+   the ledger can reach the last scheduled principal with a little left over
+   (0.0106 in the worked example; up to half a cent per payment when
+   installments were recorded at statement cents), and half a cent per
+   scheduled payment is the most a constant principal quoted at cents can
+   leave over the whole term. The rule does not ask where a leftover came
+   from: one of 1.80 or less left by a repayment that is not a multiple of
+   `c` is absorbed the same way, which is the deliberate choice -- a separate
+   payment of a few cents a period later serves nobody. A larger leftover is
+   a real last payment, `min(c, debt(d))`. That is INV-LOAN-004's residual
+   final payment for this method. The rule sits in the method's principal
+   function on both layers, and the 7.1 fixture asserts that no leftover
+   payment follows on 2050-07-01.
 9. **Open point 1 (interest-only template shape): the managed template keeps
    its principal line, at zero.** Section 9 records the reasoning and the
    test obligations.
@@ -119,6 +125,12 @@ Decisions 1 to 6 were agreed in #1486; 7 to 10 are made here.
     whatever the request carries, because forms resend every field and a
     user switching from LINEAR to ANNUITY would otherwise be refused. A
     LINEAR row with a null mode reads as `SHORTEN_TERM`.
+11. **`accounts.payment_amount` is null for LINEAR and INTEREST_ONLY.** Those
+    methods have no constant payment, so the column has nothing true to hold:
+    the installment for a date is table 4.3's answer at that date. Every
+    surface that shows or uses "the payment" of such a mortgage asks for the
+    installment of a dated occurrence instead. Section 5.6 has the rule, the
+    mechanism and every consumer.
 
 Open point 2 of #1501 (the "Record rate changes in Loan Details" hint shown for
 every type when editing) is a copy decision owned by P1-F2, not by this spec.
@@ -222,17 +234,17 @@ posting rule:
 - the rate-change sync (`LoanRateChangesService.syncScheduledTransaction`,
   user-confirmed) rewrites the template at the effective date with the
   method's installment;
-- template advancement (`recalculateLoanPaymentSplits`, purpose
-  `advancement`) targets the method's installment for non-annuity methods,
+- template advancement (`recalculateLoanPaymentSplits`, `InstallmentPurpose`
+  `"template"`) targets the method's installment for non-annuity methods,
   where for ANNUITY it grows back only toward `account.paymentAmount`.
 
 So a declined sync leaves at most one occurrence posted at the old total,
 re-divided interest-first; the advancement after it prices the next one at the
 new installment. P2-B1 carries a test of exactly that sequence.
 
-### 5.3 Rate change (`buildScheduledUpdate`, `recalculatePaymentForRate`)
+### 5.3 Rate change (`buildScheduledUpdate`, `recalculatePaymentForRate`, the mortgage rate update)
 
-Both read `debt(effectiveDate)` (decision 5).
+All three read `debt(effectiveDate)` (decision 5).
 
 | Method | New installment at the effective date |
 | --- | --- |
@@ -240,6 +252,16 @@ Both read `debt(effectiveDate)` (decision 5).
 | LINEAR, SHORTEN_TERM | `c + roundMoney(debt * r_new)` |
 | LINEAR, LOWER_INSTALLMENT | `roundMoney(debt / remaining) + roundMoney(debt * r_new)` |
 | INTEREST_ONLY | `roundMoney(debt * r_new)` |
+
+What a rate change writes:
+
+| Method | Template (through the user-confirmed sync) | `accounts.payment_amount` | `loan_rate_changes.new_payment_amount` |
+| --- | --- | --- | --- |
+| ANNUITY, CANADIAN_FIXED | the new installment, as today | unchanged from today's behaviour | as today: stated by the user, recalculated, or inferred |
+| LINEAR, INTEREST_ONLY | the new installment above, split per table 4.3 | stays null (decision 11) | null: the method states every installment, so a stated payment would be a second, conflicting answer. The mortgage rate update refuses a non-null `paymentAmount` for these methods with a 400 naming the method; rate inference writes null for them. |
+
+A declined sync leaves the template at the old installment for one posting
+(section 5.2); nothing else holds a copy that could go stale.
 
 ### 5.4 Frontend projection (`generateLoanSchedule`)
 
@@ -259,6 +281,75 @@ rather than as the remainder of a fixed payment.
 (the first installment is principal and interest from table 4.3 at
 `payment_start_date`), and `amortization_months` is required for LINEAR and
 INTEREST_ONLY (section 8).
+
+### 5.6 The stored payment (`accounts.payment_amount`)
+
+For ANNUITY and CANADIAN_FIXED the column keeps its meaning: the contractual
+installment, user-owned, as today. For LINEAR and INTEREST_ONLY it is null
+(decision 11), for three reasons:
+
+- **A snapshot goes stale on the first repayment.** Storing the first
+  installment (the preview's `paymentAmount`, 1,333.3333 in 7.5) would leave
+  that figure on the record while the bill falls to 1,241.6666 (7.1,
+  2026-01-01), and every reader below would show or compute from it.
+- **Rewriting it on every posting makes a read model nobody owns.** The column
+  is user-owned (`docs/specs/scheduled-loan-installment-pricing.md` section 4:
+  recording a rate change deliberately does not write it), and a
+  method-written copy would be a second answer to "what is the installment" beside
+  `resolveInstallment`'s.
+- **Null fails loudly where a stale figure fails quietly.** A reader that was
+  missed reads no payment -- on the frontend `resolveCurrentLoanTerms` then
+  has no installment and the projection is withheld -- rather than a
+  confident, wrong one. The table below lists every reader so none is left to
+  that fallback.
+
+Mechanism: a table CHECK added by P2-B1,
+`payment_amount IS NULL OR mortgage_type IS NULL OR mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED')`,
+so a writer that was missed fails at the constraint instead of storing a
+figure. A type change rewrites the column in the same transaction as the type:
+to null when the new method is not ANNUITY, and to the annuity installment of
+`debt(d)` over the remaining amortization at `rate(d)`, for `d` the next due
+date (the 5.3 ANNUITY formula), when it is.
+
+"The installment" of a non-annuity mortgage is a dated question, and has two
+answers, both existing paths:
+
+- **the next one**: the scheduled payment's next occurrence, priced by
+  `resolveInstallment` (`ScheduledOccurrenceService` on the server,
+  `nextOccurrenceEffectiveAmount` / `nextOccurrenceDueDate` on the client;
+  INV-OCCURRENCE-003), or the loan anchor's due date and debt
+  (`GET /scheduled-transactions/loan-anchor/:accountId`) priced by table 4.3;
+- **a projected one**: the row of `generateLoanSchedule` for that date.
+
+A surface that shows it says which date it is for. For INTEREST_ONLY every
+surface that shows the installment also shows the bullet and its date, because
+an interest-only installment without its bullet understates what is owed by
+the whole principal.
+
+Every reader of the stored payment, and what it does for LINEAR and
+INTEREST_ONLY:
+
+| Reader | Reads today | For LINEAR and INTEREST_ONLY | Task |
+| --- | --- | --- | --- |
+| `LoanMortgageAccountService` create (`backend/src/accounts/loan-mortgage-account.service.ts`) | stores the preview's `paymentAmount`; the template is `-paymentAmount` | stores null; the template is the first installment from the preview | P2-B1 |
+| `LoanMortgageAccountService` mortgage rate update (`UpdateMortgageRateDto`) | `newPaymentAmount ?? account.paymentAmount`, `currentBalance` | 5.3; a stated payment refused | P1-B3 (dated debt), P2-B1 |
+| `LoanPaymentSetupService` (`SetupLoanPaymentsDto.paymentAmount`) | the request's payment, written to the column and the template | the server prices the first installment from table 4.3; a request whose `paymentAmount` differs from it by more than 0.00005 is refused (the dialog previews through the same code), and the column is not written | P2-B1 |
+| `ScheduledTransactionLoanService.resolveInstallment` | `Math.max(templateAmount, account.paymentAmount)` for purpose `"template"` | the method installment (5.2); the column is not read | P2-B1 |
+| `ScheduledTransactionsService` schedule update (`backend/src/scheduled-transactions/scheduled-transactions.service.ts`) | a template amount edit writes `payment_amount` | not written; the edit stands for the template only, and the next advancement reprices it (5.2) | P2-B1 |
+| `LoanRateChangesService` (`buildScheduledUpdate`, `recalculatePaymentForRate`) | `override?.paymentAmount ?? account.paymentAmount` | 5.3 | P1-B3, P2-B1 |
+| `RateChangeInferenceService` | a segment's most common payment becomes `new_payment_amount` | null (5.3); segments are still cut on the rate alone | P2-B1 |
+| `LlmAccountRow.paymentAmount` (`getLlmAccounts`, the MCP accounts tool, the in-app assistant) | the column | null, beside `mortgageType` (P1-B3) and the next occurrence's amount and date; INTEREST_ONLY also carries the bullet and its date | P2-B1 |
+| `LoanPaymentDetectorService` | a detected payment offered for setup | a suggestion for the template; not written to the column (the CHECK refuses it) | P2-B2 |
+| MNY import (`backend/src/import/mny/map/map-loans.ts`) | writes the imported payment | unaffected: imported mortgages carry the flags and read as ANNUITY or CANADIAN_FIXED | -- |
+| `resolveCurrentLoanTerms` (`frontend/src/lib/loan-history.ts`) | a stated rate-change payment, the observed installment, then `account.paymentAmount` | none of the three; the current installment is the next occurrence's | P2-F1 |
+| `generateLoanSchedule` (`frontend/src/lib/loan-schedule.ts`) | `paymentAmount`, then a stated payment per rate change | per-row principal from table 4.3; stated payments not read (5.4) | P2-F1 |
+| `LoanSummaryCards` (`frontend/src/components/accounts/loan-detail/LoanSummaryCards.tsx`) | `currentInstallment` from `resolveCurrentLoanTerms` | the next installment, captioned with its due date; INTEREST_ONLY adds the bullet and its date | P2-F1 |
+| `loanNotAmortizingReason` (`frontend/src/lib/loan-figures.ts`) | payment against one period's interest | does not apply (5.4: these methods do not stall); returns null | P2-F1 |
+| `OverpaymentSimulator` (`frontend/src/components/accounts/loan-detail/OverpaymentSimulator.tsx`) | `budget < paymentAmount`; "keep paying X" | an extra amount is added to each projected installment; a budget is a fixed total per period, the extra in each row is `budget - installment` of that row, and a budget below the first projected installment is refused with that installment named | P2-F1 |
+| `loan-overpayment-solver` (`frontend/src/lib/loan-overpayment-solver.ts`) | `paymentAmount * 2` as the search bound | the first projected installment in its place | P2-F1 |
+| `loan-past-impact` (`frontend/src/lib/loan-past-impact.ts`) | the contractual annuity payment from the original principal | the contractual schedule is the method's schedule from `P` at `payment_start_date`; extra principal is what was paid above its principal | P2-F1 |
+| `LoanAmortizationReport` (`frontend/src/components/reports/LoanAmortizationReport.tsx`) | shows a payment amount | shows the next installment with its date; INTEREST_ONLY adds the bullet | P2-F1 |
+| `MortgageFields`, `LoanPaymentSetupDialog` | the preview's `paymentAmount`; an editable payment | captioned "first installment"; read-only for these methods | P2-F1 |
 
 ## 6. Invariants
 
@@ -286,7 +377,10 @@ Mechanism, built by the tasks named:
   (the `mortgage-frequency-cast.guard.spec.ts` pattern), deleted with the
   overloads in P3-B1;
 - the CHECK constraint on `accounts.mortgage_type`, reconciled with
-  `MORTGAGE_TYPES` by a contract spec.
+  `MORTGAGE_TYPES` by a contract spec;
+- the CHECK keeping `accounts.payment_amount` null for LINEAR and
+  INTEREST_ONLY (decision 11, section 5.6), so no stored constant payment can
+  disagree with the method.
 
 Status: `unenforced` until P2-Q flips it; registered as such in
 `docs/system-invariants.md`.
@@ -306,15 +400,16 @@ The convention does not change. Its mechanism moves from the
 `isCanadian && !isVariableRate` test in `getPeriodicRate` and
 `calculateEffectiveAnnualRate` to `compoundingFor(type)`; the boolean overloads
 delegate to the type-keyed functions during Phase 1 (P1-B2) and are deleted in
-Phase 3. P1-Q updates the entry and `docs/financial-semantics.md` section 9,
-including the wrong "uses monthly compounding" copy (schema comment,
-`create-account.dto.ts`, `mortgage-preview.dto.ts`,
-`mortgageFields.variableRateDesc`), which P1-F2 removes.
+Phase 3. P1-Q updates the entry and `docs/financial-semantics.md` section 9.
+The wrong "uses monthly compounding" copy goes with the task that owns each
+file: the schema comment in P1-B1, `create-account.dto.ts` and
+`mortgage-preview.dto.ts` in P1-B3, `mortgageFields.variableRateDesc` in
+P1-F2.
 
 ### 6.4 INV-LOAN-004 (extended): the bullet is the residual
 
 The final payment is the residual payoff for every method: the annuity's
-(unchanged), the LINEAR final installment that absorbs the rounding residue
+(unchanged), the LINEAR final installment that absorbs a small leftover
 (decision 8), and the INTEREST_ONLY bullet, `debt + roundMoney(debt * r)` at
 payment `N`. A lifetime-interest total is the sum of what the schedule charges
 (the closed forms of 5.1, checked against the row sums of section 7), not
@@ -423,6 +518,9 @@ tables, not their own results.
 | --- | --- | --- |
 | `amortization_months` | LINEAR, INTEREST_ONLY | Refused. Create and update answer 400 with a `tr(...)` message naming the field; the preview answers 400; `resolveInstallment` declines (persisted amounts post, as for any unmanaged shape) and the projection is withheld with a reason naming the field. There is no `N` to divide by and no term end for the bullet. |
 | `amortization_months` | ANNUITY, CANADIAN_FIXED | As today. |
+| `payment_start_date` | LINEAR, INTEREST_ONLY | Refused and declined exactly as a missing `amortization_months`: `k(d)` has no calendar to count, so there is no `remaining(d)` for LOWER_INSTALLMENT and no term end for the bullet. SHORTEN_TERM needs neither for its principal (`min(c, debt(d))`), but is refused on create and preview too, so the one rule covers the type. |
+| `payment_frequency` | LINEAR, INTEREST_ONLY | Refused and declined as above: there is no `ppy`, so no `N`, no `c` and no periodic rate. `periodsPerYearForStoredFrequency` answers null for an unknown cadence, and that null is the refusal, never a default of 12. |
+| `payment_start_date`, `payment_frequency` | ANNUITY, CANADIAN_FIXED | As today. |
 | `original_principal` | LINEAR, SHORTEN_TERM | `abs(opening_balance)`, the amount borrowed when the account was opened. Stated here because it is a substitution, not a guess: a mortgage account's opening balance is the advance. |
 | `original_principal` and `opening_balance` 0 | LINEAR, SHORTEN_TERM | Refused as above: `c` would be 0 and the loan would not amortize. |
 | `prepayment_mode` | LINEAR | `SHORTEN_TERM` (decision 10). |
@@ -505,7 +603,10 @@ which add rows to this table rather than living only in the code.
 | Backend unit | `mortgage-amortization.util.spec.ts` | table 7.5; accelerated frequencies refused for both new methods | P2-B1 |
 | Backend unit | `scheduled-transaction-loan.service.spec.ts` | tables 7.1 to 7.4 row by row, including the 7.2 cents ledger and the absent 2050-07-01 payment; section 9's obligations; the stale-template-after-rate-rise sequence (5.2) | P2-B1 |
 | Backend unit | `rate-change-inference.service.spec.ts` | the 4.2 row 4 annualization change; LINEAR and INTEREST_ONLY observations annualize by day count | P1-B3, P2-B1 |
-| Backend integration | `scheduled-loan-dated-balance.integration.spec.ts` | `remaining(d)` and the dated debt on a real ledger for a LOWER_INSTALLMENT account | P2-B1 |
+| Backend integration | `scheduled-loan-dated-balance.integration.spec.ts` | `remaining(d)` and the dated debt on a real ledger for a LOWER_INSTALLMENT account, including a next due date moved off the calendar (`k(d)` per section 2) | P2-B1 |
+| Backend integration | the migration's own check | the `payment_amount` and `prepayment_mode` CHECKs refuse a non-null value on a type they do not apply to; a type change rewrites `payment_amount` in the same transaction (5.6) | P2-B1 |
+| Backend unit | the specs of every backend reader in table 5.6 | the behaviour in its row: null stored, stated payments refused, inference writes null, the LLM row carries the next occurrence (and the bullet for INTEREST_ONLY); the missing-data refusals of section 8 | P2-B1 |
+| Frontend unit | the tests of every frontend reader in table 5.6 | the behaviour in its row, with `payment_amount` null on the fixture account so a reader that still uses it fails | P2-F1 |
 | Frontend unit | `loan-schedule.test.ts` | tables 7.1, 7.3, 7.4 from `generateLoanSchedule`; re-levelling not applied to the new methods | P2-F1 |
 | Frontend unit | `MortgageFields.test.tsx`, `LoanPaymentSetupDialog.test.tsx` | one Select, four options, help text; Term Length shown for every type; `prepayment_mode` shown for LINEAR only | P1-F2, P2-F1 |
 | Frontend contract | `mortgage-type.contract.test.ts` | the parity fixture | P1-F1 |

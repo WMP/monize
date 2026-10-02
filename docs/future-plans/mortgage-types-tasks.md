@@ -31,7 +31,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 | ID | Issue | Task | Depends on | Deploy class | Status |
 |----|-------|------|-----------|--------------|--------|
-| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [x] |
+| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [ ] |
 | P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [ ] |
 | P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [ ] |
 | P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [ ] |
@@ -81,7 +81,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 - Each consumer reads the type (column, else `mortgageTypeFromFlags`) and asks a trait. Saves write the type and `flagsFromMortgageType` together.
 - DTOs accept `mortgageType` in `ANNUITY` and `CANADIAN_FIXED`; the booleans stay accepted and are translated when the type is absent. Correct the "uses monthly compounding" copy in both DTOs.
-- `buildScheduledUpdate` and `recalculatePaymentForRate` read `datedLoanDebt` at the effective date (spec decision 5).
+- `buildScheduledUpdate`, `recalculatePaymentForRate` and the mortgage rate update (`UpdateMortgageRateDto`) read `datedLoanDebt` at the effective date (spec decision 5).
 - `annualizeRate` keyed on `annualizationFor` (spec table 4.2, last row).
 - Acceptance: a future-dated rate change prices the debt at its date; every existing spec green unchanged except the Canadian-variable inference case, whose expectation changes with a comment naming table 4.2.
 
@@ -105,17 +105,18 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 ### P2-B1 -- Backend LINEAR and INTEREST_ONLY
 
-**Files:** `database/migrations/<UTC timestamp>_accounts_prepayment_mode.sql` (new), `database/schema.sql`, `backend/src/accounts/entities/account.entity.ts`, `backend/src/accounts/mortgage-amortization.util.ts`, `backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`, `backend/src/loan-rate-changes/loan-rate-changes.service.ts`, `backend/src/accounts/loan-payment-setup.service.ts`, `backend/src/accounts/loan-mortgage-account.service.ts`, the DTOs, `backend/src/accounts/mortgage-type-cases.json`, their specs, `backend/src/backup/support-backup/support-backup-rules.ts`.
+**Files:** `database/migrations/<UTC timestamp>_accounts_prepayment_mode.sql` (new), `database/schema.sql`, `backend/src/accounts/entities/account.entity.ts`, `backend/src/accounts/mortgage-amortization.util.ts`, `backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`, `backend/src/loan-rate-changes/loan-rate-changes.service.ts`, `backend/src/accounts/loan-payment-setup.service.ts`, `backend/src/accounts/loan-mortgage-account.service.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (the template edit that writes `payment_amount`), `backend/src/loan-rate-changes/rate-change-inference.service.ts`, `backend/src/accounts/accounts.service.ts` (`LlmAccountRow`), the MCP and AI tool output schemas that carry the account row, the DTOs, `backend/src/accounts/mortgage-type-cases.json`, their specs, `backend/src/backup/support-backup/support-backup-rules.ts`.
 
-- `prepayment_mode` with the CHECK of spec decision 10. Preview per spec 5.1, pricing per 5.2 and table 4.3, rate change per 5.3, setup per 5.5, missing data per section 8, template shape per section 9.
-- Acceptance: spec tables 7.1 to 7.5 row by row, the stale-template-after-rate-rise sequence, section 9's obligations, accelerated frequencies refused.
+- `prepayment_mode` with the CHECK of spec decision 10; the `payment_amount` CHECK of spec decision 11, and every backend reader in spec table 5.6 changed as its row says. Preview per spec 5.1, pricing per 5.2 and table 4.3, rate change per 5.3, setup per 5.5, missing data per section 8, template shape per section 9.
+- Acceptance: spec tables 7.1 to 7.5 row by row, the stale-template-after-rate-rise sequence, section 9's obligations, accelerated frequencies refused, the backend rows of the spec's test matrix for section 5.6 and section 8.
 
 ### P2-F1 -- Frontend LINEAR and INTEREST_ONLY
 
-**Files:** `frontend/src/lib/loan-schedule.ts`, `frontend/src/lib/loan-history.ts` (`buildLoanProjectionInput` supplies the term end), `frontend/src/lib/mortgage-type.ts`, `frontend/src/components/accounts/MortgageFields.tsx`, `frontend/src/components/accounts/LoanPaymentSetupDialog.tsx`, the overpayment simulator's semantics, `frontend/src/i18n/messages/en/accounts.json`, their tests.
+**Files:** `frontend/src/lib/loan-schedule.ts`, `frontend/src/lib/loan-history.ts` (`buildLoanProjectionInput` supplies the term end), `frontend/src/lib/mortgage-type.ts`, `frontend/src/components/accounts/MortgageFields.tsx`, `frontend/src/components/accounts/LoanPaymentSetupDialog.tsx`, `frontend/src/lib/loan-figures.ts`, `frontend/src/lib/loan-past-impact.ts`, `frontend/src/lib/loan-overpayment-solver.ts`, `frontend/src/components/accounts/loan-detail/LoanSummaryCards.tsx`, `frontend/src/components/accounts/loan-detail/OverpaymentSimulator.tsx`, `frontend/src/components/reports/LoanAmortizationReport.tsx`, `frontend/src/i18n/messages/en/accounts.json`, their tests.
 
 - The Select gains `LINEAR` and `INTEREST_ONLY`; `prepayment_mode` shown for LINEAR only.
-- Acceptance: spec tables 7.1, 7.3 and 7.4 from `generateLoanSchedule`.
+- Every frontend reader in spec table 5.6 changed as its row says: the next installment captioned with its date, the bullet beside it for INTEREST_ONLY, the simulator's budget and extra defined per projected row.
+- Acceptance: spec tables 7.1, 7.3 and 7.4 from `generateLoanSchedule`; the frontend row of the spec's test matrix for section 5.6, with `payment_amount` null on the fixture account.
 
 ### P2-B2 -- Detection (backend)
 
