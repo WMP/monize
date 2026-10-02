@@ -328,6 +328,8 @@
     "untagged": "Senza tag",
     "inflows": "Entrate con tag",
     "outflows": "Uscite con tag",
+    "inflowsSeries": "Entrate con tag: {value}",
+    "outflowsSeries": "Uscite con tag: {value}",
     "sharesExceedNote": "Una riga contrassegnata con più di un valore per questa chiave viene conteggiata per ciascuno di essi, quindi le quote per valore possono sommare più del 100%."
   },
   "categoryPerformance": {

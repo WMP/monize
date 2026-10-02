@@ -328,6 +328,8 @@
     "untagged": "Bez tagu",
     "inflows": "Wpływy z tagiem",
     "outflows": "Wypływy z tagiem",
+    "inflowsSeries": "Wpływy z tagiem: {value}",
+    "outflowsSeries": "Wypływy z tagiem: {value}",
     "sharesExceedNote": "Wiersz oznaczony więcej niż jedną wartością w ramach tego klucza jest liczony do każdej z nich, więc udziały poszczególnych wartości mogą sumować się do więcej niż 100%."
   },
   "categoryPerformance": {

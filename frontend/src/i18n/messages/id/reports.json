@@ -328,6 +328,8 @@
     "untagged": "Tanpa tag",
     "inflows": "Arus masuk bertag",
     "outflows": "Arus keluar bertag",
+    "inflowsSeries": "Arus masuk bertag: {value}",
+    "outflowsSeries": "Arus keluar bertag: {value}",
     "sharesExceedNote": "Baris yang diberi tag dengan lebih dari satu nilai di bawah kunci ini dihitung untuk masing-masing nilai tersebut, sehingga persentase per nilai dapat berjumlah lebih dari 100%."
   },
   "categoryPerformance": {
