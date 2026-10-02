@@ -32,6 +32,14 @@ interface TagKeyBreakdownBucketsProps {
   reportingCurrency: string;
   /** Namespaces this instance's tab ids from any sibling breakdown on the same page. */
   idPrefix: string;
+  /**
+   * The selected bucket's value, when the caller owns the selection (Income vs
+   * Expenses, whose main chart follows the active tab). Omit for the
+   * uncontrolled default, where this component keeps the selection itself.
+   */
+  activeValue?: string;
+  /** Called with the new bucket value when a tab is chosen. */
+  onActiveValueChange?: (value: string) => void;
 }
 
 function bucketTabLabel(bucket: IncomeExpenseTagBucket, untaggedLabel: string): string {
@@ -54,12 +62,20 @@ export function TagKeyBreakdownBuckets({
   buckets,
   reportingCurrency,
   idPrefix,
+  activeValue: controlledValue,
+  onActiveValueChange,
 }: TagKeyBreakdownBucketsProps) {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
   const untaggedLabel = t('tagBreakdown.untagged');
-  const [activeValue, setActiveValue] = useState(buckets[0]?.value ?? '');
+  const [uncontrolledValue, setUncontrolledValue] = useState(buckets[0]?.value ?? '');
+  const isControlled = controlledValue !== undefined;
+  const activeValue = isControlled ? controlledValue : uncontrolledValue;
+  const setActiveValue = (value: string) => {
+    if (!isControlled) setUncontrolledValue(value);
+    onActiveValueChange?.(value);
+  };
   const active = buckets.find((bucket) => bucket.value === activeValue) ?? buckets[0];
 
   if (!active) return null;

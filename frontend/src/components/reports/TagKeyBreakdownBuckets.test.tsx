@@ -32,7 +32,16 @@ function bucket(overrides: Partial<IncomeExpenseTagBucket> = {}): IncomeExpenseT
     value: 'household',
     isUntagged: false,
     data: [
-      { period: '2024-01', periodStart: '2024-01-01', periodEnd: '2024-01-31', income: 500, expenses: 200, net: 300 },
+      {
+        period: '2024-01',
+        periodStart: '2024-01-01',
+        periodEnd: '2024-01-31',
+        income: 500,
+        expenses: 200,
+        net: 300,
+        taggedInflows: 1000,
+        taggedOutflows: 800,
+      },
     ],
     totals: { income: 500, expenses: 200, net: 300, knownIncome: 500, knownExpenses: 200, knownNet: 300 },
     taggedInflows: 1000,
@@ -138,5 +147,87 @@ describe('TagKeyBreakdownBuckets', () => {
     expect(screen.getByRole('tabpanel')).toHaveTextContent('$111');
     fireEvent.click(screen.getByRole('tab', { name: 'stall' }));
     expect(screen.getByRole('tabpanel')).toHaveTextContent('$222');
+  });
+
+  describe('controlled mode', () => {
+    const buckets = [
+      bucket({ value: 'household', taggedInflows: 111 }),
+      bucket({ value: 'stall', taggedInflows: 222 }),
+    ];
+
+    it('shows the bucket the caller selects and reports tab clicks without switching itself', () => {
+      const onChange = vi.fn();
+      render(
+        <TagKeyBreakdownBuckets
+          tagKey="scope"
+          buckets={buckets}
+          reportingCurrency="CAD"
+          idPrefix="test-tag"
+          activeValue="stall"
+          onActiveValueChange={onChange}
+        />,
+      );
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$222');
+
+      fireEvent.click(screen.getByRole('tab', { name: 'household' }));
+      expect(onChange).toHaveBeenCalledWith('household');
+      // The caller owns the selection: nothing moves until it passes a new value.
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$222');
+    });
+
+    it('follows the caller when it changes the value', () => {
+      const { rerender } = render(
+        <TagKeyBreakdownBuckets
+          tagKey="scope"
+          buckets={buckets}
+          reportingCurrency="CAD"
+          idPrefix="test-tag"
+          activeValue="household"
+          onActiveValueChange={() => {}}
+        />,
+      );
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$111');
+      rerender(
+        <TagKeyBreakdownBuckets
+          tagKey="scope"
+          buckets={buckets}
+          reportingCurrency="CAD"
+          idPrefix="test-tag"
+          activeValue="stall"
+          onActiveValueChange={() => {}}
+        />,
+      );
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$222');
+    });
+
+    it('falls back to the first bucket for a value it does not have', () => {
+      render(
+        <TagKeyBreakdownBuckets
+          tagKey="scope"
+          buckets={buckets}
+          reportingCurrency="CAD"
+          idPrefix="test-tag"
+          activeValue="gone"
+          onActiveValueChange={() => {}}
+        />,
+      );
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$111');
+    });
+
+    it('still notifies a listener when uncontrolled', () => {
+      const onChange = vi.fn();
+      render(
+        <TagKeyBreakdownBuckets
+          tagKey="scope"
+          buckets={buckets}
+          reportingCurrency="CAD"
+          idPrefix="test-tag"
+          onActiveValueChange={onChange}
+        />,
+      );
+      fireEvent.click(screen.getByRole('tab', { name: 'stall' }));
+      expect(onChange).toHaveBeenCalledWith('stall');
+      expect(screen.getByRole('tabpanel')).toHaveTextContent('$222');
+    });
   });
 });
