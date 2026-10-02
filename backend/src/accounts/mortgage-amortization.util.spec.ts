@@ -8,9 +8,11 @@ import {
   calculateMortgageAmortization,
   calculateMortgageEndDate,
   calculateResidualPayoff,
+  getPeriodicRate,
   MortgagePaymentFrequency,
   MortgageAmortizationInput,
 } from "./mortgage-amortization.util";
+import { MortgageType, mortgageTypeFromFlags } from "./mortgage-type.util";
 
 describe("Mortgage Amortization Utility", () => {
   describe("getMortgagePeriodsPerYear", () => {
@@ -300,6 +302,114 @@ describe("Mortgage Amortization Utility", () => {
         ).toBeCloseTo(Math.round(compounded * 10000) / 100, 2);
       }
     });
+
+    // Spec table 4.1: the periodic rate and EAR each type compounds to,
+    // derived here from the formulas rather than read back from the
+    // implementation.
+    const semiAnnualPeriodic = (rate: number, n: number) =>
+      Math.pow(1 + rate / 200, 2 / n) - 1;
+    const nominalPeriodic = (rate: number, n: number) => rate / 100 / n;
+    const TYPE_CONVENTIONS: [
+      MortgageType,
+      (rate: number, n: number) => number,
+      (rate: number, n: number) => number,
+    ][] = [
+      [
+        "ANNUITY",
+        nominalPeriodic,
+        (rate, n) => Math.pow(1 + rate / 100 / n, n) - 1,
+      ],
+      [
+        "CANADIAN_FIXED",
+        semiAnnualPeriodic,
+        (rate) => Math.pow(1 + rate / 200, 2) - 1,
+      ],
+      [
+        "LINEAR",
+        nominalPeriodic,
+        (rate, n) => Math.pow(1 + rate / 100 / n, n) - 1,
+      ],
+      [
+        "INTEREST_ONLY",
+        nominalPeriodic,
+        (rate, n) => Math.pow(1 + rate / 100 / n, n) - 1,
+      ],
+    ];
+
+    it.each(TYPE_CONVENTIONS)(
+      "%s: periodic rate and EAR follow its compounding trait",
+      (type, periodic, ear) => {
+        for (const periodsPerYear of [12, 24, 26, 52]) {
+          expect(getPeriodicRate(6, periodsPerYear, type)).toBeCloseTo(
+            periodic(6, periodsPerYear),
+            15,
+          );
+          expect(
+            calculateEffectiveAnnualRate(6, periodsPerYear, type),
+          ).toBeCloseTo(Math.round(ear(6, periodsPerYear) * 10000) / 100, 2);
+        }
+      },
+    );
+
+    // Spec table 4.2: every flag combination keeps the periodic rate it had
+    // before the type existed ("Today's periodic rate"), and the two-flag
+    // overloads and the type the flags denote give the same answer to the bit.
+    // Both columns are nullable and the entity hands a NULL through unchanged
+    // (the scheduled-installment path passes them without `|| false`), so the
+    // NULL rows read as false exactly as `isCanadian && !isVariableRate` did,
+    // rather than being looked up as a type.
+    const FLAG_ROWS: [
+      boolean | null | undefined,
+      boolean | null | undefined,
+      (rate: number, n: number) => number,
+    ][] = [
+      [false, false, nominalPeriodic],
+      [false, true, nominalPeriodic],
+      [true, false, semiAnnualPeriodic],
+      [true, true, nominalPeriodic],
+      [null, null, nominalPeriodic],
+      [null, false, nominalPeriodic],
+      [null, true, nominalPeriodic],
+      [false, null, nominalPeriodic],
+      [true, null, semiAnnualPeriodic],
+      [undefined, undefined, nominalPeriodic],
+    ];
+    it.each(FLAG_ROWS)(
+      "flags (%s, %s): the type-keyed and two-flag forms agree",
+      (isCanadian, isVariableRate, todaysPeriodic) => {
+        const type = mortgageTypeFromFlags(isCanadian, isVariableRate);
+        for (const annualRate of [0, 2, 5, 6, 12]) {
+          for (const periodsPerYear of [12, 24, 26, 52]) {
+            expect(
+              getPeriodicRate(
+                annualRate,
+                periodsPerYear,
+                isCanadian,
+                isVariableRate,
+              ),
+            ).toBeCloseTo(todaysPeriodic(annualRate, periodsPerYear), 15);
+            expect(getPeriodicRate(annualRate, periodsPerYear, type)).toBe(
+              getPeriodicRate(
+                annualRate,
+                periodsPerYear,
+                isCanadian,
+                isVariableRate,
+              ),
+            );
+            expect(
+              calculateEffectiveAnnualRate(annualRate, periodsPerYear, type),
+            ).toBe(
+              calculateEffectiveAnnualRate(
+                annualRate,
+                isCanadian,
+                isVariableRate,
+                periodsPerYear,
+              ),
+            );
+          }
+        }
+      },
+    );
   });
 
   describe("calculateMortgageAmortization (integration)", () => {

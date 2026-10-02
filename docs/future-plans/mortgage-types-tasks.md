@@ -6,7 +6,7 @@
 
 - **One task per session/PR.** Each task lists its files. Touching files outside the task's scope is a scope violation -- stop and leave a note on the task's issue instead.
 - **The spec is the authority on every number.** A fixture is copied from spec section 7, never from the implementation's own output. If the code and the spec disagree, the spec is changed first, in its own commit, with the reason.
-- **The governing invariant applies to every task:** one amortization method per mortgage type (INV-LOAN-007). A consumer reads the type's traits; a new read of `isCanadianMortgage` or `isVariableRate` fails the flags guard from P1-B2 on.
+- **The governing invariant applies to every task:** one amortization method per mortgage type (INV-LOAN-007). A consumer reads the type's traits; a new two-flag call of `getPeriodicRate` or `calculateEffectiveAnnualRate` fails the flags guard from P1-B2 on, and a new read of `isCanadianMortgage` or `isVariableRate` is a review finding.
 - **Definition of done for every task** (in addition to per-task acceptance):
   - `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck`, `TZ=UTC npm run test:unit -- --coverage`; plus `npm run build && npm run test:integration` when a query, an entity or a migration changed; `npm run migration:lint` when a migration changed.
   - `frontend/`: `npm run lint && npm run type-check && npm run i18n:check`, `npm run test:cov`, `npm run build`.
@@ -33,7 +33,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 |----|-------|------|-----------|--------------|--------|
 | S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [x] |
 | P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] |
-| P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [ ] |
+| P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [x] |
 | P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [ ] |
 | P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [ ] |
 | P1-F2 | #1507 | One Select replaces both checkbox pairs; Term Length for every type; help text; copy fixes; en i18n | P1-F1 | neutral | [ ] |
@@ -75,7 +75,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 - `MORTGAGE_TYPES`, `MortgageType`, `MORTGAGE_TYPE_TRAITS` (spec table 4.1), `compoundingFor`, `amortizationMethodFor`, `annualizationFor`, `mortgageTypeFromFlags`, `flagsFromMortgageType`.
 - Type-keyed `getPeriodicRate` and `calculateEffectiveAnnualRate`; the boolean overloads delegate.
-- The flags guard lists every current caller of the boolean overloads and of the two entity fields; shrink-only, with the failure message naming the type-keyed replacement.
+- The flags guard (`mortgage-type-flags.guard.spec.ts`) lists every current production caller of the boolean overloads, per file and per function; shrink-only, with the failure message naming the type-keyed replacement. The two entity fields are not scanned: the DTOs, the entity, backup, action history and the demo seed name them legitimately until P3-B1.
 - Acceptance: the type-keyed and boolean forms agree on every row of table 4.2; the contract spec reconciles the CHECK with `MORTGAGE_TYPES` both ways.
 
 ### P1-B3 -- Backend consumers
