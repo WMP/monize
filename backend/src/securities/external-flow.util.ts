@@ -121,6 +121,9 @@ export function externalFlowSubtotalsSql(options: {
     : "la.account_type = 'INVESTMENT'";
   // The counterpart is an investment action's cash leg on an account of the
   // investment scope: the trade settled into this row, inside the portfolio.
+  // Read as a record (includes VOID), like `investmentLinkedTransactionExclusion`:
+  // it asks what the counterpart IS. A voided trade's legs are VOID themselves,
+  // and the outer query already drops a VOID row.
   const settlesScopedAction =
     options.scoped && options.investmentScoped
       ? `
