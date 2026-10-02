@@ -199,6 +199,53 @@ describe('draftFromRule', () => {
   });
 });
 
+describe('the active window', () => {
+  it('opens an unlimited rule with both sides empty and sends them as null', () => {
+    const { draft, repaired } = read({});
+    expect(repaired).toBe(0);
+    expect(draft).toMatchObject({ activeFrom: '', activeTo: '' });
+    expect(draftToPayload(draft)).toMatchObject({ activeFrom: null, activeTo: null });
+  });
+
+  it('opens and saves a stored window as it is', () => {
+    const { draft } = read({ activeFrom: '2026-10-01', activeTo: '2026-12-31' });
+    expect(draft).toMatchObject({ activeFrom: '2026-10-01', activeTo: '2026-12-31' });
+    expect(draftToPayload(draft)).toMatchObject({ activeFrom: '2026-10-01', activeTo: '2026-12-31' });
+  });
+
+  it('reads a stored rule from an older server, with no window at all, as open', () => {
+    const { draft } = read({ activeFrom: undefined as never, activeTo: undefined as never });
+    expect(draft).toMatchObject({ activeFrom: '', activeTo: '' });
+  });
+
+  it('keeps one open side open: clearing a side is a null, a date is itself', () => {
+    const draft = { ...emptyDraft(), activeFrom: '2026-10-01' };
+    expect(draftToPayload(draft)).toMatchObject({ activeFrom: '2026-10-01', activeTo: null });
+  });
+
+  it('is part of the signature, so moving the window is an unsaved change', () => {
+    const base = emptyDraft();
+    expect(draftSignature({ ...base, activeTo: '2026-12-31' })).not.toBe(draftSignature(base));
+  });
+
+  it('reads and writes a date condition with its text value and a range of two texts', () => {
+    const condition = {
+      all: [
+        { field: 'date', op: 'gte', value: '2026-10-01' },
+        { field: 'date', op: 'between', value: ['2026-10-01', '2026-10-31'] },
+      ],
+    };
+    const { draft, repaired } = read({ condition: condition as never });
+    expect(repaired).toBe(0);
+    expect(conditionToApi(draft.condition)).toEqual(condition);
+  });
+
+  it('repairs a date range stored as numbers', () => {
+    const { repaired } = read({ condition: { all: [{ field: 'date', op: 'between', value: [1, 2] }] } as never });
+    expect(repaired).toBe(1);
+  });
+});
+
 describe('draftToPayload', () => {
   it('sends exactly the fields the DTO accepts, with the name trimmed', () => {
     const draft = { ...emptyDraft(), name: '  Rent  ', actions: [{ ...createAction('add_tags'), tagIds: [UUID] } as never] };
@@ -209,6 +256,8 @@ describe('draftToPayload', () => {
       condition: { all: [] },
       actions: [{ type: 'add_tags', tagIds: [UUID] }],
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
     });
   });
 

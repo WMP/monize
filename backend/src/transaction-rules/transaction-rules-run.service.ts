@@ -53,6 +53,26 @@ interface Plan {
   readonly tagsByRow: ReadonlyMap<string, readonly string[]>;
 }
 
+/**
+ * The run's date filters cut down to the rule's active window: the later of
+ * the two starts and the earlier of the two ends (`YYYY-MM-DD` strings
+ * compare in date order). Null when nothing is left to scan.
+ */
+function narrowToActiveWindow(
+  filters: RuleRunFilters,
+  rule: PlannableRule,
+): RuleRunFilters | null {
+  const startDate = [filters.startDate, rule.activeFrom]
+    .filter((d): d is string => !!d)
+    .sort()
+    .pop();
+  const endDate = [filters.endDate, rule.activeTo]
+    .filter((d): d is string => !!d)
+    .sort()[0];
+  if (startDate && endDate && startDate > endDate) return null;
+  return { ...filters, startDate, endDate };
+}
+
 /** The planner's refusals that a person can act on, in the words of the preview. */
 const REFUSAL_REASONS: Readonly<Record<string, RuleRunSkipReason>> = {
   row_is_transfer_leg: "transfer_leg_category",
@@ -136,7 +156,17 @@ export class TransactionRulesRunService {
         revision: 0,
         condition: definition.condition,
         actions: withActionDefaults(definition.actions) as RunRule["actions"],
+        // A blank side is open, exactly as a save reads it.
+        activeFrom: dto.activeFrom || null,
+        activeTo: dto.activeTo || null,
       };
+      if (
+        draft.activeFrom &&
+        draft.activeTo &&
+        draft.activeFrom > draft.activeTo
+      ) {
+        throw this.rulesService.activeWindowInvalid();
+      }
       return (await this.plan(m, userId, draft, filters, false)).preview;
     });
   }
@@ -305,6 +335,8 @@ export class TransactionRulesRunService {
       revision: rule.revision,
       condition: rule.condition,
       actions: rule.actions,
+      activeFrom: rule.activeFrom,
+      activeTo: rule.activeTo,
     };
   }
 
@@ -336,12 +368,18 @@ export class TransactionRulesRunService {
     filters: RuleRunFilters,
     lock: boolean,
   ): Promise<Plan> {
-    const { units, truncated } = await loadCandidateUnits(
-      m,
-      userId,
-      { ...filters, limit: effectiveRunLimit(filters.limit) },
-      { lock },
-    );
+    // INV-RULE-004: the window only narrows the scan; the planner still
+    // decides every row. An empty intersection scans nothing.
+    const scan = narrowToActiveWindow(filters, rule);
+    const { units, truncated } =
+      scan === null
+        ? { units: [], truncated: false }
+        : await loadCandidateUnits(
+            m,
+            userId,
+            { ...scan, limit: effectiveRunLimit(filters.limit) },
+            { lock },
+          );
     const legIds = units.flatMap((unit) => unit.legs.map((leg) => leg.id));
     const tagsByRow =
       legIds.length > 0

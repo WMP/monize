@@ -537,6 +537,7 @@
     "previewChanged": "As transações ou a regra mudaram desde a pré-visualização. Revise a nova pré-visualização e execute novamente",
     "ruleInvalid": "Esta regra não é válida, então não pode ser executada. Abra-a e corrija-a primeiro",
     "dateRangeInvalid": "A data inicial não pode ser posterior à data final",
+    "activeWindowInvalid": "A primeira data ativa não pode ser posterior à última data ativa",
     "runTooLarge": "Esta execução altera transações demais para ser desfeita em uma única etapa. Restrinja as contas ou as datas e tente novamente"
   },
   "transactions": {

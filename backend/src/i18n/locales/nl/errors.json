@@ -537,6 +537,7 @@
     "previewChanged": "De transacties of de regel zijn gewijzigd sinds het voorbeeld. Bekijk het nieuwe voorbeeld en voer opnieuw uit",
     "ruleInvalid": "Deze regel is ongeldig en kan niet worden uitgevoerd. Open de regel en herstel hem eerst",
     "dateRangeInvalid": "De begindatum mag niet na de einddatum liggen",
+    "activeWindowInvalid": "De eerste actieve datum mag niet na de laatste actieve datum liggen",
     "runTooLarge": "Deze uitvoering wijzigt te veel transacties om in één stap ongedaan te maken. Beperk de rekeningen of de datums en probeer het opnieuw"
   },
   "transactions": {

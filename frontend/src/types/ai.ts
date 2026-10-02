@@ -422,6 +422,9 @@ export interface PendingActionRuleState {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /** The active window, `YYYY-MM-DD`; null or absent is open on that side. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 /** What running a rule on existing transactions would do (`AiActionRuleTestPreview`). */

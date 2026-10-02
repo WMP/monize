@@ -548,6 +548,7 @@
     "previewChanged": "[XX-The transactions or the rule changed since the preview. Review the new preview and run again-XX]",
     "ruleInvalid": "[XX-This rule is not valid, so it cannot be run. Open it and repair it first-XX]",
     "dateRangeInvalid": "[XX-The start date must not be after the end date-XX]",
+    "activeWindowInvalid": "[XX-The first active date must not be after the last active date-XX]",
     "runTooLarge": "[XX-This run changes too many transactions to be undone in one step. Narrow the accounts or the dates and try again-XX]"
   },
   "transactions": {

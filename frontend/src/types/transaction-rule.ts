@@ -26,7 +26,8 @@ export type RuleField =
   | 'dayOfMonth'
   | 'weekday'
   | 'status'
-  | 'hasAttachment';
+  | 'hasAttachment'
+  | 'date';
 
 export type RuleOperator =
   | 'eq'
@@ -150,6 +151,13 @@ export interface TransactionRule {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /**
+   * The active window: first and last transaction date (`YYYY-MM-DD`, both
+   * inclusive) the rule is evaluated for, on every path. Null is open on that
+   * side.
+   */
+  activeFrom: string | null;
+  activeTo: string | null;
   /** Compare-and-swap token: send the value last read with every update. */
   revision: number;
   createdAt: string;
@@ -170,6 +178,9 @@ export interface CreateTransactionRuleData {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing?: boolean;
+  /** `YYYY-MM-DD`; null (on an update) clears the side. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 export interface UpdateTransactionRuleData extends Partial<CreateTransactionRuleData> {

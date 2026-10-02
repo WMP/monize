@@ -17,6 +17,12 @@ export interface PlannableRule {
   readonly stopProcessing: boolean;
   readonly condition: RuleConditionNode;
   readonly actions: readonly RuleAction[];
+  /**
+   * The active window (INV-RULE-004): first and last transaction date, both
+   * inclusive, `YYYY-MM-DD`. Null or absent means open on that side.
+   */
+  readonly activeFrom?: string | null;
+  readonly activeTo?: string | null;
 }
 
 export type RuleActionSkipReason =
@@ -32,7 +38,11 @@ export type RuleActionSkipReason =
   /** The payee lookup for the rendered name has not been made yet (the applier looks it up and plans again). */
   | "payee_unresolved";
 
-export type RuleSkipReason = "disabled" | "invalid";
+export type RuleSkipReason =
+  | "disabled"
+  | "invalid"
+  /** The row's date is unknown or outside the rule's active window (INV-RULE-004). */
+  | "outside_active_window";
 
 /** What the planner knows about the row beyond its facts. */
 /** An existing payee a rendered name resolved to. */
@@ -420,6 +430,21 @@ function isPlannable(rule: PlannableRule): RuleSkipReason | null {
   return problems.length > 0 ? "invalid" : null;
 }
 
+/**
+ * INV-RULE-004: a rule with a window is evaluated only for a row whose
+ * calendar date is known and inside it, inclusive at both ends. Dates compare
+ * as `YYYY-MM-DD` strings. A rule without a window is always inside.
+ */
+function isOutsideActiveWindow(rule: PlannableRule, facts: RuleFacts): boolean {
+  const from = rule.activeFrom ?? null;
+  const to = rule.activeTo ?? null;
+  if (from === null && to === null) return false;
+  if (facts.date === null) return true;
+  return (
+    (from !== null && facts.date < from) || (to !== null && facts.date > to)
+  );
+}
+
 function netChanges(first: WorkingState, last: WorkingState): RuleNetChanges {
   return {
     ...(first.categoryId !== last.categoryId
@@ -472,7 +497,9 @@ export function planRuleEffects(
   const lookups: string[] = [];
 
   for (const rule of rules) {
-    const notRun = isPlannable(rule);
+    const notRun =
+      isPlannable(rule) ??
+      (isOutsideActiveWindow(rule, facts) ? "outside_active_window" : null);
     if (notRun !== null) {
       trace.push({
         ruleId: rule.id,

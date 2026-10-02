@@ -227,6 +227,10 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
           stopProcessing={draft.stopProcessing}
           onTriggersChange={(triggers) => edit((current) => ({ ...current, triggers }))}
           onStopProcessingChange={(stopProcessing) => edit((current) => ({ ...current, stopProcessing }))}
+          activeFrom={draft.activeFrom}
+          activeTo={draft.activeTo}
+          onActiveFromChange={(activeFrom) => edit((current) => ({ ...current, activeFrom }))}
+          onActiveToChange={(activeTo) => edit((current) => ({ ...current, activeTo }))}
         />
 
         <RuleIfSection expression={expression} env={env} index={index} conditionCodes={conditionCodes} />

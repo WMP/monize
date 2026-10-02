@@ -537,6 +537,7 @@
     "previewChanged": "İşlemler veya kural önizlemeden sonra değişti. Yeni önizlemeyi inceleyin ve yeniden çalıştırın",
     "ruleInvalid": "Bu kural geçerli değil, bu yüzden çalıştırılamaz. Önce kuralı açıp düzeltin",
     "dateRangeInvalid": "Başlangıç tarihi bitiş tarihinden sonra olmamalıdır",
+    "activeWindowInvalid": "İlk etkin tarih son etkin tarihten sonra olmamalıdır",
     "runTooLarge": "Bu çalıştırma tek adımda geri alınamayacak kadar çok işlemi değiştiriyor. Hesapları veya tarihleri daraltıp yeniden deneyin"
   },
   "transactions": {

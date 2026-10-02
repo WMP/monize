@@ -114,8 +114,11 @@ function shapeOfLeafValue(
     return `${leaf.op} takes a JSON array of ${kind} values, e.g. ["a","b"].`;
   }
   if (shape === "range") {
-    return `${leaf.op} takes exactly two numbers [min,max], min first.`;
+    return kind === "date"
+      ? `${leaf.op} takes exactly two "YYYY-MM-DD" strings [from,to], earliest first.`
+      : `${leaf.op} takes exactly two numbers [min,max], min first.`;
   }
+  if (kind === "date") return `${leaf.field} takes a "YYYY-MM-DD" string.`;
   if (kind === "money" || kind === "dayOfMonth") {
     return `${leaf.field} takes a JSON number (not a string).`;
   }
@@ -184,7 +187,7 @@ const HINTS: Record<RuleValidationCode, HintFn> = {
       ? shapeOfLeafValue(segments, definition)
       : "This value has the wrong JSON type (booleans are true/false, not strings).",
   VALUE_OUT_OF_RANGE: generic(
-    "The number is out of range (dayOfMonth 1-31; amounts are finite numbers with at most 4 decimals).",
+    "The value is out of range (dayOfMonth 1-31; amounts are finite numbers with at most 4 decimals; date is a real calendar day as YYYY-MM-DD).",
   ),
   VALUE_TOO_LONG: generic(
     "The text is too long (a condition value is at most 500 characters).",
@@ -201,7 +204,9 @@ const HINTS: Record<RuleValidationCode, HintFn> = {
   ),
   ARRAY_EMPTY: generic("This list needs at least one entry."),
   ARRAY_TOO_LARGE: generic("This list has too many entries."),
-  RANGE_ORDER: generic("between takes [min,max] with min not above max."),
+  RANGE_ORDER: generic(
+    "between takes [min,max] (for date: [from,to]) with the first not above the second.",
+  ),
   MAX_DEPTH: generic("Groups nest at most 4 deep; flatten the condition."),
   MAX_LEAVES: generic("A rule has at most 50 leaves; simplify it."),
   MAX_NODES: generic("A rule has at most 100 groups and leaves; simplify it."),

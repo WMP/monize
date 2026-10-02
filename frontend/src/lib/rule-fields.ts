@@ -27,7 +27,8 @@ export type RuleValueKind =
   | 'enum'
   | 'currency'
   | 'boolean'
-  | 'dayOfMonth';
+  | 'dayOfMonth'
+  | 'date';
 
 export const RULE_OPERATORS = [
   'eq',
@@ -117,6 +118,7 @@ export const RULE_CONDITION_FIELDS: Readonly<Record<RuleField, RuleFieldSpec>> =
   weekday: { kind: 'enum', operators: ['eq', 'in'], enumValues: RULE_WEEKDAYS },
   status: { kind: 'enum', operators: ['eq', 'neq', 'in'], enumValues: RULE_TRANSACTION_STATUSES },
   hasAttachment: { kind: 'boolean', operators: ['eq'] },
+  date: { kind: 'date', operators: ['eq', 'lt', 'lte', 'gt', 'gte', 'between'] },
 };
 
 export const RULE_FIELDS = Object.keys(RULE_CONDITION_FIELDS) as RuleField[];

@@ -537,6 +537,7 @@
     "previewChanged": "Le transazioni o la regola sono cambiate dopo l'anteprima. Controlla la nuova anteprima ed esegui di nuovo",
     "ruleInvalid": "Questa regola non è valida e non può essere eseguita. Aprila e correggila prima",
     "dateRangeInvalid": "La data di inizio non deve essere successiva alla data di fine",
+    "activeWindowInvalid": "La prima data attiva non deve essere successiva all'ultima data attiva",
     "runTooLarge": "Questa esecuzione modifica troppe transazioni per essere annullata in un solo passaggio. Restringi i conti o le date e riprova"
   },
   "transactions": {

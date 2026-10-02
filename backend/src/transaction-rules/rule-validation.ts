@@ -1,4 +1,5 @@
 import { UUID_REGEX } from "../common/query-param-utils";
+import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
 import {
   RULE_ACTION_TYPES,
   RULE_DESCRIPTION_MODES,
@@ -261,7 +262,12 @@ function validateLeaf(
     push(valuePath, "VALUE_TYPE");
   } else {
     const ok = value.map((v, i) => checkOne(v, `${valuePath}[${i}]`));
-    if (ok[0] && ok[1] && (value[0] as number) > (value[1] as number)) {
+    // Numbers and `YYYY-MM-DD` strings both order with `>`.
+    if (
+      ok[0] &&
+      ok[1] &&
+      (value[0] as number | string) > (value[1] as number | string)
+    ) {
       push(valuePath, "RANGE_ORDER");
     }
   }
@@ -366,6 +372,9 @@ function validateScalar(
           value <= RULE_MAX_DAY_OF_MONTH) ||
         fail("VALUE_OUT_OF_RANGE")
       );
+    case "date":
+      if (typeof value !== "string") return fail("VALUE_TYPE");
+      return isCalendarDate(value) || fail("VALUE_OUT_OF_RANGE");
     case "text":
       if (typeof value !== "string") return fail("VALUE_TYPE");
       return value.length <= MAX_RULE_TEXT_LENGTH || fail("VALUE_TOO_LONG");

@@ -537,6 +537,7 @@
     "previewChanged": "自预览以来，交易或规则已发生变化。请查看新的预览后重新运行",
     "ruleInvalid": "此规则无效，无法运行。请先打开并修复它",
     "dateRangeInvalid": "开始日期不能晚于结束日期",
+    "activeWindowInvalid": "生效起始日期不能晚于生效结束日期",
     "runTooLarge": "本次运行更改的交易过多，无法一步撤销。请缩小账户或日期范围后重试"
   },
   "transactions": {

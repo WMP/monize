@@ -537,6 +537,7 @@
     "previewChanged": "Die Transaktionen oder die Regel haben sich seit der Vorschau geändert. Prüfen Sie die neue Vorschau und führen Sie die Regel erneut aus",
     "ruleInvalid": "Diese Regel ist ungültig und kann nicht ausgeführt werden. Öffnen Sie sie und reparieren Sie sie zuerst",
     "dateRangeInvalid": "Das Startdatum darf nicht nach dem Enddatum liegen",
+    "activeWindowInvalid": "Das erste Aktivdatum darf nicht nach dem letzten Aktivdatum liegen",
     "runTooLarge": "Dieser Lauf ändert zu viele Transaktionen, um in einem Schritt rückgängig gemacht zu werden. Schränken Sie die Konten oder Daten ein und versuchen Sie es erneut"
   },
   "transactions": {

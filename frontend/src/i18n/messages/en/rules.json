@@ -90,7 +90,16 @@
       "imported": "A transaction is imported",
       "atLeastOne": "Keep at least one option selected",
       "stopProcessing": "Stop processing other rules",
-      "stopProcessingHelp": "When this rule matches a transaction, the rules after it in the list are skipped for that transaction."
+      "stopProcessingHelp": "When this rule matches a transaction, the rules after it in the list are skipped for that transaction.",
+      "window": {
+        "title": "Active between",
+        "help": "The rule only applies to transactions dated inside this window, when they are created or imported and when the rule is tested or run. Leave a date empty for no limit.",
+        "from": "First date",
+        "to": "Last date",
+        "backwards": "The last date must not be before the first date",
+        "noLimit": "no limit",
+        "words": "Only for transactions dated from {from} to {to}"
+      }
     },
     "if": {
       "description": "The actions run only for transactions that match",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Day of the month",
       "weekday": "Day of the week",
       "status": "Status",
-      "hasAttachment": "Has an attachment"
+      "hasAttachment": "Has an attachment",
+      "date": "Date"
     },
     "operators": {
       "eq": "is",

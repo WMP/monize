@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@/test/render';
-import { RuleActionsInWords, RuleConditionInWords, type RuleWordsLabels } from './RuleInWords';
+import { RuleActionsInWords, RuleActiveWindowInWords, RuleConditionInWords, RuleInWords, type RuleWordsLabels } from './RuleInWords';
 import type { RuleAction, RuleConditionNode } from '@/types/transaction-rule';
 
 const labels: RuleWordsLabels = { accounts: {}, payees: {}, categories: {}, tags: {} };
@@ -37,6 +37,39 @@ describe('the conditions in words: the newer fields', () => {
   it('shows a value newer than this client as it is stored', () => {
     words({ all: [{ field: 'status', op: 'eq', value: 'PENDING' }] });
     expect(screen.getByText('Status is PENDING')).toBeInTheDocument();
+  });
+});
+
+describe('the date condition in words', () => {
+  it('reads a date in the reader\'s format and a range with both ends', () => {
+    words({ all: [{ field: 'date', op: 'gte', value: '2026-10-01' }] });
+    expect(screen.getByText(/^Date is at least .*2026/)).toBeInTheDocument();
+  });
+
+  it('reads a range of two dates', () => {
+    words({ all: [{ field: 'date', op: 'between', value: ['2026-10-01', '2026-10-31'] }] });
+    expect(screen.getByText(/^Date is between .*2026.* and .*2026/)).toBeInTheDocument();
+  });
+});
+
+describe('the active window in words', () => {
+  it('names both ends', () => {
+    render(<RuleActiveWindowInWords activeFrom="2026-10-01" activeTo="2026-12-31" />);
+    expect(screen.getByText(/^Only for transactions dated from .*2026.* to .*2026/)).toBeInTheDocument();
+  });
+
+  it('says no limit for an open side', () => {
+    render(<RuleActiveWindowInWords activeFrom="2026-10-01" activeTo={null} />);
+    expect(screen.getByText(/to no limit$/)).toBeInTheDocument();
+  });
+
+  it('is shown on a whole rule only when it has a window', () => {
+    const rule = { triggers: ['create'] as const, condition: { all: [] }, actions: [], stopProcessing: false };
+    const { unmount } = render(<RuleInWords rule={{ ...rule, triggers: ['create'] }} labels={labels} />);
+    expect(screen.queryByText(/Only for transactions dated/)).not.toBeInTheDocument();
+    unmount();
+    render(<RuleInWords rule={{ ...rule, triggers: ['create'], activeFrom: '2026-10-01' }} labels={labels} />);
+    expect(screen.getByText(/Only for transactions dated from .*2026.* to no limit/)).toBeInTheDocument();
   });
 });
 

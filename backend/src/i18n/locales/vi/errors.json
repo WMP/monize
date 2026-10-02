@@ -537,6 +537,7 @@
     "previewChanged": "Các giao dịch hoặc quy tắc đã thay đổi kể từ bản xem trước. Hãy xem lại bản xem trước mới và chạy lại",
     "ruleInvalid": "Quy tắc này không hợp lệ nên không thể chạy. Hãy mở và sửa quy tắc trước",
     "dateRangeInvalid": "Ngày bắt đầu không được sau ngày kết thúc",
+    "activeWindowInvalid": "Ngày hoạt động đầu tiên không được sau ngày hoạt động cuối cùng",
     "runTooLarge": "Lần chạy này thay đổi quá nhiều giao dịch để có thể hoàn tác trong một bước. Hãy thu hẹp tài khoản hoặc khoảng ngày rồi thử lại"
   },
   "transactions": {

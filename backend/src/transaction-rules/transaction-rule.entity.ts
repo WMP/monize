@@ -14,6 +14,22 @@ import { RuleConditionNode } from "./rule-condition.types";
 import { RuleTrigger } from "./rule-trigger.types";
 
 /**
+ * A DATE column read back as its `YYYY-MM-DD` string, never through the
+ * server's timezone (the same transformer `budget.entity.ts` uses).
+ */
+const dateTransformer = {
+  from: (value: string | Date | null): string | null => {
+    if (!value) return null;
+    if (typeof value === "string") return value;
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  },
+  to: (value: string | Date | null): string | Date | null => value,
+};
+
+/**
  * A per-user rule (design section 4). `condition` and `actions` are validated
  * by the application on write (`validateRuleDefinition`); a row restored from a
  * support backup can still hold the column defaults (`{}` and `[]`), which the
@@ -64,6 +80,26 @@ export class TransactionRule {
 
   @Column({ type: "boolean", name: "stop_processing", default: false })
   stopProcessing: boolean;
+
+  /**
+   * The active window (INV-RULE-004): the first and last transaction date,
+   * inclusive, the rule is evaluated for. Null is open on that side.
+   */
+  @Column({
+    type: "date",
+    name: "active_from",
+    nullable: true,
+    transformer: dateTransformer,
+  })
+  activeFrom: string | null;
+
+  @Column({
+    type: "date",
+    name: "active_to",
+    nullable: true,
+    transformer: dateTransformer,
+  })
+  activeTo: string | null;
 
   /** Compare-and-swap counter for updates. */
   @Column({ type: "int", default: 1 })

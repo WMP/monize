@@ -40,6 +40,9 @@ export interface RuleDraft {
   readonly enabled: boolean;
   readonly triggers: readonly RuleTrigger[];
   readonly stopProcessing: boolean;
+  /** The active window, `YYYY-MM-DD` or empty (open on that side). */
+  readonly activeFrom: string;
+  readonly activeTo: string;
   readonly condition: EditorGroup;
   readonly actions: readonly EditorAction[];
 }
@@ -51,6 +54,8 @@ export function emptyDraft(): RuleDraft {
     enabled: true,
     triggers: [...RULE_TRIGGERS],
     stopProcessing: false,
+    activeFrom: '',
+    activeTo: '',
     condition: createGroup('all'),
     actions: [],
   };
@@ -88,7 +93,10 @@ function readValue(field: EditorLeaf['field'], op: EditorLeaf['op'], raw: unknow
   let ok: boolean;
   if (shape === 'scalar') ok = scalarOk(raw);
   else if (shape === 'list') ok = kind === 'dayOfMonth' ? isNumberList(raw) : isStringList(raw);
-  else ok = Array.isArray(raw) && raw.length === 2 && raw.every((v) => typeof v === 'number');
+  else {
+    const endType = kind === 'date' ? 'string' : 'number';
+    ok = Array.isArray(raw) && raw.length === 2 && raw.every((v) => typeof v === endType);
+  }
   if (ok) return raw as EditorValue;
   repairs.note();
   return defaultValue(field, op);
@@ -207,6 +215,8 @@ export function draftFromRule(rule: TransactionRule): DraftFromRule {
       enabled: rule.enabled === true,
       triggers,
       stopProcessing: rule.stopProcessing === true,
+      activeFrom: typeof rule.activeFrom === 'string' ? rule.activeFrom : '',
+      activeTo: typeof rule.activeTo === 'string' ? rule.activeTo : '',
       condition,
       actions,
     },
@@ -265,6 +275,9 @@ export function draftToPayload(draft: RuleDraft): CreateTransactionRuleData {
     condition: conditionToApi(draft.condition),
     actions: draft.actions.map(actionToApi),
     stopProcessing: draft.stopProcessing,
+    // Null on an update clears the side; on a create it is the same as absent.
+    activeFrom: draft.activeFrom === '' ? null : draft.activeFrom,
+    activeTo: draft.activeTo === '' ? null : draft.activeTo,
   };
 }
 

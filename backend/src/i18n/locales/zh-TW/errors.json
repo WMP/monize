@@ -537,6 +537,7 @@
     "previewChanged": "自預覽以來，交易或規則已變更。請查看新的預覽後重新執行",
     "ruleInvalid": "此規則無效，無法執行。請先開啟並修復它",
     "dateRangeInvalid": "開始日期不能晚於結束日期",
+    "activeWindowInvalid": "生效起始日期不能晚於生效結束日期",
     "runTooLarge": "本次執行變更的交易過多，無法一步復原。請縮小帳戶或日期範圍後再試一次"
   },
   "transactions": {

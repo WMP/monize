@@ -2,6 +2,7 @@
 
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRuleEnumLabels } from '@/components/rules/use-rule-enum-labels';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import {
   RULE_CONDITION_FIELDS,
@@ -38,6 +39,7 @@ function useRuleWords(labels: RuleWordsLabels) {
   const t = useTranslations('rules');
   const format = useFormatter();
   const { formatNumber } = useNumberFormat();
+  const { formatDate } = useDateFormat();
   const unknown = t('run.change.unknown');
   const enumLabels = useRuleEnumLabels();
 
@@ -62,6 +64,8 @@ function useRuleWords(labels: RuleWordsLabels) {
         return typeof value === 'number' ? formatNumber(value) : unknown;
       case 'dayOfMonth':
         return String(value);
+      case 'date':
+        return typeof value === 'string' && value !== '' ? formatDate(value) : unknown;
       case 'boolean':
         return value === true ? t('editor.value.yes') : value === false ? t('editor.value.no') : unknown;
       case 'enum':
@@ -206,12 +210,35 @@ export function RuleActionsInWords({ actions, labels }: RuleWordsProps & { actio
   );
 }
 
+/** The active window in the reader's date format: "Active between 1 Oct 2026 and (no limit)". */
+export function RuleActiveWindowInWords({
+  activeFrom,
+  activeTo,
+}: {
+  activeFrom?: string | null;
+  activeTo?: string | null;
+}) {
+  const t = useTranslations('rules.editor');
+  const { formatDate } = useDateFormat();
+  const noLimit = t('when.window.noLimit');
+  return (
+    <p className="text-sm text-gray-900 dark:text-gray-100">
+      {t('when.window.words', {
+        from: activeFrom ? formatDate(activeFrom) : noLimit,
+        to: activeTo ? formatDate(activeTo) : noLimit,
+      })}
+    </p>
+  );
+}
+
 export interface RuleInWordsProps extends RuleWordsProps {
   rule: {
     triggers: readonly RuleTrigger[];
     condition: RuleConditionNode;
     actions: readonly RuleAction[];
     stopProcessing: boolean;
+    activeFrom?: string | null;
+    activeTo?: string | null;
   };
 }
 
@@ -223,6 +250,9 @@ export function RuleInWords({ rule, labels }: RuleInWordsProps) {
       <section>
         <h4 className={HEADING_CLASS}>{t('sections.when')}</h4>
         <RuleTriggersInWords triggers={rule.triggers} labels={labels} />
+        {(rule.activeFrom || rule.activeTo) && (
+          <RuleActiveWindowInWords activeFrom={rule.activeFrom} activeTo={rule.activeTo} />
+        )}
       </section>
       <section>
         <h4 className={HEADING_CLASS}>{t('sections.if')}</h4>
