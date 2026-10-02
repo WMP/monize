@@ -90,7 +90,16 @@
       "imported": "Transaksi diimpor",
       "atLeastOne": "Biarkan setidaknya satu opsi tetap dipilih",
       "stopProcessing": "Hentikan pemrosesan aturan lain",
-      "stopProcessingHelp": "Jika aturan ini cocok dengan sebuah transaksi, aturan yang berada setelahnya dalam daftar dilewati untuk transaksi tersebut."
+      "stopProcessingHelp": "Jika aturan ini cocok dengan sebuah transaksi, aturan yang berada setelahnya dalam daftar dilewati untuk transaksi tersebut.",
+      "window": {
+        "title": "Aktif antara",
+        "help": "Aturan hanya berlaku untuk transaksi yang tanggalnya berada dalam rentang ini: saat dibuat atau diimpor, serta saat aturan diuji atau dijalankan. Kosongkan tanggal agar tanpa batas.",
+        "from": "Tanggal pertama",
+        "to": "Tanggal terakhir",
+        "backwards": "Tanggal terakhir tidak boleh sebelum tanggal pertama",
+        "noLimit": "tanpa batas",
+        "words": "Hanya untuk transaksi bertanggal {from} sampai {to}"
+      }
     },
     "if": {
       "description": "Tindakan hanya dijalankan untuk transaksi yang cocok",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Hari dalam bulan",
       "weekday": "Hari dalam minggu",
       "status": "Status",
-      "hasAttachment": "Memiliki lampiran"
+      "hasAttachment": "Memiliki lampiran",
+      "date": "Tanggal"
     },
     "operators": {
       "eq": "adalah",
@@ -215,7 +225,8 @@
         "replace": "Ganti deskripsi",
         "append": "Tambahkan setelah deskripsi",
         "prepend": "Tambahkan sebelum deskripsi"
-      }
+      },
+      "structuralReadOnly": "Tindakan ini dibuat melalui asisten. Di sini tindakan ini dapat dipindahkan atau dihapus, tetapi tidak dapat diedit."
     },
     "actionTypes": {
       "add_tags": "Tambah tag",
@@ -224,7 +235,9 @@
       "set_payee": "Atur penerima",
       "request_ai_review": "Minta peninjauan AI",
       "set_payee_from_text": "Atur penerima dari teks",
-      "set_description": "Atur deskripsi"
+      "set_description": "Atur deskripsi",
+      "convert_to_transfer": "Ubah menjadi transfer",
+      "split": "Pecah transaksi"
     },
     "save": {
       "button": "Simpan aturan",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Setiap nama tangkapan hanya boleh dipakai satu kali dalam satu aturan.",
         "UNKNOWN_CAPTURE": "Teks memakai tangkapan yang tidak didefinisikan oleh kondisi mana pun dalam aturan ini.",
         "LOOKS_LIKE_REGEX": "Ekspresi reguler tidak didukung: | \\ dan kelas kurung pendek seperti [xy] dicocokkan sebagai karakter biasa, jadi pola yang ditulis sebagai regex tidak pernah cocok dengan yang dimaksud. Untuk mencocokkan salah satu dari beberapa teks, tambahkan grup “Salah satu dari ini” dan isi dengan satu kondisi untuk tiap teks.",
-        "PATTERN_WITHOUT_WILDCARD": "Tanpa * pola ini harus sama dengan seluruh teks. Gunakan operator “adalah” untuk seluruh teks, “mengandung” untuk sebagiannya, atau beri * di sekitar teks, misalnya *kopi*."
+        "PATTERN_WITHOUT_WILDCARD": "Tanpa * pola ini harus sama dengan seluruh teks. Gunakan operator “adalah” untuk seluruh teks, “mengandung” untuk sebagiannya, atau beri * di sekitar teks, misalnya *kopi*.",
+        "CONFLICTING_ACTIONS": "Tindakan transfer atau pemecahan tidak dapat digabungkan dengan “Atur kategori”, dan setiap bagiannya memiliki kategori atau akun."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Atur penerima ke {name}{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}",
       "request_ai_review": "Minta peninjauan AI: {instruction}",
       "set_payee_from_text": "Atur penerima dari teks: “{template}”{createIfMissing, select, yes { (dibuat jika belum ada)} other {}}{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}",
-      "set_description": "Atur deskripsi ({mode, select, append {tambahkan setelah} prepend {tambahkan sebelum} other {ganti}}): “{template}”{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}"
+      "set_description": "Atur deskripsi ({mode, select, append {tambahkan setelah} prepend {tambahkan sebelum} other {ganti}}): “{template}”{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}",
+      "convert_to_transfer": "Ubah menjadi transfer {direction, select, from {dari} other {ke}} {account}",
+      "split": "Pecah menjadi: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} ke {account}",
+      "category": "{amount} sebagai {category}",
+      "plain": "{amount}",
+      "rest": "sisanya"
     }
   }
 }

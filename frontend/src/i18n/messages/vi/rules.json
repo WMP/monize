@@ -90,7 +90,16 @@
       "imported": "Một giao dịch được nhập",
       "atLeastOne": "Giữ ít nhất một tùy chọn được chọn",
       "stopProcessing": "Dừng xử lý các quy tắc khác",
-      "stopProcessingHelp": "Khi quy tắc này khớp với một giao dịch, các quy tắc đứng sau nó trong danh sách sẽ bị bỏ qua đối với giao dịch đó."
+      "stopProcessingHelp": "Khi quy tắc này khớp với một giao dịch, các quy tắc đứng sau nó trong danh sách sẽ bị bỏ qua đối với giao dịch đó.",
+      "window": {
+        "title": "Hoạt động trong khoảng",
+        "help": "Quy tắc chỉ áp dụng cho các giao dịch có ngày nằm trong khoảng này: khi tạo hoặc nhập giao dịch, và khi thử hoặc chạy quy tắc. Để trống một ngày nếu không giới hạn.",
+        "from": "Ngày đầu",
+        "to": "Ngày cuối",
+        "backwards": "Ngày cuối không được trước ngày đầu",
+        "noLimit": "không giới hạn",
+        "words": "Chỉ áp dụng cho giao dịch có ngày từ {from} đến {to}"
+      }
     },
     "if": {
       "description": "Các hành động chỉ chạy với những giao dịch khớp",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Ngày trong tháng",
       "weekday": "Ngày trong tuần",
       "status": "Trạng thái",
-      "hasAttachment": "Có tệp đính kèm"
+      "hasAttachment": "Có tệp đính kèm",
+      "date": "Ngày"
     },
     "operators": {
       "eq": "là",
@@ -215,7 +225,8 @@
         "replace": "Thay thế mô tả",
         "append": "Thêm vào sau mô tả",
         "prepend": "Thêm vào trước mô tả"
-      }
+      },
+      "structuralReadOnly": "Hành động này được tạo qua trợ lý. Ở đây có thể di chuyển hoặc xóa, nhưng không thể chỉnh sửa."
     },
     "actionTypes": {
       "add_tags": "Thêm thẻ",
@@ -224,7 +235,9 @@
       "set_payee": "Đặt người nhận",
       "request_ai_review": "Yêu cầu AI xem xét",
       "set_payee_from_text": "Đặt người nhận từ văn bản",
-      "set_description": "Đặt mô tả"
+      "set_description": "Đặt mô tả",
+      "convert_to_transfer": "Chuyển thành giao dịch chuyển khoản",
+      "split": "Tách giao dịch"
     },
     "save": {
       "button": "Lưu quy tắc",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Mỗi tên phần bắt giữ chỉ được dùng một lần trong một quy tắc.",
         "UNKNOWN_CAPTURE": "Văn bản dùng một phần bắt giữ mà không điều kiện nào của quy tắc này định nghĩa.",
         "LOOKS_LIKE_REGEX": "Biểu thức chính quy không được hỗ trợ: | \\ và các lớp ngoặc vuông ngắn như [xy] được coi là ký tự thông thường, nên mẫu viết như regex không bao giờ khớp với ý định. Để khớp một trong nhiều văn bản, hãy thêm nhóm “Bất kỳ điều nào sau đây” và đặt vào đó một điều kiện cho mỗi văn bản.",
-        "PATTERN_WITHOUT_WILDCARD": "Không có * thì mẫu này phải bằng toàn bộ văn bản. Dùng toán tử “là” cho toàn bộ văn bản, “chứa” cho một phần, hoặc đặt * quanh văn bản, ví dụ *cà phê*."
+        "PATTERN_WITHOUT_WILDCARD": "Không có * thì mẫu này phải bằng toàn bộ văn bản. Dùng toán tử “là” cho toàn bộ văn bản, “chứa” cho một phần, hoặc đặt * quanh văn bản, ví dụ *cà phê*.",
+        "CONFLICTING_ACTIONS": "Hành động chuyển khoản hoặc tách không thể kết hợp với “Đặt danh mục”, và mỗi phần của nó có danh mục hoặc tài khoản."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Đặt người nhận thành {name}{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}",
       "request_ai_review": "Yêu cầu AI xem xét: {instruction}",
       "set_payee_from_text": "Đặt người nhận từ văn bản: “{template}”{createIfMissing, select, yes { (tạo mới nếu chưa có)} other {}}{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}",
-      "set_description": "Đặt mô tả ({mode, select, append {thêm vào sau} prepend {thêm vào trước} other {thay thế}}): “{template}”{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}"
+      "set_description": "Đặt mô tả ({mode, select, append {thêm vào sau} prepend {thêm vào trước} other {thay thế}}): “{template}”{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}",
+      "convert_to_transfer": "Chuyển thành chuyển khoản {direction, select, from {từ} other {đến}} {account}",
+      "split": "Tách thành: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} đến {account}",
+      "category": "{amount} làm {category}",
+      "plain": "{amount}",
+      "rest": "phần còn lại"
     }
   }
 }

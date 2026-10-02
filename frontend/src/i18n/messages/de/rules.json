@@ -90,7 +90,16 @@
       "imported": "Eine Transaktion wird importiert",
       "atLeastOne": "Mindestens eine Option muss ausgewählt bleiben",
       "stopProcessing": "Weitere Regeln nicht mehr verarbeiten",
-      "stopProcessingHelp": "Wenn diese Regel auf eine Transaktion zutrifft, werden die Regeln, die in der Liste danach stehen, für diese Transaktion übersprungen."
+      "stopProcessingHelp": "Wenn diese Regel auf eine Transaktion zutrifft, werden die Regeln, die in der Liste danach stehen, für diese Transaktion übersprungen.",
+      "window": {
+        "title": "Aktiv zwischen",
+        "help": "Die Regel gilt nur für Transaktionen, deren Datum in diesem Zeitraum liegt: beim Erstellen oder Importieren sowie beim Testen oder Ausführen der Regel. Ein leeres Datum bedeutet keine Begrenzung.",
+        "from": "Erstes Datum",
+        "to": "Letztes Datum",
+        "backwards": "Das letzte Datum darf nicht vor dem ersten Datum liegen",
+        "noLimit": "keine Begrenzung",
+        "words": "Nur für Transaktionen vom {from} bis {to}"
+      }
     },
     "if": {
       "description": "Die Aktionen laufen nur für Transaktionen, die zutreffen",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Tag des Monats",
       "weekday": "Wochentag",
       "status": "Status",
-      "hasAttachment": "Hat einen Anhang"
+      "hasAttachment": "Hat einen Anhang",
+      "date": "Datum"
     },
     "operators": {
       "eq": "ist",
@@ -215,7 +225,8 @@
         "replace": "Beschreibung ersetzen",
         "append": "Nach der Beschreibung anfügen",
         "prepend": "Vor der Beschreibung einfügen"
-      }
+      },
+      "structuralReadOnly": "Diese Aktion wurde über den Assistenten erstellt. Hier kann sie verschoben oder entfernt, aber nicht bearbeitet werden."
     },
     "actionTypes": {
       "add_tags": "Tags hinzufügen",
@@ -224,7 +235,9 @@
       "set_payee": "Zahlungsempfänger festlegen",
       "request_ai_review": "KI-Prüfung anfordern",
       "set_payee_from_text": "Zahlungsempfänger aus Text festlegen",
-      "set_description": "Beschreibung festlegen"
+      "set_description": "Beschreibung festlegen",
+      "convert_to_transfer": "In eine Überweisung umwandeln",
+      "split": "Transaktion aufteilen"
     },
     "save": {
       "button": "Regel speichern",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Jeder Erfassungsname darf in einer Regel nur einmal vorkommen.",
         "UNKNOWN_CAPTURE": "Der Text verwendet eine Erfassung, die keine Bedingung dieser Regel definiert.",
         "LOOKS_LIKE_REGEX": "Reguläre Ausdrücke werden nicht unterstützt: | \\ und kurze Klammerklassen wie [xy] gelten als gewöhnliche Zeichen, daher trifft ein als Regex geschriebenes Muster nie das Gemeinte. Um einen von mehreren Texten zu treffen, fügen Sie eine Gruppe „Eine dieser“ hinzu und legen Sie darin für jeden Text eine Bedingung an.",
-        "PATTERN_WITHOUT_WILDCARD": "Ohne * muss dieses Muster dem gesamten Text entsprechen. Verwenden Sie „ist“ für den ganzen Text, „enthält“ für einen Teil davon oder setzen Sie * um den Text, zum Beispiel *Kaffee*."
+        "PATTERN_WITHOUT_WILDCARD": "Ohne * muss dieses Muster dem gesamten Text entsprechen. Verwenden Sie „ist“ für den ganzen Text, „enthält“ für einen Teil davon oder setzen Sie * um den Text, zum Beispiel *Kaffee*.",
+        "CONFLICTING_ACTIONS": "Eine Überweisungs- oder Aufteilungsaktion kann nicht mit „Kategorie festlegen“ kombiniert werden, und jeder ihrer Teile hat entweder eine Kategorie oder ein Konto."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Zahlungsempfänger festlegen auf {name}{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}",
       "request_ai_review": "KI-Prüfung anfordern: {instruction}",
       "set_payee_from_text": "Zahlungsempfänger aus Text festlegen: „{template}“{createIfMissing, select, yes { (angelegt, falls nicht vorhanden)} other {}}{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}",
-      "set_description": "Beschreibung festlegen ({mode, select, append {anfügen} prepend {voranstellen} other {ersetzen}}): „{template}“{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}"
+      "set_description": "Beschreibung festlegen ({mode, select, append {anfügen} prepend {voranstellen} other {ersetzen}}): „{template}“{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}",
+      "convert_to_transfer": "In eine Überweisung {direction, select, from {von} other {auf}} {account} umwandeln",
+      "split": "Aufteilen in: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} an {account}",
+      "category": "{amount} als {category}",
+      "plain": "{amount}",
+      "rest": "der Rest"
     }
   }
 }

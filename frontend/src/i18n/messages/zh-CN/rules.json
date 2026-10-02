@@ -90,7 +90,16 @@
       "imported": "导入交易时",
       "atLeastOne": "请至少保持选中一个选项",
       "stopProcessing": "停止处理其他规则",
-      "stopProcessingHelp": "此规则与某笔交易匹配后，列表中排在它之后的规则将不再对该交易运行。"
+      "stopProcessingHelp": "此规则与某笔交易匹配后，列表中排在它之后的规则将不再对该交易运行。",
+      "window": {
+        "title": "生效期间",
+        "help": "此规则仅适用于日期在该期间内的交易：创建或导入时，以及测试或运行规则时。日期留空表示不限。",
+        "from": "起始日期",
+        "to": "结束日期",
+        "backwards": "结束日期不能早于起始日期",
+        "noLimit": "不限",
+        "words": "仅适用于日期从 {from} 到 {to} 的交易"
+      }
     },
     "if": {
       "description": "仅对匹配的交易执行操作",
@@ -138,7 +147,8 @@
       "dayOfMonth": "每月的日期",
       "weekday": "星期几",
       "status": "状态",
-      "hasAttachment": "有附件"
+      "hasAttachment": "有附件",
+      "date": "日期"
     },
     "operators": {
       "eq": "等于",
@@ -215,7 +225,8 @@
         "replace": "替换说明",
         "append": "添加到说明之后",
         "prepend": "添加到说明之前"
-      }
+      },
+      "structuralReadOnly": "此操作是通过助手创建的。在这里可以移动或删除，但不能编辑。"
     },
     "actionTypes": {
       "add_tags": "添加标签",
@@ -224,7 +235,9 @@
       "set_payee": "设置收款方",
       "request_ai_review": "请求 AI 审核",
       "set_payee_from_text": "根据文本设置收款方",
-      "set_description": "设置说明"
+      "set_description": "设置说明",
+      "convert_to_transfer": "转为转账",
+      "split": "拆分交易"
     },
     "save": {
       "button": "保存规则",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "每个捕获名称在一条规则中只能使用一次。",
         "UNKNOWN_CAPTURE": "文本使用了此规则中没有任何条件定义的捕获。",
         "LOOKS_LIKE_REGEX": "不支持正则表达式：| \\ 和 [xy] 这类简短的方括号字符类会被当作普通字符，因此按正则写的模式永远匹配不到本意。若要匹配多个文本之一，请添加“满足以下任意一项”分组，并为每个文本各放一个条件。",
-        "PATTERN_WITHOUT_WILDCARD": "不含 * 时，此模式必须与整段文本完全相同。整段文本请用“等于”，部分文本请用“包含”，或在文本两侧加上 *，例如 *咖啡*。"
+        "PATTERN_WITHOUT_WILDCARD": "不含 * 时，此模式必须与整段文本完全相同。整段文本请用“等于”，部分文本请用“包含”，或在文本两侧加上 *，例如 *咖啡*。",
+        "CONFLICTING_ACTIONS": "转账或拆分操作不能与“设置分类”组合，且其每个部分要么有分类，要么有账户。"
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "将收款方设置为 {name}{onlyIfEmpty, select, yes {（仅在为空时）} other {}}",
       "request_ai_review": "请求 AI 审核：{instruction}",
       "set_payee_from_text": "根据文本设置收款方：“{template}”{createIfMissing, select, yes {（不存在则创建）} other {}}{onlyIfEmpty, select, yes {（仅在为空时）} other {}}",
-      "set_description": "设置说明（{mode, select, append {追加} prepend {前置} other {替换}}）：“{template}”{onlyIfEmpty, select, yes {（仅在为空时）} other {}}"
+      "set_description": "设置说明（{mode, select, append {追加} prepend {前置} other {替换}}）：“{template}”{onlyIfEmpty, select, yes {（仅在为空时）} other {}}",
+      "convert_to_transfer": "转为{direction, select, from {来自} other {转至}} {account} 的转账",
+      "split": "拆分为：{parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} 转入 {account}",
+      "category": "{amount} 计入 {category}",
+      "plain": "{amount}",
+      "rest": "其余部分"
     }
   }
 }

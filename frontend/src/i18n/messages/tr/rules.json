@@ -90,7 +90,16 @@
       "imported": "Bir işlem içe aktarıldığında",
       "atLeastOne": "En az bir seçenek işaretli kalsın",
       "stopProcessing": "Diğer kuralları işlemeyi durdur",
-      "stopProcessingHelp": "Bu kural bir işlemle eşleştiğinde, listede kendisinden sonra gelen kurallar o işlem için atlanır."
+      "stopProcessingHelp": "Bu kural bir işlemle eşleştiğinde, listede kendisinden sonra gelen kurallar o işlem için atlanır.",
+      "window": {
+        "title": "Şu tarihler arasında etkin",
+        "help": "Kural yalnızca tarihi bu aralıkta olan işlemlere uygulanır: işlemler oluşturulurken veya içe aktarılırken ve kural test edilirken ya da çalıştırılırken. Sınır koymamak için bir tarihi boş bırakın.",
+        "from": "İlk tarih",
+        "to": "Son tarih",
+        "backwards": "Son tarih ilk tarihten önce olamaz",
+        "noLimit": "sınır yok",
+        "words": "Yalnızca {from} ile {to} arasında tarihli işlemler için"
+      }
     },
     "if": {
       "description": "Eylemler yalnızca eşleşen işlemler için çalışır",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Ayın günü",
       "weekday": "Haftanın günü",
       "status": "Durum",
-      "hasAttachment": "Eki var"
+      "hasAttachment": "Eki var",
+      "date": "Tarih"
     },
     "operators": {
       "eq": "şudur",
@@ -215,7 +225,8 @@
         "replace": "Açıklamayı değiştir",
         "append": "Açıklamanın sonuna ekle",
         "prepend": "Açıklamanın başına ekle"
-      }
+      },
+      "structuralReadOnly": "Bu eylem asistan aracılığıyla oluşturuldu. Burada taşınabilir veya kaldırılabilir, ancak düzenlenemez."
     },
     "actionTypes": {
       "add_tags": "Etiket ekle",
@@ -224,7 +235,9 @@
       "set_payee": "Alıcıyı ayarla",
       "request_ai_review": "Yapay zekâ incelemesi iste",
       "set_payee_from_text": "Alıcıyı metinden ayarla",
-      "set_description": "Açıklamayı ayarla"
+      "set_description": "Açıklamayı ayarla",
+      "convert_to_transfer": "Havaleye dönüştür",
+      "split": "İşlemi böl"
     },
     "save": {
       "button": "Kuralı kaydet",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Her yakalama adı bir kuralda yalnızca bir kez kullanılabilir.",
         "UNKNOWN_CAPTURE": "Metin, bu kuralın hiçbir koşulunda tanımlanmamış bir yakalama kullanıyor.",
         "LOOKS_LIKE_REGEX": "Düzenli ifadeler desteklenmez: | \\ ve [xy] gibi kısa köşeli parantez sınıfları sıradan karakterler olarak eşleştirilir, bu yüzden regex olarak yazılmış bir desen amaçlananla asla eşleşmez. Birkaç metinden biriyle eşleşmek için “Bunlardan herhangi biri” grubu ekleyin ve her metin için içine bir koşul koyun.",
-        "PATTERN_WITHOUT_WILDCARD": "* olmadan bu desen metnin tamamına eşit olmalıdır. Metnin tamamı için “şudur”, bir parçası için “şunu içerir” işlecini kullanın ya da metnin etrafına * koyun, örneğin *kahve*."
+        "PATTERN_WITHOUT_WILDCARD": "* olmadan bu desen metnin tamamına eşit olmalıdır. Metnin tamamı için “şudur”, bir parçası için “şunu içerir” işlecini kullanın ya da metnin etrafına * koyun, örneğin *kahve*.",
+        "CONFLICTING_ACTIONS": "Havale veya bölme eylemi “Kategoriyi ayarla” ile birleştirilemez ve parçalarının her birinin bir kategorisi ya da bir hesabı vardır."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Alıcıyı {name} olarak ayarla{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}",
       "request_ai_review": "Yapay zekâ incelemesi iste: {instruction}",
       "set_payee_from_text": "Alıcıyı metinden ayarla: “{template}”{createIfMissing, select, yes { (yoksa oluşturulur)} other {}}{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}",
-      "set_description": "Açıklamayı ayarla ({mode, select, append {sona ekle} prepend {başa ekle} other {değiştir}}): “{template}”{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}"
+      "set_description": "Açıklamayı ayarla ({mode, select, append {sona ekle} prepend {başa ekle} other {değiştir}}): “{template}”{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}",
+      "convert_to_transfer": "{direction, select, from {{account} hesabından} other {{account} hesabına}} havaleye dönüştür",
+      "split": "Şuna böl: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} tutarı {account} hesabına",
+      "category": "{amount} tutarı {category} olarak",
+      "plain": "{amount}",
+      "rest": "kalan"
     }
   }
 }

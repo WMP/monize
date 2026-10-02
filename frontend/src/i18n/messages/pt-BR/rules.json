@@ -90,7 +90,16 @@
       "imported": "Uma transação é importada",
       "atLeastOne": "Mantenha pelo menos uma opção selecionada",
       "stopProcessing": "Parar de processar as outras regras",
-      "stopProcessingHelp": "Quando esta regra corresponde a uma transação, as regras que vêm depois dela na lista são ignoradas para essa transação."
+      "stopProcessingHelp": "Quando esta regra corresponde a uma transação, as regras que vêm depois dela na lista são ignoradas para essa transação.",
+      "window": {
+        "title": "Ativa entre",
+        "help": "A regra só vale para transações com data dentro deste período: ao criá-las ou importá-las e ao testar ou executar a regra. Deixe uma data vazia para não ter limite.",
+        "from": "Primeira data",
+        "to": "Última data",
+        "backwards": "A última data não pode ser anterior à primeira",
+        "noLimit": "sem limite",
+        "words": "Somente para transações com data de {from} a {to}"
+      }
     },
     "if": {
       "description": "As ações são executadas apenas para as transações que correspondem",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Dia do mês",
       "weekday": "Dia da semana",
       "status": "Status",
-      "hasAttachment": "Tem um anexo"
+      "hasAttachment": "Tem um anexo",
+      "date": "Data"
     },
     "operators": {
       "eq": "é",
@@ -215,7 +225,8 @@
         "replace": "Substituir a descrição",
         "append": "Acrescentar depois da descrição",
         "prepend": "Acrescentar antes da descrição"
-      }
+      },
+      "structuralReadOnly": "Esta ação foi criada pelo assistente. Aqui ela pode ser movida ou removida, mas não editada."
     },
     "actionTypes": {
       "add_tags": "Adicionar tags",
@@ -224,7 +235,9 @@
       "set_payee": "Definir o favorecido",
       "request_ai_review": "Pedir uma revisão da IA",
       "set_payee_from_text": "Definir o favorecido a partir do texto",
-      "set_description": "Definir a descrição"
+      "set_description": "Definir a descrição",
+      "convert_to_transfer": "Converter em transferência",
+      "split": "Dividir a transação"
     },
     "save": {
       "button": "Salvar regra",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Cada nome de captura só pode ser usado uma vez em uma regra.",
         "UNKNOWN_CAPTURE": "O texto usa uma captura que nenhuma condição desta regra define.",
         "LOOKS_LIKE_REGEX": "Expressões regulares não são compatíveis: | \\ e as classes curtas entre colchetes como [xy] são tratados como caracteres comuns, então um padrão escrito como regex nunca corresponde ao que se pretendia. Para corresponder a um entre vários textos, adicione um grupo “Qualquer uma destas” e coloque nele uma condição para cada texto.",
-        "PATTERN_WITHOUT_WILDCARD": "Sem * este padrão precisa ser igual ao texto inteiro. Use o operador “é” para o texto inteiro, “contém” para uma parte, ou coloque * em volta do texto, por exemplo *café*."
+        "PATTERN_WITHOUT_WILDCARD": "Sem * este padrão precisa ser igual ao texto inteiro. Use o operador “é” para o texto inteiro, “contém” para uma parte, ou coloque * em volta do texto, por exemplo *café*.",
+        "CONFLICTING_ACTIONS": "Uma ação de transferência ou de divisão não pode ser combinada com “Definir a categoria”, e cada uma de suas partes tem uma categoria ou uma conta."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Definir o favorecido como {name}{onlyIfEmpty, select, yes { (somente se vazio)} other {}}",
       "request_ai_review": "Pedir uma revisão da IA: {instruction}",
       "set_payee_from_text": "Definir o favorecido a partir do texto: “{template}”{createIfMissing, select, yes { (criado se não existir)} other {}}{onlyIfEmpty, select, yes { (somente se vazio)} other {}}",
-      "set_description": "Definir a descrição ({mode, select, append {acrescentar depois} prepend {acrescentar antes} other {substituir}}): “{template}”{onlyIfEmpty, select, yes { (somente se vazio)} other {}}"
+      "set_description": "Definir a descrição ({mode, select, append {acrescentar depois} prepend {acrescentar antes} other {substituir}}): “{template}”{onlyIfEmpty, select, yes { (somente se vazio)} other {}}",
+      "convert_to_transfer": "Converter em transferência {direction, select, from {de} other {para}} {account}",
+      "split": "Dividir em: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} para {account}",
+      "category": "{amount} como {category}",
+      "plain": "{amount}",
+      "rest": "o restante"
     }
   }
 }

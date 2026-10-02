@@ -90,7 +90,16 @@
       "imported": "Se importa una transacción",
       "atLeastOne": "Mantén al menos una opción seleccionada",
       "stopProcessing": "Dejar de procesar otras reglas",
-      "stopProcessingHelp": "Cuando esta regla coincide con una transacción, las reglas que van después en la lista se omiten para esa transacción."
+      "stopProcessingHelp": "Cuando esta regla coincide con una transacción, las reglas que van después en la lista se omiten para esa transacción.",
+      "window": {
+        "title": "Activa entre",
+        "help": "La regla solo se aplica a las transacciones con fecha dentro de este período: al crearlas o importarlas y al probar o ejecutar la regla. Deja una fecha vacía para no poner límite.",
+        "from": "Primera fecha",
+        "to": "Última fecha",
+        "backwards": "La última fecha no puede ser anterior a la primera",
+        "noLimit": "sin límite",
+        "words": "Solo para transacciones con fecha del {from} al {to}"
+      }
     },
     "if": {
       "description": "Las acciones se ejecutan solo para las transacciones que coinciden",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Día del mes",
       "weekday": "Día de la semana",
       "status": "Estado",
-      "hasAttachment": "Tiene un adjunto"
+      "hasAttachment": "Tiene un adjunto",
+      "date": "Fecha"
     },
     "operators": {
       "eq": "es",
@@ -215,7 +225,8 @@
         "replace": "Reemplazar la descripción",
         "append": "Añadir después de la descripción",
         "prepend": "Añadir antes de la descripción"
-      }
+      },
+      "structuralReadOnly": "Esta acción se creó con el asistente. Aquí se puede mover o quitar, pero no editar."
     },
     "actionTypes": {
       "add_tags": "Añadir etiquetas",
@@ -224,7 +235,9 @@
       "set_payee": "Establecer el beneficiario",
       "request_ai_review": "Pedir una revisión de IA",
       "set_payee_from_text": "Establecer el beneficiario desde el texto",
-      "set_description": "Establecer la descripción"
+      "set_description": "Establecer la descripción",
+      "convert_to_transfer": "Convertir en transferencia",
+      "split": "Dividir la transacción"
     },
     "save": {
       "button": "Guardar regla",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Cada nombre de captura solo puede usarse una vez en una regla.",
         "UNKNOWN_CAPTURE": "El texto usa una captura que ninguna condición de esta regla define.",
         "LOOKS_LIKE_REGEX": "No se admiten las expresiones regulares: | \\ y las clases cortas entre corchetes como [xy] se tratan como caracteres normales, así que un patrón escrito como regex nunca coincide con lo que se pretendía. Para coincidir con uno de varios textos, añade un grupo «Cualquiera de estas» y pon en él una condición para cada texto.",
-        "PATTERN_WITHOUT_WILDCARD": "Sin * este patrón debe ser igual a todo el texto. Usa el operador «es» para el texto completo, «contiene» para una parte, o pon * alrededor del texto, por ejemplo *café*."
+        "PATTERN_WITHOUT_WILDCARD": "Sin * este patrón debe ser igual a todo el texto. Usa el operador «es» para el texto completo, «contiene» para una parte, o pon * alrededor del texto, por ejemplo *café*.",
+        "CONFLICTING_ACTIONS": "Una acción de transferencia o de división no se puede combinar con «Establecer la categoría», y cada una de sus partes tiene una categoría o una cuenta."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Establecer el beneficiario en {name}{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}",
       "request_ai_review": "Pedir una revisión de IA: {instruction}",
       "set_payee_from_text": "Establecer el beneficiario desde el texto: «{template}»{createIfMissing, select, yes { (se crea si no existe)} other {}}{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}",
-      "set_description": "Establecer la descripción ({mode, select, append {añadir al final} prepend {añadir al inicio} other {reemplazar}}): «{template}»{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}"
+      "set_description": "Establecer la descripción ({mode, select, append {añadir al final} prepend {añadir al inicio} other {reemplazar}}): «{template}»{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}",
+      "convert_to_transfer": "Convertir en transferencia {direction, select, from {desde} other {a}} {account}",
+      "split": "Dividir en: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} a {account}",
+      "category": "{amount} como {category}",
+      "plain": "{amount}",
+      "rest": "el resto"
     }
   }
 }

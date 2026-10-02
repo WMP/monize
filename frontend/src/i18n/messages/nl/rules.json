@@ -90,7 +90,16 @@
       "imported": "Een transactie wordt geïmporteerd",
       "atLeastOne": "Houd minstens één optie aangevinkt",
       "stopProcessing": "Verwerking van andere regels stoppen",
-      "stopProcessingHelp": "Als deze regel bij een transactie past, worden de regels die in de lijst na haar komen voor die transactie overgeslagen."
+      "stopProcessingHelp": "Als deze regel bij een transactie past, worden de regels die in de lijst na haar komen voor die transactie overgeslagen.",
+      "window": {
+        "title": "Actief tussen",
+        "help": "De regel geldt alleen voor transacties met een datum binnen deze periode: bij het aanmaken of importeren en bij het testen of uitvoeren van de regel. Laat een datum leeg voor geen limiet.",
+        "from": "Eerste datum",
+        "to": "Laatste datum",
+        "backwards": "De laatste datum mag niet vóór de eerste datum liggen",
+        "noLimit": "geen limiet",
+        "words": "Alleen voor transacties van {from} tot {to}"
+      }
     },
     "if": {
       "description": "De acties worden alleen uitgevoerd voor transacties die passen",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Dag van de maand",
       "weekday": "Dag van de week",
       "status": "Status",
-      "hasAttachment": "Heeft een bijlage"
+      "hasAttachment": "Heeft een bijlage",
+      "date": "Datum"
     },
     "operators": {
       "eq": "is",
@@ -215,7 +225,8 @@
         "replace": "Omschrijving vervangen",
         "append": "Toevoegen na de omschrijving",
         "prepend": "Toevoegen vóór de omschrijving"
-      }
+      },
+      "structuralReadOnly": "Deze actie is via de assistent gemaakt. Hier kan ze worden verplaatst of verwijderd, maar niet bewerkt."
     },
     "actionTypes": {
       "add_tags": "Tags toevoegen",
@@ -224,7 +235,9 @@
       "set_payee": "Begunstigde instellen",
       "request_ai_review": "AI-controle aanvragen",
       "set_payee_from_text": "Begunstigde instellen vanuit tekst",
-      "set_description": "Omschrijving instellen"
+      "set_description": "Omschrijving instellen",
+      "convert_to_transfer": "Omzetten naar een overboeking",
+      "split": "Transactie splitsen"
     },
     "save": {
       "button": "Regel opslaan",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Elke opnamenaam mag in een regel maar één keer voorkomen.",
         "UNKNOWN_CAPTURE": "De tekst gebruikt een opname die geen enkele voorwaarde van deze regel definieert.",
         "LOOKS_LIKE_REGEX": "Reguliere expressies worden niet ondersteund: | \\ en korte haakjesklassen zoals [xy] worden als gewone tekens behandeld, dus een patroon dat als regex is geschreven komt nooit overeen met wat bedoeld was. Om met een van meerdere teksten overeen te komen, voeg je een groep “Een van deze” toe met voor elke tekst één voorwaarde.",
-        "PATTERN_WITHOUT_WILDCARD": "Zonder * moet dit patroon gelijk zijn aan de hele tekst. Gebruik “is” voor de hele tekst, “bevat” voor een deel ervan, of zet * om de tekst, bijvoorbeeld *koffie*."
+        "PATTERN_WITHOUT_WILDCARD": "Zonder * moet dit patroon gelijk zijn aan de hele tekst. Gebruik “is” voor de hele tekst, “bevat” voor een deel ervan, of zet * om de tekst, bijvoorbeeld *koffie*.",
+        "CONFLICTING_ACTIONS": "Een overboeking- of splitsactie kan niet worden gecombineerd met ‘Categorie instellen’, en elk onderdeel heeft een categorie of een rekening."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Begunstigde instellen op {name}{onlyIfEmpty, select, yes { (alleen als leeg)} other {}}",
       "request_ai_review": "AI-controle aanvragen: {instruction}",
       "set_payee_from_text": "Begunstigde instellen vanuit tekst: “{template}”{createIfMissing, select, yes { (aangemaakt als die ontbreekt)} other {}}{onlyIfEmpty, select, yes { (alleen als leeg)} other {}}",
-      "set_description": "Omschrijving instellen ({mode, select, append {toevoegen na} prepend {toevoegen vóór} other {vervangen}}): “{template}”{onlyIfEmpty, select, yes { (alleen als leeg)} other {}}"
+      "set_description": "Omschrijving instellen ({mode, select, append {toevoegen na} prepend {toevoegen vóór} other {vervangen}}): “{template}”{onlyIfEmpty, select, yes { (alleen als leeg)} other {}}",
+      "convert_to_transfer": "Omzetten naar een overboeking {direction, select, from {van} other {naar}} {account}",
+      "split": "Splitsen in: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} naar {account}",
+      "category": "{amount} als {category}",
+      "plain": "{amount}",
+      "rest": "de rest"
     }
   }
 }

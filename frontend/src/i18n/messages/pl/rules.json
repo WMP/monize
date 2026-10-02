@@ -90,7 +90,16 @@
       "imported": "Transakcja zostaje zaimportowana",
       "atLeastOne": "Zostaw zaznaczoną co najmniej jedną opcję",
       "stopProcessing": "Zatrzymaj przetwarzanie kolejnych reguł",
-      "stopProcessingHelp": "Gdy ta reguła pasuje do transakcji, reguły znajdujące się po niej na liście są dla tej transakcji pomijane."
+      "stopProcessingHelp": "Gdy ta reguła pasuje do transakcji, reguły znajdujące się po niej na liście są dla tej transakcji pomijane.",
+      "window": {
+        "title": "Aktywna w okresie",
+        "help": "Reguła dotyczy tylko transakcji z datą z tego okresu: przy ich tworzeniu lub imporcie oraz przy testowaniu i uruchamianiu reguły. Pozostaw datę pustą, aby nie ograniczać.",
+        "from": "Data początkowa",
+        "to": "Data końcowa",
+        "backwards": "Data końcowa nie może być wcześniejsza niż początkowa",
+        "noLimit": "bez ograniczenia",
+        "words": "Tylko dla transakcji z datą od {from} do {to}"
+      }
     },
     "if": {
       "description": "Akcje wykonują się tylko dla transakcji, które pasują",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Dzień miesiąca",
       "weekday": "Dzień tygodnia",
       "status": "Status",
-      "hasAttachment": "Ma załącznik"
+      "hasAttachment": "Ma załącznik",
+      "date": "Data"
     },
     "operators": {
       "eq": "jest",
@@ -215,7 +225,8 @@
         "replace": "Zastąp opis",
         "append": "Dodaj po opisie",
         "prepend": "Dodaj przed opisem"
-      }
+      },
+      "structuralReadOnly": "Ta akcja została utworzona przez asystenta. Tutaj można ją przenieść lub usunąć, ale nie edytować."
     },
     "actionTypes": {
       "add_tags": "Dodaj tagi",
@@ -224,7 +235,9 @@
       "set_payee": "Ustaw odbiorcę",
       "request_ai_review": "Poproś o przegląd AI",
       "set_payee_from_text": "Ustaw odbiorcę z tekstu",
-      "set_description": "Ustaw opis"
+      "set_description": "Ustaw opis",
+      "convert_to_transfer": "Zamień na przelew",
+      "split": "Podziel transakcję"
     },
     "save": {
       "button": "Zapisz regułę",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Każdą nazwę przechwytywania można użyć w regule tylko raz.",
         "UNKNOWN_CAPTURE": "Tekst używa przechwytywania, którego nie definiuje żaden warunek tej reguły.",
         "LOOKS_LIKE_REGEX": "Wyrażenia regularne nie są obsługiwane: | \\ oraz krótkie klasy w nawiasach, jak [xy], są traktowane jak zwykłe znaki, więc wzorzec zapisany jako regex nigdy nie dopasuje tego, o co chodziło. Aby dopasować jeden z kilku tekstów, dodaj grupę „Dowolny z poniższych” i umieść w niej po jednym warunku dla każdego tekstu.",
-        "PATTERN_WITHOUT_WILDCARD": "Bez * ten wzorzec musi być równy całemu tekstowi. Użyj operatora „jest” dla całego tekstu, „zawiera” dla jego części albo otocz tekst znakami *, na przykład *kawa*."
+        "PATTERN_WITHOUT_WILDCARD": "Bez * ten wzorzec musi być równy całemu tekstowi. Użyj operatora „jest” dla całego tekstu, „zawiera” dla jego części albo otocz tekst znakami *, na przykład *kawa*.",
+        "CONFLICTING_ACTIONS": "Akcji przelewu lub podziału nie można łączyć z „Ustaw kategorię”, a każda jej część ma kategorię albo konto."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Ustaw odbiorcę na {name}{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
       "request_ai_review": "Poproś o przegląd AI: {instruction}",
       "set_payee_from_text": "Ustaw odbiorcę z tekstu: „{template}”{createIfMissing, select, yes { (utworzony, jeśli nie istnieje)} other {}}{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
-      "set_description": "Ustaw opis ({mode, select, append {dołącz na końcu} prepend {dołącz na początku} other {zastąp}}): „{template}”{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}"
+      "set_description": "Ustaw opis ({mode, select, append {dołącz na końcu} prepend {dołącz na początku} other {zastąp}}): „{template}”{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
+      "convert_to_transfer": "Zamień na przelew {direction, select, from {z konta} other {na konto}} {account}",
+      "split": "Podziel na: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} na konto {account}",
+      "category": "{amount} jako {category}",
+      "plain": "{amount}",
+      "rest": "reszta"
     }
   }
 }

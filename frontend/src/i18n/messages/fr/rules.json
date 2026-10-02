@@ -90,7 +90,16 @@
       "imported": "Une transaction est importée",
       "atLeastOne": "Gardez au moins une option cochée",
       "stopProcessing": "Arrêter le traitement des autres règles",
-      "stopProcessingHelp": "Lorsque cette règle correspond à une transaction, les règles qui la suivent dans la liste sont ignorées pour cette transaction."
+      "stopProcessingHelp": "Lorsque cette règle correspond à une transaction, les règles qui la suivent dans la liste sont ignorées pour cette transaction.",
+      "window": {
+        "title": "Active entre",
+        "help": "La règle ne s'applique qu'aux transactions datées dans cette période : à leur création ou leur import, et lors du test ou de l'exécution de la règle. Laissez une date vide pour ne mettre aucune limite.",
+        "from": "Première date",
+        "to": "Dernière date",
+        "backwards": "La dernière date ne doit pas être antérieure à la première",
+        "noLimit": "sans limite",
+        "words": "Uniquement pour les transactions datées du {from} au {to}"
+      }
     },
     "if": {
       "description": "Les actions ne s'exécutent que pour les transactions qui correspondent",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Jour du mois",
       "weekday": "Jour de la semaine",
       "status": "Statut",
-      "hasAttachment": "A une pièce jointe"
+      "hasAttachment": "A une pièce jointe",
+      "date": "Date"
     },
     "operators": {
       "eq": "est",
@@ -215,7 +225,8 @@
         "replace": "Remplacer la description",
         "append": "Ajouter après la description",
         "prepend": "Ajouter avant la description"
-      }
+      },
+      "structuralReadOnly": "Cette action a été créée via l'assistant. Ici, elle peut être déplacée ou supprimée, mais pas modifiée."
     },
     "actionTypes": {
       "add_tags": "Ajouter des tags",
@@ -224,7 +235,9 @@
       "set_payee": "Définir le bénéficiaire",
       "request_ai_review": "Demander une révision par l'IA",
       "set_payee_from_text": "Définir le bénéficiaire à partir du texte",
-      "set_description": "Définir la description"
+      "set_description": "Définir la description",
+      "convert_to_transfer": "Convertir en virement",
+      "split": "Fractionner la transaction"
     },
     "save": {
       "button": "Enregistrer la règle",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "Chaque nom de capture ne peut être utilisé qu’une fois dans une règle.",
         "UNKNOWN_CAPTURE": "Le texte utilise une capture qu’aucune condition de cette règle ne définit.",
         "LOOKS_LIKE_REGEX": "Les expressions régulières ne sont pas prises en charge : | \\ et les classes courtes entre crochets comme [xy] sont traités comme des caractères ordinaires, donc un motif écrit comme une regex ne correspond jamais à ce qui était voulu. Pour correspondre à l'un de plusieurs textes, ajoutez un groupe « N'importe laquelle de celles-ci » avec une condition pour chaque texte.",
-        "PATTERN_WITHOUT_WILDCARD": "Sans *, ce motif doit être égal à tout le texte. Utilisez l'opérateur « est » pour le texte entier, « contient » pour une partie, ou entourez le texte de *, par exemple *café*."
+        "PATTERN_WITHOUT_WILDCARD": "Sans *, ce motif doit être égal à tout le texte. Utilisez l'opérateur « est » pour le texte entier, « contient » pour une partie, ou entourez le texte de *, par exemple *café*.",
+        "CONFLICTING_ACTIONS": "Une action de virement ou de fractionnement ne peut pas être combinée avec « Définir la catégorie », et chacune de ses parties a soit une catégorie, soit un compte."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "Définir le bénéficiaire sur {name}{onlyIfEmpty, select, yes { (seulement si vide)} other {}}",
       "request_ai_review": "Demander une révision par l'IA : {instruction}",
       "set_payee_from_text": "Définir le bénéficiaire à partir du texte : « {template} »{createIfMissing, select, yes { (créé s’il n’existe pas)} other {}}{onlyIfEmpty, select, yes { (seulement si vide)} other {}}",
-      "set_description": "Définir la description ({mode, select, append {ajouter après} prepend {ajouter avant} other {remplacer}}) : « {template} »{onlyIfEmpty, select, yes { (seulement si vide)} other {}}"
+      "set_description": "Définir la description ({mode, select, append {ajouter après} prepend {ajouter avant} other {remplacer}}) : « {template} »{onlyIfEmpty, select, yes { (seulement si vide)} other {}}",
+      "convert_to_transfer": "Convertir en virement {direction, select, from {depuis} other {vers}} {account}",
+      "split": "Fractionner en : {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} vers {account}",
+      "category": "{amount} en {category}",
+      "plain": "{amount}",
+      "rest": "le reste"
     }
   }
 }

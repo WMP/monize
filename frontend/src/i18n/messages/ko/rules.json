@@ -90,7 +90,16 @@
       "imported": "거래를 가져올 때",
       "atLeastOne": "하나 이상의 옵션을 선택한 상태로 두세요",
       "stopProcessing": "다른 규칙 처리 중지",
-      "stopProcessingHelp": "이 규칙이 거래와 일치하면, 목록에서 이 규칙 뒤에 있는 규칙은 해당 거래에 대해 건너뜁니다."
+      "stopProcessingHelp": "이 규칙이 거래와 일치하면, 목록에서 이 규칙 뒤에 있는 규칙은 해당 거래에 대해 건너뜁니다.",
+      "window": {
+        "title": "적용 기간",
+        "help": "이 규칙은 날짜가 이 기간 안에 있는 거래에만 적용됩니다(거래를 만들거나 가져올 때, 그리고 규칙을 테스트하거나 실행할 때). 날짜를 비워 두면 제한이 없습니다.",
+        "from": "시작일",
+        "to": "종료일",
+        "backwards": "종료일은 시작일보다 앞설 수 없습니다",
+        "noLimit": "제한 없음",
+        "words": "{from}부터 {to}까지 날짜의 거래에만 적용"
+      }
     },
     "if": {
       "description": "일치하는 거래에 대해서만 동작이 실행됩니다",
@@ -138,7 +147,8 @@
       "dayOfMonth": "월의 일",
       "weekday": "요일",
       "status": "상태",
-      "hasAttachment": "첨부 파일 있음"
+      "hasAttachment": "첨부 파일 있음",
+      "date": "날짜"
     },
     "operators": {
       "eq": "다음과 같음",
@@ -215,7 +225,8 @@
         "replace": "설명 바꾸기",
         "append": "설명 뒤에 추가",
         "prepend": "설명 앞에 추가"
-      }
+      },
+      "structuralReadOnly": "이 동작은 어시스턴트로 만들어졌습니다. 여기서는 이동하거나 제거할 수 있지만 편집할 수는 없습니다."
     },
     "actionTypes": {
       "add_tags": "태그 추가",
@@ -224,7 +235,9 @@
       "set_payee": "수취인 지정",
       "request_ai_review": "AI 검토 요청",
       "set_payee_from_text": "텍스트로 수취인 지정",
-      "set_description": "설명 지정"
+      "set_description": "설명 지정",
+      "convert_to_transfer": "이체로 변환",
+      "split": "거래 분할"
     },
     "save": {
       "button": "규칙 저장",
@@ -282,7 +295,8 @@
         "DUPLICATE_CAPTURE": "캡처 이름은 규칙 하나에서 한 번만 사용할 수 있습니다.",
         "UNKNOWN_CAPTURE": "이 규칙의 어떤 조건에서도 정의되지 않은 캡처를 텍스트에서 사용하고 있습니다.",
         "LOOKS_LIKE_REGEX": "정규식은 지원하지 않습니다. | \\ 및 [xy] 같은 짧은 대괄호 클래스는 일반 문자로 취급되므로 정규식으로 쓴 패턴은 의도한 대상과 일치하지 않습니다. 여러 텍스트 중 하나와 일치시키려면 “다음 중 하나라도” 그룹을 추가하고 텍스트마다 조건을 하나씩 넣으세요.",
-        "PATTERN_WITHOUT_WILDCARD": "*가 없으면 이 패턴은 텍스트 전체와 같아야 합니다. 텍스트 전체에는 “다음과 같음”, 일부에는 “다음을 포함함” 연산자를 쓰거나 텍스트를 *로 감싸세요. 예: *커피*"
+        "PATTERN_WITHOUT_WILDCARD": "*가 없으면 이 패턴은 텍스트 전체와 같아야 합니다. 텍스트 전체에는 “다음과 같음”, 일부에는 “다음을 포함함” 연산자를 쓰거나 텍스트를 *로 감싸세요. 예: *커피*",
+        "CONFLICTING_ACTIONS": "이체 또는 분할 동작은 ‘카테고리 지정’과 함께 사용할 수 없으며, 각 부분에는 카테고리 또는 계좌 중 하나가 있습니다."
       }
     },
     "run": {
@@ -471,7 +485,15 @@
       "set_payee": "수취인을 {name}(으)로 지정{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}",
       "request_ai_review": "AI 검토 요청: {instruction}",
       "set_payee_from_text": "텍스트로 수취인 지정: “{template}”{createIfMissing, select, yes { (없으면 생성)} other {}}{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}",
-      "set_description": "설명 지정 ({mode, select, append {뒤에 추가} prepend {앞에 추가} other {바꾸기}}): “{template}”{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}"
+      "set_description": "설명 지정 ({mode, select, append {뒤에 추가} prepend {앞에 추가} other {바꾸기}}): “{template}”{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}",
+      "convert_to_transfer": "{account}{direction, select, from {에서} other {(으)로}} 이체로 변환",
+      "split": "다음으로 분할: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount}을(를) {account}(으)로",
+      "category": "{amount}을(를) {category}(으)로",
+      "plain": "{amount}",
+      "rest": "나머지"
     }
   }
 }
