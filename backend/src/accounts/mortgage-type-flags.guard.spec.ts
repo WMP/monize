@@ -20,7 +20,10 @@ import {
  * its count in the same commit rather than leaving room for the next one.
  *
  * The forms are told apart by argument count: the type-keyed forms take three
- * arguments, the two-flag forms four.
+ * arguments, the two-flag forms four. Calls inside a template literal's
+ * `${...}` are counted; importing or re-exporting either function under
+ * another name fails, because the scan matches the name. Not seen: a call
+ * through a reference to the function (`const f = getPeriodicRate; f(...)`).
  */
 const FUNCTIONS = {
   getPeriodicRate: {
@@ -61,11 +64,25 @@ const FLAGS_CALLER_BASELINE: Readonly<
  * literals blanked, so a call written in a comment or a string is not counted,
  * a comment between two arguments does not hide a comma, and a comma inside a
  * string argument does not add one. A `//` inside a string is not a comment.
+ * A template literal's `${...}` interpolations are code and are kept.
  */
 export function codeOnly(source: string): string {
+  return scanCode(source, 0, false).text;
+}
+
+/**
+ * `codeOnly` from `from`; with `untilBrace`, stops at the `}` that closes a
+ * template interpolation and returns its index as `end`.
+ */
+function scanCode(
+  source: string,
+  from: number,
+  untilBrace: boolean,
+): { text: string; end: number } {
   const parts: string[] = [];
-  let start = 0;
-  let i = 0;
+  let start = from;
+  let i = from;
+  let depth = 0;
   while (i < source.length) {
     const ch = source[i];
     const next = source[i + 1];
@@ -82,7 +99,7 @@ export function codeOnly(source: string): string {
       start = i;
       continue;
     }
-    if (ch === '"' || ch === "'" || ch === "`") {
+    if (ch === '"' || ch === "'") {
       let j = i + 1;
       while (j < source.length && source[j] !== ch) {
         j += source[j] === "\\" ? 2 : 1;
@@ -93,10 +110,43 @@ export function codeOnly(source: string): string {
       start = i;
       continue;
     }
+    if (ch === "`") {
+      parts.push(source.slice(start, i), ch);
+      i++;
+      let blankFrom = i;
+      while (i < source.length && source[i] !== "`") {
+        if (source[i] === "\\") {
+          i += 2;
+          continue;
+        }
+        if (source[i] === "$" && source[i + 1] === "{") {
+          parts.push(" ".repeat(i - blankFrom), "${");
+          const inner = scanCode(source, i + 2, true);
+          parts.push(inner.text, "}");
+          i = inner.end + 1;
+          blankFrom = i;
+          continue;
+        }
+        i++;
+      }
+      const close = Math.min(i, source.length);
+      parts.push(" ".repeat(Math.max(0, close - blankFrom)), ch);
+      i = close + 1;
+      start = i;
+      continue;
+    }
+    if (untilBrace && ch === "{") depth++;
+    if (untilBrace && ch === "}") {
+      if (depth === 0) {
+        parts.push(source.slice(start, i));
+        return { text: parts.join(""), end: i };
+      }
+      depth--;
+    }
     i++;
   }
   parts.push(source.slice(start));
-  return parts.join("");
+  return { text: parts.join(""), end: source.length };
 }
 
 /**
@@ -153,7 +203,7 @@ interface CallSites {
   unrecognised: string[];
 }
 
-function scanCallSites(sources: [string, string][]): CallSites {
+export function scanCallSites(sources: [string, string][]): CallSites {
   const flags = new Map<string, Partial<Record<GuardedFunction, number>>>();
   const unrecognised: string[] = [];
   for (const [path, raw] of sources) {
@@ -163,6 +213,12 @@ function scanCallSites(sources: [string, string][]): CallSites {
     if (names.length === 0) continue;
     const source = codeOnly(raw);
     for (const name of names) {
+      if (new RegExp(`\\b${name}\\s+as\\b`).test(source)) {
+        unrecognised.push(
+          `${path}: ${name} imported or exported under another name, which ` +
+            `this scan cannot follow; call it by its own name`,
+        );
+      }
       for (const count of callArgumentCounts(source, name)) {
         if (count === FUNCTIONS[name].flags) {
           const perFile = flags.get(path) ?? {};
@@ -253,6 +309,30 @@ describe("the call-site parser", () => {
       const s = "getPeriodicRate(a, b, c, d) // not a comment";
     `);
     expect(callArgumentCounts(source, "getPeriodicRate")).toEqual([]);
+  });
+
+  it("counts a call inside a template literal's interpolation", () => {
+    const source = codeOnly(
+      "const s = `rate ${getPeriodicRate(a, b, `${c}`, { d }.d)} and ${x}`;",
+    );
+    expect(callArgumentCounts(source, "getPeriodicRate")).toEqual([4]);
+    expect(source).not.toContain("rate");
+  });
+
+  it("refuses an aliased import or re-export", () => {
+    const sites = scanCallSites([
+      [
+        "src/x.ts",
+        'import { getPeriodicRate as rateFor } from "./m";\n' +
+          'export { calculateEffectiveAnnualRate as ear } from "./m";',
+      ],
+    ]);
+    expect(sites.unrecognised).toEqual([
+      expect.stringContaining("src/x.ts: getPeriodicRate imported or exported"),
+      expect.stringContaining(
+        "src/x.ts: calculateEffectiveAnnualRate imported or exported",
+      ),
+    ]);
   });
 
   it("keeps a string argument containing a comma as one argument", () => {
