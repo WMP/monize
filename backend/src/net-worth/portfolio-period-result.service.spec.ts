@@ -529,6 +529,23 @@ describe("PortfolioPeriodResultService", () => {
     expect(result.netExternalFlows).toBe(0);
   });
 
+  /**
+   * #1516: the invested measure is drawn around the securities, not the cash,
+   * so where a trade's cash settled does not move it. A QIF import's trades
+   * point their cash leg at the brokerage row and tripped the count on every
+   * trade, which withheld every invested figure on every surface.
+   */
+  it("still reports the invested figures when a trade settled outside the valued cash", async () => {
+    netWorth.getDailyInvestments.mockResolvedValue(flatSeries());
+    settledTradeRows = [{ count: "1" }];
+
+    const result = await run();
+
+    expect(result.investedReasons).toEqual([]);
+    expect(result.investmentPnl).not.toBeNull();
+    expect(result.investmentReturnPercent).not.toBeNull();
+  });
+
   it("asks about trades on the whole scope, settled against the valued cash", async () => {
     netWorth.getDailyInvestments.mockResolvedValue(flatSeries());
 
@@ -556,6 +573,16 @@ describe("PortfolioPeriodResultService", () => {
     expect(result.investmentResult).toBeNull();
     expect(result.reasons).toEqual(["mixedSplit"]);
     expect(result.valueChange).toBe(10_000);
+  });
+
+  it("still reports the invested figures when a split parent mixes investment and cash lines", async () => {
+    netWorth.getDailyInvestments.mockResolvedValue(flatSeries());
+    mixedSplitRows = [{ count: "2" }];
+
+    const result = await run();
+
+    expect(result.investedReasons).toEqual([]);
+    expect(result.investmentPnl).not.toBeNull();
   });
 
   it("reports nothing for a scope with no accounts", async () => {

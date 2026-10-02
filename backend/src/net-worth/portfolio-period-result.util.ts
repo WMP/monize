@@ -95,8 +95,10 @@ export interface PeriodFlow {
  * Both are the coarse cases `external-flow.util.ts` documents, counted rather
  * than measured: counting them is cheap and honest, and measuring them is a
  * line-granular rewrite of the classifier. A count above zero withholds the
- * result rather than shrinking it, exactly as an unconvertible flow subtotal
- * does (`docs/specs/portfolio-period-result.md` section 6).
+ * ACCOUNT result rather than shrinking it, exactly as an unconvertible flow
+ * subtotal does (`docs/specs/portfolio-period-result.md` section 6). The
+ * invested measure reads none of them: it is drawn around the securities, not
+ * the cash, so where a row's cash settled does not move it (section 10).
  */
 export interface UnmeasuredFlowCounts {
   /** Investment actions whose CASH settled outside the accounts the valuation walks. */
@@ -104,10 +106,9 @@ export interface UnmeasuredFlowCounts {
   /**
    * Legs that moved shares across the portfolio's edge with no cash leg at all.
    *
-   * Withholds the ACCOUNT-level result and not the invested one: the shares
-   * enter `MV` with no flow to subtract, but the invested measure values the
-   * leg at the same close `IV` valued the position at, so those two cancel
-   * (`docs/specs/portfolio-period-result.md` section 10.6).
+   * The shares enter `MV` with no flow to subtract. (The invested measure
+   * values the leg at the same close `IV` valued the position at, so those two
+   * cancel: `docs/specs/portfolio-period-result.md` section 10.6.)
    */
   externalShareTransfers: number;
   /** Split parents mixing an embedded investment line with ordinary cash. */

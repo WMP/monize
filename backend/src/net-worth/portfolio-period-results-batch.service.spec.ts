@@ -454,6 +454,9 @@ describe("PortfolioPeriodResultsBatchService", () => {
       reasons: ["externallySettledTrade"],
       valueChange: 10_200,
     });
+    // The invested measure does not read where a trade's cash settled (#1516).
+    expect(results.periods["1y"]?.investedReasons).toEqual([]);
+    expect(results.periods["1y"]?.investmentPnl).not.toBeNull();
     // The trade is outside the 1M window, which stays measurable.
     expect(results.periods["1m"]).toMatchObject({
       investmentResult: 200,

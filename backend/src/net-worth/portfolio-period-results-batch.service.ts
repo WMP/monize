@@ -380,7 +380,6 @@ export class PortfolioPeriodResultsBatchService {
           startIndex,
           endIndex: series.length - 1,
           flowsByDay: investedByDay,
-          unmeasuredFlows,
         }),
       };
     }

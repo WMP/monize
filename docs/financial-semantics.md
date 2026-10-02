@@ -448,7 +448,9 @@ crosses that boundary without producing a countable flow (a trade settled
 outside it, a split parent mixing an investment line with ordinary cash) is
 counted per window and withholds `investmentResult` with the reason
 `externallySettledTrade` or `mixedSplit`; the two figures either side of the
-subtraction are still reported.
+subtraction are still reported. These counts withhold the ACCOUNT result only:
+the invested part's P&L, TWR and MWR are drawn around the securities and each
+row's own amount, so where a trade's cash settled does not move them.
 
 **A time-weighted return and a money-weighted one are two figures, not two
 spellings.** The invested part reports both over the same flows and the same

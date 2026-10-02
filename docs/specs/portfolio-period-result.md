@@ -207,6 +207,16 @@ Neither is a boundary nobody can fix: recording the trade's cash inside the
 portfolio, or splitting the mixed parent into its two rows, makes the period
 measurable again. The surface says which one it hit.
 
+Both withhold the ACCOUNT result only. The invested part (section 10) is drawn
+around the securities, not the cash: `IV` is the positions' value and `K` and
+`I` are each row's own `total_amount`, wherever its cash settled, and an
+embedded split line carries its own investment row. A BUY funded from chequing
+is `+T` of capital against `+T` of shares and a dividend paid to a bank is `+D`
+of income, both exact. Reading these counts there withheld every invested
+figure for any portfolio a QIF import built (#1516): that import points a
+trade's cash leg at the brokerage row, which is outside `C` by construction, so
+the count fired on nearly every trade and dividend.
+
 ## 7. Where it is computed, and by whom
 
 One answer, on the server:
@@ -353,8 +363,8 @@ Backend unit (`portfolio-period-result.util.spec.ts`,
 | a TRANSFER_IN carrying a basis far from the day's close | valued at `quantity x close`, so the P&L is the market move alone |
 | a share-moving leg nothing priced | day incomplete, reason `incompletePrices`, the security dated in `incompleteRanges` |
 | a share transfer and the ACCOUNT's result | still `null` with `externallySettledTrade`; only the invested figures report |
-| a BUY settled outside `C` | result and percent `null`, reason `externallySettledTrade` |
-| a mixed split parent in the window | result `null`, reason `mixedSplit` |
+| a BUY settled outside `C` | result and percent `null`, reason `externallySettledTrade`; the invested figures still report |
+| a mixed split parent in the window | result `null`, reason `mixedSplit`; the invested figures still report |
 | the flow query's account set | the valued cash accounts, not the whole scope |
 
 Backend unit
@@ -540,14 +550,15 @@ measure for the window since inception.
 - **Completeness.** Both figures are `null` when any day the chain spans has an
   `IV` that is a subtotal (`pricesComplete === false` or `fxComplete === false`
   on that point), when a capital or income row could not be converted
-  (`missingRatePairs`), or when the window holds a movement the flow classifier
-  cannot count (section 6.1: `externallySettledTrade`, `mixedSplit`). Never a
+  (`missingRatePairs`). A movement the account's flow classifier cannot count
+  (section 6.1) does NOT withhold them: it is a fact about where cash settled,
+  and neither figure reads the cash. Never a
   chain over a subtotal -- the rule `calculateTWR` already keeps for its own FX
   gaps. Every read is `=== false`.
 - **`investedValueChange` is two-ended.** It is a difference of two closes, not
   a chain, so it is known whenever `IV(b)` and `IV(e)` are both complete: a
-  subtotal on a day between them, a flow that did not convert or an uncountable
-  movement withholds the P&L and the return but not this, exactly as the same
+  subtotal on a day between them or a flow that did not convert withholds the
+  P&L and the return but not this, exactly as the same
   causes leave the account-level `valueChange` standing. It is computed on the
   server beside the P&L, never by a client subtracting `investedValueEnd` from
   `investedValueStart`: those two are nulled with the rest of a withheld
@@ -573,7 +584,7 @@ securities-only bit is a field nobody needs yet.
 | any | subtotal | any | any | any | `null` | `null` | `null` | that point's causes |
 | complete | complete | one is a subtotal | any | any | number | `null` | `null` | that point's causes |
 | complete | complete | all complete | a row did not convert | any | number | `null` | `null` | `missingRatePairs` |
-| complete | complete | all complete | complete, but a movement is uncountable | any | number | `null` | `null` | `externallySettledTrade`, `mixedSplit` |
+| complete | complete | all complete | complete, but a movement is uncountable (6.1) | yes | number | number | number | -- |
 | no series | -- | -- | -- | -- | `null` | `null` | `null` | `noValueSeries` |
 
 `investmentCapitalFlows` and `investmentIncome` are reported as numbers
@@ -773,8 +784,8 @@ Backend unit:
 | Suite | Case |
 | --- | --- |
 | `invested-period-result.util.spec.ts` | the twelve cases above, table-driven, each with its worked numbers |
-| `invested-period-result.util.spec.ts` | a mid-window subtotal day withholds both figures; a flow that did not convert withholds both; an uncountable movement withholds both |
-| `invested-period-result.util.spec.ts` | `investedValueChange` reconciles with the P&L across the cases; it stands through an interior gap, an unconverted flow and an uncountable movement; it is `null` for a subtotal at either end and for no series; `cashComplete` does not withhold it |
+| `invested-period-result.util.spec.ts` | a mid-window subtotal day withholds both figures; a flow that did not convert withholds both |
+| `invested-period-result.util.spec.ts` | `investedValueChange` reconciles with the P&L across the cases; it stands through an interior gap and an unconverted flow; it is `null` for a subtotal at either end and for no series; `cashComplete` does not withhold it |
 | `series-dates.util.spec.ts` | `monthEndSampleDates`: a mid-month start, a start on the 1st and on a month-end, an end on a month-end, a leap February, one day, a reversed window |
 | `net-worth.service.spec.ts` | the sampled series' points equal the daily series' on the same days, its first and last included; 'all' opens on the day before the first investment transaction; a `monthEnd` breakdown values its first point on the start day, before a purchase later that month |
 | `twr-chain.util.spec.ts` | `subPeriodFactor` refuses a non-positive base; `chainTwrPercent` over an empty chain is `null` |
@@ -963,7 +974,7 @@ fraction or `null`.
 - **`investedComplete === false` withholds both figures**, with the same
   `investedReasons` the P&L and the TWR carry. The MWR is a second figure of one
   measure, not a second measure: it reads the same `IV`, the same `K`, the same
-  `I` and the same uncountable-movement counts, so anything that makes the TWR
+  `I`, so anything that makes the TWR
   unreportable makes it unreportable too. There is no branch in which one is a
   number and the other silently isn't.
 - **A schedule with no defined rate** (11.4) is `null` with the reason
