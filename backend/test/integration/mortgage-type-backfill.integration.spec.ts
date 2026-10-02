@@ -57,11 +57,12 @@ describe("mortgage_type migration backfill over the legacy flags", () => {
       `INSERT INTO accounts (id, user_id, account_type, name, currency_code,
                              opening_balance, current_balance,
                              is_canadian_mortgage, is_variable_rate)
-       VALUES ($1, $2, $3, $1, 'CAD', -300000, -300000, $4, $5)`,
+       VALUES ($1, $2, $3, $4, 'CAD', -300000, -300000, $5, $6)`,
       [
         id,
         owner,
         fields.accountType ?? "MORTGAGE",
+        `Mortgage ${id}`,
         fields.isCanadian,
         fields.isVariable,
       ],
