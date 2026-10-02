@@ -3065,6 +3065,62 @@ describe("a dashboard widget reads a report rather than re-deriving it", () => {
   });
 });
 
+/**
+ * The Cash Flow Sankey draws a merged "Other" node, and that merge is drawing
+ * only (SANKEY-005, INV-REPORT-002): the table and the summary cards read the
+ * server's unmerged response. A report component that imported a sum helper
+ * could build a figure from the merged drawing; the merge itself lives in
+ * `sankey-layout.ts`, which returns new arrays and never touches the response.
+ */
+describe("the Cash Flow Sankey sums nothing beside the server", () => {
+  // The report, the diagram it shares with the dashboard widget, and the widget.
+  const SANKEY_COMPONENT =
+    /^\/src\/components\/(?:reports\/CashFlowSankey[^/]*|dashboard\/CashFlowSankeyWidget)\.tsx$/;
+  const LAYOUT = "/src/components/reports/sankey-layout.ts";
+  const AGGREGATES =
+    /from\s+["']@\/components\/transactions\/widget-shared["']|\b(?:sumMoney|sumConverted|sumEffectiveOccurrences|netEntityTotal|summarizeInDisplayCurrency)\b|\.reduce\(/;
+
+  function offenders(): string[] {
+    return productionSources()
+      .filter(([path]) => SANKEY_COMPONENT.test(path))
+      .filter(([, source]) => AGGREGATES.test(withoutComments(source)))
+      .map(([path]) => path);
+  }
+
+  it("imports no aggregation helper into the report component", () => {
+    expect(offenders()).toEqual([]);
+  });
+
+  it("still finds the Sankey components, so the rule cannot pass by accident", () => {
+    expect(
+      productionSources()
+        .filter(([path]) => SANKEY_COMPONENT.test(path))
+        .map(([path]) => path)
+        .sort(),
+    ).toEqual([
+      "/src/components/dashboard/CashFlowSankeyWidget.tsx",
+      "/src/components/reports/CashFlowSankeyDiagram.tsx",
+      "/src/components/reports/CashFlowSankeyReport.tsx",
+    ]);
+  });
+
+  it("never assigns into the response it lays out", () => {
+    const source = withoutComments(sources[LAYOUT] ?? "");
+    expect(source.length).toBeGreaterThan(0);
+    expect(/response\.(?:nodes|links)\.(?:push|splice|sort|reverse)\(/.test(source)).toBe(false);
+    expect(/response\.[\w.[\]]+\s*=[^=]/.test(source)).toBe(false);
+  });
+
+  it("catches the shapes it bans, and reads a mention of them as prose", () => {
+    expect(AGGREGATES.test(withoutComments("const t = sumMoney(values);"))).toBe(true);
+    expect(AGGREGATES.test(withoutComments("const t = links.reduce((a, l) => a + l.value, 0);"))).toBe(true);
+    expect(
+      AGGREGATES.test(withoutComments("import { netEntityTotal } from '@/components/transactions/widget-shared';")),
+    ).toBe(true);
+    expect(AGGREGATES.test(withoutComments("// it must not call sumMoney here"))).toBe(false);
+  });
+});
+
 describe("a dashboard card stretches to its row, never `h-full`", () => {
   /**
    * A widget card is an item of the dashboard's auto-sized grid rows, and a

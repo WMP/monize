@@ -281,5 +281,14 @@
     "weekdayLabel": "Ngày thường",
     "viewOverview": "Tổng quan",
     "viewByDay": "Theo ngày"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey dòng tiền",
+    "empty": "Không có thu nhập, chi tiêu hoặc chuyển khoản trong kỳ này.",
+    "depth": "Mức chi tiết",
+    "depthCategories": "Danh mục",
+    "depthSubcategories": "Danh mục con",
+    "viewDiagram": "Biểu đồ",
+    "viewTable": "Bảng"
   }
 }

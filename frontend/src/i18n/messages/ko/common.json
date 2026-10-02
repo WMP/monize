@@ -89,6 +89,7 @@
     "stackedChart": "100% 누적 막대",
     "lineChart": "꺾은선 차트",
     "areaChart": "영역 차트",
+    "sankeyChart": "흐름도",
     "table": "표"
   },
   "formActions": {

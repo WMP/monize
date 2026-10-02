@@ -281,5 +281,14 @@
     "weekdayLabel": "Wochentag",
     "viewOverview": "Übersicht",
     "viewByDay": "Nach Tag"
+  },
+  "cashFlowSankey": {
+    "title": "Cashflow-Sankey",
+    "empty": "Keine Einnahmen, Ausgaben oder Überweisungen in diesem Zeitraum.",
+    "depth": "Detailtiefe",
+    "depthCategories": "Kategorien",
+    "depthSubcategories": "Unterkategorien",
+    "viewDiagram": "Diagramm",
+    "viewTable": "Tabelle"
   }
 }

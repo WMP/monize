@@ -119,6 +119,7 @@ describe('widget-registry', () => {
       'geographic-allocation',
       'recurring-expenses',
       'weekend-weekday',
+      'cash-flow-sankey',
     ];
     for (const id of reportWidgetIds) {
       const def = DASHBOARD_WIDGETS.find((w) => w.id === id);

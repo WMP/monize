@@ -57,6 +57,10 @@ A refund, return, chargeback or cashback filed against an expense category is a 
 
 Dropping the sign filter means income now reaches the aggregate and has to leave by a different door: a bucket whose net is not spending is not a row in a spending report -- one predicate, not a per-call-site `> 0`. Netting is **within** one category, never across two; both halves come from the same filtered aggregate. (The payee surfaces are deliberately unchanged: `PayeeInfoWidget` prints received credits as their own line beside the spend, so netting them into the headline would count them twice.)
 
+## A transfer leg becomes a Sankey flow by scope and class, never by its category
+
+The Cash Flow Sankey (`backend/src/built-in-reports/cash-flow-sankey.service.ts`) reads a transfer leg only when its own account is in the report's scope and its counterpart is not: the whole-transfer query takes the counterpart from the linked row's account, the split query from `transfer_account_id`, and both put `NOT (... = ANY(scope))` in SQL so the two legs of an internal transfer are never read (SANKEY-002). The counterpart's account type decides the class (`classifyCounterpart` in `cash-flow-sankey-assembly.ts`); a credit card is never debt. Every branch carries `investmentExclusionSql` and the VOID predicate (`sankey-branches.guard.spec.ts`, SANKEY-003), and the closing identity is checked in scaled integers before a response leaves (SANKEY-001). `docs/financial-semantics.md` section 2 has the rules.
+
 ## A calendar day's TOTAL is its own read model, and it is two halves of one series
 
 `GET /accounts/daily-balance-totals` (`accounts/daily-balance-totals.service.ts`) answers one question `GET /accounts/daily-balances` does not: what the accounts in scope are worth together, in one currency, on each day of a month. Its history half is `AccountsService.getDailyBalances` and its projection half is `BalanceForecastService.getBalanceForecast` per account; it computes no balance itself, and `currentBalance` is read on neither side, so both halves stay ledger sums under `LEDGER_MOVEMENT_PREDICATE` (INV-BALANCE-001).

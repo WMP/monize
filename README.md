@@ -114,12 +114,13 @@ Monize is running in my [Kubernetes cluster](https://github.com/kenlasko/k8s).
 - Bill payment history tracking
 
 ### Reports
-- **Built-in Reports** -- 46 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills), all server-side aggregated. A sample:
+- **Built-in Reports** -- 47 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills), all server-side aggregated. A sample:
   - Spending by Category / Payee
   - Income by Source
   - Monthly Spending Trend
   - Income vs Expenses
   - Cash Flow
+  - Cash Flow Sankey (where income went: spending, savings, debt and what was left)
   - Year over Year Comparison
   - Weekend vs Weekday Spending
   - Spending Anomalies Detection

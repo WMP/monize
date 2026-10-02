@@ -281,5 +281,14 @@
     "weekdayLabel": "Semaine",
     "viewOverview": "Vue d'ensemble",
     "viewByDay": "Par jour"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey des flux de trésorerie",
+    "empty": "Aucun revenu, dépense ni virement pour cette période.",
+    "depth": "Niveau de détail",
+    "depthCategories": "Catégories",
+    "depthSubcategories": "Sous-catégories",
+    "viewDiagram": "Diagramme",
+    "viewTable": "Tableau"
   }
 }

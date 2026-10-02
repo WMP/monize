@@ -7,8 +7,8 @@ investment accounts, to debt payments, with what was unspent or drawn from
 balances closing the diagram. The task list is
 [`sankey-cash-flow-tasks.md`](./sankey-cash-flow-tasks.md).
 
-Status: **proposal**. It needs its own discussion with the `approved-to-build`
-label before any task starts (`CONTRIBUTING.md`). It reports money and
+Status: **approved and built** (v1, issue #1490, which also answered K1 and
+K2 in section 13). It reports money and
 classifies transfer legs, which no report does outside the tag-key
 breakdown, so sections 4 to 8 are the specification
 `docs/financial-calculation-contract.md` section 9 asks for and section 5
@@ -209,11 +209,13 @@ known links under the incomplete banner.
 
 - A missing rate: SANKEY-004; the banner names the pair and the count; the
   residual is null and its node is drawn hollow with "unknown".
-- A counterpart account that was deleted (a transfer leg with
-  `linked_transaction_id` set null and `transfer_account_id` gone): the leg
-  is classified by the counterpart row if it exists; otherwise it is an
-  outflow to `class:other_accounts` with the label "(removed account)", so
-  the identity still closes.
+- A counterpart the reader cannot see (a transfer leg whose linked row was
+  deleted, was never linked by an import, or is the other owner's leg of a
+  cross-owner transfer): the leg is classified by the counterpart row if it
+  is visible; otherwise it is an outflow to `class:other_accounts` under
+  `account:unlinked`, labelled "(unlinked account)", so the identity still
+  closes. The label is neutral because the report cannot tell those cases
+  apart.
 - No rows in the range: an `EmptyState` with the range, not an empty SVG.
 - A category with both signs netting to zero: no node; the table shows it
   with 0.
@@ -230,7 +232,27 @@ known links under the incomplete banner.
   `IncompleteDataDetails`; `ReportToolbarActions` with `onExportPdf`
   (`exportToPdf` over the chart container) and `onExportCsv`
   (`exportCsvSections` of nodes and links); node click ->
-  `buildTransactionsHref`.
+  `buildTransactionsHref`. v1 limitation: a class or inflow node
+  (`class:*`, `inflow:*`) drills to every transfer of the scope
+  (`categoryId=transfer`), which includes the internal transfers the
+  diagram hides and the other classes' legs, and it misses a split's
+  transfer line (a mortgage payment's principal), because the `transfer`
+  filter reads the parent row's own transfer flag; Transactions has no
+  counterpart-type filter to narrow it or split-line filter to widen it. A
+  "(no subcategory)" node has no drill-down: the category filter always
+  includes descendants, so it would list the whole parent. An unknown
+  figure with no converted part is drawn as a hollow sliver whose tooltip
+  says "unknown". An `account:*` node drills to that
+  account's transfers. A subcategory that nets to a refund is drawn
+  parent -> child with a "net refund" marker, the reverse of the response's
+  link, so recharts' column layout sees no cycle.
+- The report keeps its range, depth, view and account scope in this browser's
+  localStorage (`SANKEY_STORAGE_KEYS`), settings only, never a figure. The
+  diagram, its renderers, tooltip and drill-down live in
+  `CashFlowSankeyDiagram.tsx`, shared with the `cash-flow-sankey` dashboard
+  widget (`frontend/src/components/dashboard/CashFlowSankeyWidget.tsx`), which
+  offers the same settings through its widget config and reads the same
+  endpoint.
 - `frontend/src/components/reports/sankey-layout.ts` + `.test.ts`: the
   merge, `MAX_NODES_PER_COLUMN`, the mapping from the response's hub-centred
   links to recharts' `{ nodes, links }` with index references.
@@ -268,7 +290,15 @@ known links under the incomplete banner.
 - No migration of the 56 existing drill-down URL sites onto
   `buildTransactionsHref` (decision 9).
 
-## 13. Open questions
+## 13. Open questions (answered)
+
+Both were answered as the plan proposed: **K1**, the default scope includes
+`SAVINGS` and the report's help text documents the lever; **K2**, a credit-card
+payment is "Other accounts" when the card is out of scope and internal when it
+is in scope.
+
+The catalog admits the five invariants of section 5 as `INV-SANKEY-001` to
+`INV-SANKEY-005` in `docs/system-invariants.md`.
 
 - **K1.** Should the default scope include `SAVINGS`? Including it makes a
   chequing-to-savings transfer internal and hides saving; excluding it shows

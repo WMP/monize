@@ -281,5 +281,14 @@
     "weekdayLabel": "工作日",
     "viewOverview": "概览",
     "viewByDay": "按日"
+  },
+  "cashFlowSankey": {
+    "title": "现金流桑基图",
+    "empty": "此期间没有收入、支出或转账。",
+    "depth": "细节",
+    "depthCategories": "类别",
+    "depthSubcategories": "子类别",
+    "viewDiagram": "图表",
+    "viewTable": "表格"
   }
 }

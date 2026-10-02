@@ -31,6 +31,8 @@ import {
   MonthlyComparisonResponse,
   MonthlyComparisonQueryDto,
   MonthlyCategoryBreakdownResponse,
+  CashFlowSankeyQueryDto,
+  CashFlowSankeyResponse,
 } from "./dto";
 
 @ApiTags("Built-in Reports")
@@ -132,6 +134,24 @@ export class BuiltInReportsController {
       query.startDate,
       query.endDate,
       { tagKey: query.tagKey },
+    );
+  }
+
+  @Get("cash-flow-sankey")
+  @ApiOperation({
+    summary:
+      "Get where money came from and went over a window, as Sankey nodes and links",
+  })
+  @ApiResponse({ status: 200, type: CashFlowSankeyResponse })
+  getCashFlowSankey(
+    @Request() req,
+    @Query() query: CashFlowSankeyQueryDto,
+  ): Promise<CashFlowSankeyResponse> {
+    return this.reportsService.getCashFlowSankey(
+      req.user.id,
+      query.startDate,
+      query.endDate,
+      { accountIds: query.accountIds, depth: query.depth },
     );
   }
 

@@ -281,5 +281,14 @@
     "weekdayLabel": "Hafta İçi",
     "viewOverview": "Genel Bakış",
     "viewByDay": "Güne Göre"
+  },
+  "cashFlowSankey": {
+    "title": "Nakit Akışı Sankey",
+    "empty": "Bu dönemde gelir, harcama veya transfer yok.",
+    "depth": "Ayrıntı",
+    "depthCategories": "Kategoriler",
+    "depthSubcategories": "Alt kategoriler",
+    "viewDiagram": "Diyagram",
+    "viewTable": "Tablo"
   }
 }
