@@ -37,7 +37,7 @@
 | BS17 | Offer to set a new account's opening balance so that its balance after the first sync equals the bank's | BS16 | additive | [ ] |
 | BS18 | Preview before import, the first sync after a link change confirmed from the preview, commit refused on a changed plan fingerprint (spec section 7a) | BS6 | additive | [x] |
 | BS19 | Show the provider's account type beside the account and warn when it does not match the Monize account's type (a card linked to a chequing account) | BS16 | additive | [x] |
-| BS20 | Preview details: row selection with skip now or add to exceptions, operation type to tag, payee mapping with hover, rule traces, raw bank data (spec section 7b) | BS18 | additive | [ ] |
+| BS20 | Preview details: row selection with skip now or add to exceptions, operation type to tag, payee mapping with hover, rule traces, raw bank data (spec section 7b) | BS18 | additive | [x] |
 
 ## Notes per task
 

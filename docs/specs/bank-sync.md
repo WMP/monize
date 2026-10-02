@@ -87,9 +87,9 @@ direct RLS policy, enabled in the same file.
 | Table | Key columns | Notes |
 |---|---|---|
 | `bank_sync_credentials` | `id`, `user_id`, `provider`, `application_id`, `private_key_enc` | `UNIQUE (user_id, provider)`. |
-| `bank_sync_connections` | `id`, `user_id`, `provider`, `institution_name`, `institution_country`, `psu_type`, `status`, `auth_state_hash`, `auth_started_at`, `external_session_id`, `valid_until`, `auto_sync`, `last_error` | `status IN ('pending','active','expired','revoked','failed')`. Partial unique index on `auth_state_hash`. |
+| `bank_sync_connections` | `id`, `user_id`, `provider`, `institution_name`, `institution_country`, `psu_type`, `status`, `auth_state_hash`, `auth_started_at`, `external_session_id`, `valid_until`, `auto_sync`, `notify_success`, `tag_operation_type`, `last_error` | `status IN ('pending','active','expired','revoked','failed')`. Partial unique index on `auth_state_hash`. |
 | `bank_sync_accounts` | `id`, `user_id`, `connection_id`, `external_account_id`, `identification_hash`, `display_name`, `identifier_masked`, `account_identifier`, `cash_account_type`, `currency_code`, `account_id`, `sync_from_date`, `last_synced_at`, `last_success_at`, `last_sync_status`, `last_sync_error`, `last_imported_count`, `last_skipped_count`, `last_refused_count`, `bank_balance`, `bank_balance_currency`, `bank_balance_date` | `UNIQUE (connection_id, external_account_id)`; partial unique index on `account_id`; `CHECK (account_id IS NULL OR sync_from_date IS NOT NULL)`; `account_id` is `ON DELETE SET NULL`. |
-| `bank_sync_imported_transactions` | `id`, `user_id`, `account_id`, `external_key`, `transaction_id`, `booking_date`, `created_at` | `UNIQUE (account_id, external_key)`; `account_id` is `ON DELETE CASCADE`; `transaction_id` is `ON DELETE SET NULL`. |
+| `bank_sync_imported_transactions` | `id`, `user_id`, `account_id`, `external_key`, `transaction_id`, `booking_date`, `excluded_at`, `created_at` | `UNIQUE (account_id, external_key)`; `account_id` is `ON DELETE CASCADE`; `transaction_id` is `ON DELETE SET NULL`. |
 
 A deleted Monize transaction keeps its ledger row (with `transaction_id`
 NULL). A deleted row therefore stays deleted: the next sync does not bring it
@@ -452,10 +452,24 @@ trace: every rule that matched, by name (linked to the rule), what each
 action changed (before and after, for category, payee, description and
 tags) and the actions it skipped with their reason.
 
-**Raw bank data.** The expanded row shows the provider's own fields for that
-row (remittance lines, `bank_transaction_code`, creditor and debtor names,
-entry reference, the bank's reference, merchant category code, note). They
-are returned by the preview only and never stored.
+**Raw bank data** goes to the backend log, not to the screen, and only when
+the operator sets `BANK_SYNC_LOG_RAW=true` (the application's logger prints
+debug lines unconditionally, so the variable is the gate). The Enable Banking
+client then logs each raw answer (transaction pages, balances, session and
+account details) with every account identifier masked to its country code and
+last four characters, the session id to its last four characters, and never
+the JWT or a header; a line is bounded to 64 KB. Turn it on to diagnose,
+then off: the log then holds counterparty names, remittance text and amounts.
+
+**The window after a partial import.** When new rows were skipped (not
+imported and not excepted), `last_success_at` does not move and the account
+still needs its preview, so the skipped rows stay inside the window and the
+next preview shows them again.
+
+**Source-neutral parts.** The payee-resolution report, the rule-trace mapping
+and the selection state live in `backend/src/import-preview/` and
+`frontend/src/components/import-preview/`, without bank types, for the
+unified import preview (`docs/future-plans/unified-import-preview.md`).
 
 ## 8. The daily sync
 
@@ -489,13 +503,14 @@ fields.
 | `POST /bank-sync/connections` | `{ institutionName, country, psuType }` | `{ connectionId, authorizationUrl }` |
 | `POST /bank-sync/connections/:id/reauthorize` | | `{ connectionId, authorizationUrl }` |
 | `POST /bank-sync/callback` | `{ state, code?, error?, errorDescription? }` | `{ connection, linked, suggestions }` (section 5a) |
-| `PATCH /bank-sync/connections/:id` | `{ autoSync?, notifySuccess? }` | the connection; an omitted field keeps its value |
+| `PATCH /bank-sync/connections/:id` | `{ autoSync?, notifySuccess?, tagOperationType? }` | the connection; an omitted field keeps its value |
 | `DELETE /bank-sync/connections/:id` | | 204 |
 | `POST /bank-sync/connections/:id/match` | | the connection, with `{ linked, suggestions }` (section 5a) |
 | `PATCH /bank-sync/accounts/:id` | `{ accountId: uuid \| null, syncFromDate? }` | the bank account |
 | `GET /bank-sync/accounts/:id/link-defaults?accountId=` | | `{ newestTransactionDate, defaultSyncFromDate }` (section 7) |
 | `POST /bank-sync/accounts/:id/preview` | | the preview (section 7a) |
-| `POST /bank-sync/accounts/:id/sync` | `{ planFingerprint? }` | the result (section 7); 409 when the fingerprint no longer matches |
+| `POST /bank-sync/accounts/:id/sync` | `{ planFingerprint?, importKeys?, excludeKeys? }` | the result (section 7); 409 when the fingerprint no longer matches; 400 for a key that is not a new row of the plan |
+| `POST /bank-sync/accounts/:id/exceptions/remove` | `{ keys }` | the bank account; deletes only excepted ledger rows |
 | `POST /bank-sync/connections/:id/sync` | | one entry per linked account: a result, or `{ bankAccountId, error: { code, message } }` for an account that failed |
 
 Linking refuses (400) an account the user does not own, a closed account, an
