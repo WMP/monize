@@ -416,13 +416,20 @@ transfer. So:
 - a transfer between two of the user's own synced accounts becoming a
   Monize transfer stays task BS14 (it needs both legs matched);
 - every other operation type becomes a **tag**, when the connection's
-  `tag_operation_type` setting is on (default on). Known codes have a
-  translated label (`CARD-PAYMENT` "Card payment", `TRANSFER-IN` "Incoming
-  transfer", `TRANSFER-OUT` "Outgoing transfer", `MOBILE-PAYMENT-*` "Mobile
-  payment", `ATM-*` "Cash withdrawal"); an unknown code is its own tag name.
-  The tag is resolved by name case-insensitively and created in the
+  `tag_operation_type` setting is on (default on). The label comes from the
+  **source profile** chosen by the connection's provider, country and
+  institution name (`docs/future-plans/source-profiles.md`, task SP2):
+  `backend/src/bank-sync/profiles/pl/pko-bp.json` for PKO Bank Polski
+  (card payments, BLIK purchases, refunds and cash withdrawals, transfers by
+  direction, standing orders, cashback, loan and card repayments),
+  `profiles/default.json` for every other bank (`TRANSFER-IN` and
+  `TRANSFER-OUT` only). A code the profile does not name is its own tag
+  name. The tag is resolved by name case-insensitively and created in the
   recipient's language when missing, and it is attached **before** the
   `import` rules run, so a rule can use it ("tags has any Card payment").
+- **The description** leaves out the remittance line that is exactly the
+  operation code (PKO BP sends it as the second line); the duplicate key
+  still hashes the raw remittance text, so this changes no key.
 
 **Selection.** Every `new` row has a checkbox, checked by default, with
 "select all" and "select none" for the visible tab. A row that is not
