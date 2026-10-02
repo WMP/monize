@@ -9,7 +9,13 @@
  * editor says so. Writing is the opposite: `draftToPayload` emits exactly what
  * the create and update DTOs accept, and the server validates it again.
  */
-import { createAction, isDescriptionMode, isEditorActionType, type EditorAction } from '@/lib/rule-actions';
+import {
+  createAction,
+  isDescriptionMode,
+  isEditorActionType,
+  isStructuralActionType,
+  type EditorAction,
+} from '@/lib/rule-actions';
 import {
   RULE_CONDITION_FIELDS,
   RULE_OPERATOR_SHAPES,
@@ -32,6 +38,7 @@ import type {
   RuleConditionNode,
   RuleLeafValue,
   RuleTrigger,
+  StructuralRuleAction,
   TransactionRule,
 } from '@/types/transaction-rule';
 
@@ -146,6 +153,10 @@ function readAction(input: unknown, repairs: Repairs): EditorAction | null {
   if (!isRecord(input) || !isEditorActionType(input.type)) {
     repairs.note();
     return null;
+  }
+  // Created through the assistant or MCP: kept as stored, so opening and saving loses nothing.
+  if (isStructuralActionType(input.type)) {
+    return { uid: newUid(), type: input.type, stored: input as unknown as StructuralRuleAction };
   }
   const blank = createAction(input.type);
   switch (blank.type) {
@@ -263,6 +274,9 @@ export function actionToApi(action: EditorAction): RuleAction {
       };
     case 'request_ai_review':
       return { type: 'request_ai_review', instruction: action.instruction };
+    case 'convert_to_transfer':
+    case 'split':
+      return action.stored;
   }
 }
 

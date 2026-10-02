@@ -98,3 +98,48 @@ describe('the actions in words: the text actions', () => {
     expect(screen.getByText('Set the description (prepend): "{ref}: "')).toBeInTheDocument();
   });
 });
+
+describe('the actions in words: the structural actions', () => {
+  const ACCOUNT = '22222222-2222-4222-8222-222222222222';
+  const CATEGORY = '33333333-3333-4333-8333-333333333333';
+  const named: RuleWordsLabels = {
+    ...labels,
+    accounts: { [ACCOUNT]: 'Loan account' },
+    categories: { [CATEGORY]: 'Loans: Interest' },
+  };
+
+  function actions(list: RuleAction[], withLabels = named) {
+    render(<RuleActionsInWords actions={list} labels={withLabels} />);
+  }
+
+  it('says which way a transfer goes and to or from which account', () => {
+    actions([
+      { type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true },
+      { type: 'convert_to_transfer', fromAccountId: ACCOUNT, clearCategory: false },
+    ]);
+    expect(screen.getByText('Turn into a transfer to Loan account')).toBeInTheDocument();
+    expect(screen.getByText('Turn into a transfer from Loan account')).toBeInTheDocument();
+  });
+
+  it('lists the parts of a split with the account, the category and the rest', () => {
+    actions([
+      {
+        type: 'split',
+        parts: [
+          { amount: '{principal}', transferAccountId: ACCOUNT },
+          { amount: '{interest}', categoryId: CATEGORY },
+          { amount: 'rest' },
+        ],
+      },
+    ]);
+    expect(
+      screen.getByText('Split into: {principal} to Loan account, {interest} as Loans: Interest, and the rest'),
+    ).toBeInTheDocument();
+  });
+
+  it('does not name an account that is gone', () => {
+    actions([{ type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true }], labels);
+    expect(screen.getByText(/^Turn into a transfer to /)).toBeInTheDocument();
+    expect(screen.queryByText(/Loan account/)).not.toBeInTheDocument();
+  });
+});

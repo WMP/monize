@@ -47,7 +47,7 @@ const test = {
   skipped: [],
   skippedCount: 0,
   aiReviewRequests: 0,
-  labels: { categories: {}, payees: {}, tags: {}, rules: {} },
+  labels: { accounts: {}, categories: {}, payees: {}, tags: {}, rules: {} },
 };
 
 const createPreview = (): CreateRulePreview => ({

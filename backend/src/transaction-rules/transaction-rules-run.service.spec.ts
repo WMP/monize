@@ -125,6 +125,7 @@ function setup(
     .mockResolvedValue(new Map<string, string[]>());
   jest.spyOn(applier, "chainsFor").mockResolvedValue(new Map());
   jest.spyOn(applier, "labelsFor").mockResolvedValue({
+    accounts: {},
     categories: { [CAT]: "Groceries" },
     payees: { [PAYEE]: "Shop payee" },
     tags: {},

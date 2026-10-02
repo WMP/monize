@@ -139,6 +139,8 @@ export const RULE_ACTION_TYPES = [
   'request_ai_review',
   'set_payee_from_text',
   'set_description',
+  'convert_to_transfer',
+  'split',
 ] as const satisfies readonly RuleActionType[];
 
 export const RULE_TRIGGERS = ['create', 'import'] as const satisfies readonly RuleTrigger[];
@@ -153,9 +155,14 @@ export const MAX_RULE_TAG_IDS = 20;
 export const MIN_RULE_AI_INSTRUCTION_LENGTH = 1;
 export const MAX_RULE_AI_INSTRUCTION_LENGTH = 1000;
 export const MAX_RULE_AI_REVIEW_ACTIONS = 1;
+export const MAX_RULE_STRUCTURAL_ACTIONS = 1;
 export const MIN_RULE_TEMPLATE_LENGTH = 1;
 export const MAX_RULE_PAYEE_TEMPLATE_LENGTH = 200;
 export const MAX_RULE_DESCRIPTION_TEMPLATE_LENGTH = 500;
+export const MIN_RULE_SPLIT_PARTS = 2;
+export const MAX_RULE_SPLIT_PARTS = 10;
+export const MIN_RULE_SPLIT_DESCRIPTION_LENGTH = 1;
+export const MAX_RULE_SPLIT_DESCRIPTION_LENGTH = 200;
 export const MAX_RULE_TEXT_LENGTH = 500;
 export const MAX_RULE_VALUE_LIST = 50;
 export const MIN_RULE_NAME_LENGTH = 1;
@@ -185,6 +192,7 @@ export const RULE_VALIDATION_CODES = [
   'NO_ACTIONS',
   'TOO_MANY_ACTIONS',
   'DUPLICATE_ACTION',
+  'CONFLICTING_ACTIONS',
   'INVALID_CAPTURE',
   'TOO_MANY_CAPTURES',
   'DUPLICATE_CAPTURE',

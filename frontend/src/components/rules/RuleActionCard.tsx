@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useMemo } from 'react';
+import { useRuleWords } from '@/components/rules/RuleInWords';
 import { RuleCardShell } from '@/components/rules/RuleCardShell';
 import { RuleTemplateInput } from '@/components/rules/RuleTemplateInput';
 import type { RuleOptions } from '@/components/rules/use-rule-options';
@@ -15,9 +17,9 @@ import {
   DESCRIPTION_MODES,
   changeActionType,
   isDescriptionMode,
-  isEditorActionType,
+  isEditableActionType,
+  type EditableActionType,
   type EditorAction,
-  type EditorActionType,
 } from '@/lib/rule-actions';
 import { checkTemplate } from '@/lib/rule-captures';
 import {
@@ -30,7 +32,7 @@ import { cn, inputBaseClasses } from '@/lib/utils';
 interface RuleActionCardProps {
   action: EditorAction;
   /** The types this card may be set to (`availableActionTypes`). */
-  types: readonly EditorActionType[];
+  types: readonly EditableActionType[];
   options: RuleOptions;
   actions: RowAction[];
   errors: readonly string[];
@@ -211,6 +213,41 @@ function ActionParameters({
   }
 }
 
+/** An option list as the id-to-name table the sentences read. */
+const namesOf = (options: readonly { value: string; label: string }[]): Record<string, string> =>
+  Object.fromEntries(options.map((option) => [option.value, option.label]));
+
+/**
+ * A transfer or a split: made through the assistant or MCP, shown here as a
+ * sentence and kept as stored. It can be moved or removed with the card's menu.
+ */
+function StructuralActionBody({
+  action,
+  options,
+}: {
+  action: Extract<EditorAction, { stored: unknown }>;
+  options: RuleOptions;
+}) {
+  const t = useTranslations('rules.editor');
+  const labels = useMemo(
+    () => ({
+      accounts: namesOf(options.accounts),
+      payees: namesOf(options.payees),
+      categories: namesOf(options.categories),
+      tags: namesOf(options.tags),
+    }),
+    [options],
+  );
+  const { actionText } = useRuleWords(labels);
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t(`actionTypes.${action.type}`)}</p>
+      <p className="text-sm text-gray-700 dark:text-gray-300">{actionText(action.stored)}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t('action.structuralReadOnly')}</p>
+    </div>
+  );
+}
+
 /**
  * One action: its type, and the parameters that type takes. Changing the type
  * starts the parameters over (the card keeps its place). The type list leaves
@@ -221,6 +258,14 @@ export function RuleActionCard({ action, types, options, actions, errors, onChan
   const t = useTranslations('rules.editor');
   const shownInline = inlineCodes(action, captures);
 
+  if (action.type === 'convert_to_transfer' || action.type === 'split') {
+    return (
+      <RuleCardShell label={t('action.title')} actions={actions} errors={errors}>
+        <StructuralActionBody action={action} options={options} />
+      </RuleCardShell>
+    );
+  }
+
   return (
     <RuleCardShell label={t('action.title')} actions={actions} errors={errors.filter((code) => !shownInline.includes(code))}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -230,7 +275,7 @@ export function RuleActionCard({ action, types, options, actions, errors, onChan
           value={action.type}
           options={types.map((type) => ({ value: type, label: t(`actionTypes.${type}`) }))}
           onChange={(e) => {
-            if (isEditorActionType(e.target.value)) onChange(changeActionType(action, e.target.value));
+            if (isEditableActionType(e.target.value)) onChange(changeActionType(action, e.target.value));
           }}
         />
         <ActionParameters action={action} options={options} onChange={onChange} captures={captures} />

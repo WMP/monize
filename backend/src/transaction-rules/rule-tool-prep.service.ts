@@ -35,6 +35,7 @@ import {
   namesToIds,
 } from "./rule-name-mapping";
 import { withActionDefaults } from "./rule-references";
+import type { RuleStructurePlan } from "./rule-structure";
 import { RuleHintDefinition, ruleErrorHints } from "./rule-validation-hints";
 import { RuleRunPreview } from "./rule-run.types";
 import {
@@ -166,8 +167,23 @@ export interface LlmRuleTestRow {
     category?: { before: string | null; after: string | null };
     payee?: { before: string | null; after: string | null };
     tags?: { before: string[]; after: string[] };
+    /** A structural action's plan with names: the parts a split makes, or the transfer's account. */
+    structure?: LlmRuleStructure;
   };
 }
+
+export type LlmRuleStructure =
+  | { kind: "transfer"; account: string; clearCategory: boolean }
+  | {
+      kind: "split";
+      parts: {
+        amount: number;
+        category: string | null;
+        transferTo: string | null;
+        payee: string | null;
+        memo: string | null;
+      }[];
+    };
 
 export interface LlmRuleTest {
   /** Set when the test matched nothing: what that usually means and what to do. */
@@ -564,10 +580,11 @@ export class TransactionRuleToolPrepService {
         reason: s.reason,
       })),
       rows: test.rows.map((row) => {
-        const { categoryId, payeeId, tagIds } = row.changes as {
+        const { categoryId, payeeId, tagIds, structure } = row.changes as {
           categoryId?: { before: string | null; after: string | null };
           payeeId?: { before: string | null; after: string | null };
           tagIds?: { before: string[]; after: string[] };
+          structure?: { before: null; after: RuleStructurePlan | null };
         };
         const tagName = (id: string): string =>
           test.labels.tags[id] ?? labels.tags[id] ?? id;
@@ -608,9 +625,42 @@ export class TransactionRuleToolPrepService {
                 after: tagIds.after.map(tagName),
               },
             }),
+            ...(structure?.after && {
+              structure: this.namedStructure(structure.after, labels, test),
+            }),
           },
         };
       }),
+    };
+  }
+
+  /** A planned structure with the names of the accounts, categories and payees it points at. */
+  private namedStructure(
+    plan: RuleStructurePlan,
+    labels: RuleDefinitionLabels,
+    test: AiActionRuleTestPreview,
+  ): LlmRuleStructure {
+    const nameOf = (
+      kind: "accounts" | "categories" | "payees",
+      id: string | null,
+    ): string | null =>
+      id === null ? null : (test.labels[kind][id] ?? labels[kind][id] ?? id);
+    if (plan.kind === "transfer") {
+      return {
+        kind: "transfer",
+        account: nameOf("accounts", plan.accountId) ?? plan.accountId,
+        clearCategory: plan.clearCategory,
+      };
+    }
+    return {
+      kind: "split",
+      parts: plan.parts.map((part) => ({
+        amount: part.amount,
+        category: nameOf("categories", part.categoryId),
+        transferTo: nameOf("accounts", part.transferAccountId),
+        payee: nameOf("payees", part.payeeId),
+        memo: part.memo,
+      })),
     };
   }
 

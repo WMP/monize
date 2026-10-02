@@ -219,6 +219,7 @@
       "invalidPlaceholders": "Not a valid placeholder: {names}. A name is lowercase letters and digits.",
       "createIfMissing": "Create the payee if it does not exist",
       "createIfMissingHelp": "When on, and no payee matches the name (by name, alias or a close match), a new payee is created with it. A payee created by a rule is kept if you undo the run.",
+      "structuralReadOnly": "This action was created through the assistant. Here it can be moved or removed, not edited.",
       "onlyIfEmptyDescriptionHelp": "When on, the rule writes the description only if the transaction has none. Turn it off to write it every time.",
       "mode": "How to write it",
       "modes": {
@@ -234,7 +235,9 @@
       "set_payee": "Set the payee",
       "request_ai_review": "Ask for an AI review",
       "set_payee_from_text": "Set the payee from text",
-      "set_description": "Set the description"
+      "set_description": "Set the description",
+      "convert_to_transfer": "Turn into a transfer",
+      "split": "Split the transaction"
     },
     "save": {
       "button": "Save rule",
@@ -284,6 +287,7 @@
         "NO_ACTIONS": "Add at least one action.",
         "TOO_MANY_ACTIONS": "There are too many actions. The limit is {maxActions}.",
         "DUPLICATE_ACTION": "A rule can ask for an AI review only once.",
+        "CONFLICTING_ACTIONS": "A transfer or split action cannot be combined with “Set the category”, and each of its parts has either a category or an account.",
         "INVALID_CAPTURE": "A capture name must be lowercase letters and digits, starting with a letter, and up to 20 long.",
         "TOO_MANY_CAPTURES": "A pattern can hold at most 5 captures.",
         "DUPLICATE_CAPTURE": "Each capture name can be used once in a rule.",
@@ -481,7 +485,15 @@
       "set_payee": "Set the payee to {name}{onlyIfEmpty, select, yes { (only if empty)} other {}}",
       "request_ai_review": "Ask for an AI review: {instruction}",
       "set_payee_from_text": "Set the payee from text: \"{template}\"{createIfMissing, select, yes { (created if missing)} other {}}{onlyIfEmpty, select, yes { (only if empty)} other {}}",
-      "set_description": "Set the description ({mode, select, append {append} prepend {prepend} other {replace}}): \"{template}\"{onlyIfEmpty, select, yes { (only if empty)} other {}}"
+      "set_description": "Set the description ({mode, select, append {append} prepend {prepend} other {replace}}): \"{template}\"{onlyIfEmpty, select, yes { (only if empty)} other {}}",
+      "convert_to_transfer": "Turn into a transfer {direction, select, from {from} other {to}} {account}",
+      "split": "Split into: {parts}"
+    },
+    "splitPart": {
+      "transfer": "{amount} to {account}",
+      "category": "{amount} as {category}",
+      "plain": "{amount}",
+      "rest": "the rest"
     }
   }
 }

@@ -17,6 +17,7 @@ import type {
   RuleConditionNode,
   RuleLeafValue,
   RuleTrigger,
+  SplitActionPart,
 } from '@/types/transaction-rule';
 
 /** Names for the ids a rule definition mentions; an id with no name is a deleted item. */
@@ -35,7 +36,7 @@ function isGroup(node: RuleConditionNode): node is Exclude<RuleConditionNode, Ru
 }
 
 /** The sentences a rule is read in, from the `rules` catalog and the reader's own formats. */
-function useRuleWords(labels: RuleWordsLabels) {
+export function useRuleWords(labels: RuleWordsLabels) {
   const t = useTranslations('rules');
   const format = useFormatter();
   const { formatNumber } = useNumberFormat();
@@ -104,6 +105,17 @@ function useRuleWords(labels: RuleWordsLabels) {
   const triggerText = (trigger: RuleTrigger): string =>
     trigger === 'create' ? t('editor.when.created') : t('editor.when.imported');
 
+  const partText = (part: SplitActionPart): string => {
+    const amount = part.amount === 'rest' ? t('words.splitPart.rest') : part.amount;
+    if (part.transferAccountId !== undefined) {
+      return t('words.splitPart.transfer', { amount, account: named(labels.accounts, part.transferAccountId) });
+    }
+    if (part.categoryId !== undefined) {
+      return t('words.splitPart.category', { amount, category: named(labels.categories, part.categoryId) });
+    }
+    return t('words.splitPart.plain', { amount });
+  };
+
   const actionText = (action: RuleAction): string => {
     if (!isRuleActionType(action.type)) return t('words.unknownAction');
     switch (action.type) {
@@ -134,6 +146,13 @@ function useRuleWords(labels: RuleWordsLabels) {
           mode: action.mode,
           onlyIfEmpty: action.onlyIfEmpty ? 'yes' : 'no',
         });
+      case 'convert_to_transfer':
+        return t('words.action.convert_to_transfer', {
+          direction: action.fromAccountId !== undefined ? 'from' : 'to',
+          account: named(labels.accounts, action.fromAccountId ?? action.toAccountId),
+        });
+      case 'split':
+        return t('words.action.split', { parts: list(action.parts.map(partText)) });
     }
   };
 

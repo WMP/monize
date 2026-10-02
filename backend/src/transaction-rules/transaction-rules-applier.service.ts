@@ -1,5 +1,6 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { ArrayContains, EntityManager, In } from "typeorm";
+import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { PayeesService } from "../payees/payees.service";
@@ -26,6 +27,7 @@ import {
   buildRuleFacts,
   loadCategoryChains,
 } from "./rule-facts";
+import { loadRuleTargetAccounts } from "./rule-target-accounts";
 import { toRuleResponses } from "./transaction-rule-view";
 import {
   RuleApplicationSource,
@@ -63,6 +65,8 @@ export interface ApplyToNewOptions {
  * payee, a tag and a rule by name and never an id.
  */
 export interface RuleEffectsLabels {
+  /** Account names of the targets a structural action's plan names. */
+  readonly accounts: Readonly<Record<string, string>>;
   readonly categories: Readonly<Record<string, string>>;
   readonly payees: Readonly<Record<string, string>>;
   readonly tags: Readonly<Record<string, string>>;
@@ -103,6 +107,12 @@ function storedRowFacts(
     hasAttachment: false,
   };
 }
+
+/** What a caller knows about the row besides its facts: transfer ownership and the target accounts. */
+export type PlanRowContext = Pick<
+  RulePlanContext,
+  "crossOwnerTransferLeg" | "accounts"
+>;
 
 /** Payee lookups made while planning; share one across the rows of a call. */
 export type PayeeLookupCache = Map<string, PayeeResolution | null>;
@@ -162,11 +172,15 @@ export class TransactionRulesApplierService {
     userId: string,
     input: RuleRowInput,
     rules: readonly TransactionRule[],
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg"> = {},
+    context: PlanRowContext = {},
   ): Promise<RuleEffects> {
     if (rules.length === 0) return planRuleEffects(buildRuleFacts(input), []);
     const chains = await this.chainsFor(m, userId, rules, [input.categoryId]);
-    return this.planResolved(userId, input, rules, chains, context);
+    const accounts = await loadRuleTargetAccounts(m, userId, rules);
+    return this.planResolved(userId, input, rules, chains, {
+      ...context,
+      accounts,
+    });
   }
 
   /**
@@ -184,7 +198,7 @@ export class TransactionRulesApplierService {
     input: RuleRowInput,
     rules: readonly PlannableRule[],
     chains: ReadonlyMap<string, readonly string[]>,
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">,
+    context: PlanRowContext,
     cache: PayeeLookupCache = new Map(),
   ): Promise<RuleEffects> {
     let effects = this.planWithChains(input, rules, chains, context, cache);
@@ -243,10 +257,26 @@ export class TransactionRulesApplierService {
   ): Promise<RuleEffectsLabels> {
     const categoryIds = new Set<string>();
     const payeeIds = new Set<string>();
+    const accountIds = new Set<string>();
     const tagIds = new Set<string>([
       ...effects.changes.addTagIds,
       ...effects.changes.removeTagIds,
     ]);
+    const structures = [
+      effects.changes.structure,
+      ...effects.trace.map((entry) => entry.changes.structure?.after),
+    ];
+    for (const structure of structures) {
+      if (!structure) continue;
+      if (structure.kind === "transfer") accountIds.add(structure.accountId);
+      else {
+        for (const part of structure.parts) {
+          if (part.categoryId) categoryIds.add(part.categoryId);
+          if (part.transferAccountId) accountIds.add(part.transferAccountId);
+          if (part.payeeId) payeeIds.add(part.payeeId);
+        }
+      }
+    }
     for (const entry of effects.trace) {
       const { categoryId, payeeId, tagIds: tags } = entry.changes;
       for (const id of [categoryId?.before, categoryId?.after])
@@ -257,7 +287,7 @@ export class TransactionRulesApplierService {
         tagIds.add(id);
     }
     const names = async (
-      entity: typeof Category | typeof Payee | typeof Tag,
+      entity: typeof Account | typeof Category | typeof Payee | typeof Tag,
       ids: Set<string>,
     ): Promise<Record<string, string>> => {
       if (ids.size === 0) return {};
@@ -268,6 +298,7 @@ export class TransactionRulesApplierService {
       return Object.fromEntries(found.map((row) => [row.id, row.name]));
     };
     return {
+      accounts: await names(Account, accountIds),
       categories: await names(Category, categoryIds),
       payees: await names(Payee, payeeIds),
       tags: await names(Tag, tagIds),
@@ -313,6 +344,7 @@ export class TransactionRulesApplierService {
       rows.map((row) => row.categoryId),
     );
 
+    const accounts = await loadRuleTargetAccounts(m, userId, rules);
     const applied: AppliedRuleRow[] = [];
     const lookups: PayeeLookupCache = new Map();
     for (const row of rows) {
@@ -328,7 +360,7 @@ export class TransactionRulesApplierService {
         input,
         rules,
         chains,
-        context,
+        { ...context, accounts },
         lookups,
       );
       const effects = await this.writeEffects(
@@ -404,7 +436,10 @@ export class TransactionRulesApplierService {
         },
         rules,
         chains,
-        { crossOwnerTransferLeg: !sameOwner },
+        {
+          crossOwnerTransferLeg: !sameOwner,
+          accounts: await loadRuleTargetAccounts(m, ownerId, rules),
+        },
       );
       // A payee the rules create is created once, for both legs.
       const effects = await this.resolveCreatedPayee(m, ownerId, planned);
@@ -465,7 +500,7 @@ export class TransactionRulesApplierService {
     input: RuleRowInput,
     rules: readonly PlannableRule[],
     chains: ReadonlyMap<string, readonly string[]>,
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">,
+    context: PlanRowContext,
     payeeResolutions?: PayeeResolutions,
   ): RuleEffects {
     const facts = buildRuleFacts({
@@ -534,7 +569,7 @@ export class TransactionRulesApplierService {
     payeeTextById: ReadonlyMap<string, string | null> | undefined,
   ): Promise<{
     input: RuleRowInput;
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">;
+    context: PlanRowContext;
   }> {
     let fromAccountId: string | null = null;
     let toAccountId: string | null = null;

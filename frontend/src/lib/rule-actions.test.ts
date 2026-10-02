@@ -95,7 +95,10 @@ describe('list edits', () => {
 
 describe('the action types the editor offers', () => {
   it('are all the types the server accepts, each once', () => {
-    expect([...EDITOR_ACTION_TYPES].sort()).toEqual([...RULE_ACTION_TYPES].sort());
+    // The two structural actions are shown read-only and never offered (spec section 9).
+    expect([...EDITOR_ACTION_TYPES].sort()).toEqual(
+      RULE_ACTION_TYPES.filter((type) => type !== 'convert_to_transfer' && type !== 'split').sort(),
+    );
   });
 
   it('lists the text actions after set_payee and the review last', () => {
@@ -116,5 +119,30 @@ describe('the action types the editor offers', () => {
     expect(next).toHaveLength(2);
     expect(next[1]).toMatchObject({ type: 'set_description', template: 'x' });
     expect(next[1].uid).not.toBe(next[0].uid);
+  });
+});
+
+describe('the structural actions', () => {
+  const stored = {
+    uid: 'x',
+    type: 'split' as const,
+    stored: { type: 'split' as const, parts: [{ amount: 'rest' }, { amount: 'rest' }] },
+  } satisfies EditorAction;
+
+  it('are never offered by the type picker', () => {
+    expect(EDITOR_ACTION_TYPES).not.toContain('convert_to_transfer');
+    expect(EDITOR_ACTION_TYPES).not.toContain('split');
+    expect(availableActionTypes([stored], 0)).not.toContain('split');
+  });
+
+  it('cannot be duplicated: the server allows one per rule', () => {
+    expect(canDuplicateAction([stored], 0)).toBe(false);
+    expect(duplicateAction([stored], 0)).toEqual([stored]);
+  });
+
+  it('can be moved and removed like any other card', () => {
+    const rest = createAction('add_tags');
+    expect(moveAction([stored, rest], 0, 1)).toEqual([rest, stored]);
+    expect(removeAction([stored, rest], 0)).toEqual([rest]);
   });
 });

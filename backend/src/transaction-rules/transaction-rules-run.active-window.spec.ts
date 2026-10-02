@@ -114,6 +114,7 @@ function setup(units: CandidateUnit[], stored = storedRule()) {
     .mockResolvedValue(new Map<string, string[]>());
   jest.spyOn(applier, "chainsFor").mockResolvedValue(new Map());
   jest.spyOn(applier, "labelsFor").mockResolvedValue({
+    accounts: {},
     categories: { [CAT]: "Loans" },
     payees: {},
     tags: {},

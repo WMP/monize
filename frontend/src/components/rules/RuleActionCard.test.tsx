@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@/test/render';
 import { RuleActionCard } from './RuleActionCard';
 import { testOptions } from './rule-test-harness';
 import { COFFEE_ID, PAYEE_ID, TAG_ID } from './rules-test-fixtures';
-import { EDITOR_ACTION_TYPES, createAction, type EditorAction, type EditorActionType } from '@/lib/rule-actions';
+import { EDITOR_ACTION_TYPES, createAction, type EditableActionType, type EditorAction } from '@/lib/rule-actions';
 import {
   MAX_RULE_AI_INSTRUCTION_LENGTH,
   MAX_RULE_DESCRIPTION_TEMPLATE_LENGTH,
@@ -20,7 +20,7 @@ function Card({
   errors = [],
 }: {
   initial: EditorAction;
-  types?: readonly EditorActionType[];
+  types?: readonly EditableActionType[];
   onAction?: (action: EditorAction) => void;
   errors?: string[];
 }) {
@@ -275,5 +275,46 @@ describe('RuleActionCard', () => {
       );
       expect(screen.getByRole('button', { name: 'Insert {payeeText}' })).toBeDisabled();
     });
+  });
+});
+
+describe('RuleActionCard: a transfer or a split made through the assistant', () => {
+  const ACCOUNT = testOptions.accounts[0].value;
+  const convert: EditorAction = {
+    uid: 'c1',
+    type: 'convert_to_transfer',
+    stored: { type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true },
+  };
+  const split: EditorAction = {
+    uid: 's1',
+    type: 'split',
+    stored: {
+      type: 'split',
+      parts: [
+        { amount: '{principal}', transferAccountId: ACCOUNT },
+        { amount: '{interest}', categoryId: COFFEE_ID },
+        { amount: 'rest' },
+      ],
+    },
+  };
+
+  it('is shown as a sentence, read-only, with no type picker and no inputs', () => {
+    render(<Card initial={convert} />);
+    expect(screen.getByText('Turn into a transfer to Chequing (CAD)')).toBeInTheDocument();
+    expect(screen.getByText(/created through the assistant/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Action type')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('reads every part of a split, naming accounts and categories', () => {
+    render(<Card initial={split} />);
+    expect(
+      screen.getByText('Split into: {principal} to Chequing (CAD), {interest} as Food: Coffee, and the rest'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the errors the server reported for it', () => {
+    render(<Card initial={split} errors={['CONFLICTING_ACTIONS']} />);
+    expect(screen.getByText(/cannot be combined with/)).toBeInTheDocument();
   });
 });

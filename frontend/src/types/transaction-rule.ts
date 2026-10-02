@@ -118,6 +118,38 @@ export interface SetDescriptionAction {
   readonly onlyIfEmpty: boolean;
 }
 
+/**
+ * Makes the matched row one leg of a transfer. Exactly one of `toAccountId`
+ * (an expense) and `fromAccountId` (an income). Created through the assistant
+ * or MCP; the web editor shows it and does not edit it.
+ */
+export interface ConvertToTransferAction {
+  readonly type: 'convert_to_transfer';
+  readonly toAccountId?: string;
+  readonly fromAccountId?: string;
+  readonly clearCategory: boolean;
+  readonly payeeId?: string;
+}
+
+/** One part of a `split`: `amount` is `"{capture}"` or `"rest"`. */
+export interface SplitActionPart {
+  readonly amount: string;
+  readonly categoryId?: string;
+  readonly transferAccountId?: string;
+  readonly payeeId?: string;
+  readonly description?: string;
+}
+
+/** Turns the matched row into a split whose part amounts come from the rule's captures. */
+export interface SplitAction {
+  readonly type: 'split';
+  readonly payeeId?: string;
+  readonly parts: readonly SplitActionPart[];
+}
+
+/** The two actions that restructure the row; the editor keeps them read-only. */
+export type StructuralRuleAction = ConvertToTransferAction | SplitAction;
+
 /** Queues a person-approved AI review; never changes the row itself. */
 export interface RequestAiReviewAction {
   readonly type: 'request_ai_review';
@@ -131,6 +163,7 @@ export type RuleAction =
   | SetPayeeAction
   | SetPayeeFromTextAction
   | SetDescriptionAction
+  | StructuralRuleAction
   | RequestAiReviewAction;
 
 export type RuleActionType = RuleAction['type'];

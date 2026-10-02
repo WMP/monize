@@ -66,6 +66,7 @@ function runPreview(rows = 2): RuleRunPreview {
     truncated: false,
     fingerprint: "f".repeat(64),
     labels: {
+      accounts: {},
       categories: { [CATEGORY_ID]: "Bills: Streaming" },
       payees: {},
       tags: { [TAG_ID]: "Subscriptions" },
@@ -156,6 +157,67 @@ const namedActions = [
 
 describe("TransactionRuleToolPrepService", () => {
   describe("prepareCreate", () => {
+    it("resolves the names of a split and a conversion and fills clearCategory", async () => {
+      const { service, runService } = build();
+      const condition = {
+        all: [
+          {
+            field: "payeeText",
+            op: "matches",
+            value: "PRINCIPAL: {principal} INTEREST: {interest}*",
+          },
+        ],
+      };
+      const prep = await service.prepareCreate(USER_ID, {
+        name: "Loan",
+        condition,
+        actions: [
+          {
+            type: "split",
+            payeeName: "Netflix",
+            parts: [
+              {
+                amount: "{principal}",
+                transferTo: "Checking",
+                payeeName: "Netflix",
+              },
+              { amount: "{interest}", categoryName: "Bills: Streaming" },
+            ],
+          },
+        ],
+      });
+      expect(prep.ok).toBe(true);
+      if (!prep.ok) return;
+      expect(prep.preview.rule.actions).toEqual([
+        {
+          type: "split",
+          payeeId: PAYEE_ID,
+          parts: [
+            {
+              amount: "{principal}",
+              transferAccountId: ACCOUNT_ID,
+              payeeId: PAYEE_ID,
+            },
+            { amount: "{interest}", categoryId: CATEGORY_ID },
+          ],
+        },
+      ]);
+      expect(runService.previewDraft).toHaveBeenCalled();
+
+      const converted = await service.prepareCreate(USER_ID, {
+        name: "Loan",
+        condition,
+        actions: [{ type: "convert_to_transfer", toAccountName: "Checking" }],
+      });
+      expect(converted.ok && converted.preview.rule.actions).toEqual([
+        {
+          type: "convert_to_transfer",
+          toAccountId: ACCOUNT_ID,
+          clearCategory: true,
+        },
+      ]);
+    });
+
     it("resolves names with the shared resolvers and tests the rule with ids", async () => {
       const { service, runService } = build();
       const prep = await service.prepareCreate(USER_ID, {
@@ -976,6 +1038,110 @@ describe("TransactionRuleToolPrepService", () => {
       });
       expect(llm.skipped).toEqual([
         { transactionId: "t-x", reason: "reconciled_locked" },
+      ]);
+    });
+  });
+
+  describe("toLlmTest: a planned structure", () => {
+    const LOAN = "a0000000-0000-4000-8000-0000000000a1";
+    const INTEREST = "c0000000-0000-4000-8000-0000000000c1";
+    const OVERPAY = "b0000000-0000-4000-8000-0000000000b1";
+    const base = {
+      matchedCount: 1,
+      conditionMatchedCount: 1,
+      scanned: 5,
+      truncated: false,
+      skipped: [],
+      skippedCount: 0,
+      aiReviewRequests: 0,
+      labels: {
+        accounts: { [LOAN]: "Loan account" },
+        payees: { [OVERPAY]: "Loan overpayment" },
+        categories: { [INTEREST]: "Loans: Interest" },
+        tags: {},
+        rules: {},
+      },
+    };
+    const rowWith = (structure: unknown) => ({
+      transactionId: "t1",
+      date: "2026-10-05",
+      payeeName: "x",
+      amount: -1500.75,
+      currencyCode: "PLN",
+      changes: { structure: { before: null, after: structure } },
+    });
+
+    it("names the accounts, categories and payees of a split's parts", () => {
+      const { service } = build();
+      const llm = service.toLlmTest(
+        {
+          ...base,
+          rows: [
+            rowWith({
+              kind: "split",
+              parts: [
+                {
+                  amount: -1200.5,
+                  categoryId: null,
+                  transferAccountId: LOAN,
+                  payeeId: OVERPAY,
+                  memo: null,
+                },
+                {
+                  amount: -300.25,
+                  categoryId: INTEREST,
+                  transferAccountId: null,
+                  payeeId: null,
+                  memo: "interest",
+                },
+              ],
+            }),
+          ],
+        } as never,
+        base.labels as never,
+      );
+      expect(llm.rows[0].changes).toEqual({
+        structure: {
+          kind: "split",
+          parts: [
+            {
+              amount: -1200.5,
+              category: null,
+              transferTo: "Loan account",
+              payee: "Loan overpayment",
+              memo: null,
+            },
+            {
+              amount: -300.25,
+              category: "Loans: Interest",
+              transferTo: null,
+              payee: null,
+              memo: "interest",
+            },
+          ],
+        },
+      });
+    });
+
+    it("names the account of a transfer and keeps the id of one it has no name for", () => {
+      const { service } = build();
+      const llm = service.toLlmTest(
+        {
+          ...base,
+          rows: [
+            rowWith({ kind: "transfer", accountId: LOAN, clearCategory: true }),
+            rowWith({
+              kind: "transfer",
+              accountId: "gone",
+              clearCategory: false,
+            }),
+          ],
+        } as never,
+        base.labels as never,
+      );
+      expect(llm.rows.map((r) => r.changes.structure)).toEqual([
+        { kind: "transfer", account: "Loan account", clearCategory: true },
+        { kind: "transfer", account: "gone", clearCategory: false },
       ]);
     });
   });

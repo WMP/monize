@@ -9,15 +9,31 @@ import {
   isRuleActionType,
 } from '@/lib/rule-fields';
 import { newUid } from '@/lib/rule-tree';
-import type { RuleActionType, RuleDescriptionMode } from '@/types/transaction-rule';
+import type { RuleActionType, RuleDescriptionMode, StructuralRuleAction } from '@/types/transaction-rule';
 
-/** Every action the server accepts has a card, so the editor holds and offers all of them. */
+/** Every action the server accepts has a card, so the editor holds all of them. */
 export type EditorActionType = RuleActionType;
 
 export const isEditorActionType = (value: unknown): value is EditorActionType => isRuleActionType(value);
 
+/**
+ * The two actions that restructure the row (a transfer, a split). They are
+ * created through the assistant or MCP, so the editor holds them as they are
+ * stored, shows them read-only, and never offers them in the type picker.
+ */
+export type StructuralActionType = StructuralRuleAction['type'];
+
+export const isStructuralActionType = (value: unknown): value is StructuralActionType =>
+  value === 'convert_to_transfer' || value === 'split';
+
+/** The types a card can be set to, and a blank card can start as. */
+export type EditableActionType = Exclude<EditorActionType, StructuralActionType>;
+
+export const isEditableActionType = (value: unknown): value is EditableActionType =>
+  isEditorActionType(value) && !isStructuralActionType(value);
+
 /** The order the type picker lists them in: the ones that write the row first, the review last. */
-export const EDITOR_ACTION_TYPES: readonly EditorActionType[] = [
+export const EDITOR_ACTION_TYPES: readonly EditableActionType[] = [
   'add_tags',
   'remove_tags',
   'set_category',
@@ -51,7 +67,12 @@ export type EditorAction =
       readonly mode: RuleDescriptionMode;
       readonly onlyIfEmpty: boolean;
     }
-  | { readonly uid: string; readonly type: 'request_ai_review'; readonly instruction: string };
+  | { readonly uid: string; readonly type: 'request_ai_review'; readonly instruction: string }
+  /** Kept exactly as stored: the editor does not edit it, and saving the rule sends it back unchanged. */
+  | { readonly uid: string; readonly type: StructuralActionType; readonly stored: StructuralRuleAction };
+
+/** An action the editor can create and edit: every one except the stored structural ones. */
+export type EditableAction = Exclude<EditorAction, { readonly stored: StructuralRuleAction }>;
 
 /**
  * A blank action of `type`. `onlyIfEmpty` starts on: a rule fills, it does not
@@ -59,7 +80,7 @@ export type EditorAction =
  * (`withActionDefaults`): a payee is filled and never created, a description is
  * replaced and written even when there is one.
  */
-export function createAction(type: EditorActionType = 'add_tags'): EditorAction {
+export function createAction(type: EditableActionType = 'add_tags'): EditableAction {
   const uid = newUid();
   switch (type) {
     case 'add_tags':
@@ -79,7 +100,7 @@ export function createAction(type: EditorActionType = 'add_tags'): EditorAction 
 }
 
 /** Changing the type starts over, but the card keeps its place and its `uid`. */
-export function changeActionType(action: EditorAction, type: EditorActionType): EditorAction {
+export function changeActionType(action: EditorAction, type: EditableActionType): EditableAction {
   if (action.type === type) return action;
   return { ...createAction(type), uid: action.uid };
 }
@@ -96,7 +117,7 @@ export function canAddAction(actions: readonly EditorAction[]): boolean {
  * The types the card at `index` may be set to. `request_ai_review` is offered
  * only to the card that already is one, or while no other card is.
  */
-export function availableActionTypes(actions: readonly EditorAction[], index: number): EditorActionType[] {
+export function availableActionTypes(actions: readonly EditorAction[], index: number): EditableActionType[] {
   const othersWithReview = countAiReviews(actions.filter((_, i) => i !== index));
   return EDITOR_ACTION_TYPES.filter(
     (type) => type !== 'request_ai_review' || othersWithReview < MAX_RULE_AI_REVIEW_ACTIONS,
@@ -131,11 +152,11 @@ export function moveAction(
   return next;
 }
 
-/** A second `request_ai_review` is refused by the server, so it is never offered. */
+/** A second `request_ai_review` or structural action is refused by the server, so it is never offered. */
 export function canDuplicateAction(actions: readonly EditorAction[], index: number): boolean {
   const action = actions[index];
   if (!action || !canAddAction(actions)) return false;
-  return action.type !== 'request_ai_review';
+  return action.type !== 'request_ai_review' && !isStructuralActionType(action.type);
 }
 
 export function duplicateAction(actions: readonly EditorAction[], index: number): readonly EditorAction[] {

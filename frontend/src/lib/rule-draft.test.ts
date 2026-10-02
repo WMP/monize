@@ -295,3 +295,32 @@ describe('draftToPayload', () => {
     expect(draftSignature({ ...a, name: ' Coffee shops ' })).toBe(draftSignature(a));
   });
 });
+
+describe('the structural actions', () => {
+  const ACCOUNT = '22222222-2222-4222-8222-222222222222';
+  const actions = [
+    { type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true, payeeId: UUID },
+    {
+      type: 'split',
+      payeeId: UUID,
+      parts: [
+        { amount: '{principal}', transferAccountId: ACCOUNT, payeeId: UUID },
+        { amount: 'rest', categoryId: UUID, description: 'interest' },
+      ],
+    },
+  ];
+
+  it('opens and saves exactly as stored, with nothing repaired', () => {
+    const { draft, repaired } = read({ actions: actions as never });
+    expect(repaired).toBe(0);
+    expect(draft.actions.map((a) => a.type)).toEqual(['convert_to_transfer', 'split']);
+    expect(draft.actions.map(actionToApi)).toEqual(actions);
+    expect(draftToPayload(draft).actions).toEqual(actions);
+  });
+
+  it('gives each a card of its own that survives a signature round trip', () => {
+    const { draft } = read({ actions: actions as never });
+    const again = draftFromRule(makeRule({ actions: draftToPayload(draft).actions as never })).draft;
+    expect(draftSignature(again)).toBe(draftSignature(draft));
+  });
+});

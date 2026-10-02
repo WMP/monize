@@ -22,6 +22,7 @@ import { effectiveRunLimit, loadCandidateUnits } from "./rule-run-candidates";
 import { loadRuleApplications } from "./rule-run-applications";
 import { planFingerprint } from "./rule-run-fingerprint";
 import { PlannedUnit, buildRunSnapshots } from "./rule-run-snapshot";
+import { loadRuleTargetAccounts } from "./rule-target-accounts";
 import {
   RuleApplicationRow,
   RuleRunChanges,
@@ -81,6 +82,39 @@ const REFUSAL_REASONS: Readonly<Record<string, RuleRunSkipReason>> = {
   empty_render: "empty_render",
   payee_not_found: "payee_not_found",
 };
+
+/** Every refusal only a structural action can make, named as the planner names it. */
+const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set([
+  "row_is_void",
+  "zero_amount",
+  "transfer_direction_mismatch",
+  "transfer_same_account",
+  "transfer_account_unavailable",
+  "transfer_currency_mismatch",
+  "split_amount_unparseable",
+  "split_sum_mismatch",
+  "split_too_few_parts",
+]);
+
+/**
+ * The preview's word for a skipped action. A structural action keeps the
+ * planner's own name (the category words of `set_category` would mislead).
+ */
+function runSkipReason(refused: {
+  type: string;
+  reason: string;
+}): RuleRunSkipReason | undefined {
+  const structural =
+    refused.type === "convert_to_transfer" || refused.type === "split";
+  if (structural) {
+    return refused.reason === "row_is_transfer_leg" ||
+      refused.reason === "row_has_splits" ||
+      STRUCTURAL_REFUSAL_REASONS.has(refused.reason)
+      ? (refused.reason as RuleRunSkipReason)
+      : undefined;
+  }
+  return REFUSAL_REASONS[refused.reason];
+}
 
 /**
  * Run a rule on existing transactions (design 3.6, invariants I3 and I6).
@@ -398,6 +432,7 @@ export class TransactionRulesRunService {
       units.map((unit) => unit.primary.categoryId),
     );
 
+    const accounts = await loadRuleTargetAccounts(m, userId, [rule]);
     const skipped: RuleRunSkippedRow[] = [];
     // Payee names looked up for this preview or commit; nothing is created here.
     const payeeLookups = new Map<string, PayeeResolution | null>();
@@ -429,13 +464,13 @@ export class TransactionRulesRunService {
         },
         [rule],
         chains,
-        { crossOwnerTransferLeg: unit.crossOwnerTransferLeg },
+        { crossOwnerTransferLeg: unit.crossOwnerTransferLeg, accounts },
         payeeLookups,
       );
       const entry = effects.trace[0];
       if (entry?.matched) conditionMatchedCount += 1;
       for (const refused of entry?.skipped ?? []) {
-        const reason = REFUSAL_REASONS[refused.reason];
+        const reason = runSkipReason(refused);
         if (reason) skipped.push({ transactionId: primary.id, reason });
       }
       if (entry && Object.keys(entry.changes).length > 0) {

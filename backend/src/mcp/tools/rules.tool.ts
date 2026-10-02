@@ -71,7 +71,7 @@ export class McpRulesTools {
         annotations: WRITE,
         description:
           RULE_LANGUAGE_GUIDE +
-          " Rules run in order. list returns them with revision (invalid=true: cannot run). Changes need the user's confirmation; run applies a rule to existing transactions; test previews and saves nothing. update: ruleId plus only the changed fields (condition or actions replaces the whole one).",
+          " Rules run in order. Changes need the user's confirmation; run applies a rule to existing transactions; test previews and saves nothing. update: ruleId plus only the changed fields (condition or actions replaces the whole one).",
         inputSchema: manageTransactionRulesFields.extend({
           operation: z.enum([
             "list",
