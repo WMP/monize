@@ -84,6 +84,15 @@ describe("mortgage_type migration backfill over the legacy flags", () => {
     }
     dataSource = new DataSource(INTEGRATION_TYPEORM_OPTIONS as never);
     await dataSource.initialize();
+    // The harness builds the schema from the entities, which declare both
+    // flags without `nullable: true`, so TypeORM makes them NOT NULL here.
+    // schema.sql leaves them nullable, and production rows can hold a NULL;
+    // match production so the NULL-flag case can be seeded at all.
+    await dataSource.query(
+      `ALTER TABLE accounts
+         ALTER COLUMN is_canadian_mortgage DROP NOT NULL,
+         ALTER COLUMN is_variable_rate DROP NOT NULL`,
+    );
   });
 
   afterAll(async () => {

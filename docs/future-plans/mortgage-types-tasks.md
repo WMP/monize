@@ -31,7 +31,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 | ID | Issue | Task | Depends on | Deploy class | Status |
 |----|-------|------|-----------|--------------|--------|
-| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [ ] |
+| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [x] |
 | P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] |
 | P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [ ] |
 | P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [ ] |
@@ -65,6 +65,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 - The backup rule keeps the column; action history records it beside the two booleans; the demo seed writes it.
 - `MORTGAGE_TYPES` and `MortgageType` land here in `backend/src/accounts/mortgage-type.util.ts`, because the entity's field is typed by them; P1-B2 adds the traits and accessors to that file.
 - The backfill reads a NULL flag as false, as `getPeriodicRate` does, so a Canadian row with a null `is_variable_rate` is `CANADIAN_FIXED`.
+- Nothing writes the type with the flags until P1-B3, so the two flag writers (the account update and loan-payment setup) clear a stored type when a save changes either flag's value (`flagWriteStalesMortgageType`). Without that, a flag edited between this release and P1-B3, or by a P1-B1 pod during P1-B3's rollout, would leave a non-null type that P1-B3's reader trusts over the flags.
 - Acceptance: `migration:lint`, `scripts/verify-schema.sh`, `check-migration-prefixes`; a migration test asserts one account per row of table 4.2 lands on its type.
 - Inert: nothing reads the column until P1-B3.
 
@@ -85,7 +86,9 @@ Every task is safe to merge in any order that respects its dependencies: the col
 - DTOs accept `mortgageType` in `ANNUITY` and `CANADIAN_FIXED`; the booleans stay accepted and are translated when the type is absent. Correct the "uses monthly compounding" copy in both DTOs.
 - `buildScheduledUpdate`, `recalculatePaymentForRate` and the mortgage rate update (`UpdateMortgageRateDto`) read `datedLoanDebt` at the effective date (spec decision 5).
 - `annualizeRate` keyed on `annualizationFor` (spec table 4.2, last row).
+- Replace `flagWriteStalesMortgageType` (P1-B1) with writing the type and `flagsFromMortgageType` together; a P1-B1 pod still serving during the rollout clears the type on a flag change, which the flags fallback reads correctly.
 - Acceptance: a future-dated rate change prices the debt at its date; every existing spec green unchanged except the Canadian-variable inference case, whose expectation changes with a comment naming table 4.2.
+- Acceptance: spec decision 2's before/after check lands here, the first task that reads the column: one account per row of table 4.2 has the same payment, split and EAR read through the type as through the flags. P1-B1's backfill test asserts only the stored type, because nothing reads it there.
 
 ### P1-F1 -- Frontend type and traits
 
@@ -138,4 +141,5 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 **Files:** a new migration and `database/schema.sql` (`NOT NULL DEFAULT 'ANNUITY'`, drop `is_canadian_mortgage` and `is_variable_rate`), the entity, the DTOs (the booleans no longer accepted), `backend/src/accounts/mortgage-amortization.util.ts` (overloads deleted), `backend/src/accounts/mortgage-type-flags.guard.spec.ts` (deleted with its last caller), the frontend type, backup rules, action history, demo seed.
 
+- Before `NOT NULL` and before the booleans are dropped, the migration re-derives every MORTGAGE row whose type is still null from the flags (the P1-B1 backfill `CASE`): a previous-release insert and a P1-B1 flag change both leave one.
 - Restoring a backup taken before Phase 1 maps the booleans through `mortgageTypeFromFlags`; a backup integration case asserts it.
