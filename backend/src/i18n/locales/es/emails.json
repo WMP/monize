@@ -23,12 +23,12 @@
     "button": "Ver Facturas &amp; Depósitos"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 renovación de hipoteca próxima",
-    "subjectPlural": "Monize: {{ count }} renovaciones de hipoteca próximas",
-    "heading": "Recordatorio de renovación de hipoteca",
+    "subject": "Monize: 1 plazo de tasa de hipoteca termina pronto",
+    "subjectPlural": "Monize: {{ count }} plazos de tasa de hipoteca terminan pronto",
+    "heading": "Recordatorio de fin del plazo de tasa de la hipoteca",
     "greeting": "Hola, {{ name }}:",
-    "introOne": "Tienes 1 hipoteca con una renovación de plazo próxima. Comunícate con tu prestamista para analizar las opciones de renovación antes de que finalice el plazo:",
-    "introMany": "Tienes {{ count }} hipotecas con una renovación de plazo próxima. Comunícate con tu prestamista para analizar las opciones de renovación antes de que finalice el plazo:",
+    "introOne": "Tienes 1 hipoteca cuyo plazo de tasa actual termina pronto. Comunícate con tu prestamista antes de que termine para acordar tu próxima tasa o renovación:",
+    "introMany": "Tienes {{ count }} hipotecas cuyo plazo de tasa actual termina pronto. Comunícate con tu prestamista antes de que termine cada uno para acordar la próxima tasa o renovación:",
     "colMortgage": "Hipoteca",
     "colTermEndDate": "Fecha de fin del plazo",
     "colTimeRemaining": "Tiempo restante",
