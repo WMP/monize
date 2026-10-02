@@ -31,7 +31,13 @@
       "transferIn": "입금 이체",
       "transferOut": "출금 이체",
       "mobilePayment": "모바일 결제",
-      "cashWithdrawal": "현금 인출"
+      "cashWithdrawal": "현금 인출",
+      "cashWithdrawalBlik": "현금 인출 (BLIK)",
+      "mobilePaymentRefund": "모바일 결제 환불",
+      "standingOrder": "정기 이체",
+      "cashback": "캐시백",
+      "loanRepayment": "대출 상환",
+      "creditCardRepayment": "신용카드 상환"
     }
   }
 }

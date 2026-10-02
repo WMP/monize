@@ -31,7 +31,13 @@
       "transferIn": "Chuyển khoản đến",
       "transferOut": "Chuyển khoản đi",
       "mobilePayment": "Thanh toán di động",
-      "cashWithdrawal": "Rút tiền mặt"
+      "cashWithdrawal": "Rút tiền mặt",
+      "cashWithdrawalBlik": "Rút tiền mặt (BLIK)",
+      "mobilePaymentRefund": "Hoàn tiền thanh toán di động",
+      "standingOrder": "Lệnh chuyển tiền định kỳ",
+      "cashback": "Cashback",
+      "loanRepayment": "Trả nợ khoản vay",
+      "creditCardRepayment": "Thanh toán thẻ tín dụng"
     }
   }
 }

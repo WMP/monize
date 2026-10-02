@@ -293,7 +293,9 @@ export class BankSyncPreviewService {
     // does not exist yet has no id for a rule to name, so the row's tag set
     // stays empty until the commit creates it.
     const operationTag =
-      context.t === null ? null : operationTagLabel(entry.operation, context.t);
+      context.t === null
+        ? null
+        : operationTagLabel(entry.operation, context.t, entry.direction);
     const operationTagId =
       operationTag === null
         ? null

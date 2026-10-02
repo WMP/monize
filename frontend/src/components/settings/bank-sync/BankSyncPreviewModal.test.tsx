@@ -423,6 +423,53 @@ describe('BankSyncPreviewModal', () => {
       expect(dialog.className).toContain('max-sm:h-dvh');
     });
 
+    it('is a fixed-height column: the rows are the one scroll area and the footer is pinned', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const dialog = screen.getByRole('dialog');
+      // The panel neither scrolls nor guesses a height from the viewport.
+      expect(dialog.className).toContain('h-[min(90vh,56rem)]');
+      expect(dialog.className).toContain('flex-col');
+      expect(dialog.className).toContain('overflow-hidden');
+      expect(dialog.className).not.toContain('overflow-y-auto');
+      expect(dialog.className).not.toContain('max-h-[90vh]');
+      expect(dialog.outerHTML).not.toContain('calc(');
+
+      // Header on top, footer at the bottom, neither one squeezed by the rows.
+      const heading = within(dialog).getByRole('heading', { level: 2 });
+      expect(heading.parentElement!.parentElement!.className).toContain('shrink-0');
+      // The header's close icon comes first; the footer's Close button is the last.
+      const closeButton = within(dialog).getAllByRole('button', { name: 'Close' }).at(-1)!;
+      const footer = closeButton.closest('div.border-t') as HTMLElement;
+      expect(footer.className).toContain('shrink-0');
+      expect(footer.parentElement).toBe(dialog);
+      expect(dialog.lastElementChild).toBe(footer);
+
+      // Between them, the body takes the rest and the rows scroll inside it.
+      const panel = screen.getByRole('tabpanel');
+      expect(panel.className).toContain('flex-1');
+      expect(panel.className).toContain('min-h-0');
+      const scroller = within(panel).getByRole('table').parentElement as HTMLElement;
+      expect(scroller.className).toContain('flex-1');
+      expect(scroller.className).toContain('overflow-y-auto');
+      // The summary and the tabs keep their own height above the rows.
+      const summary = screen.getByText('Monize balance now').closest('dl') as HTMLElement;
+      expect(summary.parentElement!.className).toContain('shrink-0');
+      expect(summary.parentElement!.contains(screen.getByRole('tablist'))).toBe(true);
+    });
+
+    it('scrolls the cards, not the dialog, on a phone', async () => {
+      setPhoneViewport(true);
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.className).toContain('max-sm:h-dvh');
+      const list = within(screen.getByRole('tabpanel')).getByRole('list');
+      expect(list.className).toContain('flex-1');
+      expect(list.className).toContain('overflow-y-auto');
+      expect(list.className).not.toContain('max-h-');
+    });
+
     it('lays the summary out in two columns from sm', async () => {
       await loaded();
       await screen.findByText('Monize balance now');

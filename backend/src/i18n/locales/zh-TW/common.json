@@ -31,7 +31,13 @@
       "transferIn": "轉入",
       "transferOut": "轉出",
       "mobilePayment": "行動支付",
-      "cashWithdrawal": "提領現金"
+      "cashWithdrawal": "提領現金",
+      "cashWithdrawalBlik": "提領現金 (BLIK)",
+      "mobilePaymentRefund": "行動支付退款",
+      "standingOrder": "定期轉帳",
+      "cashback": "現金回饋",
+      "loanRepayment": "貸款還款",
+      "creditCardRepayment": "信用卡還款"
     }
   }
 }

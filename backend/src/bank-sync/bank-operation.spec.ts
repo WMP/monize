@@ -2,6 +2,7 @@ import type { EmailT } from "../i18n/email-translator";
 import {
   NO_BANK_OPERATION,
   OPERATION_CODE_PATTERN,
+  findRemittanceOperation,
   operationTagLabel,
   remittanceOperationCode,
   type BankOperation,
@@ -61,6 +62,33 @@ describe("remittanceOperationCode", () => {
   });
 });
 
+describe("findRemittanceOperation", () => {
+  it("names the line a whole-line code was found on", () => {
+    expect(
+      findRemittanceOperation(["SOMECITYSHOP NAME  10PL", "CARD-PAYMENT"]),
+    ).toEqual({ code: "CARD-PAYMENT", lineIndex: 1, wholeLine: true });
+  });
+
+  it("says when the code was only the last word of a longer line", () => {
+    expect(findRemittanceOperation(["Zakupy CARD-PAYMENT"])).toEqual({
+      code: "CARD-PAYMENT",
+      lineIndex: 0,
+      wholeLine: false,
+    });
+  });
+
+  it("takes the first line that holds one, as remittanceOperationCode does", () => {
+    expect(
+      findRemittanceOperation(["Latte", "A CARD-PAYMENT", "TRANSFER-IN"]),
+    ).toEqual({ code: "CARD-PAYMENT", lineIndex: 1, wholeLine: false });
+  });
+
+  it("is null when no line holds one", () => {
+    expect(findRemittanceOperation(["Latte", ""])).toBeNull();
+    expect(findRemittanceOperation([])).toBeNull();
+  });
+});
+
 describe("operationTagLabel", () => {
   it("is null when the bank named no operation", () => {
     expect(operationTagLabel(NO_BANK_OPERATION)).toBeNull();
@@ -75,12 +103,143 @@ describe("operationTagLabel", () => {
     ["TRANSFER-OUT", "TRANSFER-OUT", "Outgoing transfer"],
     ["MOBILE-PAYMENT-POS-NO-CARD-TX-CODE", "MOBILE-PAYMENT", "Mobile payment"],
     ["MOBILE-PAYMENT-ONLINE", "MOBILE-PAYMENT", "Mobile payment"],
+    [
+      "MOBILE-PAYMENT-ATM-TX-CODE",
+      "MOBILE-PAYMENT-ATM",
+      "Cash withdrawal (BLIK)",
+    ],
+    [
+      "MOBILE-PAYMENT-POS-RETURN",
+      "MOBILE-PAYMENT-RETURN",
+      "Mobile payment refund",
+    ],
     ["ATM-WITHDRAWAL", "ATM", "Cash withdrawal"],
     ["ATM-FOREIGN", "ATM", "Cash withdrawal"],
+    ["STANDING-ORDER", "STANDING-ORDER", "Standing order"],
+    ["CASHBACK", "CASHBACK", "Cashback"],
+    ["LOAN-PAYOFF", "LOAN-PAYOFF", "Loan repayment"],
+    [
+      "CREDIT-CARD-AUTO-REPAYMENT",
+      "CREDIT-CARD-AUTO-REPAYMENT",
+      "Credit card repayment",
+    ],
   ])("gives the known code %s its label", (code, key, label) => {
     expect(operationTagLabel(operation({ remittanceCode: code }))).toEqual({
       key,
       label,
+    });
+  });
+
+  describe("a more specific rule wins", () => {
+    it.each([
+      // BLIK cash withdrawal over the mobile payment family.
+      ["MOBILE-PAYMENT-ATM-TX-CODE", "Cash withdrawal (BLIK)"],
+      ["MOBILE-PAYMENT-ATM-FOREIGN", "Cash withdrawal (BLIK)"],
+      // A refund over the family, whatever sits between the family and RETURN.
+      ["MOBILE-PAYMENT-POS-RETURN", "Mobile payment refund"],
+      ["MOBILE-PAYMENT-ONLINE-RETURN", "Mobile payment refund"],
+      // A refund of a BLIK cash withdrawal is a refund, not a withdrawal.
+      ["MOBILE-PAYMENT-ATM-RETURN", "Mobile payment refund"],
+      // What is neither falls to the family.
+      ["MOBILE-PAYMENT-POS-NO-CARD-TX-CODE", "Mobile payment"],
+      ["MOBILE-PAYMENT-ATOM", "Mobile payment"],
+      // The card ATM family is not the BLIK one.
+      ["ATM-MOBILE-PAYMENT-X", "Cash withdrawal"],
+    ])("%s is %s", (code, label) => {
+      expect(
+        operationTagLabel(operation({ remittanceCode: code }))?.label,
+      ).toBe(label);
+    });
+
+    it("does not take a RETURN outside the mobile payment family for a mobile refund", () => {
+      expect(operationTagLabel(operation({ code: "CARD-RETURN" }))).toEqual({
+        key: "CARD-RETURN",
+        label: "CARD-RETURN",
+      });
+    });
+
+    it("takes an exact code before any prefix", () => {
+      expect(
+        operationTagLabel(operation({ remittanceCode: "CARD-PAYMENT" }))?.key,
+      ).toBe("CARD-PAYMENT");
+      expect(
+        operationTagLabel(operation({ remittanceCode: "TRANSFER-IN" }), polish)
+          ?.label,
+      ).toContain("transferIn");
+    });
+  });
+
+  describe("a bare TRANSFER is read by the direction", () => {
+    it.each([
+      ["credit", "TRANSFER-IN", "Incoming transfer"],
+      ["debit", "TRANSFER-OUT", "Outgoing transfer"],
+    ] as const)("%s is %s", (direction, key, label) => {
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER" }),
+          undefined,
+          direction,
+        ),
+      ).toEqual({ key, label });
+    });
+
+    it("is translated through the same catalogue keys as the explicit codes", () => {
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER" }),
+          polish,
+          "credit",
+        )?.label,
+      ).toBe("pl(common.bankSync.operationTypes.transferIn)|Incoming transfer");
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER" }),
+          polish,
+          "debit",
+        )?.label,
+      ).toBe(
+        "pl(common.bankSync.operationTypes.transferOut)|Outgoing transfer",
+      );
+    });
+
+    it("is its own name when the direction is not known", () => {
+      expect(
+        operationTagLabel(operation({ remittanceCode: "TRANSFER" })),
+      ).toEqual({ key: "TRANSFER", label: "TRANSFER" });
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER" }),
+          undefined,
+          null,
+        )?.label,
+      ).toBe("TRANSFER");
+    });
+
+    it("lets the explicit code win over the direction", () => {
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER-IN" }),
+          undefined,
+          "debit",
+        )?.label,
+      ).toBe("Incoming transfer");
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "TRANSFER-OUT" }),
+          undefined,
+          "credit",
+        )?.label,
+      ).toBe("Outgoing transfer");
+    });
+
+    it("does not read the direction into any other code", () => {
+      expect(
+        operationTagLabel(
+          operation({ remittanceCode: "CARD-PAYMENT" }),
+          undefined,
+          "credit",
+        )?.label,
+      ).toBe("Card payment");
     });
   });
 

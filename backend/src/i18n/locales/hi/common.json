@@ -31,7 +31,13 @@
       "transferIn": "आने वाला ट्रांसफर",
       "transferOut": "जाने वाला ट्रांसफर",
       "mobilePayment": "मोबाइल भुगतान",
-      "cashWithdrawal": "नकद निकासी"
+      "cashWithdrawal": "नकद निकासी",
+      "cashWithdrawalBlik": "नकद निकासी (BLIK)",
+      "mobilePaymentRefund": "मोबाइल भुगतान रिफंड",
+      "standingOrder": "स्थायी निर्देश",
+      "cashback": "कैशबैक",
+      "loanRepayment": "ऋण चुकौती",
+      "creditCardRepayment": "क्रेडिट कार्ड भुगतान"
     }
   }
 }

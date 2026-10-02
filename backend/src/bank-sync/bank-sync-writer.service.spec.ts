@@ -59,6 +59,7 @@ function row(over: Partial<PlannedBankRow> = {}): PlannedBankRow {
     payeeText: "Biedronka",
     description: "Groceries",
     referenceNumber: "REF-1",
+    direction: "debit",
     operation: { ...NO_BANK_OPERATION },
     ...over,
   };
@@ -920,6 +921,22 @@ describe("BankSyncWriterService", () => {
         USER_ID,
         "DIRECT-DEBIT",
       ]);
+    });
+
+    it("reads a bare TRANSFER by the planned row's direction", async () => {
+      withTags();
+      const transfer = (externalKey: string, direction: "credit" | "debit") =>
+        row({
+          externalKey,
+          direction,
+          operation: { ...NO_BANK_OPERATION, remittanceCode: "TRANSFER" },
+        });
+      await service.write(
+        input([transfer("ref:1", "credit"), transfer("ref:2", "debit")]),
+      );
+      expect(
+        statements("INSERT INTO tags").map((call) => (call[1] as string[])[1]),
+      ).toEqual(["pl:Incoming transfer", "pl:Outgoing transfer"]);
     });
 
     it("converges when another transaction creates the tag first: the insert returns nothing and the winner is read", async () => {

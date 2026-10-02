@@ -31,7 +31,13 @@
       "transferIn": "Inkomende overboeking",
       "transferOut": "Uitgaande overboeking",
       "mobilePayment": "Mobiele betaling",
-      "cashWithdrawal": "Geldopname"
+      "cashWithdrawal": "Geldopname",
+      "cashWithdrawalBlik": "Geldopname (BLIK)",
+      "mobilePaymentRefund": "Terugbetaling mobiele betaling",
+      "standingOrder": "Doorlopende opdracht",
+      "cashback": "Cashback",
+      "loanRepayment": "Aflossing lening",
+      "creditCardRepayment": "Creditcardaflossing"
     }
   }
 }

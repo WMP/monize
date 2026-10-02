@@ -166,6 +166,7 @@ export function BankSyncPreviewModal({
       padding="md"
       maxWidth="6xl"
       fullScreenOnPhone
+      fixedHeight
       pushHistory
       footer={
         <>

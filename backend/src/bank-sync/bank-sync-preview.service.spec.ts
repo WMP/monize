@@ -943,12 +943,46 @@ describe("BankSyncPreviewService", () => {
           input({}, [
             bankTransaction({
               entryReference: "u1",
-              operation: { ...NO_BANK_OPERATION, code: "STANDING-ORDER" },
+              operation: { ...NO_BANK_OPERATION, code: "DIRECT-DEBIT" },
             }),
           ]),
         )
       ).rows;
-      expect(row.operationTag).toBe("STANDING-ORDER");
+      expect(row.operationTag).toBe("DIRECT-DEBIT");
+    });
+
+    it("reads a bare TRANSFER by the row's direction", async () => {
+      const transfer = (
+        entryReference: string,
+        direction: "credit" | "debit",
+      ) =>
+        bankTransaction({
+          entryReference,
+          direction,
+          operation: { ...NO_BANK_OPERATION, remittanceCode: "TRANSFER" },
+        });
+      const rows = (
+        await service.build(
+          input({}, [transfer("t1", "credit"), transfer("t2", "debit")]),
+        )
+      ).rows;
+      expect(rows.map((row) => row.operationTag)).toEqual([
+        "pl:Incoming transfer",
+        "pl:Outgoing transfer",
+      ]);
+    });
+
+    it("shows the description the writer will write, without the line that is only the operation code", async () => {
+      const wire = bankTransaction({
+        entryReference: "c2",
+        counterpartyName: null,
+        remittance: ["SOMECITYSHOP NAME  10PL", "CARD-PAYMENT"],
+        operation: { ...NO_BANK_OPERATION, remittanceCode: "CARD-PAYMENT" },
+      });
+      const built = input({}, [wire]);
+      const [row] = (await service.build(built)).rows;
+      expect(row.description).toBe("SOMECITYSHOP NAME  10PL");
+      expect(row.description).toBe(built.explained.plan.planned[0].description);
     });
 
     it("shows no tag, and reads no tag or language, when the connection does not tag", async () => {

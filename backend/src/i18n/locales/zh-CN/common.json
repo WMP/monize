@@ -31,7 +31,13 @@
       "transferIn": "转入",
       "transferOut": "转出",
       "mobilePayment": "移动支付",
-      "cashWithdrawal": "现金取款"
+      "cashWithdrawal": "现金取款",
+      "cashWithdrawalBlik": "现金取款 (BLIK)",
+      "mobilePaymentRefund": "移动支付退款",
+      "standingOrder": "定期转账",
+      "cashback": "返现",
+      "loanRepayment": "贷款还款",
+      "creditCardRepayment": "信用卡还款"
     }
   }
 }

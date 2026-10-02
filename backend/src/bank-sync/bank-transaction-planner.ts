@@ -3,7 +3,11 @@ import { addDaysYMD } from "../common/date-utils";
 import { roundMoney } from "../common/round.util";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../common/transaction-note";
 import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
-import type { BankOperation } from "./bank-operation";
+import {
+  findRemittanceOperation,
+  type BankOperation,
+  type OperationDirection,
+} from "./bank-operation";
 import type { BankTransaction } from "./providers/bank-sync-provider.interface";
 
 /**
@@ -59,8 +63,16 @@ export interface PlannedBankRow {
   /** Signed: negative for a debit, at money precision. */
   amount: number;
   payeeText: string | null;
+  /**
+   * What the transaction's description will be: the remittance lines joined
+   * with a space, without the line that only names the operation (`descriptionOf`).
+   * Display text only: the `hash:` key is built from the raw remittance, not
+   * from this.
+   */
   description: string | null;
   referenceNumber: string | null;
+  /** Which way the money moved; `TRANSFER` is incoming or outgoing by it. */
+  direction: OperationDirection;
   /**
    * The bank's operation type; the sync turns it into a tag when the connection
    * asks for one. Not part of the key, the fingerprint or the transaction.
@@ -93,6 +105,8 @@ export interface PlanEntry {
   payeeText: string | null;
   description: string | null;
   referenceNumber: string | null;
+  /** Which way the money moved; null when the bank's direction was unreadable. */
+  direction: OperationDirection | null;
   /** The bank's operation type, for the tag a sync would add. */
   operation: BankOperation;
 }
@@ -118,10 +132,16 @@ interface Draft {
   amount: number;
   /** The unsigned amount, for the hash. */
   absoluteAmount: number;
-  direction: "credit" | "debit";
+  direction: OperationDirection;
   currencyCode: string;
   payeeText: string | null;
+  /** The description the row is written with (`descriptionOf`). */
   description: string | null;
+  /**
+   * The remittance lines joined exactly as the bank sent them. It is what the
+   * `hash:` key hashes, so it never changes with how the description is shown.
+   */
+  hashDescription: string | null;
   referenceNumber: string | null;
   entryReference: string | null;
   operation: BankOperation;
@@ -151,6 +171,45 @@ function bounded(value: string | null | undefined, max: number): string | null {
   const isHighSurrogate = last >= 0xd800 && last <= 0xdbff;
   const cut = trimmed.slice(0, isHighSurrogate ? max - 1 : max).trim();
   return cut === "" ? null : cut;
+}
+
+/** The lines of a row's remittance that say something, trimmed. */
+function remittanceLinesOf(row: BankTransaction): string[] {
+  return row.remittance
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
+
+/**
+ * What a row's description says, twice: `raw`, the remittance lines joined with
+ * a space as the bank sent them (what the duplicate key hashes), and `display`,
+ * the same without the line that is only the operation code (`CARD-PAYMENT`),
+ * which the operation tag and the preview already carry.
+ *
+ * The line left out is the one the operation was identified on, and only when
+ * that line is exactly the code: a code that is merely the last word of a longer
+ * line is part of the text and stays in it.
+ */
+function descriptionOf(
+  row: BankTransaction,
+  remittance: readonly string[],
+): { raw: string | null; display: string | null } {
+  const raw = bounded(remittance.join(" "), TRANSACTION_NOTE_MAX_LENGTH);
+  const found = findRemittanceOperation(remittance);
+  const codeLine =
+    found !== null &&
+    found.wholeLine &&
+    found.code === row.operation.remittanceCode
+      ? found.lineIndex
+      : null;
+  if (codeLine === null) return { raw, display: raw };
+  return {
+    raw,
+    display: bounded(
+      remittance.filter((_, index) => index !== codeLine).join(" "),
+      TRANSACTION_NOTE_MAX_LENGTH,
+    ),
+  };
 }
 
 /** The first of the three dates that names a real day, or null. */
@@ -200,9 +259,8 @@ function classify(
 
   const absoluteAmount = roundMoney(Number(amountText));
   const signed = row.direction === "debit" ? -absoluteAmount : absoluteAmount;
-  const remittance = row.remittance
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
+  const remittance = remittanceLinesOf(row);
+  const description = descriptionOf(row, remittance);
 
   return {
     kind: "planned",
@@ -218,7 +276,8 @@ function classify(
       payeeText:
         bounded(row.counterpartyName, BANK_IMPORT_PAYEE_MAX_LENGTH) ??
         bounded(remittance[0], BANK_IMPORT_PAYEE_MAX_LENGTH),
-      description: bounded(remittance.join(" "), TRANSACTION_NOTE_MAX_LENGTH),
+      description: description.display,
+      hashDescription: description.raw,
       referenceNumber: bounded(
         row.bankReference,
         BANK_IMPORT_REFERENCE_MAX_LENGTH,
@@ -241,7 +300,11 @@ const sha256Hex = (value: string): string =>
 const hashField = (value: string): string =>
   value.replaceAll("\\", "\\\\").replaceAll("|", "\\|");
 
-/** The hash form's input: `date|amount|currency|direction|payee|description`. */
+/**
+ * The hash form's input: `date|amount|currency|direction|payee|description`,
+ * the description being the raw joined remittance (`hashDescription`), never
+ * the one shown.
+ */
 function hashInput(draft: Draft): string {
   return [
     draft.transactionDate,
@@ -249,7 +312,7 @@ function hashInput(draft: Draft): string {
     draft.currencyCode,
     draft.direction,
     draft.payeeText ?? "",
-    draft.description ?? "",
+    draft.hashDescription ?? "",
   ]
     .map(hashField)
     .join("|");
@@ -351,9 +414,7 @@ function resolveEntryReferences(
 
 /** What can be read of a row the planner did not plan, for the preview to list. */
 function unplannedEntry(row: BankTransaction, c: Classified): PlanEntry {
-  const remittance = row.remittance
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
+  const remittance = remittanceLinesOf(row);
   const amountText = row.amount?.trim() ?? "";
   const magnitude = AMOUNT_PATTERN.test(amountText)
     ? roundMoney(Number(amountText))
@@ -380,11 +441,15 @@ function unplannedEntry(row: BankTransaction, c: Classified): PlanEntry {
     payeeText:
       bounded(row.counterpartyName, BANK_IMPORT_PAYEE_MAX_LENGTH) ??
       bounded(remittance[0], BANK_IMPORT_PAYEE_MAX_LENGTH),
-    description: bounded(remittance.join(" "), TRANSACTION_NOTE_MAX_LENGTH),
+    description: descriptionOf(row, remittance).display,
     referenceNumber: bounded(
       row.bankReference,
       BANK_IMPORT_REFERENCE_MAX_LENGTH,
     ),
+    direction:
+      row.direction === "credit" || row.direction === "debit"
+        ? row.direction
+        : null,
     operation: row.operation,
   };
 }
@@ -437,6 +502,7 @@ export function explainBankImport(
       payeeText: draft.payeeText,
       description: draft.description,
       referenceNumber: draft.referenceNumber,
+      direction: draft.direction,
       operation: draft.operation,
     };
     planned.push(row);
@@ -450,6 +516,7 @@ export function explainBankImport(
       payeeText: row.payeeText,
       description: row.description,
       referenceNumber: row.referenceNumber,
+      direction: row.direction,
       operation: row.operation,
     };
   });

@@ -31,7 +31,13 @@
       "transferIn": "受取振込",
       "transferOut": "送金",
       "mobilePayment": "モバイル決済",
-      "cashWithdrawal": "現金引き出し"
+      "cashWithdrawal": "現金引き出し",
+      "cashWithdrawalBlik": "現金引き出し (BLIK)",
+      "mobilePaymentRefund": "モバイル決済の返金",
+      "standingOrder": "定期振込",
+      "cashback": "キャッシュバック",
+      "loanRepayment": "ローン返済",
+      "creditCardRepayment": "クレジットカード返済"
     }
   }
 }

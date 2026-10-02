@@ -31,7 +31,13 @@
       "transferIn": "[XX-Incoming transfer-XX]",
       "transferOut": "[XX-Outgoing transfer-XX]",
       "mobilePayment": "[XX-Mobile payment-XX]",
-      "cashWithdrawal": "[XX-Cash withdrawal-XX]"
+      "cashWithdrawal": "[XX-Cash withdrawal-XX]",
+      "cashWithdrawalBlik": "[XX-Cash withdrawal (BLIK)-XX]",
+      "mobilePaymentRefund": "[XX-Mobile payment refund-XX]",
+      "standingOrder": "[XX-Standing order-XX]",
+      "cashback": "[XX-Cashback-XX]",
+      "loanRepayment": "[XX-Loan repayment-XX]",
+      "creditCardRepayment": "[XX-Credit card repayment-XX]"
     }
   }
 }

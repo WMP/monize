@@ -722,6 +722,175 @@ describe("planBankImport", () => {
       expect(withIt.payeeText).toBe(without.payeeText);
     });
 
+    describe("the description without the operation code line", () => {
+      // A synthetic row shaped like a bank that sends [free text, OPERATION-CODE].
+      const KEY_CTX: BankImportContext = {
+        accountCurrencyCode: "PLN",
+        syncFromDate: "2026-08-01",
+        today: "2026-10-02",
+      };
+      const SHOP_LINES = ["SOMECITYSHOP NAME  10PL", "CARD-PAYMENT"];
+      const SHOP = row({
+        entryReference: null,
+        amount: "25.50",
+        currencyCode: "PLN",
+        bookingDate: "2026-09-10",
+        counterpartyName: null,
+        remittance: SHOP_LINES,
+        operation: { ...NO_BANK_OPERATION, remittanceCode: "CARD-PAYMENT" },
+      });
+      // Computed over the raw two-line text, before the description was split
+      // from the code, and pinned as a string, not derived.
+      const PINNED_SHOP_HASH =
+        "hash:57a60c833d66d319aeab6955c7cdcdf3db408e7804199ab5ca2890d5d547281d";
+
+      it("leaves the code line out of the description", () => {
+        expect(planBankImport([SHOP], KEY_CTX).planned[0].description).toBe(
+          "SOMECITYSHOP NAME  10PL",
+        );
+      });
+
+      it("keeps the hash-form key of the raw two-line text", () => {
+        const { externalKey } = planBankImport([SHOP], KEY_CTX).planned[0];
+        expect(externalKey).toBe(`${PINNED_SHOP_HASH}:0`);
+        expect(externalKey).toBe(
+          `hash:${sha256(
+            [
+              "2026-09-10",
+              "25.5",
+              "PLN",
+              "debit",
+              SHOP_LINES[0],
+              SHOP_LINES.join(" "),
+            ].join("|"),
+          )}:0`,
+        );
+      });
+
+      it("keys a row the same whether or not the bank's operation was read", () => {
+        const unread = { ...SHOP, operation: { ...NO_BANK_OPERATION } };
+        expect(planBankImport([unread], KEY_CTX).planned[0].externalKey).toBe(
+          planBankImport([SHOP], KEY_CTX).planned[0].externalKey,
+        );
+        // Unread, nothing identifies the code, so nothing is left out.
+        expect(planBankImport([unread], KEY_CTX).planned[0].description).toBe(
+          "SOMECITYSHOP NAME  10PL CARD-PAYMENT",
+        );
+      });
+
+      it("keeps a code that is only the last word of a longer line in the text", () => {
+        const planned = planBankImport(
+          [
+            {
+              ...SHOP,
+              remittance: ["SOMECITYSHOP NAME  10PL CARD-PAYMENT"],
+            },
+          ],
+          KEY_CTX,
+        ).planned[0];
+        expect(planned.description).toBe(
+          "SOMECITYSHOP NAME  10PL CARD-PAYMENT",
+        );
+      });
+
+      it("leaves out only the line the operation was identified on", () => {
+        // The first line holding a code is "A CARD-PAYMENT" (last word), so the
+        // whole-line code after it was not the one identified and stays.
+        const planned = planBankImport(
+          [
+            {
+              ...SHOP,
+              remittance: ["Free text", "A CARD-PAYMENT", "TRANSFER-IN"],
+            },
+          ],
+          KEY_CTX,
+        ).planned[0];
+        expect(planned.description).toBe(
+          "Free text A CARD-PAYMENT TRANSFER-IN",
+        );
+      });
+
+      it("leaves the code line out wherever it sits, and every other line in", () => {
+        const planned = planBankImport(
+          [
+            {
+              ...SHOP,
+              remittance: ["CARD-PAYMENT", "SOMECITYSHOP", "NAME  10PL"],
+            },
+          ],
+          KEY_CTX,
+        ).planned[0];
+        expect(planned.description).toBe("SOMECITYSHOP NAME  10PL");
+      });
+
+      it("has no description when the code was the only line, and still keys over it", () => {
+        const only = {
+          ...SHOP,
+          counterpartyName: "Example Cafe",
+          remittance: ["CARD-PAYMENT"],
+        };
+        const planned = planBankImport([only], KEY_CTX).planned[0];
+        expect(planned.description).toBeNull();
+        expect(planned.externalKey).toBe(
+          `hash:${sha256(
+            [
+              "2026-09-10",
+              "25.5",
+              "PLN",
+              "debit",
+              "Example Cafe",
+              "CARD-PAYMENT",
+            ].join("|"),
+          )}:0`,
+        );
+      });
+
+      it("does not leave the code line out for a row whose key is the entry reference", () => {
+        const planned = planBankImport(
+          [{ ...SHOP, entryReference: "O;0000001" }],
+          KEY_CTX,
+        ).planned[0];
+        expect(planned.externalKey).toBe("ref:O;0000001");
+        expect(planned.description).toBe("SOMECITYSHOP NAME  10PL");
+      });
+
+      it("lists the same description the writer will write, planned or not", () => {
+        const { plan: explained, entries } = explainBankImport(
+          [SHOP, { ...SHOP, booked: false }, { ...SHOP, currencyCode: "USD" }],
+          KEY_CTX,
+        );
+        expect(entries.map((e) => e.outcome)).toEqual([
+          "planned",
+          "pending",
+          "refused",
+        ]);
+        expect(entries[0].description).toBe(explained.planned[0].description);
+        expect(entries[0].description).toBe("SOMECITYSHOP NAME  10PL");
+        expect(entries[1].description).toBe("SOMECITYSHOP NAME  10PL");
+        expect(entries[2].description).toBe("SOMECITYSHOP NAME  10PL");
+      });
+
+      it("carries the direction on the planned row and on every entry that has one", () => {
+        const { plan: explained, entries } = explainBankImport(
+          [
+            SHOP,
+            { ...SHOP, direction: "credit", amount: "1" },
+            { ...SHOP, direction: null },
+          ],
+          KEY_CTX,
+        );
+        expect(explained.planned.map((p) => p.direction)).toEqual([
+          "debit",
+          "credit",
+        ]);
+        expect(entries.map((e) => e.direction)).toEqual([
+          "debit",
+          "credit",
+          null,
+        ]);
+      });
+    });
+
     it("carries the operation on the planned row and on the entry, planned or not", () => {
       const { plan: planned, entries } = explainBankImport(
         [WITH_OPERATION, { ...WITH_OPERATION, booked: false }],
@@ -797,6 +966,7 @@ describe("explainBankImport (the preview's view of the same classification)", ()
       payeeText: "Shop",
       description: null,
       referenceNumber: null,
+      direction: "debit",
       operation: NO_BANK_OPERATION,
     });
     // The planned entries are the planned rows, one for one, in order.

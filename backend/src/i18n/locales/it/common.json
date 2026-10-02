@@ -31,7 +31,13 @@
       "transferIn": "Bonifico in entrata",
       "transferOut": "Bonifico in uscita",
       "mobilePayment": "Pagamento mobile",
-      "cashWithdrawal": "Prelievo di contanti"
+      "cashWithdrawal": "Prelievo di contanti",
+      "cashWithdrawalBlik": "Prelievo di contanti (BLIK)",
+      "mobilePaymentRefund": "Rimborso pagamento mobile",
+      "standingOrder": "Ordine permanente",
+      "cashback": "Cashback",
+      "loanRepayment": "Rimborso del prestito",
+      "creditCardRepayment": "Rimborso carta di credito"
     }
   }
 }

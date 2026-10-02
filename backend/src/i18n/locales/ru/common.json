@@ -31,7 +31,13 @@
       "transferIn": "Входящий перевод",
       "transferOut": "Исходящий перевод",
       "mobilePayment": "Мобильный платёж",
-      "cashWithdrawal": "Снятие наличных"
+      "cashWithdrawal": "Снятие наличных",
+      "cashWithdrawalBlik": "Снятие наличных (BLIK)",
+      "mobilePaymentRefund": "Возврат мобильного платежа",
+      "standingOrder": "Постоянное поручение",
+      "cashback": "Кэшбэк",
+      "loanRepayment": "Погашение кредита",
+      "creditCardRepayment": "Погашение кредитной карты"
     }
   }
 }

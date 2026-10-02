@@ -31,7 +31,13 @@
       "transferIn": "Transferencia recibida",
       "transferOut": "Transferencia enviada",
       "mobilePayment": "Pago móvil",
-      "cashWithdrawal": "Retirada de efectivo"
+      "cashWithdrawal": "Retirada de efectivo",
+      "cashWithdrawalBlik": "Retirada de efectivo (BLIK)",
+      "mobilePaymentRefund": "Reembolso de pago móvil",
+      "standingOrder": "Orden permanente",
+      "cashback": "Cashback",
+      "loanRepayment": "Amortización de préstamo",
+      "creditCardRepayment": "Pago de tarjeta de crédito"
     }
   }
 }

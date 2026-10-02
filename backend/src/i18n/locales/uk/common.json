@@ -31,7 +31,13 @@
       "transferIn": "Вхідний переказ",
       "transferOut": "Вихідний переказ",
       "mobilePayment": "Мобільний платіж",
-      "cashWithdrawal": "Зняття готівки"
+      "cashWithdrawal": "Зняття готівки",
+      "cashWithdrawalBlik": "Зняття готівки (BLIK)",
+      "mobilePaymentRefund": "Повернення мобільного платежу",
+      "standingOrder": "Постійне доручення",
+      "cashback": "Кешбек",
+      "loanRepayment": "Погашення кредиту",
+      "creditCardRepayment": "Погашення кредитної картки"
     }
   }
 }

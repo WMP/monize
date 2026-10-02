@@ -31,7 +31,13 @@
       "transferIn": "Przelew przychodzący",
       "transferOut": "Przelew wychodzący",
       "mobilePayment": "Płatność mobilna",
-      "cashWithdrawal": "Wypłata gotówki"
+      "cashWithdrawal": "Wypłata z bankomatu",
+      "cashWithdrawalBlik": "Wypłata z bankomatu BLIK",
+      "mobilePaymentRefund": "Zwrot płatności mobilnej",
+      "standingOrder": "Zlecenie stałe",
+      "cashback": "Cashback",
+      "loanRepayment": "Spłata kredytu",
+      "creditCardRepayment": "Spłata karty kredytowej"
     }
   }
 }

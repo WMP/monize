@@ -23,7 +23,11 @@ import {
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
-import { operationTagLabel, type BankOperation } from "./bank-operation";
+import {
+  operationTagLabel,
+  type BankOperation,
+  type OperationDirection,
+} from "./bank-operation";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
 import { findOrCreateTagId } from "./bank-sync-operation-tags";
 import {
@@ -146,6 +150,14 @@ export interface BankSyncWriteOutcome {
  * date, a close or a currency change during the fetch refuses the whole write
  * (409, and `last_success_at` does not move).
  */
+/** A transaction the sync created, with what its operation tag is named from. */
+interface CreatedOperation {
+  transactionId: string;
+  operation: BankOperation;
+  /** The planned row's direction, which a bare `TRANSFER` is read by. */
+  direction: OperationDirection;
+}
+
 @Injectable()
 export class BankSyncWriterService {
   constructor(
@@ -312,10 +324,7 @@ export class BankSyncWriterService {
 
       // 5. Row by row: claim the ledger row, then write what it promises.
       const created: string[] = [];
-      const createdOperations: Array<{
-        transactionId: string;
-        operation: BankOperation;
-      }> = [];
+      const createdOperations: CreatedOperation[] = [];
       const payeeTextById = new Map<string, string | null>();
       const payeeCache = new Map<string, ResolvedPayee>();
       const dateCounters = new Map<string, number>();
@@ -378,6 +387,7 @@ export class BankSyncWriterService {
         createdOperations.push({
           transactionId: saved.id,
           operation: row.operation,
+          direction: row.direction,
         });
         payeeTextById.set(saved.id, row.payeeText);
       }
@@ -483,7 +493,7 @@ export class BankSyncWriterService {
   private async tagOperations(
     m: EntityManager,
     userId: string,
-    created: ReadonlyArray<{ transactionId: string; operation: BankOperation }>,
+    created: readonly CreatedOperation[],
   ): Promise<void> {
     if (created.length === 0) return;
     const lang = await resolveUserEmailLocale(
@@ -493,8 +503,8 @@ export class BankSyncWriterService {
     const t = emailTranslator(this.i18n, lang);
     const tagIds = new Map<string, string>();
     const transactionsByTag = new Map<string, string[]>();
-    for (const { transactionId, operation } of created) {
-      const tag = operationTagLabel(operation, t);
+    for (const { transactionId, operation, direction } of created) {
+      const tag = operationTagLabel(operation, t, direction);
       if (tag === null) continue;
       const tagId = await findOrCreateTagId(m, userId, tag.label, tagIds);
       transactionsByTag.set(tagId, [

@@ -31,7 +31,13 @@
       "transferIn": "Virement entrant",
       "transferOut": "Virement sortant",
       "mobilePayment": "Paiement mobile",
-      "cashWithdrawal": "Retrait d'espèces"
+      "cashWithdrawal": "Retrait d'espèces",
+      "cashWithdrawalBlik": "Retrait d'espèces (BLIK)",
+      "mobilePaymentRefund": "Remboursement de paiement mobile",
+      "standingOrder": "Ordre permanent",
+      "cashback": "Cashback",
+      "loanRepayment": "Remboursement de prêt",
+      "creditCardRepayment": "Remboursement de carte de crédit"
     }
   }
 }

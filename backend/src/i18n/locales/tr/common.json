@@ -31,7 +31,13 @@
       "transferIn": "Gelen havale",
       "transferOut": "Giden havale",
       "mobilePayment": "Mobil ödeme",
-      "cashWithdrawal": "Nakit çekim"
+      "cashWithdrawal": "Nakit çekim",
+      "cashWithdrawalBlik": "Nakit çekim (BLIK)",
+      "mobilePaymentRefund": "Mobil ödeme iadesi",
+      "standingOrder": "Düzenli ödeme talimatı",
+      "cashback": "Cashback",
+      "loanRepayment": "Kredi ödemesi",
+      "creditCardRepayment": "Kredi kartı ödemesi"
     }
   }
 }

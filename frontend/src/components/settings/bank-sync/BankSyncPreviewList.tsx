@@ -28,13 +28,14 @@ import { PreviewCard, PreviewRow, type PreviewRowControls } from './BankSyncPrev
 const TAB_ID_PREFIX = 'bank-sync-preview';
 
 /**
- * The list scrolls inside the modal so the footer's Import button never leaves
- * the screen: the panel is capped at 90vh (the whole viewport on a phone) and
- * scrolls as one, so the list is capped at what is left after the header, the
- * summary, the tabs and the footer. The floor keeps a short window usable.
+ * The rows are the only thing that scrolls. The modal is a fixed-height column
+ * (`fixedHeight`): the header, this list's summary and tabs, and the footer
+ * keep their own height, and the rows take every pixel left, so the footer's
+ * Import button never leaves the screen and nothing sits below it. The floor
+ * is for a viewport too short to give the rows any more: the modal's body then
+ * scrolls instead of the rows shrinking to nothing.
  */
-const LIST_HEIGHT_CLASS =
-  'max-h-[max(12rem,calc(100dvh-27rem))] sm:max-h-[max(12rem,calc(90vh-24rem))]';
+const LIST_SCROLL_CLASS = 'scrollbar-slim min-h-40 flex-1 overflow-y-auto';
 
 /** A header cell that stays put while the rows scroll under it. */
 const STICKY_TH_CLASS =
@@ -177,60 +178,63 @@ export function BankSyncPreviewList({
   const rowKey = (row: BankSyncPreviewRow, index: number) => row.externalKey ?? `row-${index}`;
 
   return (
-    <div className="space-y-4">
-      <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-        <SummaryItem label={t('monizeBalance')}>{money(preview.monizeBalance)}</SummaryItem>
-        <SummaryItem label={t('balanceAfter')} strong>
-          {money(preview.balanceAfter)}
-        </SummaryItem>
-        <SummaryItem label={t('bankBalance')}>
-          {bank !== null && bankAmount !== null
-            ? bank.referenceDate
-              ? t('bankBalanceAsOf', {
-                  amount: formatCurrency(bankAmount, bank.currencyCode),
-                  date: formatDate(bank.referenceDate),
-                })
-              : formatCurrency(bankAmount, bank.currencyCode)
-            : t('bankBalanceNotReported')}
-        </SummaryItem>
-        {differenceAmount !== null && (
-          <SummaryItem
-            label={
-              <>
-                {t('difference')}
-                <InfoTooltip text={t('differenceHelp')} usePortal />
-              </>
-            }
-          >
-            {formatCurrency(differenceAmount, preview.currencyCode)}
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="shrink-0 space-y-4">
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+          <SummaryItem label={t('monizeBalance')}>{money(preview.monizeBalance)}</SummaryItem>
+          <SummaryItem label={t('balanceAfter')} strong>
+            {money(preview.balanceAfter)}
           </SummaryItem>
+          <SummaryItem label={t('bankBalance')}>
+            {bank !== null && bankAmount !== null
+              ? bank.referenceDate
+                ? t('bankBalanceAsOf', {
+                    amount: formatCurrency(bankAmount, bank.currencyCode),
+                    date: formatDate(bank.referenceDate),
+                  })
+                : formatCurrency(bankAmount, bank.currencyCode)
+              : t('bankBalanceNotReported')}
+          </SummaryItem>
+          {differenceAmount !== null && (
+            <SummaryItem
+              label={
+                <>
+                  {t('difference')}
+                  <InfoTooltip text={t('differenceHelp')} usePortal />
+                </>
+              }
+            >
+              {formatCurrency(differenceAmount, preview.currencyCode)}
+            </SummaryItem>
+          )}
+        </dl>
+        {currenciesDiffer && bank && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('differenceHidden', {
+              bankCurrency: bank.currencyCode,
+              monizeCurrency: preview.currencyCode,
+            })}
+          </p>
         )}
-      </dl>
-      {currenciesDiffer && bank && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t('differenceHidden', {
-            bankCurrency: bank.currencyCode,
-            monizeCurrency: preview.currencyCode,
-          })}
-        </p>
-      )}
 
-      <Tabs
-        tabs={tabs}
-        value={filter}
-        onChange={onFilterChange}
-        idPrefix={TAB_ID_PREFIX}
-        ariaLabel={t('filterLabel')}
-        wrap
-      />
+        <Tabs
+          tabs={tabs}
+          value={filter}
+          onChange={onFilterChange}
+          idPrefix={TAB_ID_PREFIX}
+          ariaLabel={t('filterLabel')}
+          wrap
+        />
+      </div>
 
       <div
         id={tabPanelId(TAB_ID_PREFIX, filter)}
         role="tabpanel"
         aria-labelledby={tabId(TAB_ID_PREFIX, filter)}
+        className="flex min-h-0 flex-1 flex-col"
       >
         {filter === 'excluded' && shown.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-gray-600 dark:text-gray-300">{t('exceptions.intro')}</p>
             <Button
               type="button"
@@ -248,7 +252,7 @@ export function BankSyncPreviewList({
         ) : isPhone ? (
           <>
             {headerBox && (
-              <label className="flex items-center gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300">
+              <label className="flex shrink-0 items-center gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300">
                 <ImportPreviewCheckbox
                   state={headerBox.state}
                   onChange={headerBox.onChange}
@@ -258,9 +262,7 @@ export function BankSyncPreviewList({
                 <span>{headerBox.label}</span>
               </label>
             )}
-            <ul
-              className={`scrollbar-slim ${LIST_HEIGHT_CLASS} divide-y divide-gray-200 overflow-y-auto dark:divide-gray-700`}
-            >
+            <ul className={`${LIST_SCROLL_CLASS} divide-y divide-gray-200 dark:divide-gray-700`}>
               {shown.map((row, index) => (
                 <PreviewCard
                   key={rowKey(row, index)}
@@ -273,7 +275,7 @@ export function BankSyncPreviewList({
             </ul>
           </>
         ) : (
-          <div className={`scrollbar-slim ${LIST_HEIGHT_CLASS} overflow-y-auto`}>
+          <div className={LIST_SCROLL_CLASS}>
             <table className="w-full table-fixed">
               <colgroup>
                 <col className="w-20" />

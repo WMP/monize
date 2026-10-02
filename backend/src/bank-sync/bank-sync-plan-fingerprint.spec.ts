@@ -15,6 +15,7 @@ const row = (over: Partial<PlannedBankRow> = {}): PlannedBankRow => ({
   payeeText: null,
   description: null,
   referenceNumber: null,
+  direction: "debit",
   operation: { ...NO_BANK_OPERATION },
   ...over,
 });

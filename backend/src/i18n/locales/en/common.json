@@ -31,7 +31,13 @@
       "transferIn": "Incoming transfer",
       "transferOut": "Outgoing transfer",
       "mobilePayment": "Mobile payment",
-      "cashWithdrawal": "Cash withdrawal"
+      "cashWithdrawal": "Cash withdrawal",
+      "cashWithdrawalBlik": "Cash withdrawal (BLIK)",
+      "mobilePaymentRefund": "Mobile payment refund",
+      "standingOrder": "Standing order",
+      "cashback": "Cashback",
+      "loanRepayment": "Loan repayment",
+      "creditCardRepayment": "Credit card repayment"
     }
   }
 }
