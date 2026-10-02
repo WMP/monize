@@ -135,7 +135,6 @@
     "investmentResult": "投資結果",
     "investmentReturn": "報酬",
     "investmentResultTooltip": "此期間內你的投資賺取的金額。存入、提出資金與未投資現金被排除在外，旁邊的百分比是按時間加權的報酬率，因此買進和賣出不會影響它。",
-    "unmeasuredFlowTooltip": "如果某筆交易在這些帳戶以外結算，或某個拆分將投資項目與一般支出混在一起，則結果無法與轉移的資金分開。",
     "netInvestedLine": "淨投入 {amount}",
     "incomeLine": "股息和利息 {amount}",
     "measuredFromClose": "自 {date} 收盤起",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "被保留的時間段始於某個持倉當天沒有價格的日子。請重新整理價格，或在該證券的價格記錄中手動新增一筆。",
       "incompleteCash": "被保留的時間段始於此檢視中某個現金帳戶當天未回報餘額的日子，因此其持有金額是未知，而不是零。",
-      "missingRatePairs": "被保留的時間段需要一個已存記錄中沒有的匯率。請在「貨幣」頁面為該貨幣新增匯率記錄。",
-      "unmeasuredFlow": "被保留的時間段包含一筆無法與存入或提出區分的資金變動：一筆在這些帳戶之外結算的交易，或一筆將現金和投資混在一起的拆分。"
+      "missingRatePairs": "被保留的時間段需要一個已存記錄中沒有的匯率。請在「貨幣」頁面為該貨幣新增匯率記錄。"
     }
   }
 }

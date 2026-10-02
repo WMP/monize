@@ -205,8 +205,7 @@
     "refresh": "刷新当前价值",
     "investmentResult": "投资结果",
     "periodBreakdownInvestedTooltip": "本期证券价值变动了 {valueChange}。其中 {netInvested} 是扣除卖出后的投入资金，证券支付了 {income} 的股息和利息。上方数字是投资本身的收益，不含未投资的现金。",
-    "notAvailable": "不适用",
-    "unmeasuredFlowTooltip": "如果某笔交易在这些账户之外结算，或某个拆分将投资行与普通支出混在一起，则结果无法与转移的资金分开。"
+    "notAvailable": "不适用"
   },
   "spendingByPayee": {
     "title": "按收款人支出",

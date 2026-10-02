@@ -135,7 +135,6 @@
     "investmentResult": "Resultado do Investimento",
     "investmentReturn": "Rentabilidade",
     "investmentResultTooltip": "O que os seus investimentos renderam neste período. Depósitos, levantamentos e numerário não investido ficam de fora, e a percentagem ao lado é uma rentabilidade ponderada no tempo, pelo que comprar e vender não a movem.",
-    "unmeasuredFlowTooltip": "Uma operação liquidada fora destas contas, ou uma divisão que mistura uma linha de investimento com uma despesa comum, significa que o resultado não pode ser separado do dinheiro movimentado.",
     "netInvestedLine": "Investimento líquido {amount}",
     "incomeLine": "Dividendos e juros {amount}",
     "measuredFromClose": "Desde o fecho da sessão de {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Um período retido começa num dia em que uma posição não tinha preço. Atualize os preços, ou adicione um no histórico de preços do título.",
       "incompleteCash": "Um período retido começa num dia em que uma conta de caixa nesta vista não indicou saldo, pelo que o que continha é desconhecido, não zero.",
-      "missingRatePairs": "Um período retido precisa de uma taxa de câmbio que o histórico guardado não tem. Adicione o histórico de taxas para a moeda na página Moedas.",
-      "unmeasuredFlow": "Um período retido contém um movimento que não é possível distinguir de um depósito ou um levantamento: uma operação liquidada fora destas contas, ou um desdobramento que mistura dinheiro e investimentos."
+      "missingRatePairs": "Um período retido precisa de uma taxa de câmbio que o histórico guardado não tem. Adicione o histórico de taxas para a moeda na página Moedas."
     }
   }
 }

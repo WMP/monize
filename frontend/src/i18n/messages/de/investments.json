@@ -135,7 +135,6 @@
     "investmentResult": "Anlageergebnis",
     "investmentReturn": "Rendite",
     "investmentResultTooltip": "Was Ihre Investitionen in diesem Zeitraum erwirtschaftet haben. Einzahlungen, Auszahlungen und nicht investierte Barmittel bleiben unberücksichtigt, und die Prozentzahl daneben ist eine zeitgewichtete Rendite, sodass Käufe und Verkäufe sie nicht bewegen.",
-    "unmeasuredFlowTooltip": "Ein Geschäft, das außerhalb dieser Konten abgewickelt wurde, oder eine Aufteilung, die eine Investitionsposition mit gewöhnlichen Ausgaben vermischt, bedeutet, dass das Ergebnis nicht vom bewegten Geld getrennt werden kann.",
     "netInvestedLine": "Netto investiert {amount}",
     "incomeLine": "Dividenden und Zinsen {amount}",
     "measuredFromClose": "Seit dem Handelsschluss am {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Ein zurückgehaltener Zeitraum beginnt an einem Tag, an dem für eine Position kein Kurs vorlag. Aktualisieren Sie die Kurse oder tragen Sie einen im Kursverlauf des Wertpapiers ein.",
       "incompleteCash": "Ein zurückgehaltener Zeitraum beginnt an einem Tag, an dem ein Geldkonto in dieser Ansicht keinen Saldo gemeldet hat, sein Bestand ist also unbekannt und nicht null.",
-      "missingRatePairs": "Für einen zurückgehaltenen Zeitraum fehlt ein Wechselkurs, den der gespeicherte Verlauf nicht enthält. Ergänzen Sie den Kursverlauf für die Währung auf der Seite Währungen.",
-      "unmeasuredFlow": "Ein zurückgehaltener Zeitraum enthält eine Bewegung, die sich nicht von einer Einzahlung oder Auszahlung unterscheiden lässt: ein außerhalb dieser Konten abgewickeltes Geschäft oder eine Aufteilung, die Bargeld und Anlagen vermischt."
+      "missingRatePairs": "Für einen zurückgehaltenen Zeitraum fehlt ein Wechselkurs, den der gespeicherte Verlauf nicht enthält. Ergänzen Sie den Kursverlauf für die Währung auf der Seite Währungen."
     }
   }
 }

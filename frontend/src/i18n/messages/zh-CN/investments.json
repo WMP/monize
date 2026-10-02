@@ -135,7 +135,6 @@
     "investmentResult": "投资结果",
     "investmentReturn": "回报",
     "investmentResultTooltip": "此时间段内你的投资赚取的金额。存入、取出资金和未投资现金被排除在外，旁边的百分比是按时间加权的回报率，因此买入和卖出不会影响它。",
-    "unmeasuredFlowTooltip": "如果某笔交易在这些账户之外结算，或某个拆分将投资行与普通支出混在一起，则结果无法与转移的资金分开。",
     "netInvestedLine": "净投入 {amount}",
     "incomeLine": "股息和利息 {amount}",
     "measuredFromClose": "自 {date} 收盘起",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "被搁置的时间段始于某个持仓当天没有价格的日子。请刷新价格，或在该证券的价格历史中手动添加一条。",
       "incompleteCash": "被搁置的时间段始于此视图中某个现金账户当天未报告余额的日子，因此其持有金额是未知，而不是零。",
-      "missingRatePairs": "被搁置的时间段需要一个已存历史中没有的汇率。请在“货币”页面为该货币添加汇率历史。",
-      "unmeasuredFlow": "被搁置的时间段包含一笔无法与存入或取出区分的资金变动：一笔在这些账户之外结算的交易，或一笔将现金和投资混在一起的拆分。"
+      "missingRatePairs": "被搁置的时间段需要一个已存历史中没有的汇率。请在“货币”页面为该货币添加汇率历史。"
     }
   }
 }

@@ -135,7 +135,6 @@
     "investmentResult": "Risultato dell'investimento",
     "investmentReturn": "Rendimento",
     "investmentResultTooltip": "Quanto hanno guadagnato i tuoi investimenti in questo periodo. Depositi, prelievi e liquidità non investita sono esclusi, e la percentuale accanto è un rendimento ponderato nel tempo, quindi acquisti e vendite non la spostano.",
-    "unmeasuredFlowTooltip": "Un'operazione regolata al di fuori di questi conti, o una suddivisione che mescola una riga di investimento con una spesa ordinaria, significa che il risultato non può essere separato dal denaro spostato.",
     "netInvestedLine": "Investimento netto {amount}",
     "incomeLine": "Dividendi e interessi {amount}",
     "measuredFromClose": "Dalla chiusura delle contrattazioni del {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Un periodo sospeso inizia in un giorno in cui una posizione non aveva prezzo. Aggiorna i prezzi, oppure inseriscine uno nello storico prezzi del titolo.",
       "incompleteCash": "Un periodo sospeso inizia in un giorno in cui un conto di liquidità in questa vista non ha riportato alcun saldo, quindi ciò che conteneva è sconosciuto, non zero.",
-      "missingRatePairs": "Un periodo sospeso richiede un tasso di cambio che lo storico salvato non ha. Aggiungi lo storico dei tassi per la valuta nella pagina Valute.",
-      "unmeasuredFlow": "Un periodo sospeso contiene un movimento che non si può distinguere da un deposito o un prelievo: un'operazione regolata al di fuori di questi conti, oppure una suddivisione che mescola liquidità e investimenti."
+      "missingRatePairs": "Un periodo sospeso richiede un tasso di cambio che lo storico salvato non ha. Aggiungi lo storico dei tassi per la valuta nella pagina Valute."
     }
   }
 }

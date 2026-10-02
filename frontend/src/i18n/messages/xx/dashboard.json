@@ -205,8 +205,7 @@
     "refresh": "[XX-Refresh current value-XX]",
     "investmentResult": "[XX-Investment result-XX]",
     "periodBreakdownInvestedTooltip": "[XX-The securities moved {valueChange} in value over this window. Of that, {netInvested} was paid in, net of sales, and they paid out {income} in dividends and interest. The figure above is what the investments themselves earned, with uninvested cash left out.-XX]",
-    "notAvailable": "[XX-N/A-XX]",
-    "unmeasuredFlowTooltip": "[XX-A trade settled outside these accounts, or a split mixing an investment line with ordinary spending, means the result cannot be separated from the money moved in.-XX]"
+    "notAvailable": "[XX-N/A-XX]"
   },
   "spendingByPayee": {
     "title": "[XX-Spending by Payee-XX]",

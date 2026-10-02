@@ -205,8 +205,7 @@
     "refresh": "Odśwież bieżącą wartość",
     "investmentResult": "Wynik inwestycyjny",
     "periodBreakdownInvestedTooltip": "Wartość papierów wartościowych zmieniła się w tym okresie o {valueChange}. Z tego {netInvested} to kwota wpłacona, po odjęciu sprzedaży, a papiery wypłaciły {income} w dywidendach i odsetkach. Powyższa kwota to zysk samych inwestycji, bez niezainwestowanej gotówki.",
-    "notAvailable": "Brak",
-    "unmeasuredFlowTooltip": "Transakcja rozliczona poza tymi kontami albo podział łączący pozycję inwestycyjną ze zwykłym wydatkiem oznacza, że wyniku nie da się oddzielić od przesuniętych pieniędzy."
+    "notAvailable": "Brak"
   },
   "spendingByPayee": {
     "title": "Wydatki według odbiorcy",

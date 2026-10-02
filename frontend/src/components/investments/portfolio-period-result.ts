@@ -22,9 +22,9 @@ import type { PeriodResultReason } from '@/types/net-worth';
  *
  * `externallySettledTrade` and `mixedSplit` fall to the same marker for want of
  * a truer one: nothing is missing from the data, so naming a price, a rate or a
- * balance would send the reader to a screen with nothing to do on it. What they
- * DO have is a cause worth reading, which the card names beside the figure
- * rather than inside this marker.
+ * balance would send the reader to a screen with nothing to do on it. They
+ * withhold only the ACCOUNT result; the invested figures every card shows do
+ * not read where a trade's cash settled (#1516).
  */
 export function periodResultUnknownReason(
   reasons: readonly PeriodResultReason[],
@@ -54,29 +54,18 @@ export function hasRepairableDataCause(
   );
 }
 
-/** Whether the window holds a movement the server could not count as a flow. */
-export function hasUnmeasuredFlow(
-  reasons: readonly PeriodResultReason[],
-): boolean {
-  return (
-    reasons.includes('externallySettledTrade') || reasons.includes('mixedSplit')
-  );
-}
-
 /** The cause a withheld period's notice names, ranked as the marker ranks them. */
 export type WithheldPeriodCause =
   | 'incompletePrices'
   | 'incompleteCash'
-  | 'missingRatePairs'
-  | 'unmeasuredFlow';
+  | 'missingRatePairs';
 
 /**
  * The one cause to print under a list of periods, some of which the server
  * withheld, or `null` when nothing was withheld for a cause worth printing.
  *
  * Ranked the way `periodResultUnknownReason` ranks a single figure -- a price
- * to add before a balance to explain before a rate to refresh -- and, after
- * those, the movement the flow classifier could not count. `zeroStart`,
+ * to add before a balance to explain before a rate to refresh. `zeroStart`,
  * `noValueSeries` and the money-weighted return's own `mwrUndefined` and
  * `windowTooShort` are boundaries, not defects: a portfolio younger than the
  * window has nothing to repair, so they print nothing and the list's own "n/a"
@@ -89,8 +78,5 @@ export function withheldPeriodCause(
   if (reasons.has('incompletePrices')) return 'incompletePrices';
   if (reasons.has('incompleteCash')) return 'incompleteCash';
   if (reasons.has('missingRatePairs')) return 'missingRatePairs';
-  if (reasons.has('externallySettledTrade') || reasons.has('mixedSplit')) {
-    return 'unmeasuredFlow';
-  }
   return null;
 }

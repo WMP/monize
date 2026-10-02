@@ -205,8 +205,7 @@
     "refresh": "현재 가치 새로고침",
     "investmentResult": "투자 결과",
     "periodBreakdownInvestedTooltip": "이 기간 동안 증권의 가치가 {valueChange} 변동했습니다. 그중 {netInvested}은(는) 매도를 뺀 투입액이며, 배당과 이자로 {income}을(를) 지급했습니다. 위의 수치는 투자되지 않은 현금을 제외한, 투자 자체가 거둔 성과입니다.",
-    "notAvailable": "해당 없음",
-    "unmeasuredFlowTooltip": "이 계좌 밖에서 결제된 거래이거나, 투자 항목과 일반 지출이 섞인 분할 항목이 있으면 결과를 이동한 자금과 분리할 수 없습니다."
+    "notAvailable": "해당 없음"
   },
   "spendingByPayee": {
     "title": "수취인별 지출",
