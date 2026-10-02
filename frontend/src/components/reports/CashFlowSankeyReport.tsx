@@ -358,7 +358,10 @@ export function CashFlowSankeyReport() {
               ariaLabel={ariaLabel}
               onOpen={open}
               heightClass="h-[32rem]"
-              labelMargin={160}
+              // A phone has no room for desktop label gutters either side; the
+              // dashboard widget's sizes are the ones that read on one.
+              labelMargin={isMobile ? 96 : 160}
+              fontSize={isMobile ? 11 : 12}
             />
             <ChartLegend
               className="mt-6"

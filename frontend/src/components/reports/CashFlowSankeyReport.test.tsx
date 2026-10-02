@@ -102,6 +102,12 @@ vi.mock('recharts', async () => {
   });
   return {
     ...base,
+    // The base stub, plus the margin the diagram was laid out with.
+    Sankey: ({ margin, ...props }: { margin?: object } & Parameters<typeof base.Sankey>[0]) => (
+      <div data-testid="sankey-margin" data-margin={JSON.stringify(margin ?? null)}>
+        {base.Sankey(props)}
+      </div>
+    ),
     Tooltip: ({ content }: { content?: (props: unknown) => React.ReactNode }) =>
       typeof content === 'function' ? (
         <div data-testid="tooltip">
@@ -270,6 +276,9 @@ async function renderReport(response: CashFlowSankeyResponse = example()) {
   return container;
 }
 
+const sankeyMargin = () =>
+  JSON.parse(screen.getByTestId('sankey-margin').getAttribute('data-margin') ?? 'null') as Record<string, number> | null;
+
 const sankeyNodes = () => JSON.parse(screen.getByTestId('sankey').getAttribute('data-nodes') ?? '[]') as string[];
 
 describe('CashFlowSankeyReport', () => {
@@ -349,6 +358,20 @@ describe('CashFlowSankeyReport', () => {
       fireEvent.click(screen.getByTitle('Flow Diagram'));
     });
     expect(screen.getByTestId('sankey')).toBeInTheDocument();
+  });
+
+  it('gives the labels wide gutters on a desktop', async () => {
+    await renderReport();
+    expect(sankeyMargin()).toMatchObject({ left: 160, right: 160 });
+  });
+
+  it('narrows the label gutters on a phone so the diagram keeps room to draw', async () => {
+    mockIsMobile = true;
+    await renderReport();
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Flow Diagram'));
+    });
+    expect(sankeyMargin()).toMatchObject({ left: 96, right: 96 });
   });
 
   it('lists every node in the table, merged or not (SANKEY-005)', async () => {
