@@ -395,6 +395,68 @@ A preview is a user-present provider read (PSU headers), so the bank does not
 count it against the background limit; it still costs a request, so the route
 is throttled like sync.
 
+## 7b. Preview details: selection, exceptions, operation types, payees, rules
+
+Requested by the feature's requester on 2026-10-02 after the first real
+preview (146 rows from PKO BP).
+
+**Operation type.** The adapter reads the bank's operation type without
+touching the description, because the description is part of the `hash:`
+key (section 6) and a changed description would re-import rows:
+
+- from `bank_transaction_code` (`description`, `code`, `sub_code`, bounded),
+  when the bank sends it;
+- else from a remittance line, or the last word of one, shaped like an
+  upper-case hyphenated code (`^[A-Z][A-Z0-9]*(-[A-Z0-9]+)+$`, for example
+  `CARD-PAYMENT`, `TRANSFER-IN`, `MOBILE-PAYMENT-POS-NO-CARD-TX-CODE`).
+
+Monize has no transaction type column; its only structural type is the
+transfer. So:
+
+- a transfer between two of the user's own synced accounts becoming a
+  Monize transfer stays task BS14 (it needs both legs matched);
+- every other operation type becomes a **tag**, when the connection's
+  `tag_operation_type` setting is on (default on). Known codes have a
+  translated label (`CARD-PAYMENT` "Card payment", `TRANSFER-IN` "Incoming
+  transfer", `TRANSFER-OUT` "Outgoing transfer", `MOBILE-PAYMENT-*` "Mobile
+  payment", `ATM-*` "Cash withdrawal"); an unknown code is its own tag name.
+  The tag is resolved by name case-insensitively and created in the
+  recipient's language when missing, and it is attached **before** the
+  `import` rules run, so a rule can use it ("tags has any Card payment").
+
+**Selection.** Every `new` row has a checkbox, checked by default, with
+"select all" and "select none" for the visible tab. A row that is not
+checked is either:
+
+- **skipped now** (the default): nothing is written; the next sync shows it
+  again;
+- **added to the exceptions**: a ledger row is written with `excluded_at`
+  set and no transaction, so no later sync imports it. The preview lists
+  exceptions in their own tab (`excluded`, apart from `duplicate`) with
+  "Remove from exceptions", which deletes that ledger row.
+
+The sync body carries `{ planFingerprint, importKeys, excludeKeys }`. The
+fingerprint stays the whole plan's, so the write still refuses a changed
+bank answer; the write also refuses (400) a key that is not a `new` row of
+that plan. Exceptions and imports are written in the same transaction.
+
+**Payee mapping.** Each row reports how its payee resolves: `name` (an
+existing payee of that exact name), `alias` (with the matched pattern and
+the payee), `new` (a payee will be created), `rule` (a rule sets it), or
+`none`. The row shows the resolved payee; hovering or focusing it shows the
+bank's original text, the payee it maps to and how. The expanded row links
+to the payee's aliases.
+
+**Rules.** The preview loads the `import` rules once and returns each row's
+trace: every rule that matched, by name (linked to the rule), what each
+action changed (before and after, for category, payee, description and
+tags) and the actions it skipped with their reason.
+
+**Raw bank data.** The expanded row shows the provider's own fields for that
+row (remittance lines, `bank_transaction_code`, creditor and debtor names,
+entry reference, the bank's reference, merchant category code, note). They
+are returned by the preview only and never stored.
+
 ## 8. The daily sync
 
 `BankSyncCronService` runs once a day (`17 5 * * *`, UTC). The fan-out lists
