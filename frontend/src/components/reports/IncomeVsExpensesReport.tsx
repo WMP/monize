@@ -23,6 +23,10 @@ import {
 import { parseISO } from "date-fns";
 import { builtInReportsApi } from "@/lib/built-in-reports";
 import { IncomeExpensePeriodItem } from "@/types/built-in-reports";
+import type { Account } from "@/types/account";
+import { accountsApi } from "@/lib/accounts";
+import { usePersistedAccountFilter } from "@/hooks/usePersistedAccountFilter";
+import { ReportAccountMultiSelect } from "@/components/reports/ReportAccountMultiSelect";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useDateRange } from "@/hooks/useDateRange";
 import { useReportData } from "@/hooks/useReportData";
@@ -42,7 +46,24 @@ import { PartialTotal } from "@/components/ui/PartialTotal";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
-type IncomeVsExpensesSortField = 'name' | 'income' | 'expenses' | 'savings' | 'savingsRate';
+type IncomeVsExpensesSortField =
+  | 'name'
+  | 'income'
+  | 'expenses'
+  | 'savings'
+  | 'savingsRate'
+  | 'taggedInflows'
+  | 'taggedOutflows';
+
+const ACCOUNTS_STORAGE_KEY = 'monize-reports-income-vs-expenses-accounts';
+
+// Same account list the dashboard's Income vs Expenses widget offers: an
+// investment account's cash legs are excluded from the report by linkage.
+const nonInvestmentAccounts = (a: Account) => a.accountType !== 'INVESTMENT';
+
+/** The two columns that exist only while a tagged-flow series is shown. */
+const isFlowField = (field: IncomeVsExpensesSortField) =>
+  field === 'taggedInflows' || field === 'taggedOutflows';
 
 /**
  * One sortable column of the table view. The five are declared once and
@@ -78,6 +99,9 @@ interface ChartDataItem {
   Expenses: number;
   Savings: number;
   SavingsRate: number;
+  /** Tagged transfer flows of the active bucket; absent when no flow series is shown. */
+  TaggedInflows?: number;
+  TaggedOutflows?: number;
   monthStart: string;
   monthEnd: string;
 }
@@ -93,6 +117,9 @@ export function IncomeVsExpensesReport() {
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const tagKeys = useTagKeys();
   const [tagKey, setTagKey] = useState('');
+  // Which tag-key bucket is selected. Owned here so the main chart can follow
+  // the tab; TagKeyBreakdownBuckets is controlled by it.
+  const [activeBucketValue, setActiveBucketValue] = useState('');
   const {
     dateRange,
     setDateRange,
@@ -110,17 +137,46 @@ export function IncomeVsExpensesReport() {
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
+  const { data: accountsData } = useReportData(() => accountsApi.getAll(), []);
+  const offeredAccounts = useMemo(
+    () => (accountsData ?? []).filter(nonInvestmentAccounts),
+    [accountsData],
+  );
+  // Persisted so the report opens on the accounts the user last chose; empty
+  // means every account, which is the report as it always was.
+  const [selectedAccountIds, setSelectedAccountIds] = usePersistedAccountFilter(
+    ACCOUNTS_STORAGE_KEY,
+    offeredAccounts,
+  );
+  const accountIdsKey = selectedAccountIds.join(',');
+
   const { data: response, isLoading, error, reload } = useReportData(
     () =>
       isValid
         ? builtInReportsApi.getIncomeVsExpenses({
             startDate: rangeStart || undefined,
             endDate: rangeEnd,
+            ...(selectedAccountIds.length > 0 ? { accountIds: selectedAccountIds } : {}),
             ...(tagKey ? { tagKey } : {}),
           })
         : Promise.resolve(null),
-    [isValid, rangeStart, rangeEnd, tagKey],
+    [isValid, rangeStart, rangeEnd, tagKey, accountIdsKey],
   );
+
+  // The bucket the breakdown card shows, and so the one whose tagged flows the
+  // main chart draws. The card falls back to the first bucket for a value it
+  // does not have; this does the same so the two cannot disagree. The untagged
+  // bucket has no flows (an untagged transfer appears nowhere), so it adds no
+  // series.
+  const activeBucket = useMemo(
+    () =>
+      response?.tagKey && response.buckets
+        ? (response.buckets.find((b) => b.value === activeBucketValue) ?? response.buckets[0])
+        : undefined,
+    [response, activeBucketValue],
+  );
+  const flowBucket = activeBucket && !activeBucket.isUntagged ? activeBucket : undefined;
+  const showFlows = flowBucket !== undefined;
 
   // Map response to chart data. `name` must be unique across the dataset
   // (used as the XAxis category key); a non-unique value like "May" causes
@@ -132,6 +188,10 @@ export function IncomeVsExpensesReport() {
         const savings = item.income - item.expenses;
         const savingsRate =
           item.income > 0 ? Math.round((savings / item.income) * 100) : 0;
+        // Flows ride beside the bars and never enter income, expenses or the
+        // savings above (INV-REPORT-003). A period the bucket has no row for
+        // had no tagged transfer in it, which is a known zero.
+        const flows = flowBucket?.data.find((d) => d.period === item.period);
         return {
           name: item.period,
           fullName: formatChartDate(parseISO(item.periodStart), "MMM yyyy"),
@@ -139,13 +199,19 @@ export function IncomeVsExpensesReport() {
           Expenses: Math.round(item.expenses),
           Savings: Math.round(savings),
           SavingsRate: savingsRate,
+          ...(flowBucket
+            ? {
+                TaggedInflows: Math.round(flows ? flows.taggedInflows : 0),
+                TaggedOutflows: Math.round(flows ? flows.taggedOutflows : 0),
+              }
+            : {}),
           // The dates the bar covers come from the server, which decided the
           // bucket; deriving them again here is a second definition of it.
           monthStart: item.periodStart,
           monthEnd: item.periodEnd,
         };
       }),
-    [response, formatChartDate],
+    [response, formatChartDate, flowBucket],
   );
 
   /**
@@ -173,11 +239,15 @@ export function IncomeVsExpensesReport() {
   );
   const reportingCurrency = response?.currency ?? defaultCurrency;
 
+  // A stored sort on a flow column falls back to the month when that column is
+  // not on the screen.
+  const effectiveSortField = !showFlows && isFlowField(sortField) ? 'name' : sortField;
+
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
     sorted.sort((a, b) => {
       let comparison = 0;
-      switch (sortField) {
+      switch (effectiveSortField) {
         case 'name':
           comparison = compareValues(a.name, b.name);
           break;
@@ -193,11 +263,17 @@ export function IncomeVsExpensesReport() {
         case 'savingsRate':
           comparison = compareValues(a.SavingsRate, b.SavingsRate);
           break;
+        case 'taggedInflows':
+          comparison = compareValues(a.TaggedInflows, b.TaggedInflows);
+          break;
+        case 'taggedOutflows':
+          comparison = compareValues(a.TaggedOutflows, b.TaggedOutflows);
+          break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
     return sorted;
-  }, [chartData, sortField, sortDirection]);
+  }, [chartData, effectiveSortField, sortDirection]);
 
   // Exhaustive over the sort field union, so a new field is a compile error
   // rather than a column with no control in either header. The list both
@@ -218,8 +294,12 @@ export function IncomeVsExpensesReport() {
     expenses: { field: 'expenses', label: t('incomeVsExpenses.colExpenses'), align: 'right' },
     savings: { field: 'savings', label: t('incomeVsExpenses.colSavings'), align: 'right' },
     savingsRate: { field: 'savingsRate', label: t('incomeVsExpenses.colSavingsRate'), align: 'right' },
+    taggedInflows: { field: 'taggedInflows', label: t('tagBreakdown.inflows'), align: 'right' },
+    taggedOutflows: { field: 'taggedOutflows', label: t('tagBreakdown.outflows'), align: 'right' },
   };
-  const sortColumns: readonly SortColumn[] = Object.values(columns);
+  const sortColumns: readonly SortColumn[] = Object.values(columns).filter(
+    (col) => showFlows || !isFlowField(col.field),
+  );
 
   // The row's primary action, named once so the pointer and the keyboard cannot
   // come to run two slightly different pushes.
@@ -242,13 +322,14 @@ export function IncomeVsExpensesReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = [t('incomeVsExpenses.colMonth'), t('incomeVsExpenses.colIncome'), t('incomeVsExpenses.colExpenses'), t('incomeVsExpenses.colSavings'), t('incomeVsExpenses.colSavingsRate')];
+    const headers = [t('incomeVsExpenses.colMonth'), t('incomeVsExpenses.colIncome'), t('incomeVsExpenses.colExpenses'), t('incomeVsExpenses.colSavings'), t('incomeVsExpenses.colSavingsRate'), ...(showFlows ? [t('tagBreakdown.inflows'), t('tagBreakdown.outflows')] : [])];
     const rows = sortedTableData.map((d) => [
       d.fullName,
       d.Income,
       d.Expenses,
       d.Savings,
       `${formatPercentTrimmed(d.SavingsRate)}`,
+      ...(showFlows ? [d.TaggedInflows ?? null, d.TaggedOutflows ?? null] : []),
     ]);
     exportToCsv('income-vs-expenses', headers, rows);
   };
@@ -316,6 +397,12 @@ export function IncomeVsExpensesReport() {
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
+          <ReportAccountMultiSelect
+            accounts={offeredAccounts}
+            value={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+            filter={nonInvestmentAccounts}
+          />
           <DateRangeSelector
             ranges={["6m", "1y", "2y"]}
             value={dateRange}
@@ -458,6 +545,21 @@ export function IncomeVsExpensesReport() {
                         <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                         {formatPercentTrimmed(row.SavingsRate)}
                       </td>
+                      {/* Tagged transfer flows: indigo, never the green/red of
+                          income and expenses, and third in the phone grid so
+                          the five figures above keep their places. */}
+                      {flowBucket && row.TaggedInflows !== undefined && row.TaggedOutflows !== undefined && (
+                        <>
+                          <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
+                            {formatCurrency(row.TaggedInflows)}
+                          </td>
+                          <td role="cell" className={`col-start-3 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                            {formatCurrency(row.TaggedOutflows)}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -493,6 +595,22 @@ export function IncomeVsExpensesReport() {
                       <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
                       {formatPercent(totals.savingsRate, 1)}
                     </td>
+                    {flowBucket && (
+                      <>
+                        <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
+                          <PartialTotal total={{ value: flowBucket.taggedInflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
+                            {formatCurrency(flowBucket.taggedInflows)}
+                          </PartialTotal>
+                        </td>
+                        <td role="cell" className={`col-start-3 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                          <PartialTotal total={{ value: flowBucket.taggedOutflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
+                            {formatCurrency(flowBucket.taggedOutflows)}
+                          </PartialTotal>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 </tfoot>
               </table>
@@ -546,6 +664,26 @@ export function IncomeVsExpensesReport() {
                     radius={[4, 4, 0, 0]}
                     cursor="pointer"
                   />
+                  {/* The funding series: the active tag bucket's transfer flows,
+                      drawn in the indigo pair the breakdown card uses so they
+                      never read as income or expenses. Absent without a tag
+                      key or on the untagged tab. */}
+                  {flowBucket && (
+                    <Bar
+                      dataKey="TaggedInflows"
+                      name={t('tagBreakdown.inflowsSeries', { value: flowBucket.value })}
+                      fill={chartColors.inflow}
+                      radius={[4, 4, 0, 0]}
+                    />
+                  )}
+                  {flowBucket && (
+                    <Bar
+                      dataKey="TaggedOutflows"
+                      name={t('tagBreakdown.outflowsSeries', { value: flowBucket.value })}
+                      fill={chartColors.outflow}
+                      radius={[4, 4, 0, 0]}
+                    />
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -637,6 +775,8 @@ export function IncomeVsExpensesReport() {
           buckets={response.buckets}
           reportingCurrency={reportingCurrency}
           idPrefix="income-vs-expenses-tag"
+          activeValue={activeBucket?.value}
+          onActiveValueChange={setActiveBucketValue}
         />
       )}
     </div>
