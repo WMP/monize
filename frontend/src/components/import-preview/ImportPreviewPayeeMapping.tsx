@@ -1,13 +1,32 @@
 'use client';
 
 import Link from 'next/link';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import type { ImportPreviewPayee } from '@/types/import-preview';
 
 export const IMPORT_PREVIEW_HEADING_CLASS =
   'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
 export const IMPORT_PREVIEW_LINK_CLASS =
-  'font-medium text-blue-600 hover:underline focus-visible:underline dark:text-blue-400';
+  'inline-flex items-center gap-1 font-medium text-blue-600 hover:underline focus-visible:underline dark:text-blue-400';
+
+/**
+ * An in-app link inside the import preview opens in a NEW tab. The preview sits
+ * in a `Modal` with `pushHistory`, which pops its own history entry when it
+ * unmounts; following the link in this tab would run that pop after the
+ * navigation and land the reader back on the page behind the modal, and would
+ * discard a preview that costs a bank request to rebuild. `noopener` is the
+ * security control: it denies the opened page a handle on this one.
+ */
+export const IMPORT_PREVIEW_LINK_PROPS = {
+  target: '_blank',
+  rel: 'noopener noreferrer',
+} as const;
+
+/** The glyph that says the link leaves this tab; the accessible name says it in words. */
+export function ImportPreviewNewTabIcon() {
+  return <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />;
+}
 
 /** How the payee was found, as one sentence. */
 function usePayeeSentence() {
@@ -51,8 +70,14 @@ export function ImportPreviewPayeeMapping({ payee }: { payee: ImportPreviewPayee
           )}
           <p>{sentence(payee)}</p>
           {payee.payeeId !== null && (
-            <Link href={`/payees/${payee.payeeId}?tab=aliases`} className={IMPORT_PREVIEW_LINK_CLASS}>
+            <Link
+              href={`/payees/${payee.payeeId}?tab=aliases`}
+              {...IMPORT_PREVIEW_LINK_PROPS}
+              aria-label={t('openAliasesNewTab')}
+              className={IMPORT_PREVIEW_LINK_CLASS}
+            >
               {t('openAliases')}
+              <ImportPreviewNewTabIcon />
             </Link>
           )}
         </>

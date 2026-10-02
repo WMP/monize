@@ -571,7 +571,8 @@
       "unnamed": "Reguła",
       "skipped": "{action}: pominięto ({reason})",
       "stopped": "Zatrzymuje kolejne reguły.",
-      "applied": "Zastosowano: {actions}"
+      "applied": "Zastosowano: {actions}",
+      "openNewTab": "Otwórz regułę {name} w nowej karcie"
     },
     "payee": {
       "heading": "Odbiorca",
@@ -584,7 +585,8 @@
       "rule": "Reguła importu ustawia odbiorcę: {name}.",
       "ruleNone": "Reguła importu usuwa odbiorcę.",
       "none": "Bank nie podał kontrahenta, więc transakcja nie ma odbiorcy.",
-      "openAliases": "Otwórz aliasy odbiorcy"
+      "openAliases": "Otwórz aliasy odbiorcy",
+      "openAliasesNewTab": "Otwórz aliasy odbiorcy w nowej karcie"
     }
   }
 }

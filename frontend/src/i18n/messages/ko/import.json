@@ -571,7 +571,8 @@
       "unnamed": "규칙",
       "skipped": "{action}: 건너뜀 ({reason})",
       "stopped": "이후 규칙을 중단합니다.",
-      "applied": "적용됨: {actions}"
+      "applied": "적용됨: {actions}",
+      "openNewTab": "규칙 {name}을 새 탭에서 열기"
     },
     "payee": {
       "heading": "수취인",
@@ -584,7 +585,8 @@
       "rule": "가져오기 규칙이 수취인을 설정합니다: {name}.",
       "ruleNone": "가져오기 규칙이 수취인을 제거합니다.",
       "none": "은행이 거래 상대방을 알려 주지 않아 이 거래에는 수취인이 없습니다.",
-      "openAliases": "수취인 별칭 열기"
+      "openAliases": "수취인 별칭 열기",
+      "openAliasesNewTab": "수취인 별칭을 새 탭에서 열기"
     }
   }
 }

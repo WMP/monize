@@ -571,7 +571,8 @@
       "unnamed": "ルール",
       "skipped": "{action}: スキップしました（{reason}）",
       "stopped": "これ以降のルールを停止します。",
-      "applied": "適用: {actions}"
+      "applied": "適用: {actions}",
+      "openNewTab": "ルール {name} を新しいタブで開く"
     },
     "payee": {
       "heading": "支払先",
@@ -584,7 +585,8 @@
       "rule": "インポートルールが支払先を設定します: {name}。",
       "ruleNone": "インポートルールが支払先を削除します。",
       "none": "銀行から取引相手が示されなかったため、この取引には支払先がありません。",
-      "openAliases": "支払先のエイリアスを開く"
+      "openAliases": "支払先のエイリアスを開く",
+      "openAliasesNewTab": "支払先のエイリアスを新しいタブで開く"
     }
   }
 }

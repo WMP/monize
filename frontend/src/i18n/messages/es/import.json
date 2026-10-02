@@ -571,7 +571,8 @@
       "unnamed": "Regla",
       "skipped": "{action}: omitida ({reason})",
       "stopped": "Detiene las reglas posteriores.",
-      "applied": "Aplicadas: {actions}"
+      "applied": "Aplicadas: {actions}",
+      "openNewTab": "Abrir la regla {name} en una pestaña nueva"
     },
     "payee": {
       "heading": "Beneficiario",
@@ -584,7 +585,8 @@
       "rule": "Una regla de importación fija el beneficiario: {name}.",
       "ruleNone": "Una regla de importación quita el beneficiario.",
       "none": "El banco no indicó contraparte, así que la transacción no tiene beneficiario.",
-      "openAliases": "Abrir los alias del beneficiario"
+      "openAliases": "Abrir los alias del beneficiario",
+      "openAliasesNewTab": "Abrir los alias del beneficiario en una pestaña nueva"
     }
   }
 }

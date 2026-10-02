@@ -571,7 +571,8 @@
       "unnamed": "Aturan",
       "skipped": "{action}: dilewati ({reason})",
       "stopped": "Menghentikan aturan setelahnya.",
-      "applied": "Diterapkan: {actions}"
+      "applied": "Diterapkan: {actions}",
+      "openNewTab": "Buka aturan {name} di tab baru"
     },
     "payee": {
       "heading": "Penerima",
@@ -584,7 +585,8 @@
       "rule": "Aturan impor menetapkan penerima: {name}.",
       "ruleNone": "Aturan impor menghapus penerima.",
       "none": "Bank tidak menyebutkan pihak lawan, sehingga transaksi tidak memiliki penerima.",
-      "openAliases": "Buka alias penerima"
+      "openAliases": "Buka alias penerima",
+      "openAliasesNewTab": "Buka alias penerima di tab baru"
     }
   }
 }

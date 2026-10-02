@@ -571,7 +571,8 @@
       "unnamed": "规则",
       "skipped": "{action}：已跳过（{reason}）",
       "stopped": "停止其后的规则。",
-      "applied": "已应用：{actions}"
+      "applied": "已应用：{actions}",
+      "openNewTab": "在新标签页中打开规则 {name}"
     },
     "payee": {
       "heading": "收款人",
@@ -584,7 +585,8 @@
       "rule": "导入规则设置收款人：{name}。",
       "ruleNone": "导入规则清除收款人。",
       "none": "银行没有提供交易对手，因此这笔交易没有收款人。",
-      "openAliases": "打开收款人的别名"
+      "openAliases": "打开收款人的别名",
+      "openAliasesNewTab": "在新标签页中打开收款人的别名"
     }
   }
 }

@@ -571,7 +571,8 @@
       "unnamed": "Quy tắc",
       "skipped": "{action}: đã bỏ qua ({reason})",
       "stopped": "Dừng các quy tắc sau nó.",
-      "applied": "Đã áp dụng: {actions}"
+      "applied": "Đã áp dụng: {actions}",
+      "openNewTab": "Mở quy tắc {name} trong tab mới"
     },
     "payee": {
       "heading": "Người nhận",
@@ -584,7 +585,8 @@
       "rule": "Một quy tắc nhập đặt người nhận: {name}.",
       "ruleNone": "Một quy tắc nhập xóa người nhận.",
       "none": "Ngân hàng không nêu đối tác, nên giao dịch không có người nhận.",
-      "openAliases": "Mở các bí danh của người nhận"
+      "openAliases": "Mở các bí danh của người nhận",
+      "openAliasesNewTab": "Mở các bí danh của người nhận trong tab mới"
     }
   }
 }

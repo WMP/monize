@@ -571,7 +571,8 @@
       "unnamed": "Rule",
       "skipped": "{action}: skipped ({reason})",
       "stopped": "Stops the rules after it.",
-      "applied": "Applied: {actions}"
+      "applied": "Applied: {actions}",
+      "openNewTab": "Open the rule {name} in a new tab"
     },
     "payee": {
       "heading": "Payee",
@@ -584,7 +585,8 @@
       "rule": "An import rule sets the payee: {name}.",
       "ruleNone": "An import rule clears the payee.",
       "none": "The bank gave no counterparty, so the transaction has no payee.",
-      "openAliases": "Open the payee's aliases"
+      "openAliases": "Open the payee's aliases",
+      "openAliasesNewTab": "Open the payee's aliases in a new tab"
     }
   }
 }

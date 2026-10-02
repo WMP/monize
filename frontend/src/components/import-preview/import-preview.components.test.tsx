@@ -112,10 +112,12 @@ describe('ImportPreviewPayeeMapping', () => {
 
   it('links to the aliases of an existing payee only', () => {
     const { rerender } = render(<ImportPreviewPayeeMapping payee={payee()} />);
-    expect(screen.getByRole('link', { name: "Open the payee's aliases" })).toHaveAttribute(
-      'href',
-      '/payees/p-1?tab=aliases',
-    );
+    const link = screen.getByRole('link', { name: "Open the payee's aliases in a new tab" });
+    expect(link).toHaveAttribute('href', '/payees/p-1?tab=aliases');
+    // In-app navigation here would run the modal's history pop after it and
+    // land back on the page behind the preview, so the link opens a new tab.
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     rerender(<ImportPreviewPayeeMapping payee={payee({ payeeId: null })} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
@@ -140,7 +142,10 @@ describe('ImportPreviewRuleTrace', () => {
 
   it('links each rule by name and writes its changes in words', () => {
     render(<ImportPreviewRuleTrace rules={[rule()]} labels={labels} />);
-    expect(screen.getByRole('link', { name: 'Food rule' })).toHaveAttribute('href', '/rules/r1');
+    const link = screen.getByRole('link', { name: 'Open the rule Food rule in a new tab' });
+    expect(link).toHaveAttribute('href', '/rules/r1');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getByText('Category: none → Food')).toBeInTheDocument();
   });
 
@@ -179,7 +184,7 @@ describe('ImportPreviewRuleTrace', () => {
 
   it('names an unnamed rule generically', () => {
     render(<ImportPreviewRuleTrace rules={[rule({ ruleName: null })]} labels={labels} />);
-    expect(screen.getByRole('link', { name: 'Rule' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open the rule Rule in a new tab' })).toBeInTheDocument();
   });
 });
 

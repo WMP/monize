@@ -571,7 +571,8 @@
       "unnamed": "Regel",
       "skipped": "{action}: overgeslagen ({reason})",
       "stopped": "Stopt de regels daarna.",
-      "applied": "Toegepast: {actions}"
+      "applied": "Toegepast: {actions}",
+      "openNewTab": "Regel {name} in een nieuw tabblad openen"
     },
     "payee": {
       "heading": "Begunstigde",
@@ -584,7 +585,8 @@
       "rule": "Een importregel stelt de begunstigde in: {name}.",
       "ruleNone": "Een importregel wist de begunstigde.",
       "none": "De bank gaf geen tegenpartij op, dus de transactie heeft geen begunstigde.",
-      "openAliases": "Aliassen van de begunstigde openen"
+      "openAliases": "Aliassen van de begunstigde openen",
+      "openAliasesNewTab": "Aliassen van de begunstigde in een nieuw tabblad openen"
     }
   }
 }

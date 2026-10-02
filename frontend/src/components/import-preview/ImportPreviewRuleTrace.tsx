@@ -5,7 +5,12 @@ import { useTranslations } from 'next-intl';
 import { useRuleChangeText } from '@/components/rules/use-rule-change-text';
 import { useSkipReasonText } from '@/components/rules/RuleRunPreviewTable';
 import type { ImportPreviewLabels, ImportPreviewRule } from '@/types/import-preview';
-import { IMPORT_PREVIEW_HEADING_CLASS, IMPORT_PREVIEW_LINK_CLASS } from './ImportPreviewPayeeMapping';
+import {
+  IMPORT_PREVIEW_HEADING_CLASS,
+  IMPORT_PREVIEW_LINK_CLASS,
+  IMPORT_PREVIEW_LINK_PROPS,
+  ImportPreviewNewTabIcon,
+} from './ImportPreviewPayeeMapping';
 
 function RuleTraceItem({ rule, labels }: { rule: ImportPreviewRule; labels: ImportPreviewLabels }) {
   const t = useTranslations('import.preview.rules');
@@ -19,6 +24,7 @@ function RuleTraceItem({ rule, labels }: { rule: ImportPreviewRule; labels: Impo
   };
   // A type this client has no name for still reads as what the server said.
   const actionName = (type: string) => (tAction.has(type) ? tAction(type) : type);
+  const ruleName = rule.ruleName ?? t('unnamed');
   const changes = changeText(rule.changes, names);
   const notes = [
     ...rule.skipped.map((action) =>
@@ -29,8 +35,14 @@ function RuleTraceItem({ rule, labels }: { rule: ImportPreviewRule; labels: Impo
 
   return (
     <li>
-      <Link href={`/rules/${rule.ruleId}`} className={IMPORT_PREVIEW_LINK_CLASS}>
-        {rule.ruleName ?? t('unnamed')}
+      <Link
+        href={`/rules/${rule.ruleId}`}
+        {...IMPORT_PREVIEW_LINK_PROPS}
+        aria-label={t('openNewTab', { name: ruleName })}
+        className={IMPORT_PREVIEW_LINK_CLASS}
+      >
+        {ruleName}
+        <ImportPreviewNewTabIcon />
       </Link>
       {(changes.length > 0 || notes.length > 0) && (
         <ul className="mt-0.5 list-disc space-y-0.5 pl-5 text-gray-700 dark:text-gray-300">

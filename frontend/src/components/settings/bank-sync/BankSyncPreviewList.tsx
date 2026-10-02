@@ -262,7 +262,7 @@ export function BankSyncPreviewList({
                 <span>{headerBox.label}</span>
               </label>
             )}
-            <ul className={`${LIST_SCROLL_CLASS} divide-y divide-gray-200 dark:divide-gray-700`}>
+            <ul className={`${LIST_SCROLL_CLASS} ${TABLE_BODY_CLASS}`}>
               {shown.map((row, index) => (
                 <PreviewCard
                   key={rowKey(row, index)}

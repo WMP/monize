@@ -1347,8 +1347,12 @@ describe('BankSyncPreviewModal', () => {
       await screen.findByText('Monize balance now');
       fireEvent.click(toggle());
 
-      const link = screen.getByRole('link', { name: 'Food rule' });
+      const link = screen.getByRole('link', { name: 'Open the rule Food rule in a new tab' });
       expect(link).toHaveAttribute('href', '/rules/r-1');
+      // The preview is a pushHistory modal: following an in-app link in this
+      // tab would pop its history entry and land back on the settings page.
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
       expect(screen.getByText('Category: none → Food')).toBeInTheDocument();
       expect(screen.getByText('Tags added: Weekly')).toBeInTheDocument();
       expect(
@@ -1396,7 +1400,10 @@ describe('BankSyncPreviewModal', () => {
       await loaded();
       await screen.findByText('Monize balance now');
       fireEvent.click(toggle());
-      expect(screen.getByRole('link', { name: 'Rule' })).toHaveAttribute('href', '/rules/r-secret-id');
+      expect(screen.getByRole('link', { name: 'Open the rule Rule in a new tab' })).toHaveAttribute(
+        'href',
+        '/rules/r-secret-id',
+      );
       expect(screen.getByText('Applied: Ask for an AI review')).toBeInTheDocument();
       expect(screen.queryByText('r-secret-id')).not.toBeInTheDocument();
     });
@@ -1411,10 +1418,10 @@ describe('BankSyncPreviewModal', () => {
       expect(
         screen.getByText('Maps to Biedronka S.A. through the alias "BIEDRONKA*".'),
       ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: "Open the payee's aliases" })).toHaveAttribute(
-        'href',
-        '/payees/p-1?tab=aliases',
-      );
+      const aliases = screen.getByRole('link', { name: "Open the payee's aliases in a new tab" });
+      expect(aliases).toHaveAttribute('href', '/payees/p-1?tab=aliases');
+      expect(aliases).toHaveAttribute('target', '_blank');
+      expect(aliases).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('offers no aliases link for a payee that does not exist yet', async () => {
@@ -1433,7 +1440,7 @@ describe('BankSyncPreviewModal', () => {
       await screen.findByText('Monize balance now');
       fireEvent.click(toggle());
       expect(screen.getByText('No payee has this name yet, so Brand new would be created.')).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: "Open the payee's aliases" })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /aliases/ })).not.toBeInTheDocument();
     });
 
     it('shows the operation type tag, or says there is none', async () => {
@@ -1472,7 +1479,7 @@ describe('BankSyncPreviewModal', () => {
       await screen.findByText('Monize balance now');
       fireEvent.click(toggle());
       const card = within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0];
-      expect(within(card).getByRole('link', { name: 'Food rule' })).toBeInTheDocument();
+      expect(within(card).getByRole('link', { name: 'Open the rule Food rule in a new tab' })).toBeInTheDocument();
       expect(within(card).getByText('Import rules')).toBeInTheDocument();
     });
 

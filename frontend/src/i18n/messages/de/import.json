@@ -571,7 +571,8 @@
       "unnamed": "Regel",
       "skipped": "{action}: übersprungen ({reason})",
       "stopped": "Beendet die Regelverarbeitung danach.",
-      "applied": "Angewendet: {actions}"
+      "applied": "Angewendet: {actions}",
+      "openNewTab": "Regel {name} in einem neuen Tab öffnen"
     },
     "payee": {
       "heading": "Zahlungsempfänger",
@@ -584,7 +585,8 @@
       "rule": "Eine Importregel legt den Zahlungsempfänger fest: {name}.",
       "ruleNone": "Eine Importregel entfernt den Zahlungsempfänger.",
       "none": "Die Bank hat keine Gegenpartei angegeben, daher hat die Buchung keinen Zahlungsempfänger.",
-      "openAliases": "Aliase des Zahlungsempfängers öffnen"
+      "openAliases": "Aliase des Zahlungsempfängers öffnen",
+      "openAliasesNewTab": "Aliase des Zahlungsempfängers in einem neuen Tab öffnen"
     }
   }
 }

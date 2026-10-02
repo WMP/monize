@@ -571,7 +571,8 @@
       "unnamed": "Kural",
       "skipped": "{action}: atlandı ({reason})",
       "stopped": "Sonraki kuralları durdurur.",
-      "applied": "Uygulananlar: {actions}"
+      "applied": "Uygulananlar: {actions}",
+      "openNewTab": "{name} kuralını yeni sekmede aç"
     },
     "payee": {
       "heading": "Alacaklı",
@@ -584,7 +585,8 @@
       "rule": "Bir içe aktarma kuralı alacaklıyı belirler: {name}.",
       "ruleNone": "Bir içe aktarma kuralı alacaklıyı kaldırır.",
       "none": "Banka karşı taraf belirtmedi, bu yüzden işlemin alacaklısı yok.",
-      "openAliases": "Alacaklının takma adlarını aç"
+      "openAliases": "Alacaklının takma adlarını aç",
+      "openAliasesNewTab": "Alacaklının takma adlarını yeni sekmede aç"
     }
   }
 }

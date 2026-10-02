@@ -571,7 +571,8 @@
       "unnamed": "Règle",
       "skipped": "{action} : ignorée ({reason})",
       "stopped": "Arrête les règles suivantes.",
-      "applied": "Appliquées : {actions}"
+      "applied": "Appliquées : {actions}",
+      "openNewTab": "Ouvrir la règle {name} dans un nouvel onglet"
     },
     "payee": {
       "heading": "Bénéficiaire",
@@ -584,7 +585,8 @@
       "rule": "Une règle d'import définit le bénéficiaire : {name}.",
       "ruleNone": "Une règle d'import supprime le bénéficiaire.",
       "none": "La banque n'a indiqué aucune contrepartie : la transaction n'a pas de bénéficiaire.",
-      "openAliases": "Ouvrir les alias du bénéficiaire"
+      "openAliases": "Ouvrir les alias du bénéficiaire",
+      "openAliasesNewTab": "Ouvrir les alias du bénéficiaire dans un nouvel onglet"
     }
   }
 }
