@@ -90,6 +90,7 @@ implied.
 | INV-LOAN-004 | The final payment is the residual payoff, not another installment | enforced |
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, and the rate, through its own due date | enforced |
+| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | unenforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -2312,6 +2313,48 @@ Known gaps          The PAYMENT is not part of this invariant: a rate change
                     Interest is unaffected -- it is debt x rate.
 Status              enforced
 ```
+### INV-LOAN-007 -- one amortization method per mortgage type
+
+```text
+Statement           A mortgage's amortization method (annuity, linear, interest
+                    only) and its compounding convention are functions of its
+                    mortgage type alone, and every surface that prices, projects
+                    or infers -- the creation preview, the persisted payment, the
+                    scheduled installment (template and posting), the rate-change
+                    recalculation, the frontend projection and rate inference --
+                    reads them through the type's traits, not from the two
+                    booleans or a surface-local rule.
+Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
+                    the traits, truth tables and fixtures are
+                    docs/specs/mortgage-types.md.
+Enforcement         None yet; the type does not exist. Every mortgage is priced
+                    as an annuity, and the convention is chosen by the
+                    isCanadian && !isVariableRate test in getPeriodicRate and
+                    calculateEffectiveAnnualRate on both layers. The mechanism,
+                    built by the tasks of docs/future-plans/mortgage-types-tasks.md:
+                    the type helper (MORTGAGE_TYPE_TRAITS in
+                    backend/src/accounts/mortgage-type.util.ts and
+                    frontend/src/lib/mortgage-type.ts, a Record over the type so
+                    a missing type is a compile error); the method branch in
+                    calculateMortgageAmortization, resolveInstallment, the
+                    rate-change paths and generateLoanSchedule; the parity
+                    fixture mortgage-type-cases.json read by both layers; a
+                    shrink-only guard naming every remaining boolean caller; and
+                    the CHECK on accounts.mortgage_type reconciled with
+                    MORTGAGE_TYPES by a contract spec.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)
+Failure response    A LINEAR or INTEREST_ONLY mortgage without
+                    amortization_months is refused on create, update and
+                    preview, and its installment declines (the persisted
+                    amounts post), per the spec's missing-data policy.
+Required tests      Owed: the spec's section 7 fixtures row by row on both
+                    layers (preview, installment pricing, projection), the
+                    parity fixture, the flags guard, the CHECK contract spec.
+Status              unenforced
+```
+
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
 
 ```text

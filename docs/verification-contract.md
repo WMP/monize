@@ -107,6 +107,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-LOAN-004 residual final payment | **required** | -- | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-005 first payment is payment 1 | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-006 dated installment pricing | **required** | **required** | required | -- | -- | -- | -- | optional |
+| INV-LOAN-007 one method per mortgage type | **required** (not yet met) | **required** (not yet met) | required (not yet met) | -- | -- | -- | -- | optional |
 | INV-LOAN-HISTORY-001 ledger-backed loan interest | **required** | required | -- | -- | -- | -- | -- | optional |
 | INV-OCCURRENCE-001 one effect | supporting | -- | required | required | **required** | required | -- | required |
 | INV-OCCURRENCE-002 override price | required | -- | -- | -- | -- | -- | -- | required |
