@@ -175,14 +175,15 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - Fifteen colour themes for the whole app, each with a light and a dark variant (Settings -> Preferences)
 
 ### Reports
-- **Built-in Reports** -- 46 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills). A sample:
+- **Built-in Reports** -- 47 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills), all server-side aggregated. A sample:
   - Spending by Category / Payee
   - Income by Source
   - Monthly Spending Trend
   - Monthly Breakdown
   - Income vs Expenses
-  - Cash Flow Statement
-  - Year Over Year Comparison
+  - Cash Flow
+  - Cash Flow Sankey (where income went: spending, savings, debt and what was left)
+  - Year over Year Comparison
   - Weekend vs Weekday Spending
   - Spending Anomalies
   - Tax Summary

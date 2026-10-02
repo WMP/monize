@@ -172,6 +172,22 @@ export const EXPENSES_PIE_DEFAULT: ExpensesPieConfig = {
   topLevelOnly: false,
 };
 
+/**
+ * The Cash Flow Sankey widget: the report's own settings. An empty
+ * `accountIds` is the server's default cash-flow scope.
+ */
+export interface CashFlowSankeyConfig extends RangeAccountsConfig {
+  depth: 1 | 2;
+  view: 'sankey' | 'table';
+}
+
+export const CASH_FLOW_SANKEY_DEFAULT: CashFlowSankeyConfig = {
+  range: 'mtd',
+  accountIds: [],
+  depth: 1,
+  view: 'sankey',
+};
+
 export const INCOME_EXPENSES_DEFAULT: RangeAccountsConfig = {
   range: '1m',
   accountIds: [],

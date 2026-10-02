@@ -4,6 +4,7 @@ import type { ComponentType, ReactNode, SVGProps } from 'react';
 import Link from 'next/link';
 import {
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
   ArrowTrendingUpIcon,
   ArrowsUpDownIcon,
   BanknotesIcon,
@@ -62,6 +63,7 @@ export const WIDGET_ICONS: Record<DashboardWidgetId, WidgetIconComponent> = {
   'geographic-allocation': GlobeAltIcon,
   'recurring-expenses': ArrowPathIcon,
   'weekend-weekday': CalendarIcon,
+  'cash-flow-sankey': ArrowsRightLeftIcon,
 };
 
 /**

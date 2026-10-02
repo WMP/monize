@@ -281,5 +281,14 @@
     "weekdayLabel": "Hari Kerja",
     "viewOverview": "Ikhtisar",
     "viewByDay": "Per Hari"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey Arus Kas",
+    "empty": "Tidak ada pemasukan, pengeluaran, atau transfer pada periode ini.",
+    "depth": "Rincian",
+    "depthCategories": "Kategori",
+    "depthSubcategories": "Subkategori",
+    "viewDiagram": "Diagram",
+    "viewTable": "Tabel"
   }
 }

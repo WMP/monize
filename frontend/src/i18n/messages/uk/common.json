@@ -89,6 +89,7 @@
     "stackedChart": "100% накопичена стовпчаста діаграма",
     "lineChart": "Лінійна діаграма",
     "areaChart": "Діаграма площ",
+    "sankeyChart": "Діаграма потоків",
     "table": "Таблиця"
   },
   "formActions": {

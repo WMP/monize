@@ -89,6 +89,7 @@
     "stackedChart": "Skumulowany wykres słupkowy 100%",
     "lineChart": "Wykres liniowy",
     "areaChart": "Wykres warstwowy",
+    "sankeyChart": "Diagram przepływów",
     "table": "Tabela"
   },
   "formActions": {

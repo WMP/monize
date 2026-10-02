@@ -89,6 +89,7 @@
     "stackedChart": "100% gestapeld staafdiagram",
     "lineChart": "Lijndiagram",
     "areaChart": "Vlakdiagram",
+    "sankeyChart": "Stroomdiagram",
     "table": "Tabel"
   },
   "formActions": {

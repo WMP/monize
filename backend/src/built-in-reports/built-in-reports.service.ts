@@ -7,6 +7,7 @@ import { TaxRecurringReportsService } from "./tax-recurring-reports.service";
 import { DataQualityReportsService } from "./data-quality-reports.service";
 import { MonthlyComparisonService } from "./monthly-comparison.service";
 import { MonthlyCategoryBreakdownService } from "./monthly-category-breakdown.service";
+import { CashFlowSankeyService } from "./cash-flow-sankey.service";
 import type {
   IncomeExpenseBucket,
   WeekStartsOn,
@@ -27,6 +28,8 @@ import {
   DuplicateTransactionsResponse,
   MonthlyComparisonResponse,
   MonthlyCategoryBreakdownResponse,
+  CashFlowSankeyResponse,
+  SankeyDepth,
 } from "./dto";
 
 @Injectable()
@@ -40,6 +43,7 @@ export class BuiltInReportsService {
     private dataQualityReports: DataQualityReportsService,
     private monthlyComparison: MonthlyComparisonService,
     private monthlyCategoryBreakdown: MonthlyCategoryBreakdownService,
+    private cashFlowSankey: CashFlowSankeyService,
   ) {}
 
   getSpendingByCategory(
@@ -96,6 +100,20 @@ export class BuiltInReportsService {
     },
   ): Promise<IncomeVsExpensesResponse> {
     return this.incomeReports.getIncomeVsExpenses(
+      userId,
+      startDate,
+      endDate,
+      options,
+    );
+  }
+
+  getCashFlowSankey(
+    userId: string,
+    startDate: string | undefined,
+    endDate: string,
+    options?: { accountIds?: string[]; depth?: SankeyDepth },
+  ): Promise<CashFlowSankeyResponse> {
+    return this.cashFlowSankey.getCashFlowSankey(
       userId,
       startDate,
       endDate,

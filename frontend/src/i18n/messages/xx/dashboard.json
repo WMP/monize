@@ -281,5 +281,14 @@
     "weekdayLabel": "[XX-Weekday-XX]",
     "viewOverview": "[XX-Overview-XX]",
     "viewByDay": "[XX-By day-XX]"
+  },
+  "cashFlowSankey": {
+    "title": "[XX-Cash Flow Sankey-XX]",
+    "empty": "[XX-No income, spending or transfers in this period.-XX]",
+    "depth": "[XX-Detail-XX]",
+    "depthCategories": "[XX-Categories-XX]",
+    "depthSubcategories": "[XX-Subcategories-XX]",
+    "viewDiagram": "[XX-Diagram-XX]",
+    "viewTable": "[XX-Table-XX]"
   }
 }

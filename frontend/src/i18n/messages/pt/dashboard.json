@@ -281,5 +281,14 @@
     "weekdayLabel": "Dia de Semana",
     "viewOverview": "Visão Geral",
     "viewByDay": "Por Dia"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey de fluxo de caixa",
+    "empty": "Sem rendimentos, despesas ou transferências neste período.",
+    "depth": "Detalhe",
+    "depthCategories": "Categorias",
+    "depthSubcategories": "Subcategorias",
+    "viewDiagram": "Diagrama",
+    "viewTable": "Tabela"
   }
 }

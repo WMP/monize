@@ -78,6 +78,12 @@ implied.
 | INV-INTRADAY-001 | An intraday bar is valued at its own day's positions, and a finished session closes on the daily series' figure | enforced |
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
+| INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
+| INV-SANKEY-001 | The Cash Flow Sankey closes: income + inflows + deficit = expenses + outflows + unspent | enforced |
+| INV-SANKEY-002 | A Sankey transfer leg is counted at most once, by its own account's scope and its counterpart's class | enforced |
+| INV-SANKEY-003 | Investment linkage and VOID are excluded on every Sankey branch | enforced |
+| INV-SANKEY-004 | A Sankey total carries a value only when every link converted | enforced |
+| INV-SANKEY-005 | The Sankey's "Other" merge never reaches a figure | enforced |
 | INV-LOAN-001 | A recurring overpayment's cadence is a calendar, not a payment interval | enforced |
 | INV-LOAN-002 | A schedule truncated by the projection horizon yields no lifetime total | enforced |
 | INV-LOAN-003 | One named compounding convention, from preview to projection to displayed EAR | enforced |
@@ -1675,6 +1681,205 @@ a property recomputed from a group's members (`group.every(...)`) is a property
 that was not part of what made the group, and the answer is only as good as the
 grouping. Make it part of the key, and a mixed bucket becomes unrepresentable
 rather than mislabelled.
+
+### INV-REPORT-003 -- a transfer leg is a named flow, never income, expenses or net
+
+```text
+Statement           A transfer leg appears in a report only as a NAMED FLOW, and
+                    never inside that report's income, expenses or net. A named
+                    flow is one of two things:
+                    - a tag-key bucket's tagged inflows / tagged outflows
+                      (taggedInflows / taggedOutflows), present only when the
+                      report was asked for a tag-key breakdown
+                      (docs/specs/report-tag-key-breakdown.md section 3);
+                    - a Cash Flow Sankey destination class: an outflow to
+                      "Savings & investments", "Debt payments" or "Other
+                      accounts", or an inflow "From savings & investments",
+                      "Borrowed" or "From other accounts", decided by the
+                      counterpart account's type
+                      (docs/future-plans/sankey-cash-flow.md sections 3-5).
+                    Each leg counts once, by its own account and its own sign.
+                    Without one of those two, a report excludes transfers
+                    exactly as before. Transfers never enter income, expenses or
+                    net under either model.
+Source of truth     transactions.is_transfer and
+                    transaction_splits.transfer_account_id for what a leg is;
+                    the leg's own signed amount for its direction.
+Enforcement         Every income/expense query keeps t.is_transfer = false and
+                    the split transfer-leg exclusion on every branch
+                    (income-reports.service.ts, spending-reports.service.ts and
+                    the categorized query of cash-flow-sankey.service.ts). The
+                    tag-key transfer-flow subqueries run only when tagKey is set
+                    and write only taggedInflows / taggedOutflows. The Sankey's
+                    transfer queries write only the class:* / inflow:* nodes,
+                    which its totals report as outflows / inflows beside
+                    expenses / income rather than inside them.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      income-reports.service.spec.ts: a parity spec proves the
+                    no-tagKey response unchanged and a numeric spec lands a
+                    tagged transfer in taggedInflows and not in income.
+                    cash-flow-sankey.service.spec.ts: a transfer leg lands on its
+                    class node and never in totals.income or totals.expenses.
+Status              enforced
+```
+
+The amendment widened "named flow" from the tag-key buckets to the Sankey's
+destination classes. The half that matters -- a transfer is never income -- is
+unchanged: the Sankey reports a savings transfer as an outflow beside the
+expenses, never as one of them.
+
+### INV-SANKEY-001 -- the Cash Flow Sankey closes
+
+The design (`docs/future-plans/sankey-cash-flow.md`) names these five SANKEY-001
+to SANKEY-005; the catalog prefixes them like every other entry.
+
+```text
+Statement           income + inflows + deficit = expenses + outflows + unspent,
+                    in integer ten-thousandths, with at most one of deficit /
+                    unspent non-zero. The residual is arithmetic, never a
+                    transaction, and a diagram that does not close is never
+                    drawn.
+Source of truth     The per-link FxAggregate buckets the response's links are
+                    built from.
+Enforcement         assembleCashFlowSankey
+                    (backend/src/built-in-reports/cash-flow-sankey-assembly.ts)
+                    computes the residual from the same buckets the links come
+                    from, then assertClosingIdentity re-reads the links it is
+                    about to return: what enters the hub equals what leaves it
+                    and equals both sides of the totals, and every pass-through
+                    node (a depth-2 parent, a class with its accounts) balances.
+                    A failure throws SankeyIdentityError, which
+                    CashFlowSankeyService logs with the discrepancy and answers
+                    as a 500. Checked only while every total is known: an
+                    incomplete answer has a null residual (INV-SANKEY-004).
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    500 with the discrepancy logged; never a drawn diagram.
+Required tests      cash-flow-sankey.service.spec.ts (truth table A, the design's
+                    numerical example, the refusal and its 500);
+                    cash-flow-sankey.property.spec.ts (200 generated ledgers at
+                    both depths); cash-flow-sankey.integration.spec.ts (the
+                    numerical example on real PostgreSQL).
+Status              enforced
+```
+
+### INV-SANKEY-002 -- a transfer leg counts once, by scope and class
+
+```text
+Statement           A transfer leg is a Sankey flow only when its own account is
+                    in the report's scope and its counterpart is not; it counts
+                    once, at its own signed amount, in the class its
+                    counterpart's account type decides. Both legs of a transfer
+                    between two in-scope accounts are invisible. A credit card is
+                    never a debt class.
+Source of truth     transactions.account_id and the linked row's account (whole
+                    transfers); transaction_splits.transfer_account_id (split
+                    lines); accounts.account_type of the counterpart.
+Enforcement         wholeTransferLegsQuery and splitTransferLegsQuery
+                    (backend/src/built-in-reports/cash-flow-sankey.service.ts)
+                    select t.account_id = ANY(scope) AND the counterpart NOT IN
+                    scope in SQL; classifyCounterpart maps the type to a class.
+                    A leg whose counterpart the reader cannot see (deleted,
+                    never linked, or a cross-owner transfer's other leg) is
+                    "Other accounts" under "(unlinked account)".
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      cash-flow-sankey.integration.spec.ts (widening the scope to
+                    the savings account makes the chequing-to-savings leg
+                    internal; the mortgage side is read only without chequing);
+                    cash-flow-sankey.property.spec.ts (a transfer contributes once
+                    or not at all, from the ledger); truth table B in
+                    cash-flow-sankey.service.spec.ts.
+Status              enforced
+```
+
+### INV-SANKEY-003 -- investment linkage and VOID are out of every branch
+
+```text
+Statement           No Sankey query reads a VOID row or an investment-generated
+                    cash leg (a BUY's, SELL's or DIVIDEND's), on the categorized
+                    branch or either transfer branch (INV-REPORT-001).
+Source of truth     transactions.status; investment_transactions linkage.
+Enforcement         investmentExclusionSql and the VOID predicate in each of the
+                    three query builders; backend/src/built-in-reports/
+                    sankey-branches.guard.spec.ts scans each builder for both,
+                    the split-aware form where a builder joins split rows, with
+                    planted negative controls. Stricter than
+                    investment-filter.guard.spec.ts, which exempts a
+                    transfer-only query.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      The guard above; the VOID row in
+                    cash-flow-sankey.integration.spec.ts. The behavioural proof
+                    of the shared predicate is INV-REPORT-001's integration suite.
+Status              enforced
+```
+
+### INV-SANKEY-004 -- a Sankey total is complete or null
+
+```text
+Statement           A node, a link or a total carries a value only when every
+                    component converted; otherwise it is null and the converted
+                    part is its known* sibling. The residual is null while any
+                    total is. A rate is the row's own where it reaches the
+                    reporting currency (INV-FX-002), otherwise the market rate on
+                    the row's own date within FX_MAX_RATE_AGE_DAYS (INV-FX-001);
+                    never 1, never the unconverted amount.
+Source of truth     exchange_rates; transactions.exchange_rate with
+                    original_currency_code for the row's own rate.
+Enforcement         One FxAggregate per node and per link in
+                    assembleCashFlowSankey; the service converts through
+                    convertAtDate over a buildRateIndex loaded for the window.
+                    missingCurrencies and excludedCount name the gap, and the
+                    report's banner names each pair and the count.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    null figures beside known parts; a banner naming the pair.
+Required tests      cash-flow-sankey.service.spec.ts (the example without the USD
+                    rate, a stale rate, a rate struck after the row's date, the
+                    row's own rate); cash-flow-sankey.integration.spec.ts (the
+                    example without the rate); CashFlowSankeyReport.test.tsx (the
+                    partial cards and the banner).
+Status              enforced for completeness; the disclosure INV-FX-002 asks
+                    for is owed: the response and the report do not say
+                    whether a row was converted at its own rate or at the
+                    market's, because the design's response shape has no
+                    field for it. A follow-up adds per-basis counts (the
+                    transactionRateCount / marketRateCount shape the
+                    investment transaction summary already returns).
+```
+
+### INV-SANKEY-005 -- the "Other" merge is drawing only
+
+```text
+Statement           Merging a column's smallest categories into "Other" is a
+                    rendering decision and reaches no figure: the summary cards,
+                    the table twin and both exports read the server's unmerged
+                    response (INV-REPORT-002).
+Source of truth     The CashFlowSankeyResponse.
+Enforcement         toRechartsSankey (frontend/src/components/reports/
+                    sankey-layout.ts) merges over a copy and returns new arrays;
+                    frontend/src/test/ui-conventions.test.ts holds that the
+                    report component imports no aggregation helper and calls no
+                    .reduce, and that the layout never assigns into the response.
+Concurrency scope   -- (render path)
+Retry semantics     -- (render path)
+Crash semantics     -- (render path)
+Failure response    -- a chart draws; it does not refuse.
+Required tests      sankey-layout.test.ts (fourteen categories draw as ten plus
+                    Other over a frozen response); CashFlowSankeyReport.test.tsx
+                    (the table lists every category while the drawing merges).
+Status              enforced
+```
 
 ### INV-LOAN-001 -- a recurring overpayment's cadence is a calendar
 

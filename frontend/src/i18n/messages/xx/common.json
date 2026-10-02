@@ -89,6 +89,7 @@
     "stackedChart": "[XX-100% Stacked Bar-XX]",
     "lineChart": "[XX-Line Chart-XX]",
     "areaChart": "[XX-Area Chart-XX]",
+    "sankeyChart": "[XX-Flow Diagram-XX]",
     "table": "[XX-Table-XX]"
   },
   "formActions": {

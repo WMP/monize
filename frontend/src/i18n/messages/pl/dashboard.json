@@ -281,5 +281,14 @@
     "weekdayLabel": "Dzień powszedni",
     "viewOverview": "Przegląd",
     "viewByDay": "Wg dnia"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey przepływów pieniężnych",
+    "empty": "Brak dochodów, wydatków i przelewów w tym okresie.",
+    "depth": "Szczegółowość",
+    "depthCategories": "Kategorie",
+    "depthSubcategories": "Podkategorie",
+    "viewDiagram": "Diagram",
+    "viewTable": "Tabela"
   }
 }

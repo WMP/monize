@@ -40,6 +40,7 @@ const AssetsVsLiabilities = dynamic(() => import('./AssetsVsLiabilities').then(m
 const PortfolioValueWidget = dynamic(() => import('./PortfolioValueWidget').then(m => m.PortfolioValueWidget), { ssr: false, loading: widgetSkeleton() });
 const SpendingByPayeeWidget = dynamic(() => import('./SpendingByPayeeWidget').then(m => m.SpendingByPayeeWidget), { ssr: false, loading: widgetSkeleton() });
 const MonthlySpendingTrendWidget = dynamic(() => import('./MonthlySpendingTrendWidget').then(m => m.MonthlySpendingTrendWidget), { ssr: false, loading: widgetSkeleton() });
+const CashFlowSankeyWidget = dynamic(() => import('./CashFlowSankeyWidget').then(m => m.CashFlowSankeyWidget), { ssr: false, loading: widgetSkeleton() });
 const IncomeBySourceWidget = dynamic(() => import('./IncomeBySourceWidget').then(m => m.IncomeBySourceWidget), { ssr: false, loading: widgetSkeleton() });
 const CreditUtilizationAccountsWidget = dynamic(() => import('./CreditUtilizationAccountsWidget').then(m => m.CreditUtilizationAccountsWidget), { ssr: false, loading: widgetSkeleton() });
 const CreditUtilizationTotalWidget = dynamic(() => import('./CreditUtilizationTotalWidget').then(m => m.CreditUtilizationTotalWidget), { ssr: false, loading: widgetSkeleton() });
@@ -71,7 +72,8 @@ export type DashboardWidgetId =
   | 'security-type-allocation'
   | 'geographic-allocation'
   | 'recurring-expenses'
-  | 'weekend-weekday';
+  | 'weekend-weekday'
+  | 'cash-flow-sankey';
 
 /** The kind of visualization a widget renders, shown as an icon in Customize. */
 export type WidgetIconType = 'bar' | 'line' | 'pie' | 'table' | 'list';
@@ -317,6 +319,13 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     iconType: 'bar',
     defaultEnabled: false,
     render: (ctx) => <WeekendVsWeekdayWidget isLoading={ctx.isLoading} />,
+  },
+  {
+    id: 'cash-flow-sankey',
+    titleSection: 'cashFlowSankey',
+    iconType: 'bar',
+    defaultEnabled: false,
+    render: (ctx) => <CashFlowSankeyWidget accounts={ctx.accounts} isLoading={ctx.isLoading} />,
   },
 ];
 

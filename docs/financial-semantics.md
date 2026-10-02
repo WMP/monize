@@ -82,6 +82,46 @@ strength of a status, must apply to both legs in the same transaction, or to
 neither.
 ```
 
+### Cash flow Sankey: a transfer leg is a flow by scope and class
+
+The Cash Flow Sankey report (`backend/src/built-in-reports/cash-flow-sankey.service.ts`,
+arithmetic in `cash-flow-sankey-assembly.ts`) is the one surface that draws a
+transfer leg as a flow. Its rules, from `docs/future-plans/sankey-cash-flow.md`:
+
+1. **Scope is a set of cash-flow accounts.** By default every open `CHEQUING`,
+   `SAVINGS`, `CASH`, `CREDIT_CARD` and `LINE_OF_CREDIT` account (never an
+   investment sleeve); the request may name any other set. Income and expenses
+   are the rows of in-scope accounts.
+2. **A transfer between two in-scope accounts is internal and invisible.**
+   Neither leg passes the counterpart predicate. Leaving a savings account out
+   of scope is how a reader sees saving as a destination.
+3. **A leg from an in-scope account to an out-of-scope one is an outflow to a
+   class decided by the counterpart's type:** `SAVINGS`, `INVESTMENT`, `ASSET`,
+   `OTHER` are "Savings & investments"; `LOAN`, `MORTGAGE`, `LINE_OF_CREDIT` are
+   "Debt payments"; `CHEQUING`, `CASH`, `CREDIT_CARD` are "Other accounts".
+4. **A leg into an in-scope account from an out-of-scope one is an inflow** by
+   the same classes: "From savings & investments", "Borrowed", "From other
+   accounts".
+5. **A credit-card payment is not a debt payment.** The spending it settles was
+   an expense on the purchase date; with the card in scope the payment is
+   internal, with it out of scope it is "Other accounts".
+6. **Investment-generated cash legs are not flows.** `investmentExclusionSql` is
+   on every branch, the transfer branches included (SANKEY-003).
+7. **The diagram closes:** `income + inflows + deficit = expenses + outflows +
+   unspent` in integer ten-thousandths, with at most one of `deficit` /
+   `unspent` non-zero. Both are the arithmetic residual, never a transaction; a
+   response where the identity fails is a 500, never a drawing (SANKEY-001).
+8. **Uncategorized is a node.** Uncategorized income and uncategorized spending
+   each keep their own side; a category nets within itself and sits on the side
+   it nets to (a category whose net is unknown for want of a rate sits on the
+   side its own type names, with a `null` figure).
+
+A leg counts once, by its own account's scope and its own signed amount
+(SANKEY-002); a transfer never enters income or expenses (INV-REPORT-003). A
+leg whose counterpart the reader cannot see (deleted, never linked, or the
+other owner's leg of a cross-owner transfer) is "Other accounts" under
+"(unlinked account)", so the identity still closes.
+
 ## 3. Exchange rates
 
 **Direction.** `exchangeRate` is *account-currency units per one unit of
