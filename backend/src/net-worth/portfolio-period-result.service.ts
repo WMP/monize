@@ -311,6 +311,9 @@ export class PortfolioPeriodResultService {
             afterDate: from,
             throughDate: end,
             accountIds: cashScope,
+            // A trade on the scope whose cash leg transfers into a sleeve settled
+            // inside, not across the boundary (the QIF/CSV import's shape).
+            investmentScope: scope.map((row) => row.id),
             perDay: true,
           },
         ),
@@ -371,14 +374,14 @@ export class PortfolioPeriodResultService {
       unmeasuredFlows,
     });
 
-    // The same series, the same window and the same uncountable-movement
-    // counts, measured over the securities alone.
+    // The same series and the same window, measured over the securities
+    // alone. The uncountable-movement counts are the account result's: this
+    // measure does not read where a row's cash settled.
     const investedDecision: InvestedPeriodDecision = investedPeriodResult({
       points: series,
       startIndex: 0,
       endIndex: series.length - 1,
       flowsByDay: invested.byDay,
-      unmeasuredFlows,
     });
 
     return {

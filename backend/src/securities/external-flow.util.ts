@@ -30,7 +30,14 @@ import { returnedRows } from "../common/db/query-result";
  *    against `transactions.id`, a table mismatch that made the split exclusion a
  *    silent no-op;
  *  - it is not a transfer whose counterparty is also in the scope: cash moved
- *    between two scoped accounts never crossed the boundary.
+ *    between two scoped accounts never crossed the boundary;
+ *  - when the caller names an `investmentScope`, it is not a transfer whose
+ *    counterparty is the cash leg of an investment action on one of those
+ *    accounts. That is the trade settling inside the portfolio in the shape the
+ *    QIF/CSV import writes: the action's cash leg is a transfer row on the
+ *    brokerage and its counterpart is the sleeve's cash. A caller drawing the
+ *    boundary around the sleeves alone would otherwise read every imported BUY
+ *    as a withdrawal and every dividend as a deposit.
  *
  * TWO KNOWN COARSE CASES (INV-PORTMOVE, tracked in the spec's open items), both
  * narrowing rather than corrupting the common path. A caller that subtracts this
@@ -79,6 +86,13 @@ export interface ExternalFlowQueryOptions {
   accountIds?: string[];
   /** Subtotal per day as well as per currency, rather than over the window. */
   perDay?: boolean;
+  /**
+   * The accounts whose investment actions settle INSIDE the boundary even when
+   * their cash leg sits on an account outside `accountIds` (a brokerage row
+   * transferring to its sleeve). Only meaningful with `accountIds`: an
+   * unscoped read already holds every investment account on both sides.
+   */
+  investmentScope?: string[];
 }
 
 /** Runs one parameterized statement; supplied by the caller's scoped door. */
@@ -94,14 +108,36 @@ export type ExternalFlowQuery = (
 export function externalFlowSubtotalsSql(options: {
   scoped: boolean;
   perDay: boolean;
+  /** Binds `$5`: only a scoped read takes it. */
+  investmentScoped?: boolean;
 }): string {
-  // $1 userId, $2 afterDate, $3 throughDate, $4 accountIds (scoped only).
+  // $1 userId, $2 afterDate, $3 throughDate, $4 accountIds (scoped only),
+  // $5 investmentScope (scoped with an investment scope only).
   const inScope = options.scoped
     ? "a.id = ANY($4::UUID[])"
     : "a.account_type = 'INVESTMENT'";
   const counterpartyInScope = options.scoped
     ? "la.id = ANY($4::UUID[])"
     : "la.account_type = 'INVESTMENT'";
+  // The counterpart is an investment action's cash leg on an account of the
+  // investment scope: the trade settled into this row, inside the portfolio.
+  // Read as a record (includes VOID), like `investmentLinkedTransactionExclusion`:
+  // it asks what the counterpart IS. A voided trade's legs are VOID themselves,
+  // and the outer query already drops a VOID row.
+  const settlesScopedAction =
+    options.scoped && options.investmentScoped
+      ? `
+                     OR EXISTS (
+                       SELECT 1 FROM investment_transactions lit
+                        WHERE lit.transaction_id = lt.id
+                          AND lit.account_id = ANY($5::UUID[])
+                     )`
+      : "";
+  // Unchanged text when no investment scope is asked for: the unscoped form is
+  // pinned verbatim to the notification's original statement.
+  const counterpartyClause = settlesScopedAction
+    ? `(${counterpartyInScope}${settlesScopedAction})`
+    : counterpartyInScope;
   // `TO_CHAR(..., 'YYYY-MM-DD')`, never `::TEXT`: the caller keys its per-day
   // map on this string and compares it with `YYYY-MM-DD` keys, and a DATE
   // rendered through the session's DateStyle is not obliged to be that.
@@ -133,7 +169,7 @@ export function externalFlowSubtotalsSql(options: {
                   SELECT 1 FROM transactions lt
                    JOIN accounts la ON la.id = lt.account_id
                    WHERE lt.id = t.linked_transaction_id
-                     AND ${counterpartyInScope}
+                     AND ${counterpartyClause}
                 )
               )
             ${groupBy}`;
@@ -160,6 +196,10 @@ export async function loadExternalFlowSubtotals(
     options.throughDate,
   ];
   if (scoped) params.push(options.accountIds);
+  // Every placeholder the statement names is bound, and nothing more: an
+  // unreferenced parameter is a type PostgreSQL cannot infer.
+  const investmentScoped = scoped && (options.investmentScope?.length ?? 0) > 0;
+  if (investmentScoped) params.push(options.investmentScope);
 
   const rows = returnedRows<{
     date: string | null;
@@ -167,7 +207,11 @@ export async function loadExternalFlowSubtotals(
     total: string;
   }>(
     await query(
-      externalFlowSubtotalsSql({ scoped, perDay: options.perDay === true }),
+      externalFlowSubtotalsSql({
+        scoped,
+        perDay: options.perDay === true,
+        investmentScoped,
+      }),
       params,
     ),
   );

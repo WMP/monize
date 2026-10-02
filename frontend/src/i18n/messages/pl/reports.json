@@ -1204,7 +1204,6 @@
     "investmentReturnTooltip": "Stopa zwrotu ważona czasem liczona tylko dla papierów wartościowych. Pieniądze wpłacone lub wypłacone danego dnia jej nie zmieniają, a niezainwestowana gotówka nie wchodzi ani w skład wyniku, ani w skład wartości, do której się go odnosi.",
     "incompleteTooltip": "W niektórych dniach tego okresu brakuje ceny, kursu wymiany lub salda gotówkowego, dlatego wartości zależne od każdego dnia nie są wyświetlane.",
     "measuredFromClose": "Od zamknięcia notowań {date}",
-    "unmeasuredFlowTooltip": "Pieniądze wpłynęły na te konta lub z nich wypłynęły w sposób, którego nie da się tu policzyć: transakcja rozliczona z konta spoza tej grupy albo podział łączący pozycję inwestycyjną ze zwykłym wydatkiem. Wynik inwestycyjny nie jest pokazywany, ponieważ część z niego byłaby Twoimi własnymi pieniędzmi.",
     "notAvailable": "Brak",
     "intradayUnavailable": "Szczegółowe ceny śróddzienne niedostępne",
     "intradayUnavailableTitle": "Widok śróddzienny niedostępny dla tego zestawu kont",

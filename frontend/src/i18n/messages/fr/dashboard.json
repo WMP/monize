@@ -205,8 +205,7 @@
     "refresh": "Actualiser la valeur actuelle",
     "investmentResult": "Résultat de l'investissement",
     "periodBreakdownInvestedTooltip": "La valeur des titres a varié de {valueChange} sur cette période. Sur ce montant, {netInvested} a été investi, net des ventes, et ils ont versé {income} en dividendes et intérêts. Le montant ci-dessus est ce que les investissements ont rapporté par eux-mêmes, hors liquidités non investies.",
-    "notAvailable": "N/D",
-    "unmeasuredFlowTooltip": "Une opération réglée en dehors de ces comptes, ou une répartition qui mélange une ligne d'investissement avec une dépense ordinaire, signifie que le résultat ne peut pas être séparé de l'argent déplacé."
+    "notAvailable": "N/D"
   },
   "spendingByPayee": {
     "title": "Dépenses par bénéficiaire",

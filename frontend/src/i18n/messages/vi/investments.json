@@ -135,7 +135,6 @@
     "investmentResult": "Kết quả đầu tư",
     "investmentReturn": "Lợi nhuận",
     "investmentResultTooltip": "Số tiền khoản đầu tư của bạn kiếm được trong khoảng thời gian này. Các khoản nạp, rút và tiền mặt chưa đầu tư được loại trừ, và tỷ lệ phần trăm bên cạnh là lợi nhuận tính theo trọng số thời gian, nên việc mua và bán không làm thay đổi con số này.",
-    "unmeasuredFlowTooltip": "Một giao dịch được thanh toán bên ngoài các tài khoản này, hoặc một khoản tách lẫn một dòng đầu tư với chi tiêu thông thường, nghĩa là kết quả không thể tách khỏi số tiền đã di chuyển.",
     "netInvestedLine": "Đầu tư ròng {amount}",
     "incomeLine": "Cổ tức và lãi {amount}",
     "measuredFromClose": "Kể từ khi đóng cửa phiên giao dịch ngày {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Một giai đoạn bị giữ lại bắt đầu vào ngày một khoản nắm giữ không có giá. Hãy làm mới giá, hoặc tự thêm một giá trong lịch sử giá của chứng khoán.",
       "incompleteCash": "Một giai đoạn bị giữ lại bắt đầu vào ngày một tài khoản tiền mặt trong chế độ xem này không báo cáo số dư, nên số tiền nó nắm giữ là không xác định chứ không phải bằng không.",
-      "missingRatePairs": "Một giai đoạn bị giữ lại cần một tỷ giá mà lịch sử đã lưu không có. Hãy thêm lịch sử tỷ giá cho đơn vị tiền tệ đó trên trang Tiền tệ.",
-      "unmeasuredFlow": "Một giai đoạn bị giữ lại chứa một khoản biến động không thể phân biệt với khoản nạp hay rút: một giao dịch được thanh toán ngoài các tài khoản này, hoặc một khoản tách trộn lẫn tiền mặt và đầu tư."
+      "missingRatePairs": "Một giai đoạn bị giữ lại cần một tỷ giá mà lịch sử đã lưu không có. Hãy thêm lịch sử tỷ giá cho đơn vị tiền tệ đó trên trang Tiền tệ."
     }
   }
 }

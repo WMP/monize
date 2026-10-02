@@ -1204,7 +1204,6 @@
     "investmentReturnTooltip": "Yalnızca menkul kıymetler üzerinden hesaplanan, zaman ağırlıklı bir getiri. Bir gün yatırılan veya çekilen para onu değiştirmez; yatırıma dönüştürülmemiş nakit ne sonuca ne de karşılaştırıldığı değere dahildir.",
     "incompleteTooltip": "Bu dönemdeki bazı günlerde fiyat, döviz kuru veya nakit bakiyesi eksik, bu yüzden her güne bağlı olan rakamlar gösterilmiyor.",
     "measuredFromClose": "{date} tarihli işlem kapanışından bu yana",
-    "unmeasuredFlowTooltip": "Bu hesaplara para, burada sayılamayacak bir şekilde girdi veya çıktı: bu hesapların dışındaki bir hesaptan kapatılan bir işlem ya da bir yatırım kalemini olağan bir harcamayla karıştıran bir bölme. Yatırım sonucunun bir kısmı kendi paranız olacağından yatırım sonucu gösterilmiyor.",
     "notAvailable": "Y/A",
     "intradayUnavailable": "Ayrıntılı gün içi fiyatlandırma mevcut değil",
     "intradayUnavailableTitle": "Bu hesap kombinasyonu için gün içi görünüm mevcut değil",

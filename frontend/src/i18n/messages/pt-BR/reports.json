@@ -1204,7 +1204,6 @@
     "investmentReturnTooltip": "Uma rentabilidade ponderada pelo tempo apenas sobre os títulos. O dinheiro depositado ou retirado em um dia não a move, e o numerário não investido não faz parte nem do resultado nem daquilo em relação ao qual é medida.",
     "incompleteTooltip": "Alguns dias deste período estão sem um preço, uma taxa de câmbio ou um saldo de caixa, então os valores que dependem de todos os dias não são exibidos.",
     "measuredFromClose": "Desde o fechamento do pregão de {date}",
-    "unmeasuredFlowTooltip": "Dinheiro entrou ou saiu dessas contas de uma forma que não pode ser contabilizada aqui: uma operação liquidada a partir de uma conta fora desse grupo, ou um desdobramento que mistura uma linha de investimento com um gasto comum. O resultado do investimento não é exibido, porque parte dele seria seu próprio dinheiro.",
     "notAvailable": "N/D",
     "intradayUnavailable": "Dados de preço intradiário detalhados indisponíveis",
     "intradayUnavailableTitle": "Vista intradiária indisponível para esta combinação de contas",

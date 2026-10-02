@@ -135,7 +135,6 @@
     "investmentResult": "Yatırım Sonucu",
     "investmentReturn": "Getiri",
     "investmentResultTooltip": "Yatırımlarınızın bu dönemde kazandığı tutar. Para yatırma, para çekme ve yatırıma dönüştürülmemiş nakit hariç tutulur; yanındaki yüzde ise zaman ağırlıklı bir getiridir, bu yüzden alım ve satım onu değiştirmez.",
-    "unmeasuredFlowTooltip": "Bu hesapların dışında kapatılan bir işlem ya da bir yatırım kalemini olağan bir harcamayla karıştıran bir bölme, sonucun taşınan paradan ayrılamayacağı anlamına gelir.",
     "netInvestedLine": "Net yatırım {amount}",
     "incomeLine": "Temettü ve faiz {amount}",
     "measuredFromClose": "{date} tarihli işlem kapanışından bu yana",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Bekletilen bir dönem, bir pozisyonun fiyatı olmadığı bir günde başlar. Fiyatları yenileyin veya menkul kıymetin fiyat geçmişine elle bir fiyat ekleyin.",
       "incompleteCash": "Bekletilen bir dönem, bu görünümdeki bir nakit hesabın bakiye bildirmediği bir günde başlar, dolayısıyla içindeki tutar sıfır değil, bilinmiyor.",
-      "missingRatePairs": "Bekletilen bir dönem, kayıtlı geçmişte bulunmayan bir kur gerektirir. Bu para birimi için kur geçmişini Para Birimleri sayfasından ekleyin.",
-      "unmeasuredFlow": "Bekletilen bir dönem, para yatırma veya çekmeden ayırt edilemeyen bir hareket içerir: bu hesapların dışında sonuçlanan bir işlem veya nakit ile yatırımı karıştıran bir bölünme."
+      "missingRatePairs": "Bekletilen bir dönem, kayıtlı geçmişte bulunmayan bir kur gerektirir. Bu para birimi için kur geçmişini Para Birimleri sayfasından ekleyin."
     }
   }
 }

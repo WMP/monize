@@ -205,8 +205,7 @@
     "refresh": "重新整理目前價值",
     "investmentResult": "投資結果",
     "periodBreakdownInvestedTooltip": "本期證券價值變動了 {valueChange}。其中 {netInvested} 是扣除賣出後的投入資金，證券支付了 {income} 的股息和利息。上方數字是投資本身的收益，不含未投資的現金。",
-    "notAvailable": "不適用",
-    "unmeasuredFlowTooltip": "如果某筆交易在這些帳戶以外結算，或某個拆分將投資項目與一般支出混在一起，則結果無法與轉移的資金分開。"
+    "notAvailable": "不適用"
   },
   "spendingByPayee": {
     "title": "依收款人分析支出",

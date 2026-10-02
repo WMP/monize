@@ -135,7 +135,6 @@
     "investmentResult": "Wynik inwestycyjny",
     "investmentReturn": "Zwrot",
     "investmentResultTooltip": "Ile zarobiły Twoje inwestycje w tym okresie. Wpłaty, wypłaty i niezainwestowana gotówka są pominięte, a procent obok to stopa zwrotu ważona czasem, więc kupno i sprzedaż jej nie zmieniają.",
-    "unmeasuredFlowTooltip": "Transakcja rozliczona poza tymi kontami albo podział łączący pozycję inwestycyjną ze zwykłym wydatkiem oznacza, że wyniku nie da się oddzielić od przesuniętych pieniędzy.",
     "netInvestedLine": "Zainwestowano netto {amount}",
     "incomeLine": "Dywidendy i odsetki {amount}",
     "measuredFromClose": "Od zamknięcia notowań {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Wstrzymany okres zaczyna się w dniu, w którym pozycja nie miała ceny. Odśwież ceny lub dodaj cenę ręcznie w historii cen papieru wartościowego.",
       "incompleteCash": "Wstrzymany okres zaczyna się w dniu, w którym konto gotówkowe w tym widoku nie podało salda, więc jego stan jest nieznany, a nie zerowy.",
-      "missingRatePairs": "Wstrzymany okres wymaga kursu wymiany, którego nie ma w zapisanej historii. Dodaj historię kursów dla tej waluty na stronie Waluty.",
-      "unmeasuredFlow": "Wstrzymany okres zawiera ruch, którego nie można odróżnić od wpłaty lub wypłaty: transakcję rozliczoną poza tymi kontami albo podział łączący gotówkę i inwestycje."
+      "missingRatePairs": "Wstrzymany okres wymaga kursu wymiany, którego nie ma w zapisanej historii. Dodaj historię kursów dla tej waluty na stronie Waluty."
     }
   }
 }

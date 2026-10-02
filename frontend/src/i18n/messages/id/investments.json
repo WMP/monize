@@ -135,7 +135,6 @@
     "investmentResult": "Hasil Investasi",
     "investmentReturn": "Imbal Hasil",
     "investmentResultTooltip": "Berapa yang dihasilkan investasi Anda selama periode ini. Setoran, penarikan, dan tunai yang belum diinvestasikan dikeluarkan, dan persentase di sampingnya adalah imbal hasil yang dibobot berdasarkan waktu, sehingga pembelian dan penjualan tidak mengubahnya.",
-    "unmeasuredFlowTooltip": "Sebuah transaksi yang diselesaikan di luar akun-akun ini, atau pemisahan yang mencampur baris investasi dengan pengeluaran biasa, berarti hasilnya tidak dapat dipisahkan dari uang yang berpindah.",
     "netInvestedLine": "Investasi bersih {amount}",
     "incomeLine": "Dividen dan bunga {amount}",
     "measuredFromClose": "Sejak penutupan perdagangan pada {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Periode yang ditahan dimulai pada hari saat sebuah posisi tidak memiliki harga. Segarkan harga, atau tambahkan satu secara manual di riwayat harga efek tersebut.",
       "incompleteCash": "Periode yang ditahan dimulai pada hari saat sebuah akun kas dalam tampilan ini tidak melaporkan saldo, sehingga isinya tidak diketahui, bukan nol.",
-      "missingRatePairs": "Periode yang ditahan memerlukan nilai tukar yang tidak ada dalam riwayat yang tersimpan. Tambahkan riwayat kurs untuk mata uang tersebut di halaman Mata Uang.",
-      "unmeasuredFlow": "Periode yang ditahan berisi pergerakan yang tidak dapat dibedakan dari setoran atau penarikan: transaksi yang diselesaikan di luar akun-akun ini, atau pemisahan yang mencampur kas dan investasi."
+      "missingRatePairs": "Periode yang ditahan memerlukan nilai tukar yang tidak ada dalam riwayat yang tersimpan. Tambahkan riwayat kurs untuk mata uang tersebut di halaman Mata Uang."
     }
   }
 }

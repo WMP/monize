@@ -1204,7 +1204,6 @@
     "investmentReturnTooltip": "Een tijdgewogen rendement uitsluitend over de waardepapieren. Geld dat op een dag wordt gestort of opgenomen beïnvloedt het niet, en niet-belegd geld maakt geen deel uit van het resultaat noch van waaraan het wordt afgemeten.",
     "incompleteTooltip": "Voor sommige dagen in deze periode ontbreekt een koers, een wisselkoers of een liquide saldo, waardoor de cijfers die van elke dag afhangen niet worden weergegeven.",
     "measuredFromClose": "Sinds de slotkoers van {date}",
-    "unmeasuredFlowTooltip": "Er is geld in of uit deze rekeningen verplaatst op een manier die hier niet kan worden meegeteld: een transactie die is afgewikkeld via een rekening buiten deze groep, of een splitsing die een investeringsregel combineert met gewone uitgaven. Het beleggingsresultaat wordt niet getoond, omdat een deel ervan uw eigen geld zou zijn.",
     "notAvailable": "N/B",
     "intradayUnavailable": "Gedetailleerde intraday-koersen niet beschikbaar",
     "intradayUnavailableTitle": "Intraday-weergave niet beschikbaar voor deze rekeningcombinatie",

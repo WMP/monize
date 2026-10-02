@@ -1515,7 +1515,10 @@ describe('PortfolioValueReport', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('names the movement it could not count when the result is withheld', async () => {
+  // #1516: those movements withhold only the ACCOUNT result. The invested
+  // figure this card shows does not read where a trade's cash settled, so the
+  // card no longer carries a notice for them.
+  it('carries no uncountable-movement notice when only the account result is withheld', async () => {
     mockGetInvestmentsSampled.mockResolvedValue([
       { date: '2024-01-01', value: 50000 },
     ]);
@@ -1531,11 +1534,10 @@ describe('PortfolioValueReport', () => {
     );
     render(<PortfolioValueReport />);
 
-    await waitFor(() =>
-      expect(
-        screen.getByLabelText(/cannot be counted here/i),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(mockGetPeriodResult).toHaveBeenCalled());
+    expect(
+      screen.queryByLabelText(/cannot be counted here/i),
+    ).not.toBeInTheDocument();
   });
 
   describe('mtd range', () => {

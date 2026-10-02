@@ -135,7 +135,6 @@
     "investmentResult": "Beleggingsresultaat",
     "investmentReturn": "Rendement",
     "investmentResultTooltip": "Wat uw beleggingen in deze periode hebben opgeleverd. Stortingen, opnames en niet-belegd geld zijn buiten beschouwing gelaten, en het percentage ernaast is een tijdgewogen rendement, zodat kopen en verkopen het niet beïnvloeden.",
-    "unmeasuredFlowTooltip": "Een transactie die buiten deze rekeningen is afgewikkeld, of een splitsing die een investeringsregel combineert met een gewone uitgave, betekent dat het resultaat niet kan worden gescheiden van het verplaatste geld.",
     "netInvestedLine": "Netto belegd {amount}",
     "incomeLine": "Dividenden en rente {amount}",
     "measuredFromClose": "Sinds de slotkoers van {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Een achtergehouden periode begint op een dag waarop een positie geen koers had. Vernieuw de koersen, of voeg er handmatig een toe in de koershistorie van het effect.",
       "incompleteCash": "Een achtergehouden periode begint op een dag waarop een geldrekening in deze weergave geen saldo meldde, dus wat erop stond is onbekend en niet nul.",
-      "missingRatePairs": "Een achtergehouden periode heeft een wisselkoers nodig die niet in de opgeslagen historie staat. Voeg koershistorie voor de valuta toe op de pagina Valuta's.",
-      "unmeasuredFlow": "Een achtergehouden periode bevat een beweging die niet te onderscheiden is van een storting of opname: een transactie die buiten deze rekeningen is afgewikkeld, of een splitsing waarin contanten en beleggingen zijn vermengd."
+      "missingRatePairs": "Een achtergehouden periode heeft een wisselkoers nodig die niet in de opgeslagen historie staat. Voeg koershistorie voor de valuta toe op de pagina Valuta's."
     }
   }
 }
