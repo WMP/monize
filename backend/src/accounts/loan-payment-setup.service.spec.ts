@@ -497,6 +497,50 @@ describe("LoanPaymentSetupService", () => {
       );
     });
 
+    it("clears a stored mortgage type only when the request changes a flag", async () => {
+      // Until the type is written with the flags (P1-B3), a flag change leaves
+      // the backfilled type stale; cleared, the reader falls back to the flags.
+      const storedFixed = {
+        ...mockLoanAccount,
+        id: "mortgage-4",
+        accountType: AccountType.MORTGAGE,
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
+      };
+      const request = {
+        paymentAmount: 1500,
+        paymentFrequency: "MONTHLY",
+        sourceAccountId: "source-1",
+        nextDueDate: "2026-04-01",
+        interestRate: 4.25,
+      };
+
+      accountsRepository.findOne
+        .mockResolvedValueOnce(storedFixed)
+        .mockResolvedValueOnce(mockSourceAccount);
+      await service.setupLoanPayments("user-1", "mortgage-4", {
+        ...request,
+        isCanadianMortgage: false,
+      });
+      expect(accountsRepository.update).toHaveBeenLastCalledWith(
+        "mortgage-4",
+        expect.objectContaining({ mortgageType: null }),
+      );
+
+      accountsRepository.findOne
+        .mockResolvedValueOnce(storedFixed)
+        .mockResolvedValueOnce(mockSourceAccount);
+      await service.setupLoanPayments("user-1", "mortgage-4", {
+        ...request,
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      const calls = accountsRepository.update.mock.calls;
+      const unchanged = calls[calls.length - 1][1];
+      expect(unchanged).not.toHaveProperty("mortgageType");
+    });
+
     it("refuses a frequency the recurrence table cannot schedule", async () => {
       // The DTO's @IsIn list keeps this unreachable through the controller, and
       // loan-payment-frequency.guard.spec.ts holds the two lists together -- but

@@ -662,6 +662,37 @@ describe("AccountsService", () => {
       expect(saved.termEndDate).toBeNull();
     });
 
+    it("clears a stored mortgage type when a flag changes, keeps it otherwise", async () => {
+      // The type is backfilled from the flags and not yet written with them
+      // (P1-B3). A flag change would leave it disagreeing with the flags, and
+      // a reader that trusts a non-null type would change the account's rate;
+      // cleared, the reader falls back to the flags.
+      const storedFixed = {
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
+      };
+
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...storedFixed });
+      await service.update("user-1", "account-1", { isVariableRate: true });
+      const changed = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(changed.isVariableRate).toBe(true);
+      expect(changed.mortgageType).toBeNull();
+
+      // A form resends every field: the same values are not a change.
+      mockQueryRunner.manager.save.mockClear();
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...storedFixed });
+      await service.update("user-1", "account-1", {
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(mockQueryRunner.manager.save.mock.calls[0][0].mortgageType).toBe(
+        "CANADIAN_FIXED",
+      );
+    });
+
     it("updates amortizationMonths when provided", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,
