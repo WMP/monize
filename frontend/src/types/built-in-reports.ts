@@ -102,6 +102,18 @@ export interface IncomeExpensePeriodItem {
   net: number;
 }
 
+/**
+ * One bar of a tag-key bucket: the categorized figures plus the tagged
+ * transfer flows that fell in the period (zero when none). The flows are never
+ * part of `income`, `expenses` or `net`.
+ */
+export interface IncomeExpenseTagPeriodItem extends IncomeExpensePeriodItem {
+  /** Tagged transfer legs in this period, positive side. */
+  taggedInflows: number;
+  /** Tagged transfer legs in this period, negative side, as a positive magnitude. */
+  taggedOutflows: number;
+}
+
 export interface IncomeExpenseTotals {
   /**
    * Total over the window, or `null` when a row could not be converted -- a
@@ -138,10 +150,11 @@ export interface IncomeExpenseTagBucket {
   value: string;
   /** True only for the reserved untagged bucket. */
   isUntagged: boolean;
-  data: IncomeExpensePeriodItem[];
+  data: IncomeExpenseTagPeriodItem[];
   totals: IncomeExpenseTotals;
   /**
-   * Transfer legs carrying this bucket's value, positive side. Never folded
+   * Window total of the per-period `taggedInflows` in `data`. Transfer legs
+   * carrying this bucket's value, positive side. Never folded
    * into `income`, `expenses` or `net` -- a transfer is never income.
    */
   taggedInflows: number;

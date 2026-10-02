@@ -53,6 +53,19 @@ gate (the plan's "What to run") passes and is quoted in the commit/PR.
       the current environment; backend integration + frontend component tests
       cover the behaviour. Run before merge where the stack is available.)
 
+## Phase 1b -- Account scope and the funding series (Income vs Expenses)
+
+Spec section 10.
+
+- [x] Backend: `IncomeExpenseTagPeriodItem`; both flow queries grouped by the
+      period start; per-period flows sum to the window figures; tests (unit +
+      integration) for periods, `accountIds` with `tagKey`, FX per period.
+- [x] Frontend: `ReportAccountMultiSelect` on `IncomeVsExpensesReport` (persisted,
+      empty = all; Cash Flow deliberately excluded); `TagKeyBreakdownBuckets`
+      controlled mode; two indigo series, table columns and tooltip for the
+      active non-untagged bucket.
+- [x] i18n: `reports.tagBreakdown.inflowsSeries` / `outflowsSeries`.
+
 ## Phase 2 -- Spending by Category + Income by Source (stub)
 
 - [ ] Reuse the Phase 1 DTO mixin, bucket shape, control and i18n; value
