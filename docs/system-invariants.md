@@ -90,7 +90,7 @@ implied.
 | INV-LOAN-004 | The final payment is the residual payoff, not another installment | enforced |
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, and the rate, through its own due date | enforced |
-| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | unenforced |
+| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | partial |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -2387,7 +2387,7 @@ Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     (mortgage-type-flags.guard.spec.ts). Owed: the spec's
                     section 7 fixtures row by row on both layers (preview,
                     installment pricing, projection).
-Status              unenforced
+Status              partial
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
