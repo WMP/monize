@@ -36,6 +36,33 @@ export type InterestBookingMode = 'AUTO' | 'SPLIT' | 'SEPARATE';
 export const INTEREST_BOOKING_MODES: InterestBookingMode[] = ['AUTO', 'SPLIT', 'SEPARATE'];
 
 /**
+ * A mortgage's compounding convention and amortization method, stored in
+ * `accounts.mortgage_type` (docs/specs/mortgage-types.md, decision 1); the
+ * browser-side twin of the backend's `MORTGAGE_TYPES`. Behaviour per type is
+ * `MORTGAGE_TYPE_TRAITS` in `lib/mortgage-type.ts`, held to the backend's by
+ * `lib/mortgage-type.contract.test.ts`.
+ */
+export const MORTGAGE_TYPES = [
+  'ANNUITY',
+  'CANADIAN_FIXED',
+  'LINEAR',
+  'INTEREST_ONLY',
+] as const;
+export type MortgageType = (typeof MORTGAGE_TYPES)[number];
+
+/**
+ * The types a request may write in Phase 1, mirroring the backend's
+ * `WRITABLE_MORTGAGE_TYPES`: its DTOs refuse `LINEAR` and `INTEREST_ONLY` until
+ * those methods exist (P2-B1), so a request type built from this list cannot
+ * send one.
+ */
+export const WRITABLE_MORTGAGE_TYPES = [
+  'ANNUITY',
+  'CANADIAN_FIXED',
+] as const satisfies readonly MortgageType[];
+export type WritableMortgageType = (typeof WRITABLE_MORTGAGE_TYPES)[number];
+
+/**
  * Payment frequencies a loan account can carry, mirroring the backend's
  * `PAYMENT_FREQUENCIES`.
  *
@@ -157,6 +184,10 @@ export interface Account {
   // Links an asset/other account to its financing loan/mortgage (equity view)
   linkedLoanAccountId: string | null;
   // Mortgage-specific fields
+  // The stored type: null on a non-mortgage, and on a mortgage a previous
+  // release wrote or whose flags it changed. Read it through `mortgageTypeOf`
+  // (`lib/mortgage-type.ts`), which falls back to the two flags below.
+  mortgageType: MortgageType | null;
   isCanadianMortgage: boolean;
   isVariableRate: boolean;
   termMonths: number | null;
@@ -219,7 +250,9 @@ export interface CreateAccountData {
   assetCategoryId?: string;
   dateAcquired?: string;
   linkedLoanAccountId?: string | null;
-  // Mortgage-specific fields
+  // Mortgage-specific fields. `mortgageType` wins over the two legacy flags
+  // when sent.
+  mortgageType?: WritableMortgageType;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
   termMonths?: number;
@@ -284,6 +317,8 @@ export interface MortgagePreviewData {
   amortizationMonths: number;
   paymentFrequency: MortgagePaymentFrequency;
   paymentStartDate: string;
+  /** Wins over the two legacy flags when sent. */
+  mortgageType?: WritableMortgageType;
   isCanadian: boolean;
   isVariableRate: boolean;
 }
@@ -357,6 +392,8 @@ export interface SetupLoanPaymentsData {
   payeeId?: string;
   payeeName?: string;
   autoPost?: boolean;
+  /** Wins over the two legacy flags when sent. */
+  mortgageType?: WritableMortgageType;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
   amortizationMonths?: number;

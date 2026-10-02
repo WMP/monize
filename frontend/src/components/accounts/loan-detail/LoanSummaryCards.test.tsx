@@ -127,6 +127,45 @@ describe('LoanSummaryCards', () => {
     expect(screen.queryByText(/effective/)).not.toBeInTheDocument();
   });
 
+  it('reads the stored type: a CANADIAN_FIXED column shows the note over flags that say otherwise', () => {
+    render(
+      <LoanSummaryCards
+        account={makeAccount({
+          accountType: 'MORTGAGE',
+          mortgageType: 'CANADIAN_FIXED',
+          isCanadianMortgage: false,
+          interestRate: 5,
+        })}
+        startingBalance={10000}
+        currentInstallment={500}
+        currentAnnualRate={5}
+        baseline={null}
+      />,
+    );
+
+    expect(screen.getByText(/5\.062\d?% effective/)).toBeInTheDocument();
+  });
+
+  it('omits the note for an ANNUITY column over Canadian-fixed flags', () => {
+    render(
+      <LoanSummaryCards
+        account={makeAccount({
+          accountType: 'MORTGAGE',
+          mortgageType: 'ANNUITY',
+          isCanadianMortgage: true,
+          isVariableRate: false,
+          interestRate: 5,
+        })}
+        startingBalance={10000}
+        currentInstallment={500}
+        currentAnnualRate={5}
+        baseline={null}
+      />,
+    );
+
+    expect(screen.queryByText(/effective/)).not.toBeInTheDocument();
+  });
+
   it('falls back to N/A and Not set when data is missing', () => {
     render(
       <LoanSummaryCards

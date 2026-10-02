@@ -14,6 +14,7 @@ import {
   getPeriodsPerYear,
   monthsBetween,
 } from '@/lib/loan-schedule';
+import { mortgageTypeOf } from '@/lib/mortgage-type';
 import { roundToCents } from '@/lib/format';
 
 /**
@@ -137,8 +138,7 @@ export function computePastImpact(
   }
 
   const frequency = account.paymentFrequency as ScheduleFrequency;
-  const isCanadian = account.isCanadianMortgage || false;
-  const isVariableRate = account.isVariableRate || false;
+  const mortgageType = mortgageTypeOf(account);
 
   // The origination rate comes from the rate history when one exists; the
   // account's scalar rate is only the *current* rate and would corrupt the
@@ -179,8 +179,7 @@ export function computePastImpact(
         originalPrincipal,
         timeline.startingAnnualRate,
         frequency,
-        isCanadian,
-        isVariableRate,
+        mortgageType,
       );
 
   const contractualPayment = useRecordedInstallment
@@ -190,8 +189,7 @@ export function computePastImpact(
         timeline.startingAnnualRate,
         configuredTermMonths,
         frequency,
-        isCanadian,
-        isVariableRate,
+        mortgageType,
       );
   if (contractualPayment <= 0) return null;
 
@@ -200,8 +198,7 @@ export function computePastImpact(
     annualRate: timeline.startingAnnualRate,
     paymentAmount: contractualPayment,
     frequency,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
     firstPaymentDate: parseLocalDate(startDate),
   };
   // Accelerated payments (monthly / 2 or / 4) are larger than the amortizing

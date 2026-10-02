@@ -8,6 +8,7 @@ import { ImportResult } from '@/lib/import';
 import { Account } from '@/types/account';
 import { ImportFileData, BulkImportResult } from '@/app/import/import-utils';
 import { LoanPaymentSetupDialog } from '@/components/accounts/LoanPaymentSetupDialog';
+import { flagsFromMortgageType, mortgageTypeOf } from '@/lib/mortgage-type';
 
 interface CompleteStepProps {
   importFiles: ImportFileData[];
@@ -46,13 +47,13 @@ export function CompleteStep({
   const [completedSetups, setCompletedSetups] = useState<Set<string>>(new Set());
 
   // The two mortgage flags for a matched account, read from the accounts list
-  // rather than from the import summary, which never carried them.
+  // rather than from the import summary, which never carried them. Derived from
+  // the account's type (`mortgageTypeOf`), the flags a save writes beside it,
+  // so the dialog seeds the convention the server prices: a Canadian
+  // variable-rate row is `ANNUITY` and seeds as `(false, false)`.
   const mortgageFlagsOf = (accountId: string) => {
     const account = accounts.find((a) => a.id === accountId);
-    return {
-      isCanadianMortgage: account?.isCanadianMortgage,
-      isVariableRate: account?.isVariableRate,
-    };
+    return account ? flagsFromMortgageType(mortgageTypeOf(account)) : {};
   };
 
   // Collect loan accounts needing setup from import results

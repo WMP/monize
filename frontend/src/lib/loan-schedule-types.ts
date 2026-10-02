@@ -9,6 +9,7 @@
 
 import type { ScheduleFrequency } from '@/lib/loan-frequency';
 import type { OverpaymentPlan } from '@/lib/loan-overpayments';
+import type { MortgageType } from '@/types/account';
 
 /** A step on the loan's interest-rate timeline, applied during generation */
 export interface RateChange {
@@ -67,9 +68,13 @@ export interface LoanScheduleInput {
   /** Regular contractual payment per period */
   paymentAmount: number;
   frequency: ScheduleFrequency;
-  /** Canadian fixed-rate mortgages compound semi-annually */
-  isCanadian?: boolean;
-  isVariableRate?: boolean;
+  /**
+   * The mortgage type whose traits price each period (`lib/mortgage-type.ts`):
+   * `CANADIAN_FIXED` compounds semi-annually. Read from an account through
+   * `mortgageTypeOf`. Absent means `ANNUITY`, the engine every plain `LOAN`
+   * account uses.
+   */
+  mortgageType?: MortgageType;
   /** Date of the first projected payment (row 1) */
   firstPaymentDate: Date;
   overpayments?: OverpaymentPlan;

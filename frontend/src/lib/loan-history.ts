@@ -17,6 +17,7 @@ import {
   isoDay,
   resolveEffectiveLoanTerms,
 } from '@/lib/loan-schedule';
+import { annualizationFor, mortgageTypeOf } from '@/lib/mortgage-type';
 
 /**
  * Historical loan-payment derivation shared by the loan reports and the loan
@@ -528,8 +529,7 @@ function resolveSeedPayment(
   today: string,
 ): SeedPayment {
   const frequency = (account.paymentFrequency as ScheduleFrequency) || 'MONTHLY';
-  const isCanadian = account.isCanadianMortgage || false;
-  const isVariableRate = account.isVariableRate || false;
+  const mortgageType = mortgageTypeOf(account);
   // `Number(null)` is 0, and 0 is a rate. Pass the absence through so a loan
   // with no rate anywhere reads as "Not set" rather than as a measured 0%.
   const effective = resolveEffectiveLoanTerms(
@@ -586,8 +586,7 @@ function resolveSeedPayment(
     usableAnchor ? usableAnchor.debt : history.currentBalance,
     firstRowAnnualRate,
     frequency,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
   const amortizes = (payment: number) => payment > 0 && payment > periodInterest;
 
@@ -814,8 +813,7 @@ function evaluateLoanProjection(
       annualRate: seed.annualRate,
       paymentAmount: seed.payment,
       frequency: account.paymentFrequency as ScheduleFrequency,
-      isCanadian: account.isCanadianMortgage || false,
-      isVariableRate: account.isVariableRate || false,
+      mortgageType: mortgageTypeOf(account),
       firstPaymentDate: seed.firstPaymentDate,
       rateChanges: futureTimeline.rateChanges,
     },
@@ -1288,7 +1286,10 @@ function assignObservedRates(
   }
 
   const periodDays = 365 / periodsPerYear;
-  const isCanadian = account.isCanadianMortgage || false;
+  const mortgageType = mortgageTypeOf(account);
+  // Whether the configured rate was in effect on a row that charged no
+  // interest: a question about the rate's variability, not its compounding, so
+  // it reads the flag rather than the type.
   const isVariable = account.isVariableRate || false;
   // No rate history here (this branch only runs when rateChanges is empty), so
   // the account's scalar rate is the only reference available -- both to
@@ -1325,22 +1326,25 @@ function assignObservedRates(
     // clock for the following installment.
     if (event.type === 'REGULAR' && event.interest > 0 && balanceBefore > 0 && days > 0) {
       const periodicRate = event.interest / balanceBefore;
-      // Canadian mortgages annualize by the nominal periods-per-year (with the
-      // semi-annual compounding inversion for a fixed rate) -- the convention
-      // the lender quotes. Everything else annualizes over the actual accrual
-      // window (days since interest was last settled), which self-corrects for
-      // overpayments and payment gaps.
-      const observed = isCanadian
-        ? isVariable
-          ? periodicRate * periodsPerYear * 100
-          : (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100
-        : periodicRate * (365 / days) * 100;
+      // By the type's annualization trait, mirroring the backend's
+      // `annualizeRate` (docs/specs/mortgage-types.md table 4.1): `SEMI_ANNUAL`
+      // (Canadian fixed-rate) inverts the semi-annual compounding over the
+      // nominal periods per year -- the convention the lender quotes.
+      // `DAY_COUNT` annualizes over the actual accrual window (days since
+      // interest was last settled), which self-corrects for overpayments and
+      // payment gaps. A Canadian variable-rate account is `ANNUITY` and
+      // annualizes by day count too (table 4.2, last row); it used
+      // `x periodsPerYear` before the type existed.
+      const observed =
+        annualizationFor(mortgageType) === 'SEMI_ANNUAL'
+          ? (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100
+          : periodicRate * (365 / days) * 100;
       // A 0% loan expects no interest, so it has nothing to check the
       // observation against -- same as an unconfigured rate, and reached here
       // only by a row whose interest contradicts the loan's own rate.
       const expectedFullPeriodInterest =
         configuredRate != null && configuredRate > 0
-          ? balanceBefore * getPeriodicRate(configuredRate, periodsPerYear, isCanadian, isVariable)
+          ? balanceBefore * getPeriodicRate(configuredRate, periodsPerYear, mortgageType)
           : 0;
       // A partial period falls back to the configured rate, which this branch
       // can only reach when there is one: `expectedFullPeriodInterest > 0`

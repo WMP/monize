@@ -35,7 +35,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] |
 | P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [x] |
 | P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [x] |
-| P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [ ] |
+| P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [[x] |
 | P1-F2 | #1507 | One Select replaces both checkbox pairs; Term Length for every type; help text; copy fixes; en i18n | P1-F1 | neutral | [ ] |
 | P1-Q | #1508 | Phase 1 acceptance: locales, docs, release note | P1-F2 | none | [ ] |
 | P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [ ] |
