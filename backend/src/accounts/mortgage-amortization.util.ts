@@ -158,25 +158,30 @@ export function getPeriodicRate(
 ): number;
 /**
  * The two-flag form, kept while `is_canadian_mortgage` and `is_variable_rate`
- * exist. Delegates through `mortgageTypeFromFlags`; deleted in P3-B1, and
- * `mortgage-type-flags.guard.spec.ts` names its remaining callers.
+ * exist. Delegates through `mortgageTypeFromFlags`, which reads a NULL flag as
+ * false (both columns are nullable, and the entity hands a NULL through
+ * unchanged); deleted in P3-B1, and `mortgage-type-flags.guard.spec.ts` names
+ * its remaining callers.
  */
 export function getPeriodicRate(
   annualRate: number,
   periodsPerYear: number,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  isCanadian: boolean | null | undefined,
+  isVariableRate: boolean | null | undefined,
 ): number;
 export function getPeriodicRate(
   annualRate: number,
   periodsPerYear: number,
-  typeOrIsCanadian: MortgageType | boolean,
-  isVariableRate?: boolean,
+  typeOrIsCanadian: MortgageType | boolean | null | undefined,
+  isVariableRate?: boolean | null,
 ): number {
+  // Dispatch on the type form: anything that is not a type string is the
+  // two-flag form, including a NULL flag, which must read as false rather than
+  // be looked up as a type.
   const type =
-    typeof typeOrIsCanadian === "boolean"
-      ? mortgageTypeFromFlags(typeOrIsCanadian, isVariableRate)
-      : typeOrIsCanadian;
+    typeof typeOrIsCanadian === "string"
+      ? typeOrIsCanadian
+      : mortgageTypeFromFlags(typeOrIsCanadian, isVariableRate);
   if (compoundingFor(type) === "SEMI_ANNUAL") {
     return calculateCanadianPeriodicRate(annualRate, periodsPerYear);
   }
@@ -348,31 +353,34 @@ export function calculateEffectiveAnnualRate(
 ): number;
 /**
  * The two-flag form, kept while `is_canadian_mortgage` and `is_variable_rate`
- * exist. Delegates through `mortgageTypeFromFlags`; deleted in P3-B1, and
- * `mortgage-type-flags.guard.spec.ts` names its remaining callers.
+ * exist. Delegates through `mortgageTypeFromFlags`, which reads a NULL flag as
+ * false; deleted in P3-B1, and `mortgage-type-flags.guard.spec.ts` names its
+ * remaining callers.
  */
 export function calculateEffectiveAnnualRate(
   annualRate: number,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  isCanadian: boolean | null | undefined,
+  isVariableRate: boolean | null | undefined,
   periodsPerYear: number,
 ): number;
 export function calculateEffectiveAnnualRate(
   annualRate: number,
-  periodsPerYearOrIsCanadian: number | boolean,
-  typeOrIsVariableRate: MortgageType | boolean,
+  periodsPerYearOrIsCanadian: number | boolean | null | undefined,
+  typeOrIsVariableRate: MortgageType | boolean | null | undefined,
   flagsPeriodsPerYear?: number,
 ): number {
+  // Dispatch on the type form (a number in second place), so a NULL flag is
+  // the two-flag form and reads as false.
   const [periodsPerYear, type] =
-    typeof periodsPerYearOrIsCanadian === "boolean"
-      ? [
+    typeof periodsPerYearOrIsCanadian === "number"
+      ? [periodsPerYearOrIsCanadian, typeOrIsVariableRate as MortgageType]
+      : [
           flagsPeriodsPerYear as number,
           mortgageTypeFromFlags(
             periodsPerYearOrIsCanadian,
-            typeOrIsVariableRate as boolean,
+            typeOrIsVariableRate as boolean | null | undefined,
           ),
-        ]
-      : [periodsPerYearOrIsCanadian, typeOrIsVariableRate as MortgageType];
+        ];
   if (compoundingFor(type) === "SEMI_ANNUAL") {
     // Semi-annual compounding
     const ear = Math.pow(1 + annualRate / 100 / 2, 2) - 1;

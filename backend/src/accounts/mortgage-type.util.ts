@@ -83,9 +83,9 @@ export function annualizationFor(type: MortgageType): MortgageAnnualization {
 /**
  * The type the two legacy flags denote (spec table 4.2): Canadian and not
  * variable is `CANADIAN_FIXED`, every other combination `ANNUITY`. A NULL flag
- * reads as false, as the P1-B1 backfill and the boolean `getPeriodicRate`
- * branch do. Used where `accounts.mortgage_type` is null until P3-B1 makes it
- * NOT NULL.
+ * reads as false, as the P1-B1 backfill and the pre-type `getPeriodicRate`
+ * test (`isCanadian && !isVariableRate`) did. Used where
+ * `accounts.mortgage_type` is null until P3-B1 makes it NOT NULL.
  */
 export function mortgageTypeFromFlags(
   isCanadian: boolean | null | undefined,

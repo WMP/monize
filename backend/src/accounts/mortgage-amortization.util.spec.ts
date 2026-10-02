@@ -354,12 +354,27 @@ describe("Mortgage Amortization Utility", () => {
     // Spec table 4.2: every flag combination keeps the periodic rate it had
     // before the type existed ("Today's periodic rate"), and the two-flag
     // overloads and the type the flags denote give the same answer to the bit.
-    it.each([
+    // Both columns are nullable and the entity hands a NULL through unchanged
+    // (the scheduled-installment path passes them without `|| false`), so the
+    // NULL rows read as false exactly as `isCanadian && !isVariableRate` did,
+    // rather than being looked up as a type.
+    const FLAG_ROWS: [
+      boolean | null | undefined,
+      boolean | null | undefined,
+      (rate: number, n: number) => number,
+    ][] = [
       [false, false, nominalPeriodic],
       [false, true, nominalPeriodic],
       [true, false, semiAnnualPeriodic],
       [true, true, nominalPeriodic],
-    ])(
+      [null, null, nominalPeriodic],
+      [null, false, nominalPeriodic],
+      [null, true, nominalPeriodic],
+      [false, null, nominalPeriodic],
+      [true, null, semiAnnualPeriodic],
+      [undefined, undefined, nominalPeriodic],
+    ];
+    it.each(FLAG_ROWS)(
       "flags (%s, %s): the type-keyed and two-flag forms agree",
       (isCanadian, isVariableRate, todaysPeriodic) => {
         const type = mortgageTypeFromFlags(isCanadian, isVariableRate);
