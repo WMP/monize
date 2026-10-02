@@ -173,9 +173,9 @@ export function mortgageReminderTemplate(
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #1f2937;">${t("emails.mortgageReminder.heading", "Mortgage Renewal Reminder")}</h2>
+      <h2 style="color: #1f2937;">${t("emails.mortgageReminder.heading", "Mortgage Rate Term Reminder")}</h2>
       <p style="color: #374151;">${t("emails.mortgageReminder.greeting", `Hi ${safeName},`, { name: safeName })}</p>
-      <p style="color: #374151;">${mortgages.length === 1 ? t("emails.mortgageReminder.introOne", "You have 1 mortgage with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:") : t("emails.mortgageReminder.introMany", `You have ${mortgages.length} mortgages with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:`, { count: mortgages.length })}</p>
+      <p style="color: #374151;">${mortgages.length === 1 ? t("emails.mortgageReminder.introOne", "You have 1 mortgage whose current rate term ends soon. Contact your lender before it ends to arrange your next rate or renewal:") : t("emails.mortgageReminder.introMany", `You have ${mortgages.length} mortgages whose current rate term ends soon. Contact your lender before each one ends to arrange the next rate or renewal:`, { count: mortgages.length })}</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 8px;">
         <thead>
           <tr style="background: #f3f4f6;">

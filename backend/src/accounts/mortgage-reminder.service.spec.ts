@@ -301,7 +301,7 @@ describe("MortgageReminderService", () => {
       expect(emailService.sendMail).toHaveBeenCalledTimes(1);
       const [to, subject, html] = emailService.sendMail.mock.calls[0];
       expect(to).toBe("user1@example.com");
-      expect(subject).toBe("Monize: 1 upcoming mortgage renewal");
+      expect(subject).toBe("Monize: 1 mortgage rate term ending soon");
       expect(html).toContain("Home Mortgage");
       expect(html).toContain("Hi Alice,");
     });
@@ -321,7 +321,7 @@ describe("MortgageReminderService", () => {
 
       expect(emailService.sendMail).toHaveBeenCalledTimes(1);
       const [, subject, html] = emailService.sendMail.mock.calls[0];
-      expect(subject).toBe("Monize: 2 upcoming mortgage renewals");
+      expect(subject).toBe("Monize: 2 mortgage rate terms ending soon");
       expect(html).toContain("Home Mortgage");
       expect(html).toContain("Cottage Mortgage");
     });
