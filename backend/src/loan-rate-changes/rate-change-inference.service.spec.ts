@@ -330,6 +330,29 @@ describe("RateChangeInferenceService", () => {
     expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
   });
 
+  it("annualizes a non-mortgage by its flags, ignoring a stale stored type", async () => {
+    // A LOAN has no type; a CANADIAN_FIXED left on the row by an older edit
+    // must not switch its inference to the semi-annual inversion.
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({
+        accountType: AccountType.LOAN,
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      }),
+    );
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    setHistory(records, balanceMap);
+
+    await service.detectAndPersist(userId, accountId);
+
+    expect(Math.abs(createdRows()[0].annualRate - 5.5)).toBeLessThanOrEqual(
+      0.01,
+    );
+  });
+
   it("records the new payment when it steps together with the rate", async () => {
     const { records, balanceMap } = generateHistory(400000, [
       { annualRate: 5.5, payments: 12, paymentAmount: 2500 },

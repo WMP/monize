@@ -95,6 +95,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 **Files:** `frontend/src/types/account.ts`, `frontend/src/lib/mortgage-type.ts` + `mortgage-type.contract.test.ts` (new), `frontend/src/lib/loan-schedule-types.ts`, `frontend/src/lib/loan-schedule.ts`, `frontend/src/lib/loan-frequency.ts`, `frontend/src/lib/loan-history.ts`, `frontend/src/lib/loan-figures.ts`, `frontend/src/lib/loan-past-impact.ts`, `frontend/src/components/accounts/loan-detail/LoanSummaryCards.tsx`, `frontend/src/components/import/CompleteStep.tsx`, their tests.
 
 - `LoanScheduleInput.mortgageType` replaces the two booleans; `getPeriodicRate` keyed on the type; the history mirror of `annualizeRate` keyed on `annualizationFor`.
+- The account's `mortgageType` from `GET /accounts` and `GET /accounts/:id` is the stored column, null on a mortgage a previous release wrote or cleared; the client reads it through its own mirror of `mortgageTypeOf` (the column, else `mortgageTypeFromFlags`), as the LLM account row does on the server.
 - Acceptance: the contract test reads `backend/src/accounts/mortgage-type-cases.json`; every existing schedule test green with only the input shape changed.
 
 ### P1-F2 -- The Select

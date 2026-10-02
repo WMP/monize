@@ -408,7 +408,10 @@ export class LoanRateChangesService {
     // priced from (`resolveInstallment`): the template's next due date, or the
     // rate's effective date when that is later. `current_balance` stops at
     // today, so it missed a payment already posted for a date before the
-    // installment this split describes.
+    // installment this split describes. The timeline override only carries a
+    // rate effective today or earlier (`resolveCurrentTimeline`), so the
+    // effective date wins only over an overdue template; a future-dated
+    // change is priced by `recalculatePaymentForRate`, not here.
     const balance = await withScopedDb(this.dataSource, (m) =>
       datedLoanDebt(
         m,

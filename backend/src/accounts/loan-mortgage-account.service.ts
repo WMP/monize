@@ -475,23 +475,15 @@ export class LoanMortgageAccountService {
       );
     }
 
-    const rateChange = await this.loanRateChangesService.create(
-      userId,
-      account.id,
-      {
-        effectiveDate: formatDateYMD(effectiveDate),
-        annualRate: newRate,
-        newPaymentAmount: newPaymentAmount ?? null,
-        recalculatePayment: newPaymentAmount == null,
-      },
-    );
-
     // The debt the new rate first applies to: the ledger through the
     // effective date, the as-of read installment pricing uses (spec decision
     // 5). `current_balance` stops at today, so a future-dated change would be
     // priced against a debt that payments posted before it no longer owe.
+    // Read before the rate change is recorded, so an unreadable ledger refuses
+    // the request before anything is written.
+    const effectiveYmd = formatDateYMD(effectiveDate);
     const debt = await withScopedDb(this.dataSource, (m) =>
-      datedLoanDebt(m, account, rateChange.effectiveDate),
+      datedLoanDebt(m, account, effectiveYmd),
     );
     if (debt === null) {
       throw new ServiceUnavailableException(
@@ -501,6 +493,18 @@ export class LoanMortgageAccountService {
         ),
       );
     }
+
+    const rateChange = await this.loanRateChangesService.create(
+      userId,
+      account.id,
+      {
+        effectiveDate: effectiveYmd,
+        annualRate: newRate,
+        newPaymentAmount: newPaymentAmount ?? null,
+        recalculatePayment: newPaymentAmount == null,
+      },
+    );
+
     const paymentAmount =
       rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
     const periodicRate = getPeriodicRate(

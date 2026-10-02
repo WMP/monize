@@ -791,6 +791,27 @@ describe("AccountsService", () => {
       });
     });
 
+    it("clears the type when an edit moves a mortgage to another type", async () => {
+      // Non-mortgage rows hold no type (the backfill leaves them null); a stale
+      // CANADIAN_FIXED left on a LOAN would be read over its flags.
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
+      });
+      await service.update("user-1", "account-1", {
+        accountType: AccountType.LOAN,
+        isCanadianMortgage: false,
+      });
+      expect(mockQueryRunner.manager.save.mock.calls[0][0]).toMatchObject({
+        accountType: AccountType.LOAN,
+        mortgageType: null,
+        isCanadianMortgage: false,
+      });
+    });
+
     it("writes no type on an account that is not a mortgage", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

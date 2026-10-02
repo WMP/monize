@@ -799,6 +799,8 @@ describe("LoanMortgageAccountService", () => {
           new Date("2025-06-01"),
         ),
       ).rejects.toThrow(ServiceUnavailableException);
+      // Refused before the rate change is recorded: nothing was written.
+      expect(loanRateChangesService.create).not.toHaveBeenCalled();
     });
 
     it("reads the stored type over the flags", async () => {

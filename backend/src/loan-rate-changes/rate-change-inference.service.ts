@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
-import { Account } from "../accounts/entities/account.entity";
+import { Account, AccountType } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import {
   LoanPaymentDetectorService,
@@ -13,6 +13,7 @@ import { LoanRateChangesService } from "./loan-rate-changes.service";
 import { roundMoney } from "../common/round.util";
 import {
   annualizationFor,
+  mortgageTypeFromFlags,
   mortgageTypeOf,
 } from "../accounts/mortgage-type.util";
 import {
@@ -238,8 +239,9 @@ export class RateChangeInferenceService {
    *    annualizes here too (table 4.2, last row); it used `x periodsPerYear`
    *    before the type existed.
    *
-   * The type is read through `mortgageTypeOf` for every account, so a plain
-   * loan, which has no stored type, keeps the annualization its flags denote.
+   * A mortgage's type is read through `mortgageTypeOf`; any other account has
+   * no type, so it keeps the annualization its flags denote even if a stale
+   * column survived an edit that moved it off MORTGAGE.
    */
   private annualizeRate(
     account: Account,
@@ -247,7 +249,14 @@ export class RateChangeInferenceService {
     periodsPerYear: number,
     days: number,
   ): number {
-    if (annualizationFor(mortgageTypeOf(account)) === "SEMI_ANNUAL") {
+    const type =
+      account.accountType === AccountType.MORTGAGE
+        ? mortgageTypeOf(account)
+        : mortgageTypeFromFlags(
+            account.isCanadianMortgage,
+            account.isVariableRate,
+          );
+    if (annualizationFor(type) === "SEMI_ANNUAL") {
       return (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
     }
     return periodicRate * (365 / days) * 100;

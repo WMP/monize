@@ -367,20 +367,6 @@ describe("AccountsController", () => {
   });
 
   describe("findOne()", () => {
-    it("returns the account's mortgage type", async () => {
-      mockAccountsService.findOne!.mockResolvedValue({
-        id: "m1",
-        accountType: "MORTGAGE",
-        mortgageType: "CANADIAN_FIXED",
-        isCanadianMortgage: true,
-        isVariableRate: false,
-      });
-
-      const result = await controller.findOne(mockReq, "m1");
-
-      expect(result).toMatchObject({ mortgageType: "CANADIAN_FIXED" });
-    });
-
     it("delegates to accountsService.findOne with userId and id", async () => {
       mockAccountsService.findOne!.mockResolvedValue("account");
 

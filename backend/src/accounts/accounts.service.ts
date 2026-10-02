@@ -874,8 +874,9 @@ export class AccountsService {
           account.linkedLoanAccountId = updateAccountDto.linkedLoanAccountId;
         // Mortgage-specific fields. A mortgage writes its type and the flags
         // it maps to together, so a previous-release pod reading the flags
-        // prices the row as this one does; any other account type has no type
-        // and keeps the flags as sent.
+        // prices the row as this one does. Any other account type has no type
+        // (cleared when an edit moves a mortgage to another type, as the
+        // backfill leaves non-mortgage rows null) and keeps the flags as sent.
         const requestedType =
           effectiveType === AccountType.MORTGAGE
             ? requestedMortgageType(updateAccountDto, account)
@@ -883,6 +884,7 @@ export class AccountsService {
         if (requestedType !== undefined) {
           Object.assign(account, mortgageTypeColumns(requestedType));
         } else if (effectiveType !== AccountType.MORTGAGE) {
+          account.mortgageType = null;
           if (updateAccountDto.isCanadianMortgage !== undefined)
             account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
           if (updateAccountDto.isVariableRate !== undefined)
