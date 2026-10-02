@@ -23,6 +23,11 @@ import {
   advancePaymentDates,
   unpayableEndDate,
 } from "./payment-frequency.util";
+import {
+  MortgageType,
+  compoundingFor,
+  mortgageTypeFromFlags,
+} from "./mortgage-type.util";
 
 /**
  * The frequency type, the recurrence table and the domain conversion live in
@@ -141,18 +146,38 @@ export function calculateStandardPeriodicRate(
 }
 
 /**
- * Determine the correct periodic rate based on mortgage type
+ * The periodic rate for a mortgage type, by its compounding trait
+ * (`compoundingFor`): `SEMI_ANNUAL` (Canadian fixed-rate, required by law)
+ * converts the semi-annual rate to the payment period; `NOMINAL` divides the
+ * annual rate by the payment frequency -- see calculateStandardPeriodicRate.
+ */
+export function getPeriodicRate(
+  annualRate: number,
+  periodsPerYear: number,
+  type: MortgageType,
+): number;
+/**
+ * The two-flag form, kept while `is_canadian_mortgage` and `is_variable_rate`
+ * exist. Delegates through `mortgageTypeFromFlags`; deleted in P3-B1, and
+ * `mortgage-type-flags.guard.spec.ts` names its remaining callers.
  */
 export function getPeriodicRate(
   annualRate: number,
   periodsPerYear: number,
   isCanadian: boolean,
   isVariableRate: boolean,
+): number;
+export function getPeriodicRate(
+  annualRate: number,
+  periodsPerYear: number,
+  typeOrIsCanadian: MortgageType | boolean,
+  isVariableRate?: boolean,
 ): number {
-  // Canadian fixed-rate mortgages compound semi-annually (required by law);
-  // every other mortgage uses the nominal-rate convention (annual rate divided
-  // by the payment frequency) -- see calculateStandardPeriodicRate.
-  if (isCanadian && !isVariableRate) {
+  const type =
+    typeof typeOrIsCanadian === "boolean"
+      ? mortgageTypeFromFlags(typeOrIsCanadian, isVariableRate)
+      : typeOrIsCanadian;
+  if (compoundingFor(type) === "SEMI_ANNUAL") {
     return calculateCanadianPeriodicRate(annualRate, periodsPerYear);
   }
   return calculateStandardPeriodicRate(annualRate, periodsPerYear);
@@ -304,10 +329,11 @@ export function calculateMortgageEndDate(
 
 /**
  * Effective annual rate for display: the rate the mortgage actually costs over
- * a year, compounded the way its own periodic rate is derived.
+ * a year, compounded the way its own periodic rate is derived, by the type's
+ * compounding trait (`compoundingFor`).
  *
- * For Canadian fixed-rate: EAR = (1 + r/2)^2 - 1 (semi-annual, by law).
- * Otherwise the periodic rate is `r / periodsPerYear`
+ * For `SEMI_ANNUAL` (Canadian fixed-rate): EAR = (1 + r/2)^2 - 1 (by law).
+ * For `NOMINAL` the periodic rate is `r / periodsPerYear`
  * (`calculateStandardPeriodicRate`), so the EAR compounds at the *payment*
  * frequency: EAR = (1 + r/n)^n - 1. Compounding at 12 regardless of n
  * described a rate the schedule never used -- a biweekly mortgage charges
@@ -317,11 +343,37 @@ export function calculateMortgageEndDate(
  */
 export function calculateEffectiveAnnualRate(
   annualRate: number,
+  periodsPerYear: number,
+  type: MortgageType,
+): number;
+/**
+ * The two-flag form, kept while `is_canadian_mortgage` and `is_variable_rate`
+ * exist. Delegates through `mortgageTypeFromFlags`; deleted in P3-B1, and
+ * `mortgage-type-flags.guard.spec.ts` names its remaining callers.
+ */
+export function calculateEffectiveAnnualRate(
+  annualRate: number,
   isCanadian: boolean,
   isVariableRate: boolean,
   periodsPerYear: number,
+): number;
+export function calculateEffectiveAnnualRate(
+  annualRate: number,
+  periodsPerYearOrIsCanadian: number | boolean,
+  typeOrIsVariableRate: MortgageType | boolean,
+  flagsPeriodsPerYear?: number,
 ): number {
-  if (isCanadian && !isVariableRate) {
+  const [periodsPerYear, type] =
+    typeof periodsPerYearOrIsCanadian === "boolean"
+      ? [
+          flagsPeriodsPerYear as number,
+          mortgageTypeFromFlags(
+            periodsPerYearOrIsCanadian,
+            typeOrIsVariableRate as boolean,
+          ),
+        ]
+      : [periodsPerYearOrIsCanadian, typeOrIsVariableRate as MortgageType];
+  if (compoundingFor(type) === "SEMI_ANNUAL") {
     // Semi-annual compounding
     const ear = Math.pow(1 + annualRate / 100 / 2, 2) - 1;
     return Math.round(ear * 10000) / 100; // Return as percentage with 2 decimals
