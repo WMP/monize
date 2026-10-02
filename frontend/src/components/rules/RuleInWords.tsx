@@ -148,7 +148,7 @@ export function useRuleWords(labels: RuleWordsLabels) {
         });
       case 'convert_to_transfer':
         return t('words.action.convert_to_transfer', {
-          direction: action.fromAccountId !== undefined ? 'from' : 'to',
+          direction: action.fromAccountId !== undefined ? 'from' : 'other',
           account: named(labels.accounts, action.fromAccountId ?? action.toAccountId),
         });
       case 'split':

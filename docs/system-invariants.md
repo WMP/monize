@@ -151,8 +151,9 @@ implied.
 | INV-HA-003 | A single-use artifact is consumed at most once across every replica | enforced |
 | INV-HA-004 | One deployment publishes one OIDC signing key set, stable across restarts | enforced |
 | INV-HA-005 | A relay prompt is claimed by exactly one agent poll and answered at most once | enforced |
-| INV-RULE-001 | A transaction rule never moves a balance | enforced |
+| INV-RULE-001 | A transaction rule never changes the matched row's amount, account, date or status; the only balance it moves is a structural action's counterpart | partial |
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
+| INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | enforced |
 
 ## Imports
 
@@ -5100,49 +5101,148 @@ Status              enforced
 
 Design: `docs/future-plans/transaction-rules.md` (invariants I1 and I2 there).
 
-### INV-RULE-001 -- a transaction rule never moves a balance
+### INV-RULE-001 -- a rule never changes the matched row's amount, account, date or status; it moves only a structural action's counterpart
 
 ```text
-Statement           Running a rule never changes an amount, an account, a date,
-                    a status, a split or a link, and so never moves a balance.
-                    A rule may change only a row's category, payee (with its
-                    payee_name), description and tags, or queue a request for a
+Statement           Running a rule never changes the matched row's amount,
+                    account, date or status, and never deletes or relinks a row
+                    that exists, so the matched row's own account balance never
+                    moves. The only balance a rule moves is the one a structural
+                    action creates: the counterpart leg of convert_to_transfer
+                    and the counterpart legs of the transfer parts of split,
+                    each by exactly the counterpart's amount, written in the
+                    transaction that inserts the row or commits the run. Every
+                    other action changes only a row's category, payee (with its
+                    payee_name), description and tags, or queues a request for a
                     human-approved AI review that does not touch the row.
-Source of truth     the transactions row and transaction_tags; the rule's stored
-                    action list in transaction_rules.actions
+Source of truth     the transactions row, its counterpart legs and split lines,
+                    and transaction_tags; the rule's stored action list in
+                    transaction_rules.actions
 Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     RuleAction in backend/src/transaction-rules/rule-action.types.ts
                     (add_tags, remove_tags, set_category, set_payee,
-                    set_payee_from_text, set_description, request_ai_review),
-                    so an action that writes anything else is not
-                    representable, and rule-validation.ts refuses a stored or
-                    submitted action outside it. The applier
+                    set_payee_from_text, set_description, request_ai_review,
+                    convert_to_transfer, split), so an action that writes
+                    anything else is not representable, and rule-validation.ts
+                    refuses a stored or submitted action outside it. The pure
+                    planner (planRuleEffects) decides every structural refusal
+                    before any write. The applier
                     (TransactionRulesApplierService.writeEffects) writes one
                     UPDATE limited to categoryId, payeeId, payeeName and
-                    description, tag rows through TagsService, and its own
-                    trace rows in
-                    transaction_rule_applications; it assigns no other column.
-                    A rule therefore never calls the balance helpers, and a rule
-                    application needs no balance recompute.
+                    description, tag rows through TagsService, its own trace rows
+                    in transaction_rule_applications, and then the structure on
+                    the caller's EntityManager: convertRowToTransfer
+                    (backend/src/transactions/convert-to-transfer.ts) for a
+                    conversion, TransactionSplitService.validateSplits and
+                    createSplits for a split. The only columns it sets on the
+                    matched row besides the patch are isTransfer,
+                    linkedTransactionId, isSplit and categoryId; it never
+                    assigns amount, account, date or status. The target
+                    account's balance moves through AccountsService.updateBalance
+                    (recalculateCurrentBalance for a future-dated row), by the
+                    counterpart's amount, never by a hand-rolled sum. The write
+                    returns the accounts it moved (affectedAccountIds) and the
+                    callers dispatch the net-worth recompute after the commit
+                    (INV-CACHE-001). Undo of a manual run removes the counterpart
+                    legs with deletionBalanceEffect and restores the row from its
+                    snapshot (backend/src/action-history/rule-run-undo.ts).
 Concurrency scope   per transaction row, inside the transaction that already
-                    holds the row's write
+                    holds the row's write; the target account's balance is an
+                    atomic SQL delta
 Retry semantics     Re-running a rule re-derives the same category, payee and tag
-                    set; it adds no ledger effect.
+                    set; a row that has already become a transfer or a split is
+                    refused (row_is_transfer_leg, row_has_splits), so a second run
+                    adds no second counterpart. Redo of a run that restructured
+                    rows is refused (RULE_RUN_REDO_STRUCTURAL).
 Crash semantics     Before commit, no rule effect exists; the rule step shares the
-                    insert's transaction, so a rollback drops both.
+                    insert's (or the run's) transaction, so a rollback drops the
+                    row, the counterpart and the balance change together.
 Failure response    A submitted action outside the union is refused by
                     rule-validation.ts before any write. loadRulesFor drops a
-                    stored rule whose view is invalid, so it is never applied.
+                    stored rule whose view is invalid, so it is never applied. A
+                    refused structural action is a skipped action with a reason
+                    and never throws on a create or import path. Known gap: a
+                    target account closed between the plan and the write makes
+                    the counterpart create fail and the surrounding transaction
+                    roll back, instead of a skipped action.
 Required tests      Present: rule-effects.spec.ts ("changes only category, payee
-                    and tags: never amount, account, date, status or a link") and
-                    transaction-rules-applier.service.spec.ts ("never updates
-                    amount, account, date, status or links") assert the written
-                    columns; rule-validation.actions.spec.ts and
-                    rule-validation.spec.ts assert the union is closed. These are
-                    unit specs over the applier's write, so they prove the
-                    columns written, not a balance on real rows. Missing: none
-                    owed for the union itself; the integration specs under
-                    INV-RULE-002 read balances after a rule ran.
+                    and tags: never amount, account, date, status or a link (I1)")
+                    and transaction-rules-applier.service.spec.ts ("never updates
+                    amount, account, date, status or links" and "writes only
+                    category, payee, payee name and description for every ledger
+                    action, never amount, account, date, status or links") assert
+                    the columns written by the non-structural actions;
+                    rule-validation.actions.spec.ts, rule-validation.spec.ts and
+                    rule-validation.structural.spec.ts assert the union and the
+                    combination rules; rule-effects.structural.spec.ts and
+                    rule-effects.structural.acceptance.spec.ts assert the
+                    planner's refusals and the worked example;
+                    convert-to-transfer.spec.ts ("moves only the target's balance,
+                    by the counterpart's amount (expense)", "recalculates the
+                    target for a future-dated row, with no delta") and
+                    transaction-rules-applier.structure-write.spec.ts ("creates
+                    the counterpart, moves only the target, and reports it")
+                    assert the write; transaction-rules-run.structure-commit.spec.ts
+                    asserts the recompute after the write and the undo record;
+                    backend/test/integration/transaction-rules-structural.integration.spec.ts
+                    runs the acceptance case on real PostgreSQL ("books each
+                    instalment as the rules say, and moves the loan balance by
+                    the principal only", "a rolled-back create leaves no
+                    counterpart and no balance movement", and the manual run with
+                    undo). Missing: no net-worth recompute is dispatched after
+                    the undo of a structural run, so the net-worth series can lag
+                    until the next recompute; a test for the target account
+                    closed between plan and write.
+Status              partial
+```
+
+Status is `partial` because the undo of a structural run reverses the counterpart
+balance but does not dispatch the net-worth recompute for the accounts it moved
+(INV-CACHE-001), and the closed-target-account race rolls the create back instead
+of skipping the action. It becomes `enforced` when both are closed with tests.
+
+### INV-RULE-004 -- a rule is evaluated only for a row dated inside its active window
+
+```text
+Statement           A rule with an active window (activeFrom, activeTo, either
+                    side optional) is evaluated only for a transaction whose
+                    calendar date is known and inside the window, inclusive at
+                    both ends. Outside it, or for a row with an unknown date, the
+                    rule is traced as skippedRule "outside_active_window" and
+                    contributes nothing: no effect, no stop-processing, no AI
+                    review request. A manual run's startDate and endDate only
+                    narrow what is scanned and never widen the window.
+Source of truth     transaction_rules.active_from and active_to (DATE, with a
+                    CHECK that active_from <= active_to); the transaction's own
+                    calendar date
+Enforcement         The pure planner decides it, before the condition
+                    (planRuleEffects in
+                    backend/src/transaction-rules/rule-effects.ts), so the
+                    create path, the import, the preview, the draft test and the
+                    manual run give one answer. Dates compare as YYYY-MM-DD
+                    strings, never through a Date. The run service intersects its
+                    scan filters with the window
+                    (TransactionRulesRunService), and the window is part of the
+                    rule revision and so of the run fingerprint. The DTOs refuse
+                    a non-calendar date and an inverted window, and the database
+                    CHECK refuses an inverted window the DTO missed.
+Concurrency scope   per evaluated row; the window is read with the rule
+Retry semantics     Idempotent: the same row and the same window give the same
+                    skip.
+Crash semantics     No state of its own; a skipped rule writes nothing.
+Failure response    An inverted or non-calendar window is refused before any
+                    write (DTO validation, and for a draft before the scan).
+Required tests      Present: rule-effects.active-window.spec.ts (both sides, an
+                    open side, an unknown date, decided before the condition, no
+                    AI review from an outside rule);
+                    transaction-rules-run.active-window.spec.ts (nothing written
+                    outside the window, the scan narrowed and never widened, the
+                    fingerprint changes with the window, a draft honours it);
+                    transaction-rules.service.active-window.spec.ts; and
+                    backend/test/integration/transaction-rules-active-window.integration.spec.ts
+                    on real PostgreSQL (create outside and inside the window, a
+                    manual run, a draft test, an inverted window refused).
+                    Missing: none.
 Status              enforced
 ```
 
