@@ -50,7 +50,12 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { affectedRowCount } from "../common/db/query-result";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
-import { flagWriteStalesMortgageType } from "./mortgage-type.util";
+import {
+  MortgageType,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  requestedMortgageType,
+} from "./mortgage-type.util";
 
 /**
  * One account as the AI Assistant and the MCP server describe it.
@@ -87,6 +92,12 @@ export interface LlmAccountRow {
   paymentStartDate: string | null;
   amortizationMonths: number | null;
   originalPrincipal: number | null;
+  /**
+   * How a mortgage's rate compounds and its principal amortizes
+   * (`mortgage-type.util.ts`), the column or else the type its two legacy
+   * flags denote; null on every other account type.
+   */
+  mortgageType: MortgageType | null;
 }
 
 /**
@@ -216,10 +227,19 @@ export class AccountsService {
       delete accountData.statementSettlementDay;
     }
 
+    // Only a mortgage has a type, written with the flags it maps to; a request
+    // naming neither is the default type.
+    const mortgageColumns =
+      accountData.accountType === AccountType.MORTGAGE
+        ? mortgageTypeColumns(requestedMortgageType(accountData) ?? "ANNUITY")
+        : {};
+    delete accountData.mortgageType;
+
     const saved = await withScopedDb(this.dataSource, (m) => {
       const repo = m.getRepository(Account);
       const account = repo.create({
         ...accountData,
+        ...mortgageColumns,
         userId,
         openingBalance,
         currentBalance: openingBalance,
@@ -248,7 +268,13 @@ export class AccountsService {
     userId: string,
     createAccountDto: CreateAccountDto,
   ): Promise<{ cashAccount: Account; brokerageAccount: Account }> {
-    const { openingBalance = 0, name, ...accountData } = createAccountDto;
+    const {
+      openingBalance = 0,
+      name,
+      // Only a mortgage has a type.
+      mortgageType: _mortgageType,
+      ...accountData
+    } = createAccountDto;
 
     return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Account);
@@ -621,8 +647,7 @@ export class AccountsService {
     amortizationMonths: number,
     paymentFrequency: MortgagePaymentFrequency,
     paymentStartDate: Date,
-    isCanadian: boolean,
-    isVariableRate: boolean,
+    mortgageType: MortgageType,
   ): MortgageAmortizationResult {
     return this.loanMortgageService.previewMortgageAmortization(
       mortgageAmount,
@@ -630,8 +655,7 @@ export class AccountsService {
       amortizationMonths,
       paymentFrequency,
       paymentStartDate,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
     );
   }
 
@@ -848,13 +872,24 @@ export class AccountsService {
             : null;
         if (updateAccountDto.linkedLoanAccountId !== undefined)
           account.linkedLoanAccountId = updateAccountDto.linkedLoanAccountId;
-        // Mortgage-specific fields
-        if (flagWriteStalesMortgageType(account, updateAccountDto))
+        // Mortgage-specific fields. A mortgage writes its type and the flags
+        // it maps to together, so a previous-release pod reading the flags
+        // prices the row as this one does. Any other account type has no type
+        // (cleared when an edit moves a mortgage to another type, as the
+        // backfill leaves non-mortgage rows null) and keeps the flags as sent.
+        const requestedType =
+          effectiveType === AccountType.MORTGAGE
+            ? requestedMortgageType(updateAccountDto, account)
+            : undefined;
+        if (requestedType !== undefined) {
+          Object.assign(account, mortgageTypeColumns(requestedType));
+        } else if (effectiveType !== AccountType.MORTGAGE) {
           account.mortgageType = null;
-        if (updateAccountDto.isCanadianMortgage !== undefined)
-          account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
-        if (updateAccountDto.isVariableRate !== undefined)
-          account.isVariableRate = updateAccountDto.isVariableRate;
+          if (updateAccountDto.isCanadianMortgage !== undefined)
+            account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
+          if (updateAccountDto.isVariableRate !== undefined)
+            account.isVariableRate = updateAccountDto.isVariableRate;
+        }
         if (updateAccountDto.termMonths !== undefined) {
           account.termMonths = updateAccountDto.termMonths || null;
           // Recalculate termEndDate when termMonths changes
@@ -1511,6 +1546,8 @@ export class AccountsService {
           : null,
         amortizationMonths: a.amortizationMonths ?? null,
         originalPrincipal: a.originalPrincipal ?? null,
+        mortgageType:
+          a.accountType === AccountType.MORTGAGE ? mortgageTypeOf(a) : null,
       });
     }
 

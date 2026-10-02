@@ -42,22 +42,13 @@ const FUNCTIONS = {
 type GuardedFunction = keyof typeof FUNCTIONS;
 
 /**
- * The two-flag callers on `main` when the type-keyed forms landed. Shrink-only:
- * lower a count, or delete an entry, as its callers move to the type.
+ * The two-flag callers left in production. Shrink-only, and empty since every
+ * consumer reads the type (P1-B3): a new boolean caller fails, and P3-B1
+ * deletes the overloads and this guard with the two booleans.
  */
 const FLAGS_CALLER_BASELINE: Readonly<
   Record<string, Partial<Record<GuardedFunction, number>>>
-> = {
-  "src/accounts/loan-mortgage-account.service.ts": { getPeriodicRate: 1 },
-  "src/accounts/mortgage-amortization.util.ts": {
-    getPeriodicRate: 4,
-    calculateEffectiveAnnualRate: 1,
-  },
-  "src/loan-rate-changes/loan-rate-changes.service.ts": { getPeriodicRate: 2 },
-  "src/scheduled-transactions/scheduled-transaction-loan.service.ts": {
-    getPeriodicRate: 1,
-  },
-};
+> = {};
 
 /**
  * The source with comments removed and the contents of string and template
@@ -200,11 +191,14 @@ function productionSources(): [string, string][] {
 
 interface CallSites {
   flags: Map<string, Partial<Record<GuardedFunction, number>>>;
+  /** Calls of the type-keyed forms, so an empty `flags` is evidence. */
+  typed: number;
   unrecognised: string[];
 }
 
 export function scanCallSites(sources: [string, string][]): CallSites {
   const flags = new Map<string, Partial<Record<GuardedFunction, number>>>();
+  let typed = 0;
   const unrecognised: string[] = [];
   for (const [path, raw] of sources) {
     const names = (Object.keys(FUNCTIONS) as GuardedFunction[]).filter((name) =>
@@ -223,13 +217,15 @@ export function scanCallSites(sources: [string, string][]): CallSites {
         if (count === FUNCTIONS[name].flags) {
           const perFile = flags.get(path) ?? {};
           flags.set(path, { ...perFile, [name]: (perFile[name] ?? 0) + 1 });
-        } else if (count !== FUNCTIONS[name].typed) {
+        } else if (count === FUNCTIONS[name].typed) {
+          typed++;
+        } else {
           unrecognised.push(`${path}: ${name} called with ${count} arguments`);
         }
       }
     }
   }
-  return { flags, unrecognised };
+  return { flags, typed, unrecognised };
 }
 
 describe("the two-flag mortgage rate forms are not called anew", () => {
@@ -277,8 +273,10 @@ describe("the two-flag mortgage rate forms are not called anew", () => {
   });
 
   it("scans a non-empty tree, so the rule cannot pass by accident", () => {
+    // With no boolean caller left, the type-keyed calls are what show the
+    // scan found the guarded functions at all.
     expect(sources.length).toBeGreaterThan(100);
-    expect(sites.flags.size).toBeGreaterThan(0);
+    expect(sites.typed).toBeGreaterThan(0);
   });
 });
 

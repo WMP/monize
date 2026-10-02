@@ -2,12 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { LoanRateChangesService, toYmd } from "./loan-rate-changes.service";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { recalculateMortgageAfterRateChange } from "../accounts/mortgage-amortization.util";
 import { todayYMD } from "../common/date-utils";
+import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -95,6 +97,9 @@ describe("LoanRateChangesService", () => {
       ...patch,
     }));
     manager.delete.mockResolvedValue({ affected: 0 });
+    // The ledger debt as of any date (`datedLoanDebt`), equal by default to
+    // the fixture's current balance.
+    manager.query.mockResolvedValue([{ balance: "-400000" }]);
 
     service = new LoanRateChangesService(
       dataSource as never,
@@ -275,16 +280,98 @@ describe("LoanRateChangesService", () => {
         recalculatePayment: true,
       });
 
-      // 29 calendar months elapsed of 300
+      // 29 calendar months elapsed of 300; Canadian variable-rate is ANNUITY
       const expected = recalculateMortgageAfterRateChange(
         400000,
         4.9,
         300 - 29,
         "MONTHLY",
-        true,
-        true,
+        "ANNUITY",
       );
       expect(result.newPaymentAmount).toBe(expected.paymentAmount);
+    });
+
+    it("prices a future-dated recalculation from the debt after a payment posted before it", async () => {
+      // Issue #1505 acceptance, spec decision 5: a change effective next month
+      // on a loan with a principal payment already posted for next week is
+      // priced from the debt after that payment. `current_balance` (400,000)
+      // stops at today; the ledger through the effective date owes 395,000.
+      const account = makeAccount({ paymentStartDate: "2026-01-01" } as never);
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.query.mockImplementation(async (sql: string, params: string[]) =>
+        sql === ACCOUNT_BALANCE_AS_OF_SQL && params[2] >= "2026-10-09"
+          ? [{ balance: "-395000" }]
+          : [{ balance: "-400000" }],
+      );
+
+      const result = await service.create(userId, accountId, {
+        effectiveDate: "2026-11-01",
+        annualRate: 4.9,
+        recalculatePayment: true,
+      });
+
+      expect(manager.query).toHaveBeenCalledWith(ACCOUNT_BALANCE_AS_OF_SQL, [
+        accountId,
+        userId,
+        "2026-11-01",
+      ]);
+      // 10 calendar months elapsed of 300.
+      const expected = recalculateMortgageAfterRateChange(
+        395000,
+        4.9,
+        300 - 10,
+        "MONTHLY",
+        "ANNUITY",
+      );
+      expect(result.newPaymentAmount).toBe(expected.paymentAmount);
+      expect(result.newPaymentAmount).not.toBe(
+        recalculateMortgageAfterRateChange(
+          400000,
+          4.9,
+          300 - 10,
+          "MONTHLY",
+          "ANNUITY",
+        ).paymentAmount,
+      );
+    });
+
+    it("recalculates by the stored type over the flags", async () => {
+      const account = makeAccount({
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+      accountsRepository.findOne.mockResolvedValue(account);
+
+      const result = await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+        recalculatePayment: true,
+      });
+
+      expect(result.newPaymentAmount).toBe(
+        recalculateMortgageAfterRateChange(
+          400000,
+          4.9,
+          300 - 29,
+          "MONTHLY",
+          "CANADIAN_FIXED",
+        ).paymentAmount,
+      );
+    });
+
+    it("refuses a recalculation whose ledger cannot be read, writing nothing", async () => {
+      accountsRepository.findOne.mockResolvedValue(makeAccount());
+      manager.query.mockResolvedValue([]);
+
+      await expect(
+        service.create(userId, accountId, {
+          effectiveDate: "2024-06-01",
+          annualRate: 4.9,
+          recalculatePayment: true,
+        }),
+      ).rejects.toThrow(ServiceUnavailableException);
+      expect(manager.save).not.toHaveBeenCalled();
     });
 
     it("records a past-dated change without touching the account scalars", async () => {
@@ -546,6 +633,67 @@ describe("LoanRateChangesService", () => {
       expect(result?.proposedInterest).toBe(expectedInterest);
     });
 
+    it("splits from the ledger debt through the template's next due date", async () => {
+      // The rewritten template's next posting is priced from the ledger
+      // through its due date (`resolveInstallment`), so its split is too: a
+      // payment already posted before that date is not still owed.
+      accountsRepository.findOne.mockResolvedValue(
+        makeAccount({ interestRate: 4.9 }),
+      );
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        amount: -2500,
+        nextDueDate: "2099-02-01",
+        splits: [],
+      });
+      manager.query.mockResolvedValue([{ balance: "-390000" }]);
+
+      const result = await service.applyScheduledPaymentSync(userId, accountId);
+
+      expect(manager.query).toHaveBeenCalledWith(ACCOUNT_BALANCE_AS_OF_SQL, [
+        accountId,
+        userId,
+        "2099-02-01",
+      ]);
+      expect(result?.proposedInterest).toBe(
+        Math.round(390000 * (4.9 / 100 / 12) * 10000) / 10000,
+      );
+    });
+
+    it("splits from the effective date when the template is due before it", async () => {
+      accountsRepository.findOne.mockResolvedValue(makeAccount());
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        amount: -2500,
+        nextDueDate: "2024-05-01",
+        splits: [],
+      });
+
+      await service.applyScheduledPaymentSync(userId, accountId);
+
+      expect(manager.query).toHaveBeenCalledWith(ACCOUNT_BALANCE_AS_OF_SQL, [
+        accountId,
+        userId,
+        "2024-06-01",
+      ]);
+    });
+
+    it("applies nothing when the ledger cannot be read", async () => {
+      accountsRepository.findOne.mockResolvedValue(makeAccount());
+      manager.query.mockResolvedValue([]);
+
+      const result = await service.applyScheduledPaymentSync(userId, accountId);
+
+      expect(result).toBeNull();
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+    });
+
     it("returns null and applies nothing when there is no linked schedule", async () => {
       accountsRepository.findOne.mockResolvedValue(
         makeAccount({ scheduledTransactionId: null }),
@@ -703,7 +851,11 @@ describe("LoanRateChangesService", () => {
       );
 
       expect(today >= "2024-01-01").toBe(true);
-      expect(resolved).toEqual({ annualRate: 5.9, paymentAmount: 2650 });
+      expect(resolved).toEqual({
+        annualRate: 5.9,
+        paymentAmount: 2650,
+        effectiveDate: "2024-01-01",
+      });
       // Read-only: the account's own scalars are never touched.
       expect(account.interestRate).toBe(5.5);
       expect(account.paymentAmount).toBe(2500);

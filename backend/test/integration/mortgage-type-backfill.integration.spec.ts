@@ -7,6 +7,14 @@ import {
   cleanTables,
   createTestUserDirect,
 } from "../helpers/integration-setup";
+import {
+  calculateEffectiveAnnualRate,
+  calculateMortgageAmortization,
+  calculatePaymentAmount,
+  getPeriodicRate,
+} from "../../src/accounts/mortgage-amortization.util";
+import { mortgageTypeOf } from "../../src/accounts/mortgage-type.util";
+import { roundMoney } from "../../src/common/round.util";
 
 /**
  * The `accounts.mortgage_type` migration's backfill, against the flag
@@ -133,6 +141,90 @@ describe("mortgage_type migration backfill over the legacy flags", () => {
     // Canadian variable computes as a plain annuity today: the variable flag
     // cancels the semi-annual branch, so there is no CANADIAN_VARIABLE type.
     expect(await mortgageType(rows[3].id)).toBe("ANNUITY");
+  });
+
+  it("prices every backfilled row through its type as the flags priced it", async () => {
+    // Spec decision 2, checked where the column is first read (P1-B3): one
+    // mortgage per row of table 4.2, plus the NULL-flag rows, has the same
+    // payment, first split and EAR read through the stored type as the
+    // two-flag forms gave it before the type existed.
+    const rows = [
+      { id: "60000000-0000-4000-8000-000000000001", c: false, v: false },
+      { id: "60000000-0000-4000-8000-000000000002", c: false, v: true },
+      { id: "60000000-0000-4000-8000-000000000003", c: true, v: false },
+      { id: "60000000-0000-4000-8000-000000000004", c: true, v: true },
+      { id: "60000000-0000-4000-8000-000000000005", c: true, v: null },
+      { id: "60000000-0000-4000-8000-000000000006", c: null, v: false },
+    ];
+    for (const row of rows) {
+      await seedAccount(row.id, { isCanadian: row.c, isVariable: row.v });
+    }
+
+    await applyMigration();
+
+    const principal = 300000;
+    const annualRate = 5;
+    const amortizationMonths = 300;
+    for (const row of rows) {
+      const [stored] = (await dataSource.query(
+        `SELECT mortgage_type, is_canadian_mortgage, is_variable_rate
+           FROM accounts WHERE id = $1`,
+        [row.id],
+      )) as {
+        mortgage_type: "ANNUITY" | "CANADIAN_FIXED";
+        is_canadian_mortgage: boolean | null;
+        is_variable_rate: boolean | null;
+      }[];
+      const type = mortgageTypeOf({
+        mortgageType: stored.mortgage_type,
+        isCanadianMortgage: stored.is_canadian_mortgage,
+        isVariableRate: stored.is_variable_rate,
+      });
+
+      for (const ppy of [12, 26]) {
+        const flagsRate = getPeriodicRate(
+          annualRate,
+          ppy,
+          stored.is_canadian_mortgage,
+          stored.is_variable_rate,
+        );
+        expect(getPeriodicRate(annualRate, ppy, type)).toBe(flagsRate);
+        expect(calculateEffectiveAnnualRate(annualRate, ppy, type)).toBe(
+          calculateEffectiveAnnualRate(
+            annualRate,
+            stored.is_canadian_mortgage,
+            stored.is_variable_rate,
+            ppy,
+          ),
+        );
+      }
+
+      const flagsMonthlyRate = getPeriodicRate(
+        annualRate,
+        12,
+        stored.is_canadian_mortgage,
+        stored.is_variable_rate,
+      );
+      const flagsPayment = calculatePaymentAmount(
+        principal,
+        flagsMonthlyRate,
+        amortizationMonths,
+      );
+      const preview = calculateMortgageAmortization({
+        principal,
+        annualRate,
+        amortizationMonths,
+        paymentFrequency: "MONTHLY",
+        mortgageType: type,
+        startDate: new Date(2025, 0, 1),
+      });
+      expect(preview.paymentAmount).toBe(flagsPayment);
+      const flagsInterest = roundMoney(principal * flagsMonthlyRate);
+      expect(preview.interestPayment).toBe(flagsInterest);
+      expect(preview.principalPayment).toBe(
+        roundMoney(flagsPayment - flagsInterest),
+      );
+    }
   });
 
   it("reads a NULL flag as false, the way getPeriodicRate does", async () => {

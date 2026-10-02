@@ -6,6 +6,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { tr } from "../i18n/translate";
@@ -21,6 +22,8 @@ import {
   recalculateMortgageAfterRateChange,
 } from "../accounts/mortgage-amortization.util";
 import { roundMoney } from "../common/round.util";
+import { datedLoanDebt } from "../accounts/dated-loan-debt.util";
+import { mortgageTypeOf } from "../accounts/mortgage-type.util";
 import { todayYMD, formatDateYMDLocal } from "../common/date-utils";
 import {
   DEFAULT_PERIODS_PER_YEAR,
@@ -59,6 +62,16 @@ interface ScheduledUpdatePlan {
   preview: ScheduledPaymentPreview;
 }
 
+/**
+ * The rate and payment in effect today from the timeline, and the date the
+ * rate took effect (absent when the caller supplies a rate of its own).
+ */
+export interface ResolvedTimeline {
+  annualRate: number;
+  paymentAmount: number | null;
+  effectiveDate?: string;
+}
+
 /** A created rate change plus the pending scheduled-payment change, if any. */
 export type CreateLoanRateChangeResult = LoanRateChange & {
   scheduledPaymentPreview: ScheduledPaymentPreview | null;
@@ -75,6 +88,11 @@ function dayBefore(ymd: string): string {
   const [year, month, day] = ymd.split("-").map(Number);
   const date = new Date(year, month - 1, day - 1);
   return formatDateYMDLocal(date);
+}
+
+/** The later of two YYYY-MM-DD dates; `b` when `a` is absent. */
+function laterYmd(a: string | undefined, b: string): string {
+  return a !== undefined && a > b ? a : b;
 }
 
 /** Whole calendar months from `fromYmd` to `toYmd` (floored at 0) */
@@ -148,18 +166,20 @@ export class LoanRateChangesService {
       }
     }
 
-    const newPaymentAmount = dto.recalculatePayment
-      ? this.recalculatePaymentForRate(
-          account,
-          dto.annualRate,
-          dto.effectiveDate,
-        )
-      : (dto.newPaymentAmount ?? null);
-
     const { saved, resolved } = await withScopedDb(
       this.dataSource,
       async (m) => {
         await this.rejectDuplicateDate(m, accountId, dto.effectiveDate);
+        // Read in the same transaction as the insert, so the payment recorded
+        // is priced from the ledger the row is written against.
+        const newPaymentAmount = dto.recalculatePayment
+          ? await this.recalculatePaymentForRate(
+              m,
+              account,
+              dto.annualRate,
+              dto.effectiveDate,
+            )
+          : (dto.newPaymentAmount ?? null);
         await this.insertInitialRowIfFirst(m, account, dto.effectiveDate);
 
         const rateChange = m.create(LoanRateChange, {
@@ -268,7 +288,7 @@ export class LoanRateChangesService {
   async resolveCurrentTimeline(
     manager: EntityManager,
     account: Account,
-  ): Promise<{ annualRate: number; paymentAmount: number | null } | null> {
+  ): Promise<ResolvedTimeline | null> {
     if (account.isClosed) return null;
 
     const rows = await manager.find(LoanRateChange, {
@@ -290,6 +310,7 @@ export class LoanRateChangesService {
         latestWithPayment?.newPaymentAmount != null
           ? Number(latestWithPayment.newPaymentAmount)
           : null,
+      effectiveDate: toYmd(latest.effectiveDate) ?? undefined,
     };
   }
 
@@ -301,7 +322,7 @@ export class LoanRateChangesService {
   async syncScheduledTransaction(
     userId: string,
     account: Account,
-    override?: { annualRate: number; paymentAmount: number | null },
+    override?: ResolvedTimeline,
   ): Promise<void> {
     const plan = await this.buildScheduledUpdate(userId, account, override);
     if (!plan) return;
@@ -348,15 +369,15 @@ export class LoanRateChangesService {
 
   /**
    * Recompute the linked scheduled payment's principal/interest split from the
-   * account's current balance and rate, preserving any separate extra-principal
-   * split (memo contains "extra"). Returns the update to apply plus a
-   * before/after preview, or null when the account has no applicable linked
-   * scheduled bill payment. Does not apply anything.
+   * account's dated ledger debt and current rate, preserving any separate
+   * extra-principal split (memo contains "extra"). Returns the update to apply
+   * plus a before/after preview, or null when the account has no applicable
+   * linked scheduled bill payment. Does not apply anything.
    */
   async buildScheduledUpdate(
     userId: string,
     account: Account,
-    override?: { annualRate: number; paymentAmount: number | null },
+    override?: ResolvedTimeline,
   ): Promise<ScheduledUpdatePlan | null> {
     if (account.isClosed || !account.scheduledTransactionId) return null;
     // The current rate/payment come from the resolved timeline when supplied,
@@ -368,8 +389,6 @@ export class LoanRateChangesService {
     if (annualRate == null || !effectivePayment || !account.paymentFrequency) {
       return null;
     }
-    const balance = Math.abs(Number(account.currentBalance));
-    if (balance <= 0.01) return null;
 
     let scheduled: Awaited<ReturnType<ScheduledTransactionsService["findOne"]>>;
     try {
@@ -384,6 +403,33 @@ export class LoanRateChangesService {
       return null;
     }
 
+    // The debt the rewritten template first applies to, from the ledger
+    // through that date (spec decision 5), the as-of read its next posting is
+    // priced from (`resolveInstallment`): the template's next due date, or the
+    // rate's effective date when that is later. `current_balance` stops at
+    // today, so it missed a payment already posted for a date before the
+    // installment this split describes. The timeline override only carries a
+    // rate effective today or earlier (`resolveCurrentTimeline`), so the
+    // effective date wins only over an overdue template; a future-dated
+    // change is priced by `recalculatePaymentForRate`, not here.
+    const balance = await withScopedDb(this.dataSource, (m) =>
+      datedLoanDebt(
+        m,
+        account,
+        laterYmd(
+          override?.effectiveDate,
+          toYmd(scheduled.nextDueDate) ?? todayYMD(),
+        ),
+      ),
+    );
+    if (balance === null) {
+      this.logger.warn(
+        `Could not read the ledger balance of loan account ${account.id}`,
+      );
+      return null;
+    }
+    if (balance <= 0.01) return null;
+
     const isMortgage = account.accountType === AccountType.MORTGAGE;
     // One lookup for both spellings of the stored cadence; only the COMPOUNDING
     // is mortgage-specific. Two casts into two domain functions meant a
@@ -393,12 +439,7 @@ export class LoanRateChangesService {
       periodsPerYearForStoredFrequency(account.paymentFrequency) ??
       DEFAULT_PERIODS_PER_YEAR;
     const periodicRate = isMortgage
-      ? getPeriodicRate(
-          annualRate,
-          periodsPerYear,
-          account.isCanadianMortgage || false,
-          account.isVariableRate || false,
-        )
+      ? getPeriodicRate(annualRate, periodsPerYear, mortgageTypeOf(account))
       : annualRate / 100 / periodsPerYear;
 
     const paymentAmount = Number(effectivePayment);
@@ -582,14 +623,27 @@ export class LoanRateChangesService {
 
   /**
    * Payment that holds the remaining amortization constant at the new rate
-   * (the pre-history mortgage-rate endpoint's behaviour, now opt-in).
+   * (the pre-history mortgage-rate endpoint's behaviour, now opt-in), priced
+   * from the debt the new rate first applies to: the ledger through the
+   * effective date (spec decision 5), so a payment already posted for a date
+   * before a future-dated change is not still owed by it.
    */
-  private recalculatePaymentForRate(
+  private async recalculatePaymentForRate(
+    m: EntityManager,
     account: Account,
     annualRate: number,
     effectiveDate: string,
-  ): number {
-    const currentBalance = Math.abs(Number(account.currentBalance));
+  ): Promise<number> {
+    const debt = await datedLoanDebt(m, account, effectiveDate);
+    if (debt === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.accounts.loanLedgerUnreadable",
+          "This loan's balance could not be read. Try again.",
+        ),
+      );
+    }
+    const mortgageType = mortgageTypeOf(account);
     const startDate = toYmd(account.paymentStartDate) ?? todayYMD();
     const monthsElapsed = monthsBetweenYmd(startDate, effectiveDate);
     const remainingAmortizationMonths = Math.max(
@@ -618,13 +672,8 @@ export class LoanRateChangesService {
       // and the split this file computes 200 lines above it the other, for the
       // same Canadian account -- two conventions for one mortgage.
       return calculatePaymentAmount(
-        currentBalance,
-        getPeriodicRate(
-          annualRate,
-          periodsPerYear,
-          account.isCanadianMortgage || false,
-          account.isVariableRate || false,
-        ),
+        debt,
+        getPeriodicRate(annualRate, periodsPerYear, mortgageType),
         Math.max(
           1,
           Math.round((remainingAmortizationMonths * periodsPerYear) / 12),
@@ -633,12 +682,11 @@ export class LoanRateChangesService {
     }
 
     const result = recalculateMortgageAfterRateChange(
-      currentBalance,
+      debt,
       annualRate,
       remainingAmortizationMonths,
       mortgageFrequency,
-      account.isCanadianMortgage || false,
-      account.isVariableRate || false,
+      mortgageType,
     );
     return result.paymentAmount;
   }

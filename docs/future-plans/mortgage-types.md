@@ -39,7 +39,7 @@ issue #1501. Each task is a sub-issue (#1502 to #1514), one PR each.
 | Annuity preview | `calculateMortgageAmortization`, `calculateResidualPayoff` (same backend file) | Closed form; INV-LOAN-004. |
 | Installment pricing | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`), `allocateLoanPayment` (`backend/src/accounts/loan-payment-waterfall.util.ts`) | INV-LOAN-006: the debt and the rate through the due date. |
 | Rate periods | `loan_rate_changes`, `effectiveAnnualRateOn`, `backend/src/accounts/loan-rate-timeline-cases.json` | Rate History in Loan Details. |
-| Rate-change recalculation | `buildScheduledUpdate`, `recalculatePaymentForRate`, `syncScheduledTransaction` (`backend/src/loan-rate-changes/loan-rate-changes.service.ts`) | Reads `currentBalance` today (spec decision 5). |
+| Rate-change recalculation | `buildScheduledUpdate`, `recalculatePaymentForRate`, `syncScheduledTransaction` (`backend/src/loan-rate-changes/loan-rate-changes.service.ts`) | Read `currentBalance` before P1-B3; read `datedLoanDebt` (`backend/src/accounts/dated-loan-debt.util.ts`) since (spec decision 5). |
 | Rate inference | `annualizeRate` (`backend/src/loan-rate-changes/rate-change-inference.service.ts`) and its mirror in `frontend/src/lib/loan-history.ts` | Periods-based for Canadian, day count otherwise. |
 | Frontend projection | `generateLoanSchedule` (`frontend/src/lib/loan-schedule.ts`), `buildLoanProjectionInput` (`frontend/src/lib/loan-history.ts`) | Annuity row by row, with re-levelling and the stall rescue. |
 | Setup payments | `LoanPaymentSetupService` (`backend/src/accounts/loan-payment-setup.service.ts`), `backend/src/accounts/dto/setup-loan-payments.dto.ts` | |
@@ -91,9 +91,9 @@ the booleans it reads.
 | The database accepts only the four types | CHECK on `accounts.mortgage_type`, reconciled with `MORTGAGE_TYPES` by a contract spec in both directions | P1-B1, P1-B2 |
 | `prepayment_mode` only on LINEAR | CHECK `prepayment_mode IS NULL OR mortgage_type = 'LINEAR'`; the service writes null for other types | P2-B1 |
 | One method per type (INV-LOAN-007) | `MORTGAGE_TYPE_TRAITS` per layer, `mortgage-type-cases.json` parity, the method branch on each surface | P1-B2, P1-F1, P2-B1, P2-F1 |
-| A stored type never disagrees with the flags | from P1-B1, a save that changes either flag clears the type (`flagWriteStalesMortgageType`, both flag writers), so the reader falls back to the flags; from P1-B3, the writers set the type and `flagsFromMortgageType` together | P1-B1, P1-B3 |
+| A stored type never disagrees with the flags | from P1-B1, a save that changes either flag cleared the type (a helper P1-B3 removed), so the reader falls back to the flags; from P1-B3, every writer stores the type and the flags it maps to together (`mortgageTypeColumns`), and every reader goes through `mortgageTypeOf` | P1-B1, P1-B3 |
 | No new boolean caller | shrink-only flags guard (`mortgage-type-flags.guard.spec.ts`) | P1-B2, deleted in P3-B1 |
-| Dated debt on a rate change | `datedLoanDebt` called from both rate-change paths | P1-B3 |
+| Dated debt on a rate change | `datedLoanDebt` (`backend/src/accounts/dated-loan-debt.util.ts`) called from both rate-change paths and the mortgage rate update | P1-B3 |
 | Every figure matches the spec | fixtures copied from spec section 7 | P2-B1, P2-F1 |
 | No stored constant payment for LINEAR or INTEREST_ONLY | CHECK on `accounts.payment_amount`; every reader in spec table 5.6 asks for a dated installment | P2-B1, P2-F1 |
 

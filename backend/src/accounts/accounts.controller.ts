@@ -63,6 +63,7 @@ import {
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
 import { PaymentFrequency } from "./loan-amortization.util";
+import { requestedMortgageType } from "./mortgage-type.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
 import { assertStringParam } from "../common/query-param-utils";
 import { tr } from "../i18n/translate";
@@ -581,8 +582,13 @@ export class AccountsController {
       mortgagePreviewDto.amortizationMonths,
       mortgagePreviewDto.paymentFrequency,
       new Date(mortgagePreviewDto.paymentStartDate),
-      mortgagePreviewDto.isCanadian,
-      mortgagePreviewDto.isVariableRate,
+      // A preview has no stored row, so a request naming neither the type nor
+      // a flag is the default type.
+      requestedMortgageType({
+        mortgageType: mortgagePreviewDto.mortgageType,
+        isCanadianMortgage: mortgagePreviewDto.isCanadian,
+        isVariableRate: mortgagePreviewDto.isVariableRate,
+      }) ?? "ANNUITY",
     );
     return {
       ...result,

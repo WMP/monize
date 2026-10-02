@@ -46,8 +46,8 @@ export interface MortgageAmortizationInput {
   annualRate: number; // As percentage (e.g., 5.5)
   amortizationMonths: number; // Total amortization period
   paymentFrequency: MortgagePaymentFrequency;
-  isCanadian: boolean;
-  isVariableRate: boolean;
+  /** The account's type, read through `mortgageTypeOf`. */
+  mortgageType: MortgageType;
   startDate: Date;
 }
 
@@ -222,15 +222,9 @@ function calculateMonthlyPayment(
   principal: number,
   annualRate: number,
   amortizationMonths: number,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  mortgageType: MortgageType,
 ): number {
-  const periodicRate = getPeriodicRate(
-    annualRate,
-    12,
-    isCanadian,
-    isVariableRate,
-  );
+  const periodicRate = getPeriodicRate(annualRate, 12, mortgageType);
   return calculatePaymentAmount(principal, periodicRate, amortizationMonths);
 }
 
@@ -245,8 +239,7 @@ export function calculateMortgagePayment(
     annualRate,
     amortizationMonths,
     paymentFrequency,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   } = input;
 
   // For accelerated payments, calculate based on monthly payment
@@ -255,8 +248,7 @@ export function calculateMortgagePayment(
       principal,
       annualRate,
       amortizationMonths,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
     );
     return roundMoney(monthlyPayment / 2);
   }
@@ -266,8 +258,7 @@ export function calculateMortgagePayment(
       principal,
       annualRate,
       amortizationMonths,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
     );
     return roundMoney(monthlyPayment / 4);
   }
@@ -278,8 +269,7 @@ export function calculateMortgagePayment(
   const periodicRate = getPeriodicRate(
     annualRate,
     periodsPerYear,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
 
   return calculatePaymentAmount(principal, periodicRate, totalPayments);
@@ -510,8 +500,7 @@ export function calculateMortgageAmortization(
     annualRate,
     amortizationMonths,
     paymentFrequency,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
     startDate,
   } = input;
 
@@ -522,8 +511,7 @@ export function calculateMortgageAmortization(
   const periodicRate = getPeriodicRate(
     annualRate,
     periodsPerYear,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
 
   // An accelerated schedule pays a fraction of the monthly installment on a
@@ -570,9 +558,8 @@ export function calculateMortgageAmortization(
   // Calculate effective annual rate
   const effectiveAnnualRate = calculateEffectiveAnnualRate(
     annualRate,
-    isCanadian,
-    isVariableRate,
     periodsPerYear,
+    mortgageType,
   );
 
   return {
@@ -597,8 +584,7 @@ export function recalculateMortgageAfterRateChange(
   newRate: number,
   remainingAmortizationMonths: number,
   paymentFrequency: MortgagePaymentFrequency,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  mortgageType: MortgageType,
 ): {
   paymentAmount: number;
   principalPayment: number;
@@ -609,8 +595,7 @@ export function recalculateMortgageAfterRateChange(
     annualRate: newRate,
     amortizationMonths: remainingAmortizationMonths,
     paymentFrequency,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
     startDate: new Date(),
   };
 
@@ -626,23 +611,23 @@ export function recalculateMortgageAfterRateChange(
 /**
  * Calculate the principal/interest split for a mortgage payment based on remaining balance.
  *
- * Unlike loan payment splits which use simple monthly compounding, this handles
- * Canadian fixed-rate semi-annual compounding and other mortgage-specific rates.
+ * The periodic rate follows the type's compounding (`getPeriodicRate`), so a
+ * `CANADIAN_FIXED` mortgage accrues at the semi-annual conversion and every
+ * other type at the nominal rate over `periodsPerYear`. Takes the count rather
+ * than a mortgage cadence so a stored loan-domain spelling (quarterly, yearly)
+ * reaches it through `periodsPerYearForStoredFrequency` instead of a cast.
  */
 export function calculateMortgagePaymentSplit(
   remainingBalance: number,
   annualRate: number,
   paymentAmount: number,
-  frequency: MortgagePaymentFrequency,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  periodsPerYear: number,
+  mortgageType: MortgageType,
 ): { principal: number; interest: number } {
-  const periodsPerYear = getMortgagePeriodsPerYear(frequency);
   const periodicRate = getPeriodicRate(
     annualRate,
     periodsPerYear,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
 
   const interest = remainingBalance * periodicRate;

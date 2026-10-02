@@ -22,6 +22,10 @@ import {
 import { PAYMENT_FREQUENCIES, PaymentFrequency } from "./create-account.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
+import {
+  WRITABLE_MORTGAGE_TYPES,
+  WritableMortgageType,
+} from "../mortgage-type.util";
 
 export class UpdateAccountDto {
   @ApiPropertyOptional({
@@ -323,8 +327,19 @@ export class UpdateAccountDto {
 
   // Mortgage-specific fields
   @ApiPropertyOptional({
+    example: "CANADIAN_FIXED",
+    description:
+      "Mortgage type: ANNUITY or CANADIAN_FIXED. Wins over isCanadianMortgage/isVariableRate; when absent, a flag sent decides it.",
+    enum: WRITABLE_MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(WRITABLE_MORTGAGE_TYPES)
+  mortgageType?: WritableMortgageType;
+
+  @ApiPropertyOptional({
     example: true,
-    description: "Whether this is a Canadian mortgage",
+    description:
+      "Legacy flag, superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED",
   })
   @IsOptional()
   @IsBoolean()
@@ -332,7 +347,8 @@ export class UpdateAccountDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: "Whether this is a variable rate mortgage",
+    description:
+      "Legacy flag, superseded by mortgageType: a Canadian variable-rate mortgage is ANNUITY",
   })
   @IsOptional()
   @IsBoolean()

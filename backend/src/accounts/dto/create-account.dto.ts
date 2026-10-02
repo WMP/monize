@@ -20,6 +20,10 @@ import {
 } from "../entities/account.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
+import {
+  WRITABLE_MORTGAGE_TYPES,
+  WritableMortgageType,
+} from "../mortgage-type.util";
 
 /**
  * Payment frequencies a loan account can carry.
@@ -307,9 +311,19 @@ export class CreateAccountDto {
 
   // Mortgage-specific fields
   @ApiPropertyOptional({
+    example: "CANADIAN_FIXED",
+    description:
+      "Mortgage type: ANNUITY (nominal rate divided by the payments per year) or CANADIAN_FIXED (semi-annual compounding). Wins over isCanadianMortgage/isVariableRate; when absent, those flags decide it.",
+    enum: WRITABLE_MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(WRITABLE_MORTGAGE_TYPES)
+  mortgageType?: WritableMortgageType;
+
+  @ApiPropertyOptional({
     example: true,
     description:
-      "Whether this is a Canadian mortgage (uses semi-annual compounding for fixed rates)",
+      "Legacy flag, superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED (semi-annual compounding)",
     default: false,
   })
   @IsOptional()
@@ -319,7 +333,7 @@ export class CreateAccountDto {
   @ApiPropertyOptional({
     example: false,
     description:
-      "Whether this is a variable rate mortgage (uses monthly compounding)",
+      "Legacy flag, superseded by mortgageType: cancels the semi-annual compounding of a Canadian mortgage, which then computes as ANNUITY",
     default: false,
   })
   @IsOptional()

@@ -4,14 +4,19 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  IsOptional,
   Min,
   Max,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   MORTGAGE_PAYMENT_FREQUENCIES,
   MortgagePaymentFrequency,
 } from "./create-account.dto";
+import {
+  WRITABLE_MORTGAGE_TYPES,
+  WritableMortgageType,
+} from "../mortgage-type.util";
 
 export class MortgagePreviewDto {
   @ApiProperty({
@@ -54,21 +59,33 @@ export class MortgagePreviewDto {
   @IsDateString()
   paymentStartDate: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    example: "CANADIAN_FIXED",
+    description:
+      "Mortgage type: ANNUITY (nominal rate divided by the payments per year) or CANADIAN_FIXED (semi-annual compounding). Wins over isCanadian/isVariableRate; when all three are absent the type is ANNUITY.",
+    enum: WRITABLE_MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(WRITABLE_MORTGAGE_TYPES)
+  mortgageType?: WritableMortgageType;
+
+  @ApiPropertyOptional({
     example: true,
     description:
-      "Whether this is a Canadian mortgage (semi-annual compounding for fixed rates)",
+      "Legacy flag, superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED (semi-annual compounding)",
   })
+  @IsOptional()
   @IsBoolean()
-  isCanadian: boolean;
+  isCanadian?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: false,
     description:
-      "Whether this is a variable rate mortgage (monthly compounding)",
+      "Legacy flag, superseded by mortgageType: cancels the semi-annual compounding of a Canadian mortgage, which then computes as ANNUITY",
   })
+  @IsOptional()
   @IsBoolean()
-  isVariableRate: boolean;
+  isVariableRate?: boolean;
 }
 
 export class MortgagePreviewResponseDto {

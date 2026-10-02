@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
-import { Account } from "../accounts/entities/account.entity";
+import { Account, AccountType } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import {
   LoanPaymentDetectorService,
@@ -11,6 +11,11 @@ import {
 } from "../accounts/loan-payment-detector.service";
 import { LoanRateChangesService } from "./loan-rate-changes.service";
 import { roundMoney } from "../common/round.util";
+import {
+  annualizationFor,
+  mortgageTypeFromFlags,
+  mortgageTypeOf,
+} from "../accounts/mortgage-type.util";
 import {
   DEFAULT_PERIODS_PER_YEAR,
   periodsPerYearForStoredFrequency,
@@ -220,15 +225,23 @@ export class RateChangeInferenceService {
   }
 
   /**
-   * Annualize an observed periodic rate. This mirrors the frontend's
-   * reconstruction (`assignObservedRates`) so a detected rate matches what the
-   * schedule shows:
-   *  - Canadian mortgage: annualize by the nominal periods per year (the
-   *    lender's convention), inverting the semi-annual compounding for a
-   *    fixed-rate loan;
-   *  - everything else: annualize over the actual accrual window (`x 365 /
-   *    days`), which self-corrects for month-length and payment-gap variation
-   *    rather than overshooting a fixed `x periodsPerYear`.
+   * Annualize an observed periodic rate by the type's annualization trait
+   * (`annualizationFor`, docs/specs/mortgage-types.md table 4.1). This mirrors
+   * the frontend's reconstruction (`assignObservedRates`) so a detected rate
+   * matches what the schedule shows:
+   *  - `SEMI_ANNUAL` (Canadian fixed-rate): invert the semi-annual
+   *    compounding over the nominal periods per year (the lender's
+   *    convention);
+   *  - `DAY_COUNT` (every other type): annualize over the actual accrual
+   *    window (`x 365 / days`), which self-corrects for month-length and
+   *    payment-gap variation rather than overshooting a fixed
+   *    `x periodsPerYear`. A Canadian variable-rate account is `ANNUITY` and
+   *    annualizes here too (table 4.2, last row); it used `x periodsPerYear`
+   *    before the type existed.
+   *
+   * A mortgage's type is read through `mortgageTypeOf`; any other account has
+   * no type, so it keeps the annualization its flags denote even if a stale
+   * column survived an edit that moved it off MORTGAGE.
    */
   private annualizeRate(
     account: Account,
@@ -236,13 +249,17 @@ export class RateChangeInferenceService {
     periodsPerYear: number,
     days: number,
   ): number {
-    const isCanadian = account.isCanadianMortgage || false;
-    if (!isCanadian) {
-      return periodicRate * (365 / days) * 100;
+    const type =
+      account.accountType === AccountType.MORTGAGE
+        ? mortgageTypeOf(account)
+        : mortgageTypeFromFlags(
+            account.isCanadianMortgage,
+            account.isVariableRate,
+          );
+    if (annualizationFor(type) === "SEMI_ANNUAL") {
+      return (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
     }
-    return account.isVariableRate || false
-      ? periodicRate * periodsPerYear * 100
-      : (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
+    return periodicRate * (365 / days) * 100;
   }
 
   /**
