@@ -46,6 +46,16 @@ Observable when done: switching "Break down by tag key" to `scope` on Income vs
 Expenses shows Household / Stall / (untagged) buckets; a tagged RRSP->Checking
 transfer shows under Household as a tagged inflow and adds nothing to income.
 
+### Phase 1b -- account scope and the funding series (Income vs Expenses)
+
+Follow-up from the reporter's screenshots; spec section 10. C: an account
+multi-select on `IncomeVsExpensesReport` (the backend already honours
+`accountIds`; Cash Flow is excluded because `getIncomeBySource` takes none). B:
+`IncomeExpenseTagPeriodItem` (per-period `taggedInflows` / `taggedOutflows`) in
+each bucket, and two indigo series on the main chart for the active non-untagged
+bucket. Order: spec commit, backend (DTO, both flow queries, tests), frontend
+(types, controlled `TagKeyBreakdownBuckets`, report), translations last.
+
 ### Phase 2 -- Spending by Category + Income by Source
 
 Value partitioning only (no transfer flows). Reuses the Phase 1 DTO mixin,
