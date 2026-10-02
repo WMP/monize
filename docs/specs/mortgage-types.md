@@ -1,12 +1,15 @@
 # Spec: mortgage types
 
-Status: approved design (task S1 of the plan); nothing here is implemented yet.
+Status: approved design (task S1 of the plan). Phase 1 is implemented (P1-B1 to
+P1-Q: the column, the traits, the type-keyed consumers and the Select, offering
+`ANNUITY` and `CANADIAN_FIXED`); the LINEAR and INTEREST_ONLY methods, type
+detection and the contract migration are not yet.
 Governs: issue #1501 (tracking) and its sub-issues #1502 to #1514, agreed in
 discussion #1486 in line with the direction set in #787. The plan is
 `docs/future-plans/mortgage-types.md`, the task list
 `docs/future-plans/mortgage-types-tasks.md`.
 Registers INV-LOAN-007 in `docs/system-invariants.md` (status `unenforced`
-until P2-Q) and extends INV-LOAN-003, INV-LOAN-004 and INV-LOAN-006.
+at S1, `partial` from P1-Q, `enforced` at P2-Q) and extends INV-LOAN-003, INV-LOAN-004 and INV-LOAN-006.
 
 Read `docs/financial-semantics.md` section 9,
 `docs/financial-calculation-contract.md` sections 1, 7 and 8, and
@@ -382,8 +385,10 @@ Mechanism, built by the tasks named:
   INTEREST_ONLY (decision 11, section 5.6), so no stored constant payment can
   disagree with the method.
 
-Status: `unenforced` until P2-Q flips it; registered as such in
-`docs/system-invariants.md`.
+Status: registered `unenforced` in `docs/system-invariants.md`; `partial`
+from P1-Q, when the traits, the parity fixture, the flags guard and the CHECK
+contract spec exist but the method branch does not; P2-Q flips it to
+`enforced`.
 
 ### 6.2 INV-LOAN-006 (extended): the remaining count is dated too
 

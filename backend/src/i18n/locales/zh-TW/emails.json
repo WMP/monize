@@ -23,12 +23,12 @@
     "button": "查看帳單與存款"
   },
   "mortgageReminder": {
-    "subject": "Monize：1 筆即將到期的抵押貸款續約",
-    "subjectPlural": "Monize：{{ count }} 筆即將到期的抵押貸款續約",
-    "heading": "抵押貸款續約提醒",
+    "subject": "Monize：1 筆抵押貸款的利率期限即將結束",
+    "subjectPlural": "Monize：{{ count }} 筆抵押貸款的利率期限即將結束",
+    "heading": "抵押貸款利率期限提醒",
     "greeting": "您好，{{ name }}，",
-    "introOne": "您有 1 筆抵押貸款即將到期需要續約。請在期限結束前聯絡您的貸款機構討論續約選項：",
-    "introMany": "您有 {{ count }} 筆抵押貸款即將到期需要續約。請在期限結束前聯絡您的貸款機構討論續約選項：",
+    "introOne": "您有 1 筆抵押貸款的目前利率期限即將結束。請在結束前聯絡您的貸款機構，安排下一期利率或續約：",
+    "introMany": "您有 {{ count }} 筆抵押貸款的目前利率期限即將結束。請在每筆結束前聯絡您的貸款機構，安排下一期利率或續約：",
     "colMortgage": "抵押貸款",
     "colTermEndDate": "期限結束日期",
     "colTimeRemaining": "剩餘時間",

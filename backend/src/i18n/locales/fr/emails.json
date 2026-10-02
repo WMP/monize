@@ -23,12 +23,12 @@
     "button": "Voir les Factures &amp; Dépôts"
   },
   "mortgageReminder": {
-    "subject": "Monize : 1 renouvellement de prêt hypothécaire à venir",
-    "subjectPlural": "Monize : {{ count }} renouvellements de prêt hypothécaire à venir",
-    "heading": "Rappel de renouvellement de prêt hypothécaire",
+    "subject": "Monize : 1 terme de taux hypothécaire se termine bientôt",
+    "subjectPlural": "Monize : {{ count }} termes de taux hypothécaire se terminent bientôt",
+    "heading": "Rappel de fin de terme de taux hypothécaire",
     "greeting": "Bonjour {{ name }},",
-    "introOne": "Vous avez 1 prêt hypothécaire dont le terme arrive bientôt à renouvellement. Contactez votre prêteur pour discuter des options de renouvellement avant la fin du terme :",
-    "introMany": "Vous avez {{ count }} prêts hypothécaires dont le terme arrive bientôt à renouvellement. Contactez votre prêteur pour discuter des options de renouvellement avant la fin du terme :",
+    "introOne": "Le terme de taux actuel de 1 prêt hypothécaire se termine bientôt. Contactez votre prêteur avant sa fin pour convenir de votre prochain taux ou du renouvellement :",
+    "introMany": "Le terme de taux actuel de {{ count }} prêts hypothécaires se termine bientôt. Contactez votre prêteur avant la fin de chacun pour convenir du prochain taux ou du renouvellement :",
     "colMortgage": "Prêt hypothécaire",
     "colTermEndDate": "Date de fin de terme",
     "colTimeRemaining": "Temps restant",

@@ -23,12 +23,12 @@
     "button": "청구서 &amp; 입금 보기"
   },
   "mortgageReminder": {
-    "subject": "Monize: 예정된 주택담보대출 갱신 1건",
-    "subjectPlural": "Monize: 예정된 주택담보대출 갱신 {{ count }}건",
-    "heading": "주택담보대출 갱신 알림",
+    "subject": "Monize: 곧 끝나는 주택담보대출 금리 기간 1건",
+    "subjectPlural": "Monize: 곧 끝나는 주택담보대출 금리 기간 {{ count }}건",
+    "heading": "주택담보대출 금리 기간 알림",
     "greeting": "안녕하세요 {{ name }}님,",
-    "introOne": "만기 갱신이 예정된 주택담보대출이 1건 있습니다. 만기 전에 대출 기관에 연락하여 갱신 옵션을 논의하세요:",
-    "introMany": "만기 갱신이 예정된 주택담보대출이 {{ count }}건 있습니다. 만기 전에 대출 기관에 연락하여 갱신 옵션을 논의하세요:",
+    "introOne": "현재 금리 기간이 곧 끝나는 주택담보대출이 1건 있습니다. 끝나기 전에 대출 기관에 연락하여 다음 금리나 갱신을 준비하세요:",
+    "introMany": "현재 금리 기간이 곧 끝나는 주택담보대출이 {{ count }}건 있습니다. 각각 끝나기 전에 대출 기관에 연락하여 다음 금리나 갱신을 준비하세요:",
     "colMortgage": "주택담보대출",
     "colTermEndDate": "만기일",
     "colTimeRemaining": "남은 기간",

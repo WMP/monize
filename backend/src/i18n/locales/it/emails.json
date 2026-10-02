@@ -23,12 +23,12 @@
     "button": "Visualizza fatture &amp; versamenti"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 rinnovo mutuo imminente",
-    "subjectPlural": "Monize: {{ count }} rinnovi mutuo imminenti",
-    "heading": "Promemoria rinnovo mutuo",
+    "subject": "Monize: 1 periodo di tasso del mutuo in scadenza",
+    "subjectPlural": "Monize: {{ count }} periodi di tasso del mutuo in scadenza",
+    "heading": "Promemoria scadenza periodo di tasso del mutuo",
     "greeting": "Ciao {{ name }},",
-    "introOne": "Hai 1 mutuo con un rinnovo del termine imminente. Contatta il tuo istituto di credito per discutere le opzioni di rinnovo prima della scadenza del termine:",
-    "introMany": "Hai {{ count }} mutui con un rinnovo del termine imminente. Contatta il tuo istituto di credito per discutere le opzioni di rinnovo prima della scadenza del termine:",
+    "introOne": "Hai 1 mutuo il cui periodo di tasso attuale scade a breve. Contatta il tuo istituto di credito prima della scadenza per concordare il prossimo tasso o il rinnovo:",
+    "introMany": "Hai {{ count }} mutui il cui periodo di tasso attuale scade a breve. Contatta il tuo istituto di credito prima di ciascuna scadenza per concordare il prossimo tasso o il rinnovo:",
     "colMortgage": "Mutuo",
     "colTermEndDate": "Data fine termine",
     "colTimeRemaining": "Tempo rimanente",

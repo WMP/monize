@@ -90,7 +90,7 @@ implied.
 | INV-LOAN-004 | The final payment is the residual payoff, not another installment | enforced |
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, and the rate, through its own due date | enforced |
-| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | unenforced |
+| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | partial |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -2012,15 +2012,36 @@ Statement           The mortgage creation preview, the persisted paymentAmount,
                     the scheduled principal/interest split, the frontend
                     projection and the displayed effective annual rate all use
                     one explicitly chosen compounding convention.
-Source of truth     docs/financial-semantics.md section 9.
+Source of truth     docs/financial-semantics.md section 9;
+                    accounts.mortgage_type for which convention a mortgage uses.
 Enforcement         The convention is the nominal annual rate divided by the
-                    payments per year (calculateStandardPeriodicRate), with
-                    Canadian fixed-rate semi-annual compounding as the one legal
-                    exception (calculateCanadianPeriodicRate); the frontend
-                    getPeriodicRate mirrors it. calculateEffectiveAnnualRate now
-                    takes periodsPerYear and compounds at the payment frequency,
-                    so the displayed EAR describes the rate the schedule charges
-                    rather than a monthly one nothing used.
+                    payments per year (calculateStandardPeriodicRate), with the
+                    CANADIAN_FIXED mortgage type's semi-annual compounding as the
+                    one legal exception (calculateCanadianPeriodicRate). Which
+                    of the two a mortgage uses is a trait of its type, decided
+                    once per layer by the type helper: MORTGAGE_TYPE_TRAITS and
+                    compoundingFor in backend/src/accounts/mortgage-type.util.ts
+                    and frontend/src/lib/mortgage-type.ts, Records over the type
+                    so a type without a row is a compile error, read through
+                    mortgageTypeOf (the column, else the type the two legacy
+                    flags denote while the column is nullable). getPeriodicRate
+                    and calculateEffectiveAnnualRate on the backend, and
+                    getPeriodicRate and effectiveAnnualRate in
+                    frontend/src/lib/loan-frequency.ts, are keyed on the type;
+                    the backend's two-flag overloads delegate through
+                    mortgageTypeFromFlags and have no production caller
+                    (mortgage-type-flags.guard.spec.ts fails a new one; the
+                    overloads and the guard go with the booleans).
+                    The EAR takes periodsPerYear and compounds at the payment
+                    frequency, so the displayed EAR describes the rate the
+                    schedule charges rather than a monthly one nothing used.
+                    The two contract specs hold the type list and the traits:
+                    backend/src/accounts/mortgage-type.contract.spec.ts
+                    reconciles MORTGAGE_TYPES with the accounts_mortgage_type_check
+                    CHECK in database/schema.sql both ways and asserts the parity
+                    fixture backend/src/accounts/mortgage-type-cases.json, which
+                    frontend/src/lib/mortgage-type.contract.test.ts asserts
+                    against the frontend traits, so the layers cannot drift.
                     A cadence read back out of accounts.payment_frequency is a
                     STRING -- the column is a bare VARCHAR(20) written in both
                     spellings -- so it goes through
@@ -2081,7 +2102,10 @@ Required tests      Present: the "periodic-rate convention" block in
                     list and checks both getPeriodsPerYear and calculateEndDate,
                     loan-frequency.guard.test.ts reads the setup dialog's options
                     and checks the frontend engine -- and the effectiveAnnualRate
-                    block in loan-schedule.test.ts.
+                    block in loan-schedule.test.ts. Plus the two mortgage-type
+                    contract specs (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts) and the flags guard
+                    (mortgage-type-flags.guard.spec.ts).
 Status              enforced
 ```
 
@@ -2210,9 +2234,10 @@ Source of truth     The transactions ledger plus accounts.opening_balance
                     installment's own date.
 Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
                     one pricing path: datedLoanDebt runs the canonical as-of
-                    ledger sum, the periodic-rate rules (Canadian semi-annual
-                    compounding included) are unchanged, and allocateLoanPayment
-                    stays the shared waterfall. recalculateLoanPaymentSplits
+                    ledger sum, the periodic-rate rules (the mortgage type's
+                    compounding, CANADIAN_FIXED's semi-annual included) are
+                    unchanged, and allocateLoanPayment stays the shared
+                    waterfall. recalculateLoanPaymentSplits
                     (template advancement after a posting) and
                     resolvePostingAllocation (called by the posting path inside
                     its transaction, under the parent lock, immediately before
@@ -2328,21 +2353,24 @@ Statement           A mortgage's amortization method (annuity, linear, interest
 Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
                     the traits, truth tables and fixtures are
                     docs/specs/mortgage-types.md.
-Enforcement         None yet; the type does not exist. Every mortgage is priced
-                    as an annuity, and the convention is chosen by the
-                    isCanadian && !isVariableRate test in getPeriodicRate and
-                    calculateEffectiveAnnualRate on both layers. The mechanism,
-                    built by the tasks of docs/future-plans/mortgage-types-tasks.md:
-                    the type helper (MORTGAGE_TYPE_TRAITS in
+Enforcement         Partly built (Phase 1 of
+                    docs/future-plans/mortgage-types-tasks.md). Present: the
+                    type helper (MORTGAGE_TYPE_TRAITS in
                     backend/src/accounts/mortgage-type.util.ts and
                     frontend/src/lib/mortgage-type.ts, a Record over the type so
-                    a missing type is a compile error); the method branch in
+                    a missing type is a compile error), through which every
+                    surface already reads the compounding (INV-LOAN-003) and
+                    rate inference reads the annualization; the parity fixture
+                    mortgage-type-cases.json read by both layers; the shrink-only
+                    flags guard, whose baseline is empty; the CHECK on
+                    accounts.mortgage_type reconciled with MORTGAGE_TYPES by
+                    mortgage-type.contract.spec.ts. Absent: the method itself.
+                    Every mortgage is still priced as an annuity, and the DTOs
+                    accept only ANNUITY and CANADIAN_FIXED
+                    (WRITABLE_MORTGAGE_TYPES), both annuity methods, until the
+                    method branch exists. Owed: the method branch in
                     calculateMortgageAmortization, resolveInstallment, the
-                    rate-change paths and generateLoanSchedule; the parity
-                    fixture mortgage-type-cases.json read by both layers; a
-                    shrink-only guard naming every remaining boolean caller; the
-                    CHECK on accounts.mortgage_type reconciled with
-                    MORTGAGE_TYPES by a contract spec; and a CHECK keeping
+                    rate-change paths and generateLoanSchedule, and a CHECK keeping
                     accounts.payment_amount null for LINEAR and INTEREST_ONLY,
                     which have no constant payment, so every surface asks for
                     a dated installment instead (spec section 5.6).
@@ -2353,10 +2381,13 @@ Failure response    A LINEAR or INTEREST_ONLY mortgage without
                     amortization_months is refused on create, update and
                     preview, and its installment declines (the persisted
                     amounts post), per the spec's missing-data policy.
-Required tests      Owed: the spec's section 7 fixtures row by row on both
-                    layers (preview, installment pricing, projection), the
-                    parity fixture, the flags guard, the CHECK contract spec.
-Status              unenforced
+Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
+                    contract specs (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts) and the flags guard
+                    (mortgage-type-flags.guard.spec.ts). Owed: the spec's
+                    section 7 fixtures row by row on both layers (preview,
+                    installment pricing, projection).
+Status              partial
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
@@ -2428,8 +2459,9 @@ Failure response    The rejection propagates to the caller's error-and-retry
                     unavailable after recovery.
 Required tests      Present: the principal-only matrix in
                     frontend/src/lib/loan-history.test.ts (every account type x
-                    Canadian/variable flag x frequency x rate-timeline
-                    presence -- each was a separate door into the estimate), the
+                    mortgage type, stored or as its legacy flags denote it, x
+                    frequency x rate-timeline presence -- each was a separate
+                    door into the estimate), the
                     fixed-rate and variable-rate Rate-column cases, the
                     reconstruction paths re-pinned against RECORDED interest so
                     the Canadian semi-annual and day-count annualizations stay
