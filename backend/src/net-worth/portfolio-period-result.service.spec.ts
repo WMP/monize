@@ -614,6 +614,10 @@ describe("PortfolioPeriodResultService", () => {
     // to it is not a flow of this period either: one boundary, or a deposit
     // there is subtracted from a value change that never held it.
     expect(flowQuery.params[3]).toEqual(["cash-1"]);
+    // ...but a trade on the brokerage whose cash leg transfers into that sleeve
+    // settled inside it (the QIF/CSV import's shape), so the whole scope is the
+    // investment scope that leaves such a sleeve leg out of the flow.
+    expect(flowQuery.params[4]).toEqual(["brok-1", "cash-1"]);
     // The series is asked with the ids the caller gave: getDailyInvestments
     // does the same widening itself, and doing it twice is a no-op.
     expect(netWorth.getDailyInvestments).toHaveBeenCalledWith(

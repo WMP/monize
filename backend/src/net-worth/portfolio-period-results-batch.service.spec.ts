@@ -357,6 +357,10 @@ describe("PortfolioPeriodResultsBatchService", () => {
     );
     const flowQuery = queries.find((q) => q.sql.includes("SUM(t.amount)"))!;
     expect(flowQuery.params[1]).toBe("2026-09-09");
+    // The flow is drawn around the sleeve, with the whole scope as the
+    // investment scope an imported trade's sleeve leg settles inside.
+    expect(flowQuery.params[3]).toEqual(["cash-1"]);
+    expect(flowQuery.params[4]).toEqual(["brok-1", "cash-1"]);
   });
 
   it("measures a day against the previous close", async () => {

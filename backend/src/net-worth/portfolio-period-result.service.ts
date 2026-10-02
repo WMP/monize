@@ -311,6 +311,9 @@ export class PortfolioPeriodResultService {
             afterDate: from,
             throughDate: end,
             accountIds: cashScope,
+            // A trade on the scope whose cash leg transfers into a sleeve settled
+            // inside, not across the boundary (the QIF/CSV import's shape).
+            investmentScope: scope.map((row) => row.id),
             perDay: true,
           },
         ),
