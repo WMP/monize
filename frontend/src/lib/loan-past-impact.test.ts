@@ -284,16 +284,14 @@ describe('computePastImpact', () => {
       4,
       300,
       'ACCELERATED_BIWEEKLY',
-      true,
-      false,
+      'CANADIAN_FIXED',
     );
     const reference = generateLoanSchedule({
       startingBalance: 300000,
       annualRate: 4,
       paymentAmount: accelPayment,
       frequency: 'ACCELERATED_BIWEEKLY',
-      isCanadian: true,
-      isVariableRate: false,
+      mortgageType: 'CANADIAN_FIXED',
       firstPaymentDate: new Date('2025-01-15'),
     });
 
@@ -598,12 +596,34 @@ describe('computePastImpact', () => {
     const impact = computePastImpact(account, history);
 
     expect(impact).not.toBeNull();
-    const expectedPayment = calculateMortgagePaymentAmount(300000, 5, 300, 'MONTHLY', true, false);
+    const expectedPayment = calculateMortgagePaymentAmount(300000, 5, 300, 'MONTHLY', 'CANADIAN_FIXED');
     // The original schedule amortizes with the derived payment: its first
     // row's payment matches the PMT-derived amount
     expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(expectedPayment, 0);
     expect(impact!.originalSchedule.numPayments).toBeGreaterThan(295);
     expect(impact!.originalSchedule.numPayments).toBeLessThanOrEqual(301);
+  });
+
+  it('prices the contractual payment by the stored type, not the flags', () => {
+    // CANADIAN_FIXED read from the column over flags that alone say ANNUITY:
+    // 1744.81 rather than the nominal 1753.77.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 300000,
+      currentBalance: -290000,
+      interestRate: 5,
+      amortizationMonths: 300,
+      mortgageType: 'CANADIAN_FIXED',
+      isCanadianMortgage: false,
+      paymentAmount: 2000,
+    });
+
+    const impact = computePastImpact(account, makeHistory(account, [10000]));
+
+    expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(
+      calculateMortgagePaymentAmount(300000, 5, 300, 'MONTHLY', 'CANADIAN_FIXED'),
+      2,
+    );
   });
 
   it('uses the final actual payment as payoff for an already paid-off loan', () => {

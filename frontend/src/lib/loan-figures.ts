@@ -1,5 +1,5 @@
 import type { LoanScheduleInput, LoanScheduleResult } from '@/lib/loan-schedule-types';
-import { getPeriodicRate, getPeriodsPerYear } from '@/lib/loan-frequency';
+import { firstPeriodInterest } from '@/lib/loan-frequency';
 
 /**
  * A debt whose outstanding magnitude is at or below this is settled. It matches
@@ -93,15 +93,12 @@ export function loanNotAmortizingReason(
 ): LoanNotAmortizingReason | null {
   if (!input || !baseline || baseline.paidOff) return null;
   if (baseline.coveredInterest) return { kind: 'beyond-horizon' };
-  const periodsPerYear = getPeriodsPerYear(input.frequency);
-  const periodInterest =
-    input.startingBalance *
-    getPeriodicRate(
-      input.annualRate,
-      periodsPerYear,
-      input.isCanadian ?? false,
-      input.isVariableRate ?? false,
-    );
+  const periodInterest = firstPeriodInterest(
+    input.startingBalance,
+    input.annualRate,
+    input.frequency,
+    input.mortgageType ?? 'ANNUITY',
+  );
   return {
     kind: 'payment-below-interest',
     payment: input.paymentAmount,

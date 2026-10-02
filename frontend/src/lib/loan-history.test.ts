@@ -987,6 +987,43 @@ describe('buildLoanProjectionInput scheduled-installment anchor (issue #1253)', 
   });
 });
 
+describe('buildLoanProjectionInput mortgage type', () => {
+  // The projection is priced by the account's type, read through
+  // `mortgageTypeOf`: the stored column, else the type the two flags denote.
+  const project = (overrides: Partial<Account>) => {
+    const acct = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -100000,
+      currentBalance: -100000,
+      interestRate: 5,
+      paymentAmount: 1500,
+      ...overrides,
+    });
+    const history = deriveLoanPaymentHistory(acct, [
+      makeTransaction({ transactionDate: '2024-01-05', amount: 600 }),
+    ]);
+    return buildLoanProjectionInput(acct, history, [])!;
+  };
+
+  it('carries the stored type, whatever the flags say', () => {
+    expect(project({ mortgageType: 'CANADIAN_FIXED' }).mortgageType).toBe('CANADIAN_FIXED');
+    expect(
+      project({ mortgageType: 'ANNUITY', isCanadianMortgage: true }).mortgageType,
+    ).toBe('ANNUITY');
+  });
+
+  it('falls back to the flags when the column is null', () => {
+    expect(
+      project({ mortgageType: null, isCanadianMortgage: true }).mortgageType,
+    ).toBe('CANADIAN_FIXED');
+    expect(
+      project({ mortgageType: null, isCanadianMortgage: true, isVariableRate: true })
+        .mortgageType,
+    ).toBe('ANNUITY');
+    expect(project({ accountType: 'LOAN', mortgageType: null }).mortgageType).toBe('ANNUITY');
+  });
+});
+
 describe('buildLoanProjectionInput rate authority', () => {
   // Recording a rate change never writes account.interestRate -- the backend
   // keeps it user-owned and says so -- so a loan whose rate rose through the
@@ -1748,7 +1785,7 @@ describe('deriveLoanPaymentHistory reconstructed rate (no rate history)', () => 
       currentBalance: -199715,
       interestRate: 5.5,
     });
-    const recordedInterest = 200000 * getPeriodicRate(5.5, 12, true, false);
+    const recordedInterest = 200000 * getPeriodicRate(5.5, 12, 'CANADIAN_FIXED');
     const { events } = deriveLoanPaymentHistory(account, [
       withInterestSplit(
         makeTransaction({ transactionDate: '2022-05-05', amount: 285 }),
@@ -1780,6 +1817,71 @@ describe('deriveLoanPaymentHistory reconstructed rate (no rate history)', () => 
     ]);
     expect(events[0].interest).toBeCloseTo(recordedInterest, 2);
     expect(events[0].annualRate).toBeCloseTo(6, 1);
+  });
+
+  it('annualizes a Canadian variable-rate mortgage by day count, as ANNUITY', () => {
+    // docs/specs/mortgage-types.md table 4.2, last row: Canadian and variable is
+    // ANNUITY, whose annualization trait is DAY_COUNT. It used `x periodsPerYear`
+    // before the type existed; the two differ on any period that is not exactly
+    // 365/12 days, so the second, 31-day period tells them apart.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      mortgageType: null,
+      isCanadianMortgage: true,
+      isVariableRate: true,
+      openingBalance: -200000,
+      currentBalance: -198000,
+      interestRate: 6,
+    });
+    const { events } = deriveLoanPaymentHistory(account, [
+      withInterestSplit(
+        makeTransaction({ id: 'tx-1', transactionDate: '2024-01-05', amount: 1500 }),
+        'parent-1',
+        1000,
+      ),
+      withInterestSplit(
+        makeTransaction({ id: 'tx-2', transactionDate: '2024-02-05', amount: 1500 }),
+        'parent-2',
+        997.5,
+      ),
+    ]);
+    const second = events[1];
+    const periodicRate = second.interest / (second.balance + second.principal);
+    expect(second.annualRate).toBeCloseTo(periodicRate * (365 / 31) * 100, 6);
+    expect(second.annualRate).not.toBeCloseTo(periodicRate * 12 * 100, 2);
+  });
+
+  it('reads the stored type over the flags it was saved beside', () => {
+    // The column wins (`mortgageTypeOf`); the flags are only its fallback.
+    // CANADIAN_FIXED inverts the semi-annual compounding and recovers 5.5%
+    // exactly from flags that alone would say ANNUITY.
+    const recordedInterest = 200000 * getPeriodicRate(5.5, 12, 'CANADIAN_FIXED');
+    const history = (overrides: Partial<Account>) =>
+      deriveLoanPaymentHistory(
+        makeAccount({
+          accountType: 'MORTGAGE',
+          openingBalance: -200000,
+          currentBalance: -199715,
+          interestRate: 5.5,
+          ...overrides,
+        }),
+        [
+          withInterestSplit(
+            makeTransaction({ transactionDate: '2022-05-05', amount: 285 }),
+            'parent-1',
+            recordedInterest,
+          ),
+        ],
+      ).events[0].annualRate;
+
+    expect(
+      history({ mortgageType: 'CANADIAN_FIXED', isCanadianMortgage: false }),
+    ).toBeCloseTo(5.5, 3);
+    // And the other way: an ANNUITY column over Canadian-fixed flags annualizes
+    // by day count, reading the same interest as about 5.44%.
+    expect(
+      history({ mortgageType: 'ANNUITY', isCanadianMortgage: true, isVariableRate: false }),
+    ).toBeCloseTo(5.44, 2);
   });
 });
 
