@@ -1592,7 +1592,7 @@
       "saved": "Konto powiązane",
       "editSaved": "Zapisano datę początkową",
       "saveFailed": "Nie udało się zapisać powiązania",
-      "loadingDefaults": "Odczytywanie konta...",
+      "loadingDefaults": "Wczytywanie danych konta...",
       "defaultsFailed": "Nie udało się odczytać najnowszej transakcji na tym koncie, więc Monize nie może powiedzieć, czy ta data początkowa może utworzyć duplikaty.",
       "newestTransaction": "Najnowsza transakcja na tym koncie: {date}",
       "emptyAccount": "{days, plural, one {Konto jest puste: import obejmuje ostatni dzień} few {Konto jest puste: import obejmuje ostatnie # dni} many {Konto jest puste: import obejmuje ostatnie # dni} other {Konto jest puste: import obejmuje ostatnie # dni}}"
@@ -1642,7 +1642,7 @@
     "preview": {
       "title": "Podgląd importu do konta {account}",
       "description": "Nic nie zostanie zaimportowane, dopóki nie potwierdzisz. Oto, co zgłasza bank i co Monize zrobiłoby z każdą transakcją.",
-      "loading": "Odczytywanie banku...",
+      "loading": "Odpytywanie banku...",
       "loadFailed": "Nie udało się wyświetlić podglądu tego konta",
       "retry": "Spróbuj ponownie",
       "close": "Zamknij",
