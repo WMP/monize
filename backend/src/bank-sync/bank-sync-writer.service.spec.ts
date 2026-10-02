@@ -4,20 +4,25 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { I18nService } from "nestjs-i18n";
 import { DataSource } from "typeorm";
 import { AccountsService } from "../accounts/accounts.service";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { PayeesService } from "../payees/payees.service";
+import { TagsService } from "../tags/tags.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
 import {
   Transaction,
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { NO_BANK_OPERATION } from "./bank-operation";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
 import {
   BankSyncPlanChangedException,
+  BankSyncSelectionRefusedException,
   BankSyncWriteInput,
   BankSyncWriterService,
 } from "./bank-sync-writer.service";
@@ -54,6 +59,7 @@ function row(over: Partial<PlannedBankRow> = {}): PlannedBankRow {
     payeeText: "Biedronka",
     description: "Groceries",
     referenceNumber: "REF-1",
+    operation: { ...NO_BANK_OPERATION },
     ...over,
   };
 }
@@ -74,9 +80,11 @@ function plan(
 describe("BankSyncWriterService", () => {
   const linkRepo = { findOne: jest.fn() };
   const accountRepo = { findOne: jest.fn() };
+  const preferenceRepo = { findOne: jest.fn() };
   const { manager, dataSource } = createScopedDbMocks([
     [BankSyncAccount, linkRepo],
     [Account, accountRepo],
+    [UserPreference, preferenceRepo],
   ]);
   const accountsService: jest.Mocked<
     Pick<AccountsService, "recalculateCurrentBalance">
@@ -87,6 +95,18 @@ describe("BankSyncWriterService", () => {
   const payees: jest.Mocked<
     Pick<PayeesService, "findByName" | "findPayeeByAlias">
   > = { findByName: jest.fn(), findPayeeByAlias: jest.fn() };
+  const tagsService: jest.Mocked<Pick<TagsService, "addTransactionTags">> = {
+    addTransactionTags: jest.fn(),
+  };
+  /** Answers the catalogue key with `<language>:<English>`, so a translated label is seen. */
+  const i18n = {
+    translate: jest.fn(
+      (
+        _key: string,
+        options?: { lang?: string; defaultValue?: string },
+      ): string => `${options?.lang}:${options?.defaultValue}`,
+    ),
+  };
 
   let service: BankSyncWriterService;
   let nextTransaction = 0;
@@ -113,6 +133,7 @@ describe("BankSyncWriterService", () => {
     plannedCurrencyCode: "PLN",
     plan: plan(planned),
     balance: null,
+    tagOperationType: true,
     ...over,
   });
 
@@ -153,6 +174,8 @@ describe("BankSyncWriterService", () => {
     accountsService.recalculateCurrentBalance.mockResolvedValue(account());
     payees.findByName.mockResolvedValue(null);
     payees.findPayeeByAlias.mockResolvedValue(null);
+    preferenceRepo.findOne.mockResolvedValue({ language: "pl" });
+    tagsService.addTransactionTags.mockResolvedValue(undefined);
     manager.create.mockImplementation((_entity: unknown, props: object) => ({
       ...props,
     }));
@@ -169,6 +192,8 @@ describe("BankSyncWriterService", () => {
         { provide: AccountsService, useValue: accountsService },
         { provide: TransactionRulesApplierService, useValue: rulesApplier },
         { provide: PayeesService, useValue: payees },
+        { provide: TagsService, useValue: tagsService },
+        { provide: I18nService, useValue: i18n },
       ],
     }).compile();
     service = module.get(BankSyncWriterService);
@@ -201,7 +226,7 @@ describe("BankSyncWriterService", () => {
       const outcome = await service.write(input([row()]));
 
       expect(order).toEqual(["ledger", "transaction", "link"]);
-      expect(outcome).toEqual({ imported: 1, skipped: 0 });
+      expect(outcome).toEqual({ imported: 1, skipped: 0, excluded: 0 });
       const ledgerInsert = statements(
         "INSERT INTO bank_sync_imported_transactions",
       )[0];
@@ -264,7 +289,7 @@ describe("BankSyncWriterService", () => {
         input([row({ externalKey: "ref:1" }), row({ externalKey: "ref:2" })]),
       );
 
-      expect(outcome).toEqual({ imported: 1, skipped: 1 });
+      expect(outcome).toEqual({ imported: 1, skipped: 1, excluded: 0 });
       expect(manager.create).toHaveBeenCalledTimes(1);
       expect(payees.findByName).toHaveBeenCalledTimes(1);
       expect(statements("SET transaction_id")).toHaveLength(1);
@@ -273,7 +298,7 @@ describe("BankSyncWriterService", () => {
     it("imports nothing, applies no rules and moves no balance when every row is a duplicate", async () => {
       ledger(["ref:1"]);
       const outcome = await service.write(input([row()]));
-      expect(outcome).toEqual({ imported: 0, skipped: 1 });
+      expect(outcome).toEqual({ imported: 0, skipped: 1, excluded: 0 });
       expect(manager.create).not.toHaveBeenCalled();
       expect(rulesApplier.applyToNew).not.toHaveBeenCalled();
       expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
@@ -393,7 +418,7 @@ describe("BankSyncWriterService", () => {
       );
       const outcome = statements("last_sync_status = 'succeeded'")[0];
       expect(String(outcome[0])).toContain("last_sync_error = NULL");
-      expect(outcome[1]).toEqual([BANK_ACCOUNT_ID, USER_ID, 1, 1, 3]);
+      expect(outcome[1]).toEqual([BANK_ACCOUNT_ID, USER_ID, 1, 1, 3, true]);
     });
 
     it("writes the bank's balance only when one was fetched", async () => {
@@ -746,6 +771,465 @@ describe("BankSyncWriterService", () => {
           categoryId: null,
         }),
       );
+    });
+  });
+
+  describe("the bank's operation type as a tag (spec section 7b)", () => {
+    const card = row({
+      operation: { ...NO_BANK_OPERATION, remittanceCode: "CARD-PAYMENT" },
+    });
+
+    /**
+     * The tag statements answer from `existing` (lower-cased name to id); an
+     * `INSERT INTO tags` creates `tag-<n>`, or loses the race when `loseRace` is set.
+     */
+    function withTags(
+      existing: Record<string, string> = {},
+      loseRace = false,
+      taken: string[] = [],
+    ) {
+      const known = { ...existing };
+      let created = 0;
+      manager.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          const text = String(sql);
+          if (text.includes("INSERT INTO bank_sync_imported_transactions")) {
+            return taken.includes(String(params![2]))
+              ? []
+              : [{ id: `ledger-${String(params![2])}` }];
+          }
+          if (text.includes("INSERT INTO payees")) {
+            return [
+              { id: "p", name: String(params![1]), default_category_id: null },
+            ];
+          }
+          if (text.includes("FROM tags")) {
+            const id = known[String(params![1]).toLowerCase()];
+            return id === undefined ? [] : [{ id }];
+          }
+          if (text.includes("INSERT INTO tags")) {
+            if (loseRace) {
+              known[String(params![1]).toLowerCase()] = "tag-winner";
+              return [];
+            }
+            const id = `tag-${++created}`;
+            known[String(params![1]).toLowerCase()] = id;
+            return [{ id }];
+          }
+          return [];
+        },
+      );
+    }
+
+    it("creates the missing tag in the user's language and attaches it, in the writer's own transaction", async () => {
+      withTags();
+      await service.write(input([card]));
+
+      expect(preferenceRepo.findOne).toHaveBeenCalledWith({
+        where: { userId: USER_ID },
+      });
+      expect(i18n.translate).toHaveBeenCalledWith(
+        "common.bankSync.operationTypes.cardPayment",
+        expect.objectContaining({ lang: "pl", defaultValue: "Card payment" }),
+      );
+      const insert = statements("INSERT INTO tags")[0];
+      expect(String(insert[0])).toContain("ON CONFLICT DO NOTHING");
+      expect(insert[1]).toEqual([USER_ID, "pl:Card payment"]);
+      expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+        manager,
+        USER_ID,
+        ["tx-1"],
+        ["tag-1"],
+      );
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("attaches the tag before the import rules run, so a rule can use it", async () => {
+      const order: string[] = [];
+      withTags();
+      rulesApplier.loadRulesFor.mockResolvedValue([{ id: "rule-1" }] as never);
+      tagsService.addTransactionTags.mockImplementation(async () => {
+        order.push("tag");
+      });
+      rulesApplier.applyToNew.mockImplementation(async () => {
+        order.push("rules");
+        return [];
+      });
+      await service.write(input([card]));
+      expect(order).toEqual(["tag", "rules"]);
+    });
+
+    it("reuses a tag the user already has, whatever its case, and creates nothing", async () => {
+      withTags({ "pl:card payment": "tag-9" });
+      await service.write(input([card]));
+      expect(statements("INSERT INTO tags")).toHaveLength(0);
+      expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+        manager,
+        USER_ID,
+        ["tx-1"],
+        ["tag-9"],
+      );
+    });
+
+    it("looks a tag up once per name and tags every row of it in one call", async () => {
+      withTags();
+      await service.write(
+        input([
+          { ...card, externalKey: "ref:1" },
+          { ...card, externalKey: "ref:2" },
+          { ...card, externalKey: "ref:3" },
+        ]),
+      );
+      expect(statements("FROM tags")).toHaveLength(1);
+      expect(statements("INSERT INTO tags")).toHaveLength(1);
+      expect(tagsService.addTransactionTags).toHaveBeenCalledTimes(1);
+      expect(tagsService.addTransactionTags.mock.calls[0][2]).toEqual([
+        "tx-1",
+        "tx-2",
+        "tx-3",
+      ]);
+    });
+
+    it("gives each operation its own tag", async () => {
+      withTags();
+      await service.write(
+        input([
+          { ...card, externalKey: "ref:1" },
+          row({
+            externalKey: "ref:2",
+            operation: { ...NO_BANK_OPERATION, remittanceCode: "TRANSFER-IN" },
+          }),
+        ]),
+      );
+      expect(tagsService.addTransactionTags).toHaveBeenCalledTimes(2);
+      expect(
+        statements("INSERT INTO tags").map((call) => (call[1] as string[])[1]),
+      ).toEqual(["pl:Card payment", "pl:Incoming transfer"]);
+    });
+
+    it("names an unknown code after itself and does not translate it", async () => {
+      withTags();
+      await service.write(
+        input([
+          row({
+            operation: { ...NO_BANK_OPERATION, remittanceCode: "DIRECT-DEBIT" },
+          }),
+        ]),
+      );
+      expect(statements("INSERT INTO tags")[0][1]).toEqual([
+        USER_ID,
+        "DIRECT-DEBIT",
+      ]);
+    });
+
+    it("converges when another transaction creates the tag first: the insert returns nothing and the winner is read", async () => {
+      withTags({}, true);
+      await service.write(input([card]));
+      expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+        manager,
+        USER_ID,
+        ["tx-1"],
+        ["tag-winner"],
+      );
+    });
+
+    it("tags nothing, and reads no tag, when the connection does not tag", async () => {
+      withTags();
+      await service.write(input([card], { tagOperationType: false }));
+      expect(statements("FROM tags")).toHaveLength(0);
+      expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+      expect(preferenceRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("leaves a row whose bank named no operation untagged", async () => {
+      withTags();
+      await service.write(input([row()]));
+      expect(statements("FROM tags")).toHaveLength(0);
+      expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+    });
+
+    it("tags only the rows it created, never a duplicate", async () => {
+      withTags({}, false, ["ref:1"]);
+      await service.write(
+        input([
+          { ...card, externalKey: "ref:1" },
+          { ...card, externalKey: "ref:2" },
+        ]),
+      );
+      expect(tagsService.addTransactionTags).toHaveBeenCalledTimes(1);
+      expect(tagsService.addTransactionTags.mock.calls[0][2]).toEqual(["tx-1"]);
+    });
+
+    it("tags nothing when every row is a duplicate", async () => {
+      withTags({}, false, ["ref:1"]);
+      await service.write(input([{ ...card, externalKey: "ref:1" }]));
+      expect(statements("FROM tags")).toHaveLength(0);
+      expect(preferenceRepo.findOne).not.toHaveBeenCalled();
+      expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+    });
+
+    it("does not change the transaction it writes: the code stays in the description", async () => {
+      withTags();
+      await service.write(
+        input([
+          row({
+            description: "Groceries CARD-PAYMENT",
+            operation: { ...NO_BANK_OPERATION, remittanceCode: "CARD-PAYMENT" },
+          }),
+        ]),
+      );
+      expect(manager.create).toHaveBeenCalledWith(
+        Transaction,
+        expect.objectContaining({ description: "Groceries CARD-PAYMENT" }),
+      );
+    });
+  });
+
+  describe("a selection from the preview (spec section 7b)", () => {
+    const rows = () => [
+      row({ externalKey: "ref:1", amount: -12.34 }),
+      row({ externalKey: "ref:2", amount: 50 }),
+      row({ externalKey: "ref:3", amount: -0.5 }),
+    ];
+
+    /** The ledger SELECT answers with `held`; inserts win unless the key is held. */
+    function ledgerHolding(held: string[] = []) {
+      manager.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          const text = String(sql);
+          if (text.includes("SELECT external_key")) {
+            return held.map((external_key) => ({ external_key }));
+          }
+          if (text.includes("INSERT INTO bank_sync_imported_transactions")) {
+            return held.includes(String(params![2]))
+              ? []
+              : [{ id: `ledger-${String(params![2])}` }];
+          }
+          if (text.includes("INSERT INTO payees")) {
+            return [
+              { id: "p", name: String(params![1]), default_category_id: null },
+            ];
+          }
+          return [];
+        },
+      );
+    }
+
+    const insertedKeys = () =>
+      statements("INSERT INTO bank_sync_imported_transactions").map(
+        (call) => (call[1] as string[])[2],
+      );
+    const outcomeParams = () =>
+      statements("last_sync_status = 'succeeded'")[0][1] as unknown[];
+
+    it("imports exactly the keys it was given, in the plan's order", async () => {
+      ledgerHolding();
+      const outcome = await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint(rows()),
+          selection: { importKeys: ["ref:3", "ref:1"], excludeKeys: [] },
+        }),
+      );
+      expect(outcome).toEqual({ imported: 2, skipped: 0, excluded: 0 });
+      expect(insertedKeys()).toEqual(["ref:1", "ref:3"]);
+      expect(manager.create).toHaveBeenCalledTimes(2);
+      expect(
+        manager.create.mock.calls.map(
+          (call) => (call[1] as { amount: number }).amount,
+        ),
+      ).toEqual([-12.34, -0.5]);
+    });
+
+    it("writes the excluded keys to the ledger as exceptions: no transaction, excluded_at set, conflict-safe", async () => {
+      ledgerHolding();
+      const outcome = await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint(rows()),
+          selection: { importKeys: ["ref:1"], excludeKeys: ["ref:2", "ref:3"] },
+        }),
+      );
+      expect(outcome).toEqual({ imported: 1, skipped: 0, excluded: 2 });
+      const exceptions = statements(
+        "INSERT INTO bank_sync_imported_transactions",
+      ).filter((call) => String(call[0]).includes("excluded_at"));
+      expect(exceptions.map((call) => (call[1] as string[])[2])).toEqual([
+        "ref:2",
+        "ref:3",
+      ]);
+      expect(String(exceptions[0][0])).toContain("now()");
+      expect(String(exceptions[0][0])).toContain(
+        "ON CONFLICT (account_id, external_key) DO NOTHING",
+      );
+      expect(exceptions[0][1]).toEqual([
+        USER_ID,
+        ACCOUNT_ID,
+        "ref:2",
+        "2026-09-10",
+      ]);
+      // Only the imported row has a transaction and a link to it.
+      expect(manager.create).toHaveBeenCalledTimes(1);
+      expect(statements("SET transaction_id")).toHaveLength(1);
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("moves the window of the next sync forward when every new row was imported or excepted", async () => {
+      ledgerHolding();
+      await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint(rows()),
+          selection: { importKeys: ["ref:1"], excludeKeys: ["ref:2", "ref:3"] },
+        }),
+      );
+      expect(outcomeParams().slice(-1)[0]).toBe(true);
+      expect(
+        String(statements("last_sync_status = 'succeeded'")[0][0]),
+      ).toContain("last_success_at = CASE WHEN $6::boolean");
+    });
+
+    it("leaves last_success_at alone when a new row was skipped for now, so the next sync shows it again", async () => {
+      ledgerHolding();
+      const outcome = await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint(rows()),
+          selection: { importKeys: ["ref:1"], excludeKeys: [] },
+        }),
+      );
+      expect(outcome.imported).toBe(1);
+      expect(insertedKeys()).toEqual(["ref:1"]);
+      expect(outcomeParams().slice(-1)[0]).toBe(false);
+    });
+
+    it("imports nothing for an empty importKeys, and does not mistake it for no selection", async () => {
+      ledgerHolding();
+      const outcome = await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint(rows()),
+          selection: { importKeys: [], excludeKeys: [] },
+        }),
+      );
+      expect(outcome).toEqual({ imported: 0, skipped: 0, excluded: 0 });
+      expect(manager.create).not.toHaveBeenCalled();
+      expect(insertedKeys()).toEqual([]);
+      expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
+      expect(outcomeParams().slice(-1)[0]).toBe(false);
+    });
+
+    it("moves the window when nothing was new and nothing was chosen", async () => {
+      ledgerHolding(["ref:1", "ref:2", "ref:3"]);
+      await service.write(
+        input(rows(), {
+          expectedFingerprint: planFingerprint([]),
+          selection: { importKeys: [], excludeKeys: [] },
+        }),
+      );
+      expect(outcomeParams().slice(-1)[0]).toBe(true);
+    });
+
+    it("works without a fingerprint, still refusing a key outside the plan", async () => {
+      ledgerHolding();
+      await expect(
+        service.write(
+          input(rows(), {
+            selection: { importKeys: ["ref:1"], excludeKeys: [] },
+          }),
+        ),
+      ).resolves.toMatchObject({ imported: 1 });
+      expect(statements("SELECT external_key")).toHaveLength(1);
+    });
+
+    describe("refusals, before the first insert", () => {
+      const wroteNothing = () => {
+        expect(
+          statements("INSERT INTO bank_sync_imported_transactions"),
+        ).toHaveLength(0);
+        expect(manager.save).not.toHaveBeenCalled();
+        expect(
+          accountsService.recalculateCurrentBalance,
+        ).not.toHaveBeenCalled();
+        expect(statements("last_sync_status = 'succeeded'")).toHaveLength(0);
+      };
+
+      it("refuses a key that is not in the plan at all, with 400", async () => {
+        ledgerHolding();
+        const error = await service
+          .write(
+            input(rows(), {
+              expectedFingerprint: planFingerprint(rows()),
+              selection: { importKeys: ["ref:1", "ref:404"], excludeKeys: [] },
+            }),
+          )
+          .catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(BankSyncSelectionRefusedException);
+        expect(error).toBeInstanceOf(BadRequestException);
+        wroteNothing();
+      });
+
+      it("refuses an excluded key that is not in the plan", async () => {
+        ledgerHolding();
+        await expect(
+          service.write(
+            input(rows(), {
+              expectedFingerprint: planFingerprint(rows()),
+              selection: { importKeys: [], excludeKeys: ["ref:404"] },
+            }),
+          ),
+        ).rejects.toBeInstanceOf(BankSyncSelectionRefusedException);
+        wroteNothing();
+      });
+
+      it("refuses a key the ledger already holds: it is not a new row", async () => {
+        ledgerHolding(["ref:2"]);
+        await expect(
+          service.write(
+            input(rows(), {
+              expectedFingerprint: planFingerprint([rows()[0], rows()[2]]),
+              selection: { importKeys: ["ref:2"], excludeKeys: [] },
+            }),
+          ),
+        ).rejects.toBeInstanceOf(BankSyncSelectionRefusedException);
+        wroteNothing();
+      });
+
+      it("refuses a key in both lists, with 400", async () => {
+        ledgerHolding();
+        const error = await service
+          .write(
+            input(rows(), {
+              expectedFingerprint: planFingerprint(rows()),
+              selection: { importKeys: ["ref:1"], excludeKeys: ["ref:1"] },
+            }),
+          )
+          .catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(BadRequestException);
+        wroteNothing();
+      });
+
+      it("still enforces the fingerprint of the whole plan, and says so before it looks at the keys", async () => {
+        ledgerHolding();
+        const shown = planFingerprint(rows());
+        const changed = [rows()[0], rows()[1]];
+        await expect(
+          service.write(
+            input(changed, {
+              expectedFingerprint: shown,
+              // ref:3 is gone from the plan too: the 409 comes first.
+              selection: { importKeys: ["ref:3"], excludeKeys: [] },
+            }),
+          ),
+        ).rejects.toBeInstanceOf(BankSyncPlanChangedException);
+        wroteNothing();
+      });
+
+      it("refuses a selection after the link and currency refusals, which come first", async () => {
+        linkRepo.findOne.mockResolvedValue(bankAccountRow({ accountId: null }));
+        await expect(
+          service.write(
+            input(rows(), {
+              selection: { importKeys: ["ref:404"], excludeKeys: [] },
+            }),
+          ),
+        ).rejects.not.toBeInstanceOf(BankSyncSelectionRefusedException);
+      });
     });
   });
 });

@@ -1538,7 +1538,12 @@
         "never": "从不"
       },
       "notifySuccessSaved": "已保存通知设置",
-      "notifySuccessFailed": "无法更改通知设置"
+      "notifySuccessFailed": "无法更改通知设置",
+      "tagOperationType": "用银行的操作类型为交易添加标签",
+      "tagOperationTypeHelp": "每笔导入的交易都会获得一个以银行操作类型命名的标签，例如“刷卡消费”或“转入”，方便规则和报表使用。",
+      "tagOperationTypeOn": "已开启操作类型标签",
+      "tagOperationTypeOff": "已关闭操作类型标签",
+      "tagOperationTypeFailed": "无法更改操作类型标签"
     },
     "account": {
       "unnamed": "未命名的银行账户",
@@ -1661,14 +1666,16 @@
         "refused": "已拒绝",
         "pending": "待处理",
         "before_cutoff": "早于开始日期",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "例外"
       },
       "outcome": {
         "new": "新增",
         "duplicate": "已导入",
         "refused": "已拒绝",
         "pending": "待处理",
-        "before_cutoff": "早于开始日期"
+        "before_cutoff": "早于开始日期",
+        "excluded": "例外"
       },
       "refusal": {
         "missing_date": "无日期",
@@ -1683,7 +1690,8 @@
         "payee": "收款人",
         "category": "分类",
         "status": "状态",
-        "amount": "金额"
+        "amount": "金额",
+        "select": "选择与详情"
       },
       "noPayee": "无收款人",
       "dateUnknown": "无日期",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "银行未返回此期间的交易。",
         "filtered": "此列表中没有交易。"
+      },
+      "selectAllNew": "选择此列表中的所有新交易",
+      "selectAllExceptions": "选择此列表中的所有例外",
+      "selectRow": "导入 {payee}",
+      "selectException": "将 {payee} 从例外中移除",
+      "summary": "导入 {import} 笔，跳过 {skip} 笔，添加到例外 {except} 笔",
+      "importNothing": "不导入，直接确认",
+      "exceptions": {
+        "intro": "例外中的交易永远不会被导入。将某笔交易从例外中移除，即可让它重新显示为新交易。",
+        "remove": "{count, plural, =0 {从例外中移除} other {将 # 笔从例外中移除}}",
+        "removing": "正在移除...",
+        "removed": "{count, plural, other {已将 # 笔交易从例外中移除}}",
+        "removedNone": "没有从例外中移除任何内容",
+        "removeFailed": "无法移除例外"
+      },
+      "details": {
+        "operation": {
+          "heading": "操作类型",
+          "none": "这笔交易没有操作类型标签。",
+          "tag": "来自银行操作类型的标签：{tag}"
+        }
       }
     }
   }

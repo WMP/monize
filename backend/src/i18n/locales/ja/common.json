@@ -24,5 +24,14 @@
       "stalled": "回答を終えずに作業を続けると言い続けたため、この回答は中断するまでに収集したデータに基づいています。"
     },
     "synthesisFailed": "この質問のデータは収集しましたが、分析を完了できなかったため、信頼できる回答がありません。範囲を絞って質問してみてください。"
+  },
+  "bankSync": {
+    "operationTypes": {
+      "cardPayment": "カード払い",
+      "transferIn": "受取振込",
+      "transferOut": "送金",
+      "mobilePayment": "モバイル決済",
+      "cashWithdrawal": "現金引き出し"
+    }
   }
 }

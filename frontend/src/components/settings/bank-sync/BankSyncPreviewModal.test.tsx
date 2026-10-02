@@ -8,11 +8,13 @@ import type { BankSyncPreview, BankSyncPreviewRow, BankSyncResult } from '@/type
 
 const mockPreviewAccount = vi.fn();
 const mockSyncAccount = vi.fn();
+const mockRemoveExceptions = vi.fn();
 
 vi.mock('@/lib/bank-sync', () => ({
   bankSyncApi: {
     previewAccount: (...args: unknown[]) => mockPreviewAccount(...args),
     syncAccount: (...args: unknown[]) => mockSyncAccount(...args),
+    removeExceptions: (...args: unknown[]) => mockRemoveExceptions(...args),
   },
 }));
 
@@ -39,6 +41,7 @@ const FINGERPRINT = 'ab'.repeat(32);
 
 const row = (over: Partial<BankSyncPreviewRow> = {}): BankSyncPreviewRow => ({
   outcome: 'new',
+  externalKey: null,
   refusalReason: null,
   transactionDate: '2026-09-10',
   amount: '-50.0000',
@@ -49,6 +52,9 @@ const row = (over: Partial<BankSyncPreviewRow> = {}): BankSyncPreviewRow => ({
   payeeName: 'Biedronka',
   categoryName: 'Food',
   tagNames: [],
+  payee: null,
+  rules: [],
+  operationTag: null,
   ...over,
 });
 
@@ -56,9 +62,15 @@ const preview = (over: Partial<BankSyncPreview> = {}): BankSyncPreview => ({
   bankAccountId: 'ba-1',
   currencyCode: 'PLN',
   rows: [
-    row(),
-    row({ payeeText: 'Employer', payeeName: 'Employer', categoryName: null, amount: '1200.1234' }),
-    row({ outcome: 'duplicate', payeeText: 'Kiosk', payeeName: null, categoryName: null }),
+    row({ externalKey: 'ref:r1' }),
+    row({
+      externalKey: 'ref:r2',
+      payeeText: 'Employer',
+      payeeName: 'Employer',
+      categoryName: null,
+      amount: '1200.1234',
+    }),
+    row({ outcome: 'duplicate', externalKey: 'ref:r3', payeeText: 'Kiosk', payeeName: null, categoryName: null }),
     row({
       outcome: 'refused',
       refusalReason: 'currency_mismatch',
@@ -71,9 +83,11 @@ const preview = (over: Partial<BankSyncPreview> = {}): BankSyncPreview => ({
     row({ outcome: 'pending', payeeText: 'Later', payeeName: null, categoryName: null }),
     row({ outcome: 'before_cutoff', payeeText: 'Old', payeeName: null, categoryName: null }),
   ],
+  labels: { categories: {}, payees: {}, tags: {} },
   summary: {
     new: 2,
     duplicate: 1,
+    excluded: 0,
     refused: 1,
     refusedByReason: { currency_mismatch: 1 },
     pending: 1,
@@ -271,7 +285,7 @@ describe('BankSyncPreviewModal', () => {
       mockPreviewAccount.mockResolvedValue(
         preview({
           rows: [row({ outcome: 'duplicate' })],
-          summary: { new: 0, duplicate: 1, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          summary: { new: 0, duplicate: 1, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
         }),
       );
       await loaded();
@@ -343,7 +357,7 @@ describe('BankSyncPreviewModal', () => {
       mockPreviewAccount.mockResolvedValue(
         preview({
           rows: [row({ outcome: 'refused', refusalReason: 'brand_new_reason', currencyCode: 'PLN' })],
-          summary: { new: 0, duplicate: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          summary: { new: 0, duplicate: 0, excluded: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
         }),
       );
       await loaded();
@@ -355,7 +369,7 @@ describe('BankSyncPreviewModal', () => {
       mockPreviewAccount.mockResolvedValue(
         preview({
           rows: [row({ outcome: 'refused', refusalReason: 'invalid_amount', amount: null })],
-          summary: { new: 0, duplicate: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          summary: { new: 0, duplicate: 0, excluded: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
         }),
       );
       await loaded();
@@ -388,7 +402,7 @@ describe('BankSyncPreviewModal', () => {
       mockPreviewAccount.mockResolvedValue(
         preview({
           rows: [],
-          summary: { new: 0, duplicate: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          summary: { new: 0, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
         }),
       );
       await loaded();
@@ -417,12 +431,13 @@ describe('BankSyncPreviewModal', () => {
       expect(summary.className).toContain('sm:grid-cols-2');
     });
 
-    it('draws five fixed-width columns, with the category hidden below lg', async () => {
+    it('draws six fixed-width columns, with the category hidden below lg', async () => {
       await loaded();
       await screen.findByText('Monize balance now');
       const panel = screen.getByRole('tabpanel');
       const headers = within(panel).getAllByRole('columnheader');
       expect(headers.map((h) => h.textContent)).toEqual([
+        'Select and details',
         'Date',
         'Payee',
         'Category',
@@ -430,14 +445,15 @@ describe('BankSyncPreviewModal', () => {
         'Status',
       ]);
       // Only the category column gives way, and only below lg.
-      expect(headers[2].className).toContain('hidden');
-      expect(headers[2].className).toContain('lg:table-cell');
+      expect(headers[3].className).toContain('hidden');
+      expect(headers[3].className).toContain('lg:table-cell');
       expect(headers[0].className).not.toContain('hidden');
-      expect(headers[3].className).not.toContain('hidden');
+      expect(headers[1].className).not.toContain('hidden');
       expect(headers[4].className).not.toContain('hidden');
+      expect(headers[5].className).not.toContain('hidden');
       const table = within(panel).getByRole('table');
       expect(table.className).toContain('table-fixed');
-      expect(table.querySelectorAll('colgroup > col')).toHaveLength(5);
+      expect(table.querySelectorAll('colgroup > col')).toHaveLength(6);
     });
 
     it('keeps the header row in place while the rows scroll, and scrolls only vertically', async () => {
@@ -469,7 +485,7 @@ describe('BankSyncPreviewModal', () => {
       mockPreviewAccount.mockResolvedValue(
         preview({
           rows: [row({ outcome: 'refused', refusalReason: 'invalid_amount', amount: null })],
-          summary: { new: 0, duplicate: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          summary: { new: 0, duplicate: 0, excluded: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
         }),
       );
       await loaded();
@@ -595,7 +611,10 @@ describe('BankSyncPreviewModal', () => {
 
     it('says one in the singular', async () => {
       mockPreviewAccount.mockResolvedValue(
-        preview({ summary: { ...preview().summary, new: 1 } }),
+        preview({
+          rows: [row({ externalKey: 'ref:r1' })],
+          summary: { ...preview().summary, new: 1, duplicate: 0, refused: 0, pending: 0, beforeCutoff: 0 },
+        }),
       );
       await loaded();
       expect(await screen.findByRole('button', { name: 'Import 1 transaction' })).toBeEnabled();
@@ -603,12 +622,17 @@ describe('BankSyncPreviewModal', () => {
 
     it('offers to confirm when there is nothing new, so the link can still be confirmed', async () => {
       mockPreviewAccount.mockResolvedValue(
-        preview({ summary: { ...preview().summary, new: 0 } }),
+        preview({
+          rows: [row({ outcome: 'duplicate', externalKey: 'ref:r3' })],
+          summary: { ...preview().summary, new: 0, duplicate: 1, refused: 0, pending: 0, beforeCutoff: 0 },
+        }),
       );
       await loaded();
       expect(
         await screen.findByRole('button', { name: 'Confirm: nothing new to import' }),
       ).toBeEnabled();
+      // Nothing is new, so there is no choice to summarise.
+      expect(screen.queryByText(/skip \d+, add/)).not.toBeInTheDocument();
     });
 
     it('syncs with the fingerprint of the preview and hands the result on', async () => {
@@ -617,7 +641,10 @@ describe('BankSyncPreviewModal', () => {
       await act(async () => {
         fireEvent.click(await screen.findByRole('button', { name: 'Import 2 transactions' }));
       });
-      expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', FINGERPRINT);
+      expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', FINGERPRINT, {
+        importKeys: ['ref:r1', 'ref:r2'],
+        excludeKeys: [],
+      });
       await waitFor(() => expect(onImported).toHaveBeenCalledWith(result()));
       expect(toast.error).not.toHaveBeenCalled();
     });
@@ -643,7 +670,7 @@ describe('BankSyncPreviewModal', () => {
       const { onImported } = await loaded();
       mockPreviewAccount.mockResolvedValue(
         preview({
-          rows: [row({ payeeText: 'Fresh row', payeeName: 'Fresh row' })],
+          rows: [row({ externalKey: 'ref:fresh', payeeText: 'Fresh row', payeeName: 'Fresh row' })],
           summary: { ...preview().summary, new: 1 },
           planFingerprint: 'cd'.repeat(32),
         }),
@@ -666,7 +693,10 @@ describe('BankSyncPreviewModal', () => {
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: 'Import 1 transaction' }));
       });
-      expect(mockSyncAccount).toHaveBeenLastCalledWith('ba-1', 'cd'.repeat(32));
+      expect(mockSyncAccount).toHaveBeenLastCalledWith('ba-1', 'cd'.repeat(32), {
+        importKeys: ['ref:fresh'],
+        excludeKeys: [],
+      });
     });
 
     it('shows the server\'s message for any other refusal and keeps the preview', async () => {
@@ -703,6 +733,711 @@ describe('BankSyncPreviewModal', () => {
       });
       expect(onClose).toHaveBeenCalled();
       expect(mockSyncAccount).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('choosing the rows (spec section 7b)', () => {
+    const THREE = () =>
+      preview({
+        rows: [
+          row({ externalKey: 'ref:a', payeeText: 'Alpha', payeeName: 'Alpha' }),
+          row({ externalKey: 'ref:b', payeeText: 'Beta', payeeName: 'Beta' }),
+          row({ externalKey: 'ref:c', payeeText: 'Gamma', payeeName: 'Gamma' }),
+          row({ outcome: 'duplicate', externalKey: 'ref:d', payeeText: 'Done', payeeName: null }),
+        ],
+        summary: { new: 3, duplicate: 1, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+      });
+    const rowBox = (payee: string) => screen.getByRole('checkbox', { name: `Import ${payee}` }) as HTMLInputElement;
+    const headerBox = () =>
+      screen.getByRole('checkbox', { name: 'Select all new transactions in this list' }) as HTMLInputElement;
+
+    beforeEach(() => {
+      mockPreviewAccount.mockResolvedValue(THREE());
+    });
+
+    it('starts with every new row checked, and says what the import would do', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
+      expect(headerBox()).toBeChecked();
+      expect(screen.getByText('Import 3, skip 0, add 0 to exceptions')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Import 3 transactions' })).toBeEnabled();
+    });
+
+    it('gives only the new rows a checkbox', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('All (4)'));
+      // Three rows' boxes and the header's; the already imported row has none.
+      expect(within(screen.getByRole('tabpanel')).getAllByRole('checkbox')).toHaveLength(4);
+    });
+
+    it('unchecking a row leaves it out of the count and offers skip now or add to exceptions, skip first', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+
+      fireEvent.click(rowBox('Beta'));
+
+      expect(rowBox('Beta')).not.toBeChecked();
+      expect(screen.getByText('Import 2, skip 1, add 0 to exceptions')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Import 2 transactions' })).toBeEnabled();
+      const group = screen.getByRole('group', { name: 'What to do with Beta if it is not imported' });
+      expect(within(group).getByRole('radio', { name: 'Skip now' })).toBeChecked();
+      expect(within(group).getByRole('radio', { name: 'Add to exceptions' })).not.toBeChecked();
+    });
+
+    it('adding an unchecked row to the exceptions moves it from skip to exceptions in the summary, and checking it again clears the choice', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(rowBox('Beta'));
+      fireEvent.click(screen.getByRole('radio', { name: 'Add to exceptions' }));
+      expect(screen.getByText('Import 2, skip 0, add 1 to exceptions')).toBeInTheDocument();
+
+      fireEvent.click(rowBox('Beta'));
+      expect(screen.getByText('Import 3, skip 0, add 0 to exceptions')).toBeInTheDocument();
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+      // Unchecked again, it is skipped for now: the earlier choice was forgotten.
+      fireEvent.click(rowBox('Beta'));
+      expect(screen.getByRole('radio', { name: 'Skip now' })).toBeChecked();
+    });
+
+    it('sends the fingerprint with both lists: the checked rows to import and the excepted ones to exclude', async () => {
+      mockSyncAccount.mockResolvedValue(result({ imported: 1 }));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(rowBox('Alpha')); // skipped for now
+      fireEvent.click(rowBox('Gamma'));
+      fireEvent.click(
+        within(screen.getByRole('group', { name: 'What to do with Gamma if it is not imported' })).getByRole('radio', {
+          name: 'Add to exceptions',
+        }),
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Import 1 transaction' }));
+      });
+
+      expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', FINGERPRINT, {
+        importKeys: ['ref:b'],
+        excludeKeys: ['ref:c'],
+      });
+    });
+
+    it('the header box selects none, then all, of the new rows in the list', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+
+      fireEvent.click(headerBox());
+      for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).not.toBeChecked();
+      expect(headerBox()).not.toBeChecked();
+      expect(screen.getByText('Import 0, skip 3, add 0 to exceptions')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Confirm without importing' })).toBeEnabled();
+
+      fireEvent.click(headerBox());
+      for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
+      expect(screen.getByText('Import 3, skip 0, add 0 to exceptions')).toBeInTheDocument();
+    });
+
+    it('shows the header box as indeterminate when only some rows are checked, and ticking it checks the rest', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(headerBox().indeterminate).toBe(false);
+
+      fireEvent.click(rowBox('Beta'));
+      expect(headerBox().indeterminate).toBe(true);
+      expect(headerBox()).not.toBeChecked();
+
+      fireEvent.click(headerBox());
+      for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
+      expect(headerBox().indeterminate).toBe(false);
+      expect(headerBox()).toBeChecked();
+    });
+
+    it('confirms with nothing chosen: an empty selection is sent, so nothing is imported and nothing is excepted', async () => {
+      mockSyncAccount.mockResolvedValue(result({ imported: 0 }));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(headerBox());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm without importing' }));
+      });
+
+      expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', FINGERPRINT, { importKeys: [], excludeKeys: [] });
+    });
+
+    it('has no header box on a tab with nothing to choose', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Already imported (1)'));
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('disables every box and choice while the import runs', async () => {
+      let resolve!: (value: BankSyncResult) => void;
+      mockSyncAccount.mockReturnValue(new Promise<BankSyncResult>((r) => (resolve = r)));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(rowBox('Beta'));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Import 2 transactions' }));
+      });
+      expect(headerBox()).toBeDisabled();
+      expect(rowBox('Alpha')).toBeDisabled();
+      expect(screen.getByRole('radio', { name: 'Skip now' })).toBeDisabled();
+      await act(async () => {
+        resolve(result());
+      });
+    });
+
+    it('keeps the choices about rows the bank still lists as new when the preview is read again after a 409', async () => {
+      mockSyncAccount.mockRejectedValue(axiosFailure(409, 'changed'));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(rowBox('Beta'));
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({ externalKey: 'ref:b', payeeText: 'Beta', payeeName: 'Beta' }),
+            row({ externalKey: 'ref:n', payeeText: 'Newcomer', payeeName: 'Newcomer' }),
+          ],
+          summary: { new: 2, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          planFingerprint: 'cd'.repeat(32),
+        }),
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Import 2 transactions' }));
+      });
+
+      expect(await screen.findByText('Newcomer')).toBeInTheDocument();
+      // Beta was unchecked and still is; the new row starts checked.
+      expect(rowBox('Beta')).not.toBeChecked();
+      expect(rowBox('Newcomer')).toBeChecked();
+      expect(screen.getByText('Import 1, skip 1, add 0 to exceptions')).toBeInTheDocument();
+    });
+
+    it('forgets the choice about a row that is no longer new', async () => {
+      mockSyncAccount.mockRejectedValue(axiosFailure(409, 'changed'));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(rowBox('Beta'));
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [row({ externalKey: 'ref:a', payeeText: 'Alpha', payeeName: 'Alpha' })],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Import 2 transactions' }));
+      });
+      await screen.findByRole('checkbox', { name: 'Import Alpha' });
+      expect(screen.getByText('Import 1, skip 0, add 0 to exceptions')).toBeInTheDocument();
+    });
+
+    describe('on a phone', () => {
+      beforeEach(() => setPhoneViewport(true));
+
+      it('puts a checkbox on each new card, a select-all above them and the choice under an unchecked one', async () => {
+        await loaded();
+        await screen.findByText('Monize balance now');
+        const panel = screen.getByRole('tabpanel');
+        expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
+        expect(within(panel).getAllByRole('listitem')).toHaveLength(3);
+        for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
+        expect(headerBox()).toBeChecked();
+
+        fireEvent.click(rowBox('Beta'));
+
+        const [, beta] = within(panel).getAllByRole('listitem');
+        expect(within(beta).getByRole('radio', { name: 'Skip now' })).toBeChecked();
+        expect(headerBox().indeterminate).toBe(true);
+        fireEvent.click(headerBox());
+        for (const payee of ['Alpha', 'Beta', 'Gamma']) expect(rowBox(payee)).toBeChecked();
+      });
+    });
+  });
+
+  describe('the exceptions tab (spec section 7b)', () => {
+    const WITH_EXCEPTIONS = () =>
+      preview({
+        rows: [
+          row({ externalKey: 'ref:n', payeeText: 'Fresh', payeeName: 'Fresh' }),
+          row({ outcome: 'excluded', externalKey: 'ref:x1', payeeText: 'Mistake', payeeName: null }),
+          row({ outcome: 'excluded', externalKey: 'ref:x2', payeeText: 'Duplicate charge', payeeName: null }),
+          row({ outcome: 'duplicate', externalKey: 'ref:d', payeeText: 'Done', payeeName: null }),
+        ],
+        summary: { new: 1, duplicate: 1, excluded: 2, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+      });
+    const exceptionBox = (payee: string) =>
+      screen.getByRole('checkbox', { name: `Remove ${payee} from the exceptions` }) as HTMLInputElement;
+    const removeButton = (name: string | RegExp) => screen.getByRole('button', { name });
+
+    beforeEach(() => {
+      mockPreviewAccount.mockResolvedValue(WITH_EXCEPTIONS());
+    });
+
+    it('is a tab of its own, counted apart from the rows already imported', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(tab('Exceptions (2)')).toBeInTheDocument();
+      expect(tab('Already imported (1)')).toBeInTheDocument();
+      fireEvent.click(tab('Exceptions (2)'));
+      expect(bodyRows()).toHaveLength(2);
+      expect(within(screen.getByRole('tabpanel')).getByText('Mistake')).toBeInTheDocument();
+      expect(within(screen.getByRole('tabpanel')).queryByText('Done')).not.toBeInTheDocument();
+      expect(within(bodyRows()[0]).getAllByText('Exception').length).toBeGreaterThan(0);
+      expect(
+        screen.getByText(/Transactions in the exceptions are never imported/),
+      ).toBeInTheDocument();
+    });
+
+    it('shows an exception in the All tab as one, with no box to remove it there', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('All (4)'));
+      expect(within(screen.getByRole('tabpanel')).getByText('Mistake')).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox', { name: 'Remove Mistake from the exceptions' })).not.toBeInTheDocument();
+    });
+
+    it('does not count an exception among the rows to import', async () => {
+      await loaded();
+      expect(await screen.findByRole('button', { name: 'Import 1 transaction' })).toBeEnabled();
+      expect(screen.getByText('Import 1, skip 0, add 0 to exceptions')).toBeInTheDocument();
+    });
+
+    it('removes the picked exceptions, says how many, and reads the preview again', async () => {
+      mockRemoveExceptions.mockResolvedValue({ removed: 1 });
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      expect(removeButton('Remove from exceptions')).toBeDisabled();
+
+      fireEvent.click(exceptionBox('Mistake'));
+      expect(removeButton('Remove 1 from exceptions')).toBeEnabled();
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({ externalKey: 'ref:n', payeeText: 'Fresh', payeeName: 'Fresh' }),
+            row({ externalKey: 'ref:x1', payeeText: 'Mistake', payeeName: 'Mistake' }),
+            row({ outcome: 'excluded', externalKey: 'ref:x2', payeeText: 'Duplicate charge', payeeName: null }),
+          ],
+          summary: { new: 2, duplicate: 0, excluded: 1, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 1 from exceptions'));
+      });
+
+      expect(mockRemoveExceptions).toHaveBeenCalledWith('ba-1', ['ref:x1']);
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith('1 transaction was removed from the exceptions'),
+      );
+      expect(mockPreviewAccount).toHaveBeenCalledTimes(2);
+      // The row is new again, and checked like every new row.
+      expect(await screen.findByRole('checkbox', { name: 'Import Mistake' })).toBeChecked();
+      expect(screen.getByText('Import 2, skip 0, add 0 to exceptions')).toBeInTheDocument();
+    });
+
+    it('lets several be picked at once, and the header box picks all of the tab', async () => {
+      mockRemoveExceptions.mockResolvedValue({ removed: 2 });
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      const header = screen.getByRole('checkbox', {
+        name: 'Select all exceptions in this list',
+      }) as HTMLInputElement;
+
+      fireEvent.click(exceptionBox('Mistake'));
+      expect(header.indeterminate).toBe(true);
+      fireEvent.click(header);
+      expect(exceptionBox('Mistake')).toBeChecked();
+      expect(exceptionBox('Duplicate charge')).toBeChecked();
+      expect(removeButton('Remove 2 from exceptions')).toBeEnabled();
+
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 2 from exceptions'));
+      });
+      expect(mockRemoveExceptions).toHaveBeenCalledWith('ba-1', ['ref:x1', 'ref:x2']);
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith('2 transactions were removed from the exceptions'),
+      );
+    });
+
+    it('says when nothing was removed, and still reads the preview again', async () => {
+      mockRemoveExceptions.mockResolvedValue({ removed: 0 });
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      fireEvent.click(exceptionBox('Mistake'));
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 1 from exceptions'));
+      });
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith('Nothing was removed from the exceptions'),
+      );
+      expect(mockPreviewAccount).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the exceptions on screen and says why when removing fails', async () => {
+      mockRemoveExceptions.mockRejectedValue(axiosFailure(404, 'Bank account not found'));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      fireEvent.click(exceptionBox('Mistake'));
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 1 from exceptions'));
+      });
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Bank account not found'));
+      expect(mockPreviewAccount).toHaveBeenCalledTimes(1);
+      expect(exceptionBox('Mistake')).toBeChecked();
+    });
+
+    it('falls back to its own words when the failure carries none', async () => {
+      mockRemoveExceptions.mockRejectedValue(axiosFailure(500, ''));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      fireEvent.click(exceptionBox('Mistake'));
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 1 from exceptions'));
+      });
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Could not remove the exceptions'));
+    });
+
+    it('is empty without exceptions: no remove button', async () => {
+      mockPreviewAccount.mockResolvedValue(preview());
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (0)'));
+      expect(screen.getByText('No transactions in this list.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Remove .* from exceptions/ })).not.toBeInTheDocument();
+    });
+
+    it('offers the picking on a phone too', async () => {
+      setPhoneViewport(true);
+      mockRemoveExceptions.mockResolvedValue({ removed: 1 });
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('Exceptions (2)'));
+      expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2);
+      fireEvent.click(exceptionBox('Duplicate charge'));
+      await act(async () => {
+        fireEvent.click(removeButton('Remove 1 from exceptions'));
+      });
+      expect(mockRemoveExceptions).toHaveBeenCalledWith('ba-1', ['ref:x2']);
+    });
+  });
+
+  describe('the payee (spec section 7b)', () => {
+    const payee = (over: Partial<NonNullable<BankSyncPreviewRow['payee']>>) => ({
+      original: 'BIEDRONKA 4711',
+      name: 'Biedronka S.A.',
+      via: 'alias' as const,
+      aliasPattern: 'BIEDRONKA*',
+      payeeId: 'p-1',
+      ...over,
+    });
+    const withPayee = (info: BankSyncPreviewRow['payee'], over: Partial<BankSyncPreviewRow> = {}) => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({
+              externalKey: 'ref:p',
+              payeeText: 'BIEDRONKA 4711',
+              payeeName: info?.name ?? null,
+              payee: info,
+              ...over,
+            }),
+          ],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+    };
+
+    it('shows the mapped name, with how it was found beside it for an alias', async () => {
+      withPayee(payee({}));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const only = bodyRows()[0];
+      expect(within(only).getByText('Biedronka S.A.')).toBeInTheDocument();
+      expect(
+        within(only).getByRole('button', {
+          name: 'From the bank: BIEDRONKA 4711. Maps to: Biedronka S.A. (alias "BIEDRONKA*")',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('says a payee is new, or set by a rule', async () => {
+      withPayee(payee({ via: 'new', aliasPattern: null, payeeId: null, name: 'BIEDRONKA 4711' }));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(
+        within(bodyRows()[0]).getByRole('button', {
+          name: 'From the bank: BIEDRONKA 4711. Maps to: BIEDRONKA 4711 (new payee)',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('says a payee was set by a rule, and when a rule clears it', async () => {
+      withPayee(payee({ via: 'rule', aliasPattern: null }));
+      const first = await loaded();
+      await screen.findByText('Monize balance now');
+      expect(
+        within(bodyRows()[0]).getByRole('button', {
+          name: 'From the bank: BIEDRONKA 4711. Maps to: Biedronka S.A. (set by a rule)',
+        }),
+      ).toBeInTheDocument();
+      first.unmount();
+
+      withPayee(payee({ via: 'rule', name: null, aliasPattern: null, payeeId: null }), { payeeName: null });
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(
+        within(bodyRows()[0]).getByRole('button', {
+          name: 'From the bank: BIEDRONKA 4711. Maps to: no payee (set by a rule)',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('does not explain a payee that is the bank\'s own text', async () => {
+      withPayee(payee({ via: 'name', original: 'Biedronka S.A.', name: 'Biedronka S.A.' }));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(within(bodyRows()[0]).queryByRole('button', { name: /From the bank/ })).not.toBeInTheDocument();
+    });
+
+    it('does not explain a row with no payee at all', async () => {
+      withPayee(payee({ via: 'none', name: null, original: null, aliasPattern: null, payeeId: null }));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(within(bodyRows()[0]).queryByRole('button', { name: /From the bank/ })).not.toBeInTheDocument();
+    });
+
+    it('explains the payee on a phone card too', async () => {
+      setPhoneViewport(true);
+      withPayee(payee({}));
+      await loaded();
+      await screen.findByText('Monize balance now');
+      expect(
+        within(within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0]).getByRole('button', {
+          name: /From the bank: BIEDRONKA 4711\. Maps to: Biedronka S\.A\. \(alias/,
+        }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('the details of a row (spec section 7b)', () => {
+    const DETAILED = () =>
+      row({
+        externalKey: 'ref:z',
+        payeeText: 'BIEDRONKA 4711',
+        payeeName: 'Biedronka S.A.',
+        categoryName: 'Food',
+        tagNames: ['Card payment'],
+        operationTag: 'Card payment',
+        payee: {
+          original: 'BIEDRONKA 4711',
+          name: 'Biedronka S.A.',
+          via: 'alias',
+          aliasPattern: 'BIEDRONKA*',
+          payeeId: 'p-1',
+        },
+        rules: [
+          {
+            ruleId: 'r-1',
+            ruleName: 'Food rule',
+            changes: {
+              categoryId: { before: null, after: 'cat-9' },
+              tagIds: { before: [], after: ['tag-1'] },
+            },
+            applied: [{ type: 'set_category' }, { type: 'add_tags' }],
+            skipped: [{ type: 'set_payee_from_text', reason: 'payee_not_found' }],
+            stopped: true,
+          },
+        ],
+      });
+    const withDetailed = (extra: BankSyncPreviewRow[] = []) =>
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [DETAILED(), ...extra],
+          labels: {
+            categories: { 'cat-9': 'Food' },
+            payees: {},
+            tags: { 'tag-1': 'Weekly' },
+          },
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+    const toggle = (name: string | RegExp = /Show details of/) => screen.getByRole('button', { name });
+
+    it('opens and closes from a button that says whether it is open, and points at the details only while they are in the page', async () => {
+      withDetailed();
+      await loaded();
+      await screen.findByText('Monize balance now');
+
+      const button = toggle('Show details of Biedronka S.A.');
+      expect(button).toHaveAttribute('aria-expanded', 'false');
+      expect(button).not.toHaveAttribute('aria-controls');
+      expect(screen.queryByText('Import rules')).not.toBeInTheDocument();
+
+      fireEvent.click(button);
+
+      const open = toggle('Hide details of Biedronka S.A.');
+      expect(open).toHaveAttribute('aria-expanded', 'true');
+      const controlled = open.getAttribute('aria-controls') as string;
+      expect(document.getElementById(controlled)).toHaveTextContent('Import rules');
+
+      fireEvent.click(open);
+      expect(screen.queryByText('Import rules')).not.toBeInTheDocument();
+      expect(toggle('Show details of Biedronka S.A.')).not.toHaveAttribute('aria-controls');
+    });
+
+    it('lists each matching rule by name, linked to the rule, with what it changed in words and what it skipped', async () => {
+      withDetailed();
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+
+      const link = screen.getByRole('link', { name: 'Food rule' });
+      expect(link).toHaveAttribute('href', '/rules/r-1');
+      expect(screen.getByText('Category: none → Food')).toBeInTheDocument();
+      expect(screen.getByText('Tags added: Weekly')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Set the payee from text: skipped (no payee has the name the rule built, and it does not create one)',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Stops the rules after it.')).toBeInTheDocument();
+    });
+
+    it('says when no rule matched', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [row({ externalKey: 'ref:q', rules: [] })],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      expect(screen.getByText('No import rule matched this transaction.')).toBeInTheDocument();
+    });
+
+    it('names a rule it has no name for generically, never by its id', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({
+              externalKey: 'ref:q',
+              rules: [
+                {
+                  ruleId: 'r-secret-id',
+                  ruleName: null,
+                  changes: {},
+                  applied: [{ type: 'request_ai_review' }],
+                  skipped: [],
+                  stopped: false,
+                },
+              ],
+            }),
+          ],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      expect(screen.getByRole('link', { name: 'Rule' })).toHaveAttribute('href', '/rules/r-secret-id');
+      expect(screen.getByText('Applied: Ask for an AI review')).toBeInTheDocument();
+      expect(screen.queryByText('r-secret-id')).not.toBeInTheDocument();
+    });
+
+    it('explains how the payee was found and links to its aliases when the payee exists', async () => {
+      withDetailed();
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+
+      expect(screen.getByText("The bank's text: BIEDRONKA 4711")).toBeInTheDocument();
+      expect(
+        screen.getByText('Maps to Biedronka S.A. through the alias "BIEDRONKA*".'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: "Open the payee's aliases" })).toHaveAttribute(
+        'href',
+        '/payees/p-1?tab=aliases',
+      );
+    });
+
+    it('offers no aliases link for a payee that does not exist yet', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({
+              externalKey: 'ref:q',
+              payee: { original: 'Brand new', name: 'Brand new', via: 'new', aliasPattern: null, payeeId: null },
+            }),
+          ],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      expect(screen.getByText('No payee has this name yet, so Brand new would be created.')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: "Open the payee's aliases" })).not.toBeInTheDocument();
+    });
+
+    it('shows the operation type tag, or says there is none', async () => {
+      withDetailed();
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      expect(screen.getByText("Tag from the bank's operation type: Card payment")).toBeInTheDocument();
+    });
+
+    it('says there is no operation type tag when there is none', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [row({ externalKey: 'ref:q', operationTag: null })],
+          summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      expect(screen.getByText('No operation type tag for this transaction.')).toBeInTheDocument();
+    });
+
+    it('does not offer details for a row that is not new', async () => {
+      withDetailed([row({ outcome: 'duplicate', externalKey: 'ref:d', payeeText: 'Done', payeeName: null })]);
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(tab('All (2)'));
+      expect(screen.getAllByRole('button', { name: /details of/ })).toHaveLength(1);
+    });
+
+    it('opens inside the row card on a phone', async () => {
+      setPhoneViewport(true);
+      withDetailed();
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle());
+      const card = within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0];
+      expect(within(card).getByRole('link', { name: 'Food rule' })).toBeInTheDocument();
+      expect(within(card).getByText('Import rules')).toBeInTheDocument();
+    });
+
+    it('keeps each row\'s details apart', async () => {
+      withDetailed([
+        row({ externalKey: 'ref:y', payeeText: 'Other', payeeName: 'Other', payee: null, rules: [] }),
+      ]);
+      await loaded();
+      await screen.findByText('Monize balance now');
+      fireEvent.click(toggle('Show details of Biedronka S.A.'));
+      expect(screen.getAllByText('Import rules')).toHaveLength(1);
+      expect(toggle('Show details of Other')).toHaveAttribute('aria-expanded', 'false');
     });
   });
 });

@@ -464,13 +464,18 @@ export class BankSyncConnectionsService {
     patch: {
       autoSync?: boolean;
       notifySuccess?: BankSyncNotifySuccessMode;
+      tagOperationType?: boolean;
     },
   ): Promise<BankSyncConnectionView> {
-    if (patch.autoSync === undefined && patch.notifySuccess === undefined) {
+    if (
+      patch.autoSync === undefined &&
+      patch.notifySuccess === undefined &&
+      patch.tagOperationType === undefined
+    ) {
       throw new BadRequestException(
         tr(
           "errors.bankSync.nothingToUpdate",
-          "Send autoSync or notifySuccess to change a bank connection.",
+          "Send autoSync, notifySuccess or tagOperationType to change a bank connection.",
         ),
       );
     }
@@ -479,7 +484,8 @@ export class BankSyncConnectionsService {
         await m.query(
           `UPDATE bank_sync_connections
               SET auto_sync = COALESCE($3, auto_sync),
-                  notify_success = COALESCE($4, notify_success)
+                  notify_success = COALESCE($4, notify_success),
+                  tag_operation_type = COALESCE($5, tag_operation_type)
             WHERE id = $1 AND user_id = $2
         RETURNING id`,
           [
@@ -487,6 +493,7 @@ export class BankSyncConnectionsService {
             userId,
             patch.autoSync ?? null,
             patch.notifySuccess ?? null,
+            patch.tagOperationType ?? null,
           ],
         ),
       ),

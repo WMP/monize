@@ -5,6 +5,7 @@ export const PREVIEW_FILTERS = [
   'all',
   'new',
   'duplicate',
+  'excluded',
   'refused',
   'pending',
   'before_cutoff',
@@ -17,6 +18,7 @@ export function previewFilterCounts(rows: readonly BankSyncPreviewRow[]): Record
     all: rows.length,
     new: 0,
     duplicate: 0,
+    excluded: 0,
     refused: 0,
     pending: 0,
     before_cutoff: 0,
@@ -36,10 +38,11 @@ export function filterPreviewRows(
 /** The pill colour of each outcome; the label is the catalog's. */
 export const OUTCOME_VARIANTS: Record<
   BankSyncPreviewOutcome,
-  'green' | 'gray' | 'red' | 'amber' | 'blue'
+  'green' | 'gray' | 'red' | 'amber' | 'blue' | 'purple'
 > = {
   new: 'green',
   duplicate: 'gray',
+  excluded: 'purple',
   refused: 'red',
   pending: 'amber',
   before_cutoff: 'blue',
@@ -58,4 +61,14 @@ export function previewAmount(value: string | null | undefined): number | null {
  */
 export function initialPreviewFilter(preview: Pick<BankSyncPreview, 'summary'>): PreviewFilter {
   return preview.summary.new > 0 ? 'new' : 'all';
+}
+
+/** The keys of the rows a selection can name: the new rows, which are the only ones the server accepts. */
+export function selectableKeys(rows: readonly BankSyncPreviewRow[]): string[] {
+  return rows.flatMap((row) => (row.outcome === 'new' && row.externalKey !== null ? [row.externalKey] : []));
+}
+
+/** The keys of the rows that are exceptions, which "Remove from exceptions" can take back. */
+export function exceptionKeys(rows: readonly BankSyncPreviewRow[]): string[] {
+  return rows.flatMap((row) => (row.outcome === 'excluded' && row.externalKey !== null ? [row.externalKey] : []));
 }

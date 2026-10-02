@@ -3,23 +3,32 @@ import type { EntityManager } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
 import type { PlannedBankRow } from "./bank-transaction-planner";
 
+/** One ledger row among the keys asked about. */
+export interface LedgerEntry {
+  /** True for an exception (spec section 7b): added from the preview, no transaction. */
+  excluded: boolean;
+}
+
 /**
- * The keys, among `keys`, that the Monize account's ledger already holds
- * (INV-BANKSYNC-001). A read-only `SELECT` in the caller's transaction, filtered
- * by `userId`: the preview lists a row as a duplicate by it, and a sync that
- * carries a fingerprint recomputes the new rows by it, so both ask the ledger
- * the same question.
+ * The ledger rows, among `keys`, that the Monize account's ledger already holds
+ * (INV-BANKSYNC-001), keyed by external key. A read-only `SELECT` in the
+ * caller's transaction, filtered by `userId`. An exception (`excluded_at` set)
+ * is a ledger row like any other: it claims its key, so it is as much "already
+ * held" as an imported row; the preview tells the two apart by `excluded`.
  */
-export async function findLedgerKeys(
+export async function findLedgerEntries(
   m: EntityManager,
   userId: string,
   accountId: string,
   keys: readonly string[],
-): Promise<Set<string>> {
-  if (keys.length === 0) return new Set();
-  const rows = returnedRows<{ external_key: string }>(
+): Promise<Map<string, LedgerEntry>> {
+  if (keys.length === 0) return new Map();
+  const rows = returnedRows<{
+    external_key: string;
+    excluded?: boolean | null;
+  }>(
     await m.query(
-      `SELECT external_key
+      `SELECT external_key, (excluded_at IS NOT NULL) AS excluded
          FROM bank_sync_imported_transactions
         WHERE account_id = $1
           AND user_id = $2
@@ -27,7 +36,24 @@ export async function findLedgerKeys(
       [accountId, userId, [...keys]],
     ),
   );
-  return new Set(rows.map((row) => row.external_key));
+  return new Map(
+    rows.map((row) => [row.external_key, { excluded: row.excluded === true }]),
+  );
+}
+
+/**
+ * The keys, among `keys`, that the Monize account's ledger already holds
+ * (INV-BANKSYNC-001): imported rows and exceptions alike. The preview lists a
+ * row as already held by it, and a sync that carries a fingerprint recomputes
+ * the new rows by it, so both ask the ledger the same question.
+ */
+export async function findLedgerKeys(
+  m: EntityManager,
+  userId: string,
+  accountId: string,
+  keys: readonly string[],
+): Promise<Set<string>> {
+  return new Set((await findLedgerEntries(m, userId, accountId, keys)).keys());
 }
 
 /** The planned rows whose key the ledger does not hold: what a sync would write. */

@@ -1,4 +1,5 @@
 import type { BankSyncProviderName } from "../bank-sync.constants";
+import type { BankOperation } from "../bank-operation";
 
 export type { BankSyncProviderName } from "../bank-sync.constants";
 
@@ -69,6 +70,11 @@ export interface BankTransaction {
   /** Already chosen by direction: the creditor for a debit, the debtor for a credit. */
   counterpartyName: string | null;
   remittance: string[];
+  /**
+   * The bank's operation type, read beside the description and never out of it
+   * (the description is part of the duplicate key; spec section 7b).
+   */
+  operation: BankOperation;
 }
 
 /** One balance of one account, signed as the bank reported it. */

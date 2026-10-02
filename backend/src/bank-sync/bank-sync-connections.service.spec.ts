@@ -1127,8 +1127,52 @@ describe("BankSyncConnectionsService", () => {
         USER_ID,
         false,
         null,
+        null,
       ]);
       expect(view.autoSync).toBe(false);
+    });
+
+    it("sets only the operation-type tagging when only that is sent, and returns it", async () => {
+      manager.query.mockResolvedValue(tuple([{ id: CONNECTION_ID }]));
+      connectionRepo.findOne.mockResolvedValue(
+        connectionRow({ tagOperationType: false }),
+      );
+      const view = await service.updateConnection(USER_ID, CONNECTION_ID, {
+        tagOperationType: false,
+      });
+      expect(String(manager.query.mock.calls[0][0])).toContain(
+        "tag_operation_type = COALESCE($5, tag_operation_type)",
+      );
+      expect(manager.query.mock.calls[0][1]).toEqual([
+        CONNECTION_ID,
+        USER_ID,
+        null,
+        null,
+        false,
+      ]);
+      expect(view.tagOperationType).toBe(false);
+    });
+
+    it("can switch the tagging back on: false is a value, not an absent field", async () => {
+      manager.query.mockResolvedValue(tuple([{ id: CONNECTION_ID }]));
+      connectionRepo.findOne.mockResolvedValue(connectionRow());
+      await service.updateConnection(USER_ID, CONNECTION_ID, {
+        tagOperationType: true,
+      });
+      expect(manager.query.mock.calls[0][1]).toEqual([
+        CONNECTION_ID,
+        USER_ID,
+        null,
+        null,
+        true,
+      ]);
+    });
+
+    it("returns the tagging setting in every connection view", async () => {
+      connectionRepo.find.mockResolvedValue([connectionRow()]);
+      accountRepo.find.mockResolvedValue([]);
+      const [view] = await service.list(USER_ID);
+      expect(view.tagOperationType).toBe(true);
     });
 
     it("sets only the success mode when only that is sent, and returns it", async () => {
@@ -1149,6 +1193,7 @@ describe("BankSyncConnectionsService", () => {
         USER_ID,
         null,
         "never",
+        null,
       ]);
       expect(view.notifySuccess).toBe("never");
     });

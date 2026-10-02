@@ -24,5 +24,14 @@
       "stalled": "Ho continuato a dire che avrei proseguito invece di concludere, quindi questa risposta si basa sui dati raccolti prima di fermarmi."
     },
     "synthesisFailed": "Ho raccolto dati per questa domanda, ma non sono riuscito a completare l'analisi, quindi non ho una risposta affidabile. Prova a chiedere qualcosa di più circoscritto."
+  },
+  "bankSync": {
+    "operationTypes": {
+      "cardPayment": "Pagamento con carta",
+      "transferIn": "Bonifico in entrata",
+      "transferOut": "Bonifico in uscita",
+      "mobilePayment": "Pagamento mobile",
+      "cashWithdrawal": "Prelievo di contanti"
+    }
   }
 }

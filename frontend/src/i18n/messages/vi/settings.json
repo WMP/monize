@@ -1538,7 +1538,12 @@
         "never": "Không bao giờ"
       },
       "notifySuccessSaved": "Đã lưu cài đặt thông báo",
-      "notifySuccessFailed": "Không thể thay đổi cài đặt thông báo"
+      "notifySuccessFailed": "Không thể thay đổi cài đặt thông báo",
+      "tagOperationType": "Gắn thẻ loại thao tác của ngân hàng cho giao dịch",
+      "tagOperationTypeHelp": "Mỗi giao dịch được nhập sẽ có một thẻ mang tên loại thao tác của ngân hàng, như Thanh toán bằng thẻ hoặc Chuyển khoản đến, để các quy tắc và báo cáo có thể dùng.",
+      "tagOperationTypeOn": "Đã bật thẻ loại thao tác",
+      "tagOperationTypeOff": "Đã tắt thẻ loại thao tác",
+      "tagOperationTypeFailed": "Không thể đổi thẻ loại thao tác"
     },
     "account": {
       "unnamed": "Tài khoản ngân hàng chưa đặt tên",
@@ -1661,14 +1666,16 @@
         "refused": "Bị từ chối",
         "pending": "Đang chờ",
         "before_cutoff": "Trước ngày bắt đầu",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Ngoại lệ"
       },
       "outcome": {
         "new": "Mới",
         "duplicate": "Đã nhập",
         "refused": "Bị từ chối",
         "pending": "Đang chờ",
-        "before_cutoff": "Trước ngày bắt đầu"
+        "before_cutoff": "Trước ngày bắt đầu",
+        "excluded": "Ngoại lệ"
       },
       "refusal": {
         "missing_date": "Không có ngày",
@@ -1683,7 +1690,8 @@
         "payee": "Người nhận",
         "category": "Danh mục",
         "status": "Trạng thái",
-        "amount": "Số tiền"
+        "amount": "Số tiền",
+        "select": "Chọn và chi tiết"
       },
       "noPayee": "Không có người nhận",
       "dateUnknown": "Không có ngày",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "Ngân hàng không trả về giao dịch nào cho giai đoạn này.",
         "filtered": "Không có giao dịch nào trong danh sách này."
+      },
+      "selectAllNew": "Chọn tất cả giao dịch mới trong danh sách này",
+      "selectAllExceptions": "Chọn tất cả ngoại lệ trong danh sách này",
+      "selectRow": "Nhập {payee}",
+      "selectException": "Bỏ {payee} khỏi ngoại lệ",
+      "summary": "Nhập {import}, bỏ qua {skip}, thêm {except} vào ngoại lệ",
+      "importNothing": "Xác nhận mà không nhập",
+      "exceptions": {
+        "intro": "Giao dịch trong ngoại lệ sẽ không bao giờ được nhập. Bỏ một giao dịch khỏi ngoại lệ để thấy nó là mới trở lại.",
+        "remove": "{count, plural, =0 {Bỏ khỏi ngoại lệ} other {Bỏ # khỏi ngoại lệ}}",
+        "removing": "Đang bỏ...",
+        "removed": "{count, plural, other {Đã bỏ # giao dịch khỏi ngoại lệ}}",
+        "removedNone": "Chưa bỏ gì khỏi ngoại lệ",
+        "removeFailed": "Không thể bỏ các ngoại lệ"
+      },
+      "details": {
+        "operation": {
+          "heading": "Loại thao tác",
+          "none": "Giao dịch này không có thẻ loại thao tác.",
+          "tag": "Thẻ từ loại thao tác của ngân hàng: {tag}"
+        }
       }
     }
   }

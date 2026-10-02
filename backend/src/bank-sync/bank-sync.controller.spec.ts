@@ -20,7 +20,11 @@ import { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
 import { LinkDefaultsQueryDto } from "./dto/link-defaults-query.dto";
 import { ListInstitutionsQueryDto } from "./dto/list-institutions-query.dto";
 import { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
-import { SyncBankSyncAccountDto } from "./dto/sync-bank-sync-account.dto";
+import { RemoveBankSyncExceptionsDto } from "./dto/remove-bank-sync-exceptions.dto";
+import {
+  MAX_SYNC_KEYS,
+  SyncBankSyncAccountDto,
+} from "./dto/sync-bank-sync-account.dto";
 import { UpdateBankSyncConnectionDto } from "./dto/update-bank-sync-connection.dto";
 import {
   ACCOUNT_ID,
@@ -73,6 +77,7 @@ describe("BankSyncController", () => {
       | "previewAccount"
       | "syncAccount"
       | "syncConnection"
+      | "removeExceptions"
     >
   > = {
     linkAccount: jest.fn(),
@@ -80,6 +85,7 @@ describe("BankSyncController", () => {
     previewAccount: jest.fn(),
     syncAccount: jest.fn(),
     syncConnection: jest.fn(),
+    removeExceptions: jest.fn(),
   };
 
   let controller: BankSyncController;
@@ -123,6 +129,11 @@ describe("BankSyncController", () => {
       ["linkAccount", RequestMethod.PATCH, "accounts/:id"],
       ["previewAccount", RequestMethod.POST, "accounts/:id/preview"],
       ["syncAccount", RequestMethod.POST, "accounts/:id/sync"],
+      [
+        "removeExceptions",
+        RequestMethod.POST,
+        "accounts/:id/exceptions/remove",
+      ],
       ["syncConnection", RequestMethod.POST, "connections/:id/sync"],
     ];
 
@@ -293,6 +304,7 @@ describe("BankSyncController", () => {
         BANK_ACCOUNT_ID,
         { ipAddress: "203.0.113.4", userAgent: "Mozilla/5.0" },
         undefined,
+        undefined,
       );
       await controller.syncConnection(req(), CONNECTION_ID, "Mozilla/5.0");
       expect(bankSync.syncConnection).toHaveBeenCalledWith(
@@ -309,6 +321,68 @@ describe("BankSyncController", () => {
         BANK_ACCOUNT_ID,
         null,
         undefined,
+        undefined,
+      );
+    });
+
+    it("passes the person's selection from the preview on, and none when neither list is sent", async () => {
+      const planFingerprint = "ab".repeat(32);
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { planFingerprint, importKeys: ["a", "b"], excludeKeys: ["c"] },
+        "UA",
+      );
+      expect(bankSync.syncAccount.mock.calls[0][3]).toBe(planFingerprint);
+      expect(bankSync.syncAccount.mock.calls[0][4]).toEqual({
+        importKeys: ["a", "b"],
+        excludeKeys: ["c"],
+      });
+
+      // One list alone is a selection; the other is empty, not "everything".
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { importKeys: [] },
+        "UA",
+      );
+      expect(bankSync.syncAccount.mock.calls[1][4]).toEqual({
+        importKeys: [],
+        excludeKeys: [],
+      });
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { excludeKeys: ["c"] },
+        "UA",
+      );
+      expect(bankSync.syncAccount.mock.calls[2][4]).toEqual({
+        importKeys: [],
+        excludeKeys: ["c"],
+      });
+
+      await controller.syncAccount(
+        req(),
+        BANK_ACCOUNT_ID,
+        { planFingerprint },
+        "UA",
+      );
+      await controller.syncAccount(req(), BANK_ACCOUNT_ID, undefined, "UA");
+      expect(bankSync.syncAccount.mock.calls[3][4]).toBeUndefined();
+      expect(bankSync.syncAccount.mock.calls[4][4]).toBeUndefined();
+    });
+
+    it("takes exceptions back for the caller's own bank account", async () => {
+      bankSync.removeExceptions.mockResolvedValue({ removed: 2 });
+      await expect(
+        controller.removeExceptions(req(), BANK_ACCOUNT_ID, {
+          keys: ["a", "b"],
+        }),
+      ).resolves.toEqual({ removed: 2 });
+      expect(bankSync.removeExceptions).toHaveBeenCalledWith(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        ["a", "b"],
       );
     });
 
@@ -490,6 +564,19 @@ describe("BankSyncController", () => {
       }
     });
 
+    it("requires tagOperationType to be a boolean when it is sent, and refuses null", async () => {
+      for (const tagOperationType of [true, false]) {
+        await expect(
+          accepts(UpdateBankSyncConnectionDto, { tagOperationType }),
+        ).resolves.toBeDefined();
+      }
+      for (const tagOperationType of ["no", 1, null]) {
+        await expect(
+          accepts(UpdateBankSyncConnectionDto, { tagOperationType }),
+        ).rejects.toBeDefined();
+      }
+    });
+
     it("refuses a key it does not know", async () => {
       await expect(
         accepts(UpdateBankSyncConnectionDto, { status: "active" }),
@@ -569,6 +656,82 @@ describe("BankSyncController", () => {
         ]);
       }
       expect(await errorsOf({ other: true })).toEqual(["other"]);
+    });
+
+    describe("the selection (spec section 7b)", () => {
+      it("accepts either list, both, or none", async () => {
+        expect(await errorsOf({ importKeys: ["a"] })).toEqual([]);
+        expect(await errorsOf({ excludeKeys: ["a"] })).toEqual([]);
+        expect(await errorsOf({ importKeys: [], excludeKeys: [] })).toEqual([]);
+        expect(
+          await errorsOf({
+            planFingerprint: "0f".repeat(32),
+            importKeys: ["ref:a", "hash:b:0"],
+            excludeKeys: ["ref:c"],
+          }),
+        ).toEqual([]);
+      });
+
+      it("bounds each list to 5000 keys", async () => {
+        const keys = (n: number) =>
+          Array.from({ length: n }, (_, i) => `k${i}`);
+        expect(await errorsOf({ importKeys: keys(MAX_SYNC_KEYS) })).toEqual([]);
+        expect(await errorsOf({ importKeys: keys(MAX_SYNC_KEYS + 1) })).toEqual(
+          ["importKeys"],
+        );
+        expect(
+          await errorsOf({ excludeKeys: keys(MAX_SYNC_KEYS + 1) }),
+        ).toEqual(["excludeKeys"]);
+      });
+
+      it("bounds each key to 255 characters and refuses an empty or a non-string key", async () => {
+        expect(await errorsOf({ importKeys: ["k".repeat(255)] })).toEqual([]);
+        for (const bad of [["k".repeat(256)], [""], [5], [null], "ref:a", {}]) {
+          expect(await errorsOf({ importKeys: bad })).toEqual(["importKeys"]);
+          expect(await errorsOf({ excludeKeys: bad })).toEqual(["excludeKeys"]);
+        }
+      });
+
+      it("refuses an explicit null: it is not the same as no selection", async () => {
+        expect(await errorsOf({ importKeys: null })).toEqual(["importKeys"]);
+        expect(await errorsOf({ excludeKeys: null })).toEqual(["excludeKeys"]);
+      });
+    });
+  });
+
+  describe("RemoveBankSyncExceptionsDto", () => {
+    const errorsOf = async (value: object) =>
+      (
+        await validate(plainToInstance(RemoveBankSyncExceptionsDto, value), {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        })
+      ).map((error) => error.property);
+
+    it("takes between one and 5000 keys of at most 255 characters", async () => {
+      expect(await errorsOf({ keys: ["a"] })).toEqual([]);
+      expect(await errorsOf({ keys: ["k".repeat(255)] })).toEqual([]);
+      expect(
+        await errorsOf({
+          keys: Array.from({ length: MAX_SYNC_KEYS }, (_, i) => `k${i}`),
+        }),
+      ).toEqual([]);
+      for (const bad of [
+        [],
+        Array.from({ length: MAX_SYNC_KEYS + 1 }, (_, i) => `k${i}`),
+        ["k".repeat(256)],
+        [""],
+        [1],
+        "a",
+        null,
+        undefined,
+      ]) {
+        expect(await errorsOf({ keys: bad })).toEqual(["keys"]);
+      }
+    });
+
+    it("refuses a field it does not know", async () => {
+      expect(await errorsOf({ keys: ["a"], other: 1 })).toEqual(["other"]);
     });
   });
 

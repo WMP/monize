@@ -3,6 +3,7 @@ import { addDaysYMD } from "../common/date-utils";
 import { roundMoney } from "../common/round.util";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../common/transaction-note";
 import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
+import type { BankOperation } from "./bank-operation";
 import type { BankTransaction } from "./providers/bank-sync-provider.interface";
 
 /**
@@ -60,6 +61,11 @@ export interface PlannedBankRow {
   payeeText: string | null;
   description: string | null;
   referenceNumber: string | null;
+  /**
+   * The bank's operation type; the sync turns it into a tag when the connection
+   * asks for one. Not part of the key, the fingerprint or the transaction.
+   */
+  operation: BankOperation;
 }
 
 export interface BankImportPlan {
@@ -87,6 +93,8 @@ export interface PlanEntry {
   payeeText: string | null;
   description: string | null;
   referenceNumber: string | null;
+  /** The bank's operation type, for the tag a sync would add. */
+  operation: BankOperation;
 }
 
 /** The plan, and one entry per provider row the planner looked at, in the provider's order. */
@@ -116,6 +124,7 @@ interface Draft {
   description: string | null;
   referenceNumber: string | null;
   entryReference: string | null;
+  operation: BankOperation;
   /**
    * Set when the bank gave this reference to rows that differ in content, so the
    * reference alone does not name this row (`resolveEntryReferences`).
@@ -215,6 +224,7 @@ function classify(
         BANK_IMPORT_REFERENCE_MAX_LENGTH,
       ),
       entryReference: bounded(row.entryReference, Number.MAX_SAFE_INTEGER),
+      operation: row.operation,
       referenceDiscriminator,
     },
   };
@@ -375,6 +385,7 @@ function unplannedEntry(row: BankTransaction, c: Classified): PlanEntry {
       row.bankReference,
       BANK_IMPORT_REFERENCE_MAX_LENGTH,
     ),
+    operation: row.operation,
   };
 }
 
@@ -426,6 +437,7 @@ export function explainBankImport(
       payeeText: draft.payeeText,
       description: draft.description,
       referenceNumber: draft.referenceNumber,
+      operation: draft.operation,
     };
     planned.push(row);
     return {
@@ -438,6 +450,7 @@ export function explainBankImport(
       payeeText: row.payeeText,
       description: row.description,
       referenceNumber: row.referenceNumber,
+      operation: row.operation,
     };
   });
 

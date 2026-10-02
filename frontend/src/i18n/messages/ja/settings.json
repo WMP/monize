@@ -1538,7 +1538,12 @@
         "never": "通知しない"
       },
       "notifySuccessSaved": "通知設定を保存しました",
-      "notifySuccessFailed": "通知設定を変更できませんでした"
+      "notifySuccessFailed": "通知設定を変更できませんでした",
+      "tagOperationType": "取引に銀行の操作種別のタグを付ける",
+      "tagOperationTypeHelp": "インポートした各取引に、カード払いや受取振込など、銀行の操作種別の名前を持つタグが付き、ルールやレポートで利用できます。",
+      "tagOperationTypeOn": "操作種別タグをオンにしました",
+      "tagOperationTypeOff": "操作種別タグをオフにしました",
+      "tagOperationTypeFailed": "操作種別タグを変更できませんでした"
     },
     "account": {
       "unnamed": "名称未設定の銀行口座",
@@ -1661,14 +1666,16 @@
         "refused": "拒否",
         "pending": "保留中",
         "before_cutoff": "開始日より前",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "例外"
       },
       "outcome": {
         "new": "新規",
         "duplicate": "インポート済み",
         "refused": "拒否",
         "pending": "保留中",
-        "before_cutoff": "開始日より前"
+        "before_cutoff": "開始日より前",
+        "excluded": "例外"
       },
       "refusal": {
         "missing_date": "日付なし",
@@ -1683,7 +1690,8 @@
         "payee": "支払先",
         "category": "カテゴリ",
         "status": "状態",
-        "amount": "金額"
+        "amount": "金額",
+        "select": "選択と詳細"
       },
       "noPayee": "支払先なし",
       "dateUnknown": "日付なし",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "この期間の取引は銀行から返されませんでした。",
         "filtered": "この一覧に取引はありません。"
+      },
+      "selectAllNew": "この一覧の新規取引をすべて選択",
+      "selectAllExceptions": "この一覧の例外をすべて選択",
+      "selectRow": "{payee} をインポート",
+      "selectException": "{payee} を例外から削除",
+      "summary": "インポート {import} 件、スキップ {skip} 件、例外に追加 {except} 件",
+      "importNothing": "インポートせずに確認",
+      "exceptions": {
+        "intro": "例外にある取引はインポートされません。再び新規として表示するには、例外から削除してください。",
+        "remove": "{count, plural, =0 {例外から削除} other {# 件を例外から削除}}",
+        "removing": "削除しています...",
+        "removed": "{count, plural, other {# 件の取引を例外から削除しました}}",
+        "removedNone": "例外から削除されたものはありません",
+        "removeFailed": "例外を削除できませんでした"
+      },
+      "details": {
+        "operation": {
+          "heading": "操作種別",
+          "none": "この取引には操作種別タグがありません。",
+          "tag": "銀行の操作種別によるタグ: {tag}"
+        }
       }
     }
   }

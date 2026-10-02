@@ -2365,6 +2365,10 @@ CREATE TABLE bank_sync_connections (
     -- How the daily sync reports a successful run (docs/specs/bank-sync-notifications.md
     -- section 3); a column added by 20261001202917_bank_sync_notify_success.sql.
     notify_success VARCHAR(20) NOT NULL DEFAULT 'when_imported',
+    -- Whether a synced transaction is tagged with the bank's operation type
+    -- (docs/specs/bank-sync.md section 7b); a column added by
+    -- 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    tag_operation_type BOOLEAN NOT NULL DEFAULT true,
     CONSTRAINT ck_bank_sync_connections_provider
       CHECK (provider IN ('enable_banking')),
     CONSTRAINT ck_bank_sync_connections_psu_type
@@ -2438,6 +2442,11 @@ CREATE TABLE bank_sync_imported_transactions (
     transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
     booking_date DATE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Set when the user added the bank transaction to the exceptions from the
+    -- preview: the row then has no transaction and still claims the key, so no
+    -- later sync imports it (docs/specs/bank-sync.md section 7b); a column added
+    -- by 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    excluded_at TIMESTAMPTZ,
     CONSTRAINT uq_bank_sync_imported_transactions_key
       UNIQUE (account_id, external_key)
 );

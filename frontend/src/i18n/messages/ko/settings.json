@@ -1538,7 +1538,12 @@
         "never": "안 함"
       },
       "notifySuccessSaved": "알림 설정을 저장했습니다",
-      "notifySuccessFailed": "알림 설정을 변경하지 못했습니다"
+      "notifySuccessFailed": "알림 설정을 변경하지 못했습니다",
+      "tagOperationType": "거래에 은행의 작업 유형 태그 붙이기",
+      "tagOperationTypeHelp": "가져온 각 거래에는 카드 결제, 입금 이체처럼 은행의 작업 유형 이름을 가진 태그가 붙어 규칙과 보고서에서 사용할 수 있습니다.",
+      "tagOperationTypeOn": "작업 유형 태그를 켰습니다",
+      "tagOperationTypeOff": "작업 유형 태그를 껐습니다",
+      "tagOperationTypeFailed": "작업 유형 태그를 변경하지 못했습니다"
     },
     "account": {
       "unnamed": "이름 없는 은행 계정",
@@ -1661,14 +1666,16 @@
         "refused": "거부됨",
         "pending": "대기 중",
         "before_cutoff": "시작일 이전",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "예외"
       },
       "outcome": {
         "new": "신규",
         "duplicate": "이미 가져옴",
         "refused": "거부됨",
         "pending": "대기 중",
-        "before_cutoff": "시작일 이전"
+        "before_cutoff": "시작일 이전",
+        "excluded": "예외"
       },
       "refusal": {
         "missing_date": "날짜 없음",
@@ -1683,7 +1690,8 @@
         "payee": "수취인",
         "category": "카테고리",
         "status": "상태",
-        "amount": "금액"
+        "amount": "금액",
+        "select": "선택 및 세부 정보"
       },
       "noPayee": "수취인 없음",
       "dateUnknown": "날짜 없음",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "은행이 이 기간의 거래를 반환하지 않았습니다.",
         "filtered": "이 목록에 거래가 없습니다."
+      },
+      "selectAllNew": "이 목록의 새 거래 모두 선택",
+      "selectAllExceptions": "이 목록의 예외 모두 선택",
+      "selectRow": "{payee} 가져오기",
+      "selectException": "{payee}을(를) 예외에서 제거",
+      "summary": "가져오기 {import}건, 건너뛰기 {skip}건, 예외에 추가 {except}건",
+      "importNothing": "가져오지 않고 확인",
+      "exceptions": {
+        "intro": "예외에 있는 거래는 가져오지 않습니다. 다시 새 거래로 보려면 예외에서 제거하세요.",
+        "remove": "{count, plural, =0 {예외에서 제거} other {#건을 예외에서 제거}}",
+        "removing": "제거하는 중...",
+        "removed": "{count, plural, other {거래 #건을 예외에서 제거했습니다}}",
+        "removedNone": "예외에서 제거된 항목이 없습니다",
+        "removeFailed": "예외를 제거하지 못했습니다"
+      },
+      "details": {
+        "operation": {
+          "heading": "작업 유형",
+          "none": "이 거래에는 작업 유형 태그가 없습니다.",
+          "tag": "은행의 작업 유형에서 만든 태그: {tag}"
+        }
       }
     }
   }

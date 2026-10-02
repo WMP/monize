@@ -705,6 +705,8 @@
     "providerInvalidResponse": "Le fournisseur de synchronisation bancaire a envoyé une réponse que cette version de Monize ne comprend pas.",
     "planChanged": "Les données de la banque ont changé depuis l'aperçu. Rien n'a été importé ; générez de nouveau l'aperçu.",
     "needsPreview": "Ouvrez l'aperçu de ce compte bancaire et confirmez le premier import avant sa synchronisation automatique.",
-    "nothingToUpdate": "Envoyez autoSync ou notifySuccess pour modifier une connexion bancaire."
+    "selectionNotNew": "Une transaction sélectionnée n'est pas une nouvelle ligne des données de la banque. Rien n'a été importé ; relancez l'aperçu.",
+    "selectionOverlap": "Une transaction ne peut pas être à la fois importée et ajoutée aux exceptions.",
+    "nothingToUpdate": "Envoyez autoSync, notifySuccess ou tagOperationType pour modifier une connexion bancaire."
   }
 }

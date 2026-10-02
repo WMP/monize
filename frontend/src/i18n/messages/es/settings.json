@@ -1538,7 +1538,12 @@
         "never": "Nunca"
       },
       "notifySuccessSaved": "Ajuste de notificaciones guardado",
-      "notifySuccessFailed": "No se pudo cambiar el ajuste de notificaciones"
+      "notifySuccessFailed": "No se pudo cambiar el ajuste de notificaciones",
+      "tagOperationType": "Etiquetar las transacciones con el tipo de operación del banco",
+      "tagOperationTypeHelp": "Cada transacción importada recibe una etiqueta con el nombre del tipo de operación del banco, como Pago con tarjeta o Transferencia recibida, para que las reglas y los informes puedan usarla.",
+      "tagOperationTypeOn": "Etiquetas de tipo de operación activadas",
+      "tagOperationTypeOff": "Etiquetas de tipo de operación desactivadas",
+      "tagOperationTypeFailed": "No se pudieron cambiar las etiquetas de tipo de operación"
     },
     "account": {
       "unnamed": "Cuenta bancaria sin nombre",
@@ -1661,14 +1666,16 @@
         "refused": "Rechazadas",
         "pending": "Pendientes",
         "before_cutoff": "Anteriores a la fecha de inicio",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Excepciones"
       },
       "outcome": {
         "new": "Nueva",
         "duplicate": "Ya importada",
         "refused": "Rechazada",
         "pending": "Pendiente",
-        "before_cutoff": "Anterior a la fecha de inicio"
+        "before_cutoff": "Anterior a la fecha de inicio",
+        "excluded": "Excepción"
       },
       "refusal": {
         "missing_date": "Sin fecha",
@@ -1683,7 +1690,8 @@
         "payee": "Beneficiario",
         "category": "Categoría",
         "status": "Estado",
-        "amount": "Cantidad"
+        "amount": "Cantidad",
+        "select": "Selección y detalles"
       },
       "noPayee": "Sin beneficiario",
       "dateUnknown": "Sin fecha",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "El banco no devolvió ninguna transacción para este periodo.",
         "filtered": "No hay transacciones en esta lista."
+      },
+      "selectAllNew": "Seleccionar todas las transacciones nuevas de esta lista",
+      "selectAllExceptions": "Seleccionar todas las excepciones de esta lista",
+      "selectRow": "Importar {payee}",
+      "selectException": "Quitar {payee} de las excepciones",
+      "summary": "Importar {import}, omitir {skip}, añadir {except} a las excepciones",
+      "importNothing": "Confirmar sin importar",
+      "exceptions": {
+        "intro": "Las transacciones de las excepciones nunca se importan. Quita una de las excepciones para volver a verla como nueva.",
+        "remove": "{count, plural, =0 {Quitar de las excepciones} other {Quitar # de las excepciones}}",
+        "removing": "Quitando...",
+        "removed": "{count, plural, one {Se quitó # transacción de las excepciones} other {Se quitaron # transacciones de las excepciones}}",
+        "removedNone": "No se quitó nada de las excepciones",
+        "removeFailed": "No se pudieron quitar las excepciones"
+      },
+      "details": {
+        "operation": {
+          "heading": "Tipo de operación",
+          "none": "No hay etiqueta de tipo de operación para esta transacción.",
+          "tag": "Etiqueta del tipo de operación del banco: {tag}"
+        }
       }
     }
   }

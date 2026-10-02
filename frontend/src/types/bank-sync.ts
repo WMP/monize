@@ -5,6 +5,13 @@
  * number at the point of display, never earlier.
  */
 
+import type {
+  ImportPreviewLabels,
+  ImportPreviewPayee,
+  ImportPreviewPayeeVia,
+  ImportPreviewRule,
+} from '@/types/import-preview';
+
 /** The connection lifecycle. Mirrors the column's CHECK. */
 export type BankSyncConnectionStatus =
   | 'pending'
@@ -113,6 +120,8 @@ export interface BankSyncConnection {
   autoSync: boolean;
   /** When the daily sync reports a successful run. */
   notifySuccess: BankSyncNotifySuccessMode;
+  /** Whether a synced transaction is tagged with the bank's operation type (spec section 7b). */
+  tagOperationType: boolean;
   lastError: string | null;
   createdAt: string;
   accounts: BankSyncAccount[];
@@ -141,6 +150,7 @@ export interface BankSyncCallbackPayload {
 export interface UpdateBankSyncConnection {
   autoSync?: boolean;
   notifySuccess?: BankSyncNotifySuccessMode;
+  tagOperationType?: boolean;
 }
 
 export interface UpdateBankSyncAccount {
@@ -181,16 +191,31 @@ export interface BankSyncLinkDefaults {
   defaultSyncFromDate: string;
 }
 
-/** What the preview says about one bank row (spec section 7a). */
+/** What the preview says about one bank row (spec sections 7a and 7b). */
 export type BankSyncPreviewOutcome =
   | 'new'
   | 'duplicate'
+  /** An exception: added from the preview, so no sync imports it. */
+  | 'excluded'
   | 'refused'
   | 'pending'
   | 'before_cutoff';
 
+/** How a row's payee resolves (the neutral import preview's shape; see `types/import-preview.ts`). */
+export type BankSyncPayeeVia = ImportPreviewPayeeVia;
+export type BankSyncPreviewPayee = ImportPreviewPayee;
+/** One import rule that matched a row, with what it changed (ids named by `labels`). */
+export type BankSyncPreviewRule = ImportPreviewRule;
+/** Names for the ids the rows' rule traces mention, so no raw id reaches the screen. */
+export type BankSyncPreviewLabels = ImportPreviewLabels;
+
 export interface BankSyncPreviewRow {
   outcome: BankSyncPreviewOutcome;
+  /**
+   * The duplicate key of a planned row (new, already imported or an exception),
+   * which a selection names; null for a row that was not planned.
+   */
+  externalKey: string | null;
   /** Set when the outcome is `refused`. */
   refusalReason: string | null;
   transactionDate: string | null;
@@ -204,11 +229,19 @@ export interface BankSyncPreviewRow {
   payeeName: string | null;
   categoryName: string | null;
   tagNames: string[];
+  /** How the payee resolves; null unless the row is `new`. */
+  payee: BankSyncPreviewPayee | null;
+  /** The import rules that matched, in order; empty unless the row is `new`. */
+  rules: BankSyncPreviewRule[];
+  /** The operation-type tag the sync would add; null when there is none. */
+  operationTag: string | null;
 }
 
 export interface BankSyncPreviewSummary {
   new: number;
   duplicate: number;
+  /** Exceptions among the rows. */
+  excluded: number;
   refused: number;
   refusedByReason: Record<string, number>;
   pending: number;
@@ -221,6 +254,7 @@ export interface BankSyncPreview {
   /** The Monize account's currency; every figure below is in it. */
   currencyCode: string;
   rows: BankSyncPreviewRow[];
+  labels: BankSyncPreviewLabels;
   summary: BankSyncPreviewSummary;
   /** Decimal strings. */
   monizeBalance: string;
@@ -244,6 +278,8 @@ export interface BankSyncResult {
   imported: number;
   /** Rows already imported before (the ledger says so). */
   skipped: number;
+  /** Rows this sync added to the exceptions; absent from a server older than this client. */
+  excluded?: number;
   /** Refused rows by reason (`currency_mismatch`, `invalid_amount`, ...). */
   refused: Record<string, number>;
   /** Rows the bank has not booked yet; counted, not an error. */
@@ -255,6 +291,21 @@ export interface BankSyncResult {
     currencyCode: string;
     referenceDate: string | null;
   } | null;
+}
+
+/**
+ * What the person chose in the preview: the keys to import and the keys to add
+ * to the exceptions. Every other new row stays as it was and is shown again.
+ */
+export interface BankSyncSelection {
+  importKeys: string[];
+  excludeKeys: string[];
+}
+
+/** `POST /bank-sync/accounts/:id/exceptions/remove`. */
+export interface BankSyncRemovedExceptions {
+  /** How many exceptions were deleted. */
+  removed: number;
 }
 
 /**

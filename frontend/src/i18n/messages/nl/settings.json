@@ -1538,7 +1538,12 @@
         "never": "Nooit"
       },
       "notifySuccessSaved": "Meldingsinstelling opgeslagen",
-      "notifySuccessFailed": "De meldingsinstelling kon niet worden gewijzigd"
+      "notifySuccessFailed": "De meldingsinstelling kon niet worden gewijzigd",
+      "tagOperationType": "Transacties taggen met het bewerkingstype van de bank",
+      "tagOperationTypeHelp": "Elke geïmporteerde transactie krijgt een tag met de naam van het bewerkingstype van de bank, zoals Kaartbetaling of Inkomende overboeking, zodat regels en rapporten die kunnen gebruiken.",
+      "tagOperationTypeOn": "Tags voor bewerkingstype ingeschakeld",
+      "tagOperationTypeOff": "Tags voor bewerkingstype uitgeschakeld",
+      "tagOperationTypeFailed": "De tags voor bewerkingstype konden niet worden gewijzigd"
     },
     "account": {
       "unnamed": "Naamloze bankrekening",
@@ -1661,14 +1666,16 @@
         "refused": "Geweigerd",
         "pending": "In behandeling",
         "before_cutoff": "Vóór de begindatum",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Uitzonderingen"
       },
       "outcome": {
         "new": "Nieuw",
         "duplicate": "Al geïmporteerd",
         "refused": "Geweigerd",
         "pending": "In behandeling",
-        "before_cutoff": "Vóór de begindatum"
+        "before_cutoff": "Vóór de begindatum",
+        "excluded": "Uitzondering"
       },
       "refusal": {
         "missing_date": "Geen datum",
@@ -1683,7 +1690,8 @@
         "payee": "Begunstigde",
         "category": "Categorie",
         "status": "Status",
-        "amount": "Bedrag"
+        "amount": "Bedrag",
+        "select": "Selectie en details"
       },
       "noPayee": "Geen begunstigde",
       "dateUnknown": "Geen datum",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "De bank heeft voor deze periode geen transacties teruggegeven.",
         "filtered": "Geen transacties in deze lijst."
+      },
+      "selectAllNew": "Alle nieuwe transacties in deze lijst selecteren",
+      "selectAllExceptions": "Alle uitzonderingen in deze lijst selecteren",
+      "selectRow": "{payee} importeren",
+      "selectException": "{payee} uit de uitzonderingen verwijderen",
+      "summary": "{import} importeren, {skip} overslaan, {except} toevoegen aan uitzonderingen",
+      "importNothing": "Bevestigen zonder te importeren",
+      "exceptions": {
+        "intro": "Transacties in de uitzonderingen worden nooit geïmporteerd. Verwijder er een uit de uitzonderingen om hem weer als nieuw te zien.",
+        "remove": "{count, plural, =0 {Uit uitzonderingen verwijderen} other {# uit uitzonderingen verwijderen}}",
+        "removing": "Verwijderen...",
+        "removed": "{count, plural, one {# transactie is uit de uitzonderingen verwijderd} other {# transacties zijn uit de uitzonderingen verwijderd}}",
+        "removedNone": "Er is niets uit de uitzonderingen verwijderd",
+        "removeFailed": "De uitzonderingen konden niet worden verwijderd"
+      },
+      "details": {
+        "operation": {
+          "heading": "Bewerkingstype",
+          "none": "Geen tag voor bewerkingstype bij deze transactie.",
+          "tag": "Tag uit het bewerkingstype van de bank: {tag}"
+        }
       }
     }
   }

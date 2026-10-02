@@ -38,6 +38,7 @@ import type {
   BankSyncLinkDefaultsView,
   BankSyncMatchedConnectionView,
   BankSyncPreviewView,
+  BankSyncRemovedExceptionsView,
   BankSyncResult,
   BankSyncStatusView,
 } from "./bank-sync.types";
@@ -46,10 +47,12 @@ import { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connection.d
 import { LinkBankSyncAccountDto } from "./dto/link-bank-sync-account.dto";
 import { LinkDefaultsQueryDto } from "./dto/link-defaults-query.dto";
 import { ListInstitutionsQueryDto } from "./dto/list-institutions-query.dto";
+import { RemoveBankSyncExceptionsDto } from "./dto/remove-bank-sync-exceptions.dto";
 import { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
 import { SyncBankSyncAccountDto } from "./dto/sync-bank-sync-account.dto";
 import { UpdateBankSyncConnectionDto } from "./dto/update-bank-sync-connection.dto";
 import { psuContextOf } from "./psu-context.util";
+import { selectionOf } from "./bank-sync-selection";
 
 type AuthedRequest = ExpressRequest & { user: { id: string } };
 
@@ -172,7 +175,7 @@ export class BankSyncController {
   @DemoRestricted()
   @ApiOperation({
     summary:
-      "Turn the daily sync of a connection on or off, or set when it reports success",
+      "Turn the daily sync of a connection on or off, set when it reports success, or choose whether it tags transactions with the bank's operation type",
   })
   @ApiParam({ name: "id", description: "Connection ID" })
   updateConnection(
@@ -183,6 +186,7 @@ export class BankSyncController {
     return this.connections.updateConnection(req.user.id, id, {
       autoSync: dto.autoSync,
       notifySuccess: dto.notifySuccess,
+      tagOperationType: dto.tagOperationType,
     });
   }
 
@@ -280,7 +284,24 @@ export class BankSyncController {
       id,
       psuContextOf(req, userAgent),
       dto?.planFingerprint || undefined,
+      selectionOf(dto?.importKeys, dto?.excludeKeys),
     );
+  }
+
+  @Post("accounts/:id/exceptions/remove")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Take transactions back out of a bank account's exceptions, so the next sync shows them as new again",
+  })
+  @ApiParam({ name: "id", description: "Bank account ID" })
+  removeExceptions(
+    @Request() req: AuthedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: RemoveBankSyncExceptionsDto,
+  ): Promise<BankSyncRemovedExceptionsView> {
+    return this.bankSync.removeExceptions(req.user.id, id, dto.keys);
   }
 
   @Post("connections/:id/sync")

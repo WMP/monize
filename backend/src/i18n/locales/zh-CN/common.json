@@ -24,5 +24,14 @@
       "stalled": "我一再表示会继续处理而没有给出结论，因此该回答基于停止前已收集的数据。"
     },
     "synthesisFailed": "我已为本次提问收集了数据，但未能完成分析，因此没有可靠的答案。请尝试提出范围更小的问题。"
+  },
+  "bankSync": {
+    "operationTypes": {
+      "cardPayment": "刷卡消费",
+      "transferIn": "转入",
+      "transferOut": "转出",
+      "mobilePayment": "移动支付",
+      "cashWithdrawal": "现金取款"
+    }
   }
 }

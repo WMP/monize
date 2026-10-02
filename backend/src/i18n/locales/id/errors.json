@@ -705,6 +705,8 @@
     "providerInvalidResponse": "Penyedia sinkronisasi bank mengirim jawaban yang tidak dipahami versi Monize ini.",
     "planChanged": "Data bank berubah sejak pratinjau. Tidak ada yang diimpor; buat pratinjau lagi.",
     "needsPreview": "Buka pratinjau untuk akun bank ini dan konfirmasikan impor pertama sebelum disinkronkan secara otomatis.",
-    "nothingToUpdate": "Kirim autoSync atau notifySuccess untuk mengubah koneksi bank."
+    "selectionNotNew": "Transaksi yang dipilih bukan baris baru dari data bank. Tidak ada yang diimpor; pratinjau lagi.",
+    "selectionOverlap": "Sebuah transaksi tidak bisa diimpor sekaligus ditambahkan ke pengecualian.",
+    "nothingToUpdate": "Kirim autoSync, notifySuccess atau tagOperationType untuk mengubah koneksi bank."
   }
 }

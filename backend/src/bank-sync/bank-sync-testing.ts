@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import type { ConfigService } from "@nestjs/config";
 import { EncryptionService } from "../common/encryption/encryption.service";
+import { NO_BANK_OPERATION } from "./bank-operation";
 import type { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import type { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import type {
@@ -93,6 +94,7 @@ export function bankTransaction(
     transactionDate: null,
     counterpartyName: "Biedronka",
     remittance: ["Groceries"],
+    operation: { ...NO_BANK_OPERATION },
     ...over,
   };
 }
@@ -114,6 +116,7 @@ export function connectionRow(
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     autoSync: true,
     notifySuccess: "when_imported",
+    tagOperationType: true,
     lastError: null,
     createdAt: new Date("2026-09-01T10:00:00.000Z"),
     updatedAt: new Date("2026-09-01T10:00:00.000Z"),

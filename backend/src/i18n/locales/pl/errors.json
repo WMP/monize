@@ -705,6 +705,8 @@
     "providerInvalidResponse": "Dostawca synchronizacji bankowej wysłał odpowiedź, której ta wersja Monize nie rozumie.",
     "planChanged": "Dane banku zmieniły się od czasu podglądu. Nic nie zaimportowano; wygeneruj podgląd ponownie.",
     "needsPreview": "Otwórz podgląd tego konta bankowego i potwierdź pierwszy import, zanim zostanie zsynchronizowane automatycznie.",
-    "nothingToUpdate": "Wyślij autoSync lub notifySuccess, aby zmienić połączenie bankowe."
+    "selectionNotNew": "Wybrana transakcja nie jest nowym wierszem w danych banku. Nic nie zaimportowano; wygeneruj podgląd ponownie.",
+    "selectionOverlap": "Transakcja nie może być jednocześnie zaimportowana i dodana do wyjątków.",
+    "nothingToUpdate": "Wyślij autoSync, notifySuccess lub tagOperationType, aby zmienić połączenie bankowe."
   }
 }

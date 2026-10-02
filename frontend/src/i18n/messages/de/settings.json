@@ -1538,7 +1538,12 @@
         "never": "Nie"
       },
       "notifySuccessSaved": "Benachrichtigungseinstellung gespeichert",
-      "notifySuccessFailed": "Die Benachrichtigungseinstellung konnte nicht geändert werden"
+      "notifySuccessFailed": "Die Benachrichtigungseinstellung konnte nicht geändert werden",
+      "tagOperationType": "Buchungen mit der Vorgangsart der Bank taggen",
+      "tagOperationTypeHelp": "Jede importierte Buchung erhält einen Tag mit dem Namen der Vorgangsart der Bank, etwa Kartenzahlung oder Eingehende Überweisung, damit Regeln und Berichte ihn nutzen können.",
+      "tagOperationTypeOn": "Vorgangsart-Tags aktiviert",
+      "tagOperationTypeOff": "Vorgangsart-Tags deaktiviert",
+      "tagOperationTypeFailed": "Die Vorgangsart-Tags konnten nicht geändert werden"
     },
     "account": {
       "unnamed": "Unbenanntes Bankkonto",
@@ -1661,14 +1666,16 @@
         "refused": "Abgelehnt",
         "pending": "Ausstehend",
         "before_cutoff": "Vor dem Startdatum",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Ausnahmen"
       },
       "outcome": {
         "new": "Neu",
         "duplicate": "Bereits importiert",
         "refused": "Abgelehnt",
         "pending": "Ausstehend",
-        "before_cutoff": "Vor dem Startdatum"
+        "before_cutoff": "Vor dem Startdatum",
+        "excluded": "Ausnahme"
       },
       "refusal": {
         "missing_date": "Kein Datum",
@@ -1683,7 +1690,8 @@
         "payee": "Zahlungsempfänger",
         "category": "Kategorie",
         "status": "Status",
-        "amount": "Betrag"
+        "amount": "Betrag",
+        "select": "Auswahl und Details"
       },
       "noPayee": "Kein Zahlungsempfänger",
       "dateUnknown": "Kein Datum",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "Die Bank hat für diesen Zeitraum keine Buchungen geliefert.",
         "filtered": "Keine Buchungen in dieser Liste."
+      },
+      "selectAllNew": "Alle neuen Buchungen in dieser Liste auswählen",
+      "selectAllExceptions": "Alle Ausnahmen in dieser Liste auswählen",
+      "selectRow": "{payee} importieren",
+      "selectException": "{payee} aus den Ausnahmen entfernen",
+      "summary": "{import} importieren, {skip} überspringen, {except} zu den Ausnahmen hinzufügen",
+      "importNothing": "Bestätigen, ohne zu importieren",
+      "exceptions": {
+        "intro": "Buchungen in den Ausnahmen werden nie importiert. Entfernen Sie eine aus den Ausnahmen, damit sie wieder als neu erscheint.",
+        "remove": "{count, plural, =0 {Aus den Ausnahmen entfernen} other {# aus den Ausnahmen entfernen}}",
+        "removing": "Wird entfernt...",
+        "removed": "{count, plural, one {# Buchung wurde aus den Ausnahmen entfernt} other {# Buchungen wurden aus den Ausnahmen entfernt}}",
+        "removedNone": "Es wurde nichts aus den Ausnahmen entfernt",
+        "removeFailed": "Die Ausnahmen konnten nicht entfernt werden"
+      },
+      "details": {
+        "operation": {
+          "heading": "Vorgangsart",
+          "none": "Kein Vorgangsart-Tag für diese Buchung.",
+          "tag": "Tag aus der Vorgangsart der Bank: {tag}"
+        }
       }
     }
   }

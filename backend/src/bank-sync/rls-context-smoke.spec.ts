@@ -29,6 +29,7 @@ describe("bank sync RLS context smoke (real withScopedDb)", () => {
     bankAccountId: BANK_ACCOUNT_ID,
     imported: 0,
     skipped: 0,
+    excluded: 0,
     refused: {
       missing_date: 0,
       future_date: 0,

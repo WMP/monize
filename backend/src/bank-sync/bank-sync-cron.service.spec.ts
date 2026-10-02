@@ -30,6 +30,7 @@ const result = (bankAccountId: string, imported = 0): BankSyncResult => ({
   bankAccountId,
   imported,
   skipped: 0,
+  excluded: 0,
   refused: {
     missing_date: 0,
     future_date: 0,

@@ -9,6 +9,7 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { addDaysYMD, todayYMD } from "../common/date-utils";
+import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import {
   JobClaimService,
@@ -32,11 +33,16 @@ import {
 import { readLinkDefaults } from "./bank-sync-cutoff";
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
 import {
+  assertDisjointSelection,
+  type BankSyncSelection,
+} from "./bank-sync-selection";
+import {
   bankAccountNeedsPreview,
   toBankSyncAccountView,
 } from "./bank-sync-views";
 import {
   BankSyncPlanChangedException,
+  BankSyncSelectionRefusedException,
   BankSyncWriterService,
 } from "./bank-sync-writer.service";
 import type { NormalizedBankBalance } from "./bank-sync-writer.service";
@@ -45,6 +51,7 @@ import type {
   BankSyncConnectionSyncEntry,
   BankSyncLinkDefaultsView,
   BankSyncPreviewView,
+  BankSyncRemovedExceptionsView,
   BankSyncResult,
 } from "./bank-sync.types";
 import { explainBankImport } from "./bank-transaction-planner";
@@ -297,19 +304,26 @@ export class BankSyncService {
    * answered with the HTTP exception it maps to. `planFingerprint` is the one
    * the preview returned: the write then refuses with 409, before it writes
    * anything, when the plan it is about to write no longer matches it.
+   * `selection` is what the person chose in the preview (spec section 7b): only
+   * those keys are imported or excepted, and a key that is not a new row of the
+   * plan is refused with 400. A selection that contradicts itself is refused
+   * here, before the bank is read.
    */
   async syncAccount(
     userId: string,
     bankAccountId: string,
     psu: PsuContext | null,
     planFingerprint?: string,
+    selection?: BankSyncSelection,
   ): Promise<BankSyncResult> {
+    if (selection !== undefined) assertDisjointSelection(selection);
     try {
       return await this.attemptAccountSync(
         userId,
         bankAccountId,
         psu,
         planFingerprint,
+        selection,
       );
     } catch (error) {
       throw toBankSyncException(error);
@@ -369,12 +383,57 @@ export class BankSyncService {
             plannedCurrencyCode: ctx.account.currencyCode,
             explained: fetched.explained,
             balance: fetched.balance,
+            tagOperationType: ctx.connection.tagOperationType,
           });
         },
       );
     } catch (error) {
       throw toBankSyncException(error);
     }
+  }
+
+  /**
+   * Take exceptions back (spec section 7b): delete the ledger rows with these
+   * keys that are exceptions (`excluded_at` set and no transaction), so the next
+   * sync shows those bank transactions as new again. A key that is not an
+   * exception, such as an imported transaction's, is never touched, so this
+   * cannot re-import anything or forget an import. It runs under the bank
+   * account's row lock, the one a sync's write holds, so it waits for a write in
+   * flight rather than racing it. Answers how many were removed.
+   */
+  async removeExceptions(
+    userId: string,
+    bankAccountId: string,
+    keys: readonly string[],
+  ): Promise<BankSyncRemovedExceptionsView> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const link = await m.getRepository(BankSyncAccount).findOne({
+        where: { id: bankAccountId, userId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!link) throw this.bankAccountNotFound(bankAccountId);
+      if (link.accountId === null) {
+        throw new ConflictException(
+          tr(
+            "errors.bankSync.notLinked",
+            "This bank account is not linked to an account. Link it first.",
+          ),
+        );
+      }
+      const removed = returnedRows<{ id: string }>(
+        await m.query(
+          `DELETE FROM bank_sync_imported_transactions
+            WHERE user_id = $1
+              AND account_id = $2
+              AND external_key = ANY($3::varchar[])
+              AND excluded_at IS NOT NULL
+              AND transaction_id IS NULL
+        RETURNING id`,
+          [userId, link.accountId, [...new Set(keys)]],
+        ),
+      );
+      return { removed: removed.length };
+    });
   }
 
   /**
@@ -388,13 +447,14 @@ export class BankSyncService {
     bankAccountId: string,
     psu: PsuContext | null,
     expectedFingerprint?: string,
+    selection?: BankSyncSelection,
   ): Promise<BankSyncResult> {
     return this.underLease(
       userId,
       bankAccountId,
       true,
       async ({ ctx, credentials }) => {
-        const { account, link } = ctx;
+        const { account, link, connection } = ctx;
         const { explained, balance } = await this.fetchAndPlan(
           ctx,
           credentials,
@@ -412,6 +472,8 @@ export class BankSyncService {
           plan,
           balance,
           expectedFingerprint,
+          tagOperationType: connection.tagOperationType,
+          selection,
         });
 
         // Step 6: after the commit, drop what depends on the balance.
@@ -419,12 +481,13 @@ export class BankSyncService {
           this.netWorth.triggerDebouncedRecalc(account.id, userId);
         }
         this.logger.log(
-          `Bank account ${bankAccountId} synced: ${written.imported} imported, ${written.skipped} already imported`,
+          `Bank account ${bankAccountId} synced: ${written.imported} imported, ${written.skipped} already imported, ${written.excluded} added to the exceptions`,
         );
         return {
           bankAccountId,
           imported: written.imported,
           skipped: written.skipped,
+          excluded: written.excluded,
           refused: plan.refused,
           pending: plan.pending,
           beforeCutoff: plan.beforeCutoff,
@@ -445,8 +508,8 @@ export class BankSyncService {
    * Steps 1 and 2 of a sync, around `run`: read the link, check it can be read
    * and resolve the credentials, take the lease, run, release the lease. A
    * failure of `run` is recorded on the bank account (step 7) when `record` is
-   * set, except a plan the user confirmed that no longer matches: nothing was
-   * attempted then. The preview passes `record = false` and writes nothing.
+   * set, except a plan the user confirmed that no longer matches, or a selection
+   * that names a row the plan does not have: nothing was attempted then. The preview passes `record = false` and writes nothing.
    */
   private async underLease<T>(
     userId: string,
@@ -496,7 +559,11 @@ export class BankSyncService {
       return await run({ ctx, credentials });
     } catch (error) {
       // Step 7.
-      if (record && !(error instanceof BankSyncPlanChangedException)) {
+      if (
+        record &&
+        !(error instanceof BankSyncPlanChangedException) &&
+        !(error instanceof BankSyncSelectionRefusedException)
+      ) {
         const consentGone =
           isBankSyncProviderError(error) && error.kind === "session_expired";
         await this.recordFailure(userId, link, error, consentGone);

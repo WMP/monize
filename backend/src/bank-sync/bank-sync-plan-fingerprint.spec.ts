@@ -1,9 +1,11 @@
 import type { EntityManager } from "typeorm";
 import {
+  findLedgerEntries,
   findLedgerKeys,
   newPlannedRows,
   planFingerprint,
 } from "./bank-sync-plan-fingerprint";
+import { NO_BANK_OPERATION } from "./bank-operation";
 import type { PlannedBankRow } from "./bank-transaction-planner";
 
 const row = (over: Partial<PlannedBankRow> = {}): PlannedBankRow => ({
@@ -13,6 +15,7 @@ const row = (over: Partial<PlannedBankRow> = {}): PlannedBankRow => ({
   payeeText: null,
   description: null,
   referenceNumber: null,
+  operation: { ...NO_BANK_OPERATION },
   ...over,
 });
 
@@ -104,6 +107,50 @@ describe("findLedgerKeys", () => {
   it("asks nothing for no keys", async () => {
     await expect(findLedgerKeys(m, "user-1", "acc-1", [])).resolves.toEqual(
       new Set(),
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+});
+
+describe("findLedgerEntries (spec section 7b)", () => {
+  const query = jest.fn();
+  const m = { query } as unknown as EntityManager;
+
+  beforeEach(() => query.mockReset());
+
+  it("tells an exception from an imported row, and reads only", async () => {
+    query.mockResolvedValue([
+      { external_key: "ref:1", excluded: false },
+      { external_key: "ref:2", excluded: true },
+      // A row the driver answers without the flag is not an exception.
+      { external_key: "ref:3" },
+    ]);
+    const found = await findLedgerEntries(m, "user-1", "acc-1", [
+      "ref:1",
+      "ref:2",
+      "ref:3",
+    ]);
+    expect([...found]).toEqual([
+      ["ref:1", { excluded: false }],
+      ["ref:2", { excluded: true }],
+      ["ref:3", { excluded: false }],
+    ]);
+    const [sql, params] = query.mock.calls[0];
+    expect(String(sql)).toMatch(/^\s*SELECT external_key/);
+    expect(String(sql)).toContain("excluded_at IS NOT NULL");
+    expect(params).toEqual(["acc-1", "user-1", ["ref:1", "ref:2", "ref:3"]]);
+  });
+
+  it("holds an exception as a key like any other, so it is never a new row", async () => {
+    query.mockResolvedValue([{ external_key: "ref:2", excluded: true }]);
+    await expect(
+      findLedgerKeys(m, "user-1", "acc-1", ["ref:1", "ref:2"]),
+    ).resolves.toEqual(new Set(["ref:2"]));
+  });
+
+  it("asks nothing for no keys", async () => {
+    await expect(findLedgerEntries(m, "user-1", "acc-1", [])).resolves.toEqual(
+      new Map(),
     );
     expect(query).not.toHaveBeenCalled();
   });

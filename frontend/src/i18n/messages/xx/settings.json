@@ -1538,7 +1538,12 @@
         "never": "[XX-Never-XX]"
       },
       "notifySuccessSaved": "[XX-Notification setting saved-XX]",
-      "notifySuccessFailed": "[XX-Could not change the notification setting-XX]"
+      "notifySuccessFailed": "[XX-Could not change the notification setting-XX]",
+      "tagOperationType": "[XX-Tag transactions with the bank's operation type-XX]",
+      "tagOperationTypeHelp": "[XX-Each imported transaction gets a tag named after the bank's operation type, such as Card payment or Incoming transfer, so rules and reports can use it.-XX]",
+      "tagOperationTypeOn": "[XX-Operation type tags turned on-XX]",
+      "tagOperationTypeOff": "[XX-Operation type tags turned off-XX]",
+      "tagOperationTypeFailed": "[XX-Could not change the operation type tags-XX]"
     },
     "account": {
       "unnamed": "[XX-Unnamed bank account-XX]",
@@ -1661,14 +1666,16 @@
         "refused": "[XX-Refused-XX]",
         "pending": "[XX-Pending-XX]",
         "before_cutoff": "[XX-Before the start date-XX]",
-        "withCount": "[XX-{label} ({count})-XX]"
+        "withCount": "[XX-{label} ({count})-XX]",
+        "excluded": "[XX-Exceptions-XX]"
       },
       "outcome": {
         "new": "[XX-New-XX]",
         "duplicate": "[XX-Already imported-XX]",
         "refused": "[XX-Refused-XX]",
         "pending": "[XX-Pending-XX]",
-        "before_cutoff": "[XX-Before the start date-XX]"
+        "before_cutoff": "[XX-Before the start date-XX]",
+        "excluded": "[XX-Exception-XX]"
       },
       "refusal": {
         "missing_date": "[XX-No date-XX]",
@@ -1683,7 +1690,8 @@
         "payee": "[XX-Payee-XX]",
         "category": "[XX-Category-XX]",
         "status": "[XX-Status-XX]",
-        "amount": "[XX-Amount-XX]"
+        "amount": "[XX-Amount-XX]",
+        "select": "[XX-Select and details-XX]"
       },
       "noPayee": "[XX-No payee-XX]",
       "dateUnknown": "[XX-No date-XX]",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "[XX-The bank returned no transactions for this period.-XX]",
         "filtered": "[XX-No transactions in this list.-XX]"
+      },
+      "selectAllNew": "[XX-Select all new transactions in this list-XX]",
+      "selectAllExceptions": "[XX-Select all exceptions in this list-XX]",
+      "selectRow": "[XX-Import {payee}-XX]",
+      "selectException": "[XX-Remove {payee} from the exceptions-XX]",
+      "summary": "[XX-Import {import}, skip {skip}, add {except} to exceptions-XX]",
+      "importNothing": "[XX-Confirm without importing-XX]",
+      "exceptions": {
+        "intro": "[XX-Transactions in the exceptions are never imported. Remove one from the exceptions to see it as new again.-XX]",
+        "remove": "[XX-{count, plural, =0 {Remove from exceptions} other {Remove # from exceptions}}-XX]",
+        "removing": "[XX-Removing...-XX]",
+        "removed": "[XX-{count, plural, one {# transaction was removed from the exceptions} other {# transactions were removed from the exceptions}}-XX]",
+        "removedNone": "[XX-Nothing was removed from the exceptions-XX]",
+        "removeFailed": "[XX-Could not remove the exceptions-XX]"
+      },
+      "details": {
+        "operation": {
+          "heading": "[XX-Operation type-XX]",
+          "none": "[XX-No operation type tag for this transaction.-XX]",
+          "tag": "[XX-Tag from the bank's operation type: {tag}-XX]"
+        }
       }
     }
   }

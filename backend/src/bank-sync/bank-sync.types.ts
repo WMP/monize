@@ -5,6 +5,13 @@ import type {
   BankSyncProviderName,
   BankSyncPsuType,
 } from "./bank-sync.constants";
+import type {
+  ImportPreviewLabels,
+  ImportPreviewPayeeVia,
+  ImportPreviewPayeeView,
+  ImportPreviewRuleChanges,
+  ImportPreviewRuleView,
+} from "../import-preview/import-preview.types";
 import type { RefusalReason } from "./bank-transaction-planner";
 
 /**
@@ -95,6 +102,8 @@ export interface BankSyncConnectionView {
   autoSync: boolean;
   /** How the daily sync reports a successful run. */
   notifySuccess: BankSyncNotifySuccessMode;
+  /** Whether a synced transaction is tagged with the bank's operation type (spec section 7b). */
+  tagOperationType: boolean;
   lastError: string | null;
   createdAt: string;
   accounts: BankSyncAccountView[];
@@ -112,6 +121,8 @@ export interface BankSyncResult {
   imported: number;
   /** Rows the ledger says were imported before. */
   skipped: number;
+  /** Rows this sync added to the exceptions (spec section 7b); zero without a selection. */
+  excluded: number;
   refused: Record<RefusalReason, number>;
   /** Rows the bank has not booked yet; counted, not an error. */
   pending: number;
@@ -140,6 +151,12 @@ export interface BankSyncAccountFailure {
 export type BankSyncConnectionSyncEntry =
   | BankSyncResult
   | BankSyncAccountFailure;
+
+/** `POST /bank-sync/accounts/:id/exceptions/remove` (spec section 7b). */
+export interface BankSyncRemovedExceptionsView {
+  /** How many exceptions were deleted; a key that is not an exception is not counted. */
+  removed: number;
+}
 
 /** A bank account linked to a Monize account by `POST .../match` or the callback. */
 export interface BankSyncLinkedMatch {
@@ -173,13 +190,31 @@ export interface BankSyncLinkDefaultsView {
 export type BankSyncPreviewOutcome =
   | "new"
   | "duplicate"
+  /** An exception: the person added it to the exceptions; no sync imports it. */
+  | "excluded"
   | "refused"
   | "pending"
   | "before_cutoff";
 
+/**
+ * How a row's payee resolves, and which import rules matched it (spec section
+ * 7b). The shapes are the source-neutral import preview's
+ * (`src/import-preview/import-preview.types.ts`): nothing in them is a bank's.
+ */
+export type BankSyncPayeeVia = ImportPreviewPayeeVia;
+export type BankSyncPreviewPayeeView = ImportPreviewPayeeView;
+export type BankSyncPreviewRuleChanges = ImportPreviewRuleChanges;
+export type BankSyncPreviewRuleView = ImportPreviewRuleView;
+export type BankSyncPreviewLabels = ImportPreviewLabels;
+
 /** One provider row as the preview lists it (spec section 7a). */
 export interface BankSyncPreviewRowView {
   outcome: BankSyncPreviewOutcome;
+  /**
+   * The duplicate key of a planned row (a `new`, `duplicate` or `excluded` one),
+   * which is what a selection names; null for a row that was not planned.
+   */
+  externalKey: string | null;
   /** Set when `outcome` is `refused`. */
   refusalReason: RefusalReason | null;
   transactionDate: string | null;
@@ -193,6 +228,15 @@ export interface BankSyncPreviewRowView {
   payeeName: string | null;
   categoryName: string | null;
   tagNames: string[];
+  /** How the payee resolves; null unless the row is `new`. */
+  payee: BankSyncPreviewPayeeView | null;
+  /** The import rules that matched, in order; empty unless the row is `new`. */
+  rules: BankSyncPreviewRuleView[];
+  /**
+   * The operation-type tag the sync would add (already in `tagNames`); null when
+   * the connection does not tag, the bank named no operation, or the row is not `new`.
+   */
+  operationTag: string | null;
 }
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it was written. */
@@ -201,9 +245,13 @@ export interface BankSyncPreviewView {
   /** The Monize account's currency: every amount of a new row is in it. */
   currencyCode: string;
   rows: BankSyncPreviewRowView[];
+  /** Names for the ids in the rows' rule traces, so no raw id reaches the screen. */
+  labels: BankSyncPreviewLabels;
   summary: {
     new: number;
     duplicate: number;
+    /** Exceptions among the rows (spec section 7b). */
+    excluded: number;
     refused: number;
     refusedByReason: Record<RefusalReason, number>;
     pending: number;

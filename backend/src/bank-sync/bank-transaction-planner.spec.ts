@@ -6,6 +6,7 @@ import {
   explainBankImport,
   planBankImport,
 } from "./bank-transaction-planner";
+import { NO_BANK_OPERATION } from "./bank-operation";
 import type { BankTransaction } from "./providers/bank-sync-provider.interface";
 
 /**
@@ -33,6 +34,7 @@ const row = (overrides: Partial<BankTransaction> = {}): BankTransaction => ({
   transactionDate: null,
   counterpartyName: null,
   remittance: [],
+  operation: { ...NO_BANK_OPERATION },
   ...overrides,
 });
 
@@ -667,6 +669,71 @@ describe("planBankImport", () => {
     });
   });
 
+  describe("the bank's operation type (spec section 7b)", () => {
+    // The description is part of the `hash:` key (section 6), so reading the
+    // operation type must not touch it: a changed description would import
+    // every row a second time. These keys were computed BEFORE the operation
+    // type was read, and are pinned as strings, not derived.
+    const PIN_CTX: BankImportContext = {
+      accountCurrencyCode: "PLN",
+      syncFromDate: "2026-08-01",
+      today: "2026-10-02",
+    };
+    const FIXTURE = row({
+      transactionId: "tx-1",
+      bankReference: "REF-1",
+      amount: "12.34",
+      currencyCode: "PLN",
+      bookingDate: "2026-09-10",
+      counterpartyName: "Biedronka",
+      remittance: ["Groceries CARD-PAYMENT"],
+    });
+    const WITH_OPERATION: BankTransaction = {
+      ...FIXTURE,
+      operation: {
+        code: "PMNT",
+        subCode: "CCRD",
+        description: "Card payment",
+        remittanceCode: "CARD-PAYMENT",
+      },
+    };
+    const PINNED_HASH =
+      "hash:46af6c6121558eb9badd3815eb662edd99127d36c10fe807d44a502b3bc330b9";
+
+    it("keeps the external key of a fixture row byte for byte", () => {
+      const keys = (rows: BankTransaction[]) =>
+        planBankImport(rows, PIN_CTX).planned.map((p) => p.externalKey);
+      expect(keys([FIXTURE, FIXTURE])).toEqual([
+        `${PINNED_HASH}:0`,
+        `${PINNED_HASH}:1`,
+      ]);
+      expect(keys([{ ...FIXTURE, entryReference: "E-1" }])).toEqual([
+        "ref:E-1",
+      ]);
+    });
+
+    it("gives a row the same key and description whatever operation the bank reported", () => {
+      const without = planBankImport([FIXTURE], PIN_CTX).planned[0];
+      const withIt = planBankImport([WITH_OPERATION], PIN_CTX).planned[0];
+      expect(withIt.externalKey).toBe(without.externalKey);
+      expect(withIt.externalKey).toBe(`${PINNED_HASH}:0`);
+      // The code stays in the description: it is part of what the key hashes.
+      expect(withIt.description).toBe("Groceries CARD-PAYMENT");
+      expect(withIt.payeeText).toBe(without.payeeText);
+    });
+
+    it("carries the operation on the planned row and on the entry, planned or not", () => {
+      const { plan: planned, entries } = explainBankImport(
+        [WITH_OPERATION, { ...WITH_OPERATION, booked: false }],
+        PIN_CTX,
+      );
+      expect(planned.planned[0].operation).toEqual(WITH_OPERATION.operation);
+      expect(entries[0].operation).toEqual(WITH_OPERATION.operation);
+      expect(entries[1].outcome).toBe("pending");
+      expect(entries[1].operation).toEqual(WITH_OPERATION.operation);
+    });
+  });
+
   it("does not modify its input", () => {
     const rows: readonly BankTransaction[] = Object.freeze([
       Object.freeze(
@@ -730,6 +797,7 @@ describe("explainBankImport (the preview's view of the same classification)", ()
       payeeText: "Shop",
       description: null,
       referenceNumber: null,
+      operation: NO_BANK_OPERATION,
     });
     // The planned entries are the planned rows, one for one, in order.
     expect(

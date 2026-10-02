@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   describeFetchFailure,
   isTransportFailure,
@@ -20,6 +21,7 @@ import type {
   StartAuthorizationInput,
 } from "../bank-sync-provider.interface";
 import { signEnableBankingJwt } from "./enable-banking-jwt";
+import { rawLogLines } from "./enable-banking-raw-log";
 import {
   mapAccountDetails,
   mapApplication,
@@ -142,13 +144,43 @@ function kindOf(
  * and built from the status and the provider's own error code and description
  * only. The signed JWT and the private key never reach a message or a log
  * line, and any occurrence of the token in a provider description is redacted.
+ *
+ * With `BANK_SYNC_LOG_RAW=true` each answer that carries bank data (a page of
+ * transactions, the balances, an account's details, a new session) is also
+ * written to the debug log, identifiers masked (`enable-banking-raw-log.ts`).
+ * Off by default: that log holds counterparty names, remittance text and amounts.
  */
 @Injectable()
 export class EnableBankingProvider implements BankSyncProvider {
   readonly name = "enable_banking" as const;
   private readonly logger = new Logger(EnableBankingProvider.name);
 
-  constructor(private readonly health: ProviderHealthService) {}
+  constructor(
+    private readonly health: ProviderHealthService,
+    private readonly config: ConfigService,
+  ) {}
+
+  /**
+   * Whether the operator asked for the raw answers in the debug log. Read on
+   * each use, and only the exact value `true` turns it on: the Nest logger
+   * prints debug lines unconditionally in this app, so this flag is the gate.
+   */
+  private logsRawAnswers(): boolean {
+    return this.config.get<string>("BANK_SYNC_LOG_RAW") === "true";
+  }
+
+  /** The masked, bounded debug lines of one answer; nothing unless the flag is on. */
+  private logRaw(
+    label: string,
+    accountUid: string | null,
+    payload: unknown,
+    page?: number,
+  ): void {
+    if (!this.logsRawAnswers()) return;
+    for (const line of rawLogLines({ label, accountUid, page, payload })) {
+      this.logger.debug(line);
+    }
+  }
 
   async testCredentials(
     credentials: BankSyncCredentials,
@@ -209,6 +241,7 @@ export class EnableBankingProvider implements BankSyncProvider {
       body: { code },
       context: "session creation",
     });
+    this.logRaw("session", null, payload);
     return mapSession(payload);
   }
 
@@ -241,6 +274,7 @@ export class EnableBankingProvider implements BankSyncProvider {
         psu,
         context: "transaction fetch",
       });
+      this.logRaw("transactions", externalAccountId, payload, page + 1);
       const result = mapTransactionsPage(payload);
       // Also filtered here: the status parameter is a request, not a promise.
       rows.push(...result.transactions.filter((row) => row.booked));
@@ -275,6 +309,7 @@ export class EnableBankingProvider implements BankSyncProvider {
       psu,
       context: "account details fetch",
     });
+    this.logRaw("account details", externalAccountId, payload);
     return mapAccountDetails(payload, externalAccountId);
   }
 
@@ -289,6 +324,7 @@ export class EnableBankingProvider implements BankSyncProvider {
       psu,
       context: "balance fetch",
     });
+    this.logRaw("balances", externalAccountId, payload);
     return mapBalance(payload);
   }
 

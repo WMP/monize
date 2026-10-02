@@ -53,6 +53,14 @@ export const BANK_SYNC_DEFAULT_NOTIFY_SUCCESS: BankSyncNotifySuccessMode =
   "when_imported";
 
 /**
+ * Whether a synced transaction is tagged with the bank's operation type on a
+ * connection that did not choose (docs/specs/bank-sync.md section 7b). The
+ * column's DEFAULT in `database/schema.sql` and the migration, held equal to it
+ * by `bank-sync-constants.guard.spec.ts`.
+ */
+export const BANK_SYNC_DEFAULT_TAG_OPERATION_TYPE = true;
+
+/**
  * The provider a connection is made through when the request does not name one.
  * The API takes no provider parameter in the first release: one provider, so
  * one credentials row per user (docs/specs/bank-sync.md section 4).

@@ -705,6 +705,8 @@
     "providerInvalidResponse": "De provider voor banksynchronisatie heeft een antwoord gestuurd dat deze versie van Monize niet begrijpt.",
     "planChanged": "De gegevens van de bank zijn gewijzigd sinds het voorbeeld. Er is niets geïmporteerd; maak het voorbeeld opnieuw.",
     "needsPreview": "Open het voorbeeld voor deze bankrekening en bevestig de eerste import voordat deze automatisch wordt gesynchroniseerd.",
-    "nothingToUpdate": "Stuur autoSync of notifySuccess om een bankkoppeling te wijzigen."
+    "selectionNotNew": "Een geselecteerde transactie is geen nieuwe regel in de gegevens van de bank. Er is niets geïmporteerd; maak het voorbeeld opnieuw.",
+    "selectionOverlap": "Een transactie kan niet tegelijk worden geïmporteerd en aan de uitzonderingen worden toegevoegd.",
+    "nothingToUpdate": "Stuur autoSync, notifySuccess of tagOperationType om een bankkoppeling te wijzigen."
   }
 }

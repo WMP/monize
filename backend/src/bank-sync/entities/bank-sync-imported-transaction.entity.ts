@@ -73,4 +73,12 @@ export class BankSyncImportedTransaction {
 
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;
+
+  /**
+   * Set when the user added the bank transaction to the exceptions from the
+   * preview (spec section 7b): the row then has no transaction, and it claims
+   * the key like any ledger row so no later sync imports it. Null is an import.
+   */
+  @Column({ type: "timestamptz", name: "excluded_at", nullable: true })
+  excludedAt: Date | null;
 }

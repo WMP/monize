@@ -24,5 +24,14 @@
       "stalled": "Wciąż zapowiadałem dalszą pracę zamiast ją zakończyć, więc ta odpowiedź opiera się na danych zebranych przed zatrzymaniem."
     },
     "synthesisFailed": "Zebrałem dane do tego pytania, ale nie udało mi się ukończyć analizy, więc nie mam wiarygodnej odpowiedzi. Spróbuj zapytać o coś węższego."
+  },
+  "bankSync": {
+    "operationTypes": {
+      "cardPayment": "Płatność kartą",
+      "transferIn": "Przelew przychodzący",
+      "transferOut": "Przelew wychodzący",
+      "mobilePayment": "Płatność mobilna",
+      "cashWithdrawal": "Wypłata gotówki"
+    }
   }
 }

@@ -509,6 +509,64 @@ describe("mapTransaction", () => {
       transactionDate: "2026-03-09",
       counterpartyName: "Example Cafe",
       remittance: ["Latte", "Card 1234"],
+      operation: {
+        code: null,
+        subCode: null,
+        description: null,
+        remittanceCode: null,
+      },
+    });
+  });
+
+  describe("the bank's operation type (spec section 7b)", () => {
+    it("reads bank_transaction_code, bounded, and the code of a remittance line", () => {
+      const row = mapTransaction({
+        ...wire,
+        bank_transaction_code: {
+          description: "Card payment",
+          code: "PMNT",
+          sub_code: "CCRD",
+        },
+        remittance_information: [
+          "Latte",
+          "Op 1 MOBILE-PAYMENT-POS-NO-CARD-TX-CODE",
+        ],
+      });
+      expect(row?.operation).toEqual({
+        code: "PMNT",
+        subCode: "CCRD",
+        description: "Card payment",
+        remittanceCode: "MOBILE-PAYMENT-POS-NO-CARD-TX-CODE",
+      });
+    });
+
+    it("leaves the remittance lines exactly as the bank sent them (they are the duplicate key's input)", () => {
+      const lines = ["Latte CARD-PAYMENT", "TRANSFER-IN"];
+      const row = mapTransaction({ ...wire, remittance_information: lines });
+      expect(row?.remittance).toEqual(lines);
+      expect(row?.operation.remittanceCode).toBe("CARD-PAYMENT");
+    });
+
+    it("bounds every operation text", () => {
+      const row = mapTransaction({
+        ...wire,
+        bank_transaction_code: {
+          code: "c".repeat(500),
+          sub_code: "s".repeat(500),
+          description: "d".repeat(500),
+        },
+      });
+      expect(row?.operation.code).toHaveLength(100);
+      expect(row?.operation.subCode).toHaveLength(100);
+      expect(row?.operation.description).toHaveLength(100);
+    });
+
+    it("tolerates a bank_transaction_code of the wrong type", () => {
+      for (const bad of ["PMNT", 5, [], null]) {
+        expect(
+          mapTransaction({ ...wire, bank_transaction_code: bad })?.operation,
+        ).toMatchObject({ code: null, subCode: null, description: null });
+      }
     });
   });
 
@@ -571,6 +629,12 @@ describe("mapTransaction", () => {
       transactionDate: null,
       counterpartyName: null,
       remittance: [],
+      operation: {
+        code: null,
+        subCode: null,
+        description: null,
+        remittanceCode: null,
+      },
     });
   });
 

@@ -12,7 +12,9 @@ import type {
   BankSyncLinkDefaults,
   BankSyncMatchedConnection,
   BankSyncPreview,
+  BankSyncRemovedExceptions,
   BankSyncResult,
+  BankSyncSelection,
   BankSyncStatus,
   CreateBankSyncConnection,
   SaveBankSyncCredentials,
@@ -228,16 +230,26 @@ export const bankSyncApi = {
   /**
    * Sync one account. With the `planFingerprint` of a preview the server
    * imports exactly the rows that preview listed and answers 409 when the
-   * bank's data has changed since.
+   * bank's data has changed since. With a `selection` (the person's choice in
+   * the preview) it imports only `importKeys` and adds `excludeKeys` to the
+   * exceptions; it answers 400 for a key that is not a new row. A selection
+   * with no `importKeys` is still a selection: it imports nothing.
    */
   syncAccount: async (
     id: string,
     planFingerprint?: string,
+    selection?: BankSyncSelection,
   ): Promise<BankSyncResult> => {
+    const body = {
+      ...(planFingerprint ? { planFingerprint } : {}),
+      ...(selection
+        ? { importKeys: selection.importKeys, excludeKeys: selection.excludeKeys }
+        : {}),
+    };
     try {
       const response = await apiClient.post<BankSyncResult>(
         `/bank-sync/accounts/${id}/sync`,
-        planFingerprint ? { planFingerprint } : undefined,
+        Object.keys(body).length > 0 ? body : undefined,
         { timeout: SYNC_TIMEOUT_MS },
       );
       if (wroteRows([response.data])) invalidateBalanceCaches();
@@ -245,6 +257,25 @@ export const bankSyncApi = {
     } catch (error) {
       if (isUnknownSyncOutcome(error)) invalidateBalanceCaches();
       throw error;
+    } finally {
+      invalidateCache('bank-sync:');
+    }
+  },
+
+  /**
+   * Take exceptions back (spec section 7b): the next preview lists those bank
+   * transactions as new again. Moves no balance, so it drops `bank-sync:` alone.
+   */
+  removeExceptions: async (
+    id: string,
+    keys: readonly string[],
+  ): Promise<BankSyncRemovedExceptions> => {
+    try {
+      const response = await apiClient.post<BankSyncRemovedExceptions>(
+        `/bank-sync/accounts/${id}/exceptions/remove`,
+        { keys: [...keys] },
+      );
+      return response.data;
     } finally {
       invalidateCache('bank-sync:');
     }

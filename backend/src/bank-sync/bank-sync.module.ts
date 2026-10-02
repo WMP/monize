@@ -7,6 +7,7 @@ import { NetWorthModule } from "../net-worth/net-worth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { PayeesModule } from "../payees/payees.module";
 import { ProviderHealthModule } from "../provider-health/provider-health.module";
+import { TagsModule } from "../tags/tags.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
 import { BankSyncConnectionsService } from "./bank-sync-connections.service";
 import { BankSyncController } from "./bank-sync.controller";
@@ -39,6 +40,9 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     AccountsModule,
     PayeesModule,
     TransactionRulesModule,
+    // For TagsService.addTransactionTags: the operation-type tag is attached on
+    // the writer's own manager, inside its transaction.
+    TagsModule,
     NetWorthModule,
     // For NotificationDispatchService: the consent reminders and the daily
     // sync's outcomes are written through it so the bank sync categories'

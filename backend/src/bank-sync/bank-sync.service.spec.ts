@@ -27,6 +27,7 @@ import {
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
 import {
   BankSyncPlanChangedException,
+  BankSyncSelectionRefusedException,
   BankSyncWriterService,
 } from "./bank-sync-writer.service";
 import {
@@ -242,7 +243,7 @@ describe("BankSyncService", () => {
     manager.query.mockResolvedValue([]);
     provider.fetchTransactions.mockResolvedValue([]);
     provider.fetchBalance.mockResolvedValue(null);
-    writer.write.mockResolvedValue({ imported: 0, skipped: 0 });
+    writer.write.mockResolvedValue({ imported: 0, skipped: 0, excluded: 0 });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -502,7 +503,7 @@ describe("BankSyncService", () => {
         referenceDate: "2026-09-29",
         balanceType: "CLBD",
       });
-      writer.write.mockResolvedValue({ imported: 1, skipped: 0 });
+      writer.write.mockResolvedValue({ imported: 1, skipped: 0, excluded: 0 });
 
       const result = await sync();
 
@@ -510,6 +511,7 @@ describe("BankSyncService", () => {
         bankAccountId: BANK_ACCOUNT_ID,
         imported: 1,
         skipped: 0,
+        excluded: 0,
         refused: {
           missing_date: 0,
           future_date: 0,
@@ -582,7 +584,7 @@ describe("BankSyncService", () => {
       });
       writer.write.mockImplementation(async () => {
         order.push("write");
-        return { imported: 0, skipped: 0 };
+        return { imported: 0, skipped: 0, excluded: 0 };
       });
       jobClaims.releaseLease.mockImplementation(async () => {
         order.push("release");
@@ -631,7 +633,7 @@ describe("BankSyncService", () => {
     });
 
     it("drops the derived balance state after the commit, only when something was created", async () => {
-      writer.write.mockResolvedValue({ imported: 2, skipped: 0 });
+      writer.write.mockResolvedValue({ imported: 2, skipped: 0, excluded: 0 });
       await sync();
       expect(netWorth.triggerDebouncedRecalc).toHaveBeenCalledWith(
         ACCOUNT_ID,
@@ -639,7 +641,7 @@ describe("BankSyncService", () => {
       );
 
       netWorth.triggerDebouncedRecalc.mockClear();
-      writer.write.mockResolvedValue({ imported: 0, skipped: 3 });
+      writer.write.mockResolvedValue({ imported: 0, skipped: 3, excluded: 0 });
       await sync();
       expect(netWorth.triggerDebouncedRecalc).not.toHaveBeenCalled();
     });
@@ -1079,6 +1081,175 @@ describe("BankSyncService", () => {
     });
   });
 
+  describe("a sync that carries the person's selection (spec section 7b)", () => {
+    const FINGERPRINT = "a".repeat(64);
+    const SELECTION = { importKeys: ["ref:a"], excludeKeys: ["ref:b"] };
+
+    it("hands the selection to the write beside the fingerprint", async () => {
+      await service.syncAccount(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+        FINGERPRINT,
+        SELECTION,
+      );
+      const input = writer.write.mock.calls[0][0];
+      expect(input.expectedFingerprint).toBe(FINGERPRINT);
+      expect(input.selection).toEqual(SELECTION);
+    });
+
+    it("sends none when the caller has none: every new row is imported, as it always was", async () => {
+      await service.syncAccount(USER_ID, BANK_ACCOUNT_ID, null, FINGERPRINT);
+      expect(writer.write.mock.calls[0][0].selection).toBeUndefined();
+    });
+
+    it("refuses a key in both lists with 400 before the bank is read or the lease taken", async () => {
+      await expect(
+        service.syncAccount(USER_ID, BANK_ACCOUNT_ID, null, FINGERPRINT, {
+          importKeys: ["ref:a"],
+          excludeKeys: ["ref:a"],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(provider.fetchTransactions).not.toHaveBeenCalled();
+      expect(jobClaims.claimLease).not.toHaveBeenCalled();
+      expect(writer.write).not.toHaveBeenCalled();
+    });
+
+    it("answers the write's 400 for a key outside the plan as it is, and records no failed sync: nothing was attempted", async () => {
+      writer.write.mockRejectedValue(
+        new BankSyncSelectionRefusedException("not a new row"),
+      );
+      await expect(
+        service.syncAccount(
+          USER_ID,
+          BANK_ACCOUNT_ID,
+          null,
+          FINGERPRINT,
+          SELECTION,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(statements("last_sync_status = 'failed'")).toHaveLength(0);
+      expect(jobClaims.releaseLease).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports the rows it added to the exceptions", async () => {
+      writer.write.mockResolvedValue({ imported: 1, skipped: 0, excluded: 3 });
+      const result = await service.syncAccount(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+        FINGERPRINT,
+        SELECTION,
+      );
+      expect(result).toMatchObject({ imported: 1, excluded: 3 });
+    });
+
+    it("still drops what depends on the balance only when a row was imported", async () => {
+      writer.write.mockResolvedValue({ imported: 0, skipped: 0, excluded: 2 });
+      await service.syncAccount(
+        USER_ID,
+        BANK_ACCOUNT_ID,
+        null,
+        FINGERPRINT,
+        SELECTION,
+      );
+      expect(netWorth.triggerDebouncedRecalc).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("tagging with the bank's operation type (spec section 7b)", () => {
+    it.each([true, false])(
+      "gives the write the connection's setting (%p), for the user's sync and the daily one alike",
+      async (tagOperationType) => {
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ tagOperationType }),
+        );
+        await service.syncAccount(USER_ID, BANK_ACCOUNT_ID, null);
+        await service.syncAccountEntry(USER_ID, BANK_ACCOUNT_ID, null);
+        expect(
+          writer.write.mock.calls.map((call) => call[0].tagOperationType),
+        ).toEqual([tagOperationType, tagOperationType]);
+      },
+    );
+
+    it.each([true, false])(
+      "gives the preview the connection's setting (%p)",
+      async (tagOperationType) => {
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ tagOperationType }),
+        );
+        previewer.build.mockResolvedValue({} as never);
+        await service.previewAccount(USER_ID, BANK_ACCOUNT_ID, null);
+        expect(previewer.build.mock.calls[0][0].tagOperationType).toBe(
+          tagOperationType,
+        );
+      },
+    );
+  });
+
+  describe("removeExceptions (spec section 7b)", () => {
+    it("deletes only the ledger rows that are exceptions, for the caller's linked account, under the bank account's lock", async () => {
+      manager.query.mockResolvedValue([{ id: "l1" }, { id: "l2" }]);
+
+      const result = await service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, [
+        "ref:a",
+        "ref:b",
+      ]);
+
+      expect(result).toEqual({ removed: 2 });
+      expect(linkRepo.findOne).toHaveBeenCalledWith({
+        where: { id: BANK_ACCOUNT_ID, userId: USER_ID },
+        lock: { mode: "pessimistic_write" },
+      });
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(String(sql)).toMatch(
+        /^\s*DELETE FROM bank_sync_imported_transactions/,
+      );
+      expect(String(sql)).toContain("excluded_at IS NOT NULL");
+      expect(String(sql)).toContain("transaction_id IS NULL");
+      expect(String(sql)).toContain("external_key = ANY($3::varchar[])");
+      expect(params).toEqual([USER_ID, ACCOUNT_ID, ["ref:a", "ref:b"]]);
+    });
+
+    it("counts only what was removed: a key that is not an exception removes nothing", async () => {
+      manager.query.mockResolvedValue([]);
+      await expect(
+        service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, ["ref:imported"]),
+      ).resolves.toEqual({ removed: 0 });
+    });
+
+    it("sends each key once", async () => {
+      await service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, [
+        "ref:a",
+        "ref:a",
+        "ref:b",
+      ]);
+      expect(manager.query.mock.calls[0][1][2]).toEqual(["ref:a", "ref:b"]);
+    });
+
+    it("is 404 for a bank account that is not the caller's, deleting nothing", async () => {
+      linkRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, ["ref:a"]),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(manager.query).not.toHaveBeenCalled();
+    });
+
+    it("is 409 for a bank account that is not linked: there is no ledger to take them from", async () => {
+      linkRepo.findOne.mockResolvedValue(bankAccountRow({ accountId: null }));
+      await expect(
+        service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, ["ref:a"]),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(manager.query).not.toHaveBeenCalled();
+    });
+
+    it("takes no lease and asks nothing of the bank", async () => {
+      await service.removeExceptions(USER_ID, BANK_ACCOUNT_ID, ["ref:a"]);
+      expect(jobClaims.claimLease).not.toHaveBeenCalled();
+      expect(provider.fetchTransactions).not.toHaveBeenCalled();
+    });
+  });
+
   describe("syncAccountEntry", () => {
     const attempt = () =>
       jest.spyOn(
@@ -1169,6 +1340,7 @@ describe("BankSyncService", () => {
         bankAccountId: id,
         imported: 1,
         skipped: 0,
+        excluded: 0,
         refused: {
           missing_date: 0,
           future_date: 0,
@@ -1409,7 +1581,13 @@ describe("BankSyncService", () => {
         await expect(service.syncAccount(USER_ID, ID_B, null)).resolves.toEqual(
           resultOf(ID_B),
         );
-        expect(spy).toHaveBeenCalledWith(USER_ID, ID_B, null, undefined);
+        expect(spy).toHaveBeenCalledWith(
+          USER_ID,
+          ID_B,
+          null,
+          undefined,
+          undefined,
+        );
       });
     });
 

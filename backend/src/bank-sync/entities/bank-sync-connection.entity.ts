@@ -100,6 +100,13 @@ export class BankSyncConnection {
   })
   notifySuccess: BankSyncNotifySuccessMode;
 
+  /**
+   * Whether a synced transaction is tagged with the bank's operation type
+   * (spec section 7b). On by default.
+   */
+  @Column({ type: "boolean", name: "tag_operation_type", default: true })
+  tagOperationType: boolean;
+
   @Column({ type: "varchar", name: "last_error", length: 500, nullable: true })
   lastError: string | null;
 

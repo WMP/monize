@@ -285,6 +285,33 @@ describe('bankSyncApi', () => {
     });
   });
 
+  describe('removeExceptions', () => {
+    it('POSTs the keys to the exceptions route and answers how many were removed', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { removed: 2 } });
+      await expect(bankSyncApi.removeExceptions('ba-1', ['ref:a', 'ref:b'])).resolves.toEqual({ removed: 2 });
+      expect(apiClient.post).toHaveBeenCalledWith('/bank-sync/accounts/ba-1/exceptions/remove', {
+        keys: ['ref:a', 'ref:b'],
+      });
+    });
+
+    it('drops the bank-sync caches and no balance cache: it moves no balance', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { removed: 1 } });
+      seedCaches();
+      await bankSyncApi.removeExceptions('ba-1', ['ref:a']);
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+    });
+
+    it('drops the bank-sync caches when it fails, and rethrows', async () => {
+      const error = axiosFailure(404);
+      vi.mocked(apiClient.post).mockRejectedValue(error);
+      seedCaches();
+      await expect(bankSyncApi.removeExceptions('ba-1', ['ref:a'])).rejects.toBe(error);
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+      expect(getCached('accounts:all:false')).toBeDefined();
+    });
+  });
+
   describe('syncAccount', () => {
     it('sends the fingerprint of the preview the person confirmed', async () => {
       vi.mocked(apiClient.post).mockResolvedValue({ data: result(2) });
@@ -300,6 +327,40 @@ describe('bankSyncApi', () => {
       vi.mocked(apiClient.post).mockResolvedValue({ data: result(0) });
       await bankSyncApi.syncAccount('ba-1');
       expect(vi.mocked(apiClient.post).mock.calls[0][1]).toBeUndefined();
+    });
+
+    it('sends the selection beside the fingerprint, and an empty importKeys as a selection of nothing', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: result(1) });
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64), {
+        importKeys: ['ref:a'],
+        excludeKeys: ['ref:b'],
+      });
+      expect(vi.mocked(apiClient.post).mock.calls[0][1]).toEqual({
+        planFingerprint: 'f'.repeat(64),
+        importKeys: ['ref:a'],
+        excludeKeys: ['ref:b'],
+      });
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64), { importKeys: [], excludeKeys: [] });
+      expect(vi.mocked(apiClient.post).mock.calls[1][1]).toEqual({
+        planFingerprint: 'f'.repeat(64),
+        importKeys: [],
+        excludeKeys: [],
+      });
+    });
+
+    it('keeps the balance caches when a selection only added exceptions: no balance moved', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { ...result(0), excluded: 3 } });
+      seedCaches();
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64), { importKeys: [], excludeKeys: ['a', 'b', 'c'] });
+      expect(getCached('accounts:all:false')).toBeDefined();
+      expect(getCached('bank-sync:connections')).toBeUndefined();
+    });
+
+    it('drops the balance caches when a selection imported rows', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: result(2) });
+      seedCaches();
+      await bankSyncApi.syncAccount('ba-1', 'f'.repeat(64), { importKeys: ['a', 'b'], excludeKeys: [] });
+      expect(getCached('accounts:all:false')).toBeUndefined();
     });
 
     it('still drops the balance caches when a confirmed sync imported rows', async () => {

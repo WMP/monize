@@ -1538,7 +1538,12 @@
         "never": "從不"
       },
       "notifySuccessSaved": "已儲存通知設定",
-      "notifySuccessFailed": "無法變更通知設定"
+      "notifySuccessFailed": "無法變更通知設定",
+      "tagOperationType": "用銀行的操作類型為交易加上標籤",
+      "tagOperationTypeHelp": "每筆匯入的交易都會取得一個以銀行操作類型命名的標籤，例如「刷卡消費」或「轉入」，方便規則和報表使用。",
+      "tagOperationTypeOn": "已開啟操作類型標籤",
+      "tagOperationTypeOff": "已關閉操作類型標籤",
+      "tagOperationTypeFailed": "無法變更操作類型標籤"
     },
     "account": {
       "unnamed": "未命名的銀行帳戶",
@@ -1661,14 +1666,16 @@
         "refused": "已拒絕",
         "pending": "待處理",
         "before_cutoff": "早於開始日期",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "例外"
       },
       "outcome": {
         "new": "新增",
         "duplicate": "已匯入",
         "refused": "已拒絕",
         "pending": "待處理",
-        "before_cutoff": "早於開始日期"
+        "before_cutoff": "早於開始日期",
+        "excluded": "例外"
       },
       "refusal": {
         "missing_date": "無日期",
@@ -1683,7 +1690,8 @@
         "payee": "收款人",
         "category": "類別",
         "status": "狀態",
-        "amount": "金額"
+        "amount": "金額",
+        "select": "選取與詳細資料"
       },
       "noPayee": "無收款人",
       "dateUnknown": "無日期",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "銀行未傳回此期間的交易。",
         "filtered": "此清單中沒有交易。"
+      },
+      "selectAllNew": "選取此清單中的所有新交易",
+      "selectAllExceptions": "選取此清單中的所有例外",
+      "selectRow": "匯入 {payee}",
+      "selectException": "將 {payee} 從例外中移除",
+      "summary": "匯入 {import} 筆，略過 {skip} 筆，加入例外 {except} 筆",
+      "importNothing": "不匯入，直接確認",
+      "exceptions": {
+        "intro": "例外中的交易永遠不會被匯入。將某筆交易從例外中移除，即可讓它重新顯示為新交易。",
+        "remove": "{count, plural, =0 {從例外中移除} other {將 # 筆從例外中移除}}",
+        "removing": "正在移除...",
+        "removed": "{count, plural, other {已將 # 筆交易從例外中移除}}",
+        "removedNone": "沒有從例外中移除任何項目",
+        "removeFailed": "無法移除例外"
+      },
+      "details": {
+        "operation": {
+          "heading": "操作類型",
+          "none": "這筆交易沒有操作類型標籤。",
+          "tag": "來自銀行操作類型的標籤：{tag}"
+        }
       }
     }
   }

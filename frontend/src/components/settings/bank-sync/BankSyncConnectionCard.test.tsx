@@ -126,6 +126,7 @@ const connection = (over: Partial<BankSyncConnection> = {}): BankSyncConnection 
   validUntil: inDays(60),
   autoSync: false,
   notifySuccess: 'when_imported',
+  tagOperationType: true,
   lastError: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   accounts: [bankAccount()],
@@ -423,6 +424,88 @@ describe('BankSyncConnectionCard', () => {
         'aria-checked',
         'true',
       );
+    });
+  });
+
+  describe('tagging with the bank\'s operation type', () => {
+    const toggle = () =>
+      screen.getByRole('switch', { name: 'Tag transactions with the bank\'s operation type' });
+
+    it('shows the setting the server holds, on by default', () => {
+      renderCard(connection());
+      expect(toggle()).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('explains itself in a tooltip', () => {
+      renderCard(connection());
+      expect(
+        screen.getByRole('button', { name: /named after the bank's operation type/ }),
+      ).toBeInTheDocument();
+    });
+
+    it('saves on change, sending only that setting', async () => {
+      mockUpdateConnection.mockResolvedValue(connection({ tagOperationType: false }));
+      renderCard(connection({ tagOperationType: true }));
+
+      await act(async () => {
+        fireEvent.click(toggle());
+      });
+
+      expect(mockUpdateConnection).toHaveBeenCalledWith('c1', { tagOperationType: false });
+      expect(toggle()).toHaveAttribute('aria-checked', 'false');
+      expect(toast.success).toHaveBeenCalledWith('Operation type tags turned off');
+    });
+
+    it('says so when it is turned back on', async () => {
+      mockUpdateConnection.mockResolvedValue(connection({ tagOperationType: true }));
+      renderCard(connection({ tagOperationType: false }));
+      await act(async () => {
+        fireEvent.click(toggle());
+      });
+      expect(mockUpdateConnection).toHaveBeenCalledWith('c1', { tagOperationType: true });
+      expect(toast.success).toHaveBeenCalledWith('Operation type tags turned on');
+    });
+
+    it('puts the switch back and says why when saving fails', async () => {
+      mockUpdateConnection.mockRejectedValue({ response: { data: { message: 'Nope' } } });
+      renderCard(connection({ tagOperationType: true }));
+
+      await act(async () => {
+        fireEvent.click(toggle());
+      });
+
+      expect(toggle()).toHaveAttribute('aria-checked', 'true');
+      expect(toast.error).toHaveBeenCalledWith('Nope');
+      expect(toast.success).not.toHaveBeenCalled();
+    });
+
+    it('says it could not change the setting when the server gave no reason', async () => {
+      mockUpdateConnection.mockRejectedValue({ response: { data: {} } });
+      renderCard(connection({ tagOperationType: true }));
+      await act(async () => {
+        fireEvent.click(toggle());
+      });
+      expect(toast.error).toHaveBeenCalledWith('Could not change the operation type tags');
+    });
+
+    it('follows the server when a reload brings a different value', () => {
+      const { rerender } = renderCard(connection({ tagOperationType: true }));
+      rerender(
+        <BankSyncConnectionCard
+          connection={connection({ tagOperationType: false })}
+          accounts={defaultAccounts}
+          linkedAccountIds={new Set()}
+          onChanged={vi.fn()}
+        />,
+      );
+      expect(toggle()).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('is not offered while the authorization is pending, when no sync can run', () => {
+      renderCard(connection({ status: 'pending' }));
+      expect(
+        screen.queryByRole('switch', { name: 'Tag transactions with the bank\'s operation type' }),
+      ).toBeNull();
     });
   });
 
@@ -1708,7 +1791,8 @@ describe('BankSyncConnectionCard', () => {
       bankAccountId: 'ba-1',
       currencyCode: 'EUR',
       rows: [],
-      summary: { new: 0, duplicate: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+      labels: { categories: {}, payees: {}, tags: {} },
+      summary: { new: 0, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
       monizeBalance: '1000.0000',
       balanceAfter: '1000.0000',
       bankBalance: null,
@@ -1750,8 +1834,28 @@ describe('BankSyncConnectionCard', () => {
     });
 
     it('imports from the preview, toasts the result, closes it and reloads', async () => {
+      const newRow = (externalKey: string) => ({
+        outcome: 'new',
+        externalKey,
+        refusalReason: null,
+        transactionDate: '2026-01-05',
+        amount: '-5.0000',
+        currencyCode: 'EUR',
+        payeeText: 'Shop',
+        description: null,
+        referenceNumber: null,
+        payeeName: 'Shop',
+        categoryName: null,
+        tagNames: [],
+        payee: null,
+        rules: [],
+        operationTag: null,
+      });
       mockPreviewAccount.mockResolvedValue(
-        preview({ summary: { new: 2, duplicate: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 } }),
+        preview({
+          rows: [newRow('ref:a'), newRow('ref:b')],
+          summary: { new: 2, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
       );
       mockSyncAccount.mockResolvedValue(result({ imported: 2 }));
       const { onChanged } = renderCard(linked({ needsPreview: true }));
@@ -1759,7 +1863,12 @@ describe('BankSyncConnectionCard', () => {
       await click('Sync now');
       await click('Import 2 transactions');
 
-      await waitFor(() => expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', 'f'.repeat(64)));
+      await waitFor(() =>
+        expect(mockSyncAccount).toHaveBeenCalledWith('ba-1', 'f'.repeat(64), {
+          importKeys: ['ref:a', 'ref:b'],
+          excludeKeys: [],
+        }),
+      );
       await waitFor(() => expect(onChanged).toHaveBeenCalled());
       expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('2 transactions imported'));
       await waitFor(() =>

@@ -1538,7 +1538,12 @@
         "never": "Never"
       },
       "notifySuccessSaved": "Notification setting saved",
-      "notifySuccessFailed": "Could not change the notification setting"
+      "notifySuccessFailed": "Could not change the notification setting",
+      "tagOperationType": "Tag transactions with the bank's operation type",
+      "tagOperationTypeHelp": "Each imported transaction gets a tag named after the bank's operation type, such as Card payment or Incoming transfer, so rules and reports can use it.",
+      "tagOperationTypeOn": "Operation type tags turned on",
+      "tagOperationTypeOff": "Operation type tags turned off",
+      "tagOperationTypeFailed": "Could not change the operation type tags"
     },
     "account": {
       "unnamed": "Unnamed bank account",
@@ -1661,14 +1666,16 @@
         "refused": "Refused",
         "pending": "Pending",
         "before_cutoff": "Before the start date",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Exceptions"
       },
       "outcome": {
         "new": "New",
         "duplicate": "Already imported",
         "refused": "Refused",
         "pending": "Pending",
-        "before_cutoff": "Before the start date"
+        "before_cutoff": "Before the start date",
+        "excluded": "Exception"
       },
       "refusal": {
         "missing_date": "No date",
@@ -1683,7 +1690,8 @@
         "payee": "Payee",
         "category": "Category",
         "status": "Status",
-        "amount": "Amount"
+        "amount": "Amount",
+        "select": "Select and details"
       },
       "noPayee": "No payee",
       "dateUnknown": "No date",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "The bank returned no transactions for this period.",
         "filtered": "No transactions in this list."
+      },
+      "selectAllNew": "Select all new transactions in this list",
+      "selectAllExceptions": "Select all exceptions in this list",
+      "selectRow": "Import {payee}",
+      "selectException": "Remove {payee} from the exceptions",
+      "summary": "Import {import}, skip {skip}, add {except} to exceptions",
+      "importNothing": "Confirm without importing",
+      "exceptions": {
+        "intro": "Transactions in the exceptions are never imported. Remove one from the exceptions to see it as new again.",
+        "remove": "{count, plural, =0 {Remove from exceptions} other {Remove # from exceptions}}",
+        "removing": "Removing...",
+        "removed": "{count, plural, one {# transaction was removed from the exceptions} other {# transactions were removed from the exceptions}}",
+        "removedNone": "Nothing was removed from the exceptions",
+        "removeFailed": "Could not remove the exceptions"
+      },
+      "details": {
+        "operation": {
+          "heading": "Operation type",
+          "none": "No operation type tag for this transaction.",
+          "tag": "Tag from the bank's operation type: {tag}"
+        }
       }
     }
   }

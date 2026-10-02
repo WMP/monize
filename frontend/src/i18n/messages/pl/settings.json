@@ -1538,7 +1538,12 @@
         "never": "Nigdy"
       },
       "notifySuccessSaved": "Zapisano ustawienie powiadomień",
-      "notifySuccessFailed": "Nie udało się zmienić ustawienia powiadomień"
+      "notifySuccessFailed": "Nie udało się zmienić ustawienia powiadomień",
+      "tagOperationType": "Oznaczaj transakcje tagiem typu operacji z banku",
+      "tagOperationTypeHelp": "Każda zaimportowana transakcja dostaje tag o nazwie typu operacji z banku, na przykład Płatność kartą lub Przelew przychodzący, aby reguły i raporty mogły z niego korzystać.",
+      "tagOperationTypeOn": "Tagi typu operacji włączone",
+      "tagOperationTypeOff": "Tagi typu operacji wyłączone",
+      "tagOperationTypeFailed": "Nie udało się zmienić tagów typu operacji"
     },
     "account": {
       "unnamed": "Konto bankowe bez nazwy",
@@ -1661,14 +1666,16 @@
         "refused": "Odrzucone",
         "pending": "Oczekujące",
         "before_cutoff": "Przed datą początkową",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Wyjątki"
       },
       "outcome": {
         "new": "Nowa",
         "duplicate": "Już zaimportowana",
         "refused": "Odrzucona",
         "pending": "Oczekująca",
-        "before_cutoff": "Przed datą początkową"
+        "before_cutoff": "Przed datą początkową",
+        "excluded": "Wyjątek"
       },
       "refusal": {
         "missing_date": "Brak daty",
@@ -1683,7 +1690,8 @@
         "payee": "Odbiorca",
         "category": "Kategoria",
         "status": "Status",
-        "amount": "Kwota"
+        "amount": "Kwota",
+        "select": "Wybór i szczegóły"
       },
       "noPayee": "Brak odbiorcy",
       "dateUnknown": "Brak daty",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "Bank nie zwrócił żadnych transakcji z tego okresu.",
         "filtered": "Brak transakcji na tej liście."
+      },
+      "selectAllNew": "Zaznacz wszystkie nowe transakcje na tej liście",
+      "selectAllExceptions": "Zaznacz wszystkie wyjątki na tej liście",
+      "selectRow": "Importuj: {payee}",
+      "selectException": "Usuń z wyjątków: {payee}",
+      "summary": "Importuj: {import}, pomiń: {skip}, dodaj do wyjątków: {except}",
+      "importNothing": "Potwierdź bez importowania",
+      "exceptions": {
+        "intro": "Transakcje z wyjątków nigdy nie są importowane. Usuń transakcję z wyjątków, aby znów widzieć ją jako nową.",
+        "remove": "{count, plural, =0 {Usuń z wyjątków} other {Usuń z wyjątków: #}}",
+        "removing": "Usuwanie...",
+        "removed": "{count, plural, one {Usunięto # transakcję z wyjątków} few {Usunięto # transakcje z wyjątków} many {Usunięto # transakcji z wyjątków} other {Usunięto # transakcji z wyjątków}}",
+        "removedNone": "Nic nie usunięto z wyjątków",
+        "removeFailed": "Nie udało się usunąć wyjątków"
+      },
+      "details": {
+        "operation": {
+          "heading": "Typ operacji",
+          "none": "Brak tagu typu operacji dla tej transakcji.",
+          "tag": "Tag z typu operacji z banku: {tag}"
+        }
       }
     }
   }

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { I18nService } from "nestjs-i18n";
 import { DataSource, EntityManager } from "typeorm";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { AccountsService } from "../accounts/accounts.service";
@@ -11,14 +12,20 @@ import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import { assertTransactionCurrencyMatchesAccount } from "../common/fx-entry.util";
+import { emailTranslator } from "../i18n/email-translator";
+import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { tr } from "../i18n/translate";
 import { PayeesService } from "../payees/payees.service";
+import { TagsService } from "../tags/tags.service";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
 import {
   Transaction,
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { operationTagLabel, type BankOperation } from "./bank-operation";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
+import { findOrCreateTagId } from "./bank-sync-operation-tags";
 import {
   findExistingPayee,
   NO_PAYEE,
@@ -29,6 +36,10 @@ import {
   newPlannedRows,
   planFingerprint,
 } from "./bank-sync-plan-fingerprint";
+import {
+  assertDisjointSelection,
+  type BankSyncSelection,
+} from "./bank-sync-selection";
 import type { BankImportPlan } from "./bank-transaction-planner";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 
@@ -45,6 +56,13 @@ export interface NormalizedBankBalance {
  * that raised it does not record itself as failed: nothing was attempted.
  */
 export class BankSyncPlanChangedException extends ConflictException {}
+
+/**
+ * The selection names a row that is not a new row of the plan (spec section 7b).
+ * A 400 raised before the first write; its own class for the same reason: the
+ * sync that raised it attempted nothing, so it does not record itself as failed.
+ */
+export class BankSyncSelectionRefusedException extends BadRequestException {}
 
 export interface BankSyncWriteInput {
   userId: string;
@@ -69,11 +87,26 @@ export interface BankSyncWriteInput {
    * row lock, and refuses with `BankSyncPlanChangedException` when it differs.
    */
   expectedFingerprint?: string;
+  /**
+   * Whether a created transaction is tagged with the bank's operation type: the
+   * connection's `tag_operation_type` as read at step 1 of the sync.
+   */
+  tagOperationType: boolean;
+  /**
+   * The rows the person chose in the preview (spec section 7b). Absent: every
+   * new row is imported, as a sync always did. Given: exactly `importKeys` are
+   * imported, `excludeKeys` are written to the ledger as exceptions, and every
+   * other new row is left for the next sync. The write refuses a key that is not
+   * a new row of the plan it re-makes under the lock.
+   */
+  selection?: BankSyncSelection;
 }
 
 export interface BankSyncWriteOutcome {
   imported: number;
   skipped: number;
+  /** Rows added to the exceptions by this write. */
+  excluded: number;
 }
 
 /**
@@ -98,6 +131,16 @@ export interface BankSyncWriteOutcome {
  * so it is right for a row of any date and there is no delta to get wrong. The
  * writer never writes `current_balance` itself.
  *
+ * **A selection is checked before it is written.** `importKeys` and
+ * `excludeKeys` must be disjoint and each must name a new row of the plan the
+ * write makes under the lock; otherwise the whole write is refused (400) before
+ * the first insert. An exception is a ledger row with `excluded_at` set and no
+ * transaction, claimed with the same `ON CONFLICT DO NOTHING` as an import, so it
+ * is in the same transaction and obeys the same unique key. A new row that is in
+ * neither list is left alone, and then `last_success_at` does not move: the
+ * window of the next sync starts a week before it, and a row skipped now must
+ * still be inside that window to be shown again.
+ *
  * **A rejected sync has not already written.** The link and the account are
  * locked and re-checked before the first insert: a re-link, a new cut-off
  * date, a close or a currency change during the fetch refuses the whole write
@@ -110,6 +153,8 @@ export class BankSyncWriterService {
     private readonly accountsService: AccountsService,
     private readonly rulesApplier: TransactionRulesApplierService,
     private readonly payeesService: PayeesService,
+    private readonly tagsService: TagsService,
+    private readonly i18n: I18nService,
   ) {}
 
   async write(input: BankSyncWriteInput): Promise<BankSyncWriteOutcome> {
@@ -195,22 +240,27 @@ export class BankSyncWriterService {
         );
       }
 
-      // 3b. A confirmed preview: what is about to be written is what was shown.
-      //     The rows are the planned ones the ledger does not hold yet, read
-      //     under the row lock this transaction holds, so a concurrent sync of
-      //     the same account has either committed (and its rows are duplicates
-      //     now) or waits behind it.
-      if (input.expectedFingerprint !== undefined) {
+      // 3b. A confirmed preview or a selection: what is about to be written is
+      //     what was shown. The rows are the planned ones the ledger does not
+      //     hold yet, read under the row lock this transaction holds, so a
+      //     concurrent sync of the same account has either committed (and its
+      //     rows are duplicates now) or waits behind it.
+      const { selection } = input;
+      if (selection !== undefined) assertDisjointSelection(selection);
+      let newKeys: ReadonlySet<string> | null = null;
+      if (input.expectedFingerprint !== undefined || selection !== undefined) {
         const ledgerKeys = await findLedgerKeys(
           m,
           userId,
           accountId,
           plan.planned.map((row) => row.externalKey),
         );
-        const actual = planFingerprint(
-          newPlannedRows(plan.planned, ledgerKeys),
-        );
-        if (actual !== input.expectedFingerprint) {
+        const newRows = newPlannedRows(plan.planned, ledgerKeys);
+        newKeys = new Set(newRows.map((row) => row.externalKey));
+        if (
+          input.expectedFingerprint !== undefined &&
+          planFingerprint(newRows) !== input.expectedFingerprint
+        ) {
           throw new BankSyncPlanChangedException(
             tr(
               "errors.bankSync.planChanged",
@@ -219,12 +269,53 @@ export class BankSyncWriterService {
           );
         }
       }
+      const importKeys =
+        selection === undefined ? null : new Set(selection.importKeys);
+      const excludeKeys =
+        selection === undefined ? null : new Set(selection.excludeKeys);
+      if (selection !== undefined && newKeys !== null) {
+        const stray = [...selection.importKeys, ...selection.excludeKeys].some(
+          (key) => !newKeys.has(key),
+        );
+        if (stray) {
+          throw new BankSyncSelectionRefusedException(
+            tr(
+              "errors.bankSync.selectionNotNew",
+              "A selected transaction is not a new row of the bank's data. Nothing was imported; preview again.",
+            ),
+          );
+        }
+      }
 
       // 4. The user's import rules, loaded once for the batch.
       const rules = await this.rulesApplier.loadRulesFor(m, userId, "import");
 
+      // 4b. Exceptions: a ledger row with no transaction, claimed like any
+      //     other, so no later sync imports the bank transaction.
+      let excluded = 0;
+      if (excludeKeys !== null) {
+        for (const row of plan.planned) {
+          if (!excludeKeys.has(row.externalKey)) continue;
+          const claimedException = returnedRows<{ id: string }>(
+            await m.query(
+              `INSERT INTO bank_sync_imported_transactions
+                 (user_id, account_id, external_key, booking_date, excluded_at)
+               VALUES ($1, $2, $3, $4, now())
+               ON CONFLICT (account_id, external_key) DO NOTHING
+               RETURNING id`,
+              [userId, accountId, row.externalKey, row.transactionDate],
+            ),
+          );
+          excluded += claimedException.length;
+        }
+      }
+
       // 5. Row by row: claim the ledger row, then write what it promises.
       const created: string[] = [];
+      const createdOperations: Array<{
+        transactionId: string;
+        operation: BankOperation;
+      }> = [];
       const payeeTextById = new Map<string, string | null>();
       const payeeCache = new Map<string, ResolvedPayee>();
       const dateCounters = new Map<string, number>();
@@ -232,6 +323,7 @@ export class BankSyncWriterService {
       let skipped = 0;
 
       for (const row of plan.planned) {
+        if (importKeys !== null && !importKeys.has(row.externalKey)) continue;
         const claimed = returnedRows<{ id: string }>(
           await m.query(
             `INSERT INTO bank_sync_imported_transactions
@@ -283,7 +375,17 @@ export class BankSyncWriterService {
           [saved.id, claimed[0].id],
         );
         created.push(saved.id);
+        createdOperations.push({
+          transactionId: saved.id,
+          operation: row.operation,
+        });
         payeeTextById.set(saved.id, row.payeeText);
+      }
+
+      // 5b. The bank's operation type as a tag, BEFORE the rules run, so a rule
+      //     can use it ("tags has any Card payment").
+      if (input.tagOperationType) {
+        await this.tagOperations(m, userId, createdOperations);
       }
 
       // 6. The import rules over what was created, with the bank's raw payee text.
@@ -302,10 +404,21 @@ export class BankSyncWriterService {
         await this.accountsService.recalculateCurrentBalance(userId, accountId);
       }
 
-      // 8. The outcome, on the row this transaction holds locked.
-      await this.recordOutcome(m, input, created.length, skipped);
+      // 8. The outcome, on the row this transaction holds locked. A new row the
+      //    person neither imported nor excepted moves nothing forward.
+      const leftForLater =
+        newKeys !== null && importKeys !== null && excludeKeys !== null
+          ? newKeys.size - importKeys.size - excludeKeys.size
+          : 0;
+      await this.recordOutcome(
+        m,
+        input,
+        created.length,
+        skipped,
+        leftForLater === 0,
+      );
 
-      return { imported: created.length, skipped };
+      return { imported: created.length, skipped, excluded };
     });
   }
 
@@ -350,10 +463,59 @@ export class BankSyncWriterService {
         payeeName: rows[0].name,
         defaultCategoryId: rows[0].default_category_id,
         defaultCategoryName: null,
+        via: null,
       };
     }
     cache.set(text, resolved);
     return resolved;
+  }
+
+  /**
+   * Tag the created transactions with the bank's operation type, on the
+   * writer's manager and so inside its transaction. The tag's name is the
+   * operation's label in the user's language (`resolveUserEmailLocale`: the
+   * stored preference, as a message addressed to the person); a known code is
+   * translated and an unknown one is its own name. A tag is resolved by name
+   * case-insensitively and created when missing; a row whose operation gives no
+   * tag name is left untagged. The links are written through `TagsService`'s
+   * additive, idempotent `addTransactionTags`.
+   */
+  private async tagOperations(
+    m: EntityManager,
+    userId: string,
+    created: ReadonlyArray<{ transactionId: string; operation: BankOperation }>,
+  ): Promise<void> {
+    if (created.length === 0) return;
+    const lang = await resolveUserEmailLocale(
+      m.getRepository(UserPreference),
+      userId,
+    );
+    const t = emailTranslator(this.i18n, lang);
+    const tagIds = new Map<string, string>();
+    const transactionsByTag = new Map<string, string[]>();
+    for (const { transactionId, operation } of created) {
+      const tag = operationTagLabel(operation, t);
+      if (tag === null) continue;
+      const tagId = await findOrCreateTagId(m, userId, tag.label, tagIds);
+      transactionsByTag.set(tagId, [
+        ...(transactionsByTag.get(tagId) ?? []),
+        transactionId,
+      ]);
+    }
+    for (const [tagId, transactionIds] of transactionsByTag) {
+      for (
+        let start = 0;
+        start < transactionIds.length;
+        start += RULES_BATCH_SIZE
+      ) {
+        await this.tagsService.addTransactionTags(
+          m,
+          userId,
+          transactionIds.slice(start, start + RULES_BATCH_SIZE),
+          [tagId],
+        );
+      }
+    }
   }
 
   private async recordOutcome(
@@ -361,6 +523,7 @@ export class BankSyncWriterService {
     input: BankSyncWriteInput,
     imported: number,
     skipped: number,
+    advanceWindow: boolean,
   ): Promise<void> {
     const refused = Object.values(input.plan.refused).reduce(
       (sum, count) => sum + count,
@@ -369,14 +532,23 @@ export class BankSyncWriterService {
     await m.query(
       `UPDATE bank_sync_accounts
           SET last_synced_at = CURRENT_TIMESTAMP,
-              last_success_at = CURRENT_TIMESTAMP,
+              last_success_at = CASE WHEN $6::boolean
+                                     THEN CURRENT_TIMESTAMP
+                                     ELSE last_success_at END,
               last_sync_status = 'succeeded',
               last_sync_error = NULL,
               last_imported_count = $3,
               last_skipped_count = $4,
               last_refused_count = $5
         WHERE id = $1 AND user_id = $2`,
-      [input.bankAccountId, input.userId, imported, skipped, refused],
+      [
+        input.bankAccountId,
+        input.userId,
+        imported,
+        skipped,
+        refused,
+        advanceWindow,
+      ],
     );
     // A balance the bank did not report leaves the stored one as it was: null is
     // "not reported", never a reason to blank what an earlier sync learned.

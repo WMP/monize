@@ -705,6 +705,8 @@
     "providerInvalidResponse": "은행 동기화 제공자가 이 버전의 Monize가 이해하지 못하는 응답을 보냈습니다.",
     "planChanged": "미리보기 이후 은행 데이터가 변경되었습니다. 아무것도 가져오지 않았습니다. 미리보기를 다시 실행하세요.",
     "needsPreview": "이 은행 계정의 미리보기를 열어 자동으로 동기화되기 전에 첫 번째 가져오기를 확인하세요.",
-    "nothingToUpdate": "은행 연결을 변경하려면 autoSync 또는 notifySuccess를 보내세요."
+    "selectionNotNew": "선택한 거래가 은행 데이터의 새 행이 아닙니다. 아무것도 가져오지 않았습니다. 미리보기를 다시 실행하세요.",
+    "selectionOverlap": "하나의 거래를 가져오기와 예외 목록 추가에 동시에 지정할 수 없습니다.",
+    "nothingToUpdate": "은행 연결을 변경하려면 autoSync, notifySuccess 또는 tagOperationType 중 하나를 보내세요."
   }
 }

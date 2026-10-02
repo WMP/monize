@@ -705,6 +705,8 @@
     "providerInvalidResponse": "Nhà cung cấp đồng bộ ngân hàng đã gửi một phản hồi mà phiên bản Monize này không hiểu.",
     "planChanged": "Dữ liệu của ngân hàng đã thay đổi kể từ bản xem trước. Chưa có gì được nhập; hãy xem trước lại.",
     "needsPreview": "Hãy mở bản xem trước của tài khoản ngân hàng này và xác nhận lần nhập đầu tiên trước khi nó được đồng bộ tự động.",
-    "nothingToUpdate": "Hãy gửi autoSync hoặc notifySuccess để thay đổi một kết nối ngân hàng."
+    "selectionNotNew": "Một giao dịch đã chọn không phải là dòng mới trong dữ liệu của ngân hàng. Chưa có gì được nhập; hãy xem trước lại.",
+    "selectionOverlap": "Một giao dịch không thể vừa được nhập vừa được thêm vào danh sách ngoại lệ.",
+    "nothingToUpdate": "Hãy gửi autoSync, notifySuccess hoặc tagOperationType để thay đổi một kết nối ngân hàng."
   }
 }

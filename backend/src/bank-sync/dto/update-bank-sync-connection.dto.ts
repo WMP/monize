@@ -25,4 +25,12 @@ export class UpdateBankSyncConnectionDto {
   @ValidateIf((_o, value) => value !== undefined)
   @IsIn([...BANK_SYNC_NOTIFY_SUCCESS_MODES])
   notifySuccess?: BankSyncNotifySuccessMode;
+
+  @ApiPropertyOptional({
+    description:
+      "Whether a synced transaction is tagged with the bank's operation type (card payment, transfer, ...).",
+  })
+  @ValidateIf((_o, value) => value !== undefined)
+  @IsBoolean()
+  tagOperationType?: boolean;
 }

@@ -1,5 +1,6 @@
 import { generateKeyPairSync } from "node:crypto";
 import { Logger } from "@nestjs/common";
+import type { ConfigService } from "@nestjs/config";
 import { ProviderHealthService } from "../../../provider-health/provider-health.service";
 import { ProviderUnavailableError } from "../../../provider-health/provider-unavailable.error";
 import { BankSyncProviderError } from "../bank-sync-provider.errors";
@@ -68,6 +69,8 @@ describe("EnableBankingProvider", () => {
   let health: HealthDouble;
   let provider: EnableBankingProvider;
   let fetchSpy: jest.SpiedFunction<typeof fetch>;
+  /** `BANK_SYNC_LOG_RAW` as the operator set it; unset by default. */
+  let logRawFlag: string | undefined;
 
   beforeAll(() => {
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -82,8 +85,15 @@ describe("EnableBankingProvider", () => {
 
   beforeEach(() => {
     health = healthDouble();
+    logRawFlag = undefined;
+    const config: jest.Mocked<Pick<ConfigService, "get">> = {
+      get: jest.fn((name: string) =>
+        name === "BANK_SYNC_LOG_RAW" ? logRawFlag : undefined,
+      ) as unknown as jest.Mocked<Pick<ConfigService, "get">>["get"],
+    };
     provider = new EnableBankingProvider(
       health as unknown as ProviderHealthService,
+      config as unknown as ConfigService,
     );
     fetchSpy = jest.spyOn(global, "fetch");
   });
@@ -1014,6 +1024,255 @@ describe("EnableBankingProvider", () => {
       expect((error as Error).message).not.toContain("not a key");
       expect(health.assertAvailable).not.toHaveBeenCalled();
       expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the raw answer log (BANK_SYNC_LOG_RAW)", () => {
+    const IBAN = "PL61109010140000071219812874";
+    const IBAN_SPACED = "PL61 1090 1014 0000 0712 1981 2874";
+    const NRB = "61 1090 1014 0000 0712 1981 2874";
+    const WINDOW = { dateFrom: "2026-09-01", dateTo: "2026-09-30" };
+    const PAGE = {
+      transactions: [
+        {
+          entry_reference: "E-1",
+          transaction_amount: { amount: "12.34", currency: "PLN" },
+          credit_debit_indicator: "DBIT",
+          status: "BOOK",
+          booking_date: "2026-09-10",
+          creditor: { name: "Example Cafe" },
+          creditor_account: { iban: IBAN },
+          debtor_account: { other: { identification: "1234567890123456" } },
+          remittance_information: [
+            "Latte CARD-PAYMENT",
+            `Przelew na ${IBAN_SPACED} oraz ${NRB}`,
+          ],
+        },
+      ],
+      continuation_key: null,
+    };
+
+    let debug: jest.SpyInstance;
+    const logged = () => debug.mock.calls.map((args) => String(args[0]));
+
+    beforeEach(() => {
+      debug = jest.spyOn(Logger.prototype, "debug").mockImplementation();
+    });
+    afterEach(() => debug.mockRestore());
+
+    it.each([[undefined], [""], ["false"], ["1"], ["TRUE"], ["yes"]])(
+      "logs nothing when the flag is %p",
+      async (flag) => {
+        logRawFlag = flag;
+        fetchSpy.mockResolvedValueOnce(json(PAGE));
+        await provider.fetchTransactions(credentials, "uid-1234", WINDOW, null);
+        fetchSpy.mockResolvedValueOnce(json({ balances: [] }));
+        await provider.fetchBalance(credentials, "uid-1234", null);
+        fetchSpy.mockResolvedValueOnce(json({ uid: "uid-1234" }));
+        await provider.fetchAccountDetails(credentials, "uid-1234", null);
+        fetchSpy.mockResolvedValueOnce(
+          json({ session_id: "session-secret", accounts: [] }),
+        );
+        await provider.completeAuthorization(credentials, "code");
+        expect(debug).not.toHaveBeenCalled();
+      },
+    );
+
+    it("logs a page with its remittance and no full account number", async () => {
+      logRawFlag = "true";
+      fetchSpy.mockResolvedValueOnce(json(PAGE));
+
+      await provider.fetchTransactions(
+        credentials,
+        "account-uid-9876",
+        WINDOW,
+        null,
+      );
+
+      const lines = logged();
+      expect(lines).toHaveLength(1);
+      const text = lines.join("\n");
+      expect(text).toContain("Latte CARD-PAYMENT");
+      expect(text).toContain("Example Cafe");
+      expect(text).toContain("12.34");
+      expect(text).toContain("E-1");
+      // The identifiers, however they were written, are masked.
+      for (const secret of [
+        IBAN,
+        IBAN_SPACED,
+        NRB,
+        NRB.replaceAll(" ", ""),
+        "1234567890123456",
+      ]) {
+        expect(text).not.toContain(secret);
+      }
+      expect(text).toContain(`PL${"*".repeat(22)}2874`);
+      expect(text).toContain(`${"*".repeat(12)}3456`);
+      // Tagged with the account's last four and the page.
+      expect(lines[0]).toMatch(
+        /^Enable Banking raw transactions account \.\.\.9876 page 1 part 1\/1: /,
+      );
+    });
+
+    it("tags each page of a paged answer with its number", async () => {
+      logRawFlag = "true";
+      fetchSpy
+        .mockResolvedValueOnce(json({ ...PAGE, continuation_key: "next" }))
+        .mockResolvedValueOnce(
+          json({ transactions: [], continuation_key: null }),
+        );
+
+      await provider.fetchTransactions(credentials, "uid-0001", WINDOW, null);
+
+      const lines = logged();
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toContain("page 1 part 1/1");
+      expect(lines[1]).toContain("page 2 part 1/1");
+    });
+
+    it("never logs the JWT or the headers, even when the bank echoes a token in a field", async () => {
+      logRawFlag = "true";
+      fetchSpy.mockImplementationOnce(async (_url, init) => {
+        const token = String(
+          (init?.headers as Record<string, string>).Authorization,
+        ).replace(/^Bearer /, "");
+        return json({
+          transactions: [
+            {
+              status: "BOOK",
+              remittance_information: [
+                `echo ${token} end`,
+                "eyJhbGciOiJSUzI1NiJ9.e30.sig",
+              ],
+            },
+          ],
+          continuation_key: null,
+        });
+      });
+
+      await provider.fetchTransactions(credentials, "uid-1234", WINDOW, null);
+
+      const token = tokenOf();
+      const text = logged().join("\n");
+      expect(text).not.toContain(token);
+      expect(text).not.toContain(token.split(".")[1]);
+      expect(text).not.toContain("eyJ");
+      expect(text).not.toMatch(/authorization|bearer/i);
+      expect(text).toContain("[redacted]");
+    });
+
+    it("logs a new session with the session id and the account handles cut to their last four", async () => {
+      logRawFlag = "true";
+      fetchSpy.mockResolvedValueOnce(
+        json({
+          session_id: "session-abcdef-1234567890",
+          accounts: [
+            {
+              uid: "account-uid-5555",
+              identification_hash: "hash-of-the-account-7777",
+              account_id: { iban: IBAN },
+              all_account_ids: [
+                { identification: "1234567890123456", scheme_name: "BBAN" },
+              ],
+            },
+          ],
+          access: { valid_until: "2026-12-31T00:00:00Z" },
+        }),
+      );
+
+      await provider.completeAuthorization(credentials, "code");
+
+      const text = logged().join("\n");
+      expect(text).toContain("Enable Banking raw session part 1/1");
+      expect(text).not.toContain("session-abcdef-1234567890");
+      expect(text).toContain('"session_id":"*********************7890"');
+      expect(text).not.toContain("account-uid-5555");
+      expect(text).toContain("5555");
+      expect(text).not.toContain("hash-of-the-account-7777");
+      expect(text).not.toContain(IBAN);
+      expect(text).toContain("2026-12-31T00:00:00Z");
+    });
+
+    it("logs the balances and an account's details", async () => {
+      logRawFlag = "true";
+      fetchSpy.mockResolvedValueOnce(
+        json({
+          balances: [
+            {
+              balance_type: "CLBD",
+              balance_amount: { amount: "100.50", currency: "PLN" },
+            },
+          ],
+        }),
+      );
+      await provider.fetchBalance(credentials, "uid-4321", null);
+      fetchSpy.mockResolvedValueOnce(
+        json({ uid: "uid-4321", account_id: { iban: IBAN }, currency: "PLN" }),
+      );
+      await provider.fetchAccountDetails(credentials, "uid-4321", null);
+
+      const [balances, details] = logged();
+      expect(balances).toMatch(
+        /^Enable Banking raw balances account \.\.\.4321 part 1\/1: /,
+      );
+      expect(balances).toContain("100.50");
+      expect(details).toMatch(
+        /^Enable Banking raw account details account \.\.\.4321 part 1\/1: /,
+      );
+      expect(details).not.toContain(IBAN);
+    });
+
+    it("writes an answer larger than one line as several, each within the bound", async () => {
+      logRawFlag = "true";
+      const big = "x".repeat(40_000);
+      fetchSpy.mockResolvedValueOnce(
+        json({
+          transactions: [{ status: "BOOK", remittance_information: [big] }],
+          continuation_key: null,
+        }),
+      );
+
+      await provider.fetchTransactions(credentials, "uid-1234", WINDOW, null);
+
+      const lines = logged();
+      expect(lines.length).toBeGreaterThan(1);
+      for (const [index, line] of lines.entries()) {
+        expect(line).toContain(`part ${index + 1}/${lines.length}:`);
+        expect(Buffer.byteLength(line)).toBeLessThanOrEqual(64 * 1024);
+      }
+      // Nothing was dropped: the parts put back together are the whole answer.
+      const joined = lines.map((line) => line.replace(/^[^:]*: /, "")).join("");
+      expect(JSON.parse(joined).transactions[0].remittance_information[0]).toBe(
+        big,
+      );
+    });
+
+    it("does not change what the adapter returns", async () => {
+      fetchSpy.mockResolvedValueOnce(json(PAGE));
+      const off = await provider.fetchTransactions(
+        credentials,
+        "uid-1",
+        WINDOW,
+        null,
+      );
+      logRawFlag = "true";
+      fetchSpy.mockResolvedValueOnce(json(PAGE));
+      const on = await provider.fetchTransactions(
+        credentials,
+        "uid-1",
+        WINDOW,
+        null,
+      );
+      expect(on).toEqual(off);
+    });
+
+    it("logs nothing for a refused call: only an answer that carries bank data is logged", async () => {
+      logRawFlag = "true";
+      fetchSpy.mockResolvedValueOnce(json({ error: "EXPIRED_SESSION" }, 401));
+      await errorOf(
+        provider.fetchTransactions(credentials, "uid-1", WINDOW, null),
+      );
+      expect(debug).not.toHaveBeenCalled();
     });
   });
 });

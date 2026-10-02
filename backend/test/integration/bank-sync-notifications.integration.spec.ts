@@ -453,6 +453,14 @@ describe("Bank sync notifications (integration)", () => {
   });
 
   describe("the daily sync", () => {
+    const NO_OPERATION_FIELDS = {
+      operation: {
+        code: null,
+        subCode: null,
+        description: null,
+        remittanceCode: null,
+      },
+    };
     const BANK_ROWS: BankTransaction[] = [
       {
         entryReference: "r1",
@@ -467,6 +475,7 @@ describe("Bank sync notifications (integration)", () => {
         transactionDate: null,
         counterpartyName: "Biedronka",
         remittance: ["Groceries"],
+        ...NO_OPERATION_FIELDS,
       },
       {
         entryReference: "r2",
@@ -481,6 +490,7 @@ describe("Bank sync notifications (integration)", () => {
         transactionDate: null,
         counterpartyName: "Kiosk",
         remittance: ["Paper"],
+        ...NO_OPERATION_FIELDS,
       },
     ];
     const NEW_ROW: BankTransaction = {

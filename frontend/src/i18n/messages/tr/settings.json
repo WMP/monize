@@ -1538,7 +1538,12 @@
         "never": "Hiçbir zaman"
       },
       "notifySuccessSaved": "Bildirim ayarı kaydedildi",
-      "notifySuccessFailed": "Bildirim ayarı değiştirilemedi"
+      "notifySuccessFailed": "Bildirim ayarı değiştirilemedi",
+      "tagOperationType": "İşlemleri bankanın işlem türüyle etiketle",
+      "tagOperationTypeHelp": "İçe aktarılan her işlem, bankanın işlem türünün adını taşıyan bir etiket alır (ör. Kart ödemesi veya Gelen havale); böylece kurallar ve raporlar bunu kullanabilir.",
+      "tagOperationTypeOn": "İşlem türü etiketleri açıldı",
+      "tagOperationTypeOff": "İşlem türü etiketleri kapatıldı",
+      "tagOperationTypeFailed": "İşlem türü etiketleri değiştirilemedi"
     },
     "account": {
       "unnamed": "Adsız banka hesabı",
@@ -1661,14 +1666,16 @@
         "refused": "Reddedilen",
         "pending": "Bekleyen",
         "before_cutoff": "Başlangıç tarihinden önce",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "İstisnalar"
       },
       "outcome": {
         "new": "Yeni",
         "duplicate": "Zaten içe aktarılmış",
         "refused": "Reddedildi",
         "pending": "Bekliyor",
-        "before_cutoff": "Başlangıç tarihinden önce"
+        "before_cutoff": "Başlangıç tarihinden önce",
+        "excluded": "İstisna"
       },
       "refusal": {
         "missing_date": "Tarih yok",
@@ -1683,7 +1690,8 @@
         "payee": "Alacaklı",
         "category": "Kategori",
         "status": "Durum",
-        "amount": "Miktar"
+        "amount": "Miktar",
+        "select": "Seçim ve ayrıntılar"
       },
       "noPayee": "Alacaklı yok",
       "dateUnknown": "Tarih yok",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "Banka bu dönem için işlem döndürmedi.",
         "filtered": "Bu listede işlem yok."
+      },
+      "selectAllNew": "Bu listedeki tüm yeni işlemleri seç",
+      "selectAllExceptions": "Bu listedeki tüm istisnaları seç",
+      "selectRow": "İçe aktar: {payee}",
+      "selectException": "İstisnalardan kaldır: {payee}",
+      "summary": "{import} içe aktar, {skip} atla, {except} istisnalara ekle",
+      "importNothing": "İçe aktarmadan onayla",
+      "exceptions": {
+        "intro": "İstisnalardaki işlemler asla içe aktarılmaz. Yeniden yeni olarak görmek için bir işlemi istisnalardan kaldırın.",
+        "remove": "{count, plural, =0 {İstisnalardan kaldır} other {# işlemi istisnalardan kaldır}}",
+        "removing": "Kaldırılıyor...",
+        "removed": "{count, plural, one {# işlem istisnalardan kaldırıldı} other {# işlem istisnalardan kaldırıldı}}",
+        "removedNone": "İstisnalardan hiçbir şey kaldırılmadı",
+        "removeFailed": "İstisnalar kaldırılamadı"
+      },
+      "details": {
+        "operation": {
+          "heading": "İşlem türü",
+          "none": "Bu işlem için işlem türü etiketi yok.",
+          "tag": "Bankanın işlem türünden etiket: {tag}"
+        }
       }
     }
   }

@@ -57,6 +57,7 @@ const connection = (over: Partial<BankSyncConnection> = {}): BankSyncConnection 
   validUntil: '2099-01-01T00:00:00.000Z',
   autoSync: false,
   notifySuccess: 'when_imported',
+  tagOperationType: true,
   lastError: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   accounts: [],

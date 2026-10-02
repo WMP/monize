@@ -24,5 +24,14 @@
       "stalled": "Seguí diciendo que continuaría trabajando en lugar de terminar, así que esta respuesta se basa en los datos que reuní antes de detenerme."
     },
     "synthesisFailed": "Reuní datos para esta pregunta, pero no pude completar el análisis, así que no tengo una respuesta fiable. Prueba a preguntar algo más concreto."
+  },
+  "bankSync": {
+    "operationTypes": {
+      "cardPayment": "Pago con tarjeta",
+      "transferIn": "Transferencia recibida",
+      "transferOut": "Transferencia enviada",
+      "mobilePayment": "Pago móvil",
+      "cashWithdrawal": "Retirada de efectivo"
+    }
   }
 }

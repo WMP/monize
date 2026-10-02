@@ -705,6 +705,8 @@
     "providerInvalidResponse": "[XX-The bank sync provider sent an answer this version of Monize does not understand.-XX]",
     "planChanged": "[XX-The bank's data changed since the preview. Nothing was imported; preview again.-XX]",
     "needsPreview": "[XX-Open the preview for this bank account and confirm the first import before it is synced automatically.-XX]",
-    "nothingToUpdate": "[XX-Send autoSync or notifySuccess to change a bank connection.-XX]"
+    "selectionNotNew": "[XX-A selected transaction is not a new row of the bank's data. Nothing was imported; preview again.-XX]",
+    "selectionOverlap": "[XX-A transaction cannot be both imported and added to the exceptions.-XX]",
+    "nothingToUpdate": "[XX-Send autoSync, notifySuccess or tagOperationType to change a bank connection.-XX]"
   }
 }

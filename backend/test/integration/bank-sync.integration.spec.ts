@@ -87,6 +87,12 @@ describe("Bank sync (integration)", () => {
     transactionDate: null,
     counterpartyName: "Biedronka",
     remittance: ["Groceries"],
+    operation: {
+      code: null,
+      subCode: null,
+      description: null,
+      remittanceCode: null,
+    },
     ...over,
   });
 
@@ -537,6 +543,7 @@ describe("Bank sync (integration)", () => {
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
+            tagOperationType: true,
           }),
         );
 
@@ -696,6 +703,7 @@ describe("Bank sync (integration)", () => {
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
+            tagOperationType: true,
           }),
         ),
       ).rejects.toMatchObject({ status: 409 });
@@ -730,6 +738,7 @@ describe("Bank sync (integration)", () => {
             plannedCurrencyCode: "PLN",
             plan,
             balance: null,
+            tagOperationType: true,
           }),
         ),
       ).rejects.toMatchObject({ status: 409 });
@@ -1811,6 +1820,797 @@ describe("Bank sync (integration)", () => {
         }),
       );
       expect(await needs()).toBe(true);
+    });
+  });
+
+  describe("preview details: selection, exceptions, operation types, payees and rules (spec section 7b)", () => {
+    const preview = () =>
+      asAlice(() => bankSync.previewAccount(aliceId, bankAccountId, null));
+    const syncWith = (
+      planFingerprint: string | undefined,
+      selection?: { importKeys: string[]; excludeKeys: string[] },
+    ) =>
+      asAlice(() =>
+        bankSync.syncAccount(
+          aliceId,
+          bankAccountId,
+          null,
+          planFingerprint,
+          selection,
+        ),
+      );
+    const removeExceptions = (keys: string[], as = aliceId) =>
+      withUserContext(as, () =>
+        bankSync.removeExceptions(as, bankAccountId, keys),
+      );
+
+    const ledgerRows = () =>
+      query<{
+        external_key: string;
+        transaction_id: string | null;
+        excluded: boolean;
+      }>(
+        `SELECT external_key, transaction_id, (excluded_at IS NOT NULL) AS excluded
+           FROM bank_sync_imported_transactions ORDER BY external_key`,
+      );
+    const storedPayees = async () =>
+      (
+        await query<{ payee_name: string }>(
+          `SELECT payee_name FROM transactions ORDER BY payee_name`,
+        )
+      ).map((t) => t.payee_name);
+    const needsPreview = async () =>
+      (await asAlice(() => connections.list(aliceId)))[0].accounts[0]
+        .needsPreview;
+    const KEYS = ["ref:r1", "ref:r2", "ref:r3", "ref:r4"];
+
+    describe("selection and exceptions", () => {
+      it("a partial import imports exactly the selected keys, and moves the balance by exactly their sum", async () => {
+        const view = await preview();
+
+        const result = await syncWith(view.planFingerprint, {
+          importKeys: ["ref:r2", "ref:r4"],
+          excludeKeys: [],
+        });
+
+        expect(result).toMatchObject({ imported: 2, excluded: 0 });
+        expect(await storedPayees()).toEqual(["Biedronka", "Employer"]);
+        expect(await storedBalance()).toBe(OPENING + 1200.1234 - 0.0025);
+        expect(await storedBalance()).toBe(await ledgerBalance());
+        // Only the imported rows are in the ledger: the rest stay new.
+        expect((await ledgerRows()).map((l) => l.external_key)).toEqual([
+          "ref:r2",
+          "ref:r4",
+        ]);
+        const next = await preview();
+        expect(next.rows.map((r) => r.outcome)).toEqual([
+          "new",
+          "duplicate",
+          "new",
+          "duplicate",
+        ]);
+      });
+
+      it("exceptions are written with excluded_at and no transaction, and imports and exceptions commit together", async () => {
+        const view = await preview();
+
+        const result = await syncWith(view.planFingerprint, {
+          importKeys: ["ref:r1"],
+          excludeKeys: ["ref:r2", "ref:r3"],
+        });
+
+        expect(result).toMatchObject({ imported: 1, skipped: 0, excluded: 2 });
+        expect(await ledgerRows()).toEqual([
+          {
+            external_key: "ref:r1",
+            transaction_id: expect.any(String),
+            excluded: false,
+          },
+          { external_key: "ref:r2", transaction_id: null, excluded: true },
+          { external_key: "ref:r3", transaction_id: null, excluded: true },
+        ]);
+        expect(await count("transactions")).toBe(1);
+        expect(await storedBalance()).toBe(OPENING - 50);
+      });
+
+      it("exclude, then sync again: the exception is not imported, in a plain sync or a daily one", async () => {
+        const view = await preview();
+        await syncWith(view.planFingerprint, {
+          importKeys: ["ref:r1", "ref:r2", "ref:r3"],
+          excludeKeys: ["ref:r4"],
+        });
+        expect(await count("transactions")).toBe(3);
+
+        // No selection at all: "import every new row" finds nothing new.
+        await expect(sync()).resolves.toMatchObject({
+          imported: 0,
+          skipped: 4,
+        });
+        expect(await count("transactions")).toBe(3);
+        expect(await storedBalance()).toBe(OPENING - 50 + 1200.1234 - 12.3457);
+      });
+
+      it("lists an exception as `excluded`, apart from `duplicate`, and leaves it out of the new rows and the fingerprint", async () => {
+        const first = await preview();
+        await syncWith(first.planFingerprint, {
+          importKeys: ["ref:r1"],
+          excludeKeys: ["ref:r2"],
+        });
+
+        const view = await preview();
+
+        expect(view.rows.map((r) => [r.externalKey, r.outcome])).toEqual([
+          ["ref:r1", "duplicate"],
+          ["ref:r2", "excluded"],
+          ["ref:r3", "new"],
+          ["ref:r4", "new"],
+        ]);
+        expect(view.summary).toMatchObject({
+          new: 2,
+          duplicate: 1,
+          excluded: 1,
+        });
+        expect(view.balanceAfter).toBe(
+          (OPENING - 50 - 12.3457 - 0.0025).toFixed(4),
+        );
+      });
+
+      it("remove the exception: the row is new again, and importing it works", async () => {
+        const first = await preview();
+        await syncWith(first.planFingerprint, {
+          importKeys: [],
+          excludeKeys: ["ref:r1", "ref:r2"],
+        });
+        expect(await count("transactions")).toBe(0);
+        expect((await ledgerRows()).every((l) => l.excluded)).toBe(true);
+
+        await expect(removeExceptions(["ref:r1"])).resolves.toEqual({
+          removed: 1,
+        });
+
+        const view = await preview();
+        expect(view.rows.map((r) => r.outcome)).toEqual([
+          "new",
+          "excluded",
+          "new",
+          "new",
+        ]);
+        await expect(
+          syncWith(view.planFingerprint, {
+            importKeys: ["ref:r1"],
+            excludeKeys: [],
+          }),
+        ).resolves.toMatchObject({ imported: 1 });
+        expect(await storedPayees()).toEqual(["Biedronka"]);
+      });
+
+      it("removing exceptions touches nothing but exceptions: an imported row's ledger entry stays, and so does its transaction", async () => {
+        await sync();
+        const before = await ledgerRows();
+
+        await expect(removeExceptions(KEYS)).resolves.toEqual({ removed: 0 });
+
+        expect(await ledgerRows()).toEqual(before);
+        expect(await count("transactions")).toBe(4);
+        // A deleted transaction keeps its ledger row and is still no exception.
+        await db.query(`DELETE FROM transactions WHERE amount = -50`);
+        await expect(removeExceptions(["ref:r1"])).resolves.toEqual({
+          removed: 0,
+        });
+        expect(await count("bank_sync_imported_transactions")).toBe(4);
+        await expect(sync()).resolves.toMatchObject({
+          imported: 0,
+          skipped: 4,
+        });
+      });
+
+      it("refuses a key outside the plan with 400, and nothing is written", async () => {
+        const view = await preview();
+        const before = {
+          ledger: await count("bank_sync_imported_transactions"),
+          transactions: await count("transactions"),
+          balance: await storedBalance(),
+        };
+
+        for (const selection of [
+          { importKeys: ["ref:r1", "ref:nope"], excludeKeys: [] },
+          { importKeys: [], excludeKeys: ["ref:nope"] },
+        ]) {
+          await expect(
+            syncWith(view.planFingerprint, selection),
+          ).rejects.toMatchObject({ status: 400 });
+        }
+
+        expect(await count("bank_sync_imported_transactions")).toBe(
+          before.ledger,
+        );
+        expect(await count("transactions")).toBe(before.transactions);
+        expect(await storedBalance()).toBe(before.balance);
+        // Nothing was attempted, so no failed sync is recorded.
+        expect(
+          (
+            await query<{ last_sync_status: string | null }>(
+              `SELECT last_sync_status FROM bank_sync_accounts`,
+            )
+          )[0].last_sync_status,
+        ).toBeNull();
+      });
+
+      it("refuses a key that is already in the ledger, or in both lists", async () => {
+        await sync();
+        bankReturns([
+          ...BANK_ROWS,
+          row({
+            entryReference: "r5",
+            amount: "9.99",
+            bookingDate: daysAgo(1),
+          }),
+        ]);
+        const view = await preview();
+
+        await expect(
+          syncWith(view.planFingerprint, {
+            importKeys: ["ref:r1"],
+            excludeKeys: [],
+          }),
+        ).rejects.toMatchObject({ status: 400 });
+        await expect(
+          syncWith(view.planFingerprint, {
+            importKeys: ["ref:r5"],
+            excludeKeys: ["ref:r5"],
+          }),
+        ).rejects.toMatchObject({ status: 400 });
+        expect(await count("transactions")).toBe(4);
+      });
+
+      it("still enforces the fingerprint of the whole plan: a changed bank answer is a 409 and writes nothing", async () => {
+        const view = await preview();
+        bankReturns([
+          ...BANK_ROWS,
+          row({
+            entryReference: "late",
+            amount: "7.00",
+            bookingDate: daysAgo(1),
+          }),
+        ]);
+
+        await expect(
+          syncWith(view.planFingerprint, {
+            importKeys: ["ref:r1"],
+            excludeKeys: ["ref:r2"],
+          }),
+        ).rejects.toMatchObject({ status: 409 });
+
+        expect(await count("bank_sync_imported_transactions")).toBe(0);
+        expect(await count("transactions")).toBe(0);
+      });
+
+      it("still enforces the fingerprint when another sync imported rows in between", async () => {
+        const view = await preview();
+        await sync();
+        await expect(
+          syncWith(view.planFingerprint, {
+            importKeys: ["ref:r1"],
+            excludeKeys: [],
+          }),
+        ).rejects.toMatchObject({ status: 409 });
+        expect(await count("transactions")).toBe(4);
+      });
+
+      it("without a selection every new row is imported, as before", async () => {
+        const view = await preview();
+        await expect(syncWith(view.planFingerprint)).resolves.toMatchObject({
+          imported: 4,
+          excluded: 0,
+        });
+      });
+
+      it("an empty selection imports nothing and writes nothing", async () => {
+        const view = await preview();
+        await expect(
+          syncWith(view.planFingerprint, { importKeys: [], excludeKeys: [] }),
+        ).resolves.toMatchObject({ imported: 0, excluded: 0 });
+        expect(await count("transactions")).toBe(0);
+        expect(await count("bank_sync_imported_transactions")).toBe(0);
+        expect(await storedBalance()).toBe(OPENING);
+      });
+
+      it("rows skipped for now stay in the window of the next sync: last_success_at does not move, so they are shown again", async () => {
+        expect(await needsPreview()).toBe(true);
+        const view = await preview();
+
+        await syncWith(view.planFingerprint, {
+          importKeys: ["ref:r1"],
+          excludeKeys: [],
+        });
+
+        // Still unconfirmed: three rows are neither imported nor excepted.
+        expect(await needsPreview()).toBe(true);
+        const next = await preview();
+        expect(next.summary).toMatchObject({ new: 3, duplicate: 1 });
+
+        // Resolving every row (here: excepting the rest) confirms the account.
+        await syncWith(next.planFingerprint, {
+          importKeys: [],
+          excludeKeys: ["ref:r2", "ref:r3", "ref:r4"],
+        });
+        expect(await needsPreview()).toBe(false);
+      });
+
+      it("removing an exception is the owner's alone and needs a linked bank account", async () => {
+        const view = await preview();
+        await syncWith(view.planFingerprint, {
+          importKeys: [],
+          excludeKeys: ["ref:r1"],
+        });
+
+        await expect(removeExceptions(["ref:r1"], bobId)).rejects.toMatchObject(
+          {
+            status: 404,
+          },
+        );
+        expect((await ledgerRows())[0].excluded).toBe(true);
+
+        await asAlice(() =>
+          bankSync.linkAccount(aliceId, bankAccountId, { accountId: null }),
+        );
+        await expect(removeExceptions(["ref:r1"])).rejects.toMatchObject({
+          status: 409,
+        });
+        expect((await ledgerRows())[0].excluded).toBe(true);
+      });
+
+      it("two exceptions of the same key written at once converge on one ledger row", async () => {
+        const view = await preview();
+        const selection = { importKeys: [], excludeKeys: ["ref:r1"] };
+        const results = await Promise.allSettled([
+          syncWith(view.planFingerprint, selection),
+          syncWith(view.planFingerprint, selection),
+        ]);
+        // One is turned away by the lease or by the fingerprint/keys check; the
+        // ledger holds the exception exactly once either way.
+        expect(results.some((r) => r.status === "fulfilled")).toBe(true);
+        expect(await ledgerRows()).toEqual([
+          { external_key: "ref:r1", transaction_id: null, excluded: true },
+        ]);
+      });
+    });
+
+    describe("the operation type as a tag", () => {
+      const OP_ROWS: BankTransaction[] = [
+        row({
+          entryReference: "o1",
+          amount: "10.00",
+          counterpartyName: "Cafe",
+          remittance: ["Latte CARD-PAYMENT"],
+          operation: {
+            code: null,
+            subCode: null,
+            description: null,
+            remittanceCode: "CARD-PAYMENT",
+          },
+        }),
+        row({
+          entryReference: "o2",
+          amount: "20.00",
+          counterpartyName: "Cinema",
+          remittance: ["Tickets CARD-PAYMENT"],
+          operation: {
+            code: null,
+            subCode: null,
+            description: null,
+            remittanceCode: "CARD-PAYMENT",
+          },
+        }),
+        row({
+          entryReference: "o3",
+          amount: "300.00",
+          direction: "credit",
+          counterpartyName: "Employer",
+          remittance: ["Salary TRANSFER-IN"],
+          operation: {
+            code: null,
+            subCode: null,
+            description: null,
+            remittanceCode: "TRANSFER-IN",
+          },
+        }),
+        row({
+          entryReference: "o4",
+          amount: "5.00",
+          counterpartyName: "Bank",
+          remittance: ["Fee"],
+          operation: {
+            code: "DIRECT-DEBIT",
+            subCode: null,
+            description: null,
+            remittanceCode: null,
+          },
+        }),
+        row({
+          entryReference: "o5",
+          amount: "1.00",
+          counterpartyName: "Plain",
+        }),
+      ];
+
+      const tagsOf = async () =>
+        (
+          await query<{ payee_name: string; tag: string }>(
+            `SELECT t.payee_name, tg.name AS tag
+               FROM transactions t
+               JOIN transaction_tags tt ON tt.transaction_id = t.id
+               JOIN tags tg ON tg.id = tt.tag_id
+              ORDER BY t.payee_name, tg.name`,
+          )
+        ).map((r) => [r.payee_name, r.tag]);
+
+      // The integration schema is synchronized from the entities, which do not
+      // declare the case-insensitive unique name that `database/schema.sql` has
+      // (`idx_tags_user_name`). It is what makes two creations of one tag
+      // converge in production, so the tag tests run with it.
+      beforeAll(async () => {
+        await db.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_user_name
+             ON tags (user_id, LOWER(name))`,
+        );
+      });
+      afterAll(async () => {
+        await db.query(`DROP INDEX IF EXISTS idx_tags_user_name`);
+      });
+
+      beforeEach(() => bankReturns(OP_ROWS));
+
+      it("creates the missing tags, attaches them in the sync's own transaction, and leaves the description alone", async () => {
+        await sync();
+
+        expect(await tagsOf()).toEqual(
+          [
+            ["Cafe", "Card payment"],
+            ["Cinema", "Card payment"],
+            ["Bank", "DIRECT-DEBIT"],
+            ["Employer", "Incoming transfer"],
+          ].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        );
+        // One tag per name, however many rows carry it.
+        expect(await count("tags")).toBe(3);
+        const descriptions = await query<{ description: string }>(
+          `SELECT description FROM transactions WHERE payee_name = 'Cafe'`,
+        );
+        expect(descriptions[0].description).toBe("Latte CARD-PAYMENT");
+      });
+
+      it("reuses the user's own tag whatever its case, and adds no second one", async () => {
+        const [existing] = await query<{ id: string }>(
+          `INSERT INTO tags (user_id, name) VALUES ($1, 'CARD PAYMENT') RETURNING id`,
+          [aliceId],
+        );
+        await sync();
+        expect(await count("tags")).toBe(3);
+        const tagged = await query<{ tag_id: string }>(
+          `SELECT DISTINCT tag_id FROM transaction_tags
+             WHERE tag_id = $1`,
+          [existing.id],
+        );
+        expect(tagged).toHaveLength(1);
+      });
+
+      it("tags nothing and creates no tag when the connection turns it off", async () => {
+        const view = await asAlice(() =>
+          connections.updateConnection(aliceId, connectionId, {
+            tagOperationType: false,
+          }),
+        );
+        expect(view.tagOperationType).toBe(false);
+
+        await sync();
+
+        expect(await count("tags")).toBe(0);
+        expect(await count("transaction_tags")).toBe(0);
+        expect(await count("transactions")).toBe(5);
+      });
+
+      it("is on by default, and the setting survives an update of another field", async () => {
+        const [view] = await asAlice(() => connections.list(aliceId));
+        expect(view.tagOperationType).toBe(true);
+        const updated = await asAlice(() =>
+          connections.updateConnection(aliceId, connectionId, {
+            autoSync: false,
+          }),
+        );
+        expect(updated.tagOperationType).toBe(true);
+        expect(updated.autoSync).toBe(false);
+      });
+
+      it("attaches the tag BEFORE the import rules run, so a rule can use it", async () => {
+        const [tag] = await query<{ id: string }>(
+          `INSERT INTO tags (user_id, name) VALUES ($1, 'Card payment') RETURNING id`,
+          [aliceId],
+        );
+        const food = await createTestCategory(db, aliceId, { name: "Food" });
+        await asAlice(() =>
+          rules.create(aliceId, {
+            name: "Card payments",
+            triggers: ["import"],
+            condition: { field: "tagIds", op: "hasAny", value: [tag.id] },
+            actions: [{ type: "set_category", categoryId: food.id }],
+          } as CreateTransactionRuleDto),
+        );
+
+        await sync();
+
+        const stored = await query<{
+          payee_name: string;
+          category_id: string | null;
+        }>(
+          `SELECT payee_name, category_id FROM transactions ORDER BY payee_name`,
+        );
+        expect(stored.map((t) => [t.payee_name, t.category_id])).toEqual([
+          ["Bank", null],
+          ["Cafe", food.id],
+          ["Cinema", food.id],
+          ["Employer", null],
+          ["Plain", null],
+        ]);
+      });
+
+      it("rolls the tags back with the rest when the write fails", async () => {
+        const failing = jest
+          .spyOn(module.get(AccountsService), "recalculateCurrentBalance")
+          .mockRejectedValue(new Error("balance failed"));
+        await expect(sync()).rejects.toThrow("balance failed");
+        failing.mockRestore();
+
+        expect(await count("tags")).toBe(0);
+        expect(await count("transaction_tags")).toBe(0);
+        expect(await count("transactions")).toBe(0);
+        expect(await count("bank_sync_imported_transactions")).toBe(0);
+      });
+
+      it("two syncs of two accounts meeting the same new tag converge on one tag", async () => {
+        const second = await createTestAccount(db, aliceId, {
+          name: "Second",
+          currencyCode: "PLN",
+          openingBalance: 0,
+          currentBalance: 0,
+        });
+        const other = await seedBank(aliceId, second.id, {
+          hash: "h-2",
+          external: "e-2",
+        });
+        const plan = (rows: BankTransaction[]) =>
+          planBankImport(rows, {
+            accountCurrencyCode: "PLN",
+            syncFromDate: daysAgo(30),
+            today,
+          });
+        const write = (
+          bank: string,
+          account: string,
+          rows: BankTransaction[],
+        ) =>
+          asAlice(() =>
+            writer.write({
+              userId: aliceId,
+              bankAccountId: bank,
+              accountId: account,
+              plannedSyncFromDate: daysAgo(30),
+              plannedCurrencyCode: "PLN",
+              plan: plan(rows),
+              balance: null,
+              tagOperationType: true,
+            }),
+          );
+
+        const results = await Promise.all([
+          write(bankAccountId, accountId, [OP_ROWS[0]]),
+          write(other.bankAccountId, second.id, [OP_ROWS[1]]),
+        ]);
+
+        expect(results.map((r) => r.imported)).toEqual([1, 1]);
+        expect(await count("tags")).toBe(1);
+        expect(await count("transaction_tags")).toBe(2);
+      });
+    });
+
+    describe("the preview's details", () => {
+      it("shows the tag it would add, and creates nothing", async () => {
+        bankReturns([
+          row({
+            entryReference: "o1",
+            remittance: ["Latte CARD-PAYMENT"],
+            operation: {
+              code: null,
+              subCode: null,
+              description: null,
+              remittanceCode: "CARD-PAYMENT",
+            },
+          }),
+        ]);
+        const view = await preview();
+        expect(view.rows[0]).toMatchObject({
+          operationTag: "Card payment",
+          tagNames: ["Card payment"],
+        });
+        expect(await count("tags")).toBe(0);
+        expect(await count("bank_sync_imported_transactions")).toBe(0);
+      });
+
+      it("shows no tag when the connection does not tag", async () => {
+        await asAlice(() =>
+          connections.updateConnection(aliceId, connectionId, {
+            tagOperationType: false,
+          }),
+        );
+        bankReturns([
+          row({
+            entryReference: "o1",
+            operation: {
+              code: null,
+              subCode: null,
+              description: null,
+              remittanceCode: "CARD-PAYMENT",
+            },
+          }),
+        ]);
+        const view = await preview();
+        expect(view.rows[0].operationTag).toBeNull();
+        expect(view.rows[0].tagNames).toEqual([]);
+      });
+
+      it("says how each payee resolves: name, alias with its pattern, new, and a rule", async () => {
+        const [named] = await query<{ id: string }>(
+          `INSERT INTO payees (user_id, name) VALUES ($1, 'Biedronka') RETURNING id`,
+          [aliceId],
+        );
+        const [aliased] = await query<{ id: string }>(
+          `INSERT INTO payees (user_id, name) VALUES ($1, 'Employer Ltd') RETURNING id`,
+          [aliceId],
+        );
+        await db.query(
+          `INSERT INTO payee_aliases (user_id, payee_id, alias) VALUES ($1, $2, 'EMPLOYER*')`,
+          [aliceId, aliased.id],
+        );
+        const ruled = await query<{ id: string }>(
+          `INSERT INTO payees (user_id, name) VALUES ($1, 'Kiosk Ruch') RETURNING id`,
+          [aliceId],
+        );
+        await asAlice(() =>
+          rules.create(aliceId, {
+            name: "Kiosk",
+            triggers: ["import"],
+            condition: { field: "payeeText", op: "contains", value: "kiosk" },
+            actions: [{ type: "set_payee", payeeId: ruled[0].id }],
+          } as CreateTransactionRuleDto),
+        );
+        bankReturns(
+          [
+            ...BANK_ROWS.slice(0, 3),
+            row({
+              entryReference: "r9",
+              counterpartyName: "Brand New Shop",
+              amount: "3.00",
+            }),
+            row({
+              entryReference: "r10",
+              counterpartyName: null,
+              remittance: [],
+              amount: "4.00",
+            }),
+          ].map((r) =>
+            r.entryReference === "r2"
+              ? { ...r, counterpartyName: "EMPLOYER 123" }
+              : r,
+          ),
+        );
+
+        const view = await preview();
+        const payeeOf = (key: string) =>
+          view.rows.find((r) => r.externalKey === key)?.payee;
+
+        expect(payeeOf("ref:r1")).toEqual({
+          original: "Biedronka",
+          name: "Biedronka",
+          via: "name",
+          aliasPattern: null,
+          payeeId: named.id,
+        });
+        expect(payeeOf("ref:r2")).toEqual({
+          original: "EMPLOYER 123",
+          name: "Employer Ltd",
+          via: "alias",
+          aliasPattern: "EMPLOYER*",
+          payeeId: aliased.id,
+        });
+        expect(payeeOf("ref:r3")).toEqual({
+          original: "Kiosk",
+          name: "Kiosk Ruch",
+          via: "rule",
+          aliasPattern: null,
+          payeeId: ruled[0].id,
+        });
+        expect(payeeOf("ref:r9")).toEqual({
+          original: "Brand New Shop",
+          name: "Brand New Shop",
+          via: "new",
+          aliasPattern: null,
+          payeeId: null,
+        });
+        expect(payeeOf("ref:r10")).toMatchObject({ via: "none", name: null });
+        expect(await count("payees")).toBe(3);
+      });
+
+      it("lists the matched rules by name with what they changed, and names the ids", async () => {
+        const groceries = await createTestCategory(db, aliceId, {
+          name: "Groceries",
+        });
+        const [tag] = await query<{ id: string }>(
+          `INSERT INTO tags (user_id, name) VALUES ($1, 'Weekly') RETURNING id`,
+          [aliceId],
+        );
+        const created = await asAlice(() =>
+          rules.create(aliceId, {
+            name: "Biedronka groceries",
+            triggers: ["import"],
+            condition: {
+              field: "payeeText",
+              op: "contains",
+              value: "biedronka",
+            },
+            actions: [
+              { type: "set_category", categoryId: groceries.id },
+              { type: "add_tags", tagIds: [tag.id] },
+            ],
+          } as CreateTransactionRuleDto),
+        );
+        await asAlice(() =>
+          rules.create(aliceId, {
+            name: "Never matches",
+            triggers: ["import"],
+            condition: { field: "payeeText", op: "contains", value: "zzzz" },
+            actions: [{ type: "set_category", categoryId: groceries.id }],
+          } as CreateTransactionRuleDto),
+        );
+
+        const view = await preview();
+
+        const first = view.rows.find((r) => r.externalKey === "ref:r1");
+        expect(first?.rules).toHaveLength(1);
+        expect(first?.rules[0]).toMatchObject({
+          ruleId: created.id,
+          ruleName: "Biedronka groceries",
+          stopped: false,
+          skipped: [],
+        });
+        expect(first?.rules[0].applied.map((a) => a.type)).toEqual([
+          "set_category",
+          "add_tags",
+        ]);
+        expect(first?.rules[0].changes).toMatchObject({
+          categoryId: { before: null, after: groceries.id },
+          tagIds: { before: [], after: [tag.id] },
+        });
+        expect(view.labels.categories[groceries.id]).toBe("Groceries");
+        expect(view.labels.tags[tag.id]).toBe("Weekly");
+        expect(first).toMatchObject({
+          categoryName: "Groceries",
+          tagNames: ["Weekly"],
+        });
+        // A row no rule matched has no trace, and nothing was written.
+        expect(
+          view.rows.find((r) => r.externalKey === "ref:r2")?.rules,
+        ).toEqual([]);
+        expect(await count("transaction_rule_applications")).toBe(0);
+        expect(await count("transaction_tags")).toBe(0);
+      });
+
+      it("returns no field of the provider's own besides the operation type", async () => {
+        const view = await preview();
+        const serialized = JSON.stringify(view);
+        expect(serialized).not.toMatch(
+          /creditorName|debtorName|merchantCategoryCode|"raw"/,
+        );
+      });
     });
   });
 

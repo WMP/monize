@@ -705,6 +705,8 @@
     "providerInvalidResponse": "銀行同期プロバイダーが、このバージョンの Monize では解釈できない応答を送信しました。",
     "planChanged": "プレビューの後に銀行のデータが変わりました。何もインポートされていません。もう一度プレビューしてください。",
     "needsPreview": "この銀行口座のプレビューを開き、自動同期される前に最初のインポートを確認してください。",
-    "nothingToUpdate": "銀行接続を変更するには、autoSync または notifySuccess を送信してください。"
+    "selectionNotNew": "選択した取引は、銀行データの新しい行ではありません。何もインポートされませんでした。もう一度プレビューしてください。",
+    "selectionOverlap": "1件の取引をインポートと除外リストへの追加の両方に指定することはできません。",
+    "nothingToUpdate": "銀行接続を変更するには、autoSync, notifySuccess または tagOperationType を送信してください。"
   }
 }

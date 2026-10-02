@@ -7,6 +7,7 @@ import {
 import {
   BANK_SYNC_CONNECTION_STATUSES,
   BANK_SYNC_DEFAULT_NOTIFY_SUCCESS,
+  BANK_SYNC_DEFAULT_TAG_OPERATION_TYPE,
   BANK_SYNC_LAST_SYNC_STATUSES,
   BANK_SYNC_NOTIFY_SUCCESS_MODES,
   BANK_SYNC_PROVIDERS,
@@ -139,6 +140,57 @@ describe("the notify_success mode list", () => {
     for (const mode of BANK_SYNC_NOTIFY_SUCCESS_MODES) {
       expect(mode.length).toBeLessThanOrEqual(20);
     }
+  });
+});
+
+describe("the columns of the preview details (spec section 7b)", () => {
+  // Both columns arrive in their own migration, so each is read from that file
+  // and from the schema, and the two must agree with the constant and the entity.
+  const DETAILS_MIGRATION_FILES = readdirSync(
+    join(DATABASE, "migrations"),
+  ).filter((name) =>
+    name.endsWith("_bank_sync_exceptions_and_operation_tags.sql"),
+  );
+  const DETAILS_MIGRATION = DETAILS_MIGRATION_FILES.map((name) =>
+    readFileSync(join(DATABASE, "migrations", name), "utf8"),
+  ).join("\n");
+
+  it("finds the migration it is checking", () => {
+    expect(DETAILS_MIGRATION_FILES).toHaveLength(1);
+  });
+
+  it.each([
+    ["schema.sql", tableBody(SCHEMA, "bank_sync_connections")],
+    ["the migration", DETAILS_MIGRATION],
+  ])(
+    "%s defaults tag_operation_type to the application default",
+    (_label, sql) => {
+      expect(sql).toMatch(
+        new RegExp(
+          `tag_operation_type BOOLEAN NOT NULL DEFAULT ${BANK_SYNC_DEFAULT_TAG_OPERATION_TYPE}\\b`,
+        ),
+      );
+    },
+  );
+
+  it.each([
+    ["schema.sql", tableBody(SCHEMA, "bank_sync_imported_transactions")],
+    ["the migration", DETAILS_MIGRATION],
+  ])(
+    "%s adds a nullable excluded_at timestamp to the ledger",
+    (_label, sql) => {
+      expect(sql).toMatch(/excluded_at TIMESTAMPTZ(?!\s+NOT NULL)/);
+    },
+  );
+
+  it("adds both columns idempotently and as an expand only", () => {
+    expect(DETAILS_MIGRATION).toMatch(
+      /ADD COLUMN IF NOT EXISTS excluded_at TIMESTAMPTZ;/,
+    );
+    expect(DETAILS_MIGRATION).toMatch(
+      /ADD COLUMN IF NOT EXISTS tag_operation_type BOOLEAN NOT NULL DEFAULT true;/,
+    );
+    expect(DETAILS_MIGRATION).not.toMatch(/\b(DROP|RENAME)\b\s+(COLUMN|TO)/i);
   });
 });
 

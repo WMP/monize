@@ -1,4 +1,9 @@
 import { boundedAccountIdentifier } from "../../bank-account-identifier";
+import {
+  BANK_OPERATION_MAX_LENGTH,
+  remittanceOperationCode,
+  type BankOperation,
+} from "../../bank-operation";
 import { BankSyncProviderError } from "../bank-sync-provider.errors";
 import type {
   BankAccountDescriptor,
@@ -343,6 +348,24 @@ function remittanceLines(value: unknown): string[] {
 }
 
 /**
+ * The bank's operation type: `bank_transaction_code` (`description`, `code`,
+ * `sub_code`, each bounded) and the code in a remittance line. Read beside the
+ * remittance lines and never out of them: the planner builds the description
+ * and the `hash:` duplicate key from the lines as the bank sent them.
+ */
+function operationOf(row: UnknownRecord, remittance: string[]): BankOperation {
+  const transactionCode = isRecord(row.bank_transaction_code)
+    ? row.bank_transaction_code
+    : {};
+  return {
+    code: text(transactionCode.code, BANK_OPERATION_MAX_LENGTH),
+    subCode: text(transactionCode.sub_code, BANK_OPERATION_MAX_LENGTH),
+    description: text(transactionCode.description, BANK_OPERATION_MAX_LENGTH),
+    remittanceCode: remittanceOperationCode(remittance),
+  };
+}
+
+/**
  * One wire transaction, or null when the row is not an object.
  *
  * `booked` is true for `status === "BOOK"`. A row with no readable status is
@@ -389,6 +412,7 @@ export function mapTransaction(row: unknown): BankTransaction | null {
           ? nameOf(row.debtor)
           : null,
     remittance,
+    operation: operationOf(row, remittance),
   };
 }
 

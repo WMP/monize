@@ -7,6 +7,7 @@ import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -81,12 +82,19 @@ export function BankSyncConnectionCard({
 
   const [notifySuccess, setNotifySuccess] = useState(connection.notifySuccess);
   const [savingNotifySuccess, setSavingNotifySuccess] = useState(false);
+  const [tagOperationType, setTagOperationType] = useState(connection.tagOperationType);
+  const [savingTagOperationType, setSavingTagOperationType] = useState(false);
 
   // The server's value wins whenever a reload brings a different one.
   const [seenAutoSync, setSeenAutoSync] = useState(connection.autoSync);
   if (seenAutoSync !== connection.autoSync) {
     setSeenAutoSync(connection.autoSync);
     setAutoSync(connection.autoSync);
+  }
+  const [seenTagOperationType, setSeenTagOperationType] = useState(connection.tagOperationType);
+  if (seenTagOperationType !== connection.tagOperationType) {
+    setSeenTagOperationType(connection.tagOperationType);
+    setTagOperationType(connection.tagOperationType);
   }
   const [seenNotifySuccess, setSeenNotifySuccess] = useState(connection.notifySuccess);
   if (seenNotifySuccess !== connection.notifySuccess) {
@@ -148,6 +156,22 @@ export function BankSyncConnectionCard({
       toast.error(getErrorMessage(error, t('autoSyncFailed')));
     } finally {
       setSavingAutoSync(false);
+    }
+  };
+
+  const handleTagOperationType = async (next: boolean) => {
+    if (savingTagOperationType) return;
+    const previous = tagOperationType;
+    setTagOperationType(next);
+    setSavingTagOperationType(true);
+    try {
+      await bankSyncApi.updateConnection(connection.id, { tagOperationType: next });
+      toast.success(next ? t('tagOperationTypeOn') : t('tagOperationTypeOff'));
+    } catch (error) {
+      setTagOperationType(previous);
+      toast.error(getErrorMessage(error, t('tagOperationTypeFailed')));
+    } finally {
+      setSavingTagOperationType(false);
     }
   };
 
@@ -334,6 +358,21 @@ export function BankSyncConnectionCard({
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">
             {t('autoSync')}
+          </span>
+        </div>
+      )}
+
+      {showAutoSync && (
+        <div className="mt-3 flex items-center gap-3">
+          <ToggleSwitch
+            checked={tagOperationType}
+            onChange={handleTagOperationType}
+            disabled={disabled || savingTagOperationType}
+            label={t('tagOperationType')}
+          />
+          <span className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+            {t('tagOperationType')}
+            <InfoTooltip text={t('tagOperationTypeHelp')} usePortal />
           </span>
         </div>
       )}

@@ -1538,7 +1538,12 @@
         "never": "Tidak pernah"
       },
       "notifySuccessSaved": "Pengaturan notifikasi disimpan",
-      "notifySuccessFailed": "Tidak dapat mengubah pengaturan notifikasi"
+      "notifySuccessFailed": "Tidak dapat mengubah pengaturan notifikasi",
+      "tagOperationType": "Beri tag pada transaksi dengan jenis operasi dari bank",
+      "tagOperationTypeHelp": "Setiap transaksi yang diimpor mendapat tag bernama jenis operasi dari bank, seperti Pembayaran kartu atau Transfer masuk, agar aturan dan laporan dapat memakainya.",
+      "tagOperationTypeOn": "Tag jenis operasi diaktifkan",
+      "tagOperationTypeOff": "Tag jenis operasi dinonaktifkan",
+      "tagOperationTypeFailed": "Tidak dapat mengubah tag jenis operasi"
     },
     "account": {
       "unnamed": "Rekening bank tanpa nama",
@@ -1661,14 +1666,16 @@
         "refused": "Ditolak",
         "pending": "Tertunda",
         "before_cutoff": "Sebelum tanggal mulai",
-        "withCount": "{label} ({count})"
+        "withCount": "{label} ({count})",
+        "excluded": "Pengecualian"
       },
       "outcome": {
         "new": "Baru",
         "duplicate": "Sudah diimpor",
         "refused": "Ditolak",
         "pending": "Tertunda",
-        "before_cutoff": "Sebelum tanggal mulai"
+        "before_cutoff": "Sebelum tanggal mulai",
+        "excluded": "Pengecualian"
       },
       "refusal": {
         "missing_date": "Tanpa tanggal",
@@ -1683,7 +1690,8 @@
         "payee": "Penerima",
         "category": "Kategori",
         "status": "Status",
-        "amount": "Jumlah"
+        "amount": "Jumlah",
+        "select": "Pilihan dan rincian"
       },
       "noPayee": "Tanpa penerima",
       "dateUnknown": "Tanpa tanggal",
@@ -1691,6 +1699,27 @@
       "empty": {
         "all": "Bank tidak mengembalikan transaksi untuk periode ini.",
         "filtered": "Tidak ada transaksi di daftar ini."
+      },
+      "selectAllNew": "Pilih semua transaksi baru dalam daftar ini",
+      "selectAllExceptions": "Pilih semua pengecualian dalam daftar ini",
+      "selectRow": "Impor {payee}",
+      "selectException": "Hapus {payee} dari pengecualian",
+      "summary": "Impor {import}, lewati {skip}, tambahkan {except} ke pengecualian",
+      "importNothing": "Konfirmasi tanpa mengimpor",
+      "exceptions": {
+        "intro": "Transaksi dalam pengecualian tidak pernah diimpor. Hapus satu dari pengecualian untuk melihatnya sebagai baru lagi.",
+        "remove": "{count, plural, =0 {Hapus dari pengecualian} other {Hapus # dari pengecualian}}",
+        "removing": "Menghapus...",
+        "removed": "{count, plural, other {# transaksi dihapus dari pengecualian}}",
+        "removedNone": "Tidak ada yang dihapus dari pengecualian",
+        "removeFailed": "Tidak dapat menghapus pengecualian"
+      },
+      "details": {
+        "operation": {
+          "heading": "Jenis operasi",
+          "none": "Tidak ada tag jenis operasi untuk transaksi ini.",
+          "tag": "Tag dari jenis operasi bank: {tag}"
+        }
       }
     }
   }

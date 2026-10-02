@@ -73,6 +73,7 @@ export function toBankSyncConnectionView(
     validUntil: iso(row.validUntil),
     autoSync: row.autoSync,
     notifySuccess: row.notifySuccess,
+    tagOperationType: row.tagOperationType,
     lastError: row.lastError,
     createdAt: row.createdAt.toISOString(),
     accounts: accounts.map(toBankSyncAccountView),
