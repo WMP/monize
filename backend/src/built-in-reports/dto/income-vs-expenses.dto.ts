@@ -48,6 +48,21 @@ export class IncomeExpensePeriodItem {
   net: number;
 }
 
+/**
+ * One bar of a tag-key bucket: the categorized figures plus the tagged
+ * transfer flows that fell in the period (INV-REPORT-003). The flows are never
+ * part of `income`, `expenses` or `net` (I2).
+ */
+export class IncomeExpenseTagPeriodItem extends IncomeExpensePeriodItem {
+  /** Tagged transfer legs in this period, positive side; zero when none. */
+  @ApiProperty({ example: 1000.0 })
+  taggedInflows: number;
+
+  /** Tagged transfer legs in this period, negative side, as a positive magnitude. */
+  @ApiProperty({ example: 1000.0 })
+  taggedOutflows: number;
+}
+
 export class IncomeExpenseTotals {
   /**
    * Total money in over the window, or `null` when a row could not be
@@ -102,14 +117,15 @@ export class IncomeExpenseTagBucket {
   @ApiProperty({ example: false })
   isUntagged: boolean;
 
-  @ApiProperty({ type: [IncomeExpensePeriodItem] })
-  data: IncomeExpensePeriodItem[];
+  @ApiProperty({ type: [IncomeExpenseTagPeriodItem] })
+  data: IncomeExpenseTagPeriodItem[];
 
   @ApiProperty({ type: IncomeExpenseTotals })
   totals: IncomeExpenseTotals;
 
   /**
-   * Transfer legs carrying this bucket's value, positive side (INV-REPORT-003).
+   * Window total of the per-period `taggedInflows` in `data` (their sum, by
+   * construction). Transfer legs carrying this bucket's value, positive side (INV-REPORT-003).
    * Never folded into `income`, `expenses` or `net` -- a transfer is never
    * income (I2). The part that converted; see `missingCurrencies` below.
    */
