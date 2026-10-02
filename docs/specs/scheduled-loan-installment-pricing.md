@@ -29,10 +29,12 @@ principal = payment - interest, through allocateLoanPayment's waterfall
 The ledger expression is the canonical as-of balance
 (`docs/specs/account-balances-as-of.md` section 3, INV-BALANCE-001's source),
 with the installment's due date in place of today. The periodic-rate rules are
-unchanged: nominal annual rate over periods per year for loans and
-non-Canadian mortgages, the semi-annual-compounding effective rate for a
-Canadian fixed-rate mortgage, `periodsPerYearForStoredFrequency` for the
-count in both spellings of the frequency column.
+unchanged: nominal annual rate over periods per year for loans and every
+mortgage type but one, the semi-annual-compounding effective rate for a
+`CANADIAN_FIXED` mortgage, `periodsPerYearForStoredFrequency` for the count in
+both spellings of the frequency column. A mortgage's rate is
+`getPeriodicRate(annualRate, periodsPerYear, mortgageTypeOf(account))`, keyed on
+the type's compounding trait (`docs/specs/mortgage-types.md` table 4.1).
 
 Both inputs are dated at `d`, for the same reason: a payment or a rate change
 recorded for next month belongs to next month's installment.
@@ -250,7 +252,7 @@ The recurrence gives `100.01 - 399.99 * 0.005 = 98.0101`; the invariant gives
   (stale template repriced, idempotence, decline on unmanaged shape, a
   `retired` decision on retired debt -- `LoanPostingDecision` keeps it apart
   from `not-applicable`, which posts the persisted amounts, so the two are
-  asserted separately -- extra-principal line); Canadian and non-Canadian mortgage
+  asserted separately -- extra-principal line); `CANADIAN_FIXED` and `ANNUITY` mortgage
   rates unchanged; LINE_OF_CREDIT still supported; final-payment and
   extra-principal clamps unchanged; anchor endpoint shapes.
 - Unit (`scheduled-transactions.service.spec.ts`): `post()` writes the

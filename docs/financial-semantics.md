@@ -565,9 +565,17 @@ annual rate compounded at the payment frequency**, so the rate charged per
 period is `annualRate / periodsPerYear` -- `0.06 / 26` for a biweekly mortgage,
 not `(1 + 0.06/12)^(12/26) - 1`.
 
-The exception is Canadian **fixed-rate** mortgages, which must compound
-semi-annually by law: `(1 + r/2)^(2/n) - 1`. Canadian variable-rate mortgages
-and every non-Canadian mortgage use the nominal convention.
+The exception is the `CANADIAN_FIXED` mortgage type: a Canadian fixed-rate
+mortgage must compound semi-annually by law, `(1 + r/2)^(2/n) - 1`. Every other
+type uses the nominal convention, including a Canadian variable-rate mortgage,
+which is an `ANNUITY` mortgage (`docs/specs/mortgage-types.md`, table 4.2).
+
+The convention is a trait of the mortgage type (`accounts.mortgage_type`), not a
+property of the two legacy flags: `MORTGAGE_TYPE_TRAITS` decides it once per
+layer and every consumer asks `compoundingFor(type)`. A row whose type column is
+still null is read through `mortgageTypeOf`, which derives the type from the
+flags until the contract migration makes the column `NOT NULL`; a plain `LOAN`
+account reads as `ANNUITY`.
 
 Both conventions are defensible and they disagree -- on 300k at 6% over 25
 biweekly-paid years the difference is 0.68 on the installment and about 443 in
@@ -575,22 +583,31 @@ lifetime interest -- so the choice is a named contract, not a formula detail:
 
 | Where | What implements it |
 | --- | --- |
-| Backend rate | `calculateStandardPeriodicRate` / `calculateCanadianPeriodicRate` in `backend/src/accounts/mortgage-amortization.util.ts` |
+| Which convention a mortgage uses | `MORTGAGE_TYPE_TRAITS` / `compoundingFor` / `mortgageTypeOf` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts`, held equal by the parity fixture `backend/src/accounts/mortgage-type-cases.json` |
+| Backend rate | `getPeriodicRate(annualRate, periodsPerYear, type)` over `calculateStandardPeriodicRate` / `calculateCanadianPeriodicRate` in `backend/src/accounts/mortgage-amortization.util.ts` |
 | Backend generic loan | `calculatePaymentSplit` / `calculateTotalPayments` in `backend/src/accounts/loan-amortization.util.ts` |
-| Frontend projections | `getPeriodicRate` in `frontend/src/lib/loan-schedule.ts` |
-| Displayed EAR | `calculateEffectiveAnnualRate`, compounding at the **payment** frequency |
+| Frontend projections | `getPeriodicRate` in `frontend/src/lib/loan-frequency.ts`, used by `frontend/src/lib/loan-schedule.ts` |
+| Displayed EAR | `calculateEffectiveAnnualRate` (backend) / `effectiveAnnualRate` (frontend), keyed on the type and compounding at the **payment** frequency |
 
 The displayed effective annual rate has to describe the rate the schedule
 actually charges. Compounding at 12 regardless of the payment frequency named a
 rate nothing in the app used: a biweekly mortgage charges `r/26` twenty-six
-times, so its EAR is `(1 + r/26)^26 - 1`. Canadian fixed keeps `(1 + r/2)^2 - 1`
-whatever its payment frequency, because that is the rate the law defines.
+times, so its EAR is `(1 + r/26)^26 - 1`. `CANADIAN_FIXED` keeps
+`(1 + r/2)^2 - 1` whatever its payment frequency, because that is the rate the
+law defines.
 
 Backend and frontend agreeing is **not** evidence for either convention -- they
 deliberately mirror one formula, so parity can only detect drift, never a wrong
 shared choice. The fixtures that hold this rule are derived independently of
 both (`backend/src/accounts/mortgage-amortization.util.spec.ts`, "periodic-rate
-convention"; `frontend/src/lib/loan-schedule.test.ts`).
+convention"; `frontend/src/lib/loan-schedule.test.ts`). The two contract specs,
+`backend/src/accounts/mortgage-type.contract.spec.ts` and
+`frontend/src/lib/mortgage-type.contract.test.ts`, hold each layer's traits to
+the shared parity fixture, and the backend one reconciles `MORTGAGE_TYPES` with
+the `accounts_mortgage_type_check` CHECK in `database/schema.sql` both ways. The
+boolean overloads of `getPeriodicRate` and `calculateEffectiveAnnualRate` remain
+until the flags are dropped, with no production caller:
+`backend/src/accounts/mortgage-type-flags.guard.spec.ts` fails a new one.
 
 ### The first payment date is payment number 1
 
