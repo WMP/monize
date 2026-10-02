@@ -50,6 +50,7 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { affectedRowCount } from "../common/db/query-result";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
+import { flagWriteStalesMortgageType } from "./mortgage-type.util";
 
 /**
  * One account as the AI Assistant and the MCP server describe it.
@@ -848,6 +849,8 @@ export class AccountsService {
         if (updateAccountDto.linkedLoanAccountId !== undefined)
           account.linkedLoanAccountId = updateAccountDto.linkedLoanAccountId;
         // Mortgage-specific fields
+        if (flagWriteStalesMortgageType(account, updateAccountDto))
+          account.mortgageType = null;
         if (updateAccountDto.isCanadianMortgage !== undefined)
           account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
         if (updateAccountDto.isVariableRate !== undefined)

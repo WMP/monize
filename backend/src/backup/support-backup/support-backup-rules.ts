@@ -223,6 +223,7 @@ export const RULES: Record<string, TableRules> = {
     linked_loan_account_id: keep,
     is_canadian_mortgage: keep,
     is_variable_rate: keep,
+    mortgage_type: keep,
     term_months: keep,
     term_end_date: keep,
     amortization_months: keep,

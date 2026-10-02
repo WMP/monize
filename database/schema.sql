@@ -190,8 +190,12 @@ CREATE TABLE accounts (
     date_acquired DATE, -- date the asset was acquired (for net worth historical accuracy)
     linked_loan_account_id UUID, -- asset's financing loan/mortgage (self-referential FK added below; for the equity view)
     -- Mortgage-specific fields
-    is_canadian_mortgage BOOLEAN DEFAULT false, -- Canadian mortgages use semi-annual compounding for fixed rates
-    is_variable_rate BOOLEAN DEFAULT false, -- Variable rate mortgages use monthly compounding
+    is_canadian_mortgage BOOLEAN DEFAULT false, -- with is_variable_rate false: semi-annual compounding (CANADIAN_FIXED); superseded by mortgage_type
+    is_variable_rate BOOLEAN DEFAULT false, -- only cancels the Canadian semi-annual compounding (the nominal rate / payments per year); superseded by mortgage_type
+    -- Compounding convention and amortization method (docs/specs/mortgage-types.md):
+    -- 'ANNUITY' | 'CANADIAN_FIXED' | 'LINEAR' | 'INTEREST_ONLY'. Nullable until the
+    -- contract migration; a null MORTGAGE row is read from the two flags above.
+    mortgage_type VARCHAR(20),
     term_months INTEGER, -- Mortgage term length in months (e.g., 60 for 5-year term)
     term_end_date DATE, -- When the current term ends (for renewal reminders)
     amortization_months INTEGER, -- Total amortization period in months (e.g., 300 for 25 years)
@@ -205,7 +209,9 @@ CREATE TABLE accounts (
     CONSTRAINT chk_statement_due_day_cc_only
       CHECK (account_type = 'CREDIT_CARD' OR statement_due_day IS NULL),
     CONSTRAINT chk_statement_settlement_day_cc_only
-      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL)
+      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL),
+    CONSTRAINT accounts_mortgage_type_check
+      CHECK (mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED', 'LINEAR', 'INTEREST_ONLY'))
 );
 
 CREATE INDEX idx_accounts_user ON accounts(user_id);

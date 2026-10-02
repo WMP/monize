@@ -91,6 +91,7 @@ the booleans it reads.
 | The database accepts only the four types | CHECK on `accounts.mortgage_type`, reconciled with `MORTGAGE_TYPES` by a contract spec in both directions | P1-B1, P1-B2 |
 | `prepayment_mode` only on LINEAR | CHECK `prepayment_mode IS NULL OR mortgage_type = 'LINEAR'`; the service writes null for other types | P2-B1 |
 | One method per type (INV-LOAN-007) | `MORTGAGE_TYPE_TRAITS` per layer, `mortgage-type-cases.json` parity, the method branch on each surface | P1-B2, P1-F1, P2-B1, P2-F1 |
+| A stored type never disagrees with the flags | from P1-B1, a save that changes either flag clears the type (`flagWriteStalesMortgageType`, both flag writers), so the reader falls back to the flags; from P1-B3, the writers set the type and `flagsFromMortgageType` together | P1-B1, P1-B3 |
 | No new boolean caller | shrink-only flags guard (`mortgage-type-flags.guard.spec.ts`) | P1-B2, deleted in P3-B1 |
 | Dated debt on a rate change | `datedLoanDebt` called from both rate-change paths | P1-B3 |
 | Every figure matches the spec | fixtures copied from spec section 7 | P2-B1, P2-F1 |

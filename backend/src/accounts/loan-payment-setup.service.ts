@@ -30,6 +30,7 @@ import { allocateLoanPayment } from "./loan-payment-waterfall.util";
 import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { flagWriteStalesMortgageType } from "./mortgage-type.util";
 
 @Injectable()
 export class LoanPaymentSetupService {
@@ -313,6 +314,9 @@ export class LoanPaymentSetupService {
     }
 
     if (account.accountType === AccountType.MORTGAGE) {
+      if (flagWriteStalesMortgageType(account, dto)) {
+        updateData.mortgageType = null;
+      }
       if (dto.isCanadianMortgage !== undefined) {
         updateData.isCanadianMortgage = dto.isCanadianMortgage;
       }

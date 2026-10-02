@@ -472,5 +472,37 @@ describe("DemoSeedService", () => {
 
       expect(termEndUpdates.length).toBe(1);
     });
+
+    it("writes the mortgage type, and null on every other account", async () => {
+      await service.seedDemoData("user-123");
+
+      const accountCalls = dataSource.query.mock.calls.filter(
+        (call: string[]) =>
+          call[0].includes("INSERT INTO accounts") &&
+          call[0].includes("mortgage_type"),
+      );
+      // The parameter's position follows the INSERT's column list, so it is
+      // read from there rather than pinned to a number.
+      const columnsOf = (sql: string) =>
+        sql
+          .slice(sql.indexOf("(") + 1, sql.indexOf(")"))
+          .split(",")
+          .map((column) => column.trim());
+      const typeOf = (call: unknown[]) =>
+        (call[1] as unknown[])[
+          columnsOf(call[0] as string).indexOf("mortgage_type")
+        ];
+      const mortgages = accountCalls.filter(
+        (call: unknown[]) => (call[1] as unknown[])[1] === "MORTGAGE",
+      );
+
+      expect(mortgages.length).toBe(1);
+      expect(typeOf(mortgages[0])).toBe("CANADIAN_FIXED");
+      for (const call of accountCalls) {
+        if (call !== mortgages[0]) {
+          expect(typeOf(call)).toBeNull();
+        }
+      }
+    });
   });
 });
