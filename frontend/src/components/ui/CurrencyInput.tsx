@@ -399,9 +399,21 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                     e.preventDefault();
                     toggleSign();
                   }}
-                  className="flex items-center text-base leading-none font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 disabled:pointer-events-none"
+                  className="flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  {'±'}
+                  {/* Drawn rather than using the '±' glyph, which renders a
+                      squat plus crowded against the minus in most fonts. */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    className="h-5 w-5"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 3v11M6.5 8.5h11M6.5 20h11" />
+                  </svg>
                 </button>
               )}
               {allowCalculator && (
