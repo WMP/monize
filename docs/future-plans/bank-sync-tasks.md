@@ -31,13 +31,14 @@
 | BS11 | Export and restore the ledger in the backup (id remap on `account_id`, `transaction_id`) | BS6 | neutral | [ ] |
 | BS12 | Notifications: consent reminders at 30, 14, 7, 3, 2, 1, 0 days and on expiry; daily sync outcomes (`docs/specs/bank-sync-notifications.md`) | BS7 | additive | [x] |
 | BS13 | Pending rows: import as `UNRECONCILED`, replace when booked (needs its own spec for the match) | BS10 | additive | [ ] |
-| BS14 | A row whose counterparty is another synced account becomes a transfer | BS10 | additive | [ ] |
+| BS14 | A row whose counterparty account is one of the user's Monize accounts (by account number) becomes a transfer: own-account `TRANSFER`, `STANDING-ORDER`, `CREDIT-CARD-AUTO-REPAYMENT` | BS10, BS16 | additive | [ ] |
 | BS15 | MCP and AI tools: list connections, sync now (with confirmation) | BS6 | additive | [ ] |
 | BS16 | Match bank accounts to Monize accounts by account number; create a Monize account prefilled from a bank account (spec section 5a) | BS6 | additive | [x] |
 | BS17 | Offer to set a new account's opening balance so that its balance after the first sync equals the bank's | BS16 | additive | [ ] |
 | BS18 | Preview before import, the first sync after a link change confirmed from the preview, commit refused on a changed plan fingerprint (spec section 7a) | BS6 | additive | [x] |
 | BS19 | Show the provider's account type beside the account and warn when it does not match the Monize account's type (a card linked to a chequing account) | BS16 | additive | [x] |
 | BS20 | Preview details: row selection with skip now or add to exceptions, operation type to tag, payee mapping with hover, rule traces, raw bank data (spec section 7b) | BS18 | additive | [x] |
+| BS21 | A loan repayment row (PKO `LOAN-PAYOFF`, remittance "KAPITAŁ: x ODSETKI: y") becomes a split: principal as a transfer to the loan account, interest as an expense; the split must sum to the amount or the row is refused (needs its own spec) | BS14 | additive | [ ] |
 
 ## Notes per task
 
@@ -79,7 +80,17 @@
     `UNAUTHORIZED_IP` code exists), and the HTTP status of most error codes.
   - Follow-ups: send every PSU header a bank lists in `required_psu_headers`;
     show `GET /application`'s `active` flag in the credentials test.
-  - Still to check: one real sync against a live session. Mark BS10 done
+  - Observed from a live PKO BP session (2026-10-02, 146 booked rows;
+    shapes only, no data copied): `bank_transaction_code` and
+    `merchant_category_code` are always null; `remittance_information` always
+    has two lines, the second being the operation code (`CARD-PAYMENT`,
+    `MOBILE-PAYMENT-POS-NO-CARD-TX-CODE`, `TRANSFER`, `TRANSFER-IN`,
+    `MOBILE-PAYMENT-ATM-TX-CODE`, `STANDING-ORDER`, `CASHBACK`,
+    `MOBILE-PAYMENT-POS-RETURN`, `LOAN-PAYOFF`,
+    `CREDIT-CARD-AUTO-REPAYMENT`); every row has `entry_reference` shaped
+    `O;<digits>`; `creditor`/`debtor` names appear only on transfers; every
+    row carries `balance_after_transaction`.
+  - Still to check: one real import against a live session. Mark BS10 done
     after it.
 - **BS11** replaces the cut-off-date mitigation in spec section 4, not the
   cut-off date itself.
