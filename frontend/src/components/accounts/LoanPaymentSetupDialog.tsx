@@ -13,9 +13,13 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   Account,
   DetectedLoanPayment,
+  MortgageType,
   SetupLoanPaymentsData,
+  WRITABLE_MORTGAGE_TYPES,
+  isWritableMortgageType,
   toMortgagePaymentFrequency,
 } from '@/types/account';
+import { compoundingFor, flagsFromMortgageType } from '@/lib/mortgage-type';
 import { Payee } from '@/types/payee';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
@@ -33,21 +37,20 @@ interface LoanPaymentSetupDialogProps {
   isOpen: boolean;
   onClose: () => void;
   /**
-   * The debt being set up. The two mortgage flags are optional because the
-   * import flow builds this from a freshly imported account that has neither --
-   * but where the caller HAS them (the account form), they must travel: the
-   * dialog's own checkboxes are what it submits, so an unseeded `false` on a
-   * Canadian mortgage both flipped the stored flag off (`updateData
-   * .isCanadianMortgage = dto.isCanadianMortgage` whenever it is defined) and
-   * left the quarterly/yearly options on a list the server refuses.
+   * The debt being set up. The mortgage type is optional because the import
+   * flow can build this from a freshly imported account the accounts list does
+   * not hold yet -- but where the caller HAS it (`mortgageTypeOf(account)`), it
+   * must travel: the dialog's own select is what it submits, so an unseeded
+   * `ANNUITY` on a Canadian fixed-rate mortgage both turned its semi-annual
+   * compounding off on save and left the quarterly/yearly options on a list the
+   * server refuses.
    */
   loanAccount: {
     accountId: string;
     accountName: string;
     accountType: string;
     currencyCode?: string;
-    isCanadianMortgage?: boolean;
-    isVariableRate?: boolean;
+    mortgageType?: MortgageType;
   };
   accounts: Account[];
   onSetupComplete?: () => void;
@@ -97,21 +100,22 @@ export function LoanPaymentSetupDialog({
   // Mortgage-specific
   const isMortgage = loanAccount.accountType === 'MORTGAGE';
   const currencySymbol = getCurrencySymbol(loanAccount.currencyCode || 'USD');
-  const [isCanadianMortgage, setIsCanadianMortgage] = useState(
-    loanAccount.isCanadianMortgage ?? false,
+  const [mortgageType, setMortgageType] = useState<MortgageType>(
+    loanAccount.mortgageType ?? 'ANNUITY',
   );
 
-  // A Canadian mortgage is split by the mortgage helpers, which have no
-  // quarterly or yearly cadence: the server answers 400 rather than compute the
-  // split at a monthly rate, so offering those two here would be a control whose
-  // only outcome is a failure the form cannot explain. Filtered rather than
-  // validated on submit, so the choice never exists.
+  // A semi-annually compounded mortgage is split by the mortgage helpers, which
+  // have no quarterly or yearly cadence: the server answers 400 rather than
+  // compute the split at a monthly rate, so offering those two here would be a
+  // control whose only outcome is a failure the form cannot explain. Filtered
+  // rather than validated on submit, so the choice never exists.
   //
   // The current selection is corrected by DERIVING the effective value instead
-  // of writing state -- ticking the box while "Quarterly" is selected must not
-  // submit a value the list no longer offers, and unticking it restores what the
-  // user had chosen.
-  const restrictToMortgageCadences = isMortgage && isCanadianMortgage;
+  // of writing state -- choosing the type while "Quarterly" is selected must not
+  // submit a value the list no longer offers, and choosing another type restores
+  // what the user had chosen.
+  const restrictToMortgageCadences =
+    isMortgage && compoundingFor(mortgageType) === 'SEMI_ANNUAL';
   const paymentFrequencyOptions = restrictToMortgageCadences
     ? allPaymentFrequencyOptions.filter(
         (option) => toMortgagePaymentFrequency(option.value) !== null,
@@ -122,9 +126,6 @@ export function LoanPaymentSetupDialog({
     toMortgagePaymentFrequency(paymentFrequency) === null
       ? 'MONTHLY'
       : paymentFrequency;
-  const [isVariableRate, setIsVariableRate] = useState(
-    loanAccount.isVariableRate ?? false,
-  );
   const [amortizationMonths, setAmortizationMonths] = useState<number | undefined>(undefined);
   const [termMonths, setTermMonths] = useState<number | undefined>(undefined);
 
@@ -263,8 +264,13 @@ export function LoanPaymentSetupDialog({
       }
 
       if (isMortgage) {
-        data.isCanadianMortgage = isCanadianMortgage;
-        data.isVariableRate = isVariableRate;
+        // The type and the flags it maps to travel together; a stored type
+        // the select does not offer (not writable yet) is withheld, so the
+        // row keeps it.
+        if (isWritableMortgageType(mortgageType)) {
+          data.mortgageType = mortgageType;
+          Object.assign(data, flagsFromMortgageType(mortgageType));
+        }
         data.amortizationMonths = amortizationMonths;
         data.termMonths = termMonths;
       }
@@ -284,7 +290,7 @@ export function LoanPaymentSetupDialog({
     totalPaymentAmount, effectivePaymentFrequency, sourceAccountId, nextDueDate,
     interestRate, interestCategoryId, selectedPayeeId, payeeName, autoPost,
     includeExtraPrincipal, extraPrincipal, useDetectedSplit, detected,
-    isMortgage, isCanadianMortgage, isVariableRate, amortizationMonths, termMonths,
+    isMortgage, mortgageType, amortizationMonths, termMonths,
     loanAccount, onSetupComplete, onClose, t,
   ]);
 
@@ -501,29 +507,26 @@ export function LoanPaymentSetupDialog({
                   </h3>
 
                   <div className="space-y-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isCanadianMortgage}
-                        onChange={(e) => setIsCanadianMortgage(e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    <div>
+                      <Select
+                        id="loan-setup-mortgage-type"
+                        label={t('mortgageFields.type.label')}
+                        value={mortgageType}
+                        onChange={(e) =>
+                          setMortgageType(
+                            WRITABLE_MORTGAGE_TYPES.find((type) => type === e.target.value) ??
+                              mortgageType,
+                          )
+                        }
+                        options={WRITABLE_MORTGAGE_TYPES.map((type) => ({
+                          value: type,
+                          label: t(`mortgageFields.type.${type}`),
+                        }))}
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {t('loanPaymentSetup.canadianMortgage')}
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isVariableRate}
-                        onChange={(e) => setIsVariableRate(e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {t('loanPaymentSetup.variableRate')}
-                      </span>
-                    </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t(`mortgageFields.type.help.${mortgageType}`)}
+                      </p>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>

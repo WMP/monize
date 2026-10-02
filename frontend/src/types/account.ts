@@ -62,6 +62,13 @@ export const WRITABLE_MORTGAGE_TYPES = [
 ] as const satisfies readonly MortgageType[];
 export type WritableMortgageType = (typeof WRITABLE_MORTGAGE_TYPES)[number];
 
+/** Whether a request may write `type` (see `WRITABLE_MORTGAGE_TYPES`). */
+export function isWritableMortgageType(
+  type: MortgageType,
+): type is WritableMortgageType {
+  return (WRITABLE_MORTGAGE_TYPES as readonly MortgageType[]).includes(type);
+}
+
 /**
  * Payment frequencies a loan account can carry, mirroring the backend's
  * `PAYMENT_FREQUENCIES`.

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { MortgageFields } from './MortgageFields';
-import { Account } from '@/types/account';
+import { Account, MortgageType } from '@/types/account';
 import { Category } from '@/types/category';
 
 vi.mock('@/lib/categoryUtils', () => ({
@@ -120,8 +120,7 @@ describe('MortgageFields', () => {
   const defaultProps = {
     currencySymbol: '$',
     watchedCurrency: 'CAD',
-    isCanadianMortgage: true,
-    isVariableRate: false,
+    mortgageType: 'CANADIAN_FIXED' as MortgageType | undefined,
     interestRate: undefined as number | undefined,
     paymentFrequency: undefined as any,
     mortgagePaymentFrequency: undefined as any,
@@ -176,7 +175,7 @@ describe('MortgageFields', () => {
 
   it('renders term length years and months inputs', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Term Length')).toBeInTheDocument();
+    expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
     // Should have Years and Months labels (2 each for term + amortization)
     const yearsLabels = screen.getAllByText('Years');
     const monthsLabels = screen.getAllByText('Months');
@@ -239,12 +238,36 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Interest Category')).toBeInTheDocument();
   });
 
-  it('renders Canadian Mortgage and Variable Rate checkboxes', () => {
+  it('renders one Mortgage Type select in place of the two checkboxes', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Canadian Mortgage')).toBeInTheDocument();
-    expect(screen.getByText('Variable Rate')).toBeInTheDocument();
-    expect(screen.getByText(/semi-annual compounding/)).toBeInTheDocument();
-    expect(screen.getByText(/Rate may change during the term/)).toBeInTheDocument();
+    const select = screen.getByLabelText('Mortgage Type');
+    expect(select.tagName).toBe('SELECT');
+    expect(screen.queryByRole('checkbox', { name: /Canadian Mortgage/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Variable Rate/ })).not.toBeInTheDocument();
+  });
+
+  it('offers only the types a request may write in Phase 1', () => {
+    render(<MortgageFields {...defaultProps} />);
+    const options = Array.from(
+      (screen.getByLabelText('Mortgage Type') as HTMLSelectElement).options,
+    ).map((o) => [o.value, o.textContent]);
+    expect(options).toEqual([
+      ['ANNUITY', 'Annuity (Level Payment)'],
+      ['CANADIAN_FIXED', 'Canadian Fixed Rate'],
+    ]);
+  });
+
+  it.each([
+    ['ANNUITY', 'Your total payment is the same every month. Choose this for a variable-rate mortgage too.'],
+    ['CANADIAN_FIXED', 'A Canadian fixed-rate contract; interest compounds twice a year.'],
+  ] as const)('shows the help line for the selected %s type', (mortgageType, help) => {
+    render(<MortgageFields {...defaultProps} mortgageType={mortgageType} />);
+    expect(screen.getByText(help)).toBeInTheDocument();
+  });
+
+  it('says nothing about monthly compounding', () => {
+    const { container } = render(<MortgageFields {...defaultProps} mortgageType="ANNUITY" />);
+    expect(container.textContent).not.toMatch(/monthly compounding/i);
   });
 
   it('does not show mortgage preview when required fields are missing', () => {
@@ -302,9 +325,9 @@ describe('MortgageFields', () => {
   it('hides payment fields when isEditing is true', () => {
     render(<MortgageFields {...defaultProps} isEditing={true} />);
     expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
-    expect(screen.getByText('Term Length')).toBeInTheDocument();
+    expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
     expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
-    expect(screen.getByText('Canadian Mortgage')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mortgage Type')).toBeInTheDocument();
     // Payment-setup fields (create-only) should be hidden
     expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
@@ -314,14 +337,24 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Overpayment recognition')).toBeInTheDocument();
   });
 
-  it('shows the Loan Details link when editing and onViewLoanDetails is provided', () => {
-    const onViewLoanDetails = vi.fn();
-    render(<MortgageFields {...defaultProps} isEditing={true} onViewLoanDetails={onViewLoanDetails} />);
-    const link = screen.getByRole('button', { name: 'Loan Details' });
-    expect(link).toBeInTheDocument();
-    fireEvent.click(link);
-    expect(onViewLoanDetails).toHaveBeenCalledTimes(1);
-  });
+  it.each(['ANNUITY', 'CANADIAN_FIXED'] as const)(
+    'shows the Loan Details link for a %s mortgage when editing and onViewLoanDetails is provided',
+    (mortgageType) => {
+      const onViewLoanDetails = vi.fn();
+      render(
+        <MortgageFields
+          {...defaultProps}
+          mortgageType={mortgageType}
+          isEditing={true}
+          onViewLoanDetails={onViewLoanDetails}
+        />,
+      );
+      expect(screen.getByText(/Record rate changes in/)).toBeInTheDocument();
+      const link = screen.getByRole('button', { name: 'Loan Details' });
+      fireEvent.click(link);
+      expect(onViewLoanDetails).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('hides the Loan Details link when not editing', () => {
     render(<MortgageFields {...defaultProps} isEditing={false} onViewLoanDetails={vi.fn()} />);
@@ -402,7 +435,10 @@ describe('MortgageFields', () => {
     });
   });
 
-  it('passes isCanadian and isVariableRate to preview API', async () => {
+  it.each([
+    ['CANADIAN_FIXED', true],
+    ['ANNUITY', false],
+  ] as const)('sends the %s type and the flags it maps to the preview API', async (mortgageType, isCanadian) => {
     vi.mocked(accountsApi.previewMortgageAmortization).mockResolvedValue({
       paymentAmount: 1500, effectiveAnnualRate: 5.06,
       principalPayment: 1200, interestPayment: 300,
@@ -412,15 +448,16 @@ describe('MortgageFields', () => {
     render(<MortgageFields {...defaultProps}
       openingBalance={400000} interestRate={5} amortizationMonths={300}
       mortgagePaymentFrequency="MONTHLY" paymentStartDate="2024-02-01"
-      isCanadianMortgage={true} isVariableRate={true}
+      mortgageType={mortgageType}
     />);
 
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
 
     expect(accountsApi.previewMortgageAmortization).toHaveBeenCalledWith(
       expect.objectContaining({
-        isCanadian: true,
-        isVariableRate: true,
+        mortgageType,
+        isCanadian,
+        isVariableRate: false,
       })
     );
 
@@ -635,35 +672,40 @@ describe('MortgageFields', () => {
 
   it('shows term length help text', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Leave at 0 years and 0 months for no term.')).toBeInTheDocument();
+    expect(screen.getByText(/Leave at 0 years and 0 months for no term\./)).toBeInTheDocument();
   });
 
-  it('shows the Term Length field for Canadian mortgages', () => {
-    render(<MortgageFields {...defaultProps} isCanadianMortgage={true} />);
-    expect(screen.getByText('Term Length')).toBeInTheDocument();
+  it('does not ask for a preview while the type is unknown', async () => {
+    render(<MortgageFields {...defaultProps}
+      mortgageType={undefined}
+      openingBalance={400000} interestRate={5} amortizationMonths={300}
+      mortgagePaymentFrequency="MONTHLY" paymentStartDate="2024-02-01"
+    />);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(accountsApi.previewMortgageAmortization).not.toHaveBeenCalled();
   });
 
-  it('hides the Term Length field for non-Canadian mortgages but keeps the amortization period', () => {
-    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} />);
-    // Term (a Canada-only contract-renewal concept) is hidden...
-    expect(screen.queryByText('Term Length')).not.toBeInTheDocument();
-    expect(screen.queryByText('Leave at 0 years and 0 months for no term.')).not.toBeInTheDocument();
-    // ...but the single repayment period a non-Canadian mortgage has is still shown.
-    expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
-  });
+  it.each(['ANNUITY', 'CANADIAN_FIXED'] as const)(
+    'shows the Term Length field for a %s mortgage',
+    (mortgageType) => {
+      render(<MortgageFields {...defaultProps} mortgageType={mortgageType} termMonths={60} />);
+      expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
+      expect(periodInputs()[0]).toHaveValue('5');
+      expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
+    },
+  );
 
-  it('clears a stale term when the mortgage is not Canadian', () => {
-    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} termMonths={60} />);
-    expect(mockSetValue).toHaveBeenCalledWith('termMonths', 0, { shouldDirty: false });
-  });
-
-  it('does not clear the term when none is set on a non-Canadian mortgage', () => {
-    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} termMonths={undefined} />);
+  it('keeps the term of a non-Canadian mortgage rather than clearing it', () => {
+    // The term was a Canada-only field that an effect zeroed for every other
+    // mortgage; it is now the rate-fixed period of every type.
+    render(<MortgageFields {...defaultProps} mortgageType="ANNUITY" termMonths={60} />);
     expect(mockSetValue).not.toHaveBeenCalledWith('termMonths', 0, expect.anything());
   });
 
-  it('does not clear the term for a Canadian mortgage that has one', () => {
-    render(<MortgageFields {...defaultProps} isCanadianMortgage={true} termMonths={60} />);
-    expect(mockSetValue).not.toHaveBeenCalledWith('termMonths', 0, expect.anything());
+  it('lets the term of a non-Canadian mortgage be edited', () => {
+    render(<MortgageFields {...defaultProps} mortgageType="ANNUITY" termMonths={60} />);
+    fireEvent.change(periodInputs()[0], { target: { value: '3' } });
+    expect(mockSetValue).toHaveBeenCalledWith('termMonths', 36, { shouldValidate: true, shouldDirty: true });
   });
 });

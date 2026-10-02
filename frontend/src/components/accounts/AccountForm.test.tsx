@@ -163,11 +163,13 @@ vi.mock('./AssetFields', () => ({
 let capturedOnSetupComplete: (() => void) | null = null;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let capturedOnClose: (() => void) | null = null;
+let capturedLoanAccount: { mortgageType?: string } | null = null;
 
 vi.mock('./LoanPaymentSetupDialog', () => ({
   LoanPaymentSetupDialog: (props: any) => {
     capturedOnSetupComplete = props.onSetupComplete;
     capturedOnClose = props.onClose;
+    capturedLoanAccount = props.loanAccount;
     if (!props.isOpen) return null;
     return (
       <div data-testid="loan-setup-dialog">
@@ -839,6 +841,7 @@ describe('AccountForm', () => {
       interestRate: 3.5,
       termMonths: 60,
       amortizationMonths: 300,
+      mortgageType: 'CANADIAN_FIXED',
       isCanadianMortgage: true,
     });
 
@@ -854,12 +857,134 @@ describe('AccountForm', () => {
     await waitFor(() => {
       expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
     });
-    expect(screen.getByText('Term Length')).toBeInTheDocument();
+    expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
     expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
-    expect(screen.getByText('Canadian Mortgage')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mortgage Type')).toBeInTheDocument();
     // Payment fields should be hidden during editing
     expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
+  });
+
+  describe('mortgage type', () => {
+    const submitEdit = async (account: Account) => {
+      render(<AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+      await waitFor(() => {
+        expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
+      });
+      return screen.getByLabelText('Mortgage Type') as HTMLSelectElement;
+    };
+    const clickUpdate = async () => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+      });
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalled();
+      });
+      return mockOnSubmit.mock.calls[0][0];
+    };
+    const mortgage = (overrides: Partial<Account>) =>
+      createExistingAccount({
+        accountType: 'MORTGAGE',
+        interestRate: 4.5,
+        termMonths: 60,
+        amortizationMonths: 300,
+        ...overrides,
+      });
+
+    it('edits a Canadian fixed-rate mortgage as CANADIAN_FIXED and saves the row unchanged', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'CANADIAN_FIXED', isCanadianMortgage: true, isVariableRate: false }),
+      );
+      expect(select.value).toBe('CANADIAN_FIXED');
+      expect(
+        screen.getByText('A Canadian fixed-rate contract; interest compounds twice a year.'),
+      ).toBeInTheDocument();
+
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({
+        mortgageType: 'CANADIAN_FIXED',
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        termMonths: 60,
+        amortizationMonths: 300,
+      });
+    });
+
+    it('reads a null type through the legacy flags', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: null, isCanadianMortgage: true, isVariableRate: false }),
+      );
+      expect(select.value).toBe('CANADIAN_FIXED');
+    });
+
+    it('edits a former Canadian variable-rate mortgage as ANNUITY and keeps its term editable', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'ANNUITY', isCanadianMortgage: true, isVariableRate: true }),
+      );
+      expect(select.value).toBe('ANNUITY');
+      expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
+      const termYears = screen.getAllByLabelText('Years')[0];
+      expect(termYears).toHaveValue('5');
+
+      await act(async () => {
+        fireEvent.change(termYears, { target: { value: '3' } });
+      });
+
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({
+        mortgageType: 'ANNUITY',
+        isCanadianMortgage: false,
+        isVariableRate: false,
+        termMonths: 36,
+      });
+    });
+
+    it('sends the chosen type with the flags it maps to', async () => {
+      const select = await submitEdit(mortgage({ mortgageType: 'ANNUITY' }));
+      await act(async () => {
+        fireEvent.change(select, { target: { value: 'CANADIAN_FIXED' } });
+      });
+
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({
+        mortgageType: 'CANADIAN_FIXED',
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+    });
+
+    it('withholds a stored type the select does not offer, so the row keeps it', async () => {
+      await submitEdit(mortgage({ mortgageType: 'LINEAR' }));
+
+      const payload = await clickUpdate();
+      expect(payload).not.toHaveProperty('mortgageType');
+      expect(payload).not.toHaveProperty('isCanadianMortgage');
+      expect(payload).not.toHaveProperty('isVariableRate');
+    });
+
+    it('sends no mortgage type or flags for another account type', async () => {
+      render(
+        <AccountForm account={createExistingAccount()} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />,
+      );
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('My Chequing')).toBeInTheDocument();
+      });
+
+      const payload = await clickUpdate();
+      expect(payload).not.toHaveProperty('mortgageType');
+      expect(payload).not.toHaveProperty('isCanadianMortgage');
+      expect(payload).not.toHaveProperty('isVariableRate');
+    });
+
+    it('starts a new mortgage as ANNUITY', async () => {
+      render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+      fireEvent.change(screen.getByLabelText('Account Type'), { target: { value: 'MORTGAGE' } });
+      await waitFor(() => {
+        expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
+      });
+      expect((screen.getByLabelText('Mortgage Type') as HTMLSelectElement).value).toBe('ANNUITY');
+      expect(screen.getByText('Rate-Fixed Term')).toBeInTheDocument();
+    });
   });
 
   it('shows asset fields when ASSET type is selected', async () => {
@@ -1700,6 +1825,27 @@ describe('AccountForm', () => {
         // because hasScheduledPayment is now true
         expect(screen.queryByText('Set Up Recurring Payments')).not.toBeInTheDocument();
       });
+    });
+
+    it('seeds the dialog with the mortgage type the account carries', async () => {
+      const mortgageAccount = createExistingAccount({
+        accountType: 'MORTGAGE',
+        mortgageType: null,
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        scheduledTransactionId: null,
+      });
+      render(<AccountForm account={mortgageAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Set Up Recurring Payments')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Set Up Recurring Payments'));
+      await waitFor(() => {
+        expect(screen.getByTestId('loan-setup-dialog')).toBeInTheDocument();
+      });
+
+      expect(capturedLoanAccount?.mortgageType).toBe('CANADIAN_FIXED');
     });
 
     it('onClose callback closes the dialog', async () => {

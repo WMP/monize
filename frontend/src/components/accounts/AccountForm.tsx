@@ -23,9 +23,12 @@ import {
   Account,
   InterestBookingMode,
   MORTGAGE_PAYMENT_FREQUENCIES,
+  MORTGAGE_TYPES,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
+  isWritableMortgageType,
 } from '@/types/account';
+import { flagsFromMortgageType, mortgageTypeOf } from '@/lib/mortgage-type';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
@@ -142,9 +145,11 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // Asset-specific fields
   assetCategoryId: z.string().optional(),
   dateAcquired: z.string().optional(),
-  // Mortgage-specific fields
-  isCanadianMortgage: z.boolean().optional(),
-  isVariableRate: z.boolean().optional(),
+  // Mortgage-specific fields. The full list, not the writable one, for the
+  // reason `paymentFrequencies` above gives: a stored type the select does not
+  // offer must reach the submit as itself, where it is withheld, rather than
+  // be erased. The two legacy flags are derived from it on submit.
+  mortgageType: optionalEnum(MORTGAGE_TYPES),
   termMonths: optionalNumber,
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
@@ -189,9 +194,19 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
 
 type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
 
+/**
+ * What the form submits: its fields plus, for a mortgage, the two legacy flags
+ * its type maps to (`flagsFromMortgageType`), which travel beside the type
+ * until P3-B1 drops the booleans.
+ */
+type AccountSubmitData = AccountFormData & {
+  isCanadianMortgage?: boolean;
+  isVariableRate?: boolean;
+};
+
 interface AccountFormProps {
   account?: Account;
-  onSubmit: (data: AccountFormData) => Promise<void>;
+  onSubmit: (data: AccountSubmitData) => Promise<void>;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
@@ -297,8 +312,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           fxFeePercent: account.fxFeePercent ?? undefined,
           assetCategoryId: account.assetCategoryId || undefined,
           dateAcquired: account.dateAcquired?.split('T')[0] || undefined,
-          isCanadianMortgage: account.isCanadianMortgage || false,
-          isVariableRate: account.isVariableRate || false,
+          mortgageType: mortgageTypeOf(account),
           termMonths: account.termMonths || undefined,
           amortizationMonths: account.amortizationMonths || undefined,
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
@@ -310,6 +324,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           excludeFromNetWorth: false,
           paymentFrequency: 'MONTHLY' as PaymentFrequency,
           createInvestmentPair: true,
+          mortgageType: 'ANNUITY',
         },
   });
 
@@ -334,7 +349,20 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
 
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
-      let payload = data;
+      // A mortgage sends its type and the flags it maps to together; any
+      // other account type sends neither. A stored type the select does not
+      // offer (not writable yet) is withheld, so the row keeps it.
+      const { mortgageType, ...withoutMortgageType } = data;
+      let payload: AccountSubmitData =
+        data.accountType === 'MORTGAGE' &&
+        mortgageType &&
+        isWritableMortgageType(mortgageType)
+          ? {
+              ...withoutMortgageType,
+              mortgageType,
+              ...flagsFromMortgageType(mortgageType),
+            }
+          : withoutMortgageType;
       // Editing: an emptied threshold means "clear it", so send null rather than
       // omitting the field (which would leave the stored value untouched). Only
       // on edit -- CreateAccountDto does not carry these fields.
@@ -402,8 +430,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
 
   // Show mortgage fields only for MORTGAGE account type
   const isMortgageAccount = watchedAccountType === 'MORTGAGE';
-  const watchedIsCanadianMortgage = useWatch({ control, name: 'isCanadianMortgage' });
-  const watchedIsVariableRate = useWatch({ control, name: 'isVariableRate' });
+  const watchedMortgageType = useWatch({ control, name: 'mortgageType' });
   const watchedTermMonths = useWatch({ control, name: 'termMonths' });
   const watchedAmortizationMonths = useWatch({ control, name: 'amortizationMonths' });
   const watchedMortgagePaymentFrequency = useWatch({ control, name: 'mortgagePaymentFrequency' });
@@ -979,8 +1006,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           openingBalance={watchedOpeningBalance}
           interestRate={watchedInterestRate}
           paymentStartDate={watchedPaymentStartDate}
-          isCanadianMortgage={watchedIsCanadianMortgage}
-          isVariableRate={watchedIsVariableRate}
+          mortgageType={watchedMortgageType}
           onViewLoanDetails={account ? handleViewLoanDetails : undefined}
           termMonths={watchedTermMonths}
           amortizationMonths={watchedAmortizationMonths}
@@ -1029,11 +1055,11 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             accountName: account.name,
             accountType: account.accountType,
             currencyCode: account.currencyCode,
-            // Both flags travel: the dialog submits its own checkboxes, so
-            // starting them at false on a Canadian mortgage turned the flag off
-            // on save and offered cadences the server refuses.
-            isCanadianMortgage: account.isCanadianMortgage,
-            isVariableRate: account.isVariableRate,
+            // The type travels: the dialog submits its own select, so
+            // starting it at ANNUITY on a Canadian fixed-rate mortgage turned
+            // the convention off on save and offered cadences the server
+            // refuses.
+            mortgageType: mortgageTypeOf(account),
           }}
           accounts={accounts}
           onSetupComplete={() => {

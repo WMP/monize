@@ -2120,7 +2120,6 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/app/tags/page.tsx",
     "/src/components/accounts/AccountForm.tsx",
     "/src/components/accounts/LoanPaymentSetupDialog.tsx",
-    "/src/components/accounts/MortgageFields.tsx",
     "/src/components/accounts/credit-card-detail/PaymentSetupDialog.tsx",
     "/src/components/accounts/loan-detail/OverpaymentSimulator.tsx",
     "/src/components/admin/UserManagementTable.tsx",

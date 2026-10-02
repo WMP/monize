@@ -64,8 +64,7 @@ vi.mock('@/components/accounts/LoanPaymentSetupDialog', () => ({
     isOpen ? (
       <div
         data-testid="loan-payment-setup-dialog"
-        data-is-canadian={String(loanAccount?.isCanadianMortgage)}
-        data-is-variable={String(loanAccount?.isVariableRate)}
+        data-mortgage-type={String(loanAccount?.mortgageType)}
       >
         <button data-testid="close-dialog" onClick={onClose}>Close</button>
         <button data-testid="setup-complete" onClick={onSetupComplete}>Complete Setup</button>
@@ -534,7 +533,7 @@ describe('CompleteStep', () => {
     expect(screen.getByTestId('loan-payment-setup-dialog')).toBeInTheDocument();
   });
 
-  describe('seeds the dialog with the flags of the account type', () => {
+  describe('seeds the dialog with the type of the account', () => {
     const openFor = (account: Account, accountId = account.id) => {
       const resultWithLoans = {
         ...defaultProps.importResult!,
@@ -551,10 +550,10 @@ describe('CompleteStep', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: /Set Up Payments/i }));
       const dialog = screen.getByTestId('loan-payment-setup-dialog');
-      return [dialog.dataset.isCanadian, dialog.dataset.isVariable];
+      return dialog.dataset.mortgageType;
     };
 
-    it('derives the flags from the stored type', () => {
+    it('seeds the stored type over the flags', () => {
       expect(
         openFor(
           createAccount({
@@ -564,7 +563,7 @@ describe('CompleteStep', () => {
             isCanadianMortgage: false,
           }),
         ),
-      ).toEqual(['true', 'false']);
+      ).toBe('CANADIAN_FIXED');
     });
 
     it('seeds a Canadian variable-rate row as the ANNUITY it is', () => {
@@ -578,14 +577,25 @@ describe('CompleteStep', () => {
             isVariableRate: true,
           }),
         ),
-      ).toEqual(['false', 'false']);
+      ).toBe('ANNUITY');
     });
 
-    it('passes no flags for an account it cannot find', () => {
-      expect(openFor(createAccount({ id: 'loan-1' }), 'loan-2')).toEqual([
-        'undefined',
-        'undefined',
-      ]);
+    it('reads a null type with Canadian fixed-rate flags as CANADIAN_FIXED', () => {
+      expect(
+        openFor(
+          createAccount({
+            id: 'loan-1',
+            accountType: 'MORTGAGE',
+            mortgageType: null,
+            isCanadianMortgage: true,
+            isVariableRate: false,
+          }),
+        ),
+      ).toBe('CANADIAN_FIXED');
+    });
+
+    it('passes no type for an account it cannot find', () => {
+      expect(openFor(createAccount({ id: 'loan-1' }), 'loan-2')).toBe('undefined');
     });
   });
 
