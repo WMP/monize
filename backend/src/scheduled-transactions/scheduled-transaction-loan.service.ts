@@ -9,6 +9,7 @@ import { ScheduledTransactionSplit } from "./entities/scheduled-transaction-spli
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { PaymentFrequency } from "../accounts/loan-amortization.util";
 import { getPeriodicRate } from "../accounts/mortgage-amortization.util";
+import { mortgageTypeOf } from "../accounts/mortgage-type.util";
 import { roundMoney } from "../common/round.util";
 import {
   allocateLoanPayment,
@@ -17,7 +18,7 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { ensureYMD } from "../common/recurrence";
 import { tr } from "../i18n/translate";
-import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
+import { datedLoanDebt } from "../accounts/dated-loan-debt.util";
 import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
 import { effectiveAnnualRateOn } from "../accounts/effective-loan-rate.util";
 import {
@@ -242,8 +243,11 @@ export class ScheduledTransactionLoanService {
           `basePayment=${basePaymentAmount}, ` +
           `extra=${extraPrincipalAmount} (final ${finalExtraPrincipal}), ` +
           `newPrincipal=${newPrincipal}, newInterest=${newInterest}, ` +
-          `isMortgage=${loanAccount.accountType === "MORTGAGE"}, ` +
-          `isCanadian=${loanAccount.isCanadianMortgage}`,
+          `mortgageType=${
+            loanAccount.accountType === "MORTGAGE"
+              ? mortgageTypeOf(loanAccount)
+              : "none"
+          }`,
       );
 
       if (principalSplit) {
@@ -473,7 +477,7 @@ export class ScheduledTransactionLoanService {
         return { nextDueDate: null, debt: null };
       }
 
-      const debt = await this.datedLoanDebt(m, loanAccount, nextDueDate);
+      const debt = await datedLoanDebt(m, loanAccount, nextDueDate);
       if (debt === null) {
         // "The ledger could not be read" is not "this loan has no scheduled
         // payment" -- the caller reads the second as licence to project from
@@ -504,39 +508,6 @@ export class ScheduledTransactionLoanService {
       }
     }
     return null;
-  }
-
-  /**
-   * The outstanding debt through `asOfDate`, from the authoritative ledger:
-   * opening balance plus every non-void, top-level transaction dated on or
-   * before that date -- the same expression `recalculateCurrentBalance` and the
-   * balances-as-of report use, with the installment boundary in place of today.
-   *
-   * `accounts.current_balance` deliberately excludes future-dated rows, so it
-   * cannot price an installment after a future payment has been posted; and a
-   * previously stored principal/interest split is money already rounded to 4dp,
-   * so advancing it with an amortization recurrence compounds the rounding
-   * (issue #1253). The dated ledger balance is the one source both the next
-   * bill and the amortization projection can agree on.
-   *
-   * Null only when the account row cannot be read back (deleted concurrently);
-   * a failed lookup is not a zero balance.
-   */
-  private async datedLoanDebt(
-    m: EntityManager,
-    loanAccount: Account,
-    asOfDate: string,
-  ): Promise<number | null> {
-    const rows: Array<{ balance: string }> = await m.query(
-      ACCOUNT_BALANCE_AS_OF_SQL,
-      [loanAccount.id, loanAccount.userId, asOfDate],
-    );
-    if (rows.length === 0 || rows[0].balance == null) {
-      return null;
-    }
-    // Debt accounts store the balance negative; an overpaid balance (in
-    // credit) reads as retired rather than as fresh debt.
-    return Math.max(0, -roundMoney(Number(rows[0].balance)));
   }
 
   /**
@@ -585,8 +556,7 @@ export class ScheduledTransactionLoanService {
       ? getPeriodicRate(
           interestRate,
           periodsPerYear,
-          loanAccount.isCanadianMortgage,
-          loanAccount.isVariableRate,
+          mortgageTypeOf(loanAccount),
         )
       : interestRate / 100 / periodsPerYear;
   }
@@ -615,7 +585,7 @@ export class ScheduledTransactionLoanService {
   ): Promise<ResolvedInstallment> {
     const loanAccountId = loanAccount.id;
 
-    const debt = await this.datedLoanDebt(m, loanAccount, asOfDate);
+    const debt = await datedLoanDebt(m, loanAccount, asOfDate);
     if (debt === null) {
       return {
         kind: "unreadable",

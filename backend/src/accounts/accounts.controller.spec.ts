@@ -324,13 +324,63 @@ describe("AccountsController", () => {
         300,
         "monthly",
         new Date("2024-01-01"),
-        true,
-        false,
+        "CANADIAN_FIXED",
       );
+    });
+
+    it("passes the requested type, which wins over the legacy flags", () => {
+      mockAccountsService.previewMortgageAmortization!.mockReturnValue({
+        paymentAmount: 1500,
+        endDate: new Date("2049-01-01"),
+      });
+      const base = {
+        mortgageAmount: 300000,
+        interestRate: 4.5,
+        amortizationMonths: 300,
+        paymentFrequency: "MONTHLY",
+        paymentStartDate: "2024-01-01",
+      };
+      const typeArg = () => {
+        const calls =
+          mockAccountsService.previewMortgageAmortization!.mock.calls;
+        return calls[calls.length - 1][5];
+      };
+
+      controller.previewMortgageAmortization({
+        ...base,
+        mortgageType: "ANNUITY",
+        isCanadian: true,
+        isVariableRate: false,
+      } as any);
+      expect(typeArg()).toBe("ANNUITY");
+
+      controller.previewMortgageAmortization({
+        ...base,
+        mortgageType: "CANADIAN_FIXED",
+      } as any);
+      expect(typeArg()).toBe("CANADIAN_FIXED");
+
+      // Neither the type nor a flag: the default type.
+      controller.previewMortgageAmortization(base as any);
+      expect(typeArg()).toBe("ANNUITY");
     });
   });
 
   describe("findOne()", () => {
+    it("returns the account's mortgage type", async () => {
+      mockAccountsService.findOne!.mockResolvedValue({
+        id: "m1",
+        accountType: "MORTGAGE",
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+
+      const result = await controller.findOne(mockReq, "m1");
+
+      expect(result).toMatchObject({ mortgageType: "CANADIAN_FIXED" });
+    });
+
     it("delegates to accountsService.findOne with userId and id", async () => {
       mockAccountsService.findOne!.mockResolvedValue("account");
 

@@ -24,13 +24,22 @@ import {
   calculateMortgagePaymentSplit,
   toMortgagePaymentFrequency,
 } from "./mortgage-amortization.util";
-import { mortgageTermEndDate } from "./payment-frequency.util";
+import {
+  DEFAULT_PERIODS_PER_YEAR,
+  mortgageTermEndDate,
+  periodsPerYearForStoredFrequency,
+} from "./payment-frequency.util";
 import { localDateForColumn } from "../common/date-utils";
 import { allocateLoanPayment } from "./loan-payment-waterfall.util";
 import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
-import { flagWriteStalesMortgageType } from "./mortgage-type.util";
+import {
+  compoundingFor,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  requestedMortgageType,
+} from "./mortgage-type.util";
 
 @Injectable()
 export class LoanPaymentSetupService {
@@ -110,6 +119,13 @@ export class LoanPaymentSetupService {
       }
     }
 
+    // The type this request leaves the mortgage with: its own type or flags,
+    // else the stored type. Null for any other account type.
+    const mortgageType =
+      account.accountType === AccountType.MORTGAGE
+        ? (requestedMortgageType(dto, account) ?? mortgageTypeOf(account))
+        : null;
+
     // Calculate principal/interest split for the next payment
     const currentBalance = Math.abs(Number(account.currentBalance));
     const interestRate = dto.interestRate || Number(account.interestRate) || 0;
@@ -130,30 +146,20 @@ export class LoanPaymentSetupService {
       if (principalPayment < 0) {
         principalPayment = 0;
       }
-    } else if (
-      account.accountType === AccountType.MORTGAGE &&
-      // `??`, not `||`: the same request WRITES this flag
-      // (`updateData.isCanadianMortgage = dto.isCanadianMortgage` below), so an
-      // explicit `false` means "this is not a Canadian mortgage" and must decide
-      // the split it is submitted with. Under `||` the stored flag won, and the
-      // account was saved as non-Canadian with a split computed the Canadian
-      // way -- and the setup dialog, which filters its cadence list on the
-      // checkbox, offered quarterly to an account the server then refused.
-      (dto.isCanadianMortgage ?? account.isCanadianMortgage)
-    ) {
-      // Use mortgage-specific calculation for Canadian mortgages.
+    } else if (mortgageType !== null) {
+      // Every mortgage is split by its type (spec section 5.5), the type this
+      // same request writes: a request's own type or flags decide the split it
+      // is submitted with, never the stored ones they replace.
       //
-      // The DTO's frequency is a *recurrence* spelling, and casting it into
-      // MortgagePaymentFrequency handed getMortgagePeriodsPerYear a value it has
-      // no case for: SEMIMONTHLY, QUARTERLY and YEARLY all fell through to its
-      // monthly default, so a semi-monthly Canadian mortgage was split at twice
-      // the correct interest for the life of the loan. Normalize instead, and
-      // refuse a cadence these helpers cannot express rather than computing a
-      // confident wrong number for it.
-      const mortgageFrequency = toMortgagePaymentFrequency(
-        dto.paymentFrequency,
-      );
-      if (!mortgageFrequency) {
+      // The DTO's frequency is a *recurrence* spelling, read through the one
+      // lookup that knows both domains. A semi-annually compounded mortgage
+      // refuses a cadence the mortgage helpers cannot express (quarterly,
+      // yearly), as the setup dialog does not offer them, rather than compute
+      // a conversion nothing else in the app uses for it.
+      if (
+        compoundingFor(mortgageType) === "SEMI_ANNUAL" &&
+        !toMortgagePaymentFrequency(dto.paymentFrequency)
+      ) {
         throw new BadRequestException(
           tr(
             "errors.accounts.mortgageFrequencyUnsupported",
@@ -162,16 +168,25 @@ export class LoanPaymentSetupService {
           ),
         );
       }
-      const split = calculateMortgagePaymentSplit(
-        currentBalance,
-        interestRate,
-        basePaymentAmount,
-        mortgageFrequency,
-        dto.isCanadianMortgage ?? account.isCanadianMortgage ?? false,
-        dto.isVariableRate ?? account.isVariableRate ?? false,
-      );
-      principalPayment = split.principal;
-      interestPayment = split.interest;
+      if (interestRate > 0) {
+        const split = calculateMortgagePaymentSplit(
+          currentBalance,
+          interestRate,
+          basePaymentAmount,
+          periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
+            DEFAULT_PERIODS_PER_YEAR,
+          mortgageType,
+        );
+        principalPayment = split.principal;
+        interestPayment = split.interest;
+      } else {
+        // No interest: the whole base payment is principal, as for any loan
+        // below. A zero recorded balance means the history is not imported
+        // yet, so it does not cap the principal; the waterfall bounds it by a
+        // known balance.
+        principalPayment = basePaymentAmount;
+        interestPayment = 0;
+      }
     } else if (interestRate > 0) {
       const split = calculatePaymentSplit(
         currentBalance,
@@ -314,14 +329,11 @@ export class LoanPaymentSetupService {
     }
 
     if (account.accountType === AccountType.MORTGAGE) {
-      if (flagWriteStalesMortgageType(account, dto)) {
-        updateData.mortgageType = null;
-      }
-      if (dto.isCanadianMortgage !== undefined) {
-        updateData.isCanadianMortgage = dto.isCanadianMortgage;
-      }
-      if (dto.isVariableRate !== undefined) {
-        updateData.isVariableRate = dto.isVariableRate;
+      // The type and the flags it maps to, together, only when the request
+      // names the type or a flag; otherwise the stored columns stand.
+      const requestedType = requestedMortgageType(dto, account);
+      if (requestedType !== undefined) {
+        Object.assign(updateData, mortgageTypeColumns(requestedType));
       }
       if (dto.amortizationMonths) {
         updateData.amortizationMonths = dto.amortizationMonths;

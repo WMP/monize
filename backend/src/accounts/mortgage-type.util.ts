@@ -112,28 +112,73 @@ export function flagsFromMortgageType(type: MortgageType): {
   };
 }
 
+/**
+ * The types a request may write in Phase 1 (docs/future-plans/mortgage-types.md,
+ * section 4). The CHECK accepts all four from P1-B1, but `LINEAR` and
+ * `INTEREST_ONLY` have no method behind them until P2-B1, so the DTOs refuse
+ * them (`@IsIn`) rather than store a type the engine would price as an annuity.
+ */
+export const WRITABLE_MORTGAGE_TYPES = [
+  "ANNUITY",
+  "CANADIAN_FIXED",
+] as const satisfies readonly MortgageType[];
+export type WritableMortgageType = (typeof WRITABLE_MORTGAGE_TYPES)[number];
+
 interface MortgageFlags {
   isCanadianMortgage?: boolean | null;
   isVariableRate?: boolean | null;
 }
 
 /**
- * Whether a write of the two legacy flags leaves a stored `mortgage_type`
- * disagreeing with them. Until the writers set the type and the flags together
- * (P1-B3), a save that changes either flag's value clears the type, so the
- * reader falls back to the flags instead of trusting a stale backfill. A flag
- * the request omits, or resends unchanged, keeps the type.
+ * The type a stored mortgage row carries: `accounts.mortgage_type`, else the
+ * type its two legacy flags denote. The column is nullable until P3-B1, and a
+ * pod of the previous release clears it when a save changes a flag, so a null
+ * column is read through the flags rather than as `ANNUITY`. Every consumer of
+ * the type reads it through here.
  */
-export function flagWriteStalesMortgageType(
-  stored: MortgageFlags,
-  next: MortgageFlags,
-): boolean {
-  const changed = (
-    nextValue: boolean | null | undefined,
-    storedValue: boolean | null | undefined,
-  ) => nextValue !== undefined && nextValue !== storedValue;
+export function mortgageTypeOf(
+  row: MortgageFlags & { mortgageType?: MortgageType | null },
+): MortgageType {
   return (
-    changed(next.isCanadianMortgage, stored.isCanadianMortgage) ||
-    changed(next.isVariableRate, stored.isVariableRate)
+    row.mortgageType ??
+    mortgageTypeFromFlags(row.isCanadianMortgage, row.isVariableRate)
   );
+}
+
+/**
+ * The type a write asks for, or `undefined` when the request says nothing about
+ * it. `mortgageType` wins when present; otherwise a request carrying either
+ * legacy flag denotes the type of the flags it leaves behind, a flag it omits
+ * keeping its stored value. A writer stores the result together with
+ * `flagsFromMortgageType` of it, so the row a request carrying only the flags
+ * writes and the row a request carrying only the type writes are the same, and
+ * a pod of the previous release reading the flags prices it identically.
+ */
+export function requestedMortgageType(
+  request: MortgageFlags & { mortgageType?: MortgageType | null },
+  stored: MortgageFlags = {},
+): MortgageType | undefined {
+  if (request.mortgageType != null) return request.mortgageType;
+  if (
+    request.isCanadianMortgage === undefined &&
+    request.isVariableRate === undefined
+  ) {
+    return undefined;
+  }
+  return mortgageTypeFromFlags(
+    request.isCanadianMortgage ?? stored.isCanadianMortgage,
+    request.isVariableRate ?? stored.isVariableRate,
+  );
+}
+
+/**
+ * The columns a save writes for `type`: the type and the flags it maps to,
+ * always together while the booleans exist (spec decision 6).
+ */
+export function mortgageTypeColumns(type: MortgageType): {
+  mortgageType: MortgageType;
+  isCanadianMortgage: boolean;
+  isVariableRate: boolean;
+} {
+  return { mortgageType: type, ...flagsFromMortgageType(type) };
 }

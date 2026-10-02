@@ -132,8 +132,7 @@ describe("Mortgage Amortization Utility", () => {
       annualRate: 5,
       amortizationMonths: 300,
       paymentFrequency: "MONTHLY",
-      isCanadian: false,
-      isVariableRate: false,
+      mortgageType: "ANNUITY",
       startDate: new Date(2026, 0, 1),
     };
 
@@ -185,17 +184,15 @@ describe("Mortgage Amortization Utility", () => {
       expect(biweeklyPayment).toBeLessThan(1000);
     });
 
-    it("uses Canadian semi-annual compounding when isCanadian and not variable", () => {
+    it("uses Canadian semi-annual compounding for CANADIAN_FIXED", () => {
       const canadianPayment = calculateMortgagePayment({
         ...baseInput,
-        isCanadian: true,
-        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
       });
 
       const standardPayment = calculateMortgagePayment({
         ...baseInput,
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
       });
 
       // Canadian compounding produces a slightly different payment
@@ -419,8 +416,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -441,8 +437,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -459,8 +454,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -474,8 +468,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -489,8 +482,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -512,8 +504,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 0,
         amortizationMonths: 120,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -530,8 +521,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate,
       };
 
@@ -545,8 +535,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5.5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: true,
-        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
         startDate: new Date(2026, 0, 1),
       };
 
@@ -595,8 +584,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "ACCELERATED_BIWEEKLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
       const result = calculateMortgageAmortization(input);
@@ -630,8 +618,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
       const result = calculateMortgageAmortization(input);
@@ -648,8 +635,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 0,
         amortizationMonths: 120,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       };
       const result = calculateMortgageAmortization(input);
@@ -717,8 +703,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate: new Date(2026, 0, 1),
       });
       expect(result.totalPayments).toBe(300);
@@ -741,8 +726,7 @@ describe("Mortgage Amortization Utility", () => {
         annualRate: 5,
         amortizationMonths: 300,
         paymentFrequency: "MONTHLY",
-        isCanadian: false,
-        isVariableRate: false,
+        mortgageType: "ANNUITY",
         startDate,
       });
       const expectedEnd = new Date(2026, 0, 1);

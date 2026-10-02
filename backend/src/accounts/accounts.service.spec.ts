@@ -313,6 +313,31 @@ describe("AccountsService", () => {
       expect(createCall.fxFeePercent).toBe(2.5);
     });
 
+    it("writes a bare mortgage's type with its flags, and no type elsewhere", async () => {
+      await service.create("user-1", {
+        name: "Mortgage without a schedule",
+        accountType: AccountType.MORTGAGE,
+        currencyCode: "CAD",
+        isCanadianMortgage: true,
+      } as any);
+      await service.create("user-1", {
+        name: "Savings",
+        accountType: AccountType.SAVINGS,
+        currencyCode: "CAD",
+        mortgageType: "CANADIAN_FIXED",
+      } as any);
+
+      const [mortgage, savings] = accountsRepository.create.mock.calls.map(
+        ([row]) => row,
+      );
+      expect(mortgage).toMatchObject({
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(savings).not.toHaveProperty("mortgageType");
+    });
+
     it("creates a credit card account with statement date fields", async () => {
       await service.create("user-1", {
         name: "Visa Card",
@@ -662,11 +687,10 @@ describe("AccountsService", () => {
       expect(saved.termEndDate).toBeNull();
     });
 
-    it("clears a stored mortgage type when a flag changes, keeps it otherwise", async () => {
-      // The type is backfilled from the flags and not yet written with them
-      // (P1-B3). A flag change would leave it disagreeing with the flags, and
-      // a reader that trusts a non-null type would change the account's rate;
-      // cleared, the reader falls back to the flags.
+    it("writes the type with the flags it maps to when a flag changes", async () => {
+      // A flags-only request (the previous release's form) saves the type the
+      // flags denote beside the flags it maps to, so a previous-release pod
+      // reading the flags and this one reading the type price the row alike.
       const storedFixed = {
         ...mockAccount,
         accountType: "MORTGAGE",
@@ -678,19 +702,111 @@ describe("AccountsService", () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({ ...storedFixed });
       await service.update("user-1", "account-1", { isVariableRate: true });
       const changed = mockQueryRunner.manager.save.mock.calls[0][0];
-      expect(changed.isVariableRate).toBe(true);
-      expect(changed.mortgageType).toBeNull();
+      expect(changed).toMatchObject({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
 
-      // A form resends every field: the same values are not a change.
+      // A form resends every field: the same values keep the same type.
       mockQueryRunner.manager.save.mockClear();
       mockQueryRunner.manager.findOne.mockResolvedValue({ ...storedFixed });
       await service.update("user-1", "account-1", {
         isCanadianMortgage: true,
         isVariableRate: false,
       });
-      expect(mockQueryRunner.manager.save.mock.calls[0][0].mortgageType).toBe(
-        "CANADIAN_FIXED",
-      );
+      expect(mockQueryRunner.manager.save.mock.calls[0][0]).toMatchObject({
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+    });
+
+    it("stores the same row for a type-only and a flags-only request", async () => {
+      const storedAnnuity = {
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+        mortgageType: "ANNUITY",
+      };
+      const savedColumns = async (dto: Record<string, unknown>) => {
+        mockQueryRunner.manager.save.mockClear();
+        mockQueryRunner.manager.findOne.mockResolvedValue({ ...storedAnnuity });
+        await service.update("user-1", "account-1", dto as never);
+        const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+        return {
+          mortgageType: saved.mortgageType,
+          isCanadianMortgage: saved.isCanadianMortgage,
+          isVariableRate: saved.isVariableRate,
+        };
+      };
+
+      const byType = await savedColumns({ mortgageType: "CANADIAN_FIXED" });
+      const byFlags = await savedColumns({
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(byType).toEqual({
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(byFlags).toEqual(byType);
+    });
+
+    it("prefers the type over flags sent beside it", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+        mortgageType: "ANNUITY",
+      });
+      await service.update("user-1", "account-1", {
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(mockQueryRunner.manager.save.mock.calls[0][0]).toMatchObject({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+    });
+
+    it("leaves the stored type alone when the request names neither", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        isCanadianMortgage: true,
+        isVariableRate: true,
+        mortgageType: null,
+      });
+      await service.update("user-1", "account-1", { name: "Renamed" });
+      expect(mockQueryRunner.manager.save.mock.calls[0][0]).toMatchObject({
+        mortgageType: null,
+        isCanadianMortgage: true,
+        isVariableRate: true,
+      });
+    });
+
+    it("writes no type on an account that is not a mortgage", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "LOAN",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+        mortgageType: null,
+      });
+      await service.update("user-1", "account-1", {
+        mortgageType: "CANADIAN_FIXED",
+        isVariableRate: true,
+      });
+      expect(mockQueryRunner.manager.save.mock.calls[0][0]).toMatchObject({
+        mortgageType: null,
+        isVariableRate: true,
+      });
     });
 
     it("updates amortizationMonths when provided", async () => {
@@ -1709,11 +1825,44 @@ describe("AccountsService", () => {
       } as any);
 
       const createCall = accountsRepository.create.mock.calls[0][0];
+      expect(createCall.mortgageType).toBe("CANADIAN_FIXED");
       expect(createCall.isCanadianMortgage).toBe(true);
       expect(createCall.isVariableRate).toBe(false);
       expect(createCall.termMonths).toBe(60);
       expect(createCall.amortizationMonths).toBe(300);
       expect(createCall.originalPrincipal).toBe(400000);
+    });
+
+    it("stores the same row for a type-only and a flags-only request", async () => {
+      await service.createMortgageAccount("user-1", {
+        ...baseMortgageDto,
+        mortgageType: "CANADIAN_FIXED",
+      } as any);
+      await service.createMortgageAccount("user-1", {
+        ...baseMortgageDto,
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      } as any);
+
+      const [byType, byFlags] = accountsRepository.create.mock.calls.map(
+        ([row]) => row,
+      );
+      expect(byType).toMatchObject({
+        mortgageType: "CANADIAN_FIXED",
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+      expect(byFlags).toEqual(byType);
+    });
+
+    it("stores ANNUITY when the request names neither the type nor a flag", async () => {
+      await service.createMortgageAccount("user-1", baseMortgageDto as any);
+
+      expect(accountsRepository.create.mock.calls[0][0]).toMatchObject({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
     });
 
     it("calculates termEndDate when termMonths provided", async () => {
@@ -1820,8 +1969,7 @@ describe("AccountsService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
 
       expect(result).toHaveProperty("paymentAmount");
@@ -1842,8 +1990,7 @@ describe("AccountsService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
       const resultNegative = service.previewMortgageAmortization(
         -200000,
@@ -1851,8 +1998,7 @@ describe("AccountsService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
 
       expect(resultPositive.paymentAmount).toBe(resultNegative.paymentAmount);
@@ -1865,8 +2011,7 @@ describe("AccountsService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        true,
-        false,
+        "CANADIAN_FIXED",
       );
       const resultUS = service.previewMortgageAmortization(
         300000,
@@ -1874,8 +2019,7 @@ describe("AccountsService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
 
       // Canadian and US should produce different payment amounts
@@ -1945,6 +2089,14 @@ describe("AccountsService", () => {
       interestCategoryId: "interest-cat-1",
       isClosed: false,
     };
+
+    beforeEach(() => {
+      // The ledger debt through the effective date (`datedLoanDebt`), equal
+      // here to the fixture's current balance.
+      (mockQueryRunner.manager as unknown as { query: jest.Mock }).query = jest
+        .fn()
+        .mockResolvedValue([{ balance: "-250000" }]);
+    });
 
     it("throws BadRequestException when account is not a mortgage", async () => {
       accountsRepository.findOne.mockResolvedValue({
@@ -3360,6 +3512,62 @@ describe("AccountsService", () => {
       });
       const names = r.accounts.map((a) => a.name).sort();
       expect(names).toEqual(["Checking", "Savings"]);
+    });
+
+    it("carries a mortgage's type, read through the flags when the column is null", async () => {
+      // The LLM shape is a consumer of the type (AGENTS.md): the assistant and
+      // the MCP accounts tool read it from this row.
+      const mortgage = {
+        ...allAccounts[0],
+        accountType: AccountType.MORTGAGE,
+        currentBalance: -300000,
+      };
+      jest.spyOn(service, "findAll").mockResolvedValue([
+        {
+          ...mortgage,
+          id: "m1",
+          name: "Stored type",
+          mortgageType: "CANADIAN_FIXED",
+          isCanadianMortgage: true,
+          isVariableRate: false,
+        },
+        {
+          ...mortgage,
+          id: "m2",
+          name: "Flags only",
+          mortgageType: null,
+          isCanadianMortgage: true,
+          isVariableRate: false,
+        },
+        {
+          ...mortgage,
+          id: "m3",
+          name: "Canadian variable",
+          mortgageType: null,
+          isCanadianMortgage: true,
+          isVariableRate: true,
+        },
+        {
+          ...allAccounts[0],
+          id: "l1",
+          name: "Car loan",
+          accountType: AccountType.LOAN,
+          mortgageType: null,
+          isCanadianMortgage: false,
+          isVariableRate: false,
+        },
+      ] as never);
+
+      const r = await service.getLlmAccounts("user-1");
+
+      expect(
+        Object.fromEntries(r.accounts.map((a) => [a.id, a.mortgageType])),
+      ).toEqual({
+        m1: "CANADIAN_FIXED",
+        m2: "CANADIAN_FIXED",
+        m3: "ANNUITY",
+        l1: null,
+      });
     });
 
     describe("every balance beside its value in the user's default currency", () => {

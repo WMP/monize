@@ -4,6 +4,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
@@ -37,6 +38,13 @@ import { roundMoney } from "../common/round.util";
 import { tr } from "../i18n/translate";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { withScopedDb } from "../common/db/scoped-db";
+import { datedLoanDebt } from "./dated-loan-debt.util";
+import {
+  MortgageType,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  requestedMortgageType,
+} from "./mortgage-type.util";
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -93,6 +101,8 @@ export class LoanMortgageAccountService {
       interestCategoryId,
       interestRate,
       institution,
+      // A plain loan has no mortgage type (it amortizes on the loan engine).
+      mortgageType: _mortgageType,
       ...accountData
     } = createAccountDto;
 
@@ -237,8 +247,9 @@ export class LoanMortgageAccountService {
       interestCategoryId,
       interestRate,
       institution,
-      isCanadianMortgage = false,
-      isVariableRate = false,
+      mortgageType: requestedType,
+      isCanadianMortgage,
+      isVariableRate,
       termMonths,
       amortizationMonths,
       ...accountData
@@ -289,14 +300,21 @@ export class LoanMortgageAccountService {
       }
     }
 
+    // The type wins over the legacy flags; a request naming neither is the
+    // default type, as the flags' `false` defaults always denoted.
+    const mortgageType =
+      requestedMortgageType({
+        mortgageType: requestedType,
+        isCanadianMortgage,
+        isVariableRate,
+      }) ?? "ANNUITY";
     const mortgageAmount = Math.abs(openingBalance);
     const amortizationInput: MortgageAmortizationInput = {
       principal: mortgageAmount,
       annualRate: interestRate,
       amortizationMonths,
       paymentFrequency: mortgagePaymentFrequency,
-      isCanadian: isCanadianMortgage,
-      isVariableRate,
+      mortgageType,
       startDate: new Date(paymentStartDate),
     };
     const amortization = calculateMortgageAmortization(amortizationInput);
@@ -322,8 +340,7 @@ export class LoanMortgageAccountService {
         paymentStartDate: localDateForColumn(paymentStartDate),
         sourceAccountId,
         interestCategoryId: interestCatId || null,
-        isCanadianMortgage,
-        isVariableRate,
+        ...mortgageTypeColumns(mortgageType),
         termMonths: termMonths || null,
         termEndDate,
         amortizationMonths,
@@ -393,16 +410,14 @@ export class LoanMortgageAccountService {
     amortizationMonths: number,
     paymentFrequency: MortgagePaymentFrequency,
     paymentStartDate: Date,
-    isCanadian: boolean,
-    isVariableRate: boolean,
+    mortgageType: MortgageType,
   ): MortgageAmortizationResult {
     return calculateMortgageAmortization({
       principal: Math.abs(mortgageAmount),
       annualRate: interestRate,
       amortizationMonths,
       paymentFrequency,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
       startDate: paymentStartDate,
     });
   }
@@ -471,7 +486,21 @@ export class LoanMortgageAccountService {
       },
     );
 
-    const currentBalance = Math.abs(Number(account.currentBalance));
+    // The debt the new rate first applies to: the ledger through the
+    // effective date, the as-of read installment pricing uses (spec decision
+    // 5). `current_balance` stops at today, so a future-dated change would be
+    // priced against a debt that payments posted before it no longer owe.
+    const debt = await withScopedDb(this.dataSource, (m) =>
+      datedLoanDebt(m, account, rateChange.effectiveDate),
+    );
+    if (debt === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.accounts.loanLedgerUnreadable",
+          "This loan's balance could not be read. Try again.",
+        ),
+      );
+    }
     const paymentAmount =
       rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
     const periodicRate = getPeriodicRate(
@@ -482,10 +511,9 @@ export class LoanMortgageAccountService {
       // so a semi-monthly mortgage's posted split carried twice the interest.
       periodsPerYearForStoredFrequency(account.paymentFrequency) ??
         DEFAULT_PERIODS_PER_YEAR,
-      account.isCanadianMortgage || false,
-      account.isVariableRate || false,
+      mortgageTypeOf(account),
     );
-    const interestPayment = roundMoney(currentBalance * periodicRate);
+    const interestPayment = roundMoney(debt * periodicRate);
     const principalPayment = roundMoney(paymentAmount - interestPayment);
 
     return {

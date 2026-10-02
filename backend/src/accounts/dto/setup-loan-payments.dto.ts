@@ -12,6 +12,10 @@ import {
   MaxLength,
 } from "class-validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import {
+  WRITABLE_MORTGAGE_TYPES,
+  WritableMortgageType,
+} from "../mortgage-type.util";
 
 export class SetupLoanPaymentsDto {
   @ApiProperty({
@@ -88,7 +92,16 @@ export class SetupLoanPaymentsDto {
 
   @ApiPropertyOptional({
     description:
-      "For mortgages: whether this is a Canadian mortgage (semi-annual compounding)",
+      "For mortgages: the mortgage type, ANNUITY or CANADIAN_FIXED. Wins over isCanadianMortgage/isVariableRate; when absent, a flag sent decides it.",
+    enum: WRITABLE_MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(WRITABLE_MORTGAGE_TYPES)
+  mortgageType?: WritableMortgageType;
+
+  @ApiPropertyOptional({
+    description:
+      "For mortgages, legacy flag superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED (semi-annual compounding)",
     default: false,
   })
   @IsOptional()
@@ -96,7 +109,8 @@ export class SetupLoanPaymentsDto {
   isCanadianMortgage?: boolean;
 
   @ApiPropertyOptional({
-    description: "For mortgages: whether this is a variable rate mortgage",
+    description:
+      "For mortgages, legacy flag superseded by mortgageType: a Canadian variable-rate mortgage is ANNUITY",
     default: false,
   })
   @IsOptional()
