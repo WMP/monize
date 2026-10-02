@@ -245,11 +245,11 @@ export class MortgageReminderService {
         mortgages.length === 1
           ? t(
               "emails.mortgageReminder.subject",
-              "Monize: 1 upcoming mortgage renewal",
+              "Monize: 1 mortgage rate term ending soon",
             )
           : t(
               "emails.mortgageReminder.subjectPlural",
-              `Monize: ${mortgages.length} upcoming mortgage renewals`,
+              `Monize: ${mortgages.length} mortgage rate terms ending soon`,
               { count: mortgages.length },
             );
 

@@ -850,14 +850,14 @@ describe("Email Templates", () => {
       expect(html).toContain("15 days");
     });
 
-    it("includes the Mortgage Renewal Reminder heading", () => {
+    it("includes the Mortgage Rate Term Reminder heading", () => {
       const html = mortgageReminderTemplate(
         "Alice",
         sampleMortgages,
         "https://monize.app",
       );
 
-      expect(html).toContain("Mortgage Renewal Reminder");
+      expect(html).toContain("Mortgage Rate Term Reminder");
     });
 
     it("uses plural grammar for multiple mortgages", () => {
@@ -877,7 +877,7 @@ describe("Email Templates", () => {
         "https://monize.app",
       );
 
-      expect(html).toContain("1 mortgage with an upcoming term renewal");
+      expect(html).toContain("1 mortgage whose current rate term ends soon");
     });
 
     it("uses singular day for 1 day remaining", () => {
