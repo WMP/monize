@@ -9,10 +9,10 @@
 <div align="center">
 <table>
 <tr>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/dashboard-overview.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/dashboard-overview.png" width="400" alt="Dashboard Overview"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/transactions-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/transactions-page.png" width="400" alt="Transactions"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/bills-deposits-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/bills-deposits-page.png" width="400" alt="Bills & Deposits"/></a></td>
-<td align="center"><a href="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/investments-page.png"><img src="https://raw.githubusercontent.com/wiki/kenlasko/monize/images/investments-page.png" width="400" alt="Investments"/></a></td>
+<td align="center"><a href="docs/images/readme/dashboard.png"><img src="docs/images/readme/dashboard.png" width="400" alt="Dashboard"/></a></td>
+<td align="center"><a href="docs/images/readme/transactions.png"><img src="docs/images/readme/transactions.png" width="400" alt="Transactions"/></a></td>
+<td align="center"><a href="docs/images/readme/bills.png"><img src="docs/images/readme/bills.png" width="400" alt="Bills & Deposits"/></a></td>
+<td align="center"><a href="docs/images/readme/investments.png"><img src="docs/images/readme/investments.png" width="400" alt="Investments"/></a></td>
 </tr>
 <tr>
 <td align="center"><b>Dashboard</b></td>
@@ -27,9 +27,13 @@ A comprehensive personal finance management application built with NestJS and Ne
 
 <div align="center">
 
-### [**Live Demo**](https://demo.monize.net) | [**Wiki**](https://github.com/kenlasko/monize/wiki)
+### [**Live Demo**](https://demo.monize.net) | [**Wiki**](https://github.com/kenlasko/monize/wiki) | [**Release Notes**](docs/release-notes/) | [**Screenshots**](#screenshots)
 
 </div>
+
+<p align="center">
+  <img src="docs/images/readme/tour.gif" width="800" alt="A short tour: the dashboard, the transaction register, the calendar view and the investments page" />
+</p>
 
 ## Why This Exists?
 The personal finance ecosystem is flooded with personal finance platforms. I've tried many of them, but every single one of them had deal-breakers I couldn't work with. I finally decided to try my hand at creating my own platform that met all my criteria by using  "vibe-coding", which is a dirty word in the self-hosting community. I just wanted to see what was possible with the current state of AI. It turned out to be more successful than I ever could have imagined, which is why I'm making this available for others.
@@ -61,44 +65,91 @@ Since I couldn't find anything out there to meet that criteria, I decided to cre
 Monize is running in my [Kubernetes cluster](https://github.com/kenlasko/k8s).
 
 
+## What's New
+
+Highlights of the recent releases. Every version has full notes in [`docs/release-notes/`](docs/release-notes/), and the app shows a What's New digest after each update.
+
+| Version | Highlights |
+|---------|------------|
+| 1.17 | Calendar view for transactions and investments, with day notes. Transaction rules (Tools > Rules) and an AI review inbox. Sort the register by any column. London Stock Exchange and Deutsche Börse price sources. Automatic backups copied off the machine (S3 and email). Several backend replicas with `CLUSTER_MODE=multi` |
+| 1.16 | Notifications: a type-by-channel matrix, browser push with no third party, UnifiedPush, balance thresholds. Scan paper documents into attachments and preview them in the app. Share files into Monize. Phone layout: tables become cards, swipe between views. Payee address, phone and email, with optional lookup. Numbers in your own convention |
+| 1.15 | An investment account is shown as one account. Brokerage CSV import. Compare securities against the market. Account Balances at any date. Category detail page. Cash flow forecast over several accounts. Partial dates and remembered row density |
+| 1.14 | Microsoft Money full-file import (`.mny`). Joint accounts and transfers between two people. Security and payee detail pages. Your own asset-class allocation. GEM strategy report. Automatic backups for each user |
+| 1.13 | Foreign-currency transactions and a fee breakdown. Transaction attachments. Guided tours and the What's New digest. Fixed-payment loan plans. Default categories that match your country |
+| 1.12 | Loan and mortgage detail page with an overpayment simulator. A dashboard you can customize, with new widgets. A detail page for every account type. KEY:VALUE tags. Geographic look-through for ETFs and funds |
+| 1.11 | The interface translated into the languages listed under Multi-Language Support, and regional English. Fifteen colour themes. Financial institutions. Auto-merge duplicate payees. AI Assistant changes that wait for your approval. Attachments in the AI chat |
+| 1.10 | Shared access for delegates. Emergency access. Password-protected backups. Custom investment reports. Per-security transaction history. Administrators can create users |
+
 ## Features
 ### Account Management
 - Ten account types: Chequing, Savings, Credit Card, Loan, Mortgage, Line of Credit, Investment, Cash, Asset and Other
-- Investment accounts with brokerage and investment-cash sub-types
+- A detail page for each account type: balance history, recurring charges (turn one into a scheduled bill with one click) and a 90-day balance forecast for bank accounts; the statement cycle, interest and fees and a payoff calculator for credit cards; value, appreciation and an equity panel against the financing loan for assets
+- Financial institutions: group your accounts by bank or brokerage, with the institution's logo
+- An investment account is shown as one account (the brokerage and its cash), with a reconciliation status on investment transactions
 - Support for multiple currencies per account
 - Track balances, credit limits, and interest rates
-- Credit card statement dates: configurable due date and settlement date (billing cycle closing date)
+- Exclude an account from net worth
+- Credit card statement dates: configurable due date and settlement date (billing cycle closing date). After you reconcile a card, Monize offers to schedule the payment
 - Favourite accounts on dashboard with credit card date indicators
-- Account reconciliation
+- Account reconciliation: edit, sort and group while you reconcile, an optional lock on reconciled transactions, and highlighted overdue unreconciled transactions
+- Export an account to CSV or QIF
 
 ### Transaction Management
 - Full transaction tracking with categories and payees
 - Split transaction support for complex transactions
-- Transaction tags for flexible cross-category labelling
+- Table or Calendar view of the register. Each day shows its transactions and, if you choose, the day's balance or its change. Day notes go on one day or across several
+- Sort the register by any column; the running balance is shown in date order
+- Search from the header on every page, with amounts and dates typed your own way (`1 234,56`, `02.07.2026`)
+- Date fields take partial dates (`9-14`, `4/1/26`, month names), and "Create & New" enters many transactions in a row
+- Foreign-currency transactions: enter the amount you were charged, see and edit the rate, and see what foreign-currency fees cost you per account
+- Transfers, one-off and scheduled, can carry a category, so they show in category reports without counting as income or expenses
+- Attachments for receipts, invoices and statements, stored in the database, on disk or in S3. Scan a paper document with the phone camera (page detection runs in your browser) and preview images and PDFs in the app. An attachment column and filter find the transactions that have no receipt
 - Transaction reconciliation and clearing
 - Bulk update and bulk delete operations with filter-based selection
-- Payees with auto-categorization rules, aliases with wildcard patterns, and merge capability
-- Transaction rules (Tools > Rules): when a transaction is created or imported and it matches your conditions (account, payee, category, text, amount, tags), add or remove tags, set the category or payee, or queue it for an AI review. A visual editor, a test on existing transactions before you save, a run on existing transactions with undo, and a history of every change a rule made. A rule never changes an amount, an account or a date
+- Undo and redo your recent changes from the action history panel
+- Payees with auto-categorization rules, aliases with wildcard patterns, and merge capability, plus Auto-Merge for duplicates. Apply a payee's default category to its past transactions
+- Payee brand icons and category icons that subcategories inherit
+- A page for each payee (statistics, recurrence, seasonality, address, phone and email) and for each category (subcategories, top payees, seasonality). Payee details can be looked up through Google Places or your AI provider, and are shown for confirmation before they are saved
 - Multi-currency transactions with automatic exchange rate tracking
-- Import from CSV, OFX/QFX, and QIF (Quicken and Microsoft Money) with smart column auto-matching
+- Import from CSV (including brokerage exports), OFX/QFX, and QIF (Quicken and Microsoft Money) with smart column auto-matching
 - Microsoft Money full-file import: read a `.mny` file directly -- accounts, transfers, splits, investments, price history, exchange rates and scheduled bills -- and reconcile every balance against the file afterwards ([guide](docs/import-ms-money.md))
 - Quicken full-file import: import all accounts, categories, and tags from a single QIF export
 - Data reset: wipe financial data and re-import without losing your user account or settings
-- Share into the app on Android: with Monize installed as a PWA, share a receipt photo, a PDF or a statement export (CSV, OFX, QFX, QIF) to it from another app and land on a review screen that offers to attach it to a new transaction or open the import wizard. Nothing is imported or attached until you choose it, and shared files are kept on the device for an hour
+- Share into the app: with Monize installed as a PWA (Android and desktop Chromium), share a receipt photo, a PDF or a statement export (CSV, OFX, QFX, QIF) to it from another app and land on a review screen that offers to attach it to a new transaction, open the import wizard or send it to the AI Assistant. Nothing is imported or attached until you choose it, and shared files are kept on the device for an hour
+
+### Transaction Rules and Tags
+- Transaction rules (Tools > Rules): when a transaction is created or imported and it matches your conditions (account, payee, category, text, amount, day of month, tags and more), add or remove tags, set the category, payee or description, or queue it for an AI review. A visual editor, a test on existing transactions before you save, a run on existing transactions with undo, and a history of every change a rule made. A rule never changes an amount, an account or a date
+- An AI review inbox for the transactions a rule queued
+- Transaction tags with colours and icons for flexible cross-category labelling
+- KEY:VALUE tags (for example `trip:Lisbon`): filter by key, and break Income vs Expenses and Cash Flow down by tag key
+- Tags on securities too, with the portfolio charted by tag key
 
 ### Investment Features
 - Track stocks, bonds, ETFs, mutual funds, options, GICs and cryptocurrency
-- Exchange-aware symbol resolution for North American, European and Asian markets (NYSE, NASDAQ, AMEX, ARCA, TSX, TSX-V, CSE, NEO, LSE, Frankfurt, XETRA, Euronext Paris, ASX, Tokyo, HKEX)
-- Daily price updates from Yahoo Finance
+- Exchange-aware symbol resolution for North American, European and Asian markets (NYSE, NASDAQ, AMEX, ARCA, BATS, TSX, TSX-V, CSE, NEO, LSE, XETRA, Frankfurt, Euronext Paris, Amsterdam, Milan, Stockholm, Tokyo, HKEX, Shanghai, Shenzhen, ASX, Korea, Taiwan, Singapore, BSE and NSE)
+- Daily price updates from Yahoo Finance, MSN, the London Stock Exchange and Deutsche Börse
+- A page for each security: position, price chart, documents and news
+- Per-security transaction history with a running share balance
+- Portfolio value and performance charts from intraday and month-to-date up to ten years, all time or a custom date range, with a breakdown by security
+- Calendar view of the investment register
+- Investment transactions: buy, sell, dividend, interest, reinvestment, capital gains, splits, share additions and removals, CD and bond redemptions, and transfers between accounts that keep the cost basis
+- Scheduled investment transactions
+- Asset-class and country allocation, with look-through for ETFs and funds
+- Compare securities with each other and against market indexes
 - Manual price management: add, edit, and delete individual price entries
 - Price backfill from transaction history (uses buy/sell prices when market data unavailable)
-- Investment transactions: buy, sell, dividend, interest, splits, transfers
 - Portfolio tracking with real-time valuations
-- Historical price backfill
+
+### Loans and Mortgages
+- A page for each loan and mortgage: a loan schedule with the real interest of each payment, interest-rate history (rate changes are detected from your payments), and overpayments recognised the way your bank applies them
+- Past Impact: what the overpayments you made have already saved
+- Overpayment simulator: shorten the term or lower the installment, saved scenarios, a goal seek (work backwards from a payoff date), a fixed monthly payment plan and a chart that compares scenarios. Exports to CSV, PNG and PDF
+- All payment frequencies, and Canadian semi-annual compounding
+- Loan Amortization Schedule, Loan Overpayment Simulator and Debt Payoff Timeline reports
 
 ### Multi-Currency Support
 - 44 currencies with built-in symbol and formatting metadata (USD, CAD, EUR, GBP, JPY, CHF, AUD, CNY and more), created on demand rather than pre-seeded
-- Daily exchange rate updates
+- Daily exchange rate updates, a rate history for each currency, and a Fill gaps button for missing dates
 - Automatic currency conversion for reporting
 - Per-account currency settings
 
@@ -106,66 +157,237 @@ Monize is running in my [Kubernetes cluster](https://github.com/kenlasko/k8s).
 - Full user interface translation, including server-generated messages and emails
 - Available languages (22 locales): English (with US, Canadian and UK variants), German (Deutsch), Spanish (Español), French (Français), Hindi (हिन्दी), Indonesian (Bahasa Indonesia), Italian (Italiano), Japanese (日本語), Korean (한국어), Dutch (Nederlands), Polish (Polski), Portuguese (Português), Brazilian Portuguese (Português do Brasil), Russian (Русский), Turkish (Türkçe), Ukrainian (Українська), Vietnamese (Tiếng Việt), Simplified Chinese (简体中文) and Traditional Chinese (繁體中文)
 - Language can be chosen on the sign-in and registration screens and in Settings -> Preferences
+- Default categories in your language, matched to your country on the first run
+- Numbers follow your own convention, on screen and in the fields you type into (for example a decimal comma, or Indian lakh grouping)
 
 ### Scheduled Transactions
-- Recurring payment tracking (daily, weekly, bi-weekly, monthly, quarterly, yearly)
+- Recurring bills, deposits and transfers with 13 frequencies: once, daily, weekly, every two weeks, every four weeks, twice a month, monthly, every two months, quarterly, every four months, twice a year, yearly and every two years
+- Zero-amount reminders for bills that change every time
 - Automatic transaction entry option
 - Skip and override individual occurrences
+- Scheduled transactions in another currency
+- Bills calendar, filters, and a cash flow forecast over one or more accounts
 - Bill payment history tracking
+
+### Dashboard and Appearance
+- 22 widgets that you can hide, reorder and configure (time range, accounts, chart type), among them Favourite Accounts and Securities, Upcoming Bills (a list or a small calendar), Top Movers (gainers or losers, by amount or percent), Portfolio Value, Assets vs Liabilities, Credit Utilization and Favourite Reports
+- Each widget title opens its full report
+- Fifteen colour themes for the whole app, each with a light and a dark variant (Settings -> Preferences)
 
 ### Reports
 - **Built-in Reports** -- 47 across ten categories (spending, income, net worth, tax, debt, investment, insights, maintenance, budget, bills), all server-side aggregated. A sample:
   - Spending by Category / Payee
   - Income by Source
   - Monthly Spending Trend
+  - Monthly Breakdown
   - Income vs Expenses
   - Cash Flow
   - Cash Flow Sankey (where income went: spending, savings, debt and what was left)
   - Year over Year Comparison
   - Weekend vs Weekday Spending
-  - Spending Anomalies Detection
+  - Spending Anomalies
   - Tax Summary
-  - Recurring Expenses
+  - Recurring Expenses Tracker
+  - Account Balances (at any date, with that day's prices and exchange rates)
+  - Credit Utilization
+  - Foreign Currency Transaction Fees
+  - Security Performance
+  - Budget vs Actual
   - Bill Payment History
   - Uncategorized Transactions
   - Duplicate Transaction Finder
-- **Net Worth Report**: Historical net worth tracking with monthly snapshots
+- **Net Worth Over Time**: Historical net worth tracking with monthly snapshots
 - **Custom Reports**: Build your own reports with flexible filters
-- Visual charts (pie, bar, line, area)
+- **Custom Investment Reports**: 40 columns in the style of Microsoft Money's portfolio views, as of any date, grouped by account, security or currency, in the native or the base currency
+- **Monte Carlo Simulation** for retirement planning, with a comparison of scenarios
+- **GEM Strategy** (Global Equities Momentum)
+- Refunds reduce the category they are filed under
+- Visual charts (pie, bar, line, area), and export to PDF and CSV
 
 ### Budget Planner
-- Create and manage budgets with per-category allocations
+- Create and manage budgets with per-category allocations; a wizard suggests amounts from your spending history
 - Track spending against budget targets
 - Budget period snapshots and historical tracking
 - Budget alerts for threshold notifications
 
+### Notifications
+- A notification bell with severity and Financial / System filters
+- A preferences grid: each notification type against each channel (email report, email alert, browser push, UnifiedPush), with a cooldown for each type
+- Browser push signed with your instance's own keys, with no Firebase or other third party, and UnifiedPush through a distributor you run yourself (ntfy, NextPush)
+- Bill reminders, budget alerts, account balance thresholds, daily investment value movements and GEM strategy signals
+- System alerts for administrators: a failed backup, a provider outage, failing SMTP, a weak `JWT_SECRET`
+- Reminders that repeat until you stop them, also from the push notification itself
+
 ### AI Financial Assistant
 - **Natural language queries** about your finances ("How much did I spend on dining last month?", "What are my top expense categories?")
-- **Multi-provider support**: Anthropic (Claude), OpenAI (GPT), Ollama (local models), and any OpenAI-compatible endpoint
+- **Multi-provider support**: Anthropic (Claude), OpenAI (GPT), Ollama (local models), Ollama Cloud, and any OpenAI-compatible endpoint, or your own AI subscription through the MCP relay
 - **Real-time streaming** responses via Server-Sent Events
-- **6 financial analysis tools**: transaction search/aggregation, account balances, spending by category, income summary, net worth history, and period comparison
+- **21 tools**: transactions, accounts, categories, payees, portfolio, capital gains, upcoming bills, budget status, period comparison, reports, transaction rules, a calculator that converts currencies, and charts
+- **Changes on request**: the assistant can add, change or delete transactions (up to 25 in one request), split them, record investment trades, manage payees, securities and rules, set a fund's allocation and attach a receipt to a transaction. Nothing is written until you approve it
+- **Attachments and a chat bubble**: attach images, PDFs and CSV files to a question, and open the chat from any page
+- **Spending Insights**: AI analysis of your spending patterns and anomalies
 - **Per-user provider configuration** with encrypted API key storage (AES-256-GCM)
 - **Usage tracking** with per-request token and cost analytics
 - **Provider fallback chain** with priority-based ordering
 - **Connection testing** to verify provider setup before use
 - **Suggested queries** for quick exploration of your financial data
-- **MCP (Model Context Protocol)** server for integration with AI-powered tools
+- **MCP (Model Context Protocol)** server for integration with AI-powered tools, with a one-click connector through OAuth 2.1 or a personal access token. MCP clients can make the same changes, each confirmed by you, within a daily write limit
 - No financial data is sent to AI providers beyond what is needed to answer the specific query
+
+### Backup and Restore
+- Password-protected (encrypted) backups that you download and restore
+- Automatic backups for each user, encrypted with your own backup password, with a list to download or restore from; administrators set the schedule and the retention
+- Backups include the attachment files, and restore across attachment storage types
+- Copies of the automatic backups off the machine, switched on in your settings: to S3 (append-only, the deployment's bucket or your own) and/or by email. Only encrypted backups are copied off the machine
+- A Support Backup: an anonymised copy of your data to attach to a bug report ([details](docs/support-backup.md))
+
+### Sharing and Access
+- Shared access for delegates, with permissions for each section
+- Joint accounts, and transfers between two people's accounts. Investment, loan, mortgage and asset accounts are read-only for the other person
+- Emergency access: if your account is untouched for a set period (14 days by default), your trusted contacts receive a one-time link, after daily reminder emails to you. You can leave them an encrypted private message. Needs email on the server
+
+### Mobile and Guided Help
+- Install Monize as a PWA on a phone or a desktop
+- A layout built for the phone: nearly forty tables become cards, the register and the reports catalogue fit the width, and donut charts show their total in the centre
+- A horizontal swipe moves between views; on the register it turns the page
+- A mobile navigation drawer, sorting chips on the register, and a full-screen notification panel
+- Scan receipts with the camera, and share files from other apps into Monize
+- Guided tours of the main features, and a What's New digest after each update
+
+### Self-Hosting and Operations
+- Docker Compose files for development, production, demo and several replicas, and a Helm chart for Kubernetes
+- Several backend replicas with `CLUSTER_MODE=multi`, with PostgreSQL only and no Redis
+- Attachment storage in the database, on disk or in S3 (`ATTACHMENT_STORAGE_PROVIDER`); existing attachments are copied across when you switch
+- The automatic backup store on disk or in S3 (`BACKUP_STORAGE_PROVIDER`)
+- Optional PostgreSQL row-level security (`RLS_MODE`, off by default)
+- Admin -> Users shows the backup and attachment storage of each user; Admin -> Notifications switches on browser push
+- An "update available" banner for administrators (`UPDATE_CHECK_ENABLED`)
+- Every setting is described in [`.env.example`](.env.example)
 
 ### Security
 - OIDC (OpenID Connect) authentication (Authentik, Authelia, Pocket-ID, etc.)
 - Local credential authentication with bcrypt hashing
+- Email verification at registration
+- New passwords checked against known breaches (Have I Been Pwned)
 - JWT-based session management with httpOnly cookies
 - "Remember Me" option with configurable extended session duration (default 30 days)
 - TOTP two-factor authentication with trusted device support
 - Personal access tokens (PAT) for API and MCP access
-- Admin user management with role-based access (admin/user)
-- Password reset via email with temporary passwords
+- Admin user management with role-based access (admin/user); administrators can create users with an invite link, a set password or a one-time generated password
+- Password reset by an emailed link; an administrator can also issue a temporary password
 - Forced password change and forced 2FA policies
 - Rate limiting and request throttling
 - Helmet security headers (with `DISABLE_HTTPS_HEADERS` option for plain HTTP deployments)
 - CORS protection
-- Demo mode with sample data and daily resets
+- Demo mode with sample data and daily resets ([try it](#try-it-with-demo-data))
+
+## Screenshots
+
+Every screenshot comes from the built-in demo data ([Try It with Demo Data](#try-it-with-demo-data)), in the dark theme. Click a picture to open it at full size.
+
+### Everyday money
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/transactions-calendar.png"><img src="docs/images/readme/transactions-calendar.png" alt="Transaction register in Calendar view, with day notes"/></a><br/><sub><b>Calendar view</b>: each day's transactions, and notes on a day or a span</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/accounts.png"><img src="docs/images/readme/accounts.png" alt="Accounts list grouped by type"/></a><br/><sub><b>Accounts</b> grouped by type, with net worth, assets and liabilities</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/account-chequing.png"><img src="docs/images/readme/account-chequing.png" alt="Chequing account page with balance history and a 90-day forecast"/></a><br/><sub><b>Bank account page</b>: balance history and a 90-day forecast</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-credit-card.png"><img src="docs/images/readme/account-credit-card.png" alt="Credit card page with the statement cycle and utilization"/></a><br/><sub><b>Credit card page</b>: statement cycle, utilization and balance history</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/payee-detail.png"><img src="docs/images/readme/payee-detail.png" alt="Payee page with monthly totals and contact details"/></a><br/><sub><b>Payee page</b>: monthly totals, address, phone and email</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/category-detail.png"><img src="docs/images/readme/category-detail.png" alt="Category page with monthly totals"/></a><br/><sub><b>Category page</b>: monthly totals, payees and subcategories</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/attachment-preview.png"><img src="docs/images/readme/attachment-preview.png" alt="A hotel invoice attached to a transaction, previewed in the app"/></a><br/><sub><b>Attachments</b>: a receipt previewed in the app</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/institutions.png"><img src="docs/images/readme/institutions.png" alt="Financial institutions list"/></a><br/><sub><b>Financial institutions</b> and the accounts at each</sub></td>
+</tr>
+</table>
+
+### Rules and tags
+
+<p align="center">
+  <img src="docs/images/readme/rules.gif" width="800" alt="Building a transaction rule and testing it on existing transactions" />
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/rules.png"><img src="docs/images/readme/rules.png" alt="List of transaction rules"/></a><br/><sub><b>Transaction rules</b> (Tools > Rules)</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/rule-editor.png"><img src="docs/images/readme/rule-editor.png" alt="Rule editor with conditions and actions"/></a><br/><sub><b>Rule editor</b>: IF conditions, THEN actions, and a test</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/tags.png"><img src="docs/images/readme/tags.png" alt="Tags with colours and icons, including KEY:VALUE tags"/></a><br/><sub><b>Tags</b> with colours and icons, including KEY:VALUE tags</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/report-tag-breakdown.png"><img src="docs/images/readme/report-tag-breakdown.png" alt="Income vs Expenses broken down by tag key"/></a><br/><sub><b>Break down by tag key</b> in Income vs Expenses</sub></td>
+</tr>
+</table>
+
+### Investments
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/security-detail.png"><img src="docs/images/readme/security-detail.png" alt="Security page with price chart and key information"/></a><br/><sub><b>Security page</b>: position, price chart and allocation</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/investments-calendar.png"><img src="docs/images/readme/investments-calendar.png" alt="Investments in Calendar view with daily values and changes"/></a><br/><sub><b>Investments calendar</b>: daily value and change</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/monte-carlo.png"><img src="docs/images/readme/monte-carlo.png" alt="Monte Carlo retirement simulation"/></a><br/><sub><b>Monte Carlo Simulation</b> with saved scenarios</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/net-worth.png"><img src="docs/images/readme/net-worth.png" alt="Net Worth Over Time report"/></a><br/><sub><b>Net Worth Over Time</b></sub></td>
+</tr>
+</table>
+
+### Loans, budgets and reports
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/account-mortgage.png"><img src="docs/images/readme/account-mortgage.png" alt="Mortgage page with the overpayment simulator and saved scenarios"/></a><br/><sub><b>Mortgage</b>: overpayment simulator and two saved scenarios</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-asset.png"><img src="docs/images/readme/account-asset.png" alt="Vehicle asset page with the equity against its car loan"/></a><br/><sub><b>Asset page</b>: value history and equity against the car loan</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/budget-wizard.png"><img src="docs/images/readme/budget-wizard.png" alt="Budget wizard suggesting amounts from spending history"/></a><br/><sub><b>Budget wizard</b>: amounts suggested from your spending history</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/budgets.png"><img src="docs/images/readme/budgets.png" alt="Monthly budget with health score and spending velocity"/></a><br/><sub><b>Budget</b>: health score, velocity and bills still to come</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/reports.png"><img src="docs/images/readme/reports.png" alt="Reports catalogue"/></a><br/><sub><b>Reports</b>: 46 built-in reports and your own</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/report-income-vs-expenses.png"><img src="docs/images/readme/report-income-vs-expenses.png" alt="Income vs Expenses report"/></a><br/><sub><b>Income vs Expenses</b></sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/report-foreign-fees.png"><img src="docs/images/readme/report-foreign-fees.png" alt="Foreign Currency Transaction Fees report"/></a><br/><sub><b>Foreign Currency Transaction Fees</b></sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/account-loan.png"><img src="docs/images/readme/account-loan.png" alt="Car loan page with rate history and payoff timeline"/></a><br/><sub><b>Loan page</b>: rate history, simulator and payoff timeline</sub></td>
+</tr>
+</table>
+
+### Settings and themes
+
+<table>
+<tr>
+<td width="50%" align="center"><a href="docs/images/readme/notifications-settings.png"><img src="docs/images/readme/notifications-settings.png" alt="Notification preferences: types against channels"/></a><br/><sub><b>Notifications</b>: each type against each channel</sub></td>
+<td width="50%" align="center"><a href="docs/images/readme/theme-msmoney.png"><img src="docs/images/readme/theme-msmoney.png" alt="Dashboard in the Microsoft Money colour theme"/></a><br/><sub><b>Colour themes</b>: the dashboard in the "msmoney" palette</sub></td>
+</tr>
+</table>
+
+### On a phone
+
+<p align="center">
+  <img src="docs/images/readme/mobile.gif" width="300" alt="Phone: the navigation drawer and swiping between views" />
+</p>
+
+<table>
+<tr>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-dashboard.png"><img src="docs/images/readme/mobile-dashboard.png" alt="Phone: dashboard"/></a><br/><sub>Dashboard</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-transactions.png"><img src="docs/images/readme/mobile-transactions.png" alt="Phone: transactions as cards"/></a><br/><sub>Transactions as cards</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-calendar.png"><img src="docs/images/readme/mobile-calendar.png" alt="Phone: calendar view"/></a><br/><sub>Calendar</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-menu.png"><img src="docs/images/readme/mobile-menu.png" alt="Phone: navigation drawer"/></a><br/><sub>Navigation drawer</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-investments.png"><img src="docs/images/readme/mobile-investments.png" alt="Phone: investments"/></a><br/><sub>Investments</sub></td>
+</tr>
+<tr>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-account-mortgage.png"><img src="docs/images/readme/mobile-account-mortgage.png" alt="Phone: mortgage page"/></a><br/><sub>Mortgage</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-bills.png"><img src="docs/images/readme/mobile-bills.png" alt="Phone: bills and deposits"/></a><br/><sub>Bills & Deposits</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-report.png"><img src="docs/images/readme/mobile-report.png" alt="Phone: report with a donut chart"/></a><br/><sub>Report</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-budget.png"><img src="docs/images/readme/mobile-budget.png" alt="Phone: budget"/></a><br/><sub>Budget</sub></td>
+<td width="20%" align="center"><a href="docs/images/readme/mobile-budget-wizard.png"><img src="docs/images/readme/mobile-budget-wizard.png" alt="Phone: budget wizard"/></a><br/><sub>Budget wizard</sub></td>
+</tr>
+</table>
 
 ## Technology Stack
 
@@ -216,7 +438,16 @@ monize/
 │   │   ├── ai/                # AI assistant (providers, query engine, usage tracking)
 │   │   ├── mcp/               # Model Context Protocol server
 │   │   ├── tags/               # Transaction tags
+│   │   ├── transaction-rules/ # Transaction rules (Tools > Rules)
+│   │   ├── institutions/      # Financial institutions
+│   │   ├── attachments/       # Transaction attachments (database, disk or S3)
+│   │   ├── calendar/          # Calendar day notes
+│   │   ├── backup/            # Backups, automatic and off-machine
+│   │   ├── push/              # Browser push and UnifiedPush
+│   │   ├── delegation/        # Shared access for delegates
+│   │   ├── emergency-access/  # Emergency access for trusted contacts
 │   │   ├── import/            # QIF, CSV, OFX/QFX and Microsoft Money (.mny) file import
+│   │   ├── database/          # Seeders, including the demo data (demo-seed-data/)
 │   │   ├── health/            # Health check endpoints
 │   │   └── main.ts            # Application entry point
 │   └── Dockerfile
@@ -233,7 +464,8 @@ monize/
 ├── database/
 │   ├── schema.sql             # Complete PostgreSQL schema
 │   └── migrations/            # Incremental schema migrations
-├── e2e/                       # End-to-end tests
+├── docs/                      # Contracts, guides, release notes and README images
+├── e2e/                       # End-to-end tests, and the README screenshot capture (readme/)
 ├── helm/                      # Helm charts for Kubernetes
 ├── docker-compose.dev.yml     # Development environment
 ├── docker-compose.prod.yml    # Production environment
@@ -285,6 +517,27 @@ docker compose -f docker-compose.dev.yml up -d
 5. Access the application:
    - Frontend: http://localhost:3001
    - Backend API: http://localhost:3000
+
+### Try It with Demo Data
+
+`docker-compose.demo.yml` turns on demo mode on top of the production stack.
+With the `.env` from steps 2 and 3:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.demo.yml up -d
+```
+
+On its first start the backend seeds a demo account (`demo@monize.com` /
+`Demo123!`) with twelve months of data: 15 accounts at five institutions, 36
+payees, about 450 transactions with splits and transfers, 10 scheduled
+transactions, 8 securities with price history and 4 custom reports. Demo mode
+turns off registration, fills in the sign-in form and resets the data every
+day at 4:00 AM UTC. The seed is in `backend/src/database/demo-seed-data/`.
+
+The screenshots in this README are made from that data by a Playwright script,
+which also adds tags, transaction rules, a budget, loans and other showcase data
+through the API. To make them again, see
+[`e2e/readme/README.md`](e2e/readme/README.md).
 
 ### Development Setup (Without Docker)
 
