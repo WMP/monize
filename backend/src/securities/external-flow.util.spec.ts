@@ -65,6 +65,31 @@ describe("external-flow.util", () => {
       expect(sql).not.toContain("a.account_type = 'INVESTMENT'");
     });
 
+    it("leaves out a transfer settling an action of the investment scope, only when asked", () => {
+      const withScope = squash(
+        externalFlowSubtotalsSql({
+          scoped: true,
+          perDay: false,
+          investmentScoped: true,
+        }),
+      );
+      // The counterpart is an investment action's cash leg on a scoped
+      // account: the QIF/CSV import's settlement, inside the portfolio.
+      expect(withScope).toContain(
+        "AND (la.id = ANY($4::UUID[]) OR EXISTS ( SELECT 1 FROM investment_transactions lit WHERE lit.transaction_id = lt.id AND lit.account_id = ANY($5::UUID[]) ))",
+      );
+
+      // A statement that names no $5 is never bound one.
+      const without = externalFlowSubtotalsSql({ scoped: true, perDay: false });
+      expect(without).not.toContain("$5");
+      const unscoped = externalFlowSubtotalsSql({
+        scoped: false,
+        perDay: false,
+        investmentScoped: true,
+      });
+      expect(unscoped).not.toContain("$5");
+    });
+
     it("subtotals per day only when asked", () => {
       const perDay = squash(
         externalFlowSubtotalsSql({ scoped: true, perDay: true }),
@@ -151,6 +176,48 @@ describe("external-flow.util", () => {
         ["acc-1"],
       ]);
     });
+
+    it("binds the investment scope as the fifth parameter, and names it in the SQL", async () => {
+      const query = jest.fn().mockResolvedValue([]);
+
+      await loadExternalFlowSubtotals(query, {
+        userId: "u1",
+        afterDate: "2026-09-10",
+        throughDate: "2026-09-11",
+        accountIds: ["cash-1"],
+        investmentScope: ["brok-1", "cash-1"],
+      });
+
+      expect(query.mock.calls[0][1]).toEqual([
+        "u1",
+        "2026-09-10",
+        "2026-09-11",
+        ["cash-1"],
+        ["brok-1", "cash-1"],
+      ]);
+      expect(query.mock.calls[0][0]).toContain("$5::UUID[]");
+    });
+
+    it.each([
+      { name: "empty", investmentScope: [] as string[], accountIds: ["c"] },
+      { name: "unscoped", investmentScope: ["b"], accountIds: undefined },
+    ])(
+      "binds no fifth parameter when the investment scope is $name",
+      async ({ investmentScope, accountIds }) => {
+        const query = jest.fn().mockResolvedValue([]);
+
+        await loadExternalFlowSubtotals(query, {
+          userId: "u1",
+          afterDate: "2026-09-10",
+          throughDate: "2026-09-11",
+          accountIds,
+          investmentScope,
+        });
+
+        expect(query.mock.calls[0][1]).toHaveLength(accountIds ? 4 : 3);
+        expect(query.mock.calls[0][0]).not.toContain("$5");
+      },
+    );
 
     it("omits the fourth parameter when the scope is every investment account", async () => {
       const query = jest.fn().mockResolvedValue([]);

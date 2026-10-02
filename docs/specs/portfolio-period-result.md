@@ -198,6 +198,16 @@ a count is all that withholding needs.
    itself, which is outside `C` by construction; such a scope reports
    `valueChange` and withholds the result, which is the honest answer while its
    cash is not valued.
+   A cash leg that is a TRANSFER whose counterpart sits on an account of `C`
+   settled inside, and is not counted. That is the shape the QIF/CSV import
+   writes: the action's cash leg is a row on the brokerage, linked to the
+   sleeve's cash. The flow query is given the scope `A` as its
+   `investmentScope` for the same decision, and leaves the sleeve leg out of
+   the flows: a transfer whose counterpart is an investment action's cash leg
+   on an account of `A` is the trade settling, not money crossing the
+   boundary. Without it every imported BUY read as a withdrawal and every
+   dividend as a deposit. The counterpart of an action on an account OUTSIDE
+   `A` is still a flow: those shares are not in `MV`.
 2. **`mixedSplit`.** A split parent in the window, on an account of `C`, that
    carries BOTH an investment-linked line and an ordinary one. The flow sum is
    over `t.amount`, so the classifier drops such a parent WHOLE: its ordinary
@@ -214,8 +224,9 @@ embedded split line carries its own investment row. A BUY funded from chequing
 is `+T` of capital against `+T` of shares and a dividend paid to a bank is `+D`
 of income, both exact. Reading these counts there withheld every invested
 figure for any portfolio a QIF import built (#1516): that import points a
-trade's cash leg at the brokerage row, which is outside `C` by construction, so
-the count fired on nearly every trade and dividend.
+trade's cash leg at the brokerage row, so the count fired on nearly every trade
+and dividend. Item 1's transfer rule now settles that shape inside `C` for the
+account result too.
 
 ## 7. Where it is computed, and by whom
 
@@ -364,6 +375,8 @@ Backend unit (`portfolio-period-result.util.spec.ts`,
 | a share-moving leg nothing priced | day incomplete, reason `incompletePrices`, the security dated in `incompleteRanges` |
 | a share transfer and the ACCOUNT's result | still `null` with `externallySettledTrade`; only the invested figures report |
 | a BUY settled outside `C` | result and percent `null`, reason `externallySettledTrade`; the invested figures still report |
+| an imported trade: cash leg on the brokerage, transfer counterpart in `C` | not counted as settled outside; the sleeve leg is not a flow; result reported |
+| cash in `C` paying for a trade on a brokerage outside `A` | still a flow |
 | a mixed split parent in the window | result `null`, reason `mixedSplit`; the invested figures still report |
 | the flow query's account set | the valued cash accounts, not the whole scope |
 
