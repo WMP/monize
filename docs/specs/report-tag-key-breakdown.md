@@ -124,10 +124,14 @@ RRSP cash sleeve (ordinary cash) -> Checking, 1,000, both legs tagged
 | `taggedOutflows[household]` | +1,000 | The RRSP-sleeve leg is a negative transfer leg tagged `scope:household` (I3). |
 
 The reader sees, under `household`, that 1,000 flowed in and 1,000 flowed out --
-the honest picture. It does not read as 1,000 (or 2,000) of income. If the user
-wants only the inflow surfaced (money made available for the household), they tag
-only the destination leg; the report reflects whatever is tagged, and never
-invents a one-sided number the tags do not assert.
+the honest picture. It does not read as 1,000 (or 2,000) of income. The UI
+mirrors a transfer's tags onto BOTH legs (`syncTransferTags` in
+`backend/src/transactions/transaction-bulk-update.service.ts`, and the rules
+applier), so a user cannot tag only the destination leg. The way to see one side
+is the account filter of section 10: scoping the report to the destination
+account leaves only that account's leg in the figure. The report reflects
+whatever is tagged inside the chosen accounts and never invents a one-sided
+number the tags do not assert.
 
 ### 3.2 Truth table -- the maintainer's double-count case
 
@@ -222,6 +226,13 @@ honoured (B4) without row inflation (I7).
   param the same way it already special-cases `accountIds`.
 - Completeness (`missingCurrencies`, incomplete `totals === null`) is surfaced
   per bucket using the components the reports already use for the All figure.
+- **Account scope and the funding series (section 10).** Income vs Expenses
+  gains the shared `ReportAccountMultiSelect` (empty = all accounts) and, when a
+  non-untagged bucket is active, two indigo bar series on the main chart (and
+  two table columns) read from that bucket's per-period flows.
+  `TagKeyBreakdownBuckets` can be controlled (`activeValue` /
+  `onActiveValueChange`) so the report owns which bucket the chart follows;
+  Cash Flow keeps the uncontrolled default.
 
 ## 7. i18n
 
@@ -288,3 +299,92 @@ Frontend:
 E2E (Playwright): a smoke path that tags two transactions under a `scope` key,
 opens Income vs Expenses, switches "Break down by tag key" to `scope`, and sees
 the value tabs and a tagged-transfer flow figure.
+
+## 10. Account scope and the funding series (Phase 1b)
+
+### 10.1 Motivation
+
+The reporter funds living costs by transferring from an RRSP to Checking and
+tags the transfer `scope:household`. With "Break down by tag key = scope" the
+Household tab showed income 0, expenses 0, tagged inflows 7,066 and tagged
+outflows 7,066 (the tags are mirrored onto both legs, so both legs count), and
+the main chart did not change. He could not see the funding next to the expenses
+it pays for. Two additive fixes, called C and B.
+
+### 10.2 C -- account filter on the Income vs Expenses page
+
+`GET /built-in-reports/income-vs-expenses` already accepts `accountIds` and
+applies it to the base query and to every tag-key query (value, whole-transfer
+flow, split-transfer flow), and the frontend client already serialises it. The
+page never sent it. C adds a `ReportAccountMultiSelect` to the report (same
+non-investment account list as the dashboard widget); an empty selection means
+all accounts, today's behaviour. No backend change is needed for C.
+
+With the Checking account selected, the transfer's investment-side leg is
+outside the filter, so only the Checking leg is counted: tagged inflows 7,066
+and tagged outflows 0. This is how a one-sided view is obtained (section 3.1).
+
+**Decision: Cash Flow does not get the filter.** `CashFlowReport` also reads
+`getIncomeBySource`, which takes no `accountIds`; a filter there would scope
+half of the page and leave the other half unfiltered, an inconsistent report.
+Extending `getIncomeBySource` is a separate change. Recorded so the absence
+reads as a decision.
+
+### 10.3 B -- tagged flows per period
+
+`IncomeExpenseTagBucket.data` becomes `IncomeExpenseTagPeriodItem[]`, where
+`IncomeExpenseTagPeriodItem extends IncomeExpensePeriodItem` adds
+`taggedInflows: number` and `taggedOutflows: number` (additive; the top-level
+`data` and `totals` keep the plain `IncomeExpensePeriodItem`).
+
+```jsonc
+// buckets[i].data[j]
+{ "period": "2026-03", "periodStart": "2026-03-01", "periodEnd": "2026-03-31",
+  "income": 0, "expenses": 0, "net": 0,
+  "taggedInflows": 7066, "taggedOutflows": 7066 }
+```
+
+Both transfer-flow queries (whole transfer, split transfer leg) additionally
+group by the period start, using the same `bucketStartSql` expression and week
+offset as the value query. Every period of the window has a row, zero when
+nothing happened, aligned with the bucket's existing `data` periods. When the
+request has no start date, a period that only a flow touched is kept as an extra
+row so the periods still sum to the window figure.
+
+Invariants:
+
+| # | Invariant |
+|---|---|
+| I8 | **Per-period flows sum to the window figure.** `taggedInflows` / `taggedOutflows` on the bucket are the integer-cent sum (`sumMoney`) of the per-period values, never a separately computed number. |
+| I9 | **FX completeness per period.** A flow row converts through `tryConvertAmount`. A missing rate leaves that row out of its period, adds the currency to `missingCurrencies`, counts it in `excludedCount` and blanks the bucket's `totals` (I4); the other periods keep their flows. |
+| I1, I2 | Unchanged. No `tagKey` returns today's response deep-equal; top-level `data` and `totals` (All) are unchanged; tagged flows are never added to `income`, `expenses` or `net` in any period (INV-REPORT-003). VOID (I6) and investment exclusion (I5) stay on both flow queries. |
+
+### 10.4 Truth table -- RRSP cash -> Checking 7,066, both legs `scope:household`
+
+| Figure | (a) no `accountIds` | (b) `accountIds=[Checking]` |
+|---|---|---|
+| `taggedInflows[household]` | 7,066 (Checking leg) | 7,066 |
+| `taggedOutflows[household]` | 7,066 (RRSP leg) | 0 (RRSP leg outside the filter) |
+| `income`, `expenses`, `net` (All and household) | unchanged | unchanged |
+
+Two transfers in two months land in their own two periods; a month between them
+carries zero flows.
+
+### 10.5 Frontend rendering of B
+
+When `tagKey` is set and the active bucket is not the untagged bucket, the main
+chart adds two bar series from that bucket's per-period flows, labelled with the
+value ("Tagged inflows: household"), in the indigo pair
+`TagKeyBreakdownBuckets` already uses, never green or red. Savings bars and the
+savings rate stay income minus expenses. The table view gets the same two
+columns under the same condition; the tooltip shows them. With `tagKey` unset or
+the untagged tab active there is no series.
+
+### 10.6 Tests
+
+Backend: per-period flows (two transfers, zero period, sums equal totals),
+`accountIds` with `tagKey` (destination only: inflow counted, outflow 0, income
+0), FX-missing per period, no-`tagKey` parity, VOID still excluded; the same
+cases against PostgreSQL in the integration suite. Frontend: the account select
+sends `accountIds`; series only with `tagKey` and a non-untagged tab; savings
+unchanged by flows; `TagKeyBreakdownBuckets` controlled mode.
