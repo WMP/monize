@@ -1187,6 +1187,30 @@ describe("BankSyncService", () => {
     );
   });
 
+  describe("the institution's profile (docs/future-plans/source-profiles.md)", () => {
+    it.each([
+      ["PKO Bank Polski", "PL", "pl/pko-bp"],
+      ["  pko BANK   polski ", "pl", "pl/pko-bp"],
+      ["Test Bank", "PL", "default"],
+      ["PKO Bank Polski", "DE", "default"],
+    ])(
+      "hands the write and the preview the profile of %p (%s): %s",
+      async (institutionName, institutionCountry, profileId) => {
+        connectionRepo.findOne.mockResolvedValue(
+          connectionRow({ institutionName, institutionCountry }),
+        );
+        previewer.build.mockResolvedValue({} as never);
+        await service.syncAccount(USER_ID, BANK_ACCOUNT_ID, null);
+        await service.syncAccountEntry(USER_ID, BANK_ACCOUNT_ID, null);
+        await service.previewAccount(USER_ID, BANK_ACCOUNT_ID, null);
+        expect([
+          ...writer.write.mock.calls.map((call) => call[0].profile.id),
+          previewer.build.mock.calls[0][0].profile.id,
+        ]).toEqual([profileId, profileId, profileId]);
+      },
+    );
+  });
+
   describe("removeExceptions (spec section 7b)", () => {
     it("deletes only the ledger rows that are exceptions, for the caller's linked account, under the bank account's lock", async () => {
       manager.query.mockResolvedValue([{ id: "l1" }, { id: "l2" }]);

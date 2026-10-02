@@ -6,12 +6,23 @@ import {
   operationTagLabel,
   remittanceOperationCode,
   type BankOperation,
+  type OperationDirection,
 } from "./bank-operation";
+import { resolveProfile } from "./bank-sync-profiles";
 
 const operation = (over: Partial<BankOperation> = {}): BankOperation => ({
   ...NO_BANK_OPERATION,
   ...over,
 });
+
+/** PKO BP's profile, which holds the operation-code table these cases were written against. */
+const PKO_BP = resolveProfile("enable_banking", "PL", "PKO Bank Polski");
+
+const pkoLabel = (
+  value: BankOperation,
+  t?: EmailT,
+  direction?: OperationDirection | null,
+) => operationTagLabel(value, PKO_BP, t, direction);
 
 /** A translator that marks what it translated, so a label is seen to come from the catalogue. */
 const polish: EmailT = (key, fallback) => `pl(${key})|${fallback}`;
@@ -91,10 +102,8 @@ describe("findRemittanceOperation", () => {
 
 describe("operationTagLabel", () => {
   it("is null when the bank named no operation", () => {
-    expect(operationTagLabel(NO_BANK_OPERATION)).toBeNull();
-    expect(
-      operationTagLabel(operation({ code: "  ", description: "" })),
-    ).toBeNull();
+    expect(pkoLabel(NO_BANK_OPERATION)).toBeNull();
+    expect(pkoLabel(operation({ code: "  ", description: "" }))).toBeNull();
   });
 
   it.each([
@@ -124,7 +133,7 @@ describe("operationTagLabel", () => {
       "Credit card repayment",
     ],
   ])("gives the known code %s its label", (code, key, label) => {
-    expect(operationTagLabel(operation({ remittanceCode: code }))).toEqual({
+    expect(pkoLabel(operation({ remittanceCode: code }))).toEqual({
       key,
       label,
     });
@@ -146,25 +155,22 @@ describe("operationTagLabel", () => {
       // The card ATM family is not the BLIK one.
       ["ATM-MOBILE-PAYMENT-X", "Cash withdrawal"],
     ])("%s is %s", (code, label) => {
-      expect(
-        operationTagLabel(operation({ remittanceCode: code }))?.label,
-      ).toBe(label);
+      expect(pkoLabel(operation({ remittanceCode: code }))?.label).toBe(label);
     });
 
     it("does not take a RETURN outside the mobile payment family for a mobile refund", () => {
-      expect(operationTagLabel(operation({ code: "CARD-RETURN" }))).toEqual({
+      expect(pkoLabel(operation({ code: "CARD-RETURN" }))).toEqual({
         key: "CARD-RETURN",
         label: "CARD-RETURN",
       });
     });
 
     it("takes an exact code before any prefix", () => {
+      expect(pkoLabel(operation({ remittanceCode: "CARD-PAYMENT" }))?.key).toBe(
+        "CARD-PAYMENT",
+      );
       expect(
-        operationTagLabel(operation({ remittanceCode: "CARD-PAYMENT" }))?.key,
-      ).toBe("CARD-PAYMENT");
-      expect(
-        operationTagLabel(operation({ remittanceCode: "TRANSFER-IN" }), polish)
-          ?.label,
+        pkoLabel(operation({ remittanceCode: "TRANSFER-IN" }), polish)?.label,
       ).toContain("transferIn");
     });
   });
@@ -175,7 +181,7 @@ describe("operationTagLabel", () => {
       ["debit", "TRANSFER-OUT", "Outgoing transfer"],
     ] as const)("%s is %s", (direction, key, label) => {
       expect(
-        operationTagLabel(
+        pkoLabel(
           operation({ remittanceCode: "TRANSFER" }),
           undefined,
           direction,
@@ -185,46 +191,38 @@ describe("operationTagLabel", () => {
 
     it("is translated through the same catalogue keys as the explicit codes", () => {
       expect(
-        operationTagLabel(
-          operation({ remittanceCode: "TRANSFER" }),
-          polish,
-          "credit",
-        )?.label,
+        pkoLabel(operation({ remittanceCode: "TRANSFER" }), polish, "credit")
+          ?.label,
       ).toBe("pl(common.bankSync.operationTypes.transferIn)|Incoming transfer");
       expect(
-        operationTagLabel(
-          operation({ remittanceCode: "TRANSFER" }),
-          polish,
-          "debit",
-        )?.label,
+        pkoLabel(operation({ remittanceCode: "TRANSFER" }), polish, "debit")
+          ?.label,
       ).toBe(
         "pl(common.bankSync.operationTypes.transferOut)|Outgoing transfer",
       );
     });
 
     it("is its own name when the direction is not known", () => {
+      expect(pkoLabel(operation({ remittanceCode: "TRANSFER" }))).toEqual({
+        key: "TRANSFER",
+        label: "TRANSFER",
+      });
       expect(
-        operationTagLabel(operation({ remittanceCode: "TRANSFER" })),
-      ).toEqual({ key: "TRANSFER", label: "TRANSFER" });
-      expect(
-        operationTagLabel(
-          operation({ remittanceCode: "TRANSFER" }),
-          undefined,
-          null,
-        )?.label,
+        pkoLabel(operation({ remittanceCode: "TRANSFER" }), undefined, null)
+          ?.label,
       ).toBe("TRANSFER");
     });
 
     it("lets the explicit code win over the direction", () => {
       expect(
-        operationTagLabel(
+        pkoLabel(
           operation({ remittanceCode: "TRANSFER-IN" }),
           undefined,
           "debit",
         )?.label,
       ).toBe("Incoming transfer");
       expect(
-        operationTagLabel(
+        pkoLabel(
           operation({ remittanceCode: "TRANSFER-OUT" }),
           undefined,
           "credit",
@@ -234,7 +232,7 @@ describe("operationTagLabel", () => {
 
     it("does not read the direction into any other code", () => {
       expect(
-        operationTagLabel(
+        pkoLabel(
           operation({ remittanceCode: "CARD-PAYMENT" }),
           undefined,
           "credit",
@@ -245,18 +243,18 @@ describe("operationTagLabel", () => {
 
   it("translates a known label through the recipient's translator, with the English as the fallback", () => {
     expect(
-      operationTagLabel(operation({ remittanceCode: "CARD-PAYMENT" }), polish),
+      pkoLabel(operation({ remittanceCode: "CARD-PAYMENT" }), polish),
     ).toEqual({
       key: "CARD-PAYMENT",
       label: "pl(common.bankSync.operationTypes.cardPayment)|Card payment",
     });
     expect(
-      operationTagLabel(operation({ remittanceCode: "ATM-X" }), polish)?.label,
+      pkoLabel(operation({ remittanceCode: "ATM-X" }), polish)?.label,
     ).toBe("pl(common.bankSync.operationTypes.cashWithdrawal)|Cash withdrawal");
   });
 
   it("recognises a known code in any case", () => {
-    expect(operationTagLabel(operation({ code: "card-payment" }))).toEqual({
+    expect(pkoLabel(operation({ code: "card-payment" }))).toEqual({
       key: "CARD-PAYMENT",
       label: "Card payment",
     });
@@ -264,20 +262,20 @@ describe("operationTagLabel", () => {
 
   it("names an unknown code after itself, as the bank wrote it, and does not translate it", () => {
     expect(
-      operationTagLabel(operation({ remittanceCode: "DIRECT-DEBIT" }), polish),
+      pkoLabel(operation({ remittanceCode: "DIRECT-DEBIT" }), polish),
     ).toEqual({ key: "DIRECT-DEBIT", label: "DIRECT-DEBIT" });
-    expect(operationTagLabel(operation({ code: "Standing Order" }))).toEqual({
+    expect(pkoLabel(operation({ code: "Standing Order" }))).toEqual({
       key: "Standing Order",
       label: "Standing Order",
     });
   });
 
   it("does not take MOBILE-PAYMENT or ATM without their suffix for the known families", () => {
-    expect(operationTagLabel(operation({ code: "ATM" }))?.key).toBe("ATM");
-    expect(operationTagLabel(operation({ code: "ATM" }))?.label).toBe("ATM");
-    expect(
-      operationTagLabel(operation({ code: "MOBILE-PAYMENT" }))?.label,
-    ).toBe("MOBILE-PAYMENT");
+    expect(pkoLabel(operation({ code: "ATM" }))?.key).toBe("ATM");
+    expect(pkoLabel(operation({ code: "ATM" }))?.label).toBe("ATM");
+    expect(pkoLabel(operation({ code: "MOBILE-PAYMENT" }))?.label).toBe(
+      "MOBILE-PAYMENT",
+    );
   });
 
   it("prefers the remittance code, then the sub code, the code and the description", () => {
@@ -287,17 +285,15 @@ describe("operationTagLabel", () => {
       code: "TRANSFER-OUT",
       description: "Other",
     };
-    expect(operationTagLabel(operation(all))?.key).toBe("CARD-PAYMENT");
+    expect(pkoLabel(operation(all))?.key).toBe("CARD-PAYMENT");
+    expect(pkoLabel(operation({ ...all, remittanceCode: null }))?.key).toBe(
+      "TRANSFER-IN",
+    );
     expect(
-      operationTagLabel(operation({ ...all, remittanceCode: null }))?.key,
-    ).toBe("TRANSFER-IN");
-    expect(
-      operationTagLabel(
-        operation({ ...all, remittanceCode: null, subCode: null }),
-      )?.key,
+      pkoLabel(operation({ ...all, remittanceCode: null, subCode: null }))?.key,
     ).toBe("TRANSFER-OUT");
     expect(
-      operationTagLabel(
+      pkoLabel(
         operation({
           ...all,
           remittanceCode: null,
@@ -316,13 +312,13 @@ describe("operationTagLabel", () => {
       "x".repeat(101),
       "emoji \u{1F600}",
     ]) {
-      expect(operationTagLabel(operation({ code: hostile }))).toBeNull();
+      expect(pkoLabel(operation({ code: hostile }))).toBeNull();
     }
   });
 
   it("accepts a name of exactly the tag width", () => {
     const name = "a".repeat(100);
-    expect(operationTagLabel(operation({ code: name }))).toEqual({
+    expect(pkoLabel(operation({ code: name }))).toEqual({
       key: name,
       label: name,
     });

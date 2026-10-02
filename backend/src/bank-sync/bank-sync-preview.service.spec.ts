@@ -15,6 +15,7 @@ import type { TransactionRule } from "../transaction-rules/transaction-rule.enti
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { NO_BANK_OPERATION } from "./bank-operation";
 import { planFingerprint } from "./bank-sync-plan-fingerprint";
+import { resolveProfile } from "./bank-sync-profiles";
 import {
   BankSyncPreviewService,
   BuildBankSyncPreviewInput,
@@ -33,6 +34,8 @@ import type { BankTransaction } from "./providers/bank-sync-provider.interface";
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+const PKO_BP = resolveProfile("enable_banking", "PL", "PKO Bank Polski");
 
 const CTX = {
   accountCurrencyCode: "PLN",
@@ -116,6 +119,7 @@ describe("BankSyncPreviewService", () => {
     explained: explainBankImport(bankRows, CTX),
     balance: null,
     tagOperationType: true,
+    profile: PKO_BP,
     ...over,
   });
 
@@ -935,6 +939,13 @@ describe("BankSyncPreviewService", () => {
       expect(preferenceRepo.findOne).toHaveBeenCalledWith({
         where: { userId: USER_ID },
       });
+    });
+
+    it("names the tag by the profile it is given: another bank's CARD-PAYMENT is its own raw tag", async () => {
+      const profile = resolveProfile("enable_banking", "PL", "Some Other Bank");
+      const [row] = (await service.build(input({ profile }, [card()]))).rows;
+      expect(row.operationTag).toBe("CARD-PAYMENT");
+      expect(row.tagNames).toEqual(["CARD-PAYMENT"]);
     });
 
     it("names an unknown code after itself", async () => {

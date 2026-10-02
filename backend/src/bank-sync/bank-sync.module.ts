@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, type OnModuleInit } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AccountsModule } from "../accounts/accounts.module";
 import { EncryptionModule } from "../common/encryption/encryption.module";
@@ -17,6 +17,7 @@ import { BankSyncCronService } from "./bank-sync-cron.service";
 import { BankSyncMatchService } from "./bank-sync-match.service";
 import { BankSyncOutcomeNotifier } from "./bank-sync-outcome-notifier.service";
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
+import { loadBankSyncProfiles } from "./bank-sync-profiles";
 import { BankSyncService } from "./bank-sync.service";
 import { BankSyncWriterService } from "./bank-sync-writer.service";
 import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
@@ -30,6 +31,10 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
  * The provider layer is registered here and reached only through
  * `BankSyncProviderRegistry`; a second aggregator is a new directory under
  * `providers/` and one provider line.
+ *
+ * The built-in source profiles (`profiles/`) are loaded and validated when the
+ * module initialises, so a malformed file or one that carries personal data
+ * stops the boot instead of failing the first sync.
  */
 @Module({
   imports: [
@@ -65,4 +70,8 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     BankSyncConsentReminderService,
   ],
 })
-export class BankSyncModule {}
+export class BankSyncModule implements OnModuleInit {
+  onModuleInit(): void {
+    loadBankSyncProfiles();
+  }
+}

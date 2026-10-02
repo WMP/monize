@@ -1,4 +1,9 @@
 import { englishEmailT, type EmailT } from "../i18n/email-translator";
+import {
+  findOperationType,
+  type BankSyncProfile,
+  type OperationDirection,
+} from "./bank-sync-profiles";
 
 /**
  * The bank's own name for what kind of operation a transaction was (spec
@@ -84,103 +89,7 @@ export function remittanceOperationCode(
   return findRemittanceOperation(lines)?.code ?? null;
 }
 
-/** Which way the money moved, as the bank reported it. */
-export type OperationDirection = "credit" | "debit";
-
-/** A known operation: how its code is recognised and how its tag is named. */
-interface KnownOperation {
-  readonly key: string;
-  /**
-   * Whether `code` (upper-cased) is this operation. `direction` is the way the
-   * money moved, for the one code (`TRANSFER`) that does not say it itself.
-   */
-  readonly matches: (
-    code: string,
-    direction: OperationDirection | null,
-  ) => boolean;
-  /** The catalogue key under `common.bankSync.operationTypes`. */
-  readonly catalogKey: string;
-  readonly fallback: string;
-}
-
-/**
- * The codes with a translated label (spec section 7b). A code that is not here
- * is its own tag name. The first entry that matches wins, so an entry is listed
- * before any broader one that would also match it: an exact code before its
- * prefix, `MOBILE-PAYMENT-ATM-*` and `MOBILE-PAYMENT-*-RETURN` before
- * `MOBILE-PAYMENT-*`.
- */
-const KNOWN_OPERATIONS: readonly KnownOperation[] = [
-  {
-    key: "CARD-PAYMENT",
-    matches: (code) => code === "CARD-PAYMENT",
-    catalogKey: "cardPayment",
-    fallback: "Card payment",
-  },
-  {
-    key: "MOBILE-PAYMENT-RETURN",
-    matches: (code) =>
-      code.startsWith("MOBILE-PAYMENT-") && code.endsWith("-RETURN"),
-    catalogKey: "mobilePaymentRefund",
-    fallback: "Mobile payment refund",
-  },
-  {
-    key: "MOBILE-PAYMENT-ATM",
-    matches: (code) => code.startsWith("MOBILE-PAYMENT-ATM-"),
-    catalogKey: "cashWithdrawalBlik",
-    fallback: "Cash withdrawal (BLIK)",
-  },
-  {
-    key: "MOBILE-PAYMENT",
-    matches: (code) => code.startsWith("MOBILE-PAYMENT-"),
-    catalogKey: "mobilePayment",
-    fallback: "Mobile payment",
-  },
-  {
-    key: "ATM",
-    matches: (code) => code.startsWith("ATM-"),
-    catalogKey: "cashWithdrawal",
-    fallback: "Cash withdrawal",
-  },
-  {
-    key: "TRANSFER-IN",
-    matches: (code, direction) =>
-      code === "TRANSFER-IN" || (code === "TRANSFER" && direction === "credit"),
-    catalogKey: "transferIn",
-    fallback: "Incoming transfer",
-  },
-  {
-    key: "TRANSFER-OUT",
-    matches: (code, direction) =>
-      code === "TRANSFER-OUT" || (code === "TRANSFER" && direction === "debit"),
-    catalogKey: "transferOut",
-    fallback: "Outgoing transfer",
-  },
-  {
-    key: "STANDING-ORDER",
-    matches: (code) => code === "STANDING-ORDER",
-    catalogKey: "standingOrder",
-    fallback: "Standing order",
-  },
-  {
-    key: "CASHBACK",
-    matches: (code) => code === "CASHBACK",
-    catalogKey: "cashback",
-    fallback: "Cashback",
-  },
-  {
-    key: "LOAN-PAYOFF",
-    matches: (code) => code === "LOAN-PAYOFF",
-    catalogKey: "loanRepayment",
-    fallback: "Loan repayment",
-  },
-  {
-    key: "CREDIT-CARD-AUTO-REPAYMENT",
-    matches: (code) => code === "CREDIT-CARD-AUTO-REPAYMENT",
-    catalogKey: "creditCardRepayment",
-    fallback: "Credit card repayment",
-  },
-];
+export type { OperationDirection };
 
 /** The tag an operation gives a transaction. */
 export interface OperationTag {
@@ -198,17 +107,22 @@ export interface OperationTag {
  * operation Monize can use as a tag name.
  *
  * The operation is the first of the remittance code, the transaction code's
- * sub code, its code and its description that the bank gave. A known code takes
- * its translated label (`t`, the recipient's language); any other is its own
- * name, kept as the bank wrote it, provided it is plain text of at most a tag
- * name's width: a value that is not is no tag, never a mangled one.
+ * sub code, its code and its description that the bank gave. A code the
+ * `profile` knows (the profile of the connection's institution, spec section 7b
+ * and docs/future-plans/source-profiles.md) takes its translated label (`t`, the
+ * recipient's language); any other is its own name, kept as the bank wrote it,
+ * provided it is plain text of at most a tag name's width: a value that is not is
+ * no tag, never a mangled one. Which line or field the operation is read from does
+ * not depend on the profile: only the label it is given does.
  *
- * `direction` is the way the money moved: a bare `TRANSFER` is an incoming
- * transfer for a credit and an outgoing one for a debit. Without a direction it
- * is an unknown code, and so its own name.
+ * `direction` is the way the money moved, for a code that does not say it itself
+ * (a bare `TRANSFER` in the PKO BP profile: an incoming transfer for a credit and
+ * an outgoing one for a debit). Without a direction it is an unknown code, and so
+ * its own name.
  */
 export function operationTagLabel(
   operation: BankOperation,
+  profile: BankSyncProfile,
   t: EmailT = englishEmailT,
   direction: OperationDirection | null = null,
 ): OperationTag | null {
@@ -222,10 +136,8 @@ export function operationTagLabel(
     .find((value) => value !== "");
   if (candidate === undefined) return null;
 
-  const known = KNOWN_OPERATIONS.find((entry) =>
-    entry.matches(candidate.toUpperCase(), direction),
-  );
-  if (known !== undefined) {
+  const known = findOperationType(profile, candidate.toUpperCase(), direction);
+  if (known !== null) {
     return {
       key: known.key,
       label: t(

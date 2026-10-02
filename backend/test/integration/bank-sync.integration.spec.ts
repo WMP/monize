@@ -12,6 +12,7 @@ import { BankSyncConnectionsService } from "@/bank-sync/bank-sync-connections.se
 import { BankSyncCredentialsService } from "@/bank-sync/bank-sync-credentials.service";
 import { BankSyncModule } from "@/bank-sync/bank-sync.module";
 import { BankSyncService } from "@/bank-sync/bank-sync.service";
+import { resolveProfile } from "@/bank-sync/bank-sync-profiles";
 import { BankSyncWriterService } from "@/bank-sync/bank-sync-writer.service";
 import { planBankImport } from "@/bank-sync/bank-transaction-planner";
 import { BankSyncProviderError } from "@/bank-sync/providers/bank-sync-provider.errors";
@@ -96,6 +97,13 @@ describe("Bank sync (integration)", () => {
     ...over,
   });
 
+  /**
+   * The seeded connection is PKO BP's: the fixtures carry its operation codes,
+   * and the tag a code gets is the profile of the connection's institution.
+   */
+  const PKO_BANK = "PKO Bank Polski";
+  const PKO_BP = resolveProfile("enable_banking", "PL", PKO_BANK);
+
   /** Debits and credits with amounts a 2dp rounding would have destroyed. */
   const BANK_ROWS: BankTransaction[] = [
     row({ entryReference: "r1", amount: "50.00", direction: "debit" }),
@@ -164,16 +172,16 @@ describe("Bank sync (integration)", () => {
   async function seedBank(
     userId: string,
     monizeAccountId: string | null,
-    over: { hash?: string; external?: string } = {},
+    over: { hash?: string; external?: string; institution?: string } = {},
   ): Promise<{ connectionId: string; bankAccountId: string }> {
     const [conn] = await query<{ id: string }>(
       `INSERT INTO bank_sync_connections
          (user_id, provider, institution_name, institution_country, psu_type,
           status, external_session_id, valid_until)
-       VALUES ($1, 'enable_banking', 'Test Bank', 'PL', 'personal', 'active',
+       VALUES ($1, 'enable_banking', $2, 'PL', 'personal', 'active',
                'session-1', CURRENT_TIMESTAMP + interval '30 days')
        RETURNING id`,
-      [userId],
+      [userId, over.institution ?? "Test Bank"],
     );
     const [bank] = await query<{ id: string }>(
       `INSERT INTO bank_sync_accounts
@@ -544,6 +552,7 @@ describe("Bank sync (integration)", () => {
             plan,
             balance: null,
             tagOperationType: true,
+            profile: PKO_BP,
           }),
         );
 
@@ -704,6 +713,7 @@ describe("Bank sync (integration)", () => {
             plan,
             balance: null,
             tagOperationType: true,
+            profile: PKO_BP,
           }),
         ),
       ).rejects.toMatchObject({ status: 409 });
@@ -739,6 +749,7 @@ describe("Bank sync (integration)", () => {
             plan,
             balance: null,
             tagOperationType: true,
+            profile: PKO_BP,
           }),
         ),
       ).rejects.toMatchObject({ status: 409 });
@@ -1824,6 +1835,14 @@ describe("Bank sync (integration)", () => {
   });
 
   describe("preview details: selection, exceptions, operation types, payees and rules (spec section 7b)", () => {
+    // The rows of this block carry PKO BP's operation codes, and the tag a code
+    // gets is the profile of the connection's institution.
+    beforeEach(async () => {
+      await query(`UPDATE bank_sync_connections SET institution_name = $1`, [
+        PKO_BANK,
+      ]);
+    });
+
     const preview = () =>
       asAlice(() => bankSync.previewAccount(aliceId, bankAccountId, null));
     const syncWith = (
@@ -2280,6 +2299,22 @@ describe("Bank sync (integration)", () => {
         expect(descriptions[0].description).toBe("Latte CARD-PAYMENT");
       });
 
+      it("names the tags by the institution's profile: a bank with none gets its codes as they are, a known generic code still translated", async () => {
+        await query(
+          `UPDATE bank_sync_connections SET institution_name = 'Test Bank'`,
+        );
+        await sync();
+
+        expect(await tagsOf()).toEqual(
+          [
+            ["Cafe", "CARD-PAYMENT"],
+            ["Cinema", "CARD-PAYMENT"],
+            ["Bank", "DIRECT-DEBIT"],
+            ["Employer", "Incoming transfer"],
+          ].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+        );
+      });
+
       it("reuses the user's own tag whatever its case, and adds no second one", async () => {
         const [existing] = await query<{ id: string }>(
           `INSERT INTO tags (user_id, name) VALUES ($1, 'CARD PAYMENT') RETURNING id`,
@@ -2399,6 +2434,7 @@ describe("Bank sync (integration)", () => {
               plan: plan(rows),
               balance: null,
               tagOperationType: true,
+              profile: PKO_BP,
             }),
           );
 

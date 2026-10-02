@@ -20,6 +20,7 @@ import {
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { NO_BANK_OPERATION } from "./bank-operation";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
+import { resolveProfile } from "./bank-sync-profiles";
 import {
   BankSyncPlanChangedException,
   BankSyncSelectionRefusedException,
@@ -42,6 +43,8 @@ import { planFingerprint } from "./bank-sync-plan-fingerprint";
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+const PKO_BP = resolveProfile("enable_banking", "PL", "PKO Bank Polski");
 
 const emptyRefused = () => ({
   missing_date: 0,
@@ -135,6 +138,7 @@ describe("BankSyncWriterService", () => {
     plan: plan(planned),
     balance: null,
     tagOperationType: true,
+    profile: PKO_BP,
     ...over,
   });
 
@@ -821,6 +825,22 @@ describe("BankSyncWriterService", () => {
         },
       );
     }
+
+    it("names the tag by the profile it is given: another bank's CARD-PAYMENT is its own raw tag", async () => {
+      withTags();
+      await service.write(
+        input([card], {
+          profile: resolveProfile("enable_banking", "PL", "Some Other Bank"),
+        }),
+      );
+
+      const insert = statements("INSERT INTO tags")[0];
+      expect(insert[1]).toEqual([USER_ID, "CARD-PAYMENT"]);
+      expect(i18n.translate).not.toHaveBeenCalledWith(
+        "common.bankSync.operationTypes.cardPayment",
+        expect.anything(),
+      );
+    });
 
     it("creates the missing tag in the user's language and attaches it, in the writer's own transaction", async () => {
       withTags();

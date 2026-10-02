@@ -24,6 +24,7 @@ import { TransactionStatus } from "../transactions/entities/transaction.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { operationTagLabel } from "./bank-operation";
 import { findTagId } from "./bank-sync-operation-tags";
+import type { BankSyncProfile } from "./bank-sync-profiles";
 import {
   findExistingPayee,
   NO_PAYEE,
@@ -60,6 +61,12 @@ export interface BuildBankSyncPreviewInput {
   balance: NormalizedBankBalance | null;
   /** The connection's `tag_operation_type`: whether the preview shows the operation-type tag. */
   tagOperationType: boolean;
+  /**
+   * The profile of the connection's institution, resolved once for the preview
+   * (`resolveProfile`); the sync resolves the same one, so the tag shown is the
+   * tag written.
+   */
+  profile: BankSyncProfile;
 }
 
 /** What one preview needs at every `new` row, read once. */
@@ -71,6 +78,8 @@ interface RowContext {
   rules: readonly TransactionRule[];
   /** The operation-type tag's translator; null when the connection does not tag. */
   t: ReturnType<typeof emailTranslator> | null;
+  /** The institution's profile, which names the operation-type tag. */
+  profile: BankSyncProfile;
   payeeCache: Map<string, ResolvedPayee | null>;
   /** The id of an existing tag by lower-cased name; null when there is none. */
   tagIds: Map<string, string | null>;
@@ -178,6 +187,7 @@ export class BankSyncPreviewService {
               ),
             )
           : null,
+        profile: input.profile,
         payeeCache: new Map(),
         tagIds: new Map(),
         labels,
@@ -295,7 +305,12 @@ export class BankSyncPreviewService {
     const operationTag =
       context.t === null
         ? null
-        : operationTagLabel(entry.operation, context.t, entry.direction);
+        : operationTagLabel(
+            entry.operation,
+            context.profile,
+            context.t,
+            entry.direction,
+          );
     const operationTagId =
       operationTag === null
         ? null

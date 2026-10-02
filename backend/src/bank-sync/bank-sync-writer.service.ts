@@ -30,6 +30,7 @@ import {
 } from "./bank-operation";
 import { RULES_BATCH_SIZE } from "./bank-sync.constants";
 import { findOrCreateTagId } from "./bank-sync-operation-tags";
+import type { BankSyncProfile } from "./bank-sync-profiles";
 import {
   findExistingPayee,
   NO_PAYEE,
@@ -96,6 +97,12 @@ export interface BankSyncWriteInput {
    * connection's `tag_operation_type` as read at step 1 of the sync.
    */
   tagOperationType: boolean;
+  /**
+   * The profile of the connection's institution, resolved once for the sync
+   * (`resolveProfile`); it names the operation-type tag and nothing else, so it
+   * cannot change which rows are duplicates.
+   */
+  profile: BankSyncProfile;
   /**
    * The rows the person chose in the preview (spec section 7b). Absent: every
    * new row is imported, as a sync always did. Given: exactly `importKeys` are
@@ -395,7 +402,7 @@ export class BankSyncWriterService {
       // 5b. The bank's operation type as a tag, BEFORE the rules run, so a rule
       //     can use it ("tags has any Card payment").
       if (input.tagOperationType) {
-        await this.tagOperations(m, userId, createdOperations);
+        await this.tagOperations(m, userId, createdOperations, input.profile);
       }
 
       // 6. The import rules over what was created, with the bank's raw payee text.
@@ -494,6 +501,7 @@ export class BankSyncWriterService {
     m: EntityManager,
     userId: string,
     created: readonly CreatedOperation[],
+    profile: BankSyncProfile,
   ): Promise<void> {
     if (created.length === 0) return;
     const lang = await resolveUserEmailLocale(
@@ -504,7 +512,7 @@ export class BankSyncWriterService {
     const tagIds = new Map<string, string>();
     const transactionsByTag = new Map<string, string[]>();
     for (const { transactionId, operation, direction } of created) {
-      const tag = operationTagLabel(operation, t, direction);
+      const tag = operationTagLabel(operation, profile, t, direction);
       if (tag === null) continue;
       const tagId = await findOrCreateTagId(m, userId, tag.label, tagIds);
       transactionsByTag.set(tagId, [
