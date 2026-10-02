@@ -149,6 +149,8 @@ function harness(fx: Fixture = {}) {
     tags as unknown as TagsService,
     { enqueue } as unknown as AiReviewRequestsService,
     payees as unknown as PayeesService,
+    {} as never,
+    {} as never,
   );
   const writes = (): unknown[] => [
     ...m.update.mock.calls,

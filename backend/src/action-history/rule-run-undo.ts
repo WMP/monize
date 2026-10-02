@@ -1,7 +1,14 @@
+import { ConflictException } from "@nestjs/common";
 import { EntityManager } from "typeorm";
-import { lockTransactionRows } from "../common/db/locks";
+import { LockedTransactionRow, lockTransactionRows } from "../common/db/locks";
+import { tr } from "../i18n/translate";
 import { Transaction } from "../transactions/entities/transaction.entity";
+import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
+import {
+  LegBalanceWriter,
+  removeLockedTransactionLeg,
+} from "../transactions/remove-transaction-leg";
 import { ActionHistory } from "./entities/action-history.entity";
 
 /** The entity type a manual rule run is recorded under. */
@@ -14,6 +21,33 @@ interface RuleRunRowSnapshot {
   payeeName?: string | null;
   description?: string | null;
   tagIds?: string[];
+  isTransfer?: boolean;
+  isSplit?: boolean;
+  linkedTransactionId?: string | null;
+  /** Present on a row a structural action converted or split. */
+  structure?: { kind: "transfer" | "split"; counterpartIds: string[] };
+}
+
+/**
+ * Redo replays the after side, and a structural run's after side is a set of
+ * counterpart legs and split lines that the undo deleted: recreating them is
+ * the rule's job, through a fresh run, not a replay of stored ids. So a run
+ * that restructured a row is not redoable (spec section 6).
+ */
+export function assertRuleRunRedoable(action: ActionHistory): void {
+  const rows = action.beforeData?.transactions;
+  if (
+    Array.isArray(rows) &&
+    (rows as RuleRunRowSnapshot[]).some((row) => row.structure !== undefined)
+  ) {
+    throw new ConflictException({
+      message: tr(
+        "errors.transactionRules.runRedoStructural",
+        "This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead",
+      ),
+      errorCode: "RULE_RUN_REDO_STRUCTURAL",
+    });
+  }
 }
 
 /**
@@ -26,22 +60,46 @@ interface RuleRunRowSnapshot {
  * against the strict reconciled lock first (INV-RECONCILE-001: an undo alters
  * the row like the edit did), so a refusal leaves every row as it was. Every
  * write is scoped to the action's user.
+ *
+ * A structural row (`structure`) also had counterpart legs created in another
+ * account, and for a split its lines. The legs are locked with the rows
+ * (a transfer's counterpart with its row, ascending; a split's legs after the
+ * parent, the order `common/db/locks.ts` requires), checked against the
+ * reconciled lock with them, then each is deleted conditionally and its balance
+ * contribution reversed by `removeLockedTransactionLeg` (`deletionBalanceEffect`
+ * of the locked row), so a leg already gone, or relinked elsewhere, is skipped
+ * and moves nothing. The split lines are deleted and the row's category and
+ * structural flags come back from the snapshot. Returns the accounts whose
+ * balance moved.
  */
 export async function undoRuleRun(
   action: ActionHistory,
   manager: EntityManager,
-): Promise<void> {
+  balances: LegBalanceWriter,
+): Promise<Set<string>> {
+  const affectedAccountIds = new Set<string>();
   const rows = action.beforeData?.transactions;
-  if (!Array.isArray(rows) || rows.length === 0) return;
+  if (!Array.isArray(rows) || rows.length === 0) return affectedAccountIds;
   const snapshots = rows as RuleRunRowSnapshot[];
 
+  const counterpartIdsOf = (kind: "transfer" | "split"): string[] =>
+    snapshots.flatMap((row) =>
+      row.structure?.kind === kind ? row.structure.counterpartIds : [],
+    );
   const locked = await lockTransactionRows(
     manager,
-    snapshots.map((row) => row.id),
+    [...snapshots.map((row) => row.id), ...counterpartIdsOf("transfer")],
     action.userId,
   );
+  const splitLegIds = counterpartIdsOf("split");
+  // After the parents: a split parent is locked before any of its legs.
+  const lockedSplitLegs =
+    splitLegIds.length > 0
+      ? await lockTransactionRows(manager, splitLegIds, action.userId)
+      : new Map<string, LockedTransactionRow>();
   await assertReconciledRowsMutable(manager, action.userId, [
     ...locked.values(),
+    ...lockedSplitLegs.values(),
   ]);
 
   const tagRows: { transactionId: string; tagId: string }[] = [];
@@ -49,9 +107,34 @@ export async function undoRuleRun(
   for (const row of snapshots) {
     // A row deleted since the run has nothing to restore.
     if (!locked.has(row.id)) continue;
+    if (row.structure) {
+      for (const accountId of await removeCounterparts(
+        manager,
+        action.userId,
+        row,
+        new Map([...locked, ...lockedSplitLegs]),
+        balances,
+      )) {
+        affectedAccountIds.add(accountId);
+      }
+    }
     const fields: Partial<
-      Pick<Transaction, "categoryId" | "payeeId" | "payeeName" | "description">
+      Pick<
+        Transaction,
+        | "categoryId"
+        | "payeeId"
+        | "payeeName"
+        | "description"
+        | "isTransfer"
+        | "isSplit"
+        | "linkedTransactionId"
+      >
     > = {};
+    if ("isTransfer" in row) fields.isTransfer = row.isTransfer ?? false;
+    if ("isSplit" in row) fields.isSplit = row.isSplit ?? false;
+    if ("linkedTransactionId" in row) {
+      fields.linkedTransactionId = row.linkedTransactionId ?? null;
+    }
     if ("categoryId" in row) fields.categoryId = row.categoryId ?? null;
     if ("payeeId" in row) fields.payeeId = row.payeeId ?? null;
     if ("payeeName" in row) fields.payeeName = row.payeeName ?? null;
@@ -71,7 +154,7 @@ export async function undoRuleRun(
     }
   }
 
-  if (tagOwners.length === 0) return;
+  if (tagOwners.length === 0) return affectedAccountIds;
   // Two statements for the whole run: replace the tag set of every row that
   // recorded one. A tag deleted since is skipped by the join.
   await manager.query(
@@ -97,4 +180,32 @@ export async function undoRuleRun(
       ],
     );
   }
+  return affectedAccountIds;
+}
+
+/**
+ * Delete the counterpart legs a structural row created, reversing each one's
+ * balance contribution, and for a split the split lines. A leg that is gone or
+ * no longer linked to this row is left alone (it is not this run's to remove).
+ * Returns the accounts whose balance moved.
+ */
+async function removeCounterparts(
+  manager: EntityManager,
+  userId: string,
+  row: RuleRunRowSnapshot,
+  lockedLegs: ReadonlyMap<string, LockedTransactionRow>,
+  balances: LegBalanceWriter,
+): Promise<string[]> {
+  const moved: string[] = [];
+  for (const legId of row.structure?.counterpartIds ?? []) {
+    const leg = lockedLegs.get(legId);
+    if (!leg || leg.linkedTransactionId !== row.id) continue;
+    if (await removeLockedTransactionLeg(manager, leg, userId, balances)) {
+      moved.push(leg.accountId);
+    }
+  }
+  if (row.structure?.kind === "split") {
+    await manager.delete(TransactionSplit, { transactionId: row.id });
+  }
+  return moved;
 }

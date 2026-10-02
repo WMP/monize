@@ -4,6 +4,10 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { PayeesService } from "../payees/payees.service";
+import { AccountsService } from "../accounts/accounts.service";
+import { convertRowToTransfer } from "../transactions/convert-to-transfer";
+import { CreateTransactionSplitDto } from "../transactions/dto/create-transaction-split.dto";
+import { TransactionSplitService } from "../transactions/transaction-split.service";
 import { Tag } from "../tags/entities/tag.entity";
 import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { AiReviewRequestsService } from "../ai-review/ai-review-requests.service";
@@ -27,6 +31,7 @@ import {
   buildRuleFacts,
   loadCategoryChains,
 } from "./rule-facts";
+import { RuleStructurePlan, SplitStructurePlan } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
 import { toRuleResponses } from "./transaction-rule-view";
 import {
@@ -40,6 +45,13 @@ import { RuleTrigger } from "./rule-trigger.types";
 export interface AppliedRuleRow {
   readonly transactionId: string;
   readonly effects: RuleEffects;
+  /**
+   * The accounts whose balance a structural action moved (the target of a
+   * conversion, the transfer parts of a split). Empty for every other rule.
+   * The caller dispatches the net-worth recompute for them after its commit
+   * (INV-CACHE-001); the applier never does.
+   */
+  readonly affectedAccountIds: readonly string[];
 }
 
 /** The two stored legs of a transfer just written, and who owns each. */
@@ -140,6 +152,11 @@ export class TransactionRulesApplierService {
     // forwardRef: PayeesModule reaches this module back through TransactionsModule.
     @Inject(forwardRef(() => PayeesService))
     private readonly payeesService: PayeesService,
+    // forwardRef: the transactions module reaches this one (create's rules step).
+    @Inject(forwardRef(() => AccountsService))
+    private readonly accountsService: AccountsService,
+    @Inject(forwardRef(() => TransactionSplitService))
+    private readonly splitService: TransactionSplitService,
   ) {}
 
   /**
@@ -363,16 +380,22 @@ export class TransactionRulesApplierService {
         { ...context, accounts },
         lookups,
       );
+      const affected = new Set<string>();
       const effects = await this.writeEffects(
         m,
         userId,
         row.id,
         planned,
         source,
+        affected,
       );
       // A payee this row created answers the lookups of the rows after it.
       if (planned.changes.createPayee !== undefined) lookups.clear();
-      applied.push({ transactionId: row.id, effects });
+      applied.push({
+        transactionId: row.id,
+        effects,
+        affectedAccountIds: [...affected],
+      });
     }
     return this.queueAiReviews(m, userId, applied);
   }
@@ -445,11 +468,17 @@ export class TransactionRulesApplierService {
       const effects = await this.resolveCreatedPayee(m, ownerId, planned);
       // One review request per transfer, on the outgoing leg (`primary`).
       const [queued] = await this.queueAiReviews(m, ownerId, [
-        { transactionId: primary.id, effects },
+        { transactionId: primary.id, effects, affectedAccountIds: [] },
       ]);
+      // A structural action is always refused on a transfer leg (the planner
+      // reports `row_is_transfer_leg`), so nothing here moves a balance.
       for (const row of rows) {
         await this.writeEffects(m, ownerId, row.id, effects, "create");
-        applied.push({ transactionId: row.id, effects: queued.effects });
+        applied.push({
+          transactionId: row.id,
+          effects: queued.effects,
+          affectedAccountIds: [],
+        });
       }
     }
     return applied;
@@ -490,7 +519,7 @@ export class TransactionRulesApplierService {
       return skipped.size === 0
         ? row
         : {
-            transactionId: row.transactionId,
+            ...row,
             effects: recordAiReviewAlreadyQueued(row.effects, skipped),
           };
     });
@@ -660,8 +689,15 @@ export class TransactionRulesApplierService {
 
   /**
    * Category, payee and description through the manager's parameterized
-   * UPDATE, tags through TagsService, one trace row per rule. Returns the
-   * effects as written (a payee the rules created now has its id).
+   * UPDATE, tags through TagsService, then the structure a structural action
+   * planned (a transfer counterpart or split lines, on the row as the patch
+   * left it), one trace row per rule. Returns the effects as written: a payee
+   * the rules created now has its id, and the structure carries the ids of the
+   * counterpart legs it created.
+   *
+   * `affectedAccountIds` collects the accounts a structural write moved, for
+   * the caller to invalidate after its commit (INV-CACHE-001); nothing is
+   * recalculated or triggered in here.
    */
   async writeEffects(
     m: EntityManager,
@@ -669,9 +705,10 @@ export class TransactionRulesApplierService {
     transactionId: string,
     planned: RuleEffects,
     source: RuleApplicationSource,
+    affectedAccountIds?: Set<string>,
   ): Promise<RuleEffects> {
-    const effects = await this.resolveCreatedPayee(m, userId, planned);
-    const { changes } = effects;
+    const resolved = await this.resolveCreatedPayee(m, userId, planned);
+    const { changes } = resolved;
     const patch: Partial<
       Pick<Transaction, "categoryId" | "payeeId" | "payeeName" | "description">
     > = {
@@ -715,6 +752,17 @@ export class TransactionRulesApplierService {
         changes.removeTagIds,
       );
     }
+    let effects = resolved;
+    if (changes.structure !== undefined) {
+      const written = await this.writeStructure(
+        m,
+        userId,
+        transactionId,
+        changes.structure,
+      );
+      for (const id of written.affectedAccountIds) affectedAccountIds?.add(id);
+      effects = withWrittenStructure(resolved, written.structure);
+    }
     const traceRows = effects.trace
       .filter((entry) => Object.keys(entry.changes).length > 0)
       .map((entry) => ({
@@ -729,4 +777,145 @@ export class TransactionRulesApplierService {
     }
     return effects;
   }
+
+  /**
+   * Write the planned structure on the row as it stands (the field patch is
+   * already in): a transfer counterpart through `convertRowToTransfer`, or the
+   * split lines through the split service's `validateSplits` / `createSplits`
+   * (the path `PUT /transactions/:id/splits` uses), joined to the caller's
+   * transaction. Same-currency only (the planner refuses the rest), so no
+   * provider is called. Returns the structure with the counterpart ids and the
+   * accounts whose balance moved.
+   */
+  private async writeStructure(
+    m: EntityManager,
+    userId: string,
+    transactionId: string,
+    structure: RuleStructurePlan,
+  ): Promise<{
+    structure: RuleStructurePlan;
+    affectedAccountIds: readonly string[];
+  }> {
+    if (structure.kind === "transfer") {
+      const result = await convertRowToTransfer(
+        m,
+        this.accountsService,
+        userId,
+        transactionId,
+        structure.accountId,
+        { clearCategory: structure.clearCategory },
+      );
+      return {
+        structure: { ...structure, counterpartIds: [result.counterpartId] },
+        affectedAccountIds: result.affectedAccountIds,
+      };
+    }
+    return this.writeSplit(m, userId, transactionId, structure);
+  }
+
+  private async writeSplit(
+    m: EntityManager,
+    userId: string,
+    transactionId: string,
+    structure: SplitStructurePlan,
+  ): Promise<{
+    structure: RuleStructurePlan;
+    affectedAccountIds: readonly string[];
+  }> {
+    const row = await m.findOne(Transaction, {
+      where: { id: transactionId, userId },
+    });
+    if (!row) {
+      throw new Error(`Transaction ${transactionId} vanished mid-write`);
+    }
+    const parts: CreateTransactionSplitDto[] = structure.parts.map((part) => ({
+      amount: part.amount,
+      ...(part.categoryId !== null ? { categoryId: part.categoryId } : {}),
+      ...(part.transferAccountId !== null
+        ? { transferAccountId: part.transferAccountId }
+        : {}),
+      ...(part.memo !== null ? { memo: part.memo } : {}),
+    }));
+    this.splitService.validateSplits(parts, Number(row.amount));
+    const affected = new Set<string>();
+    const created = await this.splitService.createSplits(
+      row.id,
+      parts,
+      userId,
+      row.accountId,
+      new Date(row.transactionDate),
+      row.payeeName,
+      row.payeeId,
+      { parentStatus: row.status },
+      affected,
+    );
+    await m.update(
+      Transaction,
+      { id: row.id, userId },
+      { isSplit: true, categoryId: null },
+    );
+
+    // A transfer part's payee is the payee of its counterpart leg (a split
+    // line has no payee column of its own).
+    const counterpartIds: string[] = [];
+    const wantedPayees = new Set(
+      structure.parts
+        .map((part) => part.payeeId)
+        .filter((id): id is string => id !== null),
+    );
+    const payees =
+      wantedPayees.size === 0
+        ? []
+        : await m.find(Payee, {
+            where: { id: In([...wantedPayees]), userId },
+            select: { id: true, name: true },
+          });
+    const payeeNames = new Map(payees.map((payee) => [payee.id, payee.name]));
+    for (const [i, part] of structure.parts.entries()) {
+      if (part.transferAccountId === null) continue;
+      const counterpartId = created[i]?.linkedTransactionId;
+      if (!counterpartId) continue;
+      counterpartIds.push(counterpartId);
+      const name =
+        part.payeeId === null ? undefined : payeeNames.get(part.payeeId);
+      if (part.payeeId !== null && name !== undefined) {
+        await m.update(
+          Transaction,
+          { id: counterpartId, userId },
+          { payeeId: part.payeeId, payeeName: name },
+        );
+      }
+    }
+    return {
+      structure: { ...structure, counterpartIds },
+      affectedAccountIds: [...affected],
+    };
+  }
+}
+
+/**
+ * The effects with the written structure (it carries the counterpart ids) in
+ * place of the planned one, in the net changes and in the trace entry that
+ * planned it, so the stored application row shows what was created.
+ */
+function withWrittenStructure(
+  effects: RuleEffects,
+  written: RuleStructurePlan,
+): RuleEffects {
+  const planned = effects.changes.structure;
+  return {
+    ...effects,
+    changes: { ...effects.changes, structure: written },
+    trace: effects.trace.map((entry) =>
+      entry.changes.structure?.after === planned
+        ? {
+            ...entry,
+            changes: {
+              ...entry.changes,
+              structure: { before: null, after: written },
+            },
+          }
+        : entry,
+    ),
+  };
 }

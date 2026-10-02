@@ -538,11 +538,13 @@
     "ruleInvalid": "Aturan ini tidak valid sehingga tidak dapat dijalankan. Buka dan perbaiki terlebih dahulu",
     "dateRangeInvalid": "Tanggal mulai tidak boleh setelah tanggal akhir",
     "activeWindowInvalid": "Tanggal aktif pertama tidak boleh setelah tanggal aktif terakhir",
-    "runTooLarge": "Proses ini mengubah terlalu banyak transaksi untuk dibatalkan dalam satu langkah. Persempit akun atau tanggal lalu coba lagi"
+    "runTooLarge": "Proses ini mengubah terlalu banyak transaksi untuk dibatalkan dalam satu langkah. Persempit akun atau tanggal lalu coba lagi",
+    "runRedoStructural": "Eksekusi ini mengubah struktur transaksi (transfer atau pemisahan), sehingga tidak dapat diulang. Jalankan aturan itu lagi"
   },
   "transactions": {
     "invalidStatus": "Status transaksi tidak valid: {{ status }}",
     "reconciledLocked": "Transaksi ini sudah direkonsiliasi dan terkunci. Nonaktifkan \"Kunci transaksi yang direkonsiliasi\" di Pengaturan untuk mengubahnya.",
+    "convertToTransferRefused": "Transaksi ini tidak dapat lagi diubah menjadi transfer. Periksa transaksi lalu jalankan aturan lagi",
     "pagePositiveInteger": "page harus berupa bilangan bulat positif",
     "limitPositiveInteger": "limit harus berupa bilangan bulat positif",
     "limitMax200": "limit tidak boleh melebihi 200",

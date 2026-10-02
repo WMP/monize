@@ -108,6 +108,8 @@ function setup(units: CandidateUnit[], stored = storedRule()) {
     { addTransactionTags: jest.fn() } as never,
     { enqueue: jest.fn() } as never,
     { resolveByName: jest.fn(), findOrCreate: jest.fn() } as never,
+    {} as never,
+    {} as never,
   );
   jest
     .spyOn(applier, "loadTagIds")
@@ -142,6 +144,7 @@ function setup(units: CandidateUnit[], stored = storedRule()) {
     {
       record: jest.fn().mockResolvedValue({ id: "hist-1" }),
     } as unknown as ActionHistoryService,
+    { triggerDebouncedRecalc: jest.fn() } as never,
   );
   return { service, writeEffects };
 }

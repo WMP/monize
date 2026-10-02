@@ -538,11 +538,13 @@
     "ruleInvalid": "Bu kural geçerli değil, bu yüzden çalıştırılamaz. Önce kuralı açıp düzeltin",
     "dateRangeInvalid": "Başlangıç tarihi bitiş tarihinden sonra olmamalıdır",
     "activeWindowInvalid": "İlk etkin tarih son etkin tarihten sonra olmamalıdır",
-    "runTooLarge": "Bu çalıştırma tek adımda geri alınamayacak kadar çok işlemi değiştiriyor. Hesapları veya tarihleri daraltıp yeniden deneyin"
+    "runTooLarge": "Bu çalıştırma tek adımda geri alınamayacak kadar çok işlemi değiştiriyor. Hesapları veya tarihleri daraltıp yeniden deneyin",
+    "runRedoStructural": "Bu çalıştırma işlemlerin yapısını değiştirdi (transferler veya bölmeler), bu yüzden yinelenemez. Bunun yerine kuralı yeniden çalıştırın"
   },
   "transactions": {
     "invalidStatus": "Geçersiz işlem durumu: {{ status }}",
     "reconciledLocked": "Bu işlem mutabık kılınmış ve kilitli. Değiştirmek için Ayarlar'da 'Mutabık kılınan işlemleri kilitle' seçeneğini kapatın.",
+    "convertToTransferRefused": "Bu işlem artık bir transfere dönüştürülemez. İşlemi gözden geçirip kuralı yeniden çalıştırın",
     "pagePositiveInteger": "page pozitif bir tamsayı olmalıdır",
     "limitPositiveInteger": "limit pozitif bir tamsayı olmalıdır",
     "limitMax200": "limit 200'ü geçemez",

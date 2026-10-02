@@ -17,6 +17,13 @@ import {
 import { TransactionRule } from "./transaction-rule.entity";
 import { TransactionRulesApplierService } from "./transaction-rules-applier.service";
 
+jest.mock("../transactions/convert-to-transfer", () => ({
+  convertRowToTransfer: jest.fn().mockResolvedValue({
+    counterpartId: "counterpart-1",
+    affectedAccountIds: ["00000000-0000-4000-8000-000000000002"],
+  }),
+}));
+
 /**
  * The applier hands the planner the owner's accounts a structural action may
  * target (B1: planning only; the write of the structure is a later phase).
@@ -102,6 +109,8 @@ function harness(accounts: Array<{ id: string; currencyCode: string }>) {
     } as unknown as TagsService,
     { enqueue: jest.fn() } as unknown as AiReviewRequestsService,
     { resolveByName: jest.fn() } as unknown as PayeesService,
+    {} as never,
+    {} as never,
   );
   return { m: m as never, mock: m, accountFind, service };
 }
@@ -176,11 +185,15 @@ describe("the applier plans structural actions with the owner's accounts", () =>
     const [applied] = await h.service.applyToNew(h.m, USER, [TX], "create", {
       rules: [rule([CONVERT])],
     });
+    // Planned with the owner's accounts, then written (B2): the structure
+    // comes back carrying the counterpart the write created.
     expect(applied.effects.changes.structure).toEqual({
       kind: "transfer",
       accountId: LOAN,
       clearCategory: true,
+      counterpartIds: ["counterpart-1"],
     });
+    expect(applied.affectedAccountIds).toEqual([LOAN]);
   });
 
   it("applyToNew refuses an account the owner does not have open", async () => {

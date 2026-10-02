@@ -19,6 +19,11 @@ export interface TransferStructurePlan {
   /** The account that receives the counterpart leg. */
   readonly accountId: string;
   readonly clearCategory: boolean;
+  /**
+   * The leg the write created in `accountId`. Absent in a plan; set by the
+   * applier on the trace it stores, so the run's undo and the trace show it.
+   */
+  readonly counterpartIds?: readonly string[];
 }
 
 /** One part of a planned split; `amount` is signed like the row, 4 decimals. */
@@ -34,6 +39,11 @@ export interface SplitStructurePart {
 export interface SplitStructurePlan {
   readonly kind: "split";
   readonly parts: readonly SplitStructurePart[];
+  /**
+   * The counterpart legs the write created, one per transfer part in part
+   * order. Absent in a plan; set by the applier on the stored trace.
+   */
+  readonly counterpartIds?: readonly string[];
 }
 
 export type RuleStructurePlan = TransferStructurePlan | SplitStructurePlan;

@@ -538,11 +538,13 @@
     "ruleInvalid": "Esta regra não é válida, então não pode ser executada. Abra-a e corrija-a primeiro",
     "dateRangeInvalid": "A data inicial não pode ser posterior à data final",
     "activeWindowInvalid": "A primeira data ativa não pode ser posterior à última data ativa",
-    "runTooLarge": "Esta execução altera transações demais para ser desfeita em uma única etapa. Restrinja as contas ou as datas e tente novamente"
+    "runTooLarge": "Esta execução altera transações demais para ser desfeita em uma única etapa. Restrinja as contas ou as datas e tente novamente",
+    "runRedoStructural": "Esta execução reestruturou transações (transferências ou divisões), então não pode ser refeita. Execute a regra novamente"
   },
   "transactions": {
     "invalidStatus": "Status de transação inválido: {{ status }}",
     "reconciledLocked": "Esta transação está reconciliada e bloqueada. Desative «Bloquear transações reconciliadas» nas Configurações para alterá-la.",
+    "convertToTransferRefused": "Esta transação não pode mais ser convertida em transferência. Revise-a e execute a regra novamente",
     "pagePositiveInteger": "page deve ser um número inteiro positivo",
     "limitPositiveInteger": "limit deve ser um número inteiro positivo",
     "limitMax200": "limit não deve exceder 200",

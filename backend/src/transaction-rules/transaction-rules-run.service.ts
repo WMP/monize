@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
+  forwardRef,
 } from "@nestjs/common";
 import { isDeepStrictEqual } from "node:util";
 import { DataSource, EntityManager } from "typeorm";
@@ -11,6 +13,7 @@ import {
 } from "../action-history/action-history.service";
 import { RULE_RUN_ENTITY_TYPE } from "../action-history/rule-run-undo";
 import { withScopedDb } from "../common/db/scoped-db";
+import { NetWorthService } from "../net-worth/net-worth.service";
 import { tr } from "../i18n/translate";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
 import { isReconciledLockEnabled } from "../transactions/reconciled-lock.util";
@@ -132,6 +135,10 @@ export class TransactionRulesRunService {
     private readonly rulesService: TransactionRulesService,
     private readonly applier: TransactionRulesApplierService,
     private readonly actionHistory: ActionHistoryService,
+    // forwardRef: the net-worth module reaches the transactions module, which
+    // reaches this one (create's rules step).
+    @Inject(forwardRef(() => NetWorthService))
+    private readonly netWorth: NetWorthService,
   ) {}
 
   /** What running a saved rule on existing transactions would change. Writes nothing. */
@@ -259,22 +266,31 @@ export class TransactionRulesRunService {
       // transfer share it), inside this transaction, before the row is
       // written; the snapshots then hold its id.
       const written: PlannedUnit[] = [];
+      // Accounts a structural action moved; their net-worth state is
+      // invalidated after the commit, never in here (INV-CACHE-001).
+      const affectedAccountIds = new Set<string>();
       for (const { unit, effects } of plan.writable) {
         const resolved = await this.applier.resolveCreatedPayee(
           m,
           userId,
           effects,
         );
+        // The effects as written: a structural write adds the counterpart ids
+        // the snapshot (and so the undo) needs. A structural action is never
+        // planned on a transfer pair, so its unit has one leg.
+        let writtenEffects = resolved;
         for (const leg of unit.legs) {
-          await this.applier.writeEffects(
+          const result = await this.applier.writeEffects(
             m,
             userId,
             leg.id,
             resolved,
             "manual",
+            affectedAccountIds,
           );
+          if (leg === unit.primary) writtenEffects = result;
         }
-        written.push({ unit, effects: resolved });
+        written.push({ unit, effects: writtenEffects });
       }
       const { before, after } = buildRunSnapshots(
         written,
@@ -292,10 +308,17 @@ export class TransactionRulesRunService {
         plan.asking.map(({ unit, effects }) => ({
           transactionId: unit.primary.id,
           effects,
+          affectedAccountIds: [],
         })),
       );
-      return { rule, plan, before, after };
+      return { rule, plan, before, after, affectedAccountIds };
     });
+
+    // After the commit, so a rollback leaves nothing queued: the accounts a
+    // structural action credited have derived state (net worth) to refresh.
+    for (const accountId of done.affectedAccountIds) {
+      this.netWorth.triggerDebouncedRecalc(accountId, userId);
+    }
 
     const changed = done.before.length;
     // After the commit: a history write inside the transaction would hide an

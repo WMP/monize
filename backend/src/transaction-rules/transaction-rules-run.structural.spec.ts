@@ -132,6 +132,8 @@ function setup(
     { addTransactionTags: jest.fn() } as never,
     { enqueue: jest.fn() } as never,
     { resolveByName: jest.fn(), findOrCreate: jest.fn() } as never,
+    {} as never,
+    {} as never,
   );
   jest
     .spyOn(applier, "loadTagIds")
@@ -152,6 +154,7 @@ function setup(
     } as unknown as TransactionRulesService,
     applier,
     { record: jest.fn() } as unknown as ActionHistoryService,
+    { triggerDebouncedRecalc: jest.fn() } as never,
   );
   return { service };
 }
