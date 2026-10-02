@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StrictMode } from 'react';
 import { AxiosError, AxiosHeaders } from 'axios';
 import toast from 'react-hot-toast';
@@ -139,9 +139,30 @@ const loaded = async (over: { strict?: boolean } = {}) => {
 const tab = (name: RegExp | string) => screen.getByRole('tab', { name });
 const bodyRows = () => within(screen.getByRole('tabpanel')).getAllByRole('row').slice(1);
 
+const PHONE_QUERY = '(max-width: 639px)';
+const originalMatchMedia = window.matchMedia;
+
+/** Answer `true` only for the phone query `useIsMobile` asks. */
+function setPhoneViewport(isPhone: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: isPhone && query === PHONE_QUERY,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockPreviewAccount.mockResolvedValue(preview());
+});
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
 });
 
 describe('BankSyncPreviewModal', () => {
@@ -376,6 +397,193 @@ describe('BankSyncPreviewModal', () => {
       ).toBeInTheDocument();
       fireEvent.click(tab('Pending (0)'));
       expect(screen.getByText('No transactions in this list.')).toBeInTheDocument();
+    });
+  });
+
+  describe('the layout', () => {
+    it('opens in the widest modal and fills a phone', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.className).toContain('max-w-6xl');
+      expect(dialog.className).toContain('max-sm:h-dvh');
+    });
+
+    it('lays the summary out in two columns from sm', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const summary = screen.getByText('Monize balance now').closest('dl') as HTMLElement;
+      expect(summary.className).toContain('grid-cols-1');
+      expect(summary.className).toContain('sm:grid-cols-2');
+    });
+
+    it('draws five fixed-width columns, with the category hidden below lg', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const panel = screen.getByRole('tabpanel');
+      const headers = within(panel).getAllByRole('columnheader');
+      expect(headers.map((h) => h.textContent)).toEqual([
+        'Date',
+        'Payee',
+        'Category',
+        'Amount',
+        'Status',
+      ]);
+      // Only the category column gives way, and only below lg.
+      expect(headers[2].className).toContain('hidden');
+      expect(headers[2].className).toContain('lg:table-cell');
+      expect(headers[0].className).not.toContain('hidden');
+      expect(headers[3].className).not.toContain('hidden');
+      expect(headers[4].className).not.toContain('hidden');
+      const table = within(panel).getByRole('table');
+      expect(table.className).toContain('table-fixed');
+      expect(table.querySelectorAll('colgroup > col')).toHaveLength(5);
+    });
+
+    it('keeps the header row in place while the rows scroll, and scrolls only vertically', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const panel = screen.getByRole('tabpanel');
+      for (const header of within(panel).getAllByRole('columnheader')) {
+        expect(header.className).toContain('sticky');
+        expect(header.className).toContain('top-0');
+      }
+      const scroller = within(panel).getByRole('table').parentElement as HTMLElement;
+      expect(scroller.className).toContain('overflow-y-auto');
+      expect(scroller.className).not.toContain('overflow-x');
+    });
+
+    it('prints the amount right-aligned, on one line, coloured by its sign', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const [spent, received] = bodyRows();
+      const spentCell = within(spent).getByText('PLN -50.00').closest('td') as HTMLElement;
+      expect(spentCell.className).toContain('text-right');
+      expect(spentCell.className).toContain('whitespace-nowrap');
+      expect(spentCell.className).toContain('tabular-nums');
+      expect(within(spent).getByText('PLN -50.00').className).toContain('text-red-600');
+      expect(within(received).getByText('PLN 1200.12').className).toContain('text-green-600');
+    });
+
+    it('gives an amount the bank sent unreadable no sign colour', async () => {
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [row({ outcome: 'refused', refusalReason: 'invalid_amount', amount: null })],
+          summary: { new: 0, duplicate: 0, refused: 1, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const unknown = within(bodyRows()[0]).getByText('Unknown');
+      expect(unknown.className).not.toMatch(/text-(red|green)-/);
+    });
+
+    it('truncates a long payee, description and category and keeps the full text in a title', async () => {
+      const longPayee = 'A very long payee name '.repeat(8).trim();
+      const longDescription = 'A very long bank description '.repeat(8).trim();
+      mockPreviewAccount.mockResolvedValue(
+        preview({
+          rows: [
+            row({
+              payeeText: longPayee,
+              payeeName: longPayee,
+              description: longDescription,
+              categoryName: 'Household: Cleaning supplies and more',
+            }),
+          ],
+        }),
+      );
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const only = bodyRows()[0];
+      const payee = within(only).getByText(longPayee);
+      expect(payee).toHaveAttribute('title', longPayee);
+      expect(payee.className).toContain('truncate');
+      expect(payee.className).toContain('min-w-0');
+      const description = within(only).getByText(longDescription).closest('[title]') as HTMLElement;
+      expect(description).toHaveAttribute('title', longDescription);
+      expect(description.className).toContain('truncate');
+      const category = within(only).getByText('Household: Cleaning supplies and more');
+      expect(category).toHaveAttribute('title', 'Household: Cleaning supplies and more');
+      expect(category.className).toContain('truncate');
+    });
+
+    it('puts the description beneath the payee in muted small text', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const payeeCell = within(bodyRows()[0]).getByText('Biedronka').closest('td') as HTMLElement;
+      const description = within(payeeCell).getByText('Groceries').closest('[title]') as HTMLElement;
+      expect(description.className).toContain('text-xs');
+      expect(description.className).toContain('text-gray-500');
+    });
+
+    it('wraps the outcome tabs instead of scrolling them sideways', async () => {
+      await loaded();
+      await screen.findByText('Monize balance now');
+      const tablist = screen.getByRole('tablist');
+      expect(tablist.className).toContain('flex-wrap');
+      const scroller = tablist.parentElement as HTMLElement;
+      expect(scroller.className).not.toContain('overflow-x-auto');
+    });
+
+    describe('on a phone', () => {
+      beforeEach(() => setPhoneViewport(true));
+
+      it('draws a card per row and no table', async () => {
+        await loaded();
+        await screen.findByText('Monize balance now');
+        const panel = screen.getByRole('tabpanel');
+        expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
+        expect(within(panel).queryAllByRole('columnheader')).toHaveLength(0);
+        expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
+      });
+
+      it('shows the date and amount, then the payee, description and outcome', async () => {
+        await loaded();
+        await screen.findByText('Monize balance now');
+        const [first, second] = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+        expect(within(first).getByText('on 2026-09-10')).toBeInTheDocument();
+        const amount = within(first).getByText('PLN -50.00');
+        expect(amount.className).toContain('text-red-600');
+        expect(amount.className).toContain('tabular-nums');
+        const payee = within(first).getByText('Biedronka');
+        expect(payee).toHaveAttribute('title', 'Biedronka');
+        expect(payee.className).toContain('truncate');
+        const description = within(first).getByText('Groceries').closest('[title]') as HTMLElement;
+        expect(description.className).toContain('truncate');
+        expect(description.className).toContain('text-gray-500');
+        expect(within(first).getAllByText('New')).toHaveLength(1);
+        expect(within(second).getByText('PLN 1200.12').className).toContain('text-green-600');
+      });
+
+      it('follows the tabs and names a refused row in the currency the bank sent it in', async () => {
+        await loaded();
+        await screen.findByText('Monize balance now');
+        fireEvent.click(tab('Refused (1)'));
+        const [card] = within(screen.getByRole('tabpanel')).getAllByRole('listitem');
+        expect(within(card).getByText('EUR -5.00')).toBeInTheDocument();
+        expect(within(card).getByText('Other currency')).toBeInTheDocument();
+        expect(within(card).getByText('Abroad')).toBeInTheDocument();
+      });
+
+      it('shows an unreadable amount as unknown, and tags and category on the card', async () => {
+        mockPreviewAccount.mockResolvedValue(
+          preview({
+            rows: [row({ amount: null, tagNames: ['Weekly'], categoryName: 'Food' })],
+          }),
+        );
+        await loaded();
+        await screen.findByText('Monize balance now');
+        const card = within(screen.getByRole('tabpanel')).getAllByRole('listitem')[0];
+        expect(within(card).getByText('Unknown')).toBeInTheDocument();
+        expect(within(card).getByText('Weekly')).toBeInTheDocument();
+        expect(within(card).getByText('Food')).toBeInTheDocument();
+      });
+
+      it('keeps the empty state and the import button', async () => {
+        await loaded();
+        expect(await screen.findByRole('button', { name: 'Import 2 transactions' })).toBeEnabled();
+      });
     });
   });
 

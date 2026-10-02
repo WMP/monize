@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
 import { isAxiosError } from 'axios';
 import { useTranslations } from 'next-intl';
@@ -12,8 +12,9 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, tabId, tabPanelId, type TabItem } from '@/components/ui/Tabs';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
-import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { TABLE_BODY_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { bankSyncApi } from '@/lib/bank-sync';
 import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
@@ -28,6 +29,7 @@ import {
   type PreviewFilter,
 } from '@/lib/bank-sync-preview';
 import { getErrorMessage } from '@/lib/errors';
+import { gainLossColor } from '@/lib/format';
 import type { BankSyncPreview, BankSyncPreviewRow, BankSyncResult } from '@/types/bank-sync';
 
 interface BankSyncPreviewModalProps {
@@ -49,6 +51,22 @@ type Loaded =
   | { state: 'ready'; preview: BankSyncPreview };
 
 const TAB_ID_PREFIX = 'bank-sync-preview';
+
+/**
+ * The list scrolls inside the modal so the footer's Import button never leaves
+ * the screen: the panel is capped at 90vh (the whole viewport on a phone) and
+ * scrolls as one, so the list is capped at what is left after the header, the
+ * summary, the tabs and the footer. The floor keeps a short window usable.
+ */
+const LIST_HEIGHT_CLASS =
+  'max-h-[max(12rem,calc(100dvh-27rem))] sm:max-h-[max(12rem,calc(90vh-24rem))]';
+
+/** A header cell that stays put while the rows scroll under it. */
+const STICKY_TH_CLASS =
+  'sticky top-0 z-10 border-b border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-gray-800';
+
+/** Body cells: tighter than the default so five columns fit one screen. */
+const CELL_CLASS = 'px-3 align-top';
 
 /**
  * What a sync of one bank account would do, row by row, before it does it
@@ -139,7 +157,7 @@ export function BankSyncPreviewModal({
       title={t('title', { account: accountName })}
       description={t('description')}
       padding="md"
-      maxWidth="4xl"
+      maxWidth="6xl"
       fullScreenOnPhone
       pushHistory
       footer={
@@ -196,6 +214,9 @@ function PreviewBody({
   const t = useTranslations('settings.bankSync.preview');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
+  // A phone gets a card per row. Both layouts show the same figures, so this
+  // selects a presentation, not a different answer.
+  const isPhone = useIsMobile();
 
   const counts = previewFilterCounts(preview.rows);
   const tabs: TabItem<PreviewFilter>[] = PREVIEW_FILTERS.map((key) => ({
@@ -216,15 +237,12 @@ function PreviewBody({
 
   return (
     <div className="space-y-4">
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-        <dt className="text-gray-500 dark:text-gray-400">{t('monizeBalance')}</dt>
-        <dd className="text-gray-900 dark:text-gray-100">{money(preview.monizeBalance)}</dd>
-        <dt className="text-gray-500 dark:text-gray-400">{t('balanceAfter')}</dt>
-        <dd className="font-medium text-gray-900 dark:text-gray-100">
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+        <SummaryItem label={t('monizeBalance')}>{money(preview.monizeBalance)}</SummaryItem>
+        <SummaryItem label={t('balanceAfter')} strong>
           {money(preview.balanceAfter)}
-        </dd>
-        <dt className="text-gray-500 dark:text-gray-400">{t('bankBalance')}</dt>
-        <dd className="text-gray-900 dark:text-gray-100">
+        </SummaryItem>
+        <SummaryItem label={t('bankBalance')}>
           {bank !== null && bankAmount !== null
             ? bank.referenceDate
               ? t('bankBalanceAsOf', {
@@ -233,17 +251,18 @@ function PreviewBody({
                 })
               : formatCurrency(bankAmount, bank.currencyCode)
             : t('bankBalanceNotReported')}
-        </dd>
+        </SummaryItem>
         {differenceAmount !== null && (
-          <>
-            <dt className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-              {t('difference')}
-              <InfoTooltip text={t('differenceHelp')} usePortal />
-            </dt>
-            <dd className="text-gray-900 dark:text-gray-100">
-              {formatCurrency(differenceAmount, preview.currencyCode)}
-            </dd>
-          </>
+          <SummaryItem
+            label={
+              <>
+                {t('difference')}
+                <InfoTooltip text={t('differenceHelp')} usePortal />
+              </>
+            }
+          >
+            {formatCurrency(differenceAmount, preview.currencyCode)}
+          </SummaryItem>
         )}
       </dl>
       {currenciesDiffer && bank && (
@@ -261,6 +280,7 @@ function PreviewBody({
         onChange={onFilterChange}
         idPrefix={TAB_ID_PREFIX}
         ariaLabel={t('filterLabel')}
+        wrap
       />
 
       <div
@@ -272,16 +292,35 @@ function PreviewBody({
           <EmptyState
             title={filter === 'all' ? t('empty.all') : t('empty.filtered')}
           />
+        ) : isPhone ? (
+          <ul
+            className={`scrollbar-slim ${LIST_HEIGHT_CLASS} divide-y divide-gray-200 overflow-y-auto dark:divide-gray-700`}
+          >
+            {shown.map((row, index) => (
+              <PreviewCard key={index} row={row} accountCurrency={preview.currencyCode} />
+            ))}
+          </ul>
         ) : (
-          <div className="scrollbar-slim max-h-[50vh] overflow-y-auto">
-            <table className={TABLE_CLASS}>
+          <div className={`scrollbar-slim ${LIST_HEIGHT_CLASS} overflow-y-auto`}>
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-32" />
+                <col />
+                <col className="hidden w-[22%] lg:table-column" />
+                <col className="w-40" />
+                <col className="w-44" />
+              </colgroup>
               <thead>
                 <tr>
-                  <Th>{t('columns.date')}</Th>
-                  <Th>{t('columns.payee')}</Th>
-                  <Th className="hidden sm:table-cell">{t('columns.category')}</Th>
-                  <Th className="hidden sm:table-cell">{t('columns.status')}</Th>
-                  <Th align="right">{t('columns.amount')}</Th>
+                  <Th className={STICKY_TH_CLASS}>{t('columns.date')}</Th>
+                  <Th className={STICKY_TH_CLASS}>{t('columns.payee')}</Th>
+                  <Th className={`${STICKY_TH_CLASS} hidden lg:table-cell`}>
+                    {t('columns.category')}
+                  </Th>
+                  <Th align="right" className={STICKY_TH_CLASS}>
+                    {t('columns.amount')}
+                  </Th>
+                  <Th className={STICKY_TH_CLASS}>{t('columns.status')}</Th>
                 </tr>
               </thead>
               <tbody className={TABLE_BODY_CLASS}>
@@ -297,13 +336,34 @@ function PreviewBody({
   );
 }
 
-function PreviewRow({
-  row,
-  accountCurrency,
+/** One label and its figure; a pair per cell of the summary's two-column grid. */
+function SummaryItem({
+  label,
+  strong = false,
+  children,
 }: {
-  row: BankSyncPreviewRow;
-  accountCurrency: string;
+  label: ReactNode;
+  strong?: boolean;
+  children: ReactNode;
 }) {
+  return (
+    <div className="flex min-w-0 items-baseline justify-between gap-3">
+      <dt className="flex shrink-0 items-center gap-1 text-gray-500 dark:text-gray-400">
+        {label}
+      </dt>
+      <dd
+        className={`min-w-0 text-right tabular-nums text-gray-900 dark:text-gray-100${
+          strong ? ' font-medium' : ''
+        }`}
+      >
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/** What both layouts of a row print, worked out once. */
+function useRowDisplay(row: BankSyncPreviewRow, accountCurrency: string) {
   const t = useTranslations('settings.bankSync.preview');
   const { formatDate } = useDateFormat();
   const { formatCurrency, formatNumber } = useNumberFormat();
@@ -323,29 +383,52 @@ function PreviewRow({
     (KNOWN_REFUSAL_REASONS as readonly string[]).includes(row.refusalReason)
       ? row.refusalReason
       : 'other';
-  const status =
-    row.outcome === 'refused' ? t(`refusal.${refusal}`) : t(`outcome.${row.outcome}`);
-  const payee = row.payeeName ?? row.payeeText;
-  const dimmed = row.outcome !== 'new';
+
+  return {
+    dateText: row.transactionDate ? formatDate(row.transactionDate) : t('dateUnknown'),
+    payeeText: row.payeeName ?? row.payeeText ?? t('noPayee'),
+    amountText,
+    // An unreadable amount is unknown, so it takes no sign colour.
+    amountClass: amount === null ? '' : gainLossColor(amount),
+    status: row.outcome === 'refused' ? t(`refusal.${refusal}`) : t(`outcome.${row.outcome}`),
+    dimmed: row.outcome !== 'new',
+  };
+}
+
+function PreviewRow({
+  row,
+  accountCurrency,
+}: {
+  row: BankSyncPreviewRow;
+  accountCurrency: string;
+}) {
+  const { dateText, payeeText, amountText, amountClass, status, dimmed } = useRowDisplay(
+    row,
+    accountCurrency,
+  );
 
   return (
     <tr className={dimmed ? 'text-gray-500 dark:text-gray-400' : undefined}>
-      <Td className="whitespace-nowrap">
-        {row.transactionDate ? formatDate(row.transactionDate) : t('dateUnknown')}
-      </Td>
-      <Td className="max-w-[12rem] sm:max-w-none">
-        <div className="truncate">{payee ?? t('noPayee')}</div>
+      <Td className={`${CELL_CLASS} whitespace-nowrap`}>{dateText}</Td>
+      <Td className={CELL_CLASS}>
+        <div className="min-w-0 truncate" title={payeeText}>
+          {payeeText}
+        </div>
         {row.description && (
-          <div className="truncate text-xs text-gray-500 dark:text-gray-400">
+          <div
+            className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400"
+            title={row.description}
+          >
             <LinkifiedText text={row.description} />
           </div>
         )}
-        <div className="mt-1 sm:hidden">
-          <Badge variant={OUTCOME_VARIANTS[row.outcome]}>{status}</Badge>
-        </div>
       </Td>
-      <Td className="hidden sm:table-cell">
-        {row.categoryName}
+      <Td className={`${CELL_CLASS} hidden lg:table-cell`}>
+        {row.categoryName && (
+          <div className="min-w-0 truncate" title={row.categoryName}>
+            {row.categoryName}
+          </div>
+        )}
         {row.tagNames.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {row.tagNames.map((tag) => (
@@ -354,12 +437,65 @@ function PreviewRow({
           </div>
         )}
       </Td>
-      <Td className="hidden sm:table-cell">
+      <Td align="right" className={`${CELL_CLASS} whitespace-nowrap tabular-nums`}>
+        <span className={amountClass}>{amountText}</span>
+      </Td>
+      <Td className={`${CELL_CLASS} whitespace-nowrap`}>
         <Badge variant={OUTCOME_VARIANTS[row.outcome]}>{status}</Badge>
       </Td>
-      <Td align="right" className="whitespace-nowrap">
-        {amountText}
-      </Td>
     </tr>
+  );
+}
+
+/** A row on a phone: date and amount, the payee, the description, then the outcome. */
+function PreviewCard({
+  row,
+  accountCurrency,
+}: {
+  row: BankSyncPreviewRow;
+  accountCurrency: string;
+}) {
+  const { dateText, payeeText, amountText, amountClass, status, dimmed } = useRowDisplay(
+    row,
+    accountCurrency,
+  );
+
+  return (
+    <li
+      className={`space-y-1 py-3 text-sm ${
+        dimmed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+          {dateText}
+        </span>
+        <span className={`whitespace-nowrap font-medium tabular-nums ${amountClass}`}>
+          {amountText}
+        </span>
+      </div>
+      <div className="min-w-0 truncate font-medium" title={payeeText}>
+        {payeeText}
+      </div>
+      {row.description && (
+        <div
+          className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400"
+          title={row.description}
+        >
+          <LinkifiedText text={row.description} />
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-1 pt-0.5">
+        <Badge variant={OUTCOME_VARIANTS[row.outcome]}>{status}</Badge>
+        {row.categoryName && (
+          <span className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400">
+            {row.categoryName}
+          </span>
+        )}
+        {row.tagNames.map((tag) => (
+          <Badge key={tag}>{tag}</Badge>
+        ))}
+      </div>
+    </li>
   );
 }
