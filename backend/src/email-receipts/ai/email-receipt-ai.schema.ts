@@ -30,38 +30,54 @@ export function extractJsonObject(content: unknown): unknown {
   return undefined;
 }
 
-export const REVIEW_MAX_SPLITS = 50;
-export const REVIEW_MAX_MEMO = 200;
-export const REVIEW_MAX_DESCRIPTION = 750;
-const MAX_CATEGORY_NAME = 200;
+export const EXTRACTION_MAX_ITEMS = 100;
+export const EXTRACTION_MAX_ORDER_ID = 100;
+export const EXTRACTION_MAX_ITEM_NAME = 200;
+export const EXTRACTION_MAX_DESCRIPTION = 300;
+/** Longest amount text read: more than any amount written on a receipt. */
+const MAX_AMOUNT_TEXT = 40;
+/** Longest category id read; a longer string is not an id and reads as none. */
+const MAX_CATEGORY_ID = 100;
+const MAX_QTY = 9999;
 
 /** A model leaves a key out as often as it sends null: both mean "not given". */
 const optional = <T extends z.ZodTypeAny>(schema: T) =>
   schema.nullish().transform((value) => value ?? undefined);
 
+/** An amount as the email wrote it: text ("1.234,56 zl") or a plain JSON number. */
+const amountValue = z.union([
+  z.string().trim().min(1).max(MAX_AMOUNT_TEXT),
+  z.number().finite(),
+]);
+
 /**
- * What a review may answer (bounded): split lines, or one category, and a
- * description. Unknown keys are refused, so an answer that tries to carry an
- * amount, a date or an account for the transaction is not an answer.
+ * What the AI reads out of an order email (spec "AI extraction"): the receipt's
+ * own content, never a split of the transaction. Amounts are the line totals as
+ * the email states them; they become 1/10000 units in
+ * `buildAiParsedReceipt`, which also drops what does not convert. Unknown keys
+ * are refused, so an answer cannot carry an account, a date or a status for the
+ * transaction.
  */
-export const receiptReviewSchema = z
+export const receiptExtractionSchema = z
   .object({
-    splits: optional(
-      z
-        .array(
-          z
-            .object({
-              categoryName: z.string().trim().min(1).max(MAX_CATEGORY_NAME),
-              amount: z.number().finite(),
-              memo: optional(z.string().trim().max(REVIEW_MAX_MEMO)),
-            })
-            .strict(),
-        )
-        .max(REVIEW_MAX_SPLITS),
-    ),
-    categoryName: optional(z.string().trim().min(1).max(MAX_CATEGORY_NAME)),
-    description: optional(z.string().trim().max(REVIEW_MAX_DESCRIPTION)),
+    orderId: optional(z.string().trim().max(EXTRACTION_MAX_ORDER_ID)),
+    items: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(EXTRACTION_MAX_ITEM_NAME),
+            qty: optional(z.number().int().min(1).max(MAX_QTY)),
+            amount: amountValue,
+            categoryId: optional(z.string().trim().max(MAX_CATEGORY_ID)),
+          })
+          .strict(),
+      )
+      .max(EXTRACTION_MAX_ITEMS),
+    shipping: optional(amountValue),
+    discount: optional(amountValue),
+    total: optional(amountValue),
+    description: optional(z.string().trim().max(EXTRACTION_MAX_DESCRIPTION)),
   })
   .strict();
 
-export type ReceiptReviewAnswer = z.infer<typeof receiptReviewSchema>;
+export type ReceiptExtractionAnswer = z.infer<typeof receiptExtractionSchema>;

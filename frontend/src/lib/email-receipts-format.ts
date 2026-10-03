@@ -63,6 +63,7 @@ export function readParsedReceipt(value: unknown): ParsedReceipt | null {
     discountCategoryId: readText(value.discountCategoryId),
     complete: value.complete === true,
     reason: reason ?? null,
+    ...(value.source === 'ai' || value.source === 'parser' ? { source: value.source } : {}),
   };
 }
 
@@ -93,4 +94,27 @@ export function shownReceiptState(receipt: Pick<EmailReceiptListItem, 'status' |
 /** Whether a person can still change what the email proposes (it is neither closed nor applied). */
 export function isReceiptActionable(receipt: Pick<EmailReceiptListItem, 'status' | 'displayState'>): boolean {
   return receipt.status !== 'skipped' && receipt.status !== 'ignored' && receipt.displayState !== 'applied';
+}
+
+/** The states from which "Recognize with AI" is offered: nothing read it, or what read it was dismissed or lost. */
+const RECOGNIZABLE_STATES: readonly EmailReceiptShownState[] = [
+  'no_parser',
+  'parse_failed',
+  'unmatched',
+  'ambiguous',
+  'review_conflict',
+  'dismissed',
+  'expired',
+  'request_missing',
+];
+
+/**
+ * Whether the button "Recognize with AI" is offered for an email. Whatever the
+ * mailbox's AI mode (it governs only what happens by itself; pressing the button
+ * is the person's consent). An email with an applied request, an ignored or a
+ * skipped one, one still waiting to be read and one whose proposal is waiting
+ * for approval or for an agent gets no button.
+ */
+export function canRecognizeWithAi(receipt: Pick<EmailReceiptListItem, 'status' | 'displayState'>): boolean {
+  return RECOGNIZABLE_STATES.includes(shownReceiptState(receipt));
 }

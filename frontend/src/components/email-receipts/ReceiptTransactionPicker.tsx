@@ -34,6 +34,13 @@ interface ReceiptTransactionPickerProps {
   /** The transaction being linked right now, if any; every Link button waits while one is. */
   linkingId: string | null;
   onLink: (transactionId: string) => void;
+  /**
+   * `link` (the default) is the detail dialog's "choose the transaction this
+   * email paid for". `ai` is "Recognize with AI": the same list, the same
+   * exclusions, but the choice is handed to the AI rather than stored as a
+   * link, and the copy says so.
+   */
+  mode?: 'link' | 'ai';
 }
 
 /**
@@ -50,7 +57,7 @@ interface ReceiptTransactionPickerProps {
  * The window is calendar arithmetic on the `YYYY-MM-DD` day (`shiftDate`), never
  * a `Date` built from it.
  */
-export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink }: ReceiptTransactionPickerProps) {
+export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode = 'link' }: ReceiptTransactionPickerProps) {
   const t = useTranslations('emailReceipts.picker');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -98,10 +105,10 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink }: Rece
   return (
     <section aria-labelledby="receipt-picker-heading" className="space-y-2">
       <h3 id="receipt-picker-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        {t('heading')}
+        {t(mode === 'ai' ? 'ai.heading' : 'heading')}
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        {t('help', { from: formatDate(from), to: formatDate(to) })}
+        {t(mode === 'ai' ? 'ai.help' : 'help', { from: formatDate(from), to: formatDate(to) })}
       </p>
 
       <form
@@ -164,7 +171,7 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink }: Rece
                   disabled={linkingId !== null}
                   onClick={() => onLink(row.id)}
                 >
-                  {t('linkButton')}
+                  {t(mode === 'ai' ? 'ai.linkButton' : 'linkButton')}
                 </Button>
               </li>
             ))}

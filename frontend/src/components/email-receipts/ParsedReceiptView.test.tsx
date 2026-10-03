@@ -59,4 +59,16 @@ describe('ParsedReceiptView', () => {
     expect(screen.getByText('No line items were read.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
+
+  it('says when the AI read the email, and says nothing for a parser', () => {
+    const { rerender } = render(
+      <ParsedReceiptView parsed={{ ...parsed, source: 'ai' }} currencyCode="USD" categoryLabels={labels} />,
+    );
+    expect(screen.getByText('Read by the AI')).toBeInTheDocument();
+
+    rerender(<ParsedReceiptView parsed={{ ...parsed, source: 'parser' }} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
+    rerender(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
+  });
 });

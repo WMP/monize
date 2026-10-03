@@ -2,7 +2,10 @@ import "reflect-metadata";
 import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { ROUTE_ARGS_METADATA } from "@nestjs/common/constants";
 import { ParseUUIDPipe } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import { ALLOW_DELEGATE_KEY } from "../../delegation/decorators/delegate-access.decorator";
+import { AskAiEmailReceiptDto } from "./dto/email-receipts.dto";
 import { EmailReceiptsController } from "./email-receipts.controller";
 
 describe("EmailReceiptsController", () => {
@@ -58,11 +61,51 @@ describe("EmailReceiptsController", () => {
     expect(receipts.link).toHaveBeenCalledWith("user-1", ID, "t1");
   });
 
-  it("asks the AI and drafts a parser for the JWT user", async () => {
-    await controller.askAi(req, ID);
+  it("asks the AI with the chosen transaction of the body, never a user of the body", async () => {
+    await controller.askAi(req, ID, {
+      transactionId: "t1",
+      userId: "someone-else",
+    } as never);
+    expect(ai.askAi).toHaveBeenCalledWith("user-1", ID, "t1");
+  });
+
+  it.each([{}, { transactionId: null }, { transactionId: "" }])(
+    "asks the AI about the email's own transaction for the body %j",
+    async (body) => {
+      await controller.askAi(req, ID, body as never);
+      expect(ai.askAi).toHaveBeenCalledWith("user-1", ID, null);
+    },
+  );
+
+  it("drafts a parser for the JWT user", async () => {
     await controller.draftParser(req, ID);
-    expect(ai.askAi).toHaveBeenCalledWith("user-1", ID);
     expect(ai.draftParser).toHaveBeenCalledWith("user-1", ID);
+  });
+
+  describe("the ask-ai body", () => {
+    const check = (body: object) =>
+      validate(plainToInstance(AskAiEmailReceiptDto, body), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+
+    it.each([
+      {},
+      { transactionId: null },
+      { transactionId: "" },
+      { transactionId: ID },
+    ])("accepts %j", async (body) => {
+      expect(await check(body)).toHaveLength(0);
+    });
+
+    it.each([
+      { transactionId: "not-a-uuid" },
+      { transactionId: 5 },
+      { transactionId: ID, userId: "x" },
+      { unknown: true },
+    ])("refuses %j", async (body) => {
+      expect((await check(body)).length).toBeGreaterThan(0);
+    });
   });
 
   it("is under the JWT guard and refuses a delegate session on every route", () => {
