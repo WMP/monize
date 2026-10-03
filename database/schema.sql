@@ -196,6 +196,10 @@ CREATE TABLE accounts (
     -- 'ANNUITY' | 'CANADIAN_FIXED' | 'LINEAR' | 'INTEREST_ONLY'. Nullable until the
     -- contract migration; a null MORTGAGE row is read from the two flags above.
     mortgage_type VARCHAR(20),
+    -- What an extra repayment does to a LINEAR mortgage's constant principal:
+    -- 'SHORTEN_TERM' (null reads as this) or 'LOWER_INSTALLMENT'. Null on every
+    -- other type (accounts_prepayment_mode_linear_only).
+    prepayment_mode VARCHAR(20),
     term_months INTEGER, -- Mortgage term length in months (e.g., 60 for 5-year term)
     term_end_date DATE, -- When the current term ends (for renewal reminders)
     amortization_months INTEGER, -- Total amortization period in months (e.g., 300 for 25 years)
@@ -211,7 +215,19 @@ CREATE TABLE accounts (
     CONSTRAINT chk_statement_settlement_day_cc_only
       CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL),
     CONSTRAINT accounts_mortgage_type_check
-      CHECK (mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED', 'LINEAR', 'INTEREST_ONLY'))
+      CHECK (mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED', 'LINEAR', 'INTEREST_ONLY')),
+    CONSTRAINT accounts_prepayment_mode_check
+      CHECK (prepayment_mode IN ('SHORTEN_TERM', 'LOWER_INSTALLMENT')),
+    CONSTRAINT accounts_prepayment_mode_linear_only
+      CHECK (prepayment_mode IS NULL OR mortgage_type = 'LINEAR'),
+    -- LINEAR and INTEREST_ONLY have no constant payment; each installment is
+    -- priced at its due date (docs/specs/mortgage-types.md, decision 11).
+    CONSTRAINT accounts_payment_amount_method_check
+      CHECK (
+        payment_amount IS NULL
+        OR mortgage_type IS NULL
+        OR mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED')
+      )
 );
 
 CREATE INDEX idx_accounts_user ON accounts(user_id);

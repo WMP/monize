@@ -34,7 +34,15 @@ import { TransactionsService } from "../transactions/transactions.service";
 import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
 import { InvestmentAction } from "../securities/entities/investment-transaction.entity";
 import { FUNDING_ACCOUNT_ACTIONS } from "../securities/investment-replay.util";
-import { Account, AccountSubType } from "../accounts/entities/account.entity";
+import {
+  Account,
+  AccountSubType,
+  AccountType,
+} from "../accounts/entities/account.entity";
+import {
+  mortgageTypeOf,
+  storesConstantPayment,
+} from "../accounts/mortgage-type.util";
 import {
   SECURITY_REQUIRED_ACTIONS,
   QUANTITY_PRICE_ACTIONS,
@@ -2451,7 +2459,17 @@ export class ScheduledTransactionsService {
         });
         if (loanAccount) {
           const accountUpdate: Partial<Account> = {};
-          if (updateData.amount !== undefined) {
+          // A LINEAR or INTEREST_ONLY mortgage has no constant payment to
+          // record (spec decision 11; the column's CHECK refuses one): the
+          // edit stands for the template only, and the next advancement
+          // reprices it to the method's installment.
+          if (
+            updateData.amount !== undefined &&
+            !(
+              loanAccount.accountType === AccountType.MORTGAGE &&
+              !storesConstantPayment(mortgageTypeOf(loanAccount))
+            )
+          ) {
             accountUpdate.paymentAmount = Math.abs(Number(updateData.amount));
           }
           if (Array.isArray(splits)) {

@@ -5,12 +5,15 @@ import {
   annualizationFor,
   compoundingFor,
   MortgageType,
-  WRITABLE_MORTGAGE_TYPES,
+  PREPAYMENT_MODES,
   flagsFromMortgageType,
   mortgageTypeColumns,
   mortgageTypeFromFlags,
   mortgageTypeOf,
+  prepaymentModeColumn,
+  prepaymentModeOf,
   requestedMortgageType,
+  storesConstantPayment,
 } from "./mortgage-type.util";
 
 describe("mortgageTypeOf", () => {
@@ -104,9 +107,53 @@ describe("mortgageTypeColumns", () => {
   });
 });
 
-describe("WRITABLE_MORTGAGE_TYPES", () => {
-  it("offers only the Phase 1 types", () => {
-    expect([...WRITABLE_MORTGAGE_TYPES]).toEqual(["ANNUITY", "CANADIAN_FIXED"]);
+describe("prepayment mode (spec decisions 4 and 10)", () => {
+  it("lists the two modes the CHECK admits", () => {
+    expect([...PREPAYMENT_MODES]).toEqual([
+      "SHORTEN_TERM",
+      "LOWER_INSTALLMENT",
+    ]);
+  });
+
+  it("reads a null mode as SHORTEN_TERM", () => {
+    expect(prepaymentModeOf({ prepaymentMode: null })).toBe("SHORTEN_TERM");
+    expect(prepaymentModeOf({})).toBe("SHORTEN_TERM");
+    expect(prepaymentModeOf({ prepaymentMode: "LOWER_INSTALLMENT" })).toBe(
+      "LOWER_INSTALLMENT",
+    );
+  });
+
+  it("writes the requested mode, else the stored one, for LINEAR", () => {
+    expect(prepaymentModeColumn("LINEAR", "LOWER_INSTALLMENT", null)).toBe(
+      "LOWER_INSTALLMENT",
+    );
+    expect(prepaymentModeColumn("LINEAR", undefined, "LOWER_INSTALLMENT")).toBe(
+      "LOWER_INSTALLMENT",
+    );
+    expect(prepaymentModeColumn("LINEAR", null, "LOWER_INSTALLMENT")).toBe(
+      null,
+    );
+    expect(prepaymentModeColumn("LINEAR", undefined)).toBe(null);
+  });
+
+  it.each(["ANNUITY", "CANADIAN_FIXED", "INTEREST_ONLY", null] as const)(
+    "writes null for %s whatever the request carries",
+    (type) => {
+      expect(
+        prepaymentModeColumn(type, "LOWER_INSTALLMENT", "SHORTEN_TERM"),
+      ).toBe(null);
+    },
+  );
+});
+
+describe("storesConstantPayment (spec decision 11)", () => {
+  it.each([
+    ["ANNUITY", true],
+    ["CANADIAN_FIXED", true],
+    ["LINEAR", false],
+    ["INTEREST_ONLY", false],
+  ] as const)("%s: %s", (type, stores) => {
+    expect(storesConstantPayment(type)).toBe(stores);
   });
 });
 

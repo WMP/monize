@@ -11,6 +11,18 @@ describe("validateSplitAmountSum", () => {
     ).not.toThrow();
   });
 
+  it("accepts an interest-only mortgage template's zero principal line", () => {
+    // docs/specs/mortgage-types.md section 9: an INTEREST_ONLY template keeps
+    // its principal transfer at 0 beside the interest line. This is the one
+    // validator the scheduled create, update and post paths call.
+    expect(() =>
+      validateSplitAmountSum([{ amount: -0 }, { amount: -500 }], -500),
+    ).not.toThrow();
+    expect(() =>
+      validateSplitAmountSum([{ amount: 0 }, { amount: -883.3333 }], -883.3333),
+    ).not.toThrow();
+  });
+
   it("rejects when the sum does not match", () => {
     expect(() =>
       validateSplitAmountSum([{ amount: 50 }, { amount: 30 }], 100),

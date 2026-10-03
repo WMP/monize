@@ -113,16 +113,51 @@ export function flagsFromMortgageType(type: MortgageType): {
 }
 
 /**
- * The types a request may write in Phase 1 (docs/future-plans/mortgage-types.md,
- * section 4). The CHECK accepts all four from P1-B1, but `LINEAR` and
- * `INTEREST_ONLY` have no method behind them until P2-B1, so the DTOs refuse
- * them (`@IsIn`) rather than store a type the engine would price as an annuity.
+ * What an extra repayment does to a LINEAR mortgage's constant principal
+ * (spec decision 4, table 4.3), stored in `accounts.prepayment_mode`. The list
+ * is the `accounts_prepayment_mode_check` CHECK in `database/schema.sql`.
+ * `SHORTEN_TERM` keeps the principal and ends the loan earlier;
+ * `LOWER_INSTALLMENT` re-derives it as the remaining debt over the remaining
+ * scheduled payments and keeps the end date.
  */
-export const WRITABLE_MORTGAGE_TYPES = [
-  "ANNUITY",
-  "CANADIAN_FIXED",
-] as const satisfies readonly MortgageType[];
-export type WritableMortgageType = (typeof WRITABLE_MORTGAGE_TYPES)[number];
+export const PREPAYMENT_MODES = ["SHORTEN_TERM", "LOWER_INSTALLMENT"] as const;
+export type PrepaymentMode = (typeof PREPAYMENT_MODES)[number];
+
+/**
+ * The mode a LINEAR mortgage prices by: the column, else `SHORTEN_TERM`
+ * (spec decision 10). Only LINEAR reads it; the column is null on every other
+ * type (`accounts_prepayment_mode_linear_only`).
+ */
+export function prepaymentModeOf(row: {
+  prepaymentMode?: PrepaymentMode | null;
+}): PrepaymentMode {
+  return row.prepaymentMode ?? "SHORTEN_TERM";
+}
+
+/**
+ * The `prepayment_mode` a save writes for `type`: the requested mode, else the
+ * stored one, for a LINEAR mortgage; null for every other type, whatever the
+ * request carries, because forms resend every field and a mortgage switched
+ * away from LINEAR would otherwise be refused by the CHECK (spec decision 10).
+ */
+export function prepaymentModeColumn(
+  type: MortgageType | null,
+  requested: PrepaymentMode | null | undefined,
+  stored: PrepaymentMode | null | undefined = null,
+): PrepaymentMode | null {
+  if (type !== "LINEAR") return null;
+  return requested !== undefined ? requested : (stored ?? null);
+}
+
+/**
+ * Whether a mortgage of `type` stores a constant payment in
+ * `accounts.payment_amount`: only the annuity methods. LINEAR and
+ * INTEREST_ONLY price each installment at its due date, so the column is null
+ * for them (spec decision 11, `accounts_payment_amount_method_check`).
+ */
+export function storesConstantPayment(type: MortgageType): boolean {
+  return amortizationMethodFor(type) === "ANNUITY";
+}
 
 interface MortgageFlags {
   isCanadianMortgage?: boolean | null;

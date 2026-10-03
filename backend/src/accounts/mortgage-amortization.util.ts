@@ -25,9 +25,11 @@ import {
 } from "./payment-frequency.util";
 import {
   MortgageType,
+  amortizationMethodFor,
   compoundingFor,
   mortgageTypeFromFlags,
 } from "./mortgage-type.util";
+import { assertMortgageMethodTerms } from "./mortgage-installment.util";
 
 /**
  * The frequency type, the recurrence table and the domain conversion live in
@@ -490,7 +492,89 @@ export function calculateResidualPayoff(
 }
 
 /**
- * Calculate full mortgage amortization details
+ * The preview of a LINEAR or INTEREST_ONLY mortgage, by spec section 5.1's
+ * closed forms. There are no events in a preview, so `r` is the scalar rate
+ * throughout and the debt falls by exactly `c` a period:
+ *
+ * - LINEAR: the first installment is `c + roundMoney(P * r)` with
+ *   `c = roundMoney(P / N)`; lifetime interest `roundMoney(P * r * (N + 1) / 2)`;
+ *   the last payment `roundMoney((P - (N - 1) * c) * (1 + r))`, which carries
+ *   the leftover of rounding `c` (decision 8).
+ * - INTEREST_ONLY: every installment `roundMoney(P * r)`, principal 0; lifetime
+ *   interest `roundMoney(P * r * N)`; the last payment is the bullet,
+ *   `roundMoney(P * (1 + r))` (INV-LOAN-004).
+ *
+ * Both run `N` payments, the last on payment `N` (INV-LOAN-005).
+ */
+function calculateNonAnnuityAmortization(
+  input: MortgageAmortizationInput,
+  method: "LINEAR" | "INTEREST_ONLY",
+): MortgageAmortizationResult {
+  const {
+    principal,
+    annualRate,
+    amortizationMonths,
+    paymentFrequency,
+    mortgageType,
+    startDate,
+  } = input;
+  const periodsPerYear = getMortgagePeriodsPerYear(paymentFrequency);
+  const periodicRate = getPeriodicRate(
+    annualRate,
+    periodsPerYear,
+    mortgageType,
+  );
+  const totalPayments = Math.round((amortizationMonths * periodsPerYear) / 12);
+  const interestPayment = roundMoney(principal * periodicRate);
+  const effectiveAnnualRate = calculateEffectiveAnnualRate(
+    annualRate,
+    periodsPerYear,
+    mortgageType,
+  );
+  const endDate = calculateMortgageEndDate(
+    startDate,
+    paymentFrequency,
+    totalPayments,
+  );
+
+  if (method === "INTEREST_ONLY") {
+    return {
+      paymentAmount: interestPayment,
+      principalPayment: 0,
+      interestPayment,
+      totalPayments,
+      residualPayoffAmount: roundMoney(principal * (1 + periodicRate)),
+      endDate,
+      totalInterest: roundMoney(principal * periodicRate * totalPayments),
+      effectiveAnnualRate,
+    };
+  }
+
+  const constantPrincipal = roundMoney(principal / totalPayments);
+  return {
+    paymentAmount: roundMoney(constantPrincipal + interestPayment),
+    principalPayment: constantPrincipal,
+    interestPayment,
+    totalPayments,
+    residualPayoffAmount: roundMoney(
+      Math.max(0, principal - (totalPayments - 1) * constantPrincipal) *
+        (1 + periodicRate),
+    ),
+    endDate,
+    totalInterest: roundMoney(
+      (principal * periodicRate * (totalPayments + 1)) / 2,
+    ),
+    effectiveAnnualRate,
+  };
+}
+
+/**
+ * Calculate full mortgage amortization details.
+ *
+ * Branches on the type's amortization method (`amortizationMethodFor`,
+ * INV-LOAN-007) before anything annuity-shaped is computed: LINEAR and
+ * INTEREST_ONLY have their own closed forms, and refuse an accelerated
+ * cadence or a missing term with a 400 (spec sections 5.1 and 8).
  */
 export function calculateMortgageAmortization(
   input: MortgageAmortizationInput,
@@ -503,6 +587,17 @@ export function calculateMortgageAmortization(
     mortgageType,
     startDate,
   } = input;
+
+  const method = amortizationMethodFor(mortgageType);
+  if (method !== "ANNUITY") {
+    assertMortgageMethodTerms(mortgageType, {
+      originalPrincipal: principal,
+      amortizationMonths,
+      paymentStartDate: startDate,
+      paymentFrequency,
+    });
+    return calculateNonAnnuityAmortization(input, method);
+  }
 
   // Calculate payment amount
   const paymentAmount = calculateMortgagePayment(input);
@@ -577,7 +672,12 @@ export function calculateMortgageAmortization(
 /**
  * Recalculate mortgage details after a rate change
  *
- * Uses current balance and remaining amortization to determine new payment
+ * Uses current balance and remaining amortization to determine new payment.
+ * The annuity re-levelling: a LINEAR or INTEREST_ONLY installment is not a
+ * function of the balance and the remaining months alone (SHORTEN_TERM keeps
+ * the original `c`), so the rate-change paths price those through
+ * `nonAnnuityInstallment` on the dated debt instead of calling this
+ * (spec section 5.3).
  */
 export function recalculateMortgageAfterRateChange(
   currentBalance: number,
@@ -610,6 +710,11 @@ export function recalculateMortgageAfterRateChange(
 
 /**
  * Calculate the principal/interest split for a mortgage payment based on remaining balance.
+ *
+ * The annuity split: the principal is what is left of a constant payment
+ * after the interest. LINEAR and INTEREST_ONLY have no constant payment, so
+ * payment setup prices their first installment through
+ * `nonAnnuityInstallment` (spec section 5.5).
  *
  * The periodic rate follows the type's compounding (`getPeriodicRate`), so a
  * `CANADIAN_FIXED` mortgage accrues at the semi-annual conversion and every

@@ -5,6 +5,7 @@ import {
   Logger,
   Inject,
   forwardRef,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
@@ -22,6 +23,7 @@ import {
 } from "./loan-amortization.util";
 import {
   calculateMortgagePaymentSplit,
+  getPeriodicRate,
   toMortgagePaymentFrequency,
 } from "./mortgage-amortization.util";
 import {
@@ -38,8 +40,16 @@ import {
   compoundingFor,
   mortgageTypeColumns,
   mortgageTypeOf,
+  prepaymentModeColumn,
   requestedMortgageType,
+  storesConstantPayment,
 } from "./mortgage-type.util";
+import {
+  MortgageMethodTerms,
+  assertMortgageMethodTerms,
+  nonAnnuityInstallment,
+} from "./mortgage-installment.util";
+import { datedLoanDebt } from "./dated-loan-debt.util";
 
 @Injectable()
 export class LoanPaymentSetupService {
@@ -136,7 +146,77 @@ export class LoanPaymentSetupService {
     let principalPayment: number;
     let interestPayment: number;
 
-    if (dto.detectedInterestAmount != null && dto.detectedInterestAmount >= 0) {
+    // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its first
+    // installment is table 4.3's at the first due date, priced here from the
+    // ledger debt through that date (spec section 5.5). The request's payment
+    // is checked against it rather than trusted, and is not stored.
+    const derivesInstallment =
+      mortgageType !== null && !storesConstantPayment(mortgageType);
+    const prepaymentMode =
+      mortgageType !== null
+        ? prepaymentModeColumn(
+            mortgageType,
+            dto.prepaymentMode,
+            account.prepaymentMode,
+          )
+        : null;
+    let installmentDebt: number | null = null;
+
+    if (derivesInstallment) {
+      const terms: MortgageMethodTerms = {
+        prepaymentMode,
+        originalPrincipal: account.originalPrincipal,
+        openingBalance: account.openingBalance,
+        amortizationMonths:
+          dto.amortizationMonths ?? account.amortizationMonths,
+        // Setup makes the first due date payment 1 (below).
+        paymentStartDate: dto.nextDueDate,
+        paymentFrequency: dto.paymentFrequency,
+      };
+      assertMortgageMethodTerms(mortgageType, terms);
+      const debt = await withScopedDb(this.dataSource, (m) =>
+        datedLoanDebt(m, account, dto.nextDueDate),
+      );
+      if (debt === null) {
+        throw new ServiceUnavailableException(
+          tr(
+            "errors.accounts.loanLedgerUnreadable",
+            "This loan's balance could not be read. Try again.",
+          ),
+        );
+      }
+      installmentDebt = debt;
+      // `assertMortgageMethodTerms` refused every input that leaves this null.
+      const installment = nonAnnuityInstallment(
+        mortgageType,
+        terms,
+        dto.nextDueDate,
+        debt,
+        getPeriodicRate(
+          interestRate,
+          periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
+            DEFAULT_PERIODS_PER_YEAR,
+          mortgageType,
+        ),
+      )!;
+      const expectedPayment = roundMoney(
+        installment.principal + installment.interest + extraPrincipal,
+      );
+      if (Math.abs(dto.paymentAmount - expectedPayment) > 0.00005) {
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.mortgageMethodPaymentMismatch",
+            `The payment amount must be this ${mortgageType} mortgage's first installment plus any extra principal, which the server derives from the debt, the rate and the amortization; preview it again`,
+            { type: mortgageType },
+          ),
+        );
+      }
+      principalPayment = installment.principal;
+      interestPayment = installment.interest;
+    } else if (
+      dto.detectedInterestAmount != null &&
+      dto.detectedInterestAmount >= 0
+    ) {
       // Use the interest amount detected from imported transaction history.
       // This continues the actual P/I ratio from the existing data rather than
       // recalculating from the amortization formula, which may differ due to
@@ -221,7 +301,12 @@ export class LoanPaymentSetupService {
       extraPrincipal,
       interest: interestPayment,
       principal: principalPayment,
-      currentBalance: currentBalance > 0 ? currentBalance : null,
+      currentBalance:
+        installmentDebt !== null
+          ? installmentDebt
+          : currentBalance > 0
+            ? currentBalance
+            : null,
     });
     principalPayment = allocation.principal;
     interestPayment = allocation.interest;
@@ -308,7 +393,9 @@ export class LoanPaymentSetupService {
 
     // Update the account with loan payment details
     const updateData: Partial<Account> = {
-      paymentAmount: dto.paymentAmount,
+      // Null for a LINEAR or INTEREST_ONLY mortgage, which has no constant
+      // payment to store (spec decision 11, the column's CHECK).
+      paymentAmount: derivesInstallment ? null : dto.paymentAmount,
       // The configured standing instruction, not the possibly-clamped first
       // installment: this is what the recalculation grows the extra back to
       // once a transient clamp (an interest spike) has passed.
@@ -335,6 +422,8 @@ export class LoanPaymentSetupService {
       if (requestedType !== undefined) {
         Object.assign(updateData, mortgageTypeColumns(requestedType));
       }
+      // Null unless the type this request leaves is LINEAR (spec decision 10).
+      updateData.prepaymentMode = prepaymentMode;
       if (dto.amortizationMonths) {
         updateData.amortizationMonths = dto.amortizationMonths;
       }

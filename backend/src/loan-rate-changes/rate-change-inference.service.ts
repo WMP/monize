@@ -9,7 +9,10 @@ import {
   LoanPaymentDetectorService,
   PaymentRecord,
 } from "../accounts/loan-payment-detector.service";
-import { LoanRateChangesService } from "./loan-rate-changes.service";
+import {
+  LoanRateChangesService,
+  derivedInstallmentType,
+} from "./loan-rate-changes.service";
 import { roundMoney } from "../common/round.util";
 import {
   annualizationFor,
@@ -418,6 +421,12 @@ export class RateChangeInferenceService {
   ): Promise<DetectRateChangesResult> {
     const created: LoanRateChange[] = [];
     let replacedCount = 0;
+    // A LINEAR or INTEREST_ONLY mortgage records no payment on a rate row: its
+    // method prices every installment, so an observed payment would be a
+    // second, conflicting answer (spec section 5.3). Segments are still cut on
+    // the rate alone.
+    const recordsPayment =
+      !interestBookedSeparately && derivedInstallmentType(account) === null;
     await withScopedDb(this.dataSource, async (m) => {
       const deleted = await m.delete(LoanRateChange, {
         accountId: account.id,
@@ -452,7 +461,7 @@ export class RateChangeInferenceService {
           accountId: account.id,
           effectiveDate,
           annualRate: segment.medianRate,
-          newPaymentAmount: interestBookedSeparately
+          newPaymentAmount: !recordsPayment
             ? null
             : isFirst
               ? segment.paymentAmount != null

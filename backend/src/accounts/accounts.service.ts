@@ -52,10 +52,21 @@ import { affectedRowCount } from "../common/db/query-result";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
 import {
   MortgageType,
+  PrepaymentMode,
   mortgageTypeColumns,
   mortgageTypeOf,
+  prepaymentModeColumn,
+  prepaymentModeOf,
   requestedMortgageType,
+  storesConstantPayment,
 } from "./mortgage-type.util";
+import { assertMortgageMethodTerms } from "./mortgage-installment.util";
+import { applyMortgageMethodColumns } from "./mortgage-method-columns.util";
+import {
+  DatedInstallment,
+  derivedInstallmentFacts,
+} from "./mortgage-installment-facts";
+import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
 
 /**
  * One account as the AI Assistant and the MCP server describe it.
@@ -98,6 +109,22 @@ export interface LlmAccountRow {
    * flags denote; null on every other account type.
    */
   mortgageType: MortgageType | null;
+  /** A LINEAR mortgage's prepayment mode; null on every other account. */
+  prepaymentMode: PrepaymentMode | null;
+  /**
+   * A LINEAR or INTEREST_ONLY mortgage has no constant payment, so
+   * `paymentAmount` is null for it (docs/specs/mortgage-types.md, decision 11)
+   * and this carries the next installment of its scheduled payment with its
+   * due date instead. Null on every other account, and when the mortgage has
+   * no active scheduled payment.
+   */
+  nextInstallment: DatedInstallment | null;
+  /**
+   * An INTEREST_ONLY mortgage's final payment (the whole debt plus that
+   * period's interest) and its date, which an installment of interest alone
+   * would otherwise hide. Null on every other account.
+   */
+  bullet: { dueDate: string; amount: number } | null;
 }
 
 /**
@@ -150,6 +177,8 @@ export class AccountsService {
     private loanMortgageService: LoanMortgageAccountService,
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
+    @Inject(forwardRef(() => ScheduledOccurrenceService))
+    private scheduledOccurrenceService: ScheduledOccurrenceService,
   ) {}
 
   /**
@@ -228,12 +257,30 @@ export class AccountsService {
     }
 
     // Only a mortgage has a type, written with the flags it maps to; a request
-    // naming neither is the default type.
-    const mortgageColumns =
+    // naming neither is the default type. LINEAR and INTEREST_ONLY are refused
+    // without the terms their method prices from (spec section 8), store no
+    // constant payment (decision 11), and only LINEAR keeps a prepayment mode
+    // (decision 10).
+    const mortgageType =
       accountData.accountType === AccountType.MORTGAGE
-        ? mortgageTypeColumns(requestedMortgageType(accountData) ?? "ANNUITY")
-        : {};
+        ? (requestedMortgageType(accountData) ?? "ANNUITY")
+        : null;
+    const prepaymentMode = mortgageType
+      ? prepaymentModeColumn(mortgageType, accountData.prepaymentMode)
+      : null;
+    const mortgageColumns = mortgageType
+      ? { ...mortgageTypeColumns(mortgageType), prepaymentMode }
+      : {};
+    if (mortgageType && !storesConstantPayment(mortgageType)) {
+      assertMortgageMethodTerms(mortgageType, {
+        ...accountData,
+        prepaymentMode,
+        openingBalance,
+      });
+      delete accountData.paymentAmount;
+    }
     delete accountData.mortgageType;
+    delete accountData.prepaymentMode;
 
     const saved = await withScopedDb(this.dataSource, (m) => {
       const repo = m.getRepository(Account);
@@ -273,6 +320,7 @@ export class AccountsService {
       name,
       // Only a mortgage has a type.
       mortgageType: _mortgageType,
+      prepaymentMode: _prepaymentMode,
       ...accountData
     } = createAccountDto;
 
@@ -904,6 +952,16 @@ export class AccountsService {
         }
         if (updateAccountDto.amortizationMonths !== undefined)
           account.amortizationMonths = updateAccountDto.amortizationMonths;
+        // The prepayment mode and the stored payment follow the saved type,
+        // in this transaction (spec section 5.6).
+        await applyMortgageMethodColumns(
+          m,
+          account,
+          before.accountType === AccountType.MORTGAGE
+            ? mortgageTypeOf(before)
+            : null,
+          updateAccountDto.prepaymentMode,
+        );
 
         // Keep a linked investment pair (cash <-> brokerage) in sync. Both halves
         // represent one real-world account, so shared attributes -- currency,
@@ -1499,13 +1557,25 @@ export class AccountsService {
       return roundMoney(amount * rate);
     };
 
-    const accountList: LlmAccountRow[] = [];
-    for (const a of accounts) {
-      const balance = roundMoney(
+    const balanceOf = (a: (typeof accounts)[number]): number =>
+      roundMoney(
         a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE
           ? (marketValues.get(a.id) ?? 0)
           : Number(a.currentBalance) + Number(a.futureTransactionsSum ?? 0),
       );
+    // LINEAR and INTEREST_ONLY mortgages carry a dated installment in place of
+    // the payment they do not store (spec section 5.6).
+    const installmentFacts = await derivedInstallmentFacts(
+      this.dataSource,
+      this.scheduledOccurrenceService,
+      userId,
+      accounts,
+      new Map(accounts.map((a) => [a.id, -balanceOf(a)])),
+    );
+
+    const accountList: LlmAccountRow[] = [];
+    for (const a of accounts) {
+      const balance = balanceOf(a);
       const currentBalance = roundMoney(Number(a.currentBalance));
       // Same currency is 1:1 by definition and asks the rate table nothing.
       const exchangeRate =
@@ -1548,6 +1618,13 @@ export class AccountsService {
         originalPrincipal: a.originalPrincipal ?? null,
         mortgageType:
           a.accountType === AccountType.MORTGAGE ? mortgageTypeOf(a) : null,
+        prepaymentMode:
+          a.accountType === AccountType.MORTGAGE &&
+          mortgageTypeOf(a) === "LINEAR"
+            ? prepaymentModeOf(a)
+            : null,
+        nextInstallment: installmentFacts.get(a.id)?.nextInstallment ?? null,
+        bullet: installmentFacts.get(a.id)?.bullet ?? null,
       });
     }
 

@@ -132,6 +132,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "is_canadian_mortgage",
     "is_variable_rate",
     "mortgage_type",
+    "prepayment_mode",
     "term_months",
     "term_end_date",
     "amortization_months",

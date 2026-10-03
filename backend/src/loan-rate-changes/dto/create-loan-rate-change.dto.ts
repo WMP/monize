@@ -32,7 +32,7 @@ export class CreateLoanRateChangeDto {
   @ApiPropertyOptional({
     example: 2500.0,
     description:
-      "New regular payment from this date. Omit to keep the payment unchanged.",
+      "New regular payment from this date. Omit to keep the payment unchanged. Refused for LINEAR and INTEREST_ONLY mortgages, whose installment is priced from the debt and rate on each due date.",
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })

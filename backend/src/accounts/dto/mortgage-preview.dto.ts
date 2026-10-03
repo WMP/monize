@@ -13,10 +13,7 @@ import {
   MORTGAGE_PAYMENT_FREQUENCIES,
   MortgagePaymentFrequency,
 } from "./create-account.dto";
-import {
-  WRITABLE_MORTGAGE_TYPES,
-  WritableMortgageType,
-} from "../mortgage-type.util";
+import { MORTGAGE_TYPES, MortgageType } from "../mortgage-type.util";
 
 export class MortgagePreviewDto {
   @ApiProperty({
@@ -62,12 +59,12 @@ export class MortgagePreviewDto {
   @ApiPropertyOptional({
     example: "CANADIAN_FIXED",
     description:
-      "Mortgage type: ANNUITY (nominal rate divided by the payments per year) or CANADIAN_FIXED (semi-annual compounding). Wins over isCanadian/isVariableRate; when all three are absent the type is ANNUITY.",
-    enum: WRITABLE_MORTGAGE_TYPES,
+      "Mortgage type: ANNUITY (nominal rate divided by the payments per year), CANADIAN_FIXED (semi-annual compounding), LINEAR (constant principal) or INTEREST_ONLY (no principal until the final payment). LINEAR and INTEREST_ONLY refuse an accelerated frequency. Wins over isCanadian/isVariableRate; when all three are absent the type is ANNUITY.",
+    enum: MORTGAGE_TYPES,
   })
   @IsOptional()
-  @IsIn(WRITABLE_MORTGAGE_TYPES)
-  mortgageType?: WritableMortgageType;
+  @IsIn(MORTGAGE_TYPES)
+  mortgageType?: MortgageType;
 
   @ApiPropertyOptional({
     example: true,
