@@ -282,6 +282,21 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('links the Email Receipts card at its settings page, right after AI Settings in both places', async () => {
+    const { container } = render(<SettingsPage />);
+    await waitFor(() => {
+      const card = screen
+        .getAllByText('Email Receipts')
+        .map((el) => el.closest('a'))
+        .find((a) => a?.getAttribute('href') === '/settings/email-receipts' && a.closest('#email-receipts'));
+      expect(card).toBeTruthy();
+    });
+    const anchors = Array.from(container.querySelectorAll('[id].scroll-mt-32'))
+      .filter((el) => !el.parentElement?.closest('[id].scroll-mt-32'))
+      .map((el) => el.id);
+    expect(anchors.indexOf('email-receipts')).toBe(anchors.indexOf('ai-settings') + 1);
+  });
+
   it('links the Bank Sync card at the bank sync page', async () => {
     render(<SettingsPage />);
     await waitFor(() => {
@@ -350,9 +365,9 @@ describe('SettingsPage', () => {
 
     expect(anchors.length).toBeGreaterThan(3);
     expect(navIds.length).toBe(anchors.length);
-    // Bank Sync sits immediately below AI Settings, in both.
-    expect(anchors.indexOf('bank-sync')).toBe(anchors.indexOf('ai-settings') + 1);
-    expect(navIds.indexOf('Bank Sync')).toBe(navIds.indexOf('AI Settings') + 1);
+    // Bank Sync sits immediately below Email Receipts (itself right below AI Settings), in both.
+    expect(anchors.indexOf('bank-sync')).toBe(anchors.indexOf('email-receipts') + 1);
+    expect(navIds.indexOf('Bank Sync')).toBe(navIds.indexOf('Email Receipts') + 1);
     // Guided Tours sits immediately above About, in both.
     expect(anchors.indexOf('tours')).toBe(anchors.indexOf('about') - 1);
     expect(navIds.indexOf('Guided Tours')).toBe(navIds.indexOf('About') - 1);

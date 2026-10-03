@@ -32,6 +32,9 @@
     "transactionMissing": "[XX-This transaction no longer exists-XX]",
     "rule": "[XX-Rule: {name}-XX]",
     "manualRequest": "[XX-Requested manually-XX]",
+    "emailReceipt": "[XX-Email receipt: {subject} from {sender}-XX]",
+    "emailReceiptMissing": "[XX-Email receipt (the email was deleted)-XX]",
+    "viewEmailReceipts": "[XX-View email receipts-XX]",
     "agentNote": "[XX-Note from the assistant: {reason}-XX]",
     "dates": "[XX-Created {created}, expires {expires}-XX]",
     "viewTransaction": "[XX-View transaction-XX]"

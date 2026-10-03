@@ -32,6 +32,9 @@
     "transactionMissing": "此交易已不存在",
     "rule": "規則：{name}",
     "manualRequest": "手動請求",
+    "emailReceipt": "郵件收據：來自 {sender} 的 {subject}",
+    "emailReceiptMissing": "郵件收據（該郵件已被刪除）",
+    "viewEmailReceipts": "檢視郵件收據",
     "agentNote": "助理備註：{reason}",
     "dates": "建立於 {created}，到期於 {expires}",
     "viewTransaction": "檢視交易"

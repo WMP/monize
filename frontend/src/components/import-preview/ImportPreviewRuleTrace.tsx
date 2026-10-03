@@ -21,6 +21,8 @@ function RuleTraceItem({ rule, labels }: { rule: ImportPreviewRule; labels: Impo
     category: (id: string) => labels.categories[id],
     payee: (id: string) => labels.payees[id],
     tag: (id: string) => labels.tags[id],
+    // The import preview carries no account names yet; a transfer target reads as unknown.
+    account: () => undefined,
   };
   // A type this client has no name for still reads as what the server said.
   const actionName = (type: string) => (tAction.has(type) ? tAction(type) : type);
