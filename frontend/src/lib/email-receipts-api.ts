@@ -6,6 +6,7 @@ import type {
   EmailReceiptListItem,
   EmailReceiptMailbox,
   EmailReceiptMailboxTestResult,
+  EmailReceiptParserDraftRequestResult,
   EmailReceiptOAuthProvider,
   EmailReceiptOAuthProviders,
   EmailReceiptParser,
@@ -144,12 +145,6 @@ export const emailReceiptsApi = {
       );
       return response.data;
     },
-
-    /** A draft parser for the email's sender; it reads nothing until approved. */
-    draftParser: async (id: string): Promise<EmailReceiptParser> => {
-      const response = await apiClient.post<EmailReceiptParser>(`${RECEIPTS}/${id}/draft-parser`);
-      return response.data;
-    },
   },
 
   parsers: {
@@ -184,6 +179,18 @@ export const emailReceiptsApi = {
         `${PARSERS}/${id}/approve`,
         expectedRevision === undefined ? {} : { expectedRevision },
       );
+      return response.data;
+    },
+
+    /**
+     * Queue a request for the assistant (or an MCP agent) to write a parser from
+     * 1 to 5 stored emails. No provider is called: the request waits, pending,
+     * for whoever claims it by id; the draft it produces reads nothing until approved.
+     */
+    draftWithAi: async (receiptIds: readonly string[]): Promise<EmailReceiptParserDraftRequestResult> => {
+      const response = await apiClient.post<EmailReceiptParserDraftRequestResult>(`${PARSERS}/draft-with-ai`, {
+        receiptIds,
+      });
       return response.data;
     },
 

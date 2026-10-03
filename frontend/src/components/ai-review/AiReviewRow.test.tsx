@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@/test/render';
+import { render, screen, fireEvent } from '@/test/render';
 import { AiReviewRow } from './AiReviewRow';
 import { makeReviewItem } from './ai-review-fixtures';
 import type { AiReviewItem } from '@/types/ai-review';
@@ -101,6 +101,109 @@ describe('AiReviewRow', () => {
     it('says nothing for a pending request a rule raised', () => {
       renderRow(makeReviewItem({ status: 'pending' }));
       expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('a parser draft request (kind email_parser_draft)', () => {
+    const draftItem = (overrides: Partial<AiReviewItem> = {}) =>
+      makeReviewItem({
+        kind: 'email_parser_draft',
+        ruleId: null,
+        ruleName: null,
+        transactionId: null,
+        transaction: null,
+        instruction: 'The user asked for a receipt parser for the order emails attached to this request.',
+        parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: null },
+        status: 'pending',
+        ...overrides,
+      });
+
+    it('names the number of emails and the sender instead of a transaction', () => {
+      renderRow(draftItem());
+      expect(screen.getByText('Parser draft from 3 emails (shop.example.com)')).toBeInTheDocument();
+      expect(screen.queryByText('This transaction no longer exists')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'View transaction' })).not.toBeInTheDocument();
+    });
+
+    it('says one email when it names one', () => {
+      renderRow(draftItem({ parserDraft: { domain: 'shop.example.com', emailCount: 1, parserId: null } }));
+      expect(screen.getByText('Parser draft from 1 email (shop.example.com)')).toBeInTheDocument();
+    });
+
+    it('does not print the fixed instruction an agent reads', () => {
+      renderRow(draftItem());
+      expect(screen.queryByText(/The user asked for a receipt parser/)).not.toBeInTheDocument();
+    });
+
+    it('shows the created date where a transaction date would be', () => {
+      renderRow(draftItem());
+      const cells = screen.getAllByRole('cell');
+      expect(cells[0]).not.toBeEmptyDOMElement();
+      expect(cells[2]).toBeEmptyDOMElement();
+    });
+
+    it('links to the emails', () => {
+      renderRow(draftItem());
+      expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute('href', '/email-receipts');
+    });
+
+    it('says a pending one waits for an AI agent, with the link to the AI settings', () => {
+      renderRow(draftItem());
+      expect(screen.getByText(/Waiting for an AI agent\./)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Connect an AI provider in Settings' })).toHaveAttribute('href', '/settings/ai');
+    });
+
+    it('says a proposed one is a draft parser ready, with a link to where it is tested and approved', () => {
+      renderRow(
+        draftItem({
+          status: 'proposed',
+          parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: 'p-1' },
+        }),
+      );
+      expect(screen.getByText(/Draft parser ready\./)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Test and approve it in the parser settings' })).toHaveAttribute(
+        'href',
+        '/settings/email-receipts',
+      );
+      expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
+    });
+
+    it.each(['claimed', 'applied', 'rejected', 'expired'] as const)('says neither of those once it is %s', (status) => {
+      renderRow(draftItem({ status }));
+      expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Draft parser ready/)).not.toBeInTheDocument();
+    });
+
+    it('shows no confirmation card: approving the parser in the settings is what applies it', () => {
+      renderRow(draftItem({ status: 'proposed', parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: 'p-1' } }));
+      expect(screen.getAllByRole('row')).toHaveLength(1);
+    });
+
+    it('can be dismissed while it is open, and only then', () => {
+      const onDismiss = vi.fn();
+      const { rerender } = render(
+        <table>
+          <tbody>
+            <AiReviewRow item={draftItem()} dismissing={false} onApprove={vi.fn()} onDismiss={onDismiss} />
+          </tbody>
+        </table>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(onDismiss).toHaveBeenCalledWith(expect.objectContaining({ kind: 'email_parser_draft' }));
+
+      rerender(
+        <table>
+          <tbody>
+            <AiReviewRow item={draftItem({ status: 'applied' })} dismissing={false} onApprove={vi.fn()} onDismiss={onDismiss} />
+          </tbody>
+        </table>,
+      );
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+    });
+
+    it('shows an agent\'s note, as for any request', () => {
+      renderRow(draftItem({ agentNote: { reason: 'The emails were empty', at: '2026-09-02T10:00:00.000Z' } }));
+      expect(screen.getByText('Note from the assistant: The emails were empty')).toBeInTheDocument();
     });
   });
 });

@@ -144,7 +144,9 @@
     "nothingProposed": "A proposal needs at least one change: splits, categoryName, payeeName or description.",
     "splitsAndCategory": "Send either splits or categoryName, not both: a split transaction has no single category.",
     "transferNotSupported": "A transfer cannot be reviewed by proposal. Reject the request instead.",
-    "splitDifference": "The split lines add up to {{ sum }} but the transaction is {{ amount }}: {{ difference }} is not assigned. Make the lines add up to the transaction; a leftover such as a delivery cost needs its own line, or is named to the user instead of being assigned."
+    "splitDifference": "The split lines add up to {{ sum }} but the transaction is {{ amount }}: {{ difference }} is not assigned. Make the lines add up to the transaction; a leftover such as a delivery cost needs its own line, or is named to the user instead of being assigned.",
+    "noTransaction": "This AI review request is not about a transaction.",
+    "parserDraftNotSubmittable": "A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Too many verification attempts. Please log in again.",
@@ -362,7 +364,6 @@
     "openRequestExists": "Another review request is already open for this transaction. Finish or dismiss it first.",
     "receiptNotFound": "Email {{ id }} not found",
     "aiOff": "The AI is turned off for this mailbox. Change the AI mode in the mailbox settings first.",
-    "pollMailboxDisabled": "The mailbox is switched off. Turn it on in the mailbox settings to poll it.",
     "pollBusy": "The mailbox is being read right now. Try again in a minute.",
     "parserPayeeNotFound": "The payee of this parser was not found.",
     "parserNotFound": "Receipt parser {{ id }} not found",
@@ -384,7 +385,10 @@
     "oauthReconnectRequired": "The mailbox's sign-in was revoked or has expired. Connect the mailbox again in the mailbox settings.",
     "oauthTokenUnreadable": "The stored sign-in cannot be read on this server. Connect the mailbox again in the mailbox settings.",
     "notOAuthMailbox": "This mailbox does not sign in with Google or Microsoft.",
-    "settingsEmpty": "Send at least one setting to change."
+    "settingsEmpty": "Send at least one setting to change.",
+    "parserToolReceiptCount": "Name 1 to 5 emails to test the parser on.",
+    "parserToolInvalidSender": "A draft needs a name and one to ten sender domains such as shop.example.com.",
+    "parserDraftRequestNotClaimed": "This parser draft request is not claimed by you. Claim it first with ai_review_requests, or save the draft without a requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",

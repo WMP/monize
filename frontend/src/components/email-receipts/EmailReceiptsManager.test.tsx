@@ -13,12 +13,12 @@ const api = vi.hoisted(() => ({
   ignore: vi.fn(),
   remove: vi.fn(),
   askAi: vi.fn(),
-  draftParser: vi.fn(),
   mailboxGet: vi.fn(),
   parserCreate: vi.fn(),
   parserTest: vi.fn(),
+  draftWithAi: vi.fn(),
 }));
-const assistant = vi.hoisted(() => ({ configured: true }));
+const assistant = vi.hoisted(() => ({ canAnswer: vi.fn() }));
 const transactionsApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 const payeesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 const categoriesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
@@ -33,15 +33,12 @@ vi.mock('@/lib/email-receipts-api', () => ({
       ignore: api.ignore,
       remove: api.remove,
       askAi: api.askAi,
-      draftParser: api.draftParser,
     },
     mailbox: { get: api.mailboxGet },
-    parsers: { create: api.parserCreate, test: api.parserTest },
+    parsers: { create: api.parserCreate, test: api.parserTest, draftWithAi: api.draftWithAi },
   },
 }));
-vi.mock('@/hooks/useAiConfigured', () => ({
-  useAiConfigured: () => ({ configured: assistant.configured, resolved: true }),
-}));
+vi.mock('@/lib/assistant-ready', () => ({ assistantCanAnswerNow: assistant.canAnswer }));
 vi.mock('@/lib/transactions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/transactions')>()),
   transactionsApi,
@@ -130,7 +127,8 @@ async function allActions(subject: string): Promise<string[]> {
 describe('EmailReceiptsManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    assistant.configured = true;
+    assistant.canAnswer.mockResolvedValue(true);
+    api.draftWithAi.mockResolvedValue({ ok: true, requestId: 'req-draft' });
     transactionsApi.getAll.mockResolvedValue({
       data: [],
       pagination: { page: 1, limit: 50, total: 0, totalPages: 1, hasMore: false },
@@ -248,11 +246,31 @@ describe('EmailReceiptsManager', () => {
   });
 
   describe('which actions each email offers', () => {
-    it('offers everything for an email with no parser, including the AI drafts when AI is on', async () => {
+    it('offers everything for an email with no parser', async () => {
       await renderManager();
       expect(await allActions('Order no parser')).toEqual(
         expect.arrayContaining(['View', 'Create parser', 'Draft parser with AI', 'Reprocess', 'Ignore', 'Delete']),
       );
+    });
+
+    it('puts "Draft parser with AI" inline and "Create parser" in the menu for an email with no parser', async () => {
+      await renderManager();
+      const row = rowOf('Order no parser');
+      expect(actionNames('Order no parser')).toEqual(['View', 'Draft parser with AI']);
+      expect(within(row).queryByRole('button', { name: 'Create parser' })).not.toBeInTheDocument();
+      await click(within(row).getByRole('button', { name: 'More actions' }));
+      expect(screen.getByRole('menuitem', { name: 'Create parser' })).toBeInTheDocument();
+    });
+
+    it('offers the AI draft for an email a parser could not read, and for no other state', async () => {
+      api.list.mockResolvedValue([...all, parseFailed, conflict, dismissed, waiting]);
+      await renderManager();
+      for (const subject of ['Order no parser', 'Order failed']) {
+        expect(await allActions(subject), subject).toContain('Draft parser with AI');
+      }
+      for (const subject of ['Order unmatched', 'Order ambiguous', 'Order proposed', 'Order applied', 'Order ignored', 'Order skipped', 'Order pending', 'Order conflict', 'Order dismissed', 'Order waiting']) {
+        expect(await allActions(subject), subject).not.toContain('Draft parser with AI');
+      }
     });
 
     it('offers "Recognize with AI" for an email nothing read, or whose request was dismissed, expired or lost', async () => {
@@ -295,23 +313,19 @@ describe('EmailReceiptsManager', () => {
       expect(await allActions('Order unmatched')).toContain('Recognize with AI');
     });
 
-    it('offers no draft-parser action when the AI mode is off', async () => {
-      api.mailboxGet.mockResolvedValue(makeMailbox({ aiMode: 'off' }));
-      await renderManager();
-      expect(await allActions('Order no parser')).not.toContain('Draft parser with AI');
-      expect(await allActions('Order no parser')).toContain('Create parser');
-    });
+    it.each(['off', 'on_demand', 'automatic'] as const)(
+      'offers the AI draft whatever the mailbox AI mode (%s): it goes through the chat, not a provider call from here',
+      async (aiMode) => {
+        api.mailboxGet.mockResolvedValue(makeMailbox({ aiMode }));
+        await renderManager();
+        expect(await allActions('Order no parser')).toContain('Draft parser with AI');
+      },
+    );
 
-    it('offers no draft-parser action when the mailbox could not be read, since "unknown" is not "on"', async () => {
+    it('offers the AI draft when the mailbox could not be read, and when there is none', async () => {
       api.mailboxGet.mockRejectedValue(new Error('boom'));
       await renderManager();
-      expect(await allActions('Order no parser')).not.toContain('Draft parser with AI');
-    });
-
-    it('offers no draft-parser action when there is no mailbox', async () => {
-      api.mailboxGet.mockResolvedValue(null);
-      await renderManager();
-      expect(await allActions('Order no parser')).not.toContain('Draft parser with AI');
+      expect(await allActions('Order no parser')).toContain('Draft parser with AI');
     });
 
     it('offers choosing a transaction for an email the matcher could not tie to one', async () => {
@@ -407,7 +421,7 @@ describe('EmailReceiptsManager', () => {
     });
 
     it('says the request waits in the review inbox when no assistant can answer', async () => {
-      assistant.configured = false;
+      assistant.canAnswer.mockResolvedValue(false);
       await renderManager();
       await runAction('Order dismissed', 'Recognize with AI');
       await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Recognize with AI' }));
@@ -428,20 +442,6 @@ describe('EmailReceiptsManager', () => {
   });
 
   describe('parsers', () => {
-    it('drafts a parser with the AI and says it reads nothing until approved, with a link to review it', async () => {
-      api.draftParser.mockResolvedValue(makeParser({ name: 'shop.example parser', status: 'draft', source: 'ai' }));
-      await renderManager();
-      await runAction('Order no parser', 'Draft parser with AI');
-      expect(api.draftParser).toHaveBeenCalledWith('r-noparser');
-      const notice = screen.getByRole('status');
-      expect(notice).toHaveTextContent('shop.example parser');
-      expect(notice).toHaveTextContent('reads nothing until you review and approve it');
-      expect(within(notice).getByRole('link', { name: 'Review it in the parser settings' })).toHaveAttribute(
-        'href',
-        '/settings/email-receipts',
-      );
-    });
-
     it('opens the parser editor prefilled with the sender domain and the email to test against', async () => {
       api.list.mockResolvedValue([noParser]);
       await renderManager();

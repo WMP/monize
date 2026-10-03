@@ -118,3 +118,95 @@ const RECOGNIZABLE_STATES: readonly EmailReceiptShownState[] = [
 export function canRecognizeWithAi(receipt: Pick<EmailReceiptListItem, 'status' | 'displayState'>): boolean {
   return RECOGNIZABLE_STATES.includes(shownReceiptState(receipt));
 }
+
+/** States whose email "Draft parser with AI" is offered for: no parser read it, or the one that did could not. */
+const DRAFTABLE_STATES: readonly EmailReceiptShownState[] = ['no_parser', 'parse_failed'];
+
+/** Whether the row's own "Draft parser with AI" action is offered for an email. */
+export function canDraftParser(receipt: Pick<EmailReceiptListItem, 'status' | 'displayState'>): boolean {
+  return DRAFTABLE_STATES.includes(shownReceiptState(receipt));
+}
+
+/**
+ * The distinct sender domains of some emails, in the order they first appear.
+ * An email with no usable domain (a skipped one) is left out.
+ */
+export function distinctSenderDomains(receipts: ReadonlyArray<Pick<EmailReceiptListItem, 'fromDomain' | 'fromAddress'>>): string[] {
+  const seen = new Set<string>();
+  for (const receipt of receipts) {
+    const domain = receipt.fromDomain || senderDomain(receipt.fromAddress);
+    if (domain !== '') seen.add(domain);
+  }
+  return [...seen];
+}
+
+/** Tags counted before a text with no `<html` or doctype is still taken for HTML. */
+const HTML_TAG_THRESHOLD = 5;
+/** Only this much of a text is scanned, and a tag is at most this long. */
+const HTML_SCAN_CHARS = 200_000;
+const HTML_TAG_MAX_CHARS = 500;
+
+const isTagStart = (ch: string): boolean => (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '/' || ch === '!';
+
+/**
+ * Whether stored text is really markup: it opens with `<html` or a doctype, or it
+ * holds several tags. An email whose HTML part was not kept (stored before it was)
+ * can still have markup in its text when the sender put HTML in a text part; the
+ * detail dialog then shows it through the same sandboxed frame as a real HTML part
+ * instead of as a wall of angle brackets.
+ *
+ * One bounded scan, no regular expression over the text: a tag is a `<` followed by
+ * a letter, `/` or `!` and a `>` within 500 characters with no other `<` between,
+ * and not an address in angle brackets (`<alice@example.com>`).
+ */
+export function looksLikeHtml(text: string): boolean {
+  const head = text.trimStart().slice(0, 20).toLowerCase();
+  if (head.startsWith('<html') || head.startsWith('<!doctype')) return true;
+  const end = Math.min(text.length, HTML_SCAN_CHARS);
+  let tags = 0;
+  let i = 0;
+  while (i < end && tags < HTML_TAG_THRESHOLD) {
+    if (text[i] === '<' && isTagStart(text.charAt(i + 1))) {
+      const limit = Math.min(end, i + HTML_TAG_MAX_CHARS);
+      let j = i + 1;
+      let hasAt = false;
+      let hasSpace = false;
+      while (j < limit && text[j] !== '>' && text[j] !== '<') {
+        if (text[j] === '@') hasAt = true;
+        if (text[j] === ' ' || text[j] === '\n' || text[j] === '\t') hasSpace = true;
+        j += 1;
+      }
+      // `<alice@example.com>` is an address in angle brackets, not a tag.
+      if (j < limit && text[j] === '>' && !(hasAt && !hasSpace)) {
+        tags += 1;
+        i = j + 1;
+        continue;
+      }
+    }
+    i += 1;
+  }
+  return tags >= HTML_TAG_THRESHOLD;
+}
+
+/**
+ * The sender domain most of the emails share, the first one named winning a tie:
+ * the same choice the server makes when it files a "Draft parser with AI" request
+ * (`dominantSenderDomain`), so the message names the domain the request carries.
+ * Empty when no email has a usable domain.
+ */
+export function dominantSenderDomain(receipts: ReadonlyArray<Pick<EmailReceiptListItem, 'fromDomain' | 'fromAddress'>>): string {
+  const counts = new Map<string, number>();
+  for (const receipt of receipts) {
+    const domain = receipt.fromDomain || senderDomain(receipt.fromAddress);
+    if (domain !== '') counts.set(domain, (counts.get(domain) ?? 0) + 1);
+  }
+  let best = '';
+  let bestCount = 0;
+  for (const [domain, count] of counts) {
+    if (count > bestCount) {
+      best = domain;
+      bestCount = count;
+    }
+  }
+  return best;
+}

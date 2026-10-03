@@ -806,4 +806,209 @@ describe("AI review requests (integration)", () => {
       });
     });
   });
+
+  describe("email_parser_draft requests", () => {
+    const R1 = "00000000-0000-4000-8000-000000000001";
+    const R2 = "00000000-0000-4000-8000-000000000002";
+
+    const enqueueDraft = (
+      userId: string,
+      domain = "shop.example.com",
+      ids: string[] = [R1, R2],
+    ) =>
+      withUserContext(userId, () =>
+        withScopedDb(harness.app, (m: EntityManager) =>
+          queue.enqueueParserDraft(m, userId, {
+            emailReceiptIds: ids,
+            parserDomain: domain,
+            instruction: "Write a parser from these emails",
+          }),
+        ),
+      );
+
+    it("is stored pending with no transaction, and read back with its emails and sender", async () => {
+      const created = await enqueueDraft(aliceId);
+
+      const [row] = await asAlice(() => queue.listForUser(aliceId));
+      expect(row).toMatchObject({
+        id: created.id,
+        kind: "email_parser_draft",
+        status: "pending",
+        transactionId: null,
+        ruleId: null,
+        emailReceiptIds: [R1, R2],
+        parserDomain: "shop.example.com",
+      });
+    });
+
+    it("does not disturb the rule path: a rule's request and a draft request queue side by side, and the rule's still dedupes", async () => {
+      await asAlice(() => rules.create(aliceId, reviewRule()));
+      await enqueueDraft(aliceId);
+      const created = await asAlice(() => transactions.create(aliceId, dto()));
+      await asAlice(() =>
+        transactions.create(aliceId, dto({ payeeName: "ALLEGRO 456" })),
+      );
+
+      const rows = await requests();
+      expect(rows.map((r) => r.kind).sort()).toEqual([
+        "email_parser_draft",
+        "transaction_review",
+        "transaction_review",
+      ]);
+      expect(rows.find((r) => r.transaction_id === created.id)).toBeDefined();
+      // the same (transaction, rule) is still one open request
+      const again = await asAlice(() =>
+        withScopedDb(harness.app, (m: EntityManager) =>
+          queue.enqueue(m, aliceId, [
+            {
+              transactionId: created.id,
+              ruleId: rows.find((r) => r.transaction_id === created.id)!
+                .rule_id,
+              instruction: "again",
+            },
+          ]),
+        ),
+      );
+      expect(again.alreadyQueued).toHaveLength(1);
+    });
+
+    it("is claimed by the oldest-first claim and by id, only once", async () => {
+      await asAlice(() => rules.create(aliceId, reviewRule()));
+      const draft = await enqueueDraft(aliceId);
+
+      const byId = await asAlice(() =>
+        queue.claimById(aliceId, draft.id, "assistant"),
+      );
+      expect(byId).toMatchObject({
+        id: draft.id,
+        status: "claimed",
+        claimedBy: "assistant",
+        kind: "email_parser_draft",
+        transactionId: null,
+      });
+      expect(
+        await asAlice(() => queue.claimById(aliceId, draft.id, "agent-2")),
+      ).toBeNull();
+
+      const second = await enqueueDraft(aliceId, "other.example.org");
+      const next = await asAlice(() => queue.claimNext(aliceId, "agent-3"));
+      expect(next?.id).toBe(second.id);
+    });
+
+    it("expires with the others, and its slot is free again", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await db.query(
+        `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour' WHERE id = $1`,
+        [draft.id],
+      );
+
+      expect(await asAlice(() => queue.expireStale())).toBe(1);
+      const [row] = await requests();
+      expect(row.status).toBe("expired");
+      // a new open request for the same sender is allowed again
+      await enqueueDraft(aliceId);
+    });
+
+    it("is proposed only by the claimant, marked applied only for the parser it proposed, and dismissed with it", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await asAlice(() => queue.claimById(aliceId, draft.id, "assistant"));
+      const PARSER_A = "70000000-0000-4000-8000-0000000000a1";
+      const PARSER_B = "70000000-0000-4000-8000-0000000000b1";
+      const propose = (caller: string, parser: string) =>
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.proposeParserDraft(m, aliceId, draft.id, caller, parser),
+          ),
+        );
+
+      expect(await propose("someone-else", PARSER_A)).toBe(false);
+      expect(await propose("assistant", PARSER_A)).toBe(true);
+      // proposed once: a second save cannot overwrite the proposal
+      expect(await propose("assistant", PARSER_B)).toBe(false);
+
+      const applied = (parser: string) =>
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.markParserDraftApplied(m, aliceId, parser),
+          ),
+        );
+      expect(await applied(PARSER_B)).toBe(0);
+      expect((await requests())[0].status).toBe("proposed");
+      expect(await applied(PARSER_A)).toBe(1);
+      expect((await requests())[0].status).toBe("applied");
+    });
+
+    it("is dismissed when the parser it proposed is deleted, and only that one", async () => {
+      const a = await enqueueDraft(aliceId, "a.example.com");
+      const b = await enqueueDraft(aliceId, "b.example.com");
+      await asAlice(() => queue.claimById(aliceId, a.id, "assistant"));
+      await asAlice(() => queue.claimById(aliceId, b.id, "assistant"));
+      const PARSER = "70000000-0000-4000-8000-0000000000c1";
+      await asAlice(() =>
+        withScopedDb(harness.app, async (m: EntityManager) => {
+          await queue.proposeParserDraft(m, aliceId, a.id, "assistant", PARSER);
+          await queue.dismissParserDraftsFor(m, aliceId, PARSER);
+        }),
+      );
+
+      const rows = await db.query(
+        `SELECT parser_domain, status FROM ai_review_requests ORDER BY parser_domain`,
+      );
+      expect(rows).toEqual([
+        { parser_domain: "a.example.com", status: "rejected" },
+        { parser_domain: "b.example.com", status: "claimed" },
+      ]);
+    });
+
+    it("is another user's own queue: invisible, unclaimable, and its own sender slot", async () => {
+      const mine = await enqueueDraft(aliceId);
+      const theirs = await enqueueDraft(bobId);
+
+      expect(
+        await withUserContext(bobId, () => queue.listForUser(bobId)),
+      ).toHaveLength(1);
+      expect(
+        await withUserContext(bobId, () =>
+          queue.claimById(bobId, mine.id, "bob"),
+        ),
+      ).toBeNull();
+      expect(
+        await asAlice(() => queue.claimById(aliceId, theirs.id, "alice")),
+      ).toBeNull();
+      const open = await db.query(
+        `SELECT user_id FROM ai_review_requests WHERE status = 'pending' ORDER BY user_id`,
+      );
+      expect(open).toHaveLength(2);
+    });
+
+    it("is not applied by a transaction's markApplied: it has none", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await asAlice(() => queue.claimById(aliceId, draft.id, "assistant"));
+      const tx = (await asAlice(() => transactions.create(aliceId, dto()))).id;
+
+      await expect(
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.markApplied(m, aliceId, draft.id, tx),
+          ),
+        ),
+      ).rejects.toMatchObject({ status: 409 });
+      expect((await requests())[0].status).toBe("claimed");
+    });
+
+    it("one creator wins when two ask for one sender at once: exactly one request is left open", async () => {
+      await Promise.all([enqueueDraft(aliceId), enqueueDraft(aliceId)]);
+
+      const open = await db.query(
+        `SELECT 1 FROM ai_review_requests
+          WHERE status IN ('pending', 'claimed', 'proposed')`,
+      );
+      expect(open).toHaveLength(1);
+      const all = await db.query(`SELECT status FROM ai_review_requests`);
+      expect(all.map((r: { status: string }) => r.status).sort()).toEqual([
+        "pending",
+        "rejected",
+      ]);
+    });
+  });
 });

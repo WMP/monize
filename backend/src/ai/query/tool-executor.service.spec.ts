@@ -25,6 +25,7 @@ import { AttachmentToolPrepService } from "../../attachments/attachment-tool-pre
 import { RelayAttachmentStore } from "../relay/relay-attachment.store";
 import { AttachmentDto } from "./dto/ai-query.dto";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
 import { TransactionRuleToolPrepService } from "../../transaction-rules/rule-tool-prep.service";
 
 describe("ToolExecutorService", () => {
@@ -681,6 +682,7 @@ describe("ToolExecutorService", () => {
         { provide: ExchangeRateService, useValue: exchangeRates },
         // Exercised in tool-executor.transaction-rules.spec.ts.
         { provide: AiReviewWorkService, useValue: {} },
+        { provide: EmailReceiptParserToolsService, useValue: {} },
         { provide: TransactionRuleToolPrepService, useValue: {} },
         // Real prep + builder wrapping the mocked services, so the executor's
         // name resolution, preview building, and pending-action construction
