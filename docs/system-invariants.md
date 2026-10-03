@@ -2353,7 +2353,7 @@ Statement           A mortgage's amortization method (annuity, linear, interest
 Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
                     the traits, truth tables and fixtures are
                     docs/specs/mortgage-types.md.
-Enforcement         Partly built (Phase 1 of
+Enforcement         Partly built (Phase 1 and P2-B1 of
                     docs/future-plans/mortgage-types-tasks.md). Present: the
                     type helper (MORTGAGE_TYPE_TRAITS in
                     backend/src/accounts/mortgage-type.util.ts and
@@ -2364,16 +2364,18 @@ Enforcement         Partly built (Phase 1 of
                     mortgage-type-cases.json read by both layers; the shrink-only
                     flags guard, whose baseline is empty; the CHECK on
                     accounts.mortgage_type reconciled with MORTGAGE_TYPES by
-                    mortgage-type.contract.spec.ts. Absent: the method itself.
-                    Every mortgage is still priced as an annuity, and the DTOs
-                    accept only ANNUITY and CANADIAN_FIXED
-                    (WRITABLE_MORTGAGE_TYPES), both annuity methods, until the
-                    method branch exists. Owed: the method branch in
-                    calculateMortgageAmortization, resolveInstallment, the
-                    rate-change paths and generateLoanSchedule, and a CHECK keeping
-                    accounts.payment_amount null for LINEAR and INTEREST_ONLY,
-                    which have no constant payment, so every surface asks for
-                    a dated installment instead (spec section 5.6).
+                    mortgage-type.contract.spec.ts. On the backend, the method
+                    branch: the preview (calculateMortgageAmortization), the
+                    installment pricing (resolveInstallment) and the
+                    rate-change paths read the method through
+                    amortizationMethodFor, and the per-date principal of table
+                    4.3 is one function
+                    (backend/src/accounts/mortgage-installment.util.ts); the
+                    CHECKs keeping accounts.payment_amount null for LINEAR and
+                    INTEREST_ONLY and accounts.prepayment_mode null off LINEAR.
+                    Absent: the frontend method branch (generateLoanSchedule
+                    and the readers of spec table 5.6 on the client, P2-F1), so
+                    the client still offers only ANNUITY and CANADIAN_FIXED.
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)
@@ -2383,10 +2385,16 @@ Failure response    A LINEAR or INTEREST_ONLY mortgage without
                     amounts post), per the spec's missing-data policy.
 Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     contract specs (mortgage-type.contract.spec.ts,
-                    mortgage-type.contract.test.ts) and the flags guard
-                    (mortgage-type-flags.guard.spec.ts). Owed: the spec's
-                    section 7 fixtures row by row on both layers (preview,
-                    installment pricing, projection).
+                    mortgage-type.contract.test.ts), the flags guard
+                    (mortgage-type-flags.guard.spec.ts), and on the backend the
+                    spec's section 7 fixtures row by row
+                    (mortgage-installment.util.spec.ts,
+                    mortgage-amortization.util.spec.ts,
+                    scheduled-transaction-loan.mortgage-methods.spec.ts) with
+                    the CHECKs and the dated debt on a real ledger
+                    (mortgage-method-checks.integration.spec.ts,
+                    scheduled-loan-dated-balance.integration.spec.ts). Owed:
+                    the same fixtures from generateLoanSchedule (P2-F1).
 Status              partial
 ```
 

@@ -14,7 +14,7 @@ import { Payee } from "../../payees/entities/payee.entity";
 import { ScheduledTransaction } from "../../scheduled-transactions/entities/scheduled-transaction.entity";
 import { User } from "../../users/entities/user.entity";
 import { Institution } from "../../institutions/entities/institution.entity";
-import { MortgageType } from "../mortgage-type.util";
+import { MortgageType, PrepaymentMode } from "../mortgage-type.util";
 
 export enum AccountType {
   CHEQUING = "CHEQUING",
@@ -343,6 +343,16 @@ export class Account {
     nullable: true,
   })
   mortgageType: MortgageType | null;
+
+  // What an extra repayment does to a LINEAR mortgage's constant principal;
+  // null reads as SHORTEN_TERM, and the column is null on every other type.
+  @Column({
+    type: "varchar",
+    length: 20,
+    name: "prepayment_mode",
+    nullable: true,
+  })
+  prepaymentMode: PrepaymentMode | null;
 
   @Column({ type: "integer", name: "term_months", nullable: true })
   termMonths: number | null;

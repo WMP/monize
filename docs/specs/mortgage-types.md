@@ -2,7 +2,8 @@
 
 Status: approved design (task S1 of the plan). Phase 1 is implemented (P1-B1 to
 P1-Q: the column, the traits, the type-keyed consumers and the Select, offering
-`ANNUITY` and `CANADIAN_FIXED`); the LINEAR and INTEREST_ONLY methods, type
+`ANNUITY` and `CANADIAN_FIXED`), and so is the backend half of the LINEAR and
+INTEREST_ONLY methods with `prepayment_mode` (P2-B1); the frontend methods, type
 detection and the contract migration are not yet.
 Governs: issue #1501 (tracking) and its sub-issues #1502 to #1514, agreed in
 discussion #1486 in line with the direction set in #787. The plan is
@@ -343,7 +344,7 @@ INTEREST_ONLY:
 | `RateChangeInferenceService` | a segment's most common payment becomes `new_payment_amount` | null (5.3); segments are still cut on the rate alone | P2-B1 |
 | `LlmAccountRow.paymentAmount` (`getLlmAccounts`, the MCP accounts tool, the in-app assistant) | the column | null, beside `mortgageType` (P1-B3) and the next occurrence's amount and date; INTEREST_ONLY also carries the bullet and its date | P2-B1 |
 | `LoanPaymentDetectorService` | a detected payment offered for setup | a suggestion for the template; not written to the column (the CHECK refuses it) | P2-B2 |
-| MNY import (`backend/src/import/mny/map/map-loans.ts`) | writes the imported payment | unaffected: imported mortgages carry the flags and read as ANNUITY or CANADIAN_FIXED | -- |
+| MNY import (`backend/src/import/mny/map/map-loans.ts`, `backend/src/import/mny/writers/write-loans.ts`) | writes the imported payment | imported mortgages carry the flags and read as ANNUITY or CANADIAN_FIXED; a re-import into a profile where the user switched one to LINEAR or INTEREST_ONLY leaves its payment null | P2-B1 |
 | `resolveCurrentLoanTerms` (`frontend/src/lib/loan-history.ts`) | a stated rate-change payment, the observed installment, then `account.paymentAmount` | none of the three; the current installment is the next occurrence's | P2-F1 |
 | `generateLoanSchedule` (`frontend/src/lib/loan-schedule.ts`) | `paymentAmount`, then a stated payment per rate change | per-row principal from table 4.3; stated payments not read (5.4) | P2-F1 |
 | `LoanSummaryCards` (`frontend/src/components/accounts/loan-detail/LoanSummaryCards.tsx`) | `currentInstallment` from `resolveCurrentLoanTerms` | the next installment, captioned with its due date; INTEREST_ONLY adds the bullet and its date | P2-F1 |

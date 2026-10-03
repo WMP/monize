@@ -36,15 +36,25 @@ import {
 import { formatDateYMD, localDateForColumn } from "../common/date-utils";
 import { roundMoney } from "../common/round.util";
 import { tr } from "../i18n/translate";
-import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
+import {
+  LoanRateChangesService,
+  derivedInstallmentType,
+  refuseStatedPayment,
+} from "../loan-rate-changes/loan-rate-changes.service";
 import { withScopedDb } from "../common/db/scoped-db";
 import { datedLoanDebt } from "./dated-loan-debt.util";
 import {
   MortgageType,
   mortgageTypeColumns,
   mortgageTypeOf,
+  prepaymentModeColumn,
   requestedMortgageType,
+  storesConstantPayment,
 } from "./mortgage-type.util";
+import {
+  assertMortgageMethodTerms,
+  nonAnnuityInstallment,
+} from "./mortgage-installment.util";
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -103,6 +113,7 @@ export class LoanMortgageAccountService {
       institution,
       // A plain loan has no mortgage type (it amortizes on the loan engine).
       mortgageType: _mortgageType,
+      prepaymentMode: _prepaymentMode,
       ...accountData
     } = createAccountDto;
 
@@ -248,6 +259,7 @@ export class LoanMortgageAccountService {
       interestRate,
       institution,
       mortgageType: requestedType,
+      prepaymentMode,
       isCanadianMortgage,
       isVariableRate,
       termMonths,
@@ -317,7 +329,15 @@ export class LoanMortgageAccountService {
       mortgageType,
       startDate: new Date(paymentStartDate),
     };
+    // Refuses a LINEAR or INTEREST_ONLY mortgage it cannot price (an
+    // accelerated cadence, no principal) before anything is written.
     const amortization = calculateMortgageAmortization(amortizationInput);
+    // LINEAR and INTEREST_ONLY have no constant payment to store (spec
+    // decision 11); their template starts at the first installment, and every
+    // later one is priced at its own due date.
+    const storedPaymentAmount = storesConstantPayment(mortgageType)
+      ? amortization.paymentAmount
+      : null;
 
     const termEndDate = termMonths
       ? mortgageTermEndDate(new Date(paymentStartDate), termMonths)
@@ -332,7 +352,7 @@ export class LoanMortgageAccountService {
         currentBalance: -mortgageAmount,
         interestRate,
         institution,
-        paymentAmount: amortization.paymentAmount,
+        paymentAmount: storedPaymentAmount,
         paymentFrequency: mortgagePaymentFrequency,
         // A TypeORM `date` column, serialized with local getters: a UTC-midnight
         // value is stored a day early west of Greenwich, and this date anchors
@@ -341,6 +361,7 @@ export class LoanMortgageAccountService {
         sourceAccountId,
         interestCategoryId: interestCatId || null,
         ...mortgageTypeColumns(mortgageType),
+        prepaymentMode: prepaymentModeColumn(mortgageType, prepaymentMode),
         termMonths: termMonths || null,
         termEndDate,
         amortizationMonths,
@@ -475,6 +496,15 @@ export class LoanMortgageAccountService {
       );
     }
 
+    // A LINEAR or INTEREST_ONLY mortgage's method states every installment,
+    // so a stated payment is refused before anything is read or written
+    // (spec section 5.3).
+    refuseStatedPayment(account, newPaymentAmount);
+    const derivedType = derivedInstallmentType(account);
+    if (derivedType !== null) {
+      assertMortgageMethodTerms(derivedType, account);
+    }
+
     // The debt the new rate first applies to: the ledger through the
     // effective date, the as-of read installment pricing uses (spec decision
     // 5). `current_balance` stops at today, so a future-dated change would be
@@ -505,8 +535,6 @@ export class LoanMortgageAccountService {
       },
     );
 
-    const paymentAmount =
-      rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
     const periodicRate = getPeriodicRate(
       newRate,
       // The STORED cadence, read through the lookup that knows both spellings.
@@ -517,6 +545,30 @@ export class LoanMortgageAccountService {
         DEFAULT_PERIODS_PER_YEAR,
       mortgageTypeOf(account),
     );
+
+    // The method's installment at the effective date: principal from table
+    // 4.3 on the dated debt, interest at the new rate (spec section 5.3).
+    // `assertMortgageMethodTerms` above refused every account that leaves it
+    // unpriced.
+    if (derivedType !== null) {
+      const installment = nonAnnuityInstallment(
+        derivedType,
+        account,
+        effectiveYmd,
+        debt,
+        periodicRate,
+      )!;
+      return {
+        newRate,
+        paymentAmount: roundMoney(installment.principal + installment.interest),
+        principalPayment: installment.principal,
+        interestPayment: installment.interest,
+        effectiveDate: rateChange.effectiveDate,
+      };
+    }
+
+    const paymentAmount =
+      rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
     const interestPayment = roundMoney(debt * periodicRate);
     const principalPayment = roundMoney(paymentAmount - interestPayment);
 

@@ -23,8 +23,10 @@ import { PAYMENT_FREQUENCIES, PaymentFrequency } from "./create-account.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import {
-  WRITABLE_MORTGAGE_TYPES,
-  WritableMortgageType,
+  MORTGAGE_TYPES,
+  MortgageType,
+  PREPAYMENT_MODES,
+  PrepaymentMode,
 } from "../mortgage-type.util";
 
 export class UpdateAccountDto {
@@ -329,12 +331,22 @@ export class UpdateAccountDto {
   @ApiPropertyOptional({
     example: "CANADIAN_FIXED",
     description:
-      "Mortgage type: ANNUITY or CANADIAN_FIXED. Wins over isCanadianMortgage/isVariableRate; when absent, a flag sent decides it.",
-    enum: WRITABLE_MORTGAGE_TYPES,
+      "Mortgage type: ANNUITY (nominal rate divided by the payments per year), CANADIAN_FIXED (semi-annual compounding), LINEAR (constant principal) or INTEREST_ONLY (no principal until the final payment). Wins over isCanadianMortgage/isVariableRate; when absent, a flag sent decides it.",
+    enum: MORTGAGE_TYPES,
   })
   @IsOptional()
-  @IsIn(WRITABLE_MORTGAGE_TYPES)
-  mortgageType?: WritableMortgageType;
+  @IsIn(MORTGAGE_TYPES)
+  mortgageType?: MortgageType;
+
+  @ApiPropertyOptional({
+    example: "SHORTEN_TERM",
+    description:
+      "LINEAR mortgages only: what an extra repayment does to the constant principal. SHORTEN_TERM (the default when absent) keeps it and ends the loan earlier; LOWER_INSTALLMENT re-derives it as the remaining debt over the remaining payments. Stored as null for every other type.",
+    enum: PREPAYMENT_MODES,
+  })
+  @IsOptional()
+  @IsIn(PREPAYMENT_MODES)
+  prepaymentMode?: PrepaymentMode | null;
 
   @ApiPropertyOptional({
     example: true,

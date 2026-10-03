@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "Konta kredytów hipotecznych wymagają mortgagePaymentFrequency, paymentStartDate, sourceAccountId oraz amortizationMonths",
     "mortgageRequiresInterestRate": "Konta kredytów hipotecznych wymagają oprocentowania",
     "mortgageFrequencyUnsupported": "Kanadyjskich kredytów hipotecznych nie można zaplanować z częstotliwością spłat {frequency}",
+    "mortgageMethodAccelerated": "Przyspieszone częstotliwości spłat dotyczą tylko kredytów hipotecznych z ratami równymi; kredytu hipotecznego {{ type }} nie można spłacać z częstotliwością {{ frequency }}",
+    "mortgageMethodRequiresTerms": "Kredyt hipoteczny {{ type }} wymaga {{ fields }}",
+    "mortgageMethodPaymentMismatch": "Kwota płatności musi być równa pierwszej racie tego kredytu hipotecznego {{ type }} powiększonej o ewentualną dodatkową spłatę kapitału; serwer wylicza ją z zadłużenia, oprocentowania i okresu amortyzacji. Wyświetl podgląd ponownie",
     "paymentFrequencyUnsupported": "Nie można zaplanować częstotliwości spłat {frequency}",
     "mortgageRequiresInstitution": "Konta kredytów hipotecznych wymagają nazwy instytucji",
     "onlyMortgageAccounts": "Ta operacja jest dozwolona tylko dla kont kredytów hipotecznych",
@@ -628,6 +631,7 @@
     "duplicateDate": "Zmiana oprocentowania obowiązująca od {{ date }} już istnieje dla tego konta",
     "paymentModeConflict": "Podaj nową kwotę raty albo recalculatePayment, nie oba naraz",
     "recalculateMortgageOnly": "Przeliczenie raty jest dostępne tylko dla kont kredytów hipotecznych",
+    "methodDerivesPayment": "Rata kredytu hipotecznego {{ type }} jest wyliczana z zadłużenia i oprocentowania w każdym terminie płatności, dlatego zmiana oprocentowania nie może określać kwoty płatności",
     "insufficientData": "Za mało płatności ze szczegółami odsetek, aby wykryć zmiany oprocentowania",
     "frequencyMismatch": "Daty płatności nie odpowiadają częstotliwości płatności konta; wywnioskowane oprocentowanie może być mniej dokładne"
   },

@@ -6,7 +6,6 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { tr } from "../i18n/translate";
@@ -16,19 +15,21 @@ import { Account, AccountType } from "../accounts/entities/account.entity";
 import { CreateLoanRateChangeDto } from "./dto/create-loan-rate-change.dto";
 import { UpdateLoanRateChangeDto } from "./dto/update-loan-rate-change.dto";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
-import {
-  calculatePaymentAmount,
-  getPeriodicRate,
-  recalculateMortgageAfterRateChange,
-} from "../accounts/mortgage-amortization.util";
+import { getPeriodicRate } from "../accounts/mortgage-amortization.util";
 import { roundMoney } from "../common/round.util";
 import { datedLoanDebt } from "../accounts/dated-loan-debt.util";
-import { mortgageTypeOf } from "../accounts/mortgage-type.util";
+import {
+  MortgageType,
+  mortgageTypeOf,
+  storesConstantPayment,
+} from "../accounts/mortgage-type.util";
+import { nonAnnuityInstallment } from "../accounts/mortgage-installment.util";
+import { datedAnnuityInstallment } from "../accounts/annuity-relevel.util";
+import { effectiveAnnualRateOn } from "../accounts/effective-loan-rate.util";
 import { todayYMD, formatDateYMDLocal } from "../common/date-utils";
 import {
   DEFAULT_PERIODS_PER_YEAR,
   periodsPerYearForStoredFrequency,
-  toMortgagePaymentFrequency,
 } from "../accounts/payment-frequency.util";
 
 const RATE_CHANGE_ACCOUNT_TYPES = [AccountType.LOAN, AccountType.MORTGAGE];
@@ -95,11 +96,33 @@ function laterYmd(a: string | undefined, b: string): string {
   return a !== undefined && a > b ? a : b;
 }
 
-/** Whole calendar months from `fromYmd` to `toYmd` (floored at 0) */
-function monthsBetweenYmd(fromYmd: string, toYmdStr: string): number {
-  const [fromYear, fromMonth] = fromYmd.split("-").map(Number);
-  const [toYear, toMonth] = toYmdStr.split("-").map(Number);
-  return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth));
+/**
+ * The type of a mortgage whose method states every installment itself
+ * (LINEAR, INTEREST_ONLY), or null for an annuity mortgage and any other
+ * loan. A stated payment on a rate change of such a mortgage would be a second,
+ * conflicting answer to "what is the installment" (spec section 5.3).
+ */
+export function derivedInstallmentType(account: Account): MortgageType | null {
+  if (account.accountType !== AccountType.MORTGAGE) return null;
+  const type = mortgageTypeOf(account);
+  return storesConstantPayment(type) ? null : type;
+}
+
+/** Refuse a stated payment for a mortgage whose method derives it. */
+export function refuseStatedPayment(
+  account: Account,
+  paymentAmount: number | null | undefined,
+): void {
+  const type = derivedInstallmentType(account);
+  if (type !== null && paymentAmount != null) {
+    throw new BadRequestException(
+      tr(
+        "errors.loanRateChanges.methodDerivesPayment",
+        `A ${type} mortgage's installment is priced from its debt and rate on each due date, so a rate change cannot state a payment amount`,
+        { type },
+      ),
+    );
+  }
 }
 
 @Injectable()
@@ -139,6 +162,7 @@ export class LoanRateChangesService {
   ): Promise<CreateLoanRateChangeResult> {
     const account = await this.verifyLoanAccount(userId, accountId);
 
+    refuseStatedPayment(account, dto.newPaymentAmount);
     if (dto.newPaymentAmount != null && dto.recalculatePayment) {
       throw new BadRequestException(
         tr(
@@ -218,6 +242,7 @@ export class LoanRateChangesService {
     dto: UpdateLoanRateChangeDto,
   ): Promise<LoanRateChange> {
     const account = await this.verifyLoanAccount(userId, accountId);
+    refuseStatedPayment(account, dto.newPaymentAmount);
     const rateChange = await this.findOne(userId, accountId, id);
 
     const { saved, resolved } = await withScopedDb(
@@ -380,13 +405,19 @@ export class LoanRateChangesService {
     override?: ResolvedTimeline,
   ): Promise<ScheduledUpdatePlan | null> {
     if (account.isClosed || !account.scheduledTransactionId) return null;
+    // A LINEAR or INTEREST_ONLY mortgage has no payment to carry: the method
+    // states the installment from the debt and the rate (spec section 5.3).
+    const derivedType = derivedInstallmentType(account);
     // The current rate/payment come from the resolved timeline when supplied,
     // else the account's own (user-owned) scalars. The timeline never mutates
     // the account, so this override is how a rate change reaches the bill.
     const annualRate = override?.annualRate ?? account.interestRate;
     const effectivePayment =
       override?.paymentAmount ?? account.paymentAmount ?? null;
-    if (annualRate == null || !effectivePayment || !account.paymentFrequency) {
+    if (
+      (derivedType === null && (annualRate == null || !effectivePayment)) ||
+      !account.paymentFrequency
+    ) {
       return null;
     }
 
@@ -411,17 +442,37 @@ export class LoanRateChangesService {
     // installment this split describes. The timeline override only carries a
     // rate effective today or earlier (`resolveCurrentTimeline`), so the
     // effective date wins only over an overdue template; a future-dated
-    // change is priced by `recalculatePaymentForRate`, not here.
-    const balance = await withScopedDb(this.dataSource, (m) =>
-      datedLoanDebt(
-        m,
-        account,
-        laterYmd(
-          override?.effectiveDate,
-          toYmd(scheduled.nextDueDate) ?? todayYMD(),
-        ),
-      ),
+    // change is priced by `recalculatePaymentForRate`, not here -- except for
+    // a LINEAR or INTEREST_ONLY mortgage, whose template is priced at the rate
+    // dated to its own due date below.
+    const pricingDate = laterYmd(
+      override?.effectiveDate,
+      toYmd(scheduled.nextDueDate) ?? todayYMD(),
     );
+    const { balance, datedRate } = await withScopedDb(
+      this.dataSource,
+      async (m) => ({
+        balance: await datedLoanDebt(m, account, pricingDate),
+        // A derived installment is priced at the rate in force on the date it
+        // is due (INV-LOAN-006), so a change recorded for a future date that
+        // reaches this installment moves its interest, and only that.
+        datedRate:
+          derivedType === null
+            ? null
+            : effectiveAnnualRateOn(
+                await m.find(LoanRateChange, {
+                  where: { accountId: account.id },
+                  order: { effectiveDate: "ASC" },
+                }),
+                pricingDate,
+                account.interestRate == null
+                  ? null
+                  : Number(account.interestRate),
+              ),
+      }),
+    );
+    // No rate in the timeline or on the account is unknown, never 0%.
+    if (derivedType !== null && datedRate === null) return null;
     if (balance === null) {
       this.logger.warn(
         `Could not read the ledger balance of loan account ${account.id}`,
@@ -438,15 +489,11 @@ export class LoanRateChangesService {
     const periodsPerYear =
       periodsPerYearForStoredFrequency(account.paymentFrequency) ??
       DEFAULT_PERIODS_PER_YEAR;
+    const rateForSplit =
+      derivedType === null ? Number(annualRate) : Number(datedRate);
     const periodicRate = isMortgage
-      ? getPeriodicRate(annualRate, periodsPerYear, mortgageTypeOf(account))
-      : annualRate / 100 / periodsPerYear;
-
-    const paymentAmount = Number(effectivePayment);
-    let interest = roundMoney(balance * periodicRate);
-    if (interest > paymentAmount) interest = paymentAmount;
-    let principal = roundMoney(paymentAmount - interest);
-    if (principal > balance) principal = roundMoney(balance);
+      ? getPeriodicRate(rateForSplit, periodsPerYear, mortgageTypeOf(account))
+      : rateForSplit / 100 / periodsPerYear;
 
     const splits = scheduled.splits || [];
     const extraSplit = splits.find(
@@ -455,7 +502,36 @@ export class LoanRateChangesService {
         s.memo?.toLowerCase().includes("extra"),
     );
     const extraAmount = extraSplit ? Math.abs(Number(extraSplit.amount)) : 0;
-    const proposedPaymentAmount = roundMoney(paymentAmount + extraAmount);
+
+    let interest: number;
+    let principal: number;
+    let proposedPaymentAmount: number;
+    if (derivedType !== null) {
+      // The method's installment on the dated debt: principal from table 4.3
+      // (unchanged by the rate), interest at the new rate (spec section 5.3).
+      const installment = nonAnnuityInstallment(
+        derivedType,
+        account,
+        pricingDate,
+        balance,
+        periodicRate,
+      );
+      if (!installment) {
+        this.logger.warn(
+          `Could not price the ${derivedType} installment of loan account ${account.id}: a term it needs is missing`,
+        );
+        return null;
+      }
+      ({ principal, interest } = installment);
+      proposedPaymentAmount = roundMoney(principal + interest + extraAmount);
+    } else {
+      const paymentAmount = Number(effectivePayment);
+      interest = roundMoney(balance * periodicRate);
+      if (interest > paymentAmount) interest = paymentAmount;
+      principal = roundMoney(paymentAmount - interest);
+      if (principal > balance) principal = roundMoney(balance);
+      proposedPaymentAmount = roundMoney(paymentAmount + extraAmount);
+    }
 
     const payload = {
       amount: -proposedPaymentAmount,
@@ -633,61 +709,11 @@ export class LoanRateChangesService {
     account: Account,
     annualRate: number,
     effectiveDate: string,
-  ): Promise<number> {
-    const debt = await datedLoanDebt(m, account, effectiveDate);
-    if (debt === null) {
-      throw new ServiceUnavailableException(
-        tr(
-          "errors.accounts.loanLedgerUnreadable",
-          "This loan's balance could not be read. Try again.",
-        ),
-      );
-    }
-    const mortgageType = mortgageTypeOf(account);
-    const startDate = toYmd(account.paymentStartDate) ?? todayYMD();
-    const monthsElapsed = monthsBetweenYmd(startDate, effectiveDate);
-    const remainingAmortizationMonths = Math.max(
-      12,
-      (account.amortizationMonths || 300) - monthsElapsed,
-    );
-
-    // Converted, not cast. `recalculateMortgageAfterRateChange` derives its
-    // periodic rate from a MORTGAGE-domain cadence, and the column can hold the
-    // recurrence spelling: casting handed it SEMIMONTHLY, which its lookup read
-    // as monthly, so the recalculated installment was a whole month's payment on
-    // a half-monthly schedule -- persisted on the rate change and pushed into
-    // the scheduled transaction. Quarterly and yearly have no mortgage cadence
-    // at all, so those amortize on the standard convention instead of being
-    // forced into a mortgage shape the helpers cannot express.
-    const mortgageFrequency = toMortgagePaymentFrequency(
-      account.paymentFrequency || "MONTHLY",
-    );
-    if (!mortgageFrequency) {
-      const periodsPerYear =
-        periodsPerYearForStoredFrequency(account.paymentFrequency) ??
-        DEFAULT_PERIODS_PER_YEAR;
-      // The COMPOUNDING is still the account's own, even where the cadence is
-      // not one the mortgage helpers can express. Amortizing on the nominal
-      // convention here would have derived the persisted installment one way
-      // and the split this file computes 200 lines above it the other, for the
-      // same Canadian account -- two conventions for one mortgage.
-      return calculatePaymentAmount(
-        debt,
-        getPeriodicRate(annualRate, periodsPerYear, mortgageType),
-        Math.max(
-          1,
-          Math.round((remainingAmortizationMonths * periodsPerYear) / 12),
-        ),
-      );
-    }
-
-    const result = recalculateMortgageAfterRateChange(
-      debt,
-      annualRate,
-      remainingAmortizationMonths,
-      mortgageFrequency,
-      mortgageType,
-    );
-    return result.paymentAmount;
+  ): Promise<number | null> {
+    // A LINEAR or INTEREST_ONLY mortgage records no payment on a rate change:
+    // the method prices every installment, and the template follows through
+    // the confirmed sync (spec section 5.3).
+    if (derivedInstallmentType(account) !== null) return null;
+    return datedAnnuityInstallment(m, account, annualRate, effectiveDate);
   }
 }

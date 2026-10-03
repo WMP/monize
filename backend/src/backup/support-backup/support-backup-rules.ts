@@ -224,6 +224,7 @@ export const RULES: Record<string, TableRules> = {
     is_canadian_mortgage: keep,
     is_variable_rate: keep,
     mortgage_type: keep,
+    prepayment_mode: keep,
     term_months: keep,
     term_end_date: keep,
     amortization_months: keep,

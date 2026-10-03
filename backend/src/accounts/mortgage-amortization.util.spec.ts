@@ -11,6 +11,8 @@ import {
   getPeriodicRate,
   MortgagePaymentFrequency,
   MortgageAmortizationInput,
+  calculateMortgagePaymentSplit,
+  recalculateMortgageAfterRateChange,
 } from "./mortgage-amortization.util";
 import { MortgageType, mortgageTypeFromFlags } from "./mortgage-type.util";
 
@@ -822,5 +824,104 @@ describe("Mortgage Amortization Utility", () => {
       const endDate = calculateMortgageEndDate(startDate, "MONTHLY", 20000);
       expect(endDate.getFullYear()).toBeGreaterThanOrEqual(2126);
     });
+  });
+});
+
+describe("calculateMortgageAmortization: LINEAR and INTEREST_ONLY (spec 5.1, table 7.5)", () => {
+  // EUR 300,000 over 30 years, monthly from 2024-01-01, 2.00% throughout.
+  const input = (
+    mortgageType: MortgageType,
+    overrides: Partial<MortgageAmortizationInput> = {},
+  ): MortgageAmortizationInput => ({
+    principal: 300000,
+    annualRate: 2,
+    amortizationMonths: 360,
+    paymentFrequency: "MONTHLY",
+    mortgageType,
+    startDate: new Date("2024-01-01"),
+    ...overrides,
+  });
+
+  it("ANNUITY (the reference row) is unchanged", () => {
+    const result = calculateMortgageAmortization(input("ANNUITY"));
+    expect(result.paymentAmount).toBe(1108.8584);
+    expect(result.principalPayment).toBe(608.8584);
+    expect(result.interestPayment).toBe(500);
+    expect(result.totalPayments).toBe(360);
+    expect(Math.round(result.totalInterest * 100) / 100).toBe(99189.03);
+    expect(result.residualPayoffAmount).toBe(1108.8673);
+    expect(result.endDate.toISOString().slice(0, 10)).toBe("2053-12-01");
+  });
+
+  it("LINEAR: first installment 1,333.33 of 360, lifetime interest 90,250.00", () => {
+    const result = calculateMortgageAmortization(input("LINEAR"));
+    expect(result.paymentAmount).toBe(1333.3333);
+    expect(result.principalPayment).toBe(833.3333);
+    expect(result.interestPayment).toBe(500);
+    expect(result.totalPayments).toBe(360);
+    expect(result.totalInterest).toBe(90250);
+    // c plus the 0.0120 leftover the last payment absorbs, with its interest.
+    expect(result.residualPayoffAmount).toBe(834.7342);
+    expect(result.endDate.toISOString().slice(0, 10)).toBe("2053-12-01");
+    expect(result.effectiveAnnualRate).toBe(2.02);
+  });
+
+  it("INTEREST_ONLY: every installment 500.00, lifetime interest 180,000.00, bullet 300,500.00", () => {
+    const result = calculateMortgageAmortization(input("INTEREST_ONLY"));
+    expect(result.paymentAmount).toBe(500);
+    expect(result.principalPayment).toBe(0);
+    expect(result.interestPayment).toBe(500);
+    expect(result.totalPayments).toBe(360);
+    expect(result.totalInterest).toBe(180000);
+    expect(result.residualPayoffAmount).toBe(300500);
+    expect(result.endDate.toISOString().slice(0, 10)).toBe("2053-12-01");
+  });
+
+  it.each([
+    ["LINEAR", "ACCELERATED_BIWEEKLY"],
+    ["LINEAR", "ACCELERATED_WEEKLY"],
+    ["INTEREST_ONLY", "ACCELERATED_BIWEEKLY"],
+    ["INTEREST_ONLY", "ACCELERATED_WEEKLY"],
+  ] as const)("%s refuses %s with a 400", (type, frequency) => {
+    expect(() =>
+      calculateMortgageAmortization(
+        input(type, { paymentFrequency: frequency }),
+      ),
+    ).toThrow(/Accelerated payment frequencies apply only to annuity/);
+  });
+
+  it.each(["LINEAR", "INTEREST_ONLY"] as const)(
+    "%s refuses a missing amortization with a 400 naming it",
+    (type) => {
+      expect(() =>
+        calculateMortgageAmortization(input(type, { amortizationMonths: 0 })),
+      ).toThrow(/requires amortizationMonths/);
+    },
+  );
+
+  it("LINEAR refuses a zero principal: c would be 0", () => {
+    expect(() =>
+      calculateMortgageAmortization(input("LINEAR", { principal: 0 })),
+    ).toThrow(/requires originalPrincipal/);
+  });
+});
+
+describe("the annuity-only helpers refuse the other methods", () => {
+  it.each(["LINEAR", "INTEREST_ONLY"] as const)(
+    "%s is not routed through the annuity re-levelling or split",
+    (type) => {
+      expect(() =>
+        recalculateMortgageAfterRateChange(300000, 4, 324, "MONTHLY", type),
+      ).toThrow(/nonAnnuityInstallment/);
+      expect(() =>
+        calculateMortgagePaymentSplit(300000, 2, 1333.33, 12, type),
+      ).toThrow(/nonAnnuityInstallment/);
+    },
+  );
+
+  it("still prices the annuity types", () => {
+    expect(
+      calculateMortgagePaymentSplit(300000, 2, 1108.8584, 12, "ANNUITY"),
+    ).toEqual({ principal: 608.8584, interest: 500 });
   });
 });

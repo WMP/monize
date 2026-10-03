@@ -369,6 +369,32 @@ describe("RateChangeInferenceService", () => {
     });
   });
 
+  it.each(["LINEAR", "INTEREST_ONLY"] as const)(
+    "records no payment for a %s mortgage, cutting segments on the rate alone",
+    async (mortgageType) => {
+      // docs/specs/mortgage-types.md section 5.3: the method states every
+      // installment, so an observed payment on the rate row would be a second,
+      // conflicting answer. The rates still annualize by day count.
+      rateChangesService.verifyLoanAccount.mockResolvedValue(
+        makeAccount({ mortgageType, paymentAmount: null }),
+      );
+      const { records, balanceMap } = generateHistory(400000, [
+        { annualRate: 5.5, payments: 12, paymentAmount: 2500 },
+        { annualRate: 6.5, payments: 12, paymentAmount: 2750 },
+      ]);
+      setHistory(records, balanceMap);
+
+      await service.detectAndPersist(userId, accountId);
+
+      const rows = createdRows();
+      expect(rows.map((row) => [row.source, row.annualRate])).toEqual([
+        ["initial", 5.5],
+        ["inferred", 6.5],
+      ]);
+      expect(rows.every((row) => row.newPaymentAmount === null)).toBe(true);
+    },
+  );
+
   it("ignores a single outlier payment instead of opening a segment", async () => {
     const { records, balanceMap } = generateHistory(400000, [
       { annualRate: 5.5, payments: 24, paymentAmount: 2500 },

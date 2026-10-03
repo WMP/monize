@@ -3,17 +3,17 @@ import { join } from "path";
 
 import { roundMoney } from "../common/round.util";
 import {
+  MortgagePaymentFrequency,
   calculateEffectiveAnnualRate,
-  calculatePaymentAmount,
+  calculateMortgageAmortization,
   getPeriodicRate,
 } from "./mortgage-amortization.util";
 import {
   MORTGAGE_TYPES,
   MORTGAGE_TYPE_TRAITS,
-  MortgageAmortizationMethod,
+  PREPAYMENT_MODES,
   MortgageType,
   MortgageTypeTraits,
-  amortizationMethodFor,
   flagsFromMortgageType,
   mortgageTypeFromFlags,
 } from "./mortgage-type.util";
@@ -83,23 +83,49 @@ const cases: MortgageTypeCases = JSON.parse(
 );
 
 /**
- * The first installment's principal by method. The method branch of
- * `calculateMortgageAmortization` lands in P2-B1; until then this restates
- * spec table 4.3 at the first due date, where the debt is the principal.
+ * The first installment's principal, from the preview's method branch
+ * (`calculateMortgageAmortization`, spec section 5.1): the annuity split, the
+ * LINEAR `c` or the INTEREST_ONLY zero.
  */
-const FIRST_PRINCIPAL: Record<
-  MortgageAmortizationMethod,
-  (principal: number, periodicRate: number, totalPayments: number) => number
-> = {
-  ANNUITY: (principal, periodicRate, totalPayments) =>
-    roundMoney(
-      calculatePaymentAmount(principal, periodicRate, totalPayments) -
-        roundMoney(principal * periodicRate),
-    ),
-  LINEAR: (principal, _periodicRate, totalPayments) =>
-    roundMoney(principal / totalPayments),
-  INTEREST_ONLY: () => 0,
-};
+function firstPrincipal(
+  type: MortgageType,
+  example: MortgageTypeCase["example"],
+): number {
+  const frequency: Record<number, MortgagePaymentFrequency> = {
+    12: "MONTHLY",
+    24: "SEMI_MONTHLY",
+    26: "BIWEEKLY",
+    52: "WEEKLY",
+  };
+  return calculateMortgageAmortization({
+    principal: example.principal,
+    annualRate: example.annualRate,
+    amortizationMonths: (example.totalPayments * 12) / example.periodsPerYear,
+    paymentFrequency: frequency[example.periodsPerYear],
+    mortgageType: type,
+    startDate: new Date("2024-01-01"),
+  }).principalPayment;
+}
+
+const PREPAYMENT_CHECK_PATTERN =
+  /CONSTRAINT\s+accounts_prepayment_mode_check\s+CHECK\s*\(\s*prepayment_mode\s+IN\s*\(([^)]*)\)\s*\)/i;
+
+describe("PREPAYMENT_MODES and the schema CHECK", () => {
+  it("matches accounts_prepayment_mode_check in both directions", () => {
+    const match = PREPAYMENT_CHECK_PATTERN.exec(
+      readFileSync(SCHEMA_PATH, "utf8"),
+    );
+    if (!match) {
+      throw new Error(
+        "No `CONSTRAINT accounts_prepayment_mode_check CHECK (prepayment_mode " +
+          "IN (...))` found in database/schema.sql; update this parser.",
+      );
+    }
+    expect(
+      [...match[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).sort(),
+    ).toEqual([...PREPAYMENT_MODES].sort());
+  });
+});
 
 describe("MORTGAGE_TYPES and the schema CHECK", () => {
   const schema = readFileSync(SCHEMA_PATH, "utf8");
@@ -167,13 +193,7 @@ describe("mortgage-type-cases.json", () => {
       expect(roundMoney(example.principal * periodicRate)).toBe(
         example.firstInterest,
       );
-      expect(
-        FIRST_PRINCIPAL[amortizationMethodFor(type)](
-          example.principal,
-          periodicRate,
-          example.totalPayments,
-        ),
-      ).toBe(example.firstPrincipal);
+      expect(firstPrincipal(type, example)).toBe(example.firstPrincipal);
       expect(
         calculateEffectiveAnnualRate(
           example.annualRate,

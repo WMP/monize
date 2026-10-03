@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "Hypothekenkonten erfordern mortgagePaymentFrequency, paymentStartDate, sourceAccountId und amortizationMonths",
     "mortgageRequiresInterestRate": "Hypothekenkonten erfordern einen Zinssatz",
     "mortgageFrequencyUnsupported": "Kanadische Hypotheken können nicht mit der Zahlungsfrequenz {frequency} geplant werden",
+    "mortgageMethodAccelerated": "Beschleunigte Zahlungsfrequenzen gelten nur für Annuitätenhypotheken; eine {{ type }}-Hypothek kann nicht mit der Frequenz {{ frequency }} bezahlt werden",
+    "mortgageMethodRequiresTerms": "Eine {{ type }}-Hypothek erfordert {{ fields }}",
+    "mortgageMethodPaymentMismatch": "Der Zahlungsbetrag muss der ersten Rate dieser {{ type }}-Hypothek zuzüglich etwaiger Sondertilgung entsprechen; der Server leitet sie aus Restschuld, Zinssatz und Laufzeit ab. Rufen Sie die Vorschau erneut auf",
     "paymentFrequencyUnsupported": "Eine Zahlungsfrequenz von {frequency} kann nicht als Zahlungsplan angelegt werden",
     "mortgageRequiresInstitution": "Hypothekenkonten erfordern einen Institutsnamen",
     "onlyMortgageAccounts": "Dieser Vorgang ist nur für Hypothekenkonten gültig",
@@ -628,6 +631,7 @@
     "duplicateDate": "Eine Zinssatzänderung mit Gültigkeit {{ date }} existiert bereits für dieses Konto",
     "paymentModeConflict": "Geben Sie entweder einen neuen Ratenbetrag oder recalculatePayment an, nicht beides",
     "recalculateMortgageOnly": "Die Neuberechnung der Rate ist nur für Hypothekenkonten verfügbar",
+    "methodDerivesPayment": "Die Rate einer {{ type }}-Hypothek wird an jedem Fälligkeitstermin aus Restschuld und Zinssatz berechnet, daher kann eine Zinsänderung keinen Zahlungsbetrag festlegen",
     "insufficientData": "Nicht genügend Zahlungen mit Zinsdetails, um Zinssatzänderungen zu erkennen",
     "frequencyMismatch": "Die Zahlungsdaten stimmen nicht mit dem Zahlungsintervall des Kontos überein; abgeleitete Zinssätze sind möglicherweise weniger genau"
   },
