@@ -157,10 +157,18 @@
       "<rootDir>/src"
     ],
     "testRegex": ".*\\.spec\\.ts$",
+    "setupFiles": [
+      "<rootDir>/src/test-helpers/silence-nest-logger.setup.ts"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": [
         "ts-jest",
         {
+          "tsconfig": {
+            "isolatedModules": true,
+            "module": "commonjs",
+            "moduleResolution": "bundler"
+          },
           "diagnostics": {
             "ignoreCodes": [
               151002
