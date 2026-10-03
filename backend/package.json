@@ -146,6 +146,7 @@
     }
   },
   "jest": {
+    "workerIdleMemoryLimit": "1GB",
     "moduleFileExtensions": [
       "js",
       "json",
