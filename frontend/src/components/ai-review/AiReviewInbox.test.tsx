@@ -228,4 +228,46 @@ describe('AiReviewInbox', () => {
     expect(screen.getByText('This transaction no longer exists')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'View transaction' })).not.toBeInTheDocument();
   });
+
+  describe('a parser draft request among the others', () => {
+    const draft = (over: Partial<AiReviewItem> = {}) =>
+      makeReviewItem({
+        id: 'req-draft',
+        kind: 'email_parser_draft',
+        ruleId: null,
+        ruleName: null,
+        transactionId: null,
+        transaction: null,
+        parserDraft: { domain: 'shop.example.com', emailCount: 2, parserId: null },
+        ...over,
+      });
+
+    it('lists it with an ordinary request, each in its own shape', async () => {
+      api.list.mockResolvedValue([draft(), makeReviewItem()]);
+      await renderInbox();
+      expect(screen.getByText('Parser draft from 2 emails (shop.example.com)')).toBeInTheDocument();
+      expect(screen.getByText('Rule: Allegro orders')).toBeInTheDocument();
+    });
+
+    it('dismisses it after the confirmation dialog, like any other request', async () => {
+      api.list.mockResolvedValueOnce([draft()]).mockResolvedValue([]);
+      api.dismiss.mockResolvedValue(draft({ status: 'rejected' }));
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Dismiss' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Dismiss request' }));
+      expect(api.dismiss).toHaveBeenCalledWith('req-draft');
+      expect(toast.success).toHaveBeenCalledWith('Request dismissed');
+    });
+
+    it('points a proposed one at the parser settings and offers no approve button here', async () => {
+      api.list.mockResolvedValue([draft({ status: 'proposed', parserDraft: { domain: 'shop.example.com', emailCount: 2, parserId: 'p-1' } })]);
+      await renderInbox();
+      expect(screen.getByRole('link', { name: 'Test and approve it in the parser settings' })).toHaveAttribute(
+        'href',
+        '/settings/email-receipts',
+      );
+      expect(screen.queryByRole('button', { name: /Approve|Confirm|Apply/ })).not.toBeInTheDocument();
+      expect(confirmAction).not.toHaveBeenCalled();
+    });
+  });
 });

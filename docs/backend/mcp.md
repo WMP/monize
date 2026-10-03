@@ -170,6 +170,8 @@ The caller key is the session id on a 2025-era connection and the credential id 
 - **`reject` returns the request to `pending`** with the claim cleared and the reason kept for the next agent, or closes it (`rejected`) with `cannotBeDone`. Returning is the default so an agent that merely could not read an order does not close the request for everyone; closing exists so an impossible request is not handed out forever.
 - **Scopes:** `read` for `list`, `write` for the rest.
 
+`email_receipt_parsers` (`tools/email-receipt-parsers.tool.ts`, `operation`: test, save_draft, categories) is its sibling for the parser drafts a person asks for from the receipts page. It confirms nothing and spends no write cap: it reads no mail (the claimed request carries the emails' text), `test` runs a draft against them without storing, and `save_draft` stores a DISABLED parser the person still approves. Scopes: `read` for `test` and `categories`, `write` for `save_draft`; annotation `CREATE`. It has its own entry in the `tools/list` byte budget (`tools-list-budget.spec.ts`); keep the description short and do not lengthen `ai_review_requests` to explain it.
+
 ## `toolResult` and structured content
 
 `toolResult(data)` is the only success path. It sanitizes every string in the payload (`sanitizeToolResultStrings`), normalizes non-finite numbers to `null`, and returns **`structuredContent` alone**: objects pass through; bare arrays are wrapped under `items`; primitives under `value`.

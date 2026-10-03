@@ -3,6 +3,7 @@ import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsInt,
   IsObject,
@@ -150,4 +151,28 @@ export class TestEmailReceiptParserDto {
   @ValidateIf(notBlank)
   @IsUUID()
   payeeId?: string | null;
+}
+
+/** Most emails one "draft a parser with AI" request names (the schema's CHECK). */
+export const PARSER_DRAFT_MAX_RECEIPTS = 5;
+
+/**
+ * Body of `POST /email-receipt-parsers/draft-with-ai`: the stored emails an
+ * assistant (or an MCP agent) should write a parser from. They are the user's
+ * own and readable (checked in the transaction that queues the request).
+ */
+export class DraftParserWithAiDto {
+  @ApiProperty({
+    type: [String],
+    minItems: 1,
+    maxItems: PARSER_DRAFT_MAX_RECEIPTS,
+    description:
+      "The stored emails to write the parser from (1 to 5, distinct).",
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(PARSER_DRAFT_MAX_RECEIPTS)
+  @ArrayUnique()
+  @IsUUID("all", { each: true })
+  receiptIds: string[];
 }

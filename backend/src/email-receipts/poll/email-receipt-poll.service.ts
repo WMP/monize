@@ -19,6 +19,7 @@ import {
   type FetchedMessage,
   type FetchSinceResult,
 } from "../imap/imap-mailbox-client";
+import { resolveForwardedIdentity } from "../imap/forwarded-receipt";
 import { extractMailText } from "../imap/mail-text.util";
 import { EmailReceiptMailboxService } from "../mailbox/email-receipt-mailbox.service";
 import {
@@ -72,6 +73,9 @@ interface ReceiptRow {
   subject: string;
   receivedAt: Date;
   bodyText: string;
+  bodyHtml: string | null;
+  forwardedBy: string | null;
+  originalSentAt: Date | null;
   uid: string;
   status: "pending" | "skipped";
   statusReason: "too_large" | "undecodable" | null;
@@ -152,10 +156,15 @@ export class EmailReceiptPollService {
 
   /**
    * "Poll now": the same code path as the cron, under the caller's own request
-   * identity. The lease makes it a no-op while a cron run (or another press)
-   * holds the mailbox, and makes a concurrent cron run a no-op while this one
-   * does. A mailbox that is switched off, or cannot be read, is an `ok: false`
-   * result with the reason, not an exception; a user with no mailbox is a 404.
+   * identity, whether or not the mailbox is set to be read automatically: the
+   * `enabled` switch decides only whether the 15-minute cron polls it
+   * (`listEnabledMailboxes`), never whether the person can. The lease makes it a
+   * no-op while a cron run (or another press) holds the mailbox, and makes a
+   * concurrent cron run a no-op while this one does. A mailbox that cannot be
+   * read (including an OAuth2 one whose sign-in was revoked or disconnected: no
+   * token, so it cannot connect, and the poll says to connect it again) is an
+   * `ok: false` result with the reason, not an exception; a user with no mailbox
+   * is a 404.
    */
   async pollNow(userId: string): Promise<EmailReceiptPollNowResult> {
     const view = await this.mailbox.getView(userId);
@@ -167,18 +176,8 @@ export class EmailReceiptPollService {
         ),
       );
     }
-    if (!view.enabled) {
-      return {
-        ...EMPTY,
-        ok: false,
-        error: tr(
-          "errors.emailReceipts.pollMailboxDisabled",
-          "The mailbox is switched off. Turn it on in the mailbox settings to poll it.",
-        ),
-      };
-    }
     const outcome = await this.pollMailbox(userId, view.id, {
-      requireEnabled: true,
+      requireEnabled: false,
     });
     if (outcome.busy) {
       return {
@@ -333,8 +332,10 @@ export class EmailReceiptPollService {
           await m.query(
             `INSERT INTO email_receipts
                (user_id, mailbox_id, uid_validity, uid, message_id, from_address,
-                from_domain, subject, received_at, body_text, status, status_reason)
-             VALUES ($1, $2, $3::bigint, $4::bigint, $5, $6, $7, $8, $9, $10, $11, $12)
+                from_domain, subject, received_at, body_text, body_html,
+                forwarded_by, original_sent_at, status, status_reason)
+             VALUES ($1, $2, $3::bigint, $4::bigint, $5, $6, $7, $8, $9, $10, $11,
+                     $12, $13, $14, $15)
              ON CONFLICT (mailbox_id, uid_validity, uid) DO NOTHING
              RETURNING id`,
             [
@@ -348,6 +349,9 @@ export class EmailReceiptPollService {
               row.subject,
               row.receivedAt,
               row.bodyText,
+              row.bodyHtml,
+              row.forwardedBy,
+              row.originalSentAt,
               row.status,
               row.statusReason,
             ],
@@ -368,13 +372,37 @@ export class EmailReceiptPollService {
   private async toRow(message: FetchedMessage, now: Date): Promise<ReceiptRow> {
     try {
       const mail = await extractMailText(message.source);
-      return {
-        messageId: mail.messageId,
+      const receivedAt = pickReceivedAt(mail.date, message.internalDate, now);
+      // A forward from the user's own address: the shop, the subject and the day
+      // it wrote come from the forwarded header block in the text, so the parser
+      // is chosen by the shop and the match window is centred on the purchase.
+      const identity = resolveForwardedIdentity(
+        {
+          fromAddress: mail.fromAddress,
+          fromDomain: mail.fromDomain,
+          subject: mail.subject,
+          forwardedBy: null,
+          originalSentAt: null,
+        },
+        mail.text,
+        receivedAt,
+      ) ?? {
         fromAddress: mail.fromAddress,
         fromDomain: mail.fromDomain,
         subject: mail.subject,
-        receivedAt: pickReceivedAt(mail.date, message.internalDate, now),
+        forwardedBy: null,
+        originalSentAt: null,
+      };
+      return {
+        messageId: mail.messageId,
+        fromAddress: identity.fromAddress,
+        fromDomain: identity.fromDomain,
+        subject: identity.subject,
+        receivedAt,
         bodyText: mail.text,
+        bodyHtml: mail.html,
+        forwardedBy: identity.forwardedBy,
+        originalSentAt: identity.originalSentAt,
         uid: message.uid,
         status: "pending",
         statusReason: null,
@@ -490,6 +518,9 @@ function skippedRow(
     subject: "",
     receivedAt: Number.isNaN(receivedAt.getTime()) ? new Date() : receivedAt,
     bodyText: "",
+    bodyHtml: null,
+    forwardedBy: null,
+    originalSentAt: null,
     uid,
     status: "skipped",
     statusReason: reason,

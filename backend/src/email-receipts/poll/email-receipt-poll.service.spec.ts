@@ -80,6 +80,7 @@ const mail = (over: Record<string, unknown> = {}) => ({
   subject: "Your order",
   date: new Date("2026-09-09T08:00:00Z"),
   text: "Order total: 15.00",
+  html: null as string | null,
   ...over,
 });
 
@@ -425,9 +426,93 @@ describe("ingestion (INV-RECEIPT-002)", () => {
       "Your order",
       new Date("2026-09-09T08:00:00Z"),
       "Order total: 15.00",
+      null,
+      null,
+      null,
       "pending",
       null,
     ]);
+  });
+
+  it("stores the HTML part beside the text, for display", async () => {
+    const h = setup();
+    mockMailText(mail({ html: "<p>Order total: <b>15.00</b></p>" }));
+    h.imap.fetchSince.mockResolvedValue(
+      fetched({ messages: [message("41")], highestUid: "41" }),
+    );
+
+    await poll(h);
+
+    const insert = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("INSERT INTO email_receipts"),
+    ) as [string, unknown[]];
+    expect(insert[0]).toContain("body_html");
+    expect(insert[1][9]).toBe("Order total: 15.00");
+    expect(insert[1][10]).toBe("<p>Order total: <b>15.00</b></p>");
+  });
+
+  describe("a forwarded order confirmation", () => {
+    const FORWARD = [
+      "Look at this.",
+      "",
+      "---------- Forwarded message ---------",
+      "From: Example Shop <orders@shop.example.com>",
+      "Date: Mon, Aug 10, 2026 at 10:15 AM",
+      "Subject: Order #A-1001 confirmed",
+      "To: <alice.example@example.com>",
+      "",
+      "Order total: 15.00",
+    ].join("\n");
+
+    it("is stored under the ORIGINAL sender, subject and day, with the forwarder kept", async () => {
+      const h = setup();
+      mockMailText(
+        mail({
+          fromAddress: "alice.example@gmail.example.com",
+          fromDomain: "gmail.example.com",
+          subject: "Fwd: Order #A-1001 confirmed",
+          // the forward went out 31 days after the purchase
+          date: new Date("2026-09-10T09:00:00Z"),
+          text: FORWARD,
+        }),
+      );
+      h.imap.fetchSince.mockResolvedValue(
+        fetched({ messages: [message("41")], highestUid: "41" }),
+      );
+
+      await poll(h);
+
+      const insert = h.manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("INSERT INTO email_receipts"),
+      ) as [string, unknown[]];
+      const p = insert[1];
+      expect(p[5]).toBe("orders@shop.example.com");
+      expect(p[6]).toBe("shop.example.com");
+      expect(p[7]).toBe("Order #A-1001 confirmed");
+      // received_at stays the day the forward arrived
+      expect(p[8]).toEqual(new Date("2026-09-10T09:00:00Z"));
+      expect(p[11]).toBe("alice.example@gmail.example.com");
+      expect(p[12]).toEqual(new Date("2026-08-10T10:15:00.000Z"));
+    });
+
+    it("an email that is not a forward keeps the mailbox's From and has no original date", async () => {
+      const h = setup();
+      mockMailText(mail());
+      h.imap.fetchSince.mockResolvedValue(
+        fetched({ messages: [message("41")], highestUid: "41" }),
+      );
+
+      await poll(h);
+
+      const p = (
+        h.manager.query.mock.calls.find((c) =>
+          String(c[0]).includes("INSERT INTO email_receipts"),
+        ) as [string, unknown[]]
+      )[1];
+      expect(p[5]).toBe("orders@shop.example.com");
+      expect(p[11]).toBeNull();
+      expect(p[12]).toBeNull();
+    });
   });
 
   it("a UID already stored is not counted and does not stop the cursor", async () => {
@@ -459,9 +544,21 @@ describe("ingestion (INV-RECEIPT-002)", () => {
     const inserts = h.manager.query.mock.calls
       .filter((c) => String(c[0]).includes("INSERT INTO email_receipts"))
       .map((c) => c[1] as unknown[]);
-    expect(inserts.map((p) => [p[3], p[5], p[7], p[9], p[10], p[11]])).toEqual([
-      ["42", "", "", "", "skipped", "undecodable"],
-      ["41", "", "", "", "skipped", "too_large"],
+    expect(
+      inserts.map((p) => [
+        p[3],
+        p[5],
+        p[7],
+        p[9],
+        p[10],
+        p[11],
+        p[12],
+        p[13],
+        p[14],
+      ]),
+    ).toEqual([
+      ["42", "", "", "", null, null, null, "skipped", "undecodable"],
+      ["41", "", "", "", null, null, null, "skipped", "too_large"],
     ]);
   });
 
@@ -682,15 +779,54 @@ describe("Poll now", () => {
     expect(h.jobClaims.claimLease).not.toHaveBeenCalled();
   });
 
-  it("a switched-off mailbox is an error result, not a poll", async () => {
+  it("polls a mailbox that is not set to be read automatically (enabled only decides the cron)", async () => {
     const h = setup();
     h.mailbox.getView.mockResolvedValue(view({ enabled: false }));
+    h.mailbox.loadConnection.mockResolvedValue(loaded({ enabled: false }));
+    mockMailText(mail());
+    h.imap.fetchSince.mockResolvedValue(
+      fetched({ messages: [message("41")], highestUid: "41" }),
+    );
+    h.pending.push("r1");
+
+    await expect(h.service.pollNow(USER)).resolves.toEqual({
+      ok: true,
+      busy: false,
+      fetched: 1,
+      skipped: 0,
+      processed: 1,
+    });
+
+    expect(h.jobClaims.claimLease).toHaveBeenCalledTimes(1);
+    expect(h.imap.fetchSince).toHaveBeenCalledTimes(1);
+    expect(h.mailbox.recordPollSuccess).toHaveBeenCalled();
+  });
+
+  it("the cron still leaves that mailbox alone", async () => {
+    const h = setup();
+    h.mailbox.loadConnection.mockResolvedValue(loaded({ enabled: false }));
+
+    await poll(h);
+
+    expect(h.imap.fetchSince).not.toHaveBeenCalled();
+  });
+
+  it("a disconnected OAuth mailbox cannot connect: the reconnect message, whatever enabled says", async () => {
+    const h = setup();
+    h.mailbox.getView.mockResolvedValue(view({ enabled: false }));
+    h.mailbox.loadConnection.mockRejectedValue(
+      new Error("The mailbox's sign-in was revoked or has expired."),
+    );
+    h.mailbox.recordPollFailure.mockResolvedValue(
+      "The mailbox's sign-in was revoked or has expired. Connect the mailbox again in the mailbox settings.",
+    );
+
     await expect(h.service.pollNow(USER)).resolves.toMatchObject({
       ok: false,
       fetched: 0,
-      error: expect.stringContaining("switched off"),
+      error: expect.stringContaining("Connect the mailbox again"),
     });
-    expect(h.jobClaims.claimLease).not.toHaveBeenCalled();
+    expect(h.imap.fetchSince).not.toHaveBeenCalled();
   });
 
   it("a poll already running (the cron, or another press) is a no-op with a message", async () => {

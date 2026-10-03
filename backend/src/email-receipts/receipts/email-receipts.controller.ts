@@ -129,17 +129,4 @@ export class EmailReceiptsController {
   ) {
     return this.ai.askAi(req.user.id, id, dto.transactionId || null);
   }
-
-  @Post(":id/draft-parser")
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
-  @ApiOperation({
-    summary:
-      "Draft a parser for the email's sender with the AI (a draft: it reads nothing until approved)",
-  })
-  draftParser(
-    @Request() req: { user: { id: string } },
-    @Param("id", ParseUUIDPipe) id: string,
-  ) {
-    return this.ai.draftParser(req.user.id, id);
-  }
 }

@@ -18,7 +18,7 @@ describe("EmailReceiptsController", () => {
     ignore: jest.fn(),
     remove: jest.fn(),
   };
-  const ai = { askAi: jest.fn(), draftParser: jest.fn() };
+  const ai = { askAi: jest.fn() };
   const controller = new EmailReceiptsController(
     receipts as never,
     ai as never,
@@ -77,9 +77,10 @@ describe("EmailReceiptsController", () => {
     },
   );
 
-  it("drafts a parser for the JWT user", async () => {
-    await controller.draftParser(req, ID);
-    expect(ai.draftParser).toHaveBeenCalledWith("user-1", ID);
+  it("has no synchronous draft-parser route: parsers are drafted through the chat", () => {
+    expect(
+      (controller as unknown as Record<string, unknown>).draftParser,
+    ).toBeUndefined();
   });
 
   describe("the ask-ai body", () => {
@@ -129,7 +130,7 @@ describe("EmailReceiptsController", () => {
     const routes = Object.getOwnPropertyNames(
       EmailReceiptsController.prototype,
     ).filter((name) => name !== "constructor" && name !== "list");
-    expect(routes).toHaveLength(7);
+    expect(routes).toHaveLength(6);
     for (const name of routes) {
       const args = Reflect.getMetadata(
         ROUTE_ARGS_METADATA,
@@ -148,6 +149,5 @@ describe("EmailReceiptsController", () => {
         | number
         | undefined;
     expect(limitOf("askAi")).toBe(10);
-    expect(limitOf("draftParser")).toBe(5);
   });
 });

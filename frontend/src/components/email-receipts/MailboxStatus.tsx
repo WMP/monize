@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
@@ -19,7 +20,8 @@ interface MailboxStatusProps {
 
 /**
  * What the last poll did, and the two actions on the mailbox itself: poll now
- * and delete. Shared by both login methods, because neither changes what a
+ * (whether or not the mailbox is set to be read automatically; that switch only
+ * decides the 15-minute poll) and delete. Shared by both login methods, because neither changes what a
  * poll reports or what deleting the mailbox removes.
  *
  * A date that is `null` is "never", not a blank: a mailbox that has not been
@@ -115,6 +117,15 @@ export function MailboxStatus({ mailbox, onRefreshed, onDeleted }: MailboxStatus
             skipped: pollResult.skipped,
             processed: pollResult.processed,
           })}
+          {/* Where the new emails are: only when this poll stored some. */}
+          {pollResult.fetched > 0 && (
+            <>
+              {' '}
+              <Link href="/email-receipts" className="font-medium underline">
+                {t('pollResultLink')}
+              </Link>
+            </>
+          )}
         </p>
       )}
       {(pollProblem || pollError) && (

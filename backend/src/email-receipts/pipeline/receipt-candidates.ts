@@ -25,7 +25,8 @@ interface CandidateRow {
 }
 
 /**
- * The transactions an email received on `receivedDate` (`YYYY-MM-DD`, UTC) can
+ * The transactions an email whose purchase date is `purchaseDate` (`YYYY-MM-DD`,
+ * UTC: the day the shop sent the order, or the day the email arrived) can
  * have paid for, in ONE query (spec section 3): the user's own, not a transfer,
  * not VOID, not investment-linked, dated inside `receiptCandidateWindow`, at
  * most 200, newest first.
@@ -44,10 +45,10 @@ interface CandidateRow {
 export async function loadReceiptCandidates(
   m: EntityManager,
   userId: string,
-  receivedDate: string,
+  purchaseDate: string,
   ownReceiptId: string | null,
 ): Promise<ReceiptMatchCandidate[]> {
-  const window = receiptCandidateWindow(receivedDate);
+  const window = receiptCandidateWindow(purchaseDate);
   const rows: CandidateRow[] = await m.query(
     `SELECT t.id,
             TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS transaction_date,
