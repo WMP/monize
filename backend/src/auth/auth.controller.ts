@@ -702,8 +702,11 @@ export class AuthController {
       // in `error.cause` (a fetch Response). The generic message ("unexpected
       // HTTP response status code") hides the real status/body from the IdP
       // token endpoint -- surface them so 5xx/3xx/HTML answers are diagnosable.
+      // `globalThis.` because `Response` here is express's type-only import;
+      // a bare `Response` only reaches the fetch class when the compiler can
+      // see that the import has no value, which per-file transpilation cannot.
       const cause = (error as { cause?: unknown })?.cause;
-      if (cause instanceof Response) {
+      if (cause instanceof globalThis.Response) {
         let body = "";
         try {
           body = (await cause.clone().text()).slice(0, 2000);

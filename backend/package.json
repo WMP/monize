@@ -161,6 +161,11 @@
       "^.+\\.(t|j)s$": [
         "ts-jest",
         {
+          "tsconfig": {
+            "isolatedModules": true,
+            "module": "commonjs",
+            "moduleResolution": "bundler"
+          },
           "diagnostics": {
             "ignoreCodes": [
               151002
