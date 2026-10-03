@@ -114,6 +114,25 @@ describe("BuiltInReportsController", () => {
         "user-1",
         "2024-01-01",
         "2024-06-30",
+        { accountIds: undefined },
+      );
+    });
+
+    it("threads accountIds through to the service", async () => {
+      const query = {
+        startDate: "2024-01-01",
+        endDate: "2024-06-30",
+        accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+      };
+      mockService.getIncomeBySource.mockResolvedValue({ data: [] });
+
+      await controller.getIncomeBySource(mockReq, query as any);
+
+      expect(mockService.getIncomeBySource).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-06-30",
+        { accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"] },
       );
     });
   });
@@ -235,6 +254,27 @@ describe("BuiltInReportsController", () => {
         "2024-01-01",
         "2024-12-31",
         { tagKey: "scope" },
+      );
+    });
+
+    it("threads accountIds through to service.getIncomeVsExpenses", async () => {
+      const query = {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+      };
+      mockService.getIncomeVsExpenses.mockResolvedValue({ months: [] });
+
+      await controller.getCashFlow(mockReq, query as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        {
+          tagKey: undefined,
+          accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+        },
       );
     });
   });

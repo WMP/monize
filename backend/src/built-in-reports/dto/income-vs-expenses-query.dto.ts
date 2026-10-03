@@ -15,7 +15,7 @@ import {
 import { ReportQueryDto } from "./report-query.dto";
 
 /** A comma-separated query parameter, as a trimmed non-empty array. */
-function csv({ value }: { value: unknown }): unknown {
+export function csv({ value }: { value: unknown }): unknown {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string") return value;
   return value

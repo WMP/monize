@@ -149,6 +149,54 @@ describe("IncomeReportsService", () => {
       expect(result.totalIncome).toBe(0);
     });
 
+    it("sends no account predicate when accountIds is absent or empty", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31");
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31", {
+        accountIds: [],
+      });
+
+      for (const [sql, params] of scopedManager.query.mock.calls) {
+        expect(sql).not.toContain("account_id = ANY");
+        expect(params).toEqual([mockUserId, "2025-12-31", "2025-01-01"]);
+      }
+    });
+
+    it("filters by accountIds with a parameterized uuid[] predicate and keeps every other predicate", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+      const ids = ["a1b2c3d4-0000-4000-8000-000000000001"];
+
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31", {
+        accountIds: ids,
+      });
+
+      const [sql, params] = scopedManager.query.mock.calls[0];
+      expect(sql).toContain("AND t.account_id = ANY($4::uuid[])");
+      expect(params).toEqual([mockUserId, "2025-12-31", "2025-01-01", ids]);
+      expect(sql).toContain("(t.status IS NULL OR t.status != 'VOID')");
+      expect(sql).toContain("t.is_transfer = false");
+      expect(sql.indexOf("account_id = ANY")).toBeLessThan(
+        sql.indexOf("GROUP BY"),
+      );
+    });
+
+    it("numbers the account parameter $3 when there is no start date", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+      const ids = ["a1b2c3d4-0000-4000-8000-000000000001"];
+
+      await service.getIncomeBySource(mockUserId, undefined, "2025-12-31", {
+        accountIds: ids,
+      });
+
+      const [sql, params] = scopedManager.query.mock.calls[0];
+      expect(sql).toContain("AND t.account_id = ANY($3::uuid[])");
+      expect(params).toEqual([mockUserId, "2025-12-31", ids]);
+    });
+
     it("keeps subcategories separate with 'Parent: Child' name format", async () => {
       scopedManager.query.mockResolvedValue([
         { category_id: "cat-child", currency_code: "USD", total: "1000.00" },
