@@ -37,7 +37,8 @@
     "viewEmailReceipts": "Zobacz paragony z e-maili",
     "agentNote": "Uwaga asystenta: {reason}",
     "dates": "Utworzono {created}, wygasa {expires}",
-    "viewTransaction": "Zobacz transakcję"
+    "viewTransaction": "Zobacz transakcję",
+    "waitingForAgent": "Oczekiwanie na agenta AI. <link>Połącz dostawcę AI w Ustawieniach</link> lub pozwól klientowi MCP ją przejąć."
   },
   "actions": {
     "dismiss": "Odrzuć"
