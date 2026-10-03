@@ -23,8 +23,31 @@ debt(d)   = max(0, -(opening_balance + SUM(amount)
 rate(d)   = latest loan_rate_changes row with effective_date <= d,
               else accounts.interest_rate
 interest  = roundMoney(debt(d) * periodicRate(rate(d)))
-principal = payment - interest, through allocateLoanPayment's waterfall
+principal = by the mortgage type's amortization method (below),
+              through allocateLoanPayment's waterfall
 ```
+
+The principal rule is the account's amortization method,
+`amortizationMethodFor(mortgageTypeOf(account))` (`docs/specs/mortgage-types.md`
+table 4.3, INV-LOAN-007); a `LOAN` account is an annuity:
+
+| Method | `principal` | `payment` |
+| --- | --- | --- |
+| ANNUITY (`LOAN`, `ANNUITY`, `CANADIAN_FIXED`) | `payment - interest` | the template's amount, grown back toward `accounts.payment_amount` when a template is advanced |
+| LINEAR, `SHORTEN_TERM` | `min(c, debt(d))`, `c = roundMoney(P / N)`; the whole `debt(d)` on the final installment when `debt(d) - c <= roundMoney(N * 0.005)` | derived: principal + interest + any extra principal line |
+| LINEAR, `LOWER_INSTALLMENT` | `roundMoney(debt(d) / remaining(d))`; the whole `debt(d)` when `remaining(d) <= 1` | derived, as above |
+| INTEREST_ONLY | 0; the whole `debt(d)` (the bullet) when `remaining(d) <= 1` | derived, as above |
+
+`remaining(d) = N - k(d) + 1`, where `k(d)` counts the calendar due dates on or
+before `d` from `payment_start_date` through `calculateNextDueDate`: the third
+input dated at `d`, and a count from the calendar, never of postings. For the
+derived methods `accounts.payment_amount` is null and is not read. The rule is
+`methodPrincipal`, called through `nonAnnuityInstallment`
+(`backend/src/accounts/mortgage-installment.util.ts`); a template missing
+`amortization_months`, `payment_start_date` or a known `payment_frequency`
+declines, as an unmanaged shape does. A posting still never grows the parent
+(section 3); `docs/specs/mortgage-types.md` section 5.2 says how a derived
+installment that rose after a rate change reaches the template.
 
 The ledger expression is the canonical as-of balance
 (`docs/specs/account-balances-as-of.md` section 3, INV-BALANCE-001's source),

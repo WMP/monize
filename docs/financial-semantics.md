@@ -611,6 +611,47 @@ boolean overloads of `getPeriodicRate` and `calculateEffectiveAnnualRate` remain
 until the flags are dropped, with no production caller:
 `backend/src/accounts/mortgage-type-flags.guard.spec.ts` fails a new one.
 
+### The amortization method is a trait of the mortgage type
+
+How a mortgage repays its principal is a trait of its type too, read through
+`amortizationMethodFor(type)` from the same `MORTGAGE_TYPE_TRAITS` record, never
+from a surface-local rule (INV-LOAN-007). Interest is
+`roundMoney(debt(d) * r(d))` for every method, priced from the ledger debt and
+the rate through the installment's own due date (INV-LOAN-006); only the
+principal differs. `N` is `round(amortization_months * ppy / 12)`, `c` the
+constant principal `roundMoney(P / N)`, and `remaining(d)` the scheduled
+payments left counted from the calendar, never from the postings
+(`docs/specs/mortgage-types.md` section 2):
+
+| Type | Compounding | Method | Principal on due date `d` | `accounts.payment_amount` |
+| --- | --- | --- | --- | --- |
+| `ANNUITY` | nominal | annuity | the level installment minus the interest | the contractual installment |
+| `CANADIAN_FIXED` | semi-annual | annuity | the level installment minus the interest | the contractual installment |
+| `LINEAR`, `prepayment_mode` `SHORTEN_TERM` (or null) | nominal | linear | `min(c, debt(d))`; the whole debt on the final installment when the leftover is within `roundMoney(N * 0.005)` | null |
+| `LINEAR`, `prepayment_mode` `LOWER_INSTALLMENT` | nominal | linear | `roundMoney(debt(d) / remaining(d))`; the whole debt on payment `N` | null |
+| `INTEREST_ONLY` | nominal | interest only | 0; the whole debt (the bullet) on payment `N` | null |
+
+A LINEAR or INTEREST_ONLY mortgage has no constant payment, so the column a
+constant payment would occupy is null, held by a table CHECK, and every surface
+that shows "the payment" shows a dated installment instead: the next
+occurrence's, or a projected row's, with its date, and for INTEREST_ONLY the
+bullet beside it. An extra repayment shortens a SHORTEN_TERM loan and lowers a
+LOWER_INSTALLMENT loan's principal from the next due date; a rate change moves
+only the interest of either. Accelerated frequencies are defined as a fraction
+of the annuity's monthly installment and are refused for both new methods.
+
+| Where | What implements it |
+| --- | --- |
+| The method of a type | `amortizationMethodFor` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts` |
+| The principal on a date | `methodPrincipal` / `nonAnnuityInstallment` in `backend/src/accounts/mortgage-installment.util.ts`; `methodPrincipal` in `frontend/src/lib/mortgage-installment.ts` |
+| Preview | `calculateMortgageAmortization` in `backend/src/accounts/mortgage-amortization.util.ts` |
+| Scheduled installment | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) |
+| Frontend projection | `generateLoanSchedule` in `frontend/src/lib/loan-schedule.ts`, over `frontend/src/lib/loan-schedule-methods.ts` |
+
+The figures are fixed by the worked example in `docs/specs/mortgage-types.md`
+section 7, computed independently of both layers; each truth-table row there
+names the test that asserts it.
+
 ### The first payment date is payment number 1
 
 `accounts.payment_start_date` is the date of the **first** payment (the loan and

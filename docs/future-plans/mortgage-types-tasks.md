@@ -29,21 +29,21 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 ## Task graph
 
-| ID | Issue | Task | Depends on | Deploy class | Status |
-|----|-------|------|-----------|--------------|--------|
-| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [x] |
-| P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] |
-| P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [x] |
-| P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [x] |
-| P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [x] |
-| P1-F2 | #1507 | One Select replaces both checkbox pairs; Term Length for every type; help text; copy fixes; en i18n | P1-F1 | neutral | [x] |
-| P1-Q | #1508 | Phase 1 acceptance: locales, docs, release note | P1-F2 | none | [x] |
-| P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [x] |
-| P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [x] |
-| P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [x] |
-| P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [x] |
-| P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [ ] |
-| P3-B1 | #1514 | Contract migration: NOT NULL default, drop the booleans, delete overloads and guard | P2-Q, one release after P1 | neutral | [ ] |
+| ID | Issue | Task | Depends on | Deploy class | Status | PR |
+|----|-------|------|-----------|--------------|--------|----|
+| S1 | #1502 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-007 registered `unenforced` | -- | none | [x] | #1515 |
+| P1-B1 | #1503 | Migration: nullable `mortgage_type`, backfill, CHECK; entity, backup rules, action history, demo seed | S1 | inert | [x] | #1517 |
+| P1-B2 | #1504 | `mortgage-type.util.ts`, traits, parity cases, type-keyed rate and EAR, flags guard | P1-B1 | none | [x] | #1518 |
+| P1-B3 | #1505 | Backend consumers read the type with flags fallback; DTOs accept it; LLM account row carries it; dated debt on the rate-change path | P1-B2 | neutral | [x] | #1519 |
+| P1-F1 | #1506 | Frontend type and traits; schedule, frequency, history and summary code keyed on type | P1-B3 | neutral | [x] | #1520 |
+| P1-F2 | #1507 | One Select replaces both checkbox pairs; Term Length for every type; help text; copy fixes; en i18n | P1-F1 | neutral | [x] | #1522 |
+| P1-Q | #1508 | Phase 1 acceptance: locales, docs, release note | P1-F2 | none | [x] | #1525 |
+| P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [x] | #1526 |
+| P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [x] | #1527 |
+| P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [x] | #1529 |
+| P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [x] | #1530 |
+| P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [x] | the PR closing #1513 |
+| P3-B1 | #1514 | Contract migration: NOT NULL default, drop the booleans, delete overloads and guard | P2-Q, one release after P1 | neutral | [ ] | -- |
 
 **Why P3-B1 waits a release:** a rollback to the image before Phase 1 reads the two booleans; dropping them in the same release that stopped writing them leaves no image to roll back to.
 
@@ -143,6 +143,8 @@ Every task is safe to merge in any order that respects its dependencies: the col
 ### P2-Q -- Phase 2 acceptance
 
 **Files:** `docs/specs/mortgage-types.md` (status, any truth-table rows the implementation added), `docs/system-invariants.md` (INV-LOAN-006's Statement per spec 6.2, INV-LOAN-004 per 6.4, INV-LOAN-007 flipped to `enforced` with its tests named), `docs/verification-contract.md`, every locale.
+
+- Done: the spec's status is implemented through Phase 2, and every truth table (4.1 to 4.3, 5.1, 5.3, 5.6, 7.1 to 7.5, 8, 10) and the test matrix (section 11) names the spec that asserts each row; the matrix's E2E row says why it has no spec. INV-LOAN-007 is `enforced` (mechanism `amortizationMethodFor` and the method branch in `resolveInstallment`, `calculateMortgageAmortization` and `generateLoanSchedule`, held by `mortgage-type-cases.json` on both layers) and its matrix row in `docs/verification-contract.md` is met; INV-LOAN-006's title and Statement add the remaining count through the due date; INV-LOAN-004 names the LINEAR final installment and the INTEREST_ONLY bullet. `docs/financial-semantics.md` section 9 carries the method table, and `docs/specs/scheduled-loan-installment-pricing.md` section 1 the principal rule per method. Every full locale already carried the Phase 2 keys (P2-F1 and P2-F2 translated them, and the parity suites hold them to `en`); this task added the `en-GB` spellings of the new strings that say "amortization". The `1.18.0` release note gained the Phase 2 changes.
 
 ### P3-B1 -- Contract migration
 
