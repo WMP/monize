@@ -449,6 +449,59 @@ describe("ScheduledTransactionLoanService: LINEAR and INTEREST_ONLY", () => {
     });
   });
 
+  describe("a method change reprices the template (spec section 5.6)", () => {
+    // 2026-01-01 of table 7.1: the LINEAR template holds 1,241.6666. The user
+    // switches the mortgage to ANNUITY, and the account update stores the
+    // re-levelled annuity payment (1,108.8584 here, for the example).
+    const toAnnuity = () =>
+      makeMortgage({ mortgageType: "ANNUITY", paymentAmount: 1108.8584 });
+    const linearTemplate = () => makeTemplate(833.3333, 408.3333, "2026-01-01");
+
+    const reprice = async (
+      account: Account,
+      template: ScheduledTransaction,
+    ) => {
+      accountsRepository.findOne.mockResolvedValue(account);
+      scheduledTransactionsRepository.findOne.mockResolvedValue(template);
+      ledgerDebt = 245000.0008;
+      splitsRepository.save.mockClear();
+      scheduledTransactionsRepository.update.mockClear();
+      await service.repriceLoanTemplate(scheduledTransactionId);
+      return written();
+    };
+
+    it("would leave a plain advancement billing the larger linear installment", async () => {
+      // The defect the reprice exists for: annuity advancement only grows a
+      // template toward payment_amount, never lowers it.
+      const result = await advance(toAnnuity(), linearTemplate(), 245000.0008);
+      expect(result.parent).toBeUndefined();
+      expect(result.principal).toBe(833.3333);
+    });
+
+    it("lowers the template to the annuity payment, re-divided at this date's interest", async () => {
+      const result = await reprice(toAnnuity(), linearTemplate());
+      expect(result).toEqual({
+        principal: 700.5251,
+        interest: 408.3333,
+        extra: undefined,
+        parent: 1108.8584,
+      });
+    });
+
+    it("moves a template the other way to the method installment", async () => {
+      const result = await reprice(
+        makeMortgage(),
+        makeTemplate(700.5251, 408.3333, "2026-01-01"),
+      );
+      expect(result).toEqual({
+        principal: 833.3333,
+        interest: 408.3333,
+        extra: undefined,
+        parent: 1241.6666,
+      });
+    });
+  });
+
   describe("missing terms (spec section 8)", () => {
     it.each([
       ["amortizationMonths", { amortizationMonths: null }],

@@ -128,23 +128,24 @@ export async function derivedInstallmentFacts(
       periodsPerYear !== null
     ) {
       const debt = Math.max(0, debts.get(account.id) ?? 0);
-      const scalar = Number(account.interestRate);
-      const fallback = Number.isFinite(scalar) ? scalar : 0;
-      const annualRate =
-        effectiveAnnualRateOn(
-          rates.filter((r) => r.accountId === account.id),
-          dueDate,
-          fallback,
-        ) ?? fallback;
-      bullet = {
+      // No rate in the timeline or on the account is unknown, never 0%: the
+      // bullet is withheld rather than shown as the bare debt.
+      const annualRate = effectiveAnnualRateOn(
+        rates.filter((r) => r.accountId === account.id),
         dueDate,
-        amount: roundMoney(
-          debt +
-            roundMoney(
-              debt * getPeriodicRate(annualRate, periodsPerYear, type),
-            ),
-        ),
-      };
+        account.interestRate == null ? null : Number(account.interestRate),
+      );
+      if (annualRate !== null && Number.isFinite(annualRate)) {
+        bullet = {
+          dueDate,
+          amount: roundMoney(
+            debt +
+              roundMoney(
+                debt * getPeriodicRate(annualRate, periodsPerYear, type),
+              ),
+          ),
+        };
+      }
     }
     facts.set(account.id, { nextInstallment, bullet });
   }

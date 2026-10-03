@@ -116,6 +116,7 @@ describe("AccountsService", () => {
       create: jest.fn().mockResolvedValue({ id: "sched-tx-1" }),
       update: jest.fn().mockResolvedValue({}),
       remove: jest.fn(),
+      repriceLoanTemplate: jest.fn().mockResolvedValue(undefined),
     };
 
     loanRateChangesService = {
@@ -810,6 +811,49 @@ describe("AccountsService", () => {
         prepaymentMode: "LOWER_INSTALLMENT",
         paymentAmount: null,
       });
+    });
+
+    it("reprices the linked template in the same transaction when the method changes", async () => {
+      // docs/specs/mortgage-types.md section 5.6: the template still holds the
+      // previous method's installment, and annuity advancement never lowers it.
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        mortgageType: "ANNUITY",
+        paymentAmount: 1108.8584,
+        paymentFrequency: "MONTHLY",
+        paymentStartDate: "2024-01-01",
+        amortizationMonths: 360,
+        originalPrincipal: 300000,
+        scheduledTransactionId: "sched-1",
+      });
+
+      await service.update("user-1", "account-1", { mortgageType: "LINEAR" });
+      expect(
+        scheduledTransactionsService.repriceLoanTemplate,
+      ).toHaveBeenCalledWith("sched-1");
+      // After the account row it reads is written.
+      expect(
+        mockQueryRunner.manager.save.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        scheduledTransactionsService.repriceLoanTemplate.mock
+          .invocationCallOrder[0],
+      );
+
+      // A save that keeps the method leaves the template alone.
+      scheduledTransactionsService.repriceLoanTemplate.mockClear();
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        mortgageType: "ANNUITY",
+        scheduledTransactionId: "sched-1",
+      });
+      await service.update("user-1", "account-1", {
+        mortgageType: "CANADIAN_FIXED",
+      });
+      expect(
+        scheduledTransactionsService.repriceLoanTemplate,
+      ).not.toHaveBeenCalled();
     });
 
     it("refuses to move a mortgage to INTEREST_ONLY without an amortization, writing nothing", async () => {

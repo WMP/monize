@@ -3910,6 +3910,11 @@ export class ScheduledTransactionsService {
     );
   }
 
+  /** See `ScheduledTransactionLoanService.repriceLoanTemplate`. */
+  async repriceLoanTemplate(scheduledTransactionId: string): Promise<void> {
+    return this.loanService.repriceLoanTemplate(scheduledTransactionId);
+  }
+
   async getLoanProjectionAnchor(
     userId: string,
     loanAccountId: string,

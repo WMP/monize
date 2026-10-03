@@ -82,6 +82,13 @@ describe("derivedInstallmentFacts", () => {
     });
   });
 
+  it("withholds the bullet when no rate is known, rather than pricing it at 0%", async () => {
+    rates.find.mockResolvedValue([]);
+    const facts = await run([makeMortgage({ interestRate: null })]);
+    expect(facts.get("mortgage-1")?.bullet).toBeNull();
+    expect(facts.get("mortgage-1")?.nextInstallment).not.toBeNull();
+  });
+
   it("carries no bullet for LINEAR", async () => {
     const facts = await run([makeMortgage({ mortgageType: "LINEAR" })]);
     expect(facts.get("mortgage-1")?.bullet).toBeNull();

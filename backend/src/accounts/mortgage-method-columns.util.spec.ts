@@ -4,6 +4,7 @@ import { Account, AccountType } from "./entities/account.entity";
 import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
 import { calculatePaymentAmount } from "./mortgage-amortization.util";
 import { applyMortgageMethodColumns } from "./mortgage-method-columns.util";
+import { MortgageType, PrepaymentMode } from "./mortgage-type.util";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
 
@@ -51,13 +52,14 @@ describe("applyMortgageMethodColumns", () => {
 
   const apply = (
     account: Account,
-    previous: Parameters<typeof applyMortgageMethodColumns>[2],
-    mode?: Parameters<typeof applyMortgageMethodColumns>[3],
+    previousType: MortgageType | null,
+    mode?: PrepaymentMode | null,
+    previousMode: PrepaymentMode | null = null,
   ) =>
     applyMortgageMethodColumns(
       manager as unknown as EntityManager,
       account,
-      previous,
+      { type: previousType, mode: previousMode },
       mode,
     );
 
@@ -107,7 +109,8 @@ describe("applyMortgageMethodColumns", () => {
 
   it("gives a mortgage moved back to an annuity type its re-levelled payment", async () => {
     const account = makeMortgage({ mortgageType: "ANNUITY" });
-    await apply(account, "LINEAR");
+    const result = await apply(account, "LINEAR");
+    expect(result).toEqual({ repriceTemplate: true });
 
     // The annuity of the debt through the next due date, over the 324 months
     // left of the amortization, at the 4% in force on that date.
@@ -127,8 +130,54 @@ describe("applyMortgageMethodColumns", () => {
       mortgageType: "CANADIAN_FIXED",
       paymentAmount: 1200,
     });
-    await apply(account, "ANNUITY");
+    const result = await apply(account, "ANNUITY");
     expect(account.paymentAmount).toBe(1200);
     expect(manager.query).not.toHaveBeenCalled();
+    // Same method: the template is not repriced, as before.
+    expect(result).toEqual({ repriceTemplate: false });
+  });
+
+  it("keeps the standing extra inside the re-levelled payment", async () => {
+    // payment_amount is the whole installment, extra included
+    // (basePayment = payment_amount - extra in resolveInstallment).
+    const account = makeMortgage({
+      mortgageType: "ANNUITY",
+      extraPaymentAmount: 100,
+    });
+    await apply(account, "INTEREST_ONLY");
+    expect(account.paymentAmount).toBe(
+      calculatePaymentAmount(235000.0012, 4 / 100 / 12, 324) + 100,
+    );
+  });
+
+  it("refuses to re-level at a defaulted 0% when no rate is known", async () => {
+    rates.find.mockResolvedValue([]);
+    const account = makeMortgage({
+      mortgageType: "ANNUITY",
+      interestRate: null,
+    });
+    await expect(apply(account, "LINEAR")).rejects.toThrow(
+      /requires interestRate/,
+    );
+  });
+
+  it("asks for a template reprice when the method or a LINEAR mode changes", async () => {
+    expect(await apply(makeMortgage(), "ANNUITY")).toEqual({
+      repriceTemplate: true,
+    });
+    expect(
+      await apply(
+        makeMortgage({ prepaymentMode: "SHORTEN_TERM" }),
+        "LINEAR",
+        "LOWER_INSTALLMENT",
+        "SHORTEN_TERM",
+      ),
+    ).toEqual({ repriceTemplate: true });
+    expect(
+      await apply(makeMortgage(), "LINEAR", undefined, "SHORTEN_TERM"),
+    ).toEqual({ repriceTemplate: false });
+    expect(
+      await apply(makeMortgage({ accountType: AccountType.LOAN }), "LINEAR"),
+    ).toEqual({ repriceTemplate: false });
   });
 });

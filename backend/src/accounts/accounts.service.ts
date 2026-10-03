@@ -954,12 +954,16 @@ export class AccountsService {
           account.amortizationMonths = updateAccountDto.amortizationMonths;
         // The prepayment mode and the stored payment follow the saved type,
         // in this transaction (spec section 5.6).
-        await applyMortgageMethodColumns(
+        const { repriceTemplate } = await applyMortgageMethodColumns(
           m,
           account,
-          before.accountType === AccountType.MORTGAGE
-            ? mortgageTypeOf(before)
-            : null,
+          {
+            type:
+              before.accountType === AccountType.MORTGAGE
+                ? mortgageTypeOf(before)
+                : null,
+            mode: before.prepaymentMode ?? null,
+          },
           updateAccountDto.prepaymentMode,
         );
 
@@ -1000,6 +1004,14 @@ export class AccountsService {
         }
 
         const saved = await m.save(account);
+        // A changed method leaves the template at the previous rule's
+        // installment; reprice it in this transaction, after the account row
+        // it reads (spec section 5.6).
+        if (repriceTemplate && saved.scheduledTransactionId) {
+          await this.scheduledTransactionsService.repriceLoanTemplate(
+            saved.scheduledTransactionId,
+          );
+        }
 
         if (linkedAccount) {
           if (updateAccountDto.currencyCode !== undefined) {

@@ -5609,6 +5609,24 @@ describe("ScheduledTransactionsService", () => {
     });
   });
 
+  describe("repriceLoanTemplate", () => {
+    it("reprices through the loan service, which skips an inactive schedule", async () => {
+      scheduledRepo.findOne.mockResolvedValue(
+        makeScheduled({ isActive: false }),
+      );
+
+      await service.repriceLoanTemplate(stId);
+
+      expect(scheduledRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: stId },
+          lock: { mode: "pessimistic_write" },
+        }),
+      );
+      expect(splitsRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe("getLoanProjectionAnchor", () => {
     it("returns the schedule's due date and the ledger debt through it", async () => {
       accountsRepo.findOne.mockResolvedValue({

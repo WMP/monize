@@ -66,7 +66,16 @@ interface LoanTemplateSplits {
  * than any surface displayed, the preview/commit divergence the FX rules call
  * out ("a preview computes what the commit will do, through the same code").
  */
-type InstallmentPurpose = "template" | "posting";
+type InstallmentPurpose = "template" | "posting" | "reconfigure";
+
+/*
+ * `reconfigure` is a template rewrite for a mortgage whose amortization method
+ * just changed (`repriceLoanTemplate`). It prices like `template`, except that
+ * an annuity targets `accounts.payment_amount` exactly instead of growing
+ * toward it: the template still holds the previous method's installment
+ * (a LINEAR one is larger than the annuity early in the loan), and
+ * `max(template, payment_amount)` would keep billing it forever.
+ */
 
 /** One resolved installment: what the next posting of this template should move. */
 type ResolvedInstallment =
@@ -138,6 +147,26 @@ export class ScheduledTransactionLoanService {
   async recalculateLoanPaymentSplits(
     scheduledTransactionId: string,
   ): Promise<void> {
+    return this.rewriteTemplate(scheduledTransactionId, "template");
+  }
+
+  /**
+   * Reprice a loan template after its mortgage's amortization method changed
+   * (docs/specs/mortgage-types.md, section 5.6): to the method's installment
+   * for LINEAR and INTEREST_ONLY, and to the account's new constant payment for
+   * an annuity type. Called by the account update in the same transaction as
+   * the type change, after the account row is written and locked (accounts
+   * before scheduled transactions, `docs/concurrency-and-idempotency.md`
+   * section 5).
+   */
+  async repriceLoanTemplate(scheduledTransactionId: string): Promise<void> {
+    return this.rewriteTemplate(scheduledTransactionId, "reconfigure");
+  }
+
+  private async rewriteTemplate(
+    scheduledTransactionId: string,
+    purpose: Exclude<InstallmentPurpose, "posting">,
+  ): Promise<void> {
     return withScopedDb(this.dataSource, async (m) => {
       // This writer mutates the child split set, so it must serialize through
       // the same parent lock the posting path takes (issue #1154 re-review): a
@@ -175,7 +204,7 @@ export class ScheduledTransactionLoanService {
         splits,
         loanAccount,
         ensureYMD(scheduledTransaction.nextDueDate),
-        "template",
+        purpose,
       );
 
       // A failed ledger read is not a template this method cannot account for,
@@ -738,7 +767,7 @@ export class ScheduledTransactionLoanService {
     // old installment (spec section 5.2). A posting never takes this branch:
     // it re-divides the bill it was shown, interest first, for every method.
     const methodInstallment =
-      mortgageType && purpose === "template"
+      mortgageType && purpose !== "posting"
         ? nonAnnuityInstallment(
             mortgageType,
             loanAccount,
@@ -758,7 +787,9 @@ export class ScheduledTransactionLoanService {
         )
       : purpose === "posting"
         ? templateAmount
-        : Math.max(templateAmount, Number(loanAccount.paymentAmount) || 0);
+        : purpose === "reconfigure" && Number(loanAccount.paymentAmount) > 0
+          ? Number(loanAccount.paymentAmount)
+          : Math.max(templateAmount, Number(loanAccount.paymentAmount) || 0);
     const basePaymentAmount = paymentAmount - extraPrincipalAmount;
     const newPrincipal = methodInstallment
       ? methodInstallment.principal
