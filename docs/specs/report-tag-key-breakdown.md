@@ -232,7 +232,7 @@ honoured (B4) without row inflation (I7).
   two table columns) read from that bucket's per-period flows.
   `TagKeyBreakdownBuckets` can be controlled (`activeValue` /
   `onActiveValueChange`) so the report owns which bucket the chart follows;
-  Cash Flow keeps the uncontrolled default.
+  Cash Flow does the same (section 10.7).
 
 ## 7. i18n
 
@@ -324,11 +324,9 @@ With the Checking account selected, the transfer's investment-side leg is
 outside the filter, so only the Checking leg is counted: tagged inflows 7,066
 and tagged outflows 0. This is how a one-sided view is obtained (section 3.1).
 
-**Decision: Cash Flow does not get the filter.** `CashFlowReport` also reads
-`getIncomeBySource`, which takes no `accountIds`; a filter there would scope
-half of the page and leave the other half unfiltered, an inconsistent report.
-Extending `getIncomeBySource` is a separate change. Recorded so the absence
-reads as a decision.
+**Cash Flow gets the same filter (section 10.7).** An earlier draft left it out
+because `getIncomeBySource` took no `accountIds`; section 10.7 closes that gap
+so the whole page is scoped by one selection.
 
 ### 10.3 B -- tagged flows per period
 
@@ -388,3 +386,57 @@ Backend: per-period flows (two transfers, zero period, sums equal totals),
 cases against PostgreSQL in the integration suite. Frontend: the account select
 sends `accountIds`; series only with `tagKey` and a non-untagged tab; savings
 unchanged by flows; `TagKeyBreakdownBuckets` controlled mode.
+
+### 10.7 Opt-in stacking and Cash Flow parity (Phase 1c)
+
+**Stacking toggle (Income vs Expenses and Cash Flow).** The reporter asked for
+the tagged inflows to sit on top of the Income bar instead of beside it. Stacking
+is presentation only and is opt-in:
+
+- A switch "Stack tagged flows" (the `ToggleSwitch` the report toolbars already
+  use), visible only when a tag key is selected and the active bucket is not the
+  untagged bucket, which is exactly when the tagged series exist. Default OFF,
+  persisted per report in localStorage (`useLocalStorage`, as the other report
+  view preferences are; keys `monize-reports-income-vs-expenses-stack-tagged`
+  and `monize-reports-cash-flow-stack-tagged`).
+- OFF: the chart is exactly section 10.5 (separate tagged bars).
+- ON: tagged inflows share a Recharts `stackId` with the Income bar (Inflows
+  bar on Cash Flow) and tagged outflows share one with the Expenses bar
+  (Outflows on Cash Flow). The Savings (Net) bar is not stacked. The tooltip
+  always lists Income and Tagged inflows (and Expenses and Tagged outflows) as
+  separate rows, in the `chartColors.inflow` / `chartColors.outflow` tokens, so a
+  stacked segment is visibly not income green or expense red.
+- **Why opt-in.** A user who uses `KEY:VALUE` tags for something else (for
+  instance `trip:japan` on transfers) would otherwise watch the income and
+  expense bars grow without having asked for it. A bar that looks taller than
+  the income it is labelled with is a figure a reader can misread, so the reader
+  chooses it.
+- **No figure changes.** Savings, the savings rate, Net, the summary cards, the
+  table values and the CSV are computed from income and expenses only, with the
+  toggle in either position. INV-REPORT-003 holds: a tagged flow is never
+  added to income, expenses or net; the stack is two series drawn on one
+  column, not a sum.
+
+**Cash Flow parity.** Cash Flow gains what Income vs Expenses has:
+
+- `ReportAccountMultiSelect` (the same non-investment account list, empty = all
+  accounts, persisted under `monize-reports-cash-flow-accounts`). The page reads
+  three endpoints, and all three receive the same `accountIds` so the cards,
+  chart and the two category lists describe one scope:
+  `GET /built-in-reports/cash-flow` (passed through to `getIncomeVsExpenses`),
+  `GET /built-in-reports/income-by-source` (new `accountIds`, filtering
+  `t.account_id = ANY($n::uuid[])` like the other income queries, with
+  investment exclusion, VOID exclusion and every other predicate unchanged) and
+  `GET /built-in-reports/spending-by-category` (already accepted it).
+  With `accountIds` absent, every endpoint is byte-for-byte what it was (I1).
+- `TagKeyBreakdownBuckets` controlled by the report, and the two tagged series
+  (and the stacking toggle) on the Monthly Cash Flow chart for the active
+  non-untagged bucket. The Net figure and the summary cards are unchanged.
+- A shared hook resolves "active bucket -> per-period flow map" for both
+  reports so the fallback-to-first-bucket rule is written once.
+
+Tests: backend `accountIds` on income-by-source (filtered; absent = unchanged;
+callers that omit it unchanged) and on the cash-flow pass-through, plus the
+integration spec; frontend toggle visibility (no key, untagged tab), default
+off, shared `stackId` when on, savings/net unchanged, persistence, and the Cash
+Flow account filter reaching all three calls.
