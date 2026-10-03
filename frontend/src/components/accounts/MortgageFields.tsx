@@ -22,6 +22,7 @@ import {
   storesConstantPayment,
 } from '@/lib/mortgage-type';
 import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
+import { MortgageTypeDetector } from './MortgageTypeDetector';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -115,15 +116,22 @@ export function MortgageFields({
   // selected moves the cadence to the one it accelerates, in the same event,
   // so the form never holds a value its list no longer offers.
   const mortgageTypeField = register('mortgageType');
-  const handleMortgageTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    mortgageTypeField.onChange(event);
-    const next = MORTGAGE_TYPES.find((type) => type === event.target.value);
+  const moveCadenceFor = (next: MortgageType | undefined) => {
     const base = mortgagePaymentFrequency
       ? ACCELERATED_BASE_CADENCE[mortgagePaymentFrequency]
       : undefined;
     if (next && !storesConstantPayment(next) && base) {
       setValue('mortgagePaymentFrequency', base, { shouldDirty: true, shouldValidate: true });
     }
+  };
+  const handleMortgageTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    mortgageTypeField.onChange(event);
+    moveCadenceFor(MORTGAGE_TYPES.find((type) => type === event.target.value));
+  };
+  // A suggestion the person confirmed sets the select as choosing it would.
+  const applyDetectedType = (type: MortgageType) => {
+    setValue('mortgageType', type, { shouldDirty: true, shouldValidate: true });
+    moveCadenceFor(type);
   };
   const [mortgagePreview, setMortgagePreview] = useState<MortgageAmortizationPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
@@ -276,6 +284,16 @@ export function MortgageFields({
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {t(`mortgageFields.type.help.${mortgageType}`)}
           </p>
+        )}
+        {/* Creating only: an existing mortgage with history detects its type
+            from its own installments in Loan Details. */}
+        {!isEditing && (
+          <MortgageTypeDetector
+            interestRate={interestRate}
+            paymentFrequency={mortgagePaymentFrequency}
+            currencyCode={watchedCurrency}
+            onUse={applyDetectedType}
+          />
         )}
         {isEditing && onViewLoanDetails && (
           <p className="text-xs mt-1">

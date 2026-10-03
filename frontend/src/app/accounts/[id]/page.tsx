@@ -10,6 +10,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AccountDetailShell } from '@/components/accounts/shared/AccountDetailShell';
 import { LoanDetailView } from '@/components/accounts/loan-detail/LoanDetailView';
+import { AccountFormModal } from '@/components/accounts/AccountFormModal';
+import { useFormModal } from '@/hooks/useFormModal';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import type { LoanProjectionAnchor } from '@/types/scheduled-transaction';
 import { LineOfCreditView } from '@/components/accounts/loan-detail/LineOfCreditView';
@@ -31,7 +33,7 @@ import { loanScenariosApi } from '@/lib/loan-scenarios';
 import { loanRateChangesApi } from '@/lib/loan-rate-changes';
 import { fetchAllAccountTransactions, fetchLoanInterestTransactions } from '@/lib/loan-history';
 import { getErrorMessage } from '@/lib/errors';
-import type { Account } from '@/types/account';
+import type { Account, MortgageType } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
 import type { LoanScenario } from '@/types/loan-scenario';
 import type { LoanRateChange } from '@/types/loan-rate-change';
@@ -68,6 +70,11 @@ function AccountDetailContent() {
   // The investment view's Refresh Prices button lives in the shared header, so
   // the signal to re-fetch the body travels down instead of staying inside it.
   const [investmentRefreshKey, setInvestmentRefreshKey] = useState(0);
+  // The account edit form, opened from Loan Details' mortgage type detector
+  // with the confirmed type preselected; nothing is saved until the form is.
+  const accountModal = useFormModal<Account>();
+  const [preselectedMortgageType, setPreselectedMortgageType] =
+    useState<MortgageType | undefined>(undefined);
 
   // Until the account loads, assume it has a dedicated page so the register
   // redirect below never fires prematurely.
@@ -330,6 +337,10 @@ function AccountDetailContent() {
                 onScenariosChanged={reloadScenarios}
                 onRateChangesChanged={reloadRateChanges}
                 exportPdfRef={loanExportRef}
+                onUseMortgageType={(type) => {
+                  setPreselectedMortgageType(type);
+                  accountModal.openEdit(account);
+                }}
               />
             )}
             {/* The section decides for itself whether to render: the fee chart
@@ -339,6 +350,11 @@ function AccountDetailContent() {
             <ForeignCurrencyFeesSection account={account} />
           </div>
         </AccountDetailShell>
+        <AccountFormModal
+          formModal={accountModal}
+          onSaved={loadData}
+          preselectedMortgageType={preselectedMortgageType}
+        />
       </main>
     </PageLayout>
   );

@@ -354,6 +354,76 @@ export interface UpdateMortgageRateResponse {
   effectiveDate: string;
 }
 
+/**
+ * Why the mortgage-type detector answered as it did: the browser-side twin of
+ * the backend's `MORTGAGE_TYPE_DETECTION_REASONS`
+ * (`backend/src/accounts/mortgage-type-detection.util.ts`), each worded by
+ * `mortgageFields.detect.reason.<code>`. `mortgage-type-detection.contract.test.ts`
+ * holds the two lists and the catalog together.
+ */
+export const MORTGAGE_TYPE_DETECTION_REASONS = [
+  'TOO_FEW_SAMPLES',
+  'INVALID_SAMPLE',
+  'NO_PAYMENT',
+  'AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT',
+  'ACCELERATED_FREQUENCY',
+  'NO_RULE_FITS',
+  'ZERO_PRINCIPAL',
+  'ZERO_PRINCIPAL_RATE_MISMATCH',
+  'CONSTANT_PRINCIPAL',
+  'CONSTANT_PRINCIPAL_RATE_MISMATCH',
+  'CONSTANT_INSTALLMENT_SEMI_ANNUAL',
+  'CONSTANT_INSTALLMENT_NOMINAL',
+  'CONSTANT_INSTALLMENT_RATE_UNCHECKED',
+  'CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS',
+  'CONSTANT_INSTALLMENT_RATE_MISMATCH',
+] as const;
+export type MortgageTypeDetectionReason =
+  (typeof MORTGAGE_TYPE_DETECTION_REASONS)[number];
+
+/** One installment as a statement shows it, positive amounts. */
+export interface MortgageTypeSample {
+  principal: number;
+  interest: number;
+  /** The debt the installment was charged on, when the statement shows it. */
+  balanceBefore?: number | null;
+}
+
+export interface DetectMortgageTypeData {
+  /** Consecutive installments, oldest first. */
+  samples: MortgageTypeSample[];
+  /** The quoted annual rate as a percentage; without it the compounding is unchecked. */
+  interestRate?: number | null;
+  paymentFrequency: MortgagePaymentFrequency;
+}
+
+/**
+ * A suggested type, never a saved one (docs/specs/mortgage-types.md, section
+ * 10): `type` is null when the installments do not decide one, and `reason`
+ * is always present so the reader learns why.
+ */
+export interface MortgageTypeDetection {
+  type: MortgageType | null;
+  confidence: 'high' | 'low';
+  reason: MortgageTypeDetectionReason;
+}
+
+/** A posted installment the history route read, with the debt before it. */
+export interface DatedMortgageTypeSample {
+  date: string;
+  principal: number;
+  interest: number;
+  balanceBefore: number | null;
+}
+
+export interface MortgageTypeHistoryDetection extends MortgageTypeDetection {
+  /** The annual rate in effect on the latest sample's date, when known. */
+  quotedAnnualRate: number | null;
+  paymentFrequency: MortgagePaymentFrequency | null;
+  /** The installments the suggestion was read from, oldest first. */
+  samples: DatedMortgageTypeSample[];
+}
+
 // Loan payment detection types
 export interface DetectedLoanPayment {
   paymentAmount: number;

@@ -48,7 +48,7 @@ import {
   generateLoanSchedule,
 } from '@/lib/loan-schedule';
 import { scenarioToPlan } from '@/lib/loan-scenarios';
-import type { Account } from '@/types/account';
+import type { Account, MortgageType } from '@/types/account';
 import type { LoanProjectionAnchor } from '@/types/scheduled-transaction';
 import type { Transaction } from '@/types/transaction';
 import type { LoanScenario } from '@/types/loan-scenario';
@@ -80,6 +80,12 @@ interface LoanDetailViewProps {
    * sat outside the card every other control was in, worst on a phone.
    */
   exportPdfRef: MutableRefObject<(() => Promise<void>) | null>;
+  /**
+   * Opens the container's account edit form with a detected mortgage type
+   * preselected (the Rate History panel's "Detect mortgage type"). A container
+   * without an edit form leaves it out, and the action is not offered.
+   */
+  onUseMortgageType?: (type: MortgageType) => void;
 }
 
 /**
@@ -100,6 +106,7 @@ export function LoanDetailView({
   onScenariosChanged,
   onRateChangesChanged,
   exportPdfRef,
+  onUseMortgageType,
 }: LoanDetailViewProps) {
   const t = useTranslations('accounts');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
@@ -399,6 +406,7 @@ export function LoanDetailView({
             account={account}
             rateChanges={rateChanges}
             editing={rateEditing}
+            onUseMortgageType={onUseMortgageType}
           />
           <div className="w-full">
             <OverpaymentSimulator
@@ -484,6 +492,7 @@ export function LoanDetailView({
           account={account}
           rateChanges={rateChanges}
           editing={rateEditing}
+          onUseMortgageType={onUseMortgageType}
         />
       )}
     </div>
