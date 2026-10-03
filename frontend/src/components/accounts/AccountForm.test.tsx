@@ -953,6 +953,36 @@ describe('AccountForm', () => {
       });
     });
 
+    it('opens dirty with a detected type preselected and saves it only on Update', async () => {
+      const onDirtyChange = vi.fn();
+      render(
+        <AccountForm
+          account={mortgage({ mortgageType: 'ANNUITY', isCanadianMortgage: false, isVariableRate: false })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          onDirtyChange={onDirtyChange}
+          preselectedMortgageType="CANADIAN_FIXED"
+        />,
+      );
+      await waitFor(() => {
+        expect((screen.getByLabelText('Mortgage Type') as HTMLSelectElement).value).toBe(
+          'CANADIAN_FIXED',
+        );
+      });
+      // An unsaved change, so the unsaved-changes prompt guards it.
+      await waitFor(() => {
+        expect(onDirtyChange).toHaveBeenCalledWith(true);
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({
+        mortgageType: 'CANADIAN_FIXED',
+        isCanadianMortgage: true,
+        isVariableRate: false,
+      });
+    });
+
     it('sends a LINEAR mortgage with its stored prepayment mode', async () => {
       const select = await submitEdit(
         mortgage({ mortgageType: 'LINEAR', prepaymentMode: 'LOWER_INSTALLMENT' }),

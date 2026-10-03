@@ -87,6 +87,42 @@ describe('RateHistorySidebar', () => {
     expect(screen.getByRole('button', { name: 'Detect from history' })).toBeInTheDocument();
   });
 
+  it('offers the mortgage type detector on a mortgage whose container can edit it', () => {
+    function WithTypeDetector() {
+      const editing = useLoanRateEditing(account, () => {});
+      return (
+        <RateHistorySidebar
+          account={account}
+          rateChanges={rateChanges}
+          editing={editing}
+          onUseMortgageType={vi.fn()}
+        />
+      );
+    }
+    render(<WithTypeDetector />);
+    expect(screen.getByRole('button', { name: 'Detect Mortgage Type' })).toBeInTheDocument();
+  });
+
+  it('does not offer the mortgage type detector without an edit form or on a loan', () => {
+    const loan = { ...account, accountType: 'LOAN' } as Account;
+    function OnLoan() {
+      const editing = useLoanRateEditing(loan, () => {});
+      return (
+        <RateHistorySidebar
+          account={loan}
+          rateChanges={rateChanges}
+          editing={editing}
+          onUseMortgageType={vi.fn()}
+        />
+      );
+    }
+    const { unmount } = render(<Harness rows={rateChanges} onChanged={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'Detect Mortgage Type' })).not.toBeInTheDocument();
+    unmount();
+    render(<OnLoan />);
+    expect(screen.queryByRole('button', { name: 'Detect Mortgage Type' })).not.toBeInTheDocument();
+  });
+
   it('exports the rate timeline to CSV, sorted by effective date', async () => {
     // Pass the rows newest-first to prove the export re-sorts them.
     render(<Harness rows={[...rateChanges].reverse()} onChanged={() => {}} />);

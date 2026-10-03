@@ -41,7 +41,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [x] |
 | P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [x] |
 | P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [x] |
-| P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [ ] |
+| P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [x] |
 | P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [ ] |
 | P3-B1 | #1514 | Contract migration: NOT NULL default, drop the booleans, delete overloads and guard | P2-Q, one release after P1 | neutral | [ ] |
 
@@ -137,6 +137,8 @@ Every task is safe to merge in any order that respects its dependencies: the col
 ### P2-F2 -- Detection UI
 
 **Files:** sample installments on the create form, a detect action in Loan Details, `frontend/src/i18n/messages/en/accounts.json`, tests.
+
+- Done: `MortgageTypeDetector` (`frontend/src/components/accounts/MortgageTypeDetector.tsx`) behind "Not sure? Enter a few installments" under the create form's Mortgage Type select sends up to three typed installments with the form's rate and frequency to `accountsApi.detectMortgageType`; "Use this type" sets the select (`MortgageFields`), closing leaves it alone, and an answer is shown only while the inputs it was read from are on screen. `MortgageTypeHistoryDetector` (`frontend/src/components/accounts/loan-detail/MortgageTypeHistoryDetector.tsx`), beside the rate-change detect action in the Rate History panel, calls `accountsApi.detectMortgageTypeFromHistory` and shows the suggestion with the installments it read; accepting opens the account edit form with the type preselected as an unsaved change (`AccountForm`'s `preselectedMortgageType`). Both word the answer through `MortgageTypeSuggestion` from `mortgageFields.detect.reason.<code>`; `frontend/src/lib/mortgage-type-detection.contract.test.ts` holds `MORTGAGE_TYPE_DETECTION_REASONS` to the backend's list and to the English catalog. No figure is computed on the client.
 
 ### P2-Q -- Phase 2 acceptance
 

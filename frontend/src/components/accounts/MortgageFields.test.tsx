@@ -29,6 +29,7 @@ vi.mock('@/components/ui/Combobox', () => ({
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
     previewMortgageAmortization: vi.fn(),
+    detectMortgageType: vi.fn(),
   },
 }));
 
@@ -308,6 +309,81 @@ describe('MortgageFields', () => {
     expect(mockSetValue).toHaveBeenCalledWith('mortgagePaymentFrequency', 'BIWEEKLY', {
       shouldDirty: true,
       shouldValidate: true,
+    });
+  });
+
+  describe('type detection', () => {
+    async function detectLinear() {
+      vi.mocked(accountsApi.detectMortgageType).mockResolvedValue({
+        type: 'LINEAR',
+        confidence: 'high',
+        reason: 'CONSTANT_PRINCIPAL',
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Not sure? Enter a few installments' }));
+      const principals = screen.getAllByLabelText('Principal');
+      const interests = screen.getAllByLabelText('Interest');
+      fireEvent.change(principals[0], { target: { value: '833.33' } });
+      fireEvent.change(interests[0], { target: { value: '500.00' } });
+      fireEvent.change(principals[1], { target: { value: '833.33' } });
+      fireEvent.change(interests[1], { target: { value: '498.61' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Suggest a Type' }));
+      });
+    }
+
+    it('offers the installment entry on create only', () => {
+      const { unmount } = render(<MortgageFields {...defaultProps} />);
+      expect(
+        screen.getByRole('button', { name: 'Not sure? Enter a few installments' }),
+      ).toBeInTheDocument();
+      unmount();
+      render(<MortgageFields {...defaultProps} isEditing />);
+      expect(
+        screen.queryByRole('button', { name: 'Not sure? Enter a few installments' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('sends the quoted rate and cadence already on the form', async () => {
+      render(
+        <MortgageFields
+          {...defaultProps}
+          interestRate={2}
+          mortgagePaymentFrequency="MONTHLY"
+        />,
+      );
+      await detectLinear();
+      expect(accountsApi.detectMortgageType).toHaveBeenCalledWith(
+        expect.objectContaining({ interestRate: 2, paymentFrequency: 'MONTHLY' }),
+      );
+    });
+
+    it('sets the Mortgage Type select when the suggestion is used', async () => {
+      render(
+        <MortgageFields {...defaultProps} mortgageType="ANNUITY" mortgagePaymentFrequency="MONTHLY" />,
+      );
+      await detectLinear();
+      expect(mockSetValue).not.toHaveBeenCalledWith('mortgageType', expect.anything(), expect.anything());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Use This Type' }));
+      expect(mockSetValue).toHaveBeenCalledWith('mortgageType', 'LINEAR', {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      // A monthly cadence is one LINEAR keeps.
+      expect(mockSetValue).not.toHaveBeenCalledWith(
+        'mortgagePaymentFrequency',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('leaves the select untouched when the panel is closed', async () => {
+      render(
+        <MortgageFields {...defaultProps} mortgageType="ANNUITY" mortgagePaymentFrequency="MONTHLY" />,
+      );
+      await detectLinear();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(mockSetValue).not.toHaveBeenCalledWith('mortgageType', expect.anything(), expect.anything());
     });
   });
 

@@ -67,8 +67,11 @@ const mockGetAll = vi.fn();
 const mockDetectLoanPayments = vi.fn();
 const mockGetDailyBalances = vi.fn();
 const mockGetBalanceForecast = vi.fn();
+const mockDetectMortgageTypeFromHistory = vi.fn();
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
+    detectMortgageTypeFromHistory: (...args: unknown[]) =>
+      mockDetectMortgageTypeFromHistory(...args),
     getById: (...args: unknown[]) => mockGetById(...args),
     getAll: (...args: unknown[]) => mockGetAll(...args),
     detectLoanPayments: (...args: unknown[]) => mockDetectLoanPayments(...args),
@@ -169,6 +172,19 @@ vi.mock('@/lib/scheduled-transactions', () => ({
   },
 }));
 
+// The shared edit modal has its own tests; here only what it was opened
+// with matters.
+vi.mock('@/components/accounts/AccountFormModal', () => ({
+  AccountFormModal: ({ formModal, preselectedMortgageType }: any) =>
+    formModal.showForm ? (
+      <div
+        data-testid="account-form-modal"
+        data-account-id={formModal.editingItem?.id}
+        data-mortgage-type={preselectedMortgageType}
+      />
+    ) : null,
+}));
+
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
     id: 'loan-1',
@@ -244,6 +260,35 @@ describe('AccountDetailPage', () => {
     expect(screen.getByText('Loan Schedule')).toBeInTheDocument();
     expect(mockGetById).toHaveBeenCalledWith('loan-1');
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('opens the edit form with a detected mortgage type and saves nothing', async () => {
+    mockGetById.mockResolvedValue(
+      makeAccount({ accountType: 'MORTGAGE', name: 'Home', mortgageType: 'ANNUITY' }),
+    );
+    mockDetectMortgageTypeFromHistory.mockResolvedValue({
+      type: 'CANADIAN_FIXED',
+      confidence: 'high',
+      reason: 'CONSTANT_INSTALLMENT_SEMI_ANNUAL',
+      quotedAnnualRate: 6,
+      paymentFrequency: 'MONTHLY',
+      samples: [],
+    });
+
+    await renderPage();
+    expect(screen.queryByTestId('account-form-modal')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Detect Mortgage Type' }));
+    });
+    expect(mockDetectMortgageTypeFromHistory).toHaveBeenCalledWith('loan-1');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Account With This Type' }));
+    });
+
+    const modal = screen.getByTestId('account-form-modal');
+    expect(modal).toHaveAttribute('data-account-id', 'loan-1');
+    expect(modal).toHaveAttribute('data-mortgage-type', 'CANADIAN_FIXED');
   });
 
   it('mounts the foreign-currency section regardless of the fee percentage', async () => {

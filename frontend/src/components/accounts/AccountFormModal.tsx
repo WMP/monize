@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { accountsApi } from '@/lib/accounts';
-import { Account } from '@/types/account';
+import { Account, MortgageType } from '@/types/account';
 import { showErrorToast } from '@/lib/errors';
 import { UseFormModalReturn } from '@/hooks/useFormModal';
 
@@ -33,6 +33,8 @@ interface AccountFormModalProps {
   formModal: AccountFormModalState;
   /** Called after a successful create/update so the caller can refresh data. */
   onSaved: () => void;
+  /** A detected mortgage type to set on the edit form as an unsaved change. */
+  preselectedMortgageType?: MortgageType;
 }
 
 /**
@@ -41,7 +43,11 @@ interface AccountFormModalProps {
  * edits an account -- the Accounts page and the Transactions account widget --
  * reuses the exact same form and behaviour.
  */
-export function AccountFormModal({ formModal, onSaved }: AccountFormModalProps) {
+export function AccountFormModal({
+  formModal,
+  onSaved,
+  preselectedMortgageType,
+}: AccountFormModalProps) {
   const t = useTranslations('accounts');
   const {
     showForm,
@@ -186,6 +192,7 @@ export function AccountFormModal({ formModal, onSaved }: AccountFormModalProps) 
           onCancel={close}
           onDirtyChange={setFormDirty}
           submitRef={formSubmitRef}
+          preselectedMortgageType={preselectedMortgageType}
         />
       </Modal>
       <UnsavedChangesDialog {...unsavedChangesDialog} />

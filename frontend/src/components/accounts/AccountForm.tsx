@@ -24,6 +24,7 @@ import {
   InterestBookingMode,
   MORTGAGE_PAYMENT_FREQUENCIES,
   MORTGAGE_TYPES,
+  MortgageType,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
 } from '@/types/account';
@@ -241,9 +242,22 @@ interface AccountFormProps {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
+  /**
+   * A mortgage type the person confirmed elsewhere (Loan Details' type
+   * detector), set on the select as an unsaved change: the form opens dirty
+   * and nothing is written until it is saved.
+   */
+  preselectedMortgageType?: MortgageType;
 }
 
-export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submitRef }: AccountFormProps) {
+export function AccountForm({
+  account,
+  onSubmit,
+  onCancel,
+  onDirtyChange,
+  submitRef,
+  preselectedMortgageType,
+}: AccountFormProps) {
   const t = useTranslations('accounts');
   const stripAccountName = useMainAccountName();
   const router = useRouter();
@@ -362,6 +376,15 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
   });
 
   useFormDirtyNotify(isDirty, onDirtyChange);
+
+  // Applied as an edit rather than as a default, so the field is dirty: the
+  // unsaved-changes prompt guards it and the save sends it like a choice
+  // made in the select.
+  useEffect(() => {
+    if (preselectedMortgageType) {
+      setValue('mortgageType', preselectedMortgageType, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [preselectedMortgageType, setValue]);
 
   // Retain the account's stored institution unless the user actually changed
   // the Institution field. The institution combobox marks the field dirty only
