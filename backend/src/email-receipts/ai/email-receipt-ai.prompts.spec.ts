@@ -170,6 +170,8 @@ describe("the two user messages", () => {
     expect(PARSER_DRAFT_SYSTEM_PROMPT).toMatch(/\{orderid\}/);
     expect(PARSER_DRAFT_SYSTEM_PROMPT).toMatch(/ONLY ids that appear/);
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toMatch(/LINE TOTAL/);
+    expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toContain('"shippingCategoryId"');
+    expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toContain('"discountCategoryId"');
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toMatch(/never invent|Never invent/);
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).not.toMatch(/splits/);
   });

@@ -63,10 +63,10 @@ export function aiAmountToUnits(value: string | number): number | null {
  * refused whole. Inside a good one: an item whose amount does not convert (or is
  * not above zero) or whose name is empty is dropped; a shipping, discount or
  * total that does not convert is read as not stated; a `categoryId` that is not
- * in `categories` is none. Every such step is named in `notes`. The categories of
- * the shipping and discount lines are not the model's to give, so they are
- * none, and a receipt with shipping or a discount is `complete` only when the
- * completeness rules say so (they will not, today).
+ * in `categories` is none, as is an unknown `shippingCategoryId` or
+ * `discountCategoryId`. Every such step is named in `notes`. The shipping and
+ * discount categories go into the receipt as a parser's would, so a reading
+ * with shipping or a discount is `complete` when the completeness rules say so.
  */
 export function buildAiParsedReceipt(
   content: string,
@@ -90,6 +90,13 @@ export function buildAiParsedReceipt(
     [...categories.keys()].map((id) => [id.toLowerCase(), id]),
   );
   let unknownCategories = 0;
+  /** A category id the model sent: one of the user's, else none (and noted). */
+  const resolveCategory = (id: string | undefined): string | null => {
+    if (id === undefined) return null;
+    const known = categoryById.get(id.toLowerCase()) ?? null;
+    if (known === null) unknownCategories++;
+    return known;
+  };
   const items: ParsedReceiptItem[] = [];
   let dropped = 0;
   for (const item of answer.items) {
@@ -99,20 +106,11 @@ export function buildAiParsedReceipt(
       dropped++;
       continue;
     }
-    const categoryId =
-      item.categoryId === undefined
-        ? null
-        : (categoryById.get(item.categoryId.toLowerCase()) ?? null);
-    if (item.categoryId !== undefined && categoryId === null) {
-      unknownCategories++;
-    }
+    const categoryId = resolveCategory(item.categoryId);
     items.push({ name, qty: item.qty ?? 1, amount: units, categoryId });
   }
   if (dropped > 0) {
     notes.push(`${dropped} item(s) dropped: no name or no readable amount.`);
-  }
-  if (unknownCategories > 0) {
-    notes.push(`${unknownCategories} item category id(s) not in the list.`);
   }
 
   const figure = (
@@ -127,6 +125,11 @@ export function buildAiParsedReceipt(
   const total = figure("total", answer.total);
   const shipping = figure("shipping", answer.shipping);
   const discount = figure("discount", answer.discount);
+  const shippingCategoryId = resolveCategory(answer.shippingCategoryId);
+  const discountCategoryId = resolveCategory(answer.discountCategoryId);
+  if (unknownCategories > 0) {
+    notes.push(`${unknownCategories} category id(s) not in the list.`);
+  }
   const orderId =
     answer.orderId === undefined ? "" : clean(answer.orderId).slice(0, 100);
 
@@ -136,8 +139,8 @@ export function buildAiParsedReceipt(
     shipping,
     discount,
     items,
-    shippingCategoryId: null,
-    discountCategoryId: null,
+    shippingCategoryId,
+    discountCategoryId,
   };
   const reason = completeness(base);
   const description =

@@ -21,7 +21,8 @@ import {
   autoApplyAllowed,
   describeFailure,
   EmailReceiptPipelineService,
-  RECEIPT_AI_INSTRUCTION,
+  RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+  RECEIPT_CHAT_INSTRUCTION,
   type AutoApplyFacts,
   type ProcessReceiptOptions,
 } from "./email-receipt-pipeline.service";
@@ -670,10 +671,15 @@ describe("EmailReceiptPipelineService.process", () => {
         {
           transactionId: TX,
           emailReceiptId: RECEIPT,
-          instruction: RECEIPT_AI_INSTRUCTION,
+          instruction: RECEIPT_AUTOMATIC_AI_INSTRUCTION,
         },
       );
-      expect(RECEIPT_AI_INSTRUCTION.length).toBeLessThanOrEqual(1000);
+      expect(RECEIPT_AUTOMATIC_AI_INSTRUCTION.length).toBeLessThanOrEqual(1000);
+      expect(RECEIPT_CHAT_INSTRUCTION.length).toBeLessThanOrEqual(1000);
+      // The poll tells its own requests from the chat's by this text.
+      expect(RECEIPT_CHAT_INSTRUCTION).not.toBe(
+        RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+      );
       expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
       expect(h.work.submit).not.toHaveBeenCalled();
       expect(h.order).toEqual(["advisory", "close", "enqueuePending"]);

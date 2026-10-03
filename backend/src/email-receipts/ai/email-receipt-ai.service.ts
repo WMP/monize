@@ -22,7 +22,8 @@ import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import {
   describeFailure,
-  RECEIPT_AI_INSTRUCTION,
+  RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+  RECEIPT_CHAT_INSTRUCTION,
 } from "../pipeline/email-receipt-pipeline.service";
 import { loadLinkableTransaction } from "../pipeline/linkable-transaction";
 import {
@@ -342,7 +343,7 @@ export class EmailReceiptAiService {
       const created = await this.requests.enqueuePendingForReceipt(m, userId, {
         transactionId: target,
         emailReceiptId: receipt.id,
-        instruction: RECEIPT_AI_INSTRUCTION,
+        instruction: RECEIPT_CHAT_INSTRUCTION,
       });
       if (!created) {
         throw new ConflictException(
@@ -698,7 +699,12 @@ export class EmailReceiptAiService {
     }
   }
 
-  /** Pending receipt requests nobody claimed and no agent has already given up on. */
+  /**
+   * Pending receipt requests nobody claimed and no agent has already given up
+   * on, that the POLL queued (its own instruction). A request the person made with
+   * "Recognize with AI" carries `RECEIPT_CHAT_INSTRUCTION` and belongs to the
+   * chat or an MCP agent: the automatic step never takes it.
+   */
   private async pendingRequests(
     userId: string,
     limit: number,
@@ -715,9 +721,10 @@ export class EmailReceiptAiService {
               AND claimed_by IS NULL
               AND proposal IS NULL
               AND expires_at > CURRENT_TIMESTAMP
+              AND instruction = $3
             ORDER BY created_at, id
             LIMIT $2`,
-          [userId, limit],
+          [userId, limit, RECEIPT_AUTOMATIC_AI_INSTRUCTION],
         ),
       ),
     );

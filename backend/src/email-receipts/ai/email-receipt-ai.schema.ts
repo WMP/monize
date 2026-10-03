@@ -74,7 +74,9 @@ export const receiptExtractionSchema = z
       )
       .max(EXTRACTION_MAX_ITEMS),
     shipping: optional(amountValue),
+    shippingCategoryId: optional(z.string().trim().max(MAX_CATEGORY_ID)),
     discount: optional(amountValue),
+    discountCategoryId: optional(z.string().trim().max(MAX_CATEGORY_ID)),
     total: optional(amountValue),
     description: optional(z.string().trim().max(EXTRACTION_MAX_DESCRIPTION)),
   })

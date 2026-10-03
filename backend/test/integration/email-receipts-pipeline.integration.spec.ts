@@ -21,6 +21,7 @@ import {
   type FetchSinceResult,
 } from "@/email-receipts/imap/imap-mailbox-client";
 import { EmailReceiptAiService } from "@/email-receipts/ai/email-receipt-ai.service";
+import { RECEIPT_AUTOMATIC_AI_INSTRUCTION } from "@/email-receipts/pipeline/email-receipt-pipeline.service";
 import { EmailReceiptParsersService } from "@/email-receipts/parsers/email-receipt-parsers.service";
 import { EmailReceiptPollService } from "@/email-receipts/poll/email-receipt-poll.service";
 import { EmailReceiptsService } from "@/email-receipts/receipts/email-receipts.service";
@@ -663,6 +664,45 @@ describe("email receipts pipeline (integration)", () => {
       expect(listed.displayState).toBe("pending_ai");
       // a request asks; it writes nothing to the ledger
       expect(await splitCount()).toBe(0);
+    });
+
+    it("the poll's automatic AI step never takes a request the person made with Recognize with AI, but does take its own", async () => {
+      await db.query(
+        `UPDATE email_receipt_mailboxes SET ai_mode = 'automatic'`,
+      );
+      const receipt = await unreadEmail();
+      const { requestId } = await asAlice(() =>
+        receiptAi.askAi(aliceId, receipt.id, txId),
+      );
+      const complete = jest
+        .spyOn(module.get(AiService), "complete")
+        .mockRejectedValue(new Error("provider down"));
+
+      // Only the ask-ai request is pending: nothing for the step to take.
+      await expect(
+        asAlice(() => receiptAi.runAutomaticStep(aliceId)),
+      ).resolves.toMatchObject({ proposed: 0, failed: 0 });
+      expect(complete).not.toHaveBeenCalled();
+      let [request] = await requestRows();
+      expect(request).toMatchObject({
+        id: requestId,
+        status: "pending",
+        claimed_by: null,
+        proposal: null,
+      });
+
+      // Control: a pending request the poll itself queued (its own instruction)
+      // is taken by the same step, so the filter is what spared the first.
+      await db.query(
+        `UPDATE ai_review_requests SET instruction = $1 WHERE id = $2`,
+        [RECEIPT_AUTOMATIC_AI_INSTRUCTION, requestId],
+      );
+      await expect(
+        asAlice(() => receiptAi.runAutomaticStep(aliceId)),
+      ).resolves.toMatchObject({ failed: 1 });
+      expect(complete).toHaveBeenCalledTimes(1);
+      [request] = await requestRows();
+      expect(request.status).toBe("pending");
     });
 
     it("the assistant claims that request by id, reads the email, submits splits as a signed card, and confirming it applies the request", async () => {
