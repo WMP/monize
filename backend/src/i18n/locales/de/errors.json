@@ -341,7 +341,7 @@
     "aiDraftInvalid": "Der Parser der KI war ungültig ({{ codes }}). Versuchen Sie es erneut oder schreiben Sie den Parser von Hand.",
     "aiDraftUnknownCategory": "Der Parser der KI nannte eine Kategorie, die nicht existiert. Versuchen Sie es erneut oder schreiben Sie den Parser von Hand.",
     "tooManyParsers": "Es können höchstens {{ max }} Parser gespeichert werden. Löschen Sie zuerst einen.",
-    "receiptNeedsTransaction": "Verknüpfen Sie diese E-Mail mit einer Transaktion, bevor Sie die KI dazu befragen.",
+    "receiptNeedsTransaction": "Wählen Sie die Transaktion aus, die mit dieser E-Mail bezahlt wurde, bevor Sie die KI dazu befragen.",
     "receiptNotAskable": "Diese E-Mail wurde ignoriert oder konnte nicht gelesen werden. Verarbeiten Sie sie zuerst erneut.",
     "receiptApplied": "Der Vorschlag zu dieser E-Mail wurde bereits auf eine Transaktion angewendet.",
     "openRequestExists": "Für diese Transaktion ist bereits eine weitere Prüfanfrage offen. Schließen Sie sie zuerst ab oder verwerfen Sie sie.",

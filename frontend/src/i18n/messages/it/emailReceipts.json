@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "L'IA non viene mai chiamata per le ricevute.",
-        "on_demand": "L'IA viene chiamata solo quando premi Chiedi all'IA o Prepara parser con l'IA.",
+        "on_demand": "L'IA viene chiamata solo quando premi Riconosci con l'IA o Prepara parser con l'IA.",
         "automatic": "Il controllo interroga l'IA su una ricevuta abbinata che nessun parser approvato ha potuto leggere per intero, e prepara un parser per un mittente che non ne ha."
       },
       "autoApplyLabel": "Applica le proposte automaticamente",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Le righe degli articoli non sommano al totale.",
       "items_uncategorized": "Alcune righe degli articoli non hanno una categoria.",
       "shipping_uncategorized": "La riga di spedizione non ha una categoria."
-    }
+    },
+    "readByAi": "Letto dall'IA"
   },
   "state": {
     "pending": "In attesa di lettura",
@@ -374,7 +375,7 @@
       "view": "Vedi",
       "reprocess": "Rielabora",
       "link": "Scegli transazione",
-      "askAi": "Chiedi all'IA",
+      "recognizeAi": "Riconosci con l'IA",
       "draftParser": "Prepara parser con l'IA",
       "createParser": "Crea parser",
       "ignore": "Ignora"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "Email rielaborata",
       "reprocessFailed": "Impossibile rielaborare l'email",
-      "askAiFailed": "Impossibile interpellare l'IA",
       "draftFailed": "Impossibile preparare un parser",
       "ignored": "Email ignorata",
       "ignoreFailed": "Impossibile ignorare l'email",
@@ -390,20 +390,8 @@
       "deleteFailed": "Impossibile eliminare l'email"
     },
     "notices": {
-      "askAiQueued": "L'IA è stata interpellata. La sua proposta comparirà nella posta di revisione IA per la tua approvazione.",
       "draftCreated": "L'IA ha preparato il parser {name}. Non legge nulla finché non lo controlli e lo approvi.",
       "draftLink": "Controllalo nelle impostazioni dei parser"
-    },
-    "aiFailures": {
-      "ai_off": "L'IA è disattivata per questa casella di posta. Cambia prima la modalità IA nelle impostazioni della casella di posta.",
-      "not_a_receipt_request": "Quella richiesta non appartiene a una ricevuta via email.",
-      "receipt_missing": "L'email non esiste più.",
-      "not_claimable": "Una richiesta per questa email è già in lavorazione.",
-      "transaction_unreadable": "Impossibile leggere la transazione collegata.",
-      "ai_unavailable": "Il provider IA non ha risposto. Controlla le impostazioni IA e riprova.",
-      "unusable_answer": "L'IA ha risposto, ma la sua risposta non ha potuto essere usata.",
-      "proposal_refused": "La proposta dell'IA è stata rifiutata perché non torna.",
-      "request_failed": "La richiesta non è riuscita."
     },
     "ignoreDialog": {
       "title": "Ignorare questa email?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "nessun beneficiario",
     "linkButton": "Collega",
-    "hasMore": "Vengono mostrate solo le prime {count}. Usa la ricerca per restringere l'elenco."
+    "hasMore": "Vengono mostrate solo le prime {count}. Usa la ricerca per restringere l'elenco.",
+    "ai": {
+      "heading": "Scegli la transazione per l'IA",
+      "help": "Queste sono le tue transazioni dal {from} al {to}, i giorni intorno all'email. Scegli quella che l'IA deve suddividere in base ai prodotti dell'email.",
+      "linkButton": "Usa questa transazione"
+    }
   },
   "callback": {
     "title": "Collegamento della casella di posta",
@@ -509,5 +502,27 @@
       "fallback": "Il server ha rifiutato la connessione. Ricomincia dalle impostazioni delle ricevute via email."
     },
     "backLink": "Torna alle impostazioni delle ricevute via email"
+  },
+  "recognize": {
+    "title": "Riconosci con l'IA",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "nessun beneficiario",
+    "confirmMessage": "Questa email è collegata alla transazione {summary}. L'IA leggerà l'email e proporrà come suddividere questa transazione per prodotto. Continuare con questa transazione?",
+    "confirm": "Riconosci con l'IA",
+    "chooseOther": "Scegli un'altra transazione",
+    "candidatesHeading": "Quale transazione è stata pagata con l'email?",
+    "candidatesHelp": "Diverse transazioni corrispondono a questa email. Scegli quella che l'IA deve usare oppure cercane un'altra.",
+    "candidatesLoading": "Caricamento delle transazioni corrispondenti",
+    "candidatesError": "Impossibile caricare le transazioni corrispondenti.",
+    "retry": "Riprova",
+    "useButton": "Usa questa transazione",
+    "searchOther": "Cerca altre transazioni",
+    "back": "Indietro",
+    "failed": "Impossibile avviare il riconoscimento",
+    "queued": "In coda: al momento nessun assistente IA può rispondere, quindi la richiesta resta nella posta di revisione IA in attesa di un agente (ad esempio tramite MCP).",
+    "handoffFailed": "La richiesta è in coda, ma non è stato possibile aprire l'email nella chat. Resta nella posta di revisione IA in attesa di un agente (ad esempio tramite MCP).",
+    "inboxLink": "Apri la posta di revisione IA",
+    "opened": "Chat aperta con l'email allegata. Leggi il messaggio e premi Invia.",
+    "chatPrompt": "Riconosci i prodotti, le quantità e i prezzi nell'email d'ordine allegata e suddividi la mia transazione del {date} ({payee}, {amount}) per prodotto, con una categoria per ciascuno. Prendi in carico la richiesta di revisione IA {requestId} e invia la tua proposta per essa."
   }
 }

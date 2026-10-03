@@ -341,7 +341,7 @@
     "aiDraftInvalid": "De parser van de AI was ongeldig ({{ codes }}). Probeer het opnieuw of schrijf de parser zelf.",
     "aiDraftUnknownCategory": "De parser van de AI noemde een categorie die niet bestaat. Probeer het opnieuw of schrijf de parser zelf.",
     "tooManyParsers": "Er kunnen maximaal {{ max }} parsers worden opgeslagen. Verwijder eerst een parser.",
-    "receiptNeedsTransaction": "Koppel deze e-mail aan een transactie voordat u de AI ernaar vraagt.",
+    "receiptNeedsTransaction": "Kies de transactie die met deze e-mail is betaald voordat u de AI ernaar vraagt.",
     "receiptNotAskable": "Deze e-mail is genegeerd of kon niet worden gelezen. Verwerk hem eerst opnieuw.",
     "receiptApplied": "Het voorstel van deze e-mail is al toegepast op een transactie.",
     "openRequestExists": "Er staat al een ander beoordelingsverzoek open voor deze transactie. Rond het eerst af of wijs het af.",
