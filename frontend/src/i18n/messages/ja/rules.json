@@ -226,7 +226,20 @@
         "append": "説明の後ろに追加",
         "prepend": "説明の前に追加"
       },
-      "structuralReadOnly": "このアクションはアシスタントで作成されました。ここでは移動または削除のみ可能で、編集はできません。"
+      "convertHelp": "一致した収入または支出が振替の片側になります。もう片側は、選択した口座(同じ通貨の口座)に作成されます。",
+      "direction": "方向",
+      "directionTo": "支出: お金が別の口座へ移ります",
+      "directionFrom": "収入: お金が別の口座から入ります",
+      "clearCategory": "カテゴリを消去",
+      "clearCategoryHelp": "振替にはカテゴリがありません。取引がすでに持っているカテゴリを残す場合はオフにします。",
+      "splitPayee": "取引の支払先(任意)",
+      "splitHint": "各パーツの金額は、上のパターンのキャプチャから取るか、残りになります。パーツの合計が取引の金額と一致しない場合、ルールはその取引を変更しません。",
+      "splitNoCaptures": "キャプチャがまだ定義されていません。上のパターンで名前を波括弧で囲む(例: PRINCIPAL: {example})と、ここで金額として使えます。",
+      "partAmountPlaceholder": "金額を選択...",
+      "partRest": "残り",
+      "partAccount": "口座",
+      "partPayee": "もう片側の支払先(任意)",
+      "partsLimit": "分割は最大 {max} パーツまでです。"
     },
     "actionTypes": {
       "add_tags": "タグを追加",
@@ -286,17 +299,17 @@
         "MAX_NODES": "条件とグループが多すぎます。上限は{maxNodes}件です。",
         "NO_ACTIONS": "アクションを少なくとも1つ追加してください。",
         "TOO_MANY_ACTIONS": "アクションが多すぎます。上限は{maxActions}件です。",
-        "DUPLICATE_ACTION": "1つのルールでAIレビューを依頼できるのは1回だけです。",
-        "REFERENCE_NOT_FOUND": "ここで選択した項目は存在しなくなりました。別の項目を選択してください。",
-        "NAME_REQUIRED": "ルールの名前を入力してください。",
-        "UNKNOWN": "この部分は無効です。",
+        "DUPLICATE_ACTION": "1 つのルールに指定できるのは、AI レビュー 1 つ、振替または分割 1 つ、残りを取る分割パーツ 1 つまでです。",
+        "CONFLICTING_ACTIONS": "振替または分割のアクションは「カテゴリを設定」と組み合わせられず、各パートにはカテゴリまたは口座のいずれかが設定されます。",
         "INVALID_CAPTURE": "キャプチャ名は小文字の英字と数字で、英字から始め、20文字以内にしてください。",
         "TOO_MANY_CAPTURES": "1つのパターンに含められるキャプチャは最大5つです。",
         "DUPLICATE_CAPTURE": "キャプチャ名は1つのルール内で1回だけ使えます。",
-        "UNKNOWN_CAPTURE": "このルールのどの条件でも定義されていないキャプチャがテキストで使われています。",
+        "UNKNOWN_CAPTURE": "このルールのどの条件も定義していないキャプチャを使用しています。",
         "LOOKS_LIKE_REGEX": "正規表現には対応していません。| \\ と [xy] のような短い角括弧クラスは通常の文字として扱われるため、正規表現として書いたパターンは意図したものに一致しません。複数のテキストのいずれかに一致させるには、「次のいずれか」のグループを追加し、テキストごとに条件を1つ入れてください。",
         "PATTERN_WITHOUT_WILDCARD": "* がない場合、このパターンはテキスト全体と一致する必要があります。テキスト全体には「である」、一部には「を含む」を使うか、テキストを * で囲んでください。例: *コーヒー*",
-        "CONFLICTING_ACTIONS": "振替または分割のアクションは「カテゴリを設定」と組み合わせられず、各パートにはカテゴリまたは口座のいずれかが設定されます。"
+        "REFERENCE_NOT_FOUND": "ここで選択した項目は存在しなくなりました。別の項目を選択してください。",
+        "NAME_REQUIRED": "ルールの名前を入力してください。",
+        "UNKNOWN": "この部分は無効です。"
       }
     },
     "run": {
@@ -392,7 +405,18 @@
       "cross_owner_transfer_payee": "他の所有者への振替で、その支払先はこのルールでは変更できません",
       "empty_render": "アクションのテキストが空になったため",
       "payee_not_found": "ルールが作った名前の支払先がなく、ルールは作成しないため",
-      "other": "ルールでは変更できません"
+      "other": "ルールでは変更できません",
+      "row_is_transfer_leg": "すでに振替です",
+      "row_has_splits": "すでに分割されています",
+      "row_is_void": "無効になっています",
+      "zero_amount": "金額がゼロです",
+      "transfer_direction_mismatch": "振替の方向が合いません: 支出は口座へ、収入は口座から入ります",
+      "transfer_same_account": "振替先の口座が取引自身の口座です",
+      "transfer_account_unavailable": "振替先の口座は利用できません(削除済み、またはあなたのものではありません)",
+      "transfer_currency_mismatch": "振替先の口座の通貨が異なります",
+      "split_amount_unparseable": "テキスト内の金額を数値として読み取れませんでした",
+      "split_sum_mismatch": "パーツの合計が金額と一致しません",
+      "split_too_few_parts": "ゼロの金額を除くとパーツが 2 つ未満になります"
     },
     "change": {
       "category": "カテゴリ: {before} → {after}",
@@ -404,7 +428,15 @@
       "unknown": "削除された項目",
       "payeeCreated": "{done, select, yes {新しい支払先を作成しました: {name}} other {新しい支払先を作成します: {name}}}",
       "description": "説明: {before} → {after}",
-      "descriptionSet": "説明を{value}に設定"
+      "descriptionSet": "説明を{value}に設定",
+      "transfer": "{done, select, yes {{account} との振替になりました} other {{account} との振替になります}}",
+      "split": "{done, select, yes {{count, plural, other {# 個}}のパーツに分割されました} other {{count, plural, other {# 個}}のパーツに分割されます}}",
+      "splitPart": "パーツ {number}: {amount} {target}",
+      "splitPartMemo": "、メモ「{memo}」",
+      "splitToTransfer": "{account} へ",
+      "splitToTransferPayee": "{account} へ、支払先 {payee}",
+      "splitToCategory": "{category} として",
+      "splitUncategorised": "カテゴリなし"
     },
     "filters": {
       "accounts": "口座",

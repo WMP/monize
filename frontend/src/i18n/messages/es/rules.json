@@ -226,7 +226,20 @@
         "append": "Añadir después de la descripción",
         "prepend": "Añadir antes de la descripción"
       },
-      "structuralReadOnly": "Esta acción se creó con el asistente. Aquí se puede mover o quitar, pero no editar."
+      "convertHelp": "El ingreso o gasto coincidente se convierte en un lado de una transferencia. El otro lado se crea en la cuenta que elijas, que debe usar la misma moneda.",
+      "direction": "Dirección",
+      "directionTo": "Gasto: el dinero va a otra cuenta",
+      "directionFrom": "Ingreso: el dinero viene de otra cuenta",
+      "clearCategory": "Quitar la categoría",
+      "clearCategoryHelp": "Una transferencia no tiene categoría. Desactívalo para conservar la categoría que ya tiene la transacción.",
+      "splitPayee": "Beneficiario de la transacción (opcional)",
+      "splitHint": "Cada parte toma su importe de una captura de los patrones anteriores, o toma el resto. Las partes deben sumar el importe de la transacción; si no, la regla la deja sin tocar.",
+      "splitNoCaptures": "Todavía no hay ninguna captura definida. Pon un nombre entre llaves en un patrón anterior, por ejemplo PRINCIPAL: {example}, para usarlo aquí como importe.",
+      "partAmountPlaceholder": "Elige el importe...",
+      "partRest": "El resto",
+      "partAccount": "Cuenta",
+      "partPayee": "Beneficiario del otro lado (opcional)",
+      "partsLimit": "Una división puede tener como máximo {max} partes."
     },
     "actionTypes": {
       "add_tags": "Añadir etiquetas",
@@ -286,17 +299,17 @@
         "MAX_NODES": "Hay demasiadas condiciones y grupos. El límite es {maxNodes}.",
         "NO_ACTIONS": "Añade al menos una acción.",
         "TOO_MANY_ACTIONS": "Hay demasiadas acciones. El límite es {maxActions}.",
-        "DUPLICATE_ACTION": "Una regla solo puede pedir una revisión de IA una vez.",
-        "REFERENCE_NOT_FOUND": "Un elemento elegido aquí ya no existe. Elige otro.",
-        "NAME_REQUIRED": "Introduce un nombre para la regla.",
-        "UNKNOWN": "Esta parte no es válida.",
+        "DUPLICATE_ACTION": "Una regla puede tener solo una revisión de IA, una transferencia o división, y una parte de la división que toma el resto.",
+        "CONFLICTING_ACTIONS": "Una acción de transferencia o de división no se puede combinar con «Establecer la categoría», y cada una de sus partes tiene una categoría o una cuenta.",
         "INVALID_CAPTURE": "El nombre de una captura usa letras minúsculas y dígitos, empieza por una letra y tiene como máximo 20 caracteres.",
         "TOO_MANY_CAPTURES": "Un patrón puede contener como máximo 5 capturas.",
         "DUPLICATE_CAPTURE": "Cada nombre de captura solo puede usarse una vez en una regla.",
-        "UNKNOWN_CAPTURE": "El texto usa una captura que ninguna condición de esta regla define.",
+        "UNKNOWN_CAPTURE": "Esto usa una captura que ninguna condición de esta regla define.",
         "LOOKS_LIKE_REGEX": "No se admiten las expresiones regulares: | \\ y las clases cortas entre corchetes como [xy] se tratan como caracteres normales, así que un patrón escrito como regex nunca coincide con lo que se pretendía. Para coincidir con uno de varios textos, añade un grupo «Cualquiera de estas» y pon en él una condición para cada texto.",
         "PATTERN_WITHOUT_WILDCARD": "Sin * este patrón debe ser igual a todo el texto. Usa el operador «es» para el texto completo, «contiene» para una parte, o pon * alrededor del texto, por ejemplo *café*.",
-        "CONFLICTING_ACTIONS": "Una acción de transferencia o de división no se puede combinar con «Establecer la categoría», y cada una de sus partes tiene una categoría o una cuenta."
+        "REFERENCE_NOT_FOUND": "Un elemento elegido aquí ya no existe. Elige otro.",
+        "NAME_REQUIRED": "Introduce un nombre para la regla.",
+        "UNKNOWN": "Esta parte no es válida."
       }
     },
     "run": {
@@ -392,7 +405,18 @@
       "cross_owner_transfer_payee": "es una transferencia a otro propietario, cuyo beneficiario esta regla no puede cambiar",
       "empty_render": "el texto de una acción quedó vacío para ella",
       "payee_not_found": "ningún beneficiario tiene el nombre que formó la regla, y esta no lo crea",
-      "other": "la regla no puede cambiarla"
+      "other": "la regla no puede cambiarla",
+      "row_is_transfer_leg": "ya es una transferencia",
+      "row_has_splits": "ya está dividida",
+      "row_is_void": "está anulada",
+      "zero_amount": "su importe es cero",
+      "transfer_direction_mismatch": "la transferencia va en sentido contrario: un gasto va a una cuenta, un ingreso viene de una",
+      "transfer_same_account": "la cuenta de la transferencia es la propia cuenta de la transacción",
+      "transfer_account_unavailable": "la cuenta de la transferencia no está disponible (se eliminó o no es tuya)",
+      "transfer_currency_mismatch": "la cuenta de la transferencia usa otra moneda",
+      "split_amount_unparseable": "un importe de su texto no se pudo leer como número",
+      "split_sum_mismatch": "las partes no suman su importe",
+      "split_too_few_parts": "quedan menos de dos partes al descartar los importes cero"
     },
     "change": {
       "category": "Categoría: {before} → {after}",
@@ -404,7 +428,15 @@
       "unknown": "un elemento eliminado",
       "payeeCreated": "{done, select, yes {Se creó un beneficiario nuevo: {name}} other {Se creará un beneficiario nuevo: {name}}}",
       "description": "Descripción: {before} → {after}",
-      "descriptionSet": "Establecer la descripción en {value}"
+      "descriptionSet": "Establecer la descripción en {value}",
+      "transfer": "{done, select, yes {Se convirtió en una transferencia con {account}} other {Se convertirá en una transferencia con {account}}}",
+      "split": "{done, select, yes {Se dividió en {count, plural, one {# parte} other {# partes}}} other {Se dividirá en {count, plural, one {# parte} other {# partes}}}}",
+      "splitPart": "Parte {number}: {amount} {target}",
+      "splitPartMemo": ", nota «{memo}»",
+      "splitToTransfer": "a {account}",
+      "splitToTransferPayee": "a {account}, beneficiario {payee}",
+      "splitToCategory": "como {category}",
+      "splitUncategorised": "sin categoría"
     },
     "filters": {
       "accounts": "Cuentas",

@@ -226,7 +226,20 @@
         "append": "Aggiungi dopo la descrizione",
         "prepend": "Aggiungi prima della descrizione"
       },
-      "structuralReadOnly": "Questa azione è stata creata tramite l'assistente. Qui può essere spostata o rimossa, ma non modificata."
+      "convertHelp": "L'entrata o l'uscita corrispondente diventa un lato di un trasferimento. L'altro lato viene creato nel conto scelto, che deve usare la stessa valuta.",
+      "direction": "Direzione",
+      "directionTo": "Uscita: il denaro va a un altro conto",
+      "directionFrom": "Entrata: il denaro arriva da un altro conto",
+      "clearCategory": "Rimuovi la categoria",
+      "clearCategoryHelp": "Un trasferimento non ha categoria. Disattiva per mantenere la categoria che la transazione ha già.",
+      "splitPayee": "Beneficiario della transazione (facoltativo)",
+      "splitHint": "Ogni parte prende il proprio importo da una cattura nei criteri sopra, oppure prende il resto. Le parti devono sommare l'importo della transazione, altrimenti la regola la lascia invariata.",
+      "splitNoCaptures": "Nessuna cattura è ancora definita. Inserisci un nome tra parentesi graffe in un criterio sopra, ad esempio PRINCIPAL: {example}, per usarlo qui come importo.",
+      "partAmountPlaceholder": "Scegli l'importo...",
+      "partRest": "Il resto",
+      "partAccount": "Conto",
+      "partPayee": "Beneficiario dell'altro lato (facoltativo)",
+      "partsLimit": "Una divisione può avere al massimo {max} parti."
     },
     "actionTypes": {
       "add_tags": "Aggiungi tag",
@@ -286,17 +299,17 @@
         "MAX_NODES": "Ci sono troppe condizioni e gruppi. Il limite è {maxNodes}.",
         "NO_ACTIONS": "Aggiungi almeno un'azione.",
         "TOO_MANY_ACTIONS": "Ci sono troppe azioni. Il limite è {maxActions}.",
-        "DUPLICATE_ACTION": "Una regola può richiedere una revisione dell'IA una sola volta.",
-        "REFERENCE_NOT_FOUND": "Un elemento scelto qui non esiste più. Scegline un altro.",
-        "NAME_REQUIRED": "Inserisci un nome per la regola.",
-        "UNKNOWN": "Questa parte non è valida.",
+        "DUPLICATE_ACTION": "Una regola può avere solo una revisione IA, un trasferimento o una divisione, e una parte della divisione che prende il resto.",
+        "CONFLICTING_ACTIONS": "Un'azione di trasferimento o di divisione non può essere combinata con «Imposta la categoria», e ciascuna delle sue parti ha una categoria o un conto.",
         "INVALID_CAPTURE": "Il nome di una cattura usa lettere minuscole e cifre, inizia con una lettera e ha al massimo 20 caratteri.",
         "TOO_MANY_CAPTURES": "Un modello può contenere al massimo 5 catture.",
         "DUPLICATE_CAPTURE": "Ogni nome di cattura può essere usato una sola volta in una regola.",
-        "UNKNOWN_CAPTURE": "Il testo usa una cattura che nessuna condizione di questa regola definisce.",
+        "UNKNOWN_CAPTURE": "Questo usa una cattura che nessuna condizione di questa regola definisce.",
         "LOOKS_LIKE_REGEX": "Le espressioni regolari non sono supportate: | \\ e le classi brevi tra parentesi come [xy] vengono trattati come caratteri normali, quindi un modello scritto come regex non corrisponde mai a ciò che si intendeva. Per far corrispondere uno tra più testi, aggiungi un gruppo “Una qualsiasi di queste” con una condizione per ogni testo.",
         "PATTERN_WITHOUT_WILDCARD": "Senza * questo modello deve essere uguale a tutto il testo. Usa l'operatore “è” per il testo intero, “contiene” per una parte, oppure metti * attorno al testo, ad esempio *caffè*.",
-        "CONFLICTING_ACTIONS": "Un'azione di trasferimento o di divisione non può essere combinata con «Imposta la categoria», e ciascuna delle sue parti ha una categoria o un conto."
+        "REFERENCE_NOT_FOUND": "Un elemento scelto qui non esiste più. Scegline un altro.",
+        "NAME_REQUIRED": "Inserisci un nome per la regola.",
+        "UNKNOWN": "Questa parte non è valida."
       }
     },
     "run": {
@@ -392,7 +405,18 @@
       "cross_owner_transfer_payee": "è un trasferimento verso un altro proprietario, il cui beneficiario questa regola non può modificare",
       "empty_render": "il testo di un'azione è risultato vuoto per essa",
       "payee_not_found": "nessun beneficiario ha il nome costruito dalla regola, e la regola non lo crea",
-      "other": "la regola non può modificarla"
+      "other": "la regola non può modificarla",
+      "row_is_transfer_leg": "è già un trasferimento",
+      "row_has_splits": "è già divisa",
+      "row_is_void": "è annullata",
+      "zero_amount": "il suo importo è zero",
+      "transfer_direction_mismatch": "il trasferimento va nel verso sbagliato: un'uscita va a un conto, un'entrata arriva da un conto",
+      "transfer_same_account": "il conto del trasferimento è il conto della transazione stessa",
+      "transfer_account_unavailable": "il conto del trasferimento non è disponibile (eliminato o non è tuo)",
+      "transfer_currency_mismatch": "il conto del trasferimento usa un'altra valuta",
+      "split_amount_unparseable": "un importo nel suo testo non si può leggere come numero",
+      "split_sum_mismatch": "le parti non sommano il suo importo",
+      "split_too_few_parts": "restano meno di due parti dopo aver scartato gli importi zero"
     },
     "change": {
       "category": "Categoria: {before} → {after}",
@@ -404,7 +428,15 @@
       "unknown": "un elemento eliminato",
       "payeeCreated": "{done, select, yes {È stato creato un nuovo beneficiario: {name}} other {Verrà creato un nuovo beneficiario: {name}}}",
       "description": "Descrizione: {before} → {after}",
-      "descriptionSet": "Imposta la descrizione su {value}"
+      "descriptionSet": "Imposta la descrizione su {value}",
+      "transfer": "{done, select, yes {È diventata un trasferimento con {account}} other {Diventerà un trasferimento con {account}}}",
+      "split": "{done, select, yes {È stata divisa in {count, plural, one {# parte} other {# parti}}} other {Sarà divisa in {count, plural, one {# parte} other {# parti}}}}",
+      "splitPart": "Parte {number}: {amount} {target}",
+      "splitPartMemo": ", nota «{memo}»",
+      "splitToTransfer": "verso {account}",
+      "splitToTransferPayee": "verso {account}, beneficiario {payee}",
+      "splitToCategory": "come {category}",
+      "splitUncategorised": "senza categoria"
     },
     "filters": {
       "accounts": "Conti",
