@@ -16,6 +16,7 @@ import {
   SpendingByCategoryResponse,
   SpendingByPayeeResponse,
   IncomeBySourceResponse,
+  IncomeBySourceQueryDto,
   MonthlySpendingTrendResponse,
   IncomeVsExpensesResponse,
   YearOverYearResponse,
@@ -76,12 +77,13 @@ export class BuiltInReportsController {
   @ApiResponse({ status: 200, type: IncomeBySourceResponse })
   getIncomeBySource(
     @Request() req,
-    @Query() query: ReportQueryDto,
+    @Query() query: IncomeBySourceQueryDto,
   ): Promise<IncomeBySourceResponse> {
     return this.reportsService.getIncomeBySource(
       req.user.id,
       query.startDate,
       query.endDate,
+      { accountIds: query.accountIds },
     );
   }
 
@@ -133,7 +135,7 @@ export class BuiltInReportsController {
       req.user.id,
       query.startDate,
       query.endDate,
-      { tagKey: query.tagKey },
+      { tagKey: query.tagKey, accountIds: query.accountIds },
     );
   }
 

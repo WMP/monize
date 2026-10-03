@@ -143,11 +143,17 @@ export class IncomeReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
+  /**
+   * `options.accountIds` restricts the window to those accounts, the way every
+   * other income query does; absent or empty means all accounts.
+   */
   async getIncomeBySource(
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options: { accountIds?: string[] } = {},
   ): Promise<IncomeBySourceResponse> {
+    const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
@@ -178,11 +184,17 @@ export class IncomeReportsService {
         )
     `;
 
-    const params: (string | undefined)[] = [userId, endDate];
+    const params: (string | string[] | undefined)[] = [userId, endDate];
 
     if (startDate) {
       query += ` AND t.transaction_date >= $3`;
       params.push(startDate);
+    }
+
+    // An empty array would match nothing, which is not what "no filter" means.
+    if (accountIds && accountIds.length > 0) {
+      query += ` AND t.account_id = ANY($${params.length + 1}::uuid[])`;
+      params.push(accountIds);
     }
 
     query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code`;

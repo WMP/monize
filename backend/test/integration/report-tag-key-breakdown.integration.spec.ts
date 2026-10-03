@@ -657,4 +657,48 @@ describe("Income vs Expenses tag-key breakdown (integration)", () => {
       expect(result.totals.net).toBe(0);
     });
   });
+
+  describe("income by source and the account scope (Cash Flow page)", () => {
+    function bySource(accountIds?: string[]) {
+      return withUserContext(userId, () =>
+        income.getIncomeBySource(userId, START, END, { accountIds }),
+      );
+    }
+
+    async function seedIncome() {
+      await insertTransaction({
+        accountId: checkingId,
+        amount: 1000,
+        categoryId: incomeCategoryId,
+      });
+      await insertTransaction({
+        accountId: savingsId,
+        amount: 400,
+        categoryId: incomeCategoryId,
+      });
+      // A VOID row in the filtered account never counts.
+      await insertTransaction({
+        accountId: checkingId,
+        amount: 99,
+        categoryId: incomeCategoryId,
+        status: TransactionStatus.VOID,
+      });
+    }
+
+    it("absent or empty accountIds is the unscoped report", async () => {
+      await seedIncome();
+
+      const unscoped = await bySource();
+      expect(unscoped.totalIncome).toBe(1400);
+      expect(await bySource([])).toEqual(unscoped);
+    });
+
+    it("restricts the totals to the chosen accounts", async () => {
+      await seedIncome();
+
+      expect((await bySource([checkingId])).totalIncome).toBe(1000);
+      expect((await bySource([savingsId])).totalIncome).toBe(400);
+      expect((await bySource([checkingId, savingsId])).totalIncome).toBe(1400);
+    });
+  });
 });
