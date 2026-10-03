@@ -370,6 +370,39 @@ describe("AccountsService", () => {
       expect(accountsRepository.create).not.toHaveBeenCalled();
     });
 
+    it("stores the mortgage form's cadence for a bare LINEAR mortgage that sent only that", async () => {
+      // No source account, so the full mortgage path is skipped; the request
+      // named its cadence as mortgagePaymentFrequency, and the refusal must
+      // not ask for a paymentFrequency it never used.
+      await service.create("user-1", {
+        name: "Hypotheek",
+        accountType: AccountType.MORTGAGE,
+        currencyCode: "EUR",
+        openingBalance: 300000,
+        mortgageType: "LINEAR",
+        mortgagePaymentFrequency: "SEMI_MONTHLY",
+        paymentStartDate: "2024-01-01",
+        amortizationMonths: 360,
+      } as any);
+      expect(accountsRepository.create.mock.calls[0][0]).toMatchObject({
+        mortgageType: "LINEAR",
+        paymentFrequency: "SEMI_MONTHLY",
+      });
+
+      await expect(
+        service.create("user-1", {
+          name: "Hypotheek",
+          accountType: AccountType.MORTGAGE,
+          currencyCode: "EUR",
+          openingBalance: 300000,
+          mortgageType: "LINEAR",
+          mortgagePaymentFrequency: "ACCELERATED_BIWEEKLY",
+          paymentStartDate: "2024-01-01",
+          amortizationMonths: 360,
+        } as any),
+      ).rejects.toThrow(/cannot be paid ACCELERATED_BIWEEKLY/);
+    });
+
     it("stores no payment for a bare LINEAR mortgage, and its mode", async () => {
       await service.create("user-1", {
         name: "Hypotheek",

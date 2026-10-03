@@ -268,12 +268,27 @@ export class AccountsService {
     const prepaymentMode = mortgageType
       ? prepaymentModeColumn(mortgageType, accountData.prepaymentMode)
       : null;
+    const derivesInstallment =
+      mortgageType !== null && !storesConstantPayment(mortgageType);
+    // A LINEAR or INTEREST_ONLY request carrying only the mortgage form's
+    // cadence (it skipped the full mortgage path for want of a source account)
+    // has that cadence stored, so the row is one the method can price and the
+    // refusal below never names a field the client did not send. The column
+    // holds both spellings (`periodsPerYearForStoredFrequency`).
+    const paymentFrequency: string | undefined =
+      accountData.paymentFrequency ??
+      (derivesInstallment ? accountData.mortgagePaymentFrequency : undefined);
     const mortgageColumns = mortgageType
-      ? { ...mortgageTypeColumns(mortgageType), prepaymentMode }
+      ? {
+          ...mortgageTypeColumns(mortgageType),
+          prepaymentMode,
+          ...(derivesInstallment ? { paymentFrequency } : {}),
+        }
       : {};
-    if (mortgageType && !storesConstantPayment(mortgageType)) {
+    if (derivesInstallment) {
       assertMortgageMethodTerms(mortgageType, {
         ...accountData,
+        paymentFrequency,
         prepaymentMode,
         openingBalance,
       });

@@ -670,6 +670,20 @@ export function calculateMortgageAmortization(
 }
 
 /**
+ * Hold the routing rule in code: the two helpers below are the annuity
+ * re-levelling and split, and a LINEAR or INTEREST_ONLY caller is priced
+ * through `nonAnnuityInstallment` instead. A misrouted call is a programming
+ * error, so it throws rather than answering with an annuity figure.
+ */
+function assertAnnuityMethod(helper: string, type: MortgageType): void {
+  if (amortizationMethodFor(type) !== "ANNUITY") {
+    throw new Error(
+      `${helper} prices annuity mortgages only; a ${type} mortgage is priced through nonAnnuityInstallment`,
+    );
+  }
+}
+
+/**
  * Recalculate mortgage details after a rate change
  *
  * Uses current balance and remaining amortization to determine new payment.
@@ -690,6 +704,7 @@ export function recalculateMortgageAfterRateChange(
   principalPayment: number;
   interestPayment: number;
 } {
+  assertAnnuityMethod("recalculateMortgageAfterRateChange", mortgageType);
   const input: MortgageAmortizationInput = {
     principal: currentBalance,
     annualRate: newRate,
@@ -729,6 +744,7 @@ export function calculateMortgagePaymentSplit(
   periodsPerYear: number,
   mortgageType: MortgageType,
 ): { principal: number; interest: number } {
+  assertAnnuityMethod("calculateMortgagePaymentSplit", mortgageType);
   const periodicRate = getPeriodicRate(
     annualRate,
     periodsPerYear,

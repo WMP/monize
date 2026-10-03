@@ -11,6 +11,8 @@ import {
   getPeriodicRate,
   MortgagePaymentFrequency,
   MortgageAmortizationInput,
+  calculateMortgagePaymentSplit,
+  recalculateMortgageAfterRateChange,
 } from "./mortgage-amortization.util";
 import { MortgageType, mortgageTypeFromFlags } from "./mortgage-type.util";
 
@@ -901,5 +903,25 @@ describe("calculateMortgageAmortization: LINEAR and INTEREST_ONLY (spec 5.1, tab
     expect(() =>
       calculateMortgageAmortization(input("LINEAR", { principal: 0 })),
     ).toThrow(/requires originalPrincipal/);
+  });
+});
+
+describe("the annuity-only helpers refuse the other methods", () => {
+  it.each(["LINEAR", "INTEREST_ONLY"] as const)(
+    "%s is not routed through the annuity re-levelling or split",
+    (type) => {
+      expect(() =>
+        recalculateMortgageAfterRateChange(300000, 4, 324, "MONTHLY", type),
+      ).toThrow(/nonAnnuityInstallment/);
+      expect(() =>
+        calculateMortgagePaymentSplit(300000, 2, 1333.33, 12, type),
+      ).toThrow(/nonAnnuityInstallment/);
+    },
+  );
+
+  it("still prices the annuity types", () => {
+    expect(
+      calculateMortgagePaymentSplit(300000, 2, 1108.8584, 12, "ANNUITY"),
+    ).toEqual({ principal: 608.8584, interest: 500 });
   });
 });
