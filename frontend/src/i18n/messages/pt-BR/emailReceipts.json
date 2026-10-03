@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "A IA nunca é chamada para os recibos.",
-        "on_demand": "A IA só é chamada quando você clica em Perguntar à IA ou em Redigir analisador com IA.",
+        "on_demand": "A IA só é chamada quando carrega em Reconhecer com IA ou em Redigir analisador com IA.",
         "automatic": "A verificação pergunta à IA sobre um recibo correspondido que nenhum analisador aprovado conseguiu ler por completo e redige um analisador para um remetente que não tem nenhum."
       },
       "autoApplyLabel": "Aplicar propostas automaticamente",
@@ -310,7 +310,8 @@
       "items_unbalanced": "As linhas de itens não fecham com o total.",
       "items_uncategorized": "Algumas linhas de itens não têm categoria.",
       "shipping_uncategorized": "A linha de frete não tem categoria."
-    }
+    },
+    "readByAi": "Lido pela IA"
   },
   "state": {
     "pending": "Aguardando leitura",
@@ -374,7 +375,7 @@
       "view": "Ver",
       "reprocess": "Reprocessar",
       "link": "Escolher transação",
-      "askAi": "Perguntar à IA",
+      "recognizeAi": "Reconhecer com IA",
       "draftParser": "Redigir analisador com IA",
       "createParser": "Criar analisador",
       "ignore": "Ignorar"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "E-mail reprocessado",
       "reprocessFailed": "Não foi possível reprocessar o e-mail",
-      "askAiFailed": "Não foi possível perguntar à IA",
       "draftFailed": "Não foi possível redigir um analisador",
       "ignored": "E-mail ignorado",
       "ignoreFailed": "Não foi possível ignorar o e-mail",
@@ -390,20 +390,8 @@
       "deleteFailed": "Não foi possível excluir o e-mail"
     },
     "notices": {
-      "askAiQueued": "A IA foi consultada. A proposta dela aparecerá na caixa de revisão de IA para a sua aprovação.",
       "draftCreated": "A IA redigiu o analisador {name}. Ele não lê nada até você revisá-lo e aprová-lo.",
       "draftLink": "Revise-o nas configurações dos analisadores"
-    },
-    "aiFailures": {
-      "ai_off": "A IA está desligada para esta caixa de e-mail. Altere primeiro o modo de IA nas configurações da caixa de e-mail.",
-      "not_a_receipt_request": "Essa solicitação não pertence a um recibo por e-mail.",
-      "receipt_missing": "O e-mail não existe mais.",
-      "not_claimable": "Já há uma solicitação para este e-mail em andamento.",
-      "transaction_unreadable": "Não foi possível ler a transação vinculada.",
-      "ai_unavailable": "O provedor de IA não respondeu. Verifique as configurações de IA e tente novamente.",
-      "unusable_answer": "A IA respondeu, mas a resposta não pôde ser usada.",
-      "proposal_refused": "A proposta da IA foi recusada porque os valores não fecham.",
-      "request_failed": "A solicitação falhou."
     },
     "ignoreDialog": {
       "title": "Ignorar este e-mail?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "sem beneficiário",
     "linkButton": "Vincular",
-    "hasMore": "Somente as primeiras {count} são mostradas. Use a pesquisa para reduzir a lista."
+    "hasMore": "Somente as primeiras {count} são mostradas. Use a pesquisa para reduzir a lista.",
+    "ai": {
+      "heading": "Escolha a transação para a IA",
+      "help": "Estas são as suas transações de {from} a {to}, os dias em torno do e-mail. Escolha aquela que a IA deve dividir pelos produtos do e-mail.",
+      "linkButton": "Usar esta transação"
+    }
   },
   "callback": {
     "title": "Conectando a caixa de e-mail",
@@ -509,5 +502,27 @@
       "fallback": "O servidor recusou a conexão. Recomece a partir das configurações de recibos por e-mail."
     },
     "backLink": "Voltar às configurações de recibos por e-mail"
+  },
+  "recognize": {
+    "title": "Reconhecer com IA",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "sem beneficiário",
+    "confirmMessage": "Este e-mail está vinculado à transação {summary}. A IA vai ler o e-mail e propor como dividir esta transação por produto. Continuar com esta transação?",
+    "confirm": "Reconhecer com IA",
+    "chooseOther": "Escolher outra transação",
+    "candidatesHeading": "Que transação o e-mail pagou?",
+    "candidatesHelp": "Várias transações correspondem a este e-mail. Escolha aquela que a IA deve usar ou pesquise outra.",
+    "candidatesLoading": "Carregando as transações correspondentes",
+    "candidatesError": "Não foi possível carregar as transações correspondentes.",
+    "retry": "Tentar novamente",
+    "useButton": "Usar esta transação",
+    "searchOther": "Pesquisar outras transações",
+    "back": "Voltar",
+    "failed": "Não foi possível iniciar o reconhecimento",
+    "queued": "Na fila: no momento não há nenhum assistente de IA disponível para responder, então a solicitação aguarda na caixa de revisão de IA por um agente (por exemplo, via MCP).",
+    "handoffFailed": "A solicitação está na fila, mas não foi possível abrir o e-mail no chat. Ela aguarda na caixa de revisão de IA por um agente (por exemplo, via MCP).",
+    "inboxLink": "Abrir a caixa de revisão de IA",
+    "opened": "O chat foi aberto com o e-mail anexado. Leia a mensagem e clique em Enviar.",
+    "chatPrompt": "Reconheça os produtos, as quantidades e os preços no e-mail de pedido anexado e divida minha transação de {date} ({payee}, {amount}) por produto, com uma categoria para cada um. Assuma a solicitação de revisão de IA {requestId} e envie sua proposta para ela."
   }
 }

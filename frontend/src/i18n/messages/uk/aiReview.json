@@ -37,7 +37,8 @@
     "viewEmailReceipts": "Переглянути чеки з електронної пошти",
     "agentNote": "Примітка асистента: {reason}",
     "dates": "Створено {created}, спливає {expires}",
-    "viewTransaction": "Переглянути транзакцію"
+    "viewTransaction": "Переглянути транзакцію",
+    "waitingForAgent": "Очікування агента ШІ. <link>Підключіть постачальника ШІ в налаштуваннях</link> або дозвольте MCP-клієнту взяти запит."
   },
   "actions": {
     "dismiss": "Відхилити"

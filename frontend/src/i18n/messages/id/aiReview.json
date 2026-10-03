@@ -37,7 +37,8 @@
     "viewEmailReceipts": "Lihat struk surel",
     "agentNote": "Catatan dari asisten: {reason}",
     "dates": "Dibuat {created}, kedaluwarsa {expires}",
-    "viewTransaction": "Lihat transaksi"
+    "viewTransaction": "Lihat transaksi",
+    "waitingForAgent": "Menunggu agen AI. <link>Hubungkan penyedia AI di Pengaturan</link>, atau biarkan klien MCP mengambilnya."
   },
   "actions": {
     "dismiss": "Abaikan"

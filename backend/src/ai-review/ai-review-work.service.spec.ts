@@ -64,6 +64,7 @@ function setup() {
     listForUser: jest.fn().mockResolvedValue([]),
     getForUser: jest.fn().mockResolvedValue(request()),
     claimNext: jest.fn(),
+    claimById: jest.fn(),
     submitProposal: jest.fn(),
     release: jest.fn(),
     dismiss: jest.fn(),
@@ -150,6 +151,28 @@ describe("AiReviewWorkService.claim", () => {
     expect(transactions.getLlmTransactionById).toHaveBeenCalledWith(USER, TX);
     expect(claimed.request?.id).toBe(REQ);
     expect(claimed.transaction).toEqual([{ id: TX, amount: -50 }]);
+  });
+
+  it("claims the named request by id, not the oldest, and reads it the same way", async () => {
+    const { service, requests, transactions } = setup();
+    requests.claimById.mockResolvedValue(request());
+
+    const claimed = await service.claim(USER, "assistant", REQ);
+
+    expect(requests.claimById).toHaveBeenCalledWith(USER, REQ, "assistant");
+    expect(requests.claimNext).not.toHaveBeenCalled();
+    expect(transactions.getLlmTransactionById).toHaveBeenCalledWith(USER, TX);
+    expect(claimed.request?.id).toBe(REQ);
+  });
+
+  it("returns no request when the named one is not pending, expired or not the user's", async () => {
+    const { service, requests, transactions } = setup();
+    requests.claimById.mockResolvedValue(null);
+    expect(await service.claim(USER, "assistant", REQ)).toEqual({
+      request: null,
+    });
+    expect(requests.claimNext).not.toHaveBeenCalled();
+    expect(transactions.getLlmTransactionById).not.toHaveBeenCalled();
   });
 
   it("returns no request when nothing is pending", async () => {

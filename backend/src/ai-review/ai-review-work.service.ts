@@ -129,12 +129,22 @@ export class AiReviewWorkService {
   }
 
   /**
-   * Take the oldest pending request for `caller` and read its transaction
+   * Take the oldest pending request (or the one named by `requestId`) for
+   * `caller` and read its transaction
    * through the same projection `list_transactions` uses. A read that fails
    * after the claim gives the request back rather than stranding it.
    */
-  async claim(userId: string, caller: string): Promise<LlmAiReviewClaim> {
-    const request = await this.requests.claimNext(userId, caller);
+  async claim(
+    userId: string,
+    caller: string,
+    requestId?: string,
+  ): Promise<LlmAiReviewClaim> {
+    // A named request is claimed by id (the receipts page hands the assistant
+    // the request it just queued); none is the oldest pending one. A named
+    // request that is not pending, expired or someone else's is "nothing".
+    const request = requestId
+      ? await this.requests.claimById(userId, requestId, caller)
+      : await this.requests.claimNext(userId, caller);
     if (!request) return { request: null };
     try {
       const transaction = await this.transactionsService.getLlmTransactionById(

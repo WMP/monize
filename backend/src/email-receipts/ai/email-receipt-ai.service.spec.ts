@@ -18,11 +18,14 @@ import type { TransactionsService } from "../../transactions/transactions.servic
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
+import {
+  RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+  RECEIPT_CHAT_INSTRUCTION,
+} from "../pipeline/email-receipt-pipeline.service";
 import { MAX_PARSERS_PER_USER } from "../parsers/email-receipt-parsers.service";
 import {
   AUTOMATIC_AI_CALLS_PER_TICK,
   AUTOMATIC_DRAFTS_PER_TICK,
-  buildReviewInput,
   EmailReceiptAiService,
 } from "./email-receipt-ai.service";
 
@@ -92,6 +95,12 @@ const reply = (content: string): AiCompletionResponse => ({
   model: "m",
   provider: "p",
 });
+
+/** A reading of the 15.00 order that the proposal builder accepts. */
+const validExtraction = {
+  items: [{ name: "Book", amount: "15.00", categoryId: CAT_BOOKS }],
+  total: "15.00",
+};
 
 const validDefinition = {
   version: 1,
@@ -193,17 +202,6 @@ describe("AI mode off never calls the AI", () => {
     );
     expect(h.ai.complete).not.toHaveBeenCalled();
     expect(h.parserRepo.save).not.toHaveBeenCalled();
-  });
-
-  it("askAi is refused with a 400, nothing is dismissed or queued", async () => {
-    const h = setup({ aiMode: "off" });
-    await expect(h.service.askAi(USER, RECEIPT)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-    expect(h.ai.complete).not.toHaveBeenCalled();
-    expect(h.requests.enqueuePendingForReceipt).not.toHaveBeenCalled();
-    expect(h.receiptRepo.update).not.toHaveBeenCalled();
-    expect(h.manager.query).not.toHaveBeenCalled();
   });
 
   it("processAiRequest answers ai_off without claiming the request or calling the AI", async () => {
@@ -359,29 +357,41 @@ describe("EmailReceiptAiService.draftParser", () => {
 });
 
 describe("EmailReceiptAiService.askAi", () => {
-  const happy = () => {
+  const OTHER_TX = "tx-2";
+  /** The row `loadLinkableTransaction` reads, as the database would answer it. */
+  const txRow = (over: Record<string, unknown> = {}) => ({
+    id: OTHER_TX,
+    amount: "-20.0000",
+    description: "ELSEWHERE",
+    payee_id: null,
+    is_transfer: false,
+    status: null,
+    plain: true,
+    ...over,
+  });
+
+  const happy = (over: Partial<World> = {}) => {
     const h = setup({
       receipt: receiptRow({
         status: "review",
         aiReviewRequestId: "request-old",
       }),
+      ...over,
     });
-    // processAiRequest's own reads
-    h.requests.getForUser.mockResolvedValue(requestRow({ id: "request-new" }));
-    h.manager.query.mockImplementation(async (sql: string) =>
-      String(sql).includes("SELECT status FROM ai_review_requests")
-        ? [{ status: "proposed" }]
-        : [],
-    );
-    h.ai.complete.mockResolvedValue(
-      reply(JSON.stringify({ categoryName: "Books" })),
-    );
+    h.manager.query.mockImplementation(async (sql: string) => {
+      const text = String(sql);
+      if (text.includes("SELECT status FROM ai_review_requests")) {
+        return [{ status: "proposed" }];
+      }
+      if (text.includes("FROM transactions t")) return [txRow()];
+      return [];
+    });
     return h;
   };
 
-  it("dismisses the open request, queues a pending one, points the receipt at it, then answers it", async () => {
+  it("dismisses the open request, queues a pending one, points the receipt at it, and calls no provider", async () => {
     const h = happy();
-    const outcome = await h.service.askAi(USER, RECEIPT);
+    const result = await h.service.askAi(USER, RECEIPT);
 
     const sqls = h.manager.query.mock.calls.map((c) => String(c[0]));
     const advisory = sqls.findIndex((s) => s.includes("pg_advisory_xact_lock"));
@@ -391,7 +401,11 @@ describe("EmailReceiptAiService.askAi", () => {
     expect(h.requests.enqueuePendingForReceipt).toHaveBeenCalledWith(
       expect.anything(),
       USER,
-      expect.objectContaining({ transactionId: TX, emailReceiptId: RECEIPT }),
+      expect.objectContaining({
+        transactionId: TX,
+        emailReceiptId: RECEIPT,
+        instruction: RECEIPT_CHAT_INSTRUCTION,
+      }),
     );
     expect(h.receiptRepo.update).toHaveBeenCalledWith(
       { id: RECEIPT, userId: USER },
@@ -401,27 +415,124 @@ describe("EmailReceiptAiService.askAi", () => {
         aiReviewRequestId: "request-new",
       },
     );
-    expect(h.requests.claimById).toHaveBeenCalledWith(
-      USER,
-      "request-new",
-      "email-receipts-ai",
-    );
-    expect(h.work.submit).toHaveBeenCalledWith(
-      USER,
-      "email-receipts-ai",
-      "request-new",
-      { categoryName: "Books" },
-    );
-    expect(outcome).toEqual({ ok: true, requestId: "request-new" });
+    expect(result).toEqual({
+      ok: true,
+      requestId: "request-new",
+      transactionId: TX,
+    });
+    // The assistant in the chat answers it: nothing here claims or asks.
+    expect(h.ai.complete).not.toHaveBeenCalled();
+    expect(h.requests.claimById).not.toHaveBeenCalled();
+    expect(h.work.submit).not.toHaveBeenCalled();
   });
 
-  it("refuses an email with no transaction, changing nothing", async () => {
-    const h = setup({ receipt: receiptRow({ transactionId: null }) });
+  it.each(["off", "on_demand", "automatic"] as const)(
+    "queues the request whatever the AI mode (%s): the button is the person's consent",
+    async (aiMode) => {
+      const h = happy({ aiMode });
+      await expect(h.service.askAi(USER, RECEIPT)).resolves.toMatchObject({
+        ok: true,
+      });
+      expect(h.ai.complete).not.toHaveBeenCalled();
+    },
+  );
+
+  it("stores a chosen transaction as manual, clears the candidates and queues the request for it", async () => {
+    const h = happy();
+    const result = await h.service.askAi(USER, RECEIPT, OTHER_TX);
+
+    expect(h.requests.enqueuePendingForReceipt).toHaveBeenCalledWith(
+      expect.anything(),
+      USER,
+      expect.objectContaining({
+        transactionId: OTHER_TX,
+        emailReceiptId: RECEIPT,
+      }),
+    );
+    const lock = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("pg_advisory_xact_lock"),
+    );
+    expect(JSON.stringify(lock)).toContain(OTHER_TX);
+    expect(h.receiptRepo.update).toHaveBeenCalledWith(
+      { id: RECEIPT, userId: USER },
+      {
+        status: "review",
+        statusReason: null,
+        aiReviewRequestId: "request-new",
+        transactionId: OTHER_TX,
+        matchKind: "manual",
+        candidateTransactionIds: [],
+      },
+    );
+    expect(result.transactionId).toBe(OTHER_TX);
+  });
+
+  it("asks the database for the chosen transaction as the user's own", async () => {
+    const h = happy();
+    await h.service.askAi(USER, RECEIPT, OTHER_TX);
+    const read = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("FROM transactions t"),
+    );
+    expect(read?.[1]).toEqual([OTHER_TX, USER]);
+  });
+
+  it("accepts a chosen transaction for an email that has none yet", async () => {
+    const h = happy();
+    h.world.receipt = receiptRow({
+      status: "unmatched",
+      transactionId: null,
+      aiReviewRequestId: null,
+    });
+    await expect(
+      h.service.askAi(USER, RECEIPT, OTHER_TX),
+    ).resolves.toMatchObject({ transactionId: OTHER_TX });
+  });
+
+  const nothingWritten = (h: ReturnType<typeof happy>) => {
+    expect(h.requests.enqueuePendingForReceipt).not.toHaveBeenCalled();
+    expect(h.receiptRepo.update).not.toHaveBeenCalled();
+    expect(h.ai.complete).not.toHaveBeenCalled();
+    expect(
+      h.manager.query.mock.calls.some((c) =>
+        String(c[0]).includes("SET status = 'rejected'"),
+      ),
+    ).toBe(false);
+  };
+
+  it("refuses an email with no transaction and none chosen, changing nothing", async () => {
+    const h = happy();
+    h.world.receipt = receiptRow({ transactionId: null });
     await expect(h.service.askAi(USER, RECEIPT)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    expect(h.ai.complete).not.toHaveBeenCalled();
-    expect(h.receiptRepo.update).not.toHaveBeenCalled();
+    nothingWritten(h);
+  });
+
+  it.each([
+    ["a transfer", { is_transfer: true }, BadRequestException],
+    ["a void transaction", { status: "VOID" }, BadRequestException],
+    ["an investment row", { plain: false }, BadRequestException],
+  ])(
+    "refuses a chosen transaction that is %s, changing nothing",
+    async (_n, over, error) => {
+      const h = happy();
+      h.manager.query.mockImplementation(async (sql: string) =>
+        String(sql).includes("FROM transactions t") ? [txRow(over)] : [],
+      );
+      await expect(
+        h.service.askAi(USER, RECEIPT, OTHER_TX),
+      ).rejects.toBeInstanceOf(error);
+      nothingWritten(h);
+    },
+  );
+
+  it("refuses a chosen transaction that is not the user's (404), changing nothing", async () => {
+    const h = happy();
+    h.manager.query.mockImplementation(async () => []);
+    await expect(
+      h.service.askAi(USER, RECEIPT, OTHER_TX),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    nothingWritten(h);
   });
 
   it.each(["skipped", "ignored"] as const)(
@@ -436,30 +547,16 @@ describe("EmailReceiptAiService.askAi", () => {
   );
 
   it("refuses when the proposal was already applied, dismissing nothing", async () => {
-    const h = setup({
-      receipt: receiptRow({
-        status: "review",
-        aiReviewRequestId: "request-old",
-      }),
-    });
+    const h = happy();
     h.manager.query.mockResolvedValue([{ status: "applied" }]);
     await expect(h.service.askAi(USER, RECEIPT)).rejects.toBeInstanceOf(
       ConflictException,
     );
-    expect(
-      h.manager.query.mock.calls.some((c) =>
-        String(c[0]).includes("SET status = 'rejected'"),
-      ),
-    ).toBe(false);
+    nothingWritten(h);
   });
 
   it("an open request somebody else raised for the transaction is a 409, and the dismissal rolls back with it", async () => {
-    const h = setup({
-      receipt: receiptRow({
-        status: "review",
-        aiReviewRequestId: "request-old",
-      }),
-    });
+    const h = happy();
     h.requests.enqueuePendingForReceipt.mockResolvedValue(null);
     await expect(h.service.askAi(USER, RECEIPT)).rejects.toBeInstanceOf(
       ConflictException,
@@ -478,20 +575,42 @@ describe("EmailReceiptAiService.askAi", () => {
 
 describe("EmailReceiptAiService.processAiRequest", () => {
   const answer = (value: unknown) => JSON.stringify(value);
+  /** Two books on a USD 15.00 order, as an email states them. */
+  const twoBooks = {
+    orderId: "A-1",
+    items: [
+      { name: "Widget", qty: 1, amount: "12.00", categoryId: CAT_BOOKS },
+      { name: "Cable", amount: 3, categoryId: CAT_BOOKS },
+    ],
+    total: "15.00",
+    description: "Order A-1",
+  };
 
-  it("claims under its own key, asks once for the review feature, and submits what the AI proposed", async () => {
-    const h = setup();
-    h.ai.complete.mockResolvedValue(
-      reply(
-        answer({
-          splits: [
-            { categoryName: "books", amount: -12, memo: "Widget" },
-            { categoryName: "Shipping", amount: -3 },
-          ],
-          description: "Order ABC",
-        }),
-      ),
+  const storedReading = (h: ReturnType<typeof setup>) => {
+    const call = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("UPDATE email_receipts"),
     );
+    if (!call) return null;
+    const [receiptId, userId, requestId, json, reason] = call[1] as [
+      string,
+      string,
+      string,
+      string,
+      string | null,
+    ];
+    return {
+      sql: String(call[0]),
+      receiptId,
+      userId,
+      requestId,
+      parsed: JSON.parse(json),
+      reason,
+    };
+  };
+
+  it("claims under its own key, asks once for the review feature, and submits the proposal the parser's builder makes", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
 
     const outcome = await h.service.processAiRequest(USER, REQUEST);
 
@@ -506,9 +625,12 @@ describe("EmailReceiptAiService.processAiRequest", () => {
     expect(feature).toBe("email_receipt_review");
     expect(request.responseFormat).toBe("json");
     const content = request.messages[0].content;
+    expect(content).toContain("date: 2026-09-11");
     expect(content).toContain("amount: -15 USD");
-    expect(content).toContain("Books");
+    expect(content).toContain(`${CAT_BOOKS}: Books`);
+    expect(content).toContain("1: Order total: 15.00");
     expect(content).not.toContain("ann@example.com");
+    expect(request.systemPrompt).toMatch(/untrusted data/);
     expect(h.work.submit).toHaveBeenCalledWith(
       USER,
       "email-receipts-ai",
@@ -516,17 +638,230 @@ describe("EmailReceiptAiService.processAiRequest", () => {
       {
         splits: [
           { categoryName: "Books", amount: -12, memo: "Widget" },
-          { categoryName: "Shipping", amount: -3 },
+          { categoryName: "Books", amount: -3, memo: "Cable" },
         ],
-        description: "CARD PURCHASE | Order ABC",
+        description: "CARD PURCHASE | shop.example.com A-1: Widget, Cable",
       },
     );
     expect(h.requests.release).not.toHaveBeenCalled();
   });
 
-  it("never applies anything: its only write is the proposal", async () => {
+  it("stores what it read on the email, marked source ai, only while the email still points at this request", async () => {
     const h = setup();
-    h.ai.complete.mockResolvedValue(reply(answer({ categoryName: "Books" })));
+    h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
+    await h.service.processAiRequest(USER, REQUEST);
+
+    const stored = storedReading(h);
+    expect(stored).not.toBeNull();
+    expect(stored?.sql).toContain("ai_review_request_id = $3");
+    expect([stored?.receiptId, stored?.userId, stored?.requestId]).toEqual([
+      RECEIPT,
+      USER,
+      REQUEST,
+    ]);
+    expect(stored?.parsed).toEqual({
+      orderId: "A-1",
+      total: 150000,
+      shipping: null,
+      discount: null,
+      items: [
+        { name: "Widget", qty: 1, amount: 120000, categoryId: CAT_BOOKS },
+        { name: "Cable", qty: 1, amount: 30000, categoryId: CAT_BOOKS },
+      ],
+      shippingCategoryId: null,
+      discountCategoryId: null,
+      complete: true,
+      reason: null,
+      source: "ai",
+    });
+    expect(stored?.reason).toBeNull();
+  });
+
+  it("a single complete item is one category, not a split", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [{ name: "Book", amount: "15,00", categoryId: CAT_BOOKS }],
+          total: 15,
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    expect(h.work.submit.mock.calls[0][3]).toMatchObject({
+      categoryName: "Books",
+    });
+    expect(h.work.submit.mock.calls[0][3]).not.toHaveProperty("splits");
+  });
+
+  it("converts a number once and a string with the receipt amount grammar", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [
+            { name: "A", amount: 19.99, categoryId: CAT_BOOKS },
+            { name: "B", amount: "1.234,56 zl", categoryId: CAT_BOOKS },
+          ],
+          total: "1 254,55",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    expect(storedReading(h)?.parsed).toMatchObject({
+      total: 12545500,
+      items: [{ amount: 199900 }, { amount: 12345600 }],
+      reason: null,
+      complete: true,
+    });
+  });
+
+  it("an unknown category id is none: the receipt is then not complete and only a description is proposed", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [
+            { name: "Widget", amount: "15.00", categoryId: "not-in-the-list" },
+          ],
+          total: "15.00",
+        }),
+      ),
+    );
+    const outcome = await h.service.processAiRequest(USER, REQUEST);
+
+    expect(outcome.ok).toBe(true);
+    const stored = storedReading(h);
+    expect(stored?.parsed.items[0].categoryId).toBeNull();
+    expect(stored?.parsed).toMatchObject({
+      complete: false,
+      reason: "items_uncategorized",
+    });
+    expect(stored?.reason).toBe("items_uncategorized");
+    const input = h.work.submit.mock.calls[0][3];
+    expect(input).not.toHaveProperty("splits");
+    expect(input).not.toHaveProperty("categoryName");
+    expect(input.description).toContain("Widget");
+  });
+
+  it("an item whose amount cannot be converted is dropped, so the lines no longer add up", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [
+            { name: "Widget", amount: "12.00", categoryId: CAT_BOOKS },
+            { name: "Gift", amount: "-3.00", categoryId: CAT_BOOKS },
+            { name: "Cable", amount: "three", categoryId: CAT_BOOKS },
+          ],
+          total: "15.00",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    const stored = storedReading(h);
+    expect(stored?.parsed.items).toHaveLength(1);
+    expect(stored?.parsed).toMatchObject({
+      complete: false,
+      reason: "items_unbalanced",
+    });
+    expect(h.work.submit.mock.calls[0][3]).not.toHaveProperty("splits");
+  });
+
+  it("with shipping and discount categories from the list, the reading is complete and proposed as splits", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [{ name: "Widget", amount: "12.00", categoryId: CAT_BOOKS }],
+          shipping: "4.00",
+          shippingCategoryId: CAT_SHIPPING,
+          discount: "1.00",
+          discountCategoryId: CAT_BOOKS,
+          total: "15.00",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+
+    expect(storedReading(h)).toMatchObject({
+      reason: null,
+      parsed: {
+        complete: true,
+        shippingCategoryId: CAT_SHIPPING,
+        discountCategoryId: CAT_BOOKS,
+        source: "ai",
+      },
+    });
+    expect(h.work.submit.mock.calls[0][3].splits).toEqual([
+      { categoryName: "Books", amount: -12, memo: "Widget" },
+      { categoryName: "Shipping", amount: -4 },
+      { categoryName: "Books", amount: 1 },
+    ]);
+  });
+
+  it("a receipt with shipping but no shipping category is description-only (shipping_uncategorized)", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [{ name: "Widget", amount: "12.00", categoryId: CAT_BOOKS }],
+          shipping: "3.00",
+          total: "15.00",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    expect(storedReading(h)?.reason).toBe("shipping_uncategorized");
+    expect(h.work.submit.mock.calls[0][3]).toEqual({
+      description: "CARD PURCHASE | shop.example.com: Widget",
+    });
+  });
+
+  it("a complete reading whose total is not the transaction amount is description-only (amount_differs)", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [{ name: "Widget", amount: "20.00", categoryId: CAT_BOOKS }],
+          total: "20.00",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    expect(storedReading(h)).toMatchObject({
+      reason: "amount_differs",
+      parsed: { complete: true, source: "ai" },
+    });
+    expect(h.work.submit.mock.calls[0][3]).not.toHaveProperty("splits");
+    expect(h.work.submit.mock.calls[0][3]).toHaveProperty("description");
+  });
+
+  it("with no item to name, the AI's own summary is the description", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(answer({ items: [], description: "Three books, one order" })),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+    expect(h.work.submit.mock.calls[0][3]).toEqual({
+      description: "CARD PURCHASE | Three books, one order",
+    });
+    expect(storedReading(h)?.reason).toBe("no_total");
+  });
+
+  it("a reading with nothing in it gives the claim back", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(reply(answer({ items: [] })));
+    await expect(
+      h.service.processAiRequest(USER, REQUEST),
+    ).resolves.toMatchObject({ ok: false, reason: "unusable_answer" });
+    expect(h.work.submit).not.toHaveBeenCalled();
+    expect(storedReading(h)).toBeNull();
+  });
+
+  it("never applies anything: its writes are the reading on the email and the proposal", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
     await h.service.processAiRequest(USER, REQUEST);
     expect(h.receiptRepo.update).not.toHaveBeenCalled();
     expect(h.parserRepo.save).not.toHaveBeenCalled();
@@ -559,29 +894,10 @@ describe("EmailReceiptAiService.processAiRequest", () => {
 
   it.each([
     ["not JSON", "no json here"],
-    ["the wrong shape", answer({ splits: "x" })],
-    ["an unknown key", answer({ description: "x", amount: 3 })],
-    ["an unknown category", answer({ categoryName: "Holidays" })],
-    [
-      "an unknown split category",
-      answer({
-        splits: [
-          { categoryName: "Holidays", amount: -15 },
-          { categoryName: "Books", amount: 0 },
-        ],
-      }),
-    ],
-    [
-      "both splits and a category",
-      answer({
-        categoryName: "Books",
-        splits: [
-          { categoryName: "Books", amount: -15 },
-          { categoryName: "Shipping", amount: 0 },
-        ],
-      }),
-    ],
-    ["nothing", answer({})],
+    ["the wrong shape", answer({ items: "x" })],
+    ["a missing items list", answer({ total: "1.00" })],
+    ["an unknown key", answer({ items: [], amount: 3 })],
+    ["a split answer of the old shape", answer({ splits: [], items: [] })],
   ])("gives the claim back when the answer is %s", async (_name, content) => {
     const h = setup();
     h.ai.complete.mockResolvedValue(reply(content));
@@ -593,16 +909,7 @@ describe("EmailReceiptAiService.processAiRequest", () => {
 
   it("gives the claim back with the refusal when the card cannot be built", async () => {
     const h = setup();
-    h.ai.complete.mockResolvedValue(
-      reply(
-        answer({
-          splits: [
-            { categoryName: "Books", amount: -10 },
-            { categoryName: "Shipping", amount: -2 },
-          ],
-        }),
-      ),
-    );
+    h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
     h.work.submit.mockRejectedValue(
       new BadRequestException(
         "The split lines add up to -12 but the transaction is -15",
@@ -638,7 +945,7 @@ describe("EmailReceiptAiService.processAiRequest", () => {
 
   it("an unexpected error gives the claim back with a generic note", async () => {
     const h = setup();
-    h.ai.complete.mockResolvedValue(reply(answer({ categoryName: "Books" })));
+    h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
     h.work.submit.mockRejectedValue(new Error(`db exploded: ${SECRET_TEXT}`));
     const outcome = await h.service.processAiRequest(USER, REQUEST);
     expect(outcome).toMatchObject({ ok: false, reason: "request_failed" });
@@ -695,75 +1002,6 @@ describe("EmailReceiptAiService.processAiRequest", () => {
   });
 });
 
-describe("buildReviewInput", () => {
-  const cats = new Map([
-    ["a", "Food: Groceries"],
-    ["b", "Books"],
-  ]);
-  const build = (
-    value: unknown,
-    amount = -15,
-    description: string | null = null,
-  ) => buildReviewInput(JSON.stringify(value), cats, amount, description);
-
-  it("spells a category as the list does, whatever case the model used", () => {
-    expect(build({ categoryName: " food: groceries " })).toEqual({
-      ok: true,
-      input: { categoryName: "Food: Groceries" },
-    });
-  });
-
-  it("turns a single line that equals the transaction into its category", () => {
-    expect(
-      build({ splits: [{ categoryName: "Books", amount: -15, memo: "x" }] }),
-    ).toEqual({ ok: true, input: { categoryName: "Books" } });
-  });
-
-  it("refuses a single line that does not equal the transaction", () => {
-    expect(
-      build({ splits: [{ categoryName: "Books", amount: -10 }] }),
-    ).toMatchObject({ ok: false });
-  });
-
-  it("rounds amounts to the cent, strips tags from text, and appends the description", () => {
-    expect(
-      build(
-        {
-          splits: [
-            { categoryName: "Books", amount: -9.999999, memo: "<b>Hi</b>" },
-            { categoryName: "Books", amount: -5.000001 },
-          ],
-          description: "  Order   <i>7</i> ",
-        },
-        -15,
-        "CARD",
-      ),
-    ).toEqual({
-      ok: true,
-      input: {
-        splits: [
-          { categoryName: "Books", amount: -10, memo: "bHi/b" },
-          { categoryName: "Books", amount: -5 },
-        ],
-        description: "CARD | Order i7/i",
-      },
-    });
-  });
-
-  it("proposes no description the transaction already carries", () => {
-    expect(
-      build({ description: "Order 7" }, -15, "CARD | Order 7"),
-    ).toMatchObject({ ok: false });
-  });
-
-  it("treats an empty splits list as absent", () => {
-    expect(build({ splits: [], categoryName: "Books" })).toEqual({
-      ok: true,
-      input: { categoryName: "Books" },
-    });
-  });
-});
-
 describe("EmailReceiptAiService.runAutomaticStep", () => {
   const draftRows = (ids: string[]) => ids.map((id) => ({ id }));
 
@@ -785,7 +1023,7 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
       reply(
         request.systemPrompt.includes("extraction")
           ? JSON.stringify(validDefinition)
-          : JSON.stringify({ categoryName: "Books" }),
+          : JSON.stringify(validExtraction),
       ),
     );
     h.requests.getForUser.mockImplementation(async (_u, id) =>
@@ -832,6 +1070,19 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
     expect(pending).toContain("claimed_by IS NULL");
     expect(pending).toContain("proposal IS NULL");
     expect(pending).toContain("expires_at > CURRENT_TIMESTAMP");
+    // Only the requests the poll itself queued: one a person made with
+    // "Recognize with AI" belongs to the chat or an MCP agent.
+    expect(pending).toContain("instruction = $3");
+  });
+
+  it("selects pending requests by the poll's own instruction, never the chat's", async () => {
+    const h = stepSetup({ drafts: [], requests: [] });
+    await h.service.runAutomaticStep(USER);
+    const call = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("kind = 'email_receipt'"),
+    );
+    expect(call?.[1][2]).toBe(RECEIPT_AUTOMATIC_AI_INSTRUCTION);
+    expect(call?.[1][2]).not.toBe(RECEIPT_CHAT_INSTRUCTION);
   });
 
   it("a failed draft is marked so the poll does not retry it, and the step goes on", async () => {
@@ -839,7 +1090,7 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
     h.ai.complete.mockImplementation(async (_u, request) =>
       request.systemPrompt.includes("extraction")
         ? reply("no json")
-        : reply(JSON.stringify({ categoryName: "Books" })),
+        : reply(JSON.stringify(validExtraction)),
     );
     const result = await h.service.runAutomaticStep(USER);
     expect(result).toEqual({ proposed: 1, failed: 0, drafted: 0 });

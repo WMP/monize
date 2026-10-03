@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "The AI is never called for receipts.",
-        "on_demand": "The AI is called only when you press Ask AI or Draft parser with AI.",
+        "on_demand": "The AI is called only when you press Recognize with AI or Draft parser with AI.",
         "automatic": "The poll asks the AI about a matched receipt that no approved parser could read completely, and drafts a parser for a sender that has none."
       },
       "autoApplyLabel": "Apply proposals automatically",
@@ -310,7 +310,8 @@
       "items_unbalanced": "The line items do not add up to the total.",
       "items_uncategorized": "Some line items have no category.",
       "shipping_uncategorized": "The shipping line has no category."
-    }
+    },
+    "readByAi": "Read by the AI"
   },
   "state": {
     "pending": "Waiting to be read",
@@ -374,7 +375,7 @@
       "view": "View",
       "reprocess": "Reprocess",
       "link": "Choose transaction",
-      "askAi": "Ask AI",
+      "recognizeAi": "Recognize with AI",
       "draftParser": "Draft parser with AI",
       "createParser": "Create parser",
       "ignore": "Ignore"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "Email reprocessed",
       "reprocessFailed": "Could not reprocess the email",
-      "askAiFailed": "Could not ask the AI",
       "draftFailed": "Could not draft a parser",
       "ignored": "Email ignored",
       "ignoreFailed": "Could not ignore the email",
@@ -390,20 +390,8 @@
       "deleteFailed": "Could not delete the email"
     },
     "notices": {
-      "askAiQueued": "The AI was asked. Its proposal will appear in the AI review inbox for your approval.",
       "draftCreated": "The AI drafted the parser {name}. It reads nothing until you review and approve it.",
       "draftLink": "Review it in the parser settings"
-    },
-    "aiFailures": {
-      "ai_off": "The AI is switched off for this mailbox. Change the AI mode in the mailbox settings first.",
-      "not_a_receipt_request": "That request does not belong to an email receipt.",
-      "receipt_missing": "The email no longer exists.",
-      "not_claimable": "A request for this email is already being worked on.",
-      "transaction_unreadable": "The linked transaction could not be read.",
-      "ai_unavailable": "The AI provider did not answer. Check the AI settings and try again.",
-      "unusable_answer": "The AI answered, but its answer could not be used.",
-      "proposal_refused": "The AI proposal was refused because it does not add up.",
-      "request_failed": "The request failed."
     },
     "ignoreDialog": {
       "title": "Ignore this email?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
     "linkButton": "Link",
-    "hasMore": "Only the first {count} are shown. Use the search to narrow the list."
+    "hasMore": "Only the first {count} are shown. Use the search to narrow the list.",
+    "ai": {
+      "heading": "Choose the transaction for the AI",
+      "help": "These are your transactions from {from} to {to}, the days around the email. Choose the one the AI should split by the products in the email.",
+      "linkButton": "Use this transaction"
+    }
   },
   "callback": {
     "title": "Connecting the mailbox",
@@ -509,5 +502,27 @@
       "fallback": "The server refused the connection. Start again from the email receipts settings."
     },
     "backLink": "Back to the email receipts settings"
+  },
+  "recognize": {
+    "title": "Recognize with AI",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "no payee",
+    "confirmMessage": "This email is linked to the transaction {summary}. The AI will read the email and propose how to split this transaction by product. Continue with this transaction?",
+    "confirm": "Recognize with AI",
+    "chooseOther": "Choose another transaction",
+    "candidatesHeading": "Which transaction did the email pay for?",
+    "candidatesHelp": "Several transactions fit this email. Choose the one the AI should use, or search for another.",
+    "candidatesLoading": "Loading the transactions that fit",
+    "candidatesError": "The transactions that fit could not be loaded.",
+    "retry": "Try again",
+    "useButton": "Use this transaction",
+    "searchOther": "Search other transactions",
+    "back": "Back",
+    "failed": "Could not start the recognition",
+    "queued": "Queued: no AI assistant is available to answer now, so the request waits in the AI review inbox for an agent (for example over MCP).",
+    "handoffFailed": "The request is queued, but the email could not be opened in the chat. It waits in the AI review inbox for an agent (for example over MCP).",
+    "inboxLink": "Open the AI review inbox",
+    "opened": "Opened the chat with the email attached. Read the message and press Send.",
+    "chatPrompt": "Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it."
   }
 }

@@ -342,7 +342,7 @@
     "aiDraftInvalid": "AI 生成的解析器无效（{{ codes }}）。请重试，或手动编写解析器。",
     "aiDraftUnknownCategory": "AI 生成的解析器指定了一个不存在的类别。请重试，或手动编写解析器。",
     "tooManyParsers": "最多只能保存 {{ max }} 个解析器。请先删除一个。",
-    "receiptNeedsTransaction": "请先将此邮件关联到一笔交易，再向 AI 询问。",
+    "receiptNeedsTransaction": "请先选择此邮件所支付的交易，再向 AI 询问。",
     "receiptNotAskable": "此邮件已被忽略或无法读取。请先重新处理。",
     "receiptApplied": "此邮件的提议已应用到一笔交易。",
     "openRequestExists": "此交易已有另一个审核请求处于打开状态。请先完成或关闭它。",

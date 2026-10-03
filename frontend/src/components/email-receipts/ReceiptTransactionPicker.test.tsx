@@ -169,4 +169,25 @@ describe('ReceiptTransactionPicker', () => {
     await act(async () => {});
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
+
+  describe('in the "choose for AI" mode', () => {
+    it('says the choice goes to the AI, with its own heading, help and button, over the same list', async () => {
+      await act(async () => {
+        render(<ReceiptTransactionPicker mode="ai" receivedAt="2026-09-01T23:30:00.000Z" linkingId={null} onLink={onLink} />);
+      });
+      await act(async () => {});
+
+      expect(screen.getByRole('heading', { name: 'Choose the transaction for the AI' })).toBeInTheDocument();
+      expect(screen.getByText(/the AI should split by the products/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Link' })).not.toBeInTheDocument();
+      const buttons = screen.getAllByRole('button', { name: 'Use this transaction' });
+      expect(buttons).toHaveLength(2);
+      expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50 });
+
+      await act(async () => {
+        fireEvent.click(buttons[0]);
+      });
+      expect(onLink).toHaveBeenCalledWith('tx-1');
+    });
+  });
 });

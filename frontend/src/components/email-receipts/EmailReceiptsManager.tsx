@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailReceiptDetailDialog';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
+import { RecognizeWithAiDialog } from '@/components/email-receipts/RecognizeWithAiDialog';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
 import { Button, buttonClassName } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -16,11 +17,12 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RowActions, type RowAction } from '@/components/ui/row-actions';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { useAiConfigured } from '@/hooks/useAiConfigured';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReceiptParserLookups } from '@/hooks/useReceiptParserLookups';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
-import { isReceiptActionable, senderDomain } from '@/lib/email-receipts-format';
+import { canRecognizeWithAi, isReceiptActionable, senderDomain } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import {
@@ -82,6 +84,9 @@ export function EmailReceiptsManager() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [parserFor, setParserFor] = useState<EmailReceiptListItem | null>(null);
+  const [recognizeFor, setRecognizeFor] = useState<EmailReceiptListItem | null>(null);
+  // Whether the assistant in the chat can answer; unknown is not "yes".
+  const { configured: assistantReady } = useAiConfigured();
 
   // Only the newest request may write the list, and a reload after an action
   // asks for the filter the reader is on NOW, not the one the handler saw.
@@ -163,18 +168,6 @@ export function EmailReceiptsManager() {
       t('toasts.reprocessFailed'),
     );
 
-  const handleAskAi = (receipt: EmailReceiptListItem) =>
-    runCommand(
-      receipt,
-      async () => {
-        const outcome = await emailReceiptsApi.receipts.askAi(receipt.id);
-        return outcome.ok
-          ? { tone: 'success', text: t('notices.askAiQueued') }
-          : { tone: 'error', text: t(`aiFailures.${outcome.reason}`) };
-      },
-      t('toasts.askAiFailed'),
-    );
-
   const handleDraftParser = (receipt: EmailReceiptListItem) =>
     runCommand(
       receipt,
@@ -249,12 +242,14 @@ export function EmailReceiptsManager() {
         disabled,
       },
       {
-        key: 'askAi',
-        label: t('actions.askAi'),
+        // Offered whatever the mailbox's AI mode: the mode governs only what
+        // happens by itself, and pressing this is the person's own consent.
+        key: 'recognizeAi',
+        label: t('actions.recognizeAi'),
         icon: 'reconcile',
         tone: 'accent',
-        onClick: () => void handleAskAi(receipt),
-        hidden: !aiOn || !actionable || receipt.transaction === null,
+        onClick: () => setRecognizeFor(receipt),
+        hidden: !canRecognizeWithAi(receipt),
         disabled,
       },
       {
@@ -466,6 +461,16 @@ export function EmailReceiptsManager() {
             void reload();
           }}
           onConflict={() => setParserFor(null)}
+        />
+      )}
+
+      {recognizeFor !== null && (
+        <RecognizeWithAiDialog
+          key={recognizeFor.id}
+          receipt={recognizeFor}
+          assistantReady={assistantReady}
+          onClose={() => setRecognizeFor(null)}
+          onChanged={() => void reload()}
         />
       )}
 

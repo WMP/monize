@@ -37,7 +37,8 @@
     "viewEmailReceipts": "メールレシートを表示",
     "agentNote": "アシスタントからのメモ: {reason}",
     "dates": "作成日 {created}、期限 {expires}",
-    "viewTransaction": "取引を表示"
+    "viewTransaction": "取引を表示",
+    "waitingForAgent": "AIエージェントを待っています。<link>設定でAIプロバイダーを接続する</link>か、MCPクライアントに引き受けさせてください。"
   },
   "actions": {
     "dismiss": "却下する"

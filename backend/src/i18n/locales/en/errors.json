@@ -353,7 +353,7 @@
     "aiDraftInvalid": "The AI's parser was not valid ({{ codes }}). Try again, or write the parser by hand.",
     "aiDraftUnknownCategory": "The AI's parser named a category that does not exist. Try again, or write the parser by hand.",
     "tooManyParsers": "At most {{ max }} parsers can be saved. Delete one first.",
-    "receiptNeedsTransaction": "Link this email to a transaction before asking the AI about it.",
+    "receiptNeedsTransaction": "Choose the transaction this email paid for before asking the AI about it.",
     "receiptNotAskable": "This email was ignored or could not be read. Reprocess it first.",
     "receiptApplied": "This email's proposal has already been applied to a transaction.",
     "openRequestExists": "Another review request is already open for this transaction. Finish or dismiss it first.",

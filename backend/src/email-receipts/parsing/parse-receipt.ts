@@ -187,9 +187,13 @@ function parseItems(
   return items;
 }
 
-/** The first thing missing, in the order of the spec's completeness table (section 4). */
-function completeness(
-  parsed: Omit<ParsedReceipt, "complete" | "reason">,
+/**
+ * The first thing missing, in the order of the spec's completeness table
+ * (section 4); null when the receipt is complete. The one truth table: a
+ * receipt read by the AI is judged by this function too.
+ */
+export function completeness(
+  parsed: Omit<ParsedReceipt, "complete" | "reason" | "source">,
 ): ParsedReceiptReason | null {
   const { total, items, shipping, discount } = parsed;
   if (total === null) return "no_total";

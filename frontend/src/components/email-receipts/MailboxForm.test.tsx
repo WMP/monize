@@ -153,7 +153,7 @@ describe('MailboxForm', () => {
 
     it('describes the chosen AI mode under the picker', async () => {
       await renderForm(makeMailbox({ aiMode: 'on_demand' }));
-      expect(screen.getByText('The AI is called only when you press Ask AI or Draft parser with AI.')).toBeInTheDocument();
+      expect(screen.getByText('The AI is called only when you press Recognize with AI or Draft parser with AI.')).toBeInTheDocument();
       await act(async () => {
         fireEvent.change(screen.getByLabelText('AI mode'), { target: { value: 'automatic' } });
       });

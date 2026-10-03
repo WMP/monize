@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "Không bao giờ gọi AI cho các hóa đơn.",
-        "on_demand": "Chỉ gọi AI khi bạn nhấn Hỏi AI hoặc Nhờ AI soạn trình phân tích.",
+        "on_demand": "Chỉ gọi AI khi bạn nhấn Nhận dạng bằng AI hoặc Nhờ AI soạn trình phân tích.",
         "automatic": "Mỗi lần kiểm tra sẽ hỏi AI về hóa đơn đã khớp mà không trình phân tích nào đã duyệt đọc được đầy đủ, và soạn trình phân tích cho người gửi chưa có."
       },
       "autoApplyLabel": "Tự động áp dụng đề xuất",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Các dòng mục hàng không cộng lại đúng bằng tổng cộng.",
       "items_uncategorized": "Một số dòng mục hàng chưa có danh mục.",
       "shipping_uncategorized": "Dòng phí vận chuyển chưa có danh mục."
-    }
+    },
+    "readByAi": "AI đã đọc"
   },
   "state": {
     "pending": "Đang chờ đọc",
@@ -374,7 +375,7 @@
       "view": "Xem",
       "reprocess": "Xử lý lại",
       "link": "Chọn giao dịch",
-      "askAi": "Hỏi AI",
+      "recognizeAi": "Nhận dạng bằng AI",
       "draftParser": "Nhờ AI soạn trình phân tích",
       "createParser": "Tạo trình phân tích",
       "ignore": "Phớt lờ"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "Đã xử lý lại email",
       "reprocessFailed": "Không thể xử lý lại email",
-      "askAiFailed": "Không thể hỏi AI",
       "draftFailed": "Không thể soạn trình phân tích",
       "ignored": "Đã phớt lờ email",
       "ignoreFailed": "Không thể phớt lờ email",
@@ -390,20 +390,8 @@
       "deleteFailed": "Không thể xóa email"
     },
     "notices": {
-      "askAiQueued": "Đã hỏi AI. Đề xuất của AI sẽ xuất hiện trong hộp thư xem xét của AI để bạn phê duyệt.",
       "draftCreated": "AI đã soạn trình phân tích {name}. Nó không đọc gì cho đến khi bạn xem xét và duyệt.",
       "draftLink": "Xem xét trong cài đặt trình phân tích"
-    },
-    "aiFailures": {
-      "ai_off": "AI đang tắt cho hộp thư này. Hãy đổi chế độ AI trong cài đặt hộp thư trước.",
-      "not_a_receipt_request": "Yêu cầu đó không thuộc về một hóa đơn qua email.",
-      "receipt_missing": "Email này không còn tồn tại.",
-      "not_claimable": "Một yêu cầu cho email này đang được xử lý.",
-      "transaction_unreadable": "Không đọc được giao dịch đã liên kết.",
-      "ai_unavailable": "Nhà cung cấp AI không phản hồi. Hãy kiểm tra cài đặt AI và thử lại.",
-      "unusable_answer": "AI đã trả lời, nhưng không dùng được câu trả lời đó.",
-      "proposal_refused": "Đề xuất của AI bị từ chối vì các con số không khớp.",
-      "request_failed": "Yêu cầu không thành công."
     },
     "ignoreDialog": {
       "title": "Phớt lờ email này?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "không có người nhận",
     "linkButton": "Liên kết",
-    "hasMore": "Chỉ hiển thị {count} giao dịch đầu tiên. Hãy dùng tìm kiếm để thu hẹp danh sách."
+    "hasMore": "Chỉ hiển thị {count} giao dịch đầu tiên. Hãy dùng tìm kiếm để thu hẹp danh sách.",
+    "ai": {
+      "heading": "Chọn giao dịch cho AI",
+      "help": "Đây là các giao dịch của bạn từ {from} đến {to}, tức những ngày quanh thời điểm của email. Hãy chọn giao dịch mà AI nên chia theo các sản phẩm trong email.",
+      "linkButton": "Dùng giao dịch này"
+    }
   },
   "callback": {
     "title": "Đang kết nối hộp thư",
@@ -509,5 +502,27 @@
       "fallback": "Máy chủ đã từ chối kết nối. Hãy bắt đầu lại từ cài đặt Hóa đơn qua email."
     },
     "backLink": "Quay lại cài đặt Hóa đơn qua email"
+  },
+  "recognize": {
+    "title": "Nhận dạng bằng AI",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "không có người nhận",
+    "confirmMessage": "Email này được liên kết với giao dịch {summary}. AI sẽ đọc email và đề xuất cách chia giao dịch này theo sản phẩm. Tiếp tục với giao dịch này?",
+    "confirm": "Nhận dạng bằng AI",
+    "chooseOther": "Chọn giao dịch khác",
+    "candidatesHeading": "Email đã thanh toán cho giao dịch nào?",
+    "candidatesHelp": "Có nhiều giao dịch khớp với email này. Hãy chọn giao dịch AI nên dùng, hoặc tìm một giao dịch khác.",
+    "candidatesLoading": "Đang tải các giao dịch phù hợp",
+    "candidatesError": "Không thể tải các giao dịch phù hợp.",
+    "retry": "Thử lại",
+    "useButton": "Dùng giao dịch này",
+    "searchOther": "Tìm giao dịch khác",
+    "back": "Quay lại",
+    "failed": "Không thể bắt đầu nhận dạng",
+    "queued": "Đã xếp hàng: hiện không có trợ lý AI nào để trả lời, nên yêu cầu chờ trong hộp thư xem xét của AI cho một tác nhân (ví dụ qua MCP).",
+    "handoffFailed": "Yêu cầu đã được xếp hàng, nhưng không thể mở email trong cuộc trò chuyện. Yêu cầu chờ trong hộp thư xem xét của AI cho một tác nhân (ví dụ qua MCP).",
+    "inboxLink": "Mở hộp thư xem xét của AI",
+    "opened": "Đã mở cuộc trò chuyện kèm email. Hãy đọc tin nhắn và nhấn Gửi.",
+    "chatPrompt": "Hãy nhận dạng các sản phẩm, số lượng và giá trong email đơn hàng đính kèm, rồi chia giao dịch ngày {date} của tôi ({payee}, {amount}) theo sản phẩm, mỗi sản phẩm có một danh mục. Hãy nhận yêu cầu xem xét AI {requestId} và gửi đề xuất của bạn cho yêu cầu đó."
   }
 }

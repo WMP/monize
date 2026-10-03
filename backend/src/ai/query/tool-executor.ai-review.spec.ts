@@ -130,6 +130,37 @@ describe("ToolExecutorService ai_review_requests", () => {
     expect(definition?.description).toContain("neither is ever an order");
   });
 
+  it("claims the request the receipts page named, under the assistant's own key", async () => {
+    work.claim.mockResolvedValue({
+      request: request(),
+      transaction: [{ id: "t1", amount: -50 }] as never,
+      emailReceipt: {
+        fromAddress: "orders@shop.example.com",
+        subject: "Your order",
+        receivedAt: "2026-09-01T10:00:00.000Z",
+        text: "Widget 12.00",
+      },
+    });
+    const result = await service.execute(USER, "ai_review_requests", {
+      operation: "claim",
+      requestId: REQ,
+    });
+    expect(work.claim).toHaveBeenCalledWith(USER, ASSISTANT_CLAIM_KEY, REQ);
+    expect(result.data).toMatchObject({
+      request: { id: REQ },
+      emailReceipt: { text: "Widget 12.00" },
+    });
+  });
+
+  it("refuses a requestId that is not a UUID on claim", async () => {
+    const result = await service.execute(USER, "ai_review_requests", {
+      operation: "claim",
+      requestId: "not-a-uuid",
+    });
+    expect(result.isError).toBe(true);
+    expect(work.claim).not.toHaveBeenCalled();
+  });
+
   it("claims under the assistant's own key and returns the transaction", async () => {
     work.claim.mockResolvedValue({
       request: request(),
@@ -138,7 +169,11 @@ describe("ToolExecutorService ai_review_requests", () => {
     const result = await service.execute(USER, "ai_review_requests", {
       operation: "claim",
     });
-    expect(work.claim).toHaveBeenCalledWith(USER, ASSISTANT_CLAIM_KEY);
+    expect(work.claim).toHaveBeenCalledWith(
+      USER,
+      ASSISTANT_CLAIM_KEY,
+      undefined,
+    );
     expect(result.data).toMatchObject({
       request: { id: REQ },
       transaction: [{ id: "t1", amount: -50 }],

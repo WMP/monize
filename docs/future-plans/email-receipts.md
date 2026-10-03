@@ -69,14 +69,32 @@ section 10.5).
 5. **The review queue is the existing AI review inbox** (`/ai-reviews`). A
    receipt's proposal is a request of kind `email_receipt`. The receipts page
    (`/email-receipts`) lists every stored email with its state and the actions
-   on it (link to a transaction, reprocess, ask the AI, draft a parser, ignore,
-   delete).
-6. **AI mode** per mailbox: `off` (the AI is never called for receipts),
-   `on_demand` (only when the user presses "Ask AI" or "Draft parser with AI"),
-   `automatic` (the poll asks the AI, bounded per tick, for a matched receipt
-   no approved parser could fully read, and drafts a parser for a sender domain
-   that has none). An AI answer is always a proposal or a draft; it is never
-   applied or approved on its own.
+   on it (link to a transaction, reprocess, recognize with AI, draft a parser,
+   ignore, delete).
+6. **AI mode and "Recognize with AI".** AI mode is per mailbox: `off` (the poll
+   never calls the AI for receipts), `on_demand` and `automatic` (the poll asks
+   the AI, bounded per tick, for a matched receipt no approved parser could
+   fully read, and drafts a parser for a sender domain that has none). The mode
+   governs only what happens by itself, plus "Draft parser with AI", which is
+   refused in mode `off`.
+
+   The button **"Recognize with AI"** is the person's own consent and is offered
+   whatever the mode, for an email in `no_parser`, `parse_failed`, `unmatched`,
+   `ambiguous`, `review_conflict`, or `review` whose shown state is `dismissed`,
+   `expired` or `request_missing` (never one with an applied request, an ignored
+   or a skipped one). It confirms the email's transaction (with a way to choose
+   another), or opens the transaction picker (an ambiguous email lists its
+   candidates first), then queues an AI review request for that transaction and
+   **opens the assistant's chat** (`/ai`) with the order email attached as a text
+   file and a message already typed in the composer; the assistant claims the
+   request by id (`ai_review_requests` `claim` with `requestId`) and submits its
+   proposal, which appears as a confirmation card in the chat and in the review
+   inbox. Without an AI provider that can answer, the request waits `pending` in
+   the inbox for an agent (for example over MCP) and the inbox row says so. The
+   hand-off is **staged, never sent** (INV-SHARE-002's contract): the files and
+   the text land on the composer and the user presses Send; it lives in memory
+   only (`lib/ai-chat-handoff.ts`, nothing in browser storage). An AI answer is
+   always a proposal or a draft; it is never applied or approved on its own.
 7. **Auto-apply** (off by default) applies a proposal without asking only when
    all of: an approved parser read the email completely, the match is by order
    number or by exact amount plus payee with a single candidate, and the
@@ -282,7 +300,8 @@ the write's transaction). Parsing reads at most 2,000 lines and 100 items.
 ### 5.3 Output (`ParsedReceipt`)
 
 `{ orderId, total, shipping, discount, items: [{ name, qty, amount,
-categoryId }], complete, reason }`, every amount a non-negative integer in
+categoryId }], complete, reason, source? }` (`source` is `"ai"` when the AI read
+the email, absent for a parser), every amount a non-negative integer in
 1/10000 units. `complete` is true only when `total` was found and the items,
 plus shipping, minus discount, equal the total exactly and every item and the
 shipping line (when present) has a category. `reason` names the first missing
@@ -301,7 +320,10 @@ poll -> store (status pending)
 user -> link to a transaction (any state but ignored) -> propose
      -> ignore -> ignored
      -> reprocess -> back to the top (a closed request is not reopened)
-     -> ask AI (mode on_demand|automatic) -> request pending, then proposed
+     -> recognize with AI (any AI mode; transaction chosen or confirmed)
+        -> request pending, email in review, chat opened with the email
+        -> the assistant claims it by id and submits -> proposed
+        (no provider: stays pending in the inbox for an agent)
 ```
 
 `skipped` is a message larger than the size cap or that could not be decoded
@@ -310,12 +332,41 @@ user -> link to a transaction (any state but ignored) -> propose
 `expired` or `pending_ai`.
 
 The proposal uses `AiReviewWorkService.submit` as an agent does, with the
-claim key `email-receipts` (deterministic) or `email-receipts-ai` (the AI):
-the receipts service inserts the request already claimed by its key, then
-submits. A proposal the validation refuses (the lines do not add up, a category
+claim key `email-receipts` (deterministic), `email-receipts-ai` (the poll's
+automatic AI step) or `assistant` / an MCP caller key (the chat, or an agent,
+answering a request "Recognize with AI" queued): the receipts service inserts a
+deterministic request already claimed by its key, then submits; an AI request is
+inserted `pending` and claimed by whoever answers it.
+
+A deterministic proposal the validation refuses (the lines do not add up, a category
 was deleted) falls back to the description-only proposal; if that is refused
 too, the request is released as rejected with the reason, and the receipt
 shows it.
+
+**"Recognize with AI" in one transaction.** `POST /email-receipts/:id/ask-ai`
+`{ transactionId? }` locks the receipt row, refuses (409) an ignored or skipped
+email and an applied request, checks a chosen transaction with the predicate
+"link" uses (`loadLinkableTransaction`: the user's, not a transfer, not VOID, not
+investment-linked) and stores it as `manual`, refuses (400) an email that still
+has no transaction, takes the advisory lock, dismisses the email's own open
+request, queues a `pending` `email_receipt` request (a null from the queue, another
+open rule-less request on the transaction, is a 409), and sets the receipt to
+`review` pointing at it. It answers `{ ok: true, requestId, transactionId }` and
+calls no provider. A rejection has written nothing.
+
+**Answering by id.** `ai_review_requests` `claim` takes an optional `requestId`:
+`claimById` takes that one pending request (a conditional UPDATE) instead of the
+oldest, and returns the same payload, with the email's text for an
+`email_receipt` request. On the assistant, `submit` returns the signed card as a
+pending action in the chat; confirming it marks the request applied in the write's
+own transaction (`aiReviewRequestId` in the descriptor).
+
+**The poll's automatic step** (`processAiRequest`, mode `automatic`) takes only the pending requests the poll itself queued (their `instruction` is `RECEIPT_AUTOMATIC_AI_INSTRUCTION`; "Recognize with AI" queues `RECEIPT_CHAT_INSTRUCTION`, which belongs to the chat or an MCP agent) and asks the
+model for the receipt's content, not a split: `{ orderId, items: [{ name, qty,
+amount, categoryId }], shipping, shippingCategoryId, discount,
+discountCategoryId, total, description }`, amounts as the email writes them. The answer becomes a `ParsedReceipt` (`source: "ai"`), is
+judged by the same completeness function a parser's reading is, and goes through
+`buildReceiptProposal` and `AiReviewWorkService.submit` (spec "AI extraction").
 
 What a proposal contains:
 
@@ -359,10 +410,12 @@ Module `backend/src/email-receipts/`:
 - `EmailReceiptPipelineService`: parse, match, propose for one receipt.
 - `EmailReceiptPollService`: the `@Cron` (every 15 minutes), per-user lease,
   ingestion, rematch of `unmatched`, the automatic AI step.
-- `EmailReceiptAiService`: draft a parser from a receipt; propose for a
-  receipt's request. Uses `AiService.complete` with `responseFormat: "json"`,
-  feature labels `email_receipt_parser` and `email_receipt_review`; the email
-  text is sanitized, truncated and framed as untrusted data.
+- `EmailReceiptAiService`: draft a parser from a receipt; `askAi` (queue the
+  "Recognize with AI" request, no provider call); `processAiRequest` (the poll's
+  automatic step: read the email's content, build a `ParsedReceipt`, propose).
+  Uses `AiService.complete` with `responseFormat: "json"`, feature labels
+  `email_receipt_parser` and `email_receipt_review`; the email text is
+  sanitized, truncated and framed as untrusted data.
 - `EmailReceiptParsersService` + controller: CRUD, approve, test against a
   stored receipt.
 
@@ -389,7 +442,12 @@ section 3a.
   badges and actions; a detail dialog with the text, the parsed result and the
   candidates.
 - `/ai-reviews`: an `email_receipt` row shows the sender and subject instead of
-  the rule name.
+  the rule name, and a `pending` one says it waits for an AI agent (with a link
+  to the AI settings).
+- `/ai`: "Recognize with AI" opens the chat with the order email attached as
+  `order-email-YYYY-MM-DD.txt` and the message typed in the composer
+  (`/ai?handoff=<id>`, `lib/ai-chat-handoff.ts`: in memory, one entry per id,
+  discarded once staged); nothing is sent until the user presses Send.
 
 ## 10. Test matrix
 

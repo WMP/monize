@@ -342,7 +342,7 @@
     "aiDraftInvalid": "Il parser dell'IA non era valido ({{ codes }}). Riprova oppure scrivi il parser a mano.",
     "aiDraftUnknownCategory": "Il parser dell'IA indicava una categoria che non esiste. Riprova oppure scrivi il parser a mano.",
     "tooManyParsers": "Si possono salvare al massimo {{ max }} parser. Eliminane prima uno.",
-    "receiptNeedsTransaction": "Collega questa email a una transazione prima di interrogare l'IA al riguardo.",
+    "receiptNeedsTransaction": "Scegli la transazione pagata con questa email prima di interrogare l'IA al riguardo.",
     "receiptNotAskable": "Questa email è stata ignorata o non è stato possibile leggerla. Rielaborala prima.",
     "receiptApplied": "La proposta di questa email è già stata applicata a una transazione.",
     "openRequestExists": "Per questa transazione è già aperta un'altra richiesta di revisione. Completala o scartala prima.",

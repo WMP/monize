@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "De AI wordt nooit aangeroepen voor bonnen.",
-        "on_demand": "De AI wordt alleen aangeroepen wanneer je op AI vragen of Parser laten opstellen door AI drukt.",
+        "on_demand": "De AI wordt alleen aangeroepen wanneer je op Herkennen met AI of Parser laten opstellen door AI drukt.",
         "automatic": "Bij het ophalen vraagt de AI naar een gekoppelde bon die geen enkele goedgekeurde parser volledig kon lezen, en stelt hij een parser op voor een afzender die er geen heeft."
       },
       "autoApplyLabel": "Voorstellen automatisch toepassen",
@@ -310,7 +310,8 @@
       "items_unbalanced": "De artikelregels tellen niet op tot het totaal.",
       "items_uncategorized": "Sommige artikelregels hebben geen categorie.",
       "shipping_uncategorized": "De verzendregel heeft geen categorie."
-    }
+    },
+    "readByAi": "Gelezen door de AI"
   },
   "state": {
     "pending": "Wacht om gelezen te worden",
@@ -374,7 +375,7 @@
       "view": "Bekijken",
       "reprocess": "Opnieuw verwerken",
       "link": "Transactie kiezen",
-      "askAi": "AI vragen",
+      "recognizeAi": "Herkennen met AI",
       "draftParser": "Parser laten opstellen door AI",
       "createParser": "Parser maken",
       "ignore": "Negeren"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "E-mail opnieuw verwerkt",
       "reprocessFailed": "De e-mail kon niet opnieuw worden verwerkt",
-      "askAiFailed": "De AI kon niet worden gevraagd",
       "draftFailed": "Er kon geen parser worden opgesteld",
       "ignored": "E-mail genegeerd",
       "ignoreFailed": "De e-mail kon niet worden genegeerd",
@@ -390,20 +390,8 @@
       "deleteFailed": "De e-mail kon niet worden verwijderd"
     },
     "notices": {
-      "askAiQueued": "De AI is gevraagd. Het voorstel verschijnt ter goedkeuring in het AI-controlepostvak.",
       "draftCreated": "De AI heeft de parser {name} opgesteld. Hij leest niets totdat je hem controleert en goedkeurt.",
       "draftLink": "Controleer hem in de parserinstellingen"
-    },
-    "aiFailures": {
-      "ai_off": "De AI is uitgeschakeld voor deze mailbox. Wijzig eerst de AI-modus in de mailboxinstellingen.",
-      "not_a_receipt_request": "Dat verzoek hoort niet bij een e-mailbon.",
-      "receipt_missing": "De e-mail bestaat niet meer.",
-      "not_claimable": "Er wordt al gewerkt aan een verzoek voor deze e-mail.",
-      "transaction_unreadable": "De gekoppelde transactie kon niet worden gelezen.",
-      "ai_unavailable": "De AI-provider heeft niet geantwoord. Controleer de AI-instellingen en probeer het opnieuw.",
-      "unusable_answer": "De AI heeft geantwoord, maar het antwoord kon niet worden gebruikt.",
-      "proposal_refused": "Het AI-voorstel is geweigerd omdat het niet klopt.",
-      "request_failed": "Het verzoek is mislukt."
     },
     "ignoreDialog": {
       "title": "Deze e-mail negeren?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "geen begunstigde",
     "linkButton": "Koppelen",
-    "hasMore": "Alleen de eerste {count} worden getoond. Gebruik het zoekveld om de lijst te beperken."
+    "hasMore": "Alleen de eerste {count} worden getoond. Gebruik het zoekveld om de lijst te beperken.",
+    "ai": {
+      "heading": "Kies de transactie voor de AI",
+      "help": "Dit zijn je transacties van {from} tot {to}, de dagen rond de e-mail. Kies de transactie die de AI moet splitsen op basis van de producten in de e-mail.",
+      "linkButton": "Deze transactie gebruiken"
+    }
   },
   "callback": {
     "title": "De mailbox koppelen",
@@ -509,5 +502,27 @@
       "fallback": "De server heeft de verbinding geweigerd. Begin opnieuw vanuit de instellingen voor e-mailbonnen."
     },
     "backLink": "Terug naar de instellingen voor e-mailbonnen"
+  },
+  "recognize": {
+    "title": "Herkennen met AI",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "geen begunstigde",
+    "confirmMessage": "Deze e-mail is gekoppeld aan de transactie {summary}. De AI leest de e-mail en stelt voor hoe deze transactie per product wordt gesplitst. Doorgaan met deze transactie?",
+    "confirm": "Herkennen met AI",
+    "chooseOther": "Een andere transactie kiezen",
+    "candidatesHeading": "Welke transactie is met de e-mail betaald?",
+    "candidatesHelp": "Meerdere transacties passen bij deze e-mail. Kies de transactie die de AI moet gebruiken of zoek een andere.",
+    "candidatesLoading": "Passende transacties laden",
+    "candidatesError": "De passende transacties konden niet worden geladen.",
+    "retry": "Opnieuw proberen",
+    "useButton": "Deze transactie gebruiken",
+    "searchOther": "Andere transacties zoeken",
+    "back": "Terug",
+    "failed": "Kon de herkenning niet starten",
+    "queued": "In de wachtrij: er is nu geen AI-assistent beschikbaar om te antwoorden, dus het verzoek wacht in het AI-controlepostvak op een agent (bijvoorbeeld via MCP).",
+    "handoffFailed": "Het verzoek staat in de wachtrij, maar de e-mail kon niet in de chat worden geopend. Het wacht in het AI-controlepostvak op een agent (bijvoorbeeld via MCP).",
+    "inboxLink": "Het AI-controlepostvak openen",
+    "opened": "De chat is geopend met de e-mail als bijlage. Lees het bericht en druk op Verzenden.",
+    "chatPrompt": "Herken de producten, aantallen en prijzen in de bijgevoegde bestel-e-mail en splits mijn transactie van {date} ({payee}, {amount}) per product, met een categorie voor elk. Neem AI-controleverzoek {requestId} over en dien je voorstel ervoor in."
   }
 }

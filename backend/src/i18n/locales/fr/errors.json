@@ -342,7 +342,7 @@
     "aiDraftInvalid": "L'analyseur de l'IA n'était pas valide ({{ codes }}). Réessayez ou écrivez l'analyseur à la main.",
     "aiDraftUnknownCategory": "L'analyseur de l'IA mentionnait une catégorie qui n'existe pas. Réessayez ou écrivez l'analyseur à la main.",
     "tooManyParsers": "Au maximum {{ max }} analyseurs peuvent être enregistrés. Supprimez-en un d'abord.",
-    "receiptNeedsTransaction": "Associez cet e-mail à une transaction avant d'interroger l'IA à son sujet.",
+    "receiptNeedsTransaction": "Choisissez la transaction que cet e-mail a réglée avant d'interroger l'IA à son sujet.",
     "receiptNotAskable": "Cet e-mail a été ignoré ou n'a pas pu être lu. Retraitez-le d'abord.",
     "receiptApplied": "La proposition de cet e-mail a déjà été appliquée à une transaction.",
     "openRequestExists": "Une autre demande de revue est déjà ouverte pour cette transaction. Terminez-la ou fermez-la d'abord.",

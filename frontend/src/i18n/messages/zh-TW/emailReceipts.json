@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "從不對收據呼叫 AI。",
-        "on_demand": "僅在您按下「詢問 AI」或「用 AI 起草解析器」時呼叫 AI。",
+        "on_demand": "僅在您按下「用 AI 辨識」或「用 AI 起草解析器」時呼叫 AI。",
         "automatic": "檢查信箱時，對於已比對但已核准的解析器無法完整讀取的收據，會詢問 AI；對於沒有解析器的寄件者，會起草解析器。"
       },
       "autoApplyLabel": "自動套用提議",
@@ -310,7 +310,8 @@
       "items_unbalanced": "明細行之和與合計不符。",
       "items_uncategorized": "部分明細行沒有類別。",
       "shipping_uncategorized": "運費行沒有類別。"
-    }
+    },
+    "readByAi": "由 AI 讀取"
   },
   "state": {
     "pending": "等待讀取",
@@ -374,7 +375,7 @@
       "view": "檢視",
       "reprocess": "重新處理",
       "link": "選擇交易",
-      "askAi": "詢問 AI",
+      "recognizeAi": "用 AI 辨識",
       "draftParser": "用 AI 起草解析器",
       "createParser": "建立解析器",
       "ignore": "忽略"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "郵件已重新處理",
       "reprocessFailed": "無法重新處理郵件",
-      "askAiFailed": "無法詢問 AI",
       "draftFailed": "無法起草解析器",
       "ignored": "郵件已忽略",
       "ignoreFailed": "無法忽略郵件",
@@ -390,20 +390,8 @@
       "deleteFailed": "無法刪除郵件"
     },
     "notices": {
-      "askAiQueued": "已詢問 AI。其提議將顯示在 AI 審核收件匣中，等待您的核准。",
       "draftCreated": "AI 起草了解析器 {name}。在您審核並核准之前，它不會讀取任何內容。",
       "draftLink": "在解析器設定中審核"
-    },
-    "aiFailures": {
-      "ai_off": "此信箱已關閉 AI。請先在信箱設定中變更 AI 模式。",
-      "not_a_receipt_request": "該請求不屬於任何郵件收據。",
-      "receipt_missing": "該郵件已不存在。",
-      "not_claimable": "此郵件的一個請求已在處理中。",
-      "transaction_unreadable": "無法讀取已連結的交易。",
-      "ai_unavailable": "AI 供應商沒有回應。請檢查 AI 設定後重試。",
-      "unusable_answer": "AI 已作答，但其回答無法使用。",
-      "proposal_refused": "AI 的提議因合計不符而被拒絕。",
-      "request_failed": "請求失敗。"
     },
     "ignoreDialog": {
       "title": "忽略此郵件？",
@@ -483,7 +471,12 @@
     "row": "{date}，{amount}，{payee}",
     "noPayee": "無收款人",
     "linkButton": "連結",
-    "hasMore": "僅顯示前 {count} 筆。請使用搜尋縮小範圍。"
+    "hasMore": "僅顯示前 {count} 筆。請使用搜尋縮小範圍。",
+    "ai": {
+      "heading": "選擇供 AI 使用的交易",
+      "help": "這是 {from} 至 {to} 期間的交易，也就是郵件前後的日期。請選擇 AI 應依郵件中的商品拆分的那一筆。",
+      "linkButton": "使用此交易"
+    }
   },
   "callback": {
     "title": "正在連接信箱",
@@ -509,5 +502,27 @@
       "fallback": "伺服器拒絕了連線。請從郵件收據設定重新開始。"
     },
     "backLink": "返回郵件收據設定"
+  },
+  "recognize": {
+    "title": "用 AI 辨識",
+    "transactionSummary": "{date}，{amount}，{payee}",
+    "noPayee": "無收款人",
+    "confirmMessage": "此郵件已連結到交易 {summary}。AI 將讀取郵件，並提議如何依商品拆分這筆交易。要使用這筆交易繼續嗎？",
+    "confirm": "用 AI 辨識",
+    "chooseOther": "選擇其他交易",
+    "candidatesHeading": "這封郵件支付的是哪一筆交易？",
+    "candidatesHelp": "有多筆交易與這封郵件相符。請選擇 AI 應使用的那一筆，或搜尋其他交易。",
+    "candidatesLoading": "正在載入相符的交易",
+    "candidatesError": "無法載入相符的交易。",
+    "retry": "重試",
+    "useButton": "使用此交易",
+    "searchOther": "搜尋其他交易",
+    "back": "返回",
+    "failed": "無法開始辨識",
+    "queued": "已排入佇列：目前沒有可回答的 AI 助理，因此請求會在 AI 審核收件匣中等待代理（例如透過 MCP）處理。",
+    "handoffFailed": "請求已排入佇列，但無法在聊天中開啟該郵件。它會在 AI 審核收件匣中等待代理（例如透過 MCP）處理。",
+    "inboxLink": "開啟 AI 審核收件匣",
+    "opened": "已開啟聊天並附上該郵件。請閱讀訊息並按下「傳送」。",
+    "chatPrompt": "請辨識所附訂單郵件中的商品、數量和價格，並將我 {date} 的交易（{payee}，{amount}）依商品拆分，並為每項指定類別。請認領 AI 審核請求 {requestId}，並為它提交你的提議。"
   }
 }
