@@ -129,4 +129,53 @@ describe("i18n interpolation (real catalogue)", () => {
       }
     });
   });
+  /**
+   * The mortgage method refusals (docs/specs/mortgage-types.md, sections 5.1,
+   * 5.3, 5.5 and 8). A unit spec of the thrower sees only `tr`'s fallback,
+   * which is already substituted; inside a request the catalogue text is what
+   * the client reads, so a placeholder the formatter does not recognise would
+   * reach it as literal braces and the refusal would name nothing.
+   */
+  describe("the mortgage method refusals", () => {
+    const CASES: Array<[string, Record<string, string>]> = [
+      [
+        "errors.accounts.mortgageMethodAccelerated",
+        { type: "LINEAR", frequency: "ACCELERATED_BIWEEKLY" },
+      ],
+      [
+        "errors.accounts.mortgageMethodRequiresTerms",
+        { type: "LINEAR", fields: "amortizationMonths" },
+      ],
+      ["errors.accounts.mortgageMethodPaymentMismatch", { type: "LINEAR" }],
+      [
+        "errors.loanRateChanges.methodDerivesPayment",
+        { type: "INTEREST_ONLY" },
+      ],
+    ];
+
+    it("names the field in English", () => {
+      expect(
+        i18n.translate("errors.accounts.mortgageMethodRequiresTerms", {
+          lang: "en",
+          args: { type: "LINEAR", fields: "amortizationMonths" },
+        }),
+      ).toBe("A LINEAR mortgage requires amortizationMonths");
+    });
+
+    it.each(CASES)(
+      "%s interpolates every argument in every locale",
+      (key, args) => {
+        for (const lang of SUPPORTED_LOCALE_CODES) {
+          const message = i18n.translate(key, { lang, args }) as string;
+          expect({
+            lang,
+            leftBraces: message.includes("{"),
+            namesEveryArg: Object.values(args).every((v) =>
+              message.includes(v),
+            ),
+          }).toEqual({ lang, leftBraces: false, namesEveryArg: true });
+        }
+      },
+    );
+  });
 });
