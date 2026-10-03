@@ -641,6 +641,32 @@ describe("TransactionsService", () => {
       expect(options.payeeTextById.get("tx-1")).toBe("Biedronka");
     });
 
+    it("allows structural rule actions for an owner's create and forbids them when a joint member is the actor", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      const dto = {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+      } as any;
+
+      await service.create("user-1", dto);
+      expect(
+        rulesApplier.applyToNew.mock.calls[0][4].structuralNotAllowed,
+      ).toBe(false);
+
+      // The option is the joint register's, set from the grant; a request field
+      // of the same name is not read.
+      await service.create(
+        "user-1",
+        { ...dto, actorIsJointMember: false } as any,
+        { actorIsJointMember: true },
+      );
+      expect(
+        rulesApplier.applyToNew.mock.calls[1][4].structuralNotAllowed,
+      ).toBe(true);
+    });
+
     it("does not run the applier when the request is rejected before the write", async () => {
       await expect(
         service.create("user-1", {

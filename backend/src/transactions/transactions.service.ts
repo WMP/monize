@@ -378,7 +378,16 @@ export class TransactionsService {
   async create(
     userId: string,
     createTransactionDto: CreateTransactionDto,
-    options?: { createPayeeIfMissing?: boolean },
+    options?: {
+      createPayeeIfMissing?: boolean;
+      /**
+       * Set by the joint register when a grantee, not the owner, writes the
+       * row: the owner's structural rule actions (convert to transfer, split)
+       * are then skipped, since they would move balances in accounts the
+       * grantee cannot see. Never read from a request.
+       */
+      actorIsJointMember?: boolean;
+    },
   ): Promise<Transaction> {
     const account = await this.accountsService.findOne(
       userId,
@@ -544,7 +553,10 @@ export class TransactionsService {
           userId,
           [savedTransaction.id],
           "create",
-          { payeeTextById: new Map([[savedTransaction.id, payeeText]]) },
+          {
+            payeeTextById: new Map([[savedTransaction.id, payeeText]]),
+            structuralNotAllowed: options?.actorIsJointMember === true,
+          },
         );
         // A structural action (convert to transfer, split) credits another
         // account; invalidated after the commit with the split targets

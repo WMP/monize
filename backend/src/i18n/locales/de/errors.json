@@ -63,6 +63,7 @@
     "undoNotSupportedForEntityType": "Rückgängig machen wird für den Entitätstyp nicht unterstützt: {{ entityType }}",
     "unsupportedTransactionAction": "Nicht unterstützte Buchungsaktion: {{ action }}",
     "undoTransactionGone": "Rückgängig machen nicht möglich: Buchung existiert nicht mehr",
+    "redoCreateWithLegs": "Diese Transaktion hat Einträge in anderen Konten angelegt und kann daher nicht wiederholt werden. Legen Sie sie stattdessen neu an",
     "undoAccountGone": "Rückgängig machen nicht möglich: Das Konto existiert nicht mehr",
     "unsupportedTransferAction": "Nicht unterstützte Überweisungsaktion: {{ action }}",
     "unsupportedInvestmentAction": "Nicht unterstützte Investmentaktion: {{ action }}",
@@ -585,7 +586,8 @@
     "dateRangeInvalid": "Das Startdatum darf nicht nach dem Enddatum liegen",
     "activeWindowInvalid": "Das erste Aktivdatum darf nicht nach dem letzten Aktivdatum liegen",
     "runTooLarge": "Dieser Lauf ändert zu viele Transaktionen, um in einem Schritt rückgängig gemacht zu werden. Schränken Sie die Konten oder Daten ein und versuchen Sie es erneut",
-    "runRedoStructural": "Dieser Lauf hat Transaktionen umstrukturiert (Überweisungen oder Aufteilungen) und kann nicht wiederholt werden. Führen Sie stattdessen die Regel erneut aus"
+    "runRedoStructural": "Dieser Lauf hat Transaktionen umstrukturiert (Überweisungen oder Aufteilungen) und kann nicht wiederholt werden. Führen Sie stattdessen die Regel erneut aus",
+    "runUndoStructureChanged": "Eine von diesem Lauf umstrukturierte Transaktion wurde seitdem geändert (ihre Aufteilungszeilen oder ihre Überweisung), daher kann der Lauf nicht sicher rückgängig gemacht werden. Stellen Sie sie manuell wieder her"
   },
   "transactions": {
     "invalidStatus": "Ungültiger Buchungsstatus: {{ status }}",

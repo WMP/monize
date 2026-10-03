@@ -239,7 +239,19 @@
       "partRest": "De rest",
       "partAccount": "Rekening",
       "partPayee": "Begunstigde van de andere kant (optioneel)",
-      "partsLimit": "Een splitsing kan hooguit {max} onderdelen hebben."
+      "partsLimit": "Een splitsing kan hooguit {max} onderdelen hebben.",
+      "guideTitle": "Zo gebruik je het",
+      "splitGuideHow": "Voeg onder “Als” een voorwaarde toe op de tekst van de begunstigde of de omschrijving met de operator “komt overeen met het patroon” en zet namen tussen accolades op de plek van de bedragen, bijvoorbeeld {first}. Elke naam wordt een bedrag dat je voor een deel kunt kiezen, of kies “De rest”. De delen moeten samen het bedrag van de transactie vormen, anders laat de regel de transactie ongewijzigd. Een deel kan een categorie zijn of een overboeking naar een andere rekening (een overboeking wijzigt het saldo van die rekening).",
+      "splitGuideExampleTitle": "Voorbeeld: een leningtermijn",
+      "splitGuideBank": "Banktekst: AFLOSSING: 1200,50 RENTE: 300,25 BOETE: 0,00",
+      "splitGuidePattern": "Patroon: *AFLOSSING: {first} RENTE: {second} BOETE*",
+      "splitGuidePart1": "Deel 1: {first} als overboeking naar de leningrekening",
+      "splitGuidePart2": "Deel 2: {second} als categorie “Leningen: Rente”",
+      "splitGuideResult": "Resultaat voor -1500,75: -1200,50 overgeboekt naar de leningrekening en -300,25 aan rentekosten.",
+      "splitGuideTip": "Tip: stel een begindatum in bij “Actief tussen” zodat oudere afgestemde transacties niet worden gewijzigd, en gebruik het paneel Test voordat je opslaat.",
+      "convertGuide": "Een uitgave wordt een overboeking naar de gekozen rekening en een inkomen een overboeking vanaf die rekening. Alleen het saldo van de andere rekening wijzigt. Tip: gebruik “Actief tussen” zodat oudere transacties niet worden gewijzigd.",
+      "splitGuideName1": "aflossing",
+      "splitGuideName2": "rente"
     },
     "actionTypes": {
       "add_tags": "Tags toevoegen",

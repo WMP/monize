@@ -63,6 +63,7 @@
     "undoNotSupportedForEntityType": "Pembatalan tidak didukung untuk jenis entitas: {{ entityType }}",
     "unsupportedTransactionAction": "Tindakan transaksi tidak didukung: {{ action }}",
     "undoTransactionGone": "Tidak dapat membatalkan: transaksi tidak ada lagi",
+    "redoCreateWithLegs": "Transaksi ini membuat entri di akun lain, sehingga tidak dapat diulang. Buat ulang transaksi ini",
     "undoAccountGone": "Tidak dapat membatalkan: akun tidak ada lagi",
     "unsupportedTransferAction": "Tindakan transfer tidak didukung: {{ action }}",
     "unsupportedInvestmentAction": "Tindakan investasi tidak didukung: {{ action }}",
@@ -585,7 +586,8 @@
     "dateRangeInvalid": "Tanggal mulai tidak boleh setelah tanggal akhir",
     "activeWindowInvalid": "Tanggal aktif pertama tidak boleh setelah tanggal aktif terakhir",
     "runTooLarge": "Proses ini mengubah terlalu banyak transaksi untuk dibatalkan dalam satu langkah. Persempit akun atau tanggal lalu coba lagi",
-    "runRedoStructural": "Eksekusi ini mengubah struktur transaksi (transfer atau pemisahan), sehingga tidak dapat diulang. Jalankan aturan itu lagi"
+    "runRedoStructural": "Eksekusi ini mengubah struktur transaksi (transfer atau pemisahan), sehingga tidak dapat diulang. Jalankan aturan itu lagi",
+    "runUndoStructureChanged": "Transaksi yang distrukturkan ulang oleh eksekusi ini telah diubah sejak itu (baris pemisahan atau transfernya), sehingga eksekusi tidak dapat dibatalkan dengan aman. Pulihkan secara manual"
   },
   "transactions": {
     "invalidStatus": "Status transaksi tidak valid: {{ status }}",

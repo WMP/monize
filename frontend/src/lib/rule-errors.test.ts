@@ -116,6 +116,17 @@ describe('draftGaps', () => {
     expect(draftGaps(draft({ actions: [tags] }))).toEqual([]);
   });
 
+  it('accepts a complete date range and asks for an end that is still empty', () => {
+    const condition = createGroup('all', [
+      leaf({ field: 'date', op: 'between', value: ['2026-10-01', '2026-10-31'] }),
+      leaf({ field: 'date', op: 'between', value: ['2026-10-01', ''] }),
+      leaf({ field: 'date', op: 'gte', value: '2026-10-01' }),
+    ]);
+    expect(draftGaps(draft({ condition, actions: [tags] }))).toEqual([
+      { path: 'condition.all[1]', code: 'VALUE_REQUIRED' },
+    ]);
+  });
+
   it('asks for a name and an action', () => {
     expect(draftGaps(draft({ name: '  ' }))).toEqual([
       { path: 'name', code: 'NAME_REQUIRED' },

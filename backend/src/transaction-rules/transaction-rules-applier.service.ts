@@ -70,6 +70,11 @@ export interface ApplyToNewOptions {
    * named here falls back to its stored `payee_name`.
    */
   readonly payeeTextById?: ReadonlyMap<string, string | null>;
+  /**
+   * The rows were written by a joint-account member in the owner's account:
+   * structural actions are skipped (`structural_not_allowed_for_member`).
+   */
+  readonly structuralNotAllowed?: boolean;
 }
 
 /**
@@ -123,7 +128,7 @@ function storedRowFacts(
 /** What a caller knows about the row besides its facts: transfer ownership and the target accounts. */
 export type PlanRowContext = Pick<
   RulePlanContext,
-  "crossOwnerTransferLeg" | "accounts"
+  "crossOwnerTransferLeg" | "accounts" | "structuralNotAllowed"
 >;
 
 /** Payee lookups made while planning; share one across the rows of a call. */
@@ -377,7 +382,13 @@ export class TransactionRulesApplierService {
         input,
         rules,
         chains,
-        { ...context, accounts },
+        {
+          ...context,
+          accounts,
+          ...(options.structuralNotAllowed
+            ? { structuralNotAllowed: true }
+            : {}),
+        },
         lookups,
       );
       const affected = new Set<string>();
@@ -803,7 +814,10 @@ export class TransactionRulesApplierService {
         userId,
         transactionId,
         structure.accountId,
-        { clearCategory: structure.clearCategory },
+        {
+          clearCategory: structure.clearCategory,
+          expectedCounterpartAmount: structure.amount,
+        },
       );
       return {
         structure: { ...structure, counterpartIds: [result.counterpartId] },
@@ -887,7 +901,11 @@ export class TransactionRulesApplierService {
       }
     }
     return {
-      structure: { ...structure, counterpartIds },
+      structure: {
+        ...structure,
+        counterpartIds,
+        lineIds: created.map((line) => line.id),
+      },
       affectedAccountIds: [...affected],
     };
   }

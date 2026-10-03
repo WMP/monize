@@ -20,6 +20,13 @@ export interface TransferStructurePlan {
   readonly accountId: string;
   readonly clearCategory: boolean;
   /**
+   * The counterpart leg's signed amount (the negative of the row's), 4
+   * decimals. It is part of the plan so the preview shows it, the run
+   * fingerprint covers it, and the write refuses a row whose amount moved
+   * since (INV-RULE-003).
+   */
+  readonly amount: number;
+  /**
    * The leg the write created in `accountId`. Absent in a plan; set by the
    * applier on the trace it stores, so the run's undo and the trace show it.
    */
@@ -44,6 +51,12 @@ export interface SplitStructurePlan {
    * order. Absent in a plan; set by the applier on the stored trace.
    */
   readonly counterpartIds?: readonly string[];
+  /**
+   * The split lines the write created, in part order. Absent in a plan; set
+   * by the applier on the stored trace, so the run's undo can tell the lines
+   * the run wrote from lines a person added or replaced since.
+   */
+  readonly lineIds?: readonly string[];
 }
 
 export type RuleStructurePlan = TransferStructurePlan | SplitStructurePlan;
@@ -61,6 +74,20 @@ export type StructuralRefusal =
   | "split_amount_unparseable"
   | "split_sum_mismatch"
   | "split_too_few_parts";
+
+/** Every account a plan's write will move the balance of, each once. */
+export function structureTargetAccountIds(
+  structure: RuleStructurePlan,
+): string[] {
+  if (structure.kind === "transfer") return [structure.accountId];
+  return [
+    ...new Set(
+      structure.parts
+        .map((part) => part.transferAccountId)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+}
 
 /** The owner's accounts a structural action may target, by id. */
 export type RuleTargetAccounts = ReadonlyMap<
@@ -124,6 +151,8 @@ function planConvert(
       kind: "transfer",
       accountId: target,
       clearCategory: action.clearCategory,
+      // The row's amount is non-zero here (`rowRefusal`).
+      amount: -(facts.amount ?? 0) / MONEY_SCALE,
     },
   };
 }

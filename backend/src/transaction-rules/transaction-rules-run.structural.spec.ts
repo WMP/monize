@@ -210,7 +210,12 @@ describe("TransactionRulesRunService: structural actions", () => {
     const preview = await service.previewRun(USER, RULE_ID, {});
     expect(preview.matched[0].changes.structure).toEqual({
       before: null,
-      after: { kind: "transfer", accountId: LOAN, clearCategory: true },
+      after: {
+        kind: "transfer",
+        accountId: LOAN,
+        clearCategory: true,
+        amount: 640.15,
+      },
     });
   });
 

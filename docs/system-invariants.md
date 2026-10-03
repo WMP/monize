@@ -157,7 +157,8 @@ implied.
 | INV-HA-005 | A relay prompt is claimed by exactly one agent poll and answered at most once | enforced |
 | INV-RULE-001 | A transaction rule never changes the matched row's amount, account, date or status; the only balance it moves is a structural action's counterpart | partial |
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
-| INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | enforced |
+| INV-RULE-003 | The preview, the draft test and the commit of a transaction rule are one planner, and a run commits only the plan the person previewed | partial |
+| INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | partial |
 | INV-RECEIPT-001 | A receipt mailbox is read, never written | enforced |
 | INV-RECEIPT-002 | A receipt email is stored once, and the poll cursor moves with the rows it covers | enforced |
 | INV-RECEIPT-003 | A receipt changes the ledger only through the review card and the confirm path, and never moves money | enforced |
@@ -5233,7 +5234,13 @@ Statement           Running a rule never changes the matched row's amount,
                     transaction that inserts the row or commits the run. Every
                     other action changes only a row's category, payee (with its
                     payee_name), description and tags, or queues a request for a
-                    human-approved AI review that does not touch the row.
+                    human-approved AI review that does not touch the row. A
+                    structural action never runs on a row a joint-account member
+                    creates in the owner's account (it would move a balance, and
+                    show an account, the member cannot read). Whatever a create
+                    or a run wrote in another account is removed with its
+                    balance by the undo that removes what wrote it, and an undo
+                    that can no longer do so exactly refuses before any write.
 Source of truth     the transactions row, its counterpart legs and split lines,
                     and transaction_tags; the rule's stored action list in
                     transaction_rules.actions
@@ -5262,9 +5269,31 @@ Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     counterpart's amount, never by a hand-rolled sum. The write
                     returns the accounts it moved (affectedAccountIds) and the
                     callers dispatch the net-worth recompute after the commit
-                    (INV-CACHE-001). Undo of a manual run removes the counterpart
-                    legs with deletionBalanceEffect and restores the row from its
-                    snapshot (backend/src/action-history/rule-run-undo.ts).
+                    (INV-CACHE-001). The run takes the row-lock of every target
+                    account of its plan in one ascending-id statement
+                    (lockAccountsForBalanceWrite) before its first write. Undo of
+                    a manual run removes the counterpart legs with
+                    deletionBalanceEffect and restores the row from its snapshot
+                    (backend/src/action-history/rule-run-undo.ts); before any
+                    write it refuses with RULE_RUN_UNDO_STRUCTURE_CHANGED when a
+                    row now carries a split line, or a link to a leg, that the
+                    run did not write (the snapshot records the written line and
+                    leg ids), so a leg of a line a person added since is never
+                    orphaned with its balance. Undo of the "Created transaction"
+                    entry of a row a rule restructured
+                    (ActionHistoryService.undoTransactionCreate) locks the row
+                    with its transfer counterpart, then the legs of its split
+                    lines, checks the reconciled lock on all of them, and removes
+                    each leg through removeLockedTransactionLeg
+                    (deletionBalanceEffect); redo of such a create is refused
+                    (REDO_CREATE_WITH_LEGS) because the legs cannot be replayed.
+                    A create by a joint-account member
+                    (JointRegisterService.create passes actorIsJointMember, set
+                    from the joint grant and never from the request) plans with
+                    RulePlanContext.structuralNotAllowed, so convert_to_transfer
+                    and split are skipped with
+                    structural_not_allowed_for_member while category, payee,
+                    description and tag actions still apply.
 Concurrency scope   per transaction row, inside the transaction that already
                     holds the row's write; the target account's balance is an
                     atomic SQL delta
@@ -5272,7 +5301,9 @@ Retry semantics     Re-running a rule re-derives the same category, payee and ta
                     set; a row that has already become a transfer or a split is
                     refused (row_is_transfer_leg, row_has_splits), so a second run
                     adds no second counterpart. Redo of a run that restructured
-                    rows is refused (RULE_RUN_REDO_STRUCTURAL).
+                    rows is refused (RULE_RUN_REDO_STRUCTURAL), and so is redo of
+                    a create that wrote a leg in another account
+                    (REDO_CREATE_WITH_LEGS).
 Crash semantics     Before commit, no rule effect exists; the rule step shares the
                     insert's (or the run's) transaction, so a rollback drops the
                     row, the counterpart and the balance change together.
@@ -5308,17 +5339,114 @@ Required tests      Present: rule-effects.spec.ts ("changes only category, payee
                     instalment as the rules say, and moves the loan balance by
                     the principal only", "a rolled-back create leaves no
                     counterpart and no balance movement", and the manual run with
-                    undo). Missing: no net-worth recompute is dispatched after
+                    undo; "undo of the create that a rule restructured" removes
+                    the conversion's counterpart and a split's legs and puts the
+                    loan balance back, and refuses redo; "a split run undone
+                    after the lines were replaced" refuses with
+                    RULE_RUN_UNDO_STRUCTURE_CHANGED and changes nothing);
+                    action-history.service.spec.ts ("a create that wrote legs in
+                    other accounts", "redo of a create that wrote legs in other
+                    accounts") and rule-run-undo.spec.ts ("when the row's
+                    structure is no longer the run's", "a transfer whose link
+                    changed since the run") assert the undo of the create and of
+                    the run; rule-effects.structural.spec.ts
+                    ("structuralNotAllowed") and the "the owner's structural
+                    rules on a grantee's create" block of
+                    backend/test/integration/joint-accounts.integration.spec.ts
+                    assert that a member's create gets no counterpart, no owner
+                    balance change and no owner account in the response.
+                    Missing: a two-connection test of the run's account-lock
+                    order (transaction-rules-run.structure-commit.spec.ts asserts
+                    only that the locks are taken once, before the first write);
+                    no net-worth recompute is dispatched after
                     the undo of a structural run, so the net-worth series can lag
                     until the next recompute; a test for the target account
                     closed between plan and write.
 Status              partial
 ```
 
-Status is `partial` because the undo of a structural run reverses the counterpart
-balance but does not dispatch the net-worth recompute for the accounts it moved
-(INV-CACHE-001), and the closed-target-account race rolls the create back instead
-of skipping the action. It becomes `enforced` when both are closed with tests.
+Status is `partial` because the undo of a structural run (and of a create that a
+rule restructured) reverses the counterpart balance but does not dispatch the
+net-worth recompute for the accounts it moved (INV-CACHE-001), and the
+closed-target-account race rolls the create back instead of skipping the action.
+It becomes `enforced` when both are closed with tests.
+
+Lock order, stated as the code has it: a run takes its transaction-row locks
+(`lockTransactionRows`, ascending id), then every target account at once in
+ascending id order, before its first write. That is the order the other
+transaction writers use (a row, then the account whose balance it moves), and it
+is not the "accounts before transactions" of `docs/concurrency-and-idempotency.md`
+section 5 rule 1, which no existing writer follows. The create path still locks
+a conversion's target account as its balance delta runs, after its own insert and
+before the source account's delta, the order the pre-existing transfer-split
+create path has.
+
+### INV-RULE-003 -- the preview, the draft test and the commit of a rule are one planner, and a run commits only the plan that was previewed
+
+```text
+Statement           What a rule would do to a row is decided by one pure planner
+                    (planRuleEffects). The create path, the import, the
+                    confirmation preview, the preview and the draft test of a
+                    manual run and the commit of that run all call it, so no
+                    surface can show an effect the commit does not write or
+                    write one it did not show. A manual run commits only the plan
+                    that was previewed: the commit re-plans inside its own
+                    transaction, under the rule's share lock and the candidate
+                    rows' locks, and refuses with 409 PREVIEW_CHANGED, before any
+                    write, when the fingerprint of the new plan differs from the
+                    preview's. The structural plan (a split's parts and signed
+                    amounts, a conversion's target account, clearCategory and
+                    counterpart amount) is part of the planned changes and of
+                    the fingerprint.
+Source of truth     transaction_rules (the rule and its revision), the matched
+                    rows as they are under the commit's locks
+Enforcement         planRuleEffects (backend/src/transaction-rules/rule-effects.ts)
+                    is the only evaluator; the applier reaches it through
+                    planForRow / planResolved / planWithChains (applyToNew,
+                    previewForRow) and the run service through the same
+                    planWithChains (TransactionRulesRunService.plan, used by
+                    previewRun, previewDraft and run). planFingerprint
+                    (rule-run-fingerprint.ts) hashes the rule revision and each
+                    row's canonical changes including changes.structure, so a
+                    changed part, target or counterpart amount changes the
+                    digest. convertRowToTransfer additionally refuses, under the
+                    row's lock, a row whose amount is no longer the planned
+                    counterpart amount (CONVERT_TO_TRANSFER_REFUSED), so the
+                    create path, which has no fingerprint, cannot write a sum the
+                    plan did not describe.
+Concurrency scope   the run: the rule row FOR SHARE, then the candidate rows
+                    ascending by id, then the target accounts ascending by id
+Retry semantics     A refused commit writes nothing; the client previews again
+                    and commits the new fingerprint.
+Crash semantics     The re-plan, the comparison and the writes share one
+                    transaction.
+Failure response    409 PREVIEW_CHANGED with the new fingerprint; a conversion
+                    whose row amount moved since the plan is refused and rolls
+                    the transaction back.
+Required tests      Present: rule-run-fingerprint.spec.ts;
+                    transaction-rules-run.structural.spec.ts (the preview lists
+                    the parts and the conversion with its amount, the
+                    fingerprint changes with them);
+                    transaction-rules-run.structure-commit.spec.ts ("refuses with
+                    PREVIEW_CHANGED when a converted row's amount changed since
+                    the preview", "dispatches nothing when the write is refused
+                    before it (stale preview)"); convert-to-transfer.spec.ts
+                    ("writes nothing when the row's amount is no longer the
+                    planned one"); backend/test/integration/transaction-rules-structural.integration.spec.ts
+                    ("refuses a commit when the row's amount changed since the
+                    preview").
+                    Missing: no source-scanning guard fails a second evaluator of
+                    a rule's condition or actions outside rule-effects.ts; the
+                    fingerprint does not cover the target account's open or
+                    closed state, which is read again at the write (a target
+                    closed in between rolls the create or run back, see
+                    INV-RULE-001).
+Status              partial
+```
+
+The status is `partial` because "one planner" is held by the call structure and
+the tests above, not by a guard that fails on a second evaluator, and because the
+fingerprint is not over the target accounts' state.
 
 ### INV-RULE-004 -- a rule is evaluated only for a row dated inside its active window
 
@@ -5344,7 +5472,18 @@ Enforcement         The pure planner decides it, before the condition
                     (TransactionRulesRunService), and the window is part of the
                     rule revision and so of the run fingerprint. The DTOs refuse
                     a non-calendar date and an inverted window, and the database
-                    CHECK refuses an inverted window the DTO missed.
+                    CHECK ck_transaction_rules_active_window (declared on the
+                    TransactionRule entity as well as in the migration and
+                    schema.sql) refuses an inverted window the DTO missed. The
+                    draft test (previewDraft) runs the window it is sent: it
+                    takes activeFrom and activeTo from the request body and
+                    treats a blank side as open, exactly as a save does, so it is
+                    enforced only through the window fields the client sends.
+                    The client's Test panel must send them; the guard for that is
+                    frontend/src/components/rules/RuleTestPanel.test.tsx (and any
+                    other frontend/src/components/rules/RuleTestPanel*.test.tsx).
+                    A client that omitted the fields would test the rule over
+                    rows its saved window excludes.
 Concurrency scope   per evaluated row; the window is read with the rule
 Retry semantics     Idempotent: the same row and the same window give the same
                     skip.
@@ -5360,9 +5499,13 @@ Required tests      Present: rule-effects.active-window.spec.ts (both sides, an
                     transaction-rules.service.active-window.spec.ts; and
                     backend/test/integration/transaction-rules-active-window.integration.spec.ts
                     on real PostgreSQL (create outside and inside the window, a
-                    manual run, a draft test, an inverted window refused).
-                    Missing: none.
-Status              enforced
+                    manual run, a draft test given a window, an inverted window
+                    refused by the service, and by the database CHECK itself).
+                    Missing: the server cannot tell a draft test that should
+                    have carried the window from one that deliberately has
+                    none, so the Test panel's behaviour is held only by the
+                    frontend test named above.
+Status              partial
 ```
 
 ### INV-RULE-002 -- a rule applies inside the inserting transaction, on every creation path

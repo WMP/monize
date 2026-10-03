@@ -380,8 +380,25 @@ export function actionToApi(action: EditorAction): RuleAction {
   }
 }
 
-/** Exactly what the create DTO accepts; an update adds `revision` to it. */
-export function draftToPayload(draft: RuleDraft): CreateTransactionRuleData {
+/**
+ * One side of the active window as the API takes it. An open side that was
+ * never set is left out, so a backend that predates the window (and refuses an
+ * unknown key) still accepts the save; a side the loaded rule had and the
+ * draft cleared is sent as null, which clears it.
+ */
+function windowSide(value: string, loadedValue: string): string | null | undefined {
+  if (value !== '') return value;
+  return loadedValue !== '' ? null : undefined;
+}
+
+/**
+ * Exactly what the create DTO accepts; an update adds `revision` to it. Pass
+ * the draft the rule was opened with (`loaded`) when updating, so a cleared
+ * window side is sent as null.
+ */
+export function draftToPayload(draft: RuleDraft, loaded: RuleDraft | null = null): CreateTransactionRuleData {
+  const activeFrom = windowSide(draft.activeFrom, loaded?.activeFrom ?? '');
+  const activeTo = windowSide(draft.activeTo, loaded?.activeTo ?? '');
   return {
     name: draft.name.trim(),
     enabled: draft.enabled,
@@ -389,9 +406,8 @@ export function draftToPayload(draft: RuleDraft): CreateTransactionRuleData {
     condition: conditionToApi(draft.condition),
     actions: draft.actions.map(actionToApi),
     stopProcessing: draft.stopProcessing,
-    // Null on an update clears the side; on a create it is the same as absent.
-    activeFrom: draft.activeFrom === '' ? null : draft.activeFrom,
-    activeTo: draft.activeTo === '' ? null : draft.activeTo,
+    ...(activeFrom !== undefined ? { activeFrom } : {}),
+    ...(activeTo !== undefined ? { activeTo } : {}),
   };
 }
 

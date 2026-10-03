@@ -15,6 +15,7 @@ import {
   MAX_RULE_SPLIT_DESCRIPTION_LENGTH,
   MAX_RULE_TAG_IDS,
   MAX_RULE_VALUE_LIST,
+  RULE_CONDITION_FIELDS,
   RULE_OPERATOR_SHAPES,
   RULE_VALIDATION_CODES,
   type RuleErrorCode,
@@ -182,7 +183,12 @@ function conditionEntries(node: EditorNode, path: string, out: RuleErrorEntry[])
     if (!Array.isArray(value) || value.length === 0) out.push({ path, code: 'ARRAY_EMPTY' });
     else if (value.length > MAX_RULE_VALUE_LIST) out.push({ path, code: 'ARRAY_TOO_LARGE' });
   } else if (shape === 'range') {
-    const complete = Array.isArray(value) && value.length === 2 && value.every((v) => typeof v === 'number');
+    // A date range is a pair of `YYYY-MM-DD` texts (an unset end is ''); every other range is a pair of numbers.
+    const isDate = RULE_CONDITION_FIELDS[node.field].kind === 'date';
+    const complete =
+      Array.isArray(value) &&
+      value.length === 2 &&
+      value.every((v) => (isDate ? typeof v === 'string' && v !== '' : typeof v === 'number'));
     if (!complete) out.push({ path, code: 'VALUE_REQUIRED' });
   } else if (value === undefined || value === '') {
     out.push({ path, code: 'VALUE_REQUIRED' });

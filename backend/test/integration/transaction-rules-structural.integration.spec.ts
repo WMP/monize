@@ -544,4 +544,132 @@ describe("Transaction rules structural actions (integration)", () => {
       expect(await balanceOf(checkingId)).toBe(5000 - 640.15);
     });
   });
+
+  describe("undo of the create that a rule restructured", () => {
+    it("removes the conversion's counterpart and puts the loan balance back", async () => {
+      await createThreeRules();
+      const created = await create(IN_WINDOW, -640.15, text("640,15", "0,00"));
+      expect(await balanceOf(loanId)).toBe(-20000 + 640.15);
+      expect(await countRows()).toBe(2);
+      await settlePendingHistoryWrites();
+
+      const undone = await asAlice(() => history.undo(aliceId));
+      expect(undone.description).toContain("Undone");
+
+      // The row and its counterpart are gone; neither account keeps a trace.
+      expect(await countRows()).toBe(0);
+      expect(await balanceOf(loanId)).toBe(-20000);
+      expect(await balanceOf(checkingId)).toBe(5000);
+      expect(await rowOf(created.id)).toBeUndefined();
+
+      // Redo of a create that wrote a leg elsewhere is refused, nothing written.
+      await expect(asAlice(() => history.redo(aliceId))).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errorCode: "REDO_CREATE_WITH_LEGS",
+        }),
+      });
+      expect(await countRows()).toBe(0);
+      expect(await balanceOf(loanId)).toBe(-20000);
+    });
+
+    it("removes the legs of a split's transfer parts and reverses each", async () => {
+      await createThreeRules();
+      await create(IN_WINDOW, -1500.75, text("1200,50", "300,25"));
+      expect(await balanceOf(loanId)).toBe(-20000 + 1200.5);
+      expect(await countRows()).toBe(2);
+      await settlePendingHistoryWrites();
+
+      await asAlice(() => history.undo(aliceId));
+
+      expect(await countRows()).toBe(0);
+      expect(
+        Number(
+          (await db.query(`SELECT COUNT(*) AS n FROM transaction_splits`))[0].n,
+        ),
+      ).toBe(0);
+      expect(await balanceOf(loanId)).toBe(-20000);
+      expect(await balanceOf(checkingId)).toBe(5000);
+    });
+  });
+
+  describe("a split run undone after the lines were replaced", () => {
+    it("refuses with RULE_RUN_UNDO_STRUCTURE_CHANGED and changes nothing", async () => {
+      const existing = await create(
+        IN_WINDOW,
+        -1500.75,
+        text("1200,50", "300,25"),
+      );
+      await createThreeRules({ triggers: ["import"] } as never);
+      const [, , splitRule] = await asAlice(() => rules.list(aliceId));
+      const preview = await asAlice(() =>
+        run.previewRun(aliceId, splitRule.id, {}),
+      );
+      await asAlice(() =>
+        run.run(aliceId, splitRule.id, { fingerprint: preview.fingerprint }),
+      );
+      expect(await balanceOf(loanId)).toBe(-20000 + 1200.5);
+
+      // A person replaces the split (PUT /transactions/:id/splits records no
+      // history, so the run stays the head of the undo stack): the old
+      // counterpart goes, a new one for 1000.00 is created.
+      await asAlice(() =>
+        transactions.updateSplits(aliceId, existing.id, [
+          { amount: -1000, transferAccountId: loanId },
+          { amount: -500.75, categoryId: interestId },
+        ] as never),
+      );
+      expect(await balanceOf(loanId)).toBe(-20000 + 1000);
+      const rowsBefore = await countRows();
+      await settlePendingHistoryWrites();
+
+      await expect(asAlice(() => history.undo(aliceId))).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errorCode: "RULE_RUN_UNDO_STRUCTURE_CHANGED",
+        }),
+      });
+
+      // Refused before any write: the person's lines, their counterpart and
+      // both balances are exactly as they were.
+      expect(await countRows()).toBe(rowsBefore);
+      expect(await splitsOf(existing.id)).toHaveLength(2);
+      expect(await rowOf(existing.id)).toMatchObject({ is_split: true });
+      expect(await balanceOf(loanId)).toBe(-20000 + 1000);
+      expect(
+        await db.query(`SELECT 1 FROM action_history WHERE is_undone = true`),
+      ).toEqual([]);
+    });
+  });
+
+  describe("the conversion's amount is part of the run fingerprint", () => {
+    it("refuses a commit when the row's amount changed since the preview", async () => {
+      const existing = await create(IN_WINDOW, -640.15, text("640,15", "0,00"));
+      await createThreeRules({ triggers: ["import"] } as never);
+      const [, convertRule] = await asAlice(() => rules.list(aliceId));
+      const preview = await asAlice(() =>
+        run.previewRun(aliceId, convertRule.id, {}),
+      );
+      expect(preview.matched[0].changes.structure?.after).toMatchObject({
+        kind: "transfer",
+        accountId: loanId,
+        amount: 640.15,
+      });
+
+      // Another tab edits the amount between the preview and the commit.
+      await db.query(`UPDATE transactions SET amount = -650 WHERE id = $1`, [
+        existing.id,
+      ]);
+
+      await expect(
+        asAlice(() =>
+          run.run(aliceId, convertRule.id, {
+            fingerprint: preview.fingerprint,
+          }),
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ errorCode: "PREVIEW_CHANGED" }),
+      });
+      expect(await countRows()).toBe(1);
+      expect(await balanceOf(loanId)).toBe(-20000);
+    });
+  });
 });

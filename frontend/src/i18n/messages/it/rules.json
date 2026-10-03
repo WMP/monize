@@ -239,7 +239,19 @@
       "partRest": "Il resto",
       "partAccount": "Conto",
       "partPayee": "Beneficiario dell'altro lato (facoltativo)",
-      "partsLimit": "Una divisione può avere al massimo {max} parti."
+      "partsLimit": "Una divisione può avere al massimo {max} parti.",
+      "guideTitle": "Come si usa",
+      "splitGuideHow": "In “Se”, aggiungi una condizione sul testo del beneficiario o sulla descrizione con l’operatore “corrisponde al modello” e inserisci nomi tra parentesi graffe al posto degli importi, ad esempio {first}. Ogni nome diventa un importo che puoi scegliere per una parte, oppure scegli “Il resto”. Le parti devono sommare l’importo della transazione, altrimenti la regola la lascia invariata. Una parte può essere una categoria o un trasferimento verso un altro conto (un trasferimento modifica il saldo di quel conto).",
+      "splitGuideExampleTitle": "Esempio: la rata di un prestito",
+      "splitGuideBank": "Testo della banca: CAPITALE: 1200,50 INTERESSI: 300,25 MORA: 0,00",
+      "splitGuidePattern": "Modello: *CAPITALE: {first} INTERESSI: {second} MORA*",
+      "splitGuidePart1": "Parte 1: {first} come trasferimento al conto del prestito",
+      "splitGuidePart2": "Parte 2: {second} come categoria “Prestiti: Interessi”",
+      "splitGuideResult": "Risultato per -1500,75: -1200,50 trasferiti al conto del prestito e -300,25 di spesa per interessi.",
+      "splitGuideTip": "Suggerimento: imposta una data di inizio in “Attiva tra” per non modificare le vecchie transazioni riconciliate e usa il pannello Prova prima di salvare.",
+      "convertGuide": "Una spesa diventa un trasferimento verso il conto scelto e un’entrata un trasferimento da quel conto. Cambia solo il saldo dell’altro conto. Suggerimento: usa “Attiva tra” per non modificare le vecchie transazioni.",
+      "splitGuideName1": "capitale",
+      "splitGuideName2": "interessi"
     },
     "actionTypes": {
       "add_tags": "Aggiungi tag",

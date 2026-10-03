@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { RuleActionGuide } from '@/components/rules/RuleActionGuide';
 import { RuleCardShell } from '@/components/rules/RuleCardShell';
 import { ConvertToTransferFields, SplitFields } from '@/components/rules/RuleStructuralActions';
 import { RuleSwitchRow as SwitchRow } from '@/components/rules/RuleSwitchRow';
@@ -234,15 +235,18 @@ export function RuleActionCard({
   return (
     <RuleCardShell label={t('action.title')} actions={actions} errors={cardErrors}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <Select
-          id={`${action.uid}-type`}
-          label={t('action.type')}
-          value={action.type}
-          options={types.map((type) => ({ value: type, label: t(`actionTypes.${type}`) }))}
-          onChange={(e) => {
-            if (isEditableActionType(e.target.value)) onChange(changeActionType(action, e.target.value));
-          }}
-        />
+        <div className="space-y-3">
+          <Select
+            id={`${action.uid}-type`}
+            label={t('action.type')}
+            value={action.type}
+            options={types.map((type) => ({ value: type, label: t(`actionTypes.${type}`) }))}
+            onChange={(e) => {
+              if (isEditableActionType(e.target.value)) onChange(changeActionType(action, e.target.value));
+            }}
+          />
+          <RuleActionGuide type={action.type} />
+        </div>
         <ActionParameters
           action={action}
           options={options}

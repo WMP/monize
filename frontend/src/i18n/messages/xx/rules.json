@@ -239,7 +239,19 @@
       "partRest": "[XX-The rest-XX]",
       "partAccount": "[XX-Account-XX]",
       "partPayee": "[XX-Payee of the other leg (optional)-XX]",
-      "partsLimit": "[XX-A split can have at most {max} parts.-XX]"
+      "partsLimit": "[XX-A split can have at most {max} parts.-XX]",
+      "guideTitle": "[XX-How to use this-XX]",
+      "splitGuideHow": "[XX-In “If”, add a condition on the payee text or description with the operator “matches the pattern”, and put names in curly braces where the amounts are, for example {first}. Each name becomes an amount you can pick for a part, or choose “The rest”. The parts must add up to the transaction amount, otherwise the rule leaves the transaction unchanged. A part can be a category or a transfer to another account (a transfer moves the balance of that account).-XX]",
+      "splitGuideExampleTitle": "[XX-Example: a loan payment-XX]",
+      "splitGuideBank": "[XX-Bank text: PRINCIPAL: 1200,50 INTEREST: 300,25 PENALTY: 0,00-XX]",
+      "splitGuidePattern": "[XX-Pattern: *PRINCIPAL: {first} INTEREST: {second} PENALTY*-XX]",
+      "splitGuidePart1": "[XX-Part 1: {first} as a transfer to the loan account-XX]",
+      "splitGuidePart2": "[XX-Part 2: {second} as the category “Loans: Interest”-XX]",
+      "splitGuideResult": "[XX-Result for -1500,75: -1200,50 transferred to the loan account and -300,25 of interest expense.-XX]",
+      "splitGuideTip": "[XX-Tip: set a start date under “Active between” so older reconciled transactions are not changed, and use the Test panel before saving.-XX]",
+      "convertGuide": "[XX-An expense becomes a transfer to the account you choose, and an income becomes a transfer from it. Only the balance of the other account changes. Tip: use “Active between” so older transactions are not changed.-XX]",
+      "splitGuideName1": "[XX-principal-XX]",
+      "splitGuideName2": "[XX-interest-XX]"
     },
     "actionTypes": {
       "add_tags": "[XX-Add tags-XX]",

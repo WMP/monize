@@ -108,13 +108,19 @@ describe("planRuleEffects: convert_to_transfer", () => {
       kind: "transfer",
       accountId: LOAN,
       clearCategory: true,
+      amount: 640.15,
     });
     expect(effects.changes.categoryId).toBeNull();
     expect(effects.changes.payeeId).toBe(PAYEE);
     expect(effects.trace[0].applied).toEqual([{ type: "convert_to_transfer" }]);
     expect(effects.trace[0].changes.structure).toEqual({
       before: null,
-      after: { kind: "transfer", accountId: LOAN, clearCategory: true },
+      after: {
+        kind: "transfer",
+        accountId: LOAN,
+        clearCategory: true,
+        amount: 640.15,
+      },
     });
   });
 
@@ -124,6 +130,7 @@ describe("planRuleEffects: convert_to_transfer", () => {
       kind: "transfer",
       accountId: SAVINGS,
       clearCategory: true,
+      amount: -250,
     });
   });
 
@@ -137,6 +144,7 @@ describe("planRuleEffects: convert_to_transfer", () => {
       kind: "transfer",
       accountId: LOAN,
       clearCategory: false,
+      amount: 10,
     });
   });
 
@@ -266,6 +274,7 @@ describe("planRuleEffects: a later rule sees the structured row", () => {
       kind: "transfer",
       accountId: LOAN,
       clearCategory: true,
+      amount: 640.15,
     });
   });
 
@@ -500,5 +509,72 @@ describe("planRuleEffects: split", () => {
   ])("refuses a row that is not splittable: %s", (reason, input) => {
     const effects = plan([split(SPLIT_PARTS)], input);
     expect(skippedReasons(effects)).toEqual([reason]);
+  });
+});
+
+describe("planRuleEffects: structuralNotAllowed (a joint-account member's create)", () => {
+  const MEMBER: RulePlanContext = {
+    accounts: ACCOUNTS,
+    structuralNotAllowed: true,
+  };
+
+  it("skips convert_to_transfer with its own reason and plans no structure", () => {
+    const effects = plan(
+      [convert({ payeeId: PAYEE })],
+      { amount: -640.15 },
+      MEMBER,
+    );
+    expect(skippedReasons(effects)).toEqual([
+      "structural_not_allowed_for_member",
+    ]);
+    expect(effects.changes.structure).toBeUndefined();
+    // A refused action is skipped whole: its payeeId is not applied either.
+    expect(effects.changes.payeeId).toBeUndefined();
+  });
+
+  it("skips split the same way", () => {
+    const effects = plan([split(SPLIT_PARTS)], {}, MEMBER);
+    expect(skippedReasons(effects)).toEqual([
+      "structural_not_allowed_for_member",
+    ]);
+    expect(effects.changes.structure).toBeUndefined();
+  });
+
+  it("still applies category, payee and tag actions of the same rule and of later rules", () => {
+    const effects = planRuleEffects(
+      row({ amount: -640.15 }),
+      [
+        rule([
+          convert(),
+          {
+            type: "set_payee",
+            payeeId: PAYEE,
+            onlyIfEmpty: false,
+          } as RuleAction,
+        ]),
+        rule(
+          [
+            {
+              type: "set_category",
+              categoryId: CAT,
+              onlyIfEmpty: false,
+            } as RuleAction,
+            { type: "add_tags", tagIds: [TAG] } as RuleAction,
+          ],
+          { id: "r2" },
+        ),
+      ],
+      MEMBER,
+    );
+    expect(effects.changes.structure).toBeUndefined();
+    expect(effects.changes.payeeId).toBe(PAYEE);
+    // The row was never converted, so a later set_category is not refused.
+    expect(effects.changes.categoryId).toBe(CAT);
+    expect(effects.changes.addTagIds).toEqual([TAG]);
+  });
+
+  it("an owner's own create (flag absent) is unchanged", () => {
+    const effects = plan([convert()], { amount: -640.15 });
+    expect(effects.changes.structure).toMatchObject({ kind: "transfer" });
   });
 });

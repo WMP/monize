@@ -239,7 +239,19 @@
       "partRest": "El resto",
       "partAccount": "Cuenta",
       "partPayee": "Beneficiario del otro lado (opcional)",
-      "partsLimit": "Una división puede tener como máximo {max} partes."
+      "partsLimit": "Una división puede tener como máximo {max} partes.",
+      "guideTitle": "Cómo se usa",
+      "splitGuideHow": "En “Si”, añade una condición sobre el texto del beneficiario o la descripción con el operador “coincide con el patrón” y escribe nombres entre llaves donde estén los importes, por ejemplo {first}. Cada nombre se convierte en un importe que puedes elegir para una parte, o elige “El resto”. Las partes deben sumar el importe de la transacción; de lo contrario, la regla la deja sin cambios. Una parte puede ser una categoría o una transferencia a otra cuenta (una transferencia modifica el saldo de esa cuenta).",
+      "splitGuideExampleTitle": "Ejemplo: una cuota de préstamo",
+      "splitGuideBank": "Texto del banco: CAPITAL: 1200,50 INTERESES: 300,25 MORA: 0,00",
+      "splitGuidePattern": "Patrón: *CAPITAL: {first} INTERESES: {second} MORA*",
+      "splitGuidePart1": "Parte 1: {first} como transferencia a la cuenta del préstamo",
+      "splitGuidePart2": "Parte 2: {second} como categoría “Préstamos: Intereses”",
+      "splitGuideResult": "Resultado para -1500,75: -1200,50 transferidos a la cuenta del préstamo y -300,25 de gasto en intereses.",
+      "splitGuideTip": "Consejo: define una fecha de inicio en “Activa entre” para no cambiar transacciones antiguas ya conciliadas, y usa el panel Prueba antes de guardar.",
+      "convertGuide": "Un gasto se convierte en una transferencia a la cuenta elegida y un ingreso, en una transferencia desde ella. Solo cambia el saldo de la otra cuenta. Consejo: usa “Activa entre” para no cambiar transacciones antiguas.",
+      "splitGuideName1": "capital",
+      "splitGuideName2": "intereses"
     },
     "actionTypes": {
       "add_tags": "Añadir etiquetas",

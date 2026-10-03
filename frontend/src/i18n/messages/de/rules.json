@@ -239,7 +239,19 @@
       "partRest": "Der Rest",
       "partAccount": "Konto",
       "partPayee": "Zahlungsempfänger der anderen Seite (optional)",
-      "partsLimit": "Eine Aufteilung kann höchstens {max} Teile haben."
+      "partsLimit": "Eine Aufteilung kann höchstens {max} Teile haben.",
+      "guideTitle": "So wird es verwendet",
+      "splitGuideHow": "Füge unter „Wenn“ eine Bedingung für den Zahlungsempfängertext oder die Beschreibung mit dem Operator „entspricht dem Muster“ hinzu und setze an die Stelle der Beträge Namen in geschweiften Klammern, zum Beispiel {first}. Jeder Name wird zu einem Betrag, den du für einen Teil auswählen kannst, oder wähle „Der Rest“. Die Teile müssen zusammen den Betrag der Transaktion ergeben, sonst lässt die Regel die Transaktion unverändert. Ein Teil kann eine Kategorie oder eine Überweisung auf ein anderes Konto sein (eine Überweisung ändert den Kontostand dieses Kontos).",
+      "splitGuideExampleTitle": "Beispiel: eine Darlehensrate",
+      "splitGuideBank": "Banktext: TILGUNG: 1200,50 ZINSEN: 300,25 GEBÜHR: 0,00",
+      "splitGuidePattern": "Muster: *TILGUNG: {first} ZINSEN: {second} GEBÜHR*",
+      "splitGuidePart1": "Teil 1: {first} als Überweisung auf das Darlehenskonto",
+      "splitGuidePart2": "Teil 2: {second} als Kategorie „Darlehen: Zinsen“",
+      "splitGuideResult": "Ergebnis für -1500,75: -1200,50 auf das Darlehenskonto überwiesen und -300,25 Zinsaufwand.",
+      "splitGuideTip": "Tipp: Lege unter „Aktiv zwischen“ ein Startdatum fest, damit ältere abgeglichene Transaktionen nicht geändert werden, und nutze vor dem Speichern den Bereich Test.",
+      "convertGuide": "Eine Ausgabe wird zu einer Überweisung auf das gewählte Konto, eine Einnahme zu einer Überweisung von diesem Konto. Nur der Kontostand des anderen Kontos ändert sich. Tipp: Nutze „Aktiv zwischen“, damit ältere Transaktionen nicht geändert werden.",
+      "splitGuideName1": "tilgung",
+      "splitGuideName2": "zinsen"
     },
     "actionTypes": {
       "add_tags": "Tags hinzufügen",

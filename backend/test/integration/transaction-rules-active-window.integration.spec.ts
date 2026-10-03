@@ -25,9 +25,10 @@ import {
  * INV-RULE-004 against a real PostgreSQL enforcing RLS: a rule with
  * `activeFrom = 2026-10-01` never touches a row dated 2026-09-07 -- on create
  * and in a manual run -- the DATE columns read back as `YYYY-MM-DD` strings,
- * and an empty window is refused before anything is written. (The CHECK
- * constraint is in the migration and `schema.sql`; this suite's schema is built
- * from the entities, which carry no CHECKs.)
+ * and an empty window is refused before anything is written, and, past the
+ * DTO, by the database's own CHECK (`ck_transaction_rules_active_window`,
+ * declared on the entity as well as in the migration and `schema.sql`, so this
+ * suite's entity-built schema carries it).
  */
 describe("Transaction rules active window (integration)", () => {
   jest.setTimeout(180000);
@@ -221,5 +222,22 @@ describe("Transaction rules active window (integration)", () => {
       response: expect.objectContaining({ errorCode: "ACTIVE_WINDOW_INVALID" }),
     });
     expect(await asAlice(() => rules.list(aliceId))).toEqual([]);
+  });
+
+  it("the database itself refuses an inverted window the DTO missed", async () => {
+    const insert = (from: string | null, to: string | null) =>
+      db.query(
+        `INSERT INTO transaction_rules
+           (user_id, name, position, triggers, condition, actions, active_from, active_to)
+         VALUES ($1, 'Raw', 0, ARRAY['create'], '{}'::jsonb, '[]'::jsonb, $2, $3)`,
+        [aliceId, from, to],
+      );
+    await expect(insert("2026-12-31", "2026-10-01")).rejects.toMatchObject({
+      constraint: "ck_transaction_rules_active_window",
+    });
+    // Either side open, or an equal pair, is a valid window.
+    await expect(insert("2026-10-01", null)).resolves.toBeDefined();
+    await db.query(`DELETE FROM transaction_rules`);
+    await expect(insert("2026-10-01", "2026-10-01")).resolves.toBeDefined();
   });
 });

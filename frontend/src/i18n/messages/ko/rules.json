@@ -239,7 +239,19 @@
       "partRest": "나머지",
       "partAccount": "계좌",
       "partPayee": "다른 쪽의 수취인(선택)",
-      "partsLimit": "분할은 최대 {max}개 부분까지 가능합니다."
+      "partsLimit": "분할은 최대 {max}개 부분까지 가능합니다.",
+      "guideTitle": "사용 방법",
+      "splitGuideHow": "“만약”에서 수취인 텍스트 또는 설명에 대한 조건을 “패턴과 일치함” 연산자로 추가하고, 금액이 있는 자리에 중괄호로 이름을 넣으세요. 예: {first}. 각 이름은 부분에 선택할 수 있는 금액이 되며, “나머지”를 선택할 수도 있습니다. 부분의 합은 거래 금액과 같아야 하며, 그렇지 않으면 규칙은 거래를 변경하지 않습니다. 부분은 카테고리이거나 다른 계좌로의 이체일 수 있습니다(이체는 그 계좌의 잔액을 변경합니다).",
+      "splitGuideExampleTitle": "예시: 대출 상환",
+      "splitGuideBank": "은행 텍스트: 원금: 1200.50 이자: 300.25 연체료: 0.00",
+      "splitGuidePattern": "패턴: *원금: {first} 이자: {second} 연체료*",
+      "splitGuidePart1": "부분 1: {first}을(를) 대출 계좌로의 이체로",
+      "splitGuidePart2": "부분 2: {second}을(를) “대출: 이자” 카테고리로",
+      "splitGuideResult": "-1500.75의 결과: -1200.50이 대출 계좌로 이체되고 -300.25는 이자 지출이 됩니다.",
+      "splitGuideTip": "팁: 이미 대조된 예전 거래가 바뀌지 않도록 “적용 기간”에 시작일을 설정하고, 저장하기 전에 테스트 패널을 사용하세요.",
+      "convertGuide": "지출은 선택한 계좌로의 이체가 되고, 수입은 그 계좌에서의 이체가 됩니다. 상대 계좌의 잔액만 변경됩니다. 팁: 예전 거래가 바뀌지 않도록 “적용 기간”을 사용하세요.",
+      "splitGuideName1": "wongeum",
+      "splitGuideName2": "ija"
     },
     "actionTypes": {
       "add_tags": "태그 추가",

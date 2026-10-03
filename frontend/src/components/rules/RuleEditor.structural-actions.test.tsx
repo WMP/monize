@@ -171,8 +171,6 @@ describe('RuleEditor: a split action', () => {
         },
       ],
       stopProcessing: false,
-      activeFrom: null,
-      activeTo: null,
     });
   });
 
@@ -356,8 +354,6 @@ describe('RuleEditor: a stored transfer or split', () => {
         },
       ],
       stopProcessing: false,
-      activeFrom: null,
-      activeTo: null,
       revision: 5,
     });
   });

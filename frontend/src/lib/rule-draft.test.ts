@@ -200,11 +200,15 @@ describe('draftFromRule', () => {
 });
 
 describe('the active window', () => {
-  it('opens an unlimited rule with both sides empty and sends them as null', () => {
+  it('opens an unlimited rule with both sides empty and sends neither key', () => {
     const { draft, repaired } = read({});
     expect(repaired).toBe(0);
     expect(draft).toMatchObject({ activeFrom: '', activeTo: '' });
-    expect(draftToPayload(draft)).toMatchObject({ activeFrom: null, activeTo: null });
+    // Absent, not null: a backend that predates the window refuses an unknown key.
+    const payload = draftToPayload(draft, draft);
+    expect(payload).not.toHaveProperty('activeFrom');
+    expect(payload).not.toHaveProperty('activeTo');
+    expect(draftToPayload(draft)).not.toHaveProperty('activeFrom');
   });
 
   it('opens and saves a stored window as it is', () => {
@@ -218,9 +222,21 @@ describe('the active window', () => {
     expect(draft).toMatchObject({ activeFrom: '', activeTo: '' });
   });
 
-  it('keeps one open side open: clearing a side is a null, a date is itself', () => {
+  it('keeps one open side out of the payload: a date is itself, an untouched open side is absent', () => {
     const draft = { ...emptyDraft(), activeFrom: '2026-10-01' };
-    expect(draftToPayload(draft)).toMatchObject({ activeFrom: '2026-10-01', activeTo: null });
+    const payload = draftToPayload(draft, emptyDraft());
+    expect(payload).toMatchObject({ activeFrom: '2026-10-01' });
+    expect(payload).not.toHaveProperty('activeTo');
+  });
+
+  it('sends null for a side the stored rule had and the draft cleared, and only for that side', () => {
+    const { draft: loaded } = read({ activeFrom: '2026-10-01', activeTo: '2026-12-31' });
+    const cleared = { ...loaded, activeFrom: '' };
+    const payload = draftToPayload(cleared, loaded);
+    expect(payload).toMatchObject({ activeFrom: null, activeTo: '2026-12-31' });
+    const { draft: halfOpen } = read({ activeFrom: '2026-10-01' });
+    expect(draftToPayload({ ...halfOpen, activeFrom: '' }, halfOpen)).toMatchObject({ activeFrom: null });
+    expect(draftToPayload({ ...halfOpen, activeFrom: '' }, halfOpen)).not.toHaveProperty('activeTo');
   });
 
   it('is part of the signature, so moving the window is an unsaved change', () => {
@@ -256,8 +272,6 @@ describe('draftToPayload', () => {
       condition: { all: [] },
       actions: [{ type: 'add_tags', tagIds: [UUID] }],
       stopProcessing: false,
-      activeFrom: null,
-      activeTo: null,
     });
   });
 

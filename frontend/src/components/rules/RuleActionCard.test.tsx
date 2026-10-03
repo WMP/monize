@@ -51,6 +51,37 @@ function Card({
 const optionLabels = (select: HTMLElement) => within(select).getAllByRole('option').map((o) => o.textContent);
 
 describe('RuleActionCard', () => {
+  describe('usage guide', () => {
+    it('shows the split guide under the type select, with the example braces rendered literally', () => {
+      render(<Card initial={createAction('split')} />);
+      const guide = screen.getByTestId('rule-action-guide');
+      expect(guide.parentElement).toContainElement(screen.getByLabelText('Action type'));
+      expect(within(guide).getByText(/matches the pattern/)).toBeInTheDocument();
+      expect(within(guide).getByText(/^Bank text: PRINCIPAL: 1200,50 INTEREST: 300,25 PENALTY: 0,00$/)).toBeInTheDocument();
+      expect(within(guide).getByText('Pattern: *PRINCIPAL: {principal} INTEREST: {interest} PENALTY*')).toBeInTheDocument();
+      expect(within(guide).getByText(/^Part 1: \{principal\} as a transfer/)).toBeInTheDocument();
+      expect(within(guide).getByText(/^Part 2: \{interest\} as the category/)).toBeInTheDocument();
+      expect(within(guide).getByText(/Active between/)).toBeInTheDocument();
+    });
+
+    it('shows the short guide for a conversion to a transfer', () => {
+      render(<Card initial={createAction('convert_to_transfer')} />);
+      const guide = screen.getByTestId('rule-action-guide');
+      expect(within(guide).getByText(/Only the balance of the other account changes/)).toBeInTheDocument();
+      expect(within(guide).queryByText(/Bank text/)).not.toBeInTheDocument();
+    });
+
+    it('shows no guide for the other action types and follows a change of type', () => {
+      render(<Card initial={createAction('add_tags')} />);
+      expect(screen.queryByTestId('rule-action-guide')).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Action type'), { target: { value: 'split' } });
+      expect(screen.getByTestId('rule-action-guide')).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Action type'), { target: { value: 'set_payee' } });
+      expect(screen.queryByTestId('rule-action-guide')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Action type')).toBeInTheDocument();
+    });
+  });
+
   it('lists the action types it is given, translated', () => {
     render(<Card initial={createAction('add_tags')} types={['add_tags', 'set_payee']} />);
     expect(optionLabels(screen.getByLabelText('Action type'))).toEqual(['Add tags', 'Set the payee']);

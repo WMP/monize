@@ -12,6 +12,7 @@ import {
   MAX_JSONB_SIZE_BYTES,
 } from "../action-history/action-history.service";
 import { RULE_RUN_ENTITY_TYPE } from "../action-history/rule-run-undo";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { tr } from "../i18n/translate";
@@ -25,6 +26,7 @@ import { effectiveRunLimit, loadCandidateUnits } from "./rule-run-candidates";
 import { loadRuleApplications } from "./rule-run-applications";
 import { planFingerprint } from "./rule-run-fingerprint";
 import { PlannedUnit, buildRunSnapshots } from "./rule-run-snapshot";
+import { structureTargetAccountIds } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
 import {
   RuleApplicationRow,
@@ -262,6 +264,21 @@ export class TransactionRulesRunService {
       ) {
         throw tooLarge();
       }
+      // Every account a structural write will credit is row-locked now, in
+      // ascending id order and in one statement, after the transaction rows
+      // the plan locked (the order the other transaction writers use) and
+      // before the first write. Without it each row's write locked its own
+      // target as it went, so two runs (or a run and a create) converting in
+      // opposite directions could take two accounts in opposite orders.
+      await lockAccountsForBalanceWrite(
+        m,
+        plan.writable.flatMap(({ effects }) =>
+          effects.changes.structure
+            ? structureTargetAccountIds(effects.changes.structure)
+            : [],
+        ),
+        userId,
+      );
       // A payee the rule creates is created once per row (both legs of a
       // transfer share it), inside this transaction, before the row is
       // written; the snapshots then hold its id.

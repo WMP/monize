@@ -41,7 +41,11 @@ import, in a test and in a manual run.
   `split`, each written through the existing transfer-split or transfer-leg
   helpers, by exactly the counterpart's amount, in the transaction that writes
   the rule's other effects. The matched row's own account balance never moves,
-  because its amount does not change.
+  because its amount does not change. A structural action never runs on a row
+  a joint-account member creates in the owner's account (section 4,
+  `structural_not_allowed_for_member`), and whatever a create or a run wrote in
+  another account is removed, with its balance, by the undo of what wrote it
+  (section 6).
 - **INV-RULE-004 (new).** A rule with an active window is evaluated only for a
   transaction whose calendar date is known and inside the window, inclusive at
   both ends. Outside it the rule is traced as `skippedRule:
@@ -50,8 +54,10 @@ import, in a test and in a manual run.
   and the manual run give the same answer. A manual run's `startDate` /
   `endDate` only narrow what is scanned and never widen the window.
 - **INV-RULE-003 (unchanged, extended).** The preview, the test and the commit
-  call one planner; the structural plan (parts and amounts) is part of the
-  planned changes and of the run fingerprint.
+  call one planner; the structural plan (a split's parts and signed amounts, a
+  conversion's target, `clearCategory` and signed counterpart `amount`) is part
+  of the planned changes and of the run fingerprint, so a row amount edited
+  between the preview and the commit refuses the run with `PREVIEW_CHANGED`.
 - **Rejection before write.** Every refusal below is decided by the pure
   planner before anything is written. A refused structural action is a skipped
   action with a reason; it never throws on a create or import path, so a rule
@@ -147,6 +153,14 @@ a split `hasSplits` is true and the category empty, so a later `set_category`
 is refused as before (`row_is_transfer_leg` / `row_has_splits`) and a second
 structural action is refused the same way.
 
+A create made by a joint-account member in the owner's account plans with
+`structuralNotAllowed` (set by `JointRegisterService` from the joint grant, as
+the `actorIsJointMember` option of `TransactionsService.create`; no request
+field is read). Both structural actions are then skipped, before every refusal
+below, with `structural_not_allowed_for_member`; category, payee, description
+and tag actions still apply, and the row stays a plain row of the owner's
+account. The owner's own creates, imports and runs are unaffected.
+
 Refusals, checked in this order, each a skipped action:
 
 | Reason | When |
@@ -165,7 +179,8 @@ Refusals, checked in this order, each a skipped action:
 
 The planned structure is carried in `RuleNetChanges.structure` and in the
 rule's trace entry as `changes.structure = { before: null, after: <plan> }`,
-where a split plan lists each part's signed amount (4 decimals), category,
+where a transfer plan carries the target, `clearCategory` and the signed
+counterpart `amount` (the negative of the row's, 4 decimals) and a split plan lists each part's signed amount (4 decimals), category,
 transfer account, payee and memo, so the test and the preview show the parts
 before anything is saved.
 
@@ -188,20 +203,45 @@ as today, then the structure, on the caller's manager:
   transaction; then `isSplit = true`, `categoryId = null`; a part's payee is
   written on its counterpart leg.
 
-Both return the accounts whose balance moved. `applyToNew` returns them per
+`convertRowToTransfer` refuses (rolling the transaction back) a row whose
+locked amount is no longer the planned counterpart `amount`. Both return the
+accounts whose balance moved. `applyToNew` returns them per
 row, and every caller dispatches the net-worth recompute after its commit
 (INV-CACHE-001); none is dispatched inside the transaction.
 
 ## 6. Manual run and undo
 
 The run previews the structure, includes it in the fingerprint, and writes it
-through the same `writeEffects`. The undo entry records, per structural row,
-the kind and the counterpart leg ids. Undo removes the counterpart legs (each
+through the same `writeEffects`. Before its first write it row-locks every
+target account of its plan in one ascending-id statement, after the candidate
+rows' locks, so two runs converting in opposite directions cannot take two
+accounts in opposite orders (`docs/concurrency-and-idempotency.md`, section 8). The undo entry records, per structural row,
+the kind, the counterpart leg ids and, for a split, the ids of the lines the run
+wrote. Undo removes the counterpart legs (each
 balance reversed by `deletionBalanceEffect`, the rows deleted conditionally),
 deletes the split lines, and restores `isTransfer`, `isSplit`,
 `linkedTransactionId` and the category from the snapshot, under the same row
 locks and reconciled-lock check as today. Redo of a run that restructured rows
 is refused (`RULE_RUN_REDO_STRUCTURAL`): run the rule again instead.
+
+The undo refuses with `RULE_RUN_UNDO_STRUCTURE_CHANGED` (409), before any write,
+when a restructured row now carries structure the run did not write: a split
+line whose id is not one the run recorded, a line linked to a leg the run did
+not create, or a transfer row linked to a leg other than the recorded
+counterpart. `PUT /transactions/:id/splits` records no history, so a person can
+replace the lines after the run; deleting every line the run wrote would orphan
+the counterpart of a line they added, with its balance. Something the run wrote
+that has since gone is not a change (nothing is left to orphan), and the
+removal of a missing leg is skipped as before.
+
+The undo of the "Created transaction" entry of a row a rule converted or split
+(and of a user-entered split with transfer parts) removes the same legs: the
+row is locked with its transfer counterpart, then the legs of its split lines
+after it, the reconciled lock is checked on all of them, and each leg is
+removed through `removeLockedTransactionLeg` (`deletionBalanceEffect`). Redo of
+such a create is refused (`REDO_CREATE_WITH_LEGS`): the legs cannot be
+replayed from the stored snapshot, so the transaction is created again
+instead.
 
 ## 7. Worked example (the acceptance case)
 
@@ -235,8 +275,16 @@ description. Rules in order, all with `activeFrom: 2026-10-01`,
 - Applier: the counterpart's amount, account, link and status; the balance
   helper called for the target account only, with the counterpart's amount;
   `affectedAccountIds` returned; the split written through the split service.
-- Run: the preview lists the parts; the fingerprint changes with them; undo
-  restores the row and reverses the counterpart balance; redo is refused.
+- Run: the preview lists the parts; the fingerprint changes with them and with
+  a conversion's amount (`PREVIEW_CHANGED` when the row amount changed); the
+  account locks are taken once before the first write; undo restores the row
+  and reverses the counterpart balance; undo is refused when the lines were
+  replaced since; redo is refused.
+- Create undo: the counterpart (and the legs of a split's transfer parts) is
+  removed and the loan balance returns; redo is refused.
+- Joint account: a member's create with the owner's converting or splitting
+  rule gets no counterpart, no owner balance change and no owner account in
+  the response, while a category rule still applies.
 - Assistant / MCP: the name form of both actions and of the window.
 
 ## 9. Out of scope
