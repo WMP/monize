@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Pagamenti pianificati configurati per {account}"
-    }
+    },
+    "firstInstallment": "Prima rata",
+    "firstInstallmentHelp": "Questo mutuo non ha un pagamento fisso: ogni rata è calcolata dal saldo, dal tasso e dal periodo di ammortamento. Questa è la rata in scadenza il {date}, compreso l'eventuale capitale aggiuntivo.",
+    "firstInstallmentPending": "Inserisci la data del prossimo pagamento per calcolare la prima rata.",
+    "firstInstallmentCalculating": "Calcolo della prima rata...",
+    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova."
   },
   "mortgageFields": {
     "title": "Dettagli mutuo",
@@ -340,7 +345,14 @@
       "memoLabel": "Testo memo di estinzione anticipata",
       "memoPlaceholder": "es. estinzione anticipata",
       "memoHelp": "Corrispondenza di sottostringa senza distinzione tra maiuscole e minuscole con il memo del pagamento, il memo della transazione di origine o il memo di una suddivisione."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Effetto di un rimborso anticipato",
+      "SHORTEN_TERM": "Riduce la durata (stessa quota capitale ogni mese)",
+      "LOWER_INSTALLMENT": "Riduce la rata (stessa data di fine)",
+      "help": "Chiedi alla tua banca. Se dopo un rimborso anticipato la quota capitale nell'estratto conto resta uguale, la durata è stata ridotta."
+    },
+    "previewFirstInstallment": "Prima rata:"
   },
   "assetFields": {
     "title": "Impostazioni variazione valore attività",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Interessi residui stim.",
       "notSet": "Non impostato",
       "notAvailable": "N/D",
-      "paidOff": "Estinto"
+      "paidOff": "Estinto",
+      "nextInstallment": "Prossima rata",
+      "dueOn": "Scade il {date}",
+      "finalPayment": "Pagamento finale",
+      "nextInstallmentDue": "Prossima rata (scade il {date})",
+      "finalPaymentDue": "Pagamento finale (scade il {date})"
     },
     "schedule": {
       "title": "Piano di ammortamento",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Questo prestito non ha saldo residuo, quindi non c'è più nulla da ammortizzare.",
         "reasonNoFrequency": "Per questo prestito non è impostata una frequenza di pagamento. Aggiungila nelle impostazioni del conto.",
         "reasonNoRate": "Per questo prestito non è salvato un tasso di interesse. Imposta il tasso nelle impostazioni del conto oppure registra una variazione di tasso con data odierna o precedente. Un tasso mostrato per riga nel piano qui sotto è ricostruito dagli interessi addebitati e non è un tasso salvato.",
-        "reasonNoPayment": "L'importo della rata non può essere determinato. Registra le rate regolari come trasferimenti verso il conto del prestito (capitale, con gli interessi come riga di suddivisione o come spesa categorizzata separata), oppure imposta l'importo del pagamento nelle impostazioni del conto. I pagamenti registrati come spese ordinarie sul conto di origine non raggiungono mai il conto del prestito, quindi il piano non può vederli."
-      }
+        "reasonNoPayment": "L'importo della rata non può essere determinato. Registra le rate regolari come trasferimenti verso il conto del prestito (capitale, con gli interessi come riga di suddivisione o come spesa categorizzata separata), oppure imposta l'importo del pagamento nelle impostazioni del conto. I pagamenti registrati come spese ordinarie sul conto di origine non raggiungono mai il conto del prestito, quindi il piano non può vederli.",
+        "reasonNoAmortization": "Questo mutuo non ha un periodo di ammortamento, quindi non è possibile calcolarne le rate né la fine della durata. Imposta il periodo di ammortamento nelle impostazioni del conto.",
+        "reasonNoPaymentStart": "Questo mutuo non ha una data del primo pagamento, quindi non è possibile contare i pagamenti rimanenti fino alla fine della durata. Configura il suo pagamento programmato dalle impostazioni del conto; la prima data di scadenza che inserisci diventa il pagamento 1.",
+        "reasonNoPrincipal": "Questo mutuo non ha un importo originario, quindi non è possibile calcolarne la quota capitale costante. Imposta l'importo del mutuo nelle impostazioni del conto."
+      },
+      "budgetBelowNextInstallment": "È inferiore alla prossima rata ({amount}, scade il {date}); aumentalo oltre per effettuare un rimborso anticipato."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",
@@ -488,7 +509,8 @@
       "newInstallment": "Nuova rata",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Rata mensile",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primo pagamento"
     },
     "chart": {
       "title": "Cronologia di estinzione",

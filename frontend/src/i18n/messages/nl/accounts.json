@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Geplande betalingen ingesteld voor {account}"
-    }
+    },
+    "firstInstallment": "Eerste termijn",
+    "firstInstallmentHelp": "Deze hypotheek heeft geen vaste betaling: elke termijn wordt berekend uit het saldo, de rente en de looptijd. Dit is de termijn die vervalt op {date}, inclusief eventuele extra aflossing.",
+    "firstInstallmentPending": "Voer de volgende betaaldatum in om de eerste termijn te berekenen.",
+    "firstInstallmentCalculating": "De eerste termijn wordt berekend...",
+    "firstInstallmentFailed": "De eerste termijn kon niet worden berekend. Controleer de waarden hieronder en probeer het opnieuw."
   },
   "mortgageFields": {
     "title": "Hypotheekdetails",
@@ -340,7 +345,14 @@
       "memoLabel": "Notitietekst extra aflossing",
       "memoPlaceholder": "bijv. extra aflossing",
       "memoHelp": "Hoofdletterongevoelige subtekenreeks-overeenkomst met de notitie van de betaling, de notitie van de brontransactie of een split-notitie."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Wat een extra aflossing doet",
+      "SHORTEN_TERM": "Verkort de looptijd (elke maand dezelfde aflossing)",
+      "LOWER_INSTALLMENT": "Verlaagt de termijn (zelfde einddatum)",
+      "help": "Vraag het na bij je geldverstrekker. Blijft het aflossingsdeel op het overzicht na een extra aflossing gelijk, dan is de looptijd verkort."
+    },
+    "previewFirstInstallment": "Eerste termijn:"
   },
   "assetFields": {
     "title": "Instellingen waardeverandering actief",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Gesch. resterende rente",
       "notSet": "Niet ingesteld",
       "notAvailable": "N.v.t.",
-      "paidOff": "Afgelost"
+      "paidOff": "Afgelost",
+      "nextInstallment": "Volgende termijn",
+      "dueOn": "Vervalt op {date}",
+      "finalPayment": "Slotbetaling",
+      "nextInstallmentDue": "Volgende termijn (vervalt op {date})",
+      "finalPaymentDue": "Slotbetaling (vervalt op {date})"
     },
     "schedule": {
       "title": "Aflossingsschema",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Deze lening heeft geen openstaand saldo, dus er is niets meer om af te lossen.",
         "reasonNoFrequency": "Voor deze lening is geen betaalfrequentie ingesteld. Voeg deze toe in de accountinstellingen.",
         "reasonNoRate": "Voor deze lening is geen rentepercentage opgeslagen. Stel de rente in bij de accountinstellingen of leg een rentewijziging vast met de datum van vandaag of eerder. Een per rij in het schema getoonde rente is gereconstrueerd uit de in rekening gebrachte rente en is geen opgeslagen rente.",
-        "reasonNoPayment": "Het termijnbedrag kan niet worden bepaald. Leg de reguliere termijnen vast als overboekingen naar de leningrekening (hoofdsom, met rente als splitsingsregel of als aparte gecategoriseerde uitgave), of stel het betaalbedrag in bij de accountinstellingen. Betalingen die als gewone uitgaven op de bronrekening worden geboekt, bereiken de leningrekening nooit, dus het schema kan ze niet zien."
-      }
+        "reasonNoPayment": "Het termijnbedrag kan niet worden bepaald. Leg de reguliere termijnen vast als overboekingen naar de leningrekening (hoofdsom, met rente als splitsingsregel of als aparte gecategoriseerde uitgave), of stel het betaalbedrag in bij de accountinstellingen. Betalingen die als gewone uitgaven op de bronrekening worden geboekt, bereiken de leningrekening nooit, dus het schema kan ze niet zien.",
+        "reasonNoAmortization": "Deze hypotheek heeft geen looptijd, dus de termijnen en het einde van de looptijd kunnen niet worden berekend. Stel de looptijd in bij de rekeninginstellingen.",
+        "reasonNoPaymentStart": "Deze hypotheek heeft geen eerste betaaldatum, dus de betalingen tot het einde van de looptijd kunnen niet worden geteld. Stel de geplande betaling in via de rekeninginstellingen; de eerste vervaldatum die je invoert wordt betaling 1.",
+        "reasonNoPrincipal": "Deze hypotheek heeft geen oorspronkelijk bedrag, dus de vaste aflossing kan niet worden berekend. Stel het hypotheekbedrag in bij de rekeninginstellingen."
+      },
+      "budgetBelowNextInstallment": "Dat is lager dan de volgende termijn ({amount}, vervalt op {date}); verhoog het daarboven om extra af te lossen."
     },
     "comparison": {
       "newPayoff": "Nieuwe aflossingsdatum",
@@ -488,7 +509,8 @@
       "newInstallment": "Nieuwe termijn",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Maandelijkse betaling",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Eerste betaling"
     },
     "chart": {
       "title": "Aflossingstijdlijn",

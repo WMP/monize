@@ -76,7 +76,10 @@
     "collapseAria": "Приховати інформацію про рахунок",
     "showAccountNumber": "Показати номер рахунку",
     "hideAccountNumber": "Приховати номер рахунку",
-    "show": "Показати інформацію про рахунок"
+    "show": "Показати інформацію про рахунок",
+    "nextInstallment": "Наступний платіж",
+    "finalPayment": "Останній платіж",
+    "amountDueOn": "{amount}, строк {date}"
   },
   "page": {
     "title": "Транзакції",

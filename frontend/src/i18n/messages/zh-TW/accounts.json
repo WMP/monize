@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "已為 {account} 設定排程付款"
-    }
+    },
+    "firstInstallment": "首期還款",
+    "firstInstallmentHelp": "此房貸沒有固定還款額：每期還款依餘額、利率與攤還期間計算。這是 {date} 到期的一期，包含任何額外本金。",
+    "firstInstallmentPending": "請輸入下次還款日期以計算首期還款。",
+    "firstInstallmentCalculating": "正在計算首期還款...",
+    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。"
   },
   "mortgageFields": {
     "title": "抵押貸款詳情",
@@ -340,7 +345,14 @@
       "memoLabel": "超額還款備註文字",
       "memoPlaceholder": "例如 超額還款",
       "memoHelp": "對付款備註、其來源交易備註或拆分備註進行不區分大小寫的子字串比對。"
-    }
+    },
+    "prepaymentMode": {
+      "label": "提前還款的效果",
+      "SHORTEN_TERM": "縮短期限（每月本金相同）",
+      "LOWER_INSTALLMENT": "降低月付額（結束日期不變）",
+      "help": "請向貸款機構確認。提前還款後，若對帳單上的本金部分不變，即表示期限已縮短。"
+    },
+    "previewFirstInstallment": "首期還款："
   },
   "assetFields": {
     "title": "資產價值變動設定",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "預計剩餘利息",
       "notSet": "未設定",
       "notAvailable": "無",
-      "paidOff": "已還清"
+      "paidOff": "已還清",
+      "nextInstallment": "下期還款",
+      "dueOn": "到期日 {date}",
+      "finalPayment": "最後一期還款",
+      "nextInstallmentDue": "下期還款（到期日 {date}）",
+      "finalPaymentDue": "最後一期還款（到期日 {date}）"
     },
     "schedule": {
       "title": "還款計畫",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "這筆貸款沒有未償還餘額，因此沒有需要攤還的部分。",
         "reasonNoFrequency": "這筆貸款未設定還款頻率。請在帳戶設定中新增。",
         "reasonNoRate": "這筆貸款沒有已儲存的利率。請在帳戶設定中設定利率，或記錄一筆日期為今天或更早的利率變更。下方排程中依列顯示的利率是根據已計收的利息重建的，並非已儲存的利率。",
-        "reasonNoPayment": "無法確定分期金額。請將定期分期記為轉帳至貸款帳戶（本金，利息作為拆分列或單獨分類的支出），或在帳戶設定中設定還款金額。在來源帳戶記為一般支出的付款永遠不會到達貸款帳戶，因此排程無法看到它們。"
-      }
+        "reasonNoPayment": "無法確定分期金額。請將定期分期記為轉帳至貸款帳戶（本金，利息作為拆分列或單獨分類的支出），或在帳戶設定中設定還款金額。在來源帳戶記為一般支出的付款永遠不會到達貸款帳戶，因此排程無法看到它們。",
+        "reasonNoAmortization": "此房貸沒有設定攤還期間，因此無法計算其每期還款額與期限結束日期。請在帳戶設定中設定攤還期間。",
+        "reasonNoPaymentStart": "此房貸沒有設定首次還款日期，因此無法計算到期限結束前剩餘的還款期數。請在帳戶設定中設定其定期還款；您輸入的第一個到期日將成為第 1 期還款。",
+        "reasonNoPrincipal": "此房貸沒有設定原始金額，因此無法計算其本金平均攤還額。請在帳戶設定中設定房貸金額。"
+      },
+      "budgetBelowNextInstallment": "低於下期還款額（{amount}，到期日 {date}）；請調高到該金額以上才能提前還款。"
     },
     "comparison": {
       "newPayoff": "新的還清日期",
@@ -488,7 +509,8 @@
       "newInstallment": "新還款額",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "每月還款",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "首次付款"
     },
     "chart": {
       "title": "還清時間軸",

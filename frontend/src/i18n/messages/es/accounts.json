@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Pagos planificados configurados para {account}"
-    }
+    },
+    "firstInstallment": "Primera cuota",
+    "firstInstallmentHelp": "Esta hipoteca no tiene un pago fijo: cada cuota se calcula a partir del saldo, el tipo de interés y el periodo de amortización. Esta es la que vence el {date}, incluido cualquier capital adicional.",
+    "firstInstallmentPending": "Introduce la fecha del próximo pago para calcular la primera cuota.",
+    "firstInstallmentCalculating": "Calculando la primera cuota...",
+    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo."
   },
   "mortgageFields": {
     "title": "Detalles de la Hipoteca",
@@ -340,7 +345,14 @@
       "memoLabel": "Texto de nota de amortización anticipada",
       "memoPlaceholder": "p. ej. amortización",
       "memoHelp": "Coincidencia de subcadena sin distinguir mayúsculas con la nota del pago, la nota de la transacción de origen o la nota de un desglose."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Qué hace una amortización anticipada",
+      "SHORTEN_TERM": "Acorta el plazo (mismo capital cada mes)",
+      "LOWER_INSTALLMENT": "Reduce la cuota (misma fecha final)",
+      "help": "Consúltalo con tu entidad. Si tras una amortización anticipada el extracto muestra la misma parte de capital, se acortó el plazo."
+    },
+    "previewFirstInstallment": "Primera cuota:"
   },
   "assetFields": {
     "title": "Configuración de Cambio de Valor del Activo",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Intereses restantes est.",
       "notSet": "Sin definir",
       "notAvailable": "N/D",
-      "paidOff": "Liquidado"
+      "paidOff": "Liquidado",
+      "nextInstallment": "Próxima cuota",
+      "dueOn": "Vence el {date}",
+      "finalPayment": "Pago final",
+      "nextInstallmentDue": "Próxima cuota (vence el {date})",
+      "finalPaymentDue": "Pago final (vence el {date})"
     },
     "schedule": {
       "title": "Calendario de amortización",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Este préstamo no tiene saldo pendiente, así que no queda nada por amortizar.",
         "reasonNoFrequency": "Este préstamo no tiene una frecuencia de pago configurada. Añádela en la configuración de la cuenta.",
         "reasonNoRate": "Este préstamo no tiene un tipo de interés guardado. Establece el tipo de interés en la configuración de la cuenta o registra un cambio de tipo con fecha de hoy o anterior. Un tipo mostrado por fila en el calendario de abajo se reconstruye a partir del interés cobrado y no es un tipo guardado.",
-        "reasonNoPayment": "No se puede determinar el importe de la cuota. Registra las cuotas regulares como transferencias a la cuenta del préstamo (capital, con el interés como línea de desglose o como un gasto categorizado aparte), o establece el importe del pago en la configuración de la cuenta. Los pagos registrados como gastos normales en la cuenta de origen nunca llegan a la cuenta del préstamo, por lo que el calendario no puede verlos."
-      }
+        "reasonNoPayment": "No se puede determinar el importe de la cuota. Registra las cuotas regulares como transferencias a la cuenta del préstamo (capital, con el interés como línea de desglose o como un gasto categorizado aparte), o establece el importe del pago en la configuración de la cuenta. Los pagos registrados como gastos normales en la cuenta de origen nunca llegan a la cuenta del préstamo, por lo que el calendario no puede verlos.",
+        "reasonNoAmortization": "Esta hipoteca no tiene periodo de amortización, por lo que no se pueden calcular sus cuotas ni el final de su plazo. Establece el periodo de amortización en la configuración de la cuenta.",
+        "reasonNoPaymentStart": "Esta hipoteca no tiene fecha del primer pago, por lo que no se pueden contar los pagos que quedan hasta el final de su plazo. Configura su pago programado desde la configuración de la cuenta; la primera fecha de vencimiento que indiques será el pago 1.",
+        "reasonNoPrincipal": "Esta hipoteca no tiene importe original, por lo que no se puede calcular su amortización constante. Establece el importe de la hipoteca en la configuración de la cuenta."
+      },
+      "budgetBelowNextInstallment": "Es inferior a la próxima cuota ({amount}, vence el {date}); auméntalo por encima para hacer amortizaciones anticipadas."
     },
     "comparison": {
       "newPayoff": "Nueva fecha de liquidación",
@@ -488,7 +509,8 @@
       "newInstallment": "Nueva cuota",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Cuota mensual",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primer pago"
     },
     "chart": {
       "title": "Cronología de liquidación",

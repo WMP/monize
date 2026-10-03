@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Betaalde aflossing",
     "seriesInterestPaid": "Betaalde rente",
     "seriesPrincipal": "Aflossing",
-    "seriesInterest": "Rente"
+    "seriesInterest": "Rente",
+    "installmentAndFinal": "{installment}; slotbetaling {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Winst, dividenden & rente",
@@ -884,7 +885,10 @@
     "typeLoan": "Lening",
     "typeMortgage": "Hypotheek",
     "pdfSubtitlePaymentsSummary": "{count} betalingen gedaan, {interest} totale rente",
-    "pdfSubtitlePaymentsProjection": "{count} betalingen gedaan, {interest} rente over de projectie"
+    "pdfSubtitlePaymentsProjection": "{count} betalingen gedaan, {interest} rente over de projectie",
+    "nextInstallment": "Volgende termijn",
+    "finalPayment": "Slotbetaling",
+    "amountDueOn": "{amount}, vervalt op {date}"
   },
   "monteCarlo": {
     "toasts": {

@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Capital Pago",
     "seriesInterestPaid": "Juros Pagos",
     "seriesPrincipal": "Capital",
-    "seriesInterest": "Juros"
+    "seriesInterest": "Juros",
+    "installmentAndFinal": "{installment}; pagamento final {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Ganhos, Dividendos e Juros",
@@ -884,7 +885,10 @@
     "typeLoan": "Empréstimo",
     "typeMortgage": "Hipoteca",
     "pdfSubtitlePaymentsSummary": "{count} pagamentos efetuados, {interest} de juros totais",
-    "pdfSubtitlePaymentsProjection": "{count} pagamentos efetuados, {interest} de juros durante a projeção"
+    "pdfSubtitlePaymentsProjection": "{count} pagamentos efetuados, {interest} de juros durante a projeção",
+    "nextInstallment": "Próxima parcela",
+    "finalPayment": "Pagamento final",
+    "amountDueOn": "{amount}, vence em {date}"
   },
   "monteCarlo": {
     "toasts": {

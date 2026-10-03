@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Đã thiết lập thanh toán theo lịch cho {account}"
-    }
+    },
+    "firstInstallment": "Kỳ trả góp đầu tiên",
+    "firstInstallmentHelp": "Khoản vay thế chấp này không có khoản thanh toán cố định: mỗi kỳ được tính từ số dư, lãi suất và thời gian trả dần. Đây là kỳ đến hạn {date}, bao gồm mọi khoản gốc trả thêm.",
+    "firstInstallmentPending": "Nhập ngày thanh toán tiếp theo để tính kỳ trả góp đầu tiên.",
+    "firstInstallmentCalculating": "Đang tính kỳ trả góp đầu tiên...",
+    "firstInstallmentFailed": "Không thể tính kỳ trả góp đầu tiên. Hãy kiểm tra các giá trị bên dưới và thử lại."
   },
   "mortgageFields": {
     "title": "Chi tiết thế chấp",
@@ -340,7 +345,14 @@
       "memoLabel": "Nội dung ghi chú trả trước",
       "memoPlaceholder": "vd. trả trước",
       "memoHelp": "So khớp chuỗi con không phân biệt hoa thường với ghi chú của khoản thanh toán, ghi chú của giao dịch nguồn hoặc ghi chú tách."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Tác dụng của khoản trả trước",
+      "SHORTEN_TERM": "Rút ngắn kỳ hạn (phần gốc như nhau mỗi tháng)",
+      "LOWER_INSTALLMENT": "Giảm kỳ trả góp (cùng ngày kết thúc)",
+      "help": "Hãy hỏi bên cho vay. Nếu sau khi trả trước, phần gốc trên sao kê không đổi thì kỳ hạn đã được rút ngắn."
+    },
+    "previewFirstInstallment": "Kỳ trả góp đầu tiên:"
   },
   "assetFields": {
     "title": "Cài đặt thay đổi giá trị tài sản",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Lãi còn lại (ước tính)",
       "notSet": "Chưa đặt",
       "notAvailable": "Không có",
-      "paidOff": "Đã trả hết"
+      "paidOff": "Đã trả hết",
+      "nextInstallment": "Kỳ trả góp tiếp theo",
+      "dueOn": "Đến hạn {date}",
+      "finalPayment": "Khoản thanh toán cuối",
+      "nextInstallmentDue": "Kỳ trả góp tiếp theo (đến hạn {date})",
+      "finalPaymentDue": "Khoản thanh toán cuối (đến hạn {date})"
     },
     "schedule": {
       "title": "Lịch trả nợ",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Khoản vay này không còn dư nợ, nên không còn gì để khấu hao.",
         "reasonNoFrequency": "Khoản vay này chưa đặt tần suất thanh toán. Hãy thêm trong cài đặt tài khoản.",
         "reasonNoRate": "Khoản vay này chưa lưu lãi suất. Hãy đặt lãi suất trong cài đặt tài khoản, hoặc ghi một thay đổi lãi suất có ngày hôm nay hoặc trước đó. Lãi suất hiển thị theo từng dòng trong lịch bên dưới được tái tạo từ tiền lãi đã tính và không phải là lãi suất đã lưu.",
-        "reasonNoPayment": "Không thể xác định số tiền trả góp. Hãy ghi các kỳ trả góp thường xuyên dưới dạng chuyển khoản vào tài khoản khoản vay (gốc, với lãi là dòng tách hoặc một khoản chi có phân loại riêng), hoặc đặt số tiền thanh toán trong cài đặt tài khoản. Các khoản thanh toán được ghi là chi tiêu thông thường trên tài khoản nguồn không bao giờ đến được tài khoản khoản vay, nên lịch không thể thấy chúng."
-      }
+        "reasonNoPayment": "Không thể xác định số tiền trả góp. Hãy ghi các kỳ trả góp thường xuyên dưới dạng chuyển khoản vào tài khoản khoản vay (gốc, với lãi là dòng tách hoặc một khoản chi có phân loại riêng), hoặc đặt số tiền thanh toán trong cài đặt tài khoản. Các khoản thanh toán được ghi là chi tiêu thông thường trên tài khoản nguồn không bao giờ đến được tài khoản khoản vay, nên lịch không thể thấy chúng.",
+        "reasonNoAmortization": "Khoản vay thế chấp này chưa có thời gian trả dần, nên không thể tính các kỳ trả góp và ngày kết thúc kỳ hạn. Hãy đặt thời gian trả dần trong phần cài đặt tài khoản.",
+        "reasonNoPaymentStart": "Khoản vay thế chấp này chưa có ngày thanh toán đầu tiên, nên không thể đếm số kỳ còn lại đến hết kỳ hạn. Hãy thiết lập khoản thanh toán định kỳ trong phần cài đặt tài khoản; ngày đến hạn đầu tiên bạn nhập sẽ là kỳ thanh toán 1.",
+        "reasonNoPrincipal": "Khoản vay thế chấp này chưa có số tiền gốc ban đầu, nên không thể tính phần gốc cố định. Hãy đặt số tiền vay trong phần cài đặt tài khoản."
+      },
+      "budgetBelowNextInstallment": "Số tiền này thấp hơn kỳ trả góp tiếp theo ({amount}, đến hạn {date}); hãy tăng lên trên mức đó để trả trước."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",
@@ -488,7 +509,8 @@
       "newInstallment": "Kỳ trả mới",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Khoản trả hàng tháng",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Khoản thanh toán đầu tiên"
     },
     "chart": {
       "title": "Dòng thời gian trả nợ",

@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Pokok Dibayar",
     "seriesInterestPaid": "Bunga Dibayar",
     "seriesPrincipal": "Pokok",
-    "seriesInterest": "Bunga"
+    "seriesInterest": "Bunga",
+    "installmentAndFinal": "{installment}; pembayaran akhir {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Laba Modal, Dividen & Bunga",
@@ -884,7 +885,10 @@
     "typeLoan": "Pinjaman",
     "typeMortgage": "Hipotek",
     "pdfSubtitlePaymentsSummary": "{count} pembayaran dilakukan, {interest} total bunga",
-    "pdfSubtitlePaymentsProjection": "{count} pembayaran dilakukan, bunga {interest} selama proyeksi"
+    "pdfSubtitlePaymentsProjection": "{count} pembayaran dilakukan, bunga {interest} selama proyeksi",
+    "nextInstallment": "Angsuran Berikutnya",
+    "finalPayment": "Pembayaran Akhir",
+    "amountDueOn": "{amount}, jatuh tempo {date}"
   },
   "monteCarlo": {
     "toasts": {

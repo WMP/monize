@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Paiements récurrents configurés pour {account}"
-    }
+    },
+    "firstInstallment": "Première échéance",
+    "firstInstallmentHelp": "Ce prêt hypothécaire n'a pas de paiement fixe : chaque échéance est calculée à partir du solde, du taux et de la durée d'amortissement. Voici celle due le {date}, capital supplémentaire compris.",
+    "firstInstallmentPending": "Saisissez la date du prochain paiement pour calculer la première échéance.",
+    "firstInstallmentCalculating": "Calcul de la première échéance...",
+    "firstInstallmentFailed": "La première échéance n'a pas pu être calculée. Vérifiez les valeurs ci-dessous et réessayez."
   },
   "mortgageFields": {
     "title": "Détails du prêt hypothécaire",
@@ -340,7 +345,14 @@
       "memoLabel": "Texte de mémo de remboursement anticipé",
       "memoPlaceholder": "p. ex. remboursement anticipé",
       "memoHelp": "Correspondance de sous-chaîne insensible à la casse avec le mémo du paiement, le mémo de la transaction source ou le mémo d'une ventilation."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Effet d'un remboursement anticipé",
+      "SHORTEN_TERM": "Raccourcit la durée (même capital chaque mois)",
+      "LOWER_INSTALLMENT": "Réduit l'échéance (même date de fin)",
+      "help": "Renseignez-vous auprès de votre prêteur. Si, après un remboursement anticipé, la part de capital du relevé est inchangée, la durée a été raccourcie."
+    },
+    "previewFirstInstallment": "Première échéance :"
   },
   "assetFields": {
     "title": "Paramètres de variation de valeur de l'actif",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Intérêts restants est.",
       "notSet": "Non défini",
       "notAvailable": "N/D",
-      "paidOff": "Remboursé"
+      "paidOff": "Remboursé",
+      "nextInstallment": "Prochaine échéance",
+      "dueOn": "Due le {date}",
+      "finalPayment": "Paiement final",
+      "nextInstallmentDue": "Prochaine échéance (due le {date})",
+      "finalPaymentDue": "Paiement final (dû le {date})"
     },
     "schedule": {
       "title": "Calendrier d'amortissement",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Ce prêt n'a aucun solde restant dû, il n'y a donc plus rien à amortir.",
         "reasonNoFrequency": "Aucune périodicité de paiement n'est définie pour ce prêt. Ajoutez-la dans les paramètres du compte.",
         "reasonNoRate": "Aucun taux d'intérêt n'est enregistré pour ce prêt. Définissez le taux dans les paramètres du compte, ou enregistrez un changement de taux daté d'aujourd'hui ou avant. Un taux affiché par ligne dans l'échéancier ci-dessous est reconstruit à partir des intérêts facturés et n'est pas un taux enregistré.",
-        "reasonNoPayment": "Le montant de l'échéance ne peut pas être déterminé. Enregistrez les échéances régulières comme des virements vers le compte du prêt (capital, avec les intérêts en ligne de ventilation ou en dépense catégorisée distincte), ou définissez le montant du paiement dans les paramètres du compte. Les paiements enregistrés comme des dépenses ordinaires sur le compte source n'atteignent jamais le compte du prêt, donc l'échéancier ne peut pas les voir."
-      }
+        "reasonNoPayment": "Le montant de l'échéance ne peut pas être déterminé. Enregistrez les échéances régulières comme des virements vers le compte du prêt (capital, avec les intérêts en ligne de ventilation ou en dépense catégorisée distincte), ou définissez le montant du paiement dans les paramètres du compte. Les paiements enregistrés comme des dépenses ordinaires sur le compte source n'atteignent jamais le compte du prêt, donc l'échéancier ne peut pas les voir.",
+        "reasonNoAmortization": "Ce prêt hypothécaire n'a pas de durée d'amortissement : ses échéances et la fin de son terme ne peuvent donc pas être calculées. Définissez la durée d'amortissement dans les paramètres du compte.",
+        "reasonNoPaymentStart": "Ce prêt hypothécaire n'a pas de date de premier paiement : les paiements restants jusqu'à la fin de son terme ne peuvent donc pas être comptés. Configurez son paiement planifié depuis les paramètres du compte ; la première date d'échéance saisie devient le paiement 1.",
+        "reasonNoPrincipal": "Ce prêt hypothécaire n'a pas de montant initial : son amortissement constant ne peut donc pas être calculé. Définissez le montant du prêt dans les paramètres du compte."
+      },
+      "budgetBelowNextInstallment": "C'est inférieur à la prochaine échéance ({amount}, due le {date}) ; augmentez-le au-delà pour effectuer un remboursement anticipé."
     },
     "comparison": {
       "newPayoff": "Nouvelle date de remboursement",
@@ -488,7 +509,8 @@
       "newInstallment": "Nouvelle mensualité",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Paiement mensuel",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Premier paiement"
     },
     "chart": {
       "title": "Chronologie du remboursement",

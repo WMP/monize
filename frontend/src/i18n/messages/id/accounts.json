@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Pembayaran terjadwal telah diatur untuk {account}"
-    }
+    },
+    "firstInstallment": "Angsuran Pertama",
+    "firstInstallmentHelp": "KPR ini tidak memiliki pembayaran tetap: setiap angsuran dihitung dari saldo, suku bunga, dan periode amortisasi. Ini adalah angsuran yang jatuh tempo {date}, termasuk pokok tambahan.",
+    "firstInstallmentPending": "Masukkan tanggal pembayaran berikutnya untuk menghitung angsuran pertama.",
+    "firstInstallmentCalculating": "Menghitung angsuran pertama...",
+    "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi."
   },
   "mortgageFields": {
     "title": "Detail Hipotek",
@@ -340,7 +345,14 @@
       "memoLabel": "Teks memo pembayaran berlebih",
       "memoPlaceholder": "mis. pembayaran berlebih",
       "memoHelp": "Pencocokan substring tanpa memperhatikan huruf besar/kecil terhadap memo pembayaran, memo transaksi sumbernya, atau memo split."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Efek Pelunasan Sebagian",
+      "SHORTEN_TERM": "Memperpendek jangka waktu (pokok sama setiap bulan)",
+      "LOWER_INSTALLMENT": "Menurunkan angsuran (tanggal akhir sama)",
+      "help": "Tanyakan kepada pemberi pinjaman Anda. Jika setelah pelunasan sebagian bagian pokok di rekening koran tidak berubah, jangka waktunya diperpendek."
+    },
+    "previewFirstInstallment": "Angsuran Pertama:"
   },
   "assetFields": {
     "title": "Pengaturan Perubahan Nilai Aset",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Perkiraan Sisa Bunga",
       "notSet": "Belum diatur",
       "notAvailable": "T/A",
-      "paidOff": "Lunas"
+      "paidOff": "Lunas",
+      "nextInstallment": "Angsuran Berikutnya",
+      "dueOn": "Jatuh tempo {date}",
+      "finalPayment": "Pembayaran Akhir",
+      "nextInstallmentDue": "Angsuran Berikutnya (jatuh tempo {date})",
+      "finalPaymentDue": "Pembayaran Akhir (jatuh tempo {date})"
     },
     "schedule": {
       "title": "Jadwal Angsuran",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "Pinjaman ini tidak memiliki saldo terutang, jadi tidak ada yang perlu diamortisasi.",
         "reasonNoFrequency": "Pinjaman ini belum memiliki frekuensi pembayaran. Tambahkan di pengaturan akun.",
         "reasonNoRate": "Pinjaman ini belum memiliki suku bunga tersimpan. Setel suku bunga di pengaturan akun, atau catat perubahan suku bunga bertanggal hari ini atau lebih awal. Suku bunga yang ditampilkan per baris pada jadwal di bawah direkonstruksi dari bunga yang ditagihkan dan bukan suku bunga tersimpan.",
-        "reasonNoPayment": "Jumlah angsuran tidak dapat ditentukan. Catat angsuran reguler sebagai transfer ke akun pinjaman (pokok, dengan bunga sebagai baris pembagian atau sebagai pengeluaran berkategori terpisah), atau setel jumlah pembayaran di pengaturan akun. Pembayaran yang dicatat sebagai pengeluaran biasa di akun sumber tidak pernah sampai ke akun pinjaman, sehingga jadwal tidak dapat melihatnya."
-      }
+        "reasonNoPayment": "Jumlah angsuran tidak dapat ditentukan. Catat angsuran reguler sebagai transfer ke akun pinjaman (pokok, dengan bunga sebagai baris pembagian atau sebagai pengeluaran berkategori terpisah), atau setel jumlah pembayaran di pengaturan akun. Pembayaran yang dicatat sebagai pengeluaran biasa di akun sumber tidak pernah sampai ke akun pinjaman, sehingga jadwal tidak dapat melihatnya.",
+        "reasonNoAmortization": "KPR ini tidak memiliki periode amortisasi, sehingga angsuran dan akhir jangka waktunya tidak dapat dihitung. Atur periode amortisasi di pengaturan akun.",
+        "reasonNoPaymentStart": "KPR ini tidak memiliki tanggal pembayaran pertama, sehingga sisa pembayaran hingga akhir jangka waktunya tidak dapat dihitung. Siapkan pembayaran terjadwalnya dari pengaturan akun; tanggal jatuh tempo pertama yang Anda masukkan menjadi pembayaran 1.",
+        "reasonNoPrincipal": "KPR ini tidak memiliki jumlah awal, sehingga pokok tetapnya tidak dapat dihitung. Atur jumlah KPR di pengaturan akun."
+      },
+      "budgetBelowNextInstallment": "Itu di bawah angsuran berikutnya ({amount}, jatuh tempo {date}); naikkan di atasnya untuk melakukan pelunasan sebagian."
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",
@@ -488,7 +509,8 @@
       "newInstallment": "Angsuran Baru",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Pembayaran bulanan",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Pembayaran Pertama"
     },
     "chart": {
       "title": "Linimasa Pelunasan",

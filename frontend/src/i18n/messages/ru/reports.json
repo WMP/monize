@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Уплачен основной долг",
     "seriesInterestPaid": "Уплачены проценты",
     "seriesPrincipal": "Основной долг",
-    "seriesInterest": "Проценты"
+    "seriesInterest": "Проценты",
+    "installmentAndFinal": "{installment}; последний платёж {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Прибыли, дивиденды и проценты",
@@ -884,7 +885,10 @@
     "typeLoan": "Займ",
     "typeMortgage": "Ипотека",
     "pdfSubtitlePaymentsSummary": "{count} платежей произведено, {interest} общие проценты",
-    "pdfSubtitlePaymentsProjection": "Внесено платежей: {count}, проценты за период прогноза: {interest}"
+    "pdfSubtitlePaymentsProjection": "Внесено платежей: {count}, проценты за период прогноза: {interest}",
+    "nextInstallment": "Следующий платёж",
+    "finalPayment": "Последний платёж",
+    "amountDueOn": "{amount}, срок {date}"
   },
   "monteCarlo": {
     "toasts": {

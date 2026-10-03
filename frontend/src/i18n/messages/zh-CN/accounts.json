@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "已为 {account} 设置计划还款"
-    }
+    },
+    "firstInstallment": "首期还款",
+    "firstInstallmentHelp": "此按揭没有固定还款额：每期还款根据余额、利率和摊还期限计算。这是 {date} 到期的一期，包含任何额外本金。",
+    "firstInstallmentPending": "请输入下次还款日期以计算首期还款。",
+    "firstInstallmentCalculating": "正在计算首期还款...",
+    "firstInstallmentFailed": "无法计算首期还款。请检查下方的数值后重试。"
   },
   "mortgageFields": {
     "title": "抵押贷款详情",
@@ -340,7 +345,14 @@
       "memoLabel": "超额还款备注文本",
       "memoPlaceholder": "例如 超额还款",
       "memoHelp": "对付款备注、其来源交易备注或拆分备注进行不区分大小写的子字符串匹配。"
-    }
+    },
+    "prepaymentMode": {
+      "label": "提前还款的效果",
+      "SHORTEN_TERM": "缩短期限（每月本金相同）",
+      "LOWER_INSTALLMENT": "降低月供（结束日期不变）",
+      "help": "请向贷款机构确认。提前还款后，如果对账单上的本金部分不变，则期限已缩短。"
+    },
+    "previewFirstInstallment": "首期还款："
   },
   "assetFields": {
     "title": "资产价值变动设置",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "预计剩余利息",
       "notSet": "未设置",
       "notAvailable": "无",
-      "paidOff": "已还清"
+      "paidOff": "已还清",
+      "nextInstallment": "下期还款",
+      "dueOn": "到期日 {date}",
+      "finalPayment": "最后一期还款",
+      "nextInstallmentDue": "下期还款（到期日 {date}）",
+      "finalPaymentDue": "最后一期还款（到期日 {date}）"
     },
     "schedule": {
       "title": "还款计划",
@@ -471,8 +488,12 @@
         "reasonPaidOff": "这笔贷款没有未偿还余额，因此没有需要摊还的部分。",
         "reasonNoFrequency": "这笔贷款未设置还款频率。请在账户设置中添加。",
         "reasonNoRate": "这笔贷款没有已保存的利率。请在账户设置中设置利率，或记录一条日期为今天或更早的利率变更。下方计划表中按行显示的利率是根据已计收的利息重建的，并非已保存的利率。",
-        "reasonNoPayment": "无法确定分期金额。请将定期分期记为向贷款账户的转账（本金，利息作为拆分行或单独归类的支出），或在账户设置中设置还款金额。在来源账户记为普通支出的付款永远不会到达贷款账户，因此计划表无法看到它们。"
-      }
+        "reasonNoPayment": "无法确定分期金额。请将定期分期记为向贷款账户的转账（本金，利息作为拆分行或单独归类的支出），或在账户设置中设置还款金额。在来源账户记为普通支出的付款永远不会到达贷款账户，因此计划表无法看到它们。",
+        "reasonNoAmortization": "此按揭没有设置摊还期限，因此无法计算其每期还款额和期限结束日期。请在账户设置中设置摊还期限。",
+        "reasonNoPaymentStart": "此按揭没有设置首次还款日期，因此无法计算到期限结束前剩余的还款期数。请在账户设置中设置其定期还款；您输入的第一个到期日将成为第 1 期还款。",
+        "reasonNoPrincipal": "此按揭没有设置原始金额，因此无法计算其等额本金。请在账户设置中设置按揭金额。"
+      },
+      "budgetBelowNextInstallment": "低于下期还款额（{amount}，到期日 {date}）；请调高到该金额以上才能提前还款。"
     },
     "comparison": {
       "newPayoff": "新的还清日期",
@@ -488,7 +509,8 @@
       "newInstallment": "新还款额",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "每月还款",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "首次付款"
     },
     "chart": {
       "title": "还清时间线",

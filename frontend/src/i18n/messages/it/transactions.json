@@ -76,7 +76,10 @@
     "collapseAria": "Nascondi info conto",
     "showAccountNumber": "Mostra numero di conto",
     "hideAccountNumber": "Nascondi numero di conto",
-    "show": "Mostra info conto"
+    "show": "Mostra info conto",
+    "nextInstallment": "Prossima rata",
+    "finalPayment": "Pagamento finale",
+    "amountDueOn": "{amount}, scade il {date}"
   },
   "page": {
     "title": "Transazioni",

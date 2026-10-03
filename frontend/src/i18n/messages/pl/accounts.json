@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Skonfigurowano zaplanowane spłaty dla {account}"
-    }
+    },
+    "firstInstallment": "Pierwsza rata",
+    "firstInstallmentHelp": "Ten kredyt hipoteczny nie ma stałej płatności: każda rata wynika z salda, oprocentowania i okresu amortyzacji. To rata z terminem {date}, łącznie z ewentualną dodatkową spłatą kapitału.",
+    "firstInstallmentPending": "Wpisz datę następnej płatności, aby obliczyć pierwszą ratę.",
+    "firstInstallmentCalculating": "Obliczanie pierwszej raty...",
+    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie."
   },
   "mortgageFields": {
     "title": "Szczegóły kredytu hipotecznego",
@@ -340,7 +345,14 @@
       "memoLabel": "Tekst notatki nadpłaty",
       "memoPlaceholder": "np. nadpłata",
       "memoHelp": "Dopasowanie fragmentu tekstu (bez rozróżniania wielkości liter) do notatki płatności, notatki transakcji źródłowej lub notatki podziału."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Skutek nadpłaty",
+      "SHORTEN_TERM": "Skraca okres (ta sama część kapitałowa co miesiąc)",
+      "LOWER_INSTALLMENT": "Obniża ratę (ta sama data końcowa)",
+      "help": "Zapytaj swój bank. Jeśli po nadpłacie część kapitałowa na wyciągu się nie zmieniła, okres został skrócony."
+    },
+    "previewFirstInstallment": "Pierwsza rata:"
   },
   "assetFields": {
     "title": "Ustawienia zmiany wartości aktywa",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Szac. pozostałe odsetki",
       "notSet": "Nie ustawiono",
       "notAvailable": "Brak danych",
-      "paidOff": "Spłacony"
+      "paidOff": "Spłacony",
+      "nextInstallment": "Następna rata",
+      "dueOn": "Termin {date}",
+      "finalPayment": "Płatność końcowa",
+      "nextInstallmentDue": "Następna rata (termin {date})",
+      "finalPaymentDue": "Płatność końcowa (termin {date})"
     },
     "schedule": {
       "title": "Harmonogram spłat",
@@ -437,7 +454,10 @@
         "reasonPaidOff": "Ten kredyt nie ma zadłużenia do spłaty, więc nie ma czego amortyzować.",
         "reasonNoFrequency": "Ten kredyt nie ma ustawionej częstotliwości płatności. Ustaw ją w edycji konta.",
         "reasonNoRate": "Ten kredyt nie ma zapisanej stopy procentowej. Ustaw oprocentowanie w edycji konta lub dodaj zmianę oprocentowania z datą dzisiejszą albo wcześniejszą. Stopa pokazana w wierszach harmonogramu poniżej jest odtworzona z naliczonych odsetek i nie jest stopą zapisaną.",
-        "reasonNoPayment": "Nie można ustalić kwoty raty. Zaksięguj raty regularne jako transfery na konto kredytu (kapitał, a odsetki jako linia podziału lub osobny wydatek z kategorią), albo ustaw kwotę płatności w edycji konta. Raty zaksięgowane jako zwykłe wydatki na koncie źródłowym nie trafiają na konto kredytu, więc harmonogram ich nie widzi."
+        "reasonNoPayment": "Nie można ustalić kwoty raty. Zaksięguj raty regularne jako transfery na konto kredytu (kapitał, a odsetki jako linia podziału lub osobny wydatek z kategorią), albo ustaw kwotę płatności w edycji konta. Raty zaksięgowane jako zwykłe wydatki na koncie źródłowym nie trafiają na konto kredytu, więc harmonogram ich nie widzi.",
+        "reasonNoAmortization": "Ten kredyt hipoteczny nie ma okresu amortyzacji, więc nie można obliczyć jego rat ani końca okresu kredytowania. Ustaw okres amortyzacji w ustawieniach konta.",
+        "reasonNoPaymentStart": "Ten kredyt hipoteczny nie ma daty pierwszej płatności, więc nie można policzyć płatności pozostałych do końca okresu kredytowania. Skonfiguruj jego zaplanowaną płatność w ustawieniach konta; pierwsza wpisana data wymagalności stanie się płatnością 1.",
+        "reasonNoPrincipal": "Ten kredyt hipoteczny nie ma kwoty pierwotnej, więc nie można obliczyć jego stałej części kapitałowej. Ustaw kwotę kredytu w ustawieniach konta."
       },
       "description": "Zasymuluj dodatkowe wpłaty, aby zobaczyć, o ile wcześniej kredyt mógłby zostać spłacony i ile odsetek byś zaoszczędził. Symulacje nie zmieniają Twoich rzeczywistych płatności.",
       "reset": "Resetuj",
@@ -477,7 +497,8 @@
       "budgetLabel": "Łączna miesięczna płatność",
       "budgetHint": "Przeznacz co miesiąc stałą łączną kwotę na kredyt; nadpłata to reszta po racie. Gdy rata maleje, nadpłata rośnie, żeby łączna kwota była taka sama.",
       "budgetBelowInstallment": "To mniej niż obecna rata ({amount}); zwiększ, aby nadpłacać.",
-      "windowInverted": "Data początkowa jest późniejsza niż końcowa, więc ten plan nigdy nie zadziała."
+      "windowInverted": "Data początkowa jest późniejsza niż końcowa, więc ten plan nigdy nie zadziała.",
+      "budgetBelowNextInstallment": "To mniej niż następna rata ({amount}, termin {date}); zwiększ kwotę powyżej niej, aby nadpłacać."
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",
@@ -493,7 +514,8 @@
       "newInstallment": "Nowa rata",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Miesięczna płatność",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Pierwsza płatność"
     },
     "chart": {
       "title": "Oś czasu spłaty",

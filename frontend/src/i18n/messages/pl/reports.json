@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Spłacony kapitał",
     "seriesInterestPaid": "Zapłacone odsetki",
     "seriesPrincipal": "Kapitał",
-    "seriesInterest": "Odsetki"
+    "seriesInterest": "Odsetki",
+    "installmentAndFinal": "{installment}; płatność końcowa {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Zyski, dywidendy i odsetki",
@@ -884,7 +885,10 @@
     "typeLoan": "Pożyczka",
     "typeMortgage": "Kredyt hipoteczny",
     "pdfSubtitlePaymentsSummary": "wykonane spłaty: {count}, łączne odsetki: {interest}",
-    "pdfSubtitlePaymentsProjection": "Wykonano {count} płatności, {interest} odsetek w okresie prognozy"
+    "pdfSubtitlePaymentsProjection": "Wykonano {count} płatności, {interest} odsetek w okresie prognozy",
+    "nextInstallment": "Następna rata",
+    "finalPayment": "Płatność końcowa",
+    "amountDueOn": "{amount}, termin {date}"
   },
   "monteCarlo": {
     "toasts": {

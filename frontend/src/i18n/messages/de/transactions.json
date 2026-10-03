@@ -76,7 +76,10 @@
     "collapseAria": "Kontoinformationen ausblenden",
     "showAccountNumber": "Kontonummer anzeigen",
     "hideAccountNumber": "Kontonummer ausblenden",
-    "show": "Kontoinformationen anzeigen"
+    "show": "Kontoinformationen anzeigen",
+    "nextInstallment": "Nächste Rate",
+    "finalPayment": "Schlusszahlung",
+    "amountDueOn": "{amount}, fällig am {date}"
   },
   "page": {
     "title": "Buchungen",

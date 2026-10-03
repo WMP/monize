@@ -76,7 +76,10 @@
     "collapseAria": "Скрыть информацию о счёте",
     "showAccountNumber": "Показать номер счёта",
     "hideAccountNumber": "Скрыть номер счёта",
-    "show": "Показать информацию о счёте"
+    "show": "Показать информацию о счёте",
+    "nextInstallment": "Следующий платёж",
+    "finalPayment": "Последний платёж",
+    "amountDueOn": "{amount}, срок {date}"
   },
   "page": {
     "title": "Проводки",

@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Vốn gốc đã trả",
     "seriesInterestPaid": "Lãi đã trả",
     "seriesPrincipal": "Vốn gốc",
-    "seriesInterest": "Lãi"
+    "seriesInterest": "Lãi",
+    "installmentAndFinal": "{installment}; khoản thanh toán cuối {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Lãi vốn, cổ tức & lãi suất",
@@ -884,7 +885,10 @@
     "typeLoan": "Vay",
     "typeMortgage": "Thế chấp",
     "pdfSubtitlePaymentsSummary": "Đã thực hiện {count} lần thanh toán, tổng lãi {interest}",
-    "pdfSubtitlePaymentsProjection": "Đã thanh toán {count} lần, lãi {interest} trong kỳ dự phóng"
+    "pdfSubtitlePaymentsProjection": "Đã thanh toán {count} lần, lãi {interest} trong kỳ dự phóng",
+    "nextInstallment": "Kỳ trả góp tiếp theo",
+    "finalPayment": "Khoản thanh toán cuối",
+    "amountDueOn": "{amount}, đến hạn {date}"
   },
   "monteCarlo": {
     "toasts": {

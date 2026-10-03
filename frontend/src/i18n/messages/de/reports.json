@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Getilgte Summe",
     "seriesInterestPaid": "Gezahlte Zinsen",
     "seriesPrincipal": "Tilgung",
-    "seriesInterest": "Zinsen"
+    "seriesInterest": "Zinsen",
+    "installmentAndFinal": "{installment}; Schlusszahlung {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Gewinne, Dividenden & Zinsen",
@@ -884,7 +885,10 @@
     "typeLoan": "Darlehen",
     "typeMortgage": "Hypothek",
     "pdfSubtitlePaymentsSummary": "{count} Zahlungen geleistet, {interest} Zinsen gesamt",
-    "pdfSubtitlePaymentsProjection": "{count} Zahlungen geleistet, {interest} Zinsen über den Projektionszeitraum"
+    "pdfSubtitlePaymentsProjection": "{count} Zahlungen geleistet, {interest} Zinsen über den Projektionszeitraum",
+    "nextInstallment": "Nächste Rate",
+    "finalPayment": "Schlusszahlung",
+    "amountDueOn": "{amount}, fällig am {date}"
   },
   "monteCarlo": {
     "toasts": {

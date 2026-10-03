@@ -76,7 +76,10 @@
     "collapseAria": "Hesap bilgisini gizle",
     "showAccountNumber": "Hesap numarasını göster",
     "hideAccountNumber": "Hesap numarasını gizle",
-    "show": "Hesap bilgisini göster"
+    "show": "Hesap bilgisini göster",
+    "nextInstallment": "Sonraki Taksit",
+    "finalPayment": "Son Ödeme",
+    "amountDueOn": "{amount}, vade {date}"
   },
   "page": {
     "title": "İşlemler",

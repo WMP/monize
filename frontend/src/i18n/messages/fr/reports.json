@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Capital remboursé",
     "seriesInterestPaid": "Intérêts payés",
     "seriesPrincipal": "Capital",
-    "seriesInterest": "Intérêts"
+    "seriesInterest": "Intérêts",
+    "installmentAndFinal": "{installment} ; paiement final {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Plus-values, dividendes et intérêts",
@@ -884,7 +885,10 @@
     "typeLoan": "Prêt",
     "typeMortgage": "Hypothèque",
     "pdfSubtitlePaymentsSummary": "{count} paiements effectués, {interest} d'intérêts au total",
-    "pdfSubtitlePaymentsProjection": "{count} paiements effectués, {interest} d'intérêts sur la projection"
+    "pdfSubtitlePaymentsProjection": "{count} paiements effectués, {interest} d'intérêts sur la projection",
+    "nextInstallment": "Prochaine échéance",
+    "finalPayment": "Paiement final",
+    "amountDueOn": "{amount}, dû le {date}"
   },
   "monteCarlo": {
     "toasts": {

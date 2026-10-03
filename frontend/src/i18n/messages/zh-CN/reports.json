@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "已还本金",
     "seriesInterestPaid": "已还利息",
     "seriesPrincipal": "本金",
-    "seriesInterest": "利息"
+    "seriesInterest": "利息",
+    "installmentAndFinal": "{installment}；最后一期 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "收益、股息与利息",
@@ -884,7 +885,10 @@
     "typeLoan": "贷款",
     "typeMortgage": "抵押贷款",
     "pdfSubtitlePaymentsSummary": "已还款 {count} 次，总利息 {interest}",
-    "pdfSubtitlePaymentsProjection": "已还款 {count} 期，预测期内利息 {interest}"
+    "pdfSubtitlePaymentsProjection": "已还款 {count} 期，预测期内利息 {interest}",
+    "nextInstallment": "下期还款",
+    "finalPayment": "最后一期还款",
+    "amountDueOn": "{amount}，到期日 {date}"
   },
   "monteCarlo": {
     "toasts": {
