@@ -47,6 +47,21 @@ describe('builtInReportsApi', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/cash-flow', { params });
   });
 
+  it.each([
+    ['getIncomeBySource', '/built-in-reports/income-by-source'],
+    ['getCashFlow', '/built-in-reports/cash-flow'],
+    ['getIncomeVsExpenses', '/built-in-reports/income-vs-expenses'],
+    ['getSpendingByCategory', '/built-in-reports/spending-by-category'],
+  ] as const)('%s sends accountIds as one comma-separated value and omits an empty selection', async (method, url) => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi[method]({ ...params, accountIds: ['a1', 'a2'] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, {
+      params: { ...params, accountIds: 'a1,a2' },
+    });
+    await builtInReportsApi[method]({ ...params, accountIds: [] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, { params });
+  });
+
   it('getYearOverYear defaults to 2 years', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
     await builtInReportsApi.getYearOverYear();

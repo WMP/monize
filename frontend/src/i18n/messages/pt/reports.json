@@ -328,6 +328,9 @@
     "untagged": "Sem etiqueta",
     "inflows": "Entradas etiquetadas",
     "outflows": "Saídas etiquetadas",
+    "inflowsSeries": "Entradas etiquetadas: {value}",
+    "outflowsSeries": "Saídas etiquetadas: {value}",
+    "stackFlows": "Empilhar fluxos com etiqueta",
     "sharesExceedNote": "Uma linha etiquetada com mais de um valor nesta chave conta para cada um deles, pelo que as percentagens por valor podem somar mais de 100%."
   },
   "categoryPerformance": {

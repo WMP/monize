@@ -328,6 +328,9 @@
     "untagged": "Sans étiquette",
     "inflows": "Entrées étiquetées",
     "outflows": "Sorties étiquetées",
+    "inflowsSeries": "Entrées étiquetées : {value}",
+    "outflowsSeries": "Sorties étiquetées : {value}",
+    "stackFlows": "Empiler les flux étiquetés",
     "sharesExceedNote": "Une ligne étiquetée avec plusieurs valeurs pour cette clé compte pour chacune d'elles ; la somme des parts par valeur peut donc dépasser 100 %."
   },
   "categoryPerformance": {

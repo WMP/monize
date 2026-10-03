@@ -53,6 +53,34 @@ gate (the plan's "What to run") passes and is quoted in the commit/PR.
       the current environment; backend integration + frontend component tests
       cover the behaviour. Run before merge where the stack is available.)
 
+## Phase 1b -- Account scope and the funding series (Income vs Expenses)
+
+Spec section 10.
+
+- [x] Backend: `IncomeExpenseTagPeriodItem`; both flow queries grouped by the
+      period start; per-period flows sum to the window figures; tests (unit +
+      integration) for periods, `accountIds` with `tagKey`, FX per period.
+- [x] Frontend: `ReportAccountMultiSelect` on `IncomeVsExpensesReport` (persisted,
+      empty = all; Cash Flow follows in Phase 1c); `TagKeyBreakdownBuckets`
+      controlled mode; two indigo series, table columns and tooltip for the
+      active non-untagged bucket.
+- [x] i18n: `reports.tagBreakdown.inflowsSeries` / `outflowsSeries`.
+
+## Phase 1c -- Opt-in stacking and Cash Flow parity
+
+Spec section 10.7.
+
+- [x] Refactor: `IncomeVsExpensesTable` extracted (the report was at the file
+      size limit); no behaviour change.
+- [x] Backend: `CashFlowQueryDto.accountIds` passed through the controller;
+      `income-by-source` `accountIds` (DTO, service, `ANY($n::uuid[])`); other
+      callers of `getIncomeBySource` unchanged; unit + integration tests.
+- [x] Frontend: client serialises `accountIds` for `getCashFlow` and
+      `getIncomeBySource`; shared active-bucket hook and stacking switch;
+      Income vs Expenses stacking (default off, persisted); Cash Flow account
+      filter on all three calls, controlled tabs, tagged series, stacking.
+- [x] i18n: `reports.tagBreakdown.stackFlows`; every locale last.
+
 ## Phase 2 -- Spending by Category + Income by Source (stub)
 
 - [ ] Reuse the Phase 1 DTO mixin, bucket shape, control and i18n; value

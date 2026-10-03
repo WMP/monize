@@ -14,6 +14,7 @@ import {
   IncomeSourceItem,
   IncomeExpensePeriodItem,
   IncomeExpenseTagBucket,
+  IncomeExpenseTagPeriodItem,
   IncomeVsExpensesResponse,
   UNTAGGED_TAG_BUCKET_ID,
 } from "./dto";
@@ -128,6 +129,7 @@ interface RawTagValuePeriodAggregate {
 }
 
 interface RawTagFlowAggregate {
+  period_start: string;
   value: string;
   currency_code: string;
   inflow: string;
@@ -141,11 +143,17 @@ export class IncomeReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
+  /**
+   * `options.accountIds` restricts the window to those accounts, the way every
+   * other income query does; absent or empty means all accounts.
+   */
   async getIncomeBySource(
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options: { accountIds?: string[] } = {},
   ): Promise<IncomeBySourceResponse> {
+    const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
@@ -176,11 +184,17 @@ export class IncomeReportsService {
         )
     `;
 
-    const params: (string | undefined)[] = [userId, endDate];
+    const params: (string | string[] | undefined)[] = [userId, endDate];
 
     if (startDate) {
       query += ` AND t.transaction_date >= $3`;
       params.push(startDate);
+    }
+
+    // An empty array would match nothing, which is not what "no filter" means.
+    if (accountIds && accountIds.length > 0) {
+      query += ` AND t.account_id = ANY($${params.length + 1}::uuid[])`;
+      params.push(accountIds);
     }
 
     query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code`;
@@ -424,6 +438,7 @@ export class IncomeReportsService {
     weekStartsOn: WeekStartsOn,
     defaultCurrency: string,
     rateMap: RateMap,
+    extraPeriodStarts: string[] = [],
   ): {
     data: IncomeExpensePeriodItem[];
     totals: {
@@ -483,13 +498,21 @@ export class IncomeReportsService {
     // happened in earned and spent zero, which is a bar of height zero rather
     // than a gap the chart closes up. Without a start date there is no window to
     // enumerate, so the answer is the buckets that had rows.
+    // `extraPeriodStarts` lets a tag bucket keep a period that only its tagged
+    // transfer flows touched, so the per-period flows still sum to the window
+    // total when there is no start date to enumerate.
+    const extraKeys = extraPeriodStarts.map((start) =>
+      periodKeyForStart(start, bucket),
+    );
     const periods = startDate
       ? enumerateIncomeExpensePeriods(startDate, endDate, bucket, weekStartsOn)
-      : [...byPeriod.keys()].sort().map((period) => ({
-          period,
-          periodStart: bucket === "month" ? `${period}-01` : period,
-          periodEnd: bucket === "month" ? `${period}-01` : period,
-        }));
+      : [...new Set([...byPeriod.keys(), ...extraKeys])]
+          .sort()
+          .map((period) => ({
+            period,
+            periodStart: bucket === "month" ? `${period}-01` : period,
+            periodEnd: bucket === "month" ? `${period}-01` : period,
+          }));
 
     const data: IncomeExpensePeriodItem[] = periods.map((period) => {
       const found = byPeriod.get(period.period) ?? { income: 0, expenses: 0 };
@@ -644,12 +667,28 @@ export class IncomeReportsService {
     // `is_transfer = true` (`investment-filter.guard.spec.ts`'s "never exempts
     // a query that joins split rows" -- the regression that slipped through
     // once at `monthly-category-breakdown.service.ts`, re-audit F-GUARD-001).
-    const wholeFlowParams: (string | string[])[] = [userId, endDate, tagKey];
+    // The flows are grouped by the same period start as the value query so a
+    // bar can carry its own tagged flows; the week offset is bound only when
+    // a week bucket references it (see the base query).
+    const wholeFlowParams: (string | string[] | number)[] = [
+      userId,
+      endDate,
+      tagKey,
+    ];
     const wholeFlowKeyParam = `$${wholeFlowParams.length}`;
+    if (bucket === "week") {
+      wholeFlowParams.push(weekTruncOffsetDays(weekStartsOn));
+    }
+    const wholeFlowBucketStart = bucketStartSql(
+      bucket,
+      "t.transaction_date",
+      `$${wholeFlowParams.length}`,
+    );
 
     let wholeFlowQuery = `
       WITH transfer_rows AS (
         SELECT
+          ${wholeFlowBucketStart} as period_start,
           t.currency_code,
           t.amount as leg_amount,
           ${transactionTagValuesArrayExpr("t", wholeFlowKeyParam)} as tag_values
@@ -675,21 +714,35 @@ export class IncomeReportsService {
     wholeFlowQuery += `
       )
       SELECT
+        tr.period_start,
         tv.value,
         tr.currency_code,
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tv.value, tr.currency_code
+      GROUP BY tr.period_start, tv.value, tr.currency_code
     `;
 
-    const splitFlowParams: (string | string[])[] = [userId, endDate, tagKey];
+    const splitFlowParams: (string | string[] | number)[] = [
+      userId,
+      endDate,
+      tagKey,
+    ];
     const splitFlowKeyParam = `$${splitFlowParams.length}`;
+    if (bucket === "week") {
+      splitFlowParams.push(weekTruncOffsetDays(weekStartsOn));
+    }
+    const splitFlowBucketStart = bucketStartSql(
+      bucket,
+      "t.transaction_date",
+      `$${splitFlowParams.length}`,
+    );
 
     let splitFlowQuery = `
       WITH transfer_rows AS (
         SELECT
+          ${splitFlowBucketStart} as period_start,
           t.currency_code,
           ts.amount as leg_amount,
           ${tagValuesArrayExpr("t", "ts", splitFlowKeyParam)} as tag_values
@@ -716,13 +769,14 @@ export class IncomeReportsService {
     splitFlowQuery += `
       )
       SELECT
+        tr.period_start,
         tv.value,
         tr.currency_code,
         SUM(CASE WHEN tr.leg_amount > 0 THEN tr.leg_amount ELSE 0 END) as inflow,
         SUM(CASE WHEN tr.leg_amount < 0 THEN ABS(tr.leg_amount) ELSE 0 END) as outflow
       FROM transfer_rows tr
       CROSS JOIN UNNEST(tr.tag_values) AS tv(value)
-      GROUP BY tv.value, tr.currency_code
+      GROUP BY tr.period_start, tv.value, tr.currency_code
     `;
 
     const [wholeFlowRows, splitFlowRows]: RawTagFlowAggregate[][] =
@@ -795,12 +849,15 @@ export class IncomeReportsService {
         weekStartsOn,
         defaultCurrency,
         rateMap,
+        flowRows.map((row) => row.period_start),
       );
 
     const missing = new Set(missingCurrencies);
     let flowExcludedCount = 0;
-    const inflowAmounts: number[] = [];
-    const outflowAmounts: number[] = [];
+    const flowsByPeriod = new Map<
+      string,
+      { inflows: number[]; outflows: number[] }
+    >();
 
     for (const row of flowRows) {
       const inflow = this.currencyService.tryConvertAmount(
@@ -820,9 +877,27 @@ export class IncomeReportsService {
         flowExcludedCount += 1;
         continue;
       }
-      inflowAmounts.push(inflow);
-      outflowAmounts.push(outflow);
+      const key = periodKeyForStart(row.period_start, bucket);
+      const entry = flowsByPeriod.get(key);
+      if (entry) {
+        entry.inflows.push(inflow);
+        entry.outflows.push(outflow);
+      } else {
+        flowsByPeriod.set(key, { inflows: [inflow], outflows: [outflow] });
+      }
     }
+
+    // Every period carries its own flows (zero when nothing happened), and the
+    // window figures below are the sum of exactly these, so a bar can never
+    // disagree with the total.
+    const periodData: IncomeExpenseTagPeriodItem[] = data.map((item) => {
+      const flows = flowsByPeriod.get(item.period);
+      return {
+        ...item,
+        taggedInflows: roundMoney(sumMoney(flows?.inflows ?? [])),
+        taggedOutflows: roundMoney(sumMoney(flows?.outflows ?? [])),
+      };
+    });
 
     const excludedCountTotal = excludedCount + flowExcludedCount;
     // A currency missing only from the tagged-flow figures still leaves this
@@ -836,10 +911,14 @@ export class IncomeReportsService {
     return {
       value,
       isUntagged: value === UNTAGGED_TAG_BUCKET_ID,
-      data,
+      data: periodData,
       totals: bucketTotals,
-      taggedInflows: roundMoney(sumMoney(inflowAmounts)),
-      taggedOutflows: roundMoney(sumMoney(outflowAmounts)),
+      taggedInflows: roundMoney(
+        sumMoney(periodData.map((item) => item.taggedInflows)),
+      ),
+      taggedOutflows: roundMoney(
+        sumMoney(periodData.map((item) => item.taggedOutflows)),
+      ),
       missingCurrencies: [...missing].sort(),
       excludedCount: excludedCountTotal,
     };

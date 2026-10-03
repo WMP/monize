@@ -328,6 +328,9 @@
     "untagged": "未標記",
     "inflows": "已標記的流入",
     "outflows": "已標記的流出",
+    "inflowsSeries": "已標記的流入：{value}",
+    "outflowsSeries": "已標記的流出：{value}",
+    "stackFlows": "堆疊帶標籤的資金流",
     "sharesExceedNote": "若某筆記錄在此鍵下標記了多個值，則會計入每個值，因此各值的佔比加總可能超過 100%。"
   },
   "categoryPerformance": {

@@ -68,8 +68,14 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options: { accountIds?: string[] } = {},
   ): Promise<IncomeBySourceResponse> {
-    return this.incomeReports.getIncomeBySource(userId, startDate, endDate);
+    return this.incomeReports.getIncomeBySource(
+      userId,
+      startDate,
+      endDate,
+      options,
+    );
   }
 
   getMonthlySpendingTrend(

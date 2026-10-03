@@ -328,6 +328,9 @@
     "untagged": "Etiketsiz",
     "inflows": "Etiketli girişler",
     "outflows": "Etiketli çıkışlar",
+    "inflowsSeries": "Etiketli girişler: {value}",
+    "outflowsSeries": "Etiketli çıkışlar: {value}",
+    "stackFlows": "Etiketli akışları üst üste yığ",
     "sharesExceedNote": "Bu anahtar altında birden fazla değerle etiketlenen bir satır, değerlerin her biri için sayılır; bu nedenle değer başına paylar toplamda %100'ü aşabilir."
   },
   "categoryPerformance": {

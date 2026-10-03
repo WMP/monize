@@ -328,6 +328,9 @@
     "untagged": "Untagged",
     "inflows": "Tagged inflows",
     "outflows": "Tagged outflows",
+    "inflowsSeries": "Tagged inflows: {value}",
+    "outflowsSeries": "Tagged outflows: {value}",
+    "stackFlows": "Stack tagged flows",
     "sharesExceedNote": "A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%."
   },
   "categoryPerformance": {

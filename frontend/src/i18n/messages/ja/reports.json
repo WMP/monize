@@ -328,6 +328,9 @@
     "untagged": "タグなし",
     "inflows": "タグ付き流入",
     "outflows": "タグ付き流出",
+    "inflowsSeries": "タグ付き流入：{value}",
+    "outflowsSeries": "タグ付き流出：{value}",
+    "stackFlows": "タグ付きフローを積み上げる",
     "sharesExceedNote": "このキーの下で複数の値がタグ付けされた行は、それぞれの値としてカウントされるため、値ごとの割合の合計が100%を超えることがあります。"
   },
   "categoryPerformance": {
