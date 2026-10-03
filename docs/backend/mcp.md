@@ -265,7 +265,7 @@ Tools/resources/prompts unit tests mock `registerTool`/`registerResource`/`regis
 
 ## Spec compliance notes
 
-**Revision 2026-07-28**, served beside the 2025-era revisions: the stateless per-request core (no session, no `initialize`), `server/discover`, multi round-trip write confirmation, `ttlMs`/`cacheScope` on every cacheable result, the `Mcp-Method`/`Mcp-Name` routing headers (allowed through CORS; the SDK validates them), OAuth 2.1 + RFC 9728 protected-resource metadata with the `iss` parameter (RFC 9207) on the authorization response.
+**Revision 2026-07-28**, served beside the 2025-era revisions: the stateless per-request core (no session, no `initialize`), `server/discover`, multi round-trip write confirmation, `ttlMs`/`cacheScope` on every cacheable result, the `Mcp-Method`/`Mcp-Name` routing headers and an `MCP-Protocol-Version` header that must name the same revision as the `_meta` envelope (allowed through CORS; the SDK validates them and refuses a body that names a revision without the header), OAuth 2.1 + RFC 9728 protected-resource metadata with the `iss` parameter (RFC 9207) on the authorization response.
 
 Tools carry title, description, input and output schema and annotations; resources carry title, description, mimeType and a cache hint; prompts carry title, description and arguments. Declared capabilities are `tools`, `resources` and `prompts`.
 
