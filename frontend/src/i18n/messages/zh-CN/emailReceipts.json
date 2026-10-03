@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "从不对收据调用 AI。",
-        "on_demand": "仅在您点击“询问 AI”或“用 AI 起草解析器”时调用 AI。",
+        "on_demand": "仅在您点击“用 AI 识别”或“用 AI 起草解析器”时调用 AI。",
         "automatic": "检查邮箱时，对于已匹配但已批准的解析器无法完整读取的收据，会询问 AI；对于没有解析器的发件人，会起草解析器。"
       },
       "autoApplyLabel": "自动应用提议",
@@ -310,7 +310,8 @@
       "items_unbalanced": "明细行之和与合计不符。",
       "items_uncategorized": "部分明细行没有类别。",
       "shipping_uncategorized": "运费行没有类别。"
-    }
+    },
+    "readByAi": "由 AI 读取"
   },
   "state": {
     "pending": "等待读取",
@@ -374,7 +375,7 @@
       "view": "查看",
       "reprocess": "重新处理",
       "link": "选择交易",
-      "askAi": "询问 AI",
+      "recognizeAi": "用 AI 识别",
       "draftParser": "用 AI 起草解析器",
       "createParser": "创建解析器",
       "ignore": "忽略"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "邮件已重新处理",
       "reprocessFailed": "无法重新处理邮件",
-      "askAiFailed": "无法询问 AI",
       "draftFailed": "无法起草解析器",
       "ignored": "邮件已忽略",
       "ignoreFailed": "无法忽略邮件",
@@ -390,20 +390,8 @@
       "deleteFailed": "无法删除邮件"
     },
     "notices": {
-      "askAiQueued": "已询问 AI。其提议将显示在 AI 审核收件箱中，等待您的批准。",
       "draftCreated": "AI 起草了解析器 {name}。在您审核并批准之前，它不会读取任何内容。",
       "draftLink": "在解析器设置中审核"
-    },
-    "aiFailures": {
-      "ai_off": "此邮箱已关闭 AI。请先在邮箱设置中更改 AI 模式。",
-      "not_a_receipt_request": "该请求不属于任何邮件收据。",
-      "receipt_missing": "该邮件已不存在。",
-      "not_claimable": "此邮件的一个请求已在处理中。",
-      "transaction_unreadable": "无法读取已关联的交易。",
-      "ai_unavailable": "AI 提供商没有响应。请检查 AI 设置后重试。",
-      "unusable_answer": "AI 已作答，但其回答无法使用。",
-      "proposal_refused": "AI 的提议因合计不符而被拒绝。",
-      "request_failed": "请求失败。"
     },
     "ignoreDialog": {
       "title": "忽略此邮件？",
@@ -483,7 +471,12 @@
     "row": "{date}，{amount}，{payee}",
     "noPayee": "无收款人",
     "linkButton": "关联",
-    "hasMore": "仅显示前 {count} 条。请使用搜索缩小范围。"
+    "hasMore": "仅显示前 {count} 条。请使用搜索缩小范围。",
+    "ai": {
+      "heading": "选择供 AI 使用的交易",
+      "help": "这是 {from} 至 {to} 期间的交易，即邮件前后的日期。请选择 AI 应按邮件中的商品拆分的那一笔。",
+      "linkButton": "使用此交易"
+    }
   },
   "callback": {
     "title": "正在连接邮箱",
@@ -509,5 +502,27 @@
       "fallback": "服务器拒绝了连接。请从邮件收据设置重新开始。"
     },
     "backLink": "返回邮件收据设置"
+  },
+  "recognize": {
+    "title": "用 AI 识别",
+    "transactionSummary": "{date}，{amount}，{payee}",
+    "noPayee": "无收款人",
+    "confirmMessage": "此邮件已关联到交易 {summary}。AI 将读取邮件，并提议如何按商品拆分这笔交易。要使用这笔交易继续吗？",
+    "confirm": "用 AI 识别",
+    "chooseOther": "选择其他交易",
+    "candidatesHeading": "这封邮件支付的是哪一笔交易？",
+    "candidatesHelp": "有多笔交易与这封邮件相符。请选择 AI 应使用的那一笔，或搜索其他交易。",
+    "candidatesLoading": "正在加载相符的交易",
+    "candidatesError": "无法加载相符的交易。",
+    "retry": "重试",
+    "useButton": "使用此交易",
+    "searchOther": "搜索其他交易",
+    "back": "返回",
+    "failed": "无法开始识别",
+    "queued": "已排队：目前没有可回答的 AI 助手，因此请求会在 AI 审核收件箱中等待代理（例如通过 MCP）处理。",
+    "handoffFailed": "请求已排队，但无法在聊天中打开该邮件。它会在 AI 审核收件箱中等待代理（例如通过 MCP）处理。",
+    "inboxLink": "打开 AI 审核收件箱",
+    "opened": "已打开聊天并附上该邮件。请阅读消息并点击“发送”。",
+    "chatPrompt": "请识别所附订单邮件中的商品、数量和价格，并将我 {date} 的交易（{payee}，{amount}）按商品拆分，并为每项指定类别。请认领 AI 审核请求 {requestId}，并为它提交你的提议。"
   }
 }

@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "Makbuzlar için yapay zekâ hiç çağrılmaz.",
-        "on_demand": "Yapay zekâ yalnızca Yapay zekâya sor veya Yapay zekâ ile ayrıştırıcı taslağı oluştur düğmesine bastığınızda çağrılır.",
+        "on_demand": "Yapay zekâ yalnızca Yapay zekâ ile tanı veya Yapay zekâ ile ayrıştırıcı taslağı oluştur düğmesine bastığınızda çağrılır.",
         "automatic": "Yoklama sırasında, onaylı hiçbir ayrıştırıcının tamamen okuyamadığı eşleşmiş bir makbuz için yapay zekâya sorulur ve ayrıştırıcısı olmayan bir gönderen için ayrıştırıcı taslağı oluşturulur."
       },
       "autoApplyLabel": "Önerileri otomatik uygula",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Kalemler toplamla tutmuyor.",
       "items_uncategorized": "Bazı kalemlerin kategorisi yok.",
       "shipping_uncategorized": "Kargo satırının kategorisi yok."
-    }
+    },
+    "readByAi": "Yapay zekâ okudu"
   },
   "state": {
     "pending": "Okunmayı bekliyor",
@@ -374,7 +375,7 @@
       "view": "Görüntüle",
       "reprocess": "Yeniden işle",
       "link": "İşlem seç",
-      "askAi": "Yapay zekâya sor",
+      "recognizeAi": "Yapay zekâ ile tanı",
       "draftParser": "Yapay zekâ ile ayrıştırıcı taslağı oluştur",
       "createParser": "Ayrıştırıcı oluştur",
       "ignore": "Yoksay"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "E-posta yeniden işlendi",
       "reprocessFailed": "E-posta yeniden işlenemedi",
-      "askAiFailed": "Yapay zekâya sorulamadı",
       "draftFailed": "Ayrıştırıcı taslağı oluşturulamadı",
       "ignored": "E-posta yoksayıldı",
       "ignoreFailed": "E-posta yoksayılamadı",
@@ -390,20 +390,8 @@
       "deleteFailed": "E-posta silinemedi"
     },
     "notices": {
-      "askAiQueued": "Yapay zekâya soruldu. Önerisi, onayınız için yapay zekâ inceleme kutusunda görünecek.",
       "draftCreated": "Yapay zekâ {name} ayrıştırıcısının taslağını oluşturdu. Siz inceleyip onaylayana kadar hiçbir şey okumaz.",
       "draftLink": "Ayrıştırıcı ayarlarında incele"
-    },
-    "aiFailures": {
-      "ai_off": "Bu posta kutusu için yapay zekâ kapalı. Önce posta kutusu ayarlarında yapay zekâ modunu değiştirin.",
-      "not_a_receipt_request": "Bu istek bir e-posta makbuzuna ait değil.",
-      "receipt_missing": "E-posta artık yok.",
-      "not_claimable": "Bu e-posta için bir istek zaten işleniyor.",
-      "transaction_unreadable": "Bağlı işlem okunamadı.",
-      "ai_unavailable": "Yapay zekâ sağlayıcısı yanıt vermedi. Yapay zekâ ayarlarını denetleyip yeniden deneyin.",
-      "unusable_answer": "Yapay zekâ yanıt verdi ama yanıt kullanılamadı.",
-      "proposal_refused": "Yapay zekâ önerisi tutmadığı için reddedildi.",
-      "request_failed": "İstek başarısız oldu."
     },
     "ignoreDialog": {
       "title": "Bu e-posta yoksayılsın mı?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "alıcı yok",
     "linkButton": "Bağla",
-    "hasMore": "Yalnızca ilk {count} gösteriliyor. Listeyi daraltmak için aramayı kullanın."
+    "hasMore": "Yalnızca ilk {count} gösteriliyor. Listeyi daraltmak için aramayı kullanın.",
+    "ai": {
+      "heading": "Yapay zekâ için işlemi seçin",
+      "help": "Bunlar, e-postanın çevresindeki günler olan {from} ile {to} arasındaki işlemleriniz. Yapay zekânın e-postadaki ürünlere göre bölmesini istediğiniz işlemi seçin.",
+      "linkButton": "Bu işlemi kullan"
+    }
   },
   "callback": {
     "title": "Posta kutusu bağlanıyor",
@@ -509,5 +502,27 @@
       "fallback": "Sunucu bağlantıyı reddetti. E-posta makbuzu ayarlarından yeniden başlayın."
     },
     "backLink": "E-posta makbuzu ayarlarına geri dön"
+  },
+  "recognize": {
+    "title": "Yapay zekâ ile tanı",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "alıcı yok",
+    "confirmMessage": "Bu e-posta {summary} işlemine bağlı. Yapay zekâ e-postayı okuyacak ve bu işlemin ürünlere göre nasıl bölüneceğini önerecek. Bu işlemle devam edilsin mi?",
+    "confirm": "Yapay zekâ ile tanı",
+    "chooseOther": "Başka bir işlem seç",
+    "candidatesHeading": "E-posta hangi işlemi ödedi?",
+    "candidatesHelp": "Bu e-postaya birden fazla işlem uyuyor. Yapay zekânın kullanacağı işlemi seçin veya başka birini arayın.",
+    "candidatesLoading": "Uyan işlemler yükleniyor",
+    "candidatesError": "Uyan işlemler yüklenemedi.",
+    "retry": "Yeniden dene",
+    "useButton": "Bu işlemi kullan",
+    "searchOther": "Diğer işlemleri ara",
+    "back": "Geri",
+    "failed": "Tanıma başlatılamadı",
+    "queued": "Kuyruğa alındı: şu anda yanıt verebilecek bir yapay zekâ asistanı yok, bu yüzden istek yapay zekâ inceleme kutusunda bir ajanı (örneğin MCP üzerinden) bekliyor.",
+    "handoffFailed": "İstek kuyruğa alındı, ancak e-posta sohbette açılamadı. Yapay zekâ inceleme kutusunda bir ajanı (örneğin MCP üzerinden) bekliyor.",
+    "inboxLink": "Yapay zekâ inceleme kutusunu aç",
+    "opened": "Sohbet, e-posta ekli olarak açıldı. Mesajı okuyun ve Gönder'e basın.",
+    "chatPrompt": "Ekteki sipariş e-postasındaki ürünleri, miktarları ve fiyatları tanı; {date} tarihli işlemimi ({payee}, {amount}) her biri için bir kategoriyle ürünlere göre böl. {requestId} numaralı yapay zekâ inceleme isteğini üstlen ve önerini onun için gönder."
   }
 }

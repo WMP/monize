@@ -345,7 +345,7 @@
     "aiDraftInvalid": "Parser dari AI tidak valid ({{ codes }}). Coba lagi atau tulis parser secara manual.",
     "aiDraftUnknownCategory": "Parser dari AI menyebut kategori yang tidak ada. Coba lagi atau tulis parser secara manual.",
     "tooManyParsers": "Paling banyak {{ max }} parser dapat disimpan. Hapus satu terlebih dahulu.",
-    "receiptNeedsTransaction": "Kaitkan email ini dengan transaksi sebelum menanyakannya kepada AI.",
+    "receiptNeedsTransaction": "Pilih transaksi yang dibayar oleh email ini sebelum menanyakannya kepada AI.",
     "receiptNotAskable": "Email ini diabaikan atau tidak dapat dibaca. Proses ulang terlebih dahulu.",
     "receiptApplied": "Usulan dari email ini sudah diterapkan ke sebuah transaksi.",
     "openRequestExists": "Permintaan tinjauan lain sudah terbuka untuk transaksi ini. Selesaikan atau tutup terlebih dahulu.",
