@@ -97,35 +97,16 @@ export class RateChangeInferenceService {
       }),
     );
 
-    const rawPayments = await this.detector.buildPaymentRecords(
-      userId,
-      accountId,
-      transactions,
-    );
-    const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
-    const hadSplitInterest = consolidated.some((p) => p.interestAmount != null);
-    // Recover interest booked as a separate categorized expense (not a split
-    // leg) so those payments yield a rate observation instead of being dropped
-    // as "no interest details". Skipped in SPLIT mode, where interest is only
-    // ever a split leg and pairing a separate expense would double-count.
-    const payments =
-      account.interestBookingMode === "SPLIT"
-        ? consolidated
-        : await this.detector.pairSeparateInterest(
-            userId,
-            account,
-            consolidated,
-          );
+    // The payments read through the pairing mortgage-type detection shares.
     // When interest is a separate expense, the payment amounts are principal
     // only (not the full installment), so they must not be recorded as the
     // rate rows' payment.
-    const interestBookedSeparately =
-      account.interestBookingMode === "SEPARATE" ||
-      (!hadSplitInterest && payments.some((p) => p.interestAmount != null));
-    const balanceMap = this.detector.buildRunningBalanceMap(
-      account,
-      transactions,
-    );
+    const { payments, balanceMap, interestBookedSeparately } =
+      await this.detector.buildInstallmentHistory(
+        userId,
+        account,
+        transactions,
+      );
 
     const warnings: string[] = [];
     const periodsPerYear = this.resolvePeriodsPerYear(

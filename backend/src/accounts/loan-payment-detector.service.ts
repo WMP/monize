@@ -65,6 +65,22 @@ export interface PaymentRecord {
   interestCategoryName: string | null;
 }
 
+/**
+ * A loan's posted installments, each paired with its interest, and the balance
+ * the loan carried before each payment date.
+ */
+export interface InstallmentHistory {
+  /** One record per payment date, oldest first. */
+  payments: PaymentRecord[];
+  /** Balance owed before the first transaction of each date (yyyy-MM-dd). */
+  balanceMap: Map<string, number>;
+  /**
+   * Interest is booked as a separate expense rather than a split leg, so each
+   * record's `amount` is the principal alone, not the installment.
+   */
+  interestBookedSeparately: boolean;
+}
+
 @Injectable()
 export class LoanPaymentDetectorService {
   private readonly logger = new Logger(LoanPaymentDetectorService.name);
@@ -232,6 +248,47 @@ export class LoanPaymentDetectorService {
       extraPrincipalCount: extraPrincipal.extraPrincipalCount,
       lastPrincipalAmount: splitAnalysis.projectedPrincipal,
       lastInterestAmount: splitAnalysis.projectedInterest,
+    };
+  }
+
+  /**
+   * Pair a loan's posted installments with their interest: payment records
+   * consolidated per date, interest booked as a separate categorized expense
+   * recovered unless the loan books interest only as a split leg, and the
+   * balance before each date. The one pairing rate-change inference and
+   * mortgage-type detection read installments through, so the two never
+   * disagree about which payments a loan made. `transactions` are the loan's
+   * own, oldest first.
+   */
+  async buildInstallmentHistory(
+    userId: string,
+    account: Account,
+    transactions: Transaction[],
+  ): Promise<InstallmentHistory> {
+    const rawPayments = await this.buildPaymentRecords(
+      userId,
+      account.id,
+      transactions,
+    );
+    const consolidated = this.consolidatePaymentsByDate(rawPayments);
+    const hadSplitInterest = consolidated.some((p) => p.interestAmount != null);
+    // Recover interest booked as a separate categorized expense (not a split
+    // leg) so those payments yield an observation instead of being dropped
+    // as "no interest details". Skipped in SPLIT mode, where interest is only
+    // ever a split leg and pairing a separate expense would double-count.
+    const payments =
+      account.interestBookingMode === "SPLIT"
+        ? consolidated
+        : await this.pairSeparateInterest(userId, account, consolidated);
+    // When interest is a separate expense, the payment amounts are principal
+    // only (not the full installment).
+    const interestBookedSeparately =
+      account.interestBookingMode === "SEPARATE" ||
+      (!hadSplitInterest && payments.some((p) => p.interestAmount != null));
+    return {
+      payments,
+      balanceMap: this.buildRunningBalanceMap(account, transactions),
+      interestBookedSeparately,
     };
   }
 

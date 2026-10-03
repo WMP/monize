@@ -3,7 +3,10 @@ import { RateChangeInferenceService } from "./rate-change-inference.service";
 import { LoanRateChange } from "./entities/loan-rate-change.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
-import type { PaymentRecord } from "../accounts/loan-payment-detector.service";
+import {
+  LoanPaymentDetectorService,
+  type PaymentRecord,
+} from "../accounts/loan-payment-detector.service";
 import {
   createScopedDbMocks,
   ManagerMock,
@@ -147,6 +150,16 @@ describe("RateChangeInferenceService", () => {
         .mockImplementation((_userId, _account, records) => records),
       buildRunningBalanceMap: jest.fn().mockReturnValue(new Map()),
     };
+    // The real pairing over the mocked steps, so each case still drives (and
+    // asserts) the individual calls the shared method makes.
+    detector.buildInstallmentHistory = jest
+      .fn()
+      .mockImplementation((...args: [string, Account, Transaction[]]) =>
+        LoanPaymentDetectorService.prototype.buildInstallmentHistory.apply(
+          detector as never,
+          args,
+        ),
+      );
 
     rateChangesService = {
       verifyLoanAccount: jest.fn().mockResolvedValue(makeAccount()),
