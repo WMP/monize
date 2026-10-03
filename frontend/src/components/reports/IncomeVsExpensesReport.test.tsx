@@ -69,9 +69,10 @@ vi.mock("recharts", () => ({
       {children}
     </div>
   ),
-  Bar: ({ dataKey, onClick }: any) => (
+  Bar: ({ dataKey, onClick, stackId }: any) => (
     <button
       data-testid={`bar-${dataKey}`}
+      data-stack-id={stackId}
       onClick={() =>
         onClick?.(
           { payload: { monthStart: "2024-01-01", monthEnd: "2024-01-31" } },
@@ -644,6 +645,109 @@ describe("IncomeVsExpensesReport", () => {
       });
       const after = screen.getAllByRole("columnheader").map((h) => h.textContent);
       expect(after.some((h) => h?.includes("Tagged inflows"))).toBe(false);
+    });
+
+    describe("stacking toggle", () => {
+      const STACK_KEY = "monize-reports-income-vs-expenses-stack-tagged";
+      const switchName = { name: "Stack tagged flows" };
+      // The breakdown card below the chart draws its own Income/Expenses bars,
+      // so the main chart's bar is the first of each key.
+      const mainBar = (key: string) => screen.getAllByTestId(`bar-${key}`)[0];
+
+      beforeEach(() => {
+        mockGetAllTags.mockResolvedValue([{ id: "t1", name: "scope:household" }]);
+      });
+
+      it("is hidden without a tag key", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue({ data: [jan, feb], totals });
+        render(<IncomeVsExpensesReport />);
+        await screen.findByTestId("bar-Income");
+        expect(screen.queryByRole("switch", switchName)).toBeNull();
+      });
+
+      it("is hidden on the untagged tab and back on a value tab", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
+        render(<IncomeVsExpensesReport />);
+        expect(await screen.findByRole("switch", switchName)).toBeInTheDocument();
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole("tab", { name: "Untagged" }));
+        });
+        expect(screen.queryByRole("switch", switchName)).toBeNull();
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole("tab", { name: "household" }));
+        });
+        expect(screen.getByRole("switch", switchName)).toBeInTheDocument();
+      });
+
+      it("defaults off: every bar keeps its own column", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
+        render(<IncomeVsExpensesReport />);
+        const toggle = await screen.findByRole("switch", switchName);
+
+        expect(toggle).toHaveAttribute("aria-checked", "false");
+        for (const key of ["Income", "Expenses", "Savings", "TaggedInflows", "TaggedOutflows"]) {
+          expect(mainBar(key)).not.toHaveAttribute("data-stack-id");
+        }
+      });
+
+      it("on: inflows share the Income stack and outflows the Expenses stack; savings stays alone", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
+        render(<IncomeVsExpensesReport />);
+        fireEvent.click(await screen.findByRole("switch", switchName));
+
+        const stackOf = (key: string) =>
+          mainBar(key).getAttribute("data-stack-id");
+        expect(stackOf("Income")).toBeTruthy();
+        expect(stackOf("TaggedInflows")).toBe(stackOf("Income"));
+        expect(stackOf("Expenses")).toBeTruthy();
+        expect(stackOf("TaggedOutflows")).toBe(stackOf("Expenses"));
+        expect(stackOf("Income")).not.toBe(stackOf("Expenses"));
+        expect(stackOf("Savings")).toBeNull();
+      });
+
+      it("changes no figure: summary cards and table values are the same on and off", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
+        render(<IncomeVsExpensesReport />);
+        const toggle = await screen.findByRole("switch", switchName);
+        fireEvent.click(screen.getByTestId("toggle-table"));
+        await screen.findAllByRole("columnheader");
+        const snapshot = () => document.querySelector("table")?.textContent;
+        const off = snapshot();
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute("aria-checked", "true");
+        expect(snapshot()).toBe(off);
+        // Savings is income minus expenses only: 5000 - 3000.
+        expect(screen.getAllByText("$2000").length).toBeGreaterThan(0);
+      });
+
+      it("persists the choice and reopens on it", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
+        const first = render(<IncomeVsExpensesReport />);
+        fireEvent.click(await screen.findByRole("switch", switchName));
+        expect(window.localStorage.getItem(STACK_KEY)).toBe("true");
+        first.unmount();
+
+        render(<IncomeVsExpensesReport />);
+        expect(await screen.findByRole("switch", switchName)).toHaveAttribute(
+          "aria-checked",
+          "true",
+        );
+        expect(mainBar("TaggedInflows")).toHaveAttribute(
+          "data-stack-id",
+          mainBar("Income").getAttribute("data-stack-id"),
+        );
+      });
+
+      it("a stored 'on' draws nothing stacked while no flow series exists", async () => {
+        window.localStorage.setItem(STACK_KEY, "true");
+        mockGetIncomeVsExpenses.mockResolvedValue({ data: [jan, feb], totals });
+        render(<IncomeVsExpensesReport />);
+        await screen.findByTestId("bar-Income");
+        expect(mainBar("Income")).not.toHaveAttribute("data-stack-id");
+      });
     });
   });
 });

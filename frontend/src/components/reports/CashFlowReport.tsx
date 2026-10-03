@@ -16,6 +16,10 @@ import {
 } from "recharts";
 import { parseISO } from "date-fns";
 import { builtInReportsApi } from "@/lib/built-in-reports";
+import type { Account } from "@/types/account";
+import { accountsApi } from "@/lib/accounts";
+import { usePersistedAccountFilter } from "@/hooks/usePersistedAccountFilter";
+import { ReportAccountMultiSelect } from "@/components/reports/ReportAccountMultiSelect";
 import {
   IncomeExpensePeriodItem,
   CategorySpendingItem,
@@ -35,6 +39,17 @@ import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
+import { StackTaggedFlowsToggle } from "@/components/reports/StackTaggedFlowsToggle";
+import { useTaggedFlowBucket } from "@/hooks/useTaggedFlowBucket";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { flowBarStack } from "@/lib/tagged-flow-stack";
+
+const ACCOUNTS_STORAGE_KEY = 'monize-reports-cash-flow-accounts';
+const STACK_FLOWS_STORAGE_KEY = 'monize-reports-cash-flow-stack-tagged';
+
+// Same account list Income vs Expenses offers: an investment account's cash
+// legs are excluded from these reports by linkage.
+const nonInvestmentAccounts = (a: Account) => a.accountType !== 'INVESTMENT';
 
 interface ChartDataItem {
   name: string;
@@ -42,6 +57,9 @@ interface ChartDataItem {
   Income: number;
   Expenses: number;
   Net: number;
+  /** Tagged transfer flows of the active bucket; absent when no flow series is shown. */
+  TaggedInflows?: number;
+  TaggedOutflows?: number;
   monthStart: string;
   monthEnd: string;
 }
@@ -66,13 +84,35 @@ export function CashFlowReport() {
   } = useDateRange({ defaultRange: "6m", alignment: "month" });
   const tagKeys = useTagKeys();
   const [tagKey, setTagKey] = useState('');
+  // Which tag-key bucket is selected. Owned here so the main chart can follow
+  // the tab; TagKeyBreakdownBuckets is controlled by it.
+  const [activeBucketValue, setActiveBucketValue] = useState('');
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
+
+  const { data: accountsData } = useReportData(() => accountsApi.getAll(), []);
+  const offeredAccounts = useMemo(
+    () => (accountsData ?? []).filter(nonInvestmentAccounts),
+    [accountsData],
+  );
+  // Persisted so the report opens on the accounts the user last chose; empty
+  // means every account, which is the report as it always was.
+  const [selectedAccountIds, setSelectedAccountIds] = usePersistedAccountFilter(
+    ACCOUNTS_STORAGE_KEY,
+    offeredAccounts,
+  );
+  const accountIdsKey = selectedAccountIds.join(',');
 
   const { data: response, isLoading, error, reload } = useReportData(
     async () => {
       if (!isValid) return null;
-      const params = { startDate: rangeStart || undefined, endDate: rangeEnd };
+      // All three reads take the same account scope, or the cards, the chart
+      // and the two category lists would describe different sets of accounts.
+      const params = {
+        startDate: rangeStart || undefined,
+        endDate: rangeEnd,
+        ...(selectedAccountIds.length > 0 ? { accountIds: selectedAccountIds } : {}),
+      };
       // Fetch all data in parallel
       const [cashFlowResponse, incomeResponse, spendingResponse] =
         await Promise.all([
@@ -85,8 +125,20 @@ export function CashFlowReport() {
         ]);
       return { cashFlowResponse, incomeResponse, spendingResponse };
     },
-    [isValid, rangeStart, rangeEnd, tagKey],
+    [isValid, rangeStart, rangeEnd, tagKey, accountIdsKey],
   );
+
+  const { activeBucket, flowBucket, flowsByPeriod } = useTaggedFlowBucket(
+    response?.cashFlowResponse,
+    activeBucketValue,
+  );
+  const showFlows = flowBucket !== undefined;
+  // Opt-in, off by default; presentation only (net and the cards never read it).
+  const [stackFlowsPref, setStackFlowsPref] = useLocalStorage<boolean>(
+    STACK_FLOWS_STORAGE_KEY,
+    false,
+  );
+  const stackFlows = showFlows && stackFlowsPref === true;
 
   // Map monthly data. `name` must be unique across the dataset (used as
   // the XAxis category key); a non-unique value like "May" causes Recharts
@@ -101,12 +153,21 @@ export function CashFlowReport() {
           Income: Math.round(item.income),
           Expenses: Math.round(item.expenses),
           Net: Math.round(item.net),
+          // Flows ride beside the bars and never enter income, expenses or net
+          // (INV-REPORT-003). A period the bucket has no row for had no tagged
+          // transfer in it, which is a known zero.
+          ...(flowBucket
+            ? {
+                TaggedInflows: Math.round(flowsByPeriod.get(item.period)?.taggedInflows ?? 0),
+                TaggedOutflows: Math.round(flowsByPeriod.get(item.period)?.taggedOutflows ?? 0),
+              }
+            : {}),
           // The dates the bucket covers come from the server that chose it.
           monthStart: item.periodStart,
           monthEnd: item.periodEnd,
         };
       }),
-    [response, formatChartDate],
+    [response, formatChartDate, flowBucket, flowsByPeriod],
   );
 
   const incomeItems = useMemo<IncomeSourceItem[]>(
@@ -268,6 +329,12 @@ export function CashFlowReport() {
           component ever returns. */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
+          <ReportAccountMultiSelect
+            accounts={offeredAccounts}
+            value={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+            filter={nonInvestmentAccounts}
+          />
           <DateRangeSelector
             ranges={["3m", "6m", "1y"]}
             value={dateRange}
@@ -279,6 +346,9 @@ export function CashFlowReport() {
             onCustomEndDateChange={setEndDate}
           />
           <TagKeyBreakdownSelect tagKeys={tagKeys} value={tagKey} onChange={setTagKey} />
+          {showFlows && (
+            <StackTaggedFlowsToggle checked={stackFlows} onChange={setStackFlowsPref} />
+          )}
           <ReportToolbarActions onExportPdf={handleExportPdf} />
         </div>
       </div>
@@ -326,14 +396,34 @@ export function CashFlowReport() {
                 dataKey="Income"
                 fill={chartColors.income}
                 name={t('cashFlow.seriesInflows')}
-                radius={[4, 4, 0, 0]}
+                {...flowBarStack(stackFlows, 'inflows', 'base')}
               />
               <Bar
                 dataKey="Expenses"
                 fill={chartColors.expense}
                 name={t('cashFlow.seriesOutflows')}
-                radius={[4, 4, 0, 0]}
+                {...flowBarStack(stackFlows, 'outflows', 'base')}
               />
+              {/* The funding series: the active tag bucket's transfer flows, in
+                  the indigo pair the breakdown card uses so they never read as
+                  income or expenses. Absent without a tag key or on the
+                  untagged tab. */}
+              {flowBucket && (
+                <Bar
+                  dataKey="TaggedInflows"
+                  fill={chartColors.inflow}
+                  name={t('tagBreakdown.inflowsSeries', { value: flowBucket.value })}
+                  {...flowBarStack(stackFlows, 'inflows', 'tagged')}
+                />
+              )}
+              {flowBucket && (
+                <Bar
+                  dataKey="TaggedOutflows"
+                  fill={chartColors.outflow}
+                  name={t('tagBreakdown.outflowsSeries', { value: flowBucket.value })}
+                  {...flowBarStack(stackFlows, 'outflows', 'tagged')}
+                />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -412,6 +502,8 @@ export function CashFlowReport() {
           buckets={response.cashFlowResponse.buckets}
           reportingCurrency={reportingCurrency}
           idPrefix="cash-flow-tag"
+          activeValue={activeBucket?.value}
+          onActiveValueChange={setActiveBucketValue}
         />
       )}
     </div>
