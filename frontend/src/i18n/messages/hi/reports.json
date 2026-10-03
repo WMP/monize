@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "मूलधन भुगतान",
     "seriesInterestPaid": "ब्याज भुगतान",
     "seriesPrincipal": "मूलधन",
-    "seriesInterest": "ब्याज"
+    "seriesInterest": "ब्याज",
+    "installmentAndFinal": "{installment}; अंतिम भुगतान {final}"
   },
   "dividendIncome": {
     "pdfTitle": "लाभ, लाभांश और ब्याज",
@@ -884,7 +885,10 @@
     "typeLoan": "ऋण",
     "typeMortgage": "बंधक",
     "pdfSubtitlePaymentsSummary": "{count} भुगतान किए गए, {interest} कुल ब्याज",
-    "pdfSubtitlePaymentsProjection": "{count} भुगतान किए गए, प्रक्षेपण अवधि में {interest} ब्याज"
+    "pdfSubtitlePaymentsProjection": "{count} भुगतान किए गए, प्रक्षेपण अवधि में {interest} ब्याज",
+    "nextInstallment": "अगली किस्त",
+    "finalPayment": "अंतिम भुगतान",
+    "amountDueOn": "{amount}, देय {date}"
   },
   "monteCarlo": {
     "toasts": {

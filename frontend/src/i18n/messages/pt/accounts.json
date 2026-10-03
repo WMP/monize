@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Pagamentos agendados configurados para {account}"
-    }
+    },
+    "firstInstallment": "Primeira prestação",
+    "firstInstallmentHelp": "Este crédito à habitação não tem um pagamento fixo: cada prestação é calculada a partir do saldo, da taxa e do prazo de amortização. Esta é a que vence a {date}, incluindo qualquer capital adicional.",
+    "firstInstallmentPending": "Introduza a data do próximo pagamento para calcular a primeira prestação.",
+    "firstInstallmentCalculating": "A calcular a primeira prestação...",
+    "firstInstallmentFailed": "Não foi possível calcular a primeira prestação. Verifique os valores abaixo e tente novamente."
   },
   "mortgageFields": {
     "title": "Detalhes do Crédito Habitação",
@@ -340,7 +345,14 @@
       "memoLabel": "Texto da nota de amortização antecipada",
       "memoPlaceholder": "por ex. amortização antecipada",
       "memoHelp": "Correspondência de subcadeia sem distinção entre maiúsculas e minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de uma divisão."
-    }
+    },
+    "prepaymentMode": {
+      "label": "O que faz uma amortização antecipada",
+      "SHORTEN_TERM": "Encurta o prazo (mesmo capital todos os meses)",
+      "LOWER_INSTALLMENT": "Reduz a prestação (mesma data de fim)",
+      "help": "Confirme com o seu banco. Se, após uma amortização antecipada, a parte de capital no extrato não mudar, o prazo foi encurtado."
+    },
+    "previewFirstInstallment": "Primeira prestação:"
   },
   "assetFields": {
     "title": "Definições de Variação do Valor do Ativo",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "acceleratedNeedsAnnuity": "Este crédito à habitação é pago com um calendário acelerado, que só um crédito de prestação constante tem. Um crédito linear ou só de juros precisa de uma frequência de pagamento normal, por isso mantenha um tipo de prestação constante."
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "Juros restantes est.",
       "notSet": "Não definido",
       "notAvailable": "N/D",
-      "paidOff": "Liquidado"
+      "paidOff": "Liquidado",
+      "nextInstallment": "Próxima prestação",
+      "dueOn": "Vence a {date}",
+      "finalPayment": "Pagamento final",
+      "nextInstallmentDue": "Próxima prestação (vence a {date})",
+      "finalPaymentDue": "Pagamento final (vence a {date})"
     },
     "schedule": {
       "title": "Plano de amortização",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "Este empréstimo não tem saldo em dívida, por isso não há nada para amortizar.",
         "reasonNoFrequency": "Este empréstimo não tem uma periodicidade de pagamento definida. Adicione-a nas definições da conta.",
         "reasonNoRate": "Este empréstimo não tem uma taxa de juro guardada. Defina a taxa nas definições da conta ou registe uma alteração de taxa com data de hoje ou anterior. Uma taxa mostrada por linha no plano abaixo é reconstruída a partir dos juros cobrados e não é uma taxa guardada.",
-        "reasonNoPayment": "O valor da prestação não pode ser determinado. Registe as prestações regulares como transferências para a conta do empréstimo (capital, com os juros como linha de divisão ou como despesa categorizada separada), ou defina o valor do pagamento nas definições da conta. Pagamentos registados como despesas normais na conta de origem nunca chegam à conta do empréstimo, por isso o plano não os consegue ver."
-      }
+        "reasonNoPayment": "O valor da prestação não pode ser determinado. Registe as prestações regulares como transferências para a conta do empréstimo (capital, com os juros como linha de divisão ou como despesa categorizada separada), ou defina o valor do pagamento nas definições da conta. Pagamentos registados como despesas normais na conta de origem nunca chegam à conta do empréstimo, por isso o plano não os consegue ver.",
+        "reasonNoAmortization": "Este crédito à habitação não tem prazo de amortização, pelo que não é possível calcular as prestações nem o fim do prazo. Defina o prazo de amortização nas definições da conta.",
+        "reasonNoPaymentStart": "Este crédito à habitação não tem data do primeiro pagamento, pelo que não é possível contar os pagamentos que faltam até ao fim do prazo. Configure o pagamento agendado nas definições da conta; a primeira data de vencimento que indicar passa a ser o pagamento 1.",
+        "reasonNoPrincipal": "Este crédito à habitação não tem montante original, pelo que não é possível calcular a amortização constante de capital. Defina o montante do crédito nas definições da conta."
+      },
+      "budgetBelowNextInstallment": "Isso é inferior à próxima prestação ({amount}, vence a {date}); aumente-o acima desse valor para fazer amortizações antecipadas.",
+      "shortenTermNeedsPrincipal": "Este crédito à habitação não tem montante original, pelo que não é possível simular um prazo mais curto. Escolha reduzir a prestação ou defina o montante do crédito nas definições da conta."
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",
@@ -488,7 +511,8 @@
       "newInstallment": "Nova prestação",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Pagamento mensal",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primeiro pagamento"
     },
     "chart": {
       "title": "Cronologia de liquidação",

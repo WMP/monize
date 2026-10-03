@@ -76,7 +76,10 @@
     "collapseAria": "[XX-Hide account info-XX]",
     "showAccountNumber": "[XX-Show account number-XX]",
     "hideAccountNumber": "[XX-Hide account number-XX]",
-    "show": "[XX-Show account info-XX]"
+    "show": "[XX-Show account info-XX]",
+    "nextInstallment": "[XX-Next Installment-XX]",
+    "finalPayment": "[XX-Final Payment-XX]",
+    "amountDueOn": "[XX-{amount}, due {date}-XX]"
   },
   "page": {
     "title": "[XX-Transactions-XX]",

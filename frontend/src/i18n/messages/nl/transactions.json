@@ -76,7 +76,10 @@
     "collapseAria": "Rekeninginfo verbergen",
     "showAccountNumber": "Rekeningnummer tonen",
     "hideAccountNumber": "Rekeningnummer verbergen",
-    "show": "Rekeninginfo tonen"
+    "show": "Rekeninginfo tonen",
+    "nextInstallment": "Volgende termijn",
+    "finalPayment": "Slotbetaling",
+    "amountDueOn": "{amount}, vervalt op {date}"
   },
   "page": {
     "title": "Transacties",

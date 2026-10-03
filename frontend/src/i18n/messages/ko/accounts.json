@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "{account}의 예약 납부가 설정되었습니다"
-    }
+    },
+    "firstInstallment": "첫 할부금",
+    "firstInstallmentHelp": "이 모기지는 고정 납입금이 없습니다. 각 할부금은 잔액, 금리, 상환 기간으로 계산됩니다. {date}에 기일이 돌아오는 할부금이며 추가 원금을 포함합니다.",
+    "firstInstallmentPending": "첫 할부금을 계산하려면 다음 납입일을 입력하세요.",
+    "firstInstallmentCalculating": "첫 할부금을 계산하는 중...",
+    "firstInstallmentFailed": "첫 할부금을 계산할 수 없습니다. 아래 값을 확인하고 다시 시도하세요."
   },
   "mortgageFields": {
     "title": "담보대출 세부 정보",
@@ -340,7 +345,14 @@
       "memoLabel": "추가 상환 메모 텍스트",
       "memoPlaceholder": "예: 추가 상환",
       "memoHelp": "결제 메모, 원본 거래 메모 또는 분할 메모에 대한 대소문자 구분 없는 부분 문자열 일치."
-    }
+    },
+    "prepaymentMode": {
+      "label": "추가 상환의 효과",
+      "SHORTEN_TERM": "기간 단축(매월 같은 원금)",
+      "LOWER_INSTALLMENT": "할부금 감액(같은 만기일)",
+      "help": "대출 기관에 확인하세요. 추가 상환 후 명세서의 원금 부분이 그대로라면 기간이 단축된 것입니다."
+    },
+    "previewFirstInstallment": "첫 할부금:"
   },
   "assetFields": {
     "title": "자산 가치 변동 설정",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "납부 주기는 필수입니다",
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
-    "amortizationRequired": "상환 기간은 필수입니다"
+    "amortizationRequired": "상환 기간은 필수입니다",
+    "acceleratedNeedsAnnuity": "이 모기지는 가속 일정으로 납입되며, 이는 원리금 균등 모기지에만 있습니다. 원금 균등 또는 이자만 내는 모기지에는 일반 납입 주기가 필요하므로 원리금 균등 유형을 유지하세요."
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "예상 잔여 이자",
       "notSet": "설정 안 됨",
       "notAvailable": "없음",
-      "paidOff": "완납"
+      "paidOff": "완납",
+      "nextInstallment": "다음 할부금",
+      "dueOn": "기일 {date}",
+      "finalPayment": "최종 납입금",
+      "nextInstallmentDue": "다음 할부금(기일 {date})",
+      "finalPaymentDue": "최종 납입금(기일 {date})"
     },
     "schedule": {
       "title": "상환 일정",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "이 대출은 미상환 잔액이 없으므로 상환할 것이 없습니다.",
         "reasonNoFrequency": "이 대출에는 결제 주기가 설정되어 있지 않습니다. 계정 설정에서 추가하세요.",
         "reasonNoRate": "이 대출에는 저장된 이자율이 없습니다. 계정 설정에서 이자율을 설정하거나 오늘 또는 그 이전 날짜의 이자율 변경을 기록하세요. 아래 일정표에 행별로 표시된 이자율은 부과된 이자에서 재구성된 값이며 저장된 이자율이 아닙니다.",
-        "reasonNoPayment": "할부금 금액을 확인할 수 없습니다. 정기 할부금을 대출 계좌로의 이체로 기록하거나(원금, 이자는 분할 항목 또는 별도의 분류된 지출로), 계정 설정에서 결제 금액을 설정하세요. 출금 계좌에 일반 지출로 기록된 결제는 대출 계좌에 도달하지 않으므로 일정표가 이를 볼 수 없습니다."
-      }
+        "reasonNoPayment": "할부금 금액을 확인할 수 없습니다. 정기 할부금을 대출 계좌로의 이체로 기록하거나(원금, 이자는 분할 항목 또는 별도의 분류된 지출로), 계정 설정에서 결제 금액을 설정하세요. 출금 계좌에 일반 지출로 기록된 결제는 대출 계좌에 도달하지 않으므로 일정표가 이를 볼 수 없습니다.",
+        "reasonNoAmortization": "이 모기지에는 상환 기간이 없어 할부금과 만기를 계산할 수 없습니다. 계좌 설정에서 상환 기간을 설정하세요.",
+        "reasonNoPaymentStart": "이 모기지에는 첫 납입일이 없어 만기까지 남은 납입 횟수를 셀 수 없습니다. 계좌 설정에서 예약 납입을 설정하세요. 입력한 첫 납입 기일이 1회차 납입이 됩니다.",
+        "reasonNoPrincipal": "이 모기지에는 원래 금액이 없어 균등 원금을 계산할 수 없습니다. 계좌 설정에서 모기지 금액을 설정하세요."
+      },
+      "budgetBelowNextInstallment": "다음 할부금({amount}, 기일 {date})보다 적습니다. 추가 상환하려면 그보다 높게 설정하세요.",
+      "shortenTermNeedsPrincipal": "이 모기지에는 원래 금액이 없어 기간 단축을 시뮬레이션할 수 없습니다. 할부금 감액을 선택하거나 계좌 설정에서 모기지 금액을 설정하세요."
     },
     "comparison": {
       "newPayoff": "새 완납일",
@@ -488,7 +511,8 @@
       "newInstallment": "새 상환액",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "월 상환액",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "첫 납입금"
     },
     "chart": {
       "title": "완납 타임라인",

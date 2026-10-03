@@ -39,7 +39,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P1-F2 | #1507 | One Select replaces both checkbox pairs; Term Length for every type; help text; copy fixes; en i18n | P1-F1 | neutral | [x] |
 | P1-Q | #1508 | Phase 1 acceptance: locales, docs, release note | P1-F2 | none | [x] |
 | P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [x] |
-| P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [ ] |
+| P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [x] |
 | P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [ ] |
 | P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [ ] |
 | P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [ ] |
@@ -125,6 +125,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 - Every frontend reader in spec table 5.6 changed as its row says: the next installment captioned with its date, the bullet beside it for INTEREST_ONLY, the simulator's budget and extra defined per projected row.
 - Acceptance: spec tables 7.1, 7.3 and 7.4 from `generateLoanSchedule`; the frontend row of the spec's test matrix for section 5.6, with `payment_amount` null on the fixture account.
 - Owed before `LoanPaymentSetupDialog` can submit a LINEAR or INTEREST_ONLY setup: P2-B1's `LoanPaymentSetupService` refuses a `paymentAmount` more than 0.00005 from the first installment it prices (`nonAnnuityInstallment` on `datedLoanDebt` through `nextDueDate`, the dated rate and the calendar), and no endpoint returns that figure yet -- `POST /accounts/mortgage-preview` prices from the original principal, which differs from the debt on a loan already underway. Add a backend read that answers it through the same code (spec 5.5, "the dialog previews through the same code") rather than repeating the debt read on the client.
+- Done: `POST /accounts/:id/setup-loan-payments/preview` (`LoanPaymentSetupService.previewFirstInstallment`) prices that first installment through `priceFirstMethodInstallment`, the function the setup checks against, and the dialog shows it read-only and submits it. An unanchored projection of these methods starts on the mortgage's next calendar due date (`nextScheduledPaymentDate`) rather than one period past today, so its rows and the bullet fall on the dates it is paid on. On a schedule without a level installment (`levelInstallment: false`) the comparison reports time and interest saved and the first projected payment, never an installment drop measured between two last rows.
 
 ### P2-B2 -- Detection (backend)
 

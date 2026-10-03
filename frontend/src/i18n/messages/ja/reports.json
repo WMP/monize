@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "支払い済み元金",
     "seriesInterestPaid": "支払い済み利息",
     "seriesPrincipal": "元金",
-    "seriesInterest": "利息"
+    "seriesInterest": "利息",
+    "installmentAndFinal": "{installment}、最終返済 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "損益、配当 & 利息",
@@ -884,7 +885,10 @@
     "typeLoan": "ローン",
     "typeMortgage": "住宅ローン",
     "pdfSubtitlePaymentsSummary": "{count} 件の支払い済み、{interest} 総利息",
-    "pdfSubtitlePaymentsProjection": "{count} 回支払済み、予測期間の利息 {interest}"
+    "pdfSubtitlePaymentsProjection": "{count} 回支払済み、予測期間の利息 {interest}",
+    "nextInstallment": "次回の返済額",
+    "finalPayment": "最終返済額",
+    "amountDueOn": "{amount}（期日 {date}）"
   },
   "monteCarlo": {
     "toasts": {

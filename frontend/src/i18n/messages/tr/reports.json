@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Ödenen Anapara",
     "seriesInterestPaid": "Ödenen Faiz",
     "seriesPrincipal": "Anapara",
-    "seriesInterest": "Faiz"
+    "seriesInterest": "Faiz",
+    "installmentAndFinal": "{installment}; son ödeme {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Kazançlar, Temettüler ve Faiz",
@@ -884,7 +885,10 @@
     "typeLoan": "Kredi",
     "typeMortgage": "İpotek",
     "pdfSubtitlePaymentsSummary": "{count} ödeme yapıldı, {interest} toplam faiz",
-    "pdfSubtitlePaymentsProjection": "{count} ödeme yapıldı, projeksiyon boyunca {interest} faiz"
+    "pdfSubtitlePaymentsProjection": "{count} ödeme yapıldı, projeksiyon boyunca {interest} faiz",
+    "nextInstallment": "Sonraki Taksit",
+    "finalPayment": "Son Ödeme",
+    "amountDueOn": "{amount}, vade {date}"
   },
   "monteCarlo": {
     "toasts": {

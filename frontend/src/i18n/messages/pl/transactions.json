@@ -76,7 +76,10 @@
     "collapseAria": "Ukryj informacje o koncie",
     "showAccountNumber": "Pokaż numer konta",
     "hideAccountNumber": "Ukryj numer konta",
-    "show": "Pokaż informacje o koncie"
+    "show": "Pokaż informacje o koncie",
+    "nextInstallment": "Następna rata",
+    "finalPayment": "Płatność końcowa",
+    "amountDueOn": "{amount}, termin {date}"
   },
   "page": {
     "title": "Transakcje",

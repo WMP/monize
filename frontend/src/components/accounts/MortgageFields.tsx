@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { NumericInput } from '@/components/ui/NumericInput';
@@ -12,12 +12,15 @@ import {
   MortgagePaymentFrequency,
   InterestBookingMode,
   MortgageType,
-  WRITABLE_MORTGAGE_TYPES,
-  isWritableMortgageType,
+  MORTGAGE_TYPES,
 } from '@/types/account';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
-import { flagsFromMortgageType } from '@/lib/mortgage-type';
+import {
+  PREPAYMENT_MODES,
+  flagsFromMortgageType,
+  storesConstantPayment,
+} from '@/lib/mortgage-type';
 import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
@@ -25,6 +28,12 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 
 const logger = createLogger('MortgageFields');
+
+/** The cadence each accelerated one pays on. */
+const ACCELERATED_BASE_CADENCE: Partial<Record<string, MortgagePaymentFrequency>> = {
+  ACCELERATED_BIWEEKLY: 'BIWEEKLY',
+  ACCELERATED_WEEKLY: 'WEEKLY',
+};
 
 interface MortgageFieldsProps {
   watchedCurrency: string;
@@ -85,6 +94,12 @@ export function MortgageFields({
   // user-facing -- so it takes the same number locale rather than `toFixed`.
   const { formatPercent } = useNumberFormat();
 
+  // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its preview
+  // shows the first installment, and the accelerated cadences -- a fraction of
+  // an annuity's monthly installment -- mean nothing for it, so they are not
+  // offered (docs/specs/mortgage-types.md, section 5.1; the server refuses
+  // them too).
+  const hasConstantPayment = !mortgageType || storesConstantPayment(mortgageType);
   const mortgagePaymentFrequencyOptions = [
     { value: 'MONTHLY', label: t('mortgageFields.frequencyOptions.monthly') },
     { value: 'SEMI_MONTHLY', label: t('mortgageFields.frequencyOptions.semiMonthly') },
@@ -92,7 +107,24 @@ export function MortgageFields({
     { value: 'ACCELERATED_BIWEEKLY', label: t('mortgageFields.frequencyOptions.acceleratedBiweekly') },
     { value: 'WEEKLY', label: t('mortgageFields.frequencyOptions.weekly') },
     { value: 'ACCELERATED_WEEKLY', label: t('mortgageFields.frequencyOptions.acceleratedWeekly') },
-  ];
+  ].filter(
+    (option) => hasConstantPayment || !ACCELERATED_BASE_CADENCE[option.value],
+  );
+
+  // Choosing a type without a constant payment while an accelerated cadence is
+  // selected moves the cadence to the one it accelerates, in the same event,
+  // so the form never holds a value its list no longer offers.
+  const mortgageTypeField = register('mortgageType');
+  const handleMortgageTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    mortgageTypeField.onChange(event);
+    const next = MORTGAGE_TYPES.find((type) => type === event.target.value);
+    const base = mortgagePaymentFrequency
+      ? ACCELERATED_BASE_CADENCE[mortgagePaymentFrequency]
+      : undefined;
+    if (next && !storesConstantPayment(next) && base) {
+      setValue('mortgagePaymentFrequency', base, { shouldDirty: true, shouldValidate: true });
+    }
+  };
   const [mortgagePreview, setMortgagePreview] = useState<MortgageAmortizationPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
@@ -179,7 +211,6 @@ export function MortgageFields({
     if (
       isEditing ||
       !mortgageType ||
-      !isWritableMortgageType(mortgageType) ||
       !openingBalance ||
       interestRate == null ||
       !amortizationMonths ||
@@ -227,20 +258,19 @@ export function MortgageFields({
         {t('mortgageFields.title')}
       </h3>
 
-      {/* One select for the mortgage's convention and method. Only the types a
-          request may write are offered (Phase 1: ANNUITY and CANADIAN_FIXED);
-          the help line under it says how to recognise the selected type from
-          a statement. */}
+      {/* One select for the mortgage's convention and method; the help line
+          under it says how to recognise the selected type from a statement. */}
       <div>
         <Select
           id="mortgageType"
           label={t('mortgageFields.type.label')}
-          options={WRITABLE_MORTGAGE_TYPES.map((type) => ({
+          options={MORTGAGE_TYPES.map((type) => ({
             value: type,
             label: t(`mortgageFields.type.${type}`),
           }))}
           error={errors.mortgageType?.message as string | undefined}
-          {...register('mortgageType')}
+          {...mortgageTypeField}
+          onChange={handleMortgageTypeChange}
         />
         {mortgageType && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -263,6 +293,26 @@ export function MortgageFields({
           </p>
         )}
       </div>
+
+      {/* What an extra repayment does: a LINEAR mortgage's own setting
+          (spec decision 4). Every other type stores none. */}
+      {mortgageType === 'LINEAR' && (
+        <div>
+          <Select
+            id="prepaymentMode"
+            label={t('mortgageFields.prepaymentMode.label')}
+            options={PREPAYMENT_MODES.map((mode) => ({
+              value: mode,
+              label: t(`mortgageFields.prepaymentMode.${mode}`),
+            }))}
+            error={errors.prepaymentMode?.message as string | undefined}
+            {...register('prepaymentMode')}
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t('mortgageFields.prepaymentMode.help')}
+          </p>
+        </div>
+      )}
 
       {/* Hidden inputs for form registration */}
       <input type="hidden" {...register('termMonths', { valueAsNumber: true })} />
@@ -372,7 +422,11 @@ export function MortgageFields({
               </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">{t('mortgageFields.previewPaymentAmount')}</span>{' '}
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {hasConstantPayment
+                      ? t('mortgageFields.previewPaymentAmount')
+                      : t('mortgageFields.previewFirstInstallment')}
+                  </span>{' '}
                   <span className="font-medium">{formatCurrency(mortgagePreview.paymentAmount, watchedCurrency)}</span>
                 </div>
                 <div>

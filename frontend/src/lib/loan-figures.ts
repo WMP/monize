@@ -1,5 +1,6 @@
 import type { LoanScheduleInput, LoanScheduleResult } from '@/lib/loan-schedule-types';
 import { firstPeriodInterest } from '@/lib/loan-frequency';
+import { amortizationMethodFor } from '@/lib/mortgage-type';
 
 /**
  * A debt whose outstanding magnitude is at or below this is settled. It matches
@@ -30,6 +31,13 @@ export interface LoanFigureInput {
    * the payment history, or null when no usable history exists yet.
    */
   currentInstallment: number | null;
+  /**
+   * The due date `currentInstallment` is for, when the method has no constant
+   * payment (`CurrentLoanTerms.paymentDate`); null or absent for an annuity.
+   */
+  currentInstallmentDate?: string | null;
+  /** An INTEREST_ONLY mortgage's bullet (`CurrentLoanTerms.finalPayment`). */
+  finalPayment?: { amount: number; date: string } | null;
   /** The no-overpayment forward projection, or null when it cannot be built. */
   baseline: LoanScheduleResult | null;
 }
@@ -39,6 +47,17 @@ export interface LoanFigures {
   isSettled: boolean;
   /** The installment in effect, or null when it is not known. */
   currentPayment: number | null;
+  /**
+   * The due date `currentPayment` is the installment of, for a LINEAR or
+   * INTEREST_ONLY mortgage, whose installment changes from one due date to the
+   * next: a surface showing it says which date it is for. Null for an annuity.
+   */
+  currentPaymentDate: string | null;
+  /**
+   * An INTEREST_ONLY mortgage's final payment and its date, shown beside the
+   * installment; null otherwise, and once the debt is settled.
+   */
+  finalPayment: { amount: number; date: string } | null;
   /** ISO date of the projected final payment; null when unknown or settled. */
   payoffDate: string | null;
   /** Interest still to be paid: 0 once settled, null when unknown. */
@@ -92,6 +111,10 @@ export function loanNotAmortizingReason(
   baseline: LoanScheduleResult | null,
 ): LoanNotAmortizingReason | null {
   if (!input || !baseline || baseline.paidOff) return null;
+  // A LINEAR or INTEREST_ONLY installment sets its principal independently of
+  // the interest, so it cannot stall, and its schedule ends on the term end
+  // (docs/specs/mortgage-types.md, section 5.4): neither explanation applies.
+  if (amortizationMethodFor(input.mortgageType ?? 'ANNUITY') !== 'ANNUITY') return null;
   if (baseline.coveredInterest) return { kind: 'beyond-horizon' };
   const periodInterest = firstPeriodInterest(
     input.startingBalance,
@@ -110,14 +133,19 @@ export function loanNotAmortizingReason(
 export function deriveLoanFigures({
   currentBalance,
   currentInstallment,
+  currentInstallmentDate = null,
+  finalPayment = null,
   baseline,
 }: LoanFigureInput): LoanFigures {
   const isSettled = isDebtSettled(currentBalance);
   const projection = baseline?.paidOff ? baseline : null;
+  const currentPayment =
+    currentInstallment != null && currentInstallment > 0 ? currentInstallment : null;
   return {
     isSettled,
-    currentPayment:
-      currentInstallment != null && currentInstallment > 0 ? currentInstallment : null,
+    currentPayment,
+    currentPaymentDate: currentPayment != null ? currentInstallmentDate : null,
+    finalPayment: isSettled ? null : finalPayment,
     payoffDate: isSettled ? null : (projection?.payoffDate ?? null),
     remainingInterest: isSettled ? 0 : (projection?.totalInterest ?? null),
   };

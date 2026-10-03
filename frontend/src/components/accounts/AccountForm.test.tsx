@@ -953,13 +953,71 @@ describe('AccountForm', () => {
       });
     });
 
-    it('withholds a stored type the select does not offer, so the row keeps it', async () => {
-      await submitEdit(mortgage({ mortgageType: 'LINEAR' }));
+    it('sends a LINEAR mortgage with its stored prepayment mode', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'LINEAR', prepaymentMode: 'LOWER_INSTALLMENT' }),
+      );
+      expect(select.value).toBe('LINEAR');
+      expect(
+        (screen.getByLabelText('What an Extra Repayment Does') as HTMLSelectElement).value,
+      ).toBe('LOWER_INSTALLMENT');
 
       const payload = await clickUpdate();
-      expect(payload).not.toHaveProperty('mortgageType');
-      expect(payload).not.toHaveProperty('isCanadianMortgage');
-      expect(payload).not.toHaveProperty('isVariableRate');
+      expect(payload).toMatchObject({
+        mortgageType: 'LINEAR',
+        prepaymentMode: 'LOWER_INSTALLMENT',
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+    });
+
+    it('reads a LINEAR mortgage with no stored mode as SHORTEN_TERM', async () => {
+      await submitEdit(mortgage({ mortgageType: 'LINEAR', prepaymentMode: null }));
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({ mortgageType: 'LINEAR', prepaymentMode: 'SHORTEN_TERM' });
+    });
+
+    it.each(['LINEAR', 'INTEREST_ONLY'] as const)(
+      'refuses %s inline for a mortgage paid on an accelerated cadence',
+      async (type) => {
+        const select = await submitEdit(
+          mortgage({ mortgageType: 'ANNUITY', paymentFrequency: 'ACCELERATED_BIWEEKLY' }),
+        );
+        await act(async () => {
+          fireEvent.change(select, { target: { value: type } });
+        });
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+        });
+        expect(
+          await screen.findByText(/This mortgage is paid on an accelerated schedule/),
+        ).toBeInTheDocument();
+        expect(mockOnSubmit).not.toHaveBeenCalled();
+      },
+    );
+
+    it('lets a mortgage on a regular cadence become LINEAR', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'ANNUITY', paymentFrequency: 'MONTHLY' }),
+      );
+      await act(async () => {
+        fireEvent.change(select, { target: { value: 'LINEAR' } });
+      });
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({ mortgageType: 'LINEAR' });
+    });
+
+    it('sends a null prepayment mode when the mortgage leaves LINEAR', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'LINEAR', prepaymentMode: 'LOWER_INSTALLMENT' }),
+      );
+      await act(async () => {
+        fireEvent.change(select, { target: { value: 'INTEREST_ONLY' } });
+      });
+      expect(screen.queryByLabelText('What an Extra Repayment Does')).not.toBeInTheDocument();
+
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({ mortgageType: 'INTEREST_ONLY', prepaymentMode: null });
     });
 
     it('sends no mortgage type or flags for another account type', async () => {
@@ -972,6 +1030,7 @@ describe('AccountForm', () => {
 
       const payload = await clickUpdate();
       expect(payload).not.toHaveProperty('mortgageType');
+      expect(payload).not.toHaveProperty('prepaymentMode');
       expect(payload).not.toHaveProperty('isCanadianMortgage');
       expect(payload).not.toHaveProperty('isVariableRate');
     });

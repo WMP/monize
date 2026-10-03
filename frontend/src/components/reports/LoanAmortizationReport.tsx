@@ -29,6 +29,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { usePersistedAccountId } from '@/hooks/usePersistedAccountFilter';
 import { ReportError } from '@/components/reports/ReportError';
 import { useTranslations } from 'next-intl';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 
 type AmortizationSortField = 'paymentNumber' | 'date' | 'payment' | 'principal' | 'interest' | 'balance';
@@ -51,6 +52,7 @@ const NO_RATE_CHANGES: LoanRateChange[] = [];
 
 export function LoanAmortizationReport() {
   const t = useTranslations('reports');
+  const { formatDate } = useDateFormat();
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
 
   const friendlyAccountType = (type: string): string => {
@@ -268,7 +270,7 @@ export function LoanAmortizationReport() {
             projectionAnchor,
             todayYmd,
           )
-        : { annualRate: null, payment: null },
+        : { annualRate: null, payment: null, paymentDate: null, finalPayment: null },
     [selectedAccount, history, rateChanges, projectionAnchor, todayYmd],
   );
 
@@ -577,12 +579,38 @@ export function LoanAmortizationReport() {
                   : t('loanAmortization.notSet')}
               </p>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">{t('loanAmortization.paymentAmount')}</span>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
-                {currentTerms.payment ? formatCurrency(currentTerms.payment) : t('loanAmortization.notSet')}
-              </p>
-            </div>
+            {/* A LINEAR or INTEREST_ONLY installment changes from one due
+                date to the next: it is the next one, with its date, and an
+                interest-only mortgage's bullet stands beside it. */}
+            {currentTerms.payment && currentTerms.paymentDate ? (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">{t('loanAmortization.nextInstallment')}</span>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {t('loanAmortization.amountDueOn', {
+                    amount: formatCurrency(currentTerms.payment),
+                    date: formatDate(currentTerms.paymentDate),
+                  })}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">{t('loanAmortization.paymentAmount')}</span>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {currentTerms.payment ? formatCurrency(currentTerms.payment) : t('loanAmortization.notSet')}
+                </p>
+              </div>
+            )}
+            {currentTerms.finalPayment && (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">{t('loanAmortization.finalPayment')}</span>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {t('loanAmortization.amountDueOn', {
+                    amount: formatCurrency(currentTerms.finalPayment.amount),
+                    date: formatDate(currentTerms.finalPayment.date),
+                  })}
+                </p>
+              </div>
+            )}
             <div>
               <span className="text-gray-500 dark:text-gray-400">{t('loanAmortization.status')}</span>
               <p className="font-medium text-gray-900 dark:text-gray-100">

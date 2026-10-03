@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "{account} の定期支払いが設定されました"
-    }
+    },
+    "firstInstallment": "初回の返済額",
+    "firstInstallmentHelp": "この住宅ローンには固定の返済額がありません。各回の返済額は残高、金利、償還期間から計算されます。これは {date} が期日の返済額で、追加の元金を含みます。",
+    "firstInstallmentPending": "初回の返済額を計算するには、次回の返済日を入力してください。",
+    "firstInstallmentCalculating": "初回の返済額を計算しています...",
+    "firstInstallmentFailed": "初回の返済額を計算できませんでした。下の値を確認して、もう一度お試しください。"
   },
   "mortgageFields": {
     "title": "住宅ローンの詳細",
@@ -340,7 +345,14 @@
       "memoLabel": "繰上返済のメモテキスト",
       "memoPlaceholder": "例: 繰上返済",
       "memoHelp": "支払いのメモ、その元取引のメモ、または分割のメモに対する大文字小文字を区別しない部分一致。"
-    }
+    },
+    "prepaymentMode": {
+      "label": "繰上返済の効果",
+      "SHORTEN_TERM": "期間を短縮（毎月の元金は同じ）",
+      "LOWER_INSTALLMENT": "返済額を減額（終了日は同じ）",
+      "help": "金融機関に確認してください。繰上返済後の明細で元金部分が変わらなければ、期間が短縮されています。"
+    },
+    "previewFirstInstallment": "初回の返済額："
   },
   "assetFields": {
     "title": "資産価値変動設定",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "支払い頻度は必須です",
     "paymentStartDateRequired": "初回支払日は必須です",
     "paymentAccountRequired": "支払い元勘定科目は必須です",
-    "amortizationRequired": "償却期間は必須です"
+    "amortizationRequired": "償却期間は必須です",
+    "acceleratedNeedsAnnuity": "この住宅ローンは繰上げ型の返済スケジュールで支払われており、これは元利均等返済の住宅ローンにしかありません。元金均等返済や利息のみの住宅ローンには通常の返済頻度が必要なため、元利均等の種類のままにしてください。"
   },
   "loanDetail": {
     "backToAccounts": "勘定科目一覧に戻る",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "残り利息（推定）",
       "notSet": "未設定",
       "notAvailable": "なし",
-      "paidOff": "完済"
+      "paidOff": "完済",
+      "nextInstallment": "次回の返済額",
+      "dueOn": "期日 {date}",
+      "finalPayment": "最終返済額",
+      "nextInstallmentDue": "次回の返済額（期日 {date}）",
+      "finalPaymentDue": "最終返済額（期日 {date}）"
     },
     "schedule": {
       "title": "返済スケジュール",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "この融資には残高がないため、償却するものはありません。",
         "reasonNoFrequency": "この融資には支払頻度が設定されていません。アカウント設定で追加してください。",
         "reasonNoRate": "この融資には金利が保存されていません。アカウント設定で金利を設定するか、本日以前の日付で金利変更を記録してください。下の予定表に行ごとに表示される金利は請求された利息から再構成されたもので、保存された金利ではありません。",
-        "reasonNoPayment": "返済額を特定できません。定期的な返済を融資口座への送金として記録し（元金、利息は分割行または別の分類済み支出として）、またはアカウント設定で支払額を設定してください。振替元口座に通常の支出として記録された支払は融資口座に届かないため、予定表はそれらを認識できません。"
-      }
+        "reasonNoPayment": "返済額を特定できません。定期的な返済を融資口座への送金として記録し（元金、利息は分割行または別の分類済み支出として）、またはアカウント設定で支払額を設定してください。振替元口座に通常の支出として記録された支払は融資口座に届かないため、予定表はそれらを認識できません。",
+        "reasonNoAmortization": "この住宅ローンには償還期間が設定されていないため、返済額と期間の終了日を計算できません。口座設定で償還期間を設定してください。",
+        "reasonNoPaymentStart": "この住宅ローンには初回返済日が設定されていないため、期間終了までの残りの返済回数を数えられません。口座設定から定期返済を設定してください。入力した最初の期日が第1回返済になります。",
+        "reasonNoPrincipal": "この住宅ローンには当初の借入額が設定されていないため、元金均等の元金額を計算できません。口座設定で住宅ローンの金額を設定してください。"
+      },
+      "budgetBelowNextInstallment": "次回の返済額（{amount}、期日 {date}）を下回っています。繰上返済するにはそれより高く設定してください。",
+      "shortenTermNeedsPrincipal": "この住宅ローンには当初の借入額が設定されていないため、期間短縮をシミュレーションできません。返済額の減額を選ぶか、口座設定で住宅ローンの金額を設定してください。"
     },
     "comparison": {
       "newPayoff": "新しい完済日",
@@ -488,7 +511,8 @@
       "newInstallment": "新しい返済額",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "毎月の返済額",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "初回の支払額"
     },
     "chart": {
       "title": "完済タイムライン",

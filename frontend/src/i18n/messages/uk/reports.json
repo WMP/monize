@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Сплачено основного боргу",
     "seriesInterestPaid": "Сплачено відсотків",
     "seriesPrincipal": "Основний борг",
-    "seriesInterest": "Відсотки"
+    "seriesInterest": "Відсотки",
+    "installmentAndFinal": "{installment}; останній платіж {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Приріст капіталу, дивіденди та відсотки",
@@ -884,7 +885,10 @@
     "typeLoan": "Позика",
     "typeMortgage": "Іпотека",
     "pdfSubtitlePaymentsSummary": "{count} платежів здійснено, {interest} загальних відсотків",
-    "pdfSubtitlePaymentsProjection": "Внесено платежів: {count}, відсотки за період прогнозу: {interest}"
+    "pdfSubtitlePaymentsProjection": "Внесено платежів: {count}, відсотки за період прогнозу: {interest}",
+    "nextInstallment": "Наступний платіж",
+    "finalPayment": "Останній платіж",
+    "amountDueOn": "{amount}, строк {date}"
   },
   "monteCarlo": {
     "toasts": {

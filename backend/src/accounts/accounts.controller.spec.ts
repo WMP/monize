@@ -22,6 +22,7 @@ describe("AccountsController", () => {
   let mockBalancesReport: Record<string, jest.Mock>;
   let mockDelegationService: Record<string, jest.Mock>;
   let mockCrossOwnerAccess: Record<string, jest.Mock>;
+  let mockLoanPaymentSetup: Record<string, jest.Mock>;
   let mockJointAccounts: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1", realUserId: "user-1" } };
 
@@ -79,6 +80,11 @@ describe("AccountsController", () => {
       transferCandidatesFor: jest.fn().mockResolvedValue([]),
     };
 
+    mockLoanPaymentSetup = {
+      setupLoanPayments: jest.fn(),
+      previewFirstInstallment: jest.fn(),
+    };
+
     mockJointAccounts = {
       jointShareCountsForOwner: jest.fn().mockResolvedValue(new Map()),
       jointAccountsFor: jest.fn().mockResolvedValue([]),
@@ -104,7 +110,7 @@ describe("AccountsController", () => {
         },
         {
           provide: LoanPaymentSetupService,
-          useValue: { setupLoanPayments: jest.fn() },
+          useValue: mockLoanPaymentSetup,
         },
         {
           provide: StatementCycleService,
@@ -142,6 +148,32 @@ describe("AccountsController", () => {
     }).compile();
 
     controller = module.get<AccountsController>(AccountsController);
+  });
+
+  describe("previewLoanPaymentSetup()", () => {
+    it("prices the setup for the JWT's user, never one from the request", async () => {
+      const preview = {
+        derivesInstallment: true,
+        principalPayment: 833.3333,
+        interestPayment: 500,
+        paymentAmount: 1333.3333,
+      };
+      mockLoanPaymentSetup.previewFirstInstallment.mockResolvedValue(preview);
+      const dto = { paymentFrequency: "MONTHLY", nextDueDate: "2024-01-01" };
+
+      await expect(
+        controller.previewLoanPaymentSetup(
+          { user: { id: "user-1" } },
+          "mortgage-1",
+          dto,
+        ),
+      ).resolves.toBe(preview);
+      expect(mockLoanPaymentSetup.previewFirstInstallment).toHaveBeenCalledWith(
+        "user-1",
+        "mortgage-1",
+        dto,
+      );
+    });
   });
 
   describe("getTransferCandidates()", () => {

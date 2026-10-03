@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "{account} için zamanlanmış ödemeler ayarlandı"
-    }
+    },
+    "firstInstallment": "İlk Taksit",
+    "firstInstallmentHelp": "Bu konut kredisinin sabit bir ödemesi yok: her taksit bakiye, faiz oranı ve amortisman süresinden hesaplanır. Bu, ek anapara dahil {date} vadeli taksittir.",
+    "firstInstallmentPending": "İlk taksiti hesaplamak için sonraki ödeme tarihini girin.",
+    "firstInstallmentCalculating": "İlk taksit hesaplanıyor...",
+    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin."
   },
   "mortgageFields": {
     "title": "İpotek Ayrıntıları",
@@ -340,7 +345,14 @@
       "memoLabel": "Fazla ödeme not metni",
       "memoPlaceholder": "örn. fazla ödeme",
       "memoHelp": "Ödemenin notu, kaynak işleminin notu veya bir bölme notu ile büyük/küçük harfe duyarsız alt dize eşleşmesi."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Ara Ödemenin Etkisi",
+      "SHORTEN_TERM": "Vadeyi kısaltır (her ay aynı anapara)",
+      "LOWER_INSTALLMENT": "Taksiti düşürür (aynı bitiş tarihi)",
+      "help": "Kredi veren kurumunuza danışın. Ara ödemeden sonra ekstredeki anapara kısmı değişmediyse vade kısaltılmıştır."
+    },
+    "previewFirstInstallment": "İlk Taksit:"
   },
   "assetFields": {
     "title": "Varlık Değeri Değişim Ayarları",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "Ödeme sıklığı zorunludur",
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
-    "amortizationRequired": "Amortisman süresi zorunludur"
+    "amortizationRequired": "Amortisman süresi zorunludur",
+    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun."
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "Tah. Kalan Faiz",
       "notSet": "Ayarlanmadı",
       "notAvailable": "Yok",
-      "paidOff": "Kapandı"
+      "paidOff": "Kapandı",
+      "nextInstallment": "Sonraki Taksit",
+      "dueOn": "Vade {date}",
+      "finalPayment": "Son Ödeme",
+      "nextInstallmentDue": "Sonraki Taksit (vade {date})",
+      "finalPaymentDue": "Son Ödeme (vade {date})"
     },
     "schedule": {
       "title": "Ödeme Planı",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "Bu kredinin ödenmemiş bakiyesi yok, bu yüzden amorti edilecek bir şey kalmadı.",
         "reasonNoFrequency": "Bu kredi için ödeme sıklığı ayarlanmamış. Hesap ayarlarından ekleyin.",
         "reasonNoRate": "Bu kredi için kayıtlı bir faiz oranı yok. Faiz oranını hesap ayarlarından belirleyin veya bugün ya da daha önceki tarihli bir oran değişikliği kaydedin. Aşağıdaki planda satır başına gösterilen oran, tahsil edilen faizden yeniden oluşturulur ve kayıtlı bir oran değildir.",
-        "reasonNoPayment": "Taksit tutarı belirlenemiyor. Düzenli taksitleri kredi hesabına transfer olarak kaydedin (anapara, faiz ise bölünmüş satır veya ayrı kategorili bir gider olarak) ya da ödeme tutarını hesap ayarlarından belirleyin. Kaynak hesapta sıradan gider olarak kaydedilen ödemeler kredi hesabına asla ulaşmaz, bu yüzden plan onları göremez."
-      }
+        "reasonNoPayment": "Taksit tutarı belirlenemiyor. Düzenli taksitleri kredi hesabına transfer olarak kaydedin (anapara, faiz ise bölünmüş satır veya ayrı kategorili bir gider olarak) ya da ödeme tutarını hesap ayarlarından belirleyin. Kaynak hesapta sıradan gider olarak kaydedilen ödemeler kredi hesabına asla ulaşmaz, bu yüzden plan onları göremez.",
+        "reasonNoAmortization": "Bu konut kredisinin amortisman süresi yok, bu nedenle taksitleri ve vade sonu hesaplanamıyor. Amortisman süresini hesap ayarlarından belirleyin.",
+        "reasonNoPaymentStart": "Bu konut kredisinin ilk ödeme tarihi yok, bu nedenle vade sonuna kadar kalan ödemeler sayılamıyor. Planlı ödemesini hesap ayarlarından kurun; girdiğiniz ilk vade tarihi 1. ödeme olur.",
+        "reasonNoPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle sabit anapara tutarı hesaplanamıyor. Kredi tutarını hesap ayarlarından belirleyin."
+      },
+      "budgetBelowNextInstallment": "Bu, sonraki taksitin ({amount}, vade {date}) altında; ek ödeme yapmak için tutarı bunun üzerine çıkarın.",
+      "shortenTermNeedsPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle vadenin kısaltılması simüle edilemiyor. Taksiti düşürmeyi seçin veya kredi tutarını hesap ayarlarından belirleyin."
     },
     "comparison": {
       "newPayoff": "Yeni Kapanış Tarihi",
@@ -488,7 +511,8 @@
       "newInstallment": "Yeni Taksit",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Aylık ödeme",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "İlk Ödeme"
     },
     "chart": {
       "title": "Kapanış Zaman Çizelgesi",

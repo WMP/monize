@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -13,13 +13,22 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   Account,
   DetectedLoanPayment,
+  MORTGAGE_TYPES,
   MortgageType,
+  PreviewLoanPaymentSetupData,
+  PreviewLoanPaymentSetupResponse,
   SetupLoanPaymentsData,
-  WRITABLE_MORTGAGE_TYPES,
-  isWritableMortgageType,
   toMortgagePaymentFrequency,
 } from '@/types/account';
-import { compoundingFor, flagsFromMortgageType } from '@/lib/mortgage-type';
+import {
+  PREPAYMENT_MODES,
+  compoundingFor,
+  flagsFromMortgageType,
+  storesConstantPayment,
+  type PrepaymentMode,
+} from '@/lib/mortgage-type';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { Payee } from '@/types/payee';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
@@ -51,6 +60,8 @@ interface LoanPaymentSetupDialogProps {
     accountType: string;
     currencyCode?: string;
     mortgageType?: MortgageType;
+    /** A LINEAR mortgage's stored mode; seeds the dialog's own select. */
+    prepaymentMode?: PrepaymentMode | null;
   };
   accounts: Account[];
   onSetupComplete?: () => void;
@@ -64,6 +75,8 @@ export function LoanPaymentSetupDialog({
   onSetupComplete,
 }: LoanPaymentSetupDialogProps) {
   const t = useTranslations('accounts');
+  const { formatCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
   const [isDetecting, setIsDetecting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detected, setDetected] = useState<DetectedLoanPayment | null>(null);
@@ -102,6 +115,9 @@ export function LoanPaymentSetupDialog({
   const currencySymbol = getCurrencySymbol(loanAccount.currencyCode || 'USD');
   const [mortgageType, setMortgageType] = useState<MortgageType>(
     loanAccount.mortgageType ?? 'ANNUITY',
+  );
+  const [prepaymentMode, setPrepaymentMode] = useState<PrepaymentMode>(
+    loanAccount.prepaymentMode ?? 'SHORTEN_TERM',
   );
 
   // A semi-annually compounded mortgage is split by the mortgage helpers, which
@@ -150,6 +166,84 @@ export function LoanPaymentSetupDialog({
 
   // Total payment including extra principal
   const totalPaymentAmount = paymentAmount + (includeExtraPrincipal ? extraPrincipal : 0);
+
+  // A LINEAR or INTEREST_ONLY mortgage has no constant payment for the user to
+  // state: the server prices its first installment from the ledger debt
+  // through the first due date, and refuses a setup whose payment differs
+  // (docs/specs/mortgage-types.md, section 5.5). The dialog shows the figure
+  // the server's own preview prices, through the same code, and submits it.
+  const derivesInstallment = isMortgage && !storesConstantPayment(mortgageType);
+  const installmentRequest = useMemo<PreviewLoanPaymentSetupData | null>(
+    () =>
+      derivesInstallment && nextDueDate
+        ? {
+            paymentFrequency: effectivePaymentFrequency,
+            nextDueDate,
+            interestRate,
+            mortgageType,
+            prepaymentMode: mortgageType === 'LINEAR' ? prepaymentMode : undefined,
+            amortizationMonths,
+            extraPrincipal:
+              includeExtraPrincipal && extraPrincipal > 0 ? extraPrincipal : undefined,
+          }
+        : null,
+    [
+      derivesInstallment, nextDueDate, effectivePaymentFrequency, interestRate,
+      mortgageType, prepaymentMode, amortizationMonths, includeExtraPrincipal,
+      extraPrincipal,
+    ],
+  );
+  // The answer is kept with the request that produced it, so a late answer
+  // for terms the user has since changed is never shown or submitted.
+  const [installmentPreview, setInstallmentPreview] = useState<{
+    request: PreviewLoanPaymentSetupData;
+    result: PreviewLoanPaymentSetupResponse | null;
+    error: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!isOpen || !installmentRequest) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await accountsApi.previewLoanPaymentSetup(
+          loanAccount.accountId,
+          installmentRequest,
+        );
+        if (!cancelled) {
+          setInstallmentPreview({ request: installmentRequest, result, error: null });
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          logger.error('Failed to preview the first installment:', error);
+          // A refusal from the pricing (a missing term, an accelerated
+          // cadence) is one localized sentence and is shown as is; a DTO
+          // validation failure answers with a list, which falls back to the
+          // generic reason rather than running its entries together.
+          const message = error?.response?.data?.message;
+          setInstallmentPreview({
+            request: installmentRequest,
+            result: null,
+            error: typeof message === 'string' ? message : null,
+          });
+        }
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isOpen, installmentRequest, loanAccount.accountId]);
+  const currentInstallment =
+    installmentPreview && installmentPreview.request === installmentRequest
+      ? installmentPreview
+      : null;
+  const derivedPaymentAmount =
+    currentInstallment?.result?.derivesInstallment === true
+      ? currentInstallment.result.paymentAmount
+      : null;
+  const submittedPaymentAmount = derivesInstallment
+    ? derivedPaymentAmount
+    : totalPaymentAmount;
 
   // Detect payment pattern on open
   useEffect(() => {
@@ -232,7 +326,7 @@ export function LoanPaymentSetupDialog({
   }, [t]);
 
   const handleSubmit = useCallback(async () => {
-    if (!totalPaymentAmount || !sourceAccountId || !nextDueDate) {
+    if (!submittedPaymentAmount || !sourceAccountId || !nextDueDate) {
       toast.error(t('loanPaymentSetup.fillRequiredFields'));
       return;
     }
@@ -240,7 +334,7 @@ export function LoanPaymentSetupDialog({
     setIsSubmitting(true);
     try {
       const data: SetupLoanPaymentsData = {
-        paymentAmount: totalPaymentAmount,
+        paymentAmount: submittedPaymentAmount,
         // The value the control shows, not the raw selection behind it: a
         // Canadian mortgage's list drops the cadences the server refuses, so
         // submitting the pre-restriction choice would send exactly the 400 the
@@ -259,18 +353,17 @@ export function LoanPaymentSetupDialog({
         data.extraPrincipal = extraPrincipal;
       }
 
-      if (useDetectedSplit && detected?.lastInterestAmount != null) {
+      // A derived installment is split by its method; the server ignores a
+      // detected interest for it, so none is sent.
+      if (!derivesInstallment && useDetectedSplit && detected?.lastInterestAmount != null) {
         data.detectedInterestAmount = detected.lastInterestAmount;
       }
 
       if (isMortgage) {
-        // The type and the flags it maps to travel together; a stored type
-        // the select does not offer (not writable yet) is withheld, so the
-        // row keeps it.
-        if (isWritableMortgageType(mortgageType)) {
-          data.mortgageType = mortgageType;
-          Object.assign(data, flagsFromMortgageType(mortgageType));
-        }
+        // The type and the flags it maps to travel together.
+        data.mortgageType = mortgageType;
+        Object.assign(data, flagsFromMortgageType(mortgageType));
+        if (mortgageType === 'LINEAR') data.prepaymentMode = prepaymentMode;
         data.amortizationMonths = amortizationMonths;
         data.termMonths = termMonths;
       }
@@ -287,11 +380,11 @@ export function LoanPaymentSetupDialog({
       setIsSubmitting(false);
     }
   }, [
-    totalPaymentAmount, effectivePaymentFrequency, sourceAccountId, nextDueDate,
+    submittedPaymentAmount, effectivePaymentFrequency, sourceAccountId, nextDueDate,
     interestRate, interestCategoryId, selectedPayeeId, payeeName, autoPost,
     includeExtraPrincipal, extraPrincipal, useDetectedSplit, detected,
-    isMortgage, mortgageType, amortizationMonths, termMonths,
-    loanAccount, onSetupComplete, onClose, t,
+    derivesInstallment, isMortgage, mortgageType, prepaymentMode,
+    amortizationMonths, termMonths, loanAccount, onSetupComplete, onClose, t,
   ]);
 
   const confidenceLabel = detected
@@ -349,15 +442,45 @@ export function LoanPaymentSetupDialog({
             )}
 
             <div className="space-y-4">
-              {/* Payment Amount */}
-              <div>
-                <CurrencyInput
-                  label={t('loanPaymentSetup.regularPaymentAmount')}
-                  value={paymentAmount || undefined}
-                  onChange={(val) => setPaymentAmount(val ?? 0)}
-                  prefix={currencySymbol}
-                />
-              </div>
+              {/* Payment Amount: stated by the user, or for a mortgage without
+                  a constant payment the first installment the server prices */}
+              {derivesInstallment ? (
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('loanPaymentSetup.firstInstallment')}
+                  </p>
+                  {derivedPaymentAmount != null ? (
+                    <>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {formatCurrency(derivedPaymentAmount, loanAccount.currencyCode)}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t('loanPaymentSetup.firstInstallmentHelp', {
+                          date: formatDate(nextDueDate),
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {!nextDueDate
+                        ? t('loanPaymentSetup.firstInstallmentPending')
+                        : currentInstallment
+                          ? (currentInstallment.error ??
+                            t('loanPaymentSetup.firstInstallmentFailed'))
+                          : t('loanPaymentSetup.firstInstallmentCalculating')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <CurrencyInput
+                    label={t('loanPaymentSetup.regularPaymentAmount')}
+                    value={paymentAmount || undefined}
+                    onChange={(val) => setPaymentAmount(val ?? 0)}
+                    prefix={currencySymbol}
+                  />
+                </div>
+              )}
 
               {/* Extra Principal */}
               <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-2">
@@ -380,15 +503,18 @@ export function LoanPaymentSetupDialog({
                       onChange={(val) => setExtraPrincipal(val ?? 0)}
                       prefix={currencySymbol}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {t('loanPaymentSetup.totalPayment', { currency: currencySymbol, amount: totalPaymentAmount.toFixed(2) })}
-                    </p>
+                    {!derivesInstallment && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t('loanPaymentSetup.totalPayment', { currency: currencySymbol, amount: totalPaymentAmount.toFixed(2) })}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Use Detected Split Ratio */}
-              {hasDetectedSplit && (
+              {/* Use Detected Split Ratio: an annuity's split only; a derived
+                  installment is split by its method */}
+              {hasDetectedSplit && !derivesInstallment && (
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
                   <label className="flex items-center gap-2">
                     <input
@@ -514,11 +640,11 @@ export function LoanPaymentSetupDialog({
                         value={mortgageType}
                         onChange={(e) =>
                           setMortgageType(
-                            WRITABLE_MORTGAGE_TYPES.find((type) => type === e.target.value) ??
+                            MORTGAGE_TYPES.find((type) => type === e.target.value) ??
                               mortgageType,
                           )
                         }
-                        options={WRITABLE_MORTGAGE_TYPES.map((type) => ({
+                        options={MORTGAGE_TYPES.map((type) => ({
                           value: type,
                           label: t(`mortgageFields.type.${type}`),
                         }))}
@@ -527,6 +653,29 @@ export function LoanPaymentSetupDialog({
                         {t(`mortgageFields.type.help.${mortgageType}`)}
                       </p>
                     </div>
+
+                    {mortgageType === 'LINEAR' && (
+                      <div>
+                        <Select
+                          id="loan-setup-prepayment-mode"
+                          label={t('mortgageFields.prepaymentMode.label')}
+                          value={prepaymentMode}
+                          onChange={(e) =>
+                            setPrepaymentMode(
+                              PREPAYMENT_MODES.find((mode) => mode === e.target.value) ??
+                                prepaymentMode,
+                            )
+                          }
+                          options={PREPAYMENT_MODES.map((mode) => ({
+                            value: mode,
+                            label: t(`mortgageFields.prepaymentMode.${mode}`),
+                          }))}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t('mortgageFields.prepaymentMode.help')}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -581,7 +730,7 @@ export function LoanPaymentSetupDialog({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !totalPaymentAmount || !sourceAccountId || !nextDueDate}
+                disabled={isSubmitting || !submittedPaymentAmount || !sourceAccountId || !nextDueDate}
               >
                 {isSubmitting ? t('loanPaymentSetup.settingUp') : t('loanPaymentSetup.setUpPayments')}
               </Button>

@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Capitale rimborsato",
     "seriesInterestPaid": "Interessi pagati",
     "seriesPrincipal": "Capitale",
-    "seriesInterest": "Interessi"
+    "seriesInterest": "Interessi",
+    "installmentAndFinal": "{installment}; pagamento finale {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Plusvalenze, dividendi e interessi",
@@ -884,7 +885,10 @@
     "typeLoan": "Prestito",
     "typeMortgage": "Mutuo",
     "pdfSubtitlePaymentsSummary": "{count} pagamenti effettuati, {interest} interessi totali",
-    "pdfSubtitlePaymentsProjection": "{count} pagamenti effettuati, {interest} di interessi sulla proiezione"
+    "pdfSubtitlePaymentsProjection": "{count} pagamenti effettuati, {interest} di interessi sulla proiezione",
+    "nextInstallment": "Prossima rata",
+    "finalPayment": "Pagamento finale",
+    "amountDueOn": "{amount}, scade il {date}"
   },
   "monteCarlo": {
     "toasts": {

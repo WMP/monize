@@ -46,6 +46,8 @@ import {
   ScheduleRow,
 } from "@/lib/loan-schedule-types";
 import { roundMoney, roundToCents, roundToDecimals } from "@/lib/format";
+import { generateMethodSchedule } from "@/lib/loan-schedule-methods";
+import { amortizationMethodFor } from "@/lib/mortgage-type";
 import type { MortgageType } from "@/types/account";
 
 /**
@@ -299,6 +301,11 @@ export function generateBudgetSchedule(
 export function generateLoanSchedule(
   input: LoanScheduleInput,
 ): LoanScheduleResult {
+  // A LINEAR or INTEREST_ONLY mortgage derives every row's principal from its
+  // method (docs/specs/mortgage-types.md, section 5.4); the annuity loops
+  // below price the remainder of a constant payment.
+  const method = amortizationMethodFor(input.mortgageType ?? "ANNUITY");
+  if (method !== "ANNUITY") return generateMethodSchedule(input, method);
   const budget = input.overpayments?.targetMonthlyPayment;
   if (budget && budget > 0) {
     return generateBudgetSchedule(

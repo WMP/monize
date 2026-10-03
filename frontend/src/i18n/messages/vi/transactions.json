@@ -76,7 +76,10 @@
     "collapseAria": "Ẩn thông tin tài khoản",
     "showAccountNumber": "Hiển thị số tài khoản",
     "hideAccountNumber": "Ẩn số tài khoản",
-    "show": "Hiển thị thông tin tài khoản"
+    "show": "Hiển thị thông tin tài khoản",
+    "nextInstallment": "Kỳ trả góp tiếp theo",
+    "finalPayment": "Khoản thanh toán cuối",
+    "amountDueOn": "{amount}, đến hạn {date}"
   },
   "page": {
     "title": "Giao tác",

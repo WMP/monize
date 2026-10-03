@@ -5,9 +5,12 @@ import { roundMoney } from '@/lib/format';
 import {
   calculatePaymentForTerm,
   effectiveAnnualRate,
+  generateLoanSchedule,
   getPeriodicRate,
+  getPeriodsPerYear,
   type ScheduleFrequency,
 } from '@/lib/loan-schedule';
+import { methodPrincipal, methodScheduleTerms } from '@/lib/mortgage-installment';
 import {
   MORTGAGE_TYPE_TRAITS,
   amortizationMethodFor,
@@ -73,9 +76,11 @@ const FREQUENCY_BY_PERIODS: Record<number, ScheduleFrequency> = {
 };
 
 /**
- * The first installment's principal by method, the backend contract spec's
- * restatement of spec table 4.3 at the first due date, where the debt is the
- * principal. The LINEAR and INTEREST_ONLY engine branches land in P2-F1.
+ * The first installment's principal by method, at the first due date, where
+ * the debt is the principal: the annuity payment less its interest, and for
+ * LINEAR and INTEREST_ONLY the first row of the engine's own projection, so
+ * the method branch of `generateLoanSchedule` is what the backend's figures
+ * are held against.
  */
 const FIRST_PRINCIPAL: Record<
   MortgageAmortizationMethod,
@@ -93,9 +98,63 @@ const FIRST_PRINCIPAL: Record<
       calculatePaymentForTerm(principal, annualRate, totalPayments, frequency, type) -
         roundMoney(principal * periodicRate),
     ),
-  LINEAR: ({ principal, totalPayments }) => roundMoney(principal / totalPayments),
-  INTEREST_ONLY: () => 0,
+  LINEAR: (args) => firstMethodPrincipal(args),
+  INTEREST_ONLY: (args) => firstMethodPrincipal(args),
 };
+
+function firstMethodPrincipal({
+  principal,
+  annualRate,
+  totalPayments,
+  frequency,
+  type,
+}: {
+  principal: number;
+  annualRate: number;
+  totalPayments: number;
+  frequency: ScheduleFrequency;
+  type: MortgageType;
+}): number {
+  const method = amortizationMethodFor(type);
+  if (method === 'ANNUITY') throw new Error(`${type} is priced as an annuity`);
+  const resolved = methodScheduleTerms(
+    type,
+    {
+      originalPrincipal: principal,
+      amortizationMonths: (totalPayments * 12) / getPeriodsPerYear(frequency),
+      paymentStartDate: '2024-01-01',
+      paymentFrequency: frequency,
+    },
+    '2024-01-01',
+  );
+  const terms = resolved?.terms;
+  if (!terms) throw new Error('the case terms are complete');
+  expect(terms.scheduledPayments).toBe(totalPayments);
+  expect(terms.constantPrincipal).not.toBeNull();
+  // Table 4.3 at storage precision, the rule every projected row applies...
+  const firstPrincipal = methodPrincipal({
+    method,
+    mode: terms.prepaymentMode,
+    debt: principal,
+    // The case states its principal, so `c` is known.
+    constantPrincipal: terms.constantPrincipal as number,
+    remaining: terms.remainingAtFirstRow,
+    count: terms.scheduledPayments,
+  });
+  // ...and the engine's first row, which carries it at cents.
+  const [first] = generateLoanSchedule({
+    startingBalance: principal,
+    annualRate,
+    paymentAmount: 0,
+    frequency,
+    mortgageType: type,
+    methodTerms: terms,
+    firstPaymentDate: new Date(2024, 0, 1),
+    maxPayments: 1,
+  }).rows;
+  expect(first.principal).toBe(Math.round(firstPrincipal * 100) / 100);
+  return firstPrincipal;
+}
 
 describe('mortgage-type-cases.json, shared with the backend', () => {
   it('reads the backend truth table', () => {

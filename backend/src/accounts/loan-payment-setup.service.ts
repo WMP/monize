@@ -10,6 +10,8 @@ import {
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
 import {
+  PreviewLoanPaymentSetupDto,
+  PreviewLoanPaymentSetupResponseDto,
   SetupLoanPaymentsDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
@@ -37,6 +39,8 @@ import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import {
+  MortgageType,
+  PrepaymentMode,
   compoundingFor,
   mortgageTypeColumns,
   mortgageTypeOf,
@@ -62,6 +66,117 @@ export class LoanPaymentSetupService {
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private scheduledTransactionsService: ScheduledTransactionsService,
   ) {}
+
+  /**
+   * The first installment a setup of `dto` would schedule, for a LINEAR or
+   * INTEREST_ONLY mortgage: what `setupLoanPayments` requires its
+   * `paymentAmount` to equal, priced here by the same code
+   * (`priceFirstMethodInstallment`) so the dialog shows the figure the write
+   * will accept (spec section 5.5). Writes nothing. An annuity mortgage or a
+   * plain loan has a constant payment the user states, so it answers
+   * `derivesInstallment: false` with no figures.
+   */
+  async previewFirstInstallment(
+    userId: string,
+    accountId: string,
+    dto: PreviewLoanPaymentSetupDto,
+  ): Promise<PreviewLoanPaymentSetupResponseDto> {
+    const account = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Account).findOne({
+        where: { id: accountId, userId },
+      }),
+    );
+    if (!account) {
+      throw new NotFoundException(
+        tr("errors.accounts.notFound", "Account not found"),
+      );
+    }
+    const mortgageType =
+      account.accountType === AccountType.MORTGAGE
+        ? (requestedMortgageType(dto, account) ?? mortgageTypeOf(account))
+        : null;
+    if (mortgageType === null || storesConstantPayment(mortgageType)) {
+      return {
+        derivesInstallment: false,
+        principalPayment: null,
+        interestPayment: null,
+        paymentAmount: null,
+      };
+    }
+    const priced = await this.priceFirstMethodInstallment(
+      account,
+      mortgageType,
+      prepaymentModeColumn(
+        mortgageType,
+        dto.prepaymentMode,
+        account.prepaymentMode,
+      ),
+      dto,
+      dto.interestRate || Number(account.interestRate) || 0,
+    );
+    return {
+      derivesInstallment: true,
+      principalPayment: priced.principal,
+      interestPayment: priced.interest,
+      paymentAmount: roundMoney(
+        priced.principal + priced.interest + (dto.extraPrincipal || 0),
+      ),
+    };
+  }
+
+  /**
+   * A LINEAR or INTEREST_ONLY mortgage has no constant payment: its first
+   * installment is table 4.3's at the first due date, priced from the ledger
+   * debt through that date (spec section 5.5). Setup makes that date payment
+   * 1, so the calendar starts there. Shared by the setup and its preview, so
+   * the figure the dialog shows is the one the write checks against.
+   */
+  private async priceFirstMethodInstallment(
+    account: Account,
+    mortgageType: MortgageType,
+    prepaymentMode: PrepaymentMode | null,
+    dto: {
+      nextDueDate: string;
+      paymentFrequency: string;
+      amortizationMonths?: number;
+    },
+    interestRate: number,
+  ): Promise<{ principal: number; interest: number; debt: number }> {
+    const terms: MortgageMethodTerms = {
+      prepaymentMode,
+      originalPrincipal: account.originalPrincipal,
+      openingBalance: account.openingBalance,
+      amortizationMonths: dto.amortizationMonths ?? account.amortizationMonths,
+      paymentStartDate: dto.nextDueDate,
+      paymentFrequency: dto.paymentFrequency,
+    };
+    assertMortgageMethodTerms(mortgageType, terms);
+    const debt = await withScopedDb(this.dataSource, (m) =>
+      datedLoanDebt(m, account, dto.nextDueDate),
+    );
+    if (debt === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.accounts.loanLedgerUnreadable",
+          "This loan's balance could not be read. Try again.",
+        ),
+      );
+    }
+    // `assertMortgageMethodTerms` refused every input that leaves this null.
+    const installment = nonAnnuityInstallment(
+      mortgageType,
+      terms,
+      dto.nextDueDate,
+      debt,
+      getPeriodicRate(
+        interestRate,
+        periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
+          DEFAULT_PERIODS_PER_YEAR,
+        mortgageType,
+      ),
+    )!;
+    return { ...installment, debt };
+  }
 
   /**
    * Set up scheduled loan/mortgage payments for an existing account.
@@ -163,44 +278,16 @@ export class LoanPaymentSetupService {
     let installmentDebt: number | null = null;
 
     if (derivesInstallment) {
-      const terms: MortgageMethodTerms = {
-        prepaymentMode,
-        originalPrincipal: account.originalPrincipal,
-        openingBalance: account.openingBalance,
-        amortizationMonths:
-          dto.amortizationMonths ?? account.amortizationMonths,
-        // Setup makes the first due date payment 1 (below).
-        paymentStartDate: dto.nextDueDate,
-        paymentFrequency: dto.paymentFrequency,
-      };
-      assertMortgageMethodTerms(mortgageType, terms);
-      const debt = await withScopedDb(this.dataSource, (m) =>
-        datedLoanDebt(m, account, dto.nextDueDate),
-      );
-      if (debt === null) {
-        throw new ServiceUnavailableException(
-          tr(
-            "errors.accounts.loanLedgerUnreadable",
-            "This loan's balance could not be read. Try again.",
-          ),
-        );
-      }
-      installmentDebt = debt;
-      // `assertMortgageMethodTerms` refused every input that leaves this null.
-      const installment = nonAnnuityInstallment(
+      const priced = await this.priceFirstMethodInstallment(
+        account,
         mortgageType,
-        terms,
-        dto.nextDueDate,
-        debt,
-        getPeriodicRate(
-          interestRate,
-          periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
-            DEFAULT_PERIODS_PER_YEAR,
-          mortgageType,
-        ),
-      )!;
+        prepaymentMode,
+        dto,
+        interestRate,
+      );
+      installmentDebt = priced.debt;
       const expectedPayment = roundMoney(
-        installment.principal + installment.interest + extraPrincipal,
+        priced.principal + priced.interest + extraPrincipal,
       );
       if (Math.abs(dto.paymentAmount - expectedPayment) > 0.00005) {
         throw new BadRequestException(
@@ -211,8 +298,8 @@ export class LoanPaymentSetupService {
           ),
         );
       }
-      principalPayment = installment.principal;
-      interestPayment = installment.interest;
+      principalPayment = priced.principal;
+      interestPayment = priced.interest;
     } else if (
       dto.detectedInterestAmount != null &&
       dto.detectedInterestAmount >= 0

@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Pagamentos agendados configurados para {account}"
-    }
+    },
+    "firstInstallment": "Primeira parcela",
+    "firstInstallmentHelp": "Este financiamento não tem pagamento fixo: cada parcela é calculada a partir do saldo, da taxa e do prazo de amortização. Esta é a que vence em {date}, incluindo qualquer amortização extra.",
+    "firstInstallmentPending": "Informe a data do próximo pagamento para calcular a primeira parcela.",
+    "firstInstallmentCalculating": "Calculando a primeira parcela...",
+    "firstInstallmentFailed": "Não foi possível calcular a primeira parcela. Verifique os valores abaixo e tente novamente."
   },
   "mortgageFields": {
     "title": "Detalhes da Hipoteca",
@@ -340,7 +345,14 @@
       "memoLabel": "Texto da nota de amortização extra",
       "memoPlaceholder": "ex.: amortização extra",
       "memoHelp": "Correspondência de substring sem diferenciar maiúsculas de minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de um rateio."
-    }
+    },
+    "prepaymentMode": {
+      "label": "O que uma amortização extra faz",
+      "SHORTEN_TERM": "Reduz o prazo (mesma amortização todo mês)",
+      "LOWER_INSTALLMENT": "Reduz a parcela (mesma data final)",
+      "help": "Confirme com o seu banco. Se, após uma amortização extra, a parte de amortização no extrato não mudar, o prazo foi reduzido."
+    },
+    "previewFirstInstallment": "Primeira parcela:"
   },
   "assetFields": {
     "title": "Configurações de Variação do Valor do Ativo",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "acceleratedNeedsAnnuity": "Este financiamento é pago em um cronograma acelerado, que só um financiamento de parcelas fixas tem. Um financiamento SAC ou só de juros precisa de uma frequência de pagamento normal, então mantenha um tipo de parcelas fixas."
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "Juros restantes est.",
       "notSet": "Não definido",
       "notAvailable": "N/D",
-      "paidOff": "Quitado"
+      "paidOff": "Quitado",
+      "nextInstallment": "Próxima parcela",
+      "dueOn": "Vence em {date}",
+      "finalPayment": "Pagamento final",
+      "nextInstallmentDue": "Próxima parcela (vence em {date})",
+      "finalPaymentDue": "Pagamento final (vence em {date})"
     },
     "schedule": {
       "title": "Tabela de amortização",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "Este empréstimo não tem saldo devedor, então não há nada para amortizar.",
         "reasonNoFrequency": "Este empréstimo não tem uma frequência de pagamento definida. Adicione-a nas configurações da conta.",
         "reasonNoRate": "Este empréstimo não tem uma taxa de juros salva. Defina a taxa nas configurações da conta ou registre uma alteração de taxa com data de hoje ou anterior. Uma taxa mostrada por linha no cronograma abaixo é reconstruída a partir dos juros cobrados e não é uma taxa salva.",
-        "reasonNoPayment": "O valor da parcela não pode ser determinado. Registre as parcelas regulares como transferências para a conta do empréstimo (principal, com os juros como linha de divisão ou como uma despesa categorizada separada), ou defina o valor do pagamento nas configurações da conta. Pagamentos registrados como despesas comuns na conta de origem nunca chegam à conta do empréstimo, então o cronograma não consegue vê-los."
-      }
+        "reasonNoPayment": "O valor da parcela não pode ser determinado. Registre as parcelas regulares como transferências para a conta do empréstimo (principal, com os juros como linha de divisão ou como uma despesa categorizada separada), ou defina o valor do pagamento nas configurações da conta. Pagamentos registrados como despesas comuns na conta de origem nunca chegam à conta do empréstimo, então o cronograma não consegue vê-los.",
+        "reasonNoAmortization": "Este financiamento imobiliário não tem prazo de amortização, então não é possível calcular as parcelas nem o fim do prazo. Defina o prazo de amortização nas configurações da conta.",
+        "reasonNoPaymentStart": "Este financiamento imobiliário não tem data do primeiro pagamento, então não é possível contar os pagamentos que faltam até o fim do prazo. Configure o pagamento agendado nas configurações da conta; a primeira data de vencimento que você informar passa a ser o pagamento 1.",
+        "reasonNoPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível calcular a amortização constante. Defina o valor do financiamento nas configurações da conta."
+      },
+      "budgetBelowNextInstallment": "Isso está abaixo da próxima parcela ({amount}, vence em {date}); aumente acima dela para amortizar antecipadamente.",
+      "shortenTermNeedsPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível simular um prazo menor. Escolha reduzir a parcela ou defina o valor do financiamento nas configurações da conta."
     },
     "comparison": {
       "newPayoff": "Nova data de quitação",
@@ -488,7 +511,8 @@
       "newInstallment": "Nova parcela",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Pagamento mensal",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primeiro pagamento"
     },
     "chart": {
       "title": "Linha do tempo de quitação",

@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Terminierte Zahlungen für {account} eingerichtet"
-    }
+    },
+    "firstInstallment": "Erste Rate",
+    "firstInstallmentHelp": "Diese Hypothek hat keine feste Zahlung: Jede Rate ergibt sich aus dem Saldo, dem Zinssatz und der Tilgungsdauer. Dies ist die am {date} fällige Rate, einschließlich einer eventuellen Sondertilgung.",
+    "firstInstallmentPending": "Gib das nächste Zahlungsdatum ein, um die erste Rate zu berechnen.",
+    "firstInstallmentCalculating": "Die erste Rate wird berechnet...",
+    "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut."
   },
   "mortgageFields": {
     "title": "Hypothekendetails",
@@ -340,7 +345,14 @@
       "memoLabel": "Sondertilgungs-Notiztext",
       "memoPlaceholder": "z. B. Sondertilgung",
       "memoHelp": "Groß-/Kleinschreibung wird ignoriert; Teilstring-Abgleich mit der Notiz der Zahlung, der Notiz der Quelltransaktion oder einer Split-Notiz."
-    }
+    },
+    "prepaymentMode": {
+      "label": "Was eine Sondertilgung bewirkt",
+      "SHORTEN_TERM": "Verkürzt die Laufzeit (gleiche Tilgung jeden Monat)",
+      "LOWER_INSTALLMENT": "Senkt die Rate (gleiches Laufzeitende)",
+      "help": "Frage bei deinem Kreditgeber nach. Bleibt der Tilgungsanteil auf dem Kontoauszug nach einer Sondertilgung gleich, wurde die Laufzeit verkürzt."
+    },
+    "previewFirstInstallment": "Erste Rate:"
   },
   "assetFields": {
     "title": "Einstellungen für Wertänderungen",
@@ -368,7 +380,8 @@
     "paymentFrequencyRequired": "Zahlungsintervall ist erforderlich",
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
-    "amortizationRequired": "Tilgungszeitraum ist erforderlich"
+    "amortizationRequired": "Tilgungszeitraum ist erforderlich",
+    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei."
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",
@@ -396,7 +409,12 @@
       "estRemainingInterest": "Voraus. Restzinsen",
       "notSet": "Nicht festgelegt",
       "notAvailable": "N/V",
-      "paidOff": "Getilgt"
+      "paidOff": "Getilgt",
+      "nextInstallment": "Nächste Rate",
+      "dueOn": "Fällig am {date}",
+      "finalPayment": "Schlusszahlung",
+      "nextInstallmentDue": "Nächste Rate (fällig am {date})",
+      "finalPaymentDue": "Schlusszahlung (fällig am {date})"
     },
     "schedule": {
       "title": "Tilgungsplan",
@@ -471,8 +489,13 @@
         "reasonPaidOff": "Dieser Kredit hat keinen offenen Saldo, es bleibt also nichts zu tilgen.",
         "reasonNoFrequency": "Für diesen Kredit ist keine Zahlungshäufigkeit festgelegt. Legen Sie sie in den Kontoeinstellungen fest.",
         "reasonNoRate": "Für diesen Kredit ist kein Zinssatz gespeichert. Legen Sie den Zinssatz in den Kontoeinstellungen fest oder erfassen Sie eine Zinsänderung mit heutigem oder früherem Datum. Ein je Zeile im Tilgungsplan angezeigter Zinssatz wird aus den berechneten Zinsen rekonstruiert und ist kein gespeicherter Zinssatz.",
-        "reasonNoPayment": "Die Ratenhöhe kann nicht ermittelt werden. Erfassen Sie die regelmäßigen Raten als Überweisungen auf das Kreditkonto (Tilgung, mit Zinsen als Splitzeile oder als separate kategorisierte Ausgabe) oder legen Sie den Zahlungsbetrag in den Kontoeinstellungen fest. Als gewöhnliche Ausgaben auf dem Quellkonto gebuchte Zahlungen erreichen das Kreditkonto nie, daher kann der Tilgungsplan sie nicht sehen."
-      }
+        "reasonNoPayment": "Die Ratenhöhe kann nicht ermittelt werden. Erfassen Sie die regelmäßigen Raten als Überweisungen auf das Kreditkonto (Tilgung, mit Zinsen als Splitzeile oder als separate kategorisierte Ausgabe) oder legen Sie den Zahlungsbetrag in den Kontoeinstellungen fest. Als gewöhnliche Ausgaben auf dem Quellkonto gebuchte Zahlungen erreichen das Kreditkonto nie, daher kann der Tilgungsplan sie nicht sehen.",
+        "reasonNoAmortization": "Für diese Hypothek ist keine Tilgungsdauer hinterlegt, daher lassen sich ihre Raten und ihr Laufzeitende nicht berechnen. Lege die Tilgungsdauer in den Kontoeinstellungen fest.",
+        "reasonNoPaymentStart": "Für diese Hypothek ist kein erstes Zahlungsdatum hinterlegt, daher lassen sich die Zahlungen bis zum Laufzeitende nicht zählen. Richte in den Kontoeinstellungen ihre geplante Zahlung ein; das erste Fälligkeitsdatum, das du angibst, wird Zahlung 1.",
+        "reasonNoPrincipal": "Für diese Hypothek ist kein ursprünglicher Betrag hinterlegt, daher lässt sich ihre gleichbleibende Tilgung nicht berechnen. Lege den Hypothekenbetrag in den Kontoeinstellungen fest."
+      },
+      "budgetBelowNextInstallment": "Das liegt unter der nächsten Rate ({amount}, fällig am {date}); erhöhe den Betrag darüber, um Sondertilgungen zu leisten.",
+      "shortenTermNeedsPrincipal": "Für diese Hypothek ist kein ursprünglicher Betrag hinterlegt, daher lässt sich eine verkürzte Laufzeit nicht simulieren. Wähle, die Rate zu senken, oder lege den Hypothekenbetrag in den Kontoeinstellungen fest."
     },
     "comparison": {
       "newPayoff": "Neues Tilgungsdatum",
@@ -488,7 +511,8 @@
       "newInstallment": "Neue Rate",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Monatliche Rate",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Erste Zahlung"
     },
     "chart": {
       "title": "Tilgungsverlauf",

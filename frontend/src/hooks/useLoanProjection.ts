@@ -145,6 +145,8 @@ export function useLoanProjection(account: Account, refreshKey = 0): LoanProject
     const unknown: LoanFigures = {
       isSettled: false,
       currentPayment: null,
+      currentPaymentDate: null,
+      finalPayment: null,
       payoffDate: null,
       remainingInterest: null,
     };
@@ -194,6 +196,8 @@ export function useLoanProjection(account: Account, refreshKey = 0): LoanProject
       ...deriveLoanFigures({
         currentBalance: account.currentBalance,
         currentInstallment: currentTerms.payment,
+        currentInstallmentDate: currentTerms.paymentDate,
+        finalPayment: currentTerms.finalPayment,
         baseline,
       }),
     };

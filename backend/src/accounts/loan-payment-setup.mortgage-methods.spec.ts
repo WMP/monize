@@ -10,6 +10,7 @@ jest.mock("../common/db/scoped-db", () =>
 );
 import {
   BadRequestException,
+  NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
@@ -248,5 +249,113 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
       service.setupLoanPayments("user-1", "mortgage-1", dto()),
     ).rejects.toThrow(ServiceUnavailableException);
     expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+  });
+
+  describe("previewFirstInstallment", () => {
+    const previewDto = {
+      paymentFrequency: "MONTHLY",
+      nextDueDate: "2024-01-01",
+      mortgageType: "LINEAR" as const,
+      amortizationMonths: 360,
+    };
+
+    it("prices the first installment the setup will accept, writing nothing", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce(mortgage);
+      const preview = await service.previewFirstInstallment(
+        "user-1",
+        "mortgage-1",
+        { ...previewDto, extraPrincipal: 100 },
+      );
+      expect(preview).toEqual({
+        derivesInstallment: true,
+        principalPayment: 833.3333,
+        interestPayment: 500,
+        paymentAmount: 1433.3333,
+      });
+      expect(manager.query).toHaveBeenCalledWith(ACCOUNT_BALANCE_AS_OF_SQL, [
+        "mortgage-1",
+        "user-1",
+        "2024-01-01",
+      ]);
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      expect(accountsRepository.update).not.toHaveBeenCalled();
+
+      // The figure previewed is the one the write checks against.
+      setUp();
+      await service.setupLoanPayments(
+        "user-1",
+        "mortgage-1",
+        dto({ paymentAmount: preview.paymentAmount!, extraPrincipal: 100 }),
+      );
+      expect(scheduledTransactionsService.create).toHaveBeenCalled();
+    });
+
+    it("prices the dated debt of a loan already underway, not the original principal", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce(mortgage);
+      manager.query.mockResolvedValue([{ balance: "-265000.0006" }]);
+      const preview = await service.previewFirstInstallment(
+        "user-1",
+        "mortgage-1",
+        {
+          ...previewDto,
+          mortgageType: "INTEREST_ONLY",
+          nextDueDate: "2025-07-01",
+        },
+      );
+      expect(preview).toMatchObject({
+        principalPayment: 0,
+        interestPayment: 441.6667,
+        paymentAmount: 441.6667,
+      });
+    });
+
+    it("answers derivesInstallment false for an annuity mortgage", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce(mortgage);
+      await expect(
+        service.previewFirstInstallment("user-1", "mortgage-1", {
+          ...previewDto,
+          mortgageType: "ANNUITY",
+        }),
+      ).resolves.toEqual({
+        derivesInstallment: false,
+        principalPayment: null,
+        interestPayment: null,
+        paymentAmount: null,
+      });
+      expect(manager.query).not.toHaveBeenCalled();
+    });
+
+    it("reads the stored type when the request names none", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce({
+        ...mortgage,
+        mortgageType: "LINEAR",
+      });
+      const preview = await service.previewFirstInstallment(
+        "user-1",
+        "mortgage-1",
+        { ...previewDto, mortgageType: undefined },
+      );
+      expect(preview.derivesInstallment).toBe(true);
+    });
+
+    it("refuses a missing term with the setup's own message", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce({
+        ...mortgage,
+        amortizationMonths: null,
+      });
+      await expect(
+        service.previewFirstInstallment("user-1", "mortgage-1", {
+          ...previewDto,
+          amortizationMonths: undefined,
+        }),
+      ).rejects.toThrow(/requires amortizationMonths/);
+    });
+
+    it("answers 404 for an account the user does not own", async () => {
+      accountsRepository.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.previewFirstInstallment("user-1", "mortgage-1", previewDto),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 });

@@ -142,6 +142,19 @@ export function getPeriodsPerYear(frequency: ScheduleFrequency): number {
 }
 
 /**
+ * Payments a year for a stored cadence, or null when it is not one a schedule
+ * can be projected at. The LINEAR and INTEREST_ONLY methods refuse an unknown
+ * cadence rather than take `getPeriodsPerYear`'s monthly fallback: there is no
+ * `N` and no constant principal without it (docs/specs/mortgage-types.md,
+ * section 8).
+ */
+export function periodsPerYearOf(frequency: string): number | null {
+  return Object.prototype.hasOwnProperty.call(PERIODS_PER_YEAR, frequency)
+    ? PERIODS_PER_YEAR[frequency as ScheduleFrequency]
+    : null;
+}
+
+/**
  * Periodic rate, on the convention named in docs/financial-semantics.md
  * section 9, by the mortgage type's compounding trait (`compoundingFor`): the
  * quoted rate is a nominal annual rate compounded at the payment frequency, so

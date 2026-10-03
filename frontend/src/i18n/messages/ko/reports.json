@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "납부된 원금",
     "seriesInterestPaid": "납부된 이자",
     "seriesPrincipal": "원금",
-    "seriesInterest": "이자"
+    "seriesInterest": "이자",
+    "installmentAndFinal": "{installment}; 최종 납입 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "이익, 배당금 및 이자",
@@ -884,7 +885,10 @@
     "typeLoan": "대출",
     "typeMortgage": "주택 담보 대출",
     "pdfSubtitlePaymentsSummary": "{count}건의 납부 완료, 총 이자 {interest}",
-    "pdfSubtitlePaymentsProjection": "{count}회 상환 완료, 예상 기간 이자 {interest}"
+    "pdfSubtitlePaymentsProjection": "{count}회 상환 완료, 예상 기간 이자 {interest}",
+    "nextInstallment": "다음 할부금",
+    "finalPayment": "최종 납입금",
+    "amountDueOn": "{amount}, 기일 {date}"
   },
   "monteCarlo": {
     "toasts": {
