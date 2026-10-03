@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "acceleratedNeedsAnnuity": "Este crédito à habitação é pago com um calendário acelerado, que só um crédito de prestação constante tem. Um crédito linear ou só de juros precisa de uma frequência de pagamento normal, por isso mantenha um tipo de prestação constante."
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",

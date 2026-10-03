@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "acceleratedNeedsAnnuity": "Este financiamento é pago em um cronograma acelerado, que só um financiamento de parcelas fixas tem. Um financiamento SAC ou só de juros precisa de uma frequência de pagamento normal, então mantenha um tipo de parcelas fixas."
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",

@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "還款頻率為必填",
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
-    "amortizationRequired": "攤還期為必填"
+    "amortizationRequired": "攤還期為必填",
+    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",

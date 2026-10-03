@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "La fréquence de paiement est obligatoire",
     "paymentStartDateRequired": "La date du premier paiement est obligatoire",
     "paymentAccountRequired": "Le compte de paiement est obligatoire",
-    "amortizationRequired": "La période d'amortissement est obligatoire"
+    "amortizationRequired": "La période d'amortissement est obligatoire",
+    "acceleratedNeedsAnnuity": "Ce prêt hypothécaire est remboursé selon un calendrier accéléré, que seul un prêt à annuités possède. Un prêt linéaire ou in fine exige une fréquence de paiement régulière : conservez un type à annuités."
   },
   "loanDetail": {
     "backToAccounts": "Retour aux comptes",

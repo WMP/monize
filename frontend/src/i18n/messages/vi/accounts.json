@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Tần suất thanh toán là bắt buộc",
     "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
     "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
-    "amortizationRequired": "Thời gian khấu hao là bắt buộc"
+    "amortizationRequired": "Thời gian khấu hao là bắt buộc",
+    "acceleratedNeedsAnnuity": "Khoản vay thế chấp này được trả theo lịch tăng tốc, vốn chỉ có ở khoản vay trả góp đều. Khoản vay trả gốc đều hoặc chỉ trả lãi cần tần suất thanh toán thông thường, vì vậy hãy giữ loại trả góp đều."
   },
   "loanDetail": {
     "backToAccounts": "Quay lại danh sách tài khoản",

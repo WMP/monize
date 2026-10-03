@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Betalingsfrequentie is vereist",
     "paymentStartDateRequired": "Datum eerste betaling is vereist",
     "paymentAccountRequired": "Betaalrekening is vereist",
-    "amortizationRequired": "Afschrijvingstermijn is vereist"
+    "amortizationRequired": "Afschrijvingstermijn is vereist",
+    "acceleratedNeedsAnnuity": "Deze hypotheek wordt volgens een versneld schema betaald, dat alleen een annuïteitenhypotheek heeft. Een lineaire of aflossingsvrije hypotheek heeft een gewone betaalfrequentie nodig, dus houd een annuïteitensoort aan."
   },
   "loanDetail": {
     "backToAccounts": "Terug naar rekeningen",

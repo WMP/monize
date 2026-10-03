@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "भुगतान आवृत्ति आवश्यक है",
     "paymentStartDateRequired": "पहली भुगतान तिथि आवश्यक है",
     "paymentAccountRequired": "भुगतान खाता आवश्यक है",
-    "amortizationRequired": "परिशोधन अवधि आवश्यक है"
+    "amortizationRequired": "परिशोधन अवधि आवश्यक है",
+    "acceleratedNeedsAnnuity": "इस मॉर्गेज का भुगतान त्वरित अनुसूची पर होता है, जो केवल एन्युटी मॉर्गेज में होती है। रैखिक या केवल-ब्याज मॉर्गेज को नियमित भुगतान आवृत्ति चाहिए, इसलिए एन्युटी प्रकार ही रखें।"
   },
   "loanDetail": {
     "backToAccounts": "खातों पर वापस जाएँ",

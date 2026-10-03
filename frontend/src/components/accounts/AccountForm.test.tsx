@@ -977,6 +977,36 @@ describe('AccountForm', () => {
       expect(payload).toMatchObject({ mortgageType: 'LINEAR', prepaymentMode: 'SHORTEN_TERM' });
     });
 
+    it.each(['LINEAR', 'INTEREST_ONLY'] as const)(
+      'refuses %s inline for a mortgage paid on an accelerated cadence',
+      async (type) => {
+        const select = await submitEdit(
+          mortgage({ mortgageType: 'ANNUITY', paymentFrequency: 'ACCELERATED_BIWEEKLY' }),
+        );
+        await act(async () => {
+          fireEvent.change(select, { target: { value: type } });
+        });
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+        });
+        expect(
+          await screen.findByText(/This mortgage is paid on an accelerated schedule/),
+        ).toBeInTheDocument();
+        expect(mockOnSubmit).not.toHaveBeenCalled();
+      },
+    );
+
+    it('lets a mortgage on a regular cadence become LINEAR', async () => {
+      const select = await submitEdit(
+        mortgage({ mortgageType: 'ANNUITY', paymentFrequency: 'MONTHLY' }),
+      );
+      await act(async () => {
+        fireEvent.change(select, { target: { value: 'LINEAR' } });
+      });
+      const payload = await clickUpdate();
+      expect(payload).toMatchObject({ mortgageType: 'LINEAR' });
+    });
+
     it('sends a null prepayment mode when the mortgage leaves LINEAR', async () => {
       const select = await submitEdit(
         mortgage({ mortgageType: 'LINEAR', prepaymentMode: 'LOWER_INSTALLMENT' }),

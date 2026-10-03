@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "支払い頻度は必須です",
     "paymentStartDateRequired": "初回支払日は必須です",
     "paymentAccountRequired": "支払い元勘定科目は必須です",
-    "amortizationRequired": "償却期間は必須です"
+    "amortizationRequired": "償却期間は必須です",
+    "acceleratedNeedsAnnuity": "この住宅ローンは繰上げ型の返済スケジュールで支払われており、これは元利均等返済の住宅ローンにしかありません。元金均等返済や利息のみの住宅ローンには通常の返済頻度が必要なため、元利均等の種類のままにしてください。"
   },
   "loanDetail": {
     "backToAccounts": "勘定科目一覧に戻る",

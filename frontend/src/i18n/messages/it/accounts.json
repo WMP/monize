@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "La frequenza di pagamento è obbligatoria",
     "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
     "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
-    "amortizationRequired": "Il periodo di ammortamento è obbligatorio"
+    "amortizationRequired": "Il periodo di ammortamento è obbligatorio",
+    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante."
   },
   "loanDetail": {
     "backToAccounts": "Torna ai conti",

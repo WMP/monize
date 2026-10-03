@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "[XX-Payment frequency is required-XX]",
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
-    "amortizationRequired": "[XX-Amortization period is required-XX]"
+    "amortizationRequired": "[XX-Amortization period is required-XX]",
+    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",

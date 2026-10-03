@@ -4,6 +4,7 @@ import {
   amortizationMethodFor,
   annualizationFor,
   compoundingFor,
+  isAcceleratedFrequency,
   mortgageTypeOf,
   prepaymentModeOf,
   storesConstantPayment,
@@ -69,5 +70,14 @@ describe('storesConstantPayment', () => {
     expect(storesConstantPayment('CANADIAN_FIXED')).toBe(true);
     expect(storesConstantPayment('LINEAR')).toBe(false);
     expect(storesConstantPayment('INTEREST_ONLY')).toBe(false);
+  });
+});
+
+describe('isAcceleratedFrequency', () => {
+  it('names the two accelerated cadences only', () => {
+    expect(isAcceleratedFrequency('ACCELERATED_BIWEEKLY')).toBe(true);
+    expect(isAcceleratedFrequency('ACCELERATED_WEEKLY')).toBe(true);
+    expect(isAcceleratedFrequency('BIWEEKLY')).toBe(false);
+    expect(isAcceleratedFrequency(null)).toBe(false);
   });
 });

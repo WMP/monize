@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "还款频率为必填项",
     "paymentStartDateRequired": "首次还款日期为必填项",
     "paymentAccountRequired": "还款来源账户为必填项",
-    "amortizationRequired": "摊销期为必填项"
+    "amortizationRequired": "摊销期为必填项",
+    "acceleratedNeedsAnnuity": "此按揭按加速还款计划支付，只有等额本息按揭才有这种计划。等额本金或只付利息的按揭需要常规还款频率，因此请保留等额本息类型。"
   },
   "loanDetail": {
     "backToAccounts": "返回账户",

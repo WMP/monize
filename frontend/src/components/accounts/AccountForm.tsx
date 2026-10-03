@@ -30,8 +30,10 @@ import {
 import {
   PREPAYMENT_MODES,
   flagsFromMortgageType,
+  isAcceleratedFrequency,
   mortgageTypeOf,
   prepaymentModeOf,
+  storesConstantPayment,
   type PrepaymentMode,
 } from '@/lib/mortgage-type';
 import { Category } from '@/types/category';
@@ -99,7 +101,14 @@ const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
     z.enum(values).optional(),
   );
 
-const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z.object({
+const buildAccountSchema = (
+  t: (key: string) => string,
+  isEditing: boolean,
+  // The cadence the edited account is stored with. The edit form neither shows
+  // nor sends a mortgage's cadence, so a type its stored cadence rules out is
+  // refused here, inline, rather than by the server after submit.
+  storedPaymentFrequency: string | null = null,
+) => z.object({
   name: z.string().min(1, t('validation.nameRequired')).max(255),
   accountType: z.enum([
     'CHEQUING',
@@ -163,7 +172,24 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // create. The backend rejects the same gaps, but validating here gives clean,
   // localized, inline errors instead of a generic API toast -- and stops the
   // silent fall-through that would otherwise create a payment-less account.
-  if (isEditing) return;
+  if (isEditing) {
+    // A mortgage paid on an accelerated cadence cannot become LINEAR or
+    // INTEREST_ONLY: acceleration is a fraction of an annuity's installment
+    // (docs/specs/mortgage-types.md, section 5.1).
+    if (
+      data.accountType === 'MORTGAGE' &&
+      data.mortgageType &&
+      !storesConstantPayment(data.mortgageType) &&
+      isAcceleratedFrequency(storedPaymentFrequency)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['mortgageType'],
+        message: t('validation.acceleratedNeedsAnnuity'),
+      });
+    }
+    return;
+  }
 
   const requireField = (
     condition: boolean,
@@ -273,7 +299,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
     getValues,
     formState: { errors, isSubmitting, isDirty, dirtyFields },
   } = useForm<AccountFormData>({
-    resolver: zodResolver(buildAccountSchema(t, !!account)) as Resolver<AccountFormData>,
+    resolver: zodResolver(buildAccountSchema(t, !!account, account?.paymentFrequency ?? null)) as Resolver<AccountFormData>,
     defaultValues: account
       ? {
           name: account.name,

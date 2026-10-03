@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Frekuensi pembayaran wajib dipilih",
     "paymentStartDateRequired": "Tanggal pembayaran pertama wajib diisi",
     "paymentAccountRequired": "Akun pembayaran wajib dipilih",
-    "amortizationRequired": "Periode amortisasi wajib diisi"
+    "amortizationRequired": "Periode amortisasi wajib diisi",
+    "acceleratedNeedsAnnuity": "KPR ini dibayar dengan jadwal dipercepat, yang hanya dimiliki KPR anuitas. KPR linear atau hanya bunga memerlukan frekuensi pembayaran biasa, jadi tetap gunakan jenis anuitas."
   },
   "loanDetail": {
     "backToAccounts": "Kembali ke Akun",

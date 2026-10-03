@@ -159,3 +159,16 @@ export function prepaymentModeOf(row: {
 export function storesConstantPayment(type: MortgageType): boolean {
   return amortizationMethodFor(type) === "ANNUITY";
 }
+
+/**
+ * Whether a stored cadence is accelerated: a fraction of an annuity's monthly
+ * installment, so meaningful only for a type with a constant payment (spec
+ * section 5.1). Mirrors the backend's `isAcceleratedFrequency`.
+ */
+export function isAcceleratedFrequency(
+  frequency: string | null | undefined,
+): boolean {
+  return (
+    frequency === "ACCELERATED_BIWEEKLY" || frequency === "ACCELERATED_WEEKLY"
+  );
+}

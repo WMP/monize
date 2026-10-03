@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Częstotliwość płatności jest wymagana",
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
-    "amortizationRequired": "Okres spłaty jest wymagany"
+    "amortizationRequired": "Okres spłaty jest wymagany",
+    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi."
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",

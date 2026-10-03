@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Ödeme sıklığı zorunludur",
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
-    "amortizationRequired": "Amortisman süresi zorunludur"
+    "amortizationRequired": "Amortisman süresi zorunludur",
+    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun."
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",

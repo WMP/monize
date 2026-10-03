@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "Zahlungsintervall ist erforderlich",
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
-    "amortizationRequired": "Tilgungszeitraum ist erforderlich"
+    "amortizationRequired": "Tilgungszeitraum ist erforderlich",
+    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei."
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",

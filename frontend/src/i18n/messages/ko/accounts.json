@@ -380,7 +380,8 @@
     "paymentFrequencyRequired": "납부 주기는 필수입니다",
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
-    "amortizationRequired": "상환 기간은 필수입니다"
+    "amortizationRequired": "상환 기간은 필수입니다",
+    "acceleratedNeedsAnnuity": "이 모기지는 가속 일정으로 납입되며, 이는 원리금 균등 모기지에만 있습니다. 원금 균등 또는 이자만 내는 모기지에는 일반 납입 주기가 필요하므로 원리금 균등 유형을 유지하세요."
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",
