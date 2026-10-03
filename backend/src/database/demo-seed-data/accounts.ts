@@ -23,6 +23,8 @@ export interface DemoAccount {
   termMonths?: number;
   amortizationMonths?: number;
   originalPrincipal?: number;
+  // The category a loan's interest is booked to (`interest_category_id`)
+  interestCategoryPath?: string;
 }
 
 export const demoAccounts: DemoAccount[] = [
@@ -96,6 +98,7 @@ export const demoAccounts: DemoAccount[] = [
     termMonths: 60,
     amortizationMonths: 300,
     originalPrincipal: 400000.0,
+    interestCategoryPath: "Housing > Mortgage Interest",
   },
   {
     key: "rrsp",

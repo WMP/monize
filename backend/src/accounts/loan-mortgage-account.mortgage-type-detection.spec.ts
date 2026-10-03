@@ -21,7 +21,8 @@ import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.e
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
-import { calculateCanadianPeriodicRate } from "./mortgage-amortization.util";
+import { demoAccounts } from "../database/demo-seed-data/accounts";
+import { generateTransactions } from "../database/demo-seed-data/transactions";
 import { roundMoney } from "../common/round.util";
 
 const userId = "user-1";
@@ -198,16 +199,33 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
     service = module.get(LoanMortgageAccountService);
   });
 
-  it("reads CANADIAN_FIXED with high confidence off the demo seed's Scotiabank terms", async () => {
-    // 5.24% compounded semi-annually, 385,000, 2,370 a month.
-    const { installments, endDebt } = priceInstallments(
-      385000,
-      ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"],
-      () => calculateCanadianPeriodicRate(5.24, 12),
-      (interest) => roundMoney(2370 - interest),
-    );
+  it("reads CANADIAN_FIXED with high confidence off the demo seed's Scotiabank mortgage", async () => {
+    // The seed's own payments: each a chequing split whose transfer leg is the
+    // principal into the mortgage and whose category leg is the interest.
+    const seeded = demoAccounts.find((a) => a.key === "mortgage")!;
+    const installments: Installment[] = generateTransactions(
+      new Date(2026, 8, 15),
+    )
+      .filter((tx) =>
+        tx.splits?.some((leg) => leg.transferAccountKey === "mortgage"),
+      )
+      .map((tx) => ({
+        date: tx.date,
+        principal: -tx.splits!.find((leg) => leg.transferAccountKey)!.amount,
+        interest: -tx.splits!.find((leg) => leg.categoryPath)!.amount,
+      }));
+    expect(installments.length).toBeGreaterThanOrEqual(11);
     useLedger(installments);
-    const account = makeMortgage({ currentBalance: -endDebt });
+    const paid = installments.reduce(
+      (sum, inst) => sum + Math.round(inst.principal * 100),
+      0,
+    );
+    const account = makeMortgage({
+      mortgageType: seeded.mortgageType,
+      interestRate: seeded.interestRate,
+      paymentFrequency: seeded.paymentFrequency,
+      currentBalance: seeded.openingBalance + paid / 100,
+    });
 
     const result = await service.detectMortgageTypeFromHistory(account, userId);
 
@@ -221,21 +239,55 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
       }),
     );
     // The latest three, each with the ledger debt before its date.
-    expect(result.samples.map((s) => s.date)).toEqual([
-      "2026-07-01",
-      "2026-08-01",
-      "2026-09-01",
-    ]);
+    const latest = installments.slice(-3);
+    expect(result.samples.map((s) => s.date)).toEqual(
+      latest.map((inst) => inst.date),
+    );
+    const debtBefore = (index: number) =>
+      roundMoney(
+        -seeded.openingBalance -
+          installments
+            .slice(0, index)
+            .reduce((sum, inst) => sum + inst.principal, 0),
+      );
     expect(result.samples[0]).toEqual({
-      date: "2026-07-01",
-      principal: installments[1].principal,
-      interest: installments[1].interest,
-      balanceBefore: roundMoney(385000 - installments[0].principal),
+      ...latest[0],
+      balanceBefore: debtBefore(installments.length - 3),
     });
     expect(transactionsRepository.find).toHaveBeenCalledWith({
       where: { accountId: mortgageId, userId },
       order: { transactionDate: "ASC" },
     });
+    expectNothingWritten();
+  });
+
+  it("reads INTEREST_ONLY off the 0.00 principal legs an interest-only installment posts", async () => {
+    const { installments } = priceInstallments(
+      300000,
+      ["2026-01-01", "2026-02-01", "2026-03-01"],
+      () => 0.02 / 12,
+      () => 0,
+    );
+    useLedger(installments);
+    const account = makeMortgage({
+      mortgageType: "INTEREST_ONLY",
+      isCanadianMortgage: false,
+      interestRate: 2,
+      currentBalance: -300000,
+    });
+
+    const result = await service.detectMortgageTypeFromHistory(account, userId);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        type: "INTEREST_ONLY",
+        confidence: "high",
+        reason: "ZERO_PRINCIPAL",
+      }),
+    );
+    expect(result.samples).toEqual(
+      installments.map((inst) => ({ ...inst, balanceBefore: 300000 })),
+    );
     expectNothingWritten();
   });
 

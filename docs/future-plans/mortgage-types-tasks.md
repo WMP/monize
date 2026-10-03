@@ -40,7 +40,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P1-Q | #1508 | Phase 1 acceptance: locales, docs, release note | P1-F2 | none | [x] |
 | P2-B1 | #1509 | Backend LINEAR and INTEREST_ONLY, `prepayment_mode` | P1-Q | inert | [x] |
 | P2-F1 | #1510 | Frontend LINEAR and INTEREST_ONLY | P2-B1 | inert | [x] |
-| P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [ ] |
+| P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [x] |
 | P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [ ] |
 | P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [ ] |
 | P3-B1 | #1514 | Contract migration: NOT NULL default, drop the booleans, delete overloads and guard | P2-Q, one release after P1 | neutral | [ ] |
@@ -132,7 +132,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 **Files:** a pure detector util + spec and its fixtures in `backend/src/accounts/` (new), the endpoints on the accounts controller.
 
 - Spec section 10; the detector writes nothing. Fixtures add rows to the spec's table 10 in the same PR.
-- Done: `detectMortgageType` (`backend/src/accounts/mortgage-type-detection.util.ts`) with its truth table `backend/src/accounts/mortgage-type-detection-cases.json`; `POST /accounts/mortgage-type/detect` and `POST /accounts/:id/mortgage-type/detect` (`LoanMortgageAccountService.detectMortgageTypeFromSamples` / `detectMortgageTypeFromHistory`). The history route reads installments through `LoanPaymentDetectorService.buildInstallmentHistory`, the pairing rate-change inference now calls too. The answer's `reason` is a code from `MORTGAGE_TYPE_DETECTION_REASONS`, worded by the client (P2-F2).
+- Done: `detectMortgageType` (`backend/src/accounts/mortgage-type-detection.util.ts`) with its truth table `backend/src/accounts/mortgage-type-detection-cases.json`; `POST /accounts/mortgage-type/detect` and `POST /accounts/:id/mortgage-type/detect` (`LoanMortgageAccountService.detectMortgageTypeFromSamples` / `detectMortgageTypeFromHistory`). The history route reads installments through `LoanPaymentDetectorService.buildInstallmentHistory`, the pairing rate-change inference now calls too. The answer's `reason` is a code from `MORTGAGE_TYPE_DETECTION_REASONS`, worded by the client (P2-F2). The pairing now reads an interest-only installment's 0.00 transfer leg when its parent carries the interest, and the demo seed's Scotiabank mortgage posts split payments (principal as a transfer leg, interest to `Housing > Mortgage Interest`, priced on the ledger debt), which the history route reads as `CANADIAN_FIXED` with high confidence.
 
 ### P2-F2 -- Detection UI
 

@@ -3,8 +3,9 @@
 Status: approved design (task S1 of the plan). Phase 1 is implemented (P1-B1 to
 P1-Q: the column, the traits, the type-keyed consumers and the Select, offering
 `ANNUITY` and `CANADIAN_FIXED`), and so are the LINEAR and INTEREST_ONLY
-methods with `prepayment_mode` on both layers (P2-B1, P2-F1); type detection
-and the contract migration are not yet.
+methods with `prepayment_mode` on both layers (P2-B1, P2-F1), and type
+detection on the backend (P2-B2); the detection UI and the contract migration
+are not yet.
 Governs: issue #1501 (tracking) and its sub-issues #1502 to #1514, agreed in
 discussion #1486 in line with the direction set in #787. The plan is
 `docs/future-plans/mortgage-types.md`, the task list
@@ -631,9 +632,18 @@ posted installments through the pairing rate-change inference reads
 balance before its date: the latest three posted at the rate in effect on the
 latest one (`effectiveAnnualRateOn`), so a rate change inside the window is
 not read as a method. A payment without an interest figure (a lump-sum
-repayment, a transfer without a split) is left out, and so is an
-interest-only occurrence, whose zero-amount transfer the pairing does not
-read as a payment.
+repayment, a transfer without a split) is left out. An interest-only
+occurrence is read: the pairing keeps a 0.00 transfer leg into the loan when
+its linked parent carries the interest (section 9), and drops one that does
+not, which paid nothing. The pairing is shared, so rate-change inference and
+payment detection read interest-only installments the same way.
+
+The demo seed's Scotiabank mortgage posts its installments in the shape a
+scheduled split payment does (a chequing split whose principal is a transfer
+leg into the mortgage and whose interest is a `Housing > Mortgage Interest`
+leg, the mortgage's interest category), its interest charged on the ledger
+debt before each payment at the `CANADIAN_FIXED` periodic rate, so the
+history route reads it back as `CANADIAN_FIXED` with high confidence.
 
 ## 11. Test matrix
 
