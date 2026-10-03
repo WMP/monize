@@ -215,10 +215,15 @@ export function LoanPaymentSetupDialog({
       } catch (error: any) {
         if (!cancelled) {
           logger.error('Failed to preview the first installment:', error);
+          // A refusal from the pricing (a missing term, an accelerated
+          // cadence) is one localized sentence and is shown as is; a DTO
+          // validation failure answers with a list, which falls back to the
+          // generic reason rather than running its entries together.
+          const message = error?.response?.data?.message;
           setInstallmentPreview({
             request: installmentRequest,
             result: null,
-            error: error?.response?.data?.message ?? null,
+            error: typeof message === 'string' ? message : null,
           });
         }
       }

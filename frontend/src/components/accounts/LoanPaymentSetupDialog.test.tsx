@@ -419,6 +419,68 @@ describe('LoanPaymentSetupDialog', () => {
       expect(buttons[buttons.length - 1]).toBeDisabled();
     });
 
+    it('falls back to a generic reason for a list of validation messages', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockPreviewLoanPaymentSetup.mockRejectedValue({
+        response: { data: { message: ['interestRate must not be greater than 100', 'other'] } },
+      });
+      await renderDialog(linearProps());
+      await screen.findByText(/The first installment could not be worked out/);
+      expect(screen.queryByText(/interestRate must not be greater/)).not.toBeInTheDocument();
+    });
+
+    it('neither shows nor submits an answer for terms the user has since changed', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({} as any);
+      let answerFirst!: (value: typeof priced) => void;
+      let answerSecond!: (value: typeof priced) => void;
+      let answerThird!: (value: typeof priced) => void;
+      mockPreviewLoanPaymentSetup
+        .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve; }))
+        .mockImplementationOnce(() => new Promise((resolve) => { answerSecond = resolve; }))
+        .mockImplementationOnce(() => new Promise((resolve) => { answerThird = resolve; }));
+      await renderDialog(linearProps());
+      await waitFor(() => expect(mockPreviewLoanPaymentSetup).toHaveBeenCalledTimes(1));
+      await act(async () => {
+        answerFirst({ ...priced, paymentAmount: 1216.52 });
+      });
+      await screen.findByText(/This is the one due/);
+      const mode = screen.getByLabelText('What an Extra Repayment Does');
+      const submit = () => {
+        const buttons = screen.getAllByRole('button', { name: /Set Up Payments/i });
+        return buttons[buttons.length - 1];
+      };
+
+      // The terms change: the figure answered for the old ones is neither
+      // shown nor submittable while the new answer is pending.
+      await act(async () => {
+        fireEvent.change(mode, { target: { value: 'SHORTEN_TERM' } });
+      });
+      expect(screen.queryByText(/This is the one due/)).not.toBeInTheDocument();
+      expect(submit()).toBeDisabled();
+      await waitFor(() => expect(mockPreviewLoanPaymentSetup).toHaveBeenCalledTimes(2));
+
+      // A late answer for terms changed again before it arrived is dropped.
+      await act(async () => {
+        fireEvent.change(mode, { target: { value: 'LOWER_INSTALLMENT' } });
+      });
+      await waitFor(() => expect(mockPreviewLoanPaymentSetup).toHaveBeenCalledTimes(3));
+      await act(async () => {
+        answerSecond({ ...priced, paymentAmount: 9999.99 });
+      });
+      expect(submit()).toBeDisabled();
+
+      await act(async () => {
+        answerThird(priced);
+      });
+      await screen.findByText(/This is the one due/);
+      await act(async () => fireEvent.click(submit()));
+      expect(mockSetupLoanPayments.mock.calls[0][1]).toMatchObject({
+        paymentAmount: 1333.3333,
+        prepaymentMode: 'LOWER_INSTALLMENT',
+      });
+    });
+
     it('falls back to a generic reason when the server gives none', async () => {
       mockDetectLoanPayments.mockResolvedValue(defaultDetected);
       mockPreviewLoanPaymentSetup.mockRejectedValue(new Error('network'));
