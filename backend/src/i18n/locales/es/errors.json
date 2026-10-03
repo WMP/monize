@@ -537,11 +537,14 @@
     "previewChanged": "Las transacciones o la regla han cambiado desde la vista previa. Revisa la nueva vista previa y vuelve a ejecutar",
     "ruleInvalid": "Esta regla no es válida, por lo que no se puede ejecutar. Ábrela y repárala primero",
     "dateRangeInvalid": "La fecha de inicio no debe ser posterior a la fecha de fin",
-    "runTooLarge": "Esta ejecución cambia demasiadas transacciones para poder deshacerse en un solo paso. Reduce las cuentas o las fechas e inténtalo de nuevo"
+    "activeWindowInvalid": "La primera fecha activa no debe ser posterior a la última fecha activa",
+    "runTooLarge": "Esta ejecución cambia demasiadas transacciones para poder deshacerse en un solo paso. Reduce las cuentas o las fechas e inténtalo de nuevo",
+    "runRedoStructural": "Esta ejecución reestructuró transacciones (transferencias o divisiones), por lo que no se puede rehacer. Ejecute la regla de nuevo"
   },
   "transactions": {
     "invalidStatus": "Estado de transacción no válido: {{ status }}",
     "reconciledLocked": "Esta transacción está conciliada y bloqueada. Desactiva «Bloquear transacciones conciliadas» en Ajustes para cambiarla.",
+    "convertToTransferRefused": "Esta transacción ya no se puede convertir en una transferencia. Revísela y ejecute la regla de nuevo",
     "pagePositiveInteger": "page debe ser un entero positivo",
     "limitPositiveInteger": "limit debe ser un entero positivo",
     "limitMax200": "limit no debe superar 200",

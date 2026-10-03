@@ -242,11 +242,18 @@ The same function runs in the preview, the test panel and the commit (I3).
 | `set_category` | `categoryId`, `onlyIfEmpty` | Sets the category | the row has splits; the row is a transfer leg |
 | `set_payee` | `payeeId`, `onlyIfEmpty` | Sets the payee | the row is a leg of a cross-owner transfer |
 | `request_ai_review` | `instruction` (1..1000 chars), at most one per rule | Adds a durable request to the AI review queue (section 6.5) | never |
+| `convert_to_transfer` | `toAccountId` or `fromAccountId`, `clearCategory`, `payeeId` | Added later: turns the row into one leg of a transfer and creates the counterpart leg | see `docs/specs/transaction-rules-structural-actions.md` section 4 |
+| `split` | `parts[]` (2..10), `payeeId` | Added later: turns the row into a split whose part amounts come from the rule's captures | see `docs/specs/transaction-rules-structural-actions.md` section 4 |
 
 The first four are ledger actions (`isLedgerAction`); `request_ai_review` writes
 only to the queue. No action changes `amount`, `accountId`, `date`, `status`, splits or links. So
 a rule cannot move a balance (I1). A refused action is skipped and the trace
 records the reason; the other actions of the rule still run.
+
+The two rows added after this plan (`convert_to_transfer`, `split`) are the
+exception to the sentence above: they move the balance of the counterpart
+account only. The restated I1 is in `docs/specs/transaction-rules-structural-actions.md`
+section 2 and `INV-RULE-001` in `docs/system-invariants.md`.
 
 ### 6.2 Additive tags
 
@@ -531,6 +538,11 @@ row into a transfer or changes its account, amount or date (breaks I1; the
 import profile does it before the row exists), `split_by_template`,
 `notify`, an `update` trigger, rule export and rule groups. Each can be a
 later proposal.
+
+Update: `docs/specs/transaction-rules-structural-actions.md` supersedes this
+for an action that turns a row into a transfer (`convert_to_transfer`) and for
+splitting a row (`split`, with amounts from captures rather than a template);
+the rest of this list is unchanged.
 
 ## 11. Open questions
 

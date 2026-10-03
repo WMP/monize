@@ -537,11 +537,14 @@
     "previewChanged": "De transacties of de regel zijn gewijzigd sinds het voorbeeld. Bekijk het nieuwe voorbeeld en voer opnieuw uit",
     "ruleInvalid": "Deze regel is ongeldig en kan niet worden uitgevoerd. Open de regel en herstel hem eerst",
     "dateRangeInvalid": "De begindatum mag niet na de einddatum liggen",
-    "runTooLarge": "Deze uitvoering wijzigt te veel transacties om in één stap ongedaan te maken. Beperk de rekeningen of de datums en probeer het opnieuw"
+    "activeWindowInvalid": "De eerste actieve datum mag niet na de laatste actieve datum liggen",
+    "runTooLarge": "Deze uitvoering wijzigt te veel transacties om in één stap ongedaan te maken. Beperk de rekeningen of de datums en probeer het opnieuw",
+    "runRedoStructural": "Deze uitvoering heeft transacties herstructureerd (overboekingen of splitsingen) en kan niet opnieuw worden uitgevoerd. Voer in plaats daarvan de regel opnieuw uit"
   },
   "transactions": {
     "invalidStatus": "Ongeldige transactiestatus: {{ status }}",
     "reconciledLocked": "Deze transactie is afgestemd en vergrendeld. Zet 'Afgestemde transacties vergrendelen' uit in Instellingen om haar te wijzigen.",
+    "convertToTransferRefused": "Deze transactie kan niet meer worden omgezet in een overboeking. Controleer de transactie en voer de regel opnieuw uit",
     "pagePositiveInteger": "pagina moet een positief geheel getal zijn",
     "limitPositiveInteger": "limiet moet een positief geheel getal zijn",
     "limitMax200": "limiet mag niet meer dan 200 zijn",

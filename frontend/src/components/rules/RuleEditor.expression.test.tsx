@@ -215,6 +215,8 @@ describe('RuleEditor: the Visual / Expression switch', () => {
       },
       actions: [{ type: 'set_payee', payeeId: PAYEE_ID, onlyIfEmpty: true }],
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
     });
   });
 });

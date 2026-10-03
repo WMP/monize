@@ -122,6 +122,8 @@ describe('RuleEditor: the text actions', () => {
         { type: 'set_description', template: ' / {ref}', mode: 'append', onlyIfEmpty: false },
       ],
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
     });
   });
 
@@ -238,6 +240,8 @@ describe('RuleEditor: a stored rule with the text actions and the newer fields',
       condition: stored.condition,
       actions: stored.actions,
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
       revision: 3,
     });
   });

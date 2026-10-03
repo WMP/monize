@@ -537,11 +537,14 @@
     "previewChanged": "Les transactions ou la règle ont changé depuis l'aperçu. Vérifiez le nouvel aperçu puis relancez",
     "ruleInvalid": "Cette règle n'est pas valide et ne peut pas être exécutée. Ouvrez-la et réparez-la d'abord",
     "dateRangeInvalid": "La date de début ne doit pas être postérieure à la date de fin",
-    "runTooLarge": "Cette exécution modifie trop de transactions pour être annulée en une seule étape. Restreignez les comptes ou les dates et réessayez"
+    "activeWindowInvalid": "La première date active ne doit pas être postérieure à la dernière date active",
+    "runTooLarge": "Cette exécution modifie trop de transactions pour être annulée en une seule étape. Restreignez les comptes ou les dates et réessayez",
+    "runRedoStructural": "Cette exécution a restructuré des transactions (virements ou ventilations) et ne peut pas être rétablie. Exécutez plutôt la règle à nouveau"
   },
   "transactions": {
     "invalidStatus": "Statut de transaction invalide : {{ status }}",
     "reconciledLocked": "Cette transaction est rapprochée et verrouillée. Désactivez « Verrouiller les transactions rapprochées » dans les Paramètres pour la modifier.",
+    "convertToTransferRefused": "Cette transaction ne peut plus être convertie en virement. Vérifiez-la et exécutez la règle à nouveau",
     "pagePositiveInteger": "page doit être un entier positif",
     "limitPositiveInteger": "limit doit être un entier positif",
     "limitMax200": "limit ne doit pas dépasser 200",

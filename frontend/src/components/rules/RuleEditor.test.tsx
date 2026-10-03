@@ -185,6 +185,8 @@ describe('RuleEditor: a new rule', () => {
         { type: 'set_payee', payeeId: PAYEE_ID, onlyIfEmpty: false },
       ],
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
     });
     expect(toast.success).toHaveBeenCalledWith('Rule created');
     expect(useRouter().replace).toHaveBeenCalledWith('/rules/new-id');
@@ -214,7 +216,38 @@ describe('RuleEditor: a new rule', () => {
       condition: { all: [{ any: [{ field: 'payeeText', op: 'isEmpty' }], not: true }] },
       actions: [{ type: 'add_tags', tagIds: [TAG_WORK_ID] }],
       stopProcessing: true,
+      activeFrom: null,
+      activeTo: null,
     });
+  });
+
+  it('sends the active window the dates were typed into, and nothing for a side left empty', async () => {
+    mocks.rules.create.mockResolvedValue(makeRule({ id: 'x' }));
+    await renderEditor();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Mortgage' } });
+    const from = screen.getByLabelText('First date');
+    fireEvent.change(from, { target: { value: '2026-10-01' } });
+    fireEvent.blur(from);
+    addTagAction(0, 'Work');
+
+    await save();
+
+    expect(mocks.rules.create).toHaveBeenCalledWith(
+      expect.objectContaining({ activeFrom: '2026-10-01', activeTo: null }),
+    );
+  });
+
+  it('says so when the last date is before the first', async () => {
+    await renderEditor();
+    for (const [label, value] of [
+      ['First date', '2026-12-31'],
+      ['Last date', '2026-10-01'],
+    ]) {
+      const input = screen.getByLabelText(label);
+      fireEvent.change(input, { target: { value } });
+      fireEvent.blur(input);
+    }
+    expect(screen.getByText('The last date must not be before the first date')).toBeInTheDocument();
   });
 
   it('keeps at least one trigger checked', async () => {
@@ -307,7 +340,7 @@ describe('RuleEditor: a new rule', () => {
 
     expect(within(card('Condition', 0)).getByText('An item chosen here no longer exists. Choose another.')).toBeInTheDocument();
     expect(within(card('Condition', 1)).getByText('The text is too long.')).toBeInTheDocument();
-    expect(within(card('Action', 0)).getByText('A rule can ask for an AI review only once.')).toBeInTheDocument();
+    expect(within(card('Action', 0)).getByText('A rule can have only one AI review, one transfer or split, and one split part that takes the rest.')).toBeInTheDocument();
     expect(within(card('Action', 1)).getByText('Choose an item from the list.')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Then' })).getByText(/There are too many actions/)).toBeInTheDocument();
     // What names no card is said at the top, in words.
@@ -551,6 +584,8 @@ describe('RuleEditor: an existing rule', () => {
         { type: 'set_payee', payeeId: PAYEE_ID, onlyIfEmpty: true },
       ],
       stopProcessing: true,
+      activeFrom: null,
+      activeTo: null,
       revision: 7,
     });
     expect(toast.success).toHaveBeenCalledWith('Rule saved');

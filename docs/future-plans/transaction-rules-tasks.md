@@ -6,6 +6,7 @@
 
 - **No task starts before S1.** The discussion must carry the `approved-to-build` label.
 - **One task per session and per PR.** Each task names its files. A change outside them is a scope violation: stop and leave a note.
+- **Superseded in part:** `docs/specs/transaction-rules-structural-actions.md` restates I1 (a structural action moves its counterpart's balance only).
 - **The governing invariants apply to every task:** a rule never moves a balance (design I1), and a rule runs inside the transaction that inserts the row (design I2). A task that adds an action which writes `amount`, `account_id`, `status` or a link is wrong: stop.
 - **The evaluator is written once** (`evaluateRuleCondition`, design 5.3). The preview, the test panel, the manual run and the commit call it; a second copy in a controller, a tool or a component is off the plan.
 - **Definition of done for every task**, in addition to its acceptance:

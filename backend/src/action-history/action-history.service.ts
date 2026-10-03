@@ -8,7 +8,12 @@ import { tr } from "../i18n/translate";
 import { DataSource, EntityManager } from "typeorm";
 import { Cron } from "@nestjs/schedule";
 import { ActionHistory } from "./entities/action-history.entity";
-import { RULE_RUN_ENTITY_TYPE, undoRuleRun } from "./rule-run-undo";
+import {
+  RULE_RUN_ENTITY_TYPE,
+  assertRuleRunRedoable,
+  undoRuleRun,
+} from "./rule-run-undo";
+import { LegBalanceWriter } from "../transactions/remove-transaction-leg";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
@@ -512,7 +517,7 @@ export class ActionHistoryService {
         await this.undoBulkTransaction(action, manager);
         break;
       case RULE_RUN_ENTITY_TYPE:
-        await undoRuleRun(action, manager);
+        await undoRuleRun(action, manager, this.legBalances(manager, action));
         break;
       default:
         throw new ConflictException(
@@ -529,6 +534,10 @@ export class ActionHistoryService {
     action: ActionHistory,
     manager: EntityManager,
   ): Promise<void> {
+    // A run that restructured rows cannot be replayed from its snapshot.
+    if (action.entityType === RULE_RUN_ENTITY_TYPE) {
+      assertRuleRunRedoable(action);
+    }
     // Redo is the inverse of undo: swap before/after and flip the action
     const invertedAction: ActionHistory = {
       ...action,
@@ -1389,6 +1398,29 @@ export class ActionHistoryService {
   }
 
   // --- Utility methods ---
+
+  /**
+   * The two balance operations `removeLockedTransactionLeg` needs, on the
+   * undo's own manager and scoped to the action's user: an atomic delta (the
+   * statement every delta writer uses, `docs/concurrency-and-idempotency.md`
+   * section 2) and the locked absolute recomputation.
+   */
+  private legBalances(
+    manager: EntityManager,
+    action: ActionHistory,
+  ): LegBalanceWriter {
+    return {
+      updateBalance: (accountId, amount) =>
+        manager.query(
+          `UPDATE accounts
+              SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4)
+            WHERE id = $2 AND user_id = $3`,
+          [amount, accountId, action.userId],
+        ),
+      recalculateCurrentBalance: (userId, accountId) =>
+        this.recalculateBalance(userId, accountId, manager),
+    };
+  }
 
   private async recalculateBalance(
     userId: string,

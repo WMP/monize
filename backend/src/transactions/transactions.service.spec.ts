@@ -576,6 +576,51 @@ describe("TransactionsService", () => {
       expect(options.payeeTextById.get("tx-1")).toBe("Biedronka 123");
     });
 
+    it("recalculates the accounts a structural rule moved, after the commit and not twice", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      rulesApplier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "tx-1",
+          effects: {},
+          affectedAccountIds: ["loan-account", "account-1"],
+        },
+      ]);
+      const order: string[] = [];
+      accountsService.updateBalance.mockImplementation(async () => {
+        order.push("balance");
+      });
+      netWorthService.triggerDebouncedRecalc.mockImplementation(
+        (accountId: string) => {
+          order.push(`recalc:${accountId}`);
+        },
+      );
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+        payeeName: "Loan",
+      } as any);
+
+      expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "loan-account",
+        "user-1",
+      );
+      const forAccount1 =
+        netWorthService.triggerDebouncedRecalc.mock.calls.filter(
+          (call: string[]) => call[0] === "account-1",
+        );
+      expect(forAccount1).toHaveLength(1);
+      // Inside the transaction the balance is written; the recompute is
+      // dispatched only after it, once per account.
+      expect(order).toEqual([
+        "balance",
+        "recalc:account-1",
+        "recalc:loan-account",
+      ]);
+    });
+
     it("hands a rule the payee's own name as payeeText when only an id was given", async () => {
       transactionsRepository.findOne.mockResolvedValue(rowInDb);
       payeesService.findOne.mockResolvedValue({

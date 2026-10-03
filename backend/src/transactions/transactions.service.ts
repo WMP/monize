@@ -334,6 +334,9 @@ export class TransactionsService {
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
     private crossOwnerAccess: CrossOwnerAccessService,
+    // forwardRef: the applier now writes through the split and accounts services,
+    // so it reaches this file back through its imports.
+    @Inject(forwardRef(() => TransactionRulesApplierService))
     private rulesApplier: TransactionRulesApplierService,
   ) {}
 
@@ -534,14 +537,23 @@ export class TransactionsService {
         // Transaction rules (design 6.3, 6.4): after the row, its splits, its
         // explicit tags and the payee default category, before the balance
         // and the commit, on this manager, so a rollback drops the rule
-        // effects with the insert. They change category, payee and tags only.
-        await this.rulesApplier.applyToNew(
+        // effects with the insert. They change category, payee and tags, and a
+        // structural action adds a transfer counterpart or split lines.
+        const ruleRows = await this.rulesApplier.applyToNew(
           m,
           userId,
           [savedTransaction.id],
           "create",
           { payeeTextById: new Map([[savedTransaction.id, payeeText]]) },
         );
+        // A structural action (convert to transfer, split) credits another
+        // account; invalidated after the commit with the split targets
+        // (INV-CACHE-001).
+        for (const rule of ruleRows) {
+          for (const accountId of rule.affectedAccountIds) {
+            splitAffectedAccountIds.add(accountId);
+          }
+        }
 
         if (savedTransaction.status !== TransactionStatus.VOID) {
           if (isTransactionInFuture(createTransactionDto.transactionDate)) {

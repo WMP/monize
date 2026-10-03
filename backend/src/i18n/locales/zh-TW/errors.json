@@ -537,11 +537,14 @@
     "previewChanged": "自預覽以來，交易或規則已變更。請查看新的預覽後重新執行",
     "ruleInvalid": "此規則無效，無法執行。請先開啟並修復它",
     "dateRangeInvalid": "開始日期不能晚於結束日期",
-    "runTooLarge": "本次執行變更的交易過多，無法一步復原。請縮小帳戶或日期範圍後再試一次"
+    "activeWindowInvalid": "生效起始日期不能晚於生效結束日期",
+    "runTooLarge": "本次執行變更的交易過多，無法一步復原。請縮小帳戶或日期範圍後再試一次",
+    "runRedoStructural": "此次執行變更了交易結構(轉帳或拆分),因此無法重做。請改為重新執行該規則"
   },
   "transactions": {
     "invalidStatus": "無效的交易狀態：{{ status }}",
     "reconciledLocked": "此交易已對帳並遭鎖定。要修改請在設定中關閉「鎖定已對帳交易」。",
+    "convertToTransferRefused": "此交易已無法轉換為轉帳。請檢查後重新執行規則",
     "pagePositiveInteger": "page 必須是正整數",
     "limitPositiveInteger": "limit 必須是正整數",
     "limitMax200": "limit 不得超過 200",

@@ -237,6 +237,8 @@ describe('RulesManager', () => {
       condition: first.condition,
       actions: first.actions,
       stopProcessing: false,
+      activeFrom: null,
+      activeTo: null,
     });
     expect(await screen.findByText('Coffee shops (copy)')).toBeInTheDocument();
     expect(toast.success).toHaveBeenCalled();
