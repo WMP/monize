@@ -142,6 +142,7 @@ describe("structural rules: the loan instalment acceptance case", () => {
       kind: "transfer",
       accountId: LOAN_ACCOUNT,
       clearCategory: true,
+      amount: 640.15,
     });
     expect(effects.changes.payeeId).toBe(PAYEE_REPAYMENT);
     expect(effects.changes.categoryId).toBeUndefined();

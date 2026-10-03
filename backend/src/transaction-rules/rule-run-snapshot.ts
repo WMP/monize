@@ -20,6 +20,8 @@ export type RowSnapshot = Record<string, unknown> & { id: string };
 export interface StructureSnapshot {
   readonly kind: "transfer" | "split";
   readonly counterpartIds: readonly string[];
+  /** A split's lines the write created, in part order (absent for a transfer). */
+  readonly lineIds?: readonly string[];
 }
 
 const UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
@@ -30,11 +32,14 @@ function structureSnapshot(structure: RuleStructurePlan): StructureSnapshot {
       ? 1
       : structure.parts.filter((part) => part.transferAccountId !== null)
           .length;
+  const placeholders = (count: number): string[] =>
+    Array.from({ length: count }, () => UUID_PLACEHOLDER);
   return {
     kind: structure.kind,
-    counterpartIds:
-      structure.counterpartIds ??
-      Array.from({ length: expected }, () => UUID_PLACEHOLDER),
+    counterpartIds: structure.counterpartIds ?? placeholders(expected),
+    ...(structure.kind === "split"
+      ? { lineIds: structure.lineIds ?? placeholders(structure.parts.length) }
+      : {}),
   };
 }
 

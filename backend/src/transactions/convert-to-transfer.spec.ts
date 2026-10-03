@@ -199,6 +199,32 @@ describe("convertRowToTransfer", () => {
     },
   );
 
+  it("writes nothing when the row's amount is no longer the planned one", async () => {
+    // The plan (and a run's fingerprint) said 640.15; the locked row now says 650.
+    const h = harness({ amount: -650 });
+    await expect(
+      convertRowToTransfer(h.em, h.accounts as never, USER, ROW, LOAN, {
+        clearCategory: true,
+        expectedCounterpartAmount: 640.15,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        errorCode: "CONVERT_TO_TRANSFER_REFUSED",
+      }),
+    });
+    expect(h.m.save).not.toHaveBeenCalled();
+    expect(h.accounts.updateBalance).not.toHaveBeenCalled();
+  });
+
+  it("converts when the planned amount is still the row's", async () => {
+    const h = harness();
+    await convertRowToTransfer(h.em, h.accounts as never, USER, ROW, LOAN, {
+      clearCategory: true,
+      expectedCounterpartAmount: 640.15,
+    });
+    expect(h.accounts.updateBalance).toHaveBeenCalledWith(LOAN, 640.15);
+  });
+
   it("refuses when the row is gone after the lock", async () => {
     const h = harness();
     h.m.findOne.mockResolvedValueOnce(null as never);

@@ -63,6 +63,7 @@
     "undoNotSupportedForEntityType": "Deshacer no es compatible con el tipo de entidad: {{ entityType }}",
     "unsupportedTransactionAction": "Acción de transacción no admitida: {{ action }}",
     "undoTransactionGone": "No se puede deshacer: la transacción ya no existe",
+    "redoCreateWithLegs": "Esta transacción creó movimientos en otras cuentas, por lo que no se puede rehacer. Créela de nuevo",
     "undoAccountGone": "No se puede deshacer: la cuenta ya no existe",
     "unsupportedTransferAction": "Acción de transferencia no admitida: {{ action }}",
     "unsupportedInvestmentAction": "Acción de inversión no admitida: {{ action }}",
@@ -539,7 +540,8 @@
     "dateRangeInvalid": "La fecha de inicio no debe ser posterior a la fecha de fin",
     "activeWindowInvalid": "La primera fecha activa no debe ser posterior a la última fecha activa",
     "runTooLarge": "Esta ejecución cambia demasiadas transacciones para poder deshacerse en un solo paso. Reduce las cuentas o las fechas e inténtalo de nuevo",
-    "runRedoStructural": "Esta ejecución reestructuró transacciones (transferencias o divisiones), por lo que no se puede rehacer. Ejecute la regla de nuevo"
+    "runRedoStructural": "Esta ejecución reestructuró transacciones (transferencias o divisiones), por lo que no se puede rehacer. Ejecute la regla de nuevo",
+    "runUndoStructureChanged": "Una transacción que reestructuró esta ejecución se ha modificado desde entonces (sus líneas de división o su transferencia), por lo que la ejecución no se puede deshacer con seguridad. Restáurela manualmente"
   },
   "transactions": {
     "invalidStatus": "Estado de transacción no válido: {{ status }}",

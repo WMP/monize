@@ -63,6 +63,7 @@
     "undoNotSupportedForEntityType": "エンティティタイプ {{ entityType }} の元に戻す操作はサポートされていません",
     "unsupportedTransactionAction": "サポートされていない取引アクション：{{ action }}",
     "undoTransactionGone": "元に戻せません：取引がすでに存在しません",
+    "redoCreateWithLegs": "この取引は他の口座に明細を作成したため、やり直しはできません。代わりに取引をもう一度作成してください",
     "undoAccountGone": "元に戻せません：口座がすでに存在しません",
     "unsupportedTransferAction": "サポートされていない振替アクション：{{ action }}",
     "unsupportedInvestmentAction": "サポートされていない投資アクション：{{ action }}",
@@ -539,7 +540,8 @@
     "dateRangeInvalid": "開始日は終了日より後にできません",
     "activeWindowInvalid": "有効期間の開始日は終了日より後にできません",
     "runTooLarge": "この実行は変更する取引が多すぎて、1 回の操作では元に戻せません。口座または日付を絞ってもう一度お試しください",
-    "runRedoStructural": "この実行で取引の構造(振替または分割)が変更されたため、やり直しはできません。代わりにルールをもう一度実行してください"
+    "runRedoStructural": "この実行で取引の構造(振替または分割)が変更されたため、やり直しはできません。代わりにルールをもう一度実行してください",
+    "runUndoStructureChanged": "この実行で構造が変更された取引はその後変更されており(分割行または振替)、実行を安全に元に戻せません。手動で復元してください"
   },
   "transactions": {
     "invalidStatus": "無効な取引ステータス：{{ status }}",

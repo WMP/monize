@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
@@ -19,6 +20,10 @@ import { TransactionRulesService } from "./transaction-rules.service";
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+jest.mock("../common/db/locks", () => ({
+  ...jest.requireActual("../common/db/locks"),
+  lockAccountsForBalanceWrite: jest.fn(),
+}));
 jest.mock("./rule-run-candidates", () => ({
   ...jest.requireActual("./rule-run-candidates"),
   loadCandidateUnits: jest.fn(),
@@ -46,6 +51,7 @@ const OWN = "a0000000-0000-4000-8000-000000000001";
 const LOAN = "a0000000-0000-4000-8000-000000000002";
 const CAT = "c0000000-0000-4000-8000-000000000003";
 const OTHER_CAT = "c0000000-0000-4000-8000-000000000004";
+const SAVINGS = "a0000000-0000-4000-8000-000000000006";
 const COUNTERPART = "d0000000-0000-4000-8000-000000000009";
 
 const CONDITION: RuleConditionNode = {
@@ -117,7 +123,10 @@ function setup(units: CandidateUnit[], actions: RuleAction[]) {
     truncated: false,
   });
   (loadRuleTargetAccounts as jest.Mock).mockResolvedValue(
-    new Map([[LOAN, { currencyCode: "PLN" }]]),
+    new Map([
+      [LOAN, { currencyCode: "PLN" }],
+      [SAVINGS, { currencyCode: "PLN" }],
+    ]),
   );
   (toRuleResponses as jest.Mock).mockResolvedValue([
     { invalid: false, invalidReasons: [] },
@@ -143,6 +152,9 @@ function setup(units: CandidateUnit[], actions: RuleAction[]) {
     rules: {},
   });
   const order: string[] = [];
+  (lockAccountsForBalanceWrite as jest.Mock).mockImplementation(async () => {
+    order.push("lock");
+  });
   const writeEffects = jest
     .spyOn(applier, "writeEffects")
     .mockImplementation(async (_m, _u, _id, effects, _s, affected) => {
@@ -191,6 +203,61 @@ describe("TransactionRulesRunService: committing a structural run", () => {
     expect(triggerDebouncedRecalc).toHaveBeenCalledTimes(1);
     expect(triggerDebouncedRecalc).toHaveBeenCalledWith(LOAN, USER);
     expect(order.indexOf("recalc")).toBeGreaterThan(order.lastIndexOf("write"));
+  });
+
+  it("locks every account the writes will credit, in one call, after the plan and before the first write", async () => {
+    const twoTargets: RuleAction[] = [
+      {
+        type: "split",
+        parts: [
+          { amount: "{principal}", transferAccountId: LOAN },
+          { amount: "{interest}", transferAccountId: SAVINGS },
+        ],
+      },
+    ];
+    const { service, order } = setup(
+      [unit(row("a", -1500.75)), unit(row("b", -1500.75))],
+      twoTargets,
+    );
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await service.run(USER, RULE_ID, { fingerprint: preview.fingerprint });
+
+    // One statement for the whole run, over both rows' targets (the helper
+    // sorts and dedups: ascending id, `common/db/locks.ts`), never one lock
+    // per row as each write went.
+    expect(lockAccountsForBalanceWrite).toHaveBeenCalledTimes(1);
+    const [, ids, userId] = (lockAccountsForBalanceWrite as jest.Mock).mock
+      .calls[0];
+    expect([...new Set(ids)].sort()).toEqual([LOAN, SAVINGS].sort());
+    expect(userId).toBe(USER);
+    expect(order[0]).toBe("lock");
+    expect(order.indexOf("lock")).toBeLessThan(order.indexOf("write"));
+  });
+
+  it("takes no account lock for a run that restructures nothing", async () => {
+    const { service } = setup(
+      [unit(row("a", -100, { payeeName: "PRINCIPAL: 1 INTEREST: 2" }))],
+      [{ type: "set_category", categoryId: OTHER_CAT, onlyIfEmpty: false }],
+    );
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await service.run(USER, RULE_ID, { fingerprint: preview.fingerprint });
+    expect(
+      (lockAccountsForBalanceWrite as jest.Mock).mock.calls.every(
+        ([, ids]: [unknown, string[]]) => ids.length === 0,
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses with PREVIEW_CHANGED when a converted row's amount changed since the preview", async () => {
+    const converted = row("a", -640.15);
+    const { service, writeEffects } = setup([unit(converted)], CONVERT);
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    // Another tab edits the amount between the preview and the commit.
+    (converted as { amount: number }).amount = -650;
+    await expect(
+      service.run(USER, RULE_ID, { fingerprint: preview.fingerprint }),
+    ).rejects.toMatchObject({ response: { errorCode: "PREVIEW_CHANGED" } });
+    expect(writeEffects).not.toHaveBeenCalled();
   });
 
   it("dispatches nothing when the write is refused before it (stale preview)", async () => {

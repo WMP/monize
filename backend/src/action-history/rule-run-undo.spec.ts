@@ -347,6 +347,39 @@ describe("undoRuleRun", () => {
       expect(balances.updateBalance).not.toHaveBeenCalled();
     });
 
+    describe("a transfer whose link changed since the run", () => {
+      it("refuses, before any write, when the row is linked to another leg", async () => {
+        const { manager, em } = harness();
+        lockAll(
+          [{ id: "t1", status: "UNRECONCILED", linkedTransactionId: "cp9" }],
+          [leg("cp1")],
+        );
+        await expect(
+          undoRuleRun(action([converted]), em, balances),
+        ).rejects.toMatchObject({
+          response: expect.objectContaining({
+            errorCode: "RULE_RUN_UNDO_STRUCTURE_CHANGED",
+          }),
+        });
+        expect(manager.delete).not.toHaveBeenCalled();
+        expect(manager.update).not.toHaveBeenCalled();
+        expect(balances.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("undoes when the row still points at the run's counterpart", async () => {
+        const { manager, em } = harness();
+        lockAll(
+          [{ id: "t1", status: "UNRECONCILED", linkedTransactionId: "cp1" }],
+          [leg("cp1")],
+        );
+        await undoRuleRun(action([converted]), em, balances);
+        expect(manager.delete).toHaveBeenCalledWith(Transaction, {
+          id: "cp1",
+          userId: USER,
+        });
+      });
+    });
+
     describe("a split", () => {
       const split = {
         id: "t1",
@@ -399,6 +432,90 @@ describe("undoRuleRun", () => {
             linkedTransactionId: null,
           },
         );
+      });
+
+      describe("when the row's structure is no longer the run's", () => {
+        const recorded = {
+          ...split,
+          structure: {
+            kind: "split",
+            counterpartIds: ["cp1"],
+            lineIds: ["l1", "l2"],
+          },
+        };
+        const lines = (
+          ...rows: Array<[string, string | null]>
+        ): Array<Record<string, unknown>> =>
+          rows.map(([id, linked]) => ({
+            id,
+            transaction_id: "t1",
+            linked_transaction_id: linked,
+          }));
+
+        it("refuses, before any write, when a line was added or replaced since", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }], [leg("cp1"), leg("cp9")]);
+          // The person replaced the lines: l9 is new and carries its own leg.
+          manager.query.mockResolvedValueOnce(
+            lines(["l1", "cp1"], ["l9", "cp9"]),
+          );
+
+          await expect(
+            undoRuleRun(action([recorded]), em, balances),
+          ).rejects.toMatchObject({
+            response: expect.objectContaining({
+              errorCode: "RULE_RUN_UNDO_STRUCTURE_CHANGED",
+            }),
+          });
+
+          expect(manager.delete).not.toHaveBeenCalled();
+          expect(manager.update).not.toHaveBeenCalled();
+          expect(balances.updateBalance).not.toHaveBeenCalled();
+        });
+
+        it("refuses when a recorded line now links a leg the run did not create", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }], [leg("cp1")]);
+          manager.query.mockResolvedValueOnce(
+            lines(["l1", "cp7"], ["l2", null]),
+          );
+          await expect(
+            undoRuleRun(action([recorded]), em, balances),
+          ).rejects.toBeInstanceOf(ConflictException);
+          expect(manager.delete).not.toHaveBeenCalled();
+        });
+
+        it("undoes normally when the lines are exactly the run's", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }], [leg("cp1", { amount: 1200.5 })]);
+          manager.query.mockResolvedValueOnce(
+            lines(["l1", "cp1"], ["l2", null]),
+          );
+          await undoRuleRun(action([recorded]), em, balances);
+          expect(balances.updateBalance).toHaveBeenCalledWith(LOAN, -1200.5);
+          expect(manager.delete).toHaveBeenCalledWith(TransactionSplit, {
+            transactionId: "t1",
+          });
+        });
+
+        it("undoes normally when a line the run wrote has since been removed", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }]);
+          manager.query.mockResolvedValueOnce(lines(["l2", null]));
+          await undoRuleRun(action([recorded]), em, balances);
+          expect(manager.delete).toHaveBeenCalledWith(TransactionSplit, {
+            transactionId: "t1",
+          });
+        });
+
+        it("reads the lines of the user's own rows only", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }]);
+          await undoRuleRun(action([recorded]), em, balances);
+          const [sql, args] = manager.query.mock.calls[0];
+          expect(sql).toContain("t.user_id = $1");
+          expect(args).toEqual([USER, ["t1"]]);
+        });
       });
 
       it("a split with no transfer part has only its lines to remove", async () => {

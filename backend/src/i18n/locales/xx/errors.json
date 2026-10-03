@@ -74,6 +74,7 @@
     "undoNotSupportedForEntityType": "[XX-Undo not supported for entity type: {{ entityType }}-XX]",
     "unsupportedTransactionAction": "[XX-Unsupported transaction action: {{ action }}-XX]",
     "undoTransactionGone": "[XX-Cannot undo: transaction no longer exists-XX]",
+    "redoCreateWithLegs": "[XX-This transaction created entries in other accounts, so it cannot be redone. Create it again instead-XX]",
     "undoAccountGone": "[XX-Cannot undo: the account no longer exists-XX]",
     "unsupportedTransferAction": "[XX-Unsupported transfer action: {{ action }}-XX]",
     "unsupportedInvestmentAction": "[XX-Unsupported investment action: {{ action }}-XX]",
@@ -550,7 +551,8 @@
     "dateRangeInvalid": "[XX-The start date must not be after the end date-XX]",
     "activeWindowInvalid": "[XX-The first active date must not be after the last active date-XX]",
     "runTooLarge": "[XX-This run changes too many transactions to be undone in one step. Narrow the accounts or the dates and try again-XX]",
-    "runRedoStructural": "[XX-This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead-XX]"
+    "runRedoStructural": "[XX-This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead-XX]",
+    "runUndoStructureChanged": "[XX-A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand-XX]"
   },
   "transactions": {
     "invalidStatus": "[XX-Invalid transaction status: {{ status }}-XX]",

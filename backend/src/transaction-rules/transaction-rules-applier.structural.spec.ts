@@ -7,6 +7,7 @@ import { PayeesService } from "../payees/payees.service";
 import { Tag } from "../tags/entities/tag.entity";
 import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { TagsService } from "../tags/tags.service";
+import { convertRowToTransfer } from "../transactions/convert-to-transfer";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { RuleAction } from "./rule-action.types";
 import { RuleConditionNode } from "./rule-condition.types";
@@ -191,9 +192,28 @@ describe("the applier plans structural actions with the owner's accounts", () =>
       kind: "transfer",
       accountId: LOAN,
       clearCategory: true,
+      amount: 640.15,
       counterpartIds: ["counterpart-1"],
     });
     expect(applied.affectedAccountIds).toEqual([LOAN]);
+  });
+
+  it("applyToNew with structuralNotAllowed skips the conversion and writes no counterpart", async () => {
+    (convertRowToTransfer as jest.Mock).mockClear();
+    const h = harness([{ id: LOAN, currencyCode: "PLN" }]);
+    const [applied] = await h.service.applyToNew(h.m, USER, [TX], "create", {
+      rules: [rule([CONVERT])],
+      structuralNotAllowed: true,
+    });
+    expect(applied.effects.changes.structure).toBeUndefined();
+    expect(applied.effects.trace[0].skipped).toEqual([
+      {
+        type: "convert_to_transfer",
+        reason: "structural_not_allowed_for_member",
+      },
+    ]);
+    expect(applied.affectedAccountIds).toEqual([]);
+    expect(convertRowToTransfer).not.toHaveBeenCalled();
   });
 
   it("applyToNew refuses an account the owner does not have open", async () => {

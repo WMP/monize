@@ -18,6 +18,12 @@ export type ConvertBalanceWriter = Pick<
 export interface ConvertToTransferOptions {
   /** Clear the row's category: a transfer leg carries none of its own. */
   readonly clearCategory: boolean;
+  /**
+   * The counterpart amount the rule planned. The write refuses when the row,
+   * read under its lock, would now produce a different one: the plan (and a
+   * run's fingerprint) described another sum.
+   */
+  readonly expectedCounterpartAmount?: number;
 }
 
 export interface ConvertToTransferResult {
@@ -94,6 +100,12 @@ export async function convertRowToTransfer(
   }
 
   const counterpartAmount = roundMoney(-Number(row.amount));
+  if (
+    options.expectedCounterpartAmount !== undefined &&
+    roundMoney(options.expectedCounterpartAmount) !== counterpartAmount
+  ) {
+    throw refuse("its amount changed since the rule was planned");
+  }
   const counterpart = await m.save(
     m.create(Transaction, {
       userId,

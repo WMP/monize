@@ -63,6 +63,7 @@
     "undoNotSupportedForEntityType": "Hoàn tác không được hỗ trợ cho loại thực thể: {{ entityType }}",
     "unsupportedTransactionAction": "Hành động giao tác không được hỗ trợ: {{ action }}",
     "undoTransactionGone": "Không thể hoàn tác: giao tác không còn tồn tại",
+    "redoCreateWithLegs": "Giao dịch này đã tạo các mục ở tài khoản khác nên không thể làm lại. Hãy tạo lại giao dịch",
     "undoAccountGone": "Không thể hoàn tác: tài khoản không còn tồn tại",
     "unsupportedTransferAction": "Hành động chuyển tiền không được hỗ trợ: {{ action }}",
     "unsupportedInvestmentAction": "Hành động đầu tư không được hỗ trợ: {{ action }}",
@@ -539,7 +540,8 @@
     "dateRangeInvalid": "Ngày bắt đầu không được sau ngày kết thúc",
     "activeWindowInvalid": "Ngày hoạt động đầu tiên không được sau ngày hoạt động cuối cùng",
     "runTooLarge": "Lần chạy này thay đổi quá nhiều giao dịch để có thể hoàn tác trong một bước. Hãy thu hẹp tài khoản hoặc khoảng ngày rồi thử lại",
-    "runRedoStructural": "Lần chạy này đã thay đổi cấu trúc giao dịch (chuyển khoản hoặc tách khoản) nên không thể làm lại. Hãy chạy lại quy tắc"
+    "runRedoStructural": "Lần chạy này đã thay đổi cấu trúc giao dịch (chuyển khoản hoặc tách khoản) nên không thể làm lại. Hãy chạy lại quy tắc",
+    "runUndoStructureChanged": "Một giao dịch mà lần chạy này đã thay đổi cấu trúc đã bị sửa từ đó (các dòng tách khoản hoặc khoản chuyển), nên không thể hoàn tác lần chạy một cách an toàn. Hãy khôi phục thủ công"
   },
   "transactions": {
     "invalidStatus": "Trạng thái giao tác không hợp lệ: {{ status }}",

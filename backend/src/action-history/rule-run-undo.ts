@@ -25,7 +25,12 @@ interface RuleRunRowSnapshot {
   isSplit?: boolean;
   linkedTransactionId?: string | null;
   /** Present on a row a structural action converted or split. */
-  structure?: { kind: "transfer" | "split"; counterpartIds: string[] };
+  structure?: {
+    kind: "transfer" | "split";
+    counterpartIds: string[];
+    /** A split's lines the run created; absent on a transfer. */
+    lineIds?: string[];
+  };
 }
 
 /**
@@ -101,6 +106,10 @@ export async function undoRuleRun(
     ...locked.values(),
     ...lockedSplitLegs.values(),
   ]);
+
+  // Before the first write: a row whose structure is no longer the run's
+  // refuses the whole undo.
+  await assertStructureUnchanged(manager, action.userId, snapshots, locked);
 
   const tagRows: { transactionId: string; tagId: string }[] = [];
   const tagOwners: string[] = [];
@@ -181,6 +190,73 @@ export async function undoRuleRun(
     );
   }
   return affectedAccountIds;
+}
+
+/**
+ * Refuse the undo when a structural row now carries structure the run did not
+ * write (spec section 6). The undo deletes the row's split lines and the legs
+ * it recorded; a line a person added or replaced since (`PUT /splits` records
+ * no history) has its own counterpart leg, which that delete would orphan with
+ * its balance, and a transfer relinked to another leg is no longer the run's
+ * to unpick. Something the run wrote that is GONE is fine (nothing is left to
+ * orphan, and the removal is skipped as before); something present that the
+ * run did not write is not. Runs after the row locks, before any write.
+ */
+async function assertStructureUnchanged(
+  manager: EntityManager,
+  userId: string,
+  snapshots: readonly RuleRunRowSnapshot[],
+  locked: ReadonlyMap<string, LockedTransactionRow>,
+): Promise<void> {
+  const splitIds = snapshots
+    .filter((row) => row.structure?.kind === "split" && locked.has(row.id))
+    .map((row) => row.id);
+  const lines: {
+    id: string;
+    transaction_id: string;
+    linked_transaction_id: string | null;
+  }[] =
+    splitIds.length === 0
+      ? []
+      : await manager.query(
+          `SELECT s.id, s.transaction_id, s.linked_transaction_id
+             FROM transaction_splits s
+             JOIN transactions t ON t.id = s.transaction_id AND t.user_id = $1
+            WHERE s.transaction_id = ANY($2::uuid[])`,
+          [userId, splitIds],
+        );
+  for (const row of snapshots) {
+    const structure = row.structure;
+    const current = locked.get(row.id);
+    if (!structure || !current) continue;
+    const recordedLegs = new Set(structure.counterpartIds);
+    let changed: boolean;
+    if (structure.kind === "transfer") {
+      const link = current.linkedTransactionId ?? null;
+      changed = link !== null && !recordedLegs.has(link);
+    } else {
+      const recordedLines =
+        structure.lineIds === undefined ? null : new Set(structure.lineIds);
+      changed = lines
+        .filter((line) => line.transaction_id === row.id)
+        .some(
+          (line) =>
+            (recordedLines !== null && !recordedLines.has(line.id)) ||
+            (line.linked_transaction_id !== null &&
+              !recordedLegs.has(line.linked_transaction_id)),
+        );
+    }
+    if (changed) {
+      throw new ConflictException({
+        message: tr(
+          "errors.transactionRules.runUndoStructureChanged",
+          "A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand",
+        ),
+        errorCode: "RULE_RUN_UNDO_STRUCTURE_CHANGED",
+        transactionId: row.id,
+      });
+    }
+  }
 }
 
 /**

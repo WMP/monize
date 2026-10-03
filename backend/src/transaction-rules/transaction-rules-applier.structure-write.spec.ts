@@ -181,6 +181,7 @@ describe("TransactionRulesApplierService structure writes", () => {
         kind: "transfer",
         accountId: LOAN,
         clearCategory: true,
+        amount: 640.15,
         counterpartIds: [COUNTERPART],
       };
       expect(applied.effects.changes.structure).toEqual(expected);

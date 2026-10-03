@@ -93,6 +93,7 @@ describe("buildRunSnapshots", () => {
       kind: "transfer" as const,
       accountId: "loan",
       clearCategory: true,
+      amount: 10,
     };
     const split = {
       kind: "split" as const,
@@ -212,6 +213,14 @@ describe("buildRunSnapshots", () => {
       expect(
         (before[0].structure as { counterpartIds: string[] }).counterpartIds[0],
       ).toHaveLength(36);
+      // A split also records its lines (one per part), so the undo can tell
+      // the lines the run wrote from lines added since.
+      expect(
+        (before[1].structure as { lineIds: string[] }).lineIds,
+      ).toHaveLength(2);
+      expect(
+        (before[0].structure as { lineIds?: string[] }).lineIds,
+      ).toBeUndefined();
     });
   });
 });

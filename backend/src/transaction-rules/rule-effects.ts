@@ -55,6 +55,12 @@ export type RuleActionSkipReason =
   | "payee_not_found"
   /** The payee lookup for the rendered name has not been made yet (the applier looks it up and plans again). */
   | "payee_unresolved"
+  /**
+   * A structural action on a row a joint-account member created in the
+   * owner's account: the member may not move the owner's other balances
+   * (spec section 4, `structuralNotAllowed`).
+   */
+  | "structural_not_allowed_for_member"
   /** A structural action the row cannot take (spec section 4). */
   | StructuralRefusal;
 
@@ -88,6 +94,14 @@ export interface RulePlanContext {
   readonly payeeResolutions?: PayeeResolutions;
   /** The row is a leg of a transfer whose other leg belongs to another owner. */
   readonly crossOwnerTransferLeg?: boolean;
+  /**
+   * The row was created by a joint-account member (not the owner) in the
+   * owner's account, under the owner's rules. A structural action would move a
+   * balance in an account the member cannot read, so it is refused; category,
+   * payee, description and tag actions still apply. Set by the server from the
+   * joint grant, never from a request field.
+   */
+  readonly structuralNotAllowed?: boolean;
   /**
    * The category plus its ancestors for every category a rule may set, so a
    * later rule's `inSubtree` sees an earlier rule's category. The planner does
@@ -360,6 +374,9 @@ function structural(
   action: StructuralRuleAction,
   input: StepInput,
 ): StepResult {
+  if (input.context.structuralNotAllowed === true) {
+    return skip(state, action, "structural_not_allowed_for_member");
+  }
   const planned = planStructure(
     action,
     input.facts,

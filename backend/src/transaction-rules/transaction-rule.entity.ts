@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  Check,
 } from "typeorm";
 import { User } from "../users/entities/user.entity";
 import { RuleAction } from "./rule-action.types";
@@ -44,6 +45,14 @@ const dateTransformer = {
 @Unique("uq_transaction_rules_user_position", ["userId", "position"], {
   deferrable: "INITIALLY DEFERRED",
 })
+// Declared here as well as in schema.sql and the migration, under the same name
+// and expression: TypeORM builds the integration harness's database from this
+// metadata, so a constraint only schema.sql carries is one an integration spec
+// cannot observe (INV-RULE-004: the window is ordered, whatever the DTO missed).
+@Check(
+  "ck_transaction_rules_active_window",
+  "active_from IS NULL OR active_to IS NULL OR active_from <= active_to",
+)
 export class TransactionRule {
   @PrimaryGeneratedColumn("uuid")
   id: string;
