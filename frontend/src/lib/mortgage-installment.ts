@@ -56,8 +56,12 @@ export type NonAnnuityMethod = Exclude<MortgageAmortizationMethod, "ANNUITY">;
 export interface MethodScheduleTerms {
   /** The account's mode; `SHORTEN_TERM` for INTEREST_ONLY, which ignores it. */
   prepaymentMode: PrepaymentMode;
-  /** `c` = `roundMoney(P / N)`; 0 for INTEREST_ONLY, which has none. */
-  constantPrincipal: number;
+  /**
+   * `c` = `roundMoney(P / N)`; 0 for INTEREST_ONLY, which has none. Null for a
+   * LOWER_INSTALLMENT LINEAR mortgage whose amount borrowed is unknown: its own
+   * rule never reads `c`, and a SHORTEN_TERM what-if on it cannot be priced.
+   */
+  constantPrincipal: number | null;
   /** `N`, the scheduled payment count. */
   scheduledPayments: number;
   /**
@@ -310,8 +314,7 @@ export function methodScheduleTerms(
     terms: {
       prepaymentMode:
         method === "LINEAR" ? prepaymentModeOf(terms) : "SHORTEN_TERM",
-      constantPrincipal:
-        method === "LINEAR" ? (constantLinearPrincipal(terms) ?? 0) : 0,
+      constantPrincipal: method === "LINEAR" ? constantLinearPrincipal(terms) : 0,
       scheduledPayments: count,
       remainingAtFirstRow: remaining,
       termEndDate,

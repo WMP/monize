@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Ce prêt hypothécaire n'a pas de date de premier paiement : les paiements restants jusqu'à la fin de son terme ne peuvent donc pas être comptés. Configurez son paiement planifié depuis les paramètres du compte ; la première date d'échéance saisie devient le paiement 1.",
         "reasonNoPrincipal": "Ce prêt hypothécaire n'a pas de montant initial : son amortissement constant ne peut donc pas être calculé. Définissez le montant du prêt dans les paramètres du compte."
       },
-      "budgetBelowNextInstallment": "C'est inférieur à la prochaine échéance ({amount}, due le {date}) ; augmentez-le au-delà pour effectuer un remboursement anticipé."
+      "budgetBelowNextInstallment": "C'est inférieur à la prochaine échéance ({amount}, due le {date}) ; augmentez-le au-delà pour effectuer un remboursement anticipé.",
+      "shortenTermNeedsPrincipal": "Ce prêt hypothécaire n'a pas de montant initial : une durée raccourcie ne peut donc pas être simulée. Choisissez de réduire l'échéance, ou définissez le montant du prêt dans les paramètres du compte."
     },
     "comparison": {
       "newPayoff": "Nouvelle date de remboursement",

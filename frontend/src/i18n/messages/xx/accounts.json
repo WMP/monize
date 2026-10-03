@@ -568,7 +568,8 @@
         "unreachableDate": "[XX-Out of reach — that month is earlier than the soonest possible payoff.-XX]",
         "baselineIncomplete": "[XX-This loan does not pay off within the projected period, so there is no total interest to work back from.-XX]"
       },
-      "budgetBelowNextInstallment": "[XX-That's below the next installment ({amount}, due {date}); raise it above to overpay.-XX]"
+      "budgetBelowNextInstallment": "[XX-That's below the next installment ({amount}, due {date}); raise it above to overpay.-XX]",
+      "shortenTermNeedsPrincipal": "[XX-This mortgage has no original amount, so a shortened term cannot be simulated. Choose to lower the installment, or set the mortgage amount in the account settings.-XX]"
     },
     "scenarioChart": {
       "title": "[XX-Scenario comparison-XX]",

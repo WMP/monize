@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Khoản vay thế chấp này chưa có ngày thanh toán đầu tiên, nên không thể đếm số kỳ còn lại đến hết kỳ hạn. Hãy thiết lập khoản thanh toán định kỳ trong phần cài đặt tài khoản; ngày đến hạn đầu tiên bạn nhập sẽ là kỳ thanh toán 1.",
         "reasonNoPrincipal": "Khoản vay thế chấp này chưa có số tiền gốc ban đầu, nên không thể tính phần gốc cố định. Hãy đặt số tiền vay trong phần cài đặt tài khoản."
       },
-      "budgetBelowNextInstallment": "Số tiền này thấp hơn kỳ trả góp tiếp theo ({amount}, đến hạn {date}); hãy tăng lên trên mức đó để trả trước."
+      "budgetBelowNextInstallment": "Số tiền này thấp hơn kỳ trả góp tiếp theo ({amount}, đến hạn {date}); hãy tăng lên trên mức đó để trả trước.",
+      "shortenTermNeedsPrincipal": "Khoản vay thế chấp này chưa có số tiền gốc ban đầu, nên không thể mô phỏng việc rút ngắn kỳ hạn. Hãy chọn giảm kỳ trả góp, hoặc đặt số tiền vay trong phần cài đặt tài khoản."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",

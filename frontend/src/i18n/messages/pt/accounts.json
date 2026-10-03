@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Este crédito à habitação não tem data do primeiro pagamento, pelo que não é possível contar os pagamentos que faltam até ao fim do prazo. Configure o pagamento agendado nas definições da conta; a primeira data de vencimento que indicar passa a ser o pagamento 1.",
         "reasonNoPrincipal": "Este crédito à habitação não tem montante original, pelo que não é possível calcular a amortização constante de capital. Defina o montante do crédito nas definições da conta."
       },
-      "budgetBelowNextInstallment": "Isso é inferior à próxima prestação ({amount}, vence a {date}); aumente-o acima desse valor para fazer amortizações antecipadas."
+      "budgetBelowNextInstallment": "Isso é inferior à próxima prestação ({amount}, vence a {date}); aumente-o acima desse valor para fazer amortizações antecipadas.",
+      "shortenTermNeedsPrincipal": "Este crédito à habitação não tem montante original, pelo que não é possível simular um prazo mais curto. Escolha reduzir a prestação ou defina o montante do crédito nas definições da conta."
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",

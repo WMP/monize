@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Für diese Hypothek ist kein erstes Zahlungsdatum hinterlegt, daher lassen sich die Zahlungen bis zum Laufzeitende nicht zählen. Richte in den Kontoeinstellungen ihre geplante Zahlung ein; das erste Fälligkeitsdatum, das du angibst, wird Zahlung 1.",
         "reasonNoPrincipal": "Für diese Hypothek ist kein ursprünglicher Betrag hinterlegt, daher lässt sich ihre gleichbleibende Tilgung nicht berechnen. Lege den Hypothekenbetrag in den Kontoeinstellungen fest."
       },
-      "budgetBelowNextInstallment": "Das liegt unter der nächsten Rate ({amount}, fällig am {date}); erhöhe den Betrag darüber, um Sondertilgungen zu leisten."
+      "budgetBelowNextInstallment": "Das liegt unter der nächsten Rate ({amount}, fällig am {date}); erhöhe den Betrag darüber, um Sondertilgungen zu leisten.",
+      "shortenTermNeedsPrincipal": "Für diese Hypothek ist kein ursprünglicher Betrag hinterlegt, daher lässt sich eine verkürzte Laufzeit nicht simulieren. Wähle, die Rate zu senken, oder lege den Hypothekenbetrag in den Kontoeinstellungen fest."
     },
     "comparison": {
       "newPayoff": "Neues Tilgungsdatum",

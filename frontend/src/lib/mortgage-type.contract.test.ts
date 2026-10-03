@@ -130,12 +130,14 @@ function firstMethodPrincipal({
   const terms = resolved?.terms;
   if (!terms) throw new Error('the case terms are complete');
   expect(terms.scheduledPayments).toBe(totalPayments);
+  expect(terms.constantPrincipal).not.toBeNull();
   // Table 4.3 at storage precision, the rule every projected row applies...
   const firstPrincipal = methodPrincipal({
     method,
     mode: terms.prepaymentMode,
     debt: principal,
-    constantPrincipal: terms.constantPrincipal,
+    // The case states its principal, so `c` is known.
+    constantPrincipal: terms.constantPrincipal as number,
     remaining: terms.remainingAtFirstRow,
     count: terms.scheduledPayments,
   });

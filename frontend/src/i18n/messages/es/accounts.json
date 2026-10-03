@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Esta hipoteca no tiene fecha del primer pago, por lo que no se pueden contar los pagos que quedan hasta el final de su plazo. Configura su pago programado desde la configuración de la cuenta; la primera fecha de vencimiento que indiques será el pago 1.",
         "reasonNoPrincipal": "Esta hipoteca no tiene importe original, por lo que no se puede calcular su amortización constante. Establece el importe de la hipoteca en la configuración de la cuenta."
       },
-      "budgetBelowNextInstallment": "Es inferior a la próxima cuota ({amount}, vence el {date}); auméntalo por encima para hacer amortizaciones anticipadas."
+      "budgetBelowNextInstallment": "Es inferior a la próxima cuota ({amount}, vence el {date}); auméntalo por encima para hacer amortizaciones anticipadas.",
+      "shortenTermNeedsPrincipal": "Esta hipoteca no tiene importe original, por lo que no se puede simular un plazo más corto. Elige reducir la cuota o establece el importe de la hipoteca en la configuración de la cuenta."
     },
     "comparison": {
       "newPayoff": "Nueva fecha de liquidación",

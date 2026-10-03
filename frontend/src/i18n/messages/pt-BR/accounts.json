@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Este financiamento imobiliário não tem data do primeiro pagamento, então não é possível contar os pagamentos que faltam até o fim do prazo. Configure o pagamento agendado nas configurações da conta; a primeira data de vencimento que você informar passa a ser o pagamento 1.",
         "reasonNoPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível calcular a amortização constante. Defina o valor do financiamento nas configurações da conta."
       },
-      "budgetBelowNextInstallment": "Isso está abaixo da próxima parcela ({amount}, vence em {date}); aumente acima dela para amortizar antecipadamente."
+      "budgetBelowNextInstallment": "Isso está abaixo da próxima parcela ({amount}, vence em {date}); aumente acima dela para amortizar antecipadamente.",
+      "shortenTermNeedsPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível simular um prazo menor. Escolha reduzir a parcela ou defina o valor do financiamento nas configurações da conta."
     },
     "comparison": {
       "newPayoff": "Nova data de quitação",

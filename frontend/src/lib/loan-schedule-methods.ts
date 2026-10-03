@@ -15,13 +15,16 @@
  * are emitted at cents, like the annuity engine's.
  *
  * The simulator's two overpayment modes are the account setting's two rules
- * (spec table 4.3): an extra repayment marked `LOWER_INSTALLMENT` re-derives
- * the principal as the balance over the payments left to the term end from
- * the next row on, one marked `SHORTEN_TERM` holds the principal in force and
- * ends the loan earlier. A LINEAR loan follows its account's rule until an
- * extra repayment carrying the other one lands; one that names no mode follows
- * the account's rule, which is what the lender will do with it. INTEREST_ONLY has no principal
- * to re-derive: an extra repayment lowers the interest and the bullet alike.
+ * (spec table 4.3), applied from the next row on: `LOWER_INSTALLMENT` prices
+ * the principal as the balance over the payments left to the term end,
+ * `SHORTEN_TERM` as the constant principal `c` = P / N (the whole balance once
+ * it is smaller), so the loan ends earlier. A LINEAR loan follows its
+ * account's rule until an extra repayment or a budget carrying the other one
+ * takes effect; one that names no mode follows the account's rule, which is
+ * what the lender will do with it. A SHORTEN_TERM what-if on a mortgage whose
+ * `c` is unknown is withheld rather than priced with a principal of 0.
+ * INTEREST_ONLY has no principal to re-derive: an extra repayment lowers the
+ * interest and the bullet alike.
  */
 
 import { roundMoney, roundToCents, roundToDecimals } from "@/lib/format";
@@ -129,9 +132,8 @@ export function generateMethodSchedule(
   let rateChangeIndex = 0;
   let lumpSumIndex = 0;
 
-  // The LINEAR rule in force and the principal it holds (see the module doc).
+  // The LINEAR rule in force (see the module doc).
   let rule: OverpaymentMode = terms.prepaymentMode;
-  let level = terms.constantPrincipal;
 
   const rows: ScheduleRow[] = [];
   let balance = roundMoney(startingBalance);
@@ -163,17 +165,26 @@ export function generateMethodSchedule(
       (!budgetStart || budgetStart <= rowDate) &&
       (!budgetEnd || rowDate <= budgetEnd);
     if (budgetActive && method === "LINEAR") rule = budgetMode;
+    // SHORTEN_TERM needs `c`; without the amount borrowed there is none, and
+    // a principal of 0 would project an interest-only loan nobody has.
+    if (
+      method === "LINEAR" &&
+      rule === "SHORTEN_TERM" &&
+      terms.constantPrincipal === null
+    ) {
+      return withheldSchedule();
+    }
 
     const interest = roundMoney(balance * periodicRate);
     const principal = methodPrincipal({
       method,
       mode: rule,
       debt: balance,
-      constantPrincipal: level,
+      // Null only where the rule in force does not read it (checked above).
+      constantPrincipal: terms.constantPrincipal ?? 0,
       remaining: terms.remainingAtFirstRow - paymentNumber,
       count: terms.scheduledPayments,
     });
-    if (rule === "LOWER_INSTALLMENT") level = principal;
     balance = roundMoney(balance - principal);
 
     let extraPrincipal = 0;

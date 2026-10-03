@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "이 모기지에는 첫 납입일이 없어 만기까지 남은 납입 횟수를 셀 수 없습니다. 계좌 설정에서 예약 납입을 설정하세요. 입력한 첫 납입 기일이 1회차 납입이 됩니다.",
         "reasonNoPrincipal": "이 모기지에는 원래 금액이 없어 균등 원금을 계산할 수 없습니다. 계좌 설정에서 모기지 금액을 설정하세요."
       },
-      "budgetBelowNextInstallment": "다음 할부금({amount}, 기일 {date})보다 적습니다. 추가 상환하려면 그보다 높게 설정하세요."
+      "budgetBelowNextInstallment": "다음 할부금({amount}, 기일 {date})보다 적습니다. 추가 상환하려면 그보다 높게 설정하세요.",
+      "shortenTermNeedsPrincipal": "이 모기지에는 원래 금액이 없어 기간 단축을 시뮬레이션할 수 없습니다. 할부금 감액을 선택하거나 계좌 설정에서 모기지 금액을 설정하세요."
     },
     "comparison": {
       "newPayoff": "새 완납일",

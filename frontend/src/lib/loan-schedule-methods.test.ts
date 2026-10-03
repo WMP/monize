@@ -129,6 +129,16 @@ describe('methodScheduleTerms', () => {
     ).toBe(833.3333);
   });
 
+  it('leaves c unknown, not 0, on a LOWER_INSTALLMENT mortgage with no amount borrowed', () => {
+    const resolved = methodScheduleTerms(
+      'LINEAR',
+      { ...TERMS, originalPrincipal: null, openingBalance: 0, prepaymentMode: 'LOWER_INSTALLMENT' },
+      '2024-01-01',
+    );
+    expect(resolved?.missing).toBeNull();
+    expect(resolved?.terms?.constantPrincipal).toBeNull();
+  });
+
   it('is null for the annuity types', () => {
     expect(methodScheduleTerms('ANNUITY', TERMS, '2024-01-01')).toBeNull();
     expect(methodScheduleTerms('CANADIAN_FIXED', TERMS, '2024-01-01')).toBeNull();
@@ -397,7 +407,7 @@ describe('generateLoanSchedule: the simulator modes on a LINEAR loan', () => {
     });
   });
 
-  it('a SHORTEN_TERM repayment holds the principal in force and ends the loan earlier', () => {
+  it('a SHORTEN_TERM repayment prices the constant principal and ends the loan earlier', () => {
     const result = generateLoanSchedule(
       workedExample('LINEAR', 'LOWER_INSTALLMENT', {
         overpayments: { lumpSums: repayments('SHORTEN_TERM') },
@@ -406,6 +416,70 @@ describe('generateLoanSchedule: the simulator modes on a LINEAR loan', () => {
     expect(rowOn(result.rows, '2025-07-01').principal).toBe(833.33);
     expect(rowOn(result.rows, '2027-01-01').principal).toBe(833.33);
     expect(result.payoffDate).toBe('2050-06-01');
+  });
+
+  describe('SHORTEN_TERM on a LOWER_INSTALLMENT loan already underway', () => {
+    // Table 7.3 after the 20,000 repayment: 265,000.0006 owed on 2025-07-01,
+    // payment 19, 342 left, the principal in force re-derived to 774.8538.
+    // SHORTEN_TERM is the account setting's rule, min(c, debt) with
+    // c = P / N = 833.3333, whichever carrier asks for it.
+    const underway = (overrides: Partial<LoanScheduleInput> = {}): LoanScheduleInput => ({
+      ...workedExample('LINEAR', 'LOWER_INSTALLMENT', { rateChanges: [] }),
+      startingBalance: 265000.0006,
+      firstPaymentDate: new Date(2025, 6, 1),
+      methodTerms: { ...termsFor('LINEAR', 'LOWER_INSTALLMENT'), remainingAtFirstRow: 342 },
+      ...overrides,
+    });
+
+    it('prices the re-derived principal on its own rule', () => {
+      expect(generateLoanSchedule(underway()).rows[0].principal).toBe(774.85);
+    });
+
+    it('a SHORTEN_TERM budget and a SHORTEN_TERM lump sum price the same principal', () => {
+      const budget = generateLoanSchedule(
+        underway({
+          overpayments: { targetMonthlyPayment: 1500, targetMonthlyPaymentMode: 'SHORTEN_TERM' },
+        }),
+      );
+      const lump = generateLoanSchedule(
+        underway({
+          overpayments: {
+            lumpSums: [{ date: '2025-07-01', amount: 100, mode: 'SHORTEN_TERM' }],
+          },
+        }),
+      );
+      expect(budget.rows[0].principal).toBe(833.33);
+      // The lump sum takes effect from the row after the one it lands on.
+      expect(lump.rows[0].principal).toBe(774.85);
+      expect(lump.rows[1].principal).toBe(833.33);
+      expect(budget.rows[1].principal).toBe(833.33);
+    });
+
+    it('withholds a SHORTEN_TERM what-if when the amount borrowed is unknown', () => {
+      const unknownC = {
+        ...termsFor('LINEAR', 'LOWER_INSTALLMENT'),
+        remainingAtFirstRow: 342,
+        constantPrincipal: null,
+      };
+      // Its own rule never reads c, so the baseline still projects.
+      const baseline = generateLoanSchedule(underway({ methodTerms: unknownC }));
+      expect(baseline.rows[0].principal).toBe(774.85);
+      expect(baseline.paidOff).toBe(true);
+
+      for (const overpayments of [
+        { targetMonthlyPayment: 1500, targetMonthlyPaymentMode: 'SHORTEN_TERM' as const },
+        {
+          targetMonthlyPayment: 1500,
+          targetMonthlyPaymentMode: 'SHORTEN_TERM' as const,
+          targetMonthlyPaymentEnd: '2025-09-01',
+        },
+        { lumpSums: [{ date: '2025-07-01', amount: 100, mode: 'SHORTEN_TERM' as const }] },
+      ]) {
+        const result = generateLoanSchedule(underway({ methodTerms: unknownC, overpayments }));
+        expect(result.rows).toEqual([]);
+        expect(result.paidOff).toBe(false);
+      }
+    });
   });
 
   it('a budget overpays each row by what is left after that row\'s installment', () => {

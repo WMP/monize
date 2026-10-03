@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "KPR ini tidak memiliki tanggal pembayaran pertama, sehingga sisa pembayaran hingga akhir jangka waktunya tidak dapat dihitung. Siapkan pembayaran terjadwalnya dari pengaturan akun; tanggal jatuh tempo pertama yang Anda masukkan menjadi pembayaran 1.",
         "reasonNoPrincipal": "KPR ini tidak memiliki jumlah awal, sehingga pokok tetapnya tidak dapat dihitung. Atur jumlah KPR di pengaturan akun."
       },
-      "budgetBelowNextInstallment": "Itu di bawah angsuran berikutnya ({amount}, jatuh tempo {date}); naikkan di atasnya untuk melakukan pelunasan sebagian."
+      "budgetBelowNextInstallment": "Itu di bawah angsuran berikutnya ({amount}, jatuh tempo {date}); naikkan di atasnya untuk melakukan pelunasan sebagian.",
+      "shortenTermNeedsPrincipal": "KPR ini tidak memiliki jumlah awal, sehingga jangka waktu yang lebih pendek tidak dapat disimulasikan. Pilih untuk menurunkan angsuran, atau atur jumlah KPR di pengaturan akun."
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",

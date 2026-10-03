@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "此按揭没有设置首次还款日期，因此无法计算到期限结束前剩余的还款期数。请在账户设置中设置其定期还款；您输入的第一个到期日将成为第 1 期还款。",
         "reasonNoPrincipal": "此按揭没有设置原始金额，因此无法计算其等额本金。请在账户设置中设置按揭金额。"
       },
-      "budgetBelowNextInstallment": "低于下期还款额（{amount}，到期日 {date}）；请调高到该金额以上才能提前还款。"
+      "budgetBelowNextInstallment": "低于下期还款额（{amount}，到期日 {date}）；请调高到该金额以上才能提前还款。",
+      "shortenTermNeedsPrincipal": "此按揭没有设置原始金额，因此无法模拟缩短期限。请选择降低月供，或在账户设置中设置按揭金额。"
     },
     "comparison": {
       "newPayoff": "新的还清日期",

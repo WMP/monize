@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Bu konut kredisinin ilk ödeme tarihi yok, bu nedenle vade sonuna kadar kalan ödemeler sayılamıyor. Planlı ödemesini hesap ayarlarından kurun; girdiğiniz ilk vade tarihi 1. ödeme olur.",
         "reasonNoPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle sabit anapara tutarı hesaplanamıyor. Kredi tutarını hesap ayarlarından belirleyin."
       },
-      "budgetBelowNextInstallment": "Bu, sonraki taksitin ({amount}, vade {date}) altında; ek ödeme yapmak için tutarı bunun üzerine çıkarın."
+      "budgetBelowNextInstallment": "Bu, sonraki taksitin ({amount}, vade {date}) altında; ek ödeme yapmak için tutarı bunun üzerine çıkarın.",
+      "shortenTermNeedsPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle vadenin kısaltılması simüle edilemiyor. Taksiti düşürmeyi seçin veya kredi tutarını hesap ayarlarından belirleyin."
     },
     "comparison": {
       "newPayoff": "Yeni Kapanış Tarihi",

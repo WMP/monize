@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Questo mutuo non ha una data del primo pagamento, quindi non è possibile contare i pagamenti rimanenti fino alla fine della durata. Configura il suo pagamento programmato dalle impostazioni del conto; la prima data di scadenza che inserisci diventa il pagamento 1.",
         "reasonNoPrincipal": "Questo mutuo non ha un importo originario, quindi non è possibile calcolarne la quota capitale costante. Imposta l'importo del mutuo nelle impostazioni del conto."
       },
-      "budgetBelowNextInstallment": "È inferiore alla prossima rata ({amount}, scade il {date}); aumentalo oltre per effettuare un rimborso anticipato."
+      "budgetBelowNextInstallment": "È inferiore alla prossima rata ({amount}, scade il {date}); aumentalo oltre per effettuare un rimborso anticipato.",
+      "shortenTermNeedsPrincipal": "Questo mutuo non ha un importo originario, quindi non è possibile simulare una durata ridotta. Scegli di ridurre la rata oppure imposta l'importo del mutuo nelle impostazioni del conto."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",

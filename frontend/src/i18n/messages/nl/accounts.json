@@ -493,7 +493,8 @@
         "reasonNoPaymentStart": "Deze hypotheek heeft geen eerste betaaldatum, dus de betalingen tot het einde van de looptijd kunnen niet worden geteld. Stel de geplande betaling in via de rekeninginstellingen; de eerste vervaldatum die je invoert wordt betaling 1.",
         "reasonNoPrincipal": "Deze hypotheek heeft geen oorspronkelijk bedrag, dus de vaste aflossing kan niet worden berekend. Stel het hypotheekbedrag in bij de rekeninginstellingen."
       },
-      "budgetBelowNextInstallment": "Dat is lager dan de volgende termijn ({amount}, vervalt op {date}); verhoog het daarboven om extra af te lossen."
+      "budgetBelowNextInstallment": "Dat is lager dan de volgende termijn ({amount}, vervalt op {date}); verhoog het daarboven om extra af te lossen.",
+      "shortenTermNeedsPrincipal": "Deze hypotheek heeft geen oorspronkelijk bedrag, dus een kortere looptijd kan niet worden gesimuleerd. Kies voor een lagere termijn, of stel het hypotheekbedrag in bij de rekeninginstellingen."
     },
     "comparison": {
       "newPayoff": "Nieuwe aflossingsdatum",

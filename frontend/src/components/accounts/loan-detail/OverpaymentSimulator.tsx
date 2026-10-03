@@ -320,6 +320,16 @@ export function OverpaymentSimulator({
     projectionInput != null &&
     form.budget < projectionInput.paymentAmount;
 
+  // A LINEAR mortgage whose amount borrowed is unknown has no constant
+  // principal, so a shortened-term what-if on it is withheld by the engine
+  // rather than priced with a principal of 0; say why and what to do. A
+  // payoff goal always shortens the term.
+  const shortenTermUnavailable =
+    hasInput &&
+    projectionInput?.mortgageType === 'LINEAR' &&
+    projectionInput.methodTerms?.constantPrincipal === null &&
+    (form.simType === 'PAYOFF' || form.mode === 'SHORTEN_TERM');
+
   // An inverted window (start after end) is never true, so the plan would
   // silently do nothing; warn instead of leaving the chart unchanged.
   const windowInverted =
@@ -486,6 +496,11 @@ export function OverpaymentSimulator({
             : t('loanDetail.simulator.budgetBelowInstallment', {
                 amount: formatCurrency(projectionInput.paymentAmount, currencyCode),
               })}
+        </p>
+      )}
+      {shortenTermUnavailable && (
+        <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+          {t('loanDetail.simulator.shortenTermNeedsPrincipal')}
         </p>
       )}
       {windowInverted && (
