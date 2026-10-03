@@ -214,8 +214,16 @@ export interface ReportQueryParams {
   endDate: string;
 }
 
+/** Query parameters Income by Source accepts beyond the window. */
+export interface IncomeBySourceParams extends ReportQueryParams {
+  /** Restrict to these accounts; omit or leave empty for every account. */
+  accountIds?: string[];
+}
+
 /** Query parameters the Cash Flow report accepts beyond the window. */
 export interface CashFlowParams extends ReportQueryParams {
+  /** Restrict to these accounts; omit or leave empty for every account. */
+  accountIds?: string[];
   /**
    * Bare KEY of a `KEY:VALUE` tag (e.g. "scope") to break the report down by
    * (`docs/specs/report-tag-key-breakdown.md`). Absent renders today's

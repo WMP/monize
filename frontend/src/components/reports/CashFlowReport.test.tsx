@@ -48,7 +48,9 @@ vi.mock("recharts", () => ({
       {children}
     </div>
   ),
-  Bar: ({ dataKey }: any) => <div data-testid={`bar-${dataKey}`} />,
+  Bar: ({ dataKey, stackId }: any) => (
+    <div data-testid={`bar-${dataKey}`} data-stack-id={stackId} />
+  ),
   XAxis: () => null,
   YAxis: () => null,
   CartesianGrid: () => null,
@@ -68,6 +70,11 @@ vi.mock("@/lib/built-in-reports", () => ({
     getSpendingByCategory: (...args: any[]) =>
       mockGetSpendingByCategory(...args),
   },
+}));
+
+const mockGetAllAccounts = vi.fn();
+vi.mock("@/lib/accounts", () => ({
+  accountsApi: { getAll: (...args: any[]) => mockGetAllAccounts(...args) },
 }));
 
 const mockGetAllTags = vi.fn().mockResolvedValue([]);
@@ -96,6 +103,8 @@ describe("CashFlowReport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPush.mockClear();
+    mockGetAllAccounts.mockResolvedValue([]);
+    window.localStorage.clear();
   });
 
   it("shows loading state initially", async () => {
@@ -476,6 +485,168 @@ describe("CashFlowReport", () => {
       await screen.findByRole("combobox", { name: "Break down by tag key" });
 
       expect((await screen.findAllByTestId("partial-total")).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("account scope", () => {
+    const accounts = [
+      { id: "acct-checking", name: "Checking", accountType: "CHEQUING", accountSubType: null, linkedAccountId: null },
+      { id: "acct-rrsp", name: "RRSP", accountType: "INVESTMENT", accountSubType: "INVESTMENT_CASH", linkedAccountId: null },
+    ];
+    const empty = {
+      data: [],
+      totals: { income: 0, expenses: 0, net: 0, knownIncome: 0, knownExpenses: 0, knownNet: 0 },
+    };
+
+    beforeEach(() => {
+      mockGetAllAccounts.mockResolvedValue(accounts);
+      mockGetCashFlow.mockResolvedValue(empty);
+      mockGetIncomeBySource.mockResolvedValue({ data: [], totalIncome: 0 });
+      mockGetSpendingByCategory.mockResolvedValue({ data: [], totalSpending: 0 });
+    });
+
+    it("sends no accountIds to any of the three reads while nothing is selected", async () => {
+      render(<CashFlowReport />);
+      await screen.findByRole("button", { name: "Filter by account" });
+      await waitFor(() => expect(mockGetSpendingByCategory).toHaveBeenCalled());
+      for (const mock of [mockGetCashFlow, mockGetIncomeBySource, mockGetSpendingByCategory]) {
+        expect(mock.mock.calls.at(-1)?.[0]).not.toHaveProperty("accountIds");
+      }
+    });
+
+    it("offers non-investment accounts only and sends the chosen accountIds to all three reads", async () => {
+      render(<CashFlowReport />);
+      const trigger = await screen.findByRole("button", { name: "Filter by account" });
+      await waitFor(() => expect(mockGetAllAccounts).toHaveBeenCalled());
+
+      fireEvent.click(trigger);
+      expect(await screen.findByText("Checking")).toBeInTheDocument();
+      expect(screen.queryByText("RRSP")).toBeNull();
+      fireEvent.click(screen.getByText("Checking"));
+
+      await waitFor(() => {
+        for (const mock of [mockGetCashFlow, mockGetIncomeBySource, mockGetSpendingByCategory]) {
+          expect(mock.mock.calls.at(-1)?.[0]).toMatchObject({ accountIds: ["acct-checking"] });
+        }
+      });
+    });
+
+    it("reopens on the accounts the user last chose", async () => {
+      window.localStorage.setItem(
+        "monize-reports-cash-flow-accounts",
+        JSON.stringify(["acct-checking"]),
+      );
+      render(<CashFlowReport />);
+      await waitFor(() => {
+        for (const mock of [mockGetCashFlow, mockGetIncomeBySource, mockGetSpendingByCategory]) {
+          expect(mock.mock.calls.at(-1)?.[0]).toMatchObject({ accountIds: ["acct-checking"] });
+        }
+      });
+    });
+  });
+
+  describe("tagged-flow series and stacking", () => {
+    const STACK_KEY = "monize-reports-cash-flow-stack-tagged";
+    const switchName = { name: "Stack tagged flows" };
+    const jan = { period: "2024-07", periodStart: "2024-07-01", periodEnd: "2024-07-31", income: 5000, expenses: 3000, net: 2000 };
+    const totals = { income: 5000, expenses: 3000, net: 2000, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 };
+    const zeroTotals = { income: 0, expenses: 0, net: 0, knownIncome: 0, knownExpenses: 0, knownNet: 0 };
+    const withBuckets = {
+      data: [jan],
+      totals,
+      currency: "CAD",
+      missingCurrencies: [],
+      excludedCount: 0,
+      tagKey: "scope",
+      buckets: [
+        {
+          value: "household",
+          isUntagged: false,
+          data: [{ ...jan, income: 0, expenses: 0, net: 0, taggedInflows: 7066, taggedOutflows: 7066 }],
+          totals: zeroTotals,
+          taggedInflows: 7066,
+          taggedOutflows: 7066,
+          missingCurrencies: [],
+          excludedCount: 0,
+        },
+        {
+          value: "__untagged__",
+          isUntagged: true,
+          data: [{ ...jan, taggedInflows: 0, taggedOutflows: 0 }],
+          totals,
+          taggedInflows: 0,
+          taggedOutflows: 0,
+          missingCurrencies: [],
+          excludedCount: 0,
+        },
+      ],
+    };
+    // The breakdown card draws its own Income/Expenses bars, so the main
+    // chart's bar is the first of each key.
+    const mainBar = (key: string) => screen.getAllByTestId(`bar-${key}`)[0];
+
+    beforeEach(() => {
+      mockGetAllTags.mockResolvedValue([{ id: "t1", name: "scope:household" }]);
+      mockGetIncomeBySource.mockResolvedValue({ data: [], totalIncome: 0 });
+      mockGetSpendingByCategory.mockResolvedValue({ data: [], totalSpending: 0 });
+    });
+
+    it("adds no flow series and no switch without a tag key", async () => {
+      mockGetCashFlow.mockResolvedValue({ data: [jan], totals });
+      render(<CashFlowReport />);
+      await screen.findByTestId("bar-Income");
+      expect(screen.queryByTestId("bar-TaggedInflows")).toBeNull();
+      expect(screen.queryByRole("switch", switchName)).toBeNull();
+    });
+
+    it("draws both series and the switch for the active value bucket, and drops them on the untagged tab", async () => {
+      mockGetCashFlow.mockResolvedValue(withBuckets);
+      render(<CashFlowReport />);
+
+      expect(await screen.findByTestId("bar-TaggedInflows")).toBeInTheDocument();
+      expect(screen.getByTestId("bar-TaggedOutflows")).toBeInTheDocument();
+      expect(screen.getByRole("switch", switchName)).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("tab", { name: "Untagged" }));
+      });
+      expect(screen.queryByTestId("bar-TaggedInflows")).toBeNull();
+      expect(screen.queryByRole("switch", switchName)).toBeNull();
+    });
+
+    it("defaults off, then stacks inflows on the Inflows bar and outflows on the Outflows bar", async () => {
+      mockGetCashFlow.mockResolvedValue(withBuckets);
+      render(<CashFlowReport />);
+      const toggle = await screen.findByRole("switch", switchName);
+      expect(toggle).toHaveAttribute("aria-checked", "false");
+      for (const key of ["Income", "Expenses", "TaggedInflows", "TaggedOutflows"]) {
+        expect(mainBar(key)).not.toHaveAttribute("data-stack-id");
+      }
+
+      fireEvent.click(toggle);
+      const stackOf = (key: string) => mainBar(key).getAttribute("data-stack-id");
+      expect(stackOf("Income")).toBeTruthy();
+      expect(stackOf("TaggedInflows")).toBe(stackOf("Income"));
+      expect(stackOf("Expenses")).toBeTruthy();
+      expect(stackOf("TaggedOutflows")).toBe(stackOf("Expenses"));
+      expect(stackOf("Income")).not.toBe(stackOf("Expenses"));
+      // Net is never part of the stack, and the cards do not move.
+      expect(screen.getByText("Net Cash Flow")).toBeInTheDocument();
+      expect(screen.getByText("+$2000")).toBeInTheDocument();
+    });
+
+    it("persists the choice and reopens on it", async () => {
+      mockGetCashFlow.mockResolvedValue(withBuckets);
+      const first = render(<CashFlowReport />);
+      fireEvent.click(await screen.findByRole("switch", switchName));
+      expect(window.localStorage.getItem(STACK_KEY)).toBe("true");
+      first.unmount();
+
+      render(<CashFlowReport />);
+      expect(await screen.findByRole("switch", switchName)).toHaveAttribute("aria-checked", "true");
+      expect(mainBar("TaggedInflows").getAttribute("data-stack-id")).toBe(
+        mainBar("Income").getAttribute("data-stack-id"),
+      );
     });
   });
 });

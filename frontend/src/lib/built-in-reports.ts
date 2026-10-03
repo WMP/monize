@@ -20,26 +20,33 @@ import {
   CashFlowParams,
   CashFlowSankeyParams,
   CashFlowSankeyResponse,
+  IncomeBySourceParams,
 } from '@/types/built-in-reports';
 import { MonthlyComparisonResponse } from '@/types/monthly-comparison';
+
+/**
+ * The server takes the account filter as one comma-separated value; an empty
+ * selection means "every account", so it is left off entirely.
+ */
+function serializeAccountIds<T extends { accountIds?: string[] }>(
+  params: T,
+): Omit<T, 'accountIds'> & { accountIds?: string } {
+  const { accountIds, ...rest } = params;
+  return {
+    ...rest,
+    ...(accountIds && accountIds.length > 0
+      ? { accountIds: accountIds.join(',') }
+      : {}),
+  };
+}
 
 export const builtInReportsApi = {
   getSpendingByCategory: async (
     params: SpendingByCategoryParams,
   ): Promise<SpendingByCategoryResponse> => {
-    const { accountIds, ...rest } = params;
     const response = await apiClient.get<SpendingByCategoryResponse>(
       '/built-in-reports/spending-by-category',
-      {
-        // The server takes the account filter as one comma-separated value;
-        // an empty selection means "every account", so it is left off entirely.
-        params: {
-          ...rest,
-          ...(accountIds && accountIds.length > 0
-            ? { accountIds: accountIds.join(',') }
-            : {}),
-        },
-      },
+      { params: serializeAccountIds(params) },
     );
     return response.data;
   },
@@ -55,11 +62,11 @@ export const builtInReportsApi = {
   },
 
   getIncomeBySource: async (
-    params: ReportQueryParams,
+    params: IncomeBySourceParams,
   ): Promise<IncomeBySourceResponse> => {
     const response = await apiClient.get<IncomeBySourceResponse>(
       '/built-in-reports/income-by-source',
-      { params },
+      { params: serializeAccountIds(params) },
     );
     return response.data;
   },
@@ -77,19 +84,9 @@ export const builtInReportsApi = {
   getIncomeVsExpenses: async (
     params: IncomeVsExpensesParams,
   ): Promise<IncomeVsExpensesResponse> => {
-    const { accountIds, ...rest } = params;
     const response = await apiClient.get<IncomeVsExpensesResponse>(
       '/built-in-reports/income-vs-expenses',
-      {
-        // The server takes the account filter as one comma-separated value; an
-        // empty selection means "every account", so it is left off entirely.
-        params: {
-          ...rest,
-          ...(accountIds && accountIds.length > 0
-            ? { accountIds: accountIds.join(',') }
-            : {}),
-        },
-      },
+      { params: serializeAccountIds(params) },
     );
     return response.data;
   },
@@ -99,7 +96,7 @@ export const builtInReportsApi = {
   ): Promise<IncomeVsExpensesResponse> => {
     const response = await apiClient.get<IncomeVsExpensesResponse>(
       '/built-in-reports/cash-flow',
-      { params },
+      { params: serializeAccountIds(params) },
     );
     return response.data;
   },
