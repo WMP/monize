@@ -525,7 +525,7 @@ describe("planRuleEffects: structuralNotAllowed (a joint-account member's create
       MEMBER,
     );
     expect(skippedReasons(effects)).toEqual([
-      "structural_not_allowed_for_member",
+      "structural_not_allowed_for_actor",
     ]);
     expect(effects.changes.structure).toBeUndefined();
     // A refused action is skipped whole: its payeeId is not applied either.
@@ -535,7 +535,7 @@ describe("planRuleEffects: structuralNotAllowed (a joint-account member's create
   it("skips split the same way", () => {
     const effects = plan([split(SPLIT_PARTS)], {}, MEMBER);
     expect(skippedReasons(effects)).toEqual([
-      "structural_not_allowed_for_member",
+      "structural_not_allowed_for_actor",
     ]);
     expect(effects.changes.structure).toBeUndefined();
   });

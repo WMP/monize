@@ -473,6 +473,29 @@ describe("undoRuleRun", () => {
           expect(balances.updateBalance).not.toHaveBeenCalled();
         });
 
+        it("refuses when the run's lines were replaced by category-only lines (no leg to betray it)", async () => {
+          const { manager, em } = harness();
+          lockAll([{ id: "t1" }], [leg("cp1")]);
+          // l1 (the run's, still linked to cp1) is kept; l2 was replaced by l8,
+          // a plain category line the person wrote. Only the recorded line ids
+          // can tell: no unrecorded leg is linked.
+          manager.query.mockResolvedValueOnce(
+            lines(["l1", "cp1"], ["l8", null]),
+          );
+
+          await expect(
+            undoRuleRun(action([recorded]), em, balances),
+          ).rejects.toMatchObject({
+            response: expect.objectContaining({
+              errorCode: "RULE_RUN_UNDO_STRUCTURE_CHANGED",
+            }),
+          });
+
+          expect(manager.delete).not.toHaveBeenCalled();
+          expect(manager.update).not.toHaveBeenCalled();
+          expect(balances.updateBalance).not.toHaveBeenCalled();
+        });
+
         it("refuses when a recorded line now links a leg the run did not create", async () => {
           const { manager, em } = harness();
           lockAll([{ id: "t1" }], [leg("cp1")]);

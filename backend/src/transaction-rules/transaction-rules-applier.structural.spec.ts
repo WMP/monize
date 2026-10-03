@@ -209,7 +209,7 @@ describe("the applier plans structural actions with the owner's accounts", () =>
     expect(applied.effects.trace[0].skipped).toEqual([
       {
         type: "convert_to_transfer",
-        reason: "structural_not_allowed_for_member",
+        reason: "structural_not_allowed_for_actor",
       },
     ]);
     expect(applied.affectedAccountIds).toEqual([]);

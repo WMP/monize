@@ -659,8 +659,8 @@ describe("TransactionsService", () => {
       // of the same name is not read.
       await service.create(
         "user-1",
-        { ...dto, actorIsJointMember: false } as any,
-        { actorIsJointMember: true },
+        { ...dto, actorIsNotOwner: false } as any,
+        { actorIsNotOwner: true },
       );
       expect(
         rulesApplier.applyToNew.mock.calls[1][4].structuralNotAllowed,
