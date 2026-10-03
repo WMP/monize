@@ -459,7 +459,10 @@ export function SpendingByCategoryReport() {
                       paddingAngle={2}
                       dataKey="value"
                       cursor="pointer"
-                      onClick={(data) => data.id && handleCategoryClick(data.id)}
+                      onClick={(data) => {
+                        const { id } = data as typeof data & { id?: string };
+                        if (id) handleCategoryClick(id);
+                      }}
                     >
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.colour} />

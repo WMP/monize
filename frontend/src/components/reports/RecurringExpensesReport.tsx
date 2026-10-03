@@ -523,7 +523,9 @@ export function RecurringExpensesReport() {
                     paddingAngle={2}
                     dataKey="totalAmount"
                     cursor="pointer"
-                    onClick={(data) => handlePayeeClick(data.payeeId)}
+                    onClick={(data) =>
+                      handlePayeeClick((data as typeof data & { payeeId: string | null }).payeeId)
+                    }
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

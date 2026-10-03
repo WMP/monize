@@ -47,7 +47,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.12",
     "@nestjs/jwt": "^11.0.2",
-    "@nestjs/passport": "^11.0.5",
+    "@nestjs/passport": "^12.0.0",
     "@nestjs/platform-express": "^11.1.12",
     "@nestjs/schedule": "^6.1.0",
     "@nestjs/swagger": "^11.2.5",
@@ -71,7 +71,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
-    "pdf-parse": "^1.1.4",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.18.0",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
@@ -195,7 +195,7 @@
     ],
     "coverageDirectory": "./coverage",
     "transformIgnorePatterns": [
-      "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader)/)"
+      "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport)/)"
     ],
     "coverageThreshold": {
       "global": {

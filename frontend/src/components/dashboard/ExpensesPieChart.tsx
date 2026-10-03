@@ -249,7 +249,7 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
                   paddingAngle={2}
                   dataKey="value"
                   cursor="pointer"
-                  onClick={(data) => handleSliceClick(String(data.id ?? ''))}
+                  onClick={(data) => handleSliceClick(String((data as typeof data & { id?: string }).id ?? ''))}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.colour} />

@@ -163,7 +163,10 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
                   paddingAngle={2}
                   dataKey="value"
                   cursor={onDataPointClick ? 'pointer' : 'default'}
-                  onClick={(entry) => entry.id && onDataPointClick?.(entry.id)}
+                  onClick={(entry) => {
+                    const { id } = entry as typeof entry & { id?: string };
+                    if (id) onDataPointClick?.(id);
+                  }}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
