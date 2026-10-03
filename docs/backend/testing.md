@@ -56,6 +56,14 @@ with `Response` imported from `express`, works under `tsc` but is rewritten to
 the import's (undefined) binding when a file is transpiled alone; write
 `globalThis.Response`.
 
+**A unit run's output is its results, not the services' logs.**
+`src/test-helpers/silence-nest-logger.setup.ts` (a `setupFiles` entry) removes
+Nest's static logger and keeps `TestingModuleBuilder.compile()` from installing
+its error-printing `TestingLogger`. Spies on `Logger.prototype` or on a
+service's `logger` still record every call. A spec that loads a fresh module
+registry (`jest.isolateModules`) gets its own `@nestjs/common` and silences that
+copy itself.
+
 ## `test/*.e2e-spec.ts` is not a gate, and three of the five suites are broken
 
 CI runs `test:unit` and `test:integration` (filtered to `test/integration/*.spec.ts`). Nothing runs `test:e2e`, and separate rot accumulated behind a since-fixed compile error (`npm run typecheck` now closes the compile half in CI):

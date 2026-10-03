@@ -157,6 +157,9 @@
       "<rootDir>/src"
     ],
     "testRegex": ".*\\.spec\\.ts$",
+    "setupFiles": [
+      "<rootDir>/src/test-helpers/silence-nest-logger.setup.ts"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": [
         "ts-jest",
