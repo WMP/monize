@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 /**
  * Extract the text layer from a PDF's bytes.
@@ -17,6 +17,14 @@ import pdfParse from "pdf-parse";
  * should treat empty/throw as "no usable text" rather than a hard failure.
  */
 export async function extractPdfText(data: Buffer): Promise<string> {
-  const result = await pdfParse(data);
-  return (result.text ?? "").trim();
+  // A copy, because pdf.js may detach the buffer it is handed, and the caller
+  // still serves these bytes as the binary fallback.
+  const parser = new PDFParse({ data: new Uint8Array(data) });
+  try {
+    // No "-- 1 of 2 --" page markers: the agent reads the text as-is.
+    const result = await parser.getText({ pageJoiner: "" });
+    return (result.text ?? "").trim();
+  } finally {
+    await parser.destroy();
+  }
 }
