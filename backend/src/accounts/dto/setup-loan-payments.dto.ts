@@ -172,6 +172,122 @@ export class SetupLoanPaymentsDto {
   detectedInterestAmount?: number;
 }
 
+/**
+ * The terms `POST /accounts/:id/setup-loan-payments/preview` prices a LINEAR or
+ * INTEREST_ONLY mortgage's first installment from: the setup request's own
+ * fields that the price depends on, validated as the setup validates them.
+ */
+export class PreviewLoanPaymentSetupDto {
+  @ApiProperty({
+    description: "Payment frequency",
+    example: "MONTHLY",
+  })
+  @IsString()
+  @IsIn(["WEEKLY", "BIWEEKLY", "SEMIMONTHLY", "MONTHLY", "QUARTERLY", "YEARLY"])
+  paymentFrequency: string;
+
+  @ApiProperty({
+    description:
+      "Next payment due date (YYYY-MM-DD); the setup makes it payment 1",
+    example: "2026-04-01",
+  })
+  @IsDateString()
+  nextDueDate: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Annual interest rate as percentage (e.g., 5.5 for 5.5%); the account's rate when absent",
+    example: 5.5,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(100)
+  interestRate?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "The mortgage type the setup would write; the account's type when absent",
+    enum: MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(MORTGAGE_TYPES)
+  mortgageType?: MortgageType;
+
+  @ApiPropertyOptional({
+    description:
+      "LINEAR only: what an extra repayment does to the constant principal; the account's mode when absent",
+    enum: PREPAYMENT_MODES,
+  })
+  @IsOptional()
+  @IsIn(PREPAYMENT_MODES)
+  prepaymentMode?: PrepaymentMode | null;
+
+  @ApiPropertyOptional({
+    description:
+      "Legacy flag superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isCanadianMortgage?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Legacy flag superseded by mortgageType: a Canadian variable-rate mortgage is ANNUITY",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isVariableRate?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Total amortization period in months; the account's when absent",
+    example: 300,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(600)
+  amortizationMonths?: number;
+
+  @ApiPropertyOptional({
+    description: "Extra principal amount per payment period",
+    example: 200,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(999999999999)
+  extraPrincipal?: number;
+}
+
+export class PreviewLoanPaymentSetupResponseDto {
+  @ApiProperty({
+    description:
+      "True for a LINEAR or INTEREST_ONLY mortgage, whose first installment the server derives; false for an annuity mortgage or a loan, whose payment the request states (the figures below are then null)",
+  })
+  derivesInstallment: boolean;
+
+  @ApiProperty({
+    nullable: true,
+    description: "Principal of the first installment",
+  })
+  principalPayment: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: "Interest of the first installment",
+  })
+  interestPayment: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      "The paymentAmount the setup request must carry: the first installment plus extraPrincipal",
+  })
+  paymentAmount: number | null;
+}
+
 export class DetectedLoanPaymentResponseDto {
   @ApiProperty()
   paymentAmount: number;

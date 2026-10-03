@@ -60,6 +60,8 @@ import {
 import {
   SetupLoanPaymentsDto,
   DetectedLoanPaymentResponseDto,
+  PreviewLoanPaymentSetupDto,
+  PreviewLoanPaymentSetupResponseDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
 import { PaymentFrequency } from "./loan-amortization.util";
@@ -1002,6 +1004,40 @@ export class AccountsController {
     return this.loanPaymentDetectorService.detectPaymentPattern(
       req.user.id,
       id,
+    );
+  }
+
+  @Post(":id/setup-loan-payments/preview")
+  @ApiOperation({
+    summary: "Preview the first installment of a loan payment setup",
+    description:
+      "For a LINEAR or INTEREST_ONLY mortgage, prices the first installment a setup with these terms would schedule -- from the ledger debt through the due date, the rate and the amortization -- through the same code the setup checks its paymentAmount against. Writes nothing. An annuity mortgage or a loan answers derivesInstallment false.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Loan or mortgage account UUID",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "First installment priced",
+    type: PreviewLoanPaymentSetupResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - a term the mortgage's method needs is missing, or an accelerated frequency",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  previewLoanPaymentSetup(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PreviewLoanPaymentSetupDto,
+  ): Promise<PreviewLoanPaymentSetupResponseDto> {
+    return this.loanPaymentSetupService.previewFirstInstallment(
+      req.user.id,
+      id,
+      dto,
     );
   }
 
