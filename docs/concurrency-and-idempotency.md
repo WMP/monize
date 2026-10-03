@@ -414,6 +414,7 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 | `import/import.service.ts` | advisory, per investment account (`lockHoldingScope`), first statement of the import transaction | The import's balance writes row-lock `accounts` before `rebuildImportedHoldings` |
 | `transaction-rules/transaction-rules.service.ts` `create`, `update`, `setEnabled`, `remove`, `reorder` | advisory, per user (`lockTransactionRuleList`), first statement of the transaction | Create's `max + 1` position, the per-user cap, delete's compaction and reorder each read the whole rule list before writing it; the deferred unique `(user_id, position)` is the backstop |
 | `transaction-rules/transaction-rules-run.service.ts` `run` | `transaction_rules` row `FOR SHARE`, then the candidate `transactions` rows (`lockTransactionRows`, ascending id) | A rule edit waits for a run on it, and the rows are re-read and re-planned under the lock before the fingerprint is compared; the run takes no advisory lock and no account lock |
+| `ai-review/ai-review-requests.service.ts` `enqueueParserDraft` | advisory, per user and sender domain (`LockScope.AiParserDraftRequests`), first statement of the transaction | Closing the open parser-draft request for the sender and inserting the new one; the partial unique index `uq_ai_review_requests_parser_draft_open (user_id, parser_domain)` is the backstop |
 
 ### Conditional claims that exist
 

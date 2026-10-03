@@ -15,6 +15,25 @@ export const AI_REVIEW_STATUSES = [
 
 export type AiReviewStatus = (typeof AI_REVIEW_STATUSES)[number];
 
+/**
+ * What raised a request: a rule or a person (`transaction_review`), a stored
+ * order-confirmation email (`email_receipt`), or a person asking for a receipt
+ * parser to be written from up to five stored emails (`email_parser_draft`,
+ * which is about emails and has no transaction).
+ */
+export const AI_REVIEW_KINDS = ['transaction_review', 'email_receipt', 'email_parser_draft'] as const;
+
+export type AiReviewKind = (typeof AI_REVIEW_KINDS)[number];
+
+/** The email a request of kind `email_receipt` was raised for (`AiReviewInboxEmailReceipt`). */
+export interface AiReviewEmailReceipt {
+  id: string;
+  fromAddress: string;
+  subject: string;
+  /** ISO timestamp. */
+  receivedAt: string;
+}
+
 /** The reviewed transaction as the inbox shows it (not a raw row). */
 export interface AiReviewTransactionSummary {
   id: string;
@@ -39,14 +58,29 @@ export type AiReviewProposal =
   | { action: Omit<PendingAction, 'status'> }
   | { error: string };
 
+/** What an inbox row of kind `email_parser_draft` says (`AiReviewInboxParserDraft`). */
+export interface AiReviewParserDraft {
+  /** The sender domain the draft is for. */
+  domain: string;
+  /** How many emails the request names. */
+  emailCount: number;
+  /** The draft parser an agent saved for it, once `proposed`; else null. */
+  parserId: string | null;
+}
+
 export interface AiReviewItem {
   id: string;
-  kind: 'transaction_review';
+  kind: AiReviewKind;
   status: AiReviewStatus;
   instruction: string;
-  transactionId: string;
+  /** Null for a request of kind `email_parser_draft`. */
+  transactionId: string | null;
   ruleId: string | null;
   ruleName: string | null;
+  /** Null unless the request is of kind `email_receipt` and its email still exists. */
+  emailReceipt: AiReviewEmailReceipt | null;
+  /** Null unless the request is of kind `email_parser_draft`. */
+  parserDraft: AiReviewParserDraft | null;
   createdAt: string;
   expiresAt: string;
   /** Null when the transaction no longer exists. */

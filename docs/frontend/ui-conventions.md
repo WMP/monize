@@ -500,6 +500,17 @@ other six say why they do not. The two lists must between them account for every
 form the length guard names, so a new note field cannot ship with no way to
 reach the address in it.
 
+## An email's HTML is drawn in `EmailHtmlFrame`, never injected
+
+The receipts dialog shows the mail's own HTML (`bodyHtml`, detail only) in
+`EmailHtmlFrame` (`components/email-receipts/EmailHtmlFrame.tsx`), chosen with
+the Text view by `EmailBodyView`. The frame is an `<iframe sandbox="">` (no
+scripts, no same-origin, no forms, no popups) whose `srcDoc` starts with a CSP
+meta (`default-src 'none'`, inline styles and `data:` images only, so remote images, fonts and
+frames are not loaded) and `<base target="_blank">`; the dialog says "Remote
+images are not loaded." `dangerouslySetInnerHTML` stays out of this tree. A
+stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`).
+
 ## Nothing interactive goes inside a `<button>` or an `<a>`
 
 The parser closes the outer element at the inner tag, so the click target ends where the nested control begins and the server's HTML stops matching React's -- a hydration mismatch. Fix it at the call site by making the two **siblings**: a wrapper carrying the border and hover, with the navigation button and the nested control side by side. Do not demote the inner control to a focusable `<span>` -- its implicit role is generic, screen readers drop its `aria-label`, and the result is a tab stop announcing nothing. `ui-conventions.test.ts` scans for this; changing a shared component's trigger element is a change to every call site, and the guard tells you which.

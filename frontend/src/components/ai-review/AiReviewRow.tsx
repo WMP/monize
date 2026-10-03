@@ -39,12 +39,18 @@ export interface AiReviewRowProps {
  * One request: its transaction, the rule's instruction and status, then, when
  * an agent proposed an edit, the ordinary confirmation card on a row of its own
  * (the split display is the card's, not re-implemented here).
+ *
+ * A request of kind `email_parser_draft` is about emails, not a transaction: it
+ * says how many emails and which sender, waits for an agent while `pending`, and
+ * once `proposed` (an agent saved a DRAFT parser) points to the parser settings
+ * where the draft is tested and approved. There is no card: approving the parser
+ * there marks this request applied.
  */
 export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: AiReviewRowProps) {
   const t = useTranslations('aiReview');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
-  const { transaction, proposal } = item;
+  const { transaction, proposal, parserDraft } = item;
 
   const action = proposal && 'action' in proposal ? proposal.action : null;
   const proposalError = proposal && 'error' in proposal ? proposal.error : null;
@@ -54,19 +60,65 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
   return (
     <>
       <tr>
-        <Td className={`${CELL} whitespace-nowrap`}>{transaction ? formatDate(transaction.date) : ''}</Td>
+        <Td className={`${CELL} whitespace-nowrap`}>
+          {transaction ? formatDate(transaction.date) : parserDraft ? formatDate(new Date(item.createdAt)) : ''}
+        </Td>
         <Td className={`${CELL} min-w-0 break-words`}>
           <div className="font-medium">
-            {transaction ? (
+            {parserDraft ? (
+              t('row.parserDraft', { count: parserDraft.emailCount, domain: parserDraft.domain })
+            ) : transaction ? (
               (transaction.payeeName ?? <span className="text-gray-500 dark:text-gray-400">{t('row.noPayee')}</span>)
             ) : (
               <span className="text-gray-500 dark:text-gray-400">{t('row.transactionMissing')}</span>
             )}
           </div>
           <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {item.ruleName ? t('row.rule', { name: item.ruleName }) : t('row.manualRequest')}
+            {parserDraft ? (
+              <Link href="/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                {t('row.viewEmailReceipts')}
+              </Link>
+            ) : item.kind === 'email_receipt' ? (
+              <>
+                {item.emailReceipt
+                  ? t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
+                  : t('row.emailReceiptMissing')}{' '}
+                <Link href="/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                  {t('row.viewEmailReceipts')}
+                </Link>
+              </>
+            ) : item.ruleName ? (
+              t('row.rule', { name: item.ruleName })
+            ) : (
+              t('row.manualRequest')
+            )}
           </div>
-          <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{item.instruction}</p>
+          {/* A parser draft request's instruction is the fixed text an agent reads, not a sentence for the person. */}
+          {!parserDraft && (
+            <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{item.instruction}</p>
+          )}
+          {(item.kind === 'email_receipt' || parserDraft) && item.status === 'pending' && (
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              {t.rich('row.waitingForAgent', {
+                link: (chunks) => (
+                  <Link href="/settings/ai" className="text-blue-600 hover:underline dark:text-blue-400">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
+          )}
+          {parserDraft && item.status === 'proposed' && (
+            <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              {t.rich('row.parserDraftReady', {
+                link: (chunks) => (
+                  <Link href="/settings/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
+          )}
           {item.agentNote && (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {t('row.agentNote', { reason: item.agentNote.reason })}

@@ -132,6 +132,8 @@ describe("AI review requests (integration)", () => {
     await settlePendingHistoryWrites();
     await cleanTables(db, [
       "ai_review_requests",
+      "email_receipts",
+      "email_receipt_mailboxes",
       "transaction_rule_applications",
       "transaction_rules",
       "action_history",
@@ -463,6 +465,550 @@ describe("AI review requests (integration)", () => {
       expect(
         await withUserContext(bobId, () => queue.listForUser(bobId)),
       ).toEqual([]);
+    });
+  });
+  describe("email_receipt requests", () => {
+    let nextUid = 1000;
+    async function seedReceipt(
+      userId: string,
+      uid = (nextUid += 1),
+    ): Promise<string> {
+      const existing = await db.query(
+        `SELECT id FROM email_receipt_mailboxes WHERE user_id = $1`,
+        [userId],
+      );
+      const mailboxId =
+        existing[0]?.id ??
+        (
+          await db.query(
+            `INSERT INTO email_receipt_mailboxes (user_id, host, username, password_enc)
+             VALUES ($1, 'imap.example.com', 'receipts@example.com', 'ciphertext') RETURNING id`,
+            [userId],
+          )
+        )[0].id;
+      const [row] = await db.query(
+        `INSERT INTO email_receipts
+           (user_id, mailbox_id, uid_validity, uid, from_address, from_domain, subject, received_at, body_text)
+         VALUES ($1, $2, 1, $3, 'orders@shop.example.com', 'shop.example.com', 'Order 1', '2026-03-10T08:00:00Z', 'Total 50')
+         RETURNING id`,
+        [userId, mailboxId, uid],
+      );
+      return row.id;
+    }
+
+    async function seedTransaction(userId = aliceId): Promise<string> {
+      const [tx] = await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+         VALUES ($1, $2, '2026-03-10', -50, 'USD', 'UNRECONCILED') RETURNING id`,
+        [userId, accountId],
+      );
+      return tx.id;
+    }
+
+    const enqueueClaimed = (
+      userId: string,
+      transactionId: string,
+      emailReceiptId: string,
+      claimedBy = "email-receipts",
+    ) =>
+      withUserContext(userId, () =>
+        withScopedDb(harness.app, (m: EntityManager) =>
+          queue.enqueueClaimed(m, userId, {
+            transactionId,
+            kind: "email_receipt",
+            emailReceiptId,
+            instruction: "Enrich this purchase from its order email",
+            claimedBy,
+          }),
+        ),
+      );
+
+    const openCount = async (transactionId: string) =>
+      Number(
+        (
+          await db.query(
+            `SELECT COUNT(*)::int AS n FROM ai_review_requests
+              WHERE transaction_id = $1 AND status IN ('pending', 'claimed', 'proposed')`,
+            [transactionId],
+          )
+        )[0].n,
+      );
+
+    // The entity-built schema this suite runs on has no CHECK constraints (the
+    // enumerated CHECKs are proven against the real schema.sql in
+    // email-receipts-schema.integration.spec.ts); this only shows the kind is
+    // written and read back.
+    it("reads an email_receipt request back with its kind", async () => {
+      const txId = await seedTransaction();
+      await db.query(
+        `INSERT INTO ai_review_requests (user_id, transaction_id, kind, instruction)
+         VALUES ($1, $2, 'email_receipt', 'x')`,
+        [aliceId, txId],
+      );
+      expect((await requests()).map((r) => r.kind)).toEqual(["email_receipt"]);
+    });
+
+    it("enqueueClaimed writes one request born claimed by its key, naming the email", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+
+      const created = await enqueueClaimed(aliceId, txId, receiptId);
+
+      expect(created).toMatchObject({
+        userId: aliceId,
+        transactionId: txId,
+        ruleId: null,
+        kind: "email_receipt",
+        status: "claimed",
+        claimedBy: "email-receipts",
+        emailReceiptId: receiptId,
+      });
+      expect(created?.claimedAt).toBeInstanceOf(Date);
+      expect((await requests()).map((r) => r.kind)).toEqual(["email_receipt"]);
+    });
+
+    it("answers null, writing nothing, while an open request with no rule exists for the transaction", async () => {
+      const txId = await seedTransaction();
+      const first = await seedReceipt(aliceId, 1);
+      const second = await seedReceipt(aliceId, 2);
+
+      expect(await enqueueClaimed(aliceId, txId, first)).not.toBeNull();
+      expect(await enqueueClaimed(aliceId, txId, second)).toBeNull();
+      expect(await openCount(txId)).toBe(1);
+
+      // A manual request (no rule) on the transaction conflicts the same way.
+      const otherTx = await seedTransaction();
+      await db.query(
+        `INSERT INTO ai_review_requests (user_id, transaction_id, instruction) VALUES ($1, $2, 'manual')`,
+        [aliceId, otherTx],
+      );
+      expect(await enqueueClaimed(aliceId, otherTx, first)).toBeNull();
+      expect(await openCount(otherTx)).toBe(1);
+    });
+
+    it("queues again once the earlier request is closed or has expired, and for another transaction", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+      await enqueueClaimed(aliceId, txId, receiptId);
+
+      await db.query(`UPDATE ai_review_requests SET status = 'rejected'`);
+      expect(await enqueueClaimed(aliceId, txId, receiptId)).not.toBeNull();
+
+      await db.query(
+        `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute'
+          WHERE status = 'claimed'`,
+      );
+      expect(await enqueueClaimed(aliceId, txId, receiptId)).not.toBeNull();
+
+      expect(
+        await enqueueClaimed(aliceId, await seedTransaction(), receiptId),
+      ).not.toBeNull();
+    });
+
+    it("is not blocked by a rule's request on the transaction, which is a different key", async () => {
+      await asAlice(() => rules.create(aliceId, reviewRule()));
+      const created = await asAlice(() => transactions.create(aliceId, dto()));
+      const receiptId = await seedReceipt(aliceId);
+
+      expect(
+        await enqueueClaimed(aliceId, created.id, receiptId),
+      ).not.toBeNull();
+      expect(await openCount(created.id)).toBe(2);
+    });
+
+    it("two concurrent enqueues for one transaction queue exactly one request (the advisory lock, not the index)", async () => {
+      const txId = await seedTransaction();
+      const first = await seedReceipt(aliceId, 1);
+      const second = await seedReceipt(aliceId, 2);
+
+      const results = await Promise.all([
+        enqueueClaimed(aliceId, txId, first, "email-receipts"),
+        enqueueClaimed(aliceId, txId, second, "email-receipts-ai"),
+      ]);
+
+      expect(results.filter((r) => r !== null)).toHaveLength(1);
+      expect(await openCount(txId)).toBe(1);
+    });
+
+    it("enqueuePendingForReceipt writes a pending, unclaimed request and shares the exclusion", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+      const enqueue = () =>
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.enqueuePendingForReceipt(m, aliceId, {
+              transactionId: txId,
+              emailReceiptId: receiptId,
+              instruction: "Ask the AI",
+            }),
+          ),
+        );
+
+      const created = await enqueue();
+
+      expect(created).toMatchObject({
+        status: "pending",
+        claimedBy: null,
+        claimedAt: null,
+        kind: "email_receipt",
+        emailReceiptId: receiptId,
+      });
+      expect(await enqueue()).toBeNull();
+    });
+
+    it("a rollback of the caller's transaction drops the request", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+
+      await expect(
+        asAlice(() =>
+          withScopedDb(harness.app, async (m: EntityManager) => {
+            await queue.enqueueClaimed(m, aliceId, {
+              transactionId: txId,
+              kind: "email_receipt",
+              emailReceiptId: receiptId,
+              instruction: "x",
+              claimedBy: "email-receipts",
+            });
+            throw new Error("later step failed");
+          }),
+        ),
+      ).rejects.toThrow("later step failed");
+
+      expect(await requests()).toEqual([]);
+    });
+
+    it("deleting the email keeps the request and clears its reference", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+      await enqueueClaimed(aliceId, txId, receiptId);
+
+      await db.query(`DELETE FROM email_receipts WHERE id = $1`, [receiptId]);
+
+      const [row] = await db.query(
+        `SELECT email_receipt_id, status FROM ai_review_requests`,
+      );
+      expect(row).toEqual({ email_receipt_id: null, status: "claimed" });
+    });
+
+    it("refuses to enqueue for another user (WITH CHECK)", async () => {
+      const txId = await seedTransaction();
+      const receiptId = await seedReceipt(aliceId);
+
+      await expect(
+        withUserContext(bobId, () =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.enqueueClaimed(m, aliceId, {
+              transactionId: txId,
+              kind: "email_receipt",
+              emailReceiptId: receiptId,
+              instruction: "sneaky",
+              claimedBy: "email-receipts",
+            }),
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+      expect(await requests()).toEqual([]);
+    });
+
+    describe("claimById", () => {
+      const pendingFor = async () => {
+        const txId = await seedTransaction();
+        const receiptId = await seedReceipt(aliceId);
+        const created = await asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.enqueuePendingForReceipt(m, aliceId, {
+              transactionId: txId,
+              emailReceiptId: receiptId,
+              instruction: "Ask the AI",
+            }),
+          ),
+        );
+        return created!.id;
+      };
+
+      it("claims the named pending request for the caller, once", async () => {
+        const other = (await seedPending(aliceId, 1))[0];
+        const id = await pendingFor();
+
+        const claimed = await asAlice(() =>
+          queue.claimById(aliceId, id, "email-receipts-ai"),
+        );
+
+        expect(claimed).toMatchObject({
+          id,
+          status: "claimed",
+          claimedBy: "email-receipts-ai",
+        });
+        expect(claimed?.claimedAt).toBeInstanceOf(Date);
+        expect(
+          await asAlice(() => queue.claimById(aliceId, id, "someone-else")),
+        ).toBeNull();
+        // It took the named one and not the oldest.
+        const [untouched] = await db.query(
+          `SELECT status FROM ai_review_requests WHERE id = $1`,
+          [other],
+        );
+        expect(untouched.status).toBe("pending");
+      });
+
+      it("two concurrent claims of one request: exactly one wins", async () => {
+        const id = await pendingFor();
+
+        const results = await Promise.all([
+          asAlice(() => queue.claimById(aliceId, id, "agent-a")),
+          asAlice(() => queue.claimById(aliceId, id, "agent-b")),
+        ]);
+
+        expect(results.filter((r) => r !== null)).toHaveLength(1);
+        const [row] = await db.query(
+          `SELECT claimed_by FROM ai_review_requests WHERE id = $1`,
+          [id],
+        );
+        expect(row.claimed_by).toBe(results.find((r) => r)?.claimedBy);
+      });
+
+      it("does not claim an expired, a non-pending or another user's request", async () => {
+        const expired = await pendingFor();
+        await db.query(
+          `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`,
+          [expired],
+        );
+        expect(
+          await asAlice(() => queue.claimById(aliceId, expired, "k")),
+        ).toBeNull();
+
+        const proposed = await pendingFor();
+        await db.query(
+          `UPDATE ai_review_requests SET status = 'proposed' WHERE id = $1`,
+          [proposed],
+        );
+        expect(
+          await asAlice(() => queue.claimById(aliceId, proposed, "k")),
+        ).toBeNull();
+
+        const mine = await pendingFor();
+        expect(
+          await withUserContext(bobId, () =>
+            queue.claimById(aliceId, mine, "bob"),
+          ),
+        ).toBeNull();
+        expect(
+          await withUserContext(bobId, () =>
+            queue.claimById(bobId, mine, "bob"),
+          ),
+        ).toBeNull();
+        const [row] = await db.query(
+          `SELECT status FROM ai_review_requests WHERE id = $1`,
+          [mine],
+        );
+        expect(row.status).toBe("pending");
+      });
+    });
+  });
+
+  describe("email_parser_draft requests", () => {
+    const R1 = "00000000-0000-4000-8000-000000000001";
+    const R2 = "00000000-0000-4000-8000-000000000002";
+
+    const enqueueDraft = (
+      userId: string,
+      domain = "shop.example.com",
+      ids: string[] = [R1, R2],
+    ) =>
+      withUserContext(userId, () =>
+        withScopedDb(harness.app, (m: EntityManager) =>
+          queue.enqueueParserDraft(m, userId, {
+            emailReceiptIds: ids,
+            parserDomain: domain,
+            instruction: "Write a parser from these emails",
+          }),
+        ),
+      );
+
+    it("is stored pending with no transaction, and read back with its emails and sender", async () => {
+      const created = await enqueueDraft(aliceId);
+
+      const [row] = await asAlice(() => queue.listForUser(aliceId));
+      expect(row).toMatchObject({
+        id: created.id,
+        kind: "email_parser_draft",
+        status: "pending",
+        transactionId: null,
+        ruleId: null,
+        emailReceiptIds: [R1, R2],
+        parserDomain: "shop.example.com",
+      });
+    });
+
+    it("does not disturb the rule path: a rule's request and a draft request queue side by side, and the rule's still dedupes", async () => {
+      await asAlice(() => rules.create(aliceId, reviewRule()));
+      await enqueueDraft(aliceId);
+      const created = await asAlice(() => transactions.create(aliceId, dto()));
+      await asAlice(() =>
+        transactions.create(aliceId, dto({ payeeName: "ALLEGRO 456" })),
+      );
+
+      const rows = await requests();
+      expect(rows.map((r) => r.kind).sort()).toEqual([
+        "email_parser_draft",
+        "transaction_review",
+        "transaction_review",
+      ]);
+      expect(rows.find((r) => r.transaction_id === created.id)).toBeDefined();
+      // the same (transaction, rule) is still one open request
+      const again = await asAlice(() =>
+        withScopedDb(harness.app, (m: EntityManager) =>
+          queue.enqueue(m, aliceId, [
+            {
+              transactionId: created.id,
+              ruleId: rows.find((r) => r.transaction_id === created.id)!
+                .rule_id,
+              instruction: "again",
+            },
+          ]),
+        ),
+      );
+      expect(again.alreadyQueued).toHaveLength(1);
+    });
+
+    it("is claimed by the oldest-first claim and by id, only once", async () => {
+      await asAlice(() => rules.create(aliceId, reviewRule()));
+      const draft = await enqueueDraft(aliceId);
+
+      const byId = await asAlice(() =>
+        queue.claimById(aliceId, draft.id, "assistant"),
+      );
+      expect(byId).toMatchObject({
+        id: draft.id,
+        status: "claimed",
+        claimedBy: "assistant",
+        kind: "email_parser_draft",
+        transactionId: null,
+      });
+      expect(
+        await asAlice(() => queue.claimById(aliceId, draft.id, "agent-2")),
+      ).toBeNull();
+
+      const second = await enqueueDraft(aliceId, "other.example.org");
+      const next = await asAlice(() => queue.claimNext(aliceId, "agent-3"));
+      expect(next?.id).toBe(second.id);
+    });
+
+    it("expires with the others, and its slot is free again", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await db.query(
+        `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour' WHERE id = $1`,
+        [draft.id],
+      );
+
+      expect(await asAlice(() => queue.expireStale())).toBe(1);
+      const [row] = await requests();
+      expect(row.status).toBe("expired");
+      // a new open request for the same sender is allowed again
+      await enqueueDraft(aliceId);
+    });
+
+    it("is proposed only by the claimant, marked applied only for the parser it proposed, and dismissed with it", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await asAlice(() => queue.claimById(aliceId, draft.id, "assistant"));
+      const PARSER_A = "70000000-0000-4000-8000-0000000000a1";
+      const PARSER_B = "70000000-0000-4000-8000-0000000000b1";
+      const propose = (caller: string, parser: string) =>
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.proposeParserDraft(m, aliceId, draft.id, caller, parser),
+          ),
+        );
+
+      expect(await propose("someone-else", PARSER_A)).toBe(false);
+      expect(await propose("assistant", PARSER_A)).toBe(true);
+      // proposed once: a second save cannot overwrite the proposal
+      expect(await propose("assistant", PARSER_B)).toBe(false);
+
+      const applied = (parser: string) =>
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.markParserDraftApplied(m, aliceId, parser),
+          ),
+        );
+      expect(await applied(PARSER_B)).toBe(0);
+      expect((await requests())[0].status).toBe("proposed");
+      expect(await applied(PARSER_A)).toBe(1);
+      expect((await requests())[0].status).toBe("applied");
+    });
+
+    it("is dismissed when the parser it proposed is deleted, and only that one", async () => {
+      const a = await enqueueDraft(aliceId, "a.example.com");
+      const b = await enqueueDraft(aliceId, "b.example.com");
+      await asAlice(() => queue.claimById(aliceId, a.id, "assistant"));
+      await asAlice(() => queue.claimById(aliceId, b.id, "assistant"));
+      const PARSER = "70000000-0000-4000-8000-0000000000c1";
+      await asAlice(() =>
+        withScopedDb(harness.app, async (m: EntityManager) => {
+          await queue.proposeParserDraft(m, aliceId, a.id, "assistant", PARSER);
+          await queue.dismissParserDraftsFor(m, aliceId, PARSER);
+        }),
+      );
+
+      const rows = await db.query(
+        `SELECT parser_domain, status FROM ai_review_requests ORDER BY parser_domain`,
+      );
+      expect(rows).toEqual([
+        { parser_domain: "a.example.com", status: "rejected" },
+        { parser_domain: "b.example.com", status: "claimed" },
+      ]);
+    });
+
+    it("is another user's own queue: invisible, unclaimable, and its own sender slot", async () => {
+      const mine = await enqueueDraft(aliceId);
+      const theirs = await enqueueDraft(bobId);
+
+      expect(
+        await withUserContext(bobId, () => queue.listForUser(bobId)),
+      ).toHaveLength(1);
+      expect(
+        await withUserContext(bobId, () =>
+          queue.claimById(bobId, mine.id, "bob"),
+        ),
+      ).toBeNull();
+      expect(
+        await asAlice(() => queue.claimById(aliceId, theirs.id, "alice")),
+      ).toBeNull();
+      const open = await db.query(
+        `SELECT user_id FROM ai_review_requests WHERE status = 'pending' ORDER BY user_id`,
+      );
+      expect(open).toHaveLength(2);
+    });
+
+    it("is not applied by a transaction's markApplied: it has none", async () => {
+      const draft = await enqueueDraft(aliceId);
+      await asAlice(() => queue.claimById(aliceId, draft.id, "assistant"));
+      const tx = (await asAlice(() => transactions.create(aliceId, dto()))).id;
+
+      await expect(
+        asAlice(() =>
+          withScopedDb(harness.app, (m: EntityManager) =>
+            queue.markApplied(m, aliceId, draft.id, tx),
+          ),
+        ),
+      ).rejects.toMatchObject({ status: 409 });
+      expect((await requests())[0].status).toBe("claimed");
+    });
+
+    it("one creator wins when two ask for one sender at once: exactly one request is left open", async () => {
+      await Promise.all([enqueueDraft(aliceId), enqueueDraft(aliceId)]);
+
+      const open = await db.query(
+        `SELECT 1 FROM ai_review_requests
+          WHERE status IN ('pending', 'claimed', 'proposed')`,
+      );
+      expect(open).toHaveLength(1);
+      const all = await db.query(`SELECT status FROM ai_review_requests`);
+      expect(all.map((r: { status: string }) => r.status).sort()).toEqual([
+        "pending",
+        "rejected",
+      ]);
     });
   });
 });

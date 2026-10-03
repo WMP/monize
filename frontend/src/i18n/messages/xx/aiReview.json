@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "[XX-AI review inbox-XX]",
-    "subtitle": "[XX-Transactions a rule asked an AI to review, and the edits an assistant proposed for you to approve.-XX]"
+    "subtitle": "[XX-Transactions a rule asked an AI to review, parsers an assistant was asked to draft, and the edits an assistant proposed for you to approve.-XX]"
   },
   "filter": {
     "label": "[XX-Filter by status-XX]",
@@ -32,9 +32,15 @@
     "transactionMissing": "[XX-This transaction no longer exists-XX]",
     "rule": "[XX-Rule: {name}-XX]",
     "manualRequest": "[XX-Requested manually-XX]",
+    "emailReceipt": "[XX-Email receipt: {subject} from {sender}-XX]",
+    "emailReceiptMissing": "[XX-Email receipt (the email was deleted)-XX]",
+    "parserDraft": "[XX-Parser draft from {count, plural, one {# email} other {# emails}} ({domain})-XX]",
+    "viewEmailReceipts": "[XX-View email receipts-XX]",
     "agentNote": "[XX-Note from the assistant: {reason}-XX]",
     "dates": "[XX-Created {created}, expires {expires}-XX]",
-    "viewTransaction": "[XX-View transaction-XX]"
+    "viewTransaction": "[XX-View transaction-XX]",
+    "waitingForAgent": "[XX-Waiting for an AI agent. <link>Connect an AI provider in Settings</link>, or let an MCP client claim it.-XX]",
+    "parserDraftReady": "[XX-Draft parser ready. <link>Test and approve it in the parser settings</link>.-XX]"
   },
   "actions": {
     "dismiss": "[XX-Dismiss-XX]"
@@ -44,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "[XX-Dismiss this request?-XX]",
-    "message": "[XX-Nobody will be asked to review this transaction again. The transaction itself is not changed.-XX]",
+    "message": "[XX-Nobody will be asked to work on this request again. Nothing it was about is changed.-XX]",
     "confirm": "[XX-Dismiss request-XX]"
   },
   "loading": "[XX-Loading review requests...-XX]",

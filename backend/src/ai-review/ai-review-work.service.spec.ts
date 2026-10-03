@@ -2,9 +2,14 @@ import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionRule } from "../transaction-rules/transaction-rule.entity";
+import { EmailReceipt } from "../email-receipts/entities/email-receipt.entity";
 import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewWorkService } from "./ai-review-work.service";
-import { ASSISTANT_CLAIM_KEY } from "./ai-review-work.types";
+import {
+  AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
+  AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
+  ASSISTANT_CLAIM_KEY,
+} from "./ai-review-work.types";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -14,6 +19,7 @@ const USER = "user-1";
 const REQ = "30000000-0000-4000-8000-000000000001";
 const TX = "10000000-0000-4000-8000-000000000001";
 const RULE = "20000000-0000-4000-8000-000000000001";
+const RECEIPT = "40000000-0000-4000-8000-000000000001";
 
 function request(over: Partial<AiReviewRequest> = {}): AiReviewRequest {
   return Object.assign(new AiReviewRequest(), {
@@ -46,14 +52,20 @@ const card = (id = "a1") =>
 function setup() {
   const txRepo = { find: jest.fn().mockResolvedValue([]) };
   const ruleRepo = { find: jest.fn().mockResolvedValue([]) };
+  const receiptRepo = {
+    findOne: jest.fn().mockResolvedValue(null),
+    find: jest.fn().mockResolvedValue([]),
+  };
   const { dataSource } = createScopedDbMocks([
     [Transaction, txRepo],
     [TransactionRule, ruleRepo],
+    [EmailReceipt, receiptRepo],
   ]);
   const requests = {
     listForUser: jest.fn().mockResolvedValue([]),
     getForUser: jest.fn().mockResolvedValue(request()),
     claimNext: jest.fn(),
+    claimById: jest.fn(),
     submitProposal: jest.fn(),
     release: jest.fn(),
     dismiss: jest.fn(),
@@ -79,7 +91,16 @@ function setup() {
     prep as never,
     builder as never,
   );
-  return { service, requests, transactions, prep, builder, txRepo, ruleRepo };
+  return {
+    service,
+    requests,
+    transactions,
+    prep,
+    builder,
+    txRepo,
+    ruleRepo,
+    receiptRepo,
+  };
 }
 
 const lines = [
@@ -133,6 +154,28 @@ describe("AiReviewWorkService.claim", () => {
     expect(claimed.transaction).toEqual([{ id: TX, amount: -50 }]);
   });
 
+  it("claims the named request by id, not the oldest, and reads it the same way", async () => {
+    const { service, requests, transactions } = setup();
+    requests.claimById.mockResolvedValue(request());
+
+    const claimed = await service.claim(USER, "assistant", REQ);
+
+    expect(requests.claimById).toHaveBeenCalledWith(USER, REQ, "assistant");
+    expect(requests.claimNext).not.toHaveBeenCalled();
+    expect(transactions.getLlmTransactionById).toHaveBeenCalledWith(USER, TX);
+    expect(claimed.request?.id).toBe(REQ);
+  });
+
+  it("returns no request when the named one is not pending, expired or not the user's", async () => {
+    const { service, requests, transactions } = setup();
+    requests.claimById.mockResolvedValue(null);
+    expect(await service.claim(USER, "assistant", REQ)).toEqual({
+      request: null,
+    });
+    expect(requests.claimNext).not.toHaveBeenCalled();
+    expect(transactions.getLlmTransactionById).not.toHaveBeenCalled();
+  });
+
   it("returns no request when nothing is pending", async () => {
     const { service, requests, transactions } = setup();
     requests.claimNext.mockResolvedValue(null);
@@ -165,6 +208,323 @@ describe("AiReviewWorkService.claim", () => {
       reason: "no order id",
       at: "2026-09-28",
     });
+  });
+
+  describe("a request of kind email_receipt", () => {
+    const emailRequest = () =>
+      request({
+        kind: "email_receipt",
+        ruleId: null,
+        emailReceiptId: RECEIPT,
+      });
+    const receipt = (over: Record<string, unknown> = {}) =>
+      Object.assign(new EmailReceipt(), {
+        id: RECEIPT,
+        fromAddress: "orders@shop.example.com",
+        subject: "Your order #123",
+        receivedAt: new Date("2026-09-29T07:30:00Z"),
+        bodyText: "Order total: 49.99",
+        ...over,
+      });
+
+    it("returns the email with the claim, and names it on the request", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(emailRequest());
+      receiptRepo.findOne.mockResolvedValue(receipt());
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(claimed.request).toMatchObject({
+        kind: "email_receipt",
+        emailReceiptId: RECEIPT,
+        ruleId: null,
+      });
+      expect(claimed.emailReceipt).toEqual({
+        fromAddress: "orders@shop.example.com",
+        subject: "Your order #123",
+        receivedAt: "2026-09-29T07:30:00.000Z",
+        text: "Order total: 49.99",
+      });
+    });
+
+    it("reads the email by id AND owner, so another user's email is absent", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(emailRequest());
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(receiptRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: RECEIPT, userId: USER } }),
+      );
+      expect(claimed.emailReceipt).toBeUndefined();
+      expect(claimed.request?.id).toBe(REQ);
+    });
+
+    it("cuts the text to the claim's limit", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(emailRequest());
+      receiptRepo.findOne.mockResolvedValue(
+        receipt({ bodyText: "x".repeat(AI_REVIEW_EMAIL_TEXT_MAX_CHARS + 500) }),
+      );
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(AI_REVIEW_EMAIL_TEXT_MAX_CHARS).toBe(20_000);
+      expect(claimed.emailReceipt?.text).toHaveLength(
+        AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
+      );
+    });
+
+    it("selects only the fields it hands out", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(emailRequest());
+
+      await service.claim(USER, "agent-1");
+
+      expect(receiptRepo.findOne.mock.calls[0][0].select).toEqual({
+        id: true,
+        fromAddress: true,
+        subject: true,
+        receivedAt: true,
+        bodyText: true,
+      });
+    });
+
+    it("gives the request back when the email cannot be read", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(emailRequest());
+      receiptRepo.findOne.mockRejectedValue(new Error("db down"));
+
+      await expect(service.claim(USER, "agent-1")).rejects.toThrow("db down");
+
+      expect(requests.release).toHaveBeenCalledWith(USER, REQ, "agent-1", {
+        final: false,
+        note: expect.any(String),
+      });
+    });
+
+    it("carries no email for a request whose email was deleted", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(
+        request({ kind: "email_receipt", ruleId: null, emailReceiptId: null }),
+      );
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(receiptRepo.findOne).not.toHaveBeenCalled();
+      expect(claimed).not.toHaveProperty("emailReceipt");
+    });
+  });
+
+  describe("a request of kind email_parser_draft", () => {
+    const R1 = "40000000-0000-4000-8000-0000000000a1";
+    const R2 = "40000000-0000-4000-8000-0000000000a2";
+    const R3 = "40000000-0000-4000-8000-0000000000a3";
+    const draftRequest = (over: Partial<AiReviewRequest> = {}) =>
+      request({
+        kind: "email_parser_draft",
+        transactionId: null,
+        ruleId: null,
+        emailReceiptId: null,
+        emailReceiptIds: [R1, R2, R3],
+        parserDomain: "shop.example.com",
+        ...over,
+      });
+    const email = (id: string, over: Record<string, unknown> = {}) =>
+      Object.assign(new EmailReceipt(), {
+        id,
+        fromAddress: "orders@shop.example.com",
+        subject: `Order ${id.slice(-2)}`,
+        receivedAt: new Date("2026-09-29T07:30:00Z"),
+        originalSentAt: null,
+        bodyText: "Order total: 49.99",
+        ...over,
+      });
+
+    it("returns the emails, in the order the request names them, and no transaction", async () => {
+      const { service, requests, receiptRepo, transactions } = setup();
+      requests.claimNext.mockResolvedValue(draftRequest());
+      receiptRepo.find.mockResolvedValue([email(R3), email(R1), email(R2)]);
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(claimed.request).toMatchObject({
+        kind: "email_parser_draft",
+        transactionId: null,
+        emailReceiptIds: [R1, R2, R3],
+        parserDomain: "shop.example.com",
+      });
+      expect(claimed.emailReceipts?.map((e) => e.id)).toEqual([R1, R2, R3]);
+      expect(claimed.emailReceipts?.[0]).toEqual({
+        id: R1,
+        fromAddress: "orders@shop.example.com",
+        subject: "Order a1",
+        effectiveDate: "2026-09-29T07:30:00.000Z",
+        text: "Order total: 49.99",
+      });
+      expect(claimed).not.toHaveProperty("transaction");
+      expect(claimed).not.toHaveProperty("emailReceipt");
+      expect(transactions.getLlmTransactionById).not.toHaveBeenCalled();
+    });
+
+    it("dates an email by the shop's day when a forward carried it", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(
+        draftRequest({ emailReceiptIds: [R1] }),
+      );
+      receiptRepo.find.mockResolvedValue([
+        email(R1, { originalSentAt: new Date("2026-08-10T10:15:00Z") }),
+      ]);
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(claimed.emailReceipts?.[0].effectiveDate).toBe(
+        "2026-08-10T10:15:00.000Z",
+      );
+    });
+
+    it("cuts each email's text to 12,000 characters", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(
+        draftRequest({ emailReceiptIds: [R1] }),
+      );
+      receiptRepo.find.mockResolvedValue([
+        email(R1, {
+          bodyText: "x".repeat(AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS + 500),
+        }),
+      ]);
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS).toBe(12_000);
+      expect(claimed.emailReceipts?.[0].text).toHaveLength(12_000);
+    });
+
+    it("reads the emails by id AND owner, so another user's email is absent, and skips a deleted one", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(draftRequest());
+      receiptRepo.find.mockResolvedValue([email(R2)]);
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      const where = receiptRepo.find.mock.calls[0][0].where;
+      expect(where.userId).toBe(USER);
+      expect(where.id._value).toEqual([R1, R2, R3]);
+      expect(claimed.emailReceipts?.map((e) => e.id)).toEqual([R2]);
+    });
+
+    it("selects only the fields it hands out", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(draftRequest());
+
+      await service.claim(USER, "agent-1");
+
+      expect(receiptRepo.find.mock.calls[0][0].select).toEqual({
+        id: true,
+        fromAddress: true,
+        subject: true,
+        receivedAt: true,
+        originalSentAt: true,
+        bodyText: true,
+      });
+    });
+
+    it("claims it by id like any other request", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimById.mockResolvedValue(draftRequest());
+      receiptRepo.find.mockResolvedValue([email(R1)]);
+
+      const claimed = await service.claim(USER, "assistant", REQ);
+
+      expect(requests.claimById).toHaveBeenCalledWith(USER, REQ, "assistant");
+      expect(claimed.request?.id).toBe(REQ);
+    });
+
+    it("gives the request back when its emails cannot be read", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(draftRequest());
+      receiptRepo.find.mockRejectedValue(new Error("db down"));
+
+      await expect(service.claim(USER, "agent-1")).rejects.toThrow("db down");
+
+      expect(requests.release).toHaveBeenCalledWith(USER, REQ, "agent-1", {
+        final: false,
+        note: expect.any(String),
+      });
+    });
+
+    it("carries no emails when the request names none", async () => {
+      const { service, requests, receiptRepo } = setup();
+      requests.claimNext.mockResolvedValue(
+        draftRequest({ emailReceiptIds: null }),
+      );
+
+      const claimed = await service.claim(USER, "agent-1");
+
+      expect(receiptRepo.find).not.toHaveBeenCalled();
+      expect(claimed.emailReceipts).toEqual([]);
+    });
+
+    it("is listed for a model with its emails' ids and sender, and no transaction id", async () => {
+      const { service, requests } = setup();
+      requests.listForUser.mockResolvedValue([
+        draftRequest({ status: "pending", claimedBy: null }),
+      ]);
+
+      const list = await service.list(USER, "agent-1");
+
+      expect(list.requests[0]).toMatchObject({
+        kind: "email_parser_draft",
+        transactionId: null,
+        emailReceiptIds: [R1, R2, R3],
+        parserDomain: "shop.example.com",
+      });
+    });
+
+    it("refuses the generic submit: this kind is answered with email_receipt_parsers", async () => {
+      const { service, requests, builder } = setup();
+      requests.getForUser.mockResolvedValue(
+        draftRequest({ claimedBy: "agent-1" }),
+      );
+
+      await expect(
+        service.submit(USER, "agent-1", REQ, { description: "x" }),
+      ).rejects.toThrow(/email_receipt_parsers/);
+
+      expect(requests.submitProposal).not.toHaveBeenCalled();
+      expect(builder.buildUpdateTransaction).not.toHaveBeenCalled();
+    });
+
+    it("can be given back or closed like any other request", async () => {
+      const { service, requests } = setup();
+      requests.getForUser.mockResolvedValue(
+        draftRequest({ claimedBy: "agent-1" }),
+      );
+      requests.release.mockResolvedValue(
+        draftRequest({ status: "rejected", claimedBy: null }),
+      );
+
+      const released = await service.reject(
+        USER,
+        "agent-1",
+        REQ,
+        "no readable emails",
+        true,
+      );
+
+      expect(released.status).toBe("rejected");
+    });
+  });
+
+  it("never reads an email for an ordinary review request", async () => {
+    const { service, requests, receiptRepo } = setup();
+    requests.claimNext.mockResolvedValue(request());
+
+    const claimed = await service.claim(USER, "agent-1");
+
+    expect(receiptRepo.findOne).not.toHaveBeenCalled();
+    expect(claimed).not.toHaveProperty("emailReceipt");
+    expect(claimed.request?.emailReceiptId).toBeNull();
   });
 });
 
@@ -384,6 +744,172 @@ describe("AiReviewWorkService inbox", () => {
     });
     expect(items[0].proposal).toBeUndefined();
     expect(items[0]).not.toHaveProperty("claimedBy");
+  });
+
+  it("shows the sender and subject of an email receipt request, never its text", async () => {
+    const { service, requests, txRepo, receiptRepo } = setup();
+    requests.listForUser.mockResolvedValue([
+      request({
+        status: "pending",
+        claimedBy: null,
+        kind: "email_receipt",
+        ruleId: null,
+        emailReceiptId: RECEIPT,
+      }),
+      request({ id: "other", status: "pending", claimedBy: null }),
+    ]);
+    txRepo.find.mockResolvedValue([tx]);
+    receiptRepo.find.mockResolvedValue([
+      Object.assign(new EmailReceipt(), {
+        id: RECEIPT,
+        fromAddress: "orders@shop.example.com",
+        subject: "Your order #123",
+        receivedAt: new Date("2026-09-29T07:30:00Z"),
+      }),
+    ]);
+
+    const items = await service.listInbox(USER);
+
+    expect(items[0]).toMatchObject({
+      kind: "email_receipt",
+      ruleName: null,
+      emailReceipt: {
+        id: RECEIPT,
+        fromAddress: "orders@shop.example.com",
+        subject: "Your order #123",
+        receivedAt: "2026-09-29T07:30:00.000Z",
+      },
+    });
+    expect(items[0].emailReceipt).not.toHaveProperty("bodyText");
+    expect(items[0].emailReceipt).not.toHaveProperty("text");
+    expect(items[1].emailReceipt).toBeNull();
+    const where = receiptRepo.find.mock.calls[0][0];
+    expect(where.where.userId).toBe(USER);
+    expect(where.select).toEqual({
+      id: true,
+      fromAddress: true,
+      subject: true,
+      receivedAt: true,
+    });
+  });
+
+  it("reads no emails when no request names one, and shows null for one that was deleted", async () => {
+    const { service, requests, txRepo, receiptRepo } = setup();
+    requests.listForUser.mockResolvedValue([request({ status: "pending" })]);
+    txRepo.find.mockResolvedValue([tx]);
+    const plain = await service.listInbox(USER);
+    expect(receiptRepo.find).not.toHaveBeenCalled();
+    expect(plain[0].emailReceipt).toBeNull();
+
+    requests.listForUser.mockResolvedValue([
+      request({ kind: "email_receipt", ruleId: null, emailReceiptId: RECEIPT }),
+    ]);
+    const gone = await service.listInbox(USER);
+    expect(gone[0].emailReceipt).toBeNull();
+  });
+
+  describe("a parser draft request", () => {
+    const draft = (over: Partial<AiReviewRequest> = {}) =>
+      request({
+        kind: "email_parser_draft",
+        transactionId: null,
+        ruleId: null,
+        emailReceiptId: null,
+        emailReceiptIds: ["r1", "r2", "r3"],
+        parserDomain: "shop.example.com",
+        status: "pending",
+        claimedBy: null,
+        ...over,
+      });
+
+    it("shows the domain and how many emails, with no transaction, and reads no transaction", async () => {
+      const { service, requests, txRepo, receiptRepo } = setup();
+      requests.listForUser.mockResolvedValue([draft()]);
+
+      const [item] = await service.listInbox(USER);
+
+      expect(item).toMatchObject({
+        id: REQ,
+        kind: "email_parser_draft",
+        transactionId: null,
+        transaction: null,
+        emailReceipt: null,
+        ruleName: null,
+        parserDraft: {
+          domain: "shop.example.com",
+          emailCount: 3,
+          parserId: null,
+        },
+      });
+      expect(txRepo.find).not.toHaveBeenCalled();
+      expect(receiptRepo.find).not.toHaveBeenCalled();
+    });
+
+    it("names the parser an agent saved once the request is proposed, and builds no card", async () => {
+      const { service, requests, builder } = setup();
+      requests.listForUser.mockResolvedValue([
+        draft({
+          status: "proposed",
+          claimedBy: "assistant",
+          proposal: { parserId: "p1", proposedAt: "2026-10-03T10:00:00Z" },
+        }),
+      ]);
+
+      const [item] = await service.listInbox(USER);
+
+      expect(item.parserDraft?.parserId).toBe("p1");
+      expect(item.proposal).toBeUndefined();
+      expect(builder.buildUpdateTransaction).not.toHaveBeenCalled();
+    });
+
+    it("lists it beside ordinary requests without crashing, each with its own shape", async () => {
+      const { service, requests, txRepo } = setup();
+      requests.listForUser.mockResolvedValue([
+        draft(),
+        request({ id: "other", status: "pending", claimedBy: null }),
+      ]);
+      txRepo.find.mockResolvedValue([
+        {
+          id: TX,
+          transactionDate: "2026-09-01",
+          amount: "-50.0000",
+          currencyCode: "PLN",
+          payeeName: "ALLEGRO",
+          description: null,
+          accountId: "acc-1",
+          account: { name: "Checking" },
+          category: null,
+          isSplit: false,
+        },
+      ]);
+
+      const items = await service.listInbox(USER);
+
+      expect(items[0].parserDraft).not.toBeNull();
+      expect(items[1].parserDraft).toBeNull();
+      expect(items[1].transaction?.id).toBe(TX);
+      expect(txRepo.find.mock.calls[0][0].where.id._value).toEqual([TX]);
+    });
+
+    it("can be dismissed like any other request", async () => {
+      const { service, requests } = setup();
+      requests.dismiss.mockResolvedValue(draft({ status: "rejected" }));
+
+      const item = await service.dismiss(USER, REQ);
+
+      expect(item.status).toBe("rejected");
+      expect(item.parserDraft?.emailCount).toBe(3);
+    });
+
+    it("shows an expired request too", async () => {
+      const { service, requests } = setup();
+      requests.listForUser.mockResolvedValue([draft({ status: "expired" })]);
+
+      const [item] = await service.listInbox(USER);
+
+      expect(item.status).toBe("expired");
+      expect(item.parserDraft?.domain).toBe("shop.example.com");
+    });
   });
 
   it("rebuilds the card of a proposed request against the transaction as it is now", async () => {

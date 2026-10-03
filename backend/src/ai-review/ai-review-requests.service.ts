@@ -1,11 +1,14 @@
 import { ConflictException, Injectable } from "@nestjs/common";
 import { DataSource, EntityManager, In, MoreThan } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
+import { acquireAdvisoryLock, LockScope } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
 import { tr } from "../i18n/translate";
 import {
   AiReviewRequest,
   AiReviewRequestStatus,
+  MAX_AI_REVIEW_INSTRUCTION_LENGTH,
+  MAX_PARSER_DRAFT_EMAILS,
 } from "./ai-review-request.entity";
 
 /** One request to queue: which row, which rule asked, and what to do. */
@@ -26,6 +29,39 @@ export interface AiReviewEnqueueResult {
   readonly queued: readonly AiReviewEnqueueKey[];
   /** Requests skipped because an open one already exists for the same row and rule. */
   readonly alreadyQueued: readonly AiReviewEnqueueKey[];
+}
+
+/**
+ * A request raised for a stored order-confirmation email (email-receipts design
+ * section 6). It has no rule. The receipts service queues it already claimed by
+ * its own key (`enqueueClaimed`, which then submits as an agent does) or, for
+ * the AI path, pending (`enqueuePendingForReceipt`).
+ */
+export interface AiReviewEnqueueClaimedInput {
+  readonly transactionId: string;
+  readonly kind: "email_receipt";
+  readonly emailReceiptId: string;
+  readonly instruction: string;
+  /** The claim key the request is born with, e.g. `email-receipts`. */
+  readonly claimedBy: string;
+}
+
+export interface AiReviewEnqueueForReceiptInput {
+  readonly transactionId: string;
+  readonly emailReceiptId: string;
+  readonly instruction: string;
+}
+
+/**
+ * A request to write a receipt parser from stored emails of one sender
+ * (`email_parser_draft`). It has no transaction. `parserDomain` is the sender
+ * domain the draft is for; at most one such request is open per (user, domain).
+ */
+export interface AiReviewEnqueueParserDraftInput {
+  /** 1 to 5 stored emails of the user; the caller has checked they are the user's. */
+  readonly emailReceiptIds: readonly string[];
+  readonly parserDomain: string;
+  readonly instruction: string;
 }
 
 export interface ListAiReviewRequestsOptions {
@@ -57,7 +93,7 @@ const ENQUEUE_CHUNK_SIZE = 500;
 interface RequestRow {
   id: string;
   user_id: string;
-  transaction_id: string;
+  transaction_id: string | null;
   rule_id: string | null;
   kind: AiReviewRequest["kind"];
   instruction: string;
@@ -68,6 +104,9 @@ interface RequestRow {
   created_at: Date;
   updated_at: Date;
   expires_at: Date;
+  email_receipt_id: string | null;
+  email_receipt_ids: string[] | null;
+  parser_domain: string | null;
 }
 
 function toRequest(row: RequestRow): AiReviewRequest {
@@ -85,6 +124,9 @@ function toRequest(row: RequestRow): AiReviewRequest {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     expiresAt: row.expires_at,
+    emailReceiptId: row.email_receipt_id ?? null,
+    emailReceiptIds: row.email_receipt_ids ?? null,
+    parserDomain: row.parser_domain ?? null,
   });
 }
 
@@ -149,6 +191,254 @@ export class AiReviewRequestsService {
       }
     }
     return { queued, alreadyQueued };
+  }
+
+  /**
+   * Queue a request for a stored email, born `claimed` by `claimedBy`, in the
+   * caller's transaction. Null when an open request already exists for the
+   * transaction (the receipt is then `review_conflict`); never a second one.
+   *
+   * The mechanism. A request with no rule is not covered by the partial unique
+   * index on (transaction_id, rule_id): NULLs are distinct in a unique index, so
+   * `ON CONFLICT` alone never fires for it. The exclusion is therefore (1) a
+   * transaction-scoped advisory lock on the transaction id, so two writers of
+   * rule-less requests for one transaction queue behind one another, and (2) an
+   * `INSERT ... WHERE NOT EXISTS (an open, unexpired rule-less request)`, run
+   * after the lock so the second writer sees the first's committed row. The
+   * `ON CONFLICT` stays for the case a rule-ful request is ever passed here.
+   * Take this call early in the transaction: advisory locks come before row
+   * locks (`docs/concurrency-and-idempotency.md`).
+   */
+  async enqueueClaimed(
+    m: EntityManager,
+    userId: string,
+    input: AiReviewEnqueueClaimedInput,
+  ): Promise<AiReviewRequest | null> {
+    return this.insertReceiptRequest(m, userId, input, {
+      status: "claimed",
+      claimedBy: input.claimedBy,
+    });
+  }
+
+  /**
+   * Queue a request for a stored email for the AI path: `pending`, so any agent
+   * (or the assistant) can claim it. Same exclusion, same null, as
+   * {@link enqueueClaimed}.
+   */
+  async enqueuePendingForReceipt(
+    m: EntityManager,
+    userId: string,
+    input: AiReviewEnqueueForReceiptInput,
+  ): Promise<AiReviewRequest | null> {
+    return this.insertReceiptRequest(
+      m,
+      userId,
+      { ...input, kind: "email_receipt" },
+      { status: "pending", claimedBy: null },
+    );
+  }
+
+  private async insertReceiptRequest(
+    m: EntityManager,
+    userId: string,
+    input: AiReviewEnqueueForReceiptInput & { kind: "email_receipt" },
+    born: { status: "claimed" | "pending"; claimedBy: string | null },
+  ): Promise<AiReviewRequest | null> {
+    await acquireAdvisoryLock(
+      m,
+      LockScope.AiReviewRequests,
+      input.transactionId,
+    );
+    const [row] = returnedRows<RequestRow>(
+      await m.query(
+        `INSERT INTO ai_review_requests
+           (user_id, transaction_id, rule_id, kind, instruction, status,
+            claimed_by, claimed_at, email_receipt_id)
+         SELECT $1::uuid, $2::uuid, NULL, $3::varchar, $4::text, $5::varchar,
+                $6::text,
+                CASE WHEN $6::text IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
+                $7::uuid
+          WHERE NOT EXISTS (
+                  SELECT 1
+                    FROM ai_review_requests open_request
+                   WHERE open_request.user_id = $1::uuid
+                     AND open_request.transaction_id = $2::uuid
+                     AND open_request.rule_id IS NULL
+                     AND open_request.status IN ('pending', 'claimed', 'proposed')
+                     AND open_request.expires_at > CURRENT_TIMESTAMP)
+         ON CONFLICT (transaction_id, rule_id)
+           WHERE status IN ('pending', 'claimed', 'proposed')
+         DO NOTHING
+         RETURNING *`,
+        [
+          userId,
+          input.transactionId,
+          input.kind,
+          input.instruction.trim().slice(0, MAX_AI_REVIEW_INSTRUCTION_LENGTH),
+          born.status,
+          born.claimedBy,
+          input.emailReceiptId,
+        ],
+      ),
+    );
+    return row ? toRequest(row) : null;
+  }
+
+  /**
+   * Queue a request to write a receipt parser from stored emails, `pending` so
+   * any agent (or the assistant) can claim it, in the caller's transaction. At
+   * most one is open per (user, sender domain), and a new one REPLACES the open
+   * one for the same sender: the person who asks again wants the new selection of
+   * emails, and the old request is closed (`rejected`) in the same transaction.
+   *
+   * The mechanism. (1) A transaction-scoped advisory lock on `<user>:<domain>`
+   * queues two creators for one sender behind each other. (2) A request whose
+   * life has run out but the hourly sweep has not marked is `expired` first, so
+   * it cannot hold the slot. (3) Every other open one for the sender is closed.
+   * (4) The INSERT. The partial unique index
+   * `uq_ai_review_requests_parser_draft_open` is the backstop: a writer that
+   * somehow skipped the lock fails with a unique violation instead of leaving two
+   * open requests. A draft parser an earlier request already produced is NOT
+   * touched: it is the user's to approve or delete.
+   */
+  async enqueueParserDraft(
+    m: EntityManager,
+    userId: string,
+    input: AiReviewEnqueueParserDraftInput,
+  ): Promise<AiReviewRequest> {
+    if (
+      input.emailReceiptIds.length < 1 ||
+      input.emailReceiptIds.length > MAX_PARSER_DRAFT_EMAILS
+    ) {
+      throw new Error("A parser draft request names 1 to 5 emails");
+    }
+    await acquireAdvisoryLock(
+      m,
+      LockScope.AiParserDraftRequests,
+      `${userId}:${input.parserDomain}`,
+    );
+    await m.query(
+      `UPDATE ai_review_requests
+          SET status = 'expired'
+        WHERE user_id = $1
+          AND kind = 'email_parser_draft'
+          AND parser_domain = $2
+          AND status IN ('pending', 'claimed', 'proposed')
+          AND expires_at <= CURRENT_TIMESTAMP`,
+      [userId, input.parserDomain],
+    );
+    await m.query(
+      `UPDATE ai_review_requests
+          SET status = 'rejected'
+        WHERE user_id = $1
+          AND kind = 'email_parser_draft'
+          AND parser_domain = $2
+          AND status IN ('pending', 'claimed', 'proposed')`,
+      [userId, input.parserDomain],
+    );
+    const [row] = returnedRows<RequestRow>(
+      await m.query(
+        `INSERT INTO ai_review_requests
+           (user_id, transaction_id, rule_id, kind, instruction, status,
+            email_receipt_ids, parser_domain)
+         VALUES ($1::uuid, NULL, NULL, 'email_parser_draft', $2::text,
+                 'pending', $3::uuid[], $4::varchar)
+         RETURNING *`,
+        [
+          userId,
+          input.instruction.trim().slice(0, MAX_AI_REVIEW_INSTRUCTION_LENGTH),
+          [...input.emailReceiptIds],
+          input.parserDomain,
+        ],
+      ),
+    );
+    return toRequest(row);
+  }
+
+  /**
+   * The agent that holds a parser-draft request has saved its draft: move the
+   * request to `proposed` and remember which parser answers it
+   * (`proposal = { parserId, proposedAt }`). ONE conditional UPDATE in the
+   * caller's transaction, the same one that wrote the parser: it matches only a
+   * `claimed` request of this kind whose `claimed_by` is this caller and whose
+   * life has not run out, so a caller that never claimed it (or lost the claim to
+   * a dismissal, a replacement or an expiry) matches nothing. Returns whether it
+   * matched; the caller refuses before writing the parser when it did not.
+   */
+  async proposeParserDraft(
+    m: EntityManager,
+    userId: string,
+    id: string,
+    claimedBy: string,
+    parserId: string,
+  ): Promise<boolean> {
+    const rows = returnedRows<{ id: string }>(
+      await m.query(
+        `UPDATE ai_review_requests
+            SET status = 'proposed',
+                proposal = jsonb_build_object(
+                  'parserId', $4::text,
+                  'proposedAt', CURRENT_TIMESTAMP)
+          WHERE id = $1
+            AND user_id = $2
+            AND kind = 'email_parser_draft'
+            AND status = 'claimed'
+            AND claimed_by = $3
+            AND expires_at > CURRENT_TIMESTAMP
+         RETURNING id`,
+        [id, userId, claimedBy, parserId],
+      ),
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * A parser was approved: every `proposed` parser-draft request that proposed
+   * it is `applied`, in the approving transaction. Nothing matching is not an
+   * error (a draft written by hand, or by a request since dismissed).
+   */
+  async markParserDraftApplied(
+    m: EntityManager,
+    userId: string,
+    parserId: string,
+  ): Promise<number> {
+    const rows = returnedRows<{ id: string }>(
+      await m.query(
+        `UPDATE ai_review_requests
+            SET status = 'applied'
+          WHERE user_id = $1
+            AND kind = 'email_parser_draft'
+            AND status = 'proposed'
+            AND proposal ->> 'parserId' = $2::text
+         RETURNING id`,
+        [userId, parserId],
+      ),
+    );
+    return rows.length;
+  }
+
+  /**
+   * A parser was deleted: the open parser-draft requests that proposed it are
+   * dismissed (`rejected`), so the inbox does not offer a draft that is gone.
+   */
+  async dismissParserDraftsFor(
+    m: EntityManager,
+    userId: string,
+    parserId: string,
+  ): Promise<number> {
+    const rows = returnedRows<{ id: string }>(
+      await m.query(
+        `UPDATE ai_review_requests
+            SET status = 'rejected'
+          WHERE user_id = $1
+            AND kind = 'email_parser_draft'
+            AND status IN ('pending', 'claimed', 'proposed')
+            AND proposal ->> 'parserId' = $2::text
+         RETURNING id`,
+        [userId, parserId],
+      ),
+    );
+    return rows.length;
   }
 
   /** The user's requests, oldest first unless told otherwise, optionally in some statuses. */
@@ -223,6 +513,37 @@ export class AiReviewRequestsService {
               AND user_id = $1
            RETURNING *`,
           [userId, claimedBy],
+        ),
+      );
+      return row ? toRequest(row) : null;
+    });
+  }
+
+  /**
+   * Claim one named request for `claimedBy`, or null when it is not the user's,
+   * is no longer `pending`, or has expired. ONE conditional UPDATE, the same
+   * mechanism as {@link claimNext}: whoever wins the row takes it, and the loser
+   * matches nothing. For a caller that already holds the id -- the receipts
+   * page asking the AI about one email -- and so must not take "the oldest".
+   */
+  async claimById(
+    userId: string,
+    id: string,
+    claimedBy: string,
+  ): Promise<AiReviewRequest | null> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const [row] = returnedRows<RequestRow>(
+        await m.query(
+          `UPDATE ai_review_requests
+              SET status = 'claimed',
+                  claimed_by = $3,
+                  claimed_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND status = 'pending'
+              AND expires_at > CURRENT_TIMESTAMP
+           RETURNING *`,
+          [id, userId, claimedBy],
         ),
       );
       return row ? toRequest(row) : null;
