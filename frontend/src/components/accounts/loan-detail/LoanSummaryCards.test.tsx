@@ -264,4 +264,64 @@ describe('LoanSummaryCards', () => {
     expect(screen.queryByText(`$${baseline.totalInterest.toFixed(2)}`)).not.toBeInTheDocument();
     expect(screen.getAllByText('N/A').length).toBeGreaterThanOrEqual(2);
   });
+
+  describe('a mortgage without a constant payment', () => {
+    const linear = () =>
+      makeAccount({
+        accountType: 'MORTGAGE',
+        mortgageType: 'LINEAR',
+        paymentAmount: null,
+        currentBalance: -265000,
+      });
+
+    it('captions the installment as the next one, with its due date', () => {
+      render(
+        <LoanSummaryCards
+          account={linear()}
+          startingBalance={300000}
+          currentInstallment={1275}
+          currentInstallmentDate="2025-07-01"
+          currentAnnualRate={2}
+          baseline={null}
+        />,
+      );
+      expect(screen.getByText('Next Installment')).toBeInTheDocument();
+      expect(screen.queryByText('Payment')).not.toBeInTheDocument();
+      expect(screen.getByText('$1275.00')).toBeInTheDocument();
+      expect(screen.getByText(/^Due .*2025/)).toBeInTheDocument();
+      expect(screen.queryByText('Final Payment')).not.toBeInTheDocument();
+    });
+
+    it('shows an interest-only bullet beside the installment', () => {
+      render(
+        <LoanSummaryCards
+          account={linear()}
+          startingBalance={300000}
+          currentInstallment={441.67}
+          currentInstallmentDate="2025-07-01"
+          finalPayment={{ amount: 265441.67, date: '2053-12-01' }}
+          currentAnnualRate={2}
+          baseline={null}
+        />,
+      );
+      expect(screen.getByText('Final Payment')).toBeInTheDocument();
+      expect(screen.getByText('$265441.67')).toBeInTheDocument();
+      expect(screen.getByText(/^Due .*2053/)).toBeInTheDocument();
+    });
+
+    it('keeps the plain Payment caption for an annuity', () => {
+      render(
+        <LoanSummaryCards
+          account={makeAccount()}
+          startingBalance={10000}
+          currentInstallment={500}
+          currentInstallmentDate={null}
+          currentAnnualRate={6}
+          baseline={null}
+        />,
+      );
+      expect(screen.getByText('Payment')).toBeInTheDocument();
+      expect(screen.queryByText('Next Installment')).not.toBeInTheDocument();
+    });
+  });
 });

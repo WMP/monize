@@ -246,7 +246,7 @@ describe('MortgageFields', () => {
     expect(screen.queryByRole('checkbox', { name: /Variable Rate/ })).not.toBeInTheDocument();
   });
 
-  it('offers only the types a request may write in Phase 1', () => {
+  it('offers all four types', () => {
     render(<MortgageFields {...defaultProps} />);
     const options = Array.from(
       (screen.getByLabelText('Mortgage Type') as HTMLSelectElement).options,
@@ -254,15 +254,127 @@ describe('MortgageFields', () => {
     expect(options).toEqual([
       ['ANNUITY', 'Annuity (Level Payment)'],
       ['CANADIAN_FIXED', 'Canadian Fixed Rate'],
+      ['LINEAR', 'Linear (Constant Principal)'],
+      ['INTEREST_ONLY', 'Interest Only'],
     ]);
   });
 
   it.each([
     ['ANNUITY', 'Your total payment is the same every month. Choose this for a variable-rate mortgage too.'],
     ['CANADIAN_FIXED', 'A Canadian fixed-rate contract; interest compounds twice a year.'],
+    ['LINEAR', 'The principal part is the same every month and the total falls.'],
+    ['INTEREST_ONLY', 'You pay only interest and the balance does not move.'],
   ] as const)('shows the help line for the selected %s type', (mortgageType, help) => {
     render(<MortgageFields {...defaultProps} mortgageType={mortgageType} />);
     expect(screen.getByText(help)).toBeInTheDocument();
+  });
+
+  it('asks what an extra repayment does for a LINEAR mortgage only', () => {
+    const { rerender } = render(<MortgageFields {...defaultProps} mortgageType="LINEAR" />);
+    const select = screen.getByLabelText('What an Extra Repayment Does') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => [o.value, o.textContent])).toEqual([
+      ['SHORTEN_TERM', 'Shortens the term (same principal each month)'],
+      ['LOWER_INSTALLMENT', 'Lowers the installment (same end date)'],
+    ]);
+    expect(mockRegister).toHaveBeenCalledWith('prepaymentMode');
+
+    for (const other of ['ANNUITY', 'CANADIAN_FIXED', 'INTEREST_ONLY'] as const) {
+      rerender(<MortgageFields {...defaultProps} mortgageType={other} />);
+      expect(screen.queryByLabelText('What an Extra Repayment Does')).not.toBeInTheDocument();
+    }
+  });
+
+  it.each(['LINEAR', 'INTEREST_ONLY'] as const)(
+    'offers no accelerated cadence for a %s mortgage',
+    (mortgageType) => {
+      render(<MortgageFields {...defaultProps} mortgageType={mortgageType} />);
+      expect(screen.getByText('Bi-Weekly')).toBeInTheDocument();
+      expect(screen.queryByText('Accelerated Bi-Weekly')).not.toBeInTheDocument();
+      expect(screen.queryByText('Accelerated Weekly')).not.toBeInTheDocument();
+    },
+  );
+
+  it('moves an accelerated cadence to its base when the type has no constant payment', () => {
+    render(
+      <MortgageFields
+        {...defaultProps}
+        mortgageType="ANNUITY"
+        mortgagePaymentFrequency="ACCELERATED_BIWEEKLY"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Mortgage Type'), {
+      target: { value: 'LINEAR' },
+    });
+    expect(mockSetValue).toHaveBeenCalledWith('mortgagePaymentFrequency', 'BIWEEKLY', {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  });
+
+  it('leaves the cadence alone when the new type keeps a constant payment', () => {
+    render(
+      <MortgageFields
+        {...defaultProps}
+        mortgageType="LINEAR"
+        mortgagePaymentFrequency="ACCELERATED_WEEKLY"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Mortgage Type'), {
+      target: { value: 'CANADIAN_FIXED' },
+    });
+    expect(mockSetValue).not.toHaveBeenCalledWith(
+      'mortgagePaymentFrequency',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ['LINEAR', 'First Installment:'],
+    ['INTEREST_ONLY', 'First Installment:'],
+    ['ANNUITY', 'Payment Amount:'],
+  ] as const)('captions a %s preview\'s payment as %s', async (mortgageType, caption) => {
+    vi.mocked(accountsApi.previewMortgageAmortization).mockResolvedValue({
+      paymentAmount: 1333.3333,
+      effectiveAnnualRate: 2.02,
+      principalPayment: 833.3333,
+      interestPayment: 500,
+      totalPayments: 360,
+      totalInterest: 90250,
+      residualPayoffAmount: 834.7342,
+      endDate: '2053-12-01',
+    });
+    render(<MortgageFields {...defaultProps}
+      mortgageType={mortgageType}
+      openingBalance={300000} interestRate={2} amortizationMonths={360}
+      mortgagePaymentFrequency="MONTHLY" paymentStartDate="2024-01-01"
+    />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(accountsApi.previewMortgageAmortization).toHaveBeenCalledWith(
+      expect.objectContaining({ mortgageType }),
+    );
+    expect(screen.getByText(caption)).toBeInTheDocument();
+  });
+
+  it('shows an interest-only preview\'s bullet as the final payment', async () => {
+    vi.mocked(accountsApi.previewMortgageAmortization).mockResolvedValue({
+      paymentAmount: 500,
+      effectiveAnnualRate: 2.02,
+      principalPayment: 0,
+      interestPayment: 500,
+      totalPayments: 360,
+      totalInterest: 180000,
+      residualPayoffAmount: 300500,
+      endDate: '2053-12-01',
+    });
+    render(<MortgageFields {...defaultProps}
+      mortgageType="INTEREST_ONLY"
+      openingBalance={300000} interestRate={2} amortizationMonths={360}
+      mortgagePaymentFrequency="MONTHLY" paymentStartDate="2024-01-01"
+    />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(screen.getByText('Final Payment:')).toBeInTheDocument();
+    expect(screen.getByText('$300500.00')).toBeInTheDocument();
   });
 
   it('says nothing about monthly compounding', () => {
@@ -686,7 +798,7 @@ describe('MortgageFields', () => {
     expect(accountsApi.previewMortgageAmortization).not.toHaveBeenCalled();
   });
 
-  it.each(['ANNUITY', 'CANADIAN_FIXED'] as const)(
+  it.each(['ANNUITY', 'CANADIAN_FIXED', 'LINEAR', 'INTEREST_ONLY'] as const)(
     'shows the Term Length field for a %s mortgage',
     (mortgageType) => {
       render(<MortgageFields {...defaultProps} mortgageType={mortgageType} termMonths={60} />);

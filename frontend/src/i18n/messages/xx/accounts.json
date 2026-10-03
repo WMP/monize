@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "[XX-Scheduled payments set up for {account}-XX]"
-    }
+    },
+    "firstInstallment": "[XX-First Installment-XX]",
+    "firstInstallmentHelp": "[XX-This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.-XX]",
+    "firstInstallmentPending": "[XX-Enter the next payment date to work out the first installment.-XX]",
+    "firstInstallmentCalculating": "[XX-Working out the first installment...-XX]",
+    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]"
   },
   "mortgageFields": {
     "title": "[XX-Mortgage Details-XX]",
@@ -340,7 +345,14 @@
       "acceleratedBiweekly": "[XX-Accelerated Bi-Weekly-XX]",
       "weekly": "[XX-Weekly-XX]",
       "acceleratedWeekly": "[XX-Accelerated Weekly-XX]"
-    }
+    },
+    "prepaymentMode": {
+      "label": "[XX-What an Extra Repayment Does-XX]",
+      "SHORTEN_TERM": "[XX-Shortens the term (same principal each month)-XX]",
+      "LOWER_INSTALLMENT": "[XX-Lowers the installment (same end date)-XX]",
+      "help": "[XX-Check with your lender. After an extra repayment, a statement whose principal part is unchanged means the term was shortened.-XX]"
+    },
+    "previewFirstInstallment": "[XX-First Installment:-XX]"
   },
   "assetFields": {
     "title": "[XX-Asset Value Change Settings-XX]",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "[XX-Est. Remaining Interest-XX]",
       "notSet": "[XX-Not set-XX]",
       "notAvailable": "[XX-N/A-XX]",
-      "paidOff": "[XX-Paid off-XX]"
+      "paidOff": "[XX-Paid off-XX]",
+      "nextInstallment": "[XX-Next Installment-XX]",
+      "dueOn": "[XX-Due {date}-XX]",
+      "finalPayment": "[XX-Final Payment-XX]",
+      "nextInstallmentDue": "[XX-Next Installment (due {date})-XX]",
+      "finalPaymentDue": "[XX-Final Payment (due {date})-XX]"
     },
     "schedule": {
       "title": "[XX-Loan Schedule-XX]",
@@ -507,7 +524,10 @@
         "reasonPaidOff": "[XX-This loan has no outstanding balance, so there is nothing left to amortize.-XX]",
         "reasonNoFrequency": "[XX-This loan has no payment frequency set. Add it in the account settings.-XX]",
         "reasonNoRate": "[XX-This loan has no saved interest rate. Set the interest rate in the account settings, or record a rate change dated today or earlier. A rate shown per row in the schedule below is reconstructed from the interest charged and is not a saved rate.-XX]",
-        "reasonNoPayment": "[XX-The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them.-XX]"
+        "reasonNoPayment": "[XX-The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them.-XX]",
+        "reasonNoAmortization": "[XX-This mortgage has no amortization period, so its installments and its term end cannot be worked out. Set the amortization period in the account settings.-XX]",
+        "reasonNoPaymentStart": "[XX-This mortgage has no first payment date, so the payments left to its term end cannot be counted. Set up its scheduled payment from the account settings; the first due date you enter becomes payment 1.-XX]",
+        "reasonNoPrincipal": "[XX-This mortgage has no original amount, so its constant principal cannot be worked out. Set the mortgage amount in the account settings.-XX]"
       },
       "description": "[XX-Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.-XX]",
       "reset": "[XX-Reset-XX]",
@@ -547,7 +567,8 @@
         "unreachableInterest": "[XX-Out of reach — even a very large overpayment cannot save that much interest.-XX]",
         "unreachableDate": "[XX-Out of reach — that month is earlier than the soonest possible payoff.-XX]",
         "baselineIncomplete": "[XX-This loan does not pay off within the projected period, so there is no total interest to work back from.-XX]"
-      }
+      },
+      "budgetBelowNextInstallment": "[XX-That's below the next installment ({amount}, due {date}); raise it above to overpay.-XX]"
     },
     "scenarioChart": {
       "title": "[XX-Scenario comparison-XX]",
@@ -573,7 +594,8 @@
       "totalExtraContributed": "[XX-Total Extra Contributed-XX]",
       "beyondProjection": "[XX-Beyond projection-XX]",
       "unknown": "[XX-Unknown-XX]",
-      "overpaymentAtFrequency": "[XX-{frequency}: +{amount}-XX]"
+      "overpaymentAtFrequency": "[XX-{frequency}: +{amount}-XX]",
+      "firstPayment": "[XX-First Payment-XX]"
     },
     "chart": {
       "title": "[XX-Payoff Timeline-XX]",

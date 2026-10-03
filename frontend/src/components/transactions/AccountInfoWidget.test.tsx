@@ -528,6 +528,30 @@ describe('AccountInfoWidget', () => {
       await waitFor(() => expect(screen.queryByText('N/A')).not.toBeInTheDocument());
     });
 
+    it('shows an interest-only mortgage\'s next installment and bullet, each dated', async () => {
+      // docs/specs/mortgage-types.md section 5.6: no constant payment is
+      // stored for the method; the installment is a dated answer, and the
+      // bullet stands beside it.
+      getAllTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      await renderMortgage(
+        makeMortgage({
+          mortgageType: 'INTEREST_ONLY',
+          paymentAmount: null,
+          openingBalance: -300000,
+          currentBalance: -300000,
+          interestRate: 2,
+          paymentStartDate: '2024-01-01',
+          amortizationMonths: 360,
+          originalPrincipal: 300000,
+        }),
+      );
+
+      await waitFor(() => expect(screen.getByText('Next Installment')).toBeInTheDocument());
+      expect(screen.queryByText('Current Payment')).not.toBeInTheDocument();
+      expect(detailValue('Next Installment')).toMatch(/^CAD 500\.00, due /);
+      expect(detailValue('Final Payment')).toMatch(/^CAD 300,?500\.00, due .*2053/);
+    });
+
     it('leaves the loan rows off an account type that does not amortize', async () => {
       await renderMortgage(makeMortgage({ accountType: 'CHEQUING', currentBalance: 500 }));
 

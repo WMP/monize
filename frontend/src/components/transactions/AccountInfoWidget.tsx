@@ -208,15 +208,39 @@ export function AccountInfoWidget({
     // make "could not be worked out" look like "does not apply to this loan".
     const pending = loan.status === 'loading';
     const unknown = t('accountWidget.notAvailable');
-    details.push({
-      label: t('accountWidget.currentPayment'),
-      value:
-        loan.currentPayment != null
-          ? formatCurrency(loan.currentPayment, account.currencyCode)
-          : unknown,
-      tooltip: t('accountWidget.currentPaymentTooltip'),
-      pending,
-    });
+    // A LINEAR or INTEREST_ONLY installment changes from one due date to the
+    // next, so it is shown as the next one, with its date; an interest-only
+    // mortgage adds its bullet (docs/specs/mortgage-types.md, section 5.6).
+    details.push(
+      loan.currentPaymentDate != null && loan.currentPayment != null
+        ? {
+            label: t('accountWidget.nextInstallment'),
+            value: t('accountWidget.amountDueOn', {
+              amount: formatCurrency(loan.currentPayment, account.currencyCode),
+              date: formatDate(loan.currentPaymentDate),
+            }),
+            pending,
+          }
+        : {
+            label: t('accountWidget.currentPayment'),
+            value:
+              loan.currentPayment != null
+                ? formatCurrency(loan.currentPayment, account.currencyCode)
+                : unknown,
+            tooltip: t('accountWidget.currentPaymentTooltip'),
+            pending,
+          },
+    );
+    if (loan.finalPayment != null) {
+      details.push({
+        label: t('accountWidget.finalPayment'),
+        value: t('accountWidget.amountDueOn', {
+          amount: formatCurrency(loan.finalPayment.amount, account.currencyCode),
+          date: formatDate(loan.finalPayment.date),
+        }),
+        pending,
+      });
+    }
     details.push({
       label: t('accountWidget.estPayoff'),
       value: loan.isSettled

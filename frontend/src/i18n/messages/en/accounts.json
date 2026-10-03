@@ -265,7 +265,12 @@
     },
     "toasts": {
       "setupComplete": "Scheduled payments set up for {account}"
-    }
+    },
+    "firstInstallment": "First Installment",
+    "firstInstallmentHelp": "This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.",
+    "firstInstallmentPending": "Enter the next payment date to work out the first installment.",
+    "firstInstallmentCalculating": "Working out the first installment...",
+    "firstInstallmentFailed": "The first installment could not be worked out. Check the values below and try again."
   },
   "mortgageFields": {
     "title": "Mortgage Details",
@@ -340,7 +345,14 @@
       "acceleratedBiweekly": "Accelerated Bi-Weekly",
       "weekly": "Weekly",
       "acceleratedWeekly": "Accelerated Weekly"
-    }
+    },
+    "prepaymentMode": {
+      "label": "What an Extra Repayment Does",
+      "SHORTEN_TERM": "Shortens the term (same principal each month)",
+      "LOWER_INSTALLMENT": "Lowers the installment (same end date)",
+      "help": "Check with your lender. After an extra repayment, a statement whose principal part is unchanged means the term was shortened."
+    },
+    "previewFirstInstallment": "First Installment:"
   },
   "assetFields": {
     "title": "Asset Value Change Settings",
@@ -396,7 +408,12 @@
       "estRemainingInterest": "Est. Remaining Interest",
       "notSet": "Not set",
       "notAvailable": "N/A",
-      "paidOff": "Paid off"
+      "paidOff": "Paid off",
+      "nextInstallment": "Next Installment",
+      "dueOn": "Due {date}",
+      "finalPayment": "Final Payment",
+      "nextInstallmentDue": "Next Installment (due {date})",
+      "finalPaymentDue": "Final Payment (due {date})"
     },
     "schedule": {
       "title": "Loan Schedule",
@@ -507,7 +524,10 @@
         "reasonPaidOff": "This loan has no outstanding balance, so there is nothing left to amortize.",
         "reasonNoFrequency": "This loan has no payment frequency set. Add it in the account settings.",
         "reasonNoRate": "This loan has no saved interest rate. Set the interest rate in the account settings, or record a rate change dated today or earlier. A rate shown per row in the schedule below is reconstructed from the interest charged and is not a saved rate.",
-        "reasonNoPayment": "The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them."
+        "reasonNoPayment": "The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them.",
+        "reasonNoAmortization": "This mortgage has no amortization period, so its installments and its term end cannot be worked out. Set the amortization period in the account settings.",
+        "reasonNoPaymentStart": "This mortgage has no first payment date, so the payments left to its term end cannot be counted. Set up its scheduled payment from the account settings; the first due date you enter becomes payment 1.",
+        "reasonNoPrincipal": "This mortgage has no original amount, so its constant principal cannot be worked out. Set the mortgage amount in the account settings."
       },
       "description": "Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.",
       "reset": "Reset",
@@ -547,7 +567,8 @@
         "unreachableInterest": "Out of reach — even a very large overpayment cannot save that much interest.",
         "unreachableDate": "Out of reach — that month is earlier than the soonest possible payoff.",
         "baselineIncomplete": "This loan does not pay off within the projected period, so there is no total interest to work back from."
-      }
+      },
+      "budgetBelowNextInstallment": "That's below the next installment ({amount}, due {date}); raise it above to overpay."
     },
     "scenarioChart": {
       "title": "Scenario comparison",
@@ -573,7 +594,8 @@
       "totalExtraContributed": "Total Extra Contributed",
       "beyondProjection": "Beyond projection",
       "unknown": "Unknown",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "First Payment"
     },
     "chart": {
       "title": "Payoff Timeline",

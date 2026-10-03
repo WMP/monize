@@ -470,7 +470,8 @@
     "seriesPrincipalPaid": "Principal Paid",
     "seriesInterestPaid": "Interest Paid",
     "seriesPrincipal": "Principal",
-    "seriesInterest": "Interest"
+    "seriesInterest": "Interest",
+    "installmentAndFinal": "{installment}; final payment {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Gains, Dividends & Interest",
@@ -884,7 +885,10 @@
     "typeLoan": "Loan",
     "typeMortgage": "Mortgage",
     "pdfSubtitlePaymentsSummary": "{count} payments made, {interest} total interest",
-    "pdfSubtitlePaymentsProjection": "{count} payments made, {interest} interest over projection"
+    "pdfSubtitlePaymentsProjection": "{count} payments made, {interest} interest over projection",
+    "nextInstallment": "Next Installment",
+    "finalPayment": "Final Payment",
+    "amountDueOn": "{amount}, due {date}"
   },
   "monteCarlo": {
     "toasts": {

@@ -12,6 +12,7 @@ import { deriveLoanFigures } from '@/lib/loan-figures';
 import { compoundingFor, mortgageTypeOf } from '@/lib/mortgage-type';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import {
   SummaryCardGrid,
   SummaryCardItem,
@@ -28,6 +29,14 @@ interface LoanSummaryCardsProps {
    * loans that book interest separately holds only the principal part.
    */
   currentInstallment: number | null;
+  /**
+   * The due date `currentInstallment` is for, on a LINEAR or INTEREST_ONLY
+   * mortgage whose installment changes from one due date to the next
+   * (`CurrentLoanTerms.paymentDate`); null for an annuity's constant payment.
+   */
+  currentInstallmentDate?: string | null;
+  /** An INTEREST_ONLY mortgage's bullet (`CurrentLoanTerms.finalPayment`). */
+  finalPayment?: { amount: number; date: string } | null;
   /**
    * The rate in effect, resolved from the rate history the projection also uses
    * (`resolveCurrentLoanTerms`) -- NOT `account.interestRate`, which recording a
@@ -49,12 +58,15 @@ export function LoanSummaryCards({
   account,
   startingBalance,
   currentInstallment,
+  currentInstallmentDate = null,
+  finalPayment = null,
   currentAnnualRate,
   baseline,
 }: LoanSummaryCardsProps) {
   const t = useTranslations('accounts');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
+  const { formatDate } = useDateFormat();
   const currency = account.currencyCode;
 
   // The card is shown only for a semi-annually compounded mortgage
@@ -104,6 +116,8 @@ export function LoanSummaryCards({
   const figures = deriveLoanFigures({
     currentBalance: account.currentBalance,
     currentInstallment,
+    currentInstallmentDate,
+    finalPayment,
     baseline,
   });
 
@@ -132,14 +146,41 @@ export function LoanSummaryCards({
           ? t('loanDetail.summary.effectiveRate', { rate: effectiveRate.toFixed(3) })
           : undefined,
     },
-    {
-      label: t('loanDetail.summary.payment'),
-      value:
-        figures.currentPayment != null
-          ? formatCurrency(figures.currentPayment, currency)
-          : t('loanDetail.summary.notSet'),
-      note: frequencyLabel ?? undefined,
-    },
+    // A LINEAR or INTEREST_ONLY installment changes from one due date to the
+    // next, so it is captioned as the next one and dated rather than shown as
+    // a constant "Payment" (docs/specs/mortgage-types.md, section 5.6).
+    figures.currentPaymentDate != null
+      ? {
+          label: t('loanDetail.summary.nextInstallment'),
+          value:
+            figures.currentPayment != null
+              ? formatCurrency(figures.currentPayment, currency)
+              : t('loanDetail.summary.notSet'),
+          note: t('loanDetail.summary.dueOn', {
+            date: formatDate(figures.currentPaymentDate),
+          }),
+        }
+      : {
+          label: t('loanDetail.summary.payment'),
+          value:
+            figures.currentPayment != null
+              ? formatCurrency(figures.currentPayment, currency)
+              : t('loanDetail.summary.notSet'),
+          note: frequencyLabel ?? undefined,
+        },
+    // The bullet beside an interest-only installment, which otherwise
+    // understates what is owed by the whole principal.
+    ...(figures.finalPayment != null
+      ? [
+          {
+            label: t('loanDetail.summary.finalPayment'),
+            value: formatCurrency(figures.finalPayment.amount, currency),
+            note: t('loanDetail.summary.dueOn', {
+              date: formatDate(figures.finalPayment.date),
+            }),
+          },
+        ]
+      : []),
     {
       label: t('loanDetail.summary.estPayoff'),
       value: figures.isSettled

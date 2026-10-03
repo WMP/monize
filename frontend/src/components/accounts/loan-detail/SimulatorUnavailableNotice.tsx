@@ -23,6 +23,9 @@ export function SimulatorUnavailableNotice({
     'no-frequency': 'loanDetail.simulator.unavailable.reasonNoFrequency',
     'no-rate': 'loanDetail.simulator.unavailable.reasonNoRate',
     'no-payment': 'loanDetail.simulator.unavailable.reasonNoPayment',
+    'no-amortization': 'loanDetail.simulator.unavailable.reasonNoAmortization',
+    'no-payment-start': 'loanDetail.simulator.unavailable.reasonNoPaymentStart',
+    'no-principal': 'loanDetail.simulator.unavailable.reasonNoPrincipal',
   };
   return (
     <Card padding="md">

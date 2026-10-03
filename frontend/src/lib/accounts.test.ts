@@ -167,6 +167,22 @@ describe('accountsApi', () => {
     });
   });
 
+  it('previewLoanPaymentSetup posts to the setup preview and returns its answer', async () => {
+    const preview = {
+      derivesInstallment: true,
+      principalPayment: 833.3333,
+      interestPayment: 500,
+      paymentAmount: 1333.3333,
+    };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: preview });
+    const data = { paymentFrequency: 'MONTHLY', nextDueDate: '2024-01-01' };
+    await expect(accountsApi.previewLoanPaymentSetup('acc-1', data)).resolves.toEqual(preview);
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/accounts/acc-1/setup-loan-payments/preview',
+      data,
+    );
+  });
+
   it('reorderFavourites patches order', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({});
     await accountsApi.reorderFavourites(['a-1', 'a-2']);

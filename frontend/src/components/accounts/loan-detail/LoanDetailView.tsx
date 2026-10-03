@@ -26,6 +26,7 @@ import { buildScheduleDisplayRows, type DisplayRow } from '@/lib/loan-schedule-r
 import type { CellValue, PdfTableSection } from '@/lib/pdf-export';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
 import { useLoanRateEditing } from '@/components/accounts/loan-detail/useLoanRateEditing';
@@ -103,6 +104,7 @@ export function LoanDetailView({
   const t = useTranslations('accounts');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
+  const { formatDate } = useDateFormat();
   const [plan, setPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlan, setLoadedPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlanVersion, setLoadedPlanVersion] = useState(0);
@@ -304,13 +306,31 @@ export function LoanDetailView({
           color: '#dc2626',
         },
         {
-          label: t('loanDetail.summary.payment'),
+          // Dated for a method whose installment changes every due date, as
+          // the card on the page is.
+          label:
+            currentInstallment != null && currentTerms.paymentDate != null
+              ? t('loanDetail.summary.nextInstallmentDue', {
+                  date: formatDate(currentTerms.paymentDate),
+                })
+              : t('loanDetail.summary.payment'),
           value:
             currentInstallment != null
               ? formatCurrency(currentInstallment, account.currencyCode)
               : t('loanDetail.summary.notSet'),
           color: '#2563eb',
         },
+        ...(currentTerms.finalPayment
+          ? [
+              {
+                label: t('loanDetail.summary.finalPaymentDue', {
+                  date: formatDate(currentTerms.finalPayment.date),
+                }),
+                value: formatCurrency(currentTerms.finalPayment.amount, account.currencyCode),
+                color: '#2563eb',
+              },
+            ]
+          : []),
         {
           label: t('loanDetail.summary.interestRate'),
           value:
@@ -351,6 +371,8 @@ export function LoanDetailView({
         account={account}
         startingBalance={history.startingBalance}
         currentInstallment={currentInstallment}
+        currentInstallmentDate={currentTerms.paymentDate}
+        finalPayment={currentTerms.finalPayment}
         currentAnnualRate={currentTerms.annualRate}
         baseline={baseline}
       />

@@ -12,12 +12,23 @@ import {
   buildRateTimeline,
   effectiveAnnualRateOn,
   firstPeriodInterest,
+  generateLoanSchedule,
   getPeriodicRate,
   getPeriodsPerYear,
   isoDay,
   resolveEffectiveLoanTerms,
 } from '@/lib/loan-schedule';
-import { annualizationFor, mortgageTypeOf } from '@/lib/mortgage-type';
+import {
+  amortizationMethodFor,
+  annualizationFor,
+  mortgageTypeOf,
+} from '@/lib/mortgage-type';
+import {
+  methodScheduleTerms,
+  nextScheduledPaymentDate,
+  type MissingMethodTerm,
+} from '@/lib/mortgage-installment';
+
 
 /**
  * Historical loan-payment derivation shared by the loan reports and the loan
@@ -369,6 +380,24 @@ export interface CurrentLoanTerms {
   /** Null only when the account has no rate at all. */
   annualRate: number | null;
   payment: number | null;
+  /**
+   * The due date `payment` is the installment of, for a LINEAR or
+   * INTEREST_ONLY mortgage: those methods have no constant payment, so their
+   * installment is a dated answer -- the first projected row, which is the
+   * next bill when the server anchors the projection on it -- and a surface
+   * that shows it says which date it is for (docs/specs/mortgage-types.md,
+   * section 5.6). Null for an annuity, whose payment is the same every period,
+   * and whenever `payment` is null.
+   */
+  paymentDate: string | null;
+  /**
+   * The final payment of an INTEREST_ONLY mortgage -- the whole debt plus its
+   * period's interest, on the term end -- which every surface showing the
+   * installment shows beside it, because an interest-only installment without
+   * its bullet understates what is owed by the whole principal. Null for
+   * every other method, and when the projection does not reach the term end.
+   */
+  finalPayment: { amount: number; date: string } | null;
 }
 
 /**
@@ -396,6 +425,9 @@ export function resolveCurrentLoanTerms(
   // `buildLoanProjectionInput`.
   todayYmd: string = financialTodayYmd(undefined),
 ): CurrentLoanTerms {
+  if (amortizationMethodFor(mortgageTypeOf(account)) !== 'ANNUITY') {
+    return resolveMethodLoanTerms(account, history, rateChanges, anchor, todayYmd);
+  }
   const seed = resolveSeedPayment(
     account,
     history,
@@ -406,6 +438,57 @@ export function resolveCurrentLoanTerms(
   return {
     annualRate: seed.annualRate,
     payment: seed.payment != null && seed.payment > 0 ? seed.payment : null,
+    paymentDate: null,
+    finalPayment: null,
+  };
+}
+
+/**
+ * `resolveCurrentLoanTerms` for a LINEAR or INTEREST_ONLY mortgage. None of
+ * the annuity's candidates applies: `account.paymentAmount` is null for these
+ * methods (spec decision 11), and a stated or observed installment is a past
+ * one, not the next. The current installment is the projection's first row,
+ * priced by the method from the same input the payoff is projected from, and
+ * it travels with its date; INTEREST_ONLY adds the bullet, the projection's
+ * last row. Without a projection there is no installment to show.
+ */
+function resolveMethodLoanTerms(
+  account: Account,
+  history: LoanHistoryResult,
+  rateChanges: RateTimelineRow[],
+  anchor: LoanProjectionAnchor | null | undefined,
+  todayYmd: string,
+): CurrentLoanTerms {
+  // The rate is resolved as it is for an annuity, so a mortgage that cannot
+  // be projected (paid off, or a term missing) still shows the rate it has.
+  const { annualRate } = resolveSeedPayment(
+    account,
+    history,
+    rateChanges,
+    usableProjectionAnchor(anchor, todayYmd),
+    todayYmd,
+  );
+  const { input } = evaluateLoanProjection(
+    account,
+    history,
+    rateChanges,
+    anchor,
+    todayYmd,
+  );
+  const schedule = input ? generateLoanSchedule(input) : null;
+  const first = schedule?.rows[0] ?? null;
+  const last =
+    schedule?.paidOff && schedule.rows.length > 0
+      ? schedule.rows[schedule.rows.length - 1]
+      : null;
+  return {
+    annualRate,
+    payment: first ? first.payment : null,
+    paymentDate: first ? first.date : null,
+    finalPayment:
+      last && amortizationMethodFor(mortgageTypeOf(account)) === 'INTEREST_ONLY'
+        ? { amount: last.payment, date: last.date }
+        : null,
   };
 }
 
@@ -722,7 +805,30 @@ export type LoanProjectionUnavailableReason =
   | 'paid-off'
   | 'no-frequency'
   | 'no-rate'
-  | 'no-payment';
+  | 'no-payment'
+  | 'no-amortization'
+  | 'no-payment-start'
+  | 'no-principal';
+
+/**
+ * The reason a LINEAR or INTEREST_ONLY mortgage cannot be projected, for each
+ * term its method needs (docs/specs/mortgage-types.md, section 8): there is no
+ * `N` without the amortization period, no calendar (so no term end and no
+ * bullet) without the first payment date, and no constant principal without
+ * the amount borrowed. An unknown cadence is the `no-frequency` every loan
+ * already reports.
+ *
+ * - `no-amortization` -- the mortgage has no amortization period.
+ * - `no-payment-start` -- the mortgage has no first payment date.
+ * - `no-principal` -- a LINEAR mortgage that shortens its term has neither an
+ *   original principal nor an opening balance to divide.
+ */
+const MISSING_TERM_REASON: Record<MissingMethodTerm, LoanProjectionUnavailableReason> = {
+  amortizationMonths: 'no-amortization',
+  paymentStartDate: 'no-payment-start',
+  paymentFrequency: 'no-frequency',
+  originalPrincipal: 'no-principal',
+};
 
 /**
  * The reason `buildLoanProjectionInput` cannot produce a schedule, or `null`
@@ -798,22 +904,70 @@ function evaluateLoanProjection(
   if (seed.annualRate == null) {
     return { input: null, reason: 'no-rate' };
   }
-  if (seed.payment == null || seed.payment <= 0) {
-    return { input: null, reason: 'no-payment' };
-  }
 
   // Only the future-dated steps are taken from here; the current terms are the
   // seed's. `buildRateTimeline`'s own "starting" fields are deliberately unused
   // -- see resolveEffectiveLoanTerms.
   const futureTimeline = buildRateTimeline(rateChanges, todayYmd, seed.annualRate);
+  const mortgageType = mortgageTypeOf(account);
+  const frequency = account.paymentFrequency as ScheduleFrequency;
+
+  // A LINEAR or INTEREST_ONLY mortgage has no constant payment to seed: every
+  // row derives its own installment from the method's terms (spec section
+  // 5.4), which come from the account's amortization and first payment date,
+  // so the payments left to the term end are counted from row 1's own date.
+  // A missing term withholds the projection, naming it (section 8).
+  //
+  // Unanchored, row 1 is the mortgage's next due date on its own calendar
+  // rather than one period past today, so the rows -- and the bullet -- fall
+  // on the dates it is paid on; past the term end there is no next one and
+  // the fallback stands (the whole debt is then due).
+  const methodFirstPaymentDate =
+    amortizationMethodFor(mortgageType) !== 'ANNUITY' && !usableAnchor
+      ? nextScheduledPaymentDate(account, todayYmd)
+      : null;
+  const firstPaymentDate = methodFirstPaymentDate
+    ? parseLocalDate(methodFirstPaymentDate)
+    : seed.firstPaymentDate;
+  const method = methodScheduleTerms(mortgageType, account, isoDay(firstPaymentDate));
+  if (method) {
+    if (!method.terms) {
+      return {
+        input: null,
+        reason: MISSING_TERM_REASON[method.missing[0]],
+      };
+    }
+    const input: LoanScheduleInput = {
+      startingBalance: startingDebt,
+      annualRate: seed.annualRate,
+      paymentAmount: 0,
+      frequency,
+      mortgageType,
+      methodTerms: method.terms,
+      firstPaymentDate,
+      rateChanges: futureTimeline.rateChanges,
+    };
+    // `paymentAmount` is the first projected installment for these methods
+    // (`LoanScheduleInput`), which the engine never reads: it is what the
+    // simulator's budget floor and the goal-seek's bound compare against.
+    const firstRow = generateLoanSchedule({ ...input, maxPayments: 1 }).rows[0];
+    return {
+      input: { ...input, paymentAmount: firstRow?.payment ?? 0 },
+      reason: null,
+    };
+  }
+
+  if (seed.payment == null || seed.payment <= 0) {
+    return { input: null, reason: 'no-payment' };
+  }
 
   return {
     input: {
       startingBalance: startingDebt,
       annualRate: seed.annualRate,
       paymentAmount: seed.payment,
-      frequency: account.paymentFrequency as ScheduleFrequency,
-      mortgageType: mortgageTypeOf(account),
+      frequency,
+      mortgageType,
       firstPaymentDate: seed.firstPaymentDate,
       rateChanges: futureTimeline.rateChanges,
     },

@@ -26,9 +26,14 @@ import {
   MORTGAGE_TYPES,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
-  isWritableMortgageType,
 } from '@/types/account';
-import { flagsFromMortgageType, mortgageTypeOf } from '@/lib/mortgage-type';
+import {
+  PREPAYMENT_MODES,
+  flagsFromMortgageType,
+  mortgageTypeOf,
+  prepaymentModeOf,
+  type PrepaymentMode,
+} from '@/lib/mortgage-type';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
@@ -145,11 +150,10 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // Asset-specific fields
   assetCategoryId: z.string().optional(),
   dateAcquired: z.string().optional(),
-  // Mortgage-specific fields. The full list, not the writable one, for the
-  // reason `paymentFrequencies` above gives: a stored type the select does not
-  // offer must reach the submit as itself, where it is withheld, rather than
-  // be erased. The two legacy flags are derived from it on submit.
+  // Mortgage-specific fields. The two legacy flags are derived from the type
+  // on submit; the prepayment mode is a LINEAR mortgage's alone.
   mortgageType: optionalEnum(MORTGAGE_TYPES),
+  prepaymentMode: optionalEnum(PREPAYMENT_MODES),
   termMonths: optionalNumber,
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
@@ -199,7 +203,8 @@ type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
  * its type maps to (`flagsFromMortgageType`), which travel beside the type
  * until P3-B1 drops the booleans.
  */
-type AccountSubmitData = AccountFormData & {
+type AccountSubmitData = Omit<AccountFormData, 'prepaymentMode'> & {
+  prepaymentMode?: PrepaymentMode | null;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
 };
@@ -313,6 +318,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           assetCategoryId: account.assetCategoryId || undefined,
           dateAcquired: account.dateAcquired?.split('T')[0] || undefined,
           mortgageType: mortgageTypeOf(account),
+          prepaymentMode: prepaymentModeOf(account),
           termMonths: account.termMonths || undefined,
           amortizationMonths: account.amortizationMonths || undefined,
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
@@ -325,6 +331,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           paymentFrequency: 'MONTHLY' as PaymentFrequency,
           createInvestmentPair: true,
           mortgageType: 'ANNUITY',
+          prepaymentMode: 'SHORTEN_TERM',
         },
   });
 
@@ -350,16 +357,17 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
       // A mortgage sends its type and the flags it maps to together; any
-      // other account type sends neither. A stored type the select does not
-      // offer (not writable yet) is withheld, so the row keeps it.
-      const { mortgageType, ...withoutMortgageType } = data;
+      // other account type sends neither. The prepayment mode belongs to a
+      // LINEAR mortgage alone: every other type sends null, which is what the
+      // server stores for it whatever it is sent.
+      const { mortgageType, prepaymentMode, ...withoutMortgageType } = data;
       let payload: AccountSubmitData =
-        data.accountType === 'MORTGAGE' &&
-        mortgageType &&
-        isWritableMortgageType(mortgageType)
+        data.accountType === 'MORTGAGE' && mortgageType
           ? {
               ...withoutMortgageType,
               mortgageType,
+              prepaymentMode:
+                mortgageType === 'LINEAR' ? (prepaymentMode ?? 'SHORTEN_TERM') : null,
               ...flagsFromMortgageType(mortgageType),
             }
           : withoutMortgageType;
@@ -1060,6 +1068,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             // the convention off on save and offered cadences the server
             // refuses.
             mortgageType: mortgageTypeOf(account),
+            prepaymentMode: account.prepaymentMode ?? null,
           }}
           accounts={accounts}
           onSetupComplete={() => {

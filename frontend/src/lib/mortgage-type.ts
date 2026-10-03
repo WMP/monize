@@ -125,3 +125,37 @@ export function mortgageTypeOf(account: {
     mortgageTypeFromFlags(account.isCanadianMortgage, account.isVariableRate)
   );
 }
+
+/**
+ * What an extra repayment does to a LINEAR mortgage's principal (spec decision
+ * 4, table 4.3), stored in `accounts.prepayment_mode`; the browser-side twin of
+ * the backend's `PREPAYMENT_MODES`. `SHORTEN_TERM` keeps the constant
+ * principal and ends the loan earlier; `LOWER_INSTALLMENT` re-derives it as
+ * the remaining debt over the remaining scheduled payments and keeps the end
+ * date.
+ */
+export const PREPAYMENT_MODES = ["SHORTEN_TERM", "LOWER_INSTALLMENT"] as const;
+export type PrepaymentMode = (typeof PREPAYMENT_MODES)[number];
+
+/**
+ * The mode a LINEAR mortgage prices by: the column, else `SHORTEN_TERM` (spec
+ * decision 10). Only LINEAR reads it; the server stores null on every other
+ * type.
+ */
+export function prepaymentModeOf(row: {
+  prepaymentMode?: PrepaymentMode | null;
+}): PrepaymentMode {
+  return row.prepaymentMode ?? "SHORTEN_TERM";
+}
+
+/**
+ * Whether a mortgage of `type` has a constant payment: only the annuity
+ * methods. LINEAR and INTEREST_ONLY price each installment at its due date
+ * (spec decision 11), so a form shows their first installment read-only, and
+ * the accelerated cadences -- a fraction of the annuity's monthly installment
+ * -- are not offered for them (spec section 5.1). Mirrors the backend's
+ * `storesConstantPayment`.
+ */
+export function storesConstantPayment(type: MortgageType): boolean {
+  return amortizationMethodFor(type) === "ANNUITY";
+}

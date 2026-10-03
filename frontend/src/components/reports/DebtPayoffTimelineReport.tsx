@@ -43,6 +43,7 @@ import { chartColors } from '@/lib/chart-colors';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useTranslations } from 'next-intl';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 interface PayoffScheduleItem {
   date: string;
@@ -80,6 +81,7 @@ const ACCOUNT_STORAGE_KEY = 'monize-reports-debt-payoff-timeline-account';
 
 export function DebtPayoffTimelineReport() {
   const t = useTranslations('reports');
+  const { formatDate } = useDateFormat();
   const formatChartDate = useChartDateFormat();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, formatPercentTrimmed } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -418,7 +420,9 @@ export function DebtPayoffTimelineReport() {
 
   // The terms in effect, from the same history the curve is projected from.
   const currentTerms = useMemo(() => {
-    if (!selectedAccount || !history) return { annualRate: null, payment: null };
+    if (!selectedAccount || !history) {
+      return { annualRate: null, payment: null, paymentDate: null, finalPayment: null };
+    }
     return resolveCurrentLoanTerms(
       selectedAccount,
       history,
@@ -583,7 +587,27 @@ export function DebtPayoffTimelineReport() {
       currentTerms.annualRate != null
         ? `${formatPercentTrimmed(currentTerms.annualRate)}`
         : t('debtPayoff.notSet'),
-      currentTerms.payment ? formatCurrency(currentTerms.payment) : t('debtPayoff.notSet'),
+      // A LINEAR or INTEREST_ONLY installment is dated: it is the next one,
+      // and an interest-only mortgage's bullet travels with it.
+      currentTerms.payment && currentTerms.paymentDate
+        ? currentTerms.finalPayment
+          ? t('debtPayoff.installmentAndFinal', {
+              installment: t('loanAmortization.amountDueOn', {
+                amount: formatCurrency(currentTerms.payment),
+                date: formatDate(currentTerms.paymentDate),
+              }),
+              final: t('loanAmortization.amountDueOn', {
+                amount: formatCurrency(currentTerms.finalPayment.amount),
+                date: formatDate(currentTerms.finalPayment.date),
+              }),
+            })
+          : t('loanAmortization.amountDueOn', {
+              amount: formatCurrency(currentTerms.payment),
+              date: formatDate(currentTerms.paymentDate),
+            })
+        : currentTerms.payment
+          ? formatCurrency(currentTerms.payment)
+          : t('debtPayoff.notSet'),
       String(paymentsMade),
     ]] : [];
     await exportToPdf({
