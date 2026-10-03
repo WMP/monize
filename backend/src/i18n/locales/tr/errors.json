@@ -345,7 +345,7 @@
     "aiDraftInvalid": "Yapay zekânın ayrıştırıcısı geçerli değildi ({{ codes }}). Yeniden deneyin veya ayrıştırıcıyı elle yazın.",
     "aiDraftUnknownCategory": "Yapay zekânın ayrıştırıcısı var olmayan bir kategoriden söz ediyordu. Yeniden deneyin veya ayrıştırıcıyı elle yazın.",
     "tooManyParsers": "En fazla {{ max }} ayrıştırıcı kaydedilebilir. Önce birini silin.",
-    "receiptNeedsTransaction": "Yapay zekâya sormadan önce bu e-postayı bir işleme bağlayın.",
+    "receiptNeedsTransaction": "Yapay zekâya sormadan önce bu e-postanın hangi işlemi ödediğini seçin.",
     "receiptNotAskable": "Bu e-posta yoksayıldı veya okunamadı. Önce yeniden işleyin.",
     "receiptApplied": "Bu e-postanın önerisi zaten bir işleme uygulandı.",
     "openRequestExists": "Bu işlem için zaten başka bir inceleme isteği açık. Önce onu tamamlayın veya reddedin.",

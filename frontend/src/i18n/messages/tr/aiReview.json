@@ -37,7 +37,8 @@
     "viewEmailReceipts": "E-posta makbuzlarını görüntüle",
     "agentNote": "Asistanın notu: {reason}",
     "dates": "Oluşturulma {created}, bitiş {expires}",
-    "viewTransaction": "İşlemi görüntüle"
+    "viewTransaction": "İşlemi görüntüle",
+    "waitingForAgent": "Bir yapay zekâ ajanı bekleniyor. <link>Ayarlar'dan bir yapay zekâ sağlayıcısı bağlayın</link> veya bir MCP istemcisinin üstlenmesine izin verin."
   },
   "actions": {
     "dismiss": "Yoksay"

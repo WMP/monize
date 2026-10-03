@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "レシートにAIは使用されません。",
-        "on_demand": "「AIに質問」または「AIでパーサーを下書き」を押したときだけAIを使用します。",
+        "on_demand": "「AIで認識」または「AIでパーサーを下書き」を押したときだけAIを使用します。",
         "automatic": "確認の際に、承認済みのパーサーで完全に読み取れなかった一致済みのレシートについてAIに問い合わせ、パーサーのない送信元にはパーサーを下書きします。"
       },
       "autoApplyLabel": "提案を自動で適用",
@@ -310,7 +310,8 @@
       "items_unbalanced": "明細行の合計が総額と一致しません。",
       "items_uncategorized": "カテゴリのない明細行があります。",
       "shipping_uncategorized": "送料の行にカテゴリがありません。"
-    }
+    },
+    "readByAi": "AIが読み取り"
   },
   "state": {
     "pending": "読み取り待ち",
@@ -374,7 +375,7 @@
       "view": "表示",
       "reprocess": "再処理",
       "link": "取引を選択",
-      "askAi": "AIに質問",
+      "recognizeAi": "AIで認識",
       "draftParser": "AIでパーサーを下書き",
       "createParser": "パーサーを作成",
       "ignore": "無視"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "メールを再処理しました",
       "reprocessFailed": "メールを再処理できませんでした",
-      "askAiFailed": "AIに質問できませんでした",
       "draftFailed": "パーサーを下書きできませんでした",
       "ignored": "メールを無視しました",
       "ignoreFailed": "メールを無視できませんでした",
@@ -390,20 +390,8 @@
       "deleteFailed": "メールを削除できませんでした"
     },
     "notices": {
-      "askAiQueued": "AIに質問しました。AIの提案は、承認用にAIレビュー受信箱に表示されます。",
       "draftCreated": "AIがパーサー {name} を下書きしました。確認して承認するまで、何も読み取りません。",
       "draftLink": "パーサーの設定で確認する"
-    },
-    "aiFailures": {
-      "ai_off": "このメールボックスではAIがオフになっています。先にメールボックスの設定でAIモードを変更してください。",
-      "not_a_receipt_request": "その依頼はメールレシートのものではありません。",
-      "receipt_missing": "このメールはもう存在しません。",
-      "not_claimable": "このメールに対する依頼はすでに処理中です。",
-      "transaction_unreadable": "紐づけられた取引を読み取れませんでした。",
-      "ai_unavailable": "AIプロバイダーから応答がありませんでした。AI設定を確認して、もう一度お試しください。",
-      "unusable_answer": "AIは回答しましたが、その回答は使用できませんでした。",
-      "proposal_refused": "AIの提案は、合計が合わないため拒否されました。",
-      "request_failed": "リクエストが失敗しました。"
     },
     "ignoreDialog": {
       "title": "このメールを無視しますか?",
@@ -483,7 +471,12 @@
     "row": "{date}、{amount}、{payee}",
     "noPayee": "支払先なし",
     "linkButton": "紐づける",
-    "hasMore": "最初の {count} 件のみ表示しています。検索で絞り込んでください。"
+    "hasMore": "最初の {count} 件のみ表示しています。検索で絞り込んでください。",
+    "ai": {
+      "heading": "AIに使う取引を選択",
+      "help": "メールの前後の日付にあたる、{from} から {to} までの取引です。メールに記載された商品ごとにAIに分割させる取引を選んでください。",
+      "linkButton": "この取引を使う"
+    }
   },
   "callback": {
     "title": "メールボックスを接続中",
@@ -509,5 +502,27 @@
       "fallback": "サーバーが接続を拒否しました。メールレシートの設定から最初にやり直してください。"
     },
     "backLink": "メールレシートの設定に戻る"
+  },
+  "recognize": {
+    "title": "AIで認識",
+    "transactionSummary": "{date}、{amount}、{payee}",
+    "noPayee": "支払先なし",
+    "confirmMessage": "このメールは取引 {summary} に紐づいています。AIがメールを読み取り、この取引を商品ごとに分割する方法を提案します。この取引で続行しますか？",
+    "confirm": "AIで認識",
+    "chooseOther": "別の取引を選択",
+    "candidatesHeading": "メールが支払った取引はどれですか？",
+    "candidatesHelp": "このメールに該当する取引が複数あります。AIに使わせる取引を選ぶか、別の取引を検索してください。",
+    "candidatesLoading": "該当する取引を読み込み中",
+    "candidatesError": "該当する取引を読み込めませんでした。",
+    "retry": "再試行",
+    "useButton": "この取引を使う",
+    "searchOther": "他の取引を検索",
+    "back": "戻る",
+    "failed": "認識を開始できませんでした",
+    "queued": "キューに追加しました: 現在応答できるAIアシスタントがないため、依頼はAIレビュー受信箱でエージェント (たとえばMCP経由) を待ちます。",
+    "handoffFailed": "依頼はキューに追加されましたが、チャットでメールを開けませんでした。AIレビュー受信箱でエージェント (たとえばMCP経由) を待ちます。",
+    "inboxLink": "AIレビュー受信箱を開く",
+    "opened": "メールを添付してチャットを開きました。メッセージを確認して送信を押してください。",
+    "chatPrompt": "添付された注文メールの商品、数量、価格を認識し、{date} の私の取引 ({payee}、{amount}) を、それぞれにカテゴリを付けて商品ごとに分割してください。AIレビュー依頼 {requestId} を引き受け、その提案を送信してください。"
   }
 }
