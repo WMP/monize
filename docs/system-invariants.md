@@ -89,8 +89,8 @@ implied.
 | INV-LOAN-003 | One named compounding convention, from preview to projection to displayed EAR | enforced |
 | INV-LOAN-004 | The final payment is the residual payoff, not another installment | enforced |
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
-| INV-LOAN-006 | A scheduled loan installment prices the ledger debt, and the rate, through its own due date | enforced |
-| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | partial |
+| INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
+| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -2114,7 +2114,13 @@ Status              enforced
 ```text
 Statement           Lifetime interest reflects cash actually paid. The payment
                     that clears the balance is the remaining balance plus that
-                    period's interest, not another full installment.
+                    period's interest, not another full installment. This holds
+                    for every amortization method (INV-LOAN-007): the annuity's
+                    residual payoff; the LINEAR final installment, which takes
+                    the whole debt as principal when what is left over the
+                    constant principal is within roundMoney(N x 0.005), so no
+                    payment of a few cents follows it; and the INTEREST_ONLY
+                    bullet, debt + roundMoney(debt x rate) at payment N.
 Source of truth     The period-by-period amortization of the same schedule.
 Enforcement         calculateResidualPayoff
                     (backend/src/accounts/mortgage-amortization.util.ts) computes
@@ -2138,6 +2144,16 @@ Enforcement         calculateResidualPayoff
                     paymentsToClear itself lives once, in
                     amortization-count.util.ts: the same formula had three copies
                     and two of them ran on identical inputs in a single call.
+                    For LINEAR and INTEREST_ONLY, calculateMortgageAmortization
+                    branches on amortizationMethodFor before
+                    calculateResidualPayoff and answers residualPayoffAmount
+                    and totalInterest from the method's closed forms
+                    (docs/specs/mortgage-types.md section 5.1); the final
+                    installment of a dated schedule is methodPrincipal's
+                    (linearResidueBound for LINEAR, the whole debt when one
+                    payment remains for INTEREST_ONLY), one function per layer
+                    in backend/src/accounts/mortgage-installment.util.ts and
+                    frontend/src/lib/mortgage-installment.ts.
 Concurrency scope   --
 Failure response    -1 for all three figures when the schedule is unknowable: a
                     non-finite count, or an installment that never amortizes.
@@ -2147,7 +2163,18 @@ Required tests      Present: "final payment and lifetime interest" in
                     rather than from the implementation, including both
                     directions of the count (an installment clearing early, and
                     a rounding remainder absorbed by the last payment) and the
-                    non-amortizing case at a finite count.
+                    non-amortizing case at a finite count. For the other
+                    methods, the spec's section 7 fixtures, computed
+                    independently of the implementation:
+                    mortgage-amortization.util.spec.ts (table 7.5's residual
+                    and lifetime interest), mortgage-installment.util.spec.ts
+                    (the leftover within and above the bound, the bullet),
+                    scheduled-transaction-loan.mortgage-methods.spec.ts (the
+                    final 7.1 installment absorbs the leftover and nothing is
+                    posted on 2050-07-01; the bullet written into the principal
+                    line before payment N) and, on the frontend,
+                    loan-schedule-methods.test.ts (318 payments ending
+                    2050-06-01; the bullet on payment N).
 Status              enforced
 ```
 
@@ -2211,7 +2238,7 @@ Required tests      Present: the calculateEndDate and calculateMortgageEndDate
                     processes and scans the three helpers for a local accessor.
 Status              enforced
 ```
-### INV-LOAN-006 -- a scheduled loan installment prices the ledger debt, and the rate, through its own due date
+### INV-LOAN-006 -- a scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date
 
 ```text
 Statement           The interest of a scheduled loan installment is
@@ -2228,6 +2255,17 @@ Statement           The interest of a scheduled loan installment is
                     scheduled bill, the amounts an occurrence actually posts,
                     and the amortization report's first projected row all price
                     that one balance (issue #1253).
+                    The principal of a mortgage whose method is not ANNUITY
+                    (INV-LOAN-007) is dated the same way: a LOWER_INSTALLMENT
+                    LINEAR principal is roundMoney(debt / remaining), and an
+                    INTEREST_ONLY installment is the bullet when remaining is 1,
+                    where remaining is N - k + 1 and k is the count of calendar
+                    due dates on or before the installment's date, stepped from
+                    payment_start_date by calculateNextDueDate. Never a count of
+                    postings: a skipped occurrence or an extra manual payment
+                    does not move the term end, and a due date moved off the
+                    calendar counts the calendar dates before it
+                    (docs/specs/mortgage-types.md sections 2 and 6.2).
 Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
@@ -2281,6 +2319,13 @@ Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
                     LEDGER_MOVEMENT_PREDICATE (common/ledger-balance.sql.ts),
                     shared by every balance reader so the bill's debt and the
                     report's balance cannot disagree about which rows count.
+                    The remaining count is remainingScheduledPayments over
+                    calendarPaymentNumber
+                    (backend/src/accounts/mortgage-installment.util.ts),
+                    which nonAnnuityInstallment calls with the installment's
+                    own date; the frontend projection counts with the twins in
+                    frontend/src/lib/mortgage-installment.ts. Neither takes a
+                    count of postings as an input.
 Failure response    A template shape the resolver cannot account for (an
                     escrow line, no identifiable interest line) declines: the
                     posting proceeds on the persisted amounts and the
@@ -2301,6 +2346,13 @@ Required tests      Present: scheduled-transaction-loan.service.spec.ts (prior
                     reads tomorrow) and financial-today.test.ts (the day at
                     pinned instants in named zones, so a boundary case does not
                     depend on the runner's TZ).
+                    The remaining count: mortgage-installment.util.spec.ts
+                    ("the calendar"), scheduled-transaction-loan.mortgage-methods.spec.ts
+                    (a due date moved off the calendar) and
+                    scheduled-loan-dated-balance.integration.spec.ts (a
+                    LOWER_INSTALLMENT mortgage on a real ledger, including the
+                    moved due date); frontend loan-schedule-methods.test.ts
+                    ("the calendar: k(d), remaining(d) and the next due date").
                     A LINE OF CREDIT is exempt from the paid-off deactivation:
                     it is revolving, so owing nothing this period does not
                     finish it.
@@ -2353,36 +2405,42 @@ Statement           A mortgage's amortization method (annuity, linear, interest
 Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
                     the traits, truth tables and fixtures are
                     docs/specs/mortgage-types.md.
-Enforcement         Partly built (Phase 1, P2-B1 and P2-F1 of
-                    docs/future-plans/mortgage-types-tasks.md). Present: the
-                    type helper (MORTGAGE_TYPE_TRAITS in
-                    backend/src/accounts/mortgage-type.util.ts and
+Enforcement         amortizationMethodFor over MORTGAGE_TYPE_TRAITS
+                    (backend/src/accounts/mortgage-type.util.ts and
                     frontend/src/lib/mortgage-type.ts, a Record over the type so
                     a missing type is a compile error), through which every
-                    surface already reads the compounding (INV-LOAN-003) and
-                    rate inference reads the annualization; the parity fixture
-                    mortgage-type-cases.json read by both layers; the shrink-only
-                    flags guard, whose baseline is empty; the CHECK on
-                    accounts.mortgage_type reconciled with MORTGAGE_TYPES by
-                    mortgage-type.contract.spec.ts. On the backend, the method
-                    branch: the preview (calculateMortgageAmortization), the
-                    installment pricing (resolveInstallment) and the
-                    rate-change paths read the method through
-                    amortizationMethodFor, and the per-date principal of table
-                    4.3 is one function
-                    (backend/src/accounts/mortgage-installment.util.ts); the
-                    CHECKs keeping accounts.payment_amount null for LINEAR and
-                    INTEREST_ONLY and accounts.prepayment_mode null off LINEAR.
-                    On the frontend, the method branch: generateLoanSchedule
-                    prices each non-annuity row through methodPrincipal
-                    (frontend/src/lib/mortgage-installment.ts, the twin of the
-                    backend's table 4.3), buildLoanProjectionInput supplies the
-                    method terms, and the readers of spec table 5.6 show the
-                    dated next installment and the INTEREST_ONLY bullet; the
-                    payment setup previews its first installment through the
-                    server's own pricing (POST
-                    /accounts/:id/setup-loan-payments/preview). Absent: the
-                    type detector (P2-B2, P2-F2); P2-Q flips the status.
+                    surface reads the method, the compounding (INV-LOAN-003) and
+                    the annualization rate inference uses. The method branch:
+                    calculateMortgageAmortization (the preview),
+                    ScheduledTransactionLoanService.resolveInstallment (the
+                    template and the posting) and the rate-change paths
+                    (LoanRateChangesService, the mortgage rate update) on the
+                    backend, generateLoanSchedule on the frontend. The per-date
+                    principal of the spec's table 4.3 is one function per
+                    layer, methodPrincipal
+                    (backend/src/accounts/mortgage-installment.util.ts and its
+                    twin frontend/src/lib/mortgage-installment.ts), and a
+                    non-annuity installment is priced through
+                    nonAnnuityInstallment by resolveInstallment, the payment
+                    setup and its preview, the mortgage rate update and the
+                    rate-change sync; account creation takes its first
+                    installment from the preview.
+                    The shared truth table mortgage-type-cases.json holds each
+                    type's traits and first installment equal on both layers
+                    (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts). In the database: the CHECK
+                    on accounts.mortgage_type, reconciled with MORTGAGE_TYPES by
+                    the same contract spec; the CHECKs keeping
+                    accounts.payment_amount null for LINEAR and INTEREST_ONLY
+                    (no stored constant payment can disagree with the method)
+                    and accounts.prepayment_mode null off LINEAR. The two legacy
+                    booleans have no production caller of the overloads that
+                    read them: mortgage-type-flags.guard.spec.ts, shrink-only
+                    with an empty baseline, fails a new one until P3-B1 drops
+                    them. Type detection (detectMortgageType,
+                    backend/src/accounts/mortgage-type-detection.util.ts) only
+                    suggests: neither detection route writes a row, and the
+                    user confirms the type in the account form.
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)
@@ -2405,8 +2463,14 @@ Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     (loan-schedule-methods.test.ts) and the readers of table
                     5.6 with payment_amount null on the fixture account
                     (loan-history.mortgage-methods.test.ts and the component
-                    tests).
-Status              partial
+                    tests), and the detector's truth table
+                    (mortgage-type-detection-cases.json,
+                    mortgage-type-detection.util.spec.ts) with its reason codes
+                    held to the client's wording
+                    (mortgage-type-detection.contract.test.ts). Each truth-table
+                    row of docs/specs/mortgage-types.md names the spec that
+                    asserts it.
+Status              enforced
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
