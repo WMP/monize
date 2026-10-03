@@ -9,7 +9,7 @@
     "^@/(.*)$": "<rootDir>/src/$1"
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader)/)"
+    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport)/)"
   ],
   "testEnvironment": "node",
   "testTimeout": 30000,

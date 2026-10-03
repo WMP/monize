@@ -236,6 +236,34 @@ type AccountSubmitData = Omit<AccountFormData, 'prepaymentMode'> & {
   isVariableRate?: boolean;
 };
 
+/** The cash ledger's own fields as the form loads them from the stored row. */
+function cashFieldsFromRow(cash: Account) {
+  return {
+    cashOpeningBalance:
+      cash.openingBalance !== undefined
+        ? Math.round(Number(cash.openingBalance) * 100) / 100
+        : undefined,
+    cashDescription: cash.description || undefined,
+    cashAccountNumber: cash.accountNumber || undefined,
+  };
+}
+
+/**
+ * Whether the submitted cash ledger fields differ from the stored row. A value
+ * difference, not react-hook-form's `dirtyFields`: that diffs against the
+ * form's mount-time defaults, and the pair loader fills these fields in after
+ * mount, so any later edit marks them all dirty.
+ */
+function cashLedgerChanged(data: AccountFormData, cash: Account | null): boolean {
+  if (!cash) return false;
+  const loaded = cashFieldsFromRow(cash);
+  return (
+    data.cashOpeningBalance !== loaded.cashOpeningBalance ||
+    (data.cashDescription || undefined) !== loaded.cashDescription ||
+    (data.cashAccountNumber || undefined) !== loaded.cashAccountNumber
+  );
+}
+
 interface AccountFormProps {
   account?: Account;
   onSubmit: (data: AccountSubmitData) => Promise<void>;
@@ -398,11 +426,6 @@ export function AccountForm({
   // an untouched section must not be resent, or an edit of the account's name
   // would rewrite the cash half's balance and description with whatever the
   // form happened to load.
-  const cashSectionDirty =
-    !!dirtyFields.cashOpeningBalance ||
-    !!dirtyFields.cashDescription ||
-    !!dirtyFields.cashAccountNumber;
-
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
       // A mortgage sends its type and the flags it maps to together; any
@@ -430,7 +453,7 @@ export function AccountForm({
           highBalanceThreshold: payload.highBalanceThreshold ?? null,
         };
       }
-      if (!cashSectionDirty) {
+      if (!cashLedgerChanged(data, cashHalf)) {
         const {
           cashAccountId: _id,
           cashOpeningBalance: _balance,
@@ -446,7 +469,7 @@ export function AccountForm({
       }
       return onSubmit(payload);
     },
-    [account, cashSectionDirty, dirtyFields.institutionId, onSubmit],
+    [account, cashHalf, dirtyFields.institutionId, onSubmit],
   );
 
   useFormSubmitRef(submitRef, handleSubmit, handleValidatedSubmit);
@@ -508,14 +531,10 @@ export function AccountForm({
         // suffixes, so the field edits the base. The server re-suffixes both.
         setValue('name', stripAccountName(pair.brokerageAccount.name));
         setValue('cashAccountId', pair.cashAccount.id);
-        setValue(
-          'cashOpeningBalance',
-          pair.cashAccount.openingBalance !== undefined
-            ? Math.round(Number(pair.cashAccount.openingBalance) * 100) / 100
-            : undefined,
-        );
-        setValue('cashDescription', pair.cashAccount.description || undefined);
-        setValue('cashAccountNumber', pair.cashAccount.accountNumber || undefined);
+        const loaded = cashFieldsFromRow(pair.cashAccount);
+        setValue('cashOpeningBalance', loaded.cashOpeningBalance);
+        setValue('cashDescription', loaded.cashDescription);
+        setValue('cashAccountNumber', loaded.cashAccountNumber);
       })
       .catch(() => {
         // Not part of a pair.
