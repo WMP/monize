@@ -52,9 +52,19 @@ units or `null`.
 
 Candidates are the user's transactions, loaded in one query: not a transfer,
 not VOID, not an investment row, in the currency of the account, dated from
-`received_date - 3` to `received_date + 14` (calendar dates in UTC,
+`purchase_date - 3` to `purchase_date + 14` (calendar dates in UTC,
 `addDaysYMD`), at most 200, newest first. A transaction that already has an
 applied receipt, or an open receipt request, is not a candidate.
+
+`purchase_date` is the date of the original message: `original_sent_at` when
+the mailbox owner forwarded the receipt to the mailbox and the forwarded
+header block was recognised (`imap/forwarded-message.ts`, applied at
+ingestion and again on reprocess), otherwise `received_at`. A forward arrives
+days after the purchase; centring the window on the arrival date would miss
+the transaction. A forwarded date later than `received_at + 1 day` is not
+believed and is dropped. The manual transaction picker uses the same date as
+its default range and its From / To fields are editable; linking by hand or
+by request accepts a transaction of any date.
 
 Signals per candidate:
 
@@ -218,6 +228,8 @@ assistant in the chat, or an agent, answers it by id with splits, which
 | Item section bounds, `price * qty`, 100-item cap, 500-character lines | `parsing/parse-receipt.spec.ts` |
 | Every row of the completeness table | `parsing/parse-receipt.spec.ts` |
 | Every row of the match table; date window edges (day -3, day +14, day +15) | `matching/match-receipt.spec.ts` |
+| Forwarded-header detection (Gmail, Outlook, Apple Mail, Thunderbird; English and Polish labels; date formats; the 200-line bound; no header means no result) | `imap/forwarded-message.spec.ts`, `imap/forwarded-receipt.spec.ts` |
+| A forwarded receipt matches the transaction near the original date, on ingestion and on reprocess; a manual link of any date | `test/integration/email-receipts-pipeline.integration.spec.ts` |
 | Every row of the proposal table; the numerical example; description cap and duplicate | `proposal/build-receipt-proposal.spec.ts` |
 | Auto-apply gate: each condition false in turn | `email-receipt-pipeline.service.spec.ts` |
 | AI extraction: amount conversion, unknown category (item, shipping, discount), dropped items, completeness through the shared function, `source: "ai"`, description-only reasons | `ai/email-receipt-ai.extraction.spec.ts`, `ai/email-receipt-ai.service.spec.ts` |

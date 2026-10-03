@@ -16,6 +16,7 @@ import { McpBudgetsTools } from "./tools/budgets.tool";
 import { McpRelayTools } from "./tools/relay.tool";
 import { McpRulesTools } from "./tools/rules.tool";
 import { McpAiReviewTools } from "./tools/ai-review.tool";
+import { McpEmailReceiptParserTools } from "./tools/email-receipt-parsers.tool";
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
 import { McpRecentTransactionsResource } from "./resources/recent-transactions.resource";
@@ -53,6 +54,7 @@ export class McpServerService {
     private readonly budgetsTools: McpBudgetsTools,
     private readonly rulesTools: McpRulesTools,
     private readonly aiReviewTools: McpAiReviewTools,
+    private readonly receiptParserTools: McpEmailReceiptParserTools,
     private readonly relayTools: McpRelayTools,
     private readonly relayService: AiRelayService,
     private readonly requestStateCodec: McpRequestStateCodec,
@@ -170,6 +172,7 @@ export class McpServerService {
     this.budgetsTools.register(server);
     this.rulesTools.register(server);
     this.aiReviewTools.register(server);
+    this.receiptParserTools.register(server);
     this.relayTools.register(server);
 
     this.accountListResource.register(server);

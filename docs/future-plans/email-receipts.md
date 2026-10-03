@@ -57,7 +57,13 @@ section 10.5).
 ## 3. Product decisions
 
 1. **One mailbox per user**, dedicated to receipts. The settings screen says the
-   mailbox should hold nothing else: every message in its folder is read.
+   mailbox should hold nothing else: every message in its folder is read. The
+   mailbox's `enabled` switch ("Read the mailbox automatically") means exactly
+   that and nothing more: it decides whether the 15-minute cron polls the
+   mailbox. It does not mean the mailbox is on or off, and "Poll now" works
+   whether or not it is set. A mailbox that cannot connect (an OAuth2 mailbox
+   whose token was disconnected or revoked) refuses to poll either way, with the
+   reason (reconnect it) as the result.
 2. **Read-only.** The folder is opened with `EXAMINE` (`readOnly: true`) and
    messages are fetched with `BODY.PEEK`. Monize never sets a flag, moves,
    deletes or appends. Progress is a UID cursor stored in Monize.
@@ -69,14 +75,18 @@ section 10.5).
 5. **The review queue is the existing AI review inbox** (`/ai-reviews`). A
    receipt's proposal is a request of kind `email_receipt`. The receipts page
    (`/email-receipts`) lists every stored email with its state and the actions
-   on it (link to a transaction, reprocess, recognize with AI, draft a parser,
-   ignore, delete).
+   on it (link to a transaction, reprocess, recognize with AI, draft a parser with
+   AI, ignore, delete). Up to five emails can be selected there and a parser
+   drafted from them together.
 6. **AI mode and "Recognize with AI".** AI mode is per mailbox: `off` (the poll
    never calls the AI for receipts), `on_demand` and `automatic` (the poll asks
    the AI, bounded per tick, for a matched receipt no approved parser could
    fully read, and drafts a parser for a sender domain that has none). The mode
-   governs only what happens by itself, plus "Draft parser with AI", which is
-   refused in mode `off`.
+   governs only what happens by itself. The two buttons, "Recognize with AI" and
+   "Draft parser with AI", are the person's own consent and are offered whatever
+   the mode: neither calls a provider from the receipts page, each queues an AI
+   review request and hands the work to the assistant in the chat (or leaves it
+   for an agent).
 
    The button **"Recognize with AI"** is the person's own consent and is offered
    whatever the mode, for an email in `no_parser`, `parse_failed`, `unmatched`,
@@ -95,6 +105,29 @@ section 10.5).
    the text land on the composer and the user presses Send; it lives in memory
    only (`lib/ai-chat-handoff.ts`, nothing in browser storage). An AI answer is
    always a proposal or a draft; it is never applied or approved on its own.
+
+   **"The assistant can answer now"** is decided at the moment of the click, after
+   the request is queued, by `assistantCanAnswerNow` (`lib/assistant-ready.ts`):
+   an AI provider is configured (`GET /ai/status` `configured`) AND, when the
+   user's top provider is the MCP relay (their own agent over MCP,
+   `relayActive`), that agent is connected (`GET /ai/relay/status`: `listening`
+   or `busy`, not `offline`). A relay that is configured but whose agent is not
+   connected would fail the chat with "Your MCP relay agent is not connected", so
+   it is the queued outcome. A failed read of either is "no", never "yes". Both
+   buttons use the same decision.
+
+   **"Draft parser with AI"** is the same hand-off for a parser instead of a
+   proposal, from one to five emails: `POST /email-receipt-parsers/draft-with-ai`
+   queues a `pending` request of kind `email_parser_draft` (fixed instruction
+   `RECEIPT_PARSER_DRAFT_INSTRUCTION`; no provider call), then the chat opens with
+   each email attached as a text file (its id in the header) and the message
+   "Build an email receipt parser for these N order emails from DOMAIN. Claim AI
+   review request ID, test your parser on every attached email with the
+   email_receipt_parsers tool, fix it until each one reads completely, then save
+   it as a draft for request ID." staged, or the request waits in the review
+   inbox. The assistant claims the request by id, tests and saves a **draft**
+   (`email_receipt_parsers`, section 8); the draft reads nothing until the person
+   approves it in the parser settings, which marks the request `applied`.
 7. **Auto-apply** (off by default) applies a proposal without asking only when
    all of: an approved parser read the email completely, the match is by order
    number or by exact amount plus payee with a single candidate, and the
@@ -104,13 +137,37 @@ section 10.5).
    person.
 8. **A receipt that matches nothing is retried** on every poll for 30 days
    after it arrived: the bank transaction usually arrives later than the email.
-9. **The email is kept** (subject, sender, date, text up to 100,000 characters)
-   until the user deletes it or deletes the mailbox. The raw MIME source and
-   HTML are not stored; the HTML is converted to text at ingestion.
+9. **The email is kept** (subject, sender, date, text up to 100,000 characters,
+   and the HTML part up to 1,000,000 characters) until the user deletes it or
+   deletes the mailbox. The raw MIME source is not stored. `body_text` is what
+   every parser and prompt reads (converted from the HTML when the message has no
+   text part); `body_html` is **display only**: the detail dialog shows it in an
+   `<iframe sandbox="" srcDoc>` whose document starts with a Content-Security-Policy
+   meta (`default-src 'none'; img-src data: cid:; style-src 'unsafe-inline';
+   font-src data:`) so remote images and trackers never load, with a toggle to the
+   text. It is never parsed, searched, sent to a model, or put in the page's DOM,
+   and the list never returns it.
 10. **Two ways to log in**: a password (an app password for most providers) or
     OAuth2 (XOAUTH2) for Google and Microsoft 365, section 3a.
 11. **Owner only.** A delegate sees neither the settings nor the receipts page,
     and the API refuses a delegate's session.
+12. **A forwarded email is stored as the shop's.** The user forwards order
+    confirmations from their own Gmail (or Outlook, Apple Mail, Thunderbird), so
+    the mailbox's From is the user's and the Date is the forward's, a month after
+    the purchase. `detectForwardedOriginal` reads the forwarded header block pasted
+    into the text (English, Polish, German, French and Spanish labels; the date
+    formats those clients write) and the email is stored with the ORIGINAL sender
+    and subject (`from_address`, `from_domain`, `subject`), the forwarder in
+    `forwarded_by`, and the day the shop sent it in `original_sent_at`. Parser
+    selection reads the shop's domain, and the match window is centred on the
+    **purchase date**, `original_sent_at ?? received_at` (spec section 3). It is
+    done at ingestion and again on every reprocess, from the stored text, so an
+    email stored before this heals on "Reprocess" (idempotent: the forwarder is
+    kept once recorded). A header that cannot be read leaves the email as the
+    mailbox saw it; an original date later than the day the forward arrived is
+    dropped as garbled. The text is untrusted, so the block can only choose which
+    approved parser reads the email and which days to look at: it never reaches
+    the ledger except through the same card and approval.
 
 ## 3a. OAuth2 login (Google, Microsoft 365)
 
@@ -220,7 +277,11 @@ email_receipts
   id, user_id, mailbox_id -> email_receipt_mailboxes ON DELETE CASCADE
   uid_validity bigint, uid bigint, message_id varchar(500) null
   from_address varchar(320), from_domain varchar(255), subject varchar(500)
+    -- the ORIGINAL sender and subject when the email was a forward (decision 12)
   received_at timestamptz, body_text text (<= 100,000 chars)
+  body_html text null (<= 1,000,000 chars)       -- display only, never parsed
+  forwarded_by varchar(320) null                 -- the mailbox From of a forward
+  original_sent_at timestamptz null              -- the day the shop sent the order
   status varchar(20)  -- section 6
   status_reason varchar(40) null
   parser_id -> email_receipt_parsers ON DELETE SET NULL
@@ -233,9 +294,31 @@ email_receipts
   UNIQUE (mailbox_id, uid_validity, uid)        -- ingestion idempotency
 
 ai_review_requests (widened)
-  kind CHECK widened to ('transaction_review', 'email_receipt')
+  kind CHECK widened to ('transaction_review', 'email_receipt', 'email_parser_draft')
   email_receipt_id uuid null -> email_receipts ON DELETE SET NULL
+  transaction_id DROP NOT NULL, held by CHECK (kind = 'email_parser_draft' OR
+    transaction_id IS NOT NULL)
+  email_receipt_ids uuid[] null (<= 5)           -- email_parser_draft only, no FK
+  parser_domain varchar(255) null                -- email_parser_draft only
+  CHECK parser_draft_shape: an email_parser_draft has no transaction, 1..5 emails
+    and a domain; every other kind has neither new column
+  UNIQUE (user_id, parser_domain) WHERE kind = 'email_parser_draft' AND status
+    IN ('pending', 'claimed', 'proposed')
 ```
+
+A request of kind `email_parser_draft` is about emails, not a transaction. The
+existing partial unique index on `(transaction_id, rule_id)` still ignores it
+(NULL transaction ids are distinct). **At most one open parser-draft request per
+(user, sender domain)** is held by its own partial unique index on the new
+`parser_domain` column (a column rather than an advisory lock alone, so the rule
+is a constraint the database enforces and the inbox can show the domain after the
+emails are deleted). Creating one is a replace: under a transaction advisory lock
+on `<user>:<domain>` the open request for that sender is closed (`rejected`, or
+`expired` when it had run out) and the new one inserted, in one transaction, so
+asking again with a different selection never fails and two concurrent askers
+leave exactly one open request. A draft parser the earlier request already
+produced is not touched. The migrations are expand-only (`email_receipts` columns
+nullable; the CHECKs accept every row the previous release writes).
 
 The existing partial unique index on `(transaction_id, rule_id)` while a
 request is open is kept unchanged (its predicate is what the running
@@ -310,10 +393,12 @@ thing otherwise. The spec has the amount grammar and the truth table.
 ## 6. Pipeline and receipt states
 
 ```
-poll -> store (status pending)
-     -> choose parser: none -> no_parser
+poll -> store (status pending); a forwarded email is stored as the shop's
+        (decision 12)
+     -> choose parser (by the shop's domain): none -> no_parser
      -> parse: no total -> parse_failed
-     -> match: none -> unmatched (retried 30 days) | several -> ambiguous
+     -> match, window centred on original_sent_at ?? received_at:
+               none -> unmatched (retried 30 days) | several -> ambiguous
      -> propose: an open request exists -> review_conflict
                | proposal stored (status review)
      -> auto-apply (opt-in, section 3.7)
@@ -323,8 +408,23 @@ user -> link to a transaction (any state but ignored) -> propose
      -> recognize with AI (any AI mode; transaction chosen or confirmed)
         -> request pending, email in review, chat opened with the email
         -> the assistant claims it by id and submits -> proposed
-        (no provider: stays pending in the inbox for an agent)
+        (no provider, or a relay agent not connected: stays pending in the
+        inbox for an agent)
+user -> draft parser with AI (1 to 5 emails, any AI mode)
+        -> request email_parser_draft pending (no transaction, no email state
+           change), chat opened with the emails (or it waits in the inbox)
+        -> the assistant claims it by id, tests, save_draft -> proposed
+           (a DRAFT parser exists; it reads nothing)
+        -> the user approves the parser -> applied (same transaction)
+           the user deletes the parser -> dismissed
 ```
+
+The pipeline's first step under the receipt's row lock is the forwarded-identity
+heal (`healForwardedIdentity`): the stored text is read again and, when it holds a
+forwarded header block the columns do not yet reflect, `from_address`,
+`from_domain`, `subject`, `forwarded_by` and `original_sent_at` are brought up to
+date before the parser is chosen. It writes nothing for an email that is no
+forward or is already healed.
 
 `skipped` is a message larger than the size cap or that could not be decoded
 (`status_reason` says which). The receipts page derives the shown state of a
@@ -399,9 +499,13 @@ Module `backend/src/email-receipts/`:
 
 - `mailbox/`: entity, DTOs, `EmailReceiptMailboxService` (get view, upsert,
   delete, test connection), host policy.
-- `imap/`: `ImapMailboxClient` (the only file importing `imapflow`) and
+- `imap/`: `ImapMailboxClient` (the only file importing `imapflow`),
   `mail-text.util.ts` (the only file importing `mailparser`; HTML to text,
-  line normalisation, caps).
+  line normalisation, caps, and the HTML part kept for display),
+  `forwarded-message.ts` (pure: `detectForwardedOriginal`, the header block of a
+  forward in the text, bounded to the first 200 lines, no regular expression
+  built from input) and `forwarded-receipt.ts` (pure: the identity columns a
+  forward changes, idempotent; `effectiveReceiptDate`).
 - `parsing/`: definition types, validator, `parseReceipt(definition, subject,
   text)`, amount grammar. Pure.
 - `matching/`: `matchReceipt(parsed, candidates, parserPayeeId)`. Pure.
@@ -417,12 +521,38 @@ Module `backend/src/email-receipts/`:
   `email_receipt_parser` and `email_receipt_review`; the email text is
   sanitized, truncated and framed as untrusted data.
 - `EmailReceiptParsersService` + controller: CRUD, approve, test against a
-  stored receipt.
+  stored receipt, and `requestAiDraft` (`POST /email-receipt-parsers/draft-with-ai`
+  `{ receiptIds }`: 1 to 5 distinct emails of the user, none skipped; queues the
+  request, calls no provider). Approving a parser marks the `proposed`
+  parser-draft request that proposed it `applied`, deleting it dismisses that
+  request, each in the transaction of the change itself.
+- `EmailReceiptParserToolsService` (module `EmailReceiptParsersModule`, a leaf the
+  assistant's executor, the MCP server and `EmailReceiptsModule` all import, so
+  the AI module needs no edge to the receipts module): the logic of the shared AI
+  tool `email_receipt_parsers`. `categories` lists the user's category ids;
+  `test` reads 1 to 5 stored emails with an unsaved definition and returns what
+  each parsed (decimal amounts, category names, `valid` / `errors` /
+  `unknownCategoryIds` / `allComplete`), writing nothing; `save_draft` stores a
+  `draft` parser of source `ai` through the one validator (payee resolved with
+  `PayeesService.resolveByName`, never created), and when `requestId` names a
+  parser-draft request the caller claimed, marks it `proposed` with
+  `{ parserId }` in the same transaction (the request row is locked and checked
+  first, so a refusal has written nothing). It needs no confirmation card or write
+  cap, like `ai_review_requests` `submit`: a draft reads no mail until the user
+  approves it, and never touches the ledger (INV-RECEIPT-003).
+- The old synchronous `POST /email-receipts/:id/draft-parser` route is gone; the
+  poll's automatic mode still drafts internally (`EmailReceiptAiService.draftParser`).
 
 The AI review queue gains the `email_receipt` kind, `claimById`, and an
 `enqueueClaimed` producer; the MCP and assistant `claim` result carries the
 email (sender, subject, date, text up to 20,000 characters) for that kind, so
-an MCP agent can answer a receipt request too.
+an MCP agent can answer a receipt request too. The `email_parser_draft` kind has
+`enqueueParserDraft` (the replace under the advisory lock above), a claim that
+returns `emailReceipts: [{ id, fromAddress, subject, effectiveDate, text }]` (up
+to five, each text cut to 12,000 characters, the shop's day for a forward) and no
+transaction, and the generic `submit` refuses it (the tool is
+`email_receipt_parsers`). Every reader of a request tolerates a null
+`transaction_id` (the inbox listing, claim, expiry).
 
 Environment (operator, all optional): `EMAIL_RECEIPTS_MAX_MESSAGES_PER_POLL`
 (50), `EMAIL_RECEIPTS_MAX_MESSAGE_BYTES` (2,000,000),
@@ -439,11 +569,22 @@ section 3a.
   one per line, section markers, category rules, default and shipping
   category), a test panel against a stored receipt, approve and delete.
 - `/email-receipts` (Tools menu, owner only): the receipts table with state
-  badges and actions; a detail dialog with the text, the parsed result and the
-  candidates.
+  badges and actions (a checkbox column selects up to five emails; the selection
+  bar offers "Draft parser with AI (N)" and warns, without blocking, when the
+  selected emails have different sender domains; the row's own "Draft parser with
+  AI" is the inline action of an email no parser read and "Create parser" is in
+  the menu); a detail dialog with the email (HTML in the sandboxed frame by
+  default, an HTML / Text toggle, the note "Remote images are not loaded.", who
+  forwarded it and the shop's date), the parsed result and the candidates. The
+  transaction picker's From and To dates are editable (they start as the window
+  around the purchase date; the server accepts any linkable transaction of the
+  user whatever its date) and its empty message says the dates can be widened.
 - `/ai-reviews`: an `email_receipt` row shows the sender and subject instead of
   the rule name, and a `pending` one says it waits for an AI agent (with a link
-  to the AI settings).
+  to the AI settings). An `email_parser_draft` row reads "Parser draft from N
+  emails (domain)", says the same while `pending`, and once `proposed` says "Draft
+  parser ready" with a link to `/settings/email-receipts` where it is tested and
+  approved; it has no card and no transaction, and can be dismissed.
 - `/ai`: "Recognize with AI" opens the chat with the order email attached as
   `order-email-YYYY-MM-DD.txt` and the message typed in the composer
   (`/ai?handoff=<id>`, `lib/ai-chat-handoff.ts`: in memory, one entry per id,
@@ -459,7 +600,10 @@ section 3a.
 | Unit | `imap/*.spec.ts` | Read-only options, egress lookup passed, IP literal refused, source scan of write calls |
 | Unit | services | Lease, cursor, rematch window, auto-apply gate, AI modes, owner-only |
 | Integration | `email-receipts.integration.spec.ts` | Ingestion idempotency on the unique key; RLS isolation of the three tables; the widened kind CHECK |
-| Frontend | components | Settings form never shows the password; states and actions; inbox row for the new kind |
+| Frontend | components | Settings form never shows the password; states and actions; inbox row for the new kinds; the sandboxed HTML frame (empty `sandbox`, the policy meta first, never the page's DOM); the picker's editable range; the selection bar and both outcomes of drafting (chat opened, queued) |
+| Unit | `imap/forwarded-message.spec.ts` | Every client's header block, every date format and label language, bounds and linearity on hostile text |
+| Unit | `parsers/email-receipt-parser-tools.service.spec.ts` | `test` writes nothing, `save_draft` writes a draft only, claim and ownership checks before the write |
+| Integration | `email-receipts-pipeline.integration.spec.ts` | A forwarded email read by the shop's parser and matched on the purchase day; draft request, claim by id, tests, draft, proposed, approve, applied; another user sees none of it |
 
 ## 11. Deliberately left for later
 

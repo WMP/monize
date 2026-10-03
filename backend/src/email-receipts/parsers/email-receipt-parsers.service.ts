@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DataSource, EntityManager, QueryDeepPartialEntity } from "typeorm";
+import { DataSource, EntityManager, In, QueryDeepPartialEntity } from "typeorm";
+import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
 import { Payee } from "../../payees/entities/payee.entity";
@@ -13,6 +15,7 @@ import {
   matchReceipt,
   type ReceiptMatchResult,
 } from "../matching/match-receipt";
+import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
 import { parseReceipt } from "../parsing/parse-receipt";
 import type {
@@ -23,6 +26,8 @@ import {
   collectParserCategoryIds,
   validateReceiptParserDefinition,
 } from "../parsing/receipt-parser.validation";
+import { isReceiptDomain } from "./dto/receipt-domain.validator";
+import { RECEIPT_PARSER_DRAFT_INSTRUCTION } from "./parser-draft-instruction";
 import {
   ApproveEmailReceiptParserDto,
   CreateEmailReceiptParserDto,
@@ -40,6 +45,33 @@ import {
 
 /** A user holds at most this many parsers: the pipeline reads them all for each email. */
 export const MAX_PARSERS_PER_USER = 200;
+
+/** What "draft a parser with AI" answers: the request that now waits for an agent. */
+export interface ParserDraftRequestResult {
+  ok: true;
+  requestId: string;
+}
+
+/**
+ * The sender domain a parser draft is for: the most common non-empty domain of
+ * the emails (the first one named wins a tie). Emails of different senders may be
+ * selected together; the request is filed under the one most of them share.
+ */
+export function dominantSenderDomain(domains: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const domain of domains) {
+    if (domain !== "") counts.set(domain, (counts.get(domain) ?? 0) + 1);
+  }
+  let best = "";
+  let bestCount = 0;
+  for (const [domain, count] of counts) {
+    if (count > bestCount) {
+      best = domain;
+      bestCount = count;
+    }
+  }
+  return best;
+}
 
 /** What a parser test returns: the read, and what the matcher would do with it. */
 export interface EmailReceiptParserTestResult {
@@ -62,10 +94,19 @@ export interface EmailReceiptParserTestResult {
  * against a stored email without writing anything. A definition is validated by
  * the one validator the AI draft also passes; a payee or category the user does
  * not own is refused in the write's own transaction.
+ *
+ * It also queues "draft a parser with AI" requests (`requestAiDraft`, no
+ * provider call: an assistant or an MCP agent answers them with the
+ * `email_receipt_parsers` tool) and closes the loop on them: approving a draft
+ * marks the request that proposed it `applied`, and deleting it dismisses that
+ * request, each in the transaction of the change itself.
  */
 @Injectable()
 export class EmailReceiptParsersService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly requests: AiReviewRequestsService,
+  ) {}
 
   async list(userId: string): Promise<EmailReceiptParserView[]> {
     const rows = await withScopedDb(this.dataSource, (m) =>
@@ -179,11 +220,72 @@ export class EmailReceiptParsersService {
     return toParserView(row);
   }
 
+  /**
+   * Delete a parser. An open parser-draft request that proposed it is dismissed
+   * in the same transaction, so the inbox never offers a draft that is gone; a
+   * missing parser is a 404 that has written nothing (the throw rolls it back).
+   */
   async remove(userId: string, id: string): Promise<void> {
-    const deleted = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(EmailReceiptParser).delete({ id, userId }),
-    );
-    if (!deleted.affected) throw parserNotFound(id);
+    await withScopedDb(this.dataSource, async (m) => {
+      const deleted = await m
+        .getRepository(EmailReceiptParser)
+        .delete({ id, userId });
+      if (!deleted.affected) throw parserNotFound(id);
+      await this.requests.dismissParserDraftsFor(m, userId, id);
+    });
+  }
+
+  /**
+   * Queue a request for an assistant (or an MCP agent) to write a parser from
+   * 1 to 5 of the user's stored emails. No provider is called here: the request
+   * waits `pending` in the AI review inbox, and the receipts page opens the chat
+   * with the emails attached, or says it waits for an agent. ONE transaction holds
+   * every check and the write, so a refusal has written nothing: every email must
+   * be the user's (an email that is not is a 404, never read as absent) and must
+   * have been read (a `skipped` one has no text), and the sender domain they share
+   * must be a usable one. Several senders may be selected together; the request is
+   * filed under the most common one. At most one request is open per (user,
+   * domain): a new one replaces the open one (`enqueueParserDraft`).
+   */
+  async requestAiDraft(
+    userId: string,
+    receiptIds: readonly string[],
+  ): Promise<ParserDraftRequestResult> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const rows = await m.getRepository(EmailReceipt).find({
+        where: { userId, id: In([...receiptIds]) },
+        select: { id: true, fromDomain: true, status: true },
+      });
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      for (const id of receiptIds) {
+        if (!byId.has(id)) throw receiptNotFound(id);
+      }
+      if (rows.some((row) => row.status === "skipped")) {
+        throw new ConflictException(
+          tr(
+            "errors.emailReceipts.receiptSkipped",
+            "This email could not be read (it was too large or could not be decoded), so there is nothing to process.",
+          ),
+        );
+      }
+      const domain = dominantSenderDomain(
+        receiptIds.map((id) => byId.get(id)?.fromDomain ?? ""),
+      );
+      if (!isReceiptDomain(domain)) {
+        throw new BadRequestException(
+          tr(
+            "errors.emailReceipts.receiptNoSender",
+            "This email has no usable sender domain, so a parser cannot be drafted for it.",
+          ),
+        );
+      }
+      const request = await this.requests.enqueueParserDraft(m, userId, {
+        emailReceiptIds: receiptIds,
+        parserDomain: domain,
+        instruction: RECEIPT_PARSER_DRAFT_INSTRUCTION,
+      });
+      return { ok: true as const, requestId: request.id };
+    });
   }
 
   /**
@@ -221,6 +323,10 @@ export class EmailReceiptParsersService {
           revision: () => "revision + 1",
         },
       );
+      // The request an agent answered with this draft is done with it: applied in
+      // the same transaction as the approval, so the two commit or roll back
+      // together. Nothing matching is fine (a draft written by hand).
+      await this.requests.markParserDraftApplied(m, userId, id);
       return repo.findOneByOrFail({ id, userId });
     });
     return toParserView(row);
@@ -268,16 +374,19 @@ export class EmailReceiptParsersService {
         receipt.bodyText,
         payee?.defaultCategoryId ?? null,
       );
-      const receivedDate = receipt.receivedAt.toISOString().slice(0, 10);
+      // Centred on the day the shop sent the order when a forward carried it.
+      const purchaseDate = effectiveReceiptDate(receipt)
+        .toISOString()
+        .slice(0, 10);
       const candidates = await loadReceiptCandidates(
         m,
         userId,
-        receivedDate,
+        purchaseDate,
         receipt.id,
       );
       const match = matchReceipt(
         parsed,
-        receivedDate,
+        purchaseDate,
         candidates,
         payee?.id ?? null,
       );
@@ -323,6 +432,12 @@ function validDefinition(input: unknown): ReceiptParserDefinition {
 }
 
 const unique = (values: readonly string[]): string[] => [...new Set(values)];
+
+function receiptNotFound(id: string): NotFoundException {
+  return new NotFoundException(
+    tr("errors.emailReceipts.receiptNotFound", `Email ${id} not found`, { id }),
+  );
+}
 
 function parserNotFound(id: string): NotFoundException {
   return new NotFoundException(

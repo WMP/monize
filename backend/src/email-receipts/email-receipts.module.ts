@@ -18,7 +18,7 @@ import { EmailReceiptOAuthService } from "./oauth/email-receipt-oauth.service";
 import { EmailReceiptOAuthConfig } from "./oauth/oauth-config.service";
 import { OAuthTokenClient } from "./oauth/oauth-token.client";
 import { EmailReceiptParsersController } from "./parsers/email-receipt-parsers.controller";
-import { EmailReceiptParsersService } from "./parsers/email-receipt-parsers.service";
+import { EmailReceiptParsersModule } from "./parsers/email-receipt-parsers.module";
 import { EmailReceiptPipelineService } from "./pipeline/email-receipt-pipeline.service";
 import { EmailReceiptPollService } from "./poll/email-receipt-poll.service";
 import { EmailReceiptsController } from "./receipts/email-receipts.controller";
@@ -54,6 +54,8 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     AiReviewModule,
     AiReviewQueueModule,
     TransactionsModule,
+    // The parsers service and the shared `email_receipt_parsers` tool logic.
+    EmailReceiptParsersModule,
   ],
   controllers: [
     EmailReceiptMailboxController,
@@ -71,7 +73,6 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     EmailReceiptPipelineService,
     EmailReceiptPollService,
     EmailReceiptsService,
-    EmailReceiptParsersService,
     EmailReceiptAiService,
   ],
   exports: [EmailReceiptMailboxService, ImapMailboxClient],

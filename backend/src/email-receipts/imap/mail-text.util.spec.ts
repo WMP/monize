@@ -2,6 +2,7 @@ import {
   extractMailText,
   MAIL_TEXT_MAX_BODY_CHARS,
   MAIL_TEXT_MAX_FROM_ADDRESS_CHARS,
+  MAIL_TEXT_MAX_HTML_CHARS,
   MAIL_TEXT_MAX_MESSAGE_ID_CHARS,
   MAIL_TEXT_MAX_SUBJECT_CHARS,
   stripControlCharacters,
@@ -241,6 +242,7 @@ describe("extractMailText", () => {
       subject: "bare",
       date: null,
       text: "",
+      html: null,
     });
   });
 
@@ -253,6 +255,89 @@ describe("extractMailText", () => {
     );
 
     expect(result.date).toBeNull();
+  });
+});
+
+describe("extractMailText: the HTML part", () => {
+  const boundary = "BOUNDARY-H";
+  const alternative = (plain: string, html: string): Buffer =>
+    mime(
+      [...BASE, `Content-Type: multipart/alternative; boundary="${boundary}"`],
+      [
+        `--${boundary}`,
+        "Content-Type: text/plain; charset=utf-8",
+        "",
+        plain,
+        `--${boundary}`,
+        "Content-Type: text/html; charset=utf-8",
+        "",
+        html,
+        `--${boundary}--`,
+        "",
+      ].join("\r\n"),
+    );
+
+  it("keeps the HTML part of an alternative message beside its text", async () => {
+    const result = await extractMailText(
+      alternative("Plain total 12.00", "<p>HTML total <b>99.00</b></p>"),
+    );
+
+    expect(result.text).toContain("Plain total 12.00");
+    expect(result.html).toContain("<b>99.00</b>");
+  });
+
+  it("keeps the HTML of an HTML-only message, and derives the text from it", async () => {
+    const result = await extractMailText(
+      mime(
+        [...BASE, "Content-Type: text/html; charset=utf-8"],
+        "<html><body><p>Order total: <b>31.40</b></p></body></html>",
+      ),
+    );
+
+    expect(result.html).toContain("<b>31.40</b>");
+    expect(result.text).toContain("Order total: 31.40");
+  });
+
+  it("has no html for a plain text message", async () => {
+    const result = await extractMailText(
+      mime([...BASE, "Content-Type: text/plain; charset=utf-8"], "Total 5.00"),
+    );
+
+    expect(result.html).toBeNull();
+  });
+
+  it("strips control characters from the HTML but keeps its line breaks", async () => {
+    const result = await extractMailText(
+      alternative("x", "<p>a\u0000b\u0007c</p>\r\n<p>d</p>"),
+    );
+
+    expect(result.html).not.toContain("\u0000");
+    expect(result.html).not.toContain("\u0007");
+    expect(result.html).toContain("abc</p>\n<p>d</p>");
+  });
+
+  it("caps the HTML at its column bound", async () => {
+    const result = await extractMailText(
+      mime(
+        [...BASE, "Content-Type: text/html; charset=utf-8"],
+        `<p>${"y".repeat(MAIL_TEXT_MAX_HTML_CHARS - 20)}</p>`,
+      ),
+    );
+
+    expect(result.html).not.toBeNull();
+    expect((result.html as string).length).toBeLessThanOrEqual(
+      MAIL_TEXT_MAX_HTML_CHARS,
+    );
+  });
+
+  it("leaves a script tag as text for the sandbox to refuse: nothing is run or removed here", async () => {
+    const result = await extractMailText(
+      alternative("x", "<p>hi</p><script>alert(1)</script>"),
+    );
+
+    // The HTML is data for a script-less, network-less frame, not sanitised
+    // here: an attempt to clean it would be a second, weaker defence.
+    expect(result.html).toContain("<script>alert(1)</script>");
   });
 });
 

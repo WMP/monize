@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { McpServer } from "@modelcontextprotocol/server";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import { AI_REVIEW_PARSER_DRAFT_GUIDANCE } from "../../ai-review/ai-review-work.types";
 import { aiReviewRequestsFields } from "../../ai/query/tool-input-schemas";
 import { stripHtml } from "../../common/sanitization.util";
 import {
@@ -89,7 +90,13 @@ export class McpAiReviewTools {
             );
             return toolResult(
               claimed.request
-                ? { ...claimed, message: CLAIM_GUIDANCE }
+                ? {
+                    ...claimed,
+                    message:
+                      claimed.request.kind === "email_parser_draft"
+                        ? AI_REVIEW_PARSER_DRAFT_GUIDANCE
+                        : CLAIM_GUIDANCE,
+                  }
                 : { request: null, message: "No pending AI review requests." },
             );
           }

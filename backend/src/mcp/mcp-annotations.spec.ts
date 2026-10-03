@@ -10,6 +10,9 @@ const WRITE_TOOLS = new Set([
   // Claims, proposes and releases queue rows; the ledger is written only by the
   // user's approval elsewhere, so it is a write tool that is not destructive.
   "ai_review_requests",
+  // Reads stored emails and saves a DRAFT parser (it reads no mail until the
+  // user approves it); never the ledger, so a write tool that is not destructive.
+  "email_receipt_parsers",
 ]);
 // Write tools whose repeated calls converge to the same state.
 const IDEMPOTENT_WRITES = new Set<string>([]);
@@ -24,7 +27,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   "manage_transaction_rules",
 ]);
 
-const EXPECTED_TOOL_COUNT = 22;
+const EXPECTED_TOOL_COUNT = 23;
 
 describe("MCP tool spec compliance", () => {
   const configs = collectToolConfigs();

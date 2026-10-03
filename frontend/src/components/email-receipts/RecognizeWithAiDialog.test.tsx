@@ -6,11 +6,13 @@ import { makeDetail, makeReceipt } from './email-receipts-fixtures';
 import { peekChatHandoff } from '@/lib/ai-chat-handoff';
 
 const api = vi.hoisted(() => ({ askAi: vi.fn(), get: vi.fn() }));
+const assistant = vi.hoisted(() => ({ canAnswer: vi.fn() }));
 const txApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: { receipts: { askAi: api.askAi, get: api.get } },
 }));
+vi.mock('@/lib/assistant-ready', () => ({ assistantCanAnswerNow: assistant.canAnswer }));
 vi.mock('@/lib/transactions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/transactions')>()),
   transactionsApi: txApi,
@@ -34,9 +36,9 @@ const pickerTx = (id: string, payee: string) => ({
   isVoid: false,
 });
 
-async function open(receipt = makeReceipt({ id: 'r-1', subject: 'Order 123', status: 'review', displayState: 'dismissed', transaction: tx }), assistantReady = true) {
+async function open(receipt = makeReceipt({ id: 'r-1', subject: 'Order 123', status: 'review', displayState: 'dismissed', transaction: tx })) {
   await act(async () => {
-    render(<RecognizeWithAiDialog receipt={receipt} assistantReady={assistantReady} onClose={onClose} onChanged={onChanged} />);
+    render(<RecognizeWithAiDialog receipt={receipt} onClose={onClose} onChanged={onChanged} />);
   });
   await act(async () => {});
 }
@@ -60,6 +62,7 @@ const handoffIdFromPush = (): string => {
 describe('RecognizeWithAiDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    assistant.canAnswer.mockResolvedValue(true);
     api.askAi.mockResolvedValue({ ok: true, requestId: 'req-1', transactionId: 'tx-1' });
     api.get.mockResolvedValue(
       makeDetail({
@@ -67,6 +70,7 @@ describe('RecognizeWithAiDialog', () => {
         subject: 'Order 123',
         fromAddress: 'orders@allegro.pl',
         receivedAt: '2026-09-10T10:00:00.000Z',
+        effectiveDate: '2026-09-10T10:00:00.000Z',
         bodyText: 'Widget 12.00\nOrder total: 25.00',
         transaction: tx,
         candidates: [
@@ -180,7 +184,8 @@ describe('RecognizeWithAiDialog', () => {
 
   describe('the outcomes', () => {
     it('with no assistant that can answer, says the request is queued for an agent and links to the inbox, opening no chat', async () => {
-      await open(undefined, false);
+      assistant.canAnswer.mockResolvedValue(false);
+      await open();
       await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Recognize with AI' }));
 
       expect(screen.getByRole('status')).toHaveTextContent('Queued: no AI assistant is available');
@@ -190,6 +195,18 @@ describe('RecognizeWithAiDialog', () => {
       expect(api.get).not.toHaveBeenCalled();
       expect(onChanged).toHaveBeenCalledTimes(1);
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('decides whether the assistant can answer AFTER the request is queued, so a relay agent that is not connected still leaves the request waiting', async () => {
+      // A configured provider is not enough: the user's MCP relay agent is offline.
+      assistant.canAnswer.mockResolvedValue(false);
+      await open();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Recognize with AI' }));
+
+      expect(api.askAi.mock.invocationCallOrder[0]).toBeLessThan(assistant.canAnswer.mock.invocationCallOrder[0]);
+      expect(onChanged).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('status')).toHaveTextContent('Queued');
+      expect(router.push).not.toHaveBeenCalled();
     });
 
     it('says the request is queued when the email could not be read for the chat, and opens no chat', async () => {

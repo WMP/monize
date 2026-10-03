@@ -438,6 +438,151 @@ describe("EmailReceiptPipelineService.process", () => {
     });
   });
 
+  describe("a forwarded email (the user forwarded the shop's mail from their own address)", () => {
+    /** Forwarded 31 days after the purchase: the forward's own date is Sep 10. */
+    const FORWARDED_BODY = [
+      "Please file this one.",
+      "",
+      "---------- Forwarded message ---------",
+      "From: Example Shop <orders@shop.example.com>",
+      "Date: Mon, Aug 10, 2026 at 10:15 AM",
+      "Subject: Your order ABCD1234",
+      "To: <alice.example@example.com>",
+      "",
+      BODY,
+    ].join("\n");
+    const forwarded = (over: Partial<EmailReceipt> = {}) =>
+      receiptRow({
+        fromAddress: "alice.example@gmail.example.com",
+        fromDomain: "gmail.example.com",
+        subject: "Fwd: Your order ABCD1234",
+        bodyText: FORWARDED_BODY,
+        forwardedBy: null,
+        originalSentAt: null,
+        ...over,
+      });
+    const identityUpdates = (h: ReturnType<typeof setup>) =>
+      h.receiptRepo.update.mock.calls.filter(
+        ([, patch]) => "fromAddress" in patch,
+      );
+
+    it("heals the identity from the stored text: the shop, its subject, its day, and the forwarder kept", async () => {
+      const h = setup({ receipt: forwarded() });
+
+      await run(h);
+
+      expect(identityUpdates(h)).toEqual([
+        [
+          { id: RECEIPT, userId: USER },
+          {
+            fromAddress: "orders@shop.example.com",
+            fromDomain: "shop.example.com",
+            subject: "Your order ABCD1234",
+            forwardedBy: "alice.example@gmail.example.com",
+            originalSentAt: new Date("2026-08-10T10:15:00.000Z"),
+          },
+        ],
+      ]);
+    });
+
+    it("selects the parser by the shop's domain, not the forwarder's", async () => {
+      const h = setup({
+        receipt: forwarded(),
+        candidates: [candidate({ transaction_date: "2026-08-12" })],
+      });
+
+      const result = await run(h);
+
+      // gmail.example.com has no parser; shop.example.com does.
+      expect(result.status).toBe("review");
+      expect(h.lastUpdate()?.[1]).toMatchObject({ parserId: "parser-1" });
+    });
+
+    it("does not match a transaction dated near the forward when the purchase was a month earlier", async () => {
+      // The default candidate is dated Sep 11, the day after the forward.
+      const h = setup({ receipt: forwarded() });
+
+      const result = await run(h);
+
+      expect(result.status).toBe("unmatched");
+    });
+
+    it("centres the match window on the purchase day, not the day it was forwarded", async () => {
+      const h = setup({ receipt: forwarded(), candidates: [] });
+
+      await run(h);
+
+      const [, params] = h.manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("JOIN accounts a"),
+      ) as [string, unknown[]];
+      // Aug 10 minus 3 days, plus 14 days: not Sep 7 to Sep 24.
+      expect(params).toEqual([USER, "2026-08-07", "2026-08-24", RECEIPT, 200]);
+    });
+
+    it("a row already healed is not rewritten", async () => {
+      const h = setup({
+        receipt: forwarded({
+          fromAddress: "orders@shop.example.com",
+          fromDomain: "shop.example.com",
+          subject: "Your order ABCD1234",
+          forwardedBy: "alice.example@gmail.example.com",
+          originalSentAt: new Date("2026-08-10T10:15:00.000Z"),
+        }),
+      });
+
+      await run(h);
+
+      expect(identityUpdates(h)).toHaveLength(0);
+    });
+
+    it("an email that is no forward is never touched", async () => {
+      const h = setup();
+
+      await run(h);
+
+      expect(identityUpdates(h)).toHaveLength(0);
+    });
+
+    it("an original date later than the forward is dropped, and the arrival day is used", async () => {
+      const h = setup({
+        receipt: forwarded({
+          bodyText: FORWARDED_BODY.replace("Aug 10, 2026", "Dec 10, 2026"),
+        }),
+        candidates: [],
+      });
+
+      await run(h);
+
+      expect(identityUpdates(h)[0][1].originalSentAt).toBeNull();
+      const [, params] = h.manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("JOIN accounts a"),
+      ) as [string, unknown[]];
+      expect(params[1]).toBe("2026-09-07");
+    });
+
+    it("heals on reprocess an email stored before forwards were understood", async () => {
+      const h = setup({
+        receipt: forwarded({ status: "no_parser" }),
+        candidates: [candidate({ transaction_date: "2026-08-12" })],
+      });
+
+      const result = await h.service.process(USER, RECEIPT);
+
+      expect(result.status).toBe("review");
+      expect(identityUpdates(h)).toHaveLength(1);
+    });
+
+    it("heals before anything is refused for the state, so a refusal that wrote nothing stays that way", async () => {
+      const h = setup({
+        receipt: forwarded({ status: "skipped" }),
+      });
+
+      await expect(run(h)).rejects.toBeInstanceOf(ConflictException);
+
+      expect(h.receiptRepo.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe("proposing", () => {
     it("a match is proposed through the queue and stored as review, all in one transaction", async () => {
       const h = setup();

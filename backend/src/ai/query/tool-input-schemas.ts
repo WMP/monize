@@ -17,6 +17,10 @@ import {
   AI_REVIEW_OPERATIONS,
   MAX_AI_REVIEW_TOOL_LIST_LIMIT,
 } from "../../ai-review/ai-review-work.types";
+import {
+  EMAIL_RECEIPT_PARSER_OPERATIONS,
+  EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS,
+} from "../../email-receipts/parsers/parser-tool.guide";
 import { TRANSACTION_SORT_FIELDS } from "../../transactions/register-order";
 import { RULE_ACTIONS_HELP, RULE_CONDITION_HELP } from "./rule-language";
 import { RULE_TRIGGERS } from "../../transaction-rules/rule-trigger.types";
@@ -923,6 +927,70 @@ export const aiReviewRequestsSchema = aiReviewRequestsFields.superRefine(
   },
 );
 
+/**
+ * The object half of `email_receipt_parsers`, exported so the MCP tool reuses
+ * the fields. The parser language is taught once, in the tool's description
+ * (`parser-tool.guide.ts`); the fields are described only by what they hold.
+ * The definition is checked by the one parser validator when it is used, which
+ * reports every problem as a path and a code, so its shape is not repeated here.
+ */
+export const emailReceiptParsersFields = z.object({
+  operation: z.enum(EMAIL_RECEIPT_PARSER_OPERATIONS),
+  definition: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("test, save_draft: the parser."),
+  receiptIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS)
+    .optional()
+    .describe("test: stored emails."),
+  requestId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe("save_draft: the claimed request."),
+  name: z.string().max(100).optional(),
+  fromDomains: z
+    .array(z.string().max(253))
+    .min(1)
+    .max(10)
+    .optional()
+    .describe("save_draft: sender domains."),
+  subjectContains: z
+    .array(z.string().max(100))
+    .max(10)
+    .optional()
+    .describe("save_draft: the subject must contain one."),
+  payeeName: z.string().max(100).optional(),
+});
+
+export const emailReceiptParsersSchema = emailReceiptParsersFields.superRefine(
+  (value, ctx) => {
+    const need = (field: string, message: string): void => {
+      ctx.addIssue({ code: "custom", path: [field], message });
+    };
+    if (value.operation === "test") {
+      if (value.definition === undefined) {
+        need("definition", "definition is required.");
+      }
+      if (value.receiptIds === undefined) {
+        need("receiptIds", "receiptIds is required: name 1 to 5 emails.");
+      }
+    }
+    if (value.operation === "save_draft") {
+      if (value.definition === undefined) {
+        need("definition", "definition is required.");
+      }
+      if (!value.name?.trim()) need("name", "name is required.");
+      if (value.fromDomains === undefined) {
+        need("fromDomains", "fromDomains is required.");
+      }
+    }
+  },
+);
+
 export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transactions: listTransactionsSchema,
   list_accounts: listAccountsSchema,
@@ -945,6 +1013,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transaction_rules: listTransactionRulesSchema,
   manage_transaction_rules: manageTransactionRulesSchema,
   ai_review_requests: aiReviewRequestsSchema,
+  email_receipt_parsers: emailReceiptParsersSchema,
 };
 
 /**

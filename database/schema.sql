@@ -763,6 +763,9 @@ CREATE TABLE email_receipts (
     subject VARCHAR(500) NOT NULL,
     received_at TIMESTAMPTZ NOT NULL,
     body_text TEXT NOT NULL,
+    body_html TEXT,
+    forwarded_by VARCHAR(320),
+    original_sent_at TIMESTAMPTZ,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     status_reason VARCHAR(40),
     parser_id UUID REFERENCES email_receipt_parsers(id) ON DELETE SET NULL,
@@ -776,6 +779,8 @@ CREATE TABLE email_receipts (
     CONSTRAINT uq_email_receipts_message UNIQUE (mailbox_id, uid_validity, uid),
     CONSTRAINT ck_email_receipts_body_length
       CHECK (char_length(body_text) <= 100000),
+    CONSTRAINT ck_email_receipts_body_html_length
+      CHECK (body_html IS NULL OR char_length(body_html) <= 1000000),
     CONSTRAINT ck_email_receipts_status
       CHECK (status IN ('pending', 'skipped', 'no_parser', 'parse_failed',
                         'unmatched', 'ambiguous', 'review_conflict', 'review',
@@ -807,12 +812,18 @@ CREATE INDEX idx_email_receipt_parsers_payee
 -- (transaction_id, rule_id): the partial unique index is the dedupe. rule_id is
 -- nullable, and NULLs are distinct there, so a manual request is not deduped
 -- (NULLS NOT DISTINCT would make deleting a rule fail on two open requests).
+-- A request of kind email_parser_draft (email-receipts design section 6) asks an
+-- agent to write a receipt parser from up to five stored emails of one sender: it
+-- has no transaction, names its emails in email_receipt_ids (no foreign key: an
+-- array has none) and its sender domain in parser_domain, and at most one is open
+-- per (user, domain). NULL transaction ids are distinct in the open-request index
+-- above, so it never conflicts there.
 -- The defaults on kind, status and expires_at exist for the RLS spec's generic
 -- row seeder.
 CREATE TABLE ai_review_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
     rule_id UUID REFERENCES transaction_rules(id) ON DELETE SET NULL,
     kind VARCHAR(40) NOT NULL DEFAULT 'transaction_review',
     instruction TEXT NOT NULL,
@@ -824,8 +835,26 @@ CREATE TABLE ai_review_requests (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '30 days',
     email_receipt_id UUID REFERENCES email_receipts(id) ON DELETE SET NULL,
+    email_receipt_ids UUID[],
+    parser_domain VARCHAR(255),
     CONSTRAINT ck_ai_review_requests_kind
-      CHECK (kind IN ('transaction_review', 'email_receipt')),
+      CHECK (kind IN ('transaction_review', 'email_receipt', 'email_parser_draft')),
+    CONSTRAINT ck_ai_review_requests_email_receipt_ids
+      CHECK (email_receipt_ids IS NULL OR cardinality(email_receipt_ids) <= 5),
+    CONSTRAINT ck_ai_review_requests_transaction_required
+      CHECK (kind = 'email_parser_draft' OR transaction_id IS NOT NULL),
+    CONSTRAINT ck_ai_review_requests_parser_draft_shape
+      CHECK (
+        (kind = 'email_parser_draft'
+          AND transaction_id IS NULL
+          AND email_receipt_ids IS NOT NULL
+          AND cardinality(email_receipt_ids) >= 1
+          AND parser_domain IS NOT NULL)
+        OR
+        (kind <> 'email_parser_draft'
+          AND email_receipt_ids IS NULL
+          AND parser_domain IS NULL)
+      ),
     CONSTRAINT ck_ai_review_requests_instruction_length
       CHECK (char_length(instruction) BETWEEN 1 AND 1000),
     CONSTRAINT ck_ai_review_requests_status
@@ -845,6 +874,9 @@ CREATE UNIQUE INDEX uq_ai_review_requests_open
     WHERE status IN ('pending', 'claimed', 'proposed');
 CREATE INDEX idx_ai_review_requests_email_receipt
     ON ai_review_requests(email_receipt_id) WHERE email_receipt_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_ai_review_requests_parser_draft_open
+    ON ai_review_requests(user_id, parser_domain)
+    WHERE kind = 'email_parser_draft' AND status IN ('pending', 'claimed', 'proposed');
 
 -- Securities (stocks, bonds, mutual funds, ETFs)
 -- Defined before scheduled_transactions because that table (and others below)

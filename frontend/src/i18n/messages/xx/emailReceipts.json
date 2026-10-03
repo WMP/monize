@@ -85,17 +85,17 @@
       "folderLabel": "[XX-Folder-XX]",
       "folderHelp": "[XX-The folder to read. It is opened read-only.-XX]",
       "enabledLabel": "[XX-Read the mailbox automatically-XX]",
-      "enabledHelp": "[XX-When on, the mailbox is polled every 15 minutes. You can always use Poll now.-XX]",
+      "enabledHelp": "[XX-Controls only the automatic reading: when on, Monize reads the mailbox every 15 minutes. Turning it off does not disconnect the mailbox, and Poll now reads it whether this is on or off.-XX]",
       "aiModeLabel": "[XX-AI mode-XX]",
-      "aiModeHelp": "[XX-Whether the AI provider you configured may be used on receipts. An AI answer is always a proposal or a draft that you approve.-XX]",
+      "aiModeHelp": "[XX-Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Draft parser with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.-XX]",
       "aiModes": {
         "off": "[XX-Off-XX]",
         "on_demand": "[XX-On demand-XX]",
         "automatic": "[XX-Automatic-XX]"
       },
       "aiModeDescriptions": {
-        "off": "[XX-The AI is never called for receipts.-XX]",
-        "on_demand": "[XX-The AI is called only when you press Recognize with AI or Draft parser with AI.-XX]",
+        "off": "[XX-The poll never calls the AI for receipts.-XX]",
+        "on_demand": "[XX-The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Draft parser with AI.-XX]",
         "automatic": "[XX-The poll asks the AI about a matched receipt that no approved parser could read completely, and drafts a parser for a sender that has none.-XX]"
       },
       "autoApplyLabel": "[XX-Apply proposals automatically-XX]",
@@ -108,7 +108,8 @@
       "lastError": "[XX-Last error: {error}-XX]",
       "lastErrorAt": "[XX-Last error ({at}): {error}-XX]",
       "pollNow": "[XX-Poll now-XX]",
-      "pollResult": "[XX-Poll finished: {fetched, plural, one {# email stored} other {# emails stored}}, {skipped} skipped, {processed} processed.-XX]",
+      "pollResult": "[XX-Poll finished: {fetched, plural, one {# email saved} other {# emails saved}}, {skipped} skipped, {processed} processed.-XX]",
+      "pollResultLink": "[XX-View the saved emails-XX]",
       "pollFailed": "[XX-The poll failed-XX]",
       "deleteButton": "[XX-Delete mailbox-XX]",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "[XX-Try again-XX]"
     },
     "draftNote": "[XX-This parser is a draft. It reads nothing until you approve it.-XX]",
-    "draftAiNote": "[XX-The AI drafted this parser from one sample email. Check every pattern against your emails, then approve it from the list. It reads nothing until you do.-XX]",
+    "draftAiNote": "[XX-The AI drafted this parser from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.-XX]",
     "identityHeading": "[XX-Which emails it reads-XX]",
     "nameLabel": "[XX-Name-XX]",
     "payeeLabel": "[XX-Payee-XX]",
@@ -349,6 +350,7 @@
       "ignored": "[XX-Ignored-XX]"
     },
     "columns": {
+      "select": "[XX-Select-XX]",
       "received": "[XX-Received-XX]",
       "email": "[XX-Email-XX]",
       "transaction": "[XX-Transaction-XX]",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "[XX-Email reprocessed-XX]",
       "reprocessFailed": "[XX-Could not reprocess the email-XX]",
-      "draftFailed": "[XX-Could not draft a parser-XX]",
       "ignored": "[XX-Email ignored-XX]",
       "ignoreFailed": "[XX-Could not ignore the email-XX]",
       "deleted": "[XX-Email deleted-XX]",
       "deleteFailed": "[XX-Could not delete the email-XX]"
-    },
-    "notices": {
-      "draftCreated": "[XX-The AI drafted the parser {name}. It reads nothing until you review and approve it.-XX]",
-      "draftLink": "[XX-Review it in the parser settings-XX]"
     },
     "ignoreDialog": {
       "title": "[XX-Ignore this email?-XX]",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "[XX-Delete this email?-XX]",
       "message": "[XX-The stored email {subject} will be deleted and its open review request dismissed. The message in the mailbox is not touched, and a later poll will not fetch it again.-XX]"
+    },
+    "selection": {
+      "label": "[XX-Selected emails-XX]",
+      "select": "[XX-Select {subject}-XX]",
+      "count": "[XX-{count, plural, one {# email selected} other {# emails selected}} (at most {max})-XX]",
+      "draftButton": "[XX-Draft parser with AI ({count})-XX]",
+      "clear": "[XX-Clear selection-XX]",
+      "differentSenders": "[XX-The selected emails come from different senders ({domains}). A parser reads one sender's emails, so select emails from one sender.-XX]"
+    },
+    "draft": {
+      "failed": "[XX-Could not start drafting a parser-XX]",
+      "queued": "[XX-Queued: the request waits in the AI review inbox for an agent. No assistant is available to answer now.-XX]",
+      "handoffFailed": "[XX-The request is queued, but the emails could not be opened in the chat. It waits in the AI review inbox for an agent.-XX]",
+      "inboxLink": "[XX-Open the AI review inbox-XX]",
+      "opened": "[XX-Opened the chat with the emails attached. Read the message and press Send.-XX]",
+      "chatPrompt": "[XX-Build an email receipt parser for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your parser on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}.-XX]"
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "[XX-From-XX]",
     "received": "[XX-Received-XX]",
+    "forwardedBy": "[XX-Forwarded by-XX]",
+    "originalSent": "[XX-Sent by the shop-XX]",
     "subject": "[XX-Subject-XX]",
     "state": "[XX-State-XX]",
     "parser": "[XX-Parser-XX]",
@@ -453,28 +468,39 @@
     "linkButton": "[XX-Link to this transaction-XX]",
     "linked": "[XX-Email linked to the transaction-XX]",
     "linkFailed": "[XX-Could not link the email-XX]",
-    "textHeading": "[XX-Email text-XX]",
+    "bodyHeading": "[XX-Email-XX]",
     "textLabel": "[XX-Text of the email-XX]",
-    "noText": "[XX-The email has no text.-XX]"
+    "noText": "[XX-The email has no text.-XX]",
+    "bodyView": {
+      "label": "[XX-Show the email as-XX]",
+      "html": "[XX-HTML-XX]",
+      "text": "[XX-Text-XX]"
+    },
+    "remoteImagesNote": "[XX-Remote images are not loaded.-XX]",
+    "htmlFrameTitle": "[XX-The email as its sender formatted it-XX]"
   },
   "picker": {
     "heading": "[XX-Choose the transaction-XX]",
-    "help": "[XX-No transaction was matched automatically. These are your transactions from {from} to {to}, the days around the email. Choose the one it paid for.-XX]",
+    "help": "[XX-No transaction was matched automatically. These are your transactions in the date range below, which starts as the days around the purchase. Choose the one it paid for, or change the dates to look further.-XX]",
+    "fromLabel": "[XX-From-XX]",
+    "toLabel": "[XX-To-XX]",
     "searchLabel": "[XX-Search-XX]",
     "searchPlaceholder": "[XX-Payee, description or amount-XX]",
     "searchButton": "[XX-Search-XX]",
     "loading": "[XX-Loading transactions-XX]",
     "error": "[XX-The transactions could not be loaded.-XX]",
     "retry": "[XX-Try again-XX]",
-    "empty": "[XX-You have no transactions in this period that can be linked.-XX]",
-    "emptySearch": "[XX-No transaction in this period matches the search.-XX]",
+    "empty": "[XX-You have no transactions in this period that can be linked. You can widen the dates above to look further.-XX]",
+    "emptySearch": "[XX-No transaction in this period matches the search. You can widen the dates above.-XX]",
+    "rangeReversed": "[XX-The From date is after the To date.-XX]",
+    "rangeIncomplete": "[XX-Enter both dates to list transactions.-XX]",
     "row": "[XX-{date}, {amount}, {payee}-XX]",
     "noPayee": "[XX-no payee-XX]",
     "linkButton": "[XX-Link-XX]",
     "hasMore": "[XX-Only the first {count} are shown. Use the search to narrow the list.-XX]",
     "ai": {
       "heading": "[XX-Choose the transaction for the AI-XX]",
-      "help": "[XX-These are your transactions from {from} to {to}, the days around the email. Choose the one the AI should split by the products in the email.-XX]",
+      "help": "[XX-These are your transactions in the date range below, which starts as the days around the purchase. Choose the one the AI should split by the products in the email, or change the dates to look further.-XX]",
       "linkButton": "[XX-Use this transaction-XX]"
     }
   },

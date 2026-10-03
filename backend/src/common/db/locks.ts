@@ -90,6 +90,13 @@ export enum LockScope {
    * serializes here instead.
    */
   AiReviewRequests = 5,
+  /**
+   * The open parser-draft review request of one (user, sender domain) (id =
+   * `<userId>:<domain>`): creating one first closes the open one for the same
+   * sender, and two creators queue behind one another here before the partial
+   * unique index would refuse the second.
+   */
+  AiParserDraftRequests = 6,
 }
 
 /**

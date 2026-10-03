@@ -6,9 +6,10 @@ export { stripControlCharacters };
 
 /**
  * One fetched message as the receipts pipeline stores it: headers reduced to the
- * fields the pipeline uses and the body reduced to text. The raw MIME source and
- * the HTML are not kept (design 3.9). This is the ONLY file that imports
- * `mailparser` (`imap-source-scan.spec.ts` holds that).
+ * fields the pipeline uses and the body reduced to text. The raw MIME source is
+ * not kept (design 3.9); the HTML part is, for display only (`html`). This is
+ * the ONLY file that imports `mailparser` (`imap-source-scan.spec.ts` holds
+ * that).
  */
 export interface ExtractedMailText {
   /** The Message-ID header, or null. */
@@ -21,10 +22,19 @@ export interface ExtractedMailText {
   /** The Date header, or null when absent or unreadable. */
   date: Date | null;
   text: string;
+  /**
+   * The HTML part as the sender wrote it, control characters stripped and cut to
+   * `MAIL_TEXT_MAX_HTML_CHARS`, or null when the message has none. It is data for
+   * display only: shown in a sandboxed frame that runs nothing and loads nothing,
+   * never parsed, searched or sent to a model. `text` stays the one body every
+   * parser and prompt reads.
+   */
+  html: string | null;
 }
 
 /** The bounds the `email_receipts` columns and CHECK enforce. */
 export const MAIL_TEXT_MAX_BODY_CHARS = 100_000;
+export const MAIL_TEXT_MAX_HTML_CHARS = 1_000_000;
 export const MAIL_TEXT_MAX_SUBJECT_CHARS = 500;
 export const MAIL_TEXT_MAX_FROM_ADDRESS_CHARS = 320;
 export const MAIL_TEXT_MAX_FROM_DOMAIN_CHARS = 255;
@@ -98,12 +108,23 @@ async function bodyText(parsed: ParsedMail): Promise<string> {
   return "";
 }
 
+/** The HTML part, bounded and stripped of control characters, or null when there is none. */
+function bodyHtml(parsed: ParsedMail): string | null {
+  if (typeof parsed.html !== "string" || parsed.html.trim() === "") return null;
+  const html = cap(
+    stripControlCharacters(parsed.html),
+    MAIL_TEXT_MAX_HTML_CHARS,
+  );
+  return html.trim() === "" ? null : html;
+}
+
 /**
- * Read a fetched message's headers and body text. Plain text wins; HTML-only
- * mail is converted to text; nothing else is kept. Every value is bounded to its
- * column and stripped of control characters, because this text is data from
- * whoever wrote to the mailbox. Rejects when the message cannot be parsed, which
- * the pipeline records as a skipped message.
+ * Read a fetched message's headers and body. Plain text wins as the text; HTML-
+ * only mail is converted to text; the HTML part, when there is one, is kept as
+ * well, for display (`html`). Every value is bounded to its column and stripped
+ * of control characters, because this text is data from whoever wrote to the
+ * mailbox. Rejects when the message cannot be parsed, which the pipeline records
+ * as a skipped message.
  */
 export async function extractMailText(
   source: Buffer,
@@ -135,5 +156,6 @@ export async function extractMailText(
       stripControlCharacters(await bodyText(parsed)),
       MAIL_TEXT_MAX_BODY_CHARS,
     ),
+    html: bodyHtml(parsed),
   };
 }

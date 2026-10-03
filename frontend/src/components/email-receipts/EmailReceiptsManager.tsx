@@ -9,6 +9,7 @@ import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailRecei
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { RecognizeWithAiDialog } from '@/components/email-receipts/RecognizeWithAiDialog';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
+import { useParserDraftWithAi } from '@/components/email-receipts/useParserDraftWithAi';
 import { Button, buttonClassName } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -17,17 +18,22 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RowActions, type RowAction } from '@/components/ui/row-actions';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
-import { useAiConfigured } from '@/hooks/useAiConfigured';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReceiptParserLookups } from '@/hooks/useReceiptParserLookups';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
-import { canRecognizeWithAi, isReceiptActionable, senderDomain } from '@/lib/email-receipts-format';
+import {
+  canDraftParser,
+  canRecognizeWithAi,
+  distinctSenderDomains,
+  isReceiptActionable,
+  senderDomain,
+} from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import {
   EMAIL_RECEIPT_STATUSES,
-  type EmailReceiptAiMode,
+  PARSER_DRAFT_MAX_RECEIPTS,
   type EmailReceiptListItem,
   type EmailReceiptStatus,
 } from '@/types/email-receipts';
@@ -46,8 +52,8 @@ interface LoadedList {
   items: EmailReceiptListItem[] | null;
 }
 
-/** The AI mode of the mailbox, as far as it is known: `none` is a loaded answer of "no mailbox". */
-type MailboxAi = { status: 'loading' } | { status: 'failed' } | { status: 'none' } | { status: 'ready'; aiMode: EmailReceiptAiMode };
+/** Whether the user has a mailbox, as far as it is known: `none` is a loaded answer of "no mailbox". */
+type MailboxState = { status: 'loading' } | { status: 'failed' } | { status: 'none' } | { status: 'ready' };
 
 type Confirmation = { kind: 'ignore' | 'delete'; receipt: EmailReceiptListItem };
 
@@ -66,8 +72,11 @@ interface Notice {
  * slow answer for a filter the reader has left is never drawn under the new one
  * and no action can be aimed at a row of the other list. `null` is loading or
  * failed, never an empty list; only a loaded, empty answer says "nothing here".
- * Actions that need the AI are offered only when the mailbox's AI mode is known
- * to be on: an unknown mode (the lookup failed) is not "on".
+ * "Draft parser with AI" and "Recognize with AI" are the person's own request to
+ * the assistant, offered whatever the mailbox's AI mode: the request is queued and
+ * the chat is opened (or the request waits in the review inbox) rather than a
+ * provider being called from here. Up to five emails can be selected and drafted
+ * from together.
  */
 export function EmailReceiptsManager() {
   const t = useTranslations('emailReceipts.receipts');
@@ -78,15 +87,18 @@ export function EmailReceiptsManager() {
 
   const [filter, setFilter] = useState<ReceiptFilter>('all');
   const [loaded, setLoaded] = useState<LoadedList | null>(null);
-  const [mailboxAi, setMailboxAi] = useState<MailboxAi>({ status: 'loading' });
+  const [mailbox, setMailbox] = useState<MailboxState>({ status: 'loading' });
+  // The emails ticked for "Draft parser with AI", by id. Only ids of the list on
+  // screen count (`selected` below), and a change of filter clears the set.
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [drafting, setDrafting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [parserFor, setParserFor] = useState<EmailReceiptListItem | null>(null);
   const [recognizeFor, setRecognizeFor] = useState<EmailReceiptListItem | null>(null);
-  // Whether the assistant in the chat can answer; unknown is not "yes".
-  const { configured: assistantReady } = useAiConfigured();
+  const startParserDraft = useParserDraftWithAi();
 
   // Only the newest request may write the list, and a reload after an action
   // asks for the filter the reader is on NOW, not the one the handler saw.
@@ -119,21 +131,19 @@ export function EmailReceiptsManager() {
     let cancelled = false;
     emailReceiptsApi.mailbox
       .get()
-      .then((mailbox) => {
+      .then((found) => {
         if (cancelled) return;
-        setMailboxAi(mailbox ? { status: 'ready', aiMode: mailbox.aiMode } : { status: 'none' });
+        setMailbox(found ? { status: 'ready' } : { status: 'none' });
       })
       .catch((error) => {
         if (cancelled) return;
         logger.error(error);
-        setMailboxAi({ status: 'failed' });
+        setMailbox({ status: 'failed' });
       });
     return () => {
       cancelled = true;
     };
   }, []);
-
-  const aiOn = mailboxAi.status === 'ready' && mailboxAi.aiMode !== 'off';
 
   const categoryLabels = useMemo(
     () =>
@@ -168,19 +178,41 @@ export function EmailReceiptsManager() {
       t('toasts.reprocessFailed'),
     );
 
-  const handleDraftParser = (receipt: EmailReceiptListItem) =>
-    runCommand(
-      receipt,
-      async () => {
-        const parser = await emailReceiptsApi.receipts.draftParser(receipt.id);
-        return {
+  /**
+   * Queue a parser-draft request for these emails and open the chat or leave it in
+   * the inbox (`useParserDraftWithAi`). The chat opening is the page changing, so
+   * only the other two outcomes leave a notice behind.
+   */
+  const handleDraftParser = async (receipts: readonly EmailReceiptListItem[]) => {
+    if (receipts.length === 0) return;
+    setDrafting(true);
+    setNotice(null);
+    try {
+      const outcome = await startParserDraft(receipts);
+      if (outcome.kind === 'failed') {
+        setNotice({ tone: 'error', text: outcome.message });
+      } else if (outcome.kind === 'queued') {
+        setNotice({
           tone: 'success',
-          text: t('notices.draftCreated', { name: parser.name }),
-          link: { href: '/settings/email-receipts', label: t('notices.draftLink') },
-        };
-      },
-      t('toasts.draftFailed'),
-    );
+          text: outcome.handoffFailed ? t('draft.handoffFailed') : t('draft.queued'),
+          link: { href: '/ai-reviews', label: t('draft.inboxLink') },
+        });
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set());
+      }
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const toggleSelected = (receipt: EmailReceiptListItem) =>
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(receipt.id)) next.delete(receipt.id);
+      else if (next.size < PARSER_DRAFT_MAX_RECEIPTS) next.add(receipt.id);
+      return next;
+    });
 
   const handleConfirm = async () => {
     const target = confirmation;
@@ -222,6 +254,17 @@ export function EmailReceiptsManager() {
         disabled,
       },
       {
+        // The inline action of an email no parser read: the person's own request
+        // to the assistant, offered whatever the mailbox's AI mode.
+        key: 'draftParser',
+        label: t('actions.draftParser'),
+        icon: 'duplicate',
+        tone: 'accent',
+        onClick: () => void handleDraftParser([receipt]),
+        hidden: !canDraftParser(receipt),
+        disabled: disabled || drafting,
+      },
+      {
         key: 'createParser',
         label: t('actions.createParser'),
         icon: 'edit',
@@ -250,15 +293,6 @@ export function EmailReceiptsManager() {
         tone: 'accent',
         onClick: () => setRecognizeFor(receipt),
         hidden: !canRecognizeWithAi(receipt),
-        disabled,
-      },
-      {
-        key: 'draftParser',
-        label: t('actions.draftParser'),
-        icon: 'duplicate',
-        tone: 'accent',
-        onClick: () => void handleDraftParser(receipt),
-        hidden: !aiOn || receipt.status !== 'no_parser',
         disabled,
       },
       {
@@ -293,6 +327,9 @@ export function EmailReceiptsManager() {
   };
 
   const current = loaded !== null && loaded.filter === filter ? loaded : null;
+  // What is ticked AND still on screen: an email a reload dropped is not selected.
+  const selected = (current?.items ?? []).filter((receipt) => selectedIds.has(receipt.id));
+  const selectedDomains = distinctSenderDomains(selected);
 
   let body;
   if (current !== null && current.items === null) {
@@ -309,7 +346,7 @@ export function EmailReceiptsManager() {
   } else if (current === null) {
     body = <LoadingSpinner text={t('loading')} />;
   } else if (current.items === null || current.items.length === 0) {
-    const noMailbox = mailboxAi.status === 'none' && filter === 'all';
+    const noMailbox = mailbox.status === 'none' && filter === 'all';
     body = (
       <EmptyState
         icon={<EnvelopeIcon />}
@@ -330,6 +367,9 @@ export function EmailReceiptsManager() {
         <table className={TABLE_CLASS}>
           <thead>
             <tr>
+              <Th className="w-8 px-2 sm:px-4">
+                <span className="sr-only">{t('columns.select')}</span>
+              </Th>
               <Th className="px-2 sm:px-4">{t('columns.received')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
               <Th className="hidden px-2 sm:table-cell sm:px-4">{t('columns.transaction')}</Th>
@@ -350,6 +390,22 @@ export function EmailReceiptsManager() {
                 : null;
               return (
                 <tr key={receipt.id}>
+                  <Td className="px-2 align-top sm:px-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(receipt.id)}
+                      // A skipped email has no text to write a parser from, and at
+                      // most five are drafted from together.
+                      disabled={
+                        drafting ||
+                        receipt.status === 'skipped' ||
+                        (!selectedIds.has(receipt.id) && selected.length >= PARSER_DRAFT_MAX_RECEIPTS)
+                      }
+                      onChange={() => toggleSelected(receipt)}
+                      aria-label={t('selection.select', { subject: receipt.subject })}
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600"
+                    />
+                  </Td>
                   <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.receivedAt)}</Td>
                   <Td className="min-w-0 px-2 align-top break-words sm:px-4">
                     <div className="font-medium">{receipt.subject}</div>
@@ -404,7 +460,10 @@ export function EmailReceiptsManager() {
             key={option}
             type="button"
             aria-pressed={filter === option}
-            onClick={() => setFilter(option)}
+            onClick={() => {
+              setFilter(option);
+              setSelectedIds(new Set());
+            }}
             className={segmentClass(filter === option)}
           >
             {t(`filter.${option}`)}
@@ -429,6 +488,29 @@ export function EmailReceiptsManager() {
                 {notice.link.label}
               </Link>
             </>
+          )}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div
+          role="region"
+          aria-label={t('selection.label')}
+          className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-900/20 dark:text-blue-100"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span>{t('selection.count', { count: selected.length, max: PARSER_DRAFT_MAX_RECEIPTS })}</span>
+            <Button isLoading={drafting} disabled={drafting} onClick={() => void handleDraftParser(selected)}>
+              {t('selection.draftButton', { count: selected.length })}
+            </Button>
+            <Button variant="outline" disabled={drafting} onClick={() => setSelectedIds(new Set())}>
+              {t('selection.clear')}
+            </Button>
+          </div>
+          {selectedDomains.length > 1 && (
+            <p role="alert" className="text-amber-800 dark:text-amber-200">
+              {t('selection.differentSenders', { domains: selectedDomains.join(', ') })}
+            </p>
           )}
         </div>
       )}
@@ -468,7 +550,6 @@ export function EmailReceiptsManager() {
         <RecognizeWithAiDialog
           key={recognizeFor.id}
           receipt={recognizeFor}
-          assistantReady={assistantReady}
           onClose={() => setRecognizeFor(null)}
           onChanged={() => void reload()}
         />

@@ -247,7 +247,7 @@ describe('ParserEditorDialog', () => {
 
     it('warns that a draft reads nothing until approved, and says when the AI wrote it', async () => {
       await renderEditor({ parser: makeParser({ status: 'draft', source: 'ai' }) });
-      expect(screen.getByRole('note')).toHaveTextContent(/The AI drafted this parser from one sample email/);
+      expect(screen.getByRole('note')).toHaveTextContent(/The AI drafted this parser from your sample emails/);
       expect(screen.getByRole('note')).toHaveTextContent(/reads nothing until you do/);
     });
 

@@ -168,6 +168,18 @@ export interface EmailReceiptListItem {
   fromDomain: string;
   subject: string;
   receivedAt: string;
+  /**
+   * The mailbox's own From when the email was a forward of an order
+   * confirmation; `fromAddress`, `fromDomain` and `subject` are then the shop's.
+   */
+  forwardedBy: string | null;
+  /** When the shop sent the order (a forward's original date), else null. ISO timestamp. */
+  originalSentAt: string | null;
+  /**
+   * The day the match window is centred on: `originalSentAt` when known, else
+   * `receivedAt`. The transaction picker's default range is built from this.
+   */
+  effectiveDate: string;
   status: EmailReceiptStatus;
   statusReason: string | null;
   matchKind: EmailReceiptMatchKind | null;
@@ -183,6 +195,11 @@ export interface EmailReceiptListItem {
 
 export interface EmailReceiptDetail extends EmailReceiptListItem {
   bodyText: string;
+  /**
+   * The HTML part as the sender wrote it, for a sandboxed frame that runs and
+   * loads nothing (`EmailHtmlFrame`); `null` when the email has none. Never in the list.
+   */
+  bodyHtml: string | null;
   /** The stored `ParsedReceipt`; read it through `readParsedReceipt`. */
   parsed: Record<string, unknown> | null;
   candidates: EmailReceiptCandidateSummary[];
@@ -198,6 +215,19 @@ export interface EmailReceiptAskAiResult {
   requestId: string;
   transactionId: string;
 }
+
+/**
+ * `POST /email-receipt-parsers/draft-with-ai`: the request now waits, pending,
+ * in the AI review inbox for whoever claims it by id (the assistant in the
+ * chat, or an MCP agent). No provider was called.
+ */
+export interface EmailReceiptParserDraftRequestResult {
+  ok: true;
+  requestId: string;
+}
+
+/** Most emails one "Draft parser with AI" request names (the server's bound). */
+export const PARSER_DRAFT_MAX_RECEIPTS = 5;
 
 // ---------------------------------------------------------------- parsers
 

@@ -64,11 +64,141 @@ describe('EmailReceiptDetailDialog', () => {
       makeDetail({ bodyText: 'Hello <b>bold</b> <img src=x onerror=alert(1)> <script>alert(1)</script>' }),
     );
     await renderDialog();
+    // This text holds five tags, so it is offered as HTML by default (in the sandboxed
+    // frame); the Text view shows the same characters as characters.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+    });
     const text = screen.getByLabelText('Text of the email');
     expect(text.tagName).toBe('PRE');
     expect(text.className).toMatch(/overflow-auto/);
     expect(text.textContent).toBe('Hello <b>bold</b> <img src=x onerror=alert(1)> <script>alert(1)</script>');
     expect(text.querySelector('b, img, script')).toBeNull();
+  });
+
+  describe('the body of the email', () => {
+    const html = '<html><body><h1>Receipt</h1><p>Total <b>25.00</b></p><img src="https://tracker.example/p.gif"></body></html>';
+
+    it('shows the HTML in a frame by default, with no scripts, origin, forms or popups, and says remote images are not loaded', async () => {
+      api.get.mockResolvedValue(makeDetail({ bodyText: 'Receipt\nTotal 25.00', bodyHtml: html }));
+      await renderDialog();
+
+      const frame = screen.getByTitle('The email as its sender formatted it') as HTMLIFrameElement;
+      expect(frame.tagName).toBe('IFRAME');
+      // An EMPTY sandbox: every restriction on.
+      expect(frame.getAttribute('sandbox')).toBe('');
+      expect(frame.getAttribute('srcdoc')).toContain('<h1>Receipt</h1>');
+      expect(screen.getByText('Remote images are not loaded.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'HTML' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Text' })).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.queryByLabelText('Text of the email')).not.toBeInTheDocument();
+    });
+
+    it('starts the frame\'s document with the CSP meta and the base target, before any of the email', async () => {
+      api.get.mockResolvedValue(makeDetail({ bodyHtml: html }));
+      await renderDialog();
+
+      const srcdoc = (screen.getByTitle('The email as its sender formatted it') as HTMLIFrameElement).getAttribute('srcdoc') as string;
+      expect(
+        srcdoc.startsWith(
+          `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:"><base target="_blank">`,
+        ),
+      ).toBe(true);
+      expect(srcdoc.indexOf('<html>')).toBeGreaterThan(srcdoc.indexOf('<base target="_blank">'));
+    });
+
+    it('switches to the plain text and back, and drops the remote-images note in the text view', async () => {
+      api.get.mockResolvedValue(makeDetail({ bodyText: 'Receipt\nTotal 25.00', bodyHtml: html }));
+      await renderDialog();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+      });
+      expect(screen.getByLabelText('Text of the email').textContent).toBe('Receipt\nTotal 25.00');
+      expect(screen.queryByTitle('The email as its sender formatted it')).not.toBeInTheDocument();
+      expect(screen.queryByText('Remote images are not loaded.')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+      });
+      expect(screen.getByTitle('The email as its sender formatted it')).toBeInTheDocument();
+    });
+
+    it('never puts the email\'s HTML into the page itself', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({ bodyHtml: '<h1 id="injected">Hi</h1><script>window.pwned = 1</script><img src=x onerror="window.pwned = 2">' }),
+      );
+      await renderDialog();
+
+      expect(document.querySelector('#injected')).toBeNull();
+      expect(document.body.querySelector('script')).toBeNull();
+      expect((window as unknown as { pwned?: number }).pwned).toBeUndefined();
+    });
+
+    it('has no toggle and no frame for an email with no HTML', async () => {
+      api.get.mockResolvedValue(makeDetail({ bodyText: 'Plain total 25.00', bodyHtml: null }));
+      await renderDialog();
+
+      expect(screen.queryByRole('button', { name: 'HTML' })).not.toBeInTheDocument();
+      expect(screen.queryByTitle('The email as its sender formatted it')).not.toBeInTheDocument();
+      expect(screen.queryByText('Remote images are not loaded.')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Text of the email').textContent).toBe('Plain total 25.00');
+    });
+
+    it('treats a text that is itself HTML, with no HTML part kept, as HTML in the same frame', async () => {
+      api.get.mockResolvedValue(makeDetail({ bodyText: '<!DOCTYPE html><html><body><p>Total 25.00</p></body></html>', bodyHtml: null }));
+      await renderDialog();
+
+      const frame = screen.getByTitle('The email as its sender formatted it');
+      expect(frame.getAttribute('sandbox')).toBe('');
+      expect(frame.getAttribute('srcdoc')).toContain('<p>Total 25.00</p>');
+      // and the text view still offers the stored text, as text
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+      });
+      expect(screen.getByLabelText('Text of the email').textContent).toContain('<p>Total 25.00</p>');
+    });
+  });
+
+  describe('a forwarded email', () => {
+    it('says who forwarded it and when the shop sent it, beside the day it arrived', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({
+          forwardedBy: 'alice.example@gmail.example.com',
+          originalSentAt: '2026-08-10T08:15:00.000Z',
+          effectiveDate: '2026-08-10T08:15:00.000Z',
+          receivedAt: '2026-09-10T10:00:00.000Z',
+        }),
+      );
+      await renderDialog();
+
+      const dialog = screen.getByRole('dialog', { name: 'Email receipt' });
+      expect(within(dialog).getByText('Forwarded by')).toBeInTheDocument();
+      expect(within(dialog).getByText('alice.example@gmail.example.com')).toBeInTheDocument();
+      expect(within(dialog).getByText('Sent by the shop')).toBeInTheDocument();
+      expect(within(dialog).getByText('Received')).toBeInTheDocument();
+    });
+
+    it('says nothing about forwarding for an email that was not', async () => {
+      await renderDialog();
+      expect(screen.queryByText('Forwarded by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sent by the shop')).not.toBeInTheDocument();
+    });
+
+    it('starts the transaction picker around the shop\'s day, not the day it was forwarded', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({
+          status: 'unmatched',
+          forwardedBy: 'alice.example@gmail.example.com',
+          originalSentAt: '2026-08-10T08:15:00.000Z',
+          effectiveDate: '2026-08-10T08:15:00.000Z',
+          receivedAt: '2026-09-10T10:00:00.000Z',
+        }),
+      );
+      await renderDialog();
+
+      expect(txApi.getAll).toHaveBeenCalledWith({ startDate: '2026-08-07', endDate: '2026-08-24', limit: 50 });
+    });
   });
 
   it('says so when the email has no text', async () => {

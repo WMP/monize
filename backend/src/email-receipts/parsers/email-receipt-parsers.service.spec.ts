@@ -9,9 +9,11 @@ import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import {
+  dominantSenderDomain,
   EmailReceiptParsersService,
   MAX_PARSERS_PER_USER,
 } from "./email-receipt-parsers.service";
+import { RECEIPT_PARSER_DRAFT_INSTRUCTION } from "./parser-draft-instruction";
 
 jest.mock("../../common/db/scoped-db", () =>
   jest
@@ -79,15 +81,31 @@ function setup() {
     count: jest.fn().mockResolvedValue(1),
     findOne: jest.fn(),
   };
-  const receiptRepo = { findOne: jest.fn(), count: jest.fn() };
+  const receiptRepo = { findOne: jest.fn(), count: jest.fn(), find: jest.fn() };
+  const requests = {
+    enqueueParserDraft: jest.fn(),
+    markParserDraftApplied: jest.fn().mockResolvedValue(0),
+    dismissParserDraftsFor: jest.fn().mockResolvedValue(0),
+  };
   const { manager, dataSource } = createScopedDbMocks([
     [EmailReceiptParser, parserRepo],
     [Category, categoryRepo],
     [Payee, payeeRepo],
     [EmailReceipt, receiptRepo],
   ]);
-  const service = new EmailReceiptParsersService(dataSource as never);
-  return { service, manager, parserRepo, categoryRepo, payeeRepo, receiptRepo };
+  const service = new EmailReceiptParsersService(
+    dataSource as never,
+    requests as never,
+  );
+  return {
+    service,
+    manager,
+    parserRepo,
+    categoryRepo,
+    payeeRepo,
+    receiptRepo,
+    requests,
+  };
 }
 
 const createDto = (over: Record<string, unknown> = {}) =>
@@ -331,6 +349,43 @@ describe("EmailReceiptParsersService.approve", () => {
     expect(view.status).toBe("approved");
   });
 
+  it("marks the parser-draft request that proposed it applied, in the approving transaction", async () => {
+    const { service, parserRepo, requests, manager } = setup();
+    parserRepo.findOne.mockResolvedValue(stored());
+    parserRepo.findOneByOrFail.mockResolvedValue(
+      stored({ status: "approved", revision: 4 }),
+    );
+
+    await service.approve(USER, "p1");
+
+    expect(requests.markParserDraftApplied).toHaveBeenCalledWith(
+      manager,
+      USER,
+      "p1",
+    );
+    // after the status UPDATE, before the row is read back
+    expect(parserRepo.update.mock.invocationCallOrder[0]).toBeLessThan(
+      requests.markParserDraftApplied.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("does not touch a request when the approval is refused or a no-op", async () => {
+    const { service, parserRepo, requests, categoryRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(stored({ status: "approved" }));
+    await service.approve(USER, "p1");
+    parserRepo.findOne.mockResolvedValue(stored({ definition: {} }));
+    await service.approve(USER, "p1").catch(() => undefined);
+    parserRepo.findOne.mockResolvedValue(stored());
+    categoryRepo.count.mockResolvedValue(0);
+    await service.approve(USER, "p1").catch(() => undefined);
+    parserRepo.findOne.mockResolvedValue(stored({ revision: 9 }));
+    await service
+      .approve(USER, "p1", { expectedRevision: 3 })
+      .catch(() => undefined);
+
+    expect(requests.markParserDraftApplied).not.toHaveBeenCalled();
+  });
+
   it("refuses to approve a definition that is not valid (a {} restored from a backup)", async () => {
     const { service, parserRepo } = setup();
     parserRepo.findOne.mockResolvedValue(stored({ definition: {} }));
@@ -385,6 +440,118 @@ describe("EmailReceiptParsersService.remove", () => {
     await expect(service.remove(USER, "p1")).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it("dismisses the parser-draft requests that proposed it, in the same transaction", async () => {
+    const { service, requests, manager } = setup();
+    await service.remove(USER, "p1");
+    expect(requests.dismissParserDraftsFor).toHaveBeenCalledWith(
+      manager,
+      USER,
+      "p1",
+    );
+  });
+
+  it("dismisses nothing for a parser that was not there", async () => {
+    const { service, parserRepo, requests } = setup();
+    parserRepo.delete.mockResolvedValue({ affected: 0 });
+    await service.remove(USER, "p1").catch(() => undefined);
+    expect(requests.dismissParserDraftsFor).not.toHaveBeenCalled();
+  });
+});
+
+describe("dominantSenderDomain", () => {
+  it("is the most common non-empty domain, the first one winning a tie", () => {
+    expect(dominantSenderDomain(["a.example", "b.example", "b.example"])).toBe(
+      "b.example",
+    );
+    expect(dominantSenderDomain(["a.example", "b.example"])).toBe("a.example");
+    expect(dominantSenderDomain(["", "b.example"])).toBe("b.example");
+    expect(dominantSenderDomain(["", ""])).toBe("");
+    expect(dominantSenderDomain([])).toBe("");
+  });
+});
+
+describe("EmailReceiptParsersService.requestAiDraft", () => {
+  const R1 = "00000000-0000-4000-8000-000000000001";
+  const R2 = "00000000-0000-4000-8000-000000000002";
+  const row = (id: string, fromDomain: string, status = "no_parser") => ({
+    id,
+    fromDomain,
+    status,
+  });
+
+  it("queues one pending request for the emails, filed under their sender, and calls no provider", async () => {
+    const { service, receiptRepo, requests, manager } = setup();
+    receiptRepo.find.mockResolvedValue([
+      row(R1, "shop.example.com"),
+      row(R2, "shop.example.com"),
+    ]);
+    requests.enqueueParserDraft.mockResolvedValue({ id: "req-1" });
+
+    const result = await service.requestAiDraft(USER, [R2, R1]);
+
+    expect(result).toEqual({ ok: true, requestId: "req-1" });
+    expect(requests.enqueueParserDraft).toHaveBeenCalledWith(manager, USER, {
+      emailReceiptIds: [R2, R1],
+      parserDomain: "shop.example.com",
+      instruction: RECEIPT_PARSER_DRAFT_INSTRUCTION,
+    });
+    // the emails are read through the user's own scope
+    expect(receiptRepo.find.mock.calls[0][0].where.userId).toBe(USER);
+  });
+
+  it("files a mixed selection under the most common sender", async () => {
+    const { service, receiptRepo, requests } = setup();
+    receiptRepo.find.mockResolvedValue([
+      row(R1, "a.example.com"),
+      row(R2, "b.example.com"),
+      row("r3", "b.example.com"),
+    ]);
+    requests.enqueueParserDraft.mockResolvedValue({ id: "req-1" });
+
+    await service.requestAiDraft(USER, [R1, R2, "r3"]);
+
+    expect(requests.enqueueParserDraft.mock.calls[0][2].parserDomain).toBe(
+      "b.example.com",
+    );
+  });
+
+  it("is a 404 for an email that is not the user's, and writes nothing", async () => {
+    const { service, receiptRepo, requests } = setup();
+    receiptRepo.find.mockResolvedValue([row(R1, "shop.example.com")]);
+
+    await expect(service.requestAiDraft(USER, [R1, R2])).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(requests.enqueueParserDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a skipped email (it has no text), and writes nothing", async () => {
+    const { service, receiptRepo, requests } = setup();
+    receiptRepo.find.mockResolvedValue([
+      row(R1, "shop.example.com"),
+      row(R2, "", "skipped"),
+    ]);
+
+    await expect(service.requestAiDraft(USER, [R1, R2])).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(requests.enqueueParserDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a selection with no usable sender domain", async () => {
+    const { service, receiptRepo, requests } = setup();
+    receiptRepo.find.mockResolvedValue([row(R1, "")]);
+
+    await expect(service.requestAiDraft(USER, [R1])).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    receiptRepo.find.mockResolvedValue([row(R1, "localhost")]);
+    await expect(service.requestAiDraft(USER, [R1])).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(requests.enqueueParserDraft).not.toHaveBeenCalled();
   });
 });
 
