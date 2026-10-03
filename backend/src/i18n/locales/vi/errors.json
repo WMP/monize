@@ -341,7 +341,7 @@
     "aiDraftInvalid": "Trình phân tích của AI không hợp lệ ({{ codes }}). Hãy thử lại hoặc tự viết trình phân tích.",
     "aiDraftUnknownCategory": "Trình phân tích của AI nêu một danh mục không tồn tại. Hãy thử lại hoặc tự viết trình phân tích.",
     "tooManyParsers": "Chỉ có thể lưu tối đa {{ max }} trình phân tích. Hãy xóa một trình phân tích trước.",
-    "receiptNeedsTransaction": "Hãy liên kết email này với một giao dịch trước khi hỏi AI về nó.",
+    "receiptNeedsTransaction": "Hãy chọn giao dịch mà email này đã thanh toán trước khi hỏi AI về nó.",
     "receiptNotAskable": "Email này đã bị bỏ qua hoặc không thể đọc được. Hãy xử lý lại nó trước.",
     "receiptApplied": "Đề xuất của email này đã được áp dụng cho một giao dịch.",
     "openRequestExists": "Giao dịch này đã có một yêu cầu xem xét khác đang mở. Hãy hoàn tất hoặc bỏ qua yêu cầu đó trước.",

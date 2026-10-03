@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "AI tidak pernah dipanggil untuk struk.",
-        "on_demand": "AI hanya dipanggil saat Anda menekan Tanya AI atau Buat draf pengurai dengan AI.",
+        "on_demand": "AI hanya dipanggil saat Anda menekan Kenali dengan AI atau Buat draf pengurai dengan AI.",
         "automatic": "Setiap pemeriksaan menanyakan AI tentang struk yang cocok tetapi tidak terbaca lengkap oleh pengurai yang disetujui, dan membuat draf pengurai untuk pengirim yang belum memilikinya."
       },
       "autoApplyLabel": "Terapkan usulan secara otomatis",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Baris item tidak berjumlah sama dengan total.",
       "items_uncategorized": "Beberapa baris item belum memiliki kategori.",
       "shipping_uncategorized": "Baris ongkos kirim belum memiliki kategori."
-    }
+    },
+    "readByAi": "Dibaca oleh AI"
   },
   "state": {
     "pending": "Menunggu dibaca",
@@ -374,7 +375,7 @@
       "view": "Lihat",
       "reprocess": "Proses ulang",
       "link": "Pilih transaksi",
-      "askAi": "Tanya AI",
+      "recognizeAi": "Kenali dengan AI",
       "draftParser": "Buat draf pengurai dengan AI",
       "createParser": "Buat pengurai",
       "ignore": "Kecualikan"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "Surel diproses ulang",
       "reprocessFailed": "Surel tidak dapat diproses ulang",
-      "askAiFailed": "Tidak dapat bertanya kepada AI",
       "draftFailed": "Draf pengurai tidak dapat dibuat",
       "ignored": "Surel dikecualikan",
       "ignoreFailed": "Surel tidak dapat dikecualikan",
@@ -390,20 +390,8 @@
       "deleteFailed": "Surel tidak dapat dihapus"
     },
     "notices": {
-      "askAiQueued": "AI telah ditanya. Usulannya akan muncul di kotak masuk peninjauan AI untuk Anda setujui.",
       "draftCreated": "AI membuat draf pengurai {name}. Pengurai ini tidak membaca apa pun sampai Anda meninjau dan menyetujuinya.",
       "draftLink": "Tinjau di pengaturan pengurai"
-    },
-    "aiFailures": {
-      "ai_off": "AI dinonaktifkan untuk kotak surel ini. Ubah mode AI di pengaturan kotak surel terlebih dahulu.",
-      "not_a_receipt_request": "Permintaan itu bukan milik struk surel.",
-      "receipt_missing": "Surel ini sudah tidak ada.",
-      "not_claimable": "Sebuah permintaan untuk surel ini sedang dikerjakan.",
-      "transaction_unreadable": "Transaksi yang tertaut tidak dapat dibaca.",
-      "ai_unavailable": "Penyedia AI tidak menjawab. Periksa pengaturan AI dan coba lagi.",
-      "unusable_answer": "AI menjawab, tetapi jawabannya tidak dapat digunakan.",
-      "proposal_refused": "Usulan AI ditolak karena angkanya tidak cocok.",
-      "request_failed": "Permintaan gagal."
     },
     "ignoreDialog": {
       "title": "Kecualikan surel ini?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "tanpa penerima",
     "linkButton": "Tautkan",
-    "hasMore": "Hanya {count} pertama yang ditampilkan. Gunakan pencarian untuk mempersempit daftar."
+    "hasMore": "Hanya {count} pertama yang ditampilkan. Gunakan pencarian untuk mempersempit daftar.",
+    "ai": {
+      "heading": "Pilih transaksi untuk AI",
+      "help": "Ini transaksi Anda dari {from} sampai {to}, yaitu hari-hari di sekitar tanggal surel. Pilih transaksi yang harus dirinci AI per produk dalam surel.",
+      "linkButton": "Gunakan transaksi ini"
+    }
   },
   "callback": {
     "title": "Menghubungkan kotak surel",
@@ -509,5 +502,27 @@
       "fallback": "Server menolak koneksi. Mulai lagi dari pengaturan struk surel."
     },
     "backLink": "Kembali ke pengaturan struk surel"
+  },
+  "recognize": {
+    "title": "Kenali dengan AI",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "tanpa penerima",
+    "confirmMessage": "Surel ini ditautkan ke transaksi {summary}. AI akan membaca surel dan mengusulkan cara membagi transaksi ini per produk. Lanjutkan dengan transaksi ini?",
+    "confirm": "Kenali dengan AI",
+    "chooseOther": "Pilih transaksi lain",
+    "candidatesHeading": "Transaksi mana yang dibayar oleh surel ini?",
+    "candidatesHelp": "Beberapa transaksi cocok dengan surel ini. Pilih yang harus digunakan AI, atau cari yang lain.",
+    "candidatesLoading": "Memuat transaksi yang cocok",
+    "candidatesError": "Transaksi yang cocok tidak dapat dimuat.",
+    "retry": "Coba lagi",
+    "useButton": "Gunakan transaksi ini",
+    "searchOther": "Cari transaksi lain",
+    "back": "Kembali",
+    "failed": "Tidak dapat memulai pengenalan",
+    "queued": "Diantrekan: saat ini tidak ada asisten AI yang dapat menjawab, sehingga permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen (misalnya lewat MCP).",
+    "handoffFailed": "Permintaan sudah diantrekan, tetapi surel tidak dapat dibuka di obrolan. Permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen (misalnya lewat MCP).",
+    "inboxLink": "Buka kotak masuk peninjauan AI",
+    "opened": "Obrolan dibuka dengan surel terlampir. Baca pesannya lalu tekan Kirim.",
+    "chatPrompt": "Kenali produk, jumlah, dan harga dalam surel pesanan terlampir, lalu bagi transaksi saya tanggal {date} ({payee}, {amount}) per produk dengan satu kategori untuk masing-masing. Ambil permintaan peninjauan AI {requestId} dan kirimkan usulan Anda untuk permintaan itu."
   }
 }

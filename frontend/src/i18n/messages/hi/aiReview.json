@@ -37,7 +37,8 @@
     "viewEmailReceipts": "ईमेल रसीदें देखें",
     "agentNote": "सहायक का नोट: {reason}",
     "dates": "बनाया गया {created}, समाप्ति {expires}",
-    "viewTransaction": "लेन-देन देखें"
+    "viewTransaction": "लेन-देन देखें",
+    "waitingForAgent": "AI एजेंट की प्रतीक्षा है। <link>सेटिंग में AI प्रदाता जोड़ें</link>, या किसी MCP क्लाइंट को इसे अपने हाथ में लेने दें।"
   },
   "actions": {
     "dismiss": "ख़ारिज करें"
