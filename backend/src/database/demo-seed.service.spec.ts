@@ -473,6 +473,75 @@ describe("DemoSeedService", () => {
       expect(termEndUpdates.length).toBe(1);
     });
 
+    it("posts each mortgage installment as a split whose principal is a transfer leg into the mortgage", async () => {
+      // Ids that say what they are, so a leg can be traced to its account.
+      dataSource.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql.includes("INSERT INTO accounts")) {
+          return Promise.resolve([{ id: `account-${params[2]}` }]);
+        }
+        if (sql.includes("INSERT INTO categories")) {
+          return Promise.resolve([
+            { id: `category-${params[params.length - 1]}` },
+          ]);
+        }
+        if (sql.includes("RETURNING id")) {
+          return Promise.resolve([{ id: `uuid-${Math.random()}` }]);
+        }
+        if (sql.includes("COALESCE(SUM")) {
+          return Promise.resolve([{ total: "0" }]);
+        }
+        return Promise.resolve([]);
+      });
+
+      await service.seedDemoData("user-123");
+
+      const calls = dataSource.query.mock.calls as Array<[string, unknown[]]>;
+      const transferLegs = calls.filter(
+        ([sql]) =>
+          sql.includes("INSERT INTO transaction_splits") &&
+          sql.includes("'transfer'"),
+      );
+      expect(transferLegs.length).toBeGreaterThanOrEqual(11);
+      for (const [, params] of transferLegs) {
+        expect(params[1]).toBe("account-Home Mortgage");
+        expect(params[2]).toBeLessThan(0);
+        expect(params[3]).toBe("Principal");
+      }
+
+      // Each leg's counterpart lands on the mortgage, linked to its parent,
+      // for the opposite amount.
+      const counterparts = calls.filter(
+        ([sql, params]) =>
+          sql.includes("INSERT INTO transactions") &&
+          sql.includes("linked_transaction_id") &&
+          params[1] === "account-Home Mortgage",
+      );
+      expect(counterparts.map(([, params]) => params[5])).toEqual(
+        transferLegs.map(([, params]) => -(params[2] as number)),
+      );
+      const splitLinks = calls.filter(([sql]) =>
+        sql.includes("UPDATE transaction_splits SET linked_transaction_id"),
+      );
+      expect(splitLinks).toHaveLength(transferLegs.length);
+
+      // The mortgage books its interest to the category the split's other
+      // leg uses.
+      const mortgageInsert = calls.find(
+        ([sql, params]) =>
+          sql.includes("INSERT INTO accounts") && params[1] === "MORTGAGE",
+      )!;
+      const columns = mortgageInsert[0]
+        .slice(
+          mortgageInsert[0].indexOf("(") + 1,
+          mortgageInsert[0].indexOf(")"),
+        )
+        .split(",")
+        .map((column) => column.trim());
+      expect(mortgageInsert[1][columns.indexOf("interest_category_id")]).toBe(
+        "category-Mortgage Interest",
+      );
+    });
+
     it("writes the mortgage type, and null on every other account", async () => {
       await service.seedDemoData("user-123");
 

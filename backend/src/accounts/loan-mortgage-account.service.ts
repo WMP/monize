@@ -32,8 +32,14 @@ import {
   DEFAULT_PERIODS_PER_YEAR,
   mortgageTermEndDate,
   periodsPerYearForStoredFrequency,
+  toMortgagePaymentFrequency,
 } from "./payment-frequency.util";
-import { formatDateYMD, localDateForColumn } from "../common/date-utils";
+import {
+  formatDateYMD,
+  localDateForColumn,
+  todayYMD,
+} from "../common/date-utils";
+import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { roundMoney } from "../common/round.util";
 import { tr } from "../i18n/translate";
 import {
@@ -55,6 +61,28 @@ import {
   assertMortgageMethodTerms,
   nonAnnuityInstallment,
 } from "./mortgage-installment.util";
+import { Transaction } from "../transactions/entities/transaction.entity";
+import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
+import {
+  InstallmentHistory,
+  LoanPaymentDetectorService,
+} from "./loan-payment-detector.service";
+import { effectiveAnnualRateOn } from "./effective-loan-rate.util";
+import {
+  detectMortgageType,
+  MortgageTypeDetection,
+} from "./mortgage-type-detection.util";
+import {
+  DatedMortgageTypeSampleDto,
+  DetectMortgageTypeDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
+
+/**
+ * The installments a history detection reads: the latest three consecutive
+ * ones posted at one rate (docs/specs/mortgage-types.md, section 10).
+ */
+const HISTORY_DETECTION_SAMPLES = 3;
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -68,6 +96,7 @@ export class LoanMortgageAccountService {
     private scheduledTransactionsService: ScheduledTransactionsService,
     @Inject(forwardRef(() => LoanRateChangesService))
     private loanRateChangesService: LoanRateChangesService,
+    private loanPaymentDetectorService: LoanPaymentDetectorService,
   ) {}
 
   /**
@@ -460,6 +489,107 @@ export class LoanMortgageAccountService {
   }
 
   /**
+   * Suggest a mortgage type from installments the person read off a
+   * statement. Pure: nothing is read or written.
+   */
+  detectMortgageTypeFromSamples(
+    dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetection {
+    return detectMortgageType(
+      dto.samples,
+      dto.interestRate ?? null,
+      dto.paymentFrequency,
+    );
+  }
+
+  /**
+   * Suggest a mortgage type from the loan's own posted installments, paired
+   * with their interest through the pairing rate-change inference reads
+   * (`LoanPaymentDetectorService.buildInstallmentHistory`), each with the
+   * ledger balance before its date. The rate is the one in effect on the
+   * latest installment's date (`effectiveAnnualRateOn`), and only the
+   * installments at that same rate are read, so a rate change inside the
+   * window is not mistaken for a method. A suggestion: it writes nothing,
+   * the stored type included.
+   */
+  async detectMortgageTypeFromHistory(
+    account: Account,
+    userId: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    if (account.accountType !== AccountType.MORTGAGE) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.onlyMortgageAccounts",
+          "This operation is only valid for mortgage accounts",
+        ),
+      );
+    }
+
+    const { transactions, rateRows } = await withScopedDb(
+      this.dataSource,
+      async (m) => ({
+        // The rows `current_balance` sums: no VOID row, no split child, none
+        // dated after today. The pairing walks the balance back from
+        // `current_balance` through these, so a row it does not count would
+        // shift every balance before it, and a voided or future-dated
+        // installment would be read as one the loan paid.
+        transactions: await m
+          .getRepository(Transaction)
+          .createQueryBuilder("t")
+          .where("t.account_id = :accountId", { accountId: account.id })
+          .andWhere("t.user_id = :userId", { userId })
+          .andWhere(ledgerMovementPredicate("t"))
+          .andWhere("t.transaction_date <= :today", { today: todayYMD() })
+          .orderBy("t.transaction_date", "ASC")
+          .getMany(),
+        rateRows: await m.getRepository(LoanRateChange).find({
+          where: { accountId: account.id, userId },
+          order: { effectiveDate: "ASC" },
+        }),
+      }),
+    );
+    const history =
+      await this.loanPaymentDetectorService.buildInstallmentHistory(
+        userId,
+        account,
+        transactions,
+      );
+
+    const posted = postedInstallments(history);
+    const latest = posted.length > 0 ? posted[posted.length - 1] : null;
+    const fallbackRate =
+      account.interestRate == null ? null : Number(account.interestRate);
+    const quotedAnnualRate = latest
+      ? effectiveAnnualRateOn(rateRows, latest.date, fallbackRate)
+      : fallbackRate;
+    // The trailing run at the latest rate, walked back from the newest: an
+    // earlier period at the same rate (A, then B, then A again) is not
+    // consecutive with it, and the shape rules read consecutive installments.
+    const atLatestRate = (sample: DatedMortgageTypeSampleDto) =>
+      effectiveAnnualRateOn(rateRows, sample.date, fallbackRate) ===
+      quotedAnnualRate;
+    let start = posted.length;
+    while (
+      start > 0 &&
+      posted.length - start < HISTORY_DETECTION_SAMPLES &&
+      atLatestRate(posted[start - 1])
+    ) {
+      start--;
+    }
+    const samples = posted.slice(start);
+    const paymentFrequency = account.paymentFrequency
+      ? toMortgagePaymentFrequency(account.paymentFrequency)
+      : null;
+
+    return {
+      ...detectMortgageType(samples, quotedAnnualRate, paymentFrequency),
+      quotedAnnualRate,
+      paymentFrequency,
+      samples,
+    };
+  }
+
+  /**
    * Legacy mortgage-rate endpoint, now a thin wrapper over the rate-change
    * timeline: every call records a history row (finally persisting the
    * effective date) and, when no explicit payment is given, keeps the old
@@ -580,4 +710,34 @@ export class LoanMortgageAccountService {
       effectiveDate: rateChange.effectiveDate,
     };
   }
+}
+
+/**
+ * Each payment that carries both a principal and an interest figure, as a
+ * dated sample with the balance owed before its date. Where interest is a
+ * separate expense the payment's own amount is its principal; a payment with
+ * no interest figure (a lump-sum repayment, a transfer without a split) says
+ * nothing about the method and is left out.
+ */
+function postedInstallments(
+  history: InstallmentHistory,
+): DatedMortgageTypeSampleDto[] {
+  const samples: DatedMortgageTypeSampleDto[] = [];
+  for (const payment of history.payments) {
+    if (payment.interestAmount == null) continue;
+    const principal =
+      payment.principalAmount ??
+      (history.interestBookedSeparately ? payment.amount : null);
+    if (principal == null) continue;
+    const date = payment.date.split("T")[0];
+    const balance = history.balanceMap.get(date);
+    samples.push({
+      date,
+      principal: roundMoney(principal),
+      interest: roundMoney(payment.interestAmount),
+      balanceBefore:
+        balance !== undefined && balance > 0 ? roundMoney(balance) : null,
+    });
+  }
+  return samples;
 }

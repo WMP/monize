@@ -3,8 +3,9 @@
 Status: approved design (task S1 of the plan). Phase 1 is implemented (P1-B1 to
 P1-Q: the column, the traits, the type-keyed consumers and the Select, offering
 `ANNUITY` and `CANADIAN_FIXED`), and so are the LINEAR and INTEREST_ONLY
-methods with `prepayment_mode` on both layers (P2-B1, P2-F1); type detection
-and the contract migration are not yet.
+methods with `prepayment_mode` on both layers (P2-B1, P2-F1), and type
+detection on the backend (P2-B2); the detection UI and the contract migration
+are not yet.
 Governs: issue #1501 (tracking) and its sub-issues #1502 to #1514, agreed in
 discussion #1486 in line with the direction set in #787. The plan is
 `docs/future-plans/mortgage-types.md`, the task list
@@ -595,6 +596,58 @@ the quoted rate:
 
 The tolerances and the ledger-history variant are fixed by P2-B2's fixtures,
 which add rows to this table rather than living only in the code.
+
+P2-B2 implements it as `detectMortgageType`
+(`backend/src/accounts/mortgage-type-detection.util.ts`), with the truth table
+in `backend/src/accounts/mortgage-type-detection-cases.json`. Samples are
+consecutive installments, oldest first, each with its principal, its interest
+and, when known, the debt it was charged on. The tolerance is one cent per
+sample: principals or installments are constant when each is within a cent of
+the first, and an interest matches a convention when it is within a cent of
+the debt times that convention's `getPeriodicRate`. The rows the fixtures add:
+
+| Observation | Suggested type | Confidence |
+| --- | --- | --- |
+| Principal 0 on every sample, interest at the quoted rate or unchecked | `INTEREST_ONLY` | high |
+| Principal 0 on every sample, interest not at the quoted rate | `INTEREST_ONLY` | low |
+| Principal constant, installment falling, interest at the quoted rate or unchecked (both prepayment modes, either side of a repayment) | `LINEAR` | high |
+| Principal constant, installment falling, interest not at the quoted rate | `LINEAR` | low |
+| Principal constant, installment rising (a rate rise between the samples) | none | -- |
+| Principal and installment both constant (0%, or interest too small to move a cent) | none: both `LINEAR` and `ANNUITY` fit | -- |
+| A `LINEAR` or `INTEREST_ONLY` shape at an accelerated frequency, which those methods refuse | none | -- |
+| Installment constant, interest matches `SEMI_ANNUAL` and not `NOMINAL` (at 6% monthly, 0.4939% against 0.5000%) | `CANADIAN_FIXED` | high |
+| Installment constant, interest matches `NOMINAL` and not `SEMI_ANNUAL` | `ANNUITY` | high |
+| Installment constant, no balance, no rate or no mortgage frequency to check against | `ANNUITY` | low |
+| Installment constant, interest matches both conventions within a cent (a small debt) or neither (day-count interest) | `ANNUITY` | low |
+| Installment constant, principal falling (a rate rise between the samples) | none | -- |
+| No principal and no interest; a negative or non-numeric figure | none | -- |
+
+Every answer carries a reason code (`MORTGAGE_TYPE_DETECTION_REASONS`), the
+refusals included, so the client can say what was missing in the reader's
+language. Two routes answer it, neither of which writes a row:
+`POST /accounts/mortgage-type/detect` reads the samples from the request, and
+`POST /accounts/:id/mortgage-type/detect` builds them from the mortgage's own
+posted installments through the pairing rate-change inference reads
+(`LoanPaymentDetectorService.buildInstallmentHistory`), each with the ledger
+balance before its date. It reads only the rows `current_balance` sums
+(`ledgerMovementPredicate`, dated on or before today), so a voided or
+future-dated installment is neither a sample nor a shift in every balance
+before it. The samples are the trailing run of consecutive installments at
+the rate in effect on the latest one (`effectiveAnnualRateOn`), at most three,
+so a rate change inside the window is not read as a method and an earlier
+period at the same rate is not joined to the current one. A payment without an interest figure (a lump-sum
+repayment, a transfer without a split) is left out. An interest-only
+occurrence is read: the pairing keeps a 0.00 transfer leg into the loan when
+its linked parent carries the interest (section 9), and drops one that does
+not, which paid nothing. The pairing is shared, so rate-change inference and
+payment detection read interest-only installments the same way.
+
+The demo seed's Scotiabank mortgage posts its installments in the shape a
+scheduled split payment does (a chequing split whose principal is a transfer
+leg into the mortgage and whose interest is a `Housing > Mortgage Interest`
+leg, the mortgage's interest category), its interest charged on the ledger
+debt before each payment at the `CANADIAN_FIXED` periodic rate, so the
+history route reads it back as `CANADIAN_FIXED` with high confidence.
 
 ## 11. Test matrix
 

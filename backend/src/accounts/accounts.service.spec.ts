@@ -20,6 +20,7 @@ import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
+import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
@@ -220,6 +221,7 @@ describe("AccountsService", () => {
           provide: LoanRateChangesService,
           useValue: loanRateChangesService,
         },
+        { provide: LoanPaymentDetectorService, useValue: {} },
         {
           provide: DataSource,
           useValue: mockDataSource,

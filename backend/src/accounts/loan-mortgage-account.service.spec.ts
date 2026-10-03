@@ -19,6 +19,7 @@ import { Institution } from "../institutions/entities/institution.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
+import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 
 describe("LoanMortgageAccountService", () => {
@@ -103,6 +104,7 @@ describe("LoanMortgageAccountService", () => {
           provide: LoanRateChangesService,
           useValue: loanRateChangesService,
         },
+        { provide: LoanPaymentDetectorService, useValue: {} },
       ],
     }).compile();
 

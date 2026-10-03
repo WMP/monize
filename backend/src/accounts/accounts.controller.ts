@@ -64,6 +64,11 @@ import {
   PreviewLoanPaymentSetupResponseDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
+import {
+  DetectMortgageTypeDto,
+  MortgageTypeDetectionResponseDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
 import { PaymentFrequency } from "./loan-amortization.util";
 import { requestedMortgageType } from "./mortgage-type.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
@@ -598,6 +603,25 @@ export class AccountsController {
     };
   }
 
+  @Post("mortgage-type/detect")
+  @ApiOperation({
+    summary: "Suggest a mortgage type from sample installments",
+    description:
+      "Suggests ANNUITY, CANADIAN_FIXED, LINEAR or INTEREST_ONLY from two or three consecutive installments (principal and interest, optionally the balance each was charged on), the quoted rate and the payment frequency. A suggestion only: nothing is read or written. Fewer than two samples, or samples that fit no rule, answer type null with a reason.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Suggestion computed",
+    type: MortgageTypeDetectionResponseDto,
+  })
+  @ApiResponse({ status: 400, description: "Bad request - invalid samples" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  detectMortgageType(
+    @Body() dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetectionResponseDto {
+    return this.accountsService.detectMortgageTypeFromSamples(dto);
+  }
+
   @Get(":id/export")
   @ApiOperation({ summary: "Export account transactions as CSV or QIF" })
   @ApiParam({ name: "id", description: "Account UUID" })
@@ -978,6 +1002,34 @@ export class AccountsController {
       new Date(updateMortgageRateDto.effectiveDate),
       updateMortgageRateDto.newPaymentAmount,
     );
+  }
+
+  @Post(":id/mortgage-type/detect")
+  @ApiOperation({
+    summary: "Suggest a mortgage type from the loan's posted installments",
+    description:
+      "Reads the mortgage's latest posted installments at one rate (paired with their interest the way rate-change detection pairs them, each with the ledger balance before its date) and suggests a type from them. A suggestion only: the account's type is not changed and nothing is written.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Mortgage account UUID",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Suggestion computed, with the installments it was read from",
+    type: MortgageTypeHistoryDetectionResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - not a mortgage account",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  detectMortgageTypeFromHistory(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    return this.accountsService.detectMortgageTypeFromHistory(req.user.id, id);
   }
 
   @Get(":id/detect-loan-payments")

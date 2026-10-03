@@ -1,3 +1,11 @@
+import { demoAccounts } from "./accounts";
+import { getPeriodicRate } from "../../accounts/mortgage-amortization.util";
+import {
+  DEFAULT_PERIODS_PER_YEAR,
+  periodsPerYearForStoredFrequency,
+} from "../../accounts/payment-frequency.util";
+import { roundToDecimals } from "../../common/round.util";
+
 export interface DemoTransaction {
   accountKey: string;
   date: string;
@@ -7,12 +15,21 @@ export interface DemoTransaction {
   description: string;
   status: string;
   currencyCode?: string;
-  // For split transactions
+  // For split transactions. A split with `transferAccountKey` is a transfer
+  // leg into that account (no category), the way a scheduled loan payment
+  // posts its principal.
   isSplit?: boolean;
-  splits?: { categoryPath: string; amount: number; memo: string }[];
+  splits?: DemoSplit[];
   // For transfers
   isTransfer?: boolean;
   transferAccountKey?: string;
+}
+
+export interface DemoSplit {
+  categoryPath?: string;
+  transferAccountKey?: string;
+  amount: number;
+  memo: string;
 }
 
 /** Seeded random number generator for consistent results */
@@ -48,6 +65,17 @@ export function generateTransactions(referenceDate: Date): DemoTransaction[] {
 
   const startDate = new Date(referenceDate);
   startDate.setMonth(startDate.getMonth() - 12);
+
+  // The mortgage's debt before each installment, from its opening balance.
+  const mortgage = demoAccounts.find((a) => a.key === "mortgage")!;
+  const MORTGAGE_PAYMENT = mortgage.paymentAmount!;
+  const mortgageRate = getPeriodicRate(
+    mortgage.interestRate!,
+    periodsPerYearForStoredFrequency(mortgage.paymentFrequency!) ??
+      DEFAULT_PERIODS_PER_YEAR,
+    mortgage.mortgageType!,
+  );
+  let mortgageDebt = Math.abs(mortgage.openingBalance);
 
   const startYear = startDate.getFullYear();
   const startMonth = startDate.getMonth();
@@ -96,35 +124,38 @@ export function generateTransactions(referenceDate: Date): DemoTransaction[] {
     }
 
     // === MORTGAGE ===
+    // The installment posts the way a scheduled mortgage payment does: one
+    // chequing split, the principal a transfer leg into the mortgage and the
+    // interest a category leg, the interest charged on the debt the ledger
+    // carries before the payment at the mortgage's own periodic rate. The
+    // mortgage-type detector reads it back as CANADIAN_FIXED
+    // (docs/specs/mortgage-types.md, section 10).
     const mortgageDate = getMonthDate(year, month, 1);
     if (mortgageDate <= referenceDate && mortgageDate >= startDate) {
-      // Payment from chequing (full payment including principal + interest)
+      const interest = roundToDecimals(mortgageDebt * mortgageRate, 2);
+      const principal = roundToDecimals(MORTGAGE_PAYMENT - interest, 2);
+      mortgageDebt = roundToDecimals(mortgageDebt - principal, 2);
       transactions.push({
         accountKey: "chequing",
         date: formatDate(mortgageDate),
         payeeName: "Scotiabank Mortgage",
-        categoryPath: "Housing > Rent/Mortgage",
-        amount: -2370.0,
+        // Not written for a split parent: only its legs carry categories.
+        categoryPath: "Housing > Mortgage Interest",
+        amount: -MORTGAGE_PAYMENT,
         description: "Monthly mortgage payment",
-        ...clearedStatus,
-      });
-
-      // Principal portion applied to mortgage account
-      // Canadian fixed-rate: semi-annual compounding
-      // Monthly rate = (1 + 0.0524/2)^(1/6) - 1 ≈ 0.004327
-      const monthlyRate = Math.pow(1 + 0.0524 / 2, 1 / 6) - 1;
-      // Approximate balance after i months of payments
-      const balanceAfterPayments = 385000 - i * 700; // rough approximation
-      const interestPortion = balanceAfterPayments * monthlyRate;
-      const principalPortion = Math.round((2370 - interestPortion) * 100) / 100;
-
-      transactions.push({
-        accountKey: "mortgage",
-        date: formatDate(mortgageDate),
-        payeeName: "Scotiabank Mortgage",
-        categoryPath: "Housing > Rent/Mortgage",
-        amount: principalPortion,
-        description: "Mortgage principal payment",
+        isSplit: true,
+        splits: [
+          {
+            transferAccountKey: "mortgage",
+            amount: -principal,
+            memo: "Principal",
+          },
+          {
+            categoryPath: "Housing > Mortgage Interest",
+            amount: -interest,
+            memo: "Interest",
+          },
+        ],
         ...clearedStatus,
       });
     }
