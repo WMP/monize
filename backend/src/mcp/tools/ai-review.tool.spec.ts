@@ -88,7 +88,7 @@ describe("McpAiReviewTools", () => {
         transaction: [{ id: "tx-1", amount: -50 }],
       });
       const result = await call({ operation: "claim" });
-      expect(work.claim).toHaveBeenCalledWith("u1", "s1");
+      expect(work.claim).toHaveBeenCalledWith("u1", "s1", undefined);
       expect(result.structuredContent.request.id).toBe(REQ);
       expect(result.structuredContent.transaction).toEqual([
         { id: "tx-1", amount: -50 },
@@ -139,7 +139,16 @@ describe("McpAiReviewTools", () => {
         { sessionId: undefined },
       );
       await handler({ operation: "claim" }, modern);
-      expect(work.claim).toHaveBeenCalledWith("u1", "pat:t1");
+      expect(work.claim).toHaveBeenCalledWith("u1", "pat:t1", undefined);
+    });
+
+    it("claims the named request, not the oldest", async () => {
+      work.claim.mockResolvedValue({
+        request: request(),
+        transaction: [{ id: "tx-1", amount: -50 }],
+      });
+      await call({ operation: "claim", requestId: REQ });
+      expect(work.claim).toHaveBeenCalledWith("u1", "s1", REQ);
     });
 
     it("says so when nothing is pending", async () => {

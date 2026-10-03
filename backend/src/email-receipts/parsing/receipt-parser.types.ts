@@ -82,4 +82,11 @@ export interface ParsedReceipt {
   discountCategoryId: string | null;
   complete: boolean;
   reason: ParsedReceiptReason | null;
+  /**
+   * Who read the email: a saved parser (absent, as every receipt stored before
+   * this field existed) or the AI (`"ai"`, spec "AI extraction"). It changes
+   * nothing about the completeness rules or the proposal; it tells the reader
+   * where the figures came from.
+   */
+  source?: "parser" | "ai";
 }

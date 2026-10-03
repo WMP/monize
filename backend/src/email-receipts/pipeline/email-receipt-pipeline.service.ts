@@ -16,9 +16,7 @@ import {
   EMAIL_RECEIPTS_CLAIM_KEY,
 } from "../../ai-review/ai-review-work.types";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
-import { returnedRows } from "../../common/db/query-result";
 import { withScopedDb } from "../../common/db/scoped-db";
-import { investmentLinkedTransactionExclusion } from "../../common/investment-filter.util";
 import { tr } from "../../i18n/translate";
 import { Payee } from "../../payees/entities/payee.entity";
 import {
@@ -45,6 +43,7 @@ import {
   type ReceiptProposalKind,
   type ReceiptProposalTransaction,
 } from "../proposal/build-receipt-proposal";
+import { loadLinkableTransaction } from "./linkable-transaction";
 import { loadReceiptCandidates } from "./receipt-candidates";
 import {
   closeReceiptRequests,
@@ -242,7 +241,7 @@ export class EmailReceiptPipelineService {
     this.refuseUnprocessable(receipt, requestStatus, options);
 
     const link = options.link
-      ? await this.loadLinkedTransaction(m, userId, options.link.transactionId)
+      ? await loadLinkableTransaction(m, userId, options.link.transactionId)
       : null;
 
     const mailbox = await m
@@ -572,74 +571,6 @@ export class EmailReceiptPipelineService {
         ),
       );
     }
-  }
-
-  /**
-   * The transaction a person links, read inside the transaction that stores the
-   * link: the user's own, not a transfer, not VOID and not an investment row.
-   */
-  private async loadLinkedTransaction(
-    m: EntityManager,
-    userId: string,
-    transactionId: string,
-  ): Promise<TransactionFacts> {
-    const rows = returnedRows<{
-      id: string;
-      amount: string | number;
-      description: string | null;
-      payee_id: string | null;
-      is_transfer: boolean;
-      status: string | null;
-      plain: boolean;
-    }>(
-      await m.query(
-        `SELECT t.id, t.amount, t.description, t.payee_id, t.is_transfer, t.status,
-                ${investmentLinkedTransactionExclusion("t")} AS plain
-           FROM transactions t
-          WHERE t.id = $1
-            AND t.user_id = $2`,
-        [transactionId, userId],
-      ),
-    );
-    const row = rows[0];
-    if (!row) {
-      throw new NotFoundException(
-        tr(
-          "errors.emailReceipts.transactionNotFound",
-          "That transaction was not found.",
-        ),
-      );
-    }
-    if (row.is_transfer) {
-      throw new BadRequestException(
-        tr(
-          "errors.emailReceipts.linkTransfer",
-          "A transfer cannot be linked to an email.",
-        ),
-      );
-    }
-    if (row.status === "VOID") {
-      throw new BadRequestException(
-        tr(
-          "errors.emailReceipts.linkVoid",
-          "A void transaction cannot be linked to an email.",
-        ),
-      );
-    }
-    if (!row.plain) {
-      throw new BadRequestException(
-        tr(
-          "errors.emailReceipts.linkInvestment",
-          "An investment transaction cannot be linked to an email.",
-        ),
-      );
-    }
-    return {
-      id: row.id,
-      amount: Number(row.amount),
-      description: row.description,
-      payeeId: row.payee_id,
-    };
   }
 
   /** Close what the receipt no longer backs, store its new state, and report it. */

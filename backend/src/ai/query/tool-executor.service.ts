@@ -1488,7 +1488,11 @@ export class ToolExecutorService {
         };
       }
       if (operation === "claim") {
-        const claimed = await this.aiReview.claim(userId, ASSISTANT_CLAIM_KEY);
+        const claimed = await this.aiReview.claim(
+          userId,
+          ASSISTANT_CLAIM_KEY,
+          input.requestId as string | undefined,
+        );
         return {
           data: claimed.request
             ? {

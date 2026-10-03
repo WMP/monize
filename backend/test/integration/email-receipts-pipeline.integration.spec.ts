@@ -5,7 +5,10 @@ import { DataSource } from "typeorm";
 import { settlePendingHistoryWrites } from "@/action-history/action-history.service";
 import { AiActionsService } from "@/ai/actions/ai-actions.service";
 import { AiModule } from "@/ai/ai.module";
+import { AiService } from "@/ai/ai.service";
 import { AiReviewModule } from "@/ai-review/ai-review.module";
+import { AiReviewWorkService } from "@/ai-review/ai-review-work.service";
+import { ASSISTANT_CLAIM_KEY } from "@/ai-review/ai-review-work.types";
 import { AiReviewQueueModule } from "@/ai-review/ai-review-queue.module";
 import { EVENT_BUS } from "@/common/events/event-bus.interface";
 import { MemoryEventBus } from "@/common/events/memory-event-bus";
@@ -17,6 +20,7 @@ import {
   ImapMailboxClient,
   type FetchSinceResult,
 } from "@/email-receipts/imap/imap-mailbox-client";
+import { EmailReceiptAiService } from "@/email-receipts/ai/email-receipt-ai.service";
 import { EmailReceiptParsersService } from "@/email-receipts/parsers/email-receipt-parsers.service";
 import { EmailReceiptPollService } from "@/email-receipts/poll/email-receipt-poll.service";
 import { EmailReceiptsService } from "@/email-receipts/receipts/email-receipts.service";
@@ -63,6 +67,8 @@ describe("email receipts pipeline (integration)", () => {
   let db: DataSource;
   let poller: EmailReceiptPollService;
   let receipts: EmailReceiptsService;
+  let receiptAi: EmailReceiptAiService;
+  let work: AiReviewWorkService;
   let parsers: EmailReceiptParsersService;
   let transactions: TransactionsService;
   let actions: AiActionsService;
@@ -186,6 +192,8 @@ describe("email receipts pipeline (integration)", () => {
     db = harness.owner;
     poller = module.get(EmailReceiptPollService);
     receipts = module.get(EmailReceiptsService);
+    receiptAi = module.get(EmailReceiptAiService);
+    work = module.get(AiReviewWorkService);
     parsers = module.get(EmailReceiptParsersService);
     transactions = module.get(TransactionsService);
     actions = module.get(AiActionsService);
@@ -603,5 +611,183 @@ describe("email receipts pipeline (integration)", () => {
     jest.spyOn(imap, "fetchSince").mockResolvedValueOnce(serverReturns("41"));
     await pollAlice();
     expect((await receiptRows())[0].status).toBe("no_parser");
+  });
+  describe("Recognize with AI (ask-ai)", () => {
+    const unreadEmail = async () => {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce(serverReturns("41"));
+      await pollAlice();
+      const [receipt] = await receiptRows();
+      expect(receipt.status).toBe("no_parser");
+      return receipt;
+    };
+
+    it("with a chosen transaction and no provider: a pending email_receipt request the inbox lists, the email in review, the transaction stored as manual", async () => {
+      const receipt = await unreadEmail();
+      const completeSpy = jest.spyOn(module.get(AiService), "complete");
+
+      const result = await asAlice(() =>
+        receiptAi.askAi(aliceId, receipt.id, txId),
+      );
+
+      expect(completeSpy).not.toHaveBeenCalled();
+      const [request] = await requestRows();
+      expect(result).toEqual({
+        ok: true,
+        requestId: request.id,
+        transactionId: txId,
+      });
+      expect(request).toMatchObject({
+        kind: "email_receipt",
+        status: "pending",
+        claimed_by: null,
+        transaction_id: txId,
+        email_receipt_id: receipt.id,
+      });
+      const [after] = await receiptRows();
+      expect(after).toMatchObject({
+        status: "review",
+        transaction_id: txId,
+        match_kind: "manual",
+        ai_review_request_id: request.id,
+      });
+
+      const inbox = await asAlice(() => work.listInbox(aliceId));
+      expect(inbox).toHaveLength(1);
+      expect(inbox[0]).toMatchObject({
+        id: request.id,
+        kind: "email_receipt",
+        status: "pending",
+        emailReceipt: { id: receipt.id, subject: "Your order ABCD1234" },
+      });
+      const [listed] = await asAlice(() => receipts.list(aliceId));
+      expect(listed.displayState).toBe("pending_ai");
+      // a request asks; it writes nothing to the ledger
+      expect(await splitCount()).toBe(0);
+    });
+
+    it("the assistant claims that request by id, reads the email, submits splits as a signed card, and confirming it applies the request", async () => {
+      const receipt = await unreadEmail();
+      const { requestId } = await asAlice(() =>
+        receiptAi.askAi(aliceId, receipt.id, txId),
+      );
+
+      const claimed = await asAlice(() =>
+        work.claim(aliceId, ASSISTANT_CLAIM_KEY, requestId),
+      );
+      expect(claimed.request).toMatchObject({
+        id: requestId,
+        status: "claimed",
+        claimedByYou: true,
+      });
+      expect(claimed.emailReceipt?.text).toContain("Widget 12.00");
+      // nobody else can take it any more, and an unknown id claims nothing
+      await expect(
+        asAlice(() => work.claim(aliceId, "an-mcp-client", requestId)),
+      ).resolves.toEqual({ request: null });
+
+      const submitted = await asAlice(() =>
+        work.submit(aliceId, ASSISTANT_CLAIM_KEY, requestId, {
+          splits: [
+            { categoryName: "Books", amount: -12, memo: "Widget" },
+            { categoryName: "Shipping", amount: -3 },
+          ],
+        }),
+      );
+      expect(submitted.action.descriptor).toMatchObject({
+        type: "update_transaction",
+        transactionId: txId,
+        aiReviewRequestId: requestId,
+      });
+      expect((await requestRows())[0].status).toBe("proposed");
+      expect(await splitCount()).toBe(0);
+
+      await asAlice(() =>
+        actions.confirm(aliceId, {
+          actionId: submitted.action.actionId,
+          signature: submitted.action.signature,
+          descriptor: submitted.action.descriptor as never,
+        }),
+      );
+      expect(await splitCount()).toBe(2);
+      expect((await requestRows())[0].status).toBe("applied");
+      const [after] = await asAlice(() => receipts.list(aliceId));
+      expect(after.displayState).toBe("applied");
+    });
+
+    it("dismisses the email's own open request when asked again, queueing one", async () => {
+      const receipt = await unreadEmail();
+      const first = await asAlice(() =>
+        receiptAi.askAi(aliceId, receipt.id, txId),
+      );
+      const second = await asAlice(() => receiptAi.askAi(aliceId, receipt.id));
+      expect(second.requestId).not.toBe(first.requestId);
+      const rows = await requestRows();
+      expect(rows.map((r: { status: string }) => r.status)).toEqual([
+        "rejected",
+        "pending",
+      ]);
+    });
+
+    it("refuses another user's transaction, a transfer and a void one, writing nothing", async () => {
+      const receipt = await unreadEmail();
+      const bobAccount = (
+        await createTestAccount(db, bobId, {
+          name: "Bob checking",
+          currencyCode: "USD",
+          openingBalance: 100,
+          currentBalance: 100,
+        })
+      ).id;
+      const [bobTx] = await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+         VALUES ($1, $2, '2026-09-11', -15, 'USD', 'UNRECONCILED') RETURNING id`,
+        [bobId, bobAccount],
+      );
+      const [transfer] = await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status, is_transfer)
+         VALUES ($1, $2, '2026-09-11', -15, 'USD', 'UNRECONCILED', true) RETURNING id`,
+        [aliceId, accountId],
+      );
+      const [voided] = await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+         VALUES ($1, $2, '2026-09-11', -15, 'USD', 'VOID') RETURNING id`,
+        [aliceId, accountId],
+      );
+      await expect(
+        asAlice(() => receiptAi.askAi(aliceId, receipt.id, bobTx.id)),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        asAlice(() => receiptAi.askAi(aliceId, receipt.id, transfer.id)),
+      ).rejects.toMatchObject({ status: 400 });
+      await expect(
+        asAlice(() => receiptAi.askAi(aliceId, receipt.id, voided.id)),
+      ).rejects.toMatchObject({ status: 400 });
+      // no transaction and none chosen
+      await expect(
+        asAlice(() => receiptAi.askAi(aliceId, receipt.id)),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(await requestRows()).toHaveLength(0);
+      expect((await receiptRows())[0]).toMatchObject({
+        status: "no_parser",
+        transaction_id: null,
+      });
+    });
+
+    it("another open request on the transaction is a 409 that leaves the email as it was", async () => {
+      const receipt = await unreadEmail();
+      await db.query(
+        `INSERT INTO ai_review_requests (user_id, transaction_id, kind, instruction, status)
+         VALUES ($1, $2, 'transaction_review', 'Look at this', 'pending')`,
+        [aliceId, txId],
+      );
+      await expect(
+        asAlice(() => receiptAi.askAi(aliceId, receipt.id, txId)),
+      ).rejects.toMatchObject({ status: 409 });
+      expect((await receiptRows())[0]).toMatchObject({
+        status: "no_parser",
+        transaction_id: null,
+      });
+      expect(await requestRows()).toHaveLength(1);
+    });
   });
 });

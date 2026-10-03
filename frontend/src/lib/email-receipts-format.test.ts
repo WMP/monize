@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   fromReceiptUnits,
+  canRecognizeWithAi,
   isReceiptActionable,
   readParsedReceipt,
   senderDomain,
@@ -89,5 +90,36 @@ describe('isReceiptActionable', () => {
     ['unmatched', null, true],
   ] as const)('%s / %s is %s', (status, displayState, expected) => {
     expect(isReceiptActionable({ status, displayState })).toBe(expected);
+  });
+});
+
+describe('canRecognizeWithAi', () => {
+  it.each([
+    ['no_parser', null, true],
+    ['parse_failed', null, true],
+    ['unmatched', null, true],
+    ['ambiguous', null, true],
+    ['review_conflict', null, true],
+    ['review', 'dismissed', true],
+    ['review', 'expired', true],
+    ['review', 'request_missing', true],
+    ['review', null, true],
+    ['review', 'proposed', false],
+    ['review', 'pending_ai', false],
+    ['review', 'applied', false],
+    ['ignored', null, false],
+    ['skipped', null, false],
+    ['pending', null, false],
+  ] as const)('%s / %s is %s', (status, displayState, expected) => {
+    expect(canRecognizeWithAi({ status, displayState })).toBe(expected);
+  });
+});
+
+describe('readParsedReceipt source', () => {
+  it('keeps who read the email, and leaves it absent when the server did not say', () => {
+    expect(readParsedReceipt({ source: 'ai', items: [] })?.source).toBe('ai');
+    expect(readParsedReceipt({ source: 'parser', items: [] })?.source).toBe('parser');
+    expect(readParsedReceipt({ items: [] })).not.toHaveProperty('source');
+    expect(readParsedReceipt({ source: 'robot', items: [] })).not.toHaveProperty('source');
   });
 });
