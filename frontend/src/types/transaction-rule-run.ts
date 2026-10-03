@@ -137,6 +137,9 @@ export interface PreviewDraftRuleData {
   ruleId?: string;
   condition: RuleConditionNode;
   actions: RuleAction[];
+  /** The draft's active window, `YYYY-MM-DD`; absent is open on that side (INV-RULE-004). */
+  activeFrom?: string | null;
+  activeTo?: string | null;
   filters?: RuleRunFilters;
 }
 

@@ -157,7 +157,7 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
     }
     setSaving(true);
     try {
-      const payload = draftToPayload(draft);
+      const payload = draftToPayload(draft, loadedDraft);
       if (rule) {
         const saved = await transactionRulesApi.update(rule.id, {
           ...payload,

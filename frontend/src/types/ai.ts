@@ -1,6 +1,7 @@
 import type { ContactLookupSource } from './payee';
 import type { InvestmentAction } from './investment';
 import type { RuleAction, RuleConditionNode, RuleTrigger } from './transaction-rule';
+import type { RuleStructurePlan } from './transaction-rule-run';
 import type {
   RuleRunFilters,
   RuleRunMatchedRow,
@@ -403,6 +404,8 @@ export interface PendingActionRuleEffects {
     description?: string | null;
     addTagIds: string[];
     removeTagIds: string[];
+    /** A structural action's plan: the row becomes a transfer leg or a split. */
+    structure?: RuleStructurePlan;
   };
   aiReviewRequests: Array<{ ruleId: string; instruction: string }>;
   labels: PendingActionRuleEffectsLabels;
