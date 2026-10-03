@@ -364,6 +364,49 @@ describe("TransactionRulesApplierService.explainRow", () => {
     expect(labels.tags).toEqual({ [TAG_A]: "food" });
   });
 
+  it("names an account carried only by a structural plan in a trace change, scoped by the user", async () => {
+    const SPLIT_ACCOUNT = uuid(7);
+    const h = harness([
+      rule(RULE_1, { field: "accountId", op: "eq", value: ACCOUNT }, [
+        { type: "add_tags", tagIds: [TAG_A] },
+      ]),
+    ]);
+    const realPlan = h.service.planForRow.bind(h.service);
+    const planned = jest
+      .spyOn(h.service, "planForRow")
+      .mockImplementation(async (...args) => {
+        const real = await realPlan(...args);
+        return {
+          ...real,
+          trace: real.trace.map((entry) => ({
+            ...entry,
+            changes: {
+              ...entry.changes,
+              structure: {
+                kind: "split",
+                parts: [{ transferAccountId: SPLIT_ACCOUNT }],
+              },
+            },
+          })) as unknown as typeof real.trace,
+        };
+      });
+    jest.spyOn(h.m as never, "find").mockImplementation((async (
+      entity: unknown,
+      opts: { where: { id: { value: string[] }; userId: string } },
+    ) => {
+      if (entity !== Account) return [];
+      expect(opts.where.userId).toBe(USER);
+      return opts.where.id.value.includes(SPLIT_ACCOUNT)
+        ? [{ id: SPLIT_ACCOUNT, name: "Savings" }]
+        : [];
+    }) as never);
+
+    const { labels } = await h.service.explainRow(h.m, USER, INPUT, "import");
+
+    expect(planned).toHaveBeenCalled();
+    expect(labels.accounts[SPLIT_ACCOUNT]).toBe("Savings");
+  });
+
   it("is read-only: it writes nothing, queues no review and creates no payee", async () => {
     const h = harness([
       rule(

@@ -7,6 +7,7 @@ import {
   RuleConditionNode,
   RuleFacts,
 } from "./rule-condition.types";
+import { UUID_REGEX } from "../common/query-param-utils";
 import { RuleDefinitionLabels } from "./rule-labels";
 import { RuleSkipReason, RuleTraceEntry } from "./rule-effects";
 import { RuleReferencedIds } from "./rule-validation";
@@ -126,14 +127,81 @@ function visit(
   }
 }
 
+type IdSets = Record<keyof RuleReferencedIds, Set<string>>;
+type IdKind = keyof RuleReferencedIds;
+
+/** How many containers deep a trace change is read; deeper values are ignored. */
+export const EXPLAIN_CHANGES_MAX_DEPTH = 6;
+/** The most ids one explanation collects from trace changes, across all four kinds. */
+export const EXPLAIN_CHANGES_MAX_IDS = 500;
+
+/**
+ * What an id under this key names, or null. A structural action's plan carries
+ * ids under keys such as `transferAccountId`, so a suffix counts, not only the
+ * bare names.
+ */
+function kindOfKey(key: string): IdKind | null {
+  if (key === "accountId" || key.endsWith("AccountId")) return "accountIds";
+  if (key === "categoryId" || key.endsWith("CategoryId")) return "categoryIds";
+  if (key === "payeeId" || key.endsWith("PayeeId")) return "payeeIds";
+  if (key === "tagIds" || key === "tagId") return "tagIds";
+  return null;
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.getPrototypeOf(value) === Object.prototype;
+
+const collectedCount = (sets: IdSets): number =>
+  sets.accountIds.size +
+  sets.categoryIds.size +
+  sets.payeeIds.size +
+  sets.tagIds.size;
+
+/**
+ * Collect the ids a trace entry's `changes` mention, whatever their shape: the
+ * ledger fields' `{ before, after }` wrappers and the nested plans of
+ * structural actions alike. Only UUID strings under a key that names an id
+ * count; `kind` is what the nearest enclosing key named, carried through
+ * arrays and `before` / `after` wrappers.
+ */
+function collectChangeIds(
+  value: unknown,
+  kind: IdKind | null,
+  depth: number,
+  sets: IdSets,
+): void {
+  if (collectedCount(sets) >= EXPLAIN_CHANGES_MAX_IDS) return;
+  if (typeof value === "string") {
+    if (kind !== null && UUID_REGEX.test(value)) sets[kind].add(value);
+    return;
+  }
+  if (depth >= EXPLAIN_CHANGES_MAX_DEPTH) return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectChangeIds(item, kind, depth + 1, sets);
+    return;
+  }
+  if (!isPlainObject(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    const own = kindOfKey(key);
+    const inherited = key === "before" || key === "after" ? kind : null;
+    collectChangeIds(child, own ?? inherited, depth + 1, sets);
+  }
+}
+
 /**
  * The ids a set of explained rules mentions, to be named: the ids a condition
- * expected, the ids the row had, and the ids its effects moved between.
+ * expected, the ids the row had, and the ids its effects moved between. The
+ * effects are read generically (`collectChangeIds`), so an id a structural
+ * action's plan carries, such as a split part's transfer account, is named
+ * without this function knowing the action.
  */
 export function explainedIds(
   rules: readonly ExplainedRule[],
 ): RuleReferencedIds {
-  const sets = {
+  const sets: IdSets = {
     accountIds: new Set<string>(),
     payeeIds: new Set<string>(),
     categoryIds: new Set<string>(),
@@ -143,16 +211,7 @@ export function explainedIds(
     if (rule.condition !== null) visit(rule.condition, sets);
     const changes = rule.effects?.changes;
     if (changes === undefined) continue;
-    addId(sets.categoryIds, changes.categoryId?.before);
-    addId(sets.categoryIds, changes.categoryId?.after);
-    addId(sets.payeeIds, changes.payeeId?.before);
-    addId(sets.payeeIds, changes.payeeId?.after);
-    for (const id of [
-      ...(changes.tagIds?.before ?? []),
-      ...(changes.tagIds?.after ?? []),
-    ]) {
-      addId(sets.tagIds, id);
-    }
+    collectChangeIds(changes, null, 0, sets);
   }
   return {
     accountIds: [...sets.accountIds],
