@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Importregeln",
       "none": "Keine Importregel hat auf diese Buchung gepasst.",
-      "unnamed": "Regel",
       "skipped": "{action}: übersprungen ({reason})",
       "stopped": "Beendet die Regelverarbeitung danach.",
       "applied": "Angewendet: {actions}",
       "openNewTab": "Regel {name} in einem neuen Tab öffnen"
     },
     "ruleTest": {
-      "heading": "Regeltest",
       "loading": "Das Ergebnis des Regeltests wird geladen",
       "error": "Das Ergebnis des Regeltests konnte nicht geladen werden.",
       "retry": "Erneut versuchen",

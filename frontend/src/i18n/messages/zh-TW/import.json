@@ -568,14 +568,12 @@
     "rules": {
       "heading": "匯入規則",
       "none": "沒有匯入規則符合這筆交易。",
-      "unnamed": "規則",
       "skipped": "{action}：已略過（{reason}）",
       "stopped": "停止其後的規則。",
       "applied": "已套用：{actions}",
       "openNewTab": "在新分頁中開啟規則 {name}"
     },
     "ruleTest": {
-      "heading": "規則測試",
       "loading": "正在載入規則測試結果",
       "error": "無法載入規則測試結果。",
       "retry": "重試",

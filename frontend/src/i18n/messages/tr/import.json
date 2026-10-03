@@ -568,14 +568,12 @@
     "rules": {
       "heading": "İçe aktarma kuralları",
       "none": "Hiçbir içe aktarma kuralı bu işlemle eşleşmedi.",
-      "unnamed": "Kural",
       "skipped": "{action}: atlandı ({reason})",
       "stopped": "Sonraki kuralları durdurur.",
       "applied": "Uygulananlar: {actions}",
       "openNewTab": "{name} kuralını yeni sekmede aç"
     },
     "ruleTest": {
-      "heading": "Kural testi",
       "loading": "Kural testi sonucu yükleniyor",
       "error": "Kural testi sonucu yüklenemedi.",
       "retry": "Yeniden dene",

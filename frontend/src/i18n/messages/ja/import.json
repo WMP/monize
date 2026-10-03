@@ -568,14 +568,12 @@
     "rules": {
       "heading": "インポートルール",
       "none": "この取引に一致するインポートルールはありません。",
-      "unnamed": "ルール",
       "skipped": "{action}: スキップしました（{reason}）",
       "stopped": "これ以降のルールを停止します。",
       "applied": "適用: {actions}",
       "openNewTab": "ルール {name} を新しいタブで開く"
     },
     "ruleTest": {
-      "heading": "ルールのテスト",
       "loading": "ルールのテスト結果を読み込んでいます",
       "error": "ルールのテスト結果を読み込めませんでした。",
       "retry": "再試行",

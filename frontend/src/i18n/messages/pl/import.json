@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Reguły importu",
       "none": "Żadna reguła importu nie pasuje do tej transakcji.",
-      "unnamed": "Reguła",
       "skipped": "{action}: pominięto ({reason})",
       "stopped": "Zatrzymuje kolejne reguły.",
       "applied": "Zastosowano: {actions}",
       "openNewTab": "Otwórz regułę {name} w nowej karcie"
     },
     "ruleTest": {
-      "heading": "Test reguł",
       "loading": "Wczytywanie wyniku testu reguł",
       "error": "Nie udało się wczytać wyniku testu reguł.",
       "retry": "Spróbuj ponownie",

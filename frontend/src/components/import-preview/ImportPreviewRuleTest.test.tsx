@@ -122,6 +122,12 @@ describe('ImportPreviewRuleTest', () => {
     expect(explainRow).toHaveBeenCalledWith({ trigger: 'import', input: ruleInput });
   });
 
+  it('is titled Import rules, in a region of that name', async () => {
+    await show(explanation(rule()));
+    expect(screen.getByRole('region', { name: 'Import rules' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Import rules' })).toBeInTheDocument();
+  });
+
   it('shows a loading state in place until the answer arrives, never "no rules"', async () => {
     let resolve: (value: RuleRowExplanation) => void = () => {};
     explainRow.mockReturnValue(new Promise((done) => (resolve = done)));
@@ -140,7 +146,7 @@ describe('ImportPreviewRuleTest', () => {
   it('renders nothing for a row that has no rule input and asks for nothing', async () => {
     await show(explanation(rule()), null);
     expect(explainRow).not.toHaveBeenCalled();
-    expect(screen.queryByText('Rule test')).not.toBeInTheDocument();
+    expect(screen.queryByText('Import rules')).not.toBeInTheDocument();
   });
 
   describe('a rule that matched', () => {
@@ -243,6 +249,24 @@ describe('ImportPreviewRuleTest', () => {
       text('Set the payee from text: skipped (no payee has the name the rule built, and it does not create one)');
       text('Add tags: skipped (the rule cannot change it)');
       expect(screen.getByText('Stops the rules after it.')).toBeInTheDocument();
+    });
+
+    it('shows an action type this client does not know as the server named it', async () => {
+      await show(
+        explanation(
+          rule({
+            effects: {
+              ruleId: 'r1',
+              matched: true,
+              applied: [{ type: 'brand_new_action' }],
+              skipped: [],
+              changes: {},
+              stopped: false,
+            },
+          }),
+        ),
+      );
+      expect(screen.getByText('Applied: brand_new_action')).toBeInTheDocument();
     });
 
     it('names the actions it applied when it has nothing else to say, such as a review request', async () => {

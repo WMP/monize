@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Reglas de importación",
       "none": "Ninguna regla de importación coincidió con esta transacción.",
-      "unnamed": "Regla",
       "skipped": "{action}: omitida ({reason})",
       "stopped": "Detiene las reglas posteriores.",
       "applied": "Aplicadas: {actions}",
       "openNewTab": "Abrir la regla {name} en una pestaña nueva"
     },
     "ruleTest": {
-      "heading": "Prueba de reglas",
       "loading": "Cargando el resultado de la prueba de reglas",
       "error": "No se pudo cargar el resultado de la prueba de reglas.",
       "retry": "Reintentar",

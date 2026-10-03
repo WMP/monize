@@ -197,6 +197,7 @@ export function ImportPreviewRuleTest({
   ruleInput: ImportPreviewRuleInput | null;
 }) {
   const t = useTranslations('import.preview.ruleTest');
+  const tRules = useTranslations('import.preview.rules');
   const store = useRuleTestStore();
   const state = useSyncExternalStore(
     store.subscribe,
@@ -214,8 +215,8 @@ export function ImportPreviewRuleTest({
   const current = state ?? { status: 'loading' as const };
 
   return (
-    <section aria-label={t('heading')} aria-busy={current.status === 'loading'} className="space-y-1">
-      <h4 className={IMPORT_PREVIEW_HEADING_CLASS}>{t('heading')}</h4>
+    <section aria-label={tRules('heading')} aria-busy={current.status === 'loading'} className="space-y-1">
+      <h4 className={IMPORT_PREVIEW_HEADING_CLASS}>{tRules('heading')}</h4>
       {current.status === 'loading' && (
         <div role="status">
           <LoadingSpinner size="sm" fullContainer={false} text={t('loading')} />

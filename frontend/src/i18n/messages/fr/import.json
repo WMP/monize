@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Règles d'import",
       "none": "Aucune règle d'import ne correspond à cette transaction.",
-      "unnamed": "Règle",
       "skipped": "{action} : ignorée ({reason})",
       "stopped": "Arrête les règles suivantes.",
       "applied": "Appliquées : {actions}",
       "openNewTab": "Ouvrir la règle {name} dans un nouvel onglet"
     },
     "ruleTest": {
-      "heading": "Test des règles",
       "loading": "Chargement du résultat du test des règles",
       "error": "Le résultat du test des règles n'a pas pu être chargé.",
       "retry": "Réessayer",

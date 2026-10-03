@@ -568,14 +568,12 @@
     "rules": {
       "heading": "导入规则",
       "none": "没有导入规则匹配这笔交易。",
-      "unnamed": "规则",
       "skipped": "{action}：已跳过（{reason}）",
       "stopped": "停止其后的规则。",
       "applied": "已应用：{actions}",
       "openNewTab": "在新标签页中打开规则 {name}"
     },
     "ruleTest": {
-      "heading": "规则测试",
       "loading": "正在加载规则测试结果",
       "error": "无法加载规则测试结果。",
       "retry": "重试",

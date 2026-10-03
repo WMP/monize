@@ -5,8 +5,7 @@ import { ImportPreviewChoice } from './ImportPreviewChoice';
 import { ImportPreviewExpandButton } from './ImportPreviewExpandButton';
 import { ImportPreviewPayeeCell } from './ImportPreviewPayeeCell';
 import { ImportPreviewPayeeMapping } from './ImportPreviewPayeeMapping';
-import { ImportPreviewRuleTrace } from './ImportPreviewRuleTrace';
-import type { ImportPreviewPayee, ImportPreviewRule } from '@/types/import-preview';
+import type { ImportPreviewPayee } from '@/types/import-preview';
 
 const payee = (over: Partial<ImportPreviewPayee> = {}): ImportPreviewPayee => ({
   original: 'SHOP 12',
@@ -120,71 +119,6 @@ describe('ImportPreviewPayeeMapping', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     rerender(<ImportPreviewPayeeMapping payee={payee({ payeeId: null })} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-});
-
-describe('ImportPreviewRuleTrace', () => {
-  const labels = { categories: { c1: 'Food' }, payees: {}, tags: {} };
-  const rule = (over: Partial<ImportPreviewRule> = {}): ImportPreviewRule => ({
-    ruleId: 'r1',
-    ruleName: 'Food rule',
-    changes: { categoryId: { before: null, after: 'c1' } },
-    applied: [{ type: 'set_category' }],
-    skipped: [],
-    stopped: false,
-    ...over,
-  });
-
-  it('says no rule matched for an empty trace', () => {
-    render(<ImportPreviewRuleTrace rules={[]} labels={labels} />);
-    expect(screen.getByText('No import rule matched this transaction.')).toBeInTheDocument();
-  });
-
-  it('links each rule by name and writes its changes in words', () => {
-    render(<ImportPreviewRuleTrace rules={[rule()]} labels={labels} />);
-    const link = screen.getByRole('link', { name: 'Open the rule Food rule in a new tab' });
-    expect(link).toHaveAttribute('href', '/rules/r1');
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(screen.getByText('Category: none → Food')).toBeInTheDocument();
-  });
-
-  it('reads a skipped action with the reason, and a stop', () => {
-    render(
-      <ImportPreviewRuleTrace
-        rules={[rule({ skipped: [{ type: 'set_payee_from_text', reason: 'empty_render' }], stopped: true })]}
-        labels={labels}
-      />,
-    );
-    expect(
-      screen.getByText('Set the payee from text: skipped (the text of an action came out empty for it)'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Stops the rules after it.')).toBeInTheDocument();
-  });
-
-  it('says a reason it has no sentence for as the rule being unable to change the row', () => {
-    render(
-      <ImportPreviewRuleTrace
-        rules={[rule({ skipped: [{ type: 'set_category', reason: 'already_set' }] })]}
-        labels={labels}
-      />,
-    );
-    expect(screen.getByText('Set the category: skipped (the rule cannot change it)')).toBeInTheDocument();
-  });
-
-  it('shows an action type this client does not know as the server named it', () => {
-    render(
-      <ImportPreviewRuleTrace
-        rules={[rule({ changes: {}, applied: [{ type: 'brand_new_action' }] })]}
-        labels={labels}
-      />,
-    );
-    expect(screen.getByText('Applied: brand_new_action')).toBeInTheDocument();
-  });
-
-  it('names an unnamed rule generically', () => {
-    render(<ImportPreviewRuleTrace rules={[rule({ ruleName: null })]} labels={labels} />);
-    expect(screen.getByRole('link', { name: 'Open the rule Rule in a new tab' })).toBeInTheDocument();
   });
 });
 

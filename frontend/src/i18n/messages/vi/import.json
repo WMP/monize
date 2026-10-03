@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Quy tắc nhập",
       "none": "Không có quy tắc nhập nào khớp với giao dịch này.",
-      "unnamed": "Quy tắc",
       "skipped": "{action}: đã bỏ qua ({reason})",
       "stopped": "Dừng các quy tắc sau nó.",
       "applied": "Đã áp dụng: {actions}",
       "openNewTab": "Mở quy tắc {name} trong tab mới"
     },
     "ruleTest": {
-      "heading": "Kiểm tra quy tắc",
       "loading": "Đang tải kết quả kiểm tra quy tắc",
       "error": "Không thể tải kết quả kiểm tra quy tắc.",
       "retry": "Thử lại",

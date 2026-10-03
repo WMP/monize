@@ -15,7 +15,7 @@ import { KNOWN_REFUSAL_REASONS } from '@/lib/bank-sync-summary';
 import { OUTCOME_VARIANTS, previewAmount } from '@/lib/bank-sync-preview';
 import type { UncheckedChoice } from '@/lib/import-preview';
 import { gainLossColor } from '@/lib/format';
-import type { BankSyncPreviewLabels, BankSyncPreviewRow } from '@/types/bank-sync';
+import type { BankSyncPreviewRow } from '@/types/bank-sync';
 import { PreviewRowDetails, previewDetailsId } from './BankSyncPreviewRowDetails';
 
 /** Body cells: tighter than the default so five columns fit one screen. */
@@ -73,7 +73,6 @@ export interface PreviewRowControls {
 interface PreviewRowProps {
   row: BankSyncPreviewRow;
   accountCurrency: string;
-  labels: BankSyncPreviewLabels;
   controls: PreviewRowControls;
 }
 
@@ -92,7 +91,7 @@ function RowBox({ row, controls, payeeText }: { row: BankSyncPreviewRow; control
 
 const hasDetails = (row: BankSyncPreviewRow): boolean => row.outcome === 'new' && row.externalKey !== null;
 
-export function PreviewRow({ row, accountCurrency, labels, controls }: PreviewRowProps) {
+export function PreviewRow({ row, accountCurrency, controls }: PreviewRowProps) {
   const { dateText, payeeText, amountText, amountClass, status, dimmed } = useRowDisplay(row, accountCurrency);
   const idPrefix = useId();
   const [expanded, setExpanded] = useState(false);
@@ -160,7 +159,7 @@ export function PreviewRow({ row, accountCurrency, labels, controls }: PreviewRo
       {expanded && hasDetails(row) && (
         <tr>
           <Td colSpan={6} className="px-3 pb-3">
-            <PreviewRowDetails id={detailsId} row={row} labels={labels} />
+            <PreviewRowDetails id={detailsId} row={row} />
           </Td>
         </tr>
       )}
@@ -169,7 +168,7 @@ export function PreviewRow({ row, accountCurrency, labels, controls }: PreviewRo
 }
 
 /** A row on a phone: date and amount, the payee, the description, then the outcome. */
-export function PreviewCard({ row, accountCurrency, labels, controls }: PreviewRowProps) {
+export function PreviewCard({ row, accountCurrency, controls }: PreviewRowProps) {
   const { dateText, payeeText, amountText, amountClass, status, dimmed } = useRowDisplay(row, accountCurrency);
   const idPrefix = useId();
   const [expanded, setExpanded] = useState(false);
@@ -228,7 +227,7 @@ export function PreviewCard({ row, accountCurrency, labels, controls }: PreviewR
           disabled={controls.disabled}
         />
       )}
-      {expanded && hasDetails(row) && <PreviewRowDetails id={detailsId} row={row} labels={labels} />}
+      {expanded && hasDetails(row) && <PreviewRowDetails id={detailsId} row={row} />}
     </li>
   );
 }

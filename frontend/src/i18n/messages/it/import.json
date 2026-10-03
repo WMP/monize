@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Regole di importazione",
       "none": "Nessuna regola di importazione corrisponde a questa transazione.",
-      "unnamed": "Regola",
       "skipped": "{action}: saltata ({reason})",
       "stopped": "Interrompe le regole successive.",
       "applied": "Applicate: {actions}",
       "openNewTab": "Apri la regola {name} in una nuova scheda"
     },
     "ruleTest": {
-      "heading": "Test delle regole",
       "loading": "Caricamento del risultato del test delle regole",
       "error": "Impossibile caricare il risultato del test delle regole.",
       "retry": "Riprova",

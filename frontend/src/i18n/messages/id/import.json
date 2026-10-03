@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Aturan impor",
       "none": "Tidak ada aturan impor yang cocok dengan transaksi ini.",
-      "unnamed": "Aturan",
       "skipped": "{action}: dilewati ({reason})",
       "stopped": "Menghentikan aturan setelahnya.",
       "applied": "Diterapkan: {actions}",
       "openNewTab": "Buka aturan {name} di tab baru"
     },
     "ruleTest": {
-      "heading": "Uji aturan",
       "loading": "Memuat hasil uji aturan",
       "error": "Hasil uji aturan tidak dapat dimuat.",
       "retry": "Coba lagi",

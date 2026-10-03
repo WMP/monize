@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Importregels",
       "none": "Geen importregel kwam overeen met deze transactie.",
-      "unnamed": "Regel",
       "skipped": "{action}: overgeslagen ({reason})",
       "stopped": "Stopt de regels daarna.",
       "applied": "Toegepast: {actions}",
       "openNewTab": "Regel {name} in een nieuw tabblad openen"
     },
     "ruleTest": {
-      "heading": "Regeltest",
       "loading": "Het resultaat van de regeltest wordt geladen",
       "error": "Het resultaat van de regeltest kon niet worden geladen.",
       "retry": "Opnieuw proberen",

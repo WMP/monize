@@ -568,14 +568,12 @@
     "rules": {
       "heading": "가져오기 규칙",
       "none": "이 거래와 일치하는 가져오기 규칙이 없습니다.",
-      "unnamed": "규칙",
       "skipped": "{action}: 건너뜀 ({reason})",
       "stopped": "이후 규칙을 중단합니다.",
       "applied": "적용됨: {actions}",
       "openNewTab": "규칙 {name}을 새 탭에서 열기"
     },
     "ruleTest": {
-      "heading": "규칙 테스트",
       "loading": "규칙 테스트 결과를 불러오는 중",
       "error": "규칙 테스트 결과를 불러오지 못했습니다.",
       "retry": "다시 시도",

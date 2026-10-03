@@ -568,14 +568,12 @@
     "rules": {
       "heading": "Import rules",
       "none": "No import rule matched this transaction.",
-      "unnamed": "Rule",
       "skipped": "{action}: skipped ({reason})",
       "stopped": "Stops the rules after it.",
       "applied": "Applied: {actions}",
       "openNewTab": "Open the rule {name} in a new tab"
     },
     "ruleTest": {
-      "heading": "Rule test",
       "loading": "Loading the rule test result",
       "error": "The rule test result could not be loaded.",
       "retry": "Try again",
