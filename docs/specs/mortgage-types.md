@@ -2,7 +2,8 @@
 
 Status: approved design (task S1 of the plan). Phase 1 is implemented (P1-B1 to
 P1-Q: the column, the traits, the type-keyed consumers and the Select, offering
-`ANNUITY` and `CANADIAN_FIXED`); the LINEAR and INTEREST_ONLY methods, type
+`ANNUITY` and `CANADIAN_FIXED`), and so is the backend half of the LINEAR and
+INTEREST_ONLY methods with `prepayment_mode` (P2-B1); the frontend methods, type
 detection and the contract migration are not yet.
 Governs: issue #1501 (tracking) and its sub-issues #1502 to #1514, agreed in
 discussion #1486 in line with the direction set in #787. The plan is
