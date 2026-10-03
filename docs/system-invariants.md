@@ -2353,7 +2353,7 @@ Statement           A mortgage's amortization method (annuity, linear, interest
 Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
                     the traits, truth tables and fixtures are
                     docs/specs/mortgage-types.md.
-Enforcement         Partly built (Phase 1 and P2-B1 of
+Enforcement         Partly built (Phase 1, P2-B1 and P2-F1 of
                     docs/future-plans/mortgage-types-tasks.md). Present: the
                     type helper (MORTGAGE_TYPE_TRAITS in
                     backend/src/accounts/mortgage-type.util.ts and
@@ -2373,9 +2373,16 @@ Enforcement         Partly built (Phase 1 and P2-B1 of
                     (backend/src/accounts/mortgage-installment.util.ts); the
                     CHECKs keeping accounts.payment_amount null for LINEAR and
                     INTEREST_ONLY and accounts.prepayment_mode null off LINEAR.
-                    Absent: the frontend method branch (generateLoanSchedule
-                    and the readers of spec table 5.6 on the client, P2-F1), so
-                    the client still offers only ANNUITY and CANADIAN_FIXED.
+                    On the frontend, the method branch: generateLoanSchedule
+                    prices each non-annuity row through methodPrincipal
+                    (frontend/src/lib/mortgage-installment.ts, the twin of the
+                    backend's table 4.3), buildLoanProjectionInput supplies the
+                    method terms, and the readers of spec table 5.6 show the
+                    dated next installment and the INTEREST_ONLY bullet; the
+                    payment setup previews its first installment through the
+                    server's own pricing (POST
+                    /accounts/:id/setup-loan-payments/preview). Absent: the
+                    type detector (P2-B2, P2-F2); P2-Q flips the status.
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)
@@ -2393,8 +2400,12 @@ Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     scheduled-transaction-loan.mortgage-methods.spec.ts) with
                     the CHECKs and the dated debt on a real ledger
                     (mortgage-method-checks.integration.spec.ts,
-                    scheduled-loan-dated-balance.integration.spec.ts). Owed:
-                    the same fixtures from generateLoanSchedule (P2-F1).
+                    scheduled-loan-dated-balance.integration.spec.ts), and on
+                    the frontend the same fixtures from generateLoanSchedule
+                    (loan-schedule-methods.test.ts) and the readers of table
+                    5.6 with payment_amount null on the fixture account
+                    (loan-history.mortgage-methods.test.ts and the component
+                    tests).
 Status              partial
 ```
 
