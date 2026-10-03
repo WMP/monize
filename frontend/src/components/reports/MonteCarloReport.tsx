@@ -1196,7 +1196,7 @@ export function MonteCarloReport() {
                         <FanChartTooltip
                           active={props.active}
                           payload={
-                            props.payload as Array<{
+                            props.payload as ReadonlyArray<{
                               payload?: Record<string, number>;
                             }>
                           }
