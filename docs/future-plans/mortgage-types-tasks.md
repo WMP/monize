@@ -132,6 +132,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 **Files:** a pure detector util + spec and its fixtures in `backend/src/accounts/` (new), the endpoints on the accounts controller.
 
 - Spec section 10; the detector writes nothing. Fixtures add rows to the spec's table 10 in the same PR.
+- Done: `detectMortgageType` (`backend/src/accounts/mortgage-type-detection.util.ts`) with its truth table `backend/src/accounts/mortgage-type-detection-cases.json`; `POST /accounts/mortgage-type/detect` and `POST /accounts/:id/mortgage-type/detect` (`LoanMortgageAccountService.detectMortgageTypeFromSamples` / `detectMortgageTypeFromHistory`). The history route reads installments through `LoanPaymentDetectorService.buildInstallmentHistory`, the pairing rate-change inference now calls too. The answer's `reason` is a code from `MORTGAGE_TYPE_DETECTION_REASONS`, worded by the client (P2-F2).
 
 ### P2-F2 -- Detection UI
 

@@ -596,6 +596,45 @@ the quoted rate:
 The tolerances and the ledger-history variant are fixed by P2-B2's fixtures,
 which add rows to this table rather than living only in the code.
 
+P2-B2 implements it as `detectMortgageType`
+(`backend/src/accounts/mortgage-type-detection.util.ts`), with the truth table
+in `backend/src/accounts/mortgage-type-detection-cases.json`. Samples are
+consecutive installments, oldest first, each with its principal, its interest
+and, when known, the debt it was charged on. The tolerance is one cent per
+sample: principals or installments are constant when each is within a cent of
+the first, and an interest matches a convention when it is within a cent of
+the debt times that convention's `getPeriodicRate`. The rows the fixtures add:
+
+| Observation | Suggested type | Confidence |
+| --- | --- | --- |
+| Principal 0 on every sample, interest at the quoted rate or unchecked | `INTEREST_ONLY` | high |
+| Principal 0 on every sample, interest not at the quoted rate | `INTEREST_ONLY` | low |
+| Principal constant, installment falling, interest at the quoted rate or unchecked (both prepayment modes, either side of a repayment) | `LINEAR` | high |
+| Principal constant, installment falling, interest not at the quoted rate | `LINEAR` | low |
+| Principal constant, installment rising (a rate rise between the samples) | none | -- |
+| Principal and installment both constant (0%, or interest too small to move a cent) | none: both `LINEAR` and `ANNUITY` fit | -- |
+| A `LINEAR` or `INTEREST_ONLY` shape at an accelerated frequency, which those methods refuse | none | -- |
+| Installment constant, interest matches `SEMI_ANNUAL` and not `NOMINAL` (at 6% monthly, 0.4939% against 0.5000%) | `CANADIAN_FIXED` | high |
+| Installment constant, interest matches `NOMINAL` and not `SEMI_ANNUAL` | `ANNUITY` | high |
+| Installment constant, no balance, no rate or no mortgage frequency to check against | `ANNUITY` | low |
+| Installment constant, interest matches both conventions within a cent (a small debt) or neither (day-count interest) | `ANNUITY` | low |
+| Installment constant, principal falling (a rate rise between the samples) | none | -- |
+| No principal and no interest; a negative or non-numeric figure | none | -- |
+
+Every answer carries a reason code (`MORTGAGE_TYPE_DETECTION_REASONS`), the
+refusals included, so the client can say what was missing in the reader's
+language. Two routes answer it, neither of which writes a row:
+`POST /accounts/mortgage-type/detect` reads the samples from the request, and
+`POST /accounts/:id/mortgage-type/detect` builds them from the mortgage's own
+posted installments through the pairing rate-change inference reads
+(`LoanPaymentDetectorService.buildInstallmentHistory`), each with the ledger
+balance before its date: the latest three posted at the rate in effect on the
+latest one (`effectiveAnnualRateOn`), so a rate change inside the window is
+not read as a method. A payment without an interest figure (a lump-sum
+repayment, a transfer without a split) is left out, and so is an
+interest-only occurrence, whose zero-amount transfer the pairing does not
+read as a payment.
+
 ## 11. Test matrix
 
 | Layer | Suite | What it asserts | Task |

@@ -38,6 +38,8 @@ describe("AccountsController", () => {
       getInvestmentAccountPair: jest.fn(),
       update: jest.fn(),
       updateMortgageRate: jest.fn(),
+      detectMortgageTypeFromSamples: jest.fn(),
+      detectMortgageTypeFromHistory: jest.fn(),
       close: jest.fn(),
       reopen: jest.fn(),
       getTransactionCount: jest.fn(),
@@ -642,6 +644,47 @@ describe("AccountsController", () => {
         "account-1",
         dto,
       );
+    });
+  });
+
+  describe("detectMortgageType()", () => {
+    it("delegates the request's samples to accountsService", () => {
+      const dto = {
+        samples: [
+          { principal: 432.9, interest: 1500, balanceBefore: 300000 },
+          { principal: 435.06, interest: 1497.84, balanceBefore: 299567.1 },
+        ],
+        interestRate: 6,
+        paymentFrequency: "MONTHLY" as const,
+      };
+      const suggestion = {
+        type: "ANNUITY",
+        confidence: "high",
+        reason: "CONSTANT_INSTALLMENT_NOMINAL",
+      };
+      mockAccountsService.detectMortgageTypeFromSamples!.mockReturnValue(
+        suggestion,
+      );
+
+      expect(controller.detectMortgageType(dto)).toBe(suggestion);
+      expect(
+        mockAccountsService.detectMortgageTypeFromSamples,
+      ).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe("detectMortgageTypeFromHistory()", () => {
+    it("delegates with the userId from the JWT and the account id", async () => {
+      mockAccountsService.detectMortgageTypeFromHistory!.mockResolvedValue(
+        "suggestion",
+      );
+
+      await expect(
+        controller.detectMortgageTypeFromHistory(mockReq, "account-1"),
+      ).resolves.toBe("suggestion");
+      expect(
+        mockAccountsService.detectMortgageTypeFromHistory,
+      ).toHaveBeenCalledWith("user-1", "account-1");
     });
   });
 

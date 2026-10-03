@@ -24,6 +24,11 @@ import { PortfolioService } from "../securities/portfolio.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { memoizedRateResolver } from "../common/converting-total";
+import {
+  DetectMortgageTypeDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
+import { MortgageTypeDetection } from "./mortgage-type-detection.util";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { mortgageTermEndDate } from "./payment-frequency.util";
 import { PaymentFrequency, AmortizationResult } from "./loan-amortization.util";
@@ -736,6 +741,23 @@ export class AccountsService {
       newRate,
       effectiveDate,
       newPaymentAmount,
+    );
+  }
+
+  detectMortgageTypeFromSamples(
+    dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetection {
+    return this.loanMortgageService.detectMortgageTypeFromSamples(dto);
+  }
+
+  async detectMortgageTypeFromHistory(
+    userId: string,
+    accountId: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    const account = await this.findOne(userId, accountId);
+    return this.loanMortgageService.detectMortgageTypeFromHistory(
+      account,
+      userId,
     );
   }
 
