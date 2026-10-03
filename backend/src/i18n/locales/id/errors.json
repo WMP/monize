@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "Akun hipotek memerlukan mortgagePaymentFrequency, paymentStartDate, sourceAccountId, dan amortizationMonths",
     "mortgageRequiresInterestRate": "Akun hipotek memerlukan tingkat bunga",
     "mortgageFrequencyUnsupported": "Hipotek Kanada tidak dapat dijadwalkan dengan frekuensi pembayaran {frequency}",
+    "mortgageMethodAccelerated": "Frekuensi pembayaran dipercepat hanya berlaku untuk hipotek anuitas; hipotek {type} tidak dapat dibayar dengan frekuensi {frequency}",
+    "mortgageMethodRequiresTerms": "Hipotek {type} memerlukan {fields}",
+    "mortgageMethodPaymentMismatch": "Jumlah pembayaran harus sama dengan angsuran pertama hipotek {type} ini ditambah pokok tambahan apa pun; server menghitungnya dari utang, suku bunga, dan amortisasi. Lihat pratinjau lagi",
     "paymentFrequencyUnsupported": "Frekuensi pembayaran {frequency} tidak dapat dijadwalkan",
     "mortgageRequiresInstitution": "Akun hipotek memerlukan nama institusi",
     "onlyMortgageAccounts": "Operasi ini hanya berlaku untuk akun hipotek",
@@ -628,6 +631,7 @@
     "duplicateDate": "Perubahan suku bunga yang berlaku {{ date }} sudah ada untuk akun ini",
     "paymentModeConflict": "Berikan salah satu: jumlah angsuran baru atau recalculatePayment, bukan keduanya",
     "recalculateMortgageOnly": "Penghitungan ulang angsuran hanya tersedia untuk akun hipotek",
+    "methodDerivesPayment": "Angsuran hipotek {type} dihitung dari utang dan suku bunganya pada setiap tanggal jatuh tempo, sehingga perubahan suku bunga tidak dapat menetapkan jumlah pembayaran",
     "insufficientData": "Tidak cukup pembayaran dengan rincian bunga untuk mendeteksi perubahan suku bunga",
     "frequencyMismatch": "Tanggal pembayaran tidak sesuai dengan frekuensi pembayaran akun; suku bunga yang diperkirakan mungkin kurang akurat"
   },

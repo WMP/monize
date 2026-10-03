@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "बंधक खातों के लिए mortgagePaymentFrequency, paymentStartDate, sourceAccountId और amortizationMonths आवश्यक हैं",
     "mortgageRequiresInterestRate": "बंधक खातों के लिए ब्याज दर आवश्यक है",
     "mortgageFrequencyUnsupported": "कनाडाई गिरवी को {frequency} भुगतान आवृत्ति पर निर्धारित नहीं किया जा सकता",
+    "mortgageMethodAccelerated": "त्वरित भुगतान आवृत्तियाँ केवल वार्षिकी बंधक पर लागू होती हैं; {type} बंधक का भुगतान {frequency} आवृत्ति पर नहीं किया जा सकता",
+    "mortgageMethodRequiresTerms": "{type} बंधक के लिए {fields} आवश्यक है",
+    "mortgageMethodPaymentMismatch": "भुगतान राशि इस {type} बंधक की पहली किस्त और किसी भी अतिरिक्त मूलधन के बराबर होनी चाहिए; सर्वर यह किस्त ऋण, दर और परिशोधन अवधि से निकालता है। पूर्वावलोकन फिर से देखें",
     "paymentFrequencyUnsupported": "{frequency} भुगतान आवृत्ति निर्धारित नहीं की जा सकती",
     "mortgageRequiresInstitution": "बंधक खातों के लिए संस्थान का नाम आवश्यक है",
     "onlyMortgageAccounts": "यह ऑपरेशन केवल बंधक खातों के लिए मान्य है",
@@ -628,6 +631,7 @@
     "duplicateDate": "इस खाते के लिए {{ date }} से प्रभावी दर परिवर्तन पहले से मौजूद है",
     "paymentModeConflict": "या तो नई किस्त राशि या recalculatePayment प्रदान करें, दोनों नहीं",
     "recalculateMortgageOnly": "किस्त की पुनर्गणना केवल बंधक खातों के लिए उपलब्ध है",
+    "methodDerivesPayment": "{type} बंधक की किस्त हर देय तिथि पर उसके ऋण और दर से तय होती है, इसलिए दर परिवर्तन में भुगतान राशि नहीं बताई जा सकती",
     "insufficientData": "दर परिवर्तनों का पता लगाने के लिए ब्याज विवरण वाले पर्याप्त भुगतान नहीं हैं",
     "frequencyMismatch": "भुगतान तिथियाँ खाते की भुगतान आवृत्ति से मेल नहीं खातीं; अनुमानित दरें कम सटीक हो सकती हैं"
   },

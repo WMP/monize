@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "抵押貸款科目需要 mortgagePaymentFrequency、paymentStartDate、sourceAccountId 和 amortizationMonths",
     "mortgageRequiresInterestRate": "抵押貸款科目需要利率",
     "mortgageFrequencyUnsupported": "加拿大抵押貸款無法按 {frequency} 的還款頻率安排",
+    "mortgageMethodAccelerated": "加速還款頻率僅適用於本息平均攤還的抵押貸款；{type} 抵押貸款不能按 {frequency} 的頻率還款",
+    "mortgageMethodRequiresTerms": "{type} 抵押貸款需要 {fields}",
+    "mortgageMethodPaymentMismatch": "還款金額必須等於該 {type} 抵押貸款的首期還款額加上任何額外本金；首期還款額由伺服器根據欠款、利率和攤還期計算。請重新檢視預覽",
     "paymentFrequencyUnsupported": "無法按 {frequency} 的還款頻率安排",
     "mortgageRequiresInstitution": "抵押貸款科目需要機構名稱",
     "onlyMortgageAccounts": "此操作僅適用於抵押貸款科目",
@@ -628,6 +631,7 @@
     "duplicateDate": "此科目已存在生效日期為 {{ date }} 的利率變更",
     "paymentModeConflict": "請提供新的還款額或 recalculatePayment 其中之一，不能同時提供兩者",
     "recalculateMortgageOnly": "還款額重新計算僅適用於抵押貸款科目",
+    "methodDerivesPayment": "{type} 抵押貸款的每期還款額根據每個到期日的欠款和利率計算，因此利率變更不能指定還款金額",
     "insufficientData": "具利息明細的還款不足，無法偵測利率變更",
     "frequencyMismatch": "還款日期與科目的還款頻率不符；推算的利率可能較不準確"
   },

@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "Іпотечні рахунки вимагають mortgagePaymentFrequency, paymentStartDate, sourceAccountId та amortizationMonths",
     "mortgageRequiresInterestRate": "Іпотечні рахунки вимагають відсоткову ставку",
     "mortgageFrequencyUnsupported": "Канадську іпотеку не можна запланувати з періодичністю платежів {frequency}",
+    "mortgageMethodAccelerated": "Прискорена періодичність платежів застосовується лише до ануїтетної іпотеки; іпотеку типу {type} не можна погашати з періодичністю {frequency}",
+    "mortgageMethodRequiresTerms": "Для іпотеки типу {type} потрібно {fields}",
+    "mortgageMethodPaymentMismatch": "Сума платежу має дорівнювати першому внеску за цією іпотекою типу {type} плюс додаткове погашення основного боргу, якщо воно є; сервер розраховує внесок за боргом, ставкою та строком амортизації. Відкрийте попередній перегляд знову",
     "paymentFrequencyUnsupported": "Періодичність платежів {frequency} не можна запланувати",
     "mortgageRequiresInstitution": "Іпотечні рахунки вимагають назву установи",
     "onlyMortgageAccounts": "Ця операція дійсна лише для іпотечних рахунків",
@@ -628,6 +631,7 @@
     "duplicateDate": "Зміна ставки, що набирає чинності {{ date }}, вже існує для цього рахунку",
     "paymentModeConflict": "Вкажіть або нову суму платежу, або recalculatePayment, але не обидва",
     "recalculateMortgageOnly": "Перерахунок платежу доступний лише для іпотечних рахунків",
+    "methodDerivesPayment": "Внесок за іпотекою типу {type} розраховується за боргом і ставкою на кожну дату платежу, тому під час зміни ставки не можна вказати суму платежу",
     "insufficientData": "Недостатньо платежів з деталями відсотків для виявлення змін ставки",
     "frequencyMismatch": "Дати платежів не збігаються з періодичністю платежів рахунку; обчислені ставки можуть бути менш точними"
   },

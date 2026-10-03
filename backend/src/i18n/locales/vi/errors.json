@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "Tài khoản thế chấp yêu cầu mortgagePaymentFrequency, paymentStartDate, sourceAccountId và amortizationMonths",
     "mortgageRequiresInterestRate": "Tài khoản thế chấp yêu cầu lãi suất",
     "mortgageFrequencyUnsupported": "Không thể lên lịch thế chấp Canada với tần suất thanh toán {frequency}",
+    "mortgageMethodAccelerated": "Tần suất thanh toán nhanh chỉ áp dụng cho thế chấp trả góp đều; thế chấp {type} không thể thanh toán với tần suất {frequency}",
+    "mortgageMethodRequiresTerms": "Thế chấp {type} yêu cầu {fields}",
+    "mortgageMethodPaymentMismatch": "Số tiền thanh toán phải bằng kỳ trả đầu tiên của thế chấp {type} này cộng với khoản gốc trả thêm (nếu có); máy chủ tính kỳ trả này từ dư nợ, lãi suất và thời hạn trả nợ. Hãy xem lại bản xem trước",
     "paymentFrequencyUnsupported": "Không thể lên lịch tần suất thanh toán {frequency}",
     "mortgageRequiresInstitution": "Tài khoản thế chấp yêu cầu tên tổ chức",
     "onlyMortgageAccounts": "Thao tác này chỉ hợp lệ cho tài khoản thế chấp",
@@ -628,6 +631,7 @@
     "duplicateDate": "Đã tồn tại một thay đổi lãi suất có hiệu lực từ {{ date }} cho tài khoản này",
     "paymentModeConflict": "Chỉ cung cấp một trong hai: số tiền trả mới hoặc recalculatePayment, không phải cả hai",
     "recalculateMortgageOnly": "Tính lại khoản trả chỉ khả dụng cho tài khoản thế chấp",
+    "methodDerivesPayment": "Khoản trả của thế chấp {type} được tính từ dư nợ và lãi suất vào mỗi ngày đến hạn, vì vậy thay đổi lãi suất không thể đặt số tiền thanh toán",
     "insufficientData": "Không đủ khoản thanh toán có chi tiết lãi để phát hiện thay đổi lãi suất",
     "frequencyMismatch": "Ngày thanh toán không khớp với tần suất thanh toán của tài khoản; lãi suất suy ra có thể kém chính xác hơn"
   },
