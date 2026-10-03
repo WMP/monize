@@ -268,7 +268,6 @@ export function BankSyncPreviewList({
                   key={rowKey(row, index)}
                   row={row}
                   accountCurrency={preview.currencyCode}
-                  labels={preview.labels}
                   controls={controlsFor(row)}
                 />
               ))}
@@ -313,7 +312,6 @@ export function BankSyncPreviewList({
                     key={rowKey(row, index)}
                     row={row}
                     accountCurrency={preview.currencyCode}
-                    labels={preview.labels}
                     controls={controlsFor(row)}
                   />
                 ))}

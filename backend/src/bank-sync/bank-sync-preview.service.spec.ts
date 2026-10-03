@@ -10,7 +10,11 @@ import type {
   RuleTraceEntry,
 } from "../transaction-rules/rule-effects";
 import type { RuleEffectsLabels } from "../transaction-rules/transaction-rules-applier.service";
-import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import {
+  TransactionRulesApplierService,
+  ruleRowInputFromStored,
+} from "../transaction-rules/transaction-rules-applier.service";
+import { TransactionStatus } from "../transactions/entities/transaction.entity";
 import type { TransactionRule } from "../transaction-rules/transaction-rule.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { NO_BANK_OPERATION } from "./bank-operation";
@@ -224,7 +228,7 @@ describe("BankSyncPreviewService", () => {
       });
     });
 
-    it("lists a row the ledger holds as a duplicate, with nothing resolved for it", async () => {
+    it("lists a row the ledger holds as a duplicate, with nothing resolved for the screen", async () => {
       ledgerHolding(["ref:r1"]);
       const view = await service.build(input());
       expect(view.rows[0]).toMatchObject({
@@ -239,8 +243,9 @@ describe("BankSyncPreviewService", () => {
         operationTag: null,
       });
       expect(view.rows[1].outcome).toBe("new");
-      // The payee lookup is for new rows only.
-      expect(payees.findByName).not.toHaveBeenCalledWith(USER_ID, "Biedronka");
+      // The payee is looked up only to build the row's rule input, which a
+      // person can ask a rule test about; none of it is shown.
+      expect(view.rows[0].ruleInput).toMatchObject({ payeeText: "Biedronka" });
     });
 
     it("shows a refused row as the bank sent it, a foreign amount in its own currency", async () => {
@@ -512,7 +517,7 @@ describe("BankSyncPreviewService", () => {
         expect(facts).toMatchObject({
           accountId: ACCOUNT_ID,
           currencyCode: "PLN",
-          amount: -50,
+          amount: "-50.0000",
           isTransfer: false,
           payeeText: "Biedronka",
           description: "Groceries",
@@ -1175,6 +1180,160 @@ describe("BankSyncPreviewService", () => {
       await expect(
         service.build(input({ plannedCurrencyCode: " PLN " })),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe("the rule input of a row", () => {
+    const BIEDRONKA = {
+      id: "payee-1",
+      name: "Biedronka S.A.",
+      defaultCategoryId: "cat-5",
+      defaultCategory: { name: "Groceries" },
+    };
+    const RULES = [{ id: "rule-1" }] as TransactionRule[];
+    const card = () =>
+      bankTransaction({
+        entryReference: "c1",
+        amount: "50.00",
+        direction: "debit",
+        counterpartyName: "Biedronka",
+        operation: { ...NO_BANK_OPERATION, remittanceCode: "CARD-PAYMENT" },
+      });
+
+    it("is the exact input the new row's rules are planned over: what planForRow receives is what the row carries", async () => {
+      payees.findByName.mockImplementation(async (_user, name) =>
+        name === "Biedronka" ? (BIEDRONKA as never) : null,
+      );
+      ledgerHolding([], [], { "pl:card payment": "tag-77" });
+      rulesApplier.loadRulesFor.mockResolvedValue(RULES);
+      const [first, second] = (
+        await service.build(
+          input({}, [
+            bankTransaction({
+              entryReference: "r1",
+              amount: "50.00",
+              counterpartyName: "Biedronka",
+              operation: {
+                ...NO_BANK_OPERATION,
+                remittanceCode: "CARD-PAYMENT",
+              },
+            }),
+            bankTransaction({
+              entryReference: "r2",
+              amount: "1200.1234",
+              direction: "credit",
+              counterpartyName: "Employer",
+            }),
+          ]),
+        )
+      ).rows;
+
+      expect(first.ruleInput).toEqual(rulesApplier.planForRow.mock.calls[0][2]);
+      expect(second.ruleInput).toEqual(
+        rulesApplier.planForRow.mock.calls[1][2],
+      );
+      expect(first.ruleInput).toEqual({
+        accountId: ACCOUNT_ID,
+        currencyCode: "PLN",
+        amount: "-50.0000",
+        isTransfer: false,
+        fromAccountId: null,
+        toAccountId: null,
+        // The payee the counterparty resolves to, with its default category.
+        payeeId: "payee-1",
+        payeeName: "Biedronka S.A.",
+        categoryId: "cat-5",
+        // The bank's raw text, which the writer hands the rules as payeeText.
+        payeeText: "Biedronka",
+        description: expect.any(String),
+        // The operation tag is attached before the rules run, when it exists.
+        tagIds: ["tag-77"],
+        hasSplits: false,
+        referenceNumber: null,
+        transactionDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        status: "CLEARED",
+        hasAttachment: false,
+      });
+      // No payee yet: the stored name falls back to the bank's text.
+      expect(second.ruleInput).toMatchObject({
+        payeeId: null,
+        payeeName: "Employer",
+        payeeText: "Employer",
+        categoryId: null,
+        amount: "1200.1234",
+        tagIds: [],
+      });
+    });
+
+    it("is built by the function the writer reads each stored row through", async () => {
+      const [row] = (await service.build(input({}, [card()]))).rows;
+      expect(row.ruleInput).toEqual(
+        ruleRowInputFromStored(
+          {
+            accountId: ACCOUNT_ID,
+            currencyCode: "PLN",
+            amount: "-50.0000",
+            payeeId: null,
+            payeeName: "Biedronka",
+            categoryId: null,
+            description: row.description,
+            isSplit: false,
+            isTransfer: false,
+            referenceNumber: null,
+            transactionDate: row.transactionDate,
+            status: TransactionStatus.CLEARED,
+          },
+          { tagIds: [], payeeText: "Biedronka" },
+        ),
+      );
+    });
+
+    it("is carried by a new, an already imported and an excluded row, and by no other", async () => {
+      ledgerHolding(["ref:r1"], ["ref:r2"]);
+      const view = await service.build(input());
+      expect(view.rows.map((r) => [r.outcome, r.ruleInput !== null])).toEqual([
+        ["duplicate", true],
+        ["excluded", true],
+        ["refused", false],
+        ["pending", false],
+        ["before_cutoff", false],
+      ]);
+      ledgerHolding();
+      const fresh = await service.build(input());
+      expect(
+        fresh.rows.slice(0, 2).map((r) => [r.outcome, r.ruleInput !== null]),
+      ).toEqual([
+        ["new", true],
+        ["new", true],
+      ]);
+    });
+
+    it("is present for a new row even when the user has no import rule", async () => {
+      rulesApplier.loadRulesFor.mockResolvedValue([]);
+      const [first] = (await service.build(input())).rows;
+      expect(first.ruleInput).toMatchObject({ payeeText: "Biedronka" });
+      expect(rulesApplier.planForRow).not.toHaveBeenCalled();
+    });
+
+    it("carries no tag id when the operation tag does not exist yet: it has no id to name", async () => {
+      const [row] = (await service.build(input({}, [card()]))).rows;
+      expect(row.ruleInput?.tagIds).toEqual([]);
+    });
+
+    it("carries no tag when the connection does not tag operations", async () => {
+      ledgerHolding([], [], { "pl:card payment": "tag-77" });
+      const [row] = (
+        await service.build(input({ tagOperationType: false }, [card()]))
+      ).rows;
+      expect(row.ruleInput?.tagIds).toEqual([]);
+    });
+
+    it("writes nothing to build it", async () => {
+      ledgerHolding(["ref:r1"], ["ref:r2"], { "pl:card payment": "tag-77" });
+      await service.build(input());
+      for (const call of manager.query.mock.calls) {
+        expect(String(call[0])).not.toMatch(/INSERT|UPDATE|DELETE/);
+      }
     });
   });
 });

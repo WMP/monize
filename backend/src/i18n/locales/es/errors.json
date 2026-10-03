@@ -579,6 +579,7 @@
     "limitReached": "Se pueden crear como máximo {{ max }} reglas",
     "invalidDefinition": "La definición de la regla no es válida",
     "referenceNotFound": "La regla menciona una cuenta, un beneficiario, una categoría o una etiqueta que no existe",
+    "explainReferenceNotFound": "La transacción menciona una cuenta, un beneficiario, una categoría o una etiqueta que no existe",
     "revisionConflict": "Esta regla se modificó en otro lugar. Recárgala e inténtalo de nuevo",
     "reorderMismatch": "La lista de reglas ha cambiado. Recárgala e inténtalo de nuevo",
     "previewChanged": "Las transacciones o la regla han cambiado desde la vista previa. Revisa la nueva vista previa y vuelve a ejecutar",

@@ -568,11 +568,43 @@
     "rules": {
       "heading": "Aturan impor",
       "none": "Tidak ada aturan impor yang cocok dengan transaksi ini.",
-      "unnamed": "Aturan",
       "skipped": "{action}: dilewati ({reason})",
       "stopped": "Menghentikan aturan setelahnya.",
       "applied": "Diterapkan: {actions}",
       "openNewTab": "Buka aturan {name} di tab baru"
+    },
+    "ruleTest": {
+      "loading": "Memuat hasil uji aturan",
+      "error": "Hasil uji aturan tidak dapat dimuat.",
+      "retry": "Coba lagi",
+      "noRules": "Anda tidak punya aturan impor, jadi tidak ada yang diuji.",
+      "showNotMatched": "Tampilkan aturan yang tidak cocok ({count})",
+      "hideNotMatched": "Sembunyikan aturan yang tidak cocok ({count})",
+      "noChanges": "Aturan ini cocok, tetapi tidak mengubah apa pun pada transaksi ini.",
+      "badge": {
+        "matched": "Cocok",
+        "notMatched": "Tidak cocok",
+        "notEvaluated": "Tidak dievaluasi"
+      },
+      "notEvaluated": {
+        "afterStop": "Tidak dievaluasi: aturan sebelumnya menghentikan aturan.",
+        "disabled": "Tidak dievaluasi: aturan dimatikan.",
+        "invalid": "Tidak dievaluasi: aturan tidak valid. Buka untuk memperbaikinya."
+      },
+      "condition": {
+        "met": "Kondisi terpenuhi",
+        "notMet": "Kondisi tidak terpenuhi",
+        "actual": "Nilai pada transaksi ini: {value}",
+        "noValue": "tidak ada",
+        "noTags": "tanpa tag",
+        "capture": "{name} = {value}",
+        "omitted": "Rincian bagian kondisi ini tidak ditampilkan."
+      },
+      "skipReasons": {
+        "already_set": "sudah memiliki nilai dan aturan hanya mengisi yang kosong",
+        "no_change": "sudah memiliki apa yang akan ditetapkan aturan",
+        "payee_unresolved": "penerima yang dibuat aturan tidak dapat dicari"
+      }
     },
     "payee": {
       "heading": "Penerima",

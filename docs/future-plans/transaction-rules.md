@@ -523,8 +523,14 @@ Decisions made in X3:
 
 ### 10.4 Rule effects in the import preview (X4)
 
-Deferred (owner: rules-only scope): X4 needs the import module's review step
-and stays open until that module is in scope.
+Partly done through bank sync: `POST /transaction-rules/explain-row` takes
+one row's rule input and returns, per rule of the trigger, the condition tree
+with each node's result, compared value and captures
+(`explainRuleCondition`, held equal to the evaluator by a property spec) and
+the effects of `planForRow` (`explainRow`, read-only). The bank sync preview
+uses it for every expanded row (`docs/specs/bank-sync.md` 7b). The file
+import wizard's review step is still open; the unified import preview
+(`docs/future-plans/unified-import-preview.md`) brings it there.
 
 The import wizard's review step shows, per row, what the import-trigger
 rules will do, through `planRuleEffects` on the facts the import will build

@@ -568,11 +568,43 @@
     "rules": {
       "heading": "가져오기 규칙",
       "none": "이 거래와 일치하는 가져오기 규칙이 없습니다.",
-      "unnamed": "규칙",
       "skipped": "{action}: 건너뜀 ({reason})",
       "stopped": "이후 규칙을 중단합니다.",
       "applied": "적용됨: {actions}",
       "openNewTab": "규칙 {name}을 새 탭에서 열기"
+    },
+    "ruleTest": {
+      "loading": "규칙 테스트 결과를 불러오는 중",
+      "error": "규칙 테스트 결과를 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "noRules": "가져오기 규칙이 없어서 테스트할 것이 없었습니다.",
+      "showNotMatched": "일치하지 않은 규칙 보기 ({count})",
+      "hideNotMatched": "일치하지 않은 규칙 숨기기 ({count})",
+      "noChanges": "일치했지만 이 거래에서 바뀌는 것은 없습니다.",
+      "badge": {
+        "matched": "일치",
+        "notMatched": "불일치",
+        "notEvaluated": "평가하지 않음"
+      },
+      "notEvaluated": {
+        "afterStop": "평가하지 않음: 앞의 규칙이 이후 규칙을 중단했습니다.",
+        "disabled": "평가하지 않음: 규칙이 꺼져 있습니다.",
+        "invalid": "평가하지 않음: 규칙이 올바르지 않습니다. 열어서 고치세요."
+      },
+      "condition": {
+        "met": "조건 충족",
+        "notMet": "조건 불충족",
+        "actual": "이 거래의 값: {value}",
+        "noValue": "없음",
+        "noTags": "태그 없음",
+        "capture": "{name} = {value}",
+        "omitted": "조건의 이 부분에 대한 자세한 내용은 표시되지 않습니다."
+      },
+      "skipReasons": {
+        "already_set": "이미 값이 있고 규칙은 비어 있는 항목만 채우기 때문",
+        "no_change": "이미 규칙이 설정할 값으로 되어 있기 때문",
+        "payee_unresolved": "규칙이 만드는 수취인을 찾아볼 수 없었기 때문"
+      }
     },
     "payee": {
       "heading": "수취인",

@@ -25,6 +25,7 @@ const row = (outcome: BankSyncPreviewRow['outcome'], over: Partial<BankSyncPrevi
   payee: null,
   rules: [],
   operationTag: null,
+  ruleInput: null,
   ...over,
 });
 

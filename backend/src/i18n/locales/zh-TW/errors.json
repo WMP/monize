@@ -579,6 +579,7 @@
     "limitReached": "最多只能建立 {{ max }} 條規則",
     "invalidDefinition": "規則定義無效",
     "referenceNotFound": "規則參照了不存在的帳戶、收款人、類別或標籤",
+    "explainReferenceNotFound": "交易參照了不存在的帳戶、收款人、類別或標籤",
     "revisionConflict": "此規則已在別處被修改。請重新載入後再試",
     "reorderMismatch": "規則清單已變更。請重新載入後再試",
     "previewChanged": "自預覽以來，交易或規則已變更。請查看新的預覽後重新執行",

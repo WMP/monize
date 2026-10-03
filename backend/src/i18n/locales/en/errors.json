@@ -590,6 +590,7 @@
     "limitReached": "At most {{ max }} rules can be created",
     "invalidDefinition": "The rule definition is not valid",
     "referenceNotFound": "The rule names an account, payee, category or tag that does not exist",
+    "explainReferenceNotFound": "The transaction names an account, payee, category or tag that does not exist",
     "revisionConflict": "This rule was changed elsewhere. Reload it and try again",
     "reorderMismatch": "The list of rules has changed. Reload it and try again",
     "previewChanged": "The transactions or the rule changed since the preview. Review the new preview and run again",

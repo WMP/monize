@@ -568,11 +568,43 @@
     "rules": {
       "heading": "Reguły importu",
       "none": "Żadna reguła importu nie pasuje do tej transakcji.",
-      "unnamed": "Reguła",
       "skipped": "{action}: pominięto ({reason})",
       "stopped": "Zatrzymuje kolejne reguły.",
       "applied": "Zastosowano: {actions}",
       "openNewTab": "Otwórz regułę {name} w nowej karcie"
+    },
+    "ruleTest": {
+      "loading": "Wczytywanie wyniku testu reguł",
+      "error": "Nie udało się wczytać wyniku testu reguł.",
+      "retry": "Spróbuj ponownie",
+      "noRules": "Nie masz reguł importu, więc nie było czego testować.",
+      "showNotMatched": "Pokaż reguły, które nie pasowały ({count})",
+      "hideNotMatched": "Ukryj reguły, które nie pasowały ({count})",
+      "noChanges": "Pasuje, ale nic nie zmienia w tej transakcji.",
+      "badge": {
+        "matched": "Pasuje",
+        "notMatched": "Nie pasuje",
+        "notEvaluated": "Nie sprawdzono"
+      },
+      "notEvaluated": {
+        "afterStop": "Nie sprawdzono: poprzednia reguła zatrzymała kolejne reguły.",
+        "disabled": "Nie sprawdzono: reguła jest wyłączona.",
+        "invalid": "Nie sprawdzono: reguła jest nieprawidłowa. Otwórz ją, aby ją naprawić."
+      },
+      "condition": {
+        "met": "Warunek spełniony",
+        "notMet": "Warunek niespełniony",
+        "actual": "Wartość w tej transakcji: {value}",
+        "noValue": "brak",
+        "noTags": "brak tagów",
+        "capture": "{name} = {value}",
+        "omitted": "Szczegóły tej części warunku nie są pokazane."
+      },
+      "skipReasons": {
+        "already_set": "ma już wartość, a reguła uzupełnia tylko puste",
+        "no_change": "ma już to, co ustawiłaby reguła",
+        "payee_unresolved": "nie udało się wyszukać odbiorcy budowanego przez regułę"
+      }
     },
     "payee": {
       "heading": "Odbiorca",

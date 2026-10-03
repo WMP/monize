@@ -568,11 +568,43 @@
     "rules": {
       "heading": "Importregels",
       "none": "Geen importregel kwam overeen met deze transactie.",
-      "unnamed": "Regel",
       "skipped": "{action}: overgeslagen ({reason})",
       "stopped": "Stopt de regels daarna.",
       "applied": "Toegepast: {actions}",
       "openNewTab": "Regel {name} in een nieuw tabblad openen"
+    },
+    "ruleTest": {
+      "loading": "Het resultaat van de regeltest wordt geladen",
+      "error": "Het resultaat van de regeltest kon niet worden geladen.",
+      "retry": "Opnieuw proberen",
+      "noRules": "Je hebt geen importregels, dus er was niets te testen.",
+      "showNotMatched": "Regels tonen die niet overeenkwamen ({count})",
+      "hideNotMatched": "Regels verbergen die niet overeenkwamen ({count})",
+      "noChanges": "Komt overeen, maar verandert niets aan deze transactie.",
+      "badge": {
+        "matched": "Komt overeen",
+        "notMatched": "Komt niet overeen",
+        "notEvaluated": "Niet beoordeeld"
+      },
+      "notEvaluated": {
+        "afterStop": "Niet beoordeeld: een eerdere regel heeft de regels gestopt.",
+        "disabled": "Niet beoordeeld: de regel staat uit.",
+        "invalid": "Niet beoordeeld: de regel is ongeldig. Open hem om hem te herstellen."
+      },
+      "condition": {
+        "met": "Voorwaarde voldaan",
+        "notMet": "Voorwaarde niet voldaan",
+        "actual": "Waarde in deze transactie: {value}",
+        "noValue": "geen",
+        "noTags": "geen tags",
+        "capture": "{name} = {value}",
+        "omitted": "De details van dit deel van de voorwaarde worden niet getoond."
+      },
+      "skipReasons": {
+        "already_set": "ze heeft al een waarde en de regel vult alleen lege in",
+        "no_change": "ze heeft al wat de regel zou instellen",
+        "payee_unresolved": "de begunstigde die de regel bouwt kon niet worden opgezocht"
+      }
     },
     "payee": {
       "heading": "Begunstigde",

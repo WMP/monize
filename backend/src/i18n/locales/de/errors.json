@@ -579,6 +579,7 @@
     "limitReached": "Es können höchstens {{ max }} Regeln angelegt werden",
     "invalidDefinition": "Die Regeldefinition ist ungültig",
     "referenceNotFound": "Die Regel nennt ein Konto, einen Zahlungsempfänger, eine Kategorie oder ein Tag, das nicht existiert",
+    "explainReferenceNotFound": "Die Transaktion nennt ein Konto, einen Zahlungsempfänger, eine Kategorie oder ein Tag, das nicht existiert",
     "revisionConflict": "Diese Regel wurde anderswo geändert. Laden Sie sie neu und versuchen Sie es erneut",
     "reorderMismatch": "Die Liste der Regeln hat sich geändert. Laden Sie sie neu und versuchen Sie es erneut",
     "previewChanged": "Die Transaktionen oder die Regel haben sich seit der Vorschau geändert. Prüfen Sie die neue Vorschau und führen Sie die Regel erneut aus",

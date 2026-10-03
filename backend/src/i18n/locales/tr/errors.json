@@ -579,6 +579,7 @@
     "limitReached": "En fazla {{ max }} kural oluşturulabilir",
     "invalidDefinition": "Kural tanımı geçerli değil",
     "referenceNotFound": "Kural, var olmayan bir hesabı, alıcıyı, kategoriyi veya etiketi belirtiyor",
+    "explainReferenceNotFound": "İşlem, var olmayan bir hesabı, alıcıyı, kategoriyi veya etiketi belirtiyor",
     "revisionConflict": "Bu kural başka bir yerde değiştirildi. Yeniden yükleyip tekrar deneyin",
     "reorderMismatch": "Kural listesi değişti. Yeniden yükleyip tekrar deneyin",
     "previewChanged": "İşlemler veya kural önizlemeden sonra değişti. Yeni önizlemeyi inceleyin ve yeniden çalıştırın",

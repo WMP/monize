@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { isAxiosError } from 'axios';
 import { useTranslations } from 'next-intl';
+import { ImportPreviewRuleTestProvider } from '@/components/import-preview/ImportPreviewRuleTestProvider';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
@@ -208,17 +209,19 @@ export function BankSyncPreviewModal({
         </div>
       )}
       {ready && (
-        <BankSyncPreviewList
-          preview={ready}
-          filter={filter}
-          onFilterChange={setFilter}
-          selection={selection}
-          removeKeys={removeKeys}
-          onRemoveKeysChange={setRemoveKeys}
-          onRemove={() => void handleRemove()}
-          busy={busy}
-          removing={removing}
-        />
+        <ImportPreviewRuleTestProvider scope={ready}>
+          <BankSyncPreviewList
+            preview={ready}
+            filter={filter}
+            onFilterChange={setFilter}
+            selection={selection}
+            removeKeys={removeKeys}
+            onRemoveKeysChange={setRemoveKeys}
+            onRemove={() => void handleRemove()}
+            busy={busy}
+            removing={removing}
+          />
+        </ImportPreviewRuleTestProvider>
       )}
     </Modal>
   );

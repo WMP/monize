@@ -10,6 +10,7 @@ import type {
   ImportPreviewPayee,
   ImportPreviewPayeeVia,
   ImportPreviewRule,
+  ImportPreviewRuleInput,
 } from '@/types/import-preview';
 
 /** The connection lifecycle. Mirrors the column's CHECK. */
@@ -235,6 +236,12 @@ export interface BankSyncPreviewRow {
   rules: BankSyncPreviewRule[];
   /** The operation-type tag the sync would add; null when there is none. */
   operationTag: string | null;
+  /**
+   * What the import rules are planned over for this row, as a sync would hand
+   * it; set for a new, an already imported and an excluded row. Sent as it is to
+   * the rule test; null for a row the sync would not write.
+   */
+  ruleInput: ImportPreviewRuleInput | null;
 }
 
 export interface BankSyncPreviewSummary {

@@ -114,6 +114,13 @@ export interface RulePlanContext {
    * `transfer_account_unavailable`.
    */
   readonly accounts?: RuleTargetAccounts;
+  /**
+   * Told the facts each rule's condition is evaluated against: the row as the
+   * rules before it left it, which a rule's explanation needs and the trace
+   * does not carry. Called once per plannable rule that is reached, in order,
+   * before the condition runs; it never changes the plan.
+   */
+  readonly onEvaluate?: (ruleId: string, facts: RuleFacts) => void;
 }
 
 export interface RuleFieldChange<T> {
@@ -619,10 +626,9 @@ export function planRuleEffects(
       });
       continue;
     }
-    const match = evaluateRuleConditionWithCaptures(
-      rule.condition,
-      withState(facts, state),
-    );
+    const current = withState(facts, state);
+    context.onEvaluate?.(rule.id, current);
+    const match = evaluateRuleConditionWithCaptures(rule.condition, current);
     if (!match.matched) {
       trace.push({
         ruleId: rule.id,

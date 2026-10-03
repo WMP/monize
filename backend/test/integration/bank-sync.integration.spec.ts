@@ -22,6 +22,7 @@ import type {
 } from "@/bank-sync/providers/bank-sync-provider.interface";
 import { EnableBankingProvider } from "@/bank-sync/providers/enable-banking/enable-banking.client";
 import { CreateTransactionRuleDto } from "@/transaction-rules/dto/create-transaction-rule.dto";
+import { TransactionRulesApplierService } from "@/transaction-rules/transaction-rules-applier.service";
 import { TransactionRulesService } from "@/transaction-rules/transaction-rules.service";
 
 import {
@@ -2387,6 +2388,83 @@ describe("Bank sync (integration)", () => {
           ["Employer", null],
           ["Plain", null],
         ]);
+      });
+
+      it("hands the import rules in the preview exactly the input the sync hands them for the same row: the bank's raw payee text, the resolved payee, and the operation tag", async () => {
+        // Every operation tag exists already: a tag the sync would have to
+        // create has no id in the preview, so no rule can name it there.
+        const tagIds: Record<string, string> = {};
+        for (const name of [
+          "Card payment",
+          "Incoming transfer",
+          "DIRECT-DEBIT",
+        ]) {
+          const [created] = await query<{ id: string }>(
+            `INSERT INTO tags (user_id, name) VALUES ($1, $2) RETURNING id`,
+            [aliceId, name],
+          );
+          tagIds[name] = created.id;
+        }
+        const tag = { id: tagIds["Card payment"] };
+        const food = await createTestCategory(db, aliceId, { name: "Food" });
+        // Every counterparty already has a payee: a payee the sync would have
+        // to create has no id in the preview (a known difference, not under test).
+        for (const name of ["Cafe", "Cinema", "Employer", "Bank", "Plain"]) {
+          await query(
+            `INSERT INTO payees (user_id, name, default_category_id)
+             VALUES ($1, $2, $3)`,
+            [aliceId, name, name === "Cafe" ? food.id : null],
+          );
+        }
+        await asAlice(() =>
+          rules.create(aliceId, {
+            name: "Card payments",
+            triggers: ["import"],
+            condition: { field: "tagIds", op: "hasAny", value: [tag.id] },
+            actions: [{ type: "add_tags", tagIds: [tag.id] }],
+          } as CreateTransactionRuleDto),
+        );
+        const planning = jest.spyOn(
+          module.get(TransactionRulesApplierService),
+          "planWithChains",
+        );
+        const byText = (calls: typeof planning.mock.calls) =>
+          new Map(calls.map(([input]) => [input.payeeText, input]));
+
+        const view = await asAlice(() =>
+          bankSync.previewAccount(aliceId, bankAccountId, null),
+        );
+        const previewed = byText(planning.mock.calls);
+        planning.mockClear();
+        await sync();
+        const written = byText(planning.mock.calls);
+        planning.mockRestore();
+
+        expect([...written.keys()].sort()).toEqual([
+          "Bank",
+          "Cafe",
+          "Cinema",
+          "Employer",
+          "Plain",
+        ]);
+        for (const [text, input] of written) {
+          expect(previewed.get(text)).toEqual(input);
+          expect(
+            view.rows.find((r) => r.payeeText === text)?.ruleInput,
+          ).toEqual(input);
+        }
+        // The two halves of the claim, so the comparison is not of two empty rows.
+        expect(written.get("Cafe")).toMatchObject({
+          tagIds: [tag.id],
+          categoryId: food.id,
+          payeeText: "Cafe",
+          payeeName: "Cafe",
+        });
+        expect(written.get("Employer")?.tagIds).toEqual([
+          tagIds["Incoming transfer"],
+        ]);
+        expect(written.get("Bank")?.tagIds).toEqual([tagIds["DIRECT-DEBIT"]]);
+        expect(written.get("Plain")?.tagIds).toEqual([]);
       });
 
       it("rolls the tags back with the rest when the write fails", async () => {

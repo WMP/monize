@@ -568,11 +568,43 @@
     "rules": {
       "heading": "Quy tắc nhập",
       "none": "Không có quy tắc nhập nào khớp với giao dịch này.",
-      "unnamed": "Quy tắc",
       "skipped": "{action}: đã bỏ qua ({reason})",
       "stopped": "Dừng các quy tắc sau nó.",
       "applied": "Đã áp dụng: {actions}",
       "openNewTab": "Mở quy tắc {name} trong tab mới"
+    },
+    "ruleTest": {
+      "loading": "Đang tải kết quả kiểm tra quy tắc",
+      "error": "Không thể tải kết quả kiểm tra quy tắc.",
+      "retry": "Thử lại",
+      "noRules": "Bạn chưa có quy tắc nhập nào nên không có gì để kiểm tra.",
+      "showNotMatched": "Hiện các quy tắc không khớp ({count})",
+      "hideNotMatched": "Ẩn các quy tắc không khớp ({count})",
+      "noChanges": "Quy tắc khớp, nhưng không thay đổi gì ở giao dịch này.",
+      "badge": {
+        "matched": "Khớp",
+        "notMatched": "Không khớp",
+        "notEvaluated": "Chưa đánh giá"
+      },
+      "notEvaluated": {
+        "afterStop": "Chưa đánh giá: một quy tắc trước đó đã dừng các quy tắc.",
+        "disabled": "Chưa đánh giá: quy tắc đang tắt.",
+        "invalid": "Chưa đánh giá: quy tắc không hợp lệ. Hãy mở để sửa."
+      },
+      "condition": {
+        "met": "Điều kiện đạt",
+        "notMet": "Điều kiện không đạt",
+        "actual": "Giá trị trong giao dịch này: {value}",
+        "noValue": "không có",
+        "noTags": "không có thẻ",
+        "capture": "{name} = {value}",
+        "omitted": "Chi tiết của phần điều kiện này không được hiển thị."
+      },
+      "skipReasons": {
+        "already_set": "giao dịch đã có giá trị và quy tắc chỉ điền vào chỗ trống",
+        "no_change": "giao dịch đã có đúng giá trị mà quy tắc sẽ đặt",
+        "payee_unresolved": "không tra cứu được người nhận mà quy tắc tạo ra"
+      }
     },
     "payee": {
       "heading": "Người nhận",

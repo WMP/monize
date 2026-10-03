@@ -579,6 +579,7 @@
     "limitReached": "규칙은 최대 {{ max }}개까지 만들 수 있습니다",
     "invalidDefinition": "규칙 정의가 올바르지 않습니다",
     "referenceNotFound": "규칙에 존재하지 않는 계좌, 수취인, 카테고리 또는 태그가 지정되어 있습니다",
+    "explainReferenceNotFound": "거래에 존재하지 않는 계좌, 수취인, 카테고리 또는 태그가 지정되어 있습니다",
     "revisionConflict": "이 규칙이 다른 곳에서 변경되었습니다. 다시 불러온 후 다시 시도하세요",
     "reorderMismatch": "규칙 목록이 변경되었습니다. 다시 불러온 후 다시 시도하세요",
     "previewChanged": "미리보기 이후 거래 또는 규칙이 변경되었습니다. 새 미리보기를 확인한 후 다시 실행하세요",

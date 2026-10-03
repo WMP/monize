@@ -568,11 +568,43 @@
     "rules": {
       "heading": "インポートルール",
       "none": "この取引に一致するインポートルールはありません。",
-      "unnamed": "ルール",
       "skipped": "{action}: スキップしました（{reason}）",
       "stopped": "これ以降のルールを停止します。",
       "applied": "適用: {actions}",
       "openNewTab": "ルール {name} を新しいタブで開く"
+    },
+    "ruleTest": {
+      "loading": "ルールのテスト結果を読み込んでいます",
+      "error": "ルールのテスト結果を読み込めませんでした。",
+      "retry": "再試行",
+      "noRules": "インポートルールがないため、テストするものがありませんでした。",
+      "showNotMatched": "一致しなかったルールを表示（{count}）",
+      "hideNotMatched": "一致しなかったルールを非表示（{count}）",
+      "noChanges": "一致しましたが、この取引は何も変わりません。",
+      "badge": {
+        "matched": "一致",
+        "notMatched": "不一致",
+        "notEvaluated": "未評価"
+      },
+      "notEvaluated": {
+        "afterStop": "未評価：前のルールがそれ以降のルールを停止しました。",
+        "disabled": "未評価：ルールがオフになっています。",
+        "invalid": "未評価：ルールが無効です。開いて修正してください。"
+      },
+      "condition": {
+        "met": "条件を満たしています",
+        "notMet": "条件を満たしていません",
+        "actual": "この取引での値：{value}",
+        "noValue": "なし",
+        "noTags": "タグなし",
+        "capture": "{name} = {value}",
+        "omitted": "条件のこの部分の詳細は表示されません。"
+      },
+      "skipReasons": {
+        "already_set": "すでに値があり、ルールは空のものだけを埋めるため",
+        "no_change": "すでにルールが設定する内容になっているため",
+        "payee_unresolved": "ルールが作る支払先を検索できなかったため"
+      }
     },
     "payee": {
       "heading": "支払先",

@@ -26,6 +26,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { OwnerOnly } from "../delegation/decorators/delegate-access.decorator";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
 import {
   PreviewDraftRuleDto,
   RuleRunFiltersDto,
@@ -103,6 +104,29 @@ export class TransactionRulesController {
     @Body() dto: PreviewDraftRuleDto,
   ) {
     return this.runService.previewDraft(req.user.id, dto);
+  }
+
+  // Registered before the `:id` routes, like "preview-draft". Read-only: the
+  // global throttler applies, as it does to preview-draft.
+  @Post("explain-row")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Test one row (an import preview's) against my rules: each rule's condition tree and effects (writes nothing)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Every rule in order, with its condition explained",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Invalid row, or it names an item that is not mine",
+  })
+  explainRow(
+    @Request() req: { user: { id: string } },
+    @Body() dto: ExplainRuleRowDto,
+  ) {
+    return this.runService.explainRow(req.user.id, dto);
   }
 
   @Get(":id")

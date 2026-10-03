@@ -454,10 +454,20 @@ the payee), `new` (a payee will be created), `rule` (a rule sets it), or
 bank's original text, the payee it maps to and how. The expanded row links
 to the payee's aliases.
 
-**Rules.** The preview loads the `import` rules once and returns each row's
-trace: every rule that matched, by name (linked to the rule), what each
-action changed (before and after, for category, payee, description and
-tags) and the actions it skipped with their reason.
+**Rules.** Each preview row carries `ruleInput`, the exact rule input the
+writer would pass to the `import` rules for that row (built by
+`ruleRowInputFromStored`, the function the writer uses). When the user
+expands a row, the page posts it to `POST /transaction-rules/explain-row`,
+which writes nothing, and shows the rule test result at once: every import
+rule in order, matched or not (the non-matching ones collapsed), its
+condition tree with each node's result, the value it compared and the
+captures (`explainRuleCondition`), the effects `planForRow` computes (before
+and after, the actions skipped and why), and the rules not evaluated after
+one that stopped. Two differences from the commit are inherent: a payee or
+an operation tag the import will create has no id yet, so a condition on
+"payee is empty" or on that tag can read differently in the preview; and a
+date condition compares the day of the month or the weekday, which is all
+a rule sees.
 
 **Raw bank data** goes to the backend log, not to the screen, and only when
 the operator sets `BANK_SYNC_LOG_RAW=true` (the application's logger prints

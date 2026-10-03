@@ -579,6 +579,7 @@
     "limitReached": "Chỉ có thể tạo tối đa {{ max }} quy tắc",
     "invalidDefinition": "Định nghĩa quy tắc không hợp lệ",
     "referenceNotFound": "Quy tắc nhắc đến tài khoản, người nhận, danh mục hoặc thẻ không tồn tại",
+    "explainReferenceNotFound": "Giao dịch nhắc đến tài khoản, người nhận, danh mục hoặc thẻ không tồn tại",
     "revisionConflict": "Quy tắc này đã được thay đổi ở nơi khác. Hãy tải lại rồi thử lại",
     "reorderMismatch": "Danh sách quy tắc đã thay đổi. Hãy tải lại rồi thử lại",
     "previewChanged": "Các giao dịch hoặc quy tắc đã thay đổi kể từ bản xem trước. Hãy xem lại bản xem trước mới và chạy lại",

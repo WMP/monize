@@ -568,11 +568,43 @@
     "rules": {
       "heading": "匯入規則",
       "none": "沒有匯入規則符合這筆交易。",
-      "unnamed": "規則",
       "skipped": "{action}：已略過（{reason}）",
       "stopped": "停止其後的規則。",
       "applied": "已套用：{actions}",
       "openNewTab": "在新分頁中開啟規則 {name}"
+    },
+    "ruleTest": {
+      "loading": "正在載入規則測試結果",
+      "error": "無法載入規則測試結果。",
+      "retry": "重試",
+      "noRules": "您沒有匯入規則，因此沒有可測試的內容。",
+      "showNotMatched": "顯示未符合的規則（{count}）",
+      "hideNotMatched": "隱藏未符合的規則（{count}）",
+      "noChanges": "已符合，但不會變更這筆交易的任何內容。",
+      "badge": {
+        "matched": "已符合",
+        "notMatched": "未符合",
+        "notEvaluated": "未評估"
+      },
+      "notEvaluated": {
+        "afterStop": "未評估：前面的規則已停止後續規則。",
+        "disabled": "未評估：規則已關閉。",
+        "invalid": "未評估：規則無效。請開啟它進行修復。"
+      },
+      "condition": {
+        "met": "條件已滿足",
+        "notMet": "條件未滿足",
+        "actual": "這筆交易中的值：{value}",
+        "noValue": "無",
+        "noTags": "無標籤",
+        "capture": "{name} = {value}",
+        "omitted": "條件的這一部分的詳細資訊未顯示。"
+      },
+      "skipReasons": {
+        "already_set": "它已有值，而規則只填寫空值",
+        "no_change": "它已是規則要設定的內容",
+        "payee_unresolved": "無法查詢規則產生的收款人"
+      }
     },
     "payee": {
       "heading": "收款人",

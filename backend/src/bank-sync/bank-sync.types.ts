@@ -12,6 +12,7 @@ import type {
   ImportPreviewRuleChanges,
   ImportPreviewRuleView,
 } from "../import-preview/import-preview.types";
+import type { RuleRowInput } from "../transaction-rules/transaction-rules-applier.service";
 import type { RefusalReason } from "./bank-transaction-planner";
 
 /**
@@ -237,6 +238,15 @@ export interface BankSyncPreviewRowView {
    * the connection does not tag, the bank named no operation, or the row is not `new`.
    */
   operationTag: string | null;
+  /**
+   * The exact input the `import` rules are planned over for this row, as a sync
+   * would hand it (`ruleRowInputFromStored`): the payee the counterparty
+   * resolves to, the operation tag's id when the tag exists, the bank's raw
+   * payee text. Set for a `new`, `duplicate` or `excluded` row; null otherwise.
+   * It is what `POST /transaction-rules/explain-row` takes to say why each rule
+   * did or did not apply.
+   */
+  ruleInput: RuleRowInput | null;
 }
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it was written. */
