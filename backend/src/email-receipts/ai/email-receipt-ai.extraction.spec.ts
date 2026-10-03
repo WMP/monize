@@ -77,19 +77,62 @@ describe("buildAiParsedReceipt", () => {
     });
   });
 
-  it("judges completeness with the parser's own function", () => {
-    const result = build({
+  it("judges completeness with the parser's own function, shipping and discount categories included", () => {
+    const answer = {
       items: [{ name: "Widget", amount: "10.00", categoryId: BOOKS }],
       shipping: "2.00",
+      shippingCategoryId: FOOD,
       discount: "1.00",
+      discountCategoryId: BOOKS.toUpperCase(),
       total: "11.00",
-    });
+    };
+    const result = build(answer);
     if (!result.ok) throw new Error("expected a reading");
     const { complete: _c, reason: _r, source: _s, ...base } = result.parsed;
     expect(result.parsed.reason).toBe(completeness(base));
-    // The model names no category for shipping or a discount.
-    expect(result.parsed.reason).toBe("items_uncategorized");
+    expect(result.parsed).toMatchObject({
+      shippingCategoryId: FOOD,
+      discountCategoryId: BOOKS,
+      complete: true,
+      reason: null,
+      source: "ai",
+    });
+  });
+
+  it("without a shipping or discount category the reading is not complete, as for a parser", () => {
+    const base = {
+      items: [{ name: "Widget", amount: "10.00", categoryId: BOOKS }],
+      total: "12.00",
+    };
+    const noShippingCategory = build({ ...base, shipping: "2.00" });
+    if (!noShippingCategory.ok) throw new Error("expected a reading");
+    expect(noShippingCategory.parsed.reason).toBe("shipping_uncategorized");
+
+    const noDiscountCategory = build({
+      items: base.items,
+      shipping: "3.00",
+      shippingCategoryId: FOOD,
+      discount: "1.00",
+      total: "12.00",
+    });
+    if (!noDiscountCategory.ok) throw new Error("expected a reading");
+    expect(noDiscountCategory.parsed.reason).toBe("items_uncategorized");
+  });
+
+  it("an unknown or malformed shipping or discount category id is none, and is noted", () => {
+    const result = build({
+      items: [{ name: "Widget", amount: "10.00", categoryId: BOOKS }],
+      shipping: "2.00",
+      shippingCategoryId: "nope",
+      discount: "1.00",
+      discountCategoryId: null,
+      total: "11.00",
+    });
+    if (!result.ok) throw new Error("expected a reading");
+    expect(result.parsed.shippingCategoryId).toBeNull();
+    expect(result.parsed.discountCategoryId).toBeNull();
     expect(result.parsed.complete).toBe(false);
+    expect(result.notes).toEqual(["1 category id(s) not in the list."]);
   });
 
   it.each([
@@ -138,7 +181,7 @@ describe("buildAiParsedReceipt", () => {
     });
     if (!result.ok) throw new Error("expected a reading");
     expect(result.parsed.items.map((i) => i.categoryId)).toEqual([null, null]);
-    expect(result.notes).toEqual(["1 item category id(s) not in the list."]);
+    expect(result.notes).toEqual(["1 category id(s) not in the list."]);
   });
 
   it("drops an item with no readable positive amount or no name, and says how many", () => {

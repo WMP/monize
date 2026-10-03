@@ -145,7 +145,9 @@ Reply with ONE JSON object and nothing else (no prose, no markdown). Omit any ke
   "orderId": "<order number as written>",
   "items": [ { "name": "<product name>", "qty": <whole number>, "amount": "<line total as written>", "categoryId": "<id from the category list, or null>" } ],
   "shipping": "<shipping cost as written>",
+  "shippingCategoryId": "<id from the category list, or null>",
   "discount": "<discount as written, without a minus sign>",
+  "discountCategoryId": "<id from the category list, or null>",
   "total": "<order total as written>",
   "description": "<short plain-text summary of the order>"
 }
@@ -154,7 +156,7 @@ Rules:
 - Read only what the email states. Never invent an item, a quantity, a price or a total; leave the key out when the email does not say.
 - "amount" of an item is the LINE TOTAL as written on the email (the unit price times the quantity, when the email shows both). Write amounts as the email writes them, for example "12.99" or "1.234,56 EUR". Never use a negative sign or parentheses: a discount is its own key, positive.
 - "total" is the amount the customer paid for the whole order, as the email states it. Do not add it up yourself.
-- "categoryId" of an item is copied exactly from the category list (the id before the colon) or null when none fits; never invent or alter an id.
+- "categoryId" of an item, "shippingCategoryId" and "discountCategoryId" are copied exactly from the category list (the id before the colon) or null when none fits; never invent or alter an id. Give the shipping or discount category only when the email states that shipping or discount.
 - At most 100 items; "name" at most 200 characters; "description" at most 300 characters, plain text, with no email addresses.
 - You cannot change the transaction's amount, date, account or status, and must not try.`;
 

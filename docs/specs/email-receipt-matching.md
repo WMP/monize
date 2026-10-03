@@ -163,7 +163,9 @@ the model returns the receipt's content, never a split of the transaction:
 ```json
 { "orderId": "A-1",
   "items": [ { "name": "Widget", "qty": 2, "amount": "19.98", "categoryId": "<id or null>" } ],
-  "shipping": "4.99", "discount": "2.00", "total": "37.97", "description": "..." }
+  "shipping": "4.99", "shippingCategoryId": "<id or null>",
+  "discount": "2.00", "discountCategoryId": "<id or null>",
+  "total": "37.97", "description": "..." }
 ```
 
 Bounds (`email-receipt-ai.schema.ts`, unknown keys refused): at most 100 items,
@@ -179,11 +181,12 @@ goes through the same rules as a parser's reading:
   not convert, is zero, or whose name is empty is dropped; a total, shipping or
   discount that does not convert is read as not stated (`null`). Each is noted in
   the log. A stated `0.00` shipping is a known zero.
-- **Categories.** An item's `categoryId` that is not one of the user's categories
-  (the list given in the prompt) is `null`. The model gives no category for the
-  shipping or discount lines, so both are `null`: a receipt with shipping or a
-  discount is therefore never `complete` (`shipping_uncategorized` or
-  `items_uncategorized`) and is proposed as a description only.
+- **Categories.** An item's `categoryId`, and the optional `shippingCategoryId`
+  and `discountCategoryId`, that are not one of the user's categories (the list
+  given in the prompt) are `null`. The shipping and discount categories go into
+  the `ParsedReceipt` as a parser's definition would give them, so a reading with
+  shipping or a discount is `complete` only when each line that exists has a
+  category (`shipping_uncategorized` / `items_uncategorized` otherwise).
 - **Completeness** is the table of section 4, computed by the same function
   (`completeness` in `parse-receipt.ts`), not a copy of it.
 - **The proposal** is `buildReceiptProposal` (section 5) with the transaction's
@@ -197,6 +200,11 @@ goes through the same rules as a parser's reading:
 - **Storage.** The reading is stored on the email (`parsed`, with `source: "ai"`)
   by one UPDATE conditional on the email still pointing at this request, so a
   slow answer never overwrites a newer one.
+
+Which requests the automatic step takes: pending `email_receipt` requests whose
+`instruction` is the poll's own (`RECEIPT_AUTOMATIC_AI_INSTRUCTION`), unclaimed
+and never tried. A request queued by "Recognize with AI" carries a different
+instruction (`RECEIPT_CHAT_INSTRUCTION`) and is never taken by the poll.
 
 "Recognize with AI" (the button) does not call this: it queues a request and the
 assistant in the chat, or an agent, answers it by id with splits, which
@@ -212,5 +220,5 @@ assistant in the chat, or an agent, answers it by id with splits, which
 | Every row of the match table; date window edges (day -3, day +14, day +15) | `matching/match-receipt.spec.ts` |
 | Every row of the proposal table; the numerical example; description cap and duplicate | `proposal/build-receipt-proposal.spec.ts` |
 | Auto-apply gate: each condition false in turn | `email-receipt-pipeline.service.spec.ts` |
-| AI extraction: amount conversion, unknown category, dropped items, completeness through the shared function, `source: "ai"`, description-only reasons | `ai/email-receipt-ai.extraction.spec.ts`, `ai/email-receipt-ai.service.spec.ts` |
+| AI extraction: amount conversion, unknown category (item, shipping, discount), dropped items, completeness through the shared function, `source: "ai"`, description-only reasons | `ai/email-receipt-ai.extraction.spec.ts`, `ai/email-receipt-ai.service.spec.ts` |
 | Recognize with AI: refusals before any write, chosen transaction stored as manual, pending request visible in the inbox, claim by id, card confirm applies the request | `email-receipt-ai.service.spec.ts`, `test/integration/email-receipts-pipeline.integration.spec.ts` |

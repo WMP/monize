@@ -361,10 +361,10 @@ oldest, and returns the same payload, with the email's text for an
 pending action in the chat; confirming it marks the request applied in the write's
 own transaction (`aiReviewRequestId` in the descriptor).
 
-**The poll's automatic step** (`processAiRequest`, mode `automatic`) asks the
+**The poll's automatic step** (`processAiRequest`, mode `automatic`) takes only the pending requests the poll itself queued (their `instruction` is `RECEIPT_AUTOMATIC_AI_INSTRUCTION`; "Recognize with AI" queues `RECEIPT_CHAT_INSTRUCTION`, which belongs to the chat or an MCP agent) and asks the
 model for the receipt's content, not a split: `{ orderId, items: [{ name, qty,
-amount, categoryId }], shipping, discount, total, description }`, amounts as the
-email writes them. The answer becomes a `ParsedReceipt` (`source: "ai"`), is
+amount, categoryId }], shipping, shippingCategoryId, discount,
+discountCategoryId, total, description }`, amounts as the email writes them. The answer becomes a `ParsedReceipt` (`source: "ai"`), is
 judged by the same completeness function a parser's reading is, and goes through
 `buildReceiptProposal` and `AiReviewWorkService.submit` (spec "AI extraction").
 
