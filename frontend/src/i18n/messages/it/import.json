@@ -574,6 +574,40 @@
       "applied": "Applicate: {actions}",
       "openNewTab": "Apri la regola {name} in una nuova scheda"
     },
+    "ruleTest": {
+      "heading": "Test delle regole",
+      "loading": "Caricamento del risultato del test delle regole",
+      "error": "Impossibile caricare il risultato del test delle regole.",
+      "retry": "Riprova",
+      "noRules": "Non hai regole di importazione, quindi non c'era nulla da testare.",
+      "showNotMatched": "Mostra le regole che non corrispondevano ({count})",
+      "hideNotMatched": "Nascondi le regole che non corrispondevano ({count})",
+      "noChanges": "Corrisponde, ma non cambia nulla in questa transazione.",
+      "badge": {
+        "matched": "Corrisponde",
+        "notMatched": "Non corrisponde",
+        "notEvaluated": "Non valutata"
+      },
+      "notEvaluated": {
+        "afterStop": "Non valutata: una regola precedente ha interrotto le regole.",
+        "disabled": "Non valutata: la regola è disattivata.",
+        "invalid": "Non valutata: la regola non è valida. Aprila per ripararla."
+      },
+      "condition": {
+        "met": "Condizione soddisfatta",
+        "notMet": "Condizione non soddisfatta",
+        "actual": "Valore in questa transazione: {value}",
+        "noValue": "nessuno",
+        "noTags": "nessun tag",
+        "capture": "{name} = {value}",
+        "omitted": "I dettagli di questa parte della condizione non sono mostrati."
+      },
+      "skipReasons": {
+        "already_set": "ha già un valore e la regola compila solo quelli vuoti",
+        "no_change": "ha già ciò che la regola imposterebbe",
+        "payee_unresolved": "non è stato possibile cercare il beneficiario costruito dalla regola"
+      }
+    },
     "payee": {
       "heading": "Beneficiario",
       "unknown": "Nessuna informazione sul beneficiario per questa transazione.",

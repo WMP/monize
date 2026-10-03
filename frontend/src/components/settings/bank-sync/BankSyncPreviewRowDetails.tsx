@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { ImportPreviewPayeeMapping, IMPORT_PREVIEW_HEADING_CLASS } from '@/components/import-preview/ImportPreviewPayeeMapping';
+import { ImportPreviewRuleTest } from '@/components/import-preview/ImportPreviewRuleTest';
 import { ImportPreviewRuleTrace } from '@/components/import-preview/ImportPreviewRuleTrace';
 import type { BankSyncPreviewLabels, BankSyncPreviewRow } from '@/types/bank-sync';
 
@@ -21,7 +22,8 @@ interface PreviewRowDetailsProps {
  * and what each changed, how the bank's counterparty text became the payee
  * (with a way to the payee's aliases), and the operation-type tag. The rules
  * and the payee come from the source-neutral import preview pieces; the
- * operation type is the bank's own.
+ * operation type is the bank's own. Below the matched rules, the full rule test
+ * of the row is loaded as soon as it is expanded.
  */
 export function PreviewRowDetails({ id, row, labels }: PreviewRowDetailsProps) {
   const t = useTranslations('settings.bankSync.preview.details.operation');
@@ -32,6 +34,7 @@ export function PreviewRowDetails({ id, row, labels }: PreviewRowDetailsProps) {
       className="space-y-3 rounded-md bg-gray-50 p-3 text-sm text-gray-900 dark:bg-gray-900/40 dark:text-gray-100"
     >
       <ImportPreviewRuleTrace rules={row.rules} labels={labels} />
+      <ImportPreviewRuleTest rowKey={row.externalKey ?? id} ruleInput={row.ruleInput} />
       <ImportPreviewPayeeMapping payee={row.payee} />
       <section aria-label={t('heading')} className="space-y-1">
         <h4 className={IMPORT_PREVIEW_HEADING_CLASS}>{t('heading')}</h4>

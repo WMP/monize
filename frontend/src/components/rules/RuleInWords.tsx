@@ -34,7 +34,7 @@ function isGroup(node: RuleConditionNode): node is Exclude<RuleConditionNode, Ru
 }
 
 /** The sentences a rule is read in, from the `rules` catalog and the reader's own formats. */
-function useRuleWords(labels: RuleWordsLabels) {
+export function useRuleWords(labels: RuleWordsLabels) {
   const t = useTranslations('rules');
   const format = useFormatter();
   const { formatNumber } = useNumberFormat();

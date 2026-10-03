@@ -532,6 +532,7 @@
     "limitReached": "最多只能创建 {{ max }} 条规则",
     "invalidDefinition": "规则定义无效",
     "referenceNotFound": "规则引用了不存在的账户、收款方、类别或标签",
+    "explainReferenceNotFound": "交易引用了不存在的账户、收款方、类别或标签",
     "revisionConflict": "此规则已在别处被修改。请重新加载后再试",
     "reorderMismatch": "规则列表已更改。请重新加载后再试",
     "previewChanged": "自预览以来，交易或规则已发生变化。请查看新的预览后重新运行",

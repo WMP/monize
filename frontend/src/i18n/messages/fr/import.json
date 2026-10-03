@@ -574,6 +574,40 @@
       "applied": "Appliquées : {actions}",
       "openNewTab": "Ouvrir la règle {name} dans un nouvel onglet"
     },
+    "ruleTest": {
+      "heading": "Test des règles",
+      "loading": "Chargement du résultat du test des règles",
+      "error": "Le résultat du test des règles n'a pas pu être chargé.",
+      "retry": "Réessayer",
+      "noRules": "Vous n'avez aucune règle d'import, il n'y avait donc rien à tester.",
+      "showNotMatched": "Afficher les règles qui ne correspondaient pas ({count})",
+      "hideNotMatched": "Masquer les règles qui ne correspondaient pas ({count})",
+      "noChanges": "Elle correspond, mais ne change rien à cette transaction.",
+      "badge": {
+        "matched": "Correspond",
+        "notMatched": "Ne correspond pas",
+        "notEvaluated": "Non évaluée"
+      },
+      "notEvaluated": {
+        "afterStop": "Non évaluée : une règle précédente a arrêté les règles.",
+        "disabled": "Non évaluée : la règle est désactivée.",
+        "invalid": "Non évaluée : la règle n'est pas valide. Ouvrez-la pour la réparer."
+      },
+      "condition": {
+        "met": "Condition remplie",
+        "notMet": "Condition non remplie",
+        "actual": "Valeur dans cette transaction : {value}",
+        "noValue": "aucune",
+        "noTags": "aucun tag",
+        "capture": "{name} = {value}",
+        "omitted": "Les détails de cette partie de la condition ne sont pas affichés."
+      },
+      "skipReasons": {
+        "already_set": "elle a déjà une valeur et la règle ne remplit que les champs vides",
+        "no_change": "elle a déjà ce que la règle définirait",
+        "payee_unresolved": "le bénéficiaire que construit la règle n'a pas pu être recherché"
+      }
+    },
     "payee": {
       "heading": "Bénéficiaire",
       "unknown": "Aucune information de bénéficiaire pour cette transaction.",

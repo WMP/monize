@@ -574,6 +574,40 @@
       "applied": "Aplicadas: {actions}",
       "openNewTab": "Abrir a regra {name} em uma nova aba"
     },
+    "ruleTest": {
+      "heading": "Teste de regras",
+      "loading": "Carregando o resultado do teste de regras",
+      "error": "Não foi possível carregar o resultado do teste de regras.",
+      "retry": "Tentar novamente",
+      "noRules": "Você não tem regras de importação, então não havia nada para testar.",
+      "showNotMatched": "Mostrar as regras que não corresponderam ({count})",
+      "hideNotMatched": "Ocultar as regras que não corresponderam ({count})",
+      "noChanges": "Corresponde, mas não altera nada nesta transação.",
+      "badge": {
+        "matched": "Corresponde",
+        "notMatched": "Não corresponde",
+        "notEvaluated": "Não avaliada"
+      },
+      "notEvaluated": {
+        "afterStop": "Não avaliada: uma regra anterior interrompeu as regras.",
+        "disabled": "Não avaliada: a regra está desativada.",
+        "invalid": "Não avaliada: a regra não é válida. Abra-a para repará-la."
+      },
+      "condition": {
+        "met": "Condição atendida",
+        "notMet": "Condição não atendida",
+        "actual": "Valor nesta transação: {value}",
+        "noValue": "nenhum",
+        "noTags": "sem tags",
+        "capture": "{name} = {value}",
+        "omitted": "Os detalhes desta parte da condição não são exibidos."
+      },
+      "skipReasons": {
+        "already_set": "ela já tem um valor e a regra só preenche os vazios",
+        "no_change": "ela já tem o que a regra definiria",
+        "payee_unresolved": "não foi possível procurar o favorecido que a regra monta"
+      }
+    },
     "payee": {
       "heading": "Beneficiário",
       "unknown": "Não há informações do beneficiário para esta transação.",

@@ -12,3 +12,11 @@ export const MAX_RULE_APPLICATIONS_LIMIT = 200;
 /** Rules the assistant and MCP list tool returns per call (default and ceiling). */
 export const DEFAULT_RULE_TOOL_LIST_LIMIT = 50;
 export const MAX_RULE_TOOL_LIST_LIMIT = 200;
+/** Tags a row sent to the row explanation may carry (a row holds far fewer). */
+export const MAX_EXPLAIN_ROW_TAGS = 50;
+/** `payees.name` and `transactions.payee_name` are varchar(255). */
+export const MAX_EXPLAIN_ROW_PAYEE_LENGTH = 255;
+/** `transactions.reference_number` is varchar(100). */
+export const MAX_EXPLAIN_ROW_REFERENCE_LENGTH = 100;
+/** `transactions.amount` is decimal(20,4): sixteen integer digits at most. */
+export const MAX_EXPLAIN_ROW_AMOUNT_DIGITS = 16;

@@ -18,6 +18,19 @@ vi.mock('@/lib/bank-sync', () => ({
   },
 }));
 
+const mockExplainRow = vi.fn();
+
+vi.mock('@/lib/transaction-rules-api', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/transaction-rules-api')>();
+  return {
+    ...original,
+    transactionRulesApi: {
+      ...original.transactionRulesApi,
+      explainRow: (...args: unknown[]) => mockExplainRow(...args),
+    },
+  };
+});
+
 vi.mock('@/hooks/useNumberFormat', async () => {
   const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
   return {
@@ -55,6 +68,7 @@ const row = (over: Partial<BankSyncPreviewRow> = {}): BankSyncPreviewRow => ({
   payee: null,
   rules: [],
   operationTag: null,
+  ruleInput: null,
   ...over,
 });
 
@@ -1276,7 +1290,7 @@ describe('BankSyncPreviewModal', () => {
   });
 
   describe('the details of a row (spec section 7b)', () => {
-    const DETAILED = () =>
+    const DETAILED = (over: Partial<BankSyncPreviewRow> = {}) =>
       row({
         externalKey: 'ref:z',
         payeeText: 'BIEDRONKA 4711',
@@ -1304,6 +1318,7 @@ describe('BankSyncPreviewModal', () => {
             stopped: true,
           },
         ],
+        ...over,
       });
     const withDetailed = (extra: BankSyncPreviewRow[] = []) =>
       mockPreviewAccount.mockResolvedValue(
@@ -1492,6 +1507,114 @@ describe('BankSyncPreviewModal', () => {
       fireEvent.click(toggle('Show details of Biedronka S.A.'));
       expect(screen.getAllByText('Import rules')).toHaveLength(1);
       expect(toggle('Show details of Other')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    describe('the rule test of a row', () => {
+      const RULE_INPUT = {
+        accountId: 'acc-1',
+        currencyCode: 'PLN',
+        amount: '-50.0000',
+        isTransfer: false,
+        payeeId: 'p-1',
+        payeeText: 'BIEDRONKA 4711',
+        categoryId: null,
+        description: 'Groceries',
+        tagIds: [],
+        hasSplits: false,
+      };
+      const explanation = {
+        rules: [
+          {
+            ruleId: 'r-1',
+            ruleName: 'Food rule',
+            enabled: true,
+            position: 1,
+            evaluated: true,
+            matched: true,
+            condition: {
+              kind: 'leaf',
+              field: 'payeeText',
+              operator: 'contains',
+              expected: 'biedronka',
+              actual: 'BIEDRONKA 4711',
+              result: true,
+            },
+            effects: {
+              ruleId: 'r-1',
+              matched: true,
+              applied: [{ type: 'set_category' }],
+              skipped: [],
+              changes: { categoryId: { before: null, after: 'cat-9' } },
+              stopped: false,
+            },
+            stopped: false,
+          },
+        ],
+        labels: { accounts: {}, payees: {}, categories: { 'cat-9': 'Food' }, tags: {} },
+      };
+      const withRuleInput = () => {
+        mockPreviewAccount.mockResolvedValue(
+          preview({
+            rows: [DETAILED({ ruleInput: RULE_INPUT })],
+            labels: { categories: { 'cat-9': 'Food' }, payees: {}, tags: { 'tag-1': 'Weekly' } },
+            summary: { new: 1, duplicate: 0, excluded: 0, refused: 0, refusedByReason: {}, pending: 0, beforeCutoff: 0 },
+          }),
+        );
+        mockExplainRow.mockResolvedValue(explanation);
+      };
+
+      it('asks for nothing until a row is expanded, then loads its rule test at once', async () => {
+        withRuleInput();
+        await loaded();
+        await screen.findByText('Monize balance now');
+        expect(mockExplainRow).not.toHaveBeenCalled();
+
+        await act(async () => {
+          fireEvent.click(toggle('Show details of Biedronka S.A.'));
+        });
+
+        expect(mockExplainRow).toHaveBeenCalledTimes(1);
+        expect(mockExplainRow).toHaveBeenCalledWith({ trigger: 'import', input: RULE_INPUT });
+        const test = within(screen.getByRole('region', { name: 'Rule test' }));
+        expect(test.getByText('Value in this transaction: "BIEDRONKA 4711"')).toBeInTheDocument();
+        expect(test.getByText('Category: none → Food')).toBeInTheDocument();
+      });
+
+      it('keeps the answer while the preview is open: collapsing and expanding a row asks nothing more', async () => {
+        withRuleInput();
+        await loaded();
+        await screen.findByText('Monize balance now');
+        await act(async () => {
+          fireEvent.click(toggle('Show details of Biedronka S.A.'));
+        });
+        await act(async () => {
+          fireEvent.click(toggle('Hide details of Biedronka S.A.'));
+        });
+        await act(async () => {
+          fireEvent.click(toggle('Show details of Biedronka S.A.'));
+        });
+        expect(mockExplainRow).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('Value in this transaction: "BIEDRONKA 4711"')).toBeInTheDocument();
+      });
+
+      it('shows a failed load as an error with a retry beside the rows\' other details', async () => {
+        withRuleInput();
+        mockExplainRow.mockRejectedValueOnce(new Error('network')).mockResolvedValue(explanation);
+        await loaded();
+        await screen.findByText('Monize balance now');
+        await act(async () => {
+          fireEvent.click(toggle('Show details of Biedronka S.A.'));
+        });
+        expect(screen.getByRole('alert')).toHaveTextContent('The rule test result could not be loaded.');
+        // The rest of the details is still there.
+        expect(screen.getByText('Import rules')).toBeInTheDocument();
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        });
+        expect(mockExplainRow).toHaveBeenCalledTimes(2);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
     });
   });
 });

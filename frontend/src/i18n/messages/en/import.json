@@ -574,6 +574,40 @@
       "applied": "Applied: {actions}",
       "openNewTab": "Open the rule {name} in a new tab"
     },
+    "ruleTest": {
+      "heading": "Rule test",
+      "loading": "Loading the rule test result",
+      "error": "The rule test result could not be loaded.",
+      "retry": "Try again",
+      "noRules": "You have no import rules, so there was nothing to test.",
+      "showNotMatched": "Show rules that did not match ({count})",
+      "hideNotMatched": "Hide rules that did not match ({count})",
+      "noChanges": "It matched, but it changes nothing in this transaction.",
+      "badge": {
+        "matched": "Matched",
+        "notMatched": "Not matched",
+        "notEvaluated": "Not evaluated"
+      },
+      "notEvaluated": {
+        "afterStop": "Not evaluated: a previous rule stopped the rules.",
+        "disabled": "Not evaluated: the rule is switched off.",
+        "invalid": "Not evaluated: the rule is not valid. Open it to repair it."
+      },
+      "condition": {
+        "met": "Condition met",
+        "notMet": "Condition not met",
+        "actual": "Value in this transaction: {value}",
+        "noValue": "none",
+        "noTags": "no tags",
+        "capture": "{name} = {value}",
+        "omitted": "The details of this part of the condition are not shown."
+      },
+      "skipReasons": {
+        "already_set": "it already has a value and the rule only fills in an empty one",
+        "no_change": "it already has what the rule would set",
+        "payee_unresolved": "the payee the rule builds could not be looked up"
+      }
+    },
     "payee": {
       "heading": "Payee",
       "unknown": "No payee information for this transaction.",

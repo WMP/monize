@@ -574,6 +574,40 @@
       "applied": "Uygulananlar: {actions}",
       "openNewTab": "{name} kuralını yeni sekmede aç"
     },
+    "ruleTest": {
+      "heading": "Kural testi",
+      "loading": "Kural testi sonucu yükleniyor",
+      "error": "Kural testi sonucu yüklenemedi.",
+      "retry": "Yeniden dene",
+      "noRules": "İçe aktarma kuralınız yok, bu yüzden test edilecek bir şey yoktu.",
+      "showNotMatched": "Eşleşmeyen kuralları göster ({count})",
+      "hideNotMatched": "Eşleşmeyen kuralları gizle ({count})",
+      "noChanges": "Eşleşti, ancak bu işlemde hiçbir şeyi değiştirmiyor.",
+      "badge": {
+        "matched": "Eşleşti",
+        "notMatched": "Eşleşmedi",
+        "notEvaluated": "Değerlendirilmedi"
+      },
+      "notEvaluated": {
+        "afterStop": "Değerlendirilmedi: önceki bir kural kuralları durdurdu.",
+        "disabled": "Değerlendirilmedi: kural kapalı.",
+        "invalid": "Değerlendirilmedi: kural geçerli değil. Onarmak için açın."
+      },
+      "condition": {
+        "met": "Koşul sağlandı",
+        "notMet": "Koşul sağlanmadı",
+        "actual": "Bu işlemdeki değer: {value}",
+        "noValue": "yok",
+        "noTags": "etiket yok",
+        "capture": "{name} = {value}",
+        "omitted": "Koşulun bu bölümünün ayrıntıları gösterilmiyor."
+      },
+      "skipReasons": {
+        "already_set": "zaten bir değeri var ve kural yalnızca boş olanları doldurur",
+        "no_change": "zaten kuralın ayarlayacağı değere sahip",
+        "payee_unresolved": "kuralın oluşturduğu alıcı aranamadı"
+      }
+    },
     "payee": {
       "heading": "Alacaklı",
       "unknown": "Bu işlem için alacaklı bilgisi yok.",

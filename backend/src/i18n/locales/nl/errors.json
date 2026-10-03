@@ -532,6 +532,7 @@
     "limitReached": "Er kunnen maximaal {{ max }} regels worden aangemaakt",
     "invalidDefinition": "De regeldefinitie is ongeldig",
     "referenceNotFound": "De regel verwijst naar een rekening, begunstigde, categorie of tag die niet bestaat",
+    "explainReferenceNotFound": "De transactie verwijst naar een rekening, begunstigde, categorie of tag die niet bestaat",
     "revisionConflict": "Deze regel is elders gewijzigd. Laad hem opnieuw en probeer het nogmaals",
     "reorderMismatch": "De lijst met regels is gewijzigd. Laad hem opnieuw en probeer het nogmaals",
     "previewChanged": "De transacties of de regel zijn gewijzigd sinds het voorbeeld. Bekijk het nieuwe voorbeeld en voer opnieuw uit",

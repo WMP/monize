@@ -574,6 +574,40 @@
       "applied": "Aplicadas: {actions}",
       "openNewTab": "Abrir la regla {name} en una pestaña nueva"
     },
+    "ruleTest": {
+      "heading": "Prueba de reglas",
+      "loading": "Cargando el resultado de la prueba de reglas",
+      "error": "No se pudo cargar el resultado de la prueba de reglas.",
+      "retry": "Reintentar",
+      "noRules": "No tienes reglas de importación, así que no había nada que probar.",
+      "showNotMatched": "Mostrar las reglas que no coincidieron ({count})",
+      "hideNotMatched": "Ocultar las reglas que no coincidieron ({count})",
+      "noChanges": "Coincidió, pero no cambia nada en esta transacción.",
+      "badge": {
+        "matched": "Coincide",
+        "notMatched": "No coincide",
+        "notEvaluated": "No evaluada"
+      },
+      "notEvaluated": {
+        "afterStop": "No evaluada: una regla anterior detuvo las reglas.",
+        "disabled": "No evaluada: la regla está desactivada.",
+        "invalid": "No evaluada: la regla no es válida. Ábrela para repararla."
+      },
+      "condition": {
+        "met": "Condición cumplida",
+        "notMet": "Condición no cumplida",
+        "actual": "Valor en esta transacción: {value}",
+        "noValue": "ninguno",
+        "noTags": "sin etiquetas",
+        "capture": "{name} = {value}",
+        "omitted": "Los detalles de esta parte de la condición no se muestran."
+      },
+      "skipReasons": {
+        "already_set": "ya tiene un valor y la regla solo rellena los vacíos",
+        "no_change": "ya tiene lo que la regla establecería",
+        "payee_unresolved": "no se pudo buscar el beneficiario que construye la regla"
+      }
+    },
     "payee": {
       "heading": "Beneficiario",
       "unknown": "No hay información del beneficiario para esta transacción.",

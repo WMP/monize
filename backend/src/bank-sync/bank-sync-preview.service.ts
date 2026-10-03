@@ -19,7 +19,11 @@ import {
 } from "../import-preview/payee-resolution";
 import type { RuleEffects } from "../transaction-rules/rule-effects";
 import type { RuleEffectsLabels } from "../transaction-rules/transaction-rules-applier.service";
-import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import {
+  TransactionRulesApplierService,
+  ruleRowInputFromStored,
+  type RuleRowInput,
+} from "../transaction-rules/transaction-rules-applier.service";
 import { TransactionStatus } from "../transactions/entities/transaction.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { operationTagLabel } from "./bank-operation";
@@ -74,6 +78,8 @@ interface RowContext {
   m: EntityManager;
   userId: string;
   account: Account;
+  /** The account's currency, upper-cased, as the writer derives it for the rows it stores. */
+  currencyCode: string;
   /** The `import` rules, loaded once for the whole preview. */
   rules: readonly TransactionRule[];
   /** The operation-type tag's translator; null when the connection does not tag. */
@@ -177,6 +183,7 @@ export class BankSyncPreviewService {
         m,
         userId,
         account,
+        currencyCode,
         rules: await this.rulesApplier.loadRulesFor(m, userId, "import"),
         t: input.tagOperationType
           ? emailTranslator(
@@ -206,9 +213,9 @@ export class BankSyncPreviewService {
           rows.push(await this.newRow(context, entry));
         } else if (held.excluded) {
           excluded += 1;
-          rows.push(this.plainRow(entry, "excluded"));
+          rows.push(await this.heldRow(context, entry, "excluded"));
         } else {
-          rows.push(this.plainRow(entry, "duplicate"));
+          rows.push(await this.heldRow(context, entry, "duplicate"));
         }
       }
 
@@ -279,29 +286,42 @@ export class BankSyncPreviewService {
       payee: null,
       rules: [],
       operationTag: null,
+      ruleInput: null,
     };
   }
 
   /**
-   * A row the sync would write: the payee its counterparty resolves to (or the
-   * counterparty's own text when the payee would be created), the payee's
-   * default category, the operation-type tag, and what the `import` rules change
-   * on top, with how the payee was found and which rules matched.
+   * A row the ledger already holds (imported before, or an exception): nothing
+   * of it is resolved for the screen, but it carries the rule input a sync
+   * would hand the rules for it now, so a person can ask why a rule would or
+   * would not have applied.
    */
-  private async newRow(
+  private async heldRow(
     context: RowContext,
     entry: PlanEntry,
+    outcome: "duplicate" | "excluded",
   ): Promise<BankSyncPreviewRowView> {
-    const { m, userId, account } = context;
-    const payee = await this.lookUpPayee(context, entry.payeeText);
-    let payeeName = payee?.payeeName ?? entry.payeeText;
-    let categoryId = payee?.defaultCategoryId ?? null;
-    let categoryName = payee?.defaultCategoryName ?? null;
+    const { ruleInput } = await this.resolveRow(context, entry);
+    return { ...this.plainRow(entry, outcome), ruleInput };
+  }
 
-    // The operation-type tag goes on before the rules run (as the writer does),
-    // so the rules are planned over a row that already carries it. A tag that
-    // does not exist yet has no id for a rule to name, so the row's tag set
-    // stays empty until the commit creates it.
+  /**
+   * What the sync would give a planned row before the rules run: the payee its
+   * counterparty resolves to (or the counterparty's own text when the payee
+   * would be created), that payee's default category, the operation-type tag
+   * (attached before the rules, as the writer does) and the exact input the
+   * `import` rules are planned over. The input is built by
+   * `ruleRowInputFromStored`, the function the writer's `applyToNew` reads each
+   * stored row through, from the row the writer would store (the columns of its
+   * `m.create(Transaction, ...)`), so the preview and the sync cannot hand the
+   * rules different facts.
+   *
+   * A tag that does not exist yet has no id for a rule to name, so the row's
+   * tag set stays empty until the commit creates it.
+   */
+  private async resolveRow(context: RowContext, entry: PlanEntry) {
+    const { account } = context;
+    const payee = await this.lookUpPayee(context, entry.payeeText);
     const operationTag =
       context.t === null
         ? null
@@ -315,29 +335,53 @@ export class BankSyncPreviewService {
       operationTag === null
         ? null
         : await this.tagId(context, operationTag.label);
+    const ruleInput: RuleRowInput = ruleRowInputFromStored(
+      {
+        accountId: account.id,
+        currencyCode: context.currencyCode,
+        // The column's own text form, which the writer's stored row carries.
+        amount: entry.amount === null ? null : entry.amount.toFixed(4),
+        payeeId: payee?.payeeId ?? null,
+        payeeName: payee?.payeeName ?? entry.payeeText,
+        categoryId: payee?.defaultCategoryId ?? null,
+        description: entry.description,
+        isSplit: false,
+        isTransfer: false,
+        referenceNumber: entry.referenceNumber,
+        transactionDate: entry.transactionDate,
+        status: TransactionStatus.CLEARED,
+      },
+      {
+        tagIds: operationTagId === null ? [] : [operationTagId],
+        payeeText: entry.payeeText,
+      },
+    );
+    return { payee, operationTag, operationTagId, ruleInput };
+  }
+
+  /**
+   * A row the sync would write: the payee its counterparty resolves to (or the
+   * counterparty's own text when the payee would be created), the payee's
+   * default category, the operation-type tag, and what the `import` rules change
+   * on top, with how the payee was found and which rules matched.
+   */
+  private async newRow(
+    context: RowContext,
+    entry: PlanEntry,
+  ): Promise<BankSyncPreviewRowView> {
+    const { m, userId } = context;
+    const { payee, operationTag, operationTagId, ruleInput } =
+      await this.resolveRow(context, entry);
+    let payeeName = payee?.payeeName ?? entry.payeeText;
+    let categoryId = payee?.defaultCategoryId ?? null;
+    let categoryName = payee?.defaultCategoryName ?? null;
 
     const effects: RuleEffects | null =
       context.rules.length > 0
         ? await this.rulesApplier.planForRow(
             m,
             userId,
-            {
-              accountId: account.id,
-              currencyCode: account.currencyCode,
-              amount: entry.amount,
-              isTransfer: false,
-              payeeId: payee?.payeeId ?? null,
-              payeeText: entry.payeeText,
-              payeeName,
-              categoryId,
-              description: entry.description,
-              tagIds: operationTagId === null ? [] : [operationTagId],
-              hasSplits: false,
-              referenceNumber: entry.referenceNumber,
-              transactionDate: entry.transactionDate,
-              status: TransactionStatus.CLEARED,
-              hasAttachment: false,
-            },
+            ruleInput,
             context.rules,
           )
         : null;
@@ -417,6 +461,7 @@ export class BankSyncPreviewService {
       }),
       rules: matchedRuleViews(trace, labels?.rules ?? null),
       operationTag: operationTag?.label ?? null,
+      ruleInput,
     };
   }
 

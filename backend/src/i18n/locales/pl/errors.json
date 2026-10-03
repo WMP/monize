@@ -532,6 +532,7 @@
     "limitReached": "Można utworzyć najwyżej {{ max }} reguł",
     "invalidDefinition": "Definicja reguły jest nieprawidłowa",
     "referenceNotFound": "Reguła wskazuje konto, odbiorcę, kategorię lub tag, które nie istnieją",
+    "explainReferenceNotFound": "Transakcja wskazuje konto, odbiorcę, kategorię lub tag, które nie istnieją",
     "revisionConflict": "Ta reguła została zmieniona gdzie indziej. Załaduj ją ponownie i spróbuj jeszcze raz",
     "reorderMismatch": "Lista reguł uległa zmianie. Załaduj ją ponownie i spróbuj jeszcze raz",
     "previewChanged": "Transakcje lub reguła zmieniły się od czasu podglądu. Sprawdź nowy podgląd i uruchom ponownie",

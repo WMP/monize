@@ -532,6 +532,7 @@
     "limitReached": "Paling banyak {{ max }} aturan yang dapat dibuat",
     "invalidDefinition": "Definisi aturan tidak valid",
     "referenceNotFound": "Aturan menyebut akun, penerima, kategori, atau tag yang tidak ada",
+    "explainReferenceNotFound": "Transaksi menyebut akun, penerima, kategori, atau tag yang tidak ada",
     "revisionConflict": "Aturan ini diubah di tempat lain. Muat ulang lalu coba lagi",
     "reorderMismatch": "Daftar aturan telah berubah. Muat ulang lalu coba lagi",
     "previewChanged": "Transaksi atau aturan berubah sejak pratinjau. Tinjau pratinjau baru lalu jalankan lagi",

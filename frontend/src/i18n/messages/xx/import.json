@@ -574,6 +574,40 @@
       "applied": "[XX-Applied: {actions}-XX]",
       "openNewTab": "[XX-Open the rule {name} in a new tab-XX]"
     },
+    "ruleTest": {
+      "heading": "[XX-Rule test-XX]",
+      "loading": "[XX-Loading the rule test result-XX]",
+      "error": "[XX-The rule test result could not be loaded.-XX]",
+      "retry": "[XX-Try again-XX]",
+      "noRules": "[XX-You have no import rules, so there was nothing to test.-XX]",
+      "showNotMatched": "[XX-Show rules that did not match ({count})-XX]",
+      "hideNotMatched": "[XX-Hide rules that did not match ({count})-XX]",
+      "noChanges": "[XX-It matched, but it changes nothing in this transaction.-XX]",
+      "badge": {
+        "matched": "[XX-Matched-XX]",
+        "notMatched": "[XX-Not matched-XX]",
+        "notEvaluated": "[XX-Not evaluated-XX]"
+      },
+      "notEvaluated": {
+        "afterStop": "[XX-Not evaluated: a previous rule stopped the rules.-XX]",
+        "disabled": "[XX-Not evaluated: the rule is switched off.-XX]",
+        "invalid": "[XX-Not evaluated: the rule is not valid. Open it to repair it.-XX]"
+      },
+      "condition": {
+        "met": "[XX-Condition met-XX]",
+        "notMet": "[XX-Condition not met-XX]",
+        "actual": "[XX-Value in this transaction: {value}-XX]",
+        "noValue": "[XX-none-XX]",
+        "noTags": "[XX-no tags-XX]",
+        "capture": "[XX-{name} = {value}-XX]",
+        "omitted": "[XX-The details of this part of the condition are not shown.-XX]"
+      },
+      "skipReasons": {
+        "already_set": "[XX-it already has a value and the rule only fills in an empty one-XX]",
+        "no_change": "[XX-it already has what the rule would set-XX]",
+        "payee_unresolved": "[XX-the payee the rule builds could not be looked up-XX]"
+      }
+    },
     "payee": {
       "heading": "[XX-Payee-XX]",
       "unknown": "[XX-No payee information for this transaction.-XX]",

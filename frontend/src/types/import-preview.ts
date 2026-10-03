@@ -40,3 +40,34 @@ export interface ImportPreviewLabels {
   payees: Record<string, string>;
   tags: Record<string, string>;
 }
+
+/**
+ * The exact input the import rules are planned over for one row, as a sync
+ * would hand it (`backend/src/transaction-rules/transaction-rules-applier.service.ts`,
+ * `RuleRowInput`). A preview row carries it so the rule test can ask the server
+ * why each rule did or did not apply; nothing in the browser reads a field of
+ * it, it is sent back as it came.
+ */
+export interface ImportPreviewRuleInput {
+  accountId: string;
+  currencyCode: string | null;
+  /** A decimal string or a number, signed, in the account currency. */
+  amount: number | string | null;
+  isTransfer: boolean;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
+  payeeId: string | null;
+  /** The raw payee text the source supplied. */
+  payeeText: string | null;
+  categoryId: string | null;
+  description: string | null;
+  tagIds: string[];
+  hasSplits: boolean;
+  referenceNumber?: string | null;
+  /** `YYYY-MM-DD`. */
+  transactionDate?: string | null;
+  status?: string | null;
+  hasAttachment?: boolean;
+  /** The name stored on the row, for the trace of a payee change. */
+  payeeName?: string | null;
+}

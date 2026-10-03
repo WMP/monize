@@ -574,6 +574,40 @@
       "applied": "已应用：{actions}",
       "openNewTab": "在新标签页中打开规则 {name}"
     },
+    "ruleTest": {
+      "heading": "规则测试",
+      "loading": "正在加载规则测试结果",
+      "error": "无法加载规则测试结果。",
+      "retry": "重试",
+      "noRules": "您没有导入规则，因此没有可测试的内容。",
+      "showNotMatched": "显示未匹配的规则（{count}）",
+      "hideNotMatched": "隐藏未匹配的规则（{count}）",
+      "noChanges": "已匹配，但不会更改这笔交易的任何内容。",
+      "badge": {
+        "matched": "已匹配",
+        "notMatched": "未匹配",
+        "notEvaluated": "未评估"
+      },
+      "notEvaluated": {
+        "afterStop": "未评估：前面的规则已停止后续规则。",
+        "disabled": "未评估：规则已关闭。",
+        "invalid": "未评估：规则无效。请打开它进行修复。"
+      },
+      "condition": {
+        "met": "条件已满足",
+        "notMet": "条件未满足",
+        "actual": "这笔交易中的值：{value}",
+        "noValue": "无",
+        "noTags": "无标签",
+        "capture": "{name} = {value}",
+        "omitted": "条件的这一部分的详细信息未显示。"
+      },
+      "skipReasons": {
+        "already_set": "它已有值，而规则只填写空值",
+        "no_change": "它已是规则要设置的内容",
+        "payee_unresolved": "无法查找规则生成的收款方"
+      }
+    },
     "payee": {
       "heading": "收款人",
       "unknown": "这笔交易没有收款人信息。",

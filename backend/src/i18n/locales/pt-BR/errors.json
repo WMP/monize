@@ -532,6 +532,7 @@
     "limitReached": "No máximo {{ max }} regras podem ser criadas",
     "invalidDefinition": "A definição da regra não é válida",
     "referenceNotFound": "A regra cita uma conta, um favorecido, uma categoria ou uma tag que não existe",
+    "explainReferenceNotFound": "A transação cita uma conta, um favorecido, uma categoria ou uma tag que não existe",
     "revisionConflict": "Esta regra foi alterada em outro lugar. Recarregue-a e tente novamente",
     "reorderMismatch": "A lista de regras mudou. Recarregue-a e tente novamente",
     "previewChanged": "As transações ou a regra mudaram desde a pré-visualização. Revise a nova pré-visualização e execute novamente",
