@@ -1855,6 +1855,40 @@ describe("LoanPaymentDetectorService", () => {
       ).resolves.toEqual([]);
     });
 
+    it("still reads the positive leg of a parent whose zero leg was dropped first", async () => {
+      // Interest booked elsewhere: the parent carries a 0.00 leg and an 800
+      // leg into the same loan, and no interest line. The zero leg is read
+      // first and dropped; that must not mark the parent as processed.
+      transactionRepository.findOne.mockResolvedValue({
+        id: "parent-tx-1",
+        accountId: "chequing-1",
+        account: { name: "Checking" },
+        amount: -800,
+        isSplit: true,
+      });
+      transactionRepository.manager.find.mockResolvedValue([
+        { amount: "0.0000", transferAccountId: "mortgage-1", memo: null },
+        { amount: "-800.0000", transferAccountId: "mortgage-1", memo: null },
+      ]);
+
+      const records = await service.buildPaymentRecords(
+        "user-1",
+        "mortgage-1",
+        [zeroLeg("tx-1"), zeroLeg("tx-2", { amount: "800.0000" })].map(
+          (tx) =>
+            ({ ...tx, linkedTransactionId: "parent-tx-1" }) as Transaction,
+        ),
+      );
+
+      expect(records).toEqual([
+        expect.objectContaining({
+          amount: 800,
+          principalAmount: 800,
+          interestAmount: null,
+        }),
+      ]);
+    });
+
     it("drops a zero-amount row that is not a linked transfer, without looking it up", async () => {
       await expect(
         service.buildPaymentRecords("user-1", "mortgage-1", [

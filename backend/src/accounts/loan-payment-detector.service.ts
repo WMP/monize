@@ -351,7 +351,6 @@ export class LoanPaymentDetectorService {
 
         // Check if this is a transfer - find the linked source transaction
         if (tx.isTransfer && tx.linkedTransactionId) {
-          processedLinkedIds.add(tx.linkedTransactionId);
           const linkedTx = await m.findOne(Transaction, {
             where: { id: tx.linkedTransactionId, userId },
             relations: ["account"],
@@ -441,7 +440,12 @@ export class LoanPaymentDetectorService {
         }
 
         // A zero leg without an interest line paid nothing: not a payment.
+        // The parent is marked processed only once a record is pushed, so a
+        // positive leg into this loan from the same parent is still read.
         if (zeroLeg && interestAmount == null) continue;
+        if (tx.isTransfer && tx.linkedTransactionId) {
+          processedLinkedIds.add(tx.linkedTransactionId);
+        }
 
         payments.push({
           date: tx.transactionDate,

@@ -34,7 +34,12 @@ import {
   periodsPerYearForStoredFrequency,
   toMortgagePaymentFrequency,
 } from "./payment-frequency.util";
-import { formatDateYMD, localDateForColumn } from "../common/date-utils";
+import {
+  formatDateYMD,
+  localDateForColumn,
+  todayYMD,
+} from "../common/date-utils";
+import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { roundMoney } from "../common/round.util";
 import { tr } from "../i18n/translate";
 import {
@@ -74,8 +79,8 @@ import {
 } from "./dto/detect-mortgage-type.dto";
 
 /**
- * The installments a history detection reads: the latest three posted at one
- * rate (docs/specs/mortgage-types.md, section 10).
+ * The installments a history detection reads: the latest three consecutive
+ * ones posted at one rate (docs/specs/mortgage-types.md, section 10).
  */
 const HISTORY_DETECTION_SAMPLES = 3;
 
@@ -523,10 +528,20 @@ export class LoanMortgageAccountService {
     const { transactions, rateRows } = await withScopedDb(
       this.dataSource,
       async (m) => ({
-        transactions: await m.getRepository(Transaction).find({
-          where: { accountId: account.id, userId },
-          order: { transactionDate: "ASC" },
-        }),
+        // The rows `current_balance` sums: no VOID row, no split child, none
+        // dated after today. The pairing walks the balance back from
+        // `current_balance` through these, so a row it does not count would
+        // shift every balance before it, and a voided or future-dated
+        // installment would be read as one the loan paid.
+        transactions: await m
+          .getRepository(Transaction)
+          .createQueryBuilder("t")
+          .where("t.account_id = :accountId", { accountId: account.id })
+          .andWhere("t.user_id = :userId", { userId })
+          .andWhere(ledgerMovementPredicate("t"))
+          .andWhere("t.transaction_date <= :today", { today: todayYMD() })
+          .orderBy("t.transaction_date", "ASC")
+          .getMany(),
         rateRows: await m.getRepository(LoanRateChange).find({
           where: { accountId: account.id, userId },
           order: { effectiveDate: "ASC" },
@@ -547,13 +562,21 @@ export class LoanMortgageAccountService {
     const quotedAnnualRate = latest
       ? effectiveAnnualRateOn(rateRows, latest.date, fallbackRate)
       : fallbackRate;
-    const samples = posted
-      .filter(
-        (sample) =>
-          effectiveAnnualRateOn(rateRows, sample.date, fallbackRate) ===
-          quotedAnnualRate,
-      )
-      .slice(-HISTORY_DETECTION_SAMPLES);
+    // The trailing run at the latest rate, walked back from the newest: an
+    // earlier period at the same rate (A, then B, then A again) is not
+    // consecutive with it, and the shape rules read consecutive installments.
+    const atLatestRate = (sample: DatedMortgageTypeSampleDto) =>
+      effectiveAnnualRateOn(rateRows, sample.date, fallbackRate) ===
+      quotedAnnualRate;
+    let start = posted.length;
+    while (
+      start > 0 &&
+      posted.length - start < HISTORY_DETECTION_SAMPLES &&
+      atLatestRate(posted[start - 1])
+    ) {
+      start--;
+    }
+    const samples = posted.slice(start);
     const paymentFrequency = account.paymentFrequency
       ? toMortgagePaymentFrequency(account.paymentFrequency)
       : null;

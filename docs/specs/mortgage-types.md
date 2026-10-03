@@ -629,9 +629,13 @@ language. Two routes answer it, neither of which writes a row:
 `POST /accounts/:id/mortgage-type/detect` builds them from the mortgage's own
 posted installments through the pairing rate-change inference reads
 (`LoanPaymentDetectorService.buildInstallmentHistory`), each with the ledger
-balance before its date: the latest three posted at the rate in effect on the
-latest one (`effectiveAnnualRateOn`), so a rate change inside the window is
-not read as a method. A payment without an interest figure (a lump-sum
+balance before its date. It reads only the rows `current_balance` sums
+(`ledgerMovementPredicate`, dated on or before today), so a voided or
+future-dated installment is neither a sample nor a shift in every balance
+before it. The samples are the trailing run of consecutive installments at
+the rate in effect on the latest one (`effectiveAnnualRateOn`), at most three,
+so a rate change inside the window is not read as a method and an earlier
+period at the same rate is not joined to the current one. A payment without an interest figure (a lump-sum
 repayment, a transfer without a split) is left out. An interest-only
 occurrence is read: the pairing keeps a 0.00 transfer leg into the loan when
 its linked parent carries the interest (section 9), and drops one that does

@@ -139,6 +139,7 @@ export function generateTransactions(referenceDate: Date): DemoTransaction[] {
         accountKey: "chequing",
         date: formatDate(mortgageDate),
         payeeName: "Scotiabank Mortgage",
+        // Not written for a split parent: only its legs carry categories.
         categoryPath: "Housing > Mortgage Interest",
         amount: -MORTGAGE_PAYMENT,
         description: "Monthly mortgage payment",
