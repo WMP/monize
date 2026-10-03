@@ -239,7 +239,19 @@
       "partRest": "Le reste",
       "partAccount": "Compte",
       "partPayee": "Bénéficiaire de l'autre côté (facultatif)",
-      "partsLimit": "Un fractionnement peut avoir au plus {max} parties."
+      "partsLimit": "Un fractionnement peut avoir au plus {max} parties.",
+      "guideTitle": "Mode d’emploi",
+      "splitGuideHow": "Dans « Si », ajoutez une condition sur le texte du bénéficiaire ou la description avec l’opérateur « correspond au motif », et placez des noms entre accolades à l’endroit des montants, par exemple {first}. Chaque nom devient un montant que vous pouvez choisir pour une partie, ou choisissez « Le reste ». Les parties doivent totaliser le montant de la transaction, sinon la règle la laisse inchangée. Une partie peut être une catégorie ou un virement vers un autre compte (un virement modifie le solde de ce compte).",
+      "splitGuideExampleTitle": "Exemple : une échéance de prêt",
+      "splitGuideBank": "Texte de la banque : CAPITAL : 1200,50 INTERETS : 300,25 PENALITE : 0,00",
+      "splitGuidePattern": "Motif : *CAPITAL : {first} INTERETS : {second} PENALITE*",
+      "splitGuidePart1": "Partie 1 : {first} en virement vers le compte du prêt",
+      "splitGuidePart2": "Partie 2 : {second} dans la catégorie « Prêts : Intérêts »",
+      "splitGuideResult": "Résultat pour -1500,75 : -1200,50 virés vers le compte du prêt et -300,25 de charge d’intérêts.",
+      "splitGuideTip": "Conseil : définissez une date de début dans « Active entre » pour ne pas modifier les anciennes transactions rapprochées, et utilisez le panneau Test avant d’enregistrer.",
+      "convertGuide": "Une dépense devient un virement vers le compte choisi, et un revenu un virement depuis ce compte. Seul le solde de l’autre compte change. Conseil : utilisez « Active entre » pour ne pas modifier les anciennes transactions.",
+      "splitGuideName1": "capital",
+      "splitGuideName2": "interets"
     },
     "actionTypes": {
       "add_tags": "Ajouter des tags",

@@ -239,7 +239,19 @@
       "partRest": "Kalan",
       "partAccount": "Hesap",
       "partPayee": "Diğer tarafın alıcısı (isteğe bağlı)",
-      "partsLimit": "Bir bölmede en fazla {max} parça olabilir."
+      "partsLimit": "Bir bölmede en fazla {max} parça olabilir.",
+      "guideTitle": "Nasıl kullanılır",
+      "splitGuideHow": "“Eğer” bölümünde, alıcı metni veya açıklama için “şu kalıba uyar” işleciyle bir koşul ekleyin ve tutarların bulunduğu yerlere küme parantezi içinde adlar yazın, örneğin {first}. Her ad, bir parça için seçebileceğiniz bir tutar olur; ya da “Kalan”ı seçin. Parçaların toplamı işlem tutarına eşit olmalıdır, aksi halde kural işlemi değiştirmeden bırakır. Bir parça bir kategori ya da başka bir hesaba yapılan transfer olabilir (transfer o hesabın bakiyesini değiştirir).",
+      "splitGuideExampleTitle": "Örnek: bir kredi taksiti",
+      "splitGuideBank": "Banka metni: ANAPARA: 1200,50 FAIZ: 300,25 GECIKME: 0,00",
+      "splitGuidePattern": "Kalıp: *ANAPARA: {first} FAIZ: {second} GECIKME*",
+      "splitGuidePart1": "Parça 1: {first} kredi hesabına transfer olarak",
+      "splitGuidePart2": "Parça 2: {second} “Krediler: Faiz” kategorisi olarak",
+      "splitGuideResult": "-1500,75 için sonuç: kredi hesabına -1200,50 transfer edilir ve -300,25 faiz gideri yazılır.",
+      "splitGuideTip": "İpucu: eski mutabakatı yapılmış işlemler değişmesin diye “Şu tarihler arasında etkin” alanında bir başlangıç tarihi belirleyin ve kaydetmeden önce Test panelini kullanın.",
+      "convertGuide": "Bir gider, seçtiğiniz hesaba transfere; bir gelir ise o hesaptan transfere dönüşür. Yalnızca diğer hesabın bakiyesi değişir. İpucu: eski işlemler değişmesin diye “Şu tarihler arasında etkin” alanını kullanın.",
+      "splitGuideName1": "anapara",
+      "splitGuideName2": "faiz"
     },
     "actionTypes": {
       "add_tags": "Etiket ekle",

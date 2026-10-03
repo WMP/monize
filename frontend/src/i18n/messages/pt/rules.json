@@ -239,7 +239,19 @@
       "partRest": "O restante",
       "partAccount": "Conta",
       "partPayee": "Beneficiário do outro lado (opcional)",
-      "partsLimit": "Uma divisão pode ter no máximo {max} partes."
+      "partsLimit": "Uma divisão pode ter no máximo {max} partes.",
+      "guideTitle": "Como usar",
+      "splitGuideHow": "Em “Se”, adicione uma condição sobre o texto do beneficiário ou a descrição com o operador “corresponde ao padrão” e coloque nomes entre chavetas no lugar dos valores, por exemplo {first}. Cada nome torna-se um valor que pode escolher para uma parte, ou escolha “O restante”. As partes têm de somar o valor da transação, caso contrário a regra deixa-a inalterada. Uma parte pode ser uma categoria ou uma transferência para outra conta (uma transferência altera o saldo dessa conta).",
+      "splitGuideExampleTitle": "Exemplo: uma prestação de empréstimo",
+      "splitGuideBank": "Texto do banco: CAPITAL: 1200,50 JUROS: 300,25 MORA: 0,00",
+      "splitGuidePattern": "Padrão: *CAPITAL: {first} JUROS: {second} MORA*",
+      "splitGuidePart1": "Parte 1: {first} como transferência para a conta do empréstimo",
+      "splitGuidePart2": "Parte 2: {second} como categoria “Empréstimos: Juros”",
+      "splitGuideResult": "Resultado para -1500,75: -1200,50 transferidos para a conta do empréstimo e -300,25 de despesa de juros.",
+      "splitGuideTip": "Dica: defina uma data de início em “Ativa entre” para não alterar transações antigas já reconciliadas e use o painel Teste antes de guardar.",
+      "convertGuide": "Uma despesa torna-se uma transferência para a conta escolhida e uma receita, uma transferência dessa conta. Só o saldo da outra conta se altera. Dica: use “Ativa entre” para não alterar transações antigas.",
+      "splitGuideName1": "capital",
+      "splitGuideName2": "juros"
     },
     "actionTypes": {
       "add_tags": "Adicionar etiquetas",

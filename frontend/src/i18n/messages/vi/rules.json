@@ -239,7 +239,19 @@
       "partRest": "Phần còn lại",
       "partAccount": "Tài khoản",
       "partPayee": "Người nhận của phía còn lại (tùy chọn)",
-      "partsLimit": "Một giao dịch tách có tối đa {max} phần."
+      "partsLimit": "Một giao dịch tách có tối đa {max} phần.",
+      "guideTitle": "Cách sử dụng",
+      "splitGuideHow": "Trong “Nếu”, thêm một điều kiện về văn bản người nhận hoặc mô tả với toán tử “khớp với mẫu”, rồi đặt tên trong dấu ngoặc nhọn ở vị trí các số tiền, ví dụ {first}. Mỗi tên trở thành một số tiền bạn có thể chọn cho một phần, hoặc chọn “Phần còn lại”. Các phần phải cộng lại bằng số tiền của giao dịch, nếu không quy tắc sẽ giữ nguyên giao dịch. Một phần có thể là danh mục hoặc chuyển khoản sang tài khoản khác (chuyển khoản làm thay đổi số dư của tài khoản đó).",
+      "splitGuideExampleTitle": "Ví dụ: một kỳ trả khoản vay",
+      "splitGuideBank": "Văn bản ngân hàng: GOC: 1200,50 LAI: 300,25 PHAT: 0,00",
+      "splitGuidePattern": "Mẫu: *GOC: {first} LAI: {second} PHAT*",
+      "splitGuidePart1": "Phần 1: {first} dưới dạng chuyển khoản sang tài khoản khoản vay",
+      "splitGuidePart2": "Phần 2: {second} dưới dạng danh mục “Khoản vay: Lãi”",
+      "splitGuideResult": "Kết quả cho -1500,75: -1200,50 được chuyển sang tài khoản khoản vay và -300,25 chi phí lãi.",
+      "splitGuideTip": "Mẹo: đặt ngày bắt đầu trong “Hoạt động trong khoảng” để không thay đổi các giao dịch cũ đã đối chiếu, và dùng bảng Kiểm tra trước khi lưu.",
+      "convertGuide": "Một khoản chi trở thành chuyển khoản sang tài khoản bạn chọn, và một khoản thu trở thành chuyển khoản từ tài khoản đó. Chỉ số dư của tài khoản kia thay đổi. Mẹo: dùng “Hoạt động trong khoảng” để không thay đổi các giao dịch cũ.",
+      "splitGuideName1": "goc",
+      "splitGuideName2": "lai"
     },
     "actionTypes": {
       "add_tags": "Thêm thẻ",

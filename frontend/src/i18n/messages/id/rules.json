@@ -239,7 +239,19 @@
       "partRest": "Sisanya",
       "partAccount": "Akun",
       "partPayee": "Penerima sisi lainnya (opsional)",
-      "partsLimit": "Pemecahan dapat memiliki paling banyak {max} bagian."
+      "partsLimit": "Pemecahan dapat memiliki paling banyak {max} bagian.",
+      "guideTitle": "Cara menggunakan",
+      "splitGuideHow": "Di “Jika”, tambahkan kondisi pada teks penerima atau deskripsi dengan operator “cocok dengan pola”, lalu tulis nama dalam kurung kurawal di tempat jumlahnya berada, misalnya {first}. Setiap nama menjadi jumlah yang dapat Anda pilih untuk sebuah bagian, atau pilih “Sisanya”. Bagian-bagian harus berjumlah sama dengan jumlah transaksi, jika tidak, aturan membiarkan transaksi tanpa perubahan. Sebuah bagian dapat berupa kategori atau transfer ke akun lain (transfer mengubah saldo akun tersebut).",
+      "splitGuideExampleTitle": "Contoh: cicilan pinjaman",
+      "splitGuideBank": "Teks bank: POKOK: 1200,50 BUNGA: 300,25 DENDA: 0,00",
+      "splitGuidePattern": "Pola: *POKOK: {first} BUNGA: {second} DENDA*",
+      "splitGuidePart1": "Bagian 1: {first} sebagai transfer ke akun pinjaman",
+      "splitGuidePart2": "Bagian 2: {second} sebagai kategori “Pinjaman: Bunga”",
+      "splitGuideResult": "Hasil untuk -1500,75: -1200,50 ditransfer ke akun pinjaman dan -300,25 beban bunga.",
+      "splitGuideTip": "Tips: atur tanggal mulai di “Aktif antara” agar transaksi lama yang sudah direkonsiliasi tidak berubah, dan gunakan panel Uji sebelum menyimpan.",
+      "convertGuide": "Pengeluaran menjadi transfer ke akun yang dipilih, dan pemasukan menjadi transfer dari akun itu. Hanya saldo akun lainnya yang berubah. Tips: gunakan “Aktif antara” agar transaksi lama tidak berubah.",
+      "splitGuideName1": "pokok",
+      "splitGuideName2": "bunga"
     },
     "actionTypes": {
       "add_tags": "Tambah tag",

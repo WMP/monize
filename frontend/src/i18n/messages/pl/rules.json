@@ -239,7 +239,19 @@
       "partRest": "Reszta",
       "partAccount": "Konto",
       "partPayee": "Odbiorca drugiej strony (opcjonalnie)",
-      "partsLimit": "Podział może mieć co najwyżej {max} części."
+      "partsLimit": "Podział może mieć co najwyżej {max} części.",
+      "guideTitle": "Jak tego używać",
+      "splitGuideHow": "W sekcji „Jeśli” dodaj warunek dotyczący tekstu odbiorcy lub opisu z operatorem „pasuje do wzorca” i wpisz nazwy w nawiasach klamrowych w miejscach, gdzie są kwoty, na przykład {first}. Każda nazwa staje się kwotą, którą możesz wybrać dla części, albo wybierz „Reszta”. Części muszą sumować się do kwoty transakcji, w przeciwnym razie reguła jej nie zmieni. Częścią może być kategoria lub przelew na inne konto (przelew zmienia saldo tego konta).",
+      "splitGuideExampleTitle": "Przykład: rata kredytu",
+      "splitGuideBank": "Tekst z banku: KAPITAŁ: 1200,50 ODSETKI: 300,25 KARNE: 0,00",
+      "splitGuidePattern": "Wzorzec: *KAPITAŁ: {first} ODSETKI: {second} KARNE*",
+      "splitGuidePart1": "Część 1: {first} jako przelew na konto kredytu",
+      "splitGuidePart2": "Część 2: {second} jako kategoria „Kredyty: Odsetki”",
+      "splitGuideResult": "Wynik dla -1500,75: -1200,50 przelane na konto kredytu i -300,25 wydatku na odsetki.",
+      "splitGuideTip": "Wskazówka: ustaw datę początkową w polu „Aktywna w okresie”, aby nie zmieniać starszych uzgodnionych transakcji, i użyj panelu Test przed zapisaniem.",
+      "convertGuide": "Wydatek staje się przelewem na wybrane konto, a przychód przelewem z tego konta. Zmienia się tylko saldo drugiego konta. Wskazówka: użyj pola „Aktywna w okresie”, aby nie zmieniać starszych transakcji.",
+      "splitGuideName1": "kapital",
+      "splitGuideName2": "odsetki"
     },
     "actionTypes": {
       "add_tags": "Dodaj tagi",

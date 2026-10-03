@@ -239,7 +239,19 @@
       "partRest": "其餘部分",
       "partAccount": "帳戶",
       "partPayee": "另一方的收款對象(選填)",
-      "partsLimit": "一次拆分最多可以有 {max} 個部分。"
+      "partsLimit": "一次拆分最多可以有 {max} 個部分。",
+      "guideTitle": "使用方式",
+      "splitGuideHow": "在「如果」中，針對收款人文字或說明新增條件，運算子選擇「符合模式」，並在金額所在位置用大括號寫上名稱，例如 {first}。每個名稱都會成為可為某個部分選擇的金額，也可以選擇「其餘部分」。各部分的總和必須等於交易金額，否則規則不會變更該交易。一個部分可以是類別，也可以是轉到另一個帳戶的轉帳（轉帳會改變該帳戶的餘額）。",
+      "splitGuideExampleTitle": "範例：一筆貸款還款",
+      "splitGuideBank": "銀行文字：本金: 1200.50 利息: 300.25 違約金: 0.00",
+      "splitGuidePattern": "模式：*本金: {first} 利息: {second} 違約金*",
+      "splitGuidePart1": "部分 1：{first} 作為轉到貸款帳戶的轉帳",
+      "splitGuidePart2": "部分 2：{second} 歸入類別「貸款：利息」",
+      "splitGuideResult": "-1500.75 的結果：-1200.50 轉入貸款帳戶，-300.25 記為利息支出。",
+      "splitGuideTip": "提示：在「生效期間」中設定開始日期，以免變更較早已對帳的交易，並在儲存前使用測試面板。",
+      "convertGuide": "支出會變成轉到所選帳戶的轉帳，收入會變成從該帳戶轉入的轉帳。只有另一個帳戶的餘額會變動。提示：使用「生效期間」，以免變更較早的交易。",
+      "splitGuideName1": "benjin",
+      "splitGuideName2": "lixi"
     },
     "actionTypes": {
       "add_tags": "新增標籤",

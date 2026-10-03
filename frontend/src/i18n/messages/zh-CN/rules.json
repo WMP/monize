@@ -239,7 +239,19 @@
       "partRest": "其余部分",
       "partAccount": "账户",
       "partPayee": "另一方的收款方(可选)",
-      "partsLimit": "一次拆分最多可以有 {max} 个部分。"
+      "partsLimit": "一次拆分最多可以有 {max} 个部分。",
+      "guideTitle": "使用方法",
+      "splitGuideHow": "在“如果”中，针对收款人文本或描述添加条件，运算符选择“匹配模式”，并在金额所在位置用花括号写上名称，例如 {first}。每个名称都会成为可为某个部分选择的金额，也可以选择“其余部分”。各部分之和必须等于交易金额，否则规则不会改动该交易。一个部分可以是类别，也可以是转到另一账户的转账（转账会改变该账户的余额）。",
+      "splitGuideExampleTitle": "示例：一笔贷款还款",
+      "splitGuideBank": "银行文本：本金: 1200.50 利息: 300.25 罚息: 0.00",
+      "splitGuidePattern": "模式：*本金: {first} 利息: {second} 罚息*",
+      "splitGuidePart1": "部分 1：{first} 作为转到贷款账户的转账",
+      "splitGuidePart2": "部分 2：{second} 归入类别“贷款：利息”",
+      "splitGuideResult": "对于 -1500.75 的结果：-1200.50 转入贷款账户，-300.25 记为利息支出。",
+      "splitGuideTip": "提示：在“生效期间”中设置开始日期，以免改动较早已对账的交易，并在保存前使用测试面板。",
+      "convertGuide": "支出会变成转到所选账户的转账，收入会变成从该账户转入的转账。只有另一个账户的余额会变化。提示：使用“生效期间”，以免改动较早的交易。",
+      "splitGuideName1": "benjin",
+      "splitGuideName2": "lixi"
     },
     "actionTypes": {
       "add_tags": "添加标签",
