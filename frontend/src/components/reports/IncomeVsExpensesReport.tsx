@@ -40,6 +40,10 @@ import { usePartialTotalNote } from "@/hooks/usePartialTotalNote";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
+import { StackTaggedFlowsToggle } from "@/components/reports/StackTaggedFlowsToggle";
+import { useTaggedFlowBucket } from "@/hooks/useTaggedFlowBucket";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { flowBarStack } from "@/lib/tagged-flow-stack";
 import {
   IncomeVsExpensesTable,
   isFlowField,
@@ -48,6 +52,7 @@ import {
 } from "@/components/reports/IncomeVsExpensesTable";
 
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-income-vs-expenses-accounts';
+const STACK_FLOWS_STORAGE_KEY = 'monize-reports-income-vs-expenses-stack-tagged';
 
 // Same account list the dashboard's Income vs Expenses widget offers: an
 // investment account's cash legs are excluded from the report by linkage.
@@ -142,19 +147,20 @@ export function IncomeVsExpensesReport() {
   );
 
   // The bucket the breakdown card shows, and so the one whose tagged flows the
-  // main chart draws. The card falls back to the first bucket for a value it
-  // does not have; this does the same so the two cannot disagree. The untagged
-  // bucket has no flows (an untagged transfer appears nowhere), so it adds no
-  // series.
-  const activeBucket = useMemo(
-    () =>
-      response?.tagKey && response.buckets
-        ? (response.buckets.find((b) => b.value === activeBucketValue) ?? response.buckets[0])
-        : undefined,
-    [response, activeBucketValue],
+  // main chart draws; the untagged bucket has no flows, so it adds no series.
+  const { activeBucket, flowBucket, flowsByPeriod } = useTaggedFlowBucket(
+    response,
+    activeBucketValue,
   );
-  const flowBucket = activeBucket && !activeBucket.isUntagged ? activeBucket : undefined;
   const showFlows = flowBucket !== undefined;
+  // Opt-in, off by default: a user whose KEY:VALUE tags mean something else
+  // would otherwise see the income and expense bars grow unasked. Presentation
+  // only -- no figure below reads it.
+  const [stackFlowsPref, setStackFlowsPref] = useLocalStorage<boolean>(
+    STACK_FLOWS_STORAGE_KEY,
+    false,
+  );
+  const stackFlows = showFlows && stackFlowsPref === true;
 
   // Map response to chart data. `name` must be unique across the dataset
   // (used as the XAxis category key); a non-unique value like "May" causes
@@ -169,7 +175,7 @@ export function IncomeVsExpensesReport() {
         // Flows ride beside the bars and never enter income, expenses or the
         // savings above (INV-REPORT-003). A period the bucket has no row for
         // had no tagged transfer in it, which is a known zero.
-        const flows = flowBucket?.data.find((d) => d.period === item.period);
+        const flows = flowsByPeriod.get(item.period);
         return {
           name: item.period,
           fullName: formatChartDate(parseISO(item.periodStart), "MMM yyyy"),
@@ -189,7 +195,7 @@ export function IncomeVsExpensesReport() {
           monthEnd: item.periodEnd,
         };
       }),
-    [response, formatChartDate, flowBucket],
+    [response, formatChartDate, flowBucket, flowsByPeriod],
   );
 
   /**
@@ -347,6 +353,9 @@ export function IncomeVsExpensesReport() {
               options={['bar', 'table']}
             />
             <TagKeyBreakdownSelect tagKeys={tagKeys} value={tagKey} onChange={setTagKey} />
+            {showFlows && (
+              <StackTaggedFlowsToggle checked={stackFlows} onChange={setStackFlowsPref} />
+            )}
           </div>
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
@@ -410,7 +419,7 @@ export function IncomeVsExpensesReport() {
                     dataKey="Income"
                     name={t('incomeVsExpenses.seriesIncome')}
                     fill={chartColors.income}
-                    radius={[4, 4, 0, 0]}
+                    {...flowBarStack(stackFlows, 'income', 'base')}
                     cursor="pointer"
                     onClick={handleBarClick('income')}
                   />
@@ -418,7 +427,7 @@ export function IncomeVsExpensesReport() {
                     dataKey="Expenses"
                     name={t('incomeVsExpenses.seriesExpenses')}
                     fill={chartColors.expense}
-                    radius={[4, 4, 0, 0]}
+                    {...flowBarStack(stackFlows, 'expenses', 'base')}
                     cursor="pointer"
                     onClick={handleBarClick('expense')}
                   />
@@ -438,7 +447,7 @@ export function IncomeVsExpensesReport() {
                       dataKey="TaggedInflows"
                       name={t('tagBreakdown.inflowsSeries', { value: flowBucket.value })}
                       fill={chartColors.inflow}
-                      radius={[4, 4, 0, 0]}
+                      {...flowBarStack(stackFlows, 'income', 'tagged')}
                     />
                   )}
                   {flowBucket && (
@@ -446,7 +455,7 @@ export function IncomeVsExpensesReport() {
                       dataKey="TaggedOutflows"
                       name={t('tagBreakdown.outflowsSeries', { value: flowBucket.value })}
                       fill={chartColors.outflow}
-                      radius={[4, 4, 0, 0]}
+                      {...flowBarStack(stackFlows, 'expenses', 'tagged')}
                     />
                   )}
                 </BarChart>
