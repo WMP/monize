@@ -1,7 +1,7 @@
 import apiClient from './api';
 import type {
   CreateEmailReceiptParserPayload,
-  EmailReceiptAiOutcome,
+  EmailReceiptAskAiResult,
   EmailReceiptDetail,
   EmailReceiptListItem,
   EmailReceiptMailbox,
@@ -132,8 +132,16 @@ export const emailReceiptsApi = {
       await apiClient.delete(`${RECEIPTS}/${id}`);
     },
 
-    askAi: async (id: string): Promise<EmailReceiptAiOutcome> => {
-      const response = await apiClient.post<EmailReceiptAiOutcome>(`${RECEIPTS}/${id}/ask-ai`);
+    /**
+     * Queue an AI review request for the email, for its own transaction or the
+     * one named. No provider is called: the request waits, pending, for the
+     * assistant in the chat (or an MCP agent) to claim it by id.
+     */
+    askAi: async (id: string, transactionId?: string): Promise<EmailReceiptAskAiResult> => {
+      const response = await apiClient.post<EmailReceiptAskAiResult>(
+        `${RECEIPTS}/${id}/ask-ai`,
+        transactionId === undefined ? {} : { transactionId },
+      );
       return response.data;
     },
 

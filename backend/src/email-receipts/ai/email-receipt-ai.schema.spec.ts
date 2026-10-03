@@ -1,9 +1,10 @@
 import {
+  EXTRACTION_MAX_DESCRIPTION,
+  EXTRACTION_MAX_ITEM_NAME,
+  EXTRACTION_MAX_ITEMS,
+  EXTRACTION_MAX_ORDER_ID,
   extractJsonObject,
-  receiptReviewSchema,
-  REVIEW_MAX_DESCRIPTION,
-  REVIEW_MAX_MEMO,
-  REVIEW_MAX_SPLITS,
+  receiptExtractionSchema,
 } from "./email-receipt-ai.schema";
 
 describe("extractJsonObject", () => {
@@ -34,59 +35,79 @@ describe("extractJsonObject", () => {
   });
 });
 
-describe("receiptReviewSchema", () => {
-  const ok = (value: unknown) => receiptReviewSchema.safeParse(value);
+describe("receiptExtractionSchema", () => {
+  const ok = (value: unknown) => receiptExtractionSchema.safeParse(value);
+  const item = { name: "Cable", amount: "9.99" };
 
-  it("accepts splits, a category and a description, and maps null to absent", () => {
+  it("accepts the whole shape and maps null to absent", () => {
     const parsed = ok({
-      splits: [{ categoryName: "Books", amount: -12, memo: null }],
-      categoryName: null,
-      description: "Order 1",
+      orderId: "A-1",
+      items: [
+        { name: "Cable", qty: 2, amount: 19.98, categoryId: null },
+        { name: "Case", amount: "15,00 zl", categoryId: "abc" },
+      ],
+      shipping: "4.99",
+      discount: null,
+      total: 39.97,
+      description: "Order A-1",
     });
     expect(parsed.success).toBe(true);
     expect(parsed.data).toEqual({
-      splits: [{ categoryName: "Books", amount: -12, memo: undefined }],
-      categoryName: undefined,
-      description: "Order 1",
+      orderId: "A-1",
+      items: [
+        { name: "Cable", qty: 2, amount: 19.98, categoryId: undefined },
+        { name: "Case", qty: undefined, amount: "15,00 zl", categoryId: "abc" },
+      ],
+      shipping: "4.99",
+      discount: undefined,
+      total: 39.97,
+      description: "Order A-1",
     });
   });
 
-  it("refuses an unknown key, so an answer cannot carry an amount or a date", () => {
-    expect(ok({ description: "x", amount: 5 }).success).toBe(false);
-    expect(ok({ description: "x", date: "2026-01-01" }).success).toBe(false);
-    expect(
-      ok({ splits: [{ categoryName: "A", amount: 1, accountId: "x" }] })
-        .success,
-    ).toBe(false);
+  it("needs the items list, which may be empty", () => {
+    expect(ok({}).success).toBe(false);
+    expect(ok({ items: [] }).success).toBe(true);
   });
 
-  it("bounds the lines, the memo and the description", () => {
-    const line = { categoryName: "A", amount: 1 };
-    expect(ok({ splits: Array(REVIEW_MAX_SPLITS).fill(line) }).success).toBe(
+  it("refuses an unknown key at either level, so an answer cannot carry an account, a date or a split", () => {
+    expect(ok({ items: [], date: "2026-01-01" }).success).toBe(false);
+    expect(ok({ items: [], splits: [] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, accountId: "x" }] }).success).toBe(false);
+  });
+
+  it("bounds the items, the names, the order id and the description", () => {
+    expect(ok({ items: Array(EXTRACTION_MAX_ITEMS).fill(item) }).success).toBe(
       true,
     );
     expect(
-      ok({ splits: Array(REVIEW_MAX_SPLITS + 1).fill(line) }).success,
+      ok({ items: Array(EXTRACTION_MAX_ITEMS + 1).fill(item) }).success,
     ).toBe(false);
     expect(
-      ok({ splits: [{ ...line, memo: "m".repeat(REVIEW_MAX_MEMO + 1) }] })
+      ok({
+        items: [{ ...item, name: "n".repeat(EXTRACTION_MAX_ITEM_NAME + 1) }],
+      }).success,
+    ).toBe(false);
+    expect(
+      ok({ items: [], orderId: "o".repeat(EXTRACTION_MAX_ORDER_ID + 1) })
         .success,
     ).toBe(false);
     expect(
-      ok({ description: "d".repeat(REVIEW_MAX_DESCRIPTION + 1) }).success,
+      ok({
+        items: [],
+        description: "d".repeat(EXTRACTION_MAX_DESCRIPTION + 1),
+      }).success,
     ).toBe(false);
   });
 
-  it("refuses a non-finite or non-numeric amount and an empty category", () => {
-    expect(ok({ splits: [{ categoryName: "A", amount: "5" }] }).success).toBe(
-      false,
-    );
-    expect(ok({ splits: [{ categoryName: "A", amount: null }] }).success).toBe(
-      false,
-    );
-    expect(ok({ splits: [{ categoryName: " ", amount: 1 }] }).success).toBe(
-      false,
-    );
-    expect(ok({ categoryName: "" }).success).toBe(false);
+  it("refuses an empty name, a non-integer or out-of-range qty, and a non-finite or non-text amount", () => {
+    expect(ok({ items: [{ ...item, name: " " }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, qty: 1.5 }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, qty: 0 }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, qty: 10000 }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, amount: null }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, amount: {} }] }).success).toBe(false);
+    expect(ok({ items: [{ ...item, amount: "" }] }).success).toBe(false);
+    expect(ok({ items: [], total: Infinity }).success).toBe(false);
   });
 });

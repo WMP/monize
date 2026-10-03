@@ -11,15 +11,10 @@ import { DataSource, EntityManager } from "typeorm";
 import { AiService } from "../../ai/ai.service";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
-import {
-  AiReviewProposalInput,
-  EMAIL_RECEIPTS_AI_CLAIM_KEY,
-} from "../../ai-review/ai-review-work.types";
+import { EMAIL_RECEIPTS_AI_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
 import { returnedRows } from "../../common/db/query-result";
 import { withScopedDb } from "../../common/db/scoped-db";
-import { roundMoney } from "../../common/round.util";
-import { stripHtml } from "../../common/sanitization.util";
 import { tr } from "../../i18n/translate";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
@@ -29,6 +24,7 @@ import {
   describeFailure,
   RECEIPT_AI_INSTRUCTION,
 } from "../pipeline/email-receipt-pipeline.service";
+import { loadLinkableTransaction } from "../pipeline/linkable-transaction";
 import {
   closeReceiptRequests,
   currentReceiptRequestStatus,
@@ -38,7 +34,12 @@ import {
   collectParserCategoryIds,
   validateReceiptParserDefinition,
 } from "../parsing/receipt-parser.validation";
-import { buildDescription } from "../proposal/build-receipt-proposal";
+import type { ParsedReceipt } from "../parsing/receipt-parser.types";
+import {
+  buildDescription,
+  buildReceiptProposal,
+  type ReceiptProposalReason,
+} from "../proposal/build-receipt-proposal";
 import { MAX_PARSERS_PER_USER } from "../parsers/email-receipt-parsers.service";
 import {
   toParserView,
@@ -55,18 +56,15 @@ import {
   PARSER_DRAFT_SYSTEM_PROMPT,
   RECEIPT_REVIEW_SYSTEM_PROMPT,
 } from "./email-receipt-ai.prompts";
-import {
-  extractJsonObject,
-  receiptReviewSchema,
-  type ReceiptReviewAnswer,
-} from "./email-receipt-ai.schema";
+import { buildAiParsedReceipt } from "./email-receipt-ai.extraction";
+import { extractJsonObject } from "./email-receipt-ai.schema";
 
 /** The `feature` labels the provider usage log records (design section 8). */
 export const EMAIL_RECEIPT_PARSER_FEATURE = "email_receipt_parser";
 export const EMAIL_RECEIPT_REVIEW_FEATURE = "email_receipt_review";
 
 const DRAFT_MAX_TOKENS = 4096;
-const REVIEW_MAX_TOKENS = 2048;
+const REVIEW_MAX_TOKENS = 4096;
 const MAX_NOTE = 300;
 
 /** Why a request was not answered, as a code the receipts page can name. */
@@ -84,6 +82,18 @@ export type EmailReceiptAiFailure =
 export type AiRequestOutcome =
   | { ok: true; requestId: string }
   | { ok: false; requestId: string; reason: EmailReceiptAiFailure };
+
+/**
+ * What `askAi` answers once the request is stored: the request that waits,
+ * `pending`, in the AI review inbox, and the transaction it is about. Nothing
+ * has answered it yet: the assistant in the chat (or an MCP agent) claims it by
+ * id and submits the proposal.
+ */
+export interface AskAiResult {
+  ok: true;
+  requestId: string;
+  transactionId: string;
+}
 
 /** What the automatic step of one poll did. */
 export interface AutomaticAiStepResult {
@@ -111,16 +121,22 @@ interface ReceiptContext {
  * - `draftParser`: a DRAFT parser from one sample email. The draft passes the
  *   same validator a person's parser passes, and starts `draft`: it reads
  *   nothing until a person approves it.
- * - `processAiRequest`: a PROPOSAL for a receipt's request, submitted through
- *   `AiReviewWorkService.submit` exactly as an agent's is, so the amounts, the
- *   categories and the transfer refusal are checked by the same code. It is
- *   never applied here: a person approves the card.
+ * - `processAiRequest`: a PROPOSAL for a receipt's request. The model reads the
+ *   email's content (products, prices, total), not a split: its answer becomes a
+ *   `ParsedReceipt` (`source: "ai"`), is judged by the parser's completeness
+ *   rules, turned into a proposal by `buildReceiptProposal` (the code a parser's
+ *   proposal goes through) and submitted through `AiReviewWorkService.submit`
+ *   exactly as an agent's is, so the amounts, the categories and the transfer
+ *   refusal are checked by the same code. It is never applied here: a person
+ *   approves the card.
  *
- * AI mode `off` never reaches `AiService`: every public method checks the
- * mailbox's mode before anything that costs a call. `on_demand` calls only from
- * `draftParser` and `askAi` (a person pressed a button); `automatic` also from
- * the poll (`runAutomaticStep`, bounded). The email text is data in every prompt
- * (`email-receipt-ai.prompts.ts`).
+ * AI mode governs only what happens by itself: the poll's automatic step
+ * (`runAutomaticStep`, bounded) calls `AiService` for `automatic` mailboxes
+ * alone. Pressing "Recognize with AI" (`askAi`) is the person's own consent,
+ * whatever the mode, and calls no provider: it queues the request and the
+ * assistant in the chat answers it by id.
+ * `draftParser` keeps its own rule and is refused in mode `off`. The email text
+ * is data in every prompt (`email-receipt-ai.prompts.ts`).
  */
 @Injectable()
 export class EmailReceiptAiService {
@@ -263,31 +279,31 @@ export class EmailReceiptAiService {
   // ---------------------------------------------------------------------
 
   /**
-   * "Ask AI" on one receipt: refused when the mailbox's AI mode is `off`, and
-   * when the receipt has no transaction. Its current open request is dismissed,
-   * a new pending request is queued, and the AI answers it at once, all
-   * refusals (an applied proposal, an open request somebody else raised for the
-   * transaction) checked in the one transaction that dismisses and queues.
+   * "Recognize with AI" on one receipt, optionally for a transaction the person
+   * chose. ONE transaction holds every check and every write, in the lock order
+   * of this module (the receipt row, the advisory lock the enqueue takes, the
+   * request rows): refuse an ignored or skipped email and an applied proposal
+   * (409), check the chosen transaction with the predicate "link" uses and store
+   * it as `manual`, refuse (400) an email that still has no transaction, dismiss
+   * the email's own open request, queue a `pending` one (a null from the queue
+   * is another open request on the transaction: 409) and point the receipt at it
+   * in state `review`. A rejection has written nothing.
+   *
+   * No provider is called here. The request waits pending for whoever claims it
+   * by id: the assistant in the chat, which the receipts page opens with the
+   * email attached, or an MCP agent.
    */
-  async askAi(userId: string, receiptId: string): Promise<AiRequestOutcome> {
-    const request = await withScopedDb(this.dataSource, async (m) => {
+  async askAi(
+    userId: string,
+    receiptId: string,
+    transactionId?: string | null,
+  ): Promise<AskAiResult> {
+    return withScopedDb(this.dataSource, async (m) => {
       const receipt = await m.getRepository(EmailReceipt).findOne({
         where: { id: receiptId, userId },
         lock: { mode: "pessimistic_write" },
       });
       if (!receipt) throw receiptNotFound(receiptId);
-      const mailbox = await m
-        .getRepository(EmailReceiptMailbox)
-        .findOne({ where: { id: receipt.mailboxId, userId } });
-      if ((mailbox?.aiMode ?? "off") === "off") throw aiOff();
-      if (receipt.transactionId === null) {
-        throw new BadRequestException(
-          tr(
-            "errors.emailReceipts.receiptNeedsTransaction",
-            "Link this email to a transaction before asking the AI about it.",
-          ),
-        );
-      }
       if (receipt.status === "skipped" || receipt.status === "ignored") {
         throw new ConflictException(
           tr(
@@ -309,10 +325,22 @@ export class EmailReceiptAiService {
           ),
         );
       }
-      await lockReceiptTransaction(m, receipt.transactionId);
+      const chosen = transactionId
+        ? await loadLinkableTransaction(m, userId, transactionId)
+        : null;
+      const target = chosen?.id ?? receipt.transactionId;
+      if (target === null) {
+        throw new BadRequestException(
+          tr(
+            "errors.emailReceipts.receiptNeedsTransaction",
+            "Choose the transaction this email paid for before asking the AI about it.",
+          ),
+        );
+      }
+      await lockReceiptTransaction(m, target);
       await closeReceiptRequests(m, userId, receipt.id);
       const created = await this.requests.enqueuePendingForReceipt(m, userId, {
-        transactionId: receipt.transactionId,
+        transactionId: target,
         emailReceiptId: receipt.id,
         instruction: RECEIPT_AI_INSTRUCTION,
       });
@@ -330,18 +358,28 @@ export class EmailReceiptAiService {
           status: "review",
           statusReason: null,
           aiReviewRequestId: created.id,
+          ...(chosen
+            ? {
+                transactionId: chosen.id,
+                matchKind: "manual" as const,
+                candidateTransactionIds: [],
+              }
+            : {}),
         },
       );
-      return created;
+      return {
+        ok: true as const,
+        requestId: created.id,
+        transactionId: target,
+      };
     });
-    return this.processAiRequest(userId, request.id);
   }
 
   /**
    * Answer one receipt request with the AI: claim it under the AI's own key,
    * read the transaction, the email and the category names, ask for JSON, check
    * its shape, and submit it like an agent. Any failure gives the claim back
-   * (`final: false`, with a short note) so an MCP agent or a later "Ask AI" may
+   * (`final: false`, with a short note) so an MCP agent or the assistant may
    * take it, and is returned as the reason. Nothing here applies anything.
    */
   async processAiRequest(
@@ -448,20 +486,63 @@ export class EmailReceiptAiService {
         return giveBack("ai_unavailable", "The AI provider did not answer.");
       }
 
-      const built = buildReviewInput(
-        content,
-        categories,
-        Number(transaction.amount),
-        transaction.description,
-      );
-      if (!built.ok) return giveBack("unusable_answer", built.note);
+      const extraction = buildAiParsedReceipt(content, categories);
+      if (!extraction.ok) return giveBack("unusable_answer", extraction.note);
+      const { parsed, description, notes } = extraction;
+      if (notes.length > 0) {
+        this.logger.warn(
+          `AI reading of receipt request ${requestId}: ${notes.join(" ")}`,
+        );
+      }
+      if (parsed.items.length === 0 && parsed.total === null && !description) {
+        return giveBack(
+          "unusable_answer",
+          `The AI found nothing in the email. ${notes.join(" ")}`.trim(),
+        );
+      }
 
+      // The same proposal a parser's reading goes through. With no item to name,
+      // the AI's own summary is the description (the parser summary would be the
+      // sender alone).
+      const proposal = buildReceiptProposal(
+        parsed,
+        {
+          amount: Number(transaction.amount),
+          description: transaction.description,
+          payeeId: transaction.payeeId ?? null,
+        },
+        {
+          parserName: found.receipt.fromDomain || "Email",
+          payeeName: null,
+          categoryNames: categories,
+        },
+      );
+      let input = proposal.input;
+      if (parsed.items.length === 0 && description !== null) {
+        const composed = buildDescription(transaction.description, description);
+        if (composed !== null)
+          input = { ...(input ?? {}), description: composed };
+      }
+      if (input === null) {
+        return giveBack(
+          "unusable_answer",
+          "The AI proposed nothing to change.",
+        );
+      }
+
+      await this.storeReading(
+        userId,
+        found.receipt.id,
+        requestId,
+        parsed,
+        proposal.reason,
+      );
       try {
         await this.work.submit(
           userId,
           EMAIL_RECEIPTS_AI_CLAIM_KEY,
           requestId,
-          built.input,
+          input,
         );
       } catch (error) {
         if (!(error instanceof HttpException)) throw error;
@@ -480,6 +561,33 @@ export class EmailReceiptAiService {
       );
       return giveBack("request_failed", "The AI request failed.");
     }
+  }
+
+  /**
+   * What the AI read, stored on the email (`parsed`, marked `source: "ai"`) with
+   * the reason the proposal is not itemized, so the email page shows both. One
+   * conditional UPDATE: only while the email still points at this request, so a
+   * reprocess or another "Recognize with AI" that replaced it is not overwritten
+   * by a slow answer.
+   */
+  private async storeReading(
+    userId: string,
+    receiptId: string,
+    requestId: string,
+    parsed: ParsedReceipt,
+    reason: ReceiptProposalReason | null,
+  ): Promise<void> {
+    await withScopedDb(this.dataSource, (m) =>
+      m.query(
+        `UPDATE email_receipts
+            SET parsed = $4::jsonb,
+                status_reason = $5
+          WHERE id = $1
+            AND user_id = $2
+            AND ai_review_request_id = $3`,
+        [receiptId, userId, requestId, JSON.stringify(parsed), reason],
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -644,104 +752,6 @@ export class EmailReceiptAiService {
       return { receipt, aiMode: mailbox?.aiMode ?? "off" };
     });
   }
-}
-
-type BuiltReview =
-  | { ok: true; input: AiReviewProposalInput }
-  | { ok: false; note: string };
-
-/**
- * A model's reply as a proposal, or why it is not one. The reply is checked
- * against the bounded schema, every category name must be one of the user's
- * (matched case-insensitively, then spelled as the list spells it), a single
- * split line is a category, and `description` is appended to the current one
- * the way a parser's summary is. The amounts are not judged here: the card
- * builder refuses lines that do not add up to the transaction.
- */
-export function buildReviewInput(
-  content: string,
-  categories: ReadonlyMap<string, string>,
-  transactionAmount: number,
-  currentDescription: string | null,
-): BuiltReview {
-  const raw = extractJsonObject(content);
-  if (raw === undefined) {
-    return { ok: false, note: "The AI's answer was not JSON." };
-  }
-  const parsed = receiptReviewSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      note: "The AI's answer did not have the expected shape.",
-    };
-  }
-  const answer: ReceiptReviewAnswer = parsed.data;
-
-  const byLowerName = new Map<string, string>(
-    [...categories.values()].map((name) => [name.toLowerCase(), name]),
-  );
-  const resolve = (name: string): string | null =>
-    byLowerName.get(name.trim().toLowerCase()) ?? null;
-
-  let splits =
-    answer.splits && answer.splits.length > 0 ? answer.splits : undefined;
-  let categoryName = answer.categoryName;
-  if (splits !== undefined && categoryName !== undefined) {
-    return { ok: false, note: "The AI sent both splits and a category." };
-  }
-  if (splits !== undefined && splits.length === 1) {
-    const only = splits[0];
-    if (roundMoney(only.amount) !== roundMoney(transactionAmount)) {
-      return {
-        ok: false,
-        note: "The AI's single line does not equal the transaction amount.",
-      };
-    }
-    categoryName = only.categoryName;
-    splits = undefined;
-  }
-
-  const input: AiReviewProposalInput = {};
-  if (splits !== undefined) {
-    const lines: NonNullable<AiReviewProposalInput["splits"]> = [];
-    for (const line of splits) {
-      const name = resolve(line.categoryName);
-      if (name === null) {
-        return {
-          ok: false,
-          note: "The AI named a category that does not exist.",
-        };
-      }
-      const memo = line.memo ? (stripHtml(line.memo) ?? "").trim() : "";
-      lines.push({
-        categoryName: name,
-        amount: roundMoney(line.amount),
-        ...(memo === "" ? {} : { memo }),
-      });
-    }
-    input.splits = lines;
-  }
-  if (categoryName !== undefined) {
-    const name = resolve(categoryName);
-    if (name === null) {
-      return {
-        ok: false,
-        note: "The AI named a category that does not exist.",
-      };
-    }
-    input.categoryName = name;
-  }
-  const text = answer.description
-    ? (stripHtml(answer.description) ?? "").replace(/\s+/g, " ").trim()
-    : "";
-  if (text !== "") {
-    const description = buildDescription(currentDescription, text);
-    if (description !== null) input.description = description;
-  }
-  if (Object.keys(input).length === 0) {
-    return { ok: false, note: "The AI proposed nothing to change." };
-  }
-  return { ok: true, input };
 }
 
 function receiptNotFound(id: string): NotFoundException {

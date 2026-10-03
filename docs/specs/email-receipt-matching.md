@@ -155,6 +155,53 @@ Applies only when every one holds: mailbox `auto_apply`; parser `approved`;
 card was built. Any refusal from `confirm` (write limit, reconciled lock, a
 changed row) leaves the proposal waiting in the inbox.
 
+## 7a. AI extraction
+
+When the poll's automatic step asks the AI about an email (`processAiRequest`),
+the model returns the receipt's content, never a split of the transaction:
+
+```json
+{ "orderId": "A-1",
+  "items": [ { "name": "Widget", "qty": 2, "amount": "19.98", "categoryId": "<id or null>" } ],
+  "shipping": "4.99", "discount": "2.00", "total": "37.97", "description": "..." }
+```
+
+Bounds (`email-receipt-ai.schema.ts`, unknown keys refused): at most 100 items,
+names 1 to 200 characters, `qty` an integer from 1 to 9999, `description` at
+most 300 characters, order id at most 100. An amount is a JSON number or text.
+
+AI output becomes a `ParsedReceipt` (`source: "ai"`, `buildAiParsedReceipt`) and
+goes through the same rules as a parser's reading:
+
+- **Amounts.** A number must be finite and not negative and is converted once with
+  `Math.round(n * 10000)`; text goes through the amount grammar of section 2 and
+  must hold nothing but the amount and a currency mark. An item whose amount does
+  not convert, is zero, or whose name is empty is dropped; a total, shipping or
+  discount that does not convert is read as not stated (`null`). Each is noted in
+  the log. A stated `0.00` shipping is a known zero.
+- **Categories.** An item's `categoryId` that is not one of the user's categories
+  (the list given in the prompt) is `null`. The model gives no category for the
+  shipping or discount lines, so both are `null`: a receipt with shipping or a
+  discount is therefore never `complete` (`shipping_uncategorized` or
+  `items_uncategorized`) and is proposed as a description only.
+- **Completeness** is the table of section 4, computed by the same function
+  (`completeness` in `parse-receipt.ts`), not a copy of it.
+- **The proposal** is `buildReceiptProposal` (section 5) with the transaction's
+  amount, description and payee and the sender's domain as the summary's label,
+  submitted through `AiReviewWorkService.submit` under the AI claim key. A
+  description-only result (`amount_differs`, `items_uncategorized`, ...) is still
+  submitted, and its reason is stored on the email (`status_reason`) so the email
+  page names it. With no item to name, the model's own `description` is the
+  description. A reading with no item, no total and no description is not an
+  answer: the claim is given back.
+- **Storage.** The reading is stored on the email (`parsed`, with `source: "ai"`)
+  by one UPDATE conditional on the email still pointing at this request, so a
+  slow answer never overwrites a newer one.
+
+"Recognize with AI" (the button) does not call this: it queues a request and the
+assistant in the chat, or an agent, answers it by id with splits, which
+`submit` validates as in section 5 (the lines must add up to the transaction).
+
 ## 8. Test matrix
 
 | Case | Suite |
@@ -165,3 +212,5 @@ changed row) leaves the proposal waiting in the inbox.
 | Every row of the match table; date window edges (day -3, day +14, day +15) | `matching/match-receipt.spec.ts` |
 | Every row of the proposal table; the numerical example; description cap and duplicate | `proposal/build-receipt-proposal.spec.ts` |
 | Auto-apply gate: each condition false in turn | `email-receipt-pipeline.service.spec.ts` |
+| AI extraction: amount conversion, unknown category, dropped items, completeness through the shared function, `source: "ai"`, description-only reasons | `ai/email-receipt-ai.extraction.spec.ts`, `ai/email-receipt-ai.service.spec.ts` |
+| Recognize with AI: refusals before any write, chosen transaction stored as manual, pending request visible in the inbox, claim by id, card confirm applies the request | `email-receipt-ai.service.spec.ts`, `test/integration/email-receipts-pipeline.integration.spec.ts` |

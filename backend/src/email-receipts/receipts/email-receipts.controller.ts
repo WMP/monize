@@ -18,6 +18,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { OwnerOnly } from "../../delegation/decorators/delegate-access.decorator";
 import { EmailReceiptAiService } from "../ai/email-receipt-ai.service";
 import {
+  AskAiEmailReceiptDto,
   LinkEmailReceiptDto,
   ListEmailReceiptsDto,
 } from "./dto/email-receipts.dto";
@@ -119,13 +120,14 @@ export class EmailReceiptsController {
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @ApiOperation({
     summary:
-      "Ask the AI to propose an enrichment for the email's transaction (AI mode on_demand or automatic)",
+      "Queue an AI review request for the email's transaction (optionally a chosen one); the assistant in the chat answers it",
   })
   askAi(
     @Request() req: { user: { id: string } },
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: AskAiEmailReceiptDto,
   ) {
-    return this.ai.askAi(req.user.id, id);
+    return this.ai.askAi(req.user.id, id, dto.transactionId || null);
   }
 
   @Post(":id/draft-parser")

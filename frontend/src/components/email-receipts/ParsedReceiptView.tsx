@@ -110,6 +110,7 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
         {!parsed.complete && parsed.reason && (
           <span className="text-gray-700 dark:text-gray-300">{t(`reasons.${parsed.reason}`)}</span>
         )}
+        {parsed.source === 'ai' && <Badge variant="blue">{t('readByAi')}</Badge>}
       </div>
     </div>
   );

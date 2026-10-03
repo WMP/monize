@@ -78,4 +78,29 @@ describe('AiReviewRow', () => {
       '/transactions?targetTransactionId=tx-1',
     );
   });
+
+  describe('a pending email receipt request', () => {
+    it('says it waits for an AI agent and links to the AI settings', () => {
+      renderRow(emailReceiptItem({ status: 'pending' }));
+      expect(screen.getByText(/Waiting for an AI agent\./)).toBeInTheDocument();
+      expect(screen.getByText(/or let an MCP client claim it\./)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Connect an AI provider in Settings' })).toHaveAttribute(
+        'href',
+        '/settings/ai',
+      );
+    });
+
+    it.each(['claimed', 'proposed', 'applied', 'rejected', 'expired'] as const)(
+      'says nothing about waiting once the request is %s',
+      (status) => {
+        renderRow(emailReceiptItem({ status }));
+        expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
+      },
+    );
+
+    it('says nothing for a pending request a rule raised', () => {
+      renderRow(makeReviewItem({ status: 'pending' }));
+      expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
+    });
+  });
 });

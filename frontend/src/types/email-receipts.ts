@@ -66,20 +66,6 @@ export const PARSED_RECEIPT_REASONS = [
 ] as const;
 export type ParsedReceiptReason = (typeof PARSED_RECEIPT_REASONS)[number];
 
-/** Why the AI could not answer (`EmailReceiptAiFailure`). */
-export const EMAIL_RECEIPT_AI_FAILURES = [
-  'ai_off',
-  'not_a_receipt_request',
-  'receipt_missing',
-  'not_claimable',
-  'transaction_unreadable',
-  'ai_unavailable',
-  'unusable_answer',
-  'proposal_refused',
-  'request_failed',
-] as const;
-export type EmailReceiptAiFailure = (typeof EMAIL_RECEIPT_AI_FAILURES)[number];
-
 // ---------------------------------------------------------------- mailbox
 
 /** The user's mailbox. The password is never here: `passwordSet` says whether one is stored. */
@@ -202,9 +188,16 @@ export interface EmailReceiptDetail extends EmailReceiptListItem {
   candidates: EmailReceiptCandidateSummary[];
 }
 
-export type EmailReceiptAiOutcome =
-  | { ok: true; requestId: string }
-  | { ok: false; requestId: string; reason: EmailReceiptAiFailure };
+/**
+ * `POST /email-receipts/:id/ask-ai`: the request now waits, pending, in the AI
+ * review inbox for whoever claims it by id (the assistant in the chat, or an
+ * MCP agent). Nothing has answered it yet.
+ */
+export interface EmailReceiptAskAiResult {
+  ok: true;
+  requestId: string;
+  transactionId: string;
+}
 
 // ---------------------------------------------------------------- parsers
 
@@ -304,6 +297,8 @@ export interface ParsedReceipt {
   discountCategoryId: string | null;
   complete: boolean;
   reason: ParsedReceiptReason | null;
+  /** Who read the email: a saved parser, or the AI. Absent on a receipt stored before the field existed. */
+  source?: 'parser' | 'ai';
 }
 
 export type ReceiptMatchResult =

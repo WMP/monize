@@ -113,7 +113,9 @@ describe('emailReceiptsApi', () => {
       await emailReceiptsApi.receipts.ignore('r-1');
       expect(client.post).toHaveBeenLastCalledWith('/email-receipts/r-1/ignore');
       await emailReceiptsApi.receipts.askAi('r-1');
-      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/r-1/ask-ai');
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/r-1/ask-ai', {});
+      await emailReceiptsApi.receipts.askAi('r-1', 'tx-9');
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/r-1/ask-ai', { transactionId: 'tx-9' });
       await emailReceiptsApi.receipts.draftParser('r-1');
       expect(client.post).toHaveBeenLastCalledWith('/email-receipts/r-1/draft-parser');
 
