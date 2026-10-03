@@ -124,6 +124,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 - The Select gains `LINEAR` and `INTEREST_ONLY`; `prepayment_mode` shown for LINEAR only.
 - Every frontend reader in spec table 5.6 changed as its row says: the next installment captioned with its date, the bullet beside it for INTEREST_ONLY, the simulator's budget and extra defined per projected row.
 - Acceptance: spec tables 7.1, 7.3 and 7.4 from `generateLoanSchedule`; the frontend row of the spec's test matrix for section 5.6, with `payment_amount` null on the fixture account.
+- Owed before `LoanPaymentSetupDialog` can submit a LINEAR or INTEREST_ONLY setup: P2-B1's `LoanPaymentSetupService` refuses a `paymentAmount` more than 0.00005 from the first installment it prices (`nonAnnuityInstallment` on `datedLoanDebt` through `nextDueDate`, the dated rate and the calendar), and no endpoint returns that figure yet -- `POST /accounts/mortgage-preview` prices from the original principal, which differs from the debt on a loan already underway. Add a backend read that answers it through the same code (spec 5.5, "the dialog previews through the same code") rather than repeating the debt read on the client.
 
 ### P2-B2 -- Detection (backend)
 
