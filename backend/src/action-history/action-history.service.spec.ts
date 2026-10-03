@@ -8,6 +8,7 @@ import {
 } from "./action-history.service";
 import { ActionHistory } from "./entities/action-history.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -2213,6 +2214,61 @@ describe("ActionHistoryService", () => {
             /SET current_balance = ROUND/.test(sql),
           ),
         ).toEqual([[expect.any(String), [-1200.5, "loan", userId]]]);
+      });
+
+      it("refuses, before any write, when the counterpart is reconciled and the strict lock is on", async () => {
+        mockRepository.findOne.mockResolvedValue(
+          createAction({ id: "tx-1", accountId: "acc-1" }),
+        );
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          id: "tx-1",
+          userId,
+          accountId: "acc-1",
+          amount: -640.15,
+          isTransfer: true,
+          linkedTransactionId: "leg-1",
+          splits: [],
+        });
+        mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+        mockQueryRunner.manager.remove.mockResolvedValue(undefined);
+        mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+        mockLockedRows({
+          "tx-1": {
+            account_id: "acc-1",
+            amount: "-640.15",
+            linked_transaction_id: "leg-1",
+          },
+          "leg-1": {
+            account_id: "loan",
+            amount: "640.15",
+            status: "RECONCILED",
+            linked_transaction_id: "tx-1",
+          },
+        });
+        const routeRepository =
+          mockQueryRunner.manager.getRepository.getMockImplementation();
+        mockQueryRunner.manager.getRepository.mockImplementation(
+          (entity: unknown) =>
+            entity === UserPreference
+              ? {
+                  findOne: jest
+                    .fn()
+                    .mockResolvedValue({ lockReconciledTransactions: true }),
+                }
+              : routeRepository(entity),
+        );
+
+        await expect(service.undo(userId)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
+
+        expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.remove).not.toHaveBeenCalled();
+        expect(
+          mockQueryRunner.query.mock.calls.filter(([sql]: [string]) =>
+            /SET current_balance = ROUND/.test(sql),
+          ),
+        ).toEqual([]);
       });
 
       it("leaves a leg alone that is linked to another row, and a VOID leg moves nothing", async () => {

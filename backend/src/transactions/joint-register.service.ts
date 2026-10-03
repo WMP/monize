@@ -64,7 +64,7 @@ export class JointRegisterService {
         // The grantee is the actor and the owner the row's user: the owner's
         // structural rules (transfer, split) must not run on it, or the
         // grantee would move, and be shown, the owner's other accounts.
-        actorIsJointMember: true,
+        actorIsNotOwner: true,
       }),
     );
   }

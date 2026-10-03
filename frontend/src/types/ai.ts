@@ -495,6 +495,11 @@ export interface PendingActionPreviewRow {
   }>;
   /** True when this bulk update/delete row targets a reconciled transaction. */
   isReconciled?: boolean;
+  /**
+   * What the user's rules will also do to this created row on approval, with a
+   * transfer or split they add (display-only; the single card's shape).
+   */
+  ruleEffects?: PendingActionRuleEffects;
   investmentAction?: InvestmentAction;
   symbol?: string | null;
   securityName?: string | null;

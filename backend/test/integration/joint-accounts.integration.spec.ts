@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { TransactionsService } from "@/transactions/transactions.service";
+import { TransactionsController } from "@/transactions/transactions.controller";
 import { TransactionsModule } from "@/transactions/transactions.module";
 import { TransactionRulesModule } from "@/transaction-rules/transaction-rules.module";
 import { TransactionRulesService } from "@/transaction-rules/transaction-rules.service";
@@ -528,6 +529,101 @@ describe("Joint accounts (integration)", () => {
       expect(Number((await loadAccount(mortgageId)).currentBalance)).toBe(
         -20000 + 640.15,
       );
+    });
+  });
+
+  describe("the owner's structural rules on an acting delegate's create", () => {
+    it("skips convert_to_transfer and split: no counterpart, the ungranted loan does not move, nothing of it in the response", async () => {
+      // The delegate is granted Checking only (a plain, non-joint grant).
+      await grantJoint({ create: true, joint: false });
+      const loanId = (
+        await createTestAccount(dataSource, ownerId, {
+          name: "Private Mortgage",
+          accountType: "LOAN",
+          openingBalance: -20000,
+          currentBalance: -20000,
+        })
+      ).id;
+      const loansCategory = await ownerCategory("Loans");
+      const rules = module.get(TransactionRulesService, { strict: false });
+      await withUserContext(ownerId, async () => {
+        await rules.create(ownerId, {
+          name: "Principal",
+          triggers: ["create"],
+          condition: {
+            field: "description",
+            op: "contains",
+            value: "CONVERT-0000",
+          },
+          actions: [
+            {
+              type: "convert_to_transfer",
+              toAccountId: loanId,
+              clearCategory: true,
+            },
+          ],
+        } as never);
+        await rules.create(ownerId, {
+          name: "Principal split",
+          triggers: ["create"],
+          condition: {
+            field: "description",
+            op: "matches",
+            value: "SPLIT-0000 {principal}/{interest}",
+          },
+          actions: [
+            {
+              type: "split",
+              parts: [
+                { amount: "{principal}", transferAccountId: loanId },
+                { amount: "{interest}", categoryId: loansCategory },
+              ],
+            },
+          ],
+        } as never);
+      });
+      const controller = module.get(TransactionsController);
+      // What the JWT strategy builds for a delegate acting as the owner.
+      const actingReq = {
+        user: {
+          id: ownerId,
+          realUserId: granteeId,
+          isActing: true,
+          delegationId,
+        },
+      };
+
+      for (const description of [
+        "CONVERT-0000 instalment",
+        "SPLIT-0000 400,15/240,00",
+      ]) {
+        const created = await withUserContext(ownerId, () =>
+          controller.create(actingReq, {
+            accountId: jointAccountId,
+            amount: -640.15,
+            transactionDate: "2026-01-10",
+            currencyCode: "USD",
+            description,
+          } as never),
+        );
+        const row = (await dataSource.manager.findOne(Transaction, {
+          where: { id: created.id },
+        }))!;
+        expect(row).toMatchObject({
+          accountId: jointAccountId,
+          isTransfer: false,
+          isSplit: false,
+          linkedTransactionId: null,
+        });
+        expect(JSON.stringify(created)).not.toContain(loanId);
+        expect(JSON.stringify(created)).not.toContain("Private Mortgage");
+      }
+      expect(
+        await dataSource.manager.count(Transaction, {
+          where: { userId: ownerId },
+        }),
+      ).toBe(2);
+      expect(Number((await loadAccount(loanId)).currentBalance)).toBe(-20000);
     });
   });
 

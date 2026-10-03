@@ -71,8 +71,8 @@ export interface ApplyToNewOptions {
    */
   readonly payeeTextById?: ReadonlyMap<string, string | null>;
   /**
-   * The rows were written by a joint-account member in the owner's account:
-   * structural actions are skipped (`structural_not_allowed_for_member`).
+   * The rows were written by an actor who is not the owner (a joint-account member, or a delegate acting as the owner):
+   * structural actions are skipped (`structural_not_allowed_for_actor`).
    */
   readonly structuralNotAllowed?: boolean;
 }

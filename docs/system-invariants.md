@@ -5168,12 +5168,14 @@ Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     each leg through removeLockedTransactionLeg
                     (deletionBalanceEffect); redo of such a create is refused
                     (REDO_CREATE_WITH_LEGS) because the legs cannot be replayed.
-                    A create by a joint-account member
-                    (JointRegisterService.create passes actorIsJointMember, set
-                    from the joint grant and never from the request) plans with
+                    A create by an actor who is not the owner
+                    (JointRegisterService.create, the acting
+                    POST /transactions and the acting scheduled post pass
+                    actorIsNotOwner, set from the joint grant or
+                    req.user.isActing and never from the request) plans with
                     RulePlanContext.structuralNotAllowed, so convert_to_transfer
                     and split are skipped with
-                    structural_not_allowed_for_member while category, payee,
+                    structural_not_allowed_for_actor while category, payee,
                     description and tag actions still apply.
 Concurrency scope   per transaction row, inside the transaction that already
                     holds the row's write; the target account's balance is an
@@ -5361,8 +5363,9 @@ Enforcement         The pure planner decides it, before the condition
                     treats a blank side as open, exactly as a save does, so it is
                     enforced only through the window fields the client sends.
                     The client's Test panel must send them; the guard for that is
-                    frontend/src/components/rules/RuleTestPanel.test.tsx (and any
-                    other frontend/src/components/rules/RuleTestPanel*.test.tsx).
+                    frontend/src/components/rules/RuleEditor.test.tsx (the case
+                    "sends the draft window with the test, and marks the result
+                    out of date when the window moves").
                     A client that omitted the fields would test the rule over
                     rows its saved window excludes.
 Concurrency scope   per evaluated row; the window is read with the rule

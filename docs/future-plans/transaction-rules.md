@@ -3,6 +3,7 @@
 Design for user-defined transaction rules: a rule has a trigger, a condition
 tree and an ordered list of actions (WHEN / IF / THEN). A rule changes how a
 new transaction is labelled (tags, category, payee). A rule never moves money.
+(Superseded in part by [`docs/specs/transaction-rules-structural-actions.md`](../specs/transaction-rules-structural-actions.md): structural actions now add a counterpart leg or split lines that move a balance in another account.)
 This is the design half of a two-document plan; the task list is
 [`transaction-rules-tasks.md`](./transaction-rules-tasks.md).
 
@@ -333,7 +334,7 @@ ai_review_requests
 
 | ID | Statement | Mechanism |
 |---|---|---|
-| I1 | A rule never moves a balance, and an AI proposal is never committed without a human approval | The action list in section 6.1 is a closed union type; a proposal is a `PendingAiAction` committed only by the confirm path; the DTO refuses any other action; a unit test asserts that no action writes `amount`, `account_id`, `status` or a link. |
+| I1 | A rule never moves a balance (superseded by `docs/specs/transaction-rules-structural-actions.md`: a structural action moves the target account's balance), and an AI proposal is never committed without a human approval | The action list in section 6.1 is a closed union type; a proposal is a `PendingAiAction` committed only by the confirm path; the DTO refuses any other action; a unit test asserts that no action writes `amount`, `account_id`, `status` or a link. |
 | I2 | A rule applies in the same transaction as the insert, on every creation path in 6.3 | The applier takes an `EntityManager`; a source-scanning guard lists every `create(Transaction)` / `insert` site on `transactions` and fails on a site that is neither a call to the applier nor in the exempt list. |
 | I3 | A preview shows what the commit will do | `previewCreate`, the test panel and the manual-run preview call the same `planRuleEffects(facts, rules)`; the commit applies its result. A test compares preview and commit for the same input. |
 | I4 | A rule runs at most once per row per trigger, in `position` order | One call site per path; a test with two rules and `stopProcessing`. |

@@ -42,8 +42,9 @@ import, in a test and in a manual run.
   helpers, by exactly the counterpart's amount, in the transaction that writes
   the rule's other effects. The matched row's own account balance never moves,
   because its amount does not change. A structural action never runs on a row
-  a joint-account member creates in the owner's account (section 4,
-  `structural_not_allowed_for_member`), and whatever a create or a run wrote in
+  a non-owner actor (a joint-account member, an acting delegate) creates in
+  the owner's account (section 4,
+  `structural_not_allowed_for_actor`), and whatever a create or a run wrote in
   another account is removed, with its balance, by the undo of what wrote it
   (section 6).
 - **INV-RULE-004 (new).** A rule with an active window is evaluated only for a
@@ -153,11 +154,13 @@ a split `hasSplits` is true and the category empty, so a later `set_category`
 is refused as before (`row_is_transfer_leg` / `row_has_splits`) and a second
 structural action is refused the same way.
 
-A create made by a joint-account member in the owner's account plans with
-`structuralNotAllowed` (set by `JointRegisterService` from the joint grant, as
-the `actorIsJointMember` option of `TransactionsService.create`; no request
-field is read). Both structural actions are then skipped, before every refusal
-below, with `structural_not_allowed_for_member`; category, payee, description
+A create made by someone other than the owner (a joint-account member, or a
+delegate acting as the owner) plans with `structuralNotAllowed`, set from the
+server-side identity as the `actorIsNotOwner` option of
+`TransactionsService.create`: `JointRegisterService` from the joint grant, the
+acting `POST /transactions` and the acting scheduled post from
+`req.user.isActing`; no request field is read. Both structural actions are then skipped, before every refusal
+below, with `structural_not_allowed_for_actor`; category, payee, description
 and tag actions still apply, and the row stays a plain row of the owner's
 account. The owner's own creates, imports and runs are unaffected.
 

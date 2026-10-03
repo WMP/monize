@@ -381,12 +381,13 @@ export class TransactionsService {
     options?: {
       createPayeeIfMissing?: boolean;
       /**
-       * Set by the joint register when a grantee, not the owner, writes the
-       * row: the owner's structural rule actions (convert to transfer, split)
-       * are then skipped, since they would move balances in accounts the
-       * grantee cannot see. Never read from a request.
+       * Set when the authenticated actor is not the row's owner (a joint
+       * grantee, or a delegate acting as the owner): the owner's structural
+       * rule actions (convert to transfer, split) are then skipped, since they
+       * would write, and move balances in, accounts the actor holds no grant
+       * on. Derived from the server-side identity, never read from a request.
        */
-      actorIsJointMember?: boolean;
+      actorIsNotOwner?: boolean;
     },
   ): Promise<Transaction> {
     const account = await this.accountsService.findOne(
@@ -555,7 +556,7 @@ export class TransactionsService {
           "create",
           {
             payeeTextById: new Map([[savedTransaction.id, payeeText]]),
-            structuralNotAllowed: options?.actorIsJointMember === true,
+            structuralNotAllowed: options?.actorIsNotOwner === true,
           },
         );
         // A structural action (convert to transfer, split) credits another

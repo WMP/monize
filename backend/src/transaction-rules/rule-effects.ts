@@ -56,11 +56,12 @@ export type RuleActionSkipReason =
   /** The payee lookup for the rendered name has not been made yet (the applier looks it up and plans again). */
   | "payee_unresolved"
   /**
-   * A structural action on a row a joint-account member created in the
-   * owner's account: the member may not move the owner's other balances
+   * A structural action on a row someone other than the owner created in the
+   * owner's account (a joint-account member, or a delegate acting as the
+   * owner): the actor may not move the owner's other balances
    * (spec section 4, `structuralNotAllowed`).
    */
-  | "structural_not_allowed_for_member"
+  | "structural_not_allowed_for_actor"
   /** A structural action the row cannot take (spec section 4). */
   | StructuralRefusal;
 
@@ -375,7 +376,7 @@ function structural(
   input: StepInput,
 ): StepResult {
   if (input.context.structuralNotAllowed === true) {
-    return skip(state, action, "structural_not_allowed_for_member");
+    return skip(state, action, "structural_not_allowed_for_actor");
   }
   const planned = planStructure(
     action,

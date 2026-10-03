@@ -82,7 +82,7 @@ describe("JointRegisterService", () => {
         createPayeeIfMissing: false,
         // Set from the joint grant, never from the request: the owner's
         // structural rules must not run on a grantee's row.
-        actorIsJointMember: true,
+        actorIsNotOwner: true,
       });
     });
 
@@ -129,7 +129,7 @@ describe("JointRegisterService", () => {
         expect(transactionsService.create).toHaveBeenCalledWith(
           OWNER,
           freeText,
-          { createPayeeIfMissing: true, actorIsJointMember: true },
+          { createPayeeIfMissing: true, actorIsNotOwner: true },
         );
       });
 
