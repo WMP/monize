@@ -164,6 +164,13 @@ below, with `structural_not_allowed_for_actor`; category, payee, description
 and tag actions still apply, and the row stays a plain row of the owner's
 account. The owner's own creates, imports and runs are unaffected.
 
+Accepted gap: the auto-post cron posts a schedule as its owner and passes no
+`actorIsNotOwner`, because a schedule does not record who wrote it. A schedule
+(or an occurrence override) that an acting delegate with the `bills` section
+created or edited therefore still runs the owner's structural rules when it
+auto-posts. The money stays between the owner's accounts, by the owner's rules;
+closing it needs a stored "written by a delegate" marker on the schedule.
+
 Refusals, checked in this order, each a skipped action:
 
 | Reason | When |

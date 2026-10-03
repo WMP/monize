@@ -5197,7 +5197,13 @@ Failure response    A submitted action outside the union is refused by
                     and never throws on a create or import path. Known gap: a
                     target account closed between the plan and the write makes
                     the counterpart create fail and the surrounding transaction
-                    roll back, instead of a skipped action.
+                    roll back, instead of a skipped action. Known gap (accepted):
+                    the auto-post cron posts a schedule as its owner without
+                    actorIsNotOwner, so a schedule an acting delegate (bills
+                    section) created or edited still runs the owner's structural
+                    rules when it auto-posts, and can move an owner account the
+                    delegate holds no grant on. The money stays between the
+                    owner's own accounts, by the owner's own rules.
 Required tests      Present: rule-effects.spec.ts ("changes only category, payee
                     and tags: never amount, account, date, status or a link (I1)")
                     and transaction-rules-applier.service.spec.ts ("never updates
