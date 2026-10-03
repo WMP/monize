@@ -321,8 +321,14 @@ export class LoanPaymentDetectorService {
       for (const tx of transactions) {
         const loanSideAmount = Number(tx.amount);
 
-        // Payments to a loan account are positive (reducing the negative liability)
-        if (loanSideAmount <= 0) continue;
+        // Payments to a loan account are positive (reducing the negative
+        // liability). A zero-amount transfer leg is read too: an
+        // INTEREST_ONLY installment posts its 0.00 principal line as one
+        // (docs/specs/mortgage-types.md, section 9), and it is kept below only
+        // when its linked parent carries the interest it paid.
+        if (loanSideAmount < 0) continue;
+        const zeroLeg = loanSideAmount === 0;
+        if (zeroLeg && !(tx.isTransfer && tx.linkedTransactionId)) continue;
 
         // Skip if we already processed another loan-side transaction from the same source
         if (
@@ -433,6 +439,9 @@ export class LoanPaymentDetectorService {
             }
           }
         }
+
+        // A zero leg without an interest line paid nothing: not a payment.
+        if (zeroLeg && interestAmount == null) continue;
 
         payments.push({
           date: tx.transactionDate,

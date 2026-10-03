@@ -1788,6 +1788,84 @@ describe("LoanPaymentDetectorService", () => {
     });
   });
 
+  describe("buildPaymentRecords: interest-only installments", () => {
+    // An INTEREST_ONLY installment posts its 0.00 principal line as a transfer
+    // leg into the loan, linked to a split parent whose other line is the
+    // interest (docs/specs/mortgage-types.md, section 9).
+    const zeroLeg = (id: string, overrides: Record<string, unknown> = {}) =>
+      ({
+        id,
+        accountId: "mortgage-1",
+        userId: "user-1",
+        transactionDate: "2026-01-01",
+        amount: "0.0000",
+        isTransfer: true,
+        linkedTransactionId: `parent-${id}`,
+        ...overrides,
+      }) as unknown as Transaction;
+
+    function useParent(splits: Array<Record<string, unknown>>): void {
+      transactionRepository.findOne.mockImplementation(({ where }) =>
+        Promise.resolve({
+          id: where.id,
+          accountId: "chequing-1",
+          account: { name: "Checking" },
+          amount: -500,
+          isSplit: true,
+        }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(splits);
+    }
+
+    it("reads a zero principal leg whose parent carries the interest as a payment", async () => {
+      useParent([
+        { amount: "0.0000", transferAccountId: "mortgage-1", memo: null },
+        {
+          amount: "-500.0000",
+          transferAccountId: null,
+          categoryId: "cat-int",
+          category: { name: "Mortgage Interest" },
+        },
+      ]);
+
+      const records = await service.buildPaymentRecords(
+        "user-1",
+        "mortgage-1",
+        [zeroLeg("tx-1")],
+      );
+
+      expect(records).toEqual([
+        expect.objectContaining({
+          date: "2026-01-01",
+          amount: 500,
+          principalAmount: 0,
+          interestAmount: 500,
+          sourceAccountId: "chequing-1",
+        }),
+      ]);
+    });
+
+    it("drops a zero leg whose parent carries no interest: it paid nothing", async () => {
+      useParent([
+        { amount: "0.0000", transferAccountId: "mortgage-1", memo: null },
+      ]);
+
+      await expect(
+        service.buildPaymentRecords("user-1", "mortgage-1", [zeroLeg("tx-1")]),
+      ).resolves.toEqual([]);
+    });
+
+    it("drops a zero-amount row that is not a linked transfer, without looking it up", async () => {
+      await expect(
+        service.buildPaymentRecords("user-1", "mortgage-1", [
+          zeroLeg("tx-1", { isTransfer: false }),
+          zeroLeg("tx-2", { linkedTransactionId: null }),
+        ]),
+      ).resolves.toEqual([]);
+      expect(transactionRepository.findOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe("pairSeparateInterest", () => {
     const interestAccount = {
       id: "loan-1",
