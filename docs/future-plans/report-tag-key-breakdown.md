@@ -50,11 +50,21 @@ transfer shows under Household as a tagged inflow and adds nothing to income.
 
 Follow-up from the reporter's screenshots; spec section 10. C: an account
 multi-select on `IncomeVsExpensesReport` (the backend already honours
-`accountIds`; Cash Flow is excluded because `getIncomeBySource` takes none). B:
+`accountIds`; Cash Flow follows in Phase 1c). B:
 `IncomeExpenseTagPeriodItem` (per-period `taggedInflows` / `taggedOutflows`) in
 each bucket, and two indigo series on the main chart for the active non-untagged
 bucket. Order: spec commit, backend (DTO, both flow queries, tests), frontend
 (types, controlled `TagKeyBreakdownBuckets`, report), translations last.
+
+### Phase 1c -- opt-in stacking and Cash Flow parity
+
+Spec section 10.7. An opt-in, default-off "Stack tagged flows" switch (inflows
+on the Income / Inflows bar, outflows on the Expenses / Outflows bar; presentation
+only, INV-REPORT-003 unchanged) on Income vs Expenses and Cash Flow, and Cash Flow
+parity: account filter sent to all three endpoints (`income-by-source` gains
+`accountIds`), controlled breakdown tabs, tagged series. Order: extract the
+Income vs Expenses table (file size), spec, backend (`cash-flow` and
+`income-by-source` `accountIds`), frontend, translations last.
 
 ### Phase 2 -- Spending by Category + Income by Source
 
