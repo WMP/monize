@@ -330,6 +330,7 @@
     "outflows": "Getaggte Abflüsse",
     "inflowsSeries": "Getaggte Zuflüsse: {value}",
     "outflowsSeries": "Getaggte Abflüsse: {value}",
+    "stackFlows": "Getaggte Flüsse stapeln",
     "sharesExceedNote": "Eine Zeile, die unter diesem Schlüssel mit mehr als einem Wert getaggt ist, zählt für jeden davon, sodass die Anteile pro Wert in Summe mehr als 100 % ergeben können."
   },
   "categoryPerformance": {

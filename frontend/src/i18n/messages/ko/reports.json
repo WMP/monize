@@ -330,6 +330,7 @@
     "outflows": "태그된 유출액",
     "inflowsSeries": "태그된 유입액: {value}",
     "outflowsSeries": "태그된 유출액: {value}",
+    "stackFlows": "태그된 흐름 누적",
     "sharesExceedNote": "이 키에서 둘 이상의 값으로 태그된 행은 각 값에 대해 집계되므로, 값별 비율의 합이 100%를 초과할 수 있습니다."
   },
   "categoryPerformance": {
