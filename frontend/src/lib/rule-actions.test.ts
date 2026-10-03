@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   EDITOR_ACTION_TYPES,
+  addSplitPart,
   availableActionTypes,
+  canAddSplitPart,
+  canRemoveSplitPart,
+  captureOfAmount,
+  createSplitPart,
+  removeSplitPart,
+  restIsFree,
+  updateSplitPart,
   canAddAction,
   canDuplicateAction,
   canMoveAction,
@@ -95,13 +103,10 @@ describe('list edits', () => {
 
 describe('the action types the editor offers', () => {
   it('are all the types the server accepts, each once', () => {
-    // The two structural actions are shown read-only and never offered (spec section 9).
-    expect([...EDITOR_ACTION_TYPES].sort()).toEqual(
-      RULE_ACTION_TYPES.filter((type) => type !== 'convert_to_transfer' && type !== 'split').sort(),
-    );
+    expect([...EDITOR_ACTION_TYPES].sort()).toEqual([...RULE_ACTION_TYPES].sort());
   });
 
-  it('lists the text actions after set_payee and the review last', () => {
+  it('lists the text actions after set_payee, the two structural ones, and the review last', () => {
     expect(availableActionTypes([createAction('add_tags')], 0)).toEqual([
       'add_tags',
       'remove_tags',
@@ -109,6 +114,8 @@ describe('the action types the editor offers', () => {
       'set_payee',
       'set_payee_from_text',
       'set_description',
+      'convert_to_transfer',
+      'split',
       'request_ai_review',
     ]);
   });
@@ -123,26 +130,80 @@ describe('the action types the editor offers', () => {
 });
 
 describe('the structural actions', () => {
-  const stored = {
-    uid: 'x',
-    type: 'split' as const,
-    stored: { type: 'split' as const, parts: [{ amount: 'rest' }, { amount: 'rest' }] },
-  } satisfies EditorAction;
+  const split = createAction('split');
+  const convert = createAction('convert_to_transfer');
 
-  it('are never offered by the type picker', () => {
-    expect(EDITOR_ACTION_TYPES).not.toContain('convert_to_transfer');
-    expect(EDITOR_ACTION_TYPES).not.toContain('split');
-    expect(availableActionTypes([stored], 0)).not.toContain('split');
+  it('start where the server defaults are: the category cleared, two blank parts', () => {
+    expect(convert).toMatchObject({ direction: 'to', accountId: '', clearCategory: true, payeeId: '' });
+    expect(split).toMatchObject({ payeeId: '' });
+    if (split.type !== 'split') throw new Error('not a split');
+    expect(split.parts).toHaveLength(2);
+    expect(split.parts[0]).toMatchObject({ amount: '', kind: 'category', categoryId: '', transferAccountId: '', payeeId: '', description: '' });
+    expect(split.parts[0].uid).not.toBe(split.parts[1].uid);
+  });
+
+  it('are offered once: a card that is not one sees neither while another holds one', () => {
+    const list = [createAction('add_tags'), split];
+    expect(availableActionTypes(list, 0)).not.toContain('split');
+    expect(availableActionTypes(list, 0)).not.toContain('convert_to_transfer');
+    // The card that holds it keeps both, so it can be switched between them.
+    expect(availableActionTypes(list, 1)).toEqual(expect.arrayContaining(['split', 'convert_to_transfer']));
+  });
+
+  it('stay offered next to set_category: the conflict is reported on the card, not hidden', () => {
+    expect(availableActionTypes([createAction('set_category'), createAction('add_tags')], 1)).toEqual(
+      expect.arrayContaining(['split', 'convert_to_transfer']),
+    );
   });
 
   it('cannot be duplicated: the server allows one per rule', () => {
-    expect(canDuplicateAction([stored], 0)).toBe(false);
-    expect(duplicateAction([stored], 0)).toEqual([stored]);
+    expect(canDuplicateAction([split], 0)).toBe(false);
+    expect(duplicateAction([split], 0)).toEqual([split]);
   });
 
   it('can be moved and removed like any other card', () => {
     const rest = createAction('add_tags');
-    expect(moveAction([stored, rest], 0, 1)).toEqual([rest, stored]);
-    expect(removeAction([stored, rest], 0)).toEqual([rest]);
+    expect(moveAction([split, rest], 0, 1)).toEqual([rest, split]);
+    expect(removeAction([split, rest], 0)).toEqual([rest]);
+  });
+
+  it('start over on a type change and keep the card place', () => {
+    const next = changeActionType(convert, 'split');
+    expect(next).toMatchObject({ type: 'split', uid: convert.uid });
+  });
+});
+
+describe('split parts', () => {
+  const parts = [createSplitPart('{principal}'), createSplitPart('{interest}')];
+
+  it('are bounded to 2..10', () => {
+    expect(canRemoveSplitPart(parts)).toBe(false);
+    expect(removeSplitPart(parts, 0)).toBe(parts);
+    const ten = Array.from({ length: 10 }, () => createSplitPart());
+    expect(canAddSplitPart(ten)).toBe(false);
+    expect(addSplitPart(ten)).toBe(ten);
+    expect(canRemoveSplitPart(ten)).toBe(true);
+    expect(removeSplitPart(ten, 3)).toHaveLength(9);
+    expect(addSplitPart(parts)).toHaveLength(3);
+  });
+
+  it('allow the rest once: the part holding it keeps it, the others lose it', () => {
+    const withRest = [createSplitPart('{principal}'), createSplitPart('rest'), createSplitPart()];
+    expect(restIsFree(withRest, 1)).toBe(true);
+    expect(restIsFree(withRest, 0)).toBe(false);
+    expect(restIsFree(parts, 0)).toBe(true);
+  });
+
+  it('are replaced one at a time', () => {
+    const next = updateSplitPart(parts, 1, { ...parts[1], amount: 'rest' });
+    expect(next[1].amount).toBe('rest');
+    expect(next[0]).toBe(parts[0]);
+  });
+
+  it('name a capture by its braces', () => {
+    expect(captureOfAmount('{principal}')).toBe('principal');
+    expect(captureOfAmount('rest')).toBeNull();
+    expect(captureOfAmount('{Principal}')).toBeNull();
+    expect(captureOfAmount('')).toBeNull();
   });
 });

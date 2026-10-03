@@ -241,7 +241,7 @@ description. Rules in order, all with `activeFrom: 2026-10-01`,
 
 ## 9. Out of scope
 
-Cross-currency structural actions, a split of a transfer leg, payees on
-category split lines, and an editor for the two structural actions in the web
-Rules page (they are created through the assistant or MCP and shown read-only
-on the page).
+Cross-currency structural actions, a split of a transfer leg and payees on
+category split lines; the web Rules editor creates and edits both structural
+actions (one card each, built from the transaction form's account, category and
+payee pickers), as do the assistant and MCP.

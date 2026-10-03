@@ -382,6 +382,8 @@ export interface PendingActionPreview {
 
 /** Names for the ids a rule's effects mention; a missing id is a deleted item. */
 export interface PendingActionRuleEffectsLabels {
+  /** The accounts a transfer or a split part names; absent in a card built before they were sent. */
+  accounts?: Record<string, string>;
   categories: Record<string, string>;
   payees: Record<string, string>;
   tags: Record<string, string>;

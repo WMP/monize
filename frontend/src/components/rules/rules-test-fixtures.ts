@@ -80,6 +80,7 @@ export function makePreview(overrides: Partial<RuleRunPreview> = {}): RuleRunPre
     truncated: false,
     fingerprint: 'a'.repeat(64),
     labels: {
+      accounts: { [ACCOUNT_ID]: 'Chequing' },
       categories: { [COFFEE_ID]: 'Food: Coffee' },
       payees: { [PAYEE_ID]: 'Corner Cafe' },
       tags: { [TAG_ID]: 'Coffee run' },

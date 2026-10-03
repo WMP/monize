@@ -2,26 +2,26 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useMemo } from 'react';
-import { useRuleWords } from '@/components/rules/RuleInWords';
 import { RuleCardShell } from '@/components/rules/RuleCardShell';
+import { ConvertToTransferFields, SplitFields } from '@/components/rules/RuleStructuralActions';
+import { RuleSwitchRow as SwitchRow } from '@/components/rules/RuleSwitchRow';
 import { RuleTemplateInput } from '@/components/rules/RuleTemplateInput';
 import type { RuleOptions } from '@/components/rules/use-rule-options';
 import { Combobox } from '@/components/ui/Combobox';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Select } from '@/components/ui/Select';
-import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import {
   DESCRIPTION_MODES,
   changeActionType,
   isDescriptionMode,
   isEditableActionType,
+  isStructuralActionType,
   type EditableActionType,
   type EditorAction,
 } from '@/lib/rule-actions';
 import { checkTemplate } from '@/lib/rule-captures';
+import type { StructuralFieldErrors } from '@/lib/rule-errors';
 import {
   MAX_RULE_AI_INSTRUCTION_LENGTH,
   MAX_RULE_DESCRIPTION_TEMPLATE_LENGTH,
@@ -37,29 +37,14 @@ interface RuleActionCardProps {
   actions: RowAction[];
   errors: readonly string[];
   onChange: (action: EditorAction) => void;
-  /** The capture names the rule's patterns define; the text actions offer them as placeholders. */
+  /** The capture names the rule's patterns define; the text actions offer them as placeholders, a split as its amounts. */
   captures?: readonly string[];
-}
-
-/** A switch with its name and a tooltip that explains it. */
-function SwitchRow({
-  checked,
-  onChange,
-  label,
-  help,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-  help: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 pt-1">
-      <ToggleSwitch checked={checked} onChange={onChange} label={label} />
-      <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-      <InfoTooltip text={help} placement="top" usePortal />
-    </div>
-  );
+  /**
+   * For a transfer or a split: the server's errors split into the card's own
+   * list and the field each names (`structuralFieldErrors`). Without it every
+   * error in `errors` is the card's own.
+   */
+  fieldErrors?: StructuralFieldErrors;
 }
 
 /** The "Only if empty" switch of the actions that fill a field, with its explanation. */
@@ -87,12 +72,18 @@ function inlineCodes(action: EditorAction, captures: readonly string[]): string[
   return [...(malformed.length > 0 ? ['INVALID_CAPTURE'] : []), ...(unknown.length > 0 ? ['UNKNOWN_CAPTURE'] : [])];
 }
 
+const NO_FIELDS: StructuralFieldErrors['fields'] = {};
+
 function ActionParameters({
   action,
   options,
   onChange,
   captures,
-}: Pick<RuleActionCardProps, 'action' | 'options' | 'onChange'> & { captures: readonly string[] }) {
+  fields,
+}: Pick<RuleActionCardProps, 'action' | 'options' | 'onChange'> & {
+  captures: readonly string[];
+  fields: StructuralFieldErrors['fields'];
+}) {
   const t = useTranslations('rules.editor');
 
   switch (action.type) {
@@ -189,6 +180,10 @@ function ActionParameters({
           />
         </div>
       );
+    case 'convert_to_transfer':
+      return <ConvertToTransferFields action={action} options={options} onChange={onChange} fields={fields} />;
+    case 'split':
+      return <SplitFields action={action} options={options} captures={captures} onChange={onChange} fields={fields} />;
     case 'request_ai_review':
       return (
         <div>
@@ -213,61 +208,31 @@ function ActionParameters({
   }
 }
 
-/** An option list as the id-to-name table the sentences read. */
-const namesOf = (options: readonly { value: string; label: string }[]): Record<string, string> =>
-  Object.fromEntries(options.map((option) => [option.value, option.label]));
-
-/**
- * A transfer or a split: made through the assistant or MCP, shown here as a
- * sentence and kept as stored. It can be moved or removed with the card's menu.
- */
-function StructuralActionBody({
-  action,
-  options,
-}: {
-  action: Extract<EditorAction, { stored: unknown }>;
-  options: RuleOptions;
-}) {
-  const t = useTranslations('rules.editor');
-  const labels = useMemo(
-    () => ({
-      accounts: namesOf(options.accounts),
-      payees: namesOf(options.payees),
-      categories: namesOf(options.categories),
-      tags: namesOf(options.tags),
-    }),
-    [options],
-  );
-  const { actionText } = useRuleWords(labels);
-  return (
-    <div className="space-y-1">
-      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t(`actionTypes.${action.type}`)}</p>
-      <p className="text-sm text-gray-700 dark:text-gray-300">{actionText(action.stored)}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{t('action.structuralReadOnly')}</p>
-    </div>
-  );
-}
-
 /**
  * One action: its type, and the parameters that type takes. Changing the type
  * starts the parameters over (the card keeps its place). The type list leaves
- * out `request_ai_review` when another card already holds it, because the
- * server allows one per rule.
+ * out `request_ai_review` when another card already holds it, and the two
+ * structural actions when another card holds either, because the server
+ * allows one of each kind per rule.
  */
-export function RuleActionCard({ action, types, options, actions, errors, onChange, captures = [] }: RuleActionCardProps) {
+export function RuleActionCard({
+  action,
+  types,
+  options,
+  actions,
+  errors,
+  onChange,
+  captures = [],
+  fieldErrors,
+}: RuleActionCardProps) {
   const t = useTranslations('rules.editor');
   const shownInline = inlineCodes(action, captures);
-
-  if (action.type === 'convert_to_transfer' || action.type === 'split') {
-    return (
-      <RuleCardShell label={t('action.title')} actions={actions} errors={errors}>
-        <StructuralActionBody action={action} options={options} />
-      </RuleCardShell>
-    );
-  }
+  // A transfer or a split shows each error at its field; the card keeps only what names no field.
+  const structural = isStructuralActionType(action.type) && fieldErrors !== undefined;
+  const cardErrors = structural ? fieldErrors.shell : errors.filter((code) => !shownInline.includes(code));
 
   return (
-    <RuleCardShell label={t('action.title')} actions={actions} errors={errors.filter((code) => !shownInline.includes(code))}>
+    <RuleCardShell label={t('action.title')} actions={actions} errors={cardErrors}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Select
           id={`${action.uid}-type`}
@@ -278,7 +243,13 @@ export function RuleActionCard({ action, types, options, actions, errors, onChan
             if (isEditableActionType(e.target.value)) onChange(changeActionType(action, e.target.value));
           }}
         />
-        <ActionParameters action={action} options={options} onChange={onChange} captures={captures} />
+        <ActionParameters
+          action={action}
+          options={options}
+          onChange={onChange}
+          captures={captures}
+          fields={structural ? fieldErrors.fields : NO_FIELDS}
+        />
       </div>
     </RuleCardShell>
   );

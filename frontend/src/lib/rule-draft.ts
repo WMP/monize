@@ -11,10 +11,12 @@
  */
 import {
   createAction,
+  createSplitPart,
   isDescriptionMode,
   isEditorActionType,
-  isStructuralActionType,
   type EditorAction,
+  type EditorSplitPart,
+  type TransferDirection,
 } from '@/lib/rule-actions';
 import {
   RULE_CONDITION_FIELDS,
@@ -38,7 +40,7 @@ import type {
   RuleConditionNode,
   RuleLeafValue,
   RuleTrigger,
-  StructuralRuleAction,
+  SplitActionPart,
   TransactionRule,
 } from '@/types/transaction-rule';
 
@@ -154,10 +156,6 @@ function readAction(input: unknown, repairs: Repairs): EditorAction | null {
     repairs.note();
     return null;
   }
-  // Created through the assistant or MCP: kept as stored, so opening and saving loses nothing.
-  if (isStructuralActionType(input.type)) {
-    return { uid: newUid(), type: input.type, stored: input as unknown as StructuralRuleAction };
-  }
   const blank = createAction(input.type);
   switch (blank.type) {
     case 'add_tags':
@@ -199,7 +197,94 @@ function readAction(input: unknown, repairs: Repairs): EditorAction | null {
     case 'request_ai_review':
       if (typeof input.instruction !== 'string') repairs.note();
       return { ...blank, instruction: typeof input.instruction === 'string' ? input.instruction : '' };
+    case 'convert_to_transfer':
+      return readConvert(blank, input, repairs);
+    case 'split':
+      return readSplit(blank, input, repairs);
   }
+}
+
+/** An optional id: absent reads as none, a non-string is repaired. */
+function readOptionalId(value: unknown, repairs: Repairs): string {
+  if (value === undefined) return '';
+  if (typeof value === 'string') return value;
+  repairs.note();
+  return '';
+}
+
+function readConvert(
+  blank: Extract<EditorAction, { type: 'convert_to_transfer' }>,
+  input: Record_,
+  repairs: Repairs,
+): EditorAction {
+  const hasTo = input.toAccountId !== undefined;
+  const hasFrom = input.fromAccountId !== undefined;
+  // Exactly one is stored; both (or neither) is repaired to the "to" side.
+  if (hasTo === hasFrom) repairs.note();
+  // Only the income side names `fromAccountId`; anything else reads as the expense side.
+  let direction: TransferDirection = 'to';
+  if (hasFrom && !hasTo) direction = 'from';
+  const accountId = readOptionalId(direction === 'from' ? input.fromAccountId : input.toAccountId, repairs);
+  if (input.clearCategory !== undefined && typeof input.clearCategory !== 'boolean') repairs.note();
+  return {
+    ...blank,
+    direction,
+    accountId,
+    // A missing flag reads as the server's default: a transfer has no category.
+    clearCategory: typeof input.clearCategory === 'boolean' ? input.clearCategory : blank.clearCategory,
+    payeeId: readOptionalId(input.payeeId, repairs),
+  };
+}
+
+function readSplitPart(input: unknown, repairs: Repairs): EditorSplitPart {
+  if (!isRecord(input)) {
+    repairs.note();
+    return createSplitPart();
+  }
+  const blank = createSplitPart();
+  const categoryId = readOptionalId(input.categoryId, repairs);
+  const transferAccountId = readOptionalId(input.transferAccountId, repairs);
+  // A category and a transfer account together is refused by the server; the transfer wins here.
+  if (categoryId !== '' && transferAccountId !== '') repairs.note();
+  const kind = transferAccountId !== '' ? 'transfer' : 'category';
+  const payeeId = readOptionalId(input.payeeId, repairs);
+  // A payee belongs to the counterpart leg of a transfer part, so it means nothing on a category line.
+  if (payeeId !== '' && kind !== 'transfer') repairs.note();
+  if (input.description !== undefined && typeof input.description !== 'string') repairs.note();
+  if (typeof input.amount !== 'string') repairs.note();
+  return {
+    ...blank,
+    amount: typeof input.amount === 'string' ? input.amount : '',
+    kind,
+    categoryId: kind === 'category' ? categoryId : '',
+    transferAccountId,
+    payeeId: kind === 'transfer' ? payeeId : '',
+    description: typeof input.description === 'string' ? input.description : '',
+  };
+}
+
+function readSplit(
+  blank: Extract<EditorAction, { type: 'split' }>,
+  input: Record_,
+  repairs: Repairs,
+): EditorAction {
+  let parts: EditorSplitPart[] = [];
+  if (Array.isArray(input.parts)) parts = input.parts.map((part) => readSplitPart(part, repairs));
+  else repairs.note();
+  // A split has at least two parts; a definition with fewer is padded so the editor can open it.
+  if (parts.length === 0) parts = blank.parts.map((part) => ({ ...part }));
+  return { ...blank, payeeId: readOptionalId(input.payeeId, repairs), parts };
+}
+
+function partToApi(part: EditorSplitPart): SplitActionPart {
+  return {
+    amount: part.amount,
+    ...(part.kind === 'category' && part.categoryId !== '' ? { categoryId: part.categoryId } : {}),
+    ...(part.kind === 'transfer' && part.transferAccountId !== '' ? { transferAccountId: part.transferAccountId } : {}),
+    ...(part.kind === 'transfer' && part.transferAccountId !== '' && part.payeeId !== '' ? { payeeId: part.payeeId } : {}),
+    // Kept as typed; a whitespace-only text is the server's to refuse (VALUE_EMPTY).
+    ...(part.description !== '' ? { description: part.description } : {}),
+  };
 }
 
 export interface DraftFromRule {
@@ -275,8 +360,23 @@ export function actionToApi(action: EditorAction): RuleAction {
     case 'request_ai_review':
       return { type: 'request_ai_review', instruction: action.instruction };
     case 'convert_to_transfer':
+      return {
+        type: 'convert_to_transfer',
+        // An account not chosen yet is left out, so the server names the missing field.
+        ...(action.accountId === ''
+          ? {}
+          : action.direction === 'from'
+            ? { fromAccountId: action.accountId }
+            : { toAccountId: action.accountId }),
+        clearCategory: action.clearCategory,
+        ...(action.payeeId !== '' ? { payeeId: action.payeeId } : {}),
+      };
     case 'split':
-      return action.stored;
+      return {
+        type: 'split',
+        ...(action.payeeId !== '' ? { payeeId: action.payeeId } : {}),
+        parts: action.parts.map(partToApi),
+      };
   }
 }
 

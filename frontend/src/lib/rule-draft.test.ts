@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeRule } from '@/components/rules/rules-test-fixtures';
-import { createAction } from './rule-actions';
+import { createAction, createSplitPart, type EditorAction } from './rule-actions';
 import {
   actionToApi,
   conditionToApi,
@@ -305,7 +305,8 @@ describe('the structural actions', () => {
       payeeId: UUID,
       parts: [
         { amount: '{principal}', transferAccountId: ACCOUNT, payeeId: UUID },
-        { amount: 'rest', categoryId: UUID, description: 'interest' },
+        { amount: '{interest}', categoryId: UUID, description: 'interest' },
+        { amount: 'rest' },
       ],
     },
   ];
@@ -318,9 +319,79 @@ describe('the structural actions', () => {
     expect(draftToPayload(draft).actions).toEqual(actions);
   });
 
+  it('reads a transfer part and a category part as the kind they are', () => {
+    const { draft } = read({ actions: [actions[1]] as never });
+    const split = draft.actions[0];
+    if (split.type !== 'split') throw new Error('not a split');
+    expect(split.parts.map((p) => p.kind)).toEqual(['transfer', 'category', 'category']);
+    expect(split.parts[0]).toMatchObject({ amount: '{principal}', transferAccountId: ACCOUNT, payeeId: UUID, categoryId: '' });
+    expect(split.parts[1]).toMatchObject({ categoryId: UUID, description: 'interest', transferAccountId: '' });
+    expect(split.parts[2]).toMatchObject({ amount: 'rest', categoryId: '', transferAccountId: '', description: '' });
+  });
+
+  it('writes the income side as fromAccountId and a card with no payee without one', () => {
+    const stored = { type: 'convert_to_transfer', fromAccountId: ACCOUNT, clearCategory: false };
+    const { draft, repaired } = read({ actions: [stored] as never });
+    expect(repaired).toBe(0);
+    expect(draft.actions[0]).toMatchObject({ direction: 'from', accountId: ACCOUNT, clearCategory: false, payeeId: '' });
+    expect(actionToApi(draft.actions[0])).toEqual(stored);
+  });
+
+  it('writes what the editor holds: a category line has no payee, a transfer line no category', () => {
+    const split = {
+      ...createAction('split'),
+      payeeId: UUID,
+      parts: [
+        { ...createSplitPart('{principal}'), kind: 'transfer' as const, transferAccountId: ACCOUNT, payeeId: UUID, categoryId: 'stale' },
+        { ...createSplitPart('rest'), kind: 'category' as const, categoryId: UUID, payeeId: 'stale', description: 'interest' },
+      ],
+    } as EditorAction;
+    expect(actionToApi(split)).toEqual({
+      type: 'split',
+      payeeId: UUID,
+      parts: [
+        { amount: '{principal}', transferAccountId: ACCOUNT, payeeId: UUID },
+        { amount: 'rest', categoryId: UUID, description: 'interest' },
+      ],
+    });
+  });
+
+  it('leaves out a transfer account that is not chosen yet, so the server names the field', () => {
+    expect(actionToApi(createAction('convert_to_transfer'))).toEqual({ type: 'convert_to_transfer', clearCategory: true });
+  });
+
   it('gives each a card of its own that survives a signature round trip', () => {
     const { draft } = read({ actions: actions as never });
     const again = draftFromRule(makeRule({ actions: draftToPayload(draft).actions as never })).draft;
     expect(draftSignature(again)).toBe(draftSignature(draft));
+  });
+
+  it('repairs what the server would refuse and counts it', () => {
+    const { draft, repaired } = read({
+      actions: [
+        { type: 'convert_to_transfer', toAccountId: ACCOUNT, fromAccountId: ACCOUNT, clearCategory: true },
+        {
+          type: 'split',
+          parts: [
+            { amount: '{a}', categoryId: UUID, transferAccountId: ACCOUNT },
+            { amount: '{b}', categoryId: UUID, payeeId: UUID },
+          ],
+        },
+      ] as never,
+    });
+    expect(repaired).toBe(3);
+    expect(draft.actions[0]).toMatchObject({ direction: 'to', accountId: ACCOUNT });
+    const split = draft.actions[1];
+    if (split.type !== 'split') throw new Error('not a split');
+    expect(split.parts[0]).toMatchObject({ kind: 'transfer', transferAccountId: ACCOUNT, categoryId: '' });
+    expect(split.parts[1]).toMatchObject({ kind: 'category', categoryId: UUID, payeeId: '' });
+  });
+
+  it('opens a split with no parts as two blank ones', () => {
+    const { draft, repaired } = read({ actions: [{ type: 'split' }] as never });
+    expect(repaired).toBeGreaterThan(0);
+    const split = draft.actions[0];
+    if (split.type !== 'split') throw new Error('not a split');
+    expect(split.parts).toHaveLength(2);
   });
 });

@@ -120,8 +120,8 @@ export interface SetDescriptionAction {
 
 /**
  * Makes the matched row one leg of a transfer. Exactly one of `toAccountId`
- * (an expense) and `fromAccountId` (an income). Created through the assistant
- * or MCP; the web editor shows it and does not edit it.
+ * (an expense) and `fromAccountId` (an income). Created in the rule editor, the
+ * assistant or MCP.
  */
 export interface ConvertToTransferAction {
   readonly type: 'convert_to_transfer';
@@ -147,7 +147,7 @@ export interface SplitAction {
   readonly parts: readonly SplitActionPart[];
 }
 
-/** The two actions that restructure the row; the editor keeps them read-only. */
+/** The two actions that restructure the row (a transfer, a split). */
 export type StructuralRuleAction = ConvertToTransferAction | SplitAction;
 
 /** Queues a person-approved AI review; never changes the row itself. */

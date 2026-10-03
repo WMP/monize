@@ -340,7 +340,7 @@ describe('RuleEditor: a new rule', () => {
 
     expect(within(card('Condition', 0)).getByText('An item chosen here no longer exists. Choose another.')).toBeInTheDocument();
     expect(within(card('Condition', 1)).getByText('The text is too long.')).toBeInTheDocument();
-    expect(within(card('Action', 0)).getByText('A rule can ask for an AI review only once.')).toBeInTheDocument();
+    expect(within(card('Action', 0)).getByText('A rule can have only one AI review, one transfer or split, and one split part that takes the rest.')).toBeInTheDocument();
     expect(within(card('Action', 1)).getByText('Choose an item from the list.')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Then' })).getByText(/There are too many actions/)).toBeInTheDocument();
     // What names no card is said at the top, in words.
