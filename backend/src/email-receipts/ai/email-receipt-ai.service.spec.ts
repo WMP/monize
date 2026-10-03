@@ -18,6 +18,10 @@ import type { TransactionsService } from "../../transactions/transactions.servic
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
+import {
+  RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+  RECEIPT_CHAT_INSTRUCTION,
+} from "../pipeline/email-receipt-pipeline.service";
 import { MAX_PARSERS_PER_USER } from "../parsers/email-receipt-parsers.service";
 import {
   AUTOMATIC_AI_CALLS_PER_TICK,
@@ -397,7 +401,11 @@ describe("EmailReceiptAiService.askAi", () => {
     expect(h.requests.enqueuePendingForReceipt).toHaveBeenCalledWith(
       expect.anything(),
       USER,
-      expect.objectContaining({ transactionId: TX, emailReceiptId: RECEIPT }),
+      expect.objectContaining({
+        transactionId: TX,
+        emailReceiptId: RECEIPT,
+        instruction: RECEIPT_CHAT_INSTRUCTION,
+      }),
     );
     expect(h.receiptRepo.update).toHaveBeenCalledWith(
       { id: RECEIPT, userId: USER },
@@ -760,7 +768,39 @@ describe("EmailReceiptAiService.processAiRequest", () => {
     expect(h.work.submit.mock.calls[0][3]).not.toHaveProperty("splits");
   });
 
-  it("a receipt with shipping is description-only today: the model gives no shipping category", async () => {
+  it("with shipping and discount categories from the list, the reading is complete and proposed as splits", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(
+        answer({
+          items: [{ name: "Widget", amount: "12.00", categoryId: CAT_BOOKS }],
+          shipping: "4.00",
+          shippingCategoryId: CAT_SHIPPING,
+          discount: "1.00",
+          discountCategoryId: CAT_BOOKS,
+          total: "15.00",
+        }),
+      ),
+    );
+    await h.service.processAiRequest(USER, REQUEST);
+
+    expect(storedReading(h)).toMatchObject({
+      reason: null,
+      parsed: {
+        complete: true,
+        shippingCategoryId: CAT_SHIPPING,
+        discountCategoryId: CAT_BOOKS,
+        source: "ai",
+      },
+    });
+    expect(h.work.submit.mock.calls[0][3].splits).toEqual([
+      { categoryName: "Books", amount: -12, memo: "Widget" },
+      { categoryName: "Shipping", amount: -4 },
+      { categoryName: "Books", amount: 1 },
+    ]);
+  });
+
+  it("a receipt with shipping but no shipping category is description-only (shipping_uncategorized)", async () => {
     const h = setup();
     h.ai.complete.mockResolvedValue(
       reply(
@@ -1030,6 +1070,19 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
     expect(pending).toContain("claimed_by IS NULL");
     expect(pending).toContain("proposal IS NULL");
     expect(pending).toContain("expires_at > CURRENT_TIMESTAMP");
+    // Only the requests the poll itself queued: one a person made with
+    // "Recognize with AI" belongs to the chat or an MCP agent.
+    expect(pending).toContain("instruction = $3");
+  });
+
+  it("selects pending requests by the poll's own instruction, never the chat's", async () => {
+    const h = stepSetup({ drafts: [], requests: [] });
+    await h.service.runAutomaticStep(USER);
+    const call = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("kind = 'email_receipt'"),
+    );
+    expect(call?.[1][2]).toBe(RECEIPT_AUTOMATIC_AI_INSTRUCTION);
+    expect(call?.[1][2]).not.toBe(RECEIPT_CHAT_INSTRUCTION);
   });
 
   it("a failed draft is marked so the poll does not retry it, and the step goes on", async () => {

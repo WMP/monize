@@ -47,7 +47,9 @@ describe("receiptExtractionSchema", () => {
         { name: "Case", amount: "15,00 zl", categoryId: "abc" },
       ],
       shipping: "4.99",
+      shippingCategoryId: "cat-s",
       discount: null,
+      discountCategoryId: null,
       total: 39.97,
       description: "Order A-1",
     });
@@ -59,10 +61,19 @@ describe("receiptExtractionSchema", () => {
         { name: "Case", qty: undefined, amount: "15,00 zl", categoryId: "abc" },
       ],
       shipping: "4.99",
+      shippingCategoryId: "cat-s",
       discount: undefined,
+      discountCategoryId: undefined,
       total: 39.97,
       description: "Order A-1",
     });
+  });
+
+  it("bounds the shipping and discount category ids and refuses a non-text one", () => {
+    expect(ok({ items: [], shippingCategoryId: "c".repeat(101) }).success).toBe(
+      false,
+    );
+    expect(ok({ items: [], discountCategoryId: 5 }).success).toBe(false);
   });
 
   it("needs the items list, which may be empty", () => {
