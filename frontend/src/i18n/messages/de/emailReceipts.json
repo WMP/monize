@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "Die KI wird für Belege nie aufgerufen.",
-        "on_demand": "Die KI wird nur aufgerufen, wenn du KI fragen oder Parser mit KI entwerfen drückst.",
+        "on_demand": "Die KI wird nur aufgerufen, wenn du Mit KI erkennen oder Parser mit KI entwerfen drückst.",
         "automatic": "Beim Abruf fragt die KI zu einem zugeordneten Beleg nach, den kein freigegebener Parser vollständig lesen konnte, und entwirft einen Parser für einen Absender, der noch keinen hat."
       },
       "autoApplyLabel": "Vorschläge automatisch anwenden",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Die Positionen ergeben nicht die Summe.",
       "items_uncategorized": "Einige Positionen haben keine Kategorie.",
       "shipping_uncategorized": "Die Versandzeile hat keine Kategorie."
-    }
+    },
+    "readByAi": "Von der KI gelesen"
   },
   "state": {
     "pending": "Wartet auf das Einlesen",
@@ -374,7 +375,7 @@
       "view": "Anzeigen",
       "reprocess": "Erneut verarbeiten",
       "link": "Buchung auswählen",
-      "askAi": "KI fragen",
+      "recognizeAi": "Mit KI erkennen",
       "draftParser": "Parser mit KI entwerfen",
       "createParser": "Parser erstellen",
       "ignore": "Ignorieren"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "E-Mail erneut verarbeitet",
       "reprocessFailed": "Die E-Mail konnte nicht erneut verarbeitet werden",
-      "askAiFailed": "Die KI konnte nicht gefragt werden",
       "draftFailed": "Es konnte kein Parser entworfen werden",
       "ignored": "E-Mail ignoriert",
       "ignoreFailed": "Die E-Mail konnte nicht ignoriert werden",
@@ -390,20 +390,8 @@
       "deleteFailed": "Die E-Mail konnte nicht gelöscht werden"
     },
     "notices": {
-      "askAiQueued": "Die KI wurde gefragt. Ihr Vorschlag erscheint zur Freigabe im KI-Prüfungseingang.",
       "draftCreated": "Die KI hat den Parser {name} entworfen. Er liest nichts, bis du ihn prüfst und freigibst.",
       "draftLink": "In den Parser-Einstellungen prüfen"
-    },
-    "aiFailures": {
-      "ai_off": "Die KI ist für dieses Postfach ausgeschaltet. Ändere zuerst den KI-Modus in den Postfacheinstellungen.",
-      "not_a_receipt_request": "Diese Anfrage gehört nicht zu einem E-Mail-Beleg.",
-      "receipt_missing": "Die E-Mail existiert nicht mehr.",
-      "not_claimable": "Eine Anfrage zu dieser E-Mail wird bereits bearbeitet.",
-      "transaction_unreadable": "Die verknüpfte Buchung konnte nicht gelesen werden.",
-      "ai_unavailable": "Der KI-Anbieter hat nicht geantwortet. Prüfe die KI-Einstellungen und versuche es erneut.",
-      "unusable_answer": "Die KI hat geantwortet, aber ihre Antwort war nicht verwendbar.",
-      "proposal_refused": "Der KI-Vorschlag wurde abgelehnt, weil er nicht aufgeht.",
-      "request_failed": "Die Anfrage ist fehlgeschlagen."
     },
     "ignoreDialog": {
       "title": "Diese E-Mail ignorieren?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "kein Zahlungsempfänger",
     "linkButton": "Verknüpfen",
-    "hasMore": "Es werden nur die ersten {count} angezeigt. Grenze die Liste mit der Suche ein."
+    "hasMore": "Es werden nur die ersten {count} angezeigt. Grenze die Liste mit der Suche ein.",
+    "ai": {
+      "heading": "Buchung für die KI auswählen",
+      "help": "Hier siehst du deine Buchungen vom {from} bis zum {to}, den Tagen rund um die E-Mail. Wähle die, die die KI nach den Produkten in der E-Mail aufteilen soll.",
+      "linkButton": "Diese Buchung verwenden"
+    }
   },
   "callback": {
     "title": "Postfach wird verbunden",
@@ -509,5 +502,27 @@
       "fallback": "Der Server hat die Verbindung abgelehnt. Beginne erneut in den Einstellungen für E-Mail-Belege."
     },
     "backLink": "Zurück zu den Einstellungen für E-Mail-Belege"
+  },
+  "recognize": {
+    "title": "Mit KI erkennen",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "kein Zahlungsempfänger",
+    "confirmMessage": "Diese E-Mail ist mit der Buchung {summary} verknüpft. Die KI liest die E-Mail und schlägt vor, wie diese Buchung nach Produkten aufgeteilt wird. Mit dieser Buchung fortfahren?",
+    "confirm": "Mit KI erkennen",
+    "chooseOther": "Andere Buchung auswählen",
+    "candidatesHeading": "Welche Buchung wurde mit der E-Mail bezahlt?",
+    "candidatesHelp": "Mehrere Buchungen passen zu dieser E-Mail. Wähle die, die die KI verwenden soll, oder suche nach einer anderen.",
+    "candidatesLoading": "Passende Buchungen werden geladen",
+    "candidatesError": "Die passenden Buchungen konnten nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "useButton": "Diese Buchung verwenden",
+    "searchOther": "Andere Buchungen suchen",
+    "back": "Zurück",
+    "failed": "Die Erkennung konnte nicht gestartet werden",
+    "queued": "In der Warteschlange: Derzeit steht kein KI-Assistent für eine Antwort bereit, daher wartet die Anfrage im KI-Prüfungseingang auf einen Agenten (zum Beispiel über MCP).",
+    "handoffFailed": "Die Anfrage steht in der Warteschlange, aber die E-Mail konnte nicht im Chat geöffnet werden. Sie wartet im KI-Prüfungseingang auf einen Agenten (zum Beispiel über MCP).",
+    "inboxLink": "KI-Prüfungseingang öffnen",
+    "opened": "Der Chat wurde mit der angehängten E-Mail geöffnet. Lies die Nachricht und drücke auf Senden.",
+    "chatPrompt": "Erkenne die Produkte, Mengen und Preise in der angehängten Bestell-E-Mail und teile meine Buchung vom {date} ({payee}, {amount}) nach Produkten auf, mit je einer Kategorie. Übernimm die KI-Prüfungsanfrage {requestId} und reiche deinen Vorschlag dafür ein."
   }
 }

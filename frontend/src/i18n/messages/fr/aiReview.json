@@ -37,7 +37,8 @@
     "viewEmailReceipts": "Voir les reçus par e-mail",
     "agentNote": "Note de l'assistant : {reason}",
     "dates": "Créée le {created}, expire le {expires}",
-    "viewTransaction": "Voir la transaction"
+    "viewTransaction": "Voir la transaction",
+    "waitingForAgent": "En attente d'un agent IA. <link>Connectez un fournisseur d'IA dans les Paramètres</link> ou laissez un client MCP la prendre en charge."
   },
   "actions": {
     "dismiss": "Ignorer"

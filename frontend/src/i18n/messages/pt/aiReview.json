@@ -37,7 +37,8 @@
     "viewEmailReceipts": "Ver recibos por e-mail",
     "agentNote": "Nota do assistente: {reason}",
     "dates": "Criado em {created}, expira em {expires}",
-    "viewTransaction": "Ver transação"
+    "viewTransaction": "Ver transação",
+    "waitingForAgent": "A aguardar um agente de IA. <link>Ligue um fornecedor de IA nas Definições</link> ou deixe um cliente MCP assumi-lo."
   },
   "actions": {
     "dismiss": "Dispensar"

@@ -95,7 +95,7 @@
       },
       "aiModeDescriptions": {
         "off": "AI nigdy nie jest wywoływane dla paragonów.",
-        "on_demand": "AI jest wywoływane tylko po naciśnięciu Zapytaj AI lub Przygotuj parser z AI.",
+        "on_demand": "AI jest wywoływane tylko po naciśnięciu Rozpoznaj z AI lub Przygotuj parser z AI.",
         "automatic": "Podczas sprawdzania skrzynki AI jest pytane o dopasowany paragon, którego żaden zatwierdzony parser nie odczytał w całości, i przygotowuje parser dla nadawcy, który go nie ma."
       },
       "autoApplyLabel": "Stosuj propozycje automatycznie",
@@ -310,7 +310,8 @@
       "items_unbalanced": "Pozycje nie sumują się do łącznej kwoty.",
       "items_uncategorized": "Niektóre pozycje nie mają kategorii.",
       "shipping_uncategorized": "Wiersz z kosztami wysyłki nie ma kategorii."
-    }
+    },
+    "readByAi": "Odczytano przez AI"
   },
   "state": {
     "pending": "Czeka na odczyt",
@@ -374,7 +375,7 @@
       "view": "Zobacz",
       "reprocess": "Przetwórz ponownie",
       "link": "Wybierz transakcję",
-      "askAi": "Zapytaj AI",
+      "recognizeAi": "Rozpoznaj z AI",
       "draftParser": "Przygotuj parser z AI",
       "createParser": "Utwórz parser",
       "ignore": "Zignoruj"
@@ -382,7 +383,6 @@
     "toasts": {
       "reprocessed": "Wiadomość przetworzona ponownie",
       "reprocessFailed": "Nie udało się ponownie przetworzyć wiadomości",
-      "askAiFailed": "Nie udało się zapytać AI",
       "draftFailed": "Nie udało się przygotować parsera",
       "ignored": "Wiadomość zignorowana",
       "ignoreFailed": "Nie udało się zignorować wiadomości",
@@ -390,20 +390,8 @@
       "deleteFailed": "Nie udało się usunąć wiadomości"
     },
     "notices": {
-      "askAiQueued": "Zapytano AI. Jego propozycja pojawi się w skrzynce przeglądów AI do Twojej akceptacji.",
       "draftCreated": "AI przygotowało parser {name}. Nic nie odczytuje, dopóki go nie sprawdzisz i nie zatwierdzisz.",
       "draftLink": "Sprawdź go w ustawieniach parserów"
-    },
-    "aiFailures": {
-      "ai_off": "AI jest wyłączone dla tej skrzynki pocztowej. Najpierw zmień tryb AI w ustawieniach skrzynki.",
-      "not_a_receipt_request": "Ta prośba nie dotyczy paragonu z e-maila.",
-      "receipt_missing": "Wiadomość już nie istnieje.",
-      "not_claimable": "Prośba dotycząca tej wiadomości jest już opracowywana.",
-      "transaction_unreadable": "Nie udało się odczytać powiązanej transakcji.",
-      "ai_unavailable": "Dostawca AI nie odpowiedział. Sprawdź ustawienia AI i spróbuj ponownie.",
-      "unusable_answer": "AI odpowiedziało, ale jego odpowiedzi nie dało się wykorzystać.",
-      "proposal_refused": "Propozycja AI została odrzucona, ponieważ się nie zgadza.",
-      "request_failed": "Żądanie nie powiodło się."
     },
     "ignoreDialog": {
       "title": "Zignorować tę wiadomość?",
@@ -483,7 +471,12 @@
     "row": "{date}, {amount}, {payee}",
     "noPayee": "brak odbiorcy",
     "linkButton": "Powiąż",
-    "hasMore": "Pokazano tylko pierwsze {count}. Zawęź listę za pomocą wyszukiwania."
+    "hasMore": "Pokazano tylko pierwsze {count}. Zawęź listę za pomocą wyszukiwania.",
+    "ai": {
+      "heading": "Wybierz transakcję dla AI",
+      "help": "To Twoje transakcje od {from} do {to}, czyli z dni wokół daty wiadomości. Wybierz tę, którą AI ma podzielić według produktów z wiadomości.",
+      "linkButton": "Użyj tej transakcji"
+    }
   },
   "callback": {
     "title": "Łączenie skrzynki pocztowej",
@@ -509,5 +502,27 @@
       "fallback": "Serwer odrzucił połączenie. Zacznij od nowa w ustawieniach paragonów z e-maili."
     },
     "backLink": "Powrót do ustawień paragonów z e-maili"
+  },
+  "recognize": {
+    "title": "Rozpoznaj z AI",
+    "transactionSummary": "{date}, {amount}, {payee}",
+    "noPayee": "brak odbiorcy",
+    "confirmMessage": "Ta wiadomość jest powiązana z transakcją {summary}. AI odczyta wiadomość i zaproponuje podział tej transakcji według produktów. Kontynuować z tą transakcją?",
+    "confirm": "Rozpoznaj z AI",
+    "chooseOther": "Wybierz inną transakcję",
+    "candidatesHeading": "Którą transakcję opłacono tą wiadomością?",
+    "candidatesHelp": "Do tej wiadomości pasuje kilka transakcji. Wybierz tę, której ma użyć AI, lub wyszukaj inną.",
+    "candidatesLoading": "Wczytywanie pasujących transakcji",
+    "candidatesError": "Nie udało się wczytać pasujących transakcji.",
+    "retry": "Spróbuj ponownie",
+    "useButton": "Użyj tej transakcji",
+    "searchOther": "Szukaj innych transakcji",
+    "back": "Wstecz",
+    "failed": "Nie udało się rozpocząć rozpoznawania",
+    "queued": "W kolejce: żaden asystent AI nie może teraz odpowiedzieć, więc prośba czeka w skrzynce przeglądów AI na agenta (na przykład przez MCP).",
+    "handoffFailed": "Prośba jest w kolejce, ale nie udało się otworzyć wiadomości w czacie. Czeka w skrzynce przeglądów AI na agenta (na przykład przez MCP).",
+    "inboxLink": "Otwórz skrzynkę przeglądów AI",
+    "opened": "Otwarto czat z dołączoną wiadomością. Przeczytaj treść i naciśnij Wyślij.",
+    "chatPrompt": "Rozpoznaj produkty, ilości i ceny w załączonej wiadomości z zamówieniem i podziel moją transakcję z {date} ({payee}, {amount}) według produktów, przypisując każdemu kategorię. Przejmij prośbę o przegląd AI {requestId} i prześlij do niej swoją propozycję."
   }
 }

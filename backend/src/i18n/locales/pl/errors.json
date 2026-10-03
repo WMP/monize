@@ -345,7 +345,7 @@
     "aiDraftInvalid": "Parser przygotowany przez AI był nieprawidłowy ({{ codes }}). Spróbuj ponownie lub napisz parser ręcznie.",
     "aiDraftUnknownCategory": "Parser przygotowany przez AI wskazywał kategorię, która nie istnieje. Spróbuj ponownie lub napisz parser ręcznie.",
     "tooManyParsers": "Można zapisać najwyżej {{ max }} parserów. Najpierw usuń jeden.",
-    "receiptNeedsTransaction": "Powiąż tę wiadomość z transakcją, zanim zapytasz o nią AI.",
+    "receiptNeedsTransaction": "Wybierz transakcję, którą opłacono tą wiadomością, zanim zapytasz o nią AI.",
     "receiptNotAskable": "Ta wiadomość została zignorowana lub nie dało się jej odczytać. Najpierw przetwórz ją ponownie.",
     "receiptApplied": "Propozycja z tej wiadomości została już zastosowana do transakcji.",
     "openRequestExists": "Dla tej transakcji jest już otwarty inny wniosek o przegląd. Najpierw go zakończ lub odrzuć.",
