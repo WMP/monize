@@ -327,7 +327,8 @@ export function EmailReceiptsManager() {
     runCommand(
       receipt,
       async () => {
-        await emailReceiptsApi.receipts.approveProposal(receipt.id);
+        if (!receipt.aiReviewRequestId) throw new Error('no proposal');
+        await emailReceiptsApi.receipts.approveProposal(receipt.aiReviewRequestId);
         toast.success(t('toasts.approved'));
         return null;
       },

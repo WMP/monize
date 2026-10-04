@@ -92,6 +92,20 @@ describe('emailReceiptsApi', () => {
   });
 
   describe('receipts', () => {
+    it('reads the per-state counts from byStatus', async () => {
+      client.get.mockResolvedValue({ data: { total: 3, byStatus: { review: 2, unmatched: 1 } } });
+      expect(await emailReceiptsApi.receipts.getStatusCounts()).toEqual({ review: 2, unmatched: 1 });
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/status-counts');
+    });
+
+    it('approves a proposal by the review inbox batch route and throws on a refusal', async () => {
+      client.post.mockResolvedValue({ data: { results: [{ id: 'rq-1', ok: true }] } });
+      await emailReceiptsApi.receipts.approveProposal('rq-1');
+      expect(client.post).toHaveBeenLastCalledWith('/ai-review-requests/approve-batch', { ids: ['rq-1'] });
+      client.post.mockResolvedValue({ data: { results: [{ id: 'rq-1', ok: false, error: 'refused' }] } });
+      await expect(emailReceiptsApi.receipts.approveProposal('rq-1')).rejects.toThrow('refused');
+    });
+
     it('lists with an optional status and limit, sending no params when there are none', async () => {
       client.get.mockResolvedValue({ data: [] });
       await emailReceiptsApi.receipts.list();

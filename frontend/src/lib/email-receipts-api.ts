@@ -129,18 +129,25 @@ export const emailReceiptsApi = {
 
     /** How many stored emails are in each state; the filter bar prints them. */
     getStatusCounts: async (): Promise<EmailReceiptStatusCounts> => {
-      const response = await apiClient.get<EmailReceiptStatusCounts>(`${RECEIPTS}/status-counts`);
-      return response.data;
+      const response = await apiClient.get<{
+        total: number;
+        byStatus: EmailReceiptStatusCounts;
+      }>(`${RECEIPTS}/status-counts`);
+      return response.data.byStatus;
     },
 
     /**
-     * Approve the proposal this email made (its open AI review request): the
-     * server applies it as the review inbox's Confirm does. It edits a
-     * transaction, so every cached balance is dropped.
+     * Approve the proposal this email made (its open AI review request) by
+     * the review inbox's own batch route. It edits a transaction, so every
+     * cached balance is dropped; a request the server refused throws.
      */
-    approveProposal: async (id: string): Promise<void> => {
-      await apiClient.post(`${RECEIPTS}/${id}/approve-proposal`);
+    approveProposal: async (aiReviewRequestId: string): Promise<void> => {
+      const response = await apiClient.post<{
+        results: { id: string; ok: boolean; error?: string }[];
+      }>('/ai-review-requests/approve-batch', { ids: [aiReviewRequestId] });
       clearAllCache();
+      const failed = response.data.results.find((r) => !r.ok);
+      if (failed) throw new Error(failed.error ?? 'approve failed');
     },
 
     /** What the hub's Overview cards show: one request, counts and names only. */
