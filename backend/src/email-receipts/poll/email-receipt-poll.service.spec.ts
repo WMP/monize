@@ -14,6 +14,7 @@ import type {
 } from "../mailbox/email-receipt-mailbox.service";
 import type { EmailReceiptMailboxView } from "../mailbox/email-receipt-mailbox.view";
 import type { EmailReceiptPipelineService } from "../pipeline/email-receipt-pipeline.service";
+import type { EmailReceiptsAttentionAlertService } from "./email-receipts-attention-alert.service";
 import {
   EmailReceiptPollService,
   AI_CATEGORY_CALLS_PER_POLL,
@@ -158,6 +159,10 @@ function setup() {
     })),
   } as unknown as jest.Mocked<EmailReceiptAiService>;
 
+  const attention = {
+    evaluate: jest.fn(async () => false),
+  } as unknown as jest.Mocked<EmailReceiptsAttentionAlertService>;
+
   const service = new EmailReceiptPollService(
     dataSource as never,
     mailbox,
@@ -165,6 +170,7 @@ function setup() {
     jobClaims,
     pipeline,
     ai,
+    attention,
   );
   return {
     service,
@@ -178,6 +184,7 @@ function setup() {
     jobClaims,
     pipeline,
     ai,
+    attention,
   };
 }
 
@@ -299,6 +306,28 @@ describe("the lease (INV-RECEIPT-006)", () => {
     expect(h.pipeline.process).not.toHaveBeenCalled();
     expect(h.ai.runAutomaticStep).not.toHaveBeenCalled();
     expect(h.jobClaims.releaseLease).not.toHaveBeenCalled();
+    expect(h.attention.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("raises the attention check once, for the owner, after the pipeline ran and before the lease is released", async () => {
+    const h = setup();
+    h.pending.push("r-1");
+    const order: string[] = [];
+    h.pipeline.process.mockImplementation(async () => {
+      order.push("pipeline");
+      return { unchanged: false } as never;
+    });
+    h.attention.evaluate.mockImplementation(async () => {
+      order.push("attention");
+      return true;
+    });
+    h.jobClaims.releaseLease.mockImplementation(async () => {
+      order.push("release");
+    });
+    await poll(h);
+    expect(h.attention.evaluate).toHaveBeenCalledTimes(1);
+    expect(h.attention.evaluate).toHaveBeenCalledWith(USER);
+    expect(order).toEqual(["pipeline", "attention", "release"]);
   });
 
   it("two polls racing for one lease: only the winner reads the mailbox", async () => {

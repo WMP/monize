@@ -47,6 +47,9 @@ export const NOTIFICATION_EMAIL_MESSAGES = {
   "bankSync.importedNoneTitle": "{{ institution }}: no new transactions",
   "bankSync.importedNoneMessage":
     "The daily sync of {{ institution }} found no new transactions.",
+  "emailReceiptsAttention.title": "Email receipts need attention",
+  "emailReceiptsAttention.message":
+    "Your receipts inbox holds {{ noParser }} without a profile and {{ parseFailed }} that their profile did not recognize. Open to review.",
   "portfolioMovement.titleUp": "Investments up {{ percent }}%",
   "portfolioMovement.titleDown": "Investments down {{ percent }}%",
   "portfolioMovement.messageUp":

@@ -67,6 +67,11 @@ export enum NotificationType {
   BANK_SYNC_CONSENT_EXPIRED = "BANK_SYNC_CONSENT_EXPIRED",
   BANK_SYNC_FAILED = "BANK_SYNC_FAILED",
   BANK_SYNC_IMPORTED = "BANK_SYNC_IMPORTED",
+  // The email-receipts inbox holds messages that need the owner (EMAIL_RECEIPTS
+  // category): some have no profile (`no_parser`), some have a profile that did
+  // not recognise them (`parse_failed`). One row per (count of the first, count of
+  // the second) via the dedupe key, raised only when a count grows.
+  EMAIL_RECEIPTS_ATTENTION = "EMAIL_RECEIPTS_ATTENTION",
 }
 
 /**
@@ -118,7 +123,7 @@ export enum NotificationCategory {
   BUDGETS = "BUDGETS",
   SYSTEM = "SYSTEM",
   // Each arrives with its producer (never a dead row): balance crossings,
-  // daily portfolio movement, GEM strategy signal changes.
+  // daily portfolio movement, GEM strategy signal changes, email-receipt attention.
   BALANCES = "BALANCES",
   INVESTMENTS = "INVESTMENTS",
   STRATEGIES = "STRATEGIES",
@@ -128,6 +133,7 @@ export enum NotificationCategory {
   // (`docs/specs/bank-sync-notifications.md` section 2).
   BANK_SYNC = "BANK_SYNC",
   BANK_SYNC_ACTIVITY = "BANK_SYNC_ACTIVITY",
+  EMAIL_RECEIPTS = "EMAIL_RECEIPTS",
 }
 
 /**
@@ -155,6 +161,9 @@ export const BANK_SYNC_NOTIFICATION_TYPES: readonly NotificationType[] = [
 ];
 export const BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES: readonly NotificationType[] =
   [NotificationType.BANK_SYNC_IMPORTED];
+export const EMAIL_RECEIPT_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.EMAIL_RECEIPTS_ATTENTION,
+];
 
 /**
  * The category a type belongs to, derived rather than chosen -- and derived
@@ -198,6 +207,9 @@ export function notificationCategoryOf(
   }
   if (BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES.includes(type)) {
     return NotificationCategory.BANK_SYNC_ACTIVITY;
+  }
+  if (EMAIL_RECEIPT_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.EMAIL_RECEIPTS;
   }
   return NotificationCategory.BUDGETS;
 }

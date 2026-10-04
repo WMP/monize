@@ -357,7 +357,8 @@
         "INVESTMENTS": "Investment value",
         "STRATEGIES": "Strategy signals",
         "BANK_SYNC": "Bank connections",
-        "BANK_SYNC_ACTIVITY": "Bank sync results"
+        "BANK_SYNC_ACTIVITY": "Bank sync results",
+        "EMAIL_RECEIPTS": "Email receipts"
       },
       "channelNotApplicable": "Not applicable for this notification type",
       "emailToggleLabel": "Report email for {category}",

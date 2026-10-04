@@ -338,6 +338,22 @@ export function composeLocalizedNotificationCopy(
             imported: number(data.imported, 0),
           });
     }
+    case NotificationType.EMAIL_RECEIPTS_ATTENTION: {
+      if (
+        !numbers(data, "noParser", "parseFailed") ||
+        data.noParser < 0 ||
+        data.parseFailed < 0
+      )
+        return null;
+      return pair(
+        "emailReceiptsAttention.title",
+        "emailReceiptsAttention.message",
+        {
+          noParser: number(data.noParser, 0),
+          parseFailed: number(data.parseFailed, 0),
+        },
+      );
+    }
     case NotificationType.BILL_DUE: {
       const due = calendarDate(data.dueDate);
       if (

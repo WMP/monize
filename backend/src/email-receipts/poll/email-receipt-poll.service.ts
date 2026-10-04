@@ -26,6 +26,7 @@ import {
   describeFailure,
   EmailReceiptPipelineService,
 } from "../pipeline/email-receipt-pipeline.service";
+import { EmailReceiptsAttentionAlertService } from "./email-receipts-attention-alert.service";
 import {
   resolveEmailReceiptPollLimits,
   type EmailReceiptPollLimits,
@@ -129,6 +130,7 @@ export class EmailReceiptPollService {
     private readonly jobClaims: JobClaimService,
     private readonly pipeline: EmailReceiptPipelineService,
     private readonly ai: EmailReceiptAiService,
+    private readonly attention: EmailReceiptsAttentionAlertService,
   ) {}
 
   @Cron("*/15 * * * *")
@@ -216,7 +218,17 @@ export class EmailReceiptPollService {
     if (leaseToken === null) return { ...EMPTY, busy: true };
     const deadline = Date.now() + LEASE_WORK_BUDGET_MS;
     try {
-      return await this.pollLeased(userId, mailboxId, options, deadline);
+      const outcome = await this.pollLeased(
+        userId,
+        mailboxId,
+        options,
+        deadline,
+      );
+      // After the pipeline ran: one notification per user when emails wait for a
+      // profile or a fix. Never throws (it logs), and runs under the owner's
+      // identity this method was called with.
+      await this.attention.evaluate(userId);
+      return outcome;
     } finally {
       try {
         await this.jobClaims.releaseLease(

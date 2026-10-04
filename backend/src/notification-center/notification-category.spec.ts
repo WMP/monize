@@ -17,6 +17,7 @@ import {
   BALANCE_NOTIFICATION_TYPES,
   BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES,
   BANK_SYNC_NOTIFICATION_TYPES,
+  EMAIL_RECEIPT_NOTIFICATION_TYPES,
   INVESTMENT_NOTIFICATION_TYPES,
   NotificationCategory,
   NotificationSeverity,
@@ -155,6 +156,9 @@ describe("notification type partition", () => {
     expect(byCategory[NotificationCategory.BANK_SYNC_ACTIVITY]).toEqual([
       ...BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES,
     ]);
+    expect(byCategory[NotificationCategory.EMAIL_RECEIPTS].sort()).toEqual(
+      [...EMAIL_RECEIPT_NOTIFICATION_TYPES].sort(),
+    );
     // BUDGETS is the remainder: everything not in one of the explicit sets
     // above -- never a second list, so this arm proves the partition is total.
     expect(byCategory[NotificationCategory.BUDGETS].sort()).toEqual(
@@ -167,7 +171,8 @@ describe("notification type partition", () => {
           !INVESTMENT_NOTIFICATION_TYPES.includes(t) &&
           !STRATEGY_NOTIFICATION_TYPES.includes(t) &&
           !BANK_SYNC_NOTIFICATION_TYPES.includes(t) &&
-          !BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES.includes(t),
+          !BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES.includes(t) &&
+          !EMAIL_RECEIPT_NOTIFICATION_TYPES.includes(t),
       ).sort(),
     );
   });

@@ -4,6 +4,7 @@ import { AiReviewModule } from "../ai-review/ai-review.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
 import { SingleUseTokenModule } from "../auth/single-use-token.module";
 import { EncryptionModule } from "../common/encryption/encryption.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { PayeesModule } from "../payees/payees.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { EmailReceiptAiService } from "./ai/email-receipt-ai.service";
@@ -23,6 +24,7 @@ import { EmailReceiptParsersController } from "./parsers/email-receipt-parsers.c
 import { EmailReceiptParsersModule } from "./parsers/email-receipt-parsers.module";
 import { EmailReceiptPipelineService } from "./pipeline/email-receipt-pipeline.service";
 import { EmailReceiptPollService } from "./poll/email-receipt-poll.service";
+import { EmailReceiptsAttentionAlertService } from "./poll/email-receipts-attention-alert.service";
 import { EmailReceiptsController } from "./receipts/email-receipts.controller";
 import { EmailReceiptsService } from "./receipts/email-receipts.service";
 
@@ -56,6 +58,9 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     AiReviewModule,
     AiReviewQueueModule,
     TransactionsModule,
+    // For NotificationDispatchService: the poll raises one "emails need
+    // attention" notification per user through the dispatch seam.
+    NotificationsModule,
     // The payee lookup of a schema.org order's seller (never created); a
     // `forwardRef` for the same reason the parsers module's edge is one.
     forwardRef(() => PayeesModule),
@@ -77,6 +82,7 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     { provide: ImapMailboxClient, useClass: ImapFlowMailboxClient },
     EmailReceiptPipelineService,
     EmailReceiptPollService,
+    EmailReceiptsAttentionAlertService,
     EmailReceiptsService,
     EmailReceiptAiService,
     EmailReceiptCategoryAiService,
