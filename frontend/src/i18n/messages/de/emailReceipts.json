@@ -202,6 +202,12 @@
     "conflict": "Dieser Parser wurde an anderer Stelle geändert, seit du ihn geöffnet hast. Lade ihn neu, um die aktuelle Version zu sehen. Deine Änderungen hier sind nicht gespeichert.",
     "conflictReload": "Parser neu laden",
     "patterns": {
+      "sourceLabel": "Zeilenquelle",
+      "sourceHint": "Mit welcher Darstellung der E-Mail die folgenden Muster verglichen werden. Text ist der Textteil der E-Mail, eine Zeile pro Zeilenumbruch. HTML liest den HTML-Teil: Jeder Block und jede Tabellenzelle wird zu einer eigenen Zeile, sodass ein Produktname, den der Text auf mehrere Zeilen verteilt, zusammenbleibt. Die Ansicht „Zeilen“ der E-Mail zeigt genau, was jede Quelle liefert.",
+      "sourceOptions": {
+        "text": "Text",
+        "html": "HTML"
+      },
       "globHelp": "Jedes Muster wird mit einer ganzen Zeile der E-Mail verglichen, Groß- und Kleinschreibung wird ignoriert. Verwende {star} für beliebigen Text und einen Namen in geschweiften Klammern, etwa {capture}, um einen Wert zu erfassen. Jedes Feld nimmt bis zu {max} Muster auf, eines pro Zeile.",
       "orderIdLabel": "Muster für die Bestellnummer",
       "orderIdHint": "Muss {capture} erfassen. Beispiel: Bestellnummer: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Erforderliche Zeilen",
       "skipIfLine": "Zeilen, die die E-Mail überspringen",
       "waitIfLine": "Zeilen, die die E-Mail zurückhalten",
+      "source": "Zeilenquelle",
       "single": "Einzelne Position",
       "singleName": "Name der einzelnen Position",
       "joinWrapped": "Umgebrochene Zeilen verbinden",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Dieser Parser würde diese E-Mail nicht lesen: Keine seiner erforderlichen Zeilen kommt darin vor, daher würde der nächste Parser für den Absender versucht.",
       "skip_line": "Dieser Parser würde diese E-Mail beiseitelegen: Sie enthält eine Zeile, bei der er überspringt.",
-      "wait_line": "Dieser Parser würde diese E-Mail zurückhalten: Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird sie später erneut gelesen."
+      "wait_line": "Dieser Parser würde diese E-Mail zurückhalten: Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird sie später erneut gelesen.",
+      "no_html": "Dieser Parser liest den HTML-Teil der E-Mail, und diese E-Mail hat keinen. Sie würde daher als nicht lesbar (kein HTML) markiert."
     },
     "matchedBy": {
       "heading": "Gefunden über",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Eine Position hat keinen Betrag, und die E-Mail enthält keine einzelne Summe, die ihr zugewiesen werden könnte."
     },
     "readByAi": "Von der KI gelesen",
+    "readFromStructuredData": "Aus strukturierten Daten gelesen",
     "paid": "Bezahlt",
     "payee": "Händler"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Andere Anfrage offen",
       "review": "In Prüfung",
       "ignored": "Ignoriert"
+    },
+    "domainFilter": {
+      "label": "Absenderdomain",
+      "all": "Alle Absender",
+      "option": "{domain} ({count})",
+      "help": "Es werden E-Mails von {domain} und deren Subdomains angezeigt. Wähle mehrere davon aus, um einen Parser für den Absender zu entwerfen."
     },
     "columns": {
       "select": "Auswählen",
@@ -511,6 +526,7 @@
     "state": "Status",
     "parser": "Parser",
     "noParser": "Keiner",
+    "structuredSource": "Strukturierte Daten",
     "matchedBy": "Zugeordnet über",
     "matchKinds": {
       "order_id": "Bestellnummer",
@@ -539,6 +555,8 @@
       "proposal_refused": "Der Vorschlag wurde abgelehnt, daher wurde nichts vorgeschlagen.",
       "skip_line": "Es wurde eine Zeile gefunden, bei der dieser Parser überspringt, daher wurde die E-Mail ignoriert.",
       "wait_line": "Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird die E-Mail später erneut gelesen.",
+      "no_html": "Dieser Parser liest den HTML-Teil der E-Mail, und diese E-Mail hat keinen.",
+      "schema_org": "Es wurde kein Parser benötigt: Die Bestellung wurde aus den strukturierten Daten (schema.org) der E-Mail gelesen.",
       "item_amount_missing": "Eine Position hat keinen Betrag, und die E-Mail enthält keine einzelne Summe, die ihr zugewiesen werden könnte."
     },
     "reasonUnknown": "Grund: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "E-Mail anzeigen als",
       "html": "HTML",
-      "text": "Text"
+      "text": "Text",
+      "lines": "Zeilen"
     },
     "remoteImagesNote": "Externe Bilder werden nicht geladen.",
-    "htmlFrameTitle": "Die E-Mail so, wie der Absender sie formatiert hat"
+    "htmlFrameTitle": "Die E-Mail so, wie der Absender sie formatiert hat",
+    "structured": {
+      "heading": "Strukturierte Daten (schema.org)",
+      "help": "Eine Bestellung oder Rechnung, die die E-Mail als Markup für E-Mail-Programme enthält. Sie wird nur gelesen, wenn kein Parser passt oder der Parser keine Summe findet.",
+      "found": "Gefunden",
+      "notFound": "Nicht gefunden",
+      "notFoundHelp": "Die E-Mail enthält kein Bestellmarkup, oder es nennt weder eine Summe noch Positionen.",
+      "seller": "Verkäufer",
+      "currency": "Währung",
+      "orderDate": "Bestelldatum",
+      "unitPrice": "Stückpreis"
+    },
+    "lines": {
+      "help": "Die Zeilen, mit denen die Muster eines Parsers verglichen werden, nummeriert wie in der Liste „Gefunden über“ eines Tests.",
+      "sourceLabel": "Zeilenquelle",
+      "sources": {
+        "text": "Text",
+        "html": "HTML"
+      },
+      "noHtml": "Diese E-Mail hat keinen HTML-Teil, daher kann ein Parser, der HTML liest, sie nicht lesen.",
+      "capped": "Es werden nur die ersten {max} Zeilen gelesen.",
+      "empty": "Keine Zeilen.",
+      "listLabel": "Nummerierte Zeilen der E-Mail"
+    }
   },
   "picker": {
     "heading": "Buchung auswählen",
