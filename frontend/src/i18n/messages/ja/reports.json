@@ -60,6 +60,7 @@
       "spending-anomalies": "支出の異常",
       "weekend-weekday-spending": "週末 vs 平日の支出",
       "monthly-comparison": "月次比較",
+      "cash-flow-sankey": "キャッシュフロー サンキー",
       "foreign-currency-fees": "外貨取引手数料",
       "uncategorized-transactions": "未分類取引",
       "duplicate-transactions": "重複取引ファインダー",
@@ -108,6 +109,7 @@
       "spending-anomalies": "注意が必要な異常に大きな取引や支出急増を検出します。",
       "weekend-weekday-spending": "曜日別の支出パターンを分析して習慣を把握します。",
       "monthly-comparison": "収入、支出、純資産、投資の観点から任意の月を前月と比較します。",
+      "cash-flow-sankey": "お金がどこから来てどこへ行ったかを確認できます。収入が支出、貯蓄、投資、借入の返済へ流れる様子と、残った金額を表示します。",
       "foreign-currency-fees": "換算手数料を適用する口座全体で請求された外貨取引手数料を追跡します。",
       "uncategorized-transactions": "カテゴリが設定されていない取引を検索して分類します。",
       "duplicate-transactions": "レビューまたは削除が必要な可能性のある重複エントリを特定します。",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "支払い済み元金",
     "seriesInterestPaid": "支払い済み利息",
     "seriesPrincipal": "元金",
-    "seriesInterest": "利息"
+    "seriesInterest": "利息",
+    "installmentAndFinal": "{installment}、最終返済 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "損益、配当 & 利息",
@@ -882,7 +885,10 @@
     "typeLoan": "ローン",
     "typeMortgage": "住宅ローン",
     "pdfSubtitlePaymentsSummary": "{count} 件の支払い済み、{interest} 総利息",
-    "pdfSubtitlePaymentsProjection": "{count} 回支払済み、予測期間の利息 {interest}"
+    "pdfSubtitlePaymentsProjection": "{count} 回支払済み、予測期間の利息 {interest}",
+    "nextInstallment": "次回の返済額",
+    "finalPayment": "最終返済額",
+    "amountDueOn": "{amount}（期日 {date}）"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "有価証券のみを対象とした時間加重リターンです。ある日に入金または出金した金額はこれを動かさず、未投資の現金は成果にも、その比較対象にも含まれません。",
     "incompleteTooltip": "この期間の一部の日に価格、為替レート、または現金残高が欠けているため、すべての日に依存する数値は表示されません。",
     "measuredFromClose": "{date} の取引終了時点から",
-    "unmeasuredFlowTooltip": "これらの口座への入出金の一部は、ここでは集計できない方法で行われました。これらの口座以外の口座で決済された取引、または投資明細と通常の支出が混在する分割などです。運用成績の一部はご自身のお金であるため、運用成績は表示されません。",
     "notAvailable": "N/A",
     "intradayUnavailable": "詳細な日中価格データが利用できません",
     "intradayUnavailableTitle": "この口座の組み合わせでは日中ビューが利用できません",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "外貨取引手数料が設定されている口座はありません。口座に手数料の割合を設定すると、その外貨手数料をここで追跡できます。"
+  },
+  "sankey": {
+    "help": "入ってきたお金は中央を通って、支出、貯蓄や投資、借入の返済へと流れます。既定では、開いている当座、普通預金、現金、クレジットカード、信用枠の口座が対象で、これらの間の振替は表示されません。貯蓄口座へ移した金額を見るには、その口座を口座フィルターから外してください。クレジットカードの支払いは借入の返済にはなりません。精算される購入は、すでに支出として計上されています。",
+    "depthLabel": "詳細度",
+    "depthCategories": "カテゴリ",
+    "depthSubcategories": "サブカテゴリ",
+    "cardIncome": "収入",
+    "cardInflows": "入金振替",
+    "cardExpenses": "支出",
+    "cardOutflows": "出金振替",
+    "unknown": "不明",
+    "knownPartOnly": "換算できた部分のみを表示しています。",
+    "netRefund": "純返金: このサブカテゴリは支出より受け取った金額のほうが多くなっています。",
+    "excludedCount": "{count, plural, other {# 件の金額を換算できなかったため、上記の数値から除外しています。}}",
+    "noData": "この期間の収入、支出、振替はありません",
+    "range": "{start}～{end}",
+    "ariaLabel": "キャッシュフロー図。収入 {income}、入金振替 {inflows}、支出 {expenses}、出金振替 {outflows}、{residualLabel} {residual}。",
+    "other": "その他",
+    "noSubcategory": "（サブカテゴリなし）",
+    "linkLabel": "{source} → {target}",
+    "colFlow": "フロー",
+    "colSide": "方向",
+    "colAmount": "金額",
+    "sideIn": "入金",
+    "sideOut": "出金",
+    "sideDetail": "{parent} の内訳",
+    "pdfTitle": "キャッシュフロー サンキー",
+    "csvNodes": "フロー",
+    "csvLinks": "リンク",
+    "csvSource": "移動元",
+    "csvTarget": "移動先",
+    "csvTotal": "金額",
+    "csvKnownTotal": "換算済み金額",
+    "nodes": {
+      "hub": "収入",
+      "classSavings": "貯蓄・投資",
+      "classDebt": "借入の返済",
+      "classOtherAccounts": "その他の口座",
+      "inflowSavings": "貯蓄・投資から",
+      "inflowBorrowed": "借入",
+      "inflowOtherAccounts": "その他の口座から",
+      "uncategorizedIncome": "未分類の収入",
+      "uncategorizedExpense": "未分類の支出",
+      "residualUnspent": "未使用",
+      "residualDeficit": "残高から充当",
+      "unlinkedAccount": "（リンクされていない口座）"
+    }
   }
 }

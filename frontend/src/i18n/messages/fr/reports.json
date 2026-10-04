@@ -60,6 +60,7 @@
       "spending-anomalies": "Anomalies de dépenses",
       "weekend-weekday-spending": "Dépenses week-end vs semaine",
       "monthly-comparison": "Comparaison mensuelle",
+      "cash-flow-sankey": "Sankey des flux de trésorerie",
       "foreign-currency-fees": "Frais de transaction à l'étranger",
       "uncategorized-transactions": "Transactions non catégorisées",
       "duplicate-transactions": "Détecteur de doublons",
@@ -108,6 +109,7 @@
       "spending-anomalies": "Détectez les transactions inhabituellement importantes et les pics de dépenses qui méritent attention.",
       "weekend-weekday-spending": "Analysez vos habitudes de dépenses selon le jour de la semaine pour mieux vous connaître.",
       "monthly-comparison": "Comparez n'importe quel mois au mois précédent en termes de revenus, dépenses, valeur nette et investissements.",
+      "cash-flow-sankey": "Voyez d’où vient votre argent et où il est allé : les revenus vers les dépenses, l’épargne, les placements et les remboursements de dettes, avec ce qui reste.",
       "foreign-currency-fees": "Suivez les frais de transaction à l'étranger facturés sur les comptes qui appliquent des frais de conversion.",
       "uncategorized-transactions": "Trouvez et catégorisez les transactions auxquelles il manque une catégorie.",
       "duplicate-transactions": "Identifiez les éventuels doublons qui pourraient nécessiter une vérification ou une suppression.",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "Capital remboursé",
     "seriesInterestPaid": "Intérêts payés",
     "seriesPrincipal": "Capital",
-    "seriesInterest": "Intérêts"
+    "seriesInterest": "Intérêts",
+    "installmentAndFinal": "{installment} ; paiement final {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Plus-values, dividendes et intérêts",
@@ -882,7 +885,10 @@
     "typeLoan": "Prêt",
     "typeMortgage": "Hypothèque",
     "pdfSubtitlePaymentsSummary": "{count} paiements effectués, {interest} d'intérêts au total",
-    "pdfSubtitlePaymentsProjection": "{count} paiements effectués, {interest} d'intérêts sur la projection"
+    "pdfSubtitlePaymentsProjection": "{count} paiements effectués, {interest} d'intérêts sur la projection",
+    "nextInstallment": "Prochaine échéance",
+    "finalPayment": "Paiement final",
+    "amountDueOn": "{amount}, dû le {date}"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "Un rendement pondéré dans le temps portant uniquement sur les titres. L'argent versé ou retiré un jour donné ne le fait pas bouger, et les liquidités non investies ne font partie ni du résultat ni de ce contre quoi il est mesuré.",
     "incompleteTooltip": "Certains jours de cette période manquent d'un cours, d'un taux de change ou d'un solde de trésorerie, les chiffres qui dépendent de chaque jour ne sont donc pas affichés.",
     "measuredFromClose": "Depuis la clôture de la séance du {date}",
-    "unmeasuredFlowTooltip": "De l'argent est entré ou sorti de ces comptes d'une manière qui ne peut pas être comptabilisée ici : une opération réglée depuis un compte extérieur à ceux-ci, ou une répartition qui mélange une ligne d'investissement avec une dépense ordinaire. Le résultat de l'investissement n'est pas affiché, car une partie de celui-ci serait votre propre argent.",
     "notAvailable": "N/A",
     "intradayUnavailable": "Données de prix intraday détaillées indisponibles",
     "intradayUnavailableTitle": "Vue intraday indisponible pour cette combinaison de comptes",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Aucun compte n'a de frais de transaction à l'étranger configurés. Définissez un pourcentage de frais sur un compte pour suivre ici ses frais de transaction à l'étranger."
+  },
+  "sankey": {
+    "help": "L’argent reçu passe par le centre vers ce à quoi il a été dépensé, ce qui a été épargné ou placé et ce qui a remboursé des dettes. Par défaut, le rapport couvre vos comptes chèques, d’épargne, d’espèces, de carte de crédit et de marge de crédit ouverts, et un virement entre deux d’entre eux n’est pas affiché. Retirez un compte d’épargne du filtre de comptes pour voir ce que vous y avez transféré. Un paiement de carte de crédit n’est jamais un remboursement de dette : les achats qu’il règle sont déjà comptés comme dépenses.",
+    "depthLabel": "Niveau de détail",
+    "depthCategories": "Catégories",
+    "depthSubcategories": "Sous-catégories",
+    "cardIncome": "Revenus",
+    "cardInflows": "Virements reçus",
+    "cardExpenses": "Dépenses",
+    "cardOutflows": "Virements émis",
+    "unknown": "Inconnu",
+    "knownPartOnly": "Seule la partie convertible est dessinée.",
+    "netRefund": "Remboursement net : cette sous-catégorie a reçu plus qu’elle n’a dépensé.",
+    "excludedCount": "{count, plural, one {# montant n’a pas pu être converti et est exclu des chiffres ci-dessus.} other {# montants n’ont pas pu être convertis et sont exclus des chiffres ci-dessus.}}",
+    "noData": "Aucun revenu, dépense ni virement pour cette période",
+    "range": "{start} au {end}",
+    "ariaLabel": "Diagramme des flux de trésorerie. Revenus {income}, virements reçus {inflows}, dépenses {expenses}, virements émis {outflows}, {residualLabel} {residual}.",
+    "other": "Autres",
+    "noSubcategory": "(aucune sous-catégorie)",
+    "linkLabel": "{source} vers {target}",
+    "colFlow": "Flux",
+    "colSide": "Sens",
+    "colAmount": "Montant",
+    "sideIn": "Entrée d’argent",
+    "sideOut": "Sortie d’argent",
+    "sideDetail": "Partie de {parent}",
+    "pdfTitle": "Sankey des flux de trésorerie",
+    "csvNodes": "Flux",
+    "csvLinks": "Liens",
+    "csvSource": "De",
+    "csvTarget": "Vers",
+    "csvTotal": "Montant",
+    "csvKnownTotal": "Montant converti",
+    "nodes": {
+      "hub": "Revenus",
+      "classSavings": "Épargne et placements",
+      "classDebt": "Remboursements de dettes",
+      "classOtherAccounts": "Autres comptes",
+      "inflowSavings": "De l’épargne et des placements",
+      "inflowBorrowed": "Emprunté",
+      "inflowOtherAccounts": "D’autres comptes",
+      "uncategorizedIncome": "Revenus non catégorisés",
+      "uncategorizedExpense": "Dépenses non catégorisées",
+      "residualUnspent": "Non dépensé",
+      "residualDeficit": "Puisé dans les soldes",
+      "unlinkedAccount": "(compte non lié)"
+    }
   }
 }

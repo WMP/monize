@@ -13,8 +13,13 @@ import {
   UpdateMortgageRateData,
   UpdateMortgageRateResponse,
   DetectedLoanPayment,
+  DetectMortgageTypeData,
+  MortgageTypeDetection,
+  MortgageTypeHistoryDetection,
   SetupLoanPaymentsData,
   SetupLoanPaymentsResponse,
+  PreviewLoanPaymentSetupData,
+  PreviewLoanPaymentSetupResponse,
   AccountBalancesAsOfResponse,
   DailyBalanceTotalsResponse,
 } from '@/types/account';
@@ -284,6 +289,35 @@ export const accountsApi = {
   // Detect loan payment patterns from transaction history
   detectLoanPayments: async (id: string): Promise<DetectedLoanPayment | null> => {
     const response = await apiClient.get<DetectedLoanPayment | null>(`/accounts/${id}/detect-loan-payments`);
+    return response.data;
+  },
+
+  // Suggest a mortgage type from installments the user typed in. A
+  // suggestion: the server reads and writes nothing, so no cache is
+  // invalidated.
+  detectMortgageType: async (data: DetectMortgageTypeData): Promise<MortgageTypeDetection> => {
+    const response = await apiClient.post<MortgageTypeDetection>('/accounts/mortgage-type/detect', data);
+    return response.data;
+  },
+
+  // Suggest a mortgage type from the loan's own posted installments. Writes
+  // nothing: the account keeps its type until the user saves the edit form.
+  detectMortgageTypeFromHistory: async (id: string): Promise<MortgageTypeHistoryDetection> => {
+    const response = await apiClient.post<MortgageTypeHistoryDetection>(`/accounts/${id}/mortgage-type/detect`);
+    return response.data;
+  },
+
+  // The first installment a LINEAR or INTEREST_ONLY mortgage's payment setup
+  // would schedule, priced by the code the setup checks its payment against.
+  // Writes nothing, so no cache is invalidated.
+  previewLoanPaymentSetup: async (
+    id: string,
+    data: PreviewLoanPaymentSetupData,
+  ): Promise<PreviewLoanPaymentSetupResponse> => {
+    const response = await apiClient.post<PreviewLoanPaymentSetupResponse>(
+      `/accounts/${id}/setup-loan-payments/preview`,
+      data,
+    );
     return response.data;
   },
 

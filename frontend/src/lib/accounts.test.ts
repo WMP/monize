@@ -167,6 +167,51 @@ describe('accountsApi', () => {
     });
   });
 
+  it('previewLoanPaymentSetup posts to the setup preview and returns its answer', async () => {
+    const preview = {
+      derivesInstallment: true,
+      principalPayment: 833.3333,
+      interestPayment: 500,
+      paymentAmount: 1333.3333,
+    };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: preview });
+    const data = { paymentFrequency: 'MONTHLY', nextDueDate: '2024-01-01' };
+    await expect(accountsApi.previewLoanPaymentSetup('acc-1', data)).resolves.toEqual(preview);
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/accounts/acc-1/setup-loan-payments/preview',
+      data,
+    );
+  });
+
+  it('detectMortgageType posts the typed installments and returns the suggestion', async () => {
+    const detection = { type: 'LINEAR', confidence: 'high', reason: 'CONSTANT_PRINCIPAL' };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: detection });
+    const data = {
+      samples: [
+        { principal: 833.33, interest: 500 },
+        { principal: 833.33, interest: 498.61 },
+      ],
+      interestRate: 2,
+      paymentFrequency: 'MONTHLY' as const,
+    };
+    await expect(accountsApi.detectMortgageType(data)).resolves.toEqual(detection);
+    expect(apiClient.post).toHaveBeenCalledWith('/accounts/mortgage-type/detect', data);
+  });
+
+  it('detectMortgageTypeFromHistory posts to the account route and returns the suggestion', async () => {
+    const detection = {
+      type: 'CANADIAN_FIXED',
+      confidence: 'high',
+      reason: 'CONSTANT_INSTALLMENT_SEMI_ANNUAL',
+      quotedAnnualRate: 5.24,
+      paymentFrequency: 'MONTHLY',
+      samples: [],
+    };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: detection });
+    await expect(accountsApi.detectMortgageTypeFromHistory('acc-1')).resolves.toEqual(detection);
+    expect(apiClient.post).toHaveBeenCalledWith('/accounts/acc-1/mortgage-type/detect');
+  });
+
   it('reorderFavourites patches order', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({});
     await accountsApi.reorderFavourites(['a-1', 'a-2']);

@@ -10,6 +10,8 @@
  */
 
 import { advanceByFrequency } from "@/lib/frequency";
+import { compoundingFor } from "@/lib/mortgage-type";
+import type { MortgageType } from "@/types/account";
 import type { FrequencyType } from "@/types/scheduled-transaction";
 
 /**
@@ -140,11 +142,26 @@ export function getPeriodsPerYear(frequency: ScheduleFrequency): number {
 }
 
 /**
+ * Payments a year for a stored cadence, or null when it is not one a schedule
+ * can be projected at. The LINEAR and INTEREST_ONLY methods refuse an unknown
+ * cadence rather than take `getPeriodsPerYear`'s monthly fallback: there is no
+ * `N` and no constant principal without it (docs/specs/mortgage-types.md,
+ * section 8).
+ */
+export function periodsPerYearOf(frequency: string): number | null {
+  return Object.prototype.hasOwnProperty.call(PERIODS_PER_YEAR, frequency)
+    ? PERIODS_PER_YEAR[frequency as ScheduleFrequency]
+    : null;
+}
+
+/**
  * Periodic rate, on the convention named in docs/financial-semantics.md
- * section 9: the quoted rate is a nominal annual rate compounded at the payment
- * frequency, so the periodic rate is `annualRate / periodsPerYear` -- NOT
- * monthly compounding converted to the period. Canadian fixed-rate mortgages
- * are the one exception (semi-annual compounding, required by law).
+ * section 9, by the mortgage type's compounding trait (`compoundingFor`): the
+ * quoted rate is a nominal annual rate compounded at the payment frequency, so
+ * a `NOMINAL` type's periodic rate is `annualRate / periodsPerYear` -- NOT
+ * monthly compounding converted to the period. `SEMI_ANNUAL` (Canadian
+ * fixed-rate, required by law) converts the semi-annual rate to the payment
+ * period. A plain `LOAN` account reads as `ANNUITY` (`mortgageTypeOf`).
  *
  * Mirrors `getPeriodicRate` in
  * backend/src/accounts/mortgage-amortization.util.ts, which carries the full
@@ -153,12 +170,10 @@ export function getPeriodsPerYear(frequency: ScheduleFrequency): number {
 export function getPeriodicRate(
   annualRate: number,
   periodsPerYear: number,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  type: MortgageType,
 ): number {
   if (annualRate === 0) return 0;
-  if (isCanadian && !isVariableRate) {
-    // Canadian fixed-rate: semi-annual compounding
+  if (compoundingFor(type) === "SEMI_ANNUAL") {
     const semiAnnualRate = annualRate / 100 / 2;
     return Math.pow(1 + semiAnnualRate, 2 / periodsPerYear) - 1;
   }
@@ -167,7 +182,8 @@ export function getPeriodicRate(
 
 /**
  * Effective annual rate as a percentage, unrounded -- the rate the loan actually
- * costs over a year, compounded the way its own periodic rate is derived.
+ * costs over a year, compounded the way its own periodic rate is derived, by
+ * the type's compounding trait.
  *
  * The one frontend implementation of the "Displayed EAR" row of
  * docs/financial-semantics.md section 9, mirroring the backend's
@@ -182,10 +198,9 @@ export function getPeriodicRate(
 export function effectiveAnnualRate(
   annualRate: number,
   periodsPerYear: number,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  type: MortgageType,
 ): number {
-  if (isCanadian && !isVariableRate) {
+  if (compoundingFor(type) === "SEMI_ANNUAL") {
     // Semi-annual compounding, required by law and independent of how often the
     // mortgage is paid.
     return (Math.pow(1 + annualRate / 100 / 2, 2) - 1) * 100;
@@ -206,17 +221,10 @@ export function firstPeriodInterest(
   balance: number,
   annualRate: number,
   frequency: ScheduleFrequency,
-  isCanadian = false,
-  isVariableRate = false,
+  type: MortgageType,
 ): number {
   return (
-    balance *
-    getPeriodicRate(
-      annualRate,
-      getPeriodsPerYear(frequency),
-      isCanadian,
-      isVariableRate,
-    )
+    balance * getPeriodicRate(annualRate, getPeriodsPerYear(frequency), type)
   );
 }
 

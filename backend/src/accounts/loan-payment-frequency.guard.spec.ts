@@ -304,8 +304,7 @@ describe("paymentsToClear", () => {
       annualRate: 5,
       amortizationMonths: 300,
       paymentFrequency: "ACCELERATED_BIWEEKLY",
-      isCanadian: false,
-      isVariableRate: false,
+      mortgageType: "ANNUITY",
       startDate: new Date("2026-01-15"),
     });
     expect(result.totalPayments).toBe(0);

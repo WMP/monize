@@ -9,8 +9,22 @@ import type { OverpaymentPlan } from '@/lib/loan-schedule';
 // Mock the presentational children so this test focuses on LoanDetailView's
 // wiring (history derivation, projection gating, scenario comparison).
 vi.mock('./LoanSummaryCards', () => ({
-  LoanSummaryCards: ({ startingBalance }: { startingBalance: number }) => (
-    <div data-testid="summary">start:{startingBalance}</div>
+  LoanSummaryCards: ({
+    startingBalance,
+    currentInstallment,
+    currentInstallmentDate,
+    finalPayment,
+  }: {
+    startingBalance: number;
+    currentInstallment: number | null;
+    currentInstallmentDate?: string | null;
+    finalPayment?: { amount: number; date: string } | null;
+  }) => (
+    <div data-testid="summary">
+      start:{startingBalance} installment:{String(currentInstallment)}@
+      {String(currentInstallmentDate)} final:
+      {finalPayment ? `${finalPayment.amount}@${finalPayment.date}` : 'none'}
+    </div>
   ),
 }));
 vi.mock('./AmortizationScheduleTable', () => ({
@@ -126,5 +140,25 @@ describe('LoanDetailView', () => {
 
     expect(screen.getByTestId('comparison')).toBeInTheDocument();
     expect(screen.getByTestId('chart')).toHaveTextContent('scenario:yes');
+  });
+
+  it('hands the summary a dated installment and the bullet for an interest-only mortgage', () => {
+    renderView(
+      makeAccount({
+        accountType: 'MORTGAGE',
+        mortgageType: 'INTEREST_ONLY',
+        paymentAmount: null,
+        openingBalance: -300000,
+        currentBalance: -300000,
+        interestRate: 2,
+        paymentStartDate: '2024-01-01',
+        amortizationMonths: 360,
+        originalPrincipal: 300000,
+      }),
+    );
+    const summary = screen.getByTestId('summary');
+    expect(summary).toHaveTextContent(/installment:500@\s*\d{4}-\d{2}-\d{2}/);
+    expect(summary).toHaveTextContent('final:300500@2053-12-01');
+    expect(screen.getByTestId('simulator')).toBeInTheDocument();
   });
 });

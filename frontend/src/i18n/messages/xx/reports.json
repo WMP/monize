@@ -60,6 +60,7 @@
       "spending-anomalies": "[XX-Spending Anomalies-XX]",
       "weekend-weekday-spending": "[XX-Weekend vs Weekday Spending-XX]",
       "monthly-comparison": "[XX-Monthly Comparison-XX]",
+      "cash-flow-sankey": "[XX-Cash Flow Sankey-XX]",
       "foreign-currency-fees": "[XX-Foreign Currency Transaction Fees-XX]",
       "uncategorized-transactions": "[XX-Uncategorized Transactions-XX]",
       "duplicate-transactions": "[XX-Duplicate Transaction Finder-XX]",
@@ -108,6 +109,7 @@
       "spending-anomalies": "[XX-Detect unusually large transactions and spending spikes that need attention.-XX]",
       "weekend-weekday-spending": "[XX-Analyze your spending patterns based on day of week to understand habits.-XX]",
       "monthly-comparison": "[XX-Compare any month to the previous month across income, expenses, net worth, and investments.-XX]",
+      "cash-flow-sankey": "[XX-See where your money came from and where it went: income into spending, savings, investments and debt payments, with what was left over.-XX]",
       "foreign-currency-fees": "[XX-Track the foreign-transaction fees charged across accounts that apply a conversion fee.-XX]",
       "uncategorized-transactions": "[XX-Find and categorize transactions that are missing categories.-XX]",
       "duplicate-transactions": "[XX-Identify potential duplicate entries that may need review or deletion.-XX]",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "[XX-Principal Paid-XX]",
     "seriesInterestPaid": "[XX-Interest Paid-XX]",
     "seriesPrincipal": "[XX-Principal-XX]",
-    "seriesInterest": "[XX-Interest-XX]"
+    "seriesInterest": "[XX-Interest-XX]",
+    "installmentAndFinal": "[XX-{installment}; final payment {final}-XX]"
   },
   "dividendIncome": {
     "pdfTitle": "[XX-Gains, Dividends & Interest-XX]",
@@ -882,7 +885,10 @@
     "typeLoan": "[XX-Loan-XX]",
     "typeMortgage": "[XX-Mortgage-XX]",
     "pdfSubtitlePaymentsSummary": "[XX-{count} payments made, {interest} total interest-XX]",
-    "pdfSubtitlePaymentsProjection": "[XX-{count} payments made, {interest} interest over projection-XX]"
+    "pdfSubtitlePaymentsProjection": "[XX-{count} payments made, {interest} interest over projection-XX]",
+    "nextInstallment": "[XX-Next Installment-XX]",
+    "finalPayment": "[XX-Final Payment-XX]",
+    "amountDueOn": "[XX-{amount}, due {date}-XX]"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "[XX-A time-weighted return on the securities alone. Money paid in or taken out on a day does not move it, and uninvested cash is in neither the result nor what it is measured against.-XX]",
     "incompleteTooltip": "[XX-Some days in this window are missing a price, an exchange rate or a cash balance, so the figures that depend on every day are not shown.-XX]",
     "measuredFromClose": "[XX-Since the close of trading on {date}-XX]",
-    "unmeasuredFlowTooltip": "[XX-Money moved into or out of these accounts in a way that cannot be counted here: a trade settled from an account outside them, or a split that mixes an investment line with ordinary spending. The investment result is not shown, because part of it would be your own money.-XX]",
     "notAvailable": "[XX-N/A-XX]",
     "intradayUnavailable": "[XX-Detailed intraday pricing unavailable-XX]",
     "intradayUnavailableTitle": "[XX-Intraday view unavailable for this account mix-XX]",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "[XX-No accounts have a foreign-transaction fee configured. Set a fee percentage on an account to track its foreign currency fees here.-XX]"
+  },
+  "sankey": {
+    "help": "[XX-Money that came in flows through the middle into what it was spent on, what was saved or invested, and what paid down debt. By default the report covers your open chequing, savings, cash, credit card and line of credit accounts, and a transfer between two of them is not shown. Leave a savings account out of the account filter to see what you moved into it. A credit card payment is never a debt payment: the purchases it settles are already counted as expenses.-XX]",
+    "depthLabel": "[XX-Detail-XX]",
+    "depthCategories": "[XX-Categories-XX]",
+    "depthSubcategories": "[XX-Subcategories-XX]",
+    "cardIncome": "[XX-Income-XX]",
+    "cardInflows": "[XX-Transfers in-XX]",
+    "cardExpenses": "[XX-Expenses-XX]",
+    "cardOutflows": "[XX-Transfers out-XX]",
+    "unknown": "[XX-Unknown-XX]",
+    "knownPartOnly": "[XX-Only the part that could be converted is drawn.-XX]",
+    "netRefund": "[XX-Net refund: this subcategory took in more than it spent.-XX]",
+    "excludedCount": "[XX-{count, plural, one {# amount could not be converted and is left out of the figures above.} other {# amounts could not be converted and are left out of the figures above.}}-XX]",
+    "noData": "[XX-No income, spending or transfers in this period-XX]",
+    "range": "[XX-{start} to {end}-XX]",
+    "ariaLabel": "[XX-Cash flow diagram. Income {income}, transfers in {inflows}, expenses {expenses}, transfers out {outflows}, {residualLabel} {residual}.-XX]",
+    "other": "[XX-Other-XX]",
+    "noSubcategory": "[XX-(no subcategory)-XX]",
+    "linkLabel": "[XX-{source} to {target}-XX]",
+    "colFlow": "[XX-Flow-XX]",
+    "colSide": "[XX-Direction-XX]",
+    "colAmount": "[XX-Amount-XX]",
+    "sideIn": "[XX-Money in-XX]",
+    "sideOut": "[XX-Money out-XX]",
+    "sideDetail": "[XX-Part of {parent}-XX]",
+    "pdfTitle": "[XX-Cash Flow Sankey-XX]",
+    "csvNodes": "[XX-Flows-XX]",
+    "csvLinks": "[XX-Links-XX]",
+    "csvSource": "[XX-From-XX]",
+    "csvTarget": "[XX-To-XX]",
+    "csvTotal": "[XX-Amount-XX]",
+    "csvKnownTotal": "[XX-Converted amount-XX]",
+    "nodes": {
+      "hub": "[XX-Income-XX]",
+      "classSavings": "[XX-Savings & investments-XX]",
+      "classDebt": "[XX-Debt payments-XX]",
+      "classOtherAccounts": "[XX-Other accounts-XX]",
+      "inflowSavings": "[XX-From savings & investments-XX]",
+      "inflowBorrowed": "[XX-Borrowed-XX]",
+      "inflowOtherAccounts": "[XX-From other accounts-XX]",
+      "uncategorizedIncome": "[XX-Uncategorized income-XX]",
+      "uncategorizedExpense": "[XX-Uncategorized expenses-XX]",
+      "residualUnspent": "[XX-Unspent-XX]",
+      "residualDeficit": "[XX-Drawn from balances-XX]",
+      "unlinkedAccount": "[XX-(unlinked account)-XX]"
+    }
   }
 }

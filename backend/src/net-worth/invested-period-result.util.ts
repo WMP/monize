@@ -30,10 +30,7 @@ import {
   EMPTY_INVESTED_FLOW_DAY,
   InvestedFlowDay,
 } from "./invested-capital-flow.util";
-import {
-  PeriodResultReason,
-  UnmeasuredFlowCounts,
-} from "./portfolio-period-result.util";
+import { PeriodResultReason } from "./portfolio-period-result.util";
 
 /**
  * How `investmentReturnPercent` was arrived at, named on the wire so a later
@@ -83,8 +80,6 @@ export interface InvestedPeriodInput {
   endIndex: number;
   /** The invested part's capital and income, per day, already in the currency. */
   flowsByDay: ReadonlyMap<string, InvestedFlowDay>;
-  /** Absent means the caller counted none, not that none exist. */
-  unmeasuredFlows?: UnmeasuredFlowCounts;
 }
 
 export interface InvestedPeriodDecision {
@@ -260,17 +255,16 @@ export function investedPeriodResult(
     if (point.fxComplete === false) reasons.add("missingRatePairs");
   }
 
-  const unmeasured = input.unmeasuredFlows;
-  if ((unmeasured?.externallySettledTrades ?? 0) > 0) {
-    reasons.add("externallySettledTrade");
-  }
-  // `externalShareTransfers` is deliberately NOT read here. Such a leg is
-  // valued at the day's accepted close, the same one `IV` valued the position
-  // at, so the shares and the capital flow cancel and the P&L is exact
-  // whatever basis the row carried. A leg nothing priced is withheld above,
-  // by the day it made incomplete, naming the security rather than the
-  // movement (section 10.6).
-  if ((unmeasured?.mixedSplitParents ?? 0) > 0) reasons.add("mixedSplit");
+  // None of the uncountable-movement counts is read here. They exist for the
+  // ACCOUNT result, whose flow is drawn around cash accounts; this measure is
+  // drawn around the securities. `IV` is the positions' value and `K` and `I`
+  // are each row's own `total_amount`, wherever its cash settled -- a BUY
+  // funded from chequing is `+T` of capital against `+T` of shares, a dividend
+  // paid to a bank is `+D` of income, and an embedded split line has its own
+  // investment row. A share leg is valued at the day's accepted close, the
+  // same one `IV` valued the position at, so the two cancel; a leg nothing
+  // priced is withheld above, by the day it made incomplete, naming the
+  // security rather than the movement (sections 10.6 and 6.1).
 
   const withheld = (): InvestedPeriodDecision => ({
     ...WITHHELD,

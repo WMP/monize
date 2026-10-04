@@ -76,7 +76,10 @@
     "collapseAria": "Sembunyikan info akun",
     "showAccountNumber": "Tampilkan nomor akun",
     "hideAccountNumber": "Sembunyikan nomor akun",
-    "show": "Tampilkan info akun"
+    "show": "Tampilkan info akun",
+    "nextInstallment": "Angsuran Berikutnya",
+    "finalPayment": "Pembayaran Akhir",
+    "amountDueOn": "{amount}, jatuh tempo {date}"
   },
   "page": {
     "title": "Transaksi",

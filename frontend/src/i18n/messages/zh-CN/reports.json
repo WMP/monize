@@ -60,6 +60,7 @@
       "spending-anomalies": "支出异常",
       "weekend-weekday-spending": "周末与工作日支出",
       "monthly-comparison": "月度对比",
+      "cash-flow-sankey": "现金流桑基图",
       "foreign-currency-fees": "境外交易手续费",
       "uncategorized-transactions": "未分类交易",
       "duplicate-transactions": "重复交易查找器",
@@ -108,6 +109,7 @@
       "spending-anomalies": "检测需要关注的异常大额交易和支出峰值。",
       "weekend-weekday-spending": "按星期分析支出模式，了解消费习惯。",
       "monthly-comparison": "对比当月与上月在收入、支出、资产净值和投资方面的情况。",
+      "cash-flow-sankey": "查看资金从哪里来、到哪里去：收入流向支出、储蓄、投资和债务还款，以及剩余的部分。",
       "foreign-currency-fees": "追踪在收取换算手续费的各账户中产生的境外交易手续费。",
       "uncategorized-transactions": "查找并分类缺少分类的交易。",
       "duplicate-transactions": "识别可能需要审查或删除的潜在重复条目。",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "已还本金",
     "seriesInterestPaid": "已还利息",
     "seriesPrincipal": "本金",
-    "seriesInterest": "利息"
+    "seriesInterest": "利息",
+    "installmentAndFinal": "{installment}；最后一期 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "收益、股息与利息",
@@ -882,7 +885,10 @@
     "typeLoan": "贷款",
     "typeMortgage": "抵押贷款",
     "pdfSubtitlePaymentsSummary": "已还款 {count} 次，总利息 {interest}",
-    "pdfSubtitlePaymentsProjection": "已还款 {count} 期，预测期内利息 {interest}"
+    "pdfSubtitlePaymentsProjection": "已还款 {count} 期，预测期内利息 {interest}",
+    "nextInstallment": "下期还款",
+    "finalPayment": "最后一期还款",
+    "amountDueOn": "{amount}，到期日 {date}"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "仅针对证券的按时间加权回报率。某一天存入或取出的资金不会影响它，未投资现金既不计入结果，也不计入用于衡量它的基准。",
     "incompleteTooltip": "此时间段内有些天缺少价格、汇率或现金余额，因此依赖每一天数据的数字不会显示。",
     "measuredFromClose": "自 {date} 收盘起",
-    "unmeasuredFlowTooltip": "资金以此处无法计算的方式转入或转出这些账户：例如某笔交易通过这些账户之外的账户结算，或某个拆分将投资行与普通支出混在一起。投资结果不会显示，因为其中一部分将是您自己的资金。",
     "notAvailable": "不适用",
     "intradayUnavailable": "详细日内定价不可用",
     "intradayUnavailableTitle": "此账户组合不支持日内视图",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "没有账户配置了境外交易手续费。在账户上设置手续费百分比，即可在此追踪其外币手续费。"
+  },
+  "sankey": {
+    "help": "流入的资金经过中间，流向其被花费的去处、被储蓄或投资的部分以及用于偿还债务的部分。默认情况下，报告涵盖您未关闭的支票、储蓄、现金、信用卡和信用额度账户，这些账户之间的转账不会显示。将某个储蓄账户从账户筛选中移除，即可看到您转入其中的金额。信用卡还款从不算作债务还款：它结清的消费已计为支出。",
+    "depthLabel": "细节",
+    "depthCategories": "类别",
+    "depthSubcategories": "子类别",
+    "cardIncome": "收入",
+    "cardInflows": "转入",
+    "cardExpenses": "支出",
+    "cardOutflows": "转出",
+    "unknown": "未知",
+    "knownPartOnly": "仅绘制可以换算的部分。",
+    "netRefund": "净退款：此子类别收到的金额多于支出。",
+    "excludedCount": "{count, plural, other {# 笔金额无法换算，未计入上述数字。}}",
+    "noData": "此期间没有收入、支出或转账",
+    "range": "{start} 至 {end}",
+    "ariaLabel": "现金流图。收入 {income}，转入 {inflows}，支出 {expenses}，转出 {outflows}，{residualLabel} {residual}。",
+    "other": "其他",
+    "noSubcategory": "（无子类别）",
+    "linkLabel": "{source} → {target}",
+    "colFlow": "流向",
+    "colSide": "方向",
+    "colAmount": "金额",
+    "sideIn": "资金流入",
+    "sideOut": "资金流出",
+    "sideDetail": "属于 {parent}",
+    "pdfTitle": "现金流桑基图",
+    "csvNodes": "流向",
+    "csvLinks": "连接",
+    "csvSource": "来源",
+    "csvTarget": "去向",
+    "csvTotal": "金额",
+    "csvKnownTotal": "已换算金额",
+    "nodes": {
+      "hub": "收入",
+      "classSavings": "储蓄与投资",
+      "classDebt": "债务还款",
+      "classOtherAccounts": "其他账户",
+      "inflowSavings": "来自储蓄与投资",
+      "inflowBorrowed": "借入",
+      "inflowOtherAccounts": "来自其他账户",
+      "uncategorizedIncome": "未分类收入",
+      "uncategorizedExpense": "未分类支出",
+      "residualUnspent": "未花费",
+      "residualDeficit": "动用余额",
+      "unlinkedAccount": "（未关联账户）"
+    }
   }
 }

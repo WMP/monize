@@ -89,6 +89,7 @@
     "stackedChart": "100% 堆叠条形图",
     "lineChart": "折线图",
     "areaChart": "面积图",
+    "sankeyChart": "流向图",
     "table": "表格"
   },
   "formActions": {

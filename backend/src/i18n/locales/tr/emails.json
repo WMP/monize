@@ -23,12 +23,12 @@
     "button": "Faturaları ve Mevduatları Görüntüle"
   },
   "mortgageReminder": {
-    "subject": "Monize: Yaklaşan 1 ipotek yenileme",
-    "subjectPlural": "Monize: Yaklaşan {{ count }} ipotek yenileme",
-    "heading": "İpotek Yenileme Hatırlatması",
+    "subject": "Monize: 1 ipotek faiz dönemi yakında sona eriyor",
+    "subjectPlural": "Monize: {{ count }} ipotek faiz dönemi yakında sona eriyor",
+    "heading": "İpotek Faiz Dönemi Hatırlatması",
     "greeting": "Merhaba {{ name }},",
-    "introOne": "Vadesi yaklaşan 1 ipotekiniz var. Vade sona ermeden önce yenileme seçeneklerini görüşmek için bankanızla iletişime geçin:",
-    "introMany": "Vadesi yaklaşan {{ count }} ipoteğiniz var. Vade sona ermeden önce yenileme seçeneklerini görüşmek için bankanızla iletişime geçin:",
+    "introOne": "Mevcut faiz dönemi yakında sona erecek 1 ipotekiniz var. Sona ermeden önce sonraki faiz oranını veya yenilemeyi ayarlamak için bankanızla iletişime geçin:",
+    "introMany": "Mevcut faiz dönemi yakında sona erecek {{ count }} ipoteğiniz var. Her biri sona ermeden önce sonraki faiz oranını veya yenilemeyi ayarlamak için bankanızla iletişime geçin:",
     "colMortgage": "İpotek",
     "colTermEndDate": "Vade Bitiş Tarihi",
     "colTimeRemaining": "Kalan Süre",

@@ -5,6 +5,7 @@ import { Account } from '@/types/account';
 
 let capturedOnSubmit: ((data: any) => Promise<void>) | null = null;
 let capturedInitialValues: unknown;
+let capturedPreselectedMortgageType: string | undefined;
 
 // Stand-in for the dynamically loaded AccountForm: captures the onSubmit so the
 // test can drive the modal's submit logic directly.
@@ -12,6 +13,7 @@ vi.mock('next/dynamic', () => ({
   default: () => (props: any) => {
     capturedOnSubmit = props.onSubmit ?? null;
     capturedInitialValues = props.initialValues;
+    capturedPreselectedMortgageType = props.preselectedMortgageType;
     return <div data-testid="account-form" />;
   },
 }));
@@ -51,6 +53,7 @@ const buildFormModal = (overrides: Partial<any> = {}) => ({
 describe('AccountFormModal', () => {
   beforeEach(() => {
     capturedOnSubmit = null;
+    capturedPreselectedMortgageType = undefined;
     vi.clearAllMocks();
   });
 
@@ -72,6 +75,17 @@ describe('AccountFormModal', () => {
       />,
     );
     expect(screen.getByText('Edit Account')).toBeInTheDocument();
+  });
+
+  it('hands a detected mortgage type to the form', () => {
+    render(
+      <AccountFormModal
+        formModal={buildFormModal({ editingItem: { id: 'a-1' } as Account, isEditing: true })}
+        onSaved={vi.fn()}
+        preselectedMortgageType="LINEAR"
+      />,
+    );
+    expect(capturedPreselectedMortgageType).toBe('LINEAR');
   });
 
   it('creates an account and notifies the caller on submit', async () => {

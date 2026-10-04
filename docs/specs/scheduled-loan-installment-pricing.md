@@ -23,16 +23,41 @@ debt(d)   = max(0, -(opening_balance + SUM(amount)
 rate(d)   = latest loan_rate_changes row with effective_date <= d,
               else accounts.interest_rate
 interest  = roundMoney(debt(d) * periodicRate(rate(d)))
-principal = payment - interest, through allocateLoanPayment's waterfall
+principal = by the mortgage type's amortization method (below),
+              through allocateLoanPayment's waterfall
 ```
+
+The principal rule is the account's amortization method,
+`amortizationMethodFor(mortgageTypeOf(account))` (`docs/specs/mortgage-types.md`
+table 4.3, INV-LOAN-007); a `LOAN` account is an annuity:
+
+| Method | `principal` | `payment` |
+| --- | --- | --- |
+| ANNUITY (`LOAN`, `ANNUITY`, `CANADIAN_FIXED`) | `payment - interest` | the template's amount, grown back toward `accounts.payment_amount` when a template is advanced |
+| LINEAR, `SHORTEN_TERM` | `min(c, debt(d))`, `c = roundMoney(P / N)`; the whole `debt(d)` on the final installment when `debt(d) - c <= roundMoney(N * 0.005)` | derived: principal + interest + any extra principal line |
+| LINEAR, `LOWER_INSTALLMENT` | `roundMoney(debt(d) / remaining(d))`; the whole `debt(d)` when `remaining(d) <= 1` | derived, as above |
+| INTEREST_ONLY | 0; the whole `debt(d)` (the bullet) when `remaining(d) <= 1` | derived, as above |
+
+`remaining(d) = N - k(d) + 1`, where `k(d)` counts the calendar due dates on or
+before `d` from `payment_start_date` through `calculateNextDueDate`: the third
+input dated at `d`, and a count from the calendar, never of postings. For the
+derived methods `accounts.payment_amount` is null and is not read. The rule is
+`methodPrincipal`, called through `nonAnnuityInstallment`
+(`backend/src/accounts/mortgage-installment.util.ts`); a template missing
+`amortization_months`, `payment_start_date` or a known `payment_frequency`
+declines, as an unmanaged shape does. A posting still never grows the parent
+(section 3); `docs/specs/mortgage-types.md` section 5.2 says how a derived
+installment that rose after a rate change reaches the template.
 
 The ledger expression is the canonical as-of balance
 (`docs/specs/account-balances-as-of.md` section 3, INV-BALANCE-001's source),
 with the installment's due date in place of today. The periodic-rate rules are
-unchanged: nominal annual rate over periods per year for loans and
-non-Canadian mortgages, the semi-annual-compounding effective rate for a
-Canadian fixed-rate mortgage, `periodsPerYearForStoredFrequency` for the
-count in both spellings of the frequency column.
+unchanged: nominal annual rate over periods per year for loans and every
+mortgage type but one, the semi-annual-compounding effective rate for a
+`CANADIAN_FIXED` mortgage, `periodsPerYearForStoredFrequency` for the count in
+both spellings of the frequency column. A mortgage's rate is
+`getPeriodicRate(annualRate, periodsPerYear, mortgageTypeOf(account))`, keyed on
+the type's compounding trait (`docs/specs/mortgage-types.md` table 4.1).
 
 Both inputs are dated at `d`, for the same reason: a payment or a rate change
 recorded for next month belongs to next month's installment.
@@ -250,7 +275,7 @@ The recurrence gives `100.01 - 399.99 * 0.005 = 98.0101`; the invariant gives
   (stale template repriced, idempotence, decline on unmanaged shape, a
   `retired` decision on retired debt -- `LoanPostingDecision` keeps it apart
   from `not-applicable`, which posts the persisted amounts, so the two are
-  asserted separately -- extra-principal line); Canadian and non-Canadian mortgage
+  asserted separately -- extra-principal line); `CANADIAN_FIXED` and `ANNUITY` mortgage
   rates unchanged; LINE_OF_CREDIT still supported; final-payment and
   extra-principal clamps unchanged; anchor endpoint shapes.
 - Unit (`scheduled-transactions.service.spec.ts`): `post()` writes the

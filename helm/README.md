@@ -125,8 +125,7 @@ the write proceeds under the client's own approval prompt.
 | `global.namespace` | Namespace for all resources | `monize` |
 | `global.domain` | Application domain | `yourdomain.com` |
 | `global.hostname` | Full hostname override | `monize.<domain>` |
-| `global.timezone` | Container timezone | `America/Toronto` |
-| `global.priorityClassName` | Pod priority class | `low-priority` |
+| `global.timezone` | Container timezone | `""` |
 
 ### Namespace
 
@@ -158,7 +157,14 @@ the write proceeds under the client's own approval prompt.
 | `backend.securityContext` | Container security context | Restricted (non-root, read-only fs) |
 | `backend.livenessProbe` | Liveness probe config | `/api/v1/health/live` |
 | `backend.readinessProbe` | Readiness probe config | `/api/v1/health/ready` |
-| `backend.env.*` | Backend environment variables | See values.yaml |
+| `backend.app.*` | Backend application settings (`NODE_ENV`, `PUBLIC_APP_URL`) | See values.yaml |
+| `backend.database.*` | Database connection settings | See values.yaml |
+| `backend.rls.*` | Row-Level Security settings | See values.yaml |
+| `backend.auth.*` | Authentication settings | See values.yaml |
+| `backend.oidc.*` | OIDC settings | See values.yaml |
+| `backend.smtp.*` | SMTP / email settings | See values.yaml |
+| `backend.extraEnv` | Additional environment variables for the backend container | `[]` |
+| `backend.extraEnvFrom` | Additional envFrom references (secretRef, configMapRef) for the backend container | `[]` |
 | `backend.mnyImport.MNY_IMPORT_LIMIT_MB` | Largest Microsoft Money (.mny) file the import wizard accepts | `300` |
 | `backend.backupLimits.exportBuffer` | JSON a buffered export may accumulate | derived from the memory limit |
 | `backend.backupLimits.restoreExpanded` | Decompressed size a restore payload may reach | derived from the memory limit |
@@ -447,7 +453,9 @@ Notes on sizing and behaviour:
 | `frontend.securityContext` | Container security context | Restricted (non-root, read-only fs) |
 | `frontend.livenessProbe` | Liveness probe config | `/api/v1/health/live` |
 | `frontend.readinessProbe` | Readiness probe config | `/api/v1/health/ready` |
-| `frontend.env.*` | Frontend environment variables | See values.yaml |
+| `frontend.app.*` | Frontend application settings (`NODE_ENV`, `INTERNAL_API_URL`, `PUBLIC_APP_URL`) | See values.yaml |
+| `frontend.extraEnv` | Additional environment variables for the frontend container | `[]` |
+| `frontend.extraEnvFrom` | Additional envFrom references (secretRef, configMapRef) for the frontend container | `[]` |
 
 ### Horizontal scaling
 
@@ -638,7 +646,7 @@ applies the role's DML grants (idempotently, on every boot).
 ## Security
 
 All containers enforce the `restricted` Pod Security Standard:
-- Run as non-root user (UID 1000)
+- Run as non-root user (UID 1001)
 - Read-only root filesystem
 - All Linux capabilities dropped
 - RuntimeDefault seccomp profile

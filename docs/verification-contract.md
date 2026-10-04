@@ -99,12 +99,19 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-PORTCHART-001 a portfolio chart opens and closes on its figures' closes | **required** | -- | supporting | -- | -- | -- | -- | optional |
 | INV-REPORT-001 report account scope | supporting | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-REPORT-002 chart reduction | **required** | **required** | -- | -- | -- | -- | -- | -- |
+| INV-REPORT-003 a transfer leg is a named flow | **required** | -- | required | -- | -- | -- | -- | optional |
+| INV-SANKEY-001 the Sankey closes | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-002 a leg counts once, by scope and class | required | -- | **required** | -- | -- | -- | -- | -- |
+| INV-SANKEY-003 linkage and VOID out of every branch | supporting | **required** | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-004 a Sankey total is complete or null | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-005 the Other merge is drawing only | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-001 overpayment cadence | **required** | -- | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-002 no truncated total | **required** | **required** (not yet met) | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-003 compounding convention | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-004 residual final payment | **required** | -- | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-005 first payment is payment 1 | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-006 dated installment pricing | **required** | **required** | required | -- | -- | -- | -- | optional |
+| INV-LOAN-007 one method per mortgage type | **required** | **required** | required | -- | -- | -- | -- | optional |
 | INV-LOAN-HISTORY-001 ledger-backed loan interest | **required** | required | -- | -- | -- | -- | -- | optional |
 | INV-OCCURRENCE-001 one effect | supporting | -- | required | required | **required** | required | -- | required |
 | INV-OCCURRENCE-002 override price | required | -- | -- | -- | -- | -- | -- | required |

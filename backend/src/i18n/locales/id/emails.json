@@ -23,12 +23,12 @@
     "button": "Lihat Tagihan &amp; Setoran"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 perpanjangan hipotek yang akan datang",
-    "subjectPlural": "Monize: {{ count }} perpanjangan hipotek yang akan datang",
-    "heading": "Pengingat Perpanjangan Hipotek",
+    "subject": "Monize: 1 jangka waktu suku bunga hipotek segera berakhir",
+    "subjectPlural": "Monize: {{ count }} jangka waktu suku bunga hipotek segera berakhir",
+    "heading": "Pengingat Jangka Waktu Suku Bunga Hipotek",
     "greeting": "Hai {{ name }},",
-    "introOne": "Anda memiliki 1 hipotek dengan perpanjangan jangka yang akan datang. Hubungi pemberi pinjaman Anda untuk mendiskusikan opsi perpanjangan sebelum jangka berakhir:",
-    "introMany": "Anda memiliki {{ count }} hipotek dengan perpanjangan jangka yang akan datang. Hubungi pemberi pinjaman Anda untuk mendiskusikan opsi perpanjangan sebelum jangka berakhir:",
+    "introOne": "Anda memiliki 1 hipotek yang jangka waktu suku bunganya saat ini segera berakhir. Hubungi pemberi pinjaman Anda sebelum berakhir untuk mengatur suku bunga berikutnya atau perpanjangan:",
+    "introMany": "Anda memiliki {{ count }} hipotek yang jangka waktu suku bunganya saat ini segera berakhir. Hubungi pemberi pinjaman Anda sebelum masing-masing berakhir untuk mengatur suku bunga berikutnya atau perpanjangan:",
     "colMortgage": "Hipotek",
     "colTermEndDate": "Tanggal Akhir Jangka",
     "colTimeRemaining": "Waktu Tersisa",

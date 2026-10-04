@@ -88,6 +88,12 @@ Mechanism   The transfer-flow subquery is emitted only when tagKey is present
 Status      enforced (once this feature ships)
 ```
 
+**Amended (Cash Flow Sankey).** The named-flow model is shared: a "named flow"
+is a tag-key bucket's tagged inflows/outflows **or** a Cash Flow Sankey
+destination class (`docs/future-plans/sankey-cash-flow.md` section 5). The
+statement that a transfer never enters income, expenses or net is unchanged.
+The catalog entry is `docs/system-invariants.md` INV-REPORT-003.
+
 ## 3. Tagged transfer flows (Income vs Expenses / Cash Flow only)
 
 Only the income/expense reports carry a transfer-flow figure; the

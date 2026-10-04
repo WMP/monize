@@ -89,6 +89,7 @@
     "stackedChart": "100% 積み上げ棒グラフ",
     "lineChart": "折れ線グラフ",
     "areaChart": "面グラフ",
+    "sankeyChart": "フロー図",
     "table": "テーブル"
   },
   "formActions": {

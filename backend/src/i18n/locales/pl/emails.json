@@ -23,12 +23,12 @@
     "button": "Zobacz rachunki &amp; wpłaty"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 nadchodzące odnowienie kredytu hipotecznego",
-    "subjectPlural": "Monize: {{ count }} nadchodzących odnowień kredytów hipotecznych",
-    "heading": "Przypomnienie o odnowieniu kredytu hipotecznego",
+    "subject": "Monize: 1 okres oprocentowania kredytu hipotecznego wkrótce się kończy",
+    "subjectPlural": "Monize: liczba kończących się wkrótce okresów oprocentowania kredytów hipotecznych: {{ count }}",
+    "heading": "Przypomnienie o końcu okresu oprocentowania kredytu hipotecznego",
     "greeting": "Cześć {{ name }},",
-    "introOne": "Masz 1 kredyt hipoteczny z nadchodzącym odnowieniem okresu. Skontaktuj się z pożyczkodawcą, aby omówić opcje odnowienia przed końcem okresu:",
-    "introMany": "Masz {{ count }} kredytów hipotecznych z nadchodzącym odnowieniem okresu. Skontaktuj się z pożyczkodawcą, aby omówić opcje odnowienia przed końcem okresu:",
+    "introOne": "Masz 1 kredyt hipoteczny, którego obecny okres oprocentowania wkrótce się kończy. Skontaktuj się z pożyczkodawcą przed jego końcem, aby ustalić kolejne oprocentowanie lub odnowienie:",
+    "introMany": "Liczba kredytów hipotecznych, których obecny okres oprocentowania wkrótce się kończy: {{ count }}. Skontaktuj się z pożyczkodawcą przed końcem każdego z nich, aby ustalić kolejne oprocentowanie lub odnowienie:",
     "colMortgage": "Kredyt hipoteczny",
     "colTermEndDate": "Data zakończenia okresu",
     "colTimeRemaining": "Pozostały czas",

@@ -30,7 +30,6 @@ import {
   relabelOpeningPoint,
 } from '@/components/investments/portfolio-change-baseline';
 import {
-  hasUnmeasuredFlow,
   periodResultUnknownReason,
 } from '@/components/investments/portfolio-period-result';
 import { investedValue } from '@/lib/invested-value';
@@ -331,15 +330,6 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
                   income: breakdownText(periodResult.investmentIncome ?? null),
                 })}
               />
-              {/* Two movements the server could not count as a flow; the
-                  marker's generic copy would leave the reader nowhere to go. */}
-              {hasUnmeasuredFlow(periodResult.investedReasons ?? []) && (
-                <InfoTooltip
-                  placement="top"
-                  align="right"
-                  text={t('portfolioValue.unmeasuredFlowTooltip')}
-                />
-              )}
             </span>
           )}
         </div>

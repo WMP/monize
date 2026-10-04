@@ -23,12 +23,12 @@
     "button": "[XX-View Bills &amp; Deposits-XX]"
   },
   "mortgageReminder": {
-    "subject": "[XX-Monize: 1 upcoming mortgage renewal-XX]",
-    "subjectPlural": "[XX-Monize: {{ count }} upcoming mortgage renewals-XX]",
-    "heading": "[XX-Mortgage Renewal Reminder-XX]",
+    "subject": "[XX-Monize: 1 mortgage rate term ending soon-XX]",
+    "subjectPlural": "[XX-Monize: {{ count }} mortgage rate terms ending soon-XX]",
+    "heading": "[XX-Mortgage Rate Term Reminder-XX]",
     "greeting": "[XX-Hi {{ name }},-XX]",
-    "introOne": "[XX-You have 1 mortgage with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:-XX]",
-    "introMany": "[XX-You have {{ count }} mortgages with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:-XX]",
+    "introOne": "[XX-You have 1 mortgage whose current rate term ends soon. Contact your lender before it ends to arrange your next rate or renewal:-XX]",
+    "introMany": "[XX-You have {{ count }} mortgages whose current rate term ends soon. Contact your lender before each one ends to arrange the next rate or renewal:-XX]",
     "colMortgage": "[XX-Mortgage-XX]",
     "colTermEndDate": "[XX-Term End Date-XX]",
     "colTimeRemaining": "[XX-Time Remaining-XX]",

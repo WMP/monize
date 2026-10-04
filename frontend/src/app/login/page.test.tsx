@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import LoginPage from './page';
 import toast from 'react-hot-toast';
@@ -22,10 +22,16 @@ vi.mock('@/lib/auth', () => ({
 
 // Mock the auth store
 const mockLogin = vi.fn();
+const authState: {
+  login: typeof mockLogin;
+  isAuthenticated: boolean;
+  _hasHydrated: boolean;
+  user: Record<string, unknown> | null;
+} = { login: mockLogin, isAuthenticated: false, _hasHydrated: true, user: null };
 vi.mock('@/store/authStore', () => ({
-  useAuthStore: vi.fn(() => ({
-    login: mockLogin,
-  })),
+  useAuthStore: vi.fn((selector?: (s: typeof authState) => unknown) =>
+    selector ? selector(authState) : authState,
+  ),
 }));
 
 // Mock the logger
@@ -65,11 +71,12 @@ vi.mock('@/components/auth/TwoFactorVerify', () => ({
 import { authApi } from '@/lib/auth';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 let mockReturnTo: string | null = null;
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
-    replace: vi.fn(),
+    replace: mockReplace,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
@@ -84,6 +91,9 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
     mockLogin.mockClear();
     mockReturnTo = null;
+    authState.isAuthenticated = false;
+    authState._hasHydrated = true;
+    authState.user = null;
     twoFactorUser.mustChangePassword = false;
     twoFactorDetails = { usedBackupCode: false, backupCodesRemaining: null };
     (authApi.getAuthMethods as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -724,6 +734,90 @@ describe('LoginPage', () => {
         '/api/v1/oauth-consent/abc?x=1',
       );
       sessionStorage.removeItem('postLoginReturnTo');
+    });
+  });
+
+  describe('a session restored on /login', () => {
+    const originalLocation = window.location;
+    const restoredUser = {
+      id: 'u1', email: 'test@example.com', firstName: 'Test', lastName: 'User',
+      role: 'user', hasPassword: true, mustChangePassword: false,
+    };
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    function restoreSession(overrides: Partial<typeof restoredUser> = {}) {
+      authState.isAuthenticated = true;
+      authState._hasHydrated = true;
+      authState.user = { ...restoredUser, ...overrides };
+    }
+
+    it('leaves for the dashboard without showing the form', async () => {
+      restoreSession();
+      render(<LoginPage />);
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'));
+      expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    });
+
+    it('leaves for change-password when the password must change', async () => {
+      restoreSession({ mustChangePassword: true });
+      mockReturnTo = '/bills';
+      render(<LoginPage />);
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/change-password'));
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard');
+    });
+
+    it('leaves for a safe returnTo with a full-page navigation', async () => {
+      const replace = vi.fn();
+      Object.defineProperty(window, 'location', {
+        value: { ...originalLocation, replace },
+        writable: true,
+        configurable: true,
+      });
+      restoreSession();
+      mockReturnTo = '/api/v1/oauth-consent/abc?x=1';
+      render(<LoginPage />);
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/api/v1/oauth-consent/abc?x=1'));
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('ignores an unsafe returnTo and leaves for the dashboard', async () => {
+      restoreSession();
+      mockReturnTo = '//evil.example';
+      render(<LoginPage />);
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'));
+    });
+
+    it('holds the form back and does not redirect while the profile is loading', async () => {
+      authState.isAuthenticated = true;
+      authState._hasHydrated = false;
+      render(<LoginPage />);
+      await waitFor(() => expect(authApi.getAuthMethods).toHaveBeenCalled());
+      await act(async () => {});
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('shows the form when hydrated without a profile (backend unreachable)', async () => {
+      authState.isAuthenticated = true;
+      authState._hasHydrated = true;
+      authState.user = null;
+      render(<LoginPage />);
+      await waitFor(() => expect(screen.getByLabelText(/email/i)).toBeInTheDocument());
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('shows the form and does not redirect when signed out', async () => {
+      render(<LoginPage />);
+      await waitFor(() => expect(screen.getByLabelText(/email/i)).toBeInTheDocument());
+      expect(mockReplace).not.toHaveBeenCalled();
     });
   });
 });

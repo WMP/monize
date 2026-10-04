@@ -76,7 +76,10 @@
     "collapseAria": "खाते की जानकारी छुपाएं",
     "showAccountNumber": "खाता संख्या दिखाएं",
     "hideAccountNumber": "खाता संख्या छुपाएं",
-    "show": "खाते की जानकारी दिखाएं"
+    "show": "खाते की जानकारी दिखाएं",
+    "nextInstallment": "अगली किस्त",
+    "finalPayment": "अंतिम भुगतान",
+    "amountDueOn": "{amount}, देय {date}"
   },
   "page": {
     "title": "लेन-देन",

@@ -89,6 +89,7 @@
     "stackedChart": "%100 Yığılmış Çubuk",
     "lineChart": "Çizgi Grafik",
     "areaChart": "Alan Grafik",
+    "sankeyChart": "Akış Diyagramı",
     "table": "Tablo"
   },
   "formActions": {

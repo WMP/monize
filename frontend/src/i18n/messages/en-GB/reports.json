@@ -65,5 +65,11 @@
   "securityPerformance": {
     "annualizedReturn": "Annualised Return",
     "pdfAnnualizedReturn": "Annualised Return"
+  },
+  "sankey": {
+    "nodes": {
+      "uncategorizedIncome": "Uncategorised income",
+      "uncategorizedExpense": "Uncategorised expenses"
+    }
   }
 }

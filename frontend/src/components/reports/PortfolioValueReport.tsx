@@ -112,7 +112,6 @@ import {
   sampledTickLabel,
 } from '@/components/investments/portfolio-chart-utils';
 import {
-  hasUnmeasuredFlow,
   periodResultUnknownReason,
 } from '@/components/investments/portfolio-period-result';
 import {
@@ -1279,15 +1278,6 @@ export function PortfolioValueReport() {
           <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
             {t('portfolioValue.investmentResult')}
             <InfoTooltip placement="top" text={t('portfolioValue.investmentResultTooltip')} />
-            {/* A withheld figure names its own cause: these two are movements
-                the server could not count as a flow, so the marker's generic
-                copy would leave the reader with nowhere to go. */}
-            {hasUnmeasuredFlow(periodResult?.investedReasons ?? []) && (
-              <InfoTooltip
-                placement="top"
-                text={t('portfolioValue.unmeasuredFlowTooltip')}
-              />
-            )}
           </div>
           <div className={`text-xl font-bold ${investmentResult === null ? '' : gainLossColor(investmentResult)}`}>
             {investmentResult === null ? (

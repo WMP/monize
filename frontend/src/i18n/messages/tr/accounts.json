@@ -248,10 +248,8 @@
     "payeeLender": "Alacaklı / Borç Veren",
     "selectOrCreatePayee": "Alacaklı seçin veya oluşturun...",
     "mortgageDetails": "İpotek Ayrıntıları",
-    "canadianMortgage": "Kanada İpoteği (yarı yıllık bileşik faiz)",
-    "variableRate": "Değişken Faiz",
     "amortizationMonths": "Amortisman (ay)",
-    "termMonths": "Vade (ay)",
+    "termMonths": "Sabit Faiz Vadesi (ay)",
     "autoPost": "Vade geldiğinde işlemleri otomatik olarak kaydet",
     "skip": "Atla",
     "setUpPayments": "Ödemeleri Ayarla",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "{account} için zamanlanmış ödemeler ayarlandı"
-    }
+    },
+    "firstInstallment": "İlk Taksit",
+    "firstInstallmentHelp": "Bu konut kredisinin sabit bir ödemesi yok: her taksit bakiye, faiz oranı ve amortisman süresinden hesaplanır. Bu, ek anapara dahil {date} vadeli taksittir.",
+    "firstInstallmentPending": "İlk taksiti hesaplamak için sonraki ödeme tarihini girin.",
+    "firstInstallmentCalculating": "İlk taksit hesaplanıyor...",
+    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin."
   },
   "mortgageFields": {
     "title": "İpotek Ayrıntıları",
-    "canadianMortgage": "Kanada İpoteği",
-    "canadianMortgageDesc": "Sabit faiz oranları için yarı yıllık bileşik faiz kullanır (Kanada'da yasal zorunluluk)",
-    "variableRate": "Değişken Faiz",
-    "variableRateDesc": "Faiz oranı vade süresince değişebilir (aylık bileşik faiz kullanır)",
-    "variableRateLoanDetailsLink": "Oran değişikliklerini <link>Kredi Ayrıntıları</link>'nda kaydedin.",
-    "termLength": "Vade Süresi",
-    "termLengthNoTerm": "Vade yoksa 0 yıl ve 0 ay bırakın.",
+    "type": {
+      "label": "İpotek Türü",
+      "ANNUITY": "Eşit Taksitli (Anüite)",
+      "CANADIAN_FIXED": "Kanada Sabit Faiz",
+      "LINEAR": "Eşit Anaparalı (Doğrusal)",
+      "INTEREST_ONLY": "Yalnızca Faiz",
+      "help": {
+        "ANNUITY": "Toplam ödemeniz her ay aynıdır. Değişken faizli bir ipotek için de bunu seçin.",
+        "CANADIAN_FIXED": "Kanada sabit faizli sözleşmesi; faiz yılda iki kez bileşik hesaplanır.",
+        "LINEAR": "Anapara kısmı her ay aynıdır ve toplam ödeme azalır.",
+        "INTEREST_ONLY": "Yalnızca faiz ödersiniz ve bakiye değişmez."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Oran değişikliklerini <link>Kredi Ayrıntıları</link>'nda kaydedin.",
+    "termLength": "Sabit Faiz Vadesi",
+    "termLengthHelp": "Faiz oranınızın veya sözleşme vadenizin ne kadar sürdüğü, örneğin 5 yıllık sabit faiz. Monize bitmeden önce size hatırlatabilir. Vade yoksa 0 yıl ve 0 ay bırakın.",
     "amortizationPeriod": "Amortisman Süresi (zorunlu)",
     "years": "Yıl",
     "months": "Ay",
@@ -333,6 +345,68 @@
       "memoLabel": "Fazla ödeme not metni",
       "memoPlaceholder": "örn. fazla ödeme",
       "memoHelp": "Ödemenin notu, kaynak işleminin notu veya bir bölme notu ile büyük/küçük harfe duyarsız alt dize eşleşmesi."
+    },
+    "prepaymentMode": {
+      "label": "Ara Ödemenin Etkisi",
+      "SHORTEN_TERM": "Vadeyi kısaltır (her ay aynı anapara)",
+      "LOWER_INSTALLMENT": "Taksiti düşürür (aynı bitiş tarihi)",
+      "help": "Kredi veren kurumunuza danışın. Ara ödemeden sonra ekstredeki anapara kısmı değişmediyse vade kısaltılmıştır."
+    },
+    "previewFirstInstallment": "İlk Taksit:",
+    "detect": {
+      "toggle": "Emin değil misiniz? Birkaç taksit girin",
+      "title": "İpotek türünüzü bulun",
+      "intro": "Bir ekstreden art arda gelen iki veya üç taksiti, en eskisinden başlayarak kopyalayın. Bakiye isteğe bağlıdır: bakiye ve faiz oranıyla Monize, faizin yılda iki kez bileşik hesaplanıp hesaplanmadığını anlayabilir.",
+      "installment": "Taksit {number}",
+      "principal": "Anapara",
+      "interest": "Faiz",
+      "balance": "Önceki bakiye (isteğe bağlı)",
+      "rowIncomplete": "Hem anaparayı hem faizi girin ya da satırı boş bırakın.",
+      "rate": "Yukarıda girilen faiz oranıyla karşılaştırıldı: {rate}.",
+      "noRate": "Yukarıda faiz oranı girilmediği için bileşik faiz kontrol edilemiyor.",
+      "needsFrequency": "Önce aşağıdan ödeme sıklığını seçin: taksitler bu sıklıkla okunur.",
+      "submit": "Tür Öner",
+      "close": "Kapat",
+      "suggested": "Önerilen tür: {type}",
+      "noSuggestion": "Tür önerilmedi.",
+      "lowConfidence": "Düşük güven: kullanmadan önce bunu sözleşmenizle karşılaştırın veya kredi veren kurumunuza danışın.",
+      "use": "Bu Türü Kullan",
+      "failed": "İstek başarısız olduğu için taksitler kontrol edilemedi. Tekrar deneyin.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Karşılaştırma için art arda en az iki taksit gerekir.",
+        "INVALID_SAMPLE": "Bir taksitte negatif veya okunamayan bir tutar var.",
+        "NO_PAYMENT": "Bu taksitler anapara ödemiyor ve faiz içermiyor.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "Anapara ve toplam her taksitte aynı; bu hem eşit anaparalı hem de eşit taksitli ipoteğe uyar. Birbirinden daha uzak taksitleri deneyin veya sözleşmenizi kontrol edin.",
+        "ACCELERATED_FREQUENCY": "Bu taksitler eşit anaparalı veya yalnızca faizli görünüyor; hızlandırılmış bir ödeme sıklığında bu mümkün değildir. Ödeme sıklığını kontrol edin.",
+        "NO_RULE_FITS": "Bu taksitlerde ne anapara ne de toplam sabit kalıyor. Faiz oranı aralarında değiştiyse tek bir faiz dönemine ait taksitleri kullanın.",
+        "ZERO_PRINCIPAL": "Anapara ödenmediği için bakiye değişmiyor.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Anapara ödenmiyor, ancak faiz, belirtilen oranın bakiyeye uygulanmasıyla uyuşmuyor. Oranı kontrol edin.",
+        "CONSTANT_PRINCIPAL": "Anapara kısmı her seferinde aynı ve toplam azalıyor.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "Anapara kısmı her seferinde aynı, ancak faiz, belirtilen oranın bakiyeye uygulanmasıyla uyuşmuyor. Oranı kontrol edin.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "Toplam her seferinde aynı ve faiz, yılda iki kez bileşik hesaplanan belirtilen oranla uyuşuyor.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "Toplam her seferinde aynı ve faiz, yılda iki kez bileşik hesaplama olmadan belirtilen oranla uyuşuyor.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "Toplam her seferinde aynı. Her taksitten önceki bakiye ve faiz oranı olmadan yılda iki kez bileşik hesaplama kontrol edilemedi.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "Toplam her seferinde aynı, ancak bakiye yılda iki kez bileşik hesaplamayı ayırt etmek için çok küçük. Kanada sabit faizli bir sözleşme bunu koşullarında belirtir.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "Toplam her seferinde aynı, ancak faiz belirtilen oranda iki yöntemden hiçbiriyle uyuşmuyor. Faiz günlük işletiliyor olabilir; oranı kontrol edin."
+      },
+      "history": {
+        "action": "İpotek Türünü Algıla",
+        "title": "Ödemelerinizden ipotek türü",
+        "intro": "Tek bir faiz oranındaki en son kaydedilmiş taksitlerden okunur. Hesabı kaydedene kadar hiçbir şey değişmez.",
+        "current": "Mevcut tür: {type}",
+        "alreadySet": "Bu ipotek zaten önerilen türe sahip.",
+        "rate": "Geçerli faiz oranı: {rate}",
+        "noRate": "Bu tarihler için kayıtlı faiz oranı yok, bu nedenle bileşik faiz kontrol edilmedi.",
+        "noSamples": "Hem anapara hem faiz kısmı olan kaydedilmiş bir taksit bulunamadı. Bunu kullanmak için ödemelerinizi anapara ve faiz olarak bölünmüş şekilde kaydedin.",
+        "colDate": "Tarih",
+        "colPrincipal": "Anapara",
+        "colInterest": "Faiz",
+        "colBalance": "Önceki bakiye",
+        "balanceUnknown": "Bilinmiyor",
+        "failed": "İstek başarısız olduğu için ödeme geçmişi okunamadı. Tekrar deneyin.",
+        "cancel": "İptal",
+        "use": "Hesabı Bu Türle Düzenle"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "Ödeme sıklığı zorunludur",
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
-    "amortizationRequired": "Amortisman süresi zorunludur"
+    "amortizationRequired": "Amortisman süresi zorunludur",
+    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun."
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Tah. Kalan Faiz",
       "notSet": "Ayarlanmadı",
       "notAvailable": "Yok",
-      "paidOff": "Kapandı"
+      "paidOff": "Kapandı",
+      "nextInstallment": "Sonraki Taksit",
+      "dueOn": "Vade {date}",
+      "finalPayment": "Son Ödeme",
+      "nextInstallmentDue": "Sonraki Taksit (vade {date})",
+      "finalPaymentDue": "Son Ödeme (vade {date})"
     },
     "schedule": {
       "title": "Ödeme Planı",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Bu kredinin ödenmemiş bakiyesi yok, bu yüzden amorti edilecek bir şey kalmadı.",
         "reasonNoFrequency": "Bu kredi için ödeme sıklığı ayarlanmamış. Hesap ayarlarından ekleyin.",
         "reasonNoRate": "Bu kredi için kayıtlı bir faiz oranı yok. Faiz oranını hesap ayarlarından belirleyin veya bugün ya da daha önceki tarihli bir oran değişikliği kaydedin. Aşağıdaki planda satır başına gösterilen oran, tahsil edilen faizden yeniden oluşturulur ve kayıtlı bir oran değildir.",
-        "reasonNoPayment": "Taksit tutarı belirlenemiyor. Düzenli taksitleri kredi hesabına transfer olarak kaydedin (anapara, faiz ise bölünmüş satır veya ayrı kategorili bir gider olarak) ya da ödeme tutarını hesap ayarlarından belirleyin. Kaynak hesapta sıradan gider olarak kaydedilen ödemeler kredi hesabına asla ulaşmaz, bu yüzden plan onları göremez."
-      }
+        "reasonNoPayment": "Taksit tutarı belirlenemiyor. Düzenli taksitleri kredi hesabına transfer olarak kaydedin (anapara, faiz ise bölünmüş satır veya ayrı kategorili bir gider olarak) ya da ödeme tutarını hesap ayarlarından belirleyin. Kaynak hesapta sıradan gider olarak kaydedilen ödemeler kredi hesabına asla ulaşmaz, bu yüzden plan onları göremez.",
+        "reasonNoAmortization": "Bu konut kredisinin amortisman süresi yok, bu nedenle taksitleri ve vade sonu hesaplanamıyor. Amortisman süresini hesap ayarlarından belirleyin.",
+        "reasonNoPaymentStart": "Bu konut kredisinin ilk ödeme tarihi yok, bu nedenle vade sonuna kadar kalan ödemeler sayılamıyor. Planlı ödemesini hesap ayarlarından kurun; girdiğiniz ilk vade tarihi 1. ödeme olur.",
+        "reasonNoPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle sabit anapara tutarı hesaplanamıyor. Kredi tutarını hesap ayarlarından belirleyin."
+      },
+      "budgetBelowNextInstallment": "Bu, sonraki taksitin ({amount}, vade {date}) altında; ek ödeme yapmak için tutarı bunun üzerine çıkarın.",
+      "shortenTermNeedsPrincipal": "Bu konut kredisinin ilk tutarı yok, bu nedenle vadenin kısaltılması simüle edilemiyor. Taksiti düşürmeyi seçin veya kredi tutarını hesap ayarlarından belirleyin."
     },
     "comparison": {
       "newPayoff": "Yeni Kapanış Tarihi",
@@ -481,7 +566,8 @@
       "newInstallment": "Yeni Taksit",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Aylık ödeme",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "İlk Ödeme"
     },
     "chart": {
       "title": "Kapanış Zaman Çizelgesi",

@@ -89,6 +89,7 @@
     "stackedChart": "Cột xếp chồng 100%",
     "lineChart": "Biểu đồ đường",
     "areaChart": "Biểu đồ vùng",
+    "sankeyChart": "Biểu đồ dòng chảy",
     "table": "Bảng"
   },
   "formActions": {

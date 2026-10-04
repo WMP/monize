@@ -248,10 +248,8 @@
     "payeeLender": "Bénéficiaire / Prêteur",
     "selectOrCreatePayee": "Sélectionner ou créer un bénéficiaire…",
     "mortgageDetails": "Détails du prêt hypothécaire",
-    "canadianMortgage": "Prêt hypothécaire canadien (composition semestrielle)",
-    "variableRate": "Taux variable",
     "amortizationMonths": "Amortissement (mois)",
-    "termMonths": "Durée (mois)",
+    "termMonths": "Terme à taux fixe (mois)",
     "autoPost": "Enregistrer automatiquement les transactions à l'échéance",
     "skip": "Ignorer",
     "setUpPayments": "Configurer les paiements",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Paiements récurrents configurés pour {account}"
-    }
+    },
+    "firstInstallment": "Première échéance",
+    "firstInstallmentHelp": "Ce prêt hypothécaire n'a pas de paiement fixe : chaque échéance est calculée à partir du solde, du taux et de la durée d'amortissement. Voici celle due le {date}, capital supplémentaire compris.",
+    "firstInstallmentPending": "Saisissez la date du prochain paiement pour calculer la première échéance.",
+    "firstInstallmentCalculating": "Calcul de la première échéance...",
+    "firstInstallmentFailed": "La première échéance n'a pas pu être calculée. Vérifiez les valeurs ci-dessous et réessayez."
   },
   "mortgageFields": {
     "title": "Détails du prêt hypothécaire",
-    "canadianMortgage": "Prêt hypothécaire canadien",
-    "canadianMortgageDesc": "Utilise la composition semestrielle pour les taux fixes (obligatoire au Canada)",
-    "variableRate": "Taux variable",
-    "variableRateDesc": "Le taux peut changer durant la durée (utilise la composition mensuelle)",
-    "variableRateLoanDetailsLink": "Enregistrez les changements de taux dans les <link>détails du prêt</link>.",
-    "termLength": "Durée du terme",
-    "termLengthNoTerm": "Laisser à 0 ans et 0 mois pour aucun terme.",
+    "type": {
+      "label": "Type de prêt hypothécaire",
+      "ANNUITY": "Annuité (versement constant)",
+      "CANADIAN_FIXED": "Taux fixe canadien",
+      "LINEAR": "Linéaire (capital constant)",
+      "INTEREST_ONLY": "Intérêts seulement",
+      "help": {
+        "ANNUITY": "Votre versement total est le même chaque mois. Choisissez-le aussi pour un prêt à taux variable.",
+        "CANADIAN_FIXED": "Un contrat canadien à taux fixe ; les intérêts sont composés deux fois par an.",
+        "LINEAR": "La part de capital est la même chaque mois et le total diminue.",
+        "INTEREST_ONLY": "Vous ne payez que les intérêts et le solde ne bouge pas."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Enregistrez les changements de taux dans les <link>détails du prêt</link>.",
+    "termLength": "Terme à taux fixe",
+    "termLengthHelp": "Durée de votre taux d'intérêt ou du terme de votre contrat, par exemple un taux fixe de 5 ans. Monize peut vous le rappeler avant son échéance. Laisser à 0 ans et 0 mois pour aucun terme.",
     "amortizationPeriod": "Période d'amortissement (obligatoire)",
     "years": "Années",
     "months": "Mois",
@@ -333,6 +345,68 @@
       "memoLabel": "Texte de mémo de remboursement anticipé",
       "memoPlaceholder": "p. ex. remboursement anticipé",
       "memoHelp": "Correspondance de sous-chaîne insensible à la casse avec le mémo du paiement, le mémo de la transaction source ou le mémo d'une ventilation."
+    },
+    "prepaymentMode": {
+      "label": "Effet d'un remboursement anticipé",
+      "SHORTEN_TERM": "Raccourcit la durée (même capital chaque mois)",
+      "LOWER_INSTALLMENT": "Réduit l'échéance (même date de fin)",
+      "help": "Renseignez-vous auprès de votre prêteur. Si, après un remboursement anticipé, la part de capital du relevé est inchangée, la durée a été raccourcie."
+    },
+    "previewFirstInstallment": "Première échéance :",
+    "detect": {
+      "toggle": "Vous hésitez ? Saisissez quelques échéances",
+      "title": "Trouver votre type de prêt hypothécaire",
+      "intro": "Recopiez deux ou trois échéances consécutives d'un relevé, de la plus ancienne à la plus récente. Le solde est facultatif : avec lui et le taux d'intérêt, Monize peut déterminer si les intérêts sont composés deux fois par an.",
+      "installment": "Échéance {number}",
+      "principal": "Capital",
+      "interest": "Intérêts",
+      "balance": "Solde avant (facultatif)",
+      "rowIncomplete": "Saisissez le capital et les intérêts, ou laissez la ligne vide.",
+      "rate": "Vérifié par rapport au taux d'intérêt saisi plus haut, {rate}.",
+      "noRate": "Aucun taux d'intérêt n'est saisi plus haut, la capitalisation ne peut donc pas être vérifiée.",
+      "needsFrequency": "Choisissez d'abord la fréquence de paiement ci-dessous : les échéances sont lues à ce rythme.",
+      "submit": "Suggérer un type",
+      "close": "Fermer",
+      "suggested": "Type suggéré : {type}",
+      "noSuggestion": "Aucun type suggéré.",
+      "lowConfidence": "Fiabilité faible : vérifiez avec votre contrat ou renseignez-vous auprès de votre prêteur avant de l'utiliser.",
+      "use": "Utiliser ce type",
+      "failed": "Les échéances n'ont pas pu être vérifiées car la requête a échoué. Réessayez.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Il faut au moins deux échéances consécutives pour comparer.",
+        "INVALID_SAMPLE": "Une échéance a un montant négatif ou illisible.",
+        "NO_PAYMENT": "Les échéances ne remboursent aucun capital et ne facturent aucun intérêt.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "Le capital et le total sont identiques à chaque échéance, ce qui correspond aussi bien à un prêt linéaire qu'à un prêt à annuités. Essayez des échéances plus espacées ou vérifiez votre contrat.",
+        "ACCELERATED_FREQUENCY": "Ces échéances semblent linéaires ou à intérêts seulement, ce qui est impossible avec une fréquence de paiement accélérée. Vérifiez la fréquence de paiement.",
+        "NO_RULE_FITS": "Ni le capital ni le total ne restent identiques d'une échéance à l'autre. Si le taux a changé entre elles, utilisez des échéances d'une même période de taux.",
+        "ZERO_PRINCIPAL": "Aucun capital n'est remboursé, le solde ne bouge donc pas.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Aucun capital n'est remboursé, mais les intérêts ne correspondent pas au taux indiqué appliqué au solde. Vérifiez le taux.",
+        "CONSTANT_PRINCIPAL": "La part de capital est la même à chaque fois et le total diminue.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "La part de capital est la même à chaque fois, mais les intérêts ne correspondent pas au taux indiqué appliqué au solde. Vérifiez le taux.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "Le total est le même à chaque fois et les intérêts correspondent au taux indiqué composé deux fois par an.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "Le total est le même à chaque fois et les intérêts correspondent au taux indiqué sans capitalisation semestrielle.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "Le total est le même à chaque fois. Sans le solde avant chaque échéance et le taux d'intérêt, la capitalisation semestrielle n'a pas pu être vérifiée.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "Le total est le même à chaque fois, mais le solde est trop faible pour distinguer une capitalisation semestrielle. Un contrat canadien à taux fixe le précise dans ses conditions.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "Le total est le même à chaque fois, mais les intérêts ne correspondent à aucune des deux conventions au taux indiqué. Les intérêts sont peut-être calculés au jour ; vérifiez le taux."
+      },
+      "history": {
+        "action": "Détecter le type de prêt hypothécaire",
+        "title": "Type de prêt hypothécaire d'après vos paiements",
+        "intro": "Déterminé à partir des dernières échéances enregistrées à un même taux. Rien ne change tant que vous n'avez pas enregistré le compte.",
+        "current": "Type actuel : {type}",
+        "alreadySet": "Ce prêt hypothécaire a déjà le type suggéré.",
+        "rate": "Taux d'intérêt en vigueur : {rate}",
+        "noRate": "Aucun taux d'intérêt n'est enregistré pour ces dates, la capitalisation n'a donc pas été vérifiée.",
+        "noSamples": "Aucune échéance enregistrée comportant à la fois une part de capital et une part d'intérêts n'a été trouvée. Enregistrez vos paiements ventilés en capital et intérêts pour utiliser cette fonction.",
+        "colDate": "Date",
+        "colPrincipal": "Capital",
+        "colInterest": "Intérêts",
+        "colBalance": "Solde avant",
+        "balanceUnknown": "Inconnu",
+        "failed": "L'historique des paiements n'a pas pu être lu car la requête a échoué. Réessayez.",
+        "cancel": "Annuler",
+        "use": "Modifier le compte avec ce type"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "La fréquence de paiement est obligatoire",
     "paymentStartDateRequired": "La date du premier paiement est obligatoire",
     "paymentAccountRequired": "Le compte de paiement est obligatoire",
-    "amortizationRequired": "La période d'amortissement est obligatoire"
+    "amortizationRequired": "La période d'amortissement est obligatoire",
+    "acceleratedNeedsAnnuity": "Ce prêt hypothécaire est remboursé selon un calendrier accéléré, que seul un prêt à annuités possède. Un prêt linéaire ou in fine exige une fréquence de paiement régulière : conservez un type à annuités."
   },
   "loanDetail": {
     "backToAccounts": "Retour aux comptes",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Intérêts restants est.",
       "notSet": "Non défini",
       "notAvailable": "N/D",
-      "paidOff": "Remboursé"
+      "paidOff": "Remboursé",
+      "nextInstallment": "Prochaine échéance",
+      "dueOn": "Due le {date}",
+      "finalPayment": "Paiement final",
+      "nextInstallmentDue": "Prochaine échéance (due le {date})",
+      "finalPaymentDue": "Paiement final (dû le {date})"
     },
     "schedule": {
       "title": "Calendrier d'amortissement",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Ce prêt n'a aucun solde restant dû, il n'y a donc plus rien à amortir.",
         "reasonNoFrequency": "Aucune périodicité de paiement n'est définie pour ce prêt. Ajoutez-la dans les paramètres du compte.",
         "reasonNoRate": "Aucun taux d'intérêt n'est enregistré pour ce prêt. Définissez le taux dans les paramètres du compte, ou enregistrez un changement de taux daté d'aujourd'hui ou avant. Un taux affiché par ligne dans l'échéancier ci-dessous est reconstruit à partir des intérêts facturés et n'est pas un taux enregistré.",
-        "reasonNoPayment": "Le montant de l'échéance ne peut pas être déterminé. Enregistrez les échéances régulières comme des virements vers le compte du prêt (capital, avec les intérêts en ligne de ventilation ou en dépense catégorisée distincte), ou définissez le montant du paiement dans les paramètres du compte. Les paiements enregistrés comme des dépenses ordinaires sur le compte source n'atteignent jamais le compte du prêt, donc l'échéancier ne peut pas les voir."
-      }
+        "reasonNoPayment": "Le montant de l'échéance ne peut pas être déterminé. Enregistrez les échéances régulières comme des virements vers le compte du prêt (capital, avec les intérêts en ligne de ventilation ou en dépense catégorisée distincte), ou définissez le montant du paiement dans les paramètres du compte. Les paiements enregistrés comme des dépenses ordinaires sur le compte source n'atteignent jamais le compte du prêt, donc l'échéancier ne peut pas les voir.",
+        "reasonNoAmortization": "Ce prêt hypothécaire n'a pas de durée d'amortissement : ses échéances et la fin de son terme ne peuvent donc pas être calculées. Définissez la durée d'amortissement dans les paramètres du compte.",
+        "reasonNoPaymentStart": "Ce prêt hypothécaire n'a pas de date de premier paiement : les paiements restants jusqu'à la fin de son terme ne peuvent donc pas être comptés. Configurez son paiement planifié depuis les paramètres du compte ; la première date d'échéance saisie devient le paiement 1.",
+        "reasonNoPrincipal": "Ce prêt hypothécaire n'a pas de montant initial : son amortissement constant ne peut donc pas être calculé. Définissez le montant du prêt dans les paramètres du compte."
+      },
+      "budgetBelowNextInstallment": "C'est inférieur à la prochaine échéance ({amount}, due le {date}) ; augmentez-le au-delà pour effectuer un remboursement anticipé.",
+      "shortenTermNeedsPrincipal": "Ce prêt hypothécaire n'a pas de montant initial : une durée raccourcie ne peut donc pas être simulée. Choisissez de réduire l'échéance, ou définissez le montant du prêt dans les paramètres du compte."
     },
     "comparison": {
       "newPayoff": "Nouvelle date de remboursement",
@@ -481,7 +566,8 @@
       "newInstallment": "Nouvelle mensualité",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Paiement mensuel",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Premier paiement"
     },
     "chart": {
       "title": "Chronologie du remboursement",

@@ -82,6 +82,46 @@ strength of a status, must apply to both legs in the same transaction, or to
 neither.
 ```
 
+### Cash flow Sankey: a transfer leg is a flow by scope and class
+
+The Cash Flow Sankey report (`backend/src/built-in-reports/cash-flow-sankey.service.ts`,
+arithmetic in `cash-flow-sankey-assembly.ts`) is the one surface that draws a
+transfer leg as a flow. Its rules, from `docs/future-plans/sankey-cash-flow.md`:
+
+1. **Scope is a set of cash-flow accounts.** By default every open `CHEQUING`,
+   `SAVINGS`, `CASH`, `CREDIT_CARD` and `LINE_OF_CREDIT` account (never an
+   investment sleeve); the request may name any other set. Income and expenses
+   are the rows of in-scope accounts.
+2. **A transfer between two in-scope accounts is internal and invisible.**
+   Neither leg passes the counterpart predicate. Leaving a savings account out
+   of scope is how a reader sees saving as a destination.
+3. **A leg from an in-scope account to an out-of-scope one is an outflow to a
+   class decided by the counterpart's type:** `SAVINGS`, `INVESTMENT`, `ASSET`,
+   `OTHER` are "Savings & investments"; `LOAN`, `MORTGAGE`, `LINE_OF_CREDIT` are
+   "Debt payments"; `CHEQUING`, `CASH`, `CREDIT_CARD` are "Other accounts".
+4. **A leg into an in-scope account from an out-of-scope one is an inflow** by
+   the same classes: "From savings & investments", "Borrowed", "From other
+   accounts".
+5. **A credit-card payment is not a debt payment.** The spending it settles was
+   an expense on the purchase date; with the card in scope the payment is
+   internal, with it out of scope it is "Other accounts".
+6. **Investment-generated cash legs are not flows.** `investmentExclusionSql` is
+   on every branch, the transfer branches included (SANKEY-003).
+7. **The diagram closes:** `income + inflows + deficit = expenses + outflows +
+   unspent` in integer ten-thousandths, with at most one of `deficit` /
+   `unspent` non-zero. Both are the arithmetic residual, never a transaction; a
+   response where the identity fails is a 500, never a drawing (SANKEY-001).
+8. **Uncategorized is a node.** Uncategorized income and uncategorized spending
+   each keep their own side; a category nets within itself and sits on the side
+   it nets to (a category whose net is unknown for want of a rate sits on the
+   side its own type names, with a `null` figure).
+
+A leg counts once, by its own account's scope and its own signed amount
+(SANKEY-002); a transfer never enters income or expenses (INV-REPORT-003). A
+leg whose counterpart the reader cannot see (deleted, never linked, or the
+other owner's leg of a cross-owner transfer) is "Other accounts" under
+"(unlinked account)", so the identity still closes.
+
 ## 3. Exchange rates
 
 **Direction.** `exchangeRate` is *account-currency units per one unit of
@@ -408,7 +448,9 @@ crosses that boundary without producing a countable flow (a trade settled
 outside it, a split parent mixing an investment line with ordinary cash) is
 counted per window and withholds `investmentResult` with the reason
 `externallySettledTrade` or `mixedSplit`; the two figures either side of the
-subtraction are still reported.
+subtraction are still reported. These counts withhold the ACCOUNT result only:
+the invested part's P&L, TWR and MWR are drawn around the securities and each
+row's own amount, so where a trade's cash settled does not move them.
 
 **A time-weighted return and a money-weighted one are two figures, not two
 spellings.** The invested part reports both over the same flows and the same
@@ -525,9 +567,17 @@ annual rate compounded at the payment frequency**, so the rate charged per
 period is `annualRate / periodsPerYear` -- `0.06 / 26` for a biweekly mortgage,
 not `(1 + 0.06/12)^(12/26) - 1`.
 
-The exception is Canadian **fixed-rate** mortgages, which must compound
-semi-annually by law: `(1 + r/2)^(2/n) - 1`. Canadian variable-rate mortgages
-and every non-Canadian mortgage use the nominal convention.
+The exception is the `CANADIAN_FIXED` mortgage type: a Canadian fixed-rate
+mortgage must compound semi-annually by law, `(1 + r/2)^(2/n) - 1`. Every other
+type uses the nominal convention, including a Canadian variable-rate mortgage,
+which is an `ANNUITY` mortgage (`docs/specs/mortgage-types.md`, table 4.2).
+
+The convention is a trait of the mortgage type (`accounts.mortgage_type`), not a
+property of the two legacy flags: `MORTGAGE_TYPE_TRAITS` decides it once per
+layer and every consumer asks `compoundingFor(type)`. A row whose type column is
+still null is read through `mortgageTypeOf`, which derives the type from the
+flags until the contract migration makes the column `NOT NULL`; a plain `LOAN`
+account reads as `ANNUITY`.
 
 Both conventions are defensible and they disagree -- on 300k at 6% over 25
 biweekly-paid years the difference is 0.68 on the installment and about 443 in
@@ -535,22 +585,72 @@ lifetime interest -- so the choice is a named contract, not a formula detail:
 
 | Where | What implements it |
 | --- | --- |
-| Backend rate | `calculateStandardPeriodicRate` / `calculateCanadianPeriodicRate` in `backend/src/accounts/mortgage-amortization.util.ts` |
+| Which convention a mortgage uses | `MORTGAGE_TYPE_TRAITS` / `compoundingFor` / `mortgageTypeOf` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts`, held equal by the parity fixture `backend/src/accounts/mortgage-type-cases.json` |
+| Backend rate | `getPeriodicRate(annualRate, periodsPerYear, type)` over `calculateStandardPeriodicRate` / `calculateCanadianPeriodicRate` in `backend/src/accounts/mortgage-amortization.util.ts` |
 | Backend generic loan | `calculatePaymentSplit` / `calculateTotalPayments` in `backend/src/accounts/loan-amortization.util.ts` |
-| Frontend projections | `getPeriodicRate` in `frontend/src/lib/loan-schedule.ts` |
-| Displayed EAR | `calculateEffectiveAnnualRate`, compounding at the **payment** frequency |
+| Frontend projections | `getPeriodicRate` in `frontend/src/lib/loan-frequency.ts`, used by `frontend/src/lib/loan-schedule.ts` |
+| Displayed EAR | `calculateEffectiveAnnualRate` (backend) / `effectiveAnnualRate` (frontend), keyed on the type and compounding at the **payment** frequency |
 
 The displayed effective annual rate has to describe the rate the schedule
 actually charges. Compounding at 12 regardless of the payment frequency named a
 rate nothing in the app used: a biweekly mortgage charges `r/26` twenty-six
-times, so its EAR is `(1 + r/26)^26 - 1`. Canadian fixed keeps `(1 + r/2)^2 - 1`
-whatever its payment frequency, because that is the rate the law defines.
+times, so its EAR is `(1 + r/26)^26 - 1`. `CANADIAN_FIXED` keeps
+`(1 + r/2)^2 - 1` whatever its payment frequency, because that is the rate the
+law defines.
 
 Backend and frontend agreeing is **not** evidence for either convention -- they
 deliberately mirror one formula, so parity can only detect drift, never a wrong
 shared choice. The fixtures that hold this rule are derived independently of
 both (`backend/src/accounts/mortgage-amortization.util.spec.ts`, "periodic-rate
-convention"; `frontend/src/lib/loan-schedule.test.ts`).
+convention"; `frontend/src/lib/loan-schedule.test.ts`). The two contract specs,
+`backend/src/accounts/mortgage-type.contract.spec.ts` and
+`frontend/src/lib/mortgage-type.contract.test.ts`, hold each layer's traits to
+the shared parity fixture, and the backend one reconciles `MORTGAGE_TYPES` with
+the `accounts_mortgage_type_check` CHECK in `database/schema.sql` both ways. The
+boolean overloads of `getPeriodicRate` and `calculateEffectiveAnnualRate` remain
+until the flags are dropped, with no production caller:
+`backend/src/accounts/mortgage-type-flags.guard.spec.ts` fails a new one.
+
+### The amortization method is a trait of the mortgage type
+
+How a mortgage repays its principal is a trait of its type too, read through
+`amortizationMethodFor(type)` from the same `MORTGAGE_TYPE_TRAITS` record, never
+from a surface-local rule (INV-LOAN-007). Interest is
+`roundMoney(debt(d) * r(d))` for every method, priced from the ledger debt and
+the rate through the installment's own due date (INV-LOAN-006); only the
+principal differs. `N` is `round(amortization_months * ppy / 12)`, `c` the
+constant principal `roundMoney(P / N)`, and `remaining(d)` the scheduled
+payments left counted from the calendar, never from the postings
+(`docs/specs/mortgage-types.md` section 2):
+
+| Type | Compounding | Method | Principal on due date `d` | `accounts.payment_amount` |
+| --- | --- | --- | --- | --- |
+| `ANNUITY` | nominal | annuity | the level installment minus the interest | the contractual installment |
+| `CANADIAN_FIXED` | semi-annual | annuity | the level installment minus the interest | the contractual installment |
+| `LINEAR`, `prepayment_mode` `SHORTEN_TERM` (or null) | nominal | linear | `min(c, debt(d))`; the whole debt on the final installment when the leftover is within `roundMoney(N * 0.005)` | null |
+| `LINEAR`, `prepayment_mode` `LOWER_INSTALLMENT` | nominal | linear | `roundMoney(debt(d) / remaining(d))`; the whole debt on payment `N` | null |
+| `INTEREST_ONLY` | nominal | interest only | 0; the whole debt (the bullet) on payment `N` | null |
+
+A LINEAR or INTEREST_ONLY mortgage has no constant payment, so the column a
+constant payment would occupy is null, held by a table CHECK, and every surface
+that shows "the payment" shows a dated installment instead: the next
+occurrence's, or a projected row's, with its date, and for INTEREST_ONLY the
+bullet beside it. An extra repayment shortens a SHORTEN_TERM loan and lowers a
+LOWER_INSTALLMENT loan's principal from the next due date; a rate change moves
+only the interest of either. Accelerated frequencies are defined as a fraction
+of the annuity's monthly installment and are refused for both new methods.
+
+| Where | What implements it |
+| --- | --- |
+| The method of a type | `amortizationMethodFor` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts` |
+| The principal on a date | `methodPrincipal` / `nonAnnuityInstallment` in `backend/src/accounts/mortgage-installment.util.ts`; `methodPrincipal` in `frontend/src/lib/mortgage-installment.ts` |
+| Preview | `calculateMortgageAmortization` in `backend/src/accounts/mortgage-amortization.util.ts` |
+| Scheduled installment | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) |
+| Frontend projection | `generateLoanSchedule` in `frontend/src/lib/loan-schedule.ts`, over `frontend/src/lib/loan-schedule-methods.ts` |
+
+The figures are fixed by the worked example in `docs/specs/mortgage-types.md`
+section 7, computed independently of both layers; each truth-table row there
+names the test that asserts it.
 
 ### The first payment date is payment number 1
 

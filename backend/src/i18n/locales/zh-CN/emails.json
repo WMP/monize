@@ -23,12 +23,12 @@
     "button": "查看账单与存款"
   },
   "mortgageReminder": {
-    "subject": "Monize：1 个即将到期的抵押贷款续期",
-    "subjectPlural": "Monize：{{ count }} 个即将到期的抵押贷款续期",
-    "heading": "抵押贷款续期提醒",
+    "subject": "Monize：1 笔抵押贷款的利率期限即将结束",
+    "subjectPlural": "Monize：{{ count }} 笔抵押贷款的利率期限即将结束",
+    "heading": "抵押贷款利率期限提醒",
     "greeting": "您好，{{ name }}，",
-    "introOne": "您有 1 笔抵押贷款的期限即将到期。请在期限结束前联系贷款机构讨论续期选项：",
-    "introMany": "您有 {{ count }} 笔抵押贷款的期限即将到期。请在期限结束前联系贷款机构讨论续期选项：",
+    "introOne": "您有 1 笔抵押贷款的当前利率期限即将结束。请在结束前联系贷款机构，安排下一期利率或续期：",
+    "introMany": "您有 {{ count }} 笔抵押贷款的当前利率期限即将结束。请在每笔结束前联系贷款机构，安排下一期利率或续期：",
     "colMortgage": "抵押贷款",
     "colTermEndDate": "期限到期日",
     "colTimeRemaining": "剩余时间",

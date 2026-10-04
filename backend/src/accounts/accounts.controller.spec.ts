@@ -22,6 +22,7 @@ describe("AccountsController", () => {
   let mockBalancesReport: Record<string, jest.Mock>;
   let mockDelegationService: Record<string, jest.Mock>;
   let mockCrossOwnerAccess: Record<string, jest.Mock>;
+  let mockLoanPaymentSetup: Record<string, jest.Mock>;
   let mockJointAccounts: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1", realUserId: "user-1" } };
 
@@ -37,6 +38,8 @@ describe("AccountsController", () => {
       getInvestmentAccountPair: jest.fn(),
       update: jest.fn(),
       updateMortgageRate: jest.fn(),
+      detectMortgageTypeFromSamples: jest.fn(),
+      detectMortgageTypeFromHistory: jest.fn(),
       close: jest.fn(),
       reopen: jest.fn(),
       getTransactionCount: jest.fn(),
@@ -79,6 +82,11 @@ describe("AccountsController", () => {
       transferCandidatesFor: jest.fn().mockResolvedValue([]),
     };
 
+    mockLoanPaymentSetup = {
+      setupLoanPayments: jest.fn(),
+      previewFirstInstallment: jest.fn(),
+    };
+
     mockJointAccounts = {
       jointShareCountsForOwner: jest.fn().mockResolvedValue(new Map()),
       jointAccountsFor: jest.fn().mockResolvedValue([]),
@@ -104,7 +112,7 @@ describe("AccountsController", () => {
         },
         {
           provide: LoanPaymentSetupService,
-          useValue: { setupLoanPayments: jest.fn() },
+          useValue: mockLoanPaymentSetup,
         },
         {
           provide: StatementCycleService,
@@ -142,6 +150,32 @@ describe("AccountsController", () => {
     }).compile();
 
     controller = module.get<AccountsController>(AccountsController);
+  });
+
+  describe("previewLoanPaymentSetup()", () => {
+    it("prices the setup for the JWT's user, never one from the request", async () => {
+      const preview = {
+        derivesInstallment: true,
+        principalPayment: 833.3333,
+        interestPayment: 500,
+        paymentAmount: 1333.3333,
+      };
+      mockLoanPaymentSetup.previewFirstInstallment.mockResolvedValue(preview);
+      const dto = { paymentFrequency: "MONTHLY", nextDueDate: "2024-01-01" };
+
+      await expect(
+        controller.previewLoanPaymentSetup(
+          { user: { id: "user-1" } },
+          "mortgage-1",
+          dto,
+        ),
+      ).resolves.toBe(preview);
+      expect(mockLoanPaymentSetup.previewFirstInstallment).toHaveBeenCalledWith(
+        "user-1",
+        "mortgage-1",
+        dto,
+      );
+    });
   });
 
   describe("getTransferCandidates()", () => {
@@ -324,9 +358,45 @@ describe("AccountsController", () => {
         300,
         "monthly",
         new Date("2024-01-01"),
-        true,
-        false,
+        "CANADIAN_FIXED",
       );
+    });
+
+    it("passes the requested type, which wins over the legacy flags", () => {
+      mockAccountsService.previewMortgageAmortization!.mockReturnValue({
+        paymentAmount: 1500,
+        endDate: new Date("2049-01-01"),
+      });
+      const base = {
+        mortgageAmount: 300000,
+        interestRate: 4.5,
+        amortizationMonths: 300,
+        paymentFrequency: "MONTHLY",
+        paymentStartDate: "2024-01-01",
+      };
+      const typeArg = () => {
+        const calls =
+          mockAccountsService.previewMortgageAmortization!.mock.calls;
+        return calls[calls.length - 1][5];
+      };
+
+      controller.previewMortgageAmortization({
+        ...base,
+        mortgageType: "ANNUITY",
+        isCanadian: true,
+        isVariableRate: false,
+      } as any);
+      expect(typeArg()).toBe("ANNUITY");
+
+      controller.previewMortgageAmortization({
+        ...base,
+        mortgageType: "CANADIAN_FIXED",
+      } as any);
+      expect(typeArg()).toBe("CANADIAN_FIXED");
+
+      // Neither the type nor a flag: the default type.
+      controller.previewMortgageAmortization(base as any);
+      expect(typeArg()).toBe("ANNUITY");
     });
   });
 
@@ -574,6 +644,47 @@ describe("AccountsController", () => {
         "account-1",
         dto,
       );
+    });
+  });
+
+  describe("detectMortgageType()", () => {
+    it("delegates the request's samples to accountsService", () => {
+      const dto = {
+        samples: [
+          { principal: 432.9, interest: 1500, balanceBefore: 300000 },
+          { principal: 435.06, interest: 1497.84, balanceBefore: 299567.1 },
+        ],
+        interestRate: 6,
+        paymentFrequency: "MONTHLY" as const,
+      };
+      const suggestion = {
+        type: "ANNUITY",
+        confidence: "high",
+        reason: "CONSTANT_INSTALLMENT_NOMINAL",
+      };
+      mockAccountsService.detectMortgageTypeFromSamples!.mockReturnValue(
+        suggestion,
+      );
+
+      expect(controller.detectMortgageType(dto)).toBe(suggestion);
+      expect(
+        mockAccountsService.detectMortgageTypeFromSamples,
+      ).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe("detectMortgageTypeFromHistory()", () => {
+    it("delegates with the userId from the JWT and the account id", async () => {
+      mockAccountsService.detectMortgageTypeFromHistory!.mockResolvedValue(
+        "suggestion",
+      );
+
+      await expect(
+        controller.detectMortgageTypeFromHistory(mockReq, "account-1"),
+      ).resolves.toBe("suggestion");
+      expect(
+        mockAccountsService.detectMortgageTypeFromHistory,
+      ).toHaveBeenCalledWith("user-1", "account-1");
     });
   });
 

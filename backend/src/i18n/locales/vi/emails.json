@@ -23,12 +23,12 @@
     "button": "Xem hóa đơn &amp; tiền gửi"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 hợp đồng thế chấp sắp gia hạn",
-    "subjectPlural": "Monize: {{ count }} hợp đồng thế chấp sắp gia hạn",
-    "heading": "Nhắc nhở gia hạn thế chấp",
+    "subject": "Monize: 1 kỳ lãi suất thế chấp sắp kết thúc",
+    "subjectPlural": "Monize: {{ count }} kỳ lãi suất thế chấp sắp kết thúc",
+    "heading": "Nhắc nhở kỳ lãi suất thế chấp",
     "greeting": "Xin chào {{ name }},",
-    "introOne": "Bạn có 1 khoản thế chấp sắp gia hạn kỳ hạn. Liên hệ với người cho vay để thảo luận về các lựa chọn gia hạn trước khi kỳ hạn kết thúc:",
-    "introMany": "Bạn có {{ count }} khoản thế chấp sắp gia hạn kỳ hạn. Liên hệ với người cho vay để thảo luận về các lựa chọn gia hạn trước khi kỳ hạn kết thúc:",
+    "introOne": "Bạn có 1 khoản thế chấp có kỳ lãi suất hiện tại sắp kết thúc. Liên hệ với người cho vay trước khi kỳ kết thúc để thỏa thuận lãi suất tiếp theo hoặc gia hạn:",
+    "introMany": "Bạn có {{ count }} khoản thế chấp có kỳ lãi suất hiện tại sắp kết thúc. Liên hệ với người cho vay trước khi mỗi kỳ kết thúc để thỏa thuận lãi suất tiếp theo hoặc gia hạn:",
     "colMortgage": "Thế chấp",
     "colTermEndDate": "Ngày kết thúc kỳ hạn",
     "colTimeRemaining": "Thời gian còn lại",

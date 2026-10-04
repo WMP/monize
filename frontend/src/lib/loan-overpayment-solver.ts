@@ -161,7 +161,10 @@ function scheduleWith(
 }
 
 /** A generous upper bound: a recurring extra this large clears the balance in
- *  roughly one period, so the true answer always lies below it. */
+ *  roughly one period, so the true answer always lies below it. For a LINEAR
+ *  or INTEREST_ONLY mortgage `paymentAmount` is the first projected
+ *  installment (`LoanScheduleInput`), the figure that stands in for the
+ *  constant payment those methods do not have. */
 function upperBound(base: LoanScheduleInput): number {
   return Math.max(base.startingBalance, base.paymentAmount * 2, 1);
 }

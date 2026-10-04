@@ -205,8 +205,7 @@
     "refresh": "Atualizar valor atual",
     "investmentResult": "Resultado do Investimento",
     "periodBreakdownInvestedTooltip": "O valor dos títulos variou {valueChange} neste período. Desse total, {netInvested} foi aplicado, descontadas as vendas, e os títulos pagaram {income} em dividendos e juros. O valor acima é o que os investimentos renderam por si mesmos, sem contar o dinheiro não investido.",
-    "notAvailable": "N/D",
-    "unmeasuredFlowTooltip": "Uma operação liquidada fora dessas contas, ou um desdobramento que mistura uma linha de investimento com um gasto comum, significa que o resultado não pode ser separado do dinheiro movimentado."
+    "notAvailable": "N/D"
   },
   "spendingByPayee": {
     "title": "Despesas por Beneficiário",
@@ -281,5 +280,14 @@
     "weekdayLabel": "Dia de Semana",
     "viewOverview": "Visão Geral",
     "viewByDay": "Por Dia"
+  },
+  "cashFlowSankey": {
+    "title": "Sankey de fluxo de caixa",
+    "empty": "Nenhuma renda, despesa ou transferência neste período.",
+    "depth": "Detalhe",
+    "depthCategories": "Categorias",
+    "depthSubcategories": "Subcategorias",
+    "viewDiagram": "Diagrama",
+    "viewTable": "Tabela"
   }
 }

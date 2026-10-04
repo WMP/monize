@@ -9,6 +9,14 @@ import { ScheduledTransactionSplit } from "./entities/scheduled-transaction-spli
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import { PaymentFrequency } from "../accounts/loan-amortization.util";
 import { getPeriodicRate } from "../accounts/mortgage-amortization.util";
+import {
+  amortizationMethodFor,
+  mortgageTypeOf,
+} from "../accounts/mortgage-type.util";
+import {
+  missingMethodTerms,
+  nonAnnuityInstallment,
+} from "../accounts/mortgage-installment.util";
 import { roundMoney } from "../common/round.util";
 import {
   allocateLoanPayment,
@@ -17,7 +25,7 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { ensureYMD } from "../common/recurrence";
 import { tr } from "../i18n/translate";
-import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
+import { datedLoanDebt } from "../accounts/dated-loan-debt.util";
 import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
 import { effectiveAnnualRateOn } from "../accounts/effective-loan-rate.util";
 import {
@@ -58,7 +66,16 @@ interface LoanTemplateSplits {
  * than any surface displayed, the preview/commit divergence the FX rules call
  * out ("a preview computes what the commit will do, through the same code").
  */
-type InstallmentPurpose = "template" | "posting";
+type InstallmentPurpose = "template" | "posting" | "reconfigure";
+
+/*
+ * `reconfigure` is a template rewrite for a mortgage whose amortization method
+ * just changed (`repriceLoanTemplate`). It prices like `template`, except that
+ * an annuity targets `accounts.payment_amount` exactly instead of growing
+ * toward it: the template still holds the previous method's installment
+ * (a LINEAR one is larger than the annuity early in the loan), and
+ * `max(template, payment_amount)` would keep billing it forever.
+ */
 
 /** One resolved installment: what the next posting of this template should move. */
 type ResolvedInstallment =
@@ -130,6 +147,26 @@ export class ScheduledTransactionLoanService {
   async recalculateLoanPaymentSplits(
     scheduledTransactionId: string,
   ): Promise<void> {
+    return this.rewriteTemplate(scheduledTransactionId, "template");
+  }
+
+  /**
+   * Reprice a loan template after its mortgage's amortization method changed
+   * (docs/specs/mortgage-types.md, section 5.6): to the method's installment
+   * for LINEAR and INTEREST_ONLY, and to the account's new constant payment for
+   * an annuity type. Called by the account update in the same transaction as
+   * the type change, after the account row is written and locked (accounts
+   * before scheduled transactions, `docs/concurrency-and-idempotency.md`
+   * section 5).
+   */
+  async repriceLoanTemplate(scheduledTransactionId: string): Promise<void> {
+    return this.rewriteTemplate(scheduledTransactionId, "reconfigure");
+  }
+
+  private async rewriteTemplate(
+    scheduledTransactionId: string,
+    purpose: Exclude<InstallmentPurpose, "posting">,
+  ): Promise<void> {
     return withScopedDb(this.dataSource, async (m) => {
       // This writer mutates the child split set, so it must serialize through
       // the same parent lock the posting path takes (issue #1154 re-review): a
@@ -167,7 +204,7 @@ export class ScheduledTransactionLoanService {
         splits,
         loanAccount,
         ensureYMD(scheduledTransaction.nextDueDate),
-        "template",
+        purpose,
       );
 
       // A failed ledger read is not a template this method cannot account for,
@@ -242,8 +279,11 @@ export class ScheduledTransactionLoanService {
           `basePayment=${basePaymentAmount}, ` +
           `extra=${extraPrincipalAmount} (final ${finalExtraPrincipal}), ` +
           `newPrincipal=${newPrincipal}, newInterest=${newInterest}, ` +
-          `isMortgage=${loanAccount.accountType === "MORTGAGE"}, ` +
-          `isCanadian=${loanAccount.isCanadianMortgage}`,
+          `mortgageType=${
+            loanAccount.accountType === "MORTGAGE"
+              ? mortgageTypeOf(loanAccount)
+              : "none"
+          }`,
       );
 
       if (principalSplit) {
@@ -278,7 +318,9 @@ export class ScheduledTransactionLoanService {
       // no longer binds -- a voided final payment or an imported balance must
       // not leave the schedule billing the clamped figure forever (review
       // #1131). `allocateLoanPayment` bounds the total by the configured
-      // payment, so this can never grow past what the user set.
+      // payment, so this can never grow past what the user set -- for a
+      // LINEAR or INTEREST_ONLY mortgage, past the method's installment for
+      // this due date, which is what the user set by choosing the method.
       if (
         requiredParentAmount > 0 &&
         requiredParentAmount !== roundMoney(templateAmount)
@@ -473,7 +515,7 @@ export class ScheduledTransactionLoanService {
         return { nextDueDate: null, debt: null };
       }
 
-      const debt = await this.datedLoanDebt(m, loanAccount, nextDueDate);
+      const debt = await datedLoanDebt(m, loanAccount, nextDueDate);
       if (debt === null) {
         // "The ledger could not be read" is not "this loan has no scheduled
         // payment" -- the caller reads the second as licence to project from
@@ -504,39 +546,6 @@ export class ScheduledTransactionLoanService {
       }
     }
     return null;
-  }
-
-  /**
-   * The outstanding debt through `asOfDate`, from the authoritative ledger:
-   * opening balance plus every non-void, top-level transaction dated on or
-   * before that date -- the same expression `recalculateCurrentBalance` and the
-   * balances-as-of report use, with the installment boundary in place of today.
-   *
-   * `accounts.current_balance` deliberately excludes future-dated rows, so it
-   * cannot price an installment after a future payment has been posted; and a
-   * previously stored principal/interest split is money already rounded to 4dp,
-   * so advancing it with an amortization recurrence compounds the rounding
-   * (issue #1253). The dated ledger balance is the one source both the next
-   * bill and the amortization projection can agree on.
-   *
-   * Null only when the account row cannot be read back (deleted concurrently);
-   * a failed lookup is not a zero balance.
-   */
-  private async datedLoanDebt(
-    m: EntityManager,
-    loanAccount: Account,
-    asOfDate: string,
-  ): Promise<number | null> {
-    const rows: Array<{ balance: string }> = await m.query(
-      ACCOUNT_BALANCE_AS_OF_SQL,
-      [loanAccount.id, loanAccount.userId, asOfDate],
-    );
-    if (rows.length === 0 || rows[0].balance == null) {
-      return null;
-    }
-    // Debt accounts store the balance negative; an overpaid balance (in
-    // credit) reads as retired rather than as fresh debt.
-    return Math.max(0, -roundMoney(Number(rows[0].balance)));
   }
 
   /**
@@ -585,8 +594,7 @@ export class ScheduledTransactionLoanService {
       ? getPeriodicRate(
           interestRate,
           periodsPerYear,
-          loanAccount.isCanadianMortgage,
-          loanAccount.isVariableRate,
+          mortgageTypeOf(loanAccount),
         )
       : interestRate / 100 / periodsPerYear;
   }
@@ -615,7 +623,7 @@ export class ScheduledTransactionLoanService {
   ): Promise<ResolvedInstallment> {
     const loanAccountId = loanAccount.id;
 
-    const debt = await this.datedLoanDebt(m, loanAccount, asOfDate);
+    const debt = await datedLoanDebt(m, loanAccount, asOfDate);
     if (debt === null) {
       return {
         kind: "unreadable",
@@ -700,6 +708,27 @@ export class ScheduledTransactionLoanService {
       };
     }
 
+    // The amortization method decides the principal (INV-LOAN-007). Only a
+    // mortgage has one; every other loan-like account is an annuity.
+    const mortgageType =
+      loanAccount.accountType === AccountType.MORTGAGE
+        ? mortgageTypeOf(loanAccount)
+        : null;
+    const method = mortgageType ? amortizationMethodFor(mortgageType) : null;
+    // A LINEAR or INTEREST_ONLY mortgage without its terms has no `N`, no
+    // calendar or no principal to divide (spec section 8): decline, so the
+    // persisted amounts post as for any shape this method cannot account for,
+    // rather than price a guess.
+    if (mortgageType && method !== "ANNUITY") {
+      const missing = missingMethodTerms(mortgageType, loanAccount);
+      if (missing.length > 0) {
+        return {
+          kind: "declined",
+          reason: `the ${mortgageType} mortgage ${loanAccountId} has no ${missing.join(", ")}`,
+        };
+      }
+    }
+
     // What the template holds is what was just posted -- including any clamp
     // a previous pass wrote for that one installment (a final payment, an
     // interest spike consuming the extra). Deriving the *configured* payment
@@ -712,12 +741,6 @@ export class ScheduledTransactionLoanService {
     const templateExtraAmount = extraPrincipalSplit
       ? Math.abs(Number(extraPrincipalSplit.amount))
       : 0;
-    // Only a template advancement may grow back toward the configured payment;
-    // a posting re-divides the bill it was shown (see `InstallmentPurpose`).
-    const paymentAmount =
-      purpose === "posting"
-        ? templateAmount
-        : Math.max(templateAmount, Number(loanAccount.paymentAmount) || 0);
     // The extra can only ride in an existing split row -- this recalculation
     // never creates one -- so without the row the configured extra is 0.
     const extraPrincipalAmount = !extraPrincipalSplit
@@ -728,16 +751,49 @@ export class ScheduledTransactionLoanService {
             templateExtraAmount,
             Number(loanAccount.extraPaymentAmount) || 0,
           );
-    const basePaymentAmount = paymentAmount - extraPrincipalAmount;
 
     const periodicRate = this.periodicRateFor(
       loanAccount,
       frequency,
       interestRate,
     );
-
     const newInterest = roundMoney(debt * periodicRate);
-    const newPrincipal = roundMoney(basePaymentAmount - newInterest);
+
+    // A LINEAR or INTEREST_ONLY installment is derived, not configured: its
+    // principal comes from table 4.3 on this date's debt and calendar, so the
+    // template advances to principal + interest + extra, unbounded by
+    // `accounts.payment_amount` (null for these methods, spec decision 11).
+    // That is what heals a template a declined rate-change sync left at the
+    // old installment (spec section 5.2). A posting never takes this branch:
+    // it re-divides the bill it was shown, interest first, for every method.
+    const methodInstallment =
+      mortgageType && purpose !== "posting"
+        ? nonAnnuityInstallment(
+            mortgageType,
+            loanAccount,
+            asOfDate,
+            debt,
+            periodicRate,
+          )
+        : null;
+
+    // Only a template advancement may grow back toward the configured payment;
+    // a posting re-divides the bill it was shown (see `InstallmentPurpose`).
+    const paymentAmount = methodInstallment
+      ? roundMoney(
+          methodInstallment.principal +
+            methodInstallment.interest +
+            extraPrincipalAmount,
+        )
+      : purpose === "posting"
+        ? templateAmount
+        : purpose === "reconfigure" && Number(loanAccount.paymentAmount) > 0
+          ? Number(loanAccount.paymentAmount)
+          : Math.max(templateAmount, Number(loanAccount.paymentAmount) || 0);
+    const basePaymentAmount = paymentAmount - extraPrincipalAmount;
+    const newPrincipal = methodInstallment
+      ? methodInstallment.principal
+      : roundMoney(basePaymentAmount - newInterest);
 
     // The clamp sequence -- interest-first across the whole installment
     // (recheck RR2-006, DR3-01), principal bounded by the debt with the

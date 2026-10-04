@@ -76,7 +76,10 @@
     "collapseAria": "隱藏科目資訊",
     "showAccountNumber": "顯示科目號碼",
     "hideAccountNumber": "隱藏科目號碼",
-    "show": "顯示科目資訊"
+    "show": "顯示科目資訊",
+    "nextInstallment": "下期還款",
+    "finalPayment": "最後一期還款",
+    "amountDueOn": "{amount}，到期日 {date}"
   },
   "page": {
     "title": "交易",

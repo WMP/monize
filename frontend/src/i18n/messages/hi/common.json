@@ -89,6 +89,7 @@
     "stackedChart": "100% स्टैक्ड बार",
     "lineChart": "लाइन चार्ट",
     "areaChart": "क्षेत्र चार्ट",
+    "sankeyChart": "प्रवाह आरेख",
     "table": "तालिका"
   },
   "formActions": {

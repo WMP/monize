@@ -20,6 +20,12 @@ import {
 } from "../entities/account.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
+import {
+  MORTGAGE_TYPES,
+  MortgageType,
+  PREPAYMENT_MODES,
+  PrepaymentMode,
+} from "../mortgage-type.util";
 
 /**
  * Payment frequencies a loan account can carry.
@@ -307,9 +313,29 @@ export class CreateAccountDto {
 
   // Mortgage-specific fields
   @ApiPropertyOptional({
+    example: "CANADIAN_FIXED",
+    description:
+      "Mortgage type: ANNUITY (nominal rate divided by the payments per year), CANADIAN_FIXED (semi-annual compounding), LINEAR (constant principal) or INTEREST_ONLY (no principal until the final payment). LINEAR and INTEREST_ONLY require amortizationMonths, paymentStartDate and a non-accelerated payment frequency, and store no paymentAmount. Wins over isCanadianMortgage/isVariableRate; when absent, those flags decide it.",
+    enum: MORTGAGE_TYPES,
+  })
+  @IsOptional()
+  @IsIn(MORTGAGE_TYPES)
+  mortgageType?: MortgageType;
+
+  @ApiPropertyOptional({
+    example: "SHORTEN_TERM",
+    description:
+      "LINEAR mortgages only: what an extra repayment does to the constant principal. SHORTEN_TERM (the default when absent) keeps it and ends the loan earlier; LOWER_INSTALLMENT re-derives it as the remaining debt over the remaining payments. Stored as null for every other type.",
+    enum: PREPAYMENT_MODES,
+  })
+  @IsOptional()
+  @IsIn(PREPAYMENT_MODES)
+  prepaymentMode?: PrepaymentMode | null;
+
+  @ApiPropertyOptional({
     example: true,
     description:
-      "Whether this is a Canadian mortgage (uses semi-annual compounding for fixed rates)",
+      "Legacy flag, superseded by mortgageType: a Canadian mortgage that is not variable-rate is CANADIAN_FIXED (semi-annual compounding)",
     default: false,
   })
   @IsOptional()
@@ -319,7 +345,7 @@ export class CreateAccountDto {
   @ApiPropertyOptional({
     example: false,
     description:
-      "Whether this is a variable rate mortgage (uses monthly compounding)",
+      "Legacy flag, superseded by mortgageType: cancels the semi-annual compounding of a Canadian mortgage, which then computes as ANNUITY",
     default: false,
   })
   @IsOptional()

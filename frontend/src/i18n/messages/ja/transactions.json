@@ -76,7 +76,10 @@
     "collapseAria": "口座情報を非表示",
     "showAccountNumber": "口座番号を表示",
     "hideAccountNumber": "口座番号を非表示",
-    "show": "口座情報を表示"
+    "show": "口座情報を表示",
+    "nextInstallment": "次回の返済額",
+    "finalPayment": "最終返済額",
+    "amountDueOn": "{amount}（期日 {date}）"
   },
   "page": {
     "title": "取引",

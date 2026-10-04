@@ -1,15 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
-import { Account, MortgageAmortizationPreview, MortgagePaymentFrequency, InterestBookingMode } from '@/types/account';
+import {
+  Account,
+  MortgageAmortizationPreview,
+  MortgagePaymentFrequency,
+  InterestBookingMode,
+  MortgageType,
+  MORTGAGE_TYPES,
+} from '@/types/account';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
+import {
+  PREPAYMENT_MODES,
+  flagsFromMortgageType,
+  storesConstantPayment,
+} from '@/lib/mortgage-type';
 import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
+import { MortgageTypeDetector } from './MortgageTypeDetector';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -17,13 +30,18 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 
 const logger = createLogger('MortgageFields');
 
+/** The cadence each accelerated one pays on. */
+const ACCELERATED_BASE_CADENCE: Partial<Record<string, MortgagePaymentFrequency>> = {
+  ACCELERATED_BIWEEKLY: 'BIWEEKLY',
+  ACCELERATED_WEEKLY: 'WEEKLY',
+};
+
 interface MortgageFieldsProps {
   watchedCurrency: string;
   openingBalance: number | undefined;
   interestRate: number | undefined;
   paymentStartDate: string | undefined;
-  isCanadianMortgage: boolean | undefined;
-  isVariableRate: boolean | undefined;
+  mortgageType: MortgageType | undefined;
   onViewLoanDetails?: () => void;
   termMonths: number | undefined;
   amortizationMonths: number | undefined;
@@ -50,8 +68,7 @@ export function MortgageFields({
   openingBalance,
   interestRate,
   paymentStartDate,
-  isCanadianMortgage,
-  isVariableRate,
+  mortgageType,
   onViewLoanDetails,
   termMonths,
   amortizationMonths,
@@ -78,6 +95,12 @@ export function MortgageFields({
   // user-facing -- so it takes the same number locale rather than `toFixed`.
   const { formatPercent } = useNumberFormat();
 
+  // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its preview
+  // shows the first installment, and the accelerated cadences -- a fraction of
+  // an annuity's monthly installment -- mean nothing for it, so they are not
+  // offered (docs/specs/mortgage-types.md, section 5.1; the server refuses
+  // them too).
+  const hasConstantPayment = !mortgageType || storesConstantPayment(mortgageType);
   const mortgagePaymentFrequencyOptions = [
     { value: 'MONTHLY', label: t('mortgageFields.frequencyOptions.monthly') },
     { value: 'SEMI_MONTHLY', label: t('mortgageFields.frequencyOptions.semiMonthly') },
@@ -85,7 +108,31 @@ export function MortgageFields({
     { value: 'ACCELERATED_BIWEEKLY', label: t('mortgageFields.frequencyOptions.acceleratedBiweekly') },
     { value: 'WEEKLY', label: t('mortgageFields.frequencyOptions.weekly') },
     { value: 'ACCELERATED_WEEKLY', label: t('mortgageFields.frequencyOptions.acceleratedWeekly') },
-  ];
+  ].filter(
+    (option) => hasConstantPayment || !ACCELERATED_BASE_CADENCE[option.value],
+  );
+
+  // Choosing a type without a constant payment while an accelerated cadence is
+  // selected moves the cadence to the one it accelerates, in the same event,
+  // so the form never holds a value its list no longer offers.
+  const mortgageTypeField = register('mortgageType');
+  const moveCadenceFor = (next: MortgageType | undefined) => {
+    const base = mortgagePaymentFrequency
+      ? ACCELERATED_BASE_CADENCE[mortgagePaymentFrequency]
+      : undefined;
+    if (next && !storesConstantPayment(next) && base) {
+      setValue('mortgagePaymentFrequency', base, { shouldDirty: true, shouldValidate: true });
+    }
+  };
+  const handleMortgageTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    mortgageTypeField.onChange(event);
+    moveCadenceFor(MORTGAGE_TYPES.find((type) => type === event.target.value));
+  };
+  // A suggestion the person confirmed sets the select as choosing it would.
+  const applyDetectedType = (type: MortgageType) => {
+    setValue('mortgageType', type, { shouldDirty: true, shouldValidate: true });
+    moveCadenceFor(type);
+  };
   const [mortgagePreview, setMortgagePreview] = useState<MortgageAmortizationPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
@@ -119,18 +166,6 @@ export function MortgageFields({
       setAmortRemainder(amortizationMonths % 12);
     }
   }, [amortizationMonths]);
-
-  // A term (and its renewal reminder) is a Canada-only concept: outside Canada a
-  // mortgage has a single repayment period, not a separate contract term. When
-  // the mortgage is not Canadian, drop any previously entered term so no renewal
-  // reminder fires -- the backend nulls termEndDate when termMonths is cleared.
-  // setValue comes from react-hook-form (not React state), so it is allowed in
-  // an effect despite the no-setState-in-effect rule.
-  useEffect(() => {
-    if (!isCanadianMortgage && termMonths) {
-      setValue('termMonths', 0, { shouldDirty: false });
-    }
-  }, [isCanadianMortgage, termMonths, setValue]);
 
   const updateTermMonths = (years: number | undefined, months: number | undefined) => {
     const total = (years ?? 0) * 12 + (months ?? 0);
@@ -183,6 +218,7 @@ export function MortgageFields({
     // or an empty date genuinely mean "not filled in".
     if (
       isEditing ||
+      !mortgageType ||
       !openingBalance ||
       interestRate == null ||
       !amortizationMonths ||
@@ -201,8 +237,11 @@ export function MortgageFields({
         amortizationMonths,
         paymentFrequency: mortgagePaymentFrequency,
         paymentStartDate,
-        isCanadian: isCanadianMortgage || false,
-        isVariableRate: isVariableRate || false,
+        // The type decides the convention; the two legacy flags it maps to
+        // travel beside it until the booleans are dropped (P3-B1).
+        mortgageType,
+        isCanadian: flagsFromMortgageType(mortgageType).isCanadianMortgage,
+        isVariableRate: flagsFromMortgageType(mortgageType).isVariableRate,
       });
       setMortgagePreview(preview);
     } catch (error) {
@@ -211,7 +250,7 @@ export function MortgageFields({
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [isEditing, openingBalance, interestRate, amortizationMonths, mortgagePaymentFrequency, paymentStartDate, isCanadianMortgage, isVariableRate]);
+  }, [isEditing, openingBalance, interestRate, amortizationMonths, mortgagePaymentFrequency, paymentStartDate, mortgageType]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -227,96 +266,108 @@ export function MortgageFields({
         {t('mortgageFields.title')}
       </h3>
 
-      {/* Canadian Mortgage and Variable Rate checkboxes */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            id="isCanadianMortgage"
-            className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-            {...register('isCanadianMortgage')}
+      {/* One select for the mortgage's convention and method; the help line
+          under it says how to recognise the selected type from a statement. */}
+      <div>
+        <Select
+          id="mortgageType"
+          label={t('mortgageFields.type.label')}
+          options={MORTGAGE_TYPES.map((type) => ({
+            value: type,
+            label: t(`mortgageFields.type.${type}`),
+          }))}
+          error={errors.mortgageType?.message as string | undefined}
+          {...mortgageTypeField}
+          onChange={handleMortgageTypeChange}
+        />
+        {mortgageType && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t(`mortgageFields.type.help.${mortgageType}`)}
+          </p>
+        )}
+        {/* Creating only: an existing mortgage with history detects its type
+            from its own installments in Loan Details. */}
+        {!isEditing && (
+          <MortgageTypeDetector
+            interestRate={interestRate}
+            paymentFrequency={mortgagePaymentFrequency}
+            currencyCode={watchedCurrency}
+            onUse={applyDetectedType}
           />
-          <label htmlFor="isCanadianMortgage" className="flex-1">
-            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-              {t('mortgageFields.canadianMortgage')}
-            </span>
-            <span className="block text-xs text-gray-500 dark:text-gray-400">
-              {t('mortgageFields.canadianMortgageDesc')}
-            </span>
-          </label>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            id="isVariableRate"
-            className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-            {...register('isVariableRate')}
-          />
-          <label htmlFor="isVariableRate" className="flex-1">
-            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-              {t('mortgageFields.variableRate')}
-            </span>
-            <span className="block text-xs text-gray-500 dark:text-gray-400">
-              {t('mortgageFields.variableRateDesc')}
-            </span>
-            {isEditing && onViewLoanDetails && (
-              <span className="block text-xs mt-1">
-                {t.rich('mortgageFields.variableRateLoanDetailsLink', {
-                  link: (chunks) => (
-                    <button
-                      type="button"
-                      onClick={onViewLoanDetails}
-                      className="font-medium underline text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-200"
-                    >
-                      {chunks}
-                    </button>
-                  ),
-                })}
-              </span>
-            )}
-          </label>
-        </div>
+        )}
+        {isEditing && onViewLoanDetails && (
+          <p className="text-xs mt-1">
+            {t.rich('mortgageFields.rateChangesLoanDetailsLink', {
+              link: (chunks) => (
+                <button
+                  type="button"
+                  onClick={onViewLoanDetails}
+                  className="font-medium underline text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-200"
+                >
+                  {chunks}
+                </button>
+              ),
+            })}
+          </p>
+        )}
       </div>
+
+      {/* What an extra repayment does: a LINEAR mortgage's own setting
+          (spec decision 4). Every other type stores none. */}
+      {mortgageType === 'LINEAR' && (
+        <div>
+          <Select
+            id="prepaymentMode"
+            label={t('mortgageFields.prepaymentMode.label')}
+            options={PREPAYMENT_MODES.map((mode) => ({
+              value: mode,
+              label: t(`mortgageFields.prepaymentMode.${mode}`),
+            }))}
+            error={errors.prepaymentMode?.message as string | undefined}
+            {...register('prepaymentMode')}
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t('mortgageFields.prepaymentMode.help')}
+          </p>
+        </div>
+      )}
 
       {/* Hidden inputs for form registration */}
       <input type="hidden" {...register('termMonths', { valueAsNumber: true })} />
       <input type="hidden" {...register('amortizationMonths', { valueAsNumber: true })} />
 
-      {/* Term Length - years + months inputs. A separate contract term (that
-          drives renewal) only exists for Canadian mortgages; elsewhere there is
-          a single repayment period, so hide this field for non-Canadian loans. */}
-      {isCanadianMortgage && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('mortgageFields.termLength')}
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <NumericInput
-              id="mortgage-term-years"
-              label={t('mortgageFields.years')}
-              decimalPlaces={0}
-              min={0}
-              max={99}
-              value={termYears}
-              onChange={handleTermYearsChange}
-              error={errors.termMonths?.message as string | undefined}
-            />
-            <NumericInput
-              id="mortgage-term-months"
-              label={t('mortgageFields.months')}
-              decimalPlaces={0}
-              min={0}
-              max={11}
-              value={termRemainder}
-              onChange={handleTermMonthsChange}
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('mortgageFields.termLengthNoTerm')}
-          </p>
+      {/* Term Length - years + months inputs. The rate-fixed period (a
+          Canadian term, a UK fixed deal, a Dutch rentevaste periode), shown for
+          every type; its end drives the renewal reminder. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t('mortgageFields.termLength')}
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <NumericInput
+            id="mortgage-term-years"
+            label={t('mortgageFields.years')}
+            decimalPlaces={0}
+            min={0}
+            max={99}
+            value={termYears}
+            onChange={handleTermYearsChange}
+            error={errors.termMonths?.message as string | undefined}
+          />
+          <NumericInput
+            id="mortgage-term-months"
+            label={t('mortgageFields.months')}
+            decimalPlaces={0}
+            min={0}
+            max={11}
+            value={termRemainder}
+            onChange={handleTermMonthsChange}
+          />
         </div>
-      )}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {t('mortgageFields.termLengthHelp')}
+        </p>
+      </div>
 
       {/* Amortization Period - years + months inputs */}
       <div>
@@ -389,7 +440,11 @@ export function MortgageFields({
               </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">{t('mortgageFields.previewPaymentAmount')}</span>{' '}
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {hasConstantPayment
+                      ? t('mortgageFields.previewPaymentAmount')
+                      : t('mortgageFields.previewFirstInstallment')}
+                  </span>{' '}
                   <span className="font-medium">{formatCurrency(mortgagePreview.paymentAmount, watchedCurrency)}</span>
                 </div>
                 <div>

@@ -8,6 +8,7 @@ import { ImportResult } from '@/lib/import';
 import { Account } from '@/types/account';
 import { ImportFileData, BulkImportResult } from '@/app/import/import-utils';
 import { LoanPaymentSetupDialog } from '@/components/accounts/LoanPaymentSetupDialog';
+import { mortgageTypeOf } from '@/lib/mortgage-type';
 
 interface CompleteStepProps {
   importFiles: ImportFileData[];
@@ -40,19 +41,16 @@ export function CompleteStep({
     accountName: string;
     accountType: string;
     currencyCode?: string;
-    isCanadianMortgage?: boolean;
-    isVariableRate?: boolean;
   } | null>(null);
   const [completedSetups, setCompletedSetups] = useState<Set<string>>(new Set());
 
-  // The two mortgage flags for a matched account, read from the accounts list
-  // rather than from the import summary, which never carried them.
-  const mortgageFlagsOf = (accountId: string) => {
+  // The mortgage type of a matched account, read from the accounts list rather
+  // than from the import summary, which never carried it, through
+  // `mortgageTypeOf`, so the dialog seeds the convention the server prices: a
+  // Canadian variable-rate row reads as `ANNUITY`.
+  const mortgageTypeOfAccount = (accountId: string) => {
     const account = accounts.find((a) => a.id === accountId);
-    return {
-      isCanadianMortgage: account?.isCanadianMortgage,
-      isVariableRate: account?.isVariableRate,
-    };
+    return account ? mortgageTypeOf(account) : undefined;
   };
 
   // Collect loan accounts needing setup from import results
@@ -330,11 +328,12 @@ export function CompleteStep({
           onClose={() => setSetupDialogAccount(null)}
           loanAccount={{
             ...setupDialogAccount,
-            // The dialog submits its own checkboxes, so an unseeded `false` on a
-            // matched existing Canadian mortgage turns semi-annual compounding
-            // off for every future split. The import list carries only what the
-            // import knew, so the flags are read from the account itself.
-            ...mortgageFlagsOf(setupDialogAccount.accountId),
+            // The dialog submits its own type select, so an unseeded `ANNUITY`
+            // on a matched existing Canadian fixed-rate mortgage turns
+            // semi-annual compounding off for every future split. The import
+            // list carries only what the import knew, so the type is read from
+            // the account itself.
+            mortgageType: mortgageTypeOfAccount(setupDialogAccount.accountId),
           }}
           accounts={accounts}
           onSetupComplete={() => {

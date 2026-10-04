@@ -23,12 +23,12 @@
     "button": "Ver Faturas &amp; Depósitos"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 renovação de crédito habitação próxima",
-    "subjectPlural": "Monize: {{ count }} renovações de crédito habitação próximas",
-    "heading": "Lembrete de renovação de crédito habitação",
+    "subject": "Monize: 1 prazo de taxa de crédito habitação termina em breve",
+    "subjectPlural": "Monize: {{ count }} prazos de taxa de crédito habitação terminam em breve",
+    "heading": "Lembrete de fim do prazo de taxa do crédito habitação",
     "greeting": "Olá {{ name }},",
-    "introOne": "Tem 1 crédito habitação com uma renovação de prazo próxima. Contacte o seu banco para discutir as opções de renovação antes do fim do prazo:",
-    "introMany": "Tem {{ count }} créditos habitação com uma renovação de prazo próxima. Contacte o seu banco para discutir as opções de renovação antes do fim do prazo:",
+    "introOne": "Tem 1 crédito habitação cujo prazo de taxa atual termina em breve. Contacte o seu banco antes do fim para acordar a próxima taxa ou a renovação:",
+    "introMany": "Tem {{ count }} créditos habitação cujo prazo de taxa atual termina em breve. Contacte o seu banco antes do fim de cada um para acordar a próxima taxa ou a renovação:",
     "colMortgage": "Crédito habitação",
     "colTermEndDate": "Data de fim do prazo",
     "colTimeRemaining": "Tempo restante",

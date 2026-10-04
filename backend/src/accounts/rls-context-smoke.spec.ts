@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { I18nService } from "nestjs-i18n";
 import { DataSource } from "typeorm";
 import { AccountsService } from "./accounts.service";
+import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
 import { MortgageReminderService } from "./mortgage-reminder.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { User } from "../users/entities/user.entity";
@@ -68,6 +69,7 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
         { provide: PortfolioService, useValue: {} },
         { provide: ExchangeRateService, useValue: {} },
         { provide: LoanMortgageAccountService, useValue: {} },
+        { provide: ScheduledOccurrenceService, useValue: {} },
       ],
     }).compile();
     const service = module.get(AccountsService);
@@ -200,6 +202,7 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
         { provide: PortfolioService, useValue: {} },
         { provide: ExchangeRateService, useValue: {} },
         { provide: LoanMortgageAccountService, useValue: {} },
+        { provide: ScheduledOccurrenceService, useValue: {} },
       ],
     }).compile();
     const service = module.get(AccountsService);

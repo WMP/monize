@@ -23,12 +23,12 @@
     "button": "Rechnungen &amp; Einzahlungen anzeigen"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 bevorstehende Hypothekenverlängerung",
-    "subjectPlural": "Monize: {{ count }} bevorstehende Hypothekenverlängerungen",
-    "heading": "Erinnerung an Hypothekenverlängerung",
+    "subject": "Monize: 1 Zinsbindung endet bald",
+    "subjectPlural": "Monize: {{ count }} Zinsbindungen enden bald",
+    "heading": "Erinnerung an das Ende der Zinsbindung",
     "greeting": "Hallo {{ name }},",
-    "introOne": "Sie haben 1 Hypothek mit einer bevorstehenden Laufzeitverlängerung. Kontaktieren Sie Ihren Kreditgeber, um Verlängerungsoptionen zu besprechen, bevor die Laufzeit endet:",
-    "introMany": "Sie haben {{ count }} Hypotheken mit bevorstehenden Laufzeitverlängerungen. Kontaktieren Sie Ihren Kreditgeber, um Verlängerungsoptionen zu besprechen, bevor die Laufzeit endet:",
+    "introOne": "Bei 1 Hypothek endet die aktuelle Zinsbindung bald. Kontaktieren Sie Ihren Kreditgeber vor dem Ende, um Ihren nächsten Zinssatz oder eine Anschlussfinanzierung zu vereinbaren:",
+    "introMany": "Bei {{ count }} Hypotheken endet die aktuelle Zinsbindung bald. Kontaktieren Sie Ihren Kreditgeber vor dem jeweiligen Ende, um den nächsten Zinssatz oder eine Anschlussfinanzierung zu vereinbaren:",
     "colMortgage": "Hypothek",
     "colTermEndDate": "Laufzeitende",
     "colTimeRemaining": "Verbleibende Zeit",

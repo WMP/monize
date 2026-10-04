@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { accountsApi } from '@/lib/accounts';
-import { Account } from '@/types/account';
+import { Account, MortgageType } from '@/types/account';
 import { showErrorToast } from '@/lib/errors';
 import { UseFormModalReturn } from '@/hooks/useFormModal';
 import type { AccountFormInitialValues } from '@/components/accounts/AccountForm';
@@ -43,6 +43,8 @@ interface AccountFormModalProps {
   onCreated?: (created: Account) => void;
   /** Prefill for a new account (a bank account being linked); ignored on an edit. */
   initialValues?: AccountFormInitialValues;
+  /** A detected mortgage type to set on the edit form as an unsaved change. */
+  preselectedMortgageType?: MortgageType;
 }
 
 /**
@@ -56,6 +58,7 @@ export function AccountFormModal({
   onSaved,
   onCreated,
   initialValues,
+  preselectedMortgageType,
 }: AccountFormModalProps) {
   const t = useTranslations('accounts');
   const {
@@ -204,6 +207,7 @@ export function AccountFormModal({
           onCancel={close}
           onDirtyChange={setFormDirty}
           submitRef={formSubmitRef}
+          preselectedMortgageType={preselectedMortgageType}
         />
       </Modal>
       <UnsavedChangesDialog {...unsavedChangesDialog} />

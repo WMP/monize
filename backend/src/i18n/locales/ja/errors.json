@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "住宅ローン口座には mortgagePaymentFrequency、paymentStartDate、sourceAccountId、および amortizationMonths が必要です",
     "mortgageRequiresInterestRate": "住宅ローン口座には利率が必要です",
     "mortgageFrequencyUnsupported": "カナダの住宅ローンは支払頻度 {frequency} では設定できません",
+    "mortgageMethodAccelerated": "加速返済の支払頻度は元利均等返済の住宅ローンにのみ適用されます。{{ type }} の住宅ローンは支払頻度 {{ frequency }} では返済できません",
+    "mortgageMethodRequiresTerms": "{{ type }} の住宅ローンには {{ fields }} が必要です",
+    "mortgageMethodPaymentMismatch": "支払額は、この {{ type }} 住宅ローンの初回返済額に追加元本を加えた額である必要があります。初回返済額はサーバーが残高、金利、償還期間から算出します。プレビューをもう一度表示してください",
     "paymentFrequencyUnsupported": "支払頻度 {frequency} は設定できません",
     "mortgageRequiresInstitution": "住宅ローン口座には金融機関名が必要です",
     "onlyMortgageAccounts": "この操作は住宅ローン口座にのみ有効です",
@@ -629,6 +632,7 @@
     "duplicateDate": "適用日 {{ date }} の金利変更はこの口座にすでに存在します",
     "paymentModeConflict": "新しい返済額または recalculatePayment のいずれかを指定してください。両方は指定できません",
     "recalculateMortgageOnly": "返済額の再計算は住宅ローン口座でのみ利用できます",
+    "methodDerivesPayment": "{{ type }} の住宅ローンの返済額は各支払日の残高と金利から算出されるため、金利変更で支払額を指定することはできません",
     "insufficientData": "金利変更を検出するには利息の詳細を含む返済が不足しています",
     "frequencyMismatch": "返済日が口座の返済頻度と一致しません。推定金利の精度が低下する可能性があります"
   },

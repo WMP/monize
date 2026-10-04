@@ -248,10 +248,8 @@
     "payeeLender": "Beneficiário / Mutuante",
     "selectOrCreatePayee": "Selecionar ou criar beneficiário...",
     "mortgageDetails": "Detalhes da Hipoteca",
-    "canadianMortgage": "Hipoteca Canadense (capitalização semestral)",
-    "variableRate": "Taxa Variável",
     "amortizationMonths": "Amortização (meses)",
-    "termMonths": "Prazo (meses)",
+    "termMonths": "Prazo de Taxa Fixa (meses)",
     "autoPost": "Registrar transações automaticamente quando vencerem",
     "skip": "Ignorar",
     "setUpPayments": "Configurar Pagamentos",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Pagamentos agendados configurados para {account}"
-    }
+    },
+    "firstInstallment": "Primeira parcela",
+    "firstInstallmentHelp": "Este financiamento não tem pagamento fixo: cada parcela é calculada a partir do saldo, da taxa e do prazo de amortização. Esta é a que vence em {date}, incluindo qualquer amortização extra.",
+    "firstInstallmentPending": "Informe a data do próximo pagamento para calcular a primeira parcela.",
+    "firstInstallmentCalculating": "Calculando a primeira parcela...",
+    "firstInstallmentFailed": "Não foi possível calcular a primeira parcela. Verifique os valores abaixo e tente novamente."
   },
   "mortgageFields": {
     "title": "Detalhes da Hipoteca",
-    "canadianMortgage": "Hipoteca Canadense",
-    "canadianMortgageDesc": "Usa capitalização semestral para taxas fixas (obrigatório por lei no Canadá)",
-    "variableRate": "Taxa Variável",
-    "variableRateDesc": "A taxa pode variar durante o prazo (usa capitalização mensal)",
-    "variableRateLoanDetailsLink": "Registre as alterações de taxa nos <link>detalhes do empréstimo</link>.",
-    "termLength": "Duração do Prazo",
-    "termLengthNoTerm": "Deixar em 0 anos e 0 meses para sem prazo.",
+    "type": {
+      "label": "Tipo de Hipoteca",
+      "ANNUITY": "Tabela Price (Parcela Constante)",
+      "CANADIAN_FIXED": "Taxa Fixa Canadense",
+      "LINEAR": "SAC (Amortização Constante)",
+      "INTEREST_ONLY": "Somente Juros",
+      "help": {
+        "ANNUITY": "Seu pagamento total é o mesmo todo mês. Escolha esta opção também para uma hipoteca com taxa variável.",
+        "CANADIAN_FIXED": "Um contrato canadense de taxa fixa; os juros são capitalizados duas vezes por ano.",
+        "LINEAR": "A parte de amortização é a mesma todo mês e o total diminui.",
+        "INTEREST_ONLY": "Você paga somente juros e o saldo não muda."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Registre as alterações de taxa nos <link>detalhes do empréstimo</link>.",
+    "termLength": "Prazo de Taxa Fixa",
+    "termLengthHelp": "Quanto tempo dura sua taxa de juros ou o prazo do contrato, por exemplo uma taxa fixa de 5 anos. O Monize pode lembrar você antes do fim. Deixar em 0 anos e 0 meses para sem prazo.",
     "amortizationPeriod": "Período de Amortização (obrigatório)",
     "years": "Anos",
     "months": "Meses",
@@ -333,6 +345,68 @@
       "memoLabel": "Texto da nota de amortização extra",
       "memoPlaceholder": "ex.: amortização extra",
       "memoHelp": "Correspondência de substring sem diferenciar maiúsculas de minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de um rateio."
+    },
+    "prepaymentMode": {
+      "label": "O que uma amortização extra faz",
+      "SHORTEN_TERM": "Reduz o prazo (mesma amortização todo mês)",
+      "LOWER_INSTALLMENT": "Reduz a parcela (mesma data final)",
+      "help": "Confirme com o seu banco. Se, após uma amortização extra, a parte de amortização no extrato não mudar, o prazo foi reduzido."
+    },
+    "previewFirstInstallment": "Primeira parcela:",
+    "detect": {
+      "toggle": "Não tem certeza? Informe algumas parcelas",
+      "title": "Descubra o tipo de hipoteca",
+      "intro": "Copie duas ou três parcelas consecutivas de um extrato, da mais antiga para a mais recente. O saldo é opcional: com ele e a taxa de juros, o Monize consegue saber se os juros são capitalizados duas vezes por ano.",
+      "installment": "Parcela {number}",
+      "principal": "Principal",
+      "interest": "Juros",
+      "balance": "Saldo anterior (opcional)",
+      "rowIncomplete": "Informe o principal e os juros, ou deixe a linha vazia.",
+      "rate": "Verificado com a taxa de juros informada acima, {rate}.",
+      "noRate": "Nenhuma taxa de juros foi informada acima, então a capitalização não pode ser verificada.",
+      "needsFrequency": "Escolha primeiro a frequência do pagamento abaixo: as parcelas são lidas nessa periodicidade.",
+      "submit": "Sugerir um Tipo",
+      "close": "Fechar",
+      "suggested": "Tipo sugerido: {type}",
+      "noSuggestion": "Nenhum tipo sugerido.",
+      "lowConfidence": "Baixa confiança: confira no seu contrato ou pergunte ao seu banco antes de usar.",
+      "use": "Usar Este Tipo",
+      "failed": "Não foi possível verificar as parcelas porque a solicitação falhou. Tente novamente.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "São necessárias pelo menos duas parcelas consecutivas para comparar.",
+        "INVALID_SAMPLE": "Uma parcela tem um valor negativo ou ilegível.",
+        "NO_PAYMENT": "As parcelas não amortizam o principal nem cobram juros.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "O principal e o total são iguais em todas as parcelas, o que serve tanto para o SAC quanto para a Tabela Price. Tente parcelas mais distantes entre si ou confira seu contrato.",
+        "ACCELERATED_FREQUENCY": "Estas parcelas parecem SAC ou somente juros, o que não é possível com uma frequência de pagamento acelerada. Verifique a frequência do pagamento.",
+        "NO_RULE_FITS": "Nem o principal nem o total se mantêm iguais nestas parcelas. Se a taxa mudou entre elas, use parcelas de um único período de taxa.",
+        "ZERO_PRINCIPAL": "Nenhum principal é amortizado, então o saldo não muda.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Nenhum principal é amortizado, mas os juros não correspondem à taxa informada sobre o saldo. Verifique a taxa.",
+        "CONSTANT_PRINCIPAL": "A parte de amortização é a mesma todas as vezes e o total diminui.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "A parte de amortização é a mesma todas as vezes, mas os juros não correspondem à taxa informada sobre o saldo. Verifique a taxa.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "O total é o mesmo todas as vezes e os juros correspondem à taxa informada capitalizada duas vezes por ano.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "O total é o mesmo todas as vezes e os juros correspondem à taxa informada sem capitalização semestral.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "O total é o mesmo todas as vezes. Sem o saldo antes de cada parcela e a taxa de juros, não foi possível verificar a capitalização semestral.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "O total é o mesmo todas as vezes, mas o saldo é pequeno demais para distinguir a capitalização semestral. Um contrato canadense de taxa fixa informa isso em suas condições.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "O total é o mesmo todas as vezes, mas os juros não correspondem a nenhuma das convenções na taxa informada. Os juros podem ser cobrados por dia; verifique a taxa."
+      },
+      "history": {
+        "action": "Detectar Tipo de Hipoteca",
+        "title": "Tipo de hipoteca a partir dos seus pagamentos",
+        "intro": "Lido das parcelas lançadas mais recentes em uma única taxa. Nada muda até você salvar a conta.",
+        "current": "Tipo atual: {type}",
+        "alreadySet": "Esta hipoteca já tem o tipo sugerido.",
+        "rate": "Taxa de juros em vigor: {rate}",
+        "noRate": "Nenhuma taxa de juros está registrada para estas datas, então a capitalização não foi verificada.",
+        "noSamples": "Nenhuma parcela lançada com uma parte de principal e uma parte de juros foi encontrada. Registre seus pagamentos divididos em principal e juros para usar este recurso.",
+        "colDate": "Data",
+        "colPrincipal": "Principal",
+        "colInterest": "Juros",
+        "colBalance": "Saldo anterior",
+        "balanceUnknown": "Desconhecido",
+        "failed": "Não foi possível ler o histórico de pagamentos porque a solicitação falhou. Tente novamente.",
+        "cancel": "Cancelar",
+        "use": "Editar Conta com Este Tipo"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "acceleratedNeedsAnnuity": "Este financiamento é pago em um cronograma acelerado, que só um financiamento de parcelas fixas tem. Um financiamento SAC ou só de juros precisa de uma frequência de pagamento normal, então mantenha um tipo de parcelas fixas."
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Juros restantes est.",
       "notSet": "Não definido",
       "notAvailable": "N/D",
-      "paidOff": "Quitado"
+      "paidOff": "Quitado",
+      "nextInstallment": "Próxima parcela",
+      "dueOn": "Vence em {date}",
+      "finalPayment": "Pagamento final",
+      "nextInstallmentDue": "Próxima parcela (vence em {date})",
+      "finalPaymentDue": "Pagamento final (vence em {date})"
     },
     "schedule": {
       "title": "Tabela de amortização",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Este empréstimo não tem saldo devedor, então não há nada para amortizar.",
         "reasonNoFrequency": "Este empréstimo não tem uma frequência de pagamento definida. Adicione-a nas configurações da conta.",
         "reasonNoRate": "Este empréstimo não tem uma taxa de juros salva. Defina a taxa nas configurações da conta ou registre uma alteração de taxa com data de hoje ou anterior. Uma taxa mostrada por linha no cronograma abaixo é reconstruída a partir dos juros cobrados e não é uma taxa salva.",
-        "reasonNoPayment": "O valor da parcela não pode ser determinado. Registre as parcelas regulares como transferências para a conta do empréstimo (principal, com os juros como linha de divisão ou como uma despesa categorizada separada), ou defina o valor do pagamento nas configurações da conta. Pagamentos registrados como despesas comuns na conta de origem nunca chegam à conta do empréstimo, então o cronograma não consegue vê-los."
-      }
+        "reasonNoPayment": "O valor da parcela não pode ser determinado. Registre as parcelas regulares como transferências para a conta do empréstimo (principal, com os juros como linha de divisão ou como uma despesa categorizada separada), ou defina o valor do pagamento nas configurações da conta. Pagamentos registrados como despesas comuns na conta de origem nunca chegam à conta do empréstimo, então o cronograma não consegue vê-los.",
+        "reasonNoAmortization": "Este financiamento imobiliário não tem prazo de amortização, então não é possível calcular as parcelas nem o fim do prazo. Defina o prazo de amortização nas configurações da conta.",
+        "reasonNoPaymentStart": "Este financiamento imobiliário não tem data do primeiro pagamento, então não é possível contar os pagamentos que faltam até o fim do prazo. Configure o pagamento agendado nas configurações da conta; a primeira data de vencimento que você informar passa a ser o pagamento 1.",
+        "reasonNoPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível calcular a amortização constante. Defina o valor do financiamento nas configurações da conta."
+      },
+      "budgetBelowNextInstallment": "Isso está abaixo da próxima parcela ({amount}, vence em {date}); aumente acima dela para amortizar antecipadamente.",
+      "shortenTermNeedsPrincipal": "Este financiamento imobiliário não tem valor original, então não é possível simular um prazo menor. Escolha reduzir a parcela ou defina o valor do financiamento nas configurações da conta."
     },
     "comparison": {
       "newPayoff": "Nova data de quitação",
@@ -481,7 +566,8 @@
       "newInstallment": "Nova parcela",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Pagamento mensal",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primeiro pagamento"
     },
     "chart": {
       "title": "Linha do tempo de quitação",

@@ -44,6 +44,9 @@
     "mortgageRequiredFields": "I conti mutuo richiedono mortgagePaymentFrequency, paymentStartDate, sourceAccountId e amortizationMonths",
     "mortgageRequiresInterestRate": "I conti mutuo richiedono un tasso d'interesse",
     "mortgageFrequencyUnsupported": "I mutui canadesi non possono essere pianificati con una frequenza di pagamento {frequency}",
+    "mortgageMethodAccelerated": "Le frequenze di pagamento accelerate si applicano solo ai mutui ad annualità; un mutuo {{ type }} non può essere pagato con frequenza {{ frequency }}",
+    "mortgageMethodRequiresTerms": "Un mutuo {{ type }} richiede {{ fields }}",
+    "mortgageMethodPaymentMismatch": "L'importo del pagamento deve essere la prima rata di questo mutuo {{ type }} più l'eventuale capitale aggiuntivo; il server la ricava da debito, tasso e ammortamento. Visualizza di nuovo l'anteprima",
     "paymentFrequencyUnsupported": "Una frequenza di pagamento {frequency} non può essere pianificata",
     "mortgageRequiresInstitution": "I conti mutuo richiedono un nome istituto",
     "onlyMortgageAccounts": "Questa operazione è valida solo per i conti mutuo",
@@ -629,6 +632,7 @@
     "duplicateDate": "Esiste già una variazione del tasso con decorrenza {{ date }} per questo conto",
     "paymentModeConflict": "Fornisci un nuovo importo della rata oppure recalculatePayment, ma non entrambi",
     "recalculateMortgageOnly": "Il ricalcolo della rata è disponibile solo per i conti mutuo",
+    "methodDerivesPayment": "La rata di un mutuo {{ type }} è calcolata dal debito e dal tasso a ogni scadenza, quindi una variazione del tasso non può indicare un importo di pagamento",
     "insufficientData": "Pagamenti con dettagli sugli interessi insufficienti per rilevare le variazioni del tasso",
     "frequencyMismatch": "Le date di pagamento non corrispondono alla frequenza di pagamento del conto; i tassi dedotti potrebbero essere meno accurati"
   },

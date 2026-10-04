@@ -76,7 +76,10 @@
     "collapseAria": "隐藏账户信息",
     "showAccountNumber": "显示账户号码",
     "hideAccountNumber": "隐藏账户号码",
-    "show": "显示账户信息"
+    "show": "显示账户信息",
+    "nextInstallment": "下期还款",
+    "finalPayment": "最后一期还款",
+    "amountDueOn": "{amount}，到期日 {date}"
   },
   "page": {
     "title": "交易",

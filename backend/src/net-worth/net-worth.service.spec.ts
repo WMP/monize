@@ -124,6 +124,8 @@ describe("NetWorthService", () => {
     dateAcquired: null,
     isCanadianMortgage: false,
     isVariableRate: false,
+    mortgageType: null,
+    prepaymentMode: null,
     termMonths: null,
     termEndDate: null,
     amortizationMonths: null,
