@@ -133,7 +133,9 @@
     "nothingProposed": "Uma proposta precisa de pelo menos uma alteração: splits, categoryName, payeeName ou description.",
     "splitsAndCategory": "Envie splits ou categoryName, não ambos: uma transação dividida não tem uma única categoria.",
     "transferNotSupported": "Uma transferência não pode ser revisada por proposta. Rejeite a solicitação.",
-    "splitDifference": "As linhas da divisão somam {{ sum }}, mas a transação é {{ amount }}: {{ difference }} não está atribuído. Faça as linhas somarem o valor da transação; uma sobra como frete precisa da própria linha, ou é informada ao usuário em vez de atribuída."
+    "splitDifference": "As linhas da divisão somam {{ sum }}, mas a transação é {{ amount }}: {{ difference }} não está atribuído. Faça as linhas somarem o valor da transação; uma sobra como frete precisa da própria linha, ou é informada ao usuário em vez de atribuída.",
+    "noTransaction": "Esta solicitação de revisão de IA não é sobre uma transação.",
+    "parserDraftNotSubmittable": "Uma solicitação de rascunho de analisador é respondida com a ferramenta email_receipt_parsers (test e depois save_draft com este requestId), não com uma proposta de transação."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Tentativas de verificação excessivas. Faça login novamente.",
@@ -351,7 +353,6 @@
     "openRequestExists": "Já existe outra solicitação de revisão aberta para esta transação. Conclua-a ou descarte-a primeiro.",
     "receiptNotFound": "E-mail {{ id }} não encontrado",
     "aiOff": "A IA está desativada para esta caixa de e-mail. Altere primeiro o modo de IA nas configurações da caixa de e-mail.",
-    "pollMailboxDisabled": "A caixa de e-mail está desativada. Ative-a nas configurações da caixa de e-mail para consultá-la.",
     "pollBusy": "A caixa de e-mail está sendo lida neste momento. Tente novamente em um minuto.",
     "parserPayeeNotFound": "O favorecido deste analisador não foi encontrado.",
     "parserNotFound": "Analisador de recibos {{ id }} não encontrado",
@@ -373,7 +374,10 @@
     "oauthReconnectRequired": "O login da caixa de e-mail foi revogado ou expirou. Conecte a caixa de e-mail novamente nas configurações dela.",
     "oauthTokenUnreadable": "O login armazenado não pode ser lido neste servidor. Conecte a caixa de e-mail novamente nas configurações dela.",
     "notOAuthMailbox": "Esta caixa de e-mail não faz login com Google nem Microsoft.",
-    "settingsEmpty": "Envie pelo menos uma configuração para alterar."
+    "settingsEmpty": "Envie pelo menos uma configuração para alterar.",
+    "parserToolReceiptCount": "Informe de 1 a 5 e-mails para testar o analisador.",
+    "parserToolInvalidSender": "Um rascunho precisa de um nome e de um a dez domínios de remetente, como shop.example.com.",
+    "parserDraftRequestNotClaimed": "Esta solicitação de rascunho de analisador não foi assumida por você. Assuma-a primeiro com ai_review_requests ou salve o rascunho sem requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",

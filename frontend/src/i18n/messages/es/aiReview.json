@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Bandeja de revisión de IA",
-    "subtitle": "Transacciones que una regla pidió revisar a una IA y las modificaciones que un asistente propone para que las apruebes."
+    "subtitle": "Transacciones que una regla pidió revisar a una IA, analizadores que se pidió redactar a un asistente y modificaciones que un asistente propone para que las apruebes."
   },
   "filter": {
     "label": "Filtrar por estado",
@@ -34,11 +34,13 @@
     "manualRequest": "Solicitada manualmente",
     "emailReceipt": "Recibo por correo: {subject} de {sender}",
     "emailReceiptMissing": "Recibo por correo (el correo se eliminó)",
+    "parserDraft": "Borrador de analizador a partir de {count, plural, one {# correo} other {# correos}} ({domain})",
     "viewEmailReceipts": "Ver recibos por correo",
     "agentNote": "Nota del asistente: {reason}",
     "dates": "Creada el {created}, caduca el {expires}",
     "viewTransaction": "Ver transacción",
-    "waitingForAgent": "Esperando a un agente de IA. <link>Conecta un proveedor de IA en Ajustes</link> o deja que un cliente MCP la tome."
+    "waitingForAgent": "Esperando a un agente de IA. <link>Conecta un proveedor de IA en Ajustes</link> o deja que un cliente MCP la tome.",
+    "parserDraftReady": "Borrador de analizador listo. <link>Pruébalo y apruébalo en la configuración de analizadores</link>."
   },
   "actions": {
     "dismiss": "Descartar"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "¿Descartar esta solicitud?",
-    "message": "Nadie volverá a recibir la petición de revisar esta transacción. La transacción no se modifica.",
+    "message": "Nadie volverá a recibir la petición de trabajar en esta solicitud. No se modifica nada de lo que trataba.",
     "confirm": "Descartar solicitud"
   },
   "loading": "Cargando solicitudes de revisión...",

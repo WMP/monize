@@ -85,17 +85,17 @@
       "folderLabel": "Thư mục",
       "folderHelp": "Thư mục cần đọc. Thư mục được mở ở chế độ chỉ đọc.",
       "enabledLabel": "Tự động đọc hộp thư",
-      "enabledHelp": "Khi bật, hộp thư được kiểm tra mỗi 15 phút. Bạn luôn có thể dùng Kiểm tra ngay.",
+      "enabledHelp": "Chỉ điều khiển việc đọc tự động: khi bật, Monize đọc hộp thư mỗi 15 phút. Tắt không làm ngắt kết nối hộp thư, và Kiểm tra ngay vẫn đọc hộp thư dù mục này bật hay tắt.",
       "aiModeLabel": "Chế độ AI",
-      "aiModeHelp": "Có cho phép dùng nhà cung cấp AI bạn đã cấu hình cho các hóa đơn hay không. Câu trả lời của AI luôn là một đề xuất hoặc bản nháp để bạn phê duyệt.",
+      "aiModeHelp": "Có cho phép lần kiểm tra dùng nhà cung cấp AI bạn đã cấu hình cho các hóa đơn hay không. Nhận dạng bằng AI và Nhờ AI soạn trình phân tích hỏi trợ lý trong cuộc trò chuyện ở mọi chế độ, và câu trả lời của AI luôn là một đề xuất hoặc bản nháp để bạn phê duyệt.",
       "aiModes": {
         "off": "Tắt",
         "on_demand": "Theo yêu cầu",
         "automatic": "Tự động"
       },
       "aiModeDescriptions": {
-        "off": "Không bao giờ gọi AI cho các hóa đơn.",
-        "on_demand": "Chỉ gọi AI khi bạn nhấn Nhận dạng bằng AI hoặc Nhờ AI soạn trình phân tích.",
+        "off": "Lần kiểm tra không bao giờ gọi AI cho các hóa đơn.",
+        "on_demand": "Lần kiểm tra không bao giờ gọi AI. Bạn tự hỏi trợ lý bằng Nhận dạng bằng AI hoặc Nhờ AI soạn trình phân tích.",
         "automatic": "Mỗi lần kiểm tra sẽ hỏi AI về hóa đơn đã khớp mà không trình phân tích nào đã duyệt đọc được đầy đủ, và soạn trình phân tích cho người gửi chưa có."
       },
       "autoApplyLabel": "Tự động áp dụng đề xuất",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Lỗi gần nhất ({at}): {error}",
       "pollNow": "Kiểm tra ngay",
       "pollResult": "Đã kiểm tra xong: {fetched, plural, one {đã lưu # email} other {đã lưu # email}}, bỏ qua {skipped}, đã xử lý {processed}.",
+      "pollResultLink": "Xem các email đã lưu",
       "pollFailed": "Kiểm tra không thành công",
       "deleteButton": "Xóa hộp thư",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Thử lại"
     },
     "draftNote": "Trình phân tích này là bản nháp. Nó không đọc gì cho đến khi bạn duyệt.",
-    "draftAiNote": "AI đã soạn trình phân tích này từ một email mẫu. Hãy đối chiếu từng mẫu với các email của bạn, rồi duyệt nó từ danh sách. Nó không đọc gì cho đến khi bạn duyệt.",
+    "draftAiNote": "AI đã soạn trình phân tích này từ các email mẫu của bạn. Hãy thử nó trên từng email và đối chiếu từng mẫu, rồi duyệt nó từ danh sách. Nó không đọc gì cho đến khi bạn duyệt.",
     "identityHeading": "Các email nó đọc",
     "nameLabel": "Tên",
     "payeeLabel": "Người nhận",
@@ -349,6 +350,7 @@
       "ignored": "Đã phớt lờ"
     },
     "columns": {
+      "select": "Chọn",
       "received": "Nhận lúc",
       "email": "Email",
       "transaction": "Giao dịch",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "Đã xử lý lại email",
       "reprocessFailed": "Không thể xử lý lại email",
-      "draftFailed": "Không thể soạn trình phân tích",
       "ignored": "Đã phớt lờ email",
       "ignoreFailed": "Không thể phớt lờ email",
       "deleted": "Đã xóa email",
       "deleteFailed": "Không thể xóa email"
-    },
-    "notices": {
-      "draftCreated": "AI đã soạn trình phân tích {name}. Nó không đọc gì cho đến khi bạn xem xét và duyệt.",
-      "draftLink": "Xem xét trong cài đặt trình phân tích"
     },
     "ignoreDialog": {
       "title": "Phớt lờ email này?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Xóa email này?",
       "message": "Email đã lưu {subject} sẽ bị xóa và yêu cầu xem xét đang mở của nó sẽ được bỏ qua. Thư trong hộp thư không bị động đến, và lần kiểm tra sau sẽ không lấy lại nó."
+    },
+    "selection": {
+      "label": "Email đã chọn",
+      "select": "Chọn {subject}",
+      "count": "{count, plural, one {Đã chọn # email} other {Đã chọn # email}} (tối đa {max})",
+      "draftButton": "Nhờ AI soạn trình phân tích ({count})",
+      "clear": "Bỏ chọn",
+      "differentSenders": "Các email đã chọn đến từ những người gửi khác nhau ({domains}). Một trình phân tích đọc email của một người gửi, vì vậy hãy chọn email từ cùng một người gửi."
+    },
+    "draft": {
+      "failed": "Không thể bắt đầu soạn trình phân tích",
+      "queued": "Đã xếp hàng: yêu cầu chờ trong hộp thư xem xét của AI cho một tác nhân. Hiện không có trợ lý nào để trả lời.",
+      "handoffFailed": "Yêu cầu đã được xếp hàng, nhưng không thể mở các email trong cuộc trò chuyện. Yêu cầu chờ trong hộp thư xem xét của AI cho một tác nhân.",
+      "inboxLink": "Mở hộp thư xem xét của AI",
+      "opened": "Đã mở cuộc trò chuyện kèm các email. Hãy đọc tin nhắn và nhấn Gửi.",
+      "chatPrompt": "Hãy tạo một trình phân tích hóa đơn email cho {count, plural, one {email đơn hàng này} other {# email đơn hàng này}} từ {domain}. Hãy nhận yêu cầu xem xét AI {requestId}, thử trình phân tích của bạn trên mọi email đính kèm bằng công cụ email_receipt_parsers, sửa cho đến khi từng email được đọc đầy đủ, rồi lưu nó dưới dạng bản nháp cho yêu cầu {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Từ",
     "received": "Nhận lúc",
+    "forwardedBy": "Người chuyển tiếp",
+    "originalSent": "Cửa hàng gửi",
     "subject": "Tiêu đề",
     "state": "Trạng thái",
     "parser": "Trình phân tích",
@@ -453,28 +468,39 @@
     "linkButton": "Liên kết với giao dịch này",
     "linked": "Đã liên kết email với giao dịch",
     "linkFailed": "Không thể liên kết email",
-    "textHeading": "Nội dung email",
+    "bodyHeading": "Email",
     "textLabel": "Nội dung của email",
-    "noText": "Email không có nội dung."
+    "noText": "Email không có nội dung.",
+    "bodyView": {
+      "label": "Hiển thị email dưới dạng",
+      "html": "HTML",
+      "text": "Văn bản"
+    },
+    "remoteImagesNote": "Hình ảnh từ xa không được tải.",
+    "htmlFrameTitle": "Email theo định dạng của người gửi"
   },
   "picker": {
     "heading": "Chọn giao dịch",
-    "help": "Không có giao dịch nào được khớp tự động. Đây là các giao dịch của bạn từ {from} đến {to}, những ngày quanh thời điểm email. Hãy chọn giao dịch mà nó đã thanh toán.",
+    "help": "Không có giao dịch nào được khớp tự động. Đây là các giao dịch của bạn trong khoảng ngày bên dưới, ban đầu là những ngày quanh thời điểm mua hàng. Hãy chọn giao dịch mà nó đã thanh toán, hoặc đổi ngày để tìm xa hơn.",
+    "fromLabel": "Từ ngày",
+    "toLabel": "Đến ngày",
     "searchLabel": "Tìm kiếm",
     "searchPlaceholder": "Người nhận, mô tả hoặc số tiền",
     "searchButton": "Tìm kiếm",
     "loading": "Đang tải các giao dịch",
     "error": "Không thể tải các giao dịch.",
     "retry": "Thử lại",
-    "empty": "Bạn không có giao dịch nào trong khoảng thời gian này có thể liên kết.",
-    "emptySearch": "Không có giao dịch nào trong khoảng thời gian này khớp với tìm kiếm.",
+    "empty": "Bạn không có giao dịch nào trong khoảng thời gian này có thể liên kết. Bạn có thể mở rộng các ngày ở trên để tìm xa hơn.",
+    "emptySearch": "Không có giao dịch nào trong khoảng thời gian này khớp với tìm kiếm. Bạn có thể mở rộng các ngày ở trên.",
+    "rangeReversed": "Ngày bắt đầu sau ngày kết thúc.",
+    "rangeIncomplete": "Hãy nhập cả hai ngày để liệt kê giao dịch.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "không có người nhận",
     "linkButton": "Liên kết",
     "hasMore": "Chỉ hiển thị {count} giao dịch đầu tiên. Hãy dùng tìm kiếm để thu hẹp danh sách.",
     "ai": {
       "heading": "Chọn giao dịch cho AI",
-      "help": "Đây là các giao dịch của bạn từ {from} đến {to}, tức những ngày quanh thời điểm của email. Hãy chọn giao dịch mà AI nên chia theo các sản phẩm trong email.",
+      "help": "Đây là các giao dịch của bạn trong khoảng ngày bên dưới, ban đầu là những ngày quanh thời điểm mua hàng. Hãy chọn giao dịch mà AI nên chia theo các sản phẩm trong email, hoặc đổi ngày để tìm xa hơn.",
       "linkButton": "Dùng giao dịch này"
     }
   },

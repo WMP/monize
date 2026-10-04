@@ -85,17 +85,17 @@
       "folderLabel": "Carpeta",
       "folderHelp": "La carpeta que se lee. Se abre en solo lectura.",
       "enabledLabel": "Leer el buzón automáticamente",
-      "enabledHelp": "Si está activado, el buzón se consulta cada 15 minutos. Siempre puedes usar Consultar ahora.",
+      "enabledHelp": "Controla solo la lectura automática: si está activado, Monize lee el buzón cada 15 minutos. Desactivarlo no desconecta el buzón, y Consultar ahora lo lee tanto si está activado como si no.",
       "aiModeLabel": "Modo de IA",
-      "aiModeHelp": "Si se puede usar con los recibos el proveedor de IA que configuraste. Una respuesta de la IA es siempre una propuesta o un borrador que tú apruebas.",
+      "aiModeHelp": "Si la consulta puede usar con los recibos el proveedor de IA que configuraste. Reconocer con IA y Redactar analizador con IA piden ayuda al asistente en el chat sea cual sea el modo, y una respuesta de la IA es siempre una propuesta o un borrador que tú apruebas.",
       "aiModes": {
         "off": "Desactivado",
         "on_demand": "Bajo demanda",
         "automatic": "Automático"
       },
       "aiModeDescriptions": {
-        "off": "Nunca se llama a la IA para los recibos.",
-        "on_demand": "Solo se llama a la IA cuando pulsas Reconocer con IA o Redactar analizador con IA.",
+        "off": "La consulta nunca llama a la IA para los recibos.",
+        "on_demand": "La consulta nunca llama a la IA. Se lo pides tú mismo al asistente con Reconocer con IA o Redactar analizador con IA.",
         "automatic": "La consulta pregunta a la IA por un recibo asociado que ningún analizador aprobado pudo leer por completo, y redacta un analizador para un remitente que no tiene ninguno."
       },
       "autoApplyLabel": "Aplicar las propuestas automáticamente",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Último error ({at}): {error}",
       "pollNow": "Consultar ahora",
       "pollResult": "Consulta finalizada: {fetched, plural, one {# correo guardado} other {# correos guardados}}, {skipped} omitidos, {processed} procesados.",
+      "pollResultLink": "Ver los correos guardados",
       "pollFailed": "La consulta falló",
       "deleteButton": "Eliminar buzón",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Reintentar"
     },
     "draftNote": "Este analizador es un borrador. No lee nada hasta que lo apruebes.",
-    "draftAiNote": "La IA redactó este analizador a partir de un correo de ejemplo. Comprueba cada patrón con tus correos y luego apruébalo desde la lista. No lee nada hasta que lo hagas.",
+    "draftAiNote": "La IA redactó este analizador a partir de tus correos de ejemplo. Pruébalo con cada uno de ellos y comprueba cada patrón; luego apruébalo desde la lista. No lee nada hasta que lo hagas.",
     "identityHeading": "Qué correos lee",
     "nameLabel": "Nombre",
     "payeeLabel": "Beneficiario",
@@ -349,6 +350,7 @@
       "ignored": "Ignorado"
     },
     "columns": {
+      "select": "Seleccionar",
       "received": "Recibido",
       "email": "Correo",
       "transaction": "Transacción",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "Correo reprocesado",
       "reprocessFailed": "No se pudo reprocesar el correo",
-      "draftFailed": "No se pudo redactar un analizador",
       "ignored": "Correo ignorado",
       "ignoreFailed": "No se pudo ignorar el correo",
       "deleted": "Correo eliminado",
       "deleteFailed": "No se pudo eliminar el correo"
-    },
-    "notices": {
-      "draftCreated": "La IA redactó el analizador {name}. No lee nada hasta que lo revises y lo apruebes.",
-      "draftLink": "Revisarlo en la configuración de analizadores"
     },
     "ignoreDialog": {
       "title": "¿Ignorar este correo?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "¿Eliminar este correo?",
       "message": "Se eliminará el correo guardado {subject} y se descartará su solicitud de revisión abierta. El mensaje del buzón no se toca, y una consulta posterior no lo volverá a obtener."
+    },
+    "selection": {
+      "label": "Correos seleccionados",
+      "select": "Seleccionar {subject}",
+      "count": "{count, plural, one {# correo seleccionado} other {# correos seleccionados}} (como máximo {max})",
+      "draftButton": "Redactar analizador con IA ({count})",
+      "clear": "Borrar selección",
+      "differentSenders": "Los correos seleccionados proceden de remitentes distintos ({domains}). Un analizador lee los correos de un solo remitente, así que selecciona correos de uno solo."
+    },
+    "draft": {
+      "failed": "No se pudo empezar a redactar un analizador",
+      "queued": "En cola: la solicitud espera a un agente en la bandeja de revisión de IA. Ahora no hay ningún asistente disponible para responder.",
+      "handoffFailed": "La solicitud está en cola, pero no se pudieron abrir los correos en el chat. Espera a un agente en la bandeja de revisión de IA.",
+      "inboxLink": "Abrir la bandeja de revisión de IA",
+      "opened": "Se abrió el chat con los correos adjuntos. Lee el mensaje y pulsa Enviar.",
+      "chatPrompt": "Crea un analizador de recibos de correo para {count, plural, one {este correo de pedido} other {estos # correos de pedido}} de {domain}. Reclama la solicitud de revisión de IA {requestId}, prueba tu analizador con cada correo adjunto mediante la herramienta email_receipt_parsers, corrígelo hasta que cada uno se lea por completo y guárdalo después como borrador para la solicitud {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "De",
     "received": "Recibido",
+    "forwardedBy": "Reenviado por",
+    "originalSent": "Enviado por la tienda",
     "subject": "Asunto",
     "state": "Estado",
     "parser": "Analizador",
@@ -453,28 +468,39 @@
     "linkButton": "Vincular a esta transacción",
     "linked": "Correo vinculado a la transacción",
     "linkFailed": "No se pudo vincular el correo",
-    "textHeading": "Texto del correo",
+    "bodyHeading": "Correo",
     "textLabel": "Texto del correo",
-    "noText": "El correo no tiene texto."
+    "noText": "El correo no tiene texto.",
+    "bodyView": {
+      "label": "Mostrar el correo como",
+      "html": "HTML",
+      "text": "Texto"
+    },
+    "remoteImagesNote": "No se cargan las imágenes remotas.",
+    "htmlFrameTitle": "El correo con el formato que le dio su remitente"
   },
   "picker": {
     "heading": "Elige la transacción",
-    "help": "No se asoció ninguna transacción automáticamente. Estas son tus transacciones del {from} al {to}, los días en torno al correo. Elige la que pagó.",
+    "help": "No se asoció ninguna transacción automáticamente. Estas son tus transacciones del intervalo de fechas de abajo, que empieza siendo los días en torno a la compra. Elige la que pagó o cambia las fechas para buscar más lejos.",
+    "fromLabel": "Desde",
+    "toLabel": "Hasta",
     "searchLabel": "Buscar",
     "searchPlaceholder": "Beneficiario, descripción o importe",
     "searchButton": "Buscar",
     "loading": "Cargando transacciones",
     "error": "No se pudieron cargar las transacciones.",
     "retry": "Reintentar",
-    "empty": "No tienes transacciones en este periodo que se puedan vincular.",
-    "emptySearch": "Ninguna transacción de este periodo coincide con la búsqueda.",
+    "empty": "No tienes transacciones en este periodo que se puedan vincular. Puedes ampliar las fechas de arriba para buscar más lejos.",
+    "emptySearch": "Ninguna transacción de este periodo coincide con la búsqueda. Puedes ampliar las fechas de arriba.",
+    "rangeReversed": "La fecha Desde es posterior a la fecha Hasta.",
+    "rangeIncomplete": "Introduce ambas fechas para listar las transacciones.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "sin beneficiario",
     "linkButton": "Vincular",
     "hasMore": "Solo se muestran las primeras {count}. Usa la búsqueda para reducir la lista.",
     "ai": {
       "heading": "Elige la transacción para la IA",
-      "help": "Estas son tus transacciones del {from} al {to}, los días en torno al correo. Elige la que la IA debe desglosar según los productos del correo.",
+      "help": "Estas son tus transacciones del intervalo de fechas de abajo, que empieza siendo los días en torno a la compra. Elige la que la IA debe desglosar según los productos del correo o cambia las fechas para buscar más lejos.",
       "linkButton": "Usar esta transacción"
     }
   },

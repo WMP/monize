@@ -133,7 +133,9 @@
     "nothingProposed": "Propozycja wymaga co najmniej jednej zmiany: splits, categoryName, payeeName lub description.",
     "splitsAndCategory": "Wyślij albo splits, albo categoryName, nie oba: transakcja podzielona nie ma jednej kategorii.",
     "transferNotSupported": "Przelewu nie można przeglądać za pomocą propozycji. Odrzuć wniosek.",
-    "splitDifference": "Linie podziału sumują się do {{ sum }}, a transakcja wynosi {{ amount }}: {{ difference }} nie zostało przypisane. Dopasuj linie do kwoty transakcji; pozostałość, np. koszt dostawy, wymaga własnej linii albo jest wskazywana użytkownikowi zamiast przypisywana."
+    "splitDifference": "Linie podziału sumują się do {{ sum }}, a transakcja wynosi {{ amount }}: {{ difference }} nie zostało przypisane. Dopasuj linie do kwoty transakcji; pozostałość, np. koszt dostawy, wymaga własnej linii albo jest wskazywana użytkownikowi zamiast przypisywana.",
+    "noTransaction": "Ten wniosek o przegląd AI nie dotyczy transakcji.",
+    "parserDraftNotSubmittable": "Na wniosek o szkic parsera odpowiada się narzędziem email_receipt_parsers (test, potem save_draft z tym requestId), a nie propozycją transakcji."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zbyt wiele prób weryfikacji. Zaloguj się ponownie.",
@@ -351,7 +353,6 @@
     "openRequestExists": "Dla tej transakcji jest już otwarty inny wniosek o przegląd. Najpierw go zakończ lub odrzuć.",
     "receiptNotFound": "Nie znaleziono wiadomości {{ id }}",
     "aiOff": "AI jest wyłączone dla tej skrzynki pocztowej. Najpierw zmień tryb AI w ustawieniach skrzynki.",
-    "pollMailboxDisabled": "Skrzynka pocztowa jest wyłączona. Włącz ją w ustawieniach skrzynki, aby ją sprawdzić.",
     "pollBusy": "Skrzynka pocztowa jest właśnie odczytywana. Spróbuj ponownie za minutę.",
     "parserPayeeNotFound": "Nie znaleziono odbiorcy tego parsera.",
     "parserNotFound": "Nie znaleziono parsera paragonów {{ id }}",
@@ -373,7 +374,10 @@
     "oauthReconnectRequired": "Logowanie do skrzynki pocztowej zostało cofnięte lub wygasło. Połącz skrzynkę ponownie w jej ustawieniach.",
     "oauthTokenUnreadable": "Zapisanego logowania nie można odczytać na tym serwerze. Połącz skrzynkę ponownie w jej ustawieniach.",
     "notOAuthMailbox": "Ta skrzynka pocztowa nie loguje się przez Google ani Microsoft.",
-    "settingsEmpty": "Wyślij co najmniej jedno ustawienie do zmiany."
+    "settingsEmpty": "Wyślij co najmniej jedno ustawienie do zmiany.",
+    "parserToolReceiptCount": "Podaj od 1 do 5 wiadomości, na których przetestować parser.",
+    "parserToolInvalidSender": "Szkic wymaga nazwy i od jednej do dziesięciu domen nadawcy, takich jak shop.example.com.",
+    "parserDraftRequestNotClaimed": "Ten wniosek o szkic parsera nie został przez Ciebie przejęty. Najpierw przejmij go przez ai_review_requests albo zapisz szkic bez requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail nie jest skonfigurowany. Dostępu awaryjnego nie można włączyć, dopóki nie skonfigurujesz SMTP.",

@@ -85,17 +85,17 @@
       "folderLabel": "Klasör",
       "folderHelp": "Okunacak klasör. Salt okunur olarak açılır.",
       "enabledLabel": "Posta kutusunu otomatik oku",
-      "enabledHelp": "Açıkken posta kutusu her 15 dakikada bir yoklanır. İstediğiniz zaman Şimdi yokla düğmesini kullanabilirsiniz.",
+      "enabledHelp": "Yalnızca otomatik okumayı denetler: açıkken Monize posta kutusunu her 15 dakikada bir okur. Kapatmak posta kutusunun bağlantısını kesmez; Şimdi yokla, bu ayar açık da olsa kapalı da olsa posta kutusunu okur.",
       "aiModeLabel": "Yapay zekâ modu",
-      "aiModeHelp": "Yapılandırdığınız yapay zekâ sağlayıcısının makbuzlarda kullanılıp kullanılamayacağı. Yapay zekâ yanıtı her zaman onayladığınız bir öneri veya taslaktır.",
+      "aiModeHelp": "Yoklamanın makbuzlarda yapılandırdığınız yapay zekâ sağlayıcısını kullanıp kullanamayacağı. Yapay zekâ ile tanı ve Yapay zekâ ile ayrıştırıcı taslağı oluştur, hangi mod seçili olursa olsun asistana sohbette sorar; yapay zekâ yanıtı her zaman onayladığınız bir öneri veya taslaktır.",
       "aiModes": {
         "off": "Kapalı",
         "on_demand": "İstek üzerine",
         "automatic": "Otomatik"
       },
       "aiModeDescriptions": {
-        "off": "Makbuzlar için yapay zekâ hiç çağrılmaz.",
-        "on_demand": "Yapay zekâ yalnızca Yapay zekâ ile tanı veya Yapay zekâ ile ayrıştırıcı taslağı oluştur düğmesine bastığınızda çağrılır.",
+        "off": "Yoklama makbuzlar için yapay zekâyı hiç çağırmaz.",
+        "on_demand": "Yoklama yapay zekâyı hiç çağırmaz. Asistana Yapay zekâ ile tanı veya Yapay zekâ ile ayrıştırıcı taslağı oluştur ile kendiniz sorarsınız.",
         "automatic": "Yoklama sırasında, onaylı hiçbir ayrıştırıcının tamamen okuyamadığı eşleşmiş bir makbuz için yapay zekâya sorulur ve ayrıştırıcısı olmayan bir gönderen için ayrıştırıcı taslağı oluşturulur."
       },
       "autoApplyLabel": "Önerileri otomatik uygula",
@@ -108,7 +108,8 @@
       "lastError": "Son hata: {error}",
       "lastErrorAt": "Son hata ({at}): {error}",
       "pollNow": "Şimdi yokla",
-      "pollResult": "Yoklama tamamlandı: {fetched, plural, one {# e-posta saklandı} other {# e-posta saklandı}}, atlanan: {skipped}, işlenen: {processed}.",
+      "pollResult": "Yoklama tamamlandı: {fetched, plural, one {# e-posta kaydedildi} other {# e-posta kaydedildi}}, atlanan: {skipped}, işlenen: {processed}.",
+      "pollResultLink": "Kaydedilen e-postaları görüntüle",
       "pollFailed": "Yoklama başarısız oldu",
       "deleteButton": "Posta kutusunu sil",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Yeniden dene"
     },
     "draftNote": "Bu ayrıştırıcı bir taslaktır. Siz onaylayana kadar hiçbir şey okumaz.",
-    "draftAiNote": "Yapay zekâ bu ayrıştırıcıyı tek bir örnek e-postadan oluşturdu. Her deseni kendi e-postalarınızla denetleyin, sonra listeden onaylayın. Siz onaylayana kadar hiçbir şey okumaz.",
+    "draftAiNote": "Yapay zekâ bu ayrıştırıcıyı örnek e-postalarınızdan oluşturdu. Her birine karşı deneyin ve her deseni denetleyin, sonra listeden onaylayın. Siz onaylayana kadar hiçbir şey okumaz.",
     "identityHeading": "Hangi e-postaları okur",
     "nameLabel": "Ad",
     "payeeLabel": "Alıcı",
@@ -349,6 +350,7 @@
       "ignored": "Yoksayıldı"
     },
     "columns": {
+      "select": "Seç",
       "received": "Alındı",
       "email": "E-posta",
       "transaction": "İşlem",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "E-posta yeniden işlendi",
       "reprocessFailed": "E-posta yeniden işlenemedi",
-      "draftFailed": "Ayrıştırıcı taslağı oluşturulamadı",
       "ignored": "E-posta yoksayıldı",
       "ignoreFailed": "E-posta yoksayılamadı",
       "deleted": "E-posta silindi",
       "deleteFailed": "E-posta silinemedi"
-    },
-    "notices": {
-      "draftCreated": "Yapay zekâ {name} ayrıştırıcısının taslağını oluşturdu. Siz inceleyip onaylayana kadar hiçbir şey okumaz.",
-      "draftLink": "Ayrıştırıcı ayarlarında incele"
     },
     "ignoreDialog": {
       "title": "Bu e-posta yoksayılsın mı?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Bu e-posta silinsin mi?",
       "message": "Saklanan {subject} e-postası silinecek ve açık inceleme isteği yoksayılacak. Posta kutusundaki ileti değişmez ve sonraki bir yoklama onu yeniden almaz."
+    },
+    "selection": {
+      "label": "Seçilen e-postalar",
+      "select": "{subject} e-postasını seç",
+      "count": "{count, plural, one {# e-posta seçildi} other {# e-posta seçildi}} (en fazla {max})",
+      "draftButton": "Yapay zekâ ile ayrıştırıcı taslağı oluştur ({count})",
+      "clear": "Seçimi temizle",
+      "differentSenders": "Seçilen e-postalar farklı göndericilerden geliyor ({domains}). Bir ayrıştırıcı tek bir göndericinin e-postalarını okur, bu yüzden tek bir göndericinin e-postalarını seçin."
+    },
+    "draft": {
+      "failed": "Ayrıştırıcı taslağı oluşturma başlatılamadı",
+      "queued": "Kuyruğa alındı: istek, bir ajan için yapay zekâ inceleme kutusunda bekliyor. Şu anda yanıt verebilecek bir asistan yok.",
+      "handoffFailed": "İstek kuyruğa alındı, ancak e-postalar sohbette açılamadı. Bir ajan için yapay zekâ inceleme kutusunda bekliyor.",
+      "inboxLink": "Yapay zekâ inceleme kutusunu aç",
+      "opened": "Sohbet, e-postalar ekli olarak açıldı. Mesajı okuyun ve Gönder'e basın.",
+      "chatPrompt": "{domain} alan adından gelen {count, plural, one {bu sipariş e-postası} other {bu # sipariş e-postası}} için bir e-posta makbuzu ayrıştırıcısı oluştur. {requestId} numaralı yapay zekâ inceleme isteğini üstlen, ayrıştırıcını ekli her e-postada email_receipt_parsers aracıyla dene, her biri eksiksiz okunana kadar düzelt, sonra {requestId} isteği için taslak olarak kaydet."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Gönderen",
     "received": "Alındı",
+    "forwardedBy": "İleten",
+    "originalSent": "Mağaza tarafından gönderildi",
     "subject": "Konu",
     "state": "Durum",
     "parser": "Ayrıştırıcı",
@@ -453,28 +468,39 @@
     "linkButton": "Bu işleme bağla",
     "linked": "E-posta işleme bağlandı",
     "linkFailed": "E-posta bağlanamadı",
-    "textHeading": "E-posta metni",
+    "bodyHeading": "E-posta",
     "textLabel": "E-posta metni",
-    "noText": "E-postada metin yok."
+    "noText": "E-postada metin yok.",
+    "bodyView": {
+      "label": "E-postayı şu biçimde göster",
+      "html": "HTML",
+      "text": "Metin"
+    },
+    "remoteImagesNote": "Uzak görseller yüklenmez.",
+    "htmlFrameTitle": "E-posta, göndericisinin biçimlendirdiği haliyle"
   },
   "picker": {
     "heading": "İşlemi seçin",
-    "help": "Hiçbir işlem otomatik olarak eşleşmedi. Bunlar, e-postanın çevresindeki günler olan {from} ile {to} arasındaki işlemleriniz. E-postanın ödediği işlemi seçin.",
+    "help": "Hiçbir işlem otomatik olarak eşleşmedi. Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. E-postanın ödediği işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
+    "fromLabel": "Başlangıç",
+    "toLabel": "Bitiş",
     "searchLabel": "Ara",
     "searchPlaceholder": "Alıcı, açıklama veya tutar",
     "searchButton": "Ara",
     "loading": "İşlemler yükleniyor",
     "error": "İşlemler yüklenemedi.",
     "retry": "Yeniden dene",
-    "empty": "Bu dönemde bağlanabilecek işleminiz yok.",
-    "emptySearch": "Bu dönemde aramayla eşleşen işlem yok.",
+    "empty": "Bu dönemde bağlanabilecek işleminiz yok. Daha uzağa bakmak için yukarıdaki tarihleri genişletebilirsiniz.",
+    "emptySearch": "Bu dönemde aramayla eşleşen işlem yok. Yukarıdaki tarihleri genişletebilirsiniz.",
+    "rangeReversed": "Başlangıç tarihi, bitiş tarihinden sonra.",
+    "rangeIncomplete": "İşlemleri listelemek için iki tarihi de girin.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "alıcı yok",
     "linkButton": "Bağla",
     "hasMore": "Yalnızca ilk {count} gösteriliyor. Listeyi daraltmak için aramayı kullanın.",
     "ai": {
       "heading": "Yapay zekâ için işlemi seçin",
-      "help": "Bunlar, e-postanın çevresindeki günler olan {from} ile {to} arasındaki işlemleriniz. Yapay zekânın e-postadaki ürünlere göre bölmesini istediğiniz işlemi seçin.",
+      "help": "Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. Yapay zekânın e-postadaki ürünlere göre bölmesini istediğiniz işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
       "linkButton": "Bu işlemi kullan"
     }
   },

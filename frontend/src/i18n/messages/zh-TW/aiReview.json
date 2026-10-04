@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI 審核收件匣",
-    "subtitle": "規則請求 AI 審核的交易，以及助理提出、等待您核准的修改。"
+    "subtitle": "規則請求 AI 審核的交易、已請求助理起草的解析器，以及助理提出、等待您核准的修改。"
   },
   "filter": {
     "label": "依狀態篩選",
@@ -34,11 +34,13 @@
     "manualRequest": "手動請求",
     "emailReceipt": "郵件收據：來自 {sender} 的 {subject}",
     "emailReceiptMissing": "郵件收據（該郵件已被刪除）",
+    "parserDraft": "來自 {count, plural, one {# 封郵件} other {# 封郵件}}的解析器草稿（{domain}）",
     "viewEmailReceipts": "檢視郵件收據",
     "agentNote": "助理備註：{reason}",
     "dates": "建立於 {created}，到期於 {expires}",
     "viewTransaction": "檢視交易",
-    "waitingForAgent": "正在等待 AI 代理。請<link>在設定中連接 AI 提供者</link>，或讓 MCP 用戶端來認領。"
+    "waitingForAgent": "正在等待 AI 代理。請<link>在設定中連接 AI 提供者</link>，或讓 MCP 用戶端來認領。",
+    "parserDraftReady": "解析器草稿已就緒。<link>在解析器設定中測試並核准</link>。"
   },
   "actions": {
     "dismiss": "忽略"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "忽略此請求？",
-    "message": "不會再有人被要求審核這筆交易。交易本身不會變更。",
+    "message": "不會再有人被要求處理此請求。它所涉及的內容不會變更。",
     "confirm": "忽略請求"
   },
   "loading": "正在載入審核請求...",

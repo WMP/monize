@@ -133,7 +133,9 @@
     "nothingProposed": "Ein Vorschlag braucht mindestens eine Änderung: splits, categoryName, payeeName oder description.",
     "splitsAndCategory": "Senden Sie entweder splits oder categoryName, nicht beides: Eine aufgeteilte Buchung hat keine einzelne Kategorie.",
     "transferNotSupported": "Eine Überweisung kann nicht per Vorschlag geprüft werden. Lehnen Sie die Anfrage stattdessen ab.",
-    "splitDifference": "Die Teilbeträge ergeben zusammen {{ sum }}, die Buchung beträgt aber {{ amount }}: {{ difference }} sind nicht zugeordnet. Die Zeilen müssen zur Buchung passen; ein Rest wie Lieferkosten braucht eine eigene Zeile oder wird dem Nutzer genannt, statt zugeordnet zu werden."
+    "splitDifference": "Die Teilbeträge ergeben zusammen {{ sum }}, die Buchung beträgt aber {{ amount }}: {{ difference }} sind nicht zugeordnet. Die Zeilen müssen zur Buchung passen; ein Rest wie Lieferkosten braucht eine eigene Zeile oder wird dem Nutzer genannt, statt zugeordnet zu werden.",
+    "noTransaction": "Diese KI-Prüfanfrage betrifft keine Buchung.",
+    "parserDraftNotSubmittable": "Eine Parser-Entwurfsanfrage wird mit dem Tool email_receipt_parsers beantwortet (test, dann save_draft mit dieser requestId), nicht mit einem Buchungsvorschlag."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zu viele Verifikationsversuche. Bitte melden Sie sich erneut an.",
@@ -351,7 +353,6 @@
     "openRequestExists": "Für diese Transaktion ist bereits eine weitere Prüfanfrage offen. Schließen Sie sie zuerst ab oder verwerfen Sie sie.",
     "receiptNotFound": "E-Mail {{ id }} nicht gefunden",
     "aiOff": "Die KI ist für dieses Postfach ausgeschaltet. Ändern Sie zuerst den KI-Modus in den Postfacheinstellungen.",
-    "pollMailboxDisabled": "Das Postfach ist ausgeschaltet. Schalten Sie es in den Postfacheinstellungen ein, um es abzurufen.",
     "pollBusy": "Das Postfach wird gerade gelesen. Versuchen Sie es in einer Minute erneut.",
     "parserPayeeNotFound": "Der Zahlungsempfänger dieses Parsers wurde nicht gefunden.",
     "parserNotFound": "Beleg-Parser {{ id }} nicht gefunden",
@@ -373,7 +374,10 @@
     "oauthReconnectRequired": "Die Anmeldung des Postfachs wurde widerrufen oder ist abgelaufen. Verbinden Sie das Postfach in den Postfacheinstellungen erneut.",
     "oauthTokenUnreadable": "Die gespeicherte Anmeldung kann auf diesem Server nicht gelesen werden. Verbinden Sie das Postfach in den Postfacheinstellungen erneut.",
     "notOAuthMailbox": "Dieses Postfach meldet sich nicht über Google oder Microsoft an.",
-    "settingsEmpty": "Senden Sie mindestens eine Einstellung zum Ändern."
+    "settingsEmpty": "Senden Sie mindestens eine Einstellung zum Ändern.",
+    "parserToolReceiptCount": "Nennen Sie 1 bis 5 E-Mails, an denen der Parser getestet werden soll.",
+    "parserToolInvalidSender": "Ein Entwurf braucht einen Namen und ein bis zehn Absenderdomains wie shop.example.com.",
+    "parserDraftRequestNotClaimed": "Diese Parser-Entwurfsanfrage wurde nicht von Ihnen übernommen. Übernehmen Sie sie zuerst mit ai_review_requests oder speichern Sie den Entwurf ohne requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-Mail ist nicht konfiguriert. Notfallzugriff kann erst aktiviert werden, wenn SMTP eingerichtet ist.",

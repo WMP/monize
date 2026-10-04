@@ -85,17 +85,17 @@
       "folderLabel": "Folder",
       "folderHelp": "Folder do odczytu. Jest otwierany tylko do odczytu.",
       "enabledLabel": "Odczytuj skrzynkę automatycznie",
-      "enabledHelp": "Gdy włączone, skrzynka jest sprawdzana co 15 minut. Zawsze możesz użyć opcji Sprawdź teraz.",
+      "enabledHelp": "Steruje tylko automatycznym odczytem: gdy włączone, Monize sprawdza skrzynkę co 15 minut. Wyłączenie nie rozłącza skrzynki, a Sprawdź teraz sprawdza ją niezależnie od tego, czy ta opcja jest włączona.",
       "aiModeLabel": "Tryb AI",
-      "aiModeHelp": "Czy skonfigurowany przez Ciebie dostawca AI może być używany przy paragonach. Odpowiedź AI to zawsze propozycja lub szkic, który akceptujesz Ty.",
+      "aiModeHelp": "Czy sprawdzanie skrzynki może używać skonfigurowanego przez Ciebie dostawcy AI przy paragonach. Rozpoznaj z AI i Przygotuj parser z AI proszą asystenta w czacie o pomoc w każdym trybie, a odpowiedź AI to zawsze propozycja lub szkic, który akceptujesz Ty.",
       "aiModes": {
         "off": "Wyłączony",
         "on_demand": "Na żądanie",
         "automatic": "Automatyczny"
       },
       "aiModeDescriptions": {
-        "off": "AI nigdy nie jest wywoływane dla paragonów.",
-        "on_demand": "AI jest wywoływane tylko po naciśnięciu Rozpoznaj z AI lub Przygotuj parser z AI.",
+        "off": "Sprawdzanie skrzynki nigdy nie wywołuje AI dla paragonów.",
+        "on_demand": "Sprawdzanie skrzynki nigdy nie wywołuje AI. Sam prosisz asystenta, używając Rozpoznaj z AI lub Przygotuj parser z AI.",
         "automatic": "Podczas sprawdzania skrzynki AI jest pytane o dopasowany paragon, którego żaden zatwierdzony parser nie odczytał w całości, i przygotowuje parser dla nadawcy, który go nie ma."
       },
       "autoApplyLabel": "Stosuj propozycje automatycznie",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Ostatni błąd ({at}): {error}",
       "pollNow": "Sprawdź teraz",
       "pollResult": "Sprawdzanie zakończone: {fetched, plural, one {zapisano # wiadomość} few {zapisano # wiadomości} many {zapisano # wiadomości} other {zapisano # wiadomości}}, pominięto {skipped}, przetworzono {processed}.",
+      "pollResultLink": "Zobacz zapisane wiadomości",
       "pollFailed": "Sprawdzanie nie powiodło się",
       "deleteButton": "Usuń skrzynkę",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Spróbuj ponownie"
     },
     "draftNote": "Ten parser jest szkicem. Nic nie odczytuje, dopóki go nie zatwierdzisz.",
-    "draftAiNote": "AI przygotowało ten parser na podstawie jednej przykładowej wiadomości. Sprawdź każdy wzorzec na swoich wiadomościach, a potem zatwierdź parser z listy. Nic nie odczytuje, dopóki tego nie zrobisz.",
+    "draftAiNote": "AI przygotowało ten parser na podstawie Twoich przykładowych wiadomości. Przetestuj go na każdej z nich i sprawdź każdy wzorzec, a potem zatwierdź parser z listy. Nic nie odczytuje, dopóki tego nie zrobisz.",
     "identityHeading": "Jakie wiadomości odczytuje",
     "nameLabel": "Nazwa",
     "payeeLabel": "Odbiorca",
@@ -349,6 +350,7 @@
       "ignored": "Zignorowana"
     },
     "columns": {
+      "select": "Zaznacz",
       "received": "Odebrano",
       "email": "Wiadomość",
       "transaction": "Transakcja",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "Wiadomość przetworzona ponownie",
       "reprocessFailed": "Nie udało się ponownie przetworzyć wiadomości",
-      "draftFailed": "Nie udało się przygotować parsera",
       "ignored": "Wiadomość zignorowana",
       "ignoreFailed": "Nie udało się zignorować wiadomości",
       "deleted": "Wiadomość usunięta",
       "deleteFailed": "Nie udało się usunąć wiadomości"
-    },
-    "notices": {
-      "draftCreated": "AI przygotowało parser {name}. Nic nie odczytuje, dopóki go nie sprawdzisz i nie zatwierdzisz.",
-      "draftLink": "Sprawdź go w ustawieniach parserów"
     },
     "ignoreDialog": {
       "title": "Zignorować tę wiadomość?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Usunąć tę wiadomość?",
       "message": "Zapisana wiadomość {subject} zostanie usunięta, a jej otwarta prośba o przegląd odrzucona. Wiadomość w skrzynce nie zostanie naruszona, a kolejne sprawdzanie nie pobierze jej ponownie."
+    },
+    "selection": {
+      "label": "Zaznaczone wiadomości",
+      "select": "Zaznacz: {subject}",
+      "count": "{count, plural, one {Zaznaczono # wiadomość} few {Zaznaczono # wiadomości} many {Zaznaczono # wiadomości} other {Zaznaczono # wiadomości}} (maksymalnie {max})",
+      "draftButton": "Przygotuj parser z AI ({count})",
+      "clear": "Wyczyść zaznaczenie",
+      "differentSenders": "Zaznaczone wiadomości pochodzą od różnych nadawców ({domains}). Parser odczytuje wiadomości jednego nadawcy, więc zaznacz wiadomości od jednego nadawcy."
+    },
+    "draft": {
+      "failed": "Nie udało się rozpocząć przygotowywania parsera",
+      "queued": "W kolejce: prośba czeka na agenta w skrzynce przeglądów AI. Żaden asystent nie może teraz odpowiedzieć.",
+      "handoffFailed": "Prośba jest w kolejce, ale nie udało się otworzyć wiadomości w czacie. Czeka na agenta w skrzynce przeglądów AI.",
+      "inboxLink": "Otwórz skrzynkę przeglądów AI",
+      "opened": "Otwarto czat z dołączonymi wiadomościami. Przeczytaj treść i naciśnij Wyślij.",
+      "chatPrompt": "Zbuduj parser paragonów z e-maili dla {count, plural, one {tej wiadomości z zamówieniem} few {tych # wiadomości z zamówieniami} many {tych # wiadomości z zamówieniami} other {tych # wiadomości z zamówieniami}} od {domain}. Przejmij prośbę o przegląd AI {requestId}, przetestuj parser na każdej dołączonej wiadomości za pomocą narzędzia email_receipt_parsers, poprawiaj go, aż każda wiadomość zostanie odczytana w całości, a następnie zapisz go jako szkic dla prośby {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Od",
     "received": "Odebrano",
+    "forwardedBy": "Przekazane przez",
+    "originalSent": "Wysłane przez sklep",
     "subject": "Temat",
     "state": "Status",
     "parser": "Parser",
@@ -453,28 +468,39 @@
     "linkButton": "Powiąż z tą transakcją",
     "linked": "Wiadomość powiązana z transakcją",
     "linkFailed": "Nie udało się powiązać wiadomości",
-    "textHeading": "Treść wiadomości",
+    "bodyHeading": "Wiadomość",
     "textLabel": "Treść wiadomości",
-    "noText": "Wiadomość nie ma treści."
+    "noText": "Wiadomość nie ma treści.",
+    "bodyView": {
+      "label": "Pokaż wiadomość jako",
+      "html": "HTML",
+      "text": "Tekst"
+    },
+    "remoteImagesNote": "Zewnętrzne obrazy nie są wczytywane.",
+    "htmlFrameTitle": "Wiadomość w postaci sformatowanej przez nadawcę"
   },
   "picker": {
     "heading": "Wybierz transakcję",
-    "help": "Żadna transakcja nie została dopasowana automatycznie. To Twoje transakcje od {from} do {to}, czyli z dni wokół daty wiadomości. Wybierz tę, którą opłacono.",
+    "help": "Żadna transakcja nie została dopasowana automatycznie. To Twoje transakcje z zakresu dat poniżej, który początkowo obejmuje dni wokół zakupu. Wybierz tę, którą opłacono, albo zmień daty, aby szukać dalej.",
+    "fromLabel": "Od",
+    "toLabel": "Do",
     "searchLabel": "Szukaj",
     "searchPlaceholder": "Odbiorca, opis lub kwota",
     "searchButton": "Szukaj",
     "loading": "Wczytywanie transakcji",
     "error": "Nie udało się wczytać transakcji.",
     "retry": "Spróbuj ponownie",
-    "empty": "W tym okresie nie masz transakcji, które można powiązać.",
-    "emptySearch": "Żadna transakcja z tego okresu nie pasuje do wyszukiwania.",
+    "empty": "W tym okresie nie masz transakcji, które można powiązać. Możesz poszerzyć daty powyżej, aby szukać dalej.",
+    "emptySearch": "Żadna transakcja z tego okresu nie pasuje do wyszukiwania. Możesz poszerzyć daty powyżej.",
+    "rangeReversed": "Data Od jest późniejsza niż data Do.",
+    "rangeIncomplete": "Wpisz obie daty, aby wyświetlić transakcje.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "brak odbiorcy",
     "linkButton": "Powiąż",
     "hasMore": "Pokazano tylko pierwsze {count}. Zawęź listę za pomocą wyszukiwania.",
     "ai": {
       "heading": "Wybierz transakcję dla AI",
-      "help": "To Twoje transakcje od {from} do {to}, czyli z dni wokół daty wiadomości. Wybierz tę, którą AI ma podzielić według produktów z wiadomości.",
+      "help": "To Twoje transakcje z zakresu dat poniżej, który początkowo obejmuje dni wokół zakupu. Wybierz tę, którą AI ma podzielić według produktów z wiadomości, albo zmień daty, aby szukać dalej.",
       "linkButton": "Użyj tej transakcji"
     }
   },
