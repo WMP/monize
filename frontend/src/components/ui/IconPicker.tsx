@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface IconPickerProps {
   value: string | null;
@@ -187,12 +188,41 @@ const ICON_NAMES = Object.keys(ICON_DEFINITIONS);
 
 export function IconPicker({ value, onChange, label, onClear, clearLabel }: IconPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const clearable = !!onClear;
   const hasValue = !!(value && ICON_DEFINITIONS[value]);
   // Without a clear affordance the field always shows something, so an unset
   // value falls back to the default glyph; with one, unset means unset.
   const selectedIcon = hasValue ? (value as string) : clearable ? null : 'chart-bar';
+
+  // The grid is rendered in a portal (below) so it can expand beyond a
+  // modal's overflow bounds instead of being clipped by it; position it from
+  // the trigger button's own rect, as Combobox's `usePortal` mode does.
+  const updateDropdownPos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, []);
+
+  // Close on parent scroll or window resize (the portaled grid would
+  // otherwise be misaligned with the trigger).
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScrollOrResize = () => setIsOpen(false);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen]);
+
+  const openPicker = () => {
+    updateDropdownPos();
+    setIsOpen(true);
+  };
 
   return (
     <div className="relative">
@@ -202,8 +232,9 @@ export function IconPicker({ value, onChange, label, onClear, clearLabel }: Icon
         </label>
       )}
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => (isOpen ? setIsOpen(false) : openPicker())}
         className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors motion-reduce:transition-none hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <span className="text-gray-700 dark:text-gray-200">
@@ -226,13 +257,16 @@ export function IconPicker({ value, onChange, label, onClear, clearLabel }: Icon
         </svg>
       </button>
 
-      {isOpen && (
+      {isOpen && dropdownPos && createPortal(
         <>
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[100]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2">
+          <div
+            className="fixed z-[101] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2 max-h-60 overflow-auto"
+            style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+          >
             {clearable && (
               <button
                 type="button"
@@ -264,7 +298,8 @@ export function IconPicker({ value, onChange, label, onClear, clearLabel }: Icon
               ))}
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
