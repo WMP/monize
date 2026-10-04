@@ -127,7 +127,10 @@ describe("EmailReceiptsService.list", () => {
     const items = await service.list(USER, { status: "review", limit: 20 });
 
     const [sql, params] = manager.query.mock.calls[0];
-    expect(sql).toContain("ORDER BY r.received_at DESC");
+    // The day the shop sent the order (the list's effectiveDate) orders the list.
+    expect(sql).toContain(
+      "ORDER BY COALESCE(r.original_sent_at, r.received_at) DESC, r.id DESC",
+    );
     expect(sql).not.toContain("body_text");
     expect(params).toEqual([USER, "review", null, null, 20]);
     expect(items[0]).toEqual({
@@ -314,14 +317,56 @@ describe("EmailReceiptsService.listDomains", () => {
         "ambiguous",
         "review_conflict",
       ],
+      null,
     ]);
     expect(EMAIL_RECEIPTS_MAX_DOMAINS).toBe(200);
+  });
+
+  it("counts only the emails in the given status, as a bound parameter", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await service.listDomains(USER, { status: "review" });
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toContain("($4::varchar IS NULL OR r.status = $4::varchar)");
+    expect(params[3]).toBe("review");
+    expect(sql).not.toContain("review");
   });
 
   it("is empty for a user with no emails", async () => {
     const { service, manager } = setup();
     manager.query.mockResolvedValue([]);
     await expect(service.listDomains(USER)).resolves.toEqual([]);
+  });
+});
+
+describe("EmailReceiptsService.statusCounts", () => {
+  it("counts the user's emails per status and their total", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      { status: "review", count: "2" },
+      { status: "unmatched", count: 5 },
+    ]);
+    await expect(service.statusCounts(USER)).resolves.toEqual({
+      total: 7,
+      byStatus: { review: 2, unmatched: 5 },
+    });
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toContain("r.user_id = $1");
+    expect(sql).toContain("GROUP BY r.status");
+    expect(params).toEqual([USER, null, null]);
+  });
+
+  it("limits the count to a domain and its sub-domains, escaped", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await expect(
+      service.statusCounts(USER, { domain: " Shop_x.example.com " }),
+    ).resolves.toEqual({ total: 0, byStatus: {} });
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      USER,
+      "shop_x.example.com",
+      "%.shop\\_x.example.com",
+    ]);
   });
 });
 

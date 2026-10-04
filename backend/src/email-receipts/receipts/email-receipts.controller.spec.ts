@@ -7,6 +7,8 @@ import { validate } from "class-validator";
 import { ALLOW_DELEGATE_KEY } from "../../delegation/decorators/delegate-access.decorator";
 import {
   AskAiEmailReceiptDto,
+  EmailReceiptStatusCountsDto,
+  ListEmailReceiptDomainsDto,
   ListEmailReceiptsDto,
   ProcessBatchEmailReceiptsDto,
 } from "./dto/email-receipts.dto";
@@ -18,6 +20,7 @@ describe("EmailReceiptsController", () => {
     list: jest.fn(),
     listDomains: jest.fn(),
     overview: jest.fn(),
+    statusCounts: jest.fn(),
     processBatch: jest.fn(),
     get: jest.fn(),
     reprocess: jest.fn(),
@@ -65,10 +68,36 @@ describe("EmailReceiptsController", () => {
     receipts.listDomains.mockResolvedValue([
       { domain: "a.example.com", count: 2 },
     ]);
-    await expect(controller.domains(req)).resolves.toEqual([
+    await expect(controller.domains(req, {} as never)).resolves.toEqual([
       { domain: "a.example.com", count: 2 },
     ]);
-    expect(receipts.listDomains).toHaveBeenCalledWith("user-1");
+    expect(receipts.listDomains).toHaveBeenCalledWith("user-1", {
+      status: undefined,
+    });
+  });
+
+  it("counts the domains of one status only, for the JWT user", async () => {
+    receipts.listDomains.mockResolvedValue([]);
+    await controller.domains(req, {
+      status: "review",
+      userId: "someone-else",
+    } as never);
+    expect(receipts.listDomains).toHaveBeenCalledWith("user-1", {
+      status: "review",
+    });
+  });
+
+  it("answers the status counts for the JWT user, optionally of one domain", async () => {
+    receipts.statusCounts.mockResolvedValue({
+      total: 3,
+      byStatus: { review: 3 },
+    });
+    await expect(
+      controller.statusCounts(req, { domain: "shop.example.com" } as never),
+    ).resolves.toEqual({ total: 3, byStatus: { review: 3 } });
+    expect(receipts.statusCounts).toHaveBeenCalledWith("user-1", {
+      domain: "shop.example.com",
+    });
   });
 
   it("declares the domains route before :id, so the literal segment is matched first", () => {
@@ -76,6 +105,45 @@ describe("EmailReceiptsController", () => {
     expect(names.indexOf("domains")).toBeGreaterThan(-1);
     expect(names.indexOf("domains")).toBeLessThan(names.indexOf("get"));
     expect(Reflect.getMetadata("path", proto.domains)).toBe("domains");
+  });
+
+  describe("the domains and status-counts queries", () => {
+    it("accepts a known status and refuses an unknown one", async () => {
+      const ok = await validate(
+        plainToInstance(ListEmailReceiptDomainsDto, { status: "review" }),
+        { whitelist: true, forbidNonWhitelisted: true },
+      );
+      const bad = await validate(
+        plainToInstance(ListEmailReceiptDomainsDto, { status: "bogus" }),
+        { whitelist: true, forbidNonWhitelisted: true },
+      );
+      expect(ok).toHaveLength(0);
+      expect(bad).not.toHaveLength(0);
+    });
+
+    it("normalises and validates the domain of status-counts", async () => {
+      const dto = plainToInstance(EmailReceiptStatusCountsDto, {
+        domain: " Shop.Example.com ",
+      });
+      expect(dto.domain).toBe("shop.example.com");
+      const bad = await validate(
+        plainToInstance(EmailReceiptStatusCountsDto, {
+          domain: "not a domain",
+        }),
+        { whitelist: true, forbidNonWhitelisted: true },
+      );
+      expect(bad).not.toHaveLength(0);
+    });
+
+    it("declares status-counts before :id", () => {
+      const names = Object.getOwnPropertyNames(
+        EmailReceiptsController.prototype,
+      );
+      expect(names.indexOf("statusCounts")).toBeLessThan(names.indexOf("get"));
+      expect(Reflect.getMetadata("path", proto.statusCounts)).toBe(
+        "status-counts",
+      );
+    });
   });
 
   describe("the list query", () => {
@@ -300,6 +368,7 @@ describe("EmailReceiptsController", () => {
           "list",
           "domains",
           "overview",
+          "statusCounts",
           "processBatch",
         ].includes(name),
     );

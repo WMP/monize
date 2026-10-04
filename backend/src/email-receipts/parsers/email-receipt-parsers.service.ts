@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { DataSource, EntityManager, In, QueryDeepPartialEntity } from "typeorm";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
+import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
 import { Payee } from "../../payees/entities/payee.entity";
@@ -48,6 +49,7 @@ import {
   toParserView,
   type EmailReceiptParserView,
 } from "./email-receipt-parser.view";
+import { resolveParserCategoryNames } from "./parser-category-names.util";
 import {
   assertParserReferencesOwned,
   invalidDefinitionError,
@@ -128,22 +130,25 @@ export class EmailReceiptParsersService {
   ) {}
 
   async list(userId: string): Promise<EmailReceiptParserView[]> {
-    const rows = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(EmailReceiptParser).find({
+    return withScopedDb(this.dataSource, async (m) => {
+      const rows = await m.getRepository(EmailReceiptParser).find({
         where: { userId },
         order: { name: "ASC", id: "ASC" },
         take: MAX_PARSERS_PER_USER * 5,
-      }),
-    );
-    return rows.map(toParserView);
+      });
+      const names = await loadQualifiedCategoryNames(m, userId);
+      return rows.map((row) => toParserView(row, names));
+    });
   }
 
   async get(userId: string, id: string): Promise<EmailReceiptParserView> {
-    const row = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(EmailReceiptParser).findOne({ where: { id, userId } }),
-    );
-    if (!row) throw parserNotFound(id);
-    return toParserView(row);
+    return withScopedDb(this.dataSource, async (m) => {
+      const row = await m
+        .getRepository(EmailReceiptParser)
+        .findOne({ where: { id, userId } });
+      if (!row) throw parserNotFound(id);
+      return toParserView(row, await loadQualifiedCategoryNames(m, userId));
+    });
   }
 
   /** A manual parser is approved on creation: the person who wrote it is the approval. */
@@ -151,8 +156,7 @@ export class EmailReceiptParsersService {
     userId: string,
     dto: CreateEmailReceiptParserDto,
   ): Promise<EmailReceiptParserView> {
-    const definition = validDefinition(dto.definition);
-    const row = await withScopedDb(this.dataSource, async (m) => {
+    return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(EmailReceiptParser);
       // The cap is a bound on work per email, not a security limit: two
       // concurrent creates can overshoot it by one.
@@ -165,11 +169,14 @@ export class EmailReceiptParsersService {
           ),
         );
       }
+      const definition = validDefinition(
+        await resolveParserCategoryNames(m, userId, dto.definition),
+      );
       await assertParserReferencesOwned(m, userId, {
         payeeId: dto.payeeId ?? null,
         categoryIds: collectParserCategoryIds(definition),
       });
-      return repo.save(
+      const saved = await repo.save(
         repo.create({
           userId,
           name: dto.name,
@@ -182,8 +189,8 @@ export class EmailReceiptParsersService {
           approvedAt: new Date(),
         }),
       );
+      return toParserView(saved, await loadQualifiedCategoryNames(m, userId));
     });
-    return toParserView(row);
   }
 
   /**
@@ -198,16 +205,18 @@ export class EmailReceiptParsersService {
     id: string,
     dto: UpdateEmailReceiptParserDto,
   ): Promise<EmailReceiptParserView> {
-    const definition =
-      dto.definition === undefined
-        ? undefined
-        : validDefinition(dto.definition);
-    const row = await withScopedDb(this.dataSource, async (m) => {
+    return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(EmailReceiptParser);
       const existing = await this.lockParser(m, userId, id);
       if (existing.revision !== dto.expectedRevision) {
         throw revisionConflict();
       }
+      const definition =
+        dto.definition === undefined
+          ? undefined
+          : validDefinition(
+              await resolveParserCategoryNames(m, userId, dto.definition),
+            );
       const payeeId =
         dto.payeeId === undefined ? existing.payeeId : (dto.payeeId ?? null);
       await assertParserReferencesOwned(m, userId, {
@@ -234,9 +243,11 @@ export class EmailReceiptParsersService {
           revision: () => "revision + 1",
         },
       );
-      return repo.findOneByOrFail({ id, userId });
+      return toParserView(
+        await repo.findOneByOrFail({ id, userId }),
+        await loadQualifiedCategoryNames(m, userId),
+      );
     });
-    return toParserView(row);
   }
 
   /**
@@ -319,8 +330,9 @@ export class EmailReceiptParsersService {
     id: string,
     dto: ApproveEmailReceiptParserDto = {},
   ): Promise<EmailReceiptParserView> {
-    const row = await withScopedDb(this.dataSource, async (m) => {
+    return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(EmailReceiptParser);
+      const names = await loadQualifiedCategoryNames(m, userId);
       const existing = await this.lockParser(m, userId, id);
       if (
         dto.expectedRevision !== undefined &&
@@ -328,7 +340,7 @@ export class EmailReceiptParsersService {
       ) {
         throw revisionConflict();
       }
-      if (existing.status === "approved") return existing;
+      if (existing.status === "approved") return toParserView(existing, names);
       const definition = validDefinition(existing.definition);
       await assertParserReferencesOwned(m, userId, {
         payeeId: existing.payeeId,
@@ -346,9 +358,8 @@ export class EmailReceiptParsersService {
       // the same transaction as the approval, so the two commit or roll back
       // together. Nothing matching is fine (a draft written by hand).
       await this.requests.markParserDraftApplied(m, userId, id);
-      return repo.findOneByOrFail({ id, userId });
+      return toParserView(await repo.findOneByOrFail({ id, userId }), names);
     });
-    return toParserView(row);
   }
 
   /**

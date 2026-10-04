@@ -45,6 +45,10 @@ import { completeness, parseReceiptLines } from "../parsing/parse-receipt";
 import { resolveMatchConfig } from "../parsing/receipt-match-config";
 import type { ParsedReceipt } from "../parsing/receipt-parser.types";
 import {
+  applyCategoryHistory,
+  loadItemCategoryHistory,
+} from "../proposal/receipt-category-history";
+import {
   buildReceiptProposal,
   type ReceiptProposal,
   type ReceiptProposalContext,
@@ -544,6 +548,19 @@ export class EmailReceiptPipelineService {
     }
 
     const categoryNames = await loadQualifiedCategoryNames(m, userId);
+
+    // What the user already filed an item of the same name under comes first;
+    // the profile's rules, then the AI, cover what history does not.
+    const history = await loadItemCategoryHistory(
+      m,
+      userId,
+      parsed.items.map((item) => item.name),
+    );
+    const withHistory = applyCategoryHistory(parsed, history, categoryNames);
+    if (withHistory !== parsed) {
+      parsed = withHistory;
+      stored = { ...stored, parsed };
+    }
 
     // A profile that asks the AI for the categories of the items its rules left
     // bare (design 5.6): only a parser's own reading, only when the sole thing

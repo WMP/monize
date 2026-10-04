@@ -372,6 +372,8 @@
     "parserNotFound": "[XX-Receipt parser {{ id }} not found-XX]",
     "parserRevisionConflict": "[XX-This parser was changed since you opened it. Reload it and try again.-XX]",
     "parserCategoryNotFound": "[XX-A category named in this parser was not found.-XX]",
+    "parserCategoryNameUnknown": "[XX-The category \"{{ name }}\" was not found. Use the name of one of your categories.-XX]",
+    "parserCategoryNameAmbiguous": "[XX-The category \"{{ name }}\" matches several categories ({{ candidates }}). Use the full name, for example \"Parent: Child\".-XX]",
     "parserDefinitionInvalid": "[XX-The parser definition is not valid: {{ codes }}-XX]",
     "receiptSkipped": "[XX-This email could not be read (it was too large or could not be decoded), so there is nothing to process.-XX]",
     "receiptIgnored": "[XX-This email was ignored. Reprocess it before linking it to a transaction.-XX]",
