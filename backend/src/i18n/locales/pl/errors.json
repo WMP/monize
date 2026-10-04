@@ -391,7 +391,9 @@
     "settingsEmpty": "Wyślij co najmniej jedno ustawienie do zmiany.",
     "parserToolReceiptCount": "Podaj od 1 do 5 wiadomości, na których przetestować parser.",
     "parserToolInvalidSender": "Szkic wymaga nazwy i od jednej do dziesięciu domen nadawcy, takich jak shop.example.com.",
-    "parserDraftRequestNotClaimed": "Ten wniosek o szkic parsera nie został przez Ciebie przejęty. Najpierw przejmij go przez ai_review_requests albo zapisz szkic bez requestId."
+    "parserDraftRequestNotClaimed": "Ten wniosek o szkic parsera nie został przez Ciebie przejęty. Najpierw przejmij go przez ai_review_requests albo zapisz szkic bez requestId.",
+    "parserCategoryNameUnknown": "Kategoria \"{{ name }}\" nie została znaleziona. Użyj nazwy jednej z Twoich kategorii.",
+    "parserCategoryNameAmbiguous": "Kategoria \"{{ name }}\" pasuje do kilku kategorii ({{ candidates }}). Użyj pełnej nazwy, na przykład \"Nadrzędna: Podrzędna\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail nie jest skonfigurowany. Dostępu awaryjnego nie można włączyć, dopóki nie skonfigurujesz SMTP.",

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI-controlepostvak",
-    "subtitle": "Transacties die een regel door een AI wilde laten controleren, parsers die een assistent moest opstellen, en de wijzigingen die een assistent ter goedkeuring voorstelt."
+    "subtitle": "Transacties die een regel door een AI wilde laten controleren, profiels die een assistent moest opstellen, en de wijzigingen die een assistent ter goedkeuring voorstelt."
   },
   "filter": {
     "label": "Filteren op status",
@@ -40,13 +40,13 @@
     "manualRequest": "Handmatig aangevraagd",
     "emailReceipt": "E-mailbon: {subject} van {sender}",
     "emailReceiptMissing": "E-mailbon (de e-mail is verwijderd)",
-    "parserDraft": "Parserconcept uit {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
+    "parserDraft": "Profielconcept uit {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
     "viewEmailReceipts": "E-mailbonnen bekijken",
     "agentNote": "Opmerking van de assistent: {reason}",
     "dates": "Aangemaakt op {created}, verloopt op {expires}",
     "viewTransaction": "Transactie bekijken",
     "waitingForAgent": "Wacht op een AI-agent. <link>Koppel een AI-provider in de Instellingen</link> of laat een MCP-client het verzoek oppakken.",
-    "parserDraftReady": "Parserconcept klaar. <link>Test en keur het goed in de parserinstellingen</link>."
+    "parserDraftReady": "Profielconcept klaar. <link>Test en keur het goed in de profielinstellingen</link>."
   },
   "actions": {
     "dismiss": "Negeren"

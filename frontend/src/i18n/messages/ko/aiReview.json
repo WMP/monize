@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI 검토 수신함",
-    "subtitle": "규칙이 AI에게 검토를 요청한 거래, 어시스턴트에게 초안 작성을 요청한 파서, 어시스턴트가 승인용으로 제안한 변경 사항입니다."
+    "subtitle": "규칙이 AI에게 검토를 요청한 거래, 어시스턴트에게 초안 작성을 요청한 프로필, 어시스턴트가 승인용으로 제안한 변경 사항입니다."
   },
   "filter": {
     "label": "상태별 필터",
@@ -40,13 +40,13 @@
     "manualRequest": "수동으로 요청됨",
     "emailReceipt": "이메일 영수증: {sender}의 {subject}",
     "emailReceiptMissing": "이메일 영수증 (이메일이 삭제됨)",
-    "parserDraft": "파서 초안: {count, plural, one {이메일 #통} other {이메일 #통}} ({domain})",
+    "parserDraft": "프로필 초안: {count, plural, one {이메일 #통} other {이메일 #통}} ({domain})",
     "viewEmailReceipts": "이메일 영수증 보기",
     "agentNote": "어시스턴트의 메모: {reason}",
     "dates": "생성 {created}, 만료 {expires}",
     "viewTransaction": "거래 보기",
     "waitingForAgent": "AI 에이전트를 기다리는 중입니다. <link>설정에서 AI 제공자를 연결</link>하거나 MCP 클라이언트가 맡도록 하세요.",
-    "parserDraftReady": "파서 초안이 준비되었습니다. <link>파서 설정에서 테스트하고 승인하세요</link>."
+    "parserDraftReady": "프로필 초안이 준비되었습니다. <link>프로필 설정에서 테스트하고 승인하세요</link>."
   },
   "actions": {
     "dismiss": "무시"

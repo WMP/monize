@@ -391,7 +391,9 @@
     "settingsEmpty": "请至少发送一项要更改的设置。",
     "parserToolReceiptCount": "请指定 1 至 5 封邮件来测试解析器。",
     "parserToolInvalidSender": "草稿需要名称，以及一到十个发件人域名，例如 shop.example.com。",
-    "parserDraftRequestNotClaimed": "此解析器草稿请求不是由您认领的。请先用 ai_review_requests 认领，或不带 requestId 保存草稿。"
+    "parserDraftRequestNotClaimed": "此解析器草稿请求不是由您认领的。请先用 ai_review_requests 认领，或不带 requestId 保存草稿。",
+    "parserCategoryNameUnknown": "类别\"{{ name }}\"未找到。请使用您的某个类别的名称。",
+    "parserCategoryNameAmbiguous": "类别\"{{ name }}\"与多个类别匹配({{ candidates }})。请使用完整名称，例如\"父类：子类\"。"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "邮件未配置。在设置 SMTP 之前，无法启用紧急访问。",

@@ -81,7 +81,7 @@
       "enabledLabel": "Baca kotak surel secara otomatis",
       "enabledHelp": "Hanya mengatur pembacaan otomatis: saat aktif, Monize membaca kotak surel setiap 15 menit. Menonaktifkannya tidak memutus koneksi kotak surel, dan Periksa sekarang membaca kotak surel baik pengaturan ini aktif maupun tidak.",
       "aiModeLabel": "Mode AI",
-      "aiModeHelp": "Apakah pemeriksaan boleh menggunakan penyedia AI yang Anda konfigurasi pada struk. Kenali dengan AI dan Buat draf pengurai dengan AI menanyakan asisten di obrolan apa pun modenya, dan jawaban AI selalu berupa usulan atau draf yang Anda setujui.",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Siapkan profil dengan AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
         "off": "Nonaktif",
         "on_demand": "Sesuai permintaan",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "Pemeriksaan tidak pernah memanggil AI untuk struk.",
-        "on_demand": "Pemeriksaan tidak pernah memanggil AI. Anda sendiri yang bertanya kepada asisten dengan Kenali dengan AI atau Buat draf pengurai dengan AI.",
-        "automatic": "Setiap pemeriksaan menanyakan AI tentang struk yang cocok tetapi tidak terbaca lengkap oleh pengurai yang disetujui, dan membuat draf pengurai untuk pengirim yang belum memilikinya."
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Siapkan profil dengan AI.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved profil could read completely, and drafts a profil for a sender that has none."
       },
       "autoApplyLabel": "Terapkan usulan secara otomatis",
-      "autoApplyHelp": "Nonaktif secara default. Usulan diterapkan tanpa bertanya hanya jika semua syarat ini terpenuhi: profil yang disetujui membaca seluruh surel, transaksi ditemukan lewat nomor pesanan atau referensi, atau lewat jumlah dan penerima yang persis sama, dengan satu kandidat saja, dan usulan cocok hingga satuan mata uang terkecil. Semua kasus lain menunggu persetujuan Anda.",
-      "profileLimitLabel": "Hitung usulan profil dalam batas AI harian",
-      "profileLimitHelp": "Aktif secara default: suntingan yang diusulkan profil dari sebuah surel dihitung dalam batas harian perubahan yang diusulkan AI, seperti usulan AI lainnya. Matikan jika sekumpulan besar surel tersimpan akan menghabiskan batas tersebut. Hanya usulan dari profil yang dikecualikan; setiap usulan tetap menunggu persetujuan Anda."
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profil read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profil proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profil proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profil are exempt; every proposal still waits for your approval."
     },
     "status": {
       "lastPolled": "Pemeriksaan terakhir",
@@ -117,21 +117,21 @@
     }
   },
   "parsers": {
-    "heading": "Profil",
-    "description": "Profil membaca konfirmasi pesanan dari satu pengirim dengan pola yang Anda tulis atau tinjau, dan menentukan cara menemukan transaksi bank. Setelah disetujui, profil berjalan tanpa AI.",
-    "newButton": "Pengurai baru",
-    "loading": "Memuat pengurai",
+    "heading": "Profils",
+    "description": "A profil reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "New profil",
+    "loading": "Loading profil",
     "error": {
-      "title": "Pengurai tidak dapat dimuat",
+      "title": "The profil could not be loaded",
       "body": "Permintaan gagal. Coba lagi.",
       "retry": "Coba lagi"
     },
     "empty": {
-      "title": "Belum ada pengurai",
+      "title": "No profil yet",
       "body": "Buat satu untuk pengirim konfirmasi pesanan, atau buat drafnya dari surel tersimpan di halaman Struk Surel."
     },
     "columns": {
-      "name": "Pengurai",
+      "name": "Profil",
       "status": "Status",
       "payee": "Penerima",
       "actions": "Tindakan"
@@ -153,19 +153,19 @@
       "viewJson": "Lihat JSON"
     },
     "toasts": {
-      "approved": "Pengurai disetujui",
-      "approveFailed": "Pengurai tidak dapat disetujui",
-      "changedElsewhere": "Pengurai ini diubah di tempat lain. Daftar telah dimuat ulang.",
-      "deleted": "Pengurai dihapus",
-      "deleteFailed": "Pengurai tidak dapat dihapus"
+      "approved": "Profil approved",
+      "approveFailed": "Could not approve the profil",
+      "changedElsewhere": "This profil was changed elsewhere. The list has been reloaded.",
+      "deleted": "Profil deleted",
+      "deleteFailed": "Could not delete the profil"
     },
     "deleteDialog": {
-      "title": "Hapus pengurai?",
-      "message": "Pengurai {name} akan dihapus. Surel yang sudah dibacanya tetap menyimpan hasilnya."
+      "title": "Delete the profil?",
+      "message": "The profil {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
       "title": "Definisi {name}",
-      "help": "Definisi pengurai sebagaimana tersimpan. Di sini hanya dapat dibaca; gunakan Ubah untuk mengubahnya.",
+      "help": "The profil definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
       "contentLabel": "JSON definisi",
       "copy": "Salin",
       "copied": "JSON disalin",
@@ -173,22 +173,22 @@
     },
     "processOffer": {
       "title": "Proses surel tersimpan sekarang?",
-      "message": "Proses {count, plural, one {# surel tersimpan} other {# surel tersimpan}} dari {domains} sekarang? Setiap surel dibaca ulang dengan profil ini; usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profil again; what it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "Proses sekarang",
       "later": "Nanti saja"
     }
   },
   "editor": {
-    "createTitle": "Pengurai baru",
-    "editTitle": "Edit pengurai",
+    "createTitle": "New profil",
+    "editTitle": "Edit profil",
     "loading": "Memuat penerima dan kategori",
     "lookupsError": {
       "title": "Penerima dan kategori tidak dapat dimuat",
       "body": "Pemilih memerlukannya, sehingga editor belum dapat dibuka. Coba lagi.",
       "retry": "Coba lagi"
     },
-    "draftNote": "Pengurai ini adalah draf. Pengurai ini tidak membaca apa pun sampai Anda menyetujuinya.",
-    "draftAiNote": "AI membuat draf pengurai ini dari contoh surel Anda. Uji pada setiap surel dan periksa setiap pola, lalu setujui dari daftar. Pengurai ini tidak membaca apa pun sampai Anda melakukannya.",
+    "draftNote": "This profil is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this profil from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
     "identityHeading": "Surel yang dibacanya",
     "nameLabel": "Nama",
     "payeeLabel": "Penerima",
@@ -197,12 +197,12 @@
     "domainsHelp": "Satu per baris, hingga {max}. Subdomain dari domain yang tercantum juga cocok.",
     "subjectLabel": "Subjek mengandung",
     "subjectHelp": "Opsional, satu per baris, hingga {max}. Subjek harus mengandung setidaknya salah satunya, tanpa membedakan huruf besar dan kecil.",
-    "saveButton": "Simpan pengurai",
-    "created": "Pengurai dibuat",
-    "updated": "Pengurai disimpan",
-    "saveFailed": "Pengurai tidak dapat disimpan",
-    "conflict": "Pengurai ini diubah di tempat lain sejak Anda membukanya. Muat ulang untuk melihat versi saat ini. Perubahan Anda di sini tidak tersimpan.",
-    "conflictReload": "Muat ulang pengurai",
+    "saveButton": "Save profil",
+    "created": "Profil created",
+    "updated": "Profil saved",
+    "saveFailed": "Could not save the profil",
+    "conflict": "This profil was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the profil",
     "patterns": {
       "sourceLabel": "Sumber baris",
       "sourceHint": "Tampilan surel mana yang dicocokkan dengan pola di bawah. Teks adalah bagian teks surel, satu baris untuk setiap pergantian baris. HTML membaca bagian HTML: setiap blok dan setiap sel tabel menjadi barisnya sendiri, sehingga nama produk yang dipecah teks menjadi beberapa baris tetap utuh. Tampilan Baris pada surel menunjukkan persis apa yang dihasilkan tiap sumber.",
@@ -223,22 +223,21 @@
       "stopAtLabel": "Item berhenti di",
       "stopAtHint": "Opsional. Item berakhir sebelum baris pertama yang mengandung teks ini.",
       "itemPatternsLabel": "Pola item",
-      "itemPatternsHint": "Harus menangkap {name} dan salah satu dari {amount} (total baris) atau {price} (harga satuan, boleh disertai {qty}), tidak boleh keduanya. Contoh: {name} x {qty} {price}"
+      "itemPatternsHint": "Harus menangkap {name} dan salah satu dari {amount} (total baris) atau {price} (harga satuan, boleh disertai {qty}), tidak boleh keduanya. Contoh: {name} x {qty} {price}",
+      "feesLabel": "Fees patterns"
     },
     "categories": {
-      "rulesHeading": "Aturan kategori",
-      "rulesHelp": "Aturan pertama yang polanya cocok dengan nama item menentukan kategori item tersebut. Pola menggunakan sintaks yang sama, misalnya {example}. Hingga {max} aturan.",
-      "noRules": "Tidak ada aturan kategori. Setiap item mendapat kategori default.",
-      "rulePatternLabel": "Pola aturan {number}",
-      "ruleCategoryLabel": "Kategori aturan {number}",
       "categoryPlaceholder": "Tanpa kategori",
-      "removeRule": "Hapus aturan {number}",
-      "addRule": "Tambah aturan",
-      "ruleLimit": "Batas {max} aturan telah tercapai.",
       "defaultLabel": "Kategori default",
       "defaultHelp": "Digunakan untuk item yang tidak cocok dengan aturan mana pun.",
       "shippingLabel": "Kategori ongkos kirim",
-      "shippingHelp": "Kategori untuk baris ongkos kirim."
+      "shippingHelp": "Kategori untuk baris ongkos kirim.",
+      "heading": "Categories",
+      "help": "Type a category name and pick it from the list. The name is stored in the profil, and the category must exist when the profil is saved.",
+      "feesLabel": "Fees category",
+      "feesHelp": "The category of the fees line.",
+      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
+      "rulesInJson": "Category rules by item name are an advanced option: add them to the profil definition in the JSON mode."
     },
     "mode": {
       "label": "Mode pengeditan",
@@ -248,9 +247,9 @@
       "jsonInvalid": "JSON belum valid, jadi formulir tidak dapat ditampilkan. Perbaiki dahulu."
     },
     "json": {
-      "label": "Definisi pengurai (JSON)",
+      "label": "Profil definition (JSON)",
       "help": "Definisi yang sama dengan yang dibuat formulir. Server memeriksanya saat Anda menyimpan, dan pengujian di bawah membacanya sebagaimana adanya sekarang.",
-      "parseError": "Ini bukan JSON yang valid, atau bukan objek JSON. Perbaiki agar pengurai dapat disimpan atau diuji."
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profil."
     },
     "matching": {
       "heading": "Pencocokan",
@@ -280,11 +279,12 @@
       "daysAfterLabel": "Jumlah hari setelah pembelian",
       "daysHint": "Rentang waktu di sekitar tanggal pembelian. Default {default}, maksimal {max}.",
       "toleranceLabel": "Toleransi jumlah",
-      "toleranceHint": "Seberapa jauh jumlah di bank boleh berbeda dari total surel. Default 0, maksimal {max}."
+      "toleranceHint": "Seberapa jauh jumlah di bank boleh berbeda dari total surel. Default 0, maksimal {max}.",
+      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the profil has reference patterns), order number, amount and payee, amount and date."
     },
     "proposal": {
       "heading": "Usulan",
-      "tagLabel": "Tambahkan tag ke transaksi yang dikategorikan profil ini",
+      "tagLabel": "Add a tag to the transactions this profil categorizes",
       "tagHelp": "Tag dibuat jika Anda belum memiliki tag dengan nama itu. Tag ditampilkan pada usulan, dan tidak ada yang ditulis sampai Anda menyetujuinya.",
       "tagNameLabel": "Nama tag",
       "aiCategoriesLabel": "Biarkan AI memilih kategori item yang tidak cocok dengan aturan apa pun",
@@ -292,7 +292,7 @@
     }
   },
   "problems": {
-    "heading": "Definisi pengurai tidak valid:",
+    "heading": "The profil definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "Definisi",
@@ -343,11 +343,14 @@
       "matchDaysAfter": "Jumlah hari setelah pembelian",
       "matchTolerance": "Toleransi jumlah",
       "tag": "Tag",
-      "aiCategories": "Kategori AI"
+      "aiCategories": "Kategori AI",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns"
     },
     "codes": {
       "not_object": "bukan definisi yang valid",
-      "unknown_key": "bukan sesuatu yang dapat dimiliki pengurai",
+      "unknown_key": "is not something a profil can have",
       "unsupported_version": "memiliki versi yang tidak dibaca server ini (gunakan versi 2)",
       "invalid_type": "memiliki jenis nilai yang salah",
       "empty": "tidak boleh kosong",
@@ -400,10 +403,10 @@
     "unmatched": "Tidak ada transaksi yang cocok, dari {count, plural, one {# kandidat} other {# kandidat}}.",
     "jsonInvalid": "JSON tidak valid, jadi belum ada yang dapat diuji.",
     "outcome": {
-      "not_applicable": "Pengurai ini tidak akan membaca surel ini: tidak ada satu pun baris wajibnya di dalam surel, jadi pengurai berikutnya untuk pengirim akan dicoba.",
-      "skip_line": "Pengurai ini akan menyisihkan surel ini: ada baris yang membuatnya melewati surel.",
-      "wait_line": "Pengurai ini akan menahan surel ini: sebuah baris menyatakan pesanan belum final, jadi surel dibaca lagi nanti.",
-      "no_html": "Pengurai ini membaca bagian HTML surel, sedangkan surel ini tidak memilikinya, jadi akan ditandai tidak dapat dibaca (tanpa HTML)."
+      "not_applicable": "This profil would not read this email: none of its required lines is in it, so the next profil for the sender would be tried.",
+      "skip_line": "This profil would set this email aside: a line it skips on is in it.",
+      "wait_line": "This profil would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This profil reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
       "heading": "Dicocokkan oleh",
@@ -479,7 +482,7 @@
   "state": {
     "pending": "Menunggu dibaca",
     "skipped": "Dilewati",
-    "no_parser": "Tanpa pengurai",
+    "no_parser": "No profil",
     "parse_failed": "Tidak dapat dibaca",
     "unmatched": "Transaksi tidak ditemukan",
     "ambiguous": "Beberapa transaksi cocok",
@@ -503,19 +506,21 @@
       "all": "Semua",
       "pending": "Menunggu dibaca",
       "skipped": "Dilewati",
-      "no_parser": "Tanpa pengurai",
+      "no_parser": "No profil",
       "parse_failed": "Tidak dapat dibaca",
       "unmatched": "Transaksi tidak ditemukan",
       "ambiguous": "Beberapa transaksi cocok",
       "review_conflict": "Permintaan lain masih terbuka",
       "review": "Sedang ditinjau",
-      "ignored": "Dikecualikan"
+      "ignored": "Dikecualikan",
+      "option": "{label} ({count})"
     },
     "domainFilter": {
       "label": "Domain pengirim",
       "all": "Semua pengirim",
       "option": "{domain} ({count})",
-      "help": "Menampilkan surel dari {domain} dan subdomainnya. Pilih beberapa di antaranya untuk membuat draf satu pengurai bagi pengirim."
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profil for the sender.",
+      "unknown": "The sender counts could not be loaded."
     },
     "columns": {
       "select": "Pilih",
@@ -546,9 +551,10 @@
       "reprocess": "Proses ulang",
       "link": "Pilih transaksi",
       "recognizeAi": "Kenali dengan AI",
-      "draftParser": "Buat draf pengurai dengan AI",
-      "createParser": "Buat pengurai",
-      "ignore": "Kecualikan"
+      "draftParser": "Siapkan profil dengan AI",
+      "createParser": "Create profil",
+      "ignore": "Kecualikan",
+      "approve": "Approve"
     },
     "toasts": {
       "reprocessed": "Surel diproses ulang",
@@ -556,7 +562,9 @@
       "ignored": "Surel dikecualikan",
       "ignoreFailed": "Surel tidak dapat dikecualikan",
       "deleted": "Surel dihapus",
-      "deleteFailed": "Surel tidak dapat dihapus"
+      "deleteFailed": "Surel tidak dapat dihapus",
+      "approved": "Proposal approved",
+      "approveFailed": "Could not approve the proposal"
     },
     "ignoreDialog": {
       "title": "Kecualikan surel ini?",
@@ -571,17 +579,26 @@
       "label": "Surel yang dipilih",
       "select": "Pilih {subject}",
       "count": "{count, plural, one {# surel dipilih} other {# surel dipilih}} (maksimal {max})",
-      "draftButton": "Buat draf pengurai dengan AI ({count})",
+      "draftButton": "Siapkan profil dengan AI ({count})",
       "clear": "Hapus pilihan",
-      "differentSenders": "Surel yang dipilih berasal dari pengirim yang berbeda ({domains}). Sebuah pengurai membaca surel dari satu pengirim, jadi pilih surel dari satu pengirim."
+      "differentSenders": "The selected emails come from different senders ({domains}). A profil reads one sender's emails, so select emails from one sender.",
+      "selectAll": "Select all emails on this list (at most {max})"
     },
     "draft": {
-      "failed": "Tidak dapat memulai pembuatan draf pengurai",
+      "failed": "Could not start drafting a profil",
       "queued": "Diantrekan: permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen. Saat ini tidak ada asisten yang dapat menjawab.",
       "handoffFailed": "Permintaan sudah diantrekan, tetapi surel tidak dapat dibuka di obrolan. Permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen.",
       "inboxLink": "Buka kotak masuk peninjauan AI",
       "opened": "Obrolan dibuka dengan surel terlampir. Baca pesannya lalu tekan Kirim.",
-      "chatPrompt": "Buat pengurai struk surel untuk {count, plural, one {surel pesanan ini} other {# surel pesanan ini}} dari {domain}. Ambil permintaan peninjauan AI {requestId}, uji pengurai Anda pada setiap surel terlampir dengan alat email_receipt_parsers, perbaiki sampai setiap surel terbaca lengkap, lalu simpan sebagai draf untuk permintaan {requestId}."
+      "chatPrompt": "Buat profil struk surel untuk {count, plural, one {surel pesanan ini} other {# surel pesanan ini}} dari {domain}. Ambil permintaan peninjauan AI {requestId}, uji profil Anda pada setiap surel terlampir dengan alat email_receipt_profiles, perbaiki sampai setiap surel terbaca lengkap, lalu simpan sebagai draf untuk permintaan {requestId}."
+    },
+    "guide": {
+      "heading": "How to create a profil",
+      "buttonName": "Siapkan profil dengan AI",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profil, and you test and approve it in the profil."
     }
   },
   "detail": {
@@ -598,7 +615,7 @@
     "originalSent": "Dikirim oleh toko",
     "subject": "Subjek",
     "state": "Status",
-    "parser": "Pengurai",
+    "parser": "Profil",
     "noParser": "Tidak ada",
     "structuredSource": "Data terstruktur",
     "matchedBy": "Dicocokkan lewat",
@@ -618,10 +635,10 @@
     "reasons": {
       "too_large": "Surel melebihi batas ukuran, sehingga disimpan tanpa dibaca.",
       "undecodable": "Surel tidak dapat didekode, sehingga disimpan tanpa dibaca.",
-      "draft_failed": "AI tidak dapat membuat draf pengurai untuk pengirim ini.",
-      "parser_invalid": "Pengurai untuk pengirim ini tidak valid. Edit di pengaturan pengurai.",
-      "no_total": "Pengurai tidak menemukan total di surel ini.",
-      "no_items": "Pengurai tidak menemukan baris item.",
+      "draft_failed": "The AI could not draft a profil for this sender.",
+      "parser_invalid": "The profil for this sender is not valid. Edit it in the profil settings.",
+      "no_total": "The profil found no total in this email.",
+      "no_items": "The profil found no line items.",
       "items_unbalanced": "Baris item tidak berjumlah sama dengan total.",
       "items_uncategorized": "Beberapa baris item belum memiliki kategori.",
       "shipping_uncategorized": "Baris ongkos kirim belum memiliki kategori.",
@@ -629,15 +646,15 @@
       "proposal_fallback": "Usulan dengan rincian item ditolak, jadi hanya deskripsi yang diusulkan.",
       "nothing_to_propose": "Surel ini tidak menambahkan apa pun pada transaksi ini.",
       "proposal_refused": "Usulan ditolak, jadi tidak ada yang diusulkan.",
-      "skip_line": "Ditemukan baris yang membuat pengurai ini melewati surel, jadi surel diabaikan.",
+      "skip_line": "A line this profil skips on was found, so the email was ignored.",
       "wait_line": "Sebuah baris menyatakan pesanan belum final, jadi surel akan dibaca lagi nanti.",
-      "no_html": "Pengurai ini membaca bagian HTML surel, sedangkan surel ini tidak memilikinya.",
-      "schema_org": "Tidak perlu pengurai: pesanan dibaca dari data terstruktur (schema.org) di dalam surel.",
+      "no_html": "This profil reads the HTML part of the email, and this email has none.",
+      "schema_org": "No profil was needed: the order was read from the structured data (schema.org) in the email.",
       "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya."
     },
     "reasonUnknown": "Alasan: {reason}",
     "requestNote": "Permintaan peninjauan ({state}): {note}",
-    "parsedHeading": "Yang dibaca pengurai",
+    "parsedHeading": "What the profil read",
     "notParsed": "Belum ada yang dibaca dari surel ini.",
     "candidatesHeading": "Transaksi yang cocok",
     "candidatesHelp": "Beberapa transaksi sama-sama cocok dengan surel ini. Pilih transaksi yang dibayarnya.",
@@ -657,7 +674,7 @@
     "htmlFrameTitle": "Surel seperti yang diformat pengirimnya",
     "structured": {
       "heading": "Data terstruktur (schema.org)",
-      "help": "Pesanan atau faktur yang dibawa surel sebagai markup untuk klien surel. Hanya dibaca jika tidak ada pengurai yang berlaku atau pengurai tidak menemukan total.",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profil applies or the profil finds no total.",
       "found": "Ditemukan",
       "notFound": "Tidak ditemukan",
       "notFoundHelp": "Surel tidak membawa markup pesanan, atau markup itu tidak mencantumkan total maupun item.",
@@ -667,13 +684,13 @@
       "unitPrice": "Harga satuan"
     },
     "lines": {
-      "help": "Baris yang dicocokkan dengan pola pengurai, diberi nomor sebagaimana daftar \"Dicocokkan oleh\" pada pengujian memberi nomor.",
+      "help": "The lines a profil's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
       "sourceLabel": "Sumber baris",
       "sources": {
         "text": "Teks",
         "html": "HTML"
       },
-      "noHtml": "Surel ini tidak memiliki bagian HTML, jadi pengurai yang membaca HTML tidak dapat membacanya.",
+      "noHtml": "This email has no HTML part, so a profil that reads HTML cannot read it.",
       "capped": "Hanya {max} baris pertama yang dibaca.",
       "empty": "Tidak ada baris.",
       "listLabel": "Baris surel yang bernomor"
@@ -756,12 +773,12 @@
       "ariaLabel": "Bagian struk surel",
       "overview": "Ringkasan",
       "emails": "Surel",
-      "profiles": "Profil",
+      "profiles": "Profils",
       "mailbox": "Kotak surel"
     },
     "demoRestricted": {
       "heading": "Dibatasi di Mode Demo",
-      "body": "Menghubungkan kotak surel dan menulis profil dinonaktifkan di mode demo."
+      "body": "Connecting a mailbox and writing profil are disabled in demo mode."
     }
   },
   "process": {
@@ -769,8 +786,8 @@
     "buttonCount": "Proses semua ({count})",
     "dialog": {
       "title": "{count, plural, one {Proses # surel tersimpan?} other {Proses # surel tersimpan?}}",
-      "message": "Setiap surel tersimpan yang belum dibaca, atau yang dapat berubah karena profil atau transaksi baru, dibaca ulang. Usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
-      "messageDomain": "Setiap surel tersimpan dari {domain} yang belum dibaca, atau yang dapat berubah karena profil atau transaksi baru, dibaca ulang. Usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
+      "message": "Every stored email that has not been read yet, or that a new profil or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profil or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "Proses"
     },
     "starting": "Memulai...",
@@ -825,15 +842,15 @@
       "open": "Buka kotak masuk peninjauan"
     },
     "profiles": {
-      "title": "Profil",
+      "title": "Profils",
       "approved": "disetujui",
       "drafts": "{count, plural, one {# draf menunggu persetujuan Anda} other {# draf menunggu persetujuan Anda}}.",
-      "manage": "Buka profil"
+      "manage": "Open the profil"
     },
     "uncovered": {
-      "title": "Pengirim tanpa profil",
-      "help": "Surel dari pengirim ini tidak dibaca oleh profil mana pun. Buat profil untuk salah satunya, atau minta asisten menyusun drafnya.",
-      "none": "Setiap pengirim surel tersimpan sudah tercakup oleh profil.",
+      "title": "Senders without a profil",
+      "help": "These senders sent emails no profil reads. Create a profil for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profil.",
       "row": "{domain} ({count, plural, one {# surel} other {# surel}})",
       "show": "Tampilkan surel"
     }
@@ -854,9 +871,9 @@
         "action": "Buka surel"
       },
       "profile": {
-        "title": "Buat profil untuk pengirim",
-        "body": "Profil memberi tahu Monize cara membaca konfirmasi pesanan dari satu pengirim. Tulis satu, atau susun drafnya dari surel tersimpan.",
-        "action": "Buka profil"
+        "title": "Create a profil for a sender",
+        "body": "A profil tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profil"
       },
       "review": {
         "title": "Tinjau usulan",

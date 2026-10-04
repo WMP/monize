@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AIレビュー受信箱",
-    "subtitle": "ルールがAIにレビューを依頼した取引、アシスタントに下書きが依頼されたパーサー、アシスタントが承認用に提案した変更です。"
+    "subtitle": "ルールがAIにレビューを依頼した取引、アシスタントに下書きが依頼されたプロフィール、アシスタントが承認用に提案した変更です。"
   },
   "filter": {
     "label": "ステータスで絞り込み",
@@ -40,13 +40,13 @@
     "manualRequest": "手動で依頼",
     "emailReceipt": "メールレシート: {subject} ({sender})",
     "emailReceiptMissing": "メールレシート (メールは削除されました)",
-    "parserDraft": "{count, plural, one {# 通のメール} other {# 通のメール}}からのパーサーの下書き ({domain})",
+    "parserDraft": "{count, plural, one {# 通のメール} other {# 通のメール}}からのプロフィールの下書き ({domain})",
     "viewEmailReceipts": "メールレシートを表示",
     "agentNote": "アシスタントからのメモ: {reason}",
     "dates": "作成日 {created}、期限 {expires}",
     "viewTransaction": "取引を表示",
     "waitingForAgent": "AIエージェントを待っています。<link>設定でAIプロバイダーを接続する</link>か、MCPクライアントに引き受けさせてください。",
-    "parserDraftReady": "パーサーの下書きができました。<link>パーサーの設定でテストして承認する</link>。"
+    "parserDraftReady": "プロフィールの下書きができました。<link>プロフィールの設定でテストして承認する</link>。"
   },
   "actions": {
     "dismiss": "却下する"

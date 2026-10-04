@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Yapay zekâ inceleme kutusu",
-    "subtitle": "Bir kuralın yapay zekâya incelettirmek istediği işlemler, bir asistandan taslağı istenen ayrıştırıcılar ve bir asistanın onayınız için önerdiği değişiklikler."
+    "subtitle": "Bir kuralın bir YZ'ye gözden geçirmesini istediği işlemler, bir yardımcının taslak oluşturması istenen profiller ve bir yardımcının sizin onaylamanız için önerdiği düzenlemeler."
   },
   "filter": {
     "label": "Duruma göre filtrele",
@@ -40,13 +40,13 @@
     "manualRequest": "Elle istendi",
     "emailReceipt": "E-posta makbuzu: {subject}, gönderen: {sender}",
     "emailReceiptMissing": "E-posta makbuzu (e-posta silindi)",
-    "parserDraft": "{count, plural, one {# e-postadan} other {# e-postadan}} ayrıştırıcı taslağı ({domain})",
+    "parserDraft": "{count, plural, one {# e-postadan} other {# e-postadan}} profil taslağı ({domain})",
     "viewEmailReceipts": "E-posta makbuzlarını görüntüle",
     "agentNote": "Asistanın notu: {reason}",
     "dates": "Oluşturulma {created}, bitiş {expires}",
     "viewTransaction": "İşlemi görüntüle",
     "waitingForAgent": "Bir yapay zekâ ajanı bekleniyor. <link>Ayarlar'dan bir yapay zekâ sağlayıcısı bağlayın</link> veya bir MCP istemcisinin üstlenmesine izin verin.",
-    "parserDraftReady": "Ayrıştırıcı taslağı hazır. <link>Ayrıştırıcı ayarlarında deneyin ve onaylayın</link>."
+    "parserDraftReady": "Profil taslağı hazır. <link>Profil ayarlarında test edin ve onaylayın</link>."
   },
   "actions": {
     "dismiss": "Yoksay"

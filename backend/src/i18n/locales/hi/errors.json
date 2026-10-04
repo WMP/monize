@@ -391,7 +391,9 @@
     "settingsEmpty": "बदलने के लिए कम से कम एक सेटिंग भेजें।",
     "parserToolReceiptCount": "पार्सर को परखने के लिए 1 से 5 ईमेल बताएँ।",
     "parserToolInvalidSender": "ड्राफ़्ट के लिए एक नाम और shop.example.com जैसे एक से दस प्रेषक डोमेन चाहिए।",
-    "parserDraftRequestNotClaimed": "यह पार्सर ड्राफ़्ट अनुरोध आपने नहीं लिया है। पहले इसे ai_review_requests से लें, या ड्राफ़्ट को requestId के बिना सहेजें।"
+    "parserDraftRequestNotClaimed": "यह पार्सर ड्राफ़्ट अनुरोध आपने नहीं लिया है। पहले इसे ai_review_requests से लें, या ड्राफ़्ट को requestId के बिना सहेजें।",
+    "parserCategoryNameUnknown": "श्रेणी \"{{ name }}\" नहीं मिली। अपनी किसी श्रेणी का नाम उपयोग करें।",
+    "parserCategoryNameAmbiguous": "\"{{ name }}\" श्रेणी कई श्रेणियों से मेल खाती है ({{ candidates }})। पूरा नाम उपयोग करें, उदाहरण के लिए \"Parent: Child\"।"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "ईमेल कॉन्फ़िगर नहीं है। SMTP सेटअप होने तक आपातकालीन एक्सेस सक्षम नहीं किया जा सकता।",
