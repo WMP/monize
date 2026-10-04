@@ -78,7 +78,7 @@ describe('ParsedReceiptView', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  it('says when the AI read the email, and says nothing for a parser', () => {
+  it('says when the AI read the email, and says nothing for a profile', () => {
     const { rerender } = render(
       <ParsedReceiptView parsed={{ ...parsed, source: 'ai' }} currencyCode="USD" categoryLabels={labels} />,
     );

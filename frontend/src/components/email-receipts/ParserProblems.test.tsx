@@ -112,6 +112,26 @@ describe('ParserProblems', () => {
     expect(screen.getByText('Category rules: has too many entries (at most 50)')).toBeInTheDocument();
   });
 
+  it('names the fees patterns, the named categories and the balance tolerance in the words of the form', () => {
+    render(
+      <ParserProblems
+        problems={[
+          { path: 'fees[0]', code: 'capture_missing' },
+          { path: 'defaultCategory', code: 'invalid_value' },
+          { path: 'shippingCategory', code: 'invalid_value' },
+          { path: 'feesCategory', code: 'invalid_value' },
+          { path: 'balanceTolerance', code: 'out_of_range' },
+        ]}
+      />,
+    );
+    const text = screen.getAllByRole('listitem').map((item) => item.textContent ?? '');
+    expect(text[0]).toMatch(/^Fees patterns, line 1: /);
+    expect(text[1]).toMatch(/^Default category: /);
+    expect(text[2]).toMatch(/^Shipping category: /);
+    expect(text[3]).toMatch(/^Fees category: /);
+    expect(text[4]).toMatch(/^Balance tolerance: /);
+  });
+
   it('shows a path and a code this client has not heard of as they are, never drops them', () => {
     render(<ParserProblems problems={[{ path: 'somethingNew', code: 'brand_new_code' }]} />);
     expect(screen.getByText('somethingNew: brand_new_code')).toBeInTheDocument();

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI review inbox",
-    "subtitle": "Transactions a rule asked an AI to review, parsers an assistant was asked to draft, and the edits an assistant proposed for you to approve."
+    "subtitle": "Transactions a rule asked an AI to review, profiles an assistant was asked to draft, and the edits an assistant proposed for you to approve."
   },
   "filter": {
     "label": "Filter by status",
@@ -40,13 +40,13 @@
     "manualRequest": "Requested manually",
     "emailReceipt": "Email receipt: {subject} from {sender}",
     "emailReceiptMissing": "Email receipt (the email was deleted)",
-    "parserDraft": "Parser draft from {count, plural, one {# email} other {# emails}} ({domain})",
+    "parserDraft": "Profile draft from {count, plural, one {# email} other {# emails}} ({domain})",
     "viewEmailReceipts": "View email receipts",
     "agentNote": "Note from the assistant: {reason}",
     "dates": "Created {created}, expires {expires}",
     "viewTransaction": "View transaction",
     "waitingForAgent": "Waiting for an AI agent. <link>Connect an AI provider in Settings</link>, or let an MCP client claim it.",
-    "parserDraftReady": "Draft parser ready. <link>Test and approve it in the parser settings</link>."
+    "parserDraftReady": "Draft profile ready. <link>Test and approve it in the profile settings</link>."
   },
   "actions": {
     "dismiss": "Dismiss"

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { RECEIPT_PARSER_LIMITS, type ReceiptParserValidationError } from '@/types/email-receipts';
 
-const PATTERN_FIELDS = ['orderId', 'total', 'paid', 'shipping', 'discount', 'payee', 'reference'] as const;
+const PATTERN_FIELDS = ['orderId', 'total', 'paid', 'shipping', 'discount', 'fees', 'payee', 'reference'] as const;
 const GUARD_FIELDS = ['requireLine', 'skipIfLine', 'waitIfLine'] as const;
 type PatternField = (typeof PATTERN_FIELDS)[number];
 
@@ -89,8 +89,10 @@ export function describeProblemPath(path: string, t: Translator): string {
   if (path === 'tag') return t('fields.tag');
   if (path === 'aiCategories') return t('fields.aiCategories');
   if (path === 'categoryRules') return t('fields.categoryRules');
-  if (path === 'defaultCategoryId') return t('fields.defaultCategory');
-  if (path === 'shippingCategoryId') return t('fields.shippingCategory');
+  if (path === 'defaultCategory' || path === 'defaultCategoryId') return t('fields.defaultCategory');
+  if (path === 'shippingCategory' || path === 'shippingCategoryId') return t('fields.shippingCategory');
+  if (path === 'feesCategory') return t('fields.feesCategory');
+  if (path === 'balanceTolerance') return t('fields.balanceTolerance');
   return path;
 }
 

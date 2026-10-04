@@ -1,12 +1,13 @@
 import {
   DEFAULT_MATCH_BY,
+  DEFAULT_MATCH_DAYS_AFTER,
+  DEFAULT_MATCH_DAYS_BEFORE,
   RECEIPT_LINES_SOURCES,
   RECEIPT_MATCH_STRATEGIES,
   RECEIPT_MATCH_TEXT_FIELDS,
   RECEIPT_PARSER_LIMITS,
   type CreateEmailReceiptParserPayload,
   type EmailReceiptParser,
-  type ReceiptCategoryRule,
   type ReceiptLinesSource,
   type ReceiptMatchDefinition,
   type ReceiptMatchStrategy,
@@ -26,13 +27,6 @@ import {
 /** The only definition version the server reads; the form always writes it. */
 export const PARSER_DEFINITION_VERSION = 2;
 
-export interface CategoryRuleRow {
-  /** A list key, never sent. */
-  uid: string;
-  match: string;
-  categoryId: string;
-}
-
 export interface ParserFormState {
   name: string;
   payeeId: string;
@@ -50,9 +44,12 @@ export interface ParserFormState {
   startAfter: string;
   stopAt: string;
   itemPatterns: string;
-  categoryRules: CategoryRuleRow[];
-  defaultCategoryId: string;
-  shippingCategoryId: string;
+  /** One pattern per line, for the fees of the order (a payment or handling charge). */
+  fees: string;
+  /** Categories are named: the full name as the category list shows it, `''` for none. */
+  defaultCategory: string;
+  shippingCategory: string;
+  feesCategory: string;
   /** One pattern per line: an identifier the shop or gateway puts into the bank operation. */
   reference: string;
   /** The strategies that are on, in the order they are tried. Never empty. */
@@ -95,9 +92,10 @@ export const emptyParserForm = (overrides: Partial<ParserFormState> = {}): Parse
   startAfter: '',
   stopAt: '',
   itemPatterns: '',
-  categoryRules: [],
-  defaultCategoryId: '',
-  shippingCategoryId: '',
+  fees: '',
+  defaultCategory: '',
+  shippingCategory: '',
+  feesCategory: '',
   reference: '',
   matchBy: [...DEFAULT_MATCH_BY],
   matchReferenceIn: [...RECEIPT_MATCH_TEXT_FIELDS],
@@ -137,25 +135,47 @@ export function toleranceFromString(text: string): number | null {
   return (Number(whole) * 100 + Number(fraction.padEnd(2, '0'))) / 100;
 }
 
+/**
+ * The strategies a profile tries when it names none: the reference first when
+ * the profile reads one from the bank operation, then the order number, then the
+ * amount with the payee, then the amount with the date. Mirrors the server's default.
+ */
+export function defaultMatchBy(hasReference: boolean): ReceiptMatchStrategy[] {
+  return hasReference ? ['reference', ...DEFAULT_MATCH_BY] : [...DEFAULT_MATCH_BY];
+}
+
+/**
+ * The form's `matchBy` after `reference` changed: a profile that gains its first
+ * reference pattern and still has the plain default order gets the reference
+ * strategy first, and one that loses its last pattern while on that default
+ * drops it. A list the person arranged is left alone.
+ */
+export function matchByAfterReferenceChange(
+  matchBy: readonly ReceiptMatchStrategy[],
+  hadReference: boolean,
+  hasReference: boolean,
+): ReceiptMatchStrategy[] {
+  if (hadReference === hasReference) return [...matchBy];
+  if (sameList(matchBy, defaultMatchBy(hadReference))) return defaultMatchBy(hasReference);
+  return [...matchBy];
+}
+
 /** The `match` section the form describes: only what differs from the defaults, so a form that changes nothing sends nothing. */
 export function buildMatchDefinition(form: ParserFormState): ReceiptMatchDefinition | null {
   const match: ReceiptMatchDefinition = {};
-  if (!sameList(form.matchBy, DEFAULT_MATCH_BY)) match.by = [...form.matchBy];
+  if (!sameList(form.matchBy, defaultMatchBy(splitLines(form.reference).length > 0))) match.by = [...form.matchBy];
   if (!sameList(form.matchReferenceIn, RECEIPT_MATCH_TEXT_FIELDS)) match.referenceIn = [...form.matchReferenceIn];
-  if (form.matchDaysBefore !== null) match.daysBefore = form.matchDaysBefore;
-  if (form.matchDaysAfter !== null) match.daysAfter = form.matchDaysAfter;
+  // The server answers the effective window, so a value that is the default is no change.
+  if (form.matchDaysBefore !== null && form.matchDaysBefore !== DEFAULT_MATCH_DAYS_BEFORE) {
+    match.daysBefore = form.matchDaysBefore;
+  }
+  if (form.matchDaysAfter !== null && form.matchDaysAfter !== DEFAULT_MATCH_DAYS_AFTER) {
+    match.daysAfter = form.matchDaysAfter;
+  }
   const tolerance = toleranceToString(form.matchTolerance);
   if (tolerance !== null) match.amountTolerance = tolerance;
   return Object.keys(match).length > 0 ? match : null;
 }
-
-const newRow = (match: string, categoryId: string): CategoryRuleRow => ({
-  uid: crypto.randomUUID(),
-  match,
-  categoryId,
-});
-
-export const blankCategoryRule = (): CategoryRuleRow => newRow('', '');
 
 /** Non-blank lines, trimmed. A pattern may hold a comma, so lines are the only separator. */
 export function splitLines(text: string): string[] {
@@ -212,13 +232,12 @@ export function buildParserDefinition(form: ParserFormState): ReceiptParserDefin
     };
   }
 
-  const rules: ReceiptCategoryRule[] = form.categoryRules
-    .filter((row) => row.match.trim() !== '' || row.categoryId !== '')
-    .map((row) => ({ match: row.match.trim(), categoryId: row.categoryId }));
-  if (rules.length > 0) definition.categoryRules = rules;
+  const fees = splitLines(form.fees);
+  if (fees.length > 0) definition.fees = fees;
 
-  if (form.defaultCategoryId !== '') definition.defaultCategoryId = form.defaultCategoryId;
-  if (form.shippingCategoryId !== '') definition.shippingCategoryId = form.shippingCategoryId;
+  if (form.defaultCategory.trim() !== '') definition.defaultCategory = form.defaultCategory.trim();
+  if (form.shippingCategory.trim() !== '') definition.shippingCategory = form.shippingCategory.trim();
+  if (form.feesCategory.trim() !== '') definition.feesCategory = form.feesCategory.trim();
 
   const reference = splitLines(form.reference);
   if (reference.length > 0) definition.reference = reference;
@@ -266,9 +285,10 @@ type DefinitionFields = Pick<
   | 'startAfter'
   | 'stopAt'
   | 'itemPatterns'
-  | 'categoryRules'
-  | 'defaultCategoryId'
-  | 'shippingCategoryId'
+  | 'fees'
+  | 'defaultCategory'
+  | 'shippingCategory'
+  | 'feesCategory'
   | 'reference'
   | 'matchBy'
   | 'matchReferenceIn'
@@ -300,7 +320,7 @@ export function definitionToFormFields(value: unknown): DefinitionFields {
   const definition = isRecord(value) ? value : {};
   const items = isRecord(definition.items) ? definition.items : {};
   const match = isRecord(definition.match) ? definition.match : {};
-  const rules = Array.isArray(definition.categoryRules) ? definition.categoryRules : [];
+  const reference = stringList(definition.reference);
   return {
     source: definition.source === 'html' ? 'html' : 'text',
     orderId: stringList(definition.orderId).join('\n'),
@@ -310,13 +330,12 @@ export function definitionToFormFields(value: unknown): DefinitionFields {
     startAfter: text(items.startAfter),
     stopAt: text(items.stopAt),
     itemPatterns: stringList(items.patterns).join('\n'),
-    categoryRules: rules
-      .filter(isRecord)
-      .map((rule) => newRow(text(rule.match), text(rule.categoryId))),
-    defaultCategoryId: text(definition.defaultCategoryId),
-    shippingCategoryId: text(definition.shippingCategoryId),
-    reference: stringList(definition.reference).join('\n'),
-    matchBy: choiceList(match.by, RECEIPT_MATCH_STRATEGIES, DEFAULT_MATCH_BY),
+    fees: stringList(definition.fees).join('\n'),
+    defaultCategory: text(definition.defaultCategory),
+    shippingCategory: text(definition.shippingCategory),
+    feesCategory: text(definition.feesCategory),
+    reference: reference.join('\n'),
+    matchBy: choiceList(match.by, RECEIPT_MATCH_STRATEGIES, defaultMatchBy(reference.length > 0)),
     matchReferenceIn: choiceList(match.referenceIn, RECEIPT_MATCH_TEXT_FIELDS, RECEIPT_MATCH_TEXT_FIELDS),
     matchDaysBefore: wholeDays(match.daysBefore),
     matchDaysAfter: wholeDays(match.daysAfter),
@@ -346,9 +365,10 @@ const FORM_TOP_LEVEL_KEYS = [
   'shipping',
   'discount',
   'items',
-  'categoryRules',
-  'defaultCategoryId',
-  'shippingCategoryId',
+  'fees',
+  'defaultCategory',
+  'shippingCategory',
+  'feesCategory',
   'reference',
   'match',
   'tag',
@@ -405,7 +425,7 @@ export function formCanRepresent(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (!onlyKeys(value, FORM_TOP_LEVEL_KEYS)) return false;
   if (value.source !== undefined && !RECEIPT_LINES_SOURCES.includes(value.source as ReceiptLinesSource)) return false;
-  for (const field of ['orderId', 'total', 'shipping', 'discount', 'reference']) {
+  for (const field of ['orderId', 'total', 'shipping', 'discount', 'fees', 'reference']) {
     if (!onlyStrings(value[field])) return false;
   }
   if (!formCanRepresentMatch(value.match)) return false;
@@ -418,19 +438,9 @@ export function formCanRepresent(value: unknown): boolean {
       if (marker !== undefined && typeof marker !== 'string') return false;
     }
   }
-  if (value.categoryRules !== undefined) {
-    if (!Array.isArray(value.categoryRules)) return false;
-    const simple = value.categoryRules.every(
-      (rule) =>
-        isRecord(rule) &&
-        onlyKeys(rule, ['match', 'categoryId']) &&
-        typeof rule.match === 'string' &&
-        typeof rule.categoryId === 'string',
-    );
-    if (!simple) return false;
-  }
-  for (const id of [value.defaultCategoryId, value.shippingCategoryId]) {
-    if (id !== undefined && typeof id !== 'string') return false;
+  // `categoryRules` and `balanceTolerance` have no field: such a definition is edited as JSON.
+  for (const name of [value.defaultCategory, value.shippingCategory, value.feesCategory]) {
+    if (name !== undefined && typeof name !== 'string') return false;
   }
   return true;
 }

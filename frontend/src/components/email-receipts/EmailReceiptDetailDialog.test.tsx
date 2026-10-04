@@ -160,7 +160,7 @@ describe('EmailReceiptDetailDialog', () => {
     });
   });
 
-  describe('the lines a parser reads', () => {
+  describe('the lines a profile reads', () => {
     it('offers a Lines view with the text lines and a source switch to the HTML lines', async () => {
       api.get.mockResolvedValue(
         makeDetail({
@@ -193,7 +193,7 @@ describe('EmailReceiptDetailDialog', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Lines' }));
       });
       expect(within(screen.getByRole('group', { name: 'Lines source' })).getByRole('button', { name: 'HTML' })).toBeDisabled();
-      expect(screen.getByText('This email has no HTML part, so a parser that reads HTML cannot read it.')).toBeInTheDocument();
+      expect(screen.getByText('This email has no HTML part, so a profile that reads HTML cannot read it.')).toBeInTheDocument();
     });
 
     it('still shows the body when the server sent no lines (an older server)', async () => {
@@ -245,7 +245,7 @@ describe('EmailReceiptDetailDialog', () => {
       await renderDialog();
       expect(screen.getByText('Read from structured data')).toBeInTheDocument();
       expect(
-        screen.getByText('No parser was needed: the order was read from the structured data (schema.org) in the email.'),
+        screen.getByText('No profile was needed: the order was read from the structured data (schema.org) in the email.'),
       ).toBeInTheDocument();
       // The Parser row says where the reading came from instead of "None".
       expect(screen.queryByText('None')).not.toBeInTheDocument();
@@ -255,7 +255,7 @@ describe('EmailReceiptDetailDialog', () => {
     it('explains a parse that failed for want of an HTML part', async () => {
       api.get.mockResolvedValue(makeDetail({ status: 'parse_failed', statusReason: 'no_html', parserName: 'Shop HTML' }));
       await renderDialog();
-      expect(screen.getByText('This parser reads the HTML part of the email, and this email has none.')).toBeInTheDocument();
+      expect(screen.getByText('This profile reads the HTML part of the email, and this email has none.')).toBeInTheDocument();
     });
   });
 
@@ -306,7 +306,7 @@ describe('EmailReceiptDetailDialog', () => {
     expect(screen.getByText('The email has no text.')).toBeInTheDocument();
   });
 
-  it('shows what the parser read, amounts divided by 10000', async () => {
+  it('shows what the profile read, amounts divided by 10000', async () => {
     api.get.mockResolvedValue(
       makeDetail({
         status: 'review',

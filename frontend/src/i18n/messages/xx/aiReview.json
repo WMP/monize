@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "[XX-AI review inbox-XX]",
-    "subtitle": "[XX-Transactions a rule asked an AI to review, parsers an assistant was asked to draft, and the edits an assistant proposed for you to approve.-XX]"
+    "subtitle": "[XX-Transactions a rule asked an AI to review, profiles an assistant was asked to draft, and the edits an assistant proposed for you to approve.-XX]"
   },
   "filter": {
     "label": "[XX-Filter by status-XX]",
@@ -40,13 +40,13 @@
     "manualRequest": "[XX-Requested manually-XX]",
     "emailReceipt": "[XX-Email receipt: {subject} from {sender}-XX]",
     "emailReceiptMissing": "[XX-Email receipt (the email was deleted)-XX]",
-    "parserDraft": "[XX-Parser draft from {count, plural, one {# email} other {# emails}} ({domain})-XX]",
+    "parserDraft": "[XX-Profile draft from {count, plural, one {# email} other {# emails}} ({domain})-XX]",
     "viewEmailReceipts": "[XX-View email receipts-XX]",
     "agentNote": "[XX-Note from the assistant: {reason}-XX]",
     "dates": "[XX-Created {created}, expires {expires}-XX]",
     "viewTransaction": "[XX-View transaction-XX]",
     "waitingForAgent": "[XX-Waiting for an AI agent. <link>Connect an AI provider in Settings</link>, or let an MCP client claim it.-XX]",
-    "parserDraftReady": "[XX-Draft parser ready. <link>Test and approve it in the parser settings</link>.-XX]"
+    "parserDraftReady": "[XX-Draft profile ready. <link>Test and approve it in the profile settings</link>.-XX]"
   },
   "actions": {
     "dismiss": "[XX-Dismiss-XX]"

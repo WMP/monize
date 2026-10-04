@@ -33,7 +33,7 @@ describe('EmailLinesView', () => {
     render(<EmailLinesView lines={{ text: ['a'], html: null }} />);
     const html = screen.getByRole('button', { name: 'HTML' });
     expect(html).toBeDisabled();
-    expect(screen.getByText('This email has no HTML part, so a parser that reads HTML cannot read it.')).toBeInTheDocument();
+    expect(screen.getByText('This email has no HTML part, so a profile that reads HTML cannot read it.')).toBeInTheDocument();
     fireEvent.click(html);
     expect(screen.getByRole('button', { name: 'Text' })).toHaveAttribute('aria-pressed', 'true');
   });

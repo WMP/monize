@@ -58,9 +58,9 @@ async function click(element: HTMLElement) {
 
 const checkbox = (subject: string) => screen.getByRole('checkbox', { name: `Select ${subject}` });
 const bar = () => screen.queryByRole('region', { name: 'Selected emails' });
-const draftButton = (count: number) => screen.getByRole('button', { name: `Draft parser with AI (${count})` });
+const draftButton = (count: number) => screen.getByRole('button', { name: `Prepare a profile with AI (${count})` });
 
-describe('EmailReceiptsManager: drafting a parser with AI from selected emails', () => {
+describe('EmailReceiptsManager: drafting a profile with AI from selected emails', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     assistant.canAnswer.mockResolvedValue(true);
@@ -87,7 +87,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       expect(bar()).not.toBeInTheDocument();
     });
 
-    it('shows the selection bar with the count and a Draft parser with AI (N) button', async () => {
+    it('shows the selection bar with the count and a Prepare a profile with AI (N) button', async () => {
       await renderManager();
       await click(checkbox('Order 1'));
       await click(checkbox('Order 3'));
@@ -113,7 +113,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       expect(bar()).toHaveTextContent('4 emails selected');
     });
 
-    it('does not let a skipped email be selected: it has no text to write a parser from', async () => {
+    it('does not let a skipped email be selected: it has no text to write a profile from', async () => {
       api.list.mockResolvedValue([shop(1), shop(2, { status: 'skipped' })]);
       await renderManager();
       expect(checkbox('Order 2')).toBeDisabled();
@@ -151,7 +151,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       await renderManager();
       await click(checkbox('Order 1'));
       api.list.mockResolvedValueOnce([shop(1), shop(2)]);
-      await click(screen.getByRole('button', { name: 'No parser' }));
+      await click(screen.getByRole('button', { name: 'No profile' }));
       expect(bar()).not.toBeInTheDocument();
       expect(checkbox('Order 1')).not.toBeChecked();
     });
@@ -197,7 +197,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       expect(first).toContain('Widget r-1 12.00');
       // The message names the count, the sender and the request to claim, and is only STAGED.
       expect(handoff?.draft).toBe(
-        'Build an email receipt parser for these 2 order emails from shop.example.com. Claim AI review request req-draft, test your parser on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request req-draft.',
+        'Build an email receipt profile for these 2 order emails from shop.example.com. Claim AI review request req-draft, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request req-draft.',
       );
     });
 
@@ -208,7 +208,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
 
       const push = useRouter().push as ReturnType<typeof vi.fn>;
       const handoff = peekChatHandoff((push.mock.calls.at(-1)?.[0] as string).replace('/ai?handoff=', ''));
-      expect(handoff?.draft).toContain('Build an email receipt parser for this order email from shop.example.com.');
+      expect(handoff?.draft).toContain('Build an email receipt profile for this order email from shop.example.com.');
     });
 
     it('never sends the message: nothing but the router is touched, and the selection is cleared', async () => {
@@ -269,7 +269,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       await renderManager();
       await click(checkbox('Order 1'));
       await click(draftButton(1));
-      expect(screen.getByRole('alert')).toHaveTextContent(/Could not start drafting a parser|network/);
+      expect(screen.getByRole('alert')).toHaveTextContent(/Could not start drafting a profile|network/);
     });
 
     it('waits while the request is in flight: no second press, no change of selection', async () => {
@@ -292,7 +292,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
     it('drafts from that one email through the same flow', async () => {
       await renderManager();
       const row = screen.getByRole('row', { name: /Order 4/ });
-      await click(within(row).getByRole('button', { name: 'Draft parser with AI' }));
+      await click(within(row).getByRole('button', { name: 'Prepare a profile with AI' }));
 
       expect(api.draftWithAi).toHaveBeenCalledWith(['r-4']);
       expect(api.get).toHaveBeenCalledWith('r-4');
@@ -304,7 +304,7 @@ describe('EmailReceiptsManager: drafting a parser with AI from selected emails',
       assistant.canAnswer.mockResolvedValue(false);
       await renderManager();
       const row = screen.getByRole('row', { name: /Order 4/ });
-      await click(within(row).getByRole('button', { name: 'Draft parser with AI' }));
+      await click(within(row).getByRole('button', { name: 'Prepare a profile with AI' }));
 
       expect(screen.getByRole('status')).toHaveTextContent('Queued');
       expect(api.get).not.toHaveBeenCalled();

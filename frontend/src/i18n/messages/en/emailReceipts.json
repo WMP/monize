@@ -81,7 +81,7 @@
       "enabledLabel": "Read the mailbox automatically",
       "enabledHelp": "Controls only the automatic reading: when on, Monize reads the mailbox every 15 minutes. Turning it off does not disconnect the mailbox, and Poll now reads it whether this is on or off.",
       "aiModeLabel": "AI mode",
-      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Draft parser with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Prepare a profile with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
         "off": "Off",
         "on_demand": "On demand",
@@ -89,8 +89,8 @@
       },
       "aiModeDescriptions": {
         "off": "The poll never calls the AI for receipts.",
-        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Draft parser with AI.",
-        "automatic": "The poll asks the AI about a matched receipt that no approved parser could read completely, and drafts a parser for a sender that has none."
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Prepare a profile with AI.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved profile could read completely, and drafts a profile for a sender that has none."
       },
       "autoApplyLabel": "Apply proposals automatically",
       "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
@@ -119,19 +119,19 @@
   "parsers": {
     "heading": "Profiles",
     "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
-    "newButton": "New parser",
-    "loading": "Loading parsers",
+    "newButton": "New profile",
+    "loading": "Loading profiles",
     "error": {
-      "title": "The parsers could not be loaded",
+      "title": "The profiles could not be loaded",
       "body": "The request failed. Try again.",
       "retry": "Try again"
     },
     "empty": {
-      "title": "No parsers yet",
+      "title": "No profiles yet",
       "body": "Create one for a sender of order confirmations, or draft one from a stored email on the Email Receipts page."
     },
     "columns": {
-      "name": "Parser",
+      "name": "Profile",
       "status": "Status",
       "payee": "Payee",
       "actions": "Actions"
@@ -153,19 +153,19 @@
       "viewJson": "View JSON"
     },
     "toasts": {
-      "approved": "Parser approved",
-      "approveFailed": "Could not approve the parser",
-      "changedElsewhere": "This parser was changed elsewhere. The list has been reloaded.",
-      "deleted": "Parser deleted",
-      "deleteFailed": "Could not delete the parser"
+      "approved": "Profile approved",
+      "approveFailed": "Could not approve the profile",
+      "changedElsewhere": "This profile was changed elsewhere. The list has been reloaded.",
+      "deleted": "Profile deleted",
+      "deleteFailed": "Could not delete the profile"
     },
     "deleteDialog": {
-      "title": "Delete the parser?",
-      "message": "The parser {name} will be deleted. Emails it already read keep their results."
+      "title": "Delete the profile?",
+      "message": "The profile {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
       "title": "Definition of {name}",
-      "help": "The parser definition as it is stored. It is read-only here; use Edit to change it.",
+      "help": "The profile definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
       "contentLabel": "Definition JSON",
       "copy": "Copy",
       "copied": "JSON copied",
@@ -179,16 +179,16 @@
     }
   },
   "editor": {
-    "createTitle": "New parser",
-    "editTitle": "Edit parser",
+    "createTitle": "New profile",
+    "editTitle": "Edit profile",
     "loading": "Loading payees and categories",
     "lookupsError": {
       "title": "Payees and categories could not be loaded",
       "body": "The pickers need them, so the editor cannot open yet. Try again.",
       "retry": "Try again"
     },
-    "draftNote": "This parser is a draft. It reads nothing until you approve it.",
-    "draftAiNote": "The AI drafted this parser from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "draftNote": "This profile is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this profile from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
     "identityHeading": "Which emails it reads",
     "nameLabel": "Name",
     "payeeLabel": "Payee",
@@ -197,12 +197,12 @@
     "domainsHelp": "One per line, up to {max}. A sub-domain of a listed domain also matches.",
     "subjectLabel": "Subject contains",
     "subjectHelp": "Optional, one per line, up to {max}. The subject must contain at least one of them, ignoring case.",
-    "saveButton": "Save parser",
-    "created": "Parser created",
-    "updated": "Parser saved",
-    "saveFailed": "Could not save the parser",
-    "conflict": "This parser was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
-    "conflictReload": "Reload the parser",
+    "saveButton": "Save profile",
+    "created": "Profile created",
+    "updated": "Profile saved",
+    "saveFailed": "Could not save the profile",
+    "conflict": "This profile was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the profile",
     "patterns": {
       "sourceLabel": "Lines source",
       "sourceHint": "Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.",
@@ -217,6 +217,7 @@
       "amountHint": "Must capture {capture}. Example: Order total {capture}",
       "shippingLabel": "Shipping patterns",
       "discountLabel": "Discount patterns",
+      "feesLabel": "Fees patterns",
       "itemsHeading": "Line items",
       "startAfterLabel": "Items start after",
       "startAfterHint": "Optional. Items are read from the line after the first line containing this text.",
@@ -226,19 +227,17 @@
       "itemPatternsHint": "Must capture {name} and either {amount} (the line total) or {price} (the unit price, optionally with {qty}), never both. Example: {name} x {qty} {price}"
     },
     "categories": {
-      "rulesHeading": "Category rules",
-      "rulesHelp": "The first rule whose pattern matches an item name sets its category. Patterns use the same syntax, for example {example}. Up to {max} rules.",
-      "noRules": "No category rules. Every item gets the default category.",
-      "rulePatternLabel": "Rule {number} pattern",
-      "ruleCategoryLabel": "Rule {number} category",
+      "heading": "Categories",
+      "help": "Type a category name and pick it from the list. The name is stored in the profile, and the category must exist when the profile is saved.",
       "categoryPlaceholder": "No category",
-      "removeRule": "Remove rule {number}",
-      "addRule": "Add a rule",
-      "ruleLimit": "The limit of {max} rules is reached.",
       "defaultLabel": "Default category",
-      "defaultHelp": "Used for items that no rule matches.",
+      "defaultHelp": "Used for items that get no other category.",
       "shippingLabel": "Shipping category",
-      "shippingHelp": "The category of the shipping line."
+      "shippingHelp": "The category of the shipping line.",
+      "feesLabel": "Fees category",
+      "feesHelp": "The category of the fees line.",
+      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
+      "rulesInJson": "Category rules by item name are an advanced option: add them to the profile definition in the JSON mode."
     },
     "mode": {
       "label": "Editing mode",
@@ -248,13 +247,14 @@
       "jsonInvalid": "The JSON is not valid yet, so the form cannot be shown. Fix it first."
     },
     "json": {
-      "label": "Parser definition (JSON)",
+      "label": "Profile definition (JSON)",
       "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
-      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the parser."
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profile."
     },
     "matching": {
       "heading": "Matching",
       "help": "How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.",
+      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the profile has reference patterns), order number, amount and payee, amount and date.",
       "referenceLabel": "Reference patterns",
       "referenceHint": "The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.",
       "strategiesLabel": "Strategies, in the order tried",
@@ -292,7 +292,7 @@
     }
   },
   "problems": {
-    "heading": "The parser definition is not valid:",
+    "heading": "The profile definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "The definition",
@@ -318,6 +318,9 @@
       "ruleCategory": "category",
       "defaultCategory": "Default category",
       "shippingCategory": "Shipping category",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns",
       "skipLines": "Lines to skip",
       "record": "Record",
       "label": "label",
@@ -347,7 +350,7 @@
     },
     "codes": {
       "not_object": "is not a valid definition",
-      "unknown_key": "is not something a parser can have",
+      "unknown_key": "is not something a profile can have",
       "unsupported_version": "is a version this server does not read (use version 2)",
       "invalid_type": "has the wrong kind of value",
       "empty": "must not be empty",
@@ -400,10 +403,10 @@
     "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.",
     "jsonInvalid": "The JSON is not valid, so there is nothing to test yet.",
     "outcome": {
-      "not_applicable": "This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.",
-      "skip_line": "This parser would set this email aside: a line it skips on is in it.",
-      "wait_line": "This parser would hold this email: a line says the order is not final, so it is read again later.",
-      "no_html": "This parser reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
+      "not_applicable": "This profile would not read this email: none of its required lines is in it, so the next profile for the sender would be tried.",
+      "skip_line": "This profile would set this email aside: a line it skips on is in it.",
+      "wait_line": "This profile would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
       "heading": "Matched by",
@@ -479,7 +482,7 @@
   "state": {
     "pending": "Waiting to be read",
     "skipped": "Skipped",
-    "no_parser": "No parser",
+    "no_parser": "No profile",
     "parse_failed": "Could not be read",
     "unmatched": "No transaction found",
     "ambiguous": "Several transactions fit",
@@ -500,10 +503,11 @@
     },
     "filter": {
       "label": "Filter by state",
+      "option": "{label} ({count})",
       "all": "All",
       "pending": "Waiting to be read",
       "skipped": "Skipped",
-      "no_parser": "No parser",
+      "no_parser": "No profile",
       "parse_failed": "Could not be read",
       "unmatched": "No transaction found",
       "ambiguous": "Several transactions fit",
@@ -515,7 +519,8 @@
       "label": "Sender domain",
       "all": "All senders",
       "option": "{domain} ({count})",
-      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one parser for the sender."
+      "unknown": "The sender counts could not be loaded.",
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
       "select": "Select",
@@ -524,6 +529,14 @@
       "transaction": "Transaction",
       "state": "State",
       "actions": "Actions"
+    },
+    "guide": {
+      "heading": "How to create a profile",
+      "buttonName": "Prepare a profile with AI",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
@@ -546,11 +559,14 @@
       "reprocess": "Reprocess",
       "link": "Choose transaction",
       "recognizeAi": "Recognize with AI",
-      "draftParser": "Draft parser with AI",
-      "createParser": "Create parser",
+      "approve": "Approve",
+      "draftParser": "Prepare a profile with AI",
+      "createParser": "Create profile",
       "ignore": "Ignore"
     },
     "toasts": {
+      "approved": "Proposal approved",
+      "approveFailed": "Could not approve the proposal",
       "reprocessed": "Email reprocessed",
       "reprocessFailed": "Could not reprocess the email",
       "ignored": "Email ignored",
@@ -570,18 +586,19 @@
     "selection": {
       "label": "Selected emails",
       "select": "Select {subject}",
+      "selectAll": "Select all emails on this list (at most {max})",
       "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
-      "draftButton": "Draft parser with AI ({count})",
+      "draftButton": "Prepare a profile with AI ({count})",
       "clear": "Clear selection",
-      "differentSenders": "The selected emails come from different senders ({domains}). A parser reads one sender's emails, so select emails from one sender."
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender."
     },
     "draft": {
-      "failed": "Could not start drafting a parser",
+      "failed": "Could not start drafting a profile",
       "queued": "Queued: the request waits in the AI review inbox for an agent. No assistant is available to answer now.",
       "handoffFailed": "The request is queued, but the emails could not be opened in the chat. It waits in the AI review inbox for an agent.",
       "inboxLink": "Open the AI review inbox",
       "opened": "Opened the chat with the emails attached. Read the message and press Send.",
-      "chatPrompt": "Build an email receipt parser for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your parser on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
+      "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
     }
   },
   "detail": {
@@ -598,7 +615,7 @@
     "originalSent": "Sent by the shop",
     "subject": "Subject",
     "state": "State",
-    "parser": "Parser",
+    "parser": "Profile",
     "noParser": "None",
     "structuredSource": "Structured data",
     "matchedBy": "Matched by",
@@ -618,10 +635,10 @@
     "reasons": {
       "too_large": "The email is larger than the size limit, so it was stored without being read.",
       "undecodable": "The email could not be decoded, so it was stored without being read.",
-      "draft_failed": "The AI could not draft a parser for this sender.",
-      "parser_invalid": "The parser for this sender is not valid. Edit it in the parser settings.",
-      "no_total": "The parser found no total in this email.",
-      "no_items": "The parser found no line items.",
+      "draft_failed": "The AI could not draft a profile for this sender.",
+      "parser_invalid": "The profile for this sender is not valid. Edit it in the profile settings.",
+      "no_total": "The profile found no total in this email.",
+      "no_items": "The profile found no line items.",
       "items_unbalanced": "The line items do not add up to the total.",
       "items_uncategorized": "Some line items have no category.",
       "shipping_uncategorized": "The shipping line has no category.",
@@ -629,15 +646,15 @@
       "proposal_fallback": "The itemized proposal was refused, so only a description is proposed.",
       "nothing_to_propose": "The email adds nothing to this transaction.",
       "proposal_refused": "The proposal was refused, so nothing was proposed.",
-      "skip_line": "A line this parser skips on was found, so the email was ignored.",
+      "skip_line": "A line this profile skips on was found, so the email was ignored.",
       "wait_line": "A line says the order is not final yet, so the email will be read again later.",
-      "no_html": "This parser reads the HTML part of the email, and this email has none.",
-      "schema_org": "No parser was needed: the order was read from the structured data (schema.org) in the email.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none.",
+      "schema_org": "No profile was needed: the order was read from the structured data (schema.org) in the email.",
       "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
     "reasonUnknown": "Reason: {reason}",
     "requestNote": "Review request ({state}): {note}",
-    "parsedHeading": "What the parser read",
+    "parsedHeading": "What the profile read",
     "notParsed": "Nothing has been read from this email yet.",
     "candidatesHeading": "Transactions that fit",
     "candidatesHelp": "Several transactions fit this email equally well. Choose the one it paid for.",
@@ -657,7 +674,7 @@
     "htmlFrameTitle": "The email as its sender formatted it",
     "structured": {
       "heading": "Structured data (schema.org)",
-      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no parser applies or the parser finds no total.",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profile applies or the profile finds no total.",
       "found": "Found",
       "notFound": "Not found",
       "notFoundHelp": "The email carries no order markup, or it states no total and no line items.",
@@ -667,13 +684,13 @@
       "unitPrice": "Unit price"
     },
     "lines": {
-      "help": "The lines a parser's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "help": "The lines a profile's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
       "sourceLabel": "Lines source",
       "sources": {
         "text": "Text",
         "html": "HTML"
       },
-      "noHtml": "This email has no HTML part, so a parser that reads HTML cannot read it.",
+      "noHtml": "This email has no HTML part, so a profile that reads HTML cannot read it.",
       "capped": "Only the first {max} lines are read.",
       "empty": "No lines.",
       "listLabel": "Numbered lines of the email"

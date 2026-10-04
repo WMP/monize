@@ -75,7 +75,7 @@ async function pick(label: string, typed: string, option: string) {
 
 async function save() {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Save parser' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save profile' }));
   });
   await act(async () => {});
 }
@@ -90,11 +90,11 @@ describe('ParserEditorDialog', () => {
     api.list.mockResolvedValue([makeReceipt()]);
   });
 
-  describe('a new parser', () => {
+  describe('a new profile', () => {
     it('is titled as new and cannot be saved without a name and a sender domain', async () => {
       await renderEditor();
-      expect(screen.getByRole('dialog', { name: 'New parser' })).toBeInTheDocument();
-      const saveButton = screen.getByRole('button', { name: 'Save parser' });
+      expect(screen.getByRole('dialog', { name: 'New profile' })).toBeInTheDocument();
+      const saveButton = screen.getByRole('button', { name: 'Save profile' });
       expect(saveButton).toBeDisabled();
       await type('Name', 'Allegro');
       expect(saveButton).toBeDisabled();
@@ -102,7 +102,7 @@ describe('ParserEditorDialog', () => {
       expect(saveButton).toBeEnabled();
     });
 
-    it('builds the definition from every field and creates the parser', async () => {
+    it('builds the definition from every field and creates the profile', async () => {
       api.create.mockResolvedValue(makeParser());
       await renderEditor();
       await type('Name', ' Allegro ');
@@ -116,13 +116,10 @@ describe('ParserEditorDialog', () => {
       await type('Items start after', 'Items');
       await type('Items stop at', 'Subtotal');
       await type('Item patterns', '{name} x {qty} {price}');
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Add a rule' }));
-      });
-      await type('Rule 1 pattern', '*cable*');
-      await pick('Rule 1 category', 'Cab', 'Electronics: Cables');
-      await pick('Default category', 'Ship', 'Shipping');
+      await type('Fees patterns', 'Fee {amount}');
+      await pick('Default category', 'Cab', 'Electronics: Cables');
       await pick('Shipping category', 'Ship', 'Shipping');
+      await pick('Fees category', 'Ship', 'Shipping');
       await save();
 
       expect(api.create).toHaveBeenCalledWith({
@@ -137,13 +134,14 @@ describe('ParserEditorDialog', () => {
           shipping: ['Shipping {amount}'],
           discount: ['Discount {amount}'],
           items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} x {qty} {price}'] },
-          categoryRules: [{ match: '*cable*', categoryId: CAT_CABLES }],
-          defaultCategoryId: CAT_SHIPPING,
-          shippingCategoryId: CAT_SHIPPING,
+          fees: ['Fee {amount}'],
+          defaultCategory: 'Electronics: Cables',
+          shippingCategory: 'Shipping',
+          feesCategory: 'Shipping',
         },
       });
       expect(api.update).not.toHaveBeenCalled();
-      expect(toast.success).toHaveBeenCalledWith('Parser created');
+      expect(toast.success).toHaveBeenCalledWith('Profile created');
       expect(onSaved).toHaveBeenCalledWith(makeParser());
     });
 
@@ -177,36 +175,56 @@ describe('ParserEditorDialog', () => {
       await renderEditor({ prefill: { name: 'shop.example', fromDomains: 'shop.example' }, initialReceiptId: 'r-1' });
       expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('shop.example');
       expect((screen.getByLabelText('Sender domains') as HTMLTextAreaElement).value).toBe('shop.example');
-      expect(screen.getByRole('button', { name: 'Save parser' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Save profile' })).toBeEnabled();
       // The test panel starts on that email.
       expect((screen.getByLabelText('Email') as HTMLSelectElement).value).toBe('r-1');
     });
 
-    it('adds and removes category rules, each with its own pattern', async () => {
+    it('takes a category by name, offers the existing ones and flags a name that is not in the list', async () => {
       await renderEditor();
-      const add = screen.getByRole('button', { name: 'Add a rule' });
+      // No rule rows and no ids: the categories are named fields.
+      expect(screen.queryByRole('button', { name: 'Add a rule' })).not.toBeInTheDocument();
+      expect(screen.getByText(/Category rules by item name are an advanced option/)).toBeInTheDocument();
+      expect(screen.queryByText(/There is no category named/)).not.toBeInTheDocument();
       await act(async () => {
-        fireEvent.click(add);
-        fireEvent.click(add);
+        const input = screen.getByLabelText('Default category');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: 'Ele' } });
       });
-      await type('Rule 1 pattern', 'first');
-      await type('Rule 2 pattern', 'second');
+      expect(screen.getByText('Electronics: Cables')).toBeInTheDocument();
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Remove rule 1' }));
+        fireEvent.click(screen.getByText('Electronics: Cables'));
       });
-      expect(screen.queryByLabelText('Rule 2 pattern')).not.toBeInTheDocument();
-      expect((screen.getByLabelText('Rule 1 pattern') as HTMLInputElement).value).toBe('second');
+      expect(screen.queryByText(/There is no category named/)).not.toBeInTheDocument();
     });
 
-    it('stops adding rules at the limit of 50', async () => {
+    it('sends a typed category name as typed, with a warning that it is not a category yet', async () => {
+      api.create.mockResolvedValue(makeParser());
       await renderEditor();
-      const add = screen.getByRole('button', { name: 'Add a rule' });
+      await type('Name', 'Shop');
+      await type('Sender domains', 'shop.example.com');
       await act(async () => {
-        for (let i = 0; i < 50; i += 1) fireEvent.click(add);
+        const input = screen.getByLabelText('Shipping category');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: 'Postage' } });
+        fireEvent.blur(input);
+        fireEvent.mouseDown(document.body);
       });
-      expect(screen.getAllByRole('button', { name: /^Remove rule/ })).toHaveLength(50);
-      expect(add).toBeDisabled();
-      expect(screen.getByText('The limit of 50 rules is reached.')).toBeInTheDocument();
+      expect(screen.getByText('There is no category named Postage. Pick one from the list, or create it first.')).toBeInTheDocument();
+      await save();
+      expect(api.create.mock.calls[0][0].definition).toEqual({ version: 2, shippingCategory: 'Postage' });
+    });
+
+    it('opens a definition with category rules as JSON, so the advanced option is not lost', async () => {
+      const withRules = makeParser({
+        definition: { version: 2, total: ['Total {amount}'], categoryRules: [{ match: '*cable*', categoryId: CAT_CABLES }] },
+      });
+      await renderEditor({ parser: withRules });
+      expect(screen.getByRole('button', { name: 'JSON' })).toHaveAttribute('aria-pressed', 'true');
+      expect(JSON.parse((screen.getByLabelText('Profile definition (JSON)') as HTMLTextAreaElement).value)).toEqual(
+        withRules.definition,
+      );
+      expect(screen.getByRole('button', { name: 'Form' })).toBeDisabled();
     });
 
     it('explains the glob syntax and the captures each field accepts', async () => {
@@ -218,18 +236,18 @@ describe('ParserEditorDialog', () => {
     });
   });
 
-  describe('an existing parser', () => {
+  describe('an existing profile', () => {
     const parser = makeParser({
       name: 'Allegro parser',
       fromDomains: ['allegro.pl'],
       definition: {
         version: 2,
         total: ['Total {amount}'],
-        categoryRules: [{ match: '*cable*', categoryId: CAT_CABLES }],
+        defaultCategory: 'Electronics: Cables',
       },
     });
 
-    it('shows the stored source on the form, and carries an html parser through a save', async () => {
+    it('shows the stored source on the form, and carries an html profile through a save', async () => {
       const htmlParser = makeParser({ definition: { version: 2, source: 'html', total: ['Total {amount}'] } });
       api.update.mockResolvedValue(htmlParser);
       await renderEditor({ parser: htmlParser });
@@ -238,15 +256,14 @@ describe('ParserEditorDialog', () => {
       expect(api.update.mock.calls[0][1].definition).toEqual({ version: 2, source: 'html', total: ['Total {amount}'] });
     });
 
-    it('is titled as an edit and filled from the stored parser', async () => {
+    it('is titled as an edit and filled from the stored profile', async () => {
       await renderEditor({ parser });
-      expect(screen.getByRole('dialog', { name: 'Edit parser' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Edit profile' })).toBeInTheDocument();
       expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Allegro parser');
       expect((screen.getByLabelText('Total patterns') as HTMLTextAreaElement).value).toBe('Total {amount}');
-      expect((screen.getByLabelText('Rule 1 pattern') as HTMLInputElement).value).toBe('*cable*');
       // The stored payee and category are shown by name, never by id.
       expect((screen.getByLabelText('Payee') as HTMLInputElement).value).toBe('Allegro');
-      expect((screen.getByLabelText('Rule 1 category') as HTMLInputElement).value).toBe('Electronics: Cables');
+      expect((screen.getByLabelText('Default category') as HTMLInputElement).value).toBe('Electronics: Cables');
     });
 
     it('saves with the revision it was opened at', async () => {
@@ -259,11 +276,11 @@ describe('ParserEditorDialog', () => {
         expect.objectContaining({ name: 'Renamed', expectedRevision: parser.revision, fromDomains: ['allegro.pl'] }),
       );
       expect(api.create).not.toHaveBeenCalled();
-      expect(toast.success).toHaveBeenCalledWith('Parser saved');
+      expect(toast.success).toHaveBeenCalledWith('Profile saved');
     });
 
-    it('says the parser changed elsewhere on a 409, saves nothing and offers a reload', async () => {
-      api.update.mockRejectedValue(axiosError(409, 'This parser was changed since you opened it.'));
+    it('says the profile changed elsewhere on a 409, saves nothing and offers a reload', async () => {
+      api.update.mockRejectedValue(axiosError(409, 'This profile was changed since you opened it.'));
       await renderEditor({ parser });
       await type('Name', 'Renamed');
       await save();
@@ -273,20 +290,20 @@ describe('ParserEditorDialog', () => {
       expect(onSaved).not.toHaveBeenCalled();
       expect(toast.success).not.toHaveBeenCalled();
       // The form cannot be saved over the newer version.
-      expect(screen.getByRole('button', { name: 'Save parser' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
       await act(async () => {
-        fireEvent.click(within(alert).getByRole('button', { name: 'Reload the parser' }));
+        fireEvent.click(within(alert).getByRole('button', { name: 'Reload the profile' }));
       });
       expect(onConflict).toHaveBeenCalledTimes(1);
     });
 
     it('warns that a draft reads nothing until approved, and says when the AI wrote it', async () => {
       await renderEditor({ parser: makeParser({ status: 'draft', source: 'ai' }) });
-      expect(screen.getByRole('note')).toHaveTextContent(/The AI drafted this parser from your sample emails/);
+      expect(screen.getByRole('note')).toHaveTextContent(/The AI drafted this profile from your sample emails/);
       expect(screen.getByRole('note')).toHaveTextContent(/reads nothing until you do/);
     });
 
-    it('does not show the draft warning for an approved parser', async () => {
+    it('does not show the draft warning for an approved profile', async () => {
       await renderEditor({ parser });
       expect(screen.queryByRole('note')).not.toBeInTheDocument();
     });
@@ -304,20 +321,20 @@ describe('ParserEditorDialog', () => {
         skipLines: ['<*>', '(*)'],
         record: [{ line: '{name}' }, { line: '{amount} zł' }, { line: '{qty} × {price} zł', optional: true }],
       },
-      defaultCategoryId: CAT_CABLES,
-      shippingCategoryId: CAT_SHIPPING,
+      defaultCategory: 'Electronics: Cables',
+      shippingCategory: 'Shipping',
     };
     const v2Parser = makeParser({ definition: V2_DEFINITION });
 
     const mode = (name: 'Form' | 'JSON') => screen.getByRole('button', { name });
-    const jsonBox = () => screen.getByLabelText('Parser definition (JSON)') as HTMLTextAreaElement;
+    const jsonBox = () => screen.getByLabelText('Profile definition (JSON)') as HTMLTextAreaElement;
     const switchTo = async (name: 'Form' | 'JSON') => {
       await act(async () => {
         fireEvent.click(mode(name));
       });
     };
 
-    it('shows a Form | JSON switch at the top of the dialog, on the form for a new parser', async () => {
+    it('shows a Form | JSON switch at the top of the dialog, on the form for a new profile', async () => {
       await renderEditor();
       const group = screen.getByRole('group', { name: 'Editing mode' });
       expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Form', 'JSON']);
@@ -360,7 +377,7 @@ describe('ParserEditorDialog', () => {
       // The box starts from what the form builds.
       expect(JSON.parse(jsonBox().value)).toEqual({ version: 2 });
       const typed = { version: 2, total: [{ label: 'RAZEM', value: '{amount} zł' }] };
-      await type('Parser definition (JSON)', JSON.stringify(typed));
+      await type('Profile definition (JSON)', JSON.stringify(typed));
       await save();
       expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Allegro', definition: typed }));
     });
@@ -380,8 +397,8 @@ describe('ParserEditorDialog', () => {
     it('switches back to the form while the JSON is something the form can show, and fills it', async () => {
       await renderEditor();
       await switchTo('JSON');
-      const shown = { version: 2, total: ['Sum {amount}'], defaultCategoryId: CAT_CABLES };
-      await type('Parser definition (JSON)', JSON.stringify(shown));
+      const shown = { version: 2, total: ['Sum {amount}'], defaultCategory: 'Electronics: Cables' };
+      await type('Profile definition (JSON)', JSON.stringify(shown));
       expect(mode('Form')).toBeEnabled();
       await switchTo('Form');
       expect((screen.getByLabelText('Total patterns') as HTMLTextAreaElement).value).toBe('Sum {amount}');
@@ -391,9 +408,9 @@ describe('ParserEditorDialog', () => {
     it('turns the form switch off when the JSON gains something the form cannot hold, and back on when it goes', async () => {
       await renderEditor();
       await switchTo('JSON');
-      await type('Parser definition (JSON)', JSON.stringify({ version: 2, total: [{ label: 'X', value: '{amount}' }] }));
+      await type('Profile definition (JSON)', JSON.stringify({ version: 2, total: [{ label: 'X', value: '{amount}' }] }));
       expect(mode('Form')).toBeDisabled();
-      await type('Parser definition (JSON)', JSON.stringify({ version: 2, total: ['X {amount}'] }));
+      await type('Profile definition (JSON)', JSON.stringify({ version: 2, total: ['X {amount}'] }));
       expect(mode('Form')).toBeEnabled();
     });
 
@@ -411,14 +428,14 @@ describe('ParserEditorDialog', () => {
 
     it('says the JSON is not valid, refuses to save or test it, and keeps the form switch off', async () => {
       await renderEditor({ parser: v2Parser });
-      await type('Parser definition (JSON)', '{ "version": 2,');
+      await type('Profile definition (JSON)', '{ "version": 2,');
       expect(screen.getByText(/This is not valid JSON/)).toBeInTheDocument();
       expect(screen.getByText(/The JSON is not valid yet, so the form cannot be shown/)).toBeInTheDocument();
       expect(screen.getByText('The JSON is not valid, so there is nothing to test yet.')).toBeInTheDocument();
       expect(mode('Form')).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Save parser' })).toBeDisabled();
-      await type('Parser definition (JSON)', '[1]');
-      expect(screen.getByRole('button', { name: 'Save parser' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+      await type('Profile definition (JSON)', '[1]');
+      expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
     });
 
     it('tests the JSON as it is now, not the form', async () => {
@@ -440,12 +457,12 @@ describe('ParserEditorDialog', () => {
       api.update.mockRejectedValue(
         axiosError(
           400,
-          'The parser definition is not valid: total[0].within: out_of_range; items: items_patterns_and_record; items.record: record_name_missing',
+          'The profile definition is not valid: total[0].within: out_of_range; items: items_patterns_and_record; items.record: record_name_missing',
         ),
       );
       await renderEditor({ parser: v2Parser });
       await save();
-      const alert = screen.getByText(/The parser definition is not valid:/).closest('[role="alert"]') as HTMLElement;
+      const alert = screen.getByText(/The profile definition is not valid:/).closest('[role="alert"]') as HTMLElement;
       expect(alert).toHaveTextContent('Total patterns, entry 1, within: must be a whole number from 1 to 10');
       expect(alert).toHaveTextContent('Line items: has both patterns and a record. Use one of them.');
       expect(alert).toHaveTextContent('Record: must capture {name} in one of its steps');
@@ -462,7 +479,7 @@ describe('ParserEditorDialog', () => {
 
     it('shows the validator problems readably, in the words of the form', async () => {
       api.create.mockRejectedValue(
-        axiosError(400, 'The parser definition is not valid: total[0]: capture_missing; items.patterns[0]: capture_conflict'),
+        axiosError(400, 'The profile definition is not valid: total[0]: capture_missing; items.patterns[0]: capture_conflict'),
       );
       await renderEditor();
       await fillAndSave();
@@ -477,10 +494,10 @@ describe('ParserEditorDialog', () => {
     });
 
     it('shows any other refusal as the server wrote it', async () => {
-      api.create.mockRejectedValue(axiosError(409, 'At most 200 parsers can be saved. Delete one first.'));
+      api.create.mockRejectedValue(axiosError(409, 'At most 200 profiles can be saved. Delete one first.'));
       await renderEditor();
       await fillAndSave();
-      expect(screen.getByRole('alert')).toHaveTextContent('At most 200 parsers can be saved. Delete one first.');
+      expect(screen.getByRole('alert')).toHaveTextContent('At most 200 profiles can be saved. Delete one first.');
     });
 
     it('clears the refusal when the next save starts', async () => {

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  blankCategoryRule,
   buildMatchDefinition,
+  defaultMatchBy,
+  matchByAfterReferenceChange,
   buildParserDefinition,
   buildParserPayload,
   definitionToFormFields,
@@ -20,7 +21,6 @@ import {
 import type { EmailReceiptParser } from '@/types/email-receipts';
 
 const CATEGORY = '11111111-1111-4111-8111-111111111111';
-const OTHER = '22222222-2222-4222-8222-222222222222';
 
 describe('splitting', () => {
   it('splits patterns by line only, so a comma stays in the pattern', () => {
@@ -59,12 +59,10 @@ describe('buildParserDefinition', () => {
         startAfter: ' Items ',
         stopAt: 'Subtotal',
         itemPatterns: '{name} x {qty} {price}',
-        categoryRules: [
-          { uid: 'a', match: ' *cable* ', categoryId: CATEGORY },
-          { uid: 'b', match: '', categoryId: '' },
-        ],
-        defaultCategoryId: CATEGORY,
-        shippingCategoryId: OTHER,
+        fees: 'Fee {amount}',
+        defaultCategory: ' Electronics: Cables ',
+        shippingCategory: 'Shipping',
+        feesCategory: 'Fees',
       }),
     );
     expect(definition).toEqual({
@@ -74,9 +72,10 @@ describe('buildParserDefinition', () => {
       shipping: ['Shipping {amount}'],
       discount: ['Discount {amount}'],
       items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} x {qty} {price}'] },
-      categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
-      defaultCategoryId: CATEGORY,
-      shippingCategoryId: OTHER,
+      fees: ['Fee {amount}'],
+      defaultCategory: 'Electronics: Cables',
+      shippingCategory: 'Shipping',
+      feesCategory: 'Fees',
     });
   });
 
@@ -87,11 +86,9 @@ describe('buildParserDefinition', () => {
     });
   });
 
-  it('keeps a half-filled category rule so the server reports the missing half', () => {
-    const definition = buildParserDefinition(
-      emptyParserForm({ categoryRules: [{ uid: 'a', match: '*x*', categoryId: '' }] }),
-    );
-    expect(definition.categoryRules).toEqual([{ match: '*x*', categoryId: '' }]);
+  it('names categories and leaves a blank one out', () => {
+    const definition = buildParserDefinition(emptyParserForm({ defaultCategory: '  ', shippingCategory: 'Shipping' }));
+    expect(definition).toEqual({ version: 2, shippingCategory: 'Shipping' });
   });
 });
 
@@ -131,8 +128,7 @@ describe('parserToForm', () => {
       orderId: ['Order {orderid}'],
       total: ['Total {amount}'],
       items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
-      categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
-      defaultCategoryId: CATEGORY,
+      defaultCategory: 'Electronics: Cables',
     },
     definitionValid: true,
     definitionErrors: [],
@@ -149,7 +145,7 @@ describe('parserToForm', () => {
     const stored = parser();
     const form = parserToForm(stored);
     expect(form.fromDomains).toBe('shop.example.com\nmail.shop.example.com');
-    expect(form.categoryRules).toHaveLength(1);
+    expect(form.defaultCategory).toBe('Electronics: Cables');
     expect(buildParserDefinition(form)).toEqual(stored.definition);
   });
 
@@ -160,17 +156,11 @@ describe('parserToForm', () => {
 
   it('ignores parts of the wrong shape', () => {
     const form = parserToForm(
-      parser({ definition: { total: 'not a list', items: [], categoryRules: [1, null, { match: 5 }] } }),
+      parser({ definition: { total: 'not a list', items: [], defaultCategory: 5 } }),
     );
     expect(form.total).toBe('');
     expect(form.itemPatterns).toBe('');
-    expect(form.categoryRules).toHaveLength(1);
-  });
-
-  it('gives each category rule row its own key', () => {
-    const a = blankCategoryRule();
-    const b = blankCategoryRule();
-    expect(a.uid).not.toBe(b.uid);
+    expect(form.defaultCategory).toBe('');
   });
 });
 
@@ -207,9 +197,10 @@ describe('formCanRepresent', () => {
         orderId: ['*#{orderid}'],
         total: ['Total {amount}'],
         items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
-        categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
-        defaultCategoryId: CATEGORY,
-        shippingCategoryId: OTHER,
+        fees: ['Fee {amount}'],
+        defaultCategory: 'Electronics: Cables',
+        shippingCategory: 'Shipping',
+        feesCategory: 'Fees',
       }),
     ).toBe(true);
   });
@@ -224,15 +215,15 @@ describe('formCanRepresent', () => {
     ['a line guard', { version: 2, requireLine: ['*PayU*'] }],
     ['single items', { version: 2, items: { single: { name: 'Opis: {name}' } } }],
     ['joinWrapped', { version: 2, items: { patterns: ['{name} {amount} zł'], joinWrapped: true } }],
-    ['a category rule field', { version: 2, categoryRules: [{ match: '*a*', categoryId: CATEGORY, field: 'payee' }] }],
+    ['category rules, an advanced option kept in the JSON', { version: 2, categoryRules: [{ match: '*a*', categoryId: CATEGORY }] }],
+    ['a balance tolerance', { version: 2, balanceTolerance: '0.05' }],
+    ['a category id of the old kind', { version: 2, defaultCategoryId: CATEGORY }],
     ['an unknown key', { version: 2, note: 'x' }],
     ['an unknown key under items', { version: 2, items: { patterns: ['{name} {amount}'], extra: 1 } }],
     ['a field that is not a list', { version: 2, total: 'Total {amount}' }],
     ['items that are not an object', { version: 2, items: [] }],
     ['a marker that is not text', { version: 2, items: { startAfter: 5, patterns: [] } }],
-    ['a rule with an extra key', { version: 2, categoryRules: [{ match: 'x', categoryId: CATEGORY, extra: 1 }] }],
-    ['categoryRules that is not a list', { version: 2, categoryRules: {} }],
-    ['a default category that is not text', { version: 2, defaultCategoryId: 5 }],
+    ['a default category that is not text', { version: 2, defaultCategory: 5 }],
     ['a definition that is not an object', [1]],
     ['null', null],
   ])('does not show %s: the form would drop it', (_label, definition) => {
@@ -247,9 +238,10 @@ describe('formCanRepresent', () => {
       shipping: ['Shipping {amount}'],
       discount: ['Discount {amount}'],
       items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
-      categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
-      defaultCategoryId: CATEGORY,
-      shippingCategoryId: OTHER,
+      fees: ['Fee {amount}'],
+      defaultCategory: 'Electronics: Cables',
+      shippingCategory: 'Shipping',
+      feesCategory: 'Fees',
     };
     expect(formCanRepresent(definition)).toBe(true);
     const form = { ...emptyParserForm(), ...definitionToFormFields(definition) };
@@ -403,6 +395,46 @@ describe('the matching section', () => {
 
   it('keeps a window of zero days, which is not "unset"', () => {
     expect(buildMatchDefinition(emptyParserForm({ matchDaysBefore: 0 }))).toEqual({ daysBefore: 0 });
+  });
+
+  it('defaults to the reference first only when the profile reads a reference', () => {
+    expect(defaultMatchBy(false)).toEqual(['orderId', 'amount_payee', 'amount_date']);
+    expect(defaultMatchBy(true)).toEqual(['reference', 'orderId', 'amount_payee', 'amount_date']);
+    // That default is no change either way.
+    expect(buildMatchDefinition(emptyParserForm({ reference: 'Ref {reference}', matchBy: defaultMatchBy(true) }))).toBeNull();
+    // The plain order with a reference present is the person's choice and is written.
+    expect(buildMatchDefinition(emptyParserForm({ reference: 'Ref {reference}' }))).toEqual({
+      by: ['orderId', 'amount_payee', 'amount_date'],
+    });
+  });
+
+  it('puts the reference first on its first pattern, and takes it out on the last one, only from the default order', () => {
+    expect(matchByAfterReferenceChange(defaultMatchBy(false), false, true)).toEqual(defaultMatchBy(true));
+    expect(matchByAfterReferenceChange(defaultMatchBy(true), true, false)).toEqual(defaultMatchBy(false));
+    // An order the person arranged is left alone, and so is a change that adds no pattern.
+    expect(matchByAfterReferenceChange(['amount_date', 'orderId'], false, true)).toEqual(['amount_date', 'orderId']);
+    expect(matchByAfterReferenceChange(defaultMatchBy(true), true, true)).toEqual(defaultMatchBy(true));
+  });
+
+  it('reads the effective matching the server answers: the defaults are shown but not sent back', () => {
+    const effective = {
+      version: 2,
+      reference: ['Ref {reference}'],
+      match: {
+        by: ['reference', 'orderId', 'amount_payee', 'amount_date'],
+        referenceIn: ['description', 'payee', 'referenceNumber'],
+        daysBefore: 3,
+        daysAfter: 14,
+        amountTolerance: '0.00',
+      },
+    };
+    const fields = definitionToFormFields(effective);
+    expect(fields).toMatchObject({ matchBy: defaultMatchBy(true), matchDaysBefore: 3, matchDaysAfter: 14, matchTolerance: 0 });
+    expect(buildParserDefinition({ ...emptyParserForm(), ...fields })).toEqual({
+      version: 2,
+      reference: ['Ref {reference}'],
+    });
+    expect(formCanRepresent(effective)).toBe(true);
   });
 
   it('reads a stored definition back into the same form fields', () => {

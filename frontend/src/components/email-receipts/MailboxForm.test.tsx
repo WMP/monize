@@ -171,11 +171,11 @@ describe('MailboxForm', () => {
 
     it('describes the chosen AI mode under the picker', async () => {
       await renderForm(makeMailbox({ aiMode: 'on_demand' }));
-      expect(screen.getByText('The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Draft parser with AI.')).toBeInTheDocument();
+      expect(screen.getByText('The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Prepare a profile with AI.')).toBeInTheDocument();
       await act(async () => {
         fireEvent.change(screen.getByLabelText('AI mode'), { target: { value: 'automatic' } });
       });
-      expect(screen.getByText(/asks the AI about a matched receipt that no approved parser could read completely/)).toBeInTheDocument();
+      expect(screen.getByText(/asks the AI about a matched receipt that no approved profile could read completely/)).toBeInTheDocument();
     });
 
     it('says in its tooltip that the switch controls only the automatic reading every 15 minutes, and that Poll now works either way', async () => {

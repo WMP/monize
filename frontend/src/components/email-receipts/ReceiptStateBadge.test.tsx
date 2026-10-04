@@ -7,7 +7,7 @@ import en from '@/i18n/messages/en/emailReceipts.json';
 describe('ReceiptStateBadge', () => {
   it('names the status of an email that is not in review', () => {
     render(<ReceiptStateBadge receipt={{ status: 'no_parser', displayState: null }} />);
-    expect(screen.getByText('No parser')).toBeInTheDocument();
+    expect(screen.getByText('No profile')).toBeInTheDocument();
   });
 
   it('names what the request says for an email in review', () => {
