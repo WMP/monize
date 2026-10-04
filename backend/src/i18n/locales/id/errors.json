@@ -391,7 +391,9 @@
     "settingsEmpty": "Kirim setidaknya satu pengaturan untuk diubah.",
     "parserToolReceiptCount": "Sebutkan 1 sampai 5 surel untuk menguji parser.",
     "parserToolInvalidSender": "Draf memerlukan nama dan satu sampai sepuluh domain pengirim seperti shop.example.com.",
-    "parserDraftRequestNotClaimed": "Permintaan draf parser ini tidak Anda ambil. Ambil dulu dengan ai_review_requests, atau simpan draf tanpa requestId."
+    "parserDraftRequestNotClaimed": "Permintaan draf parser ini tidak Anda ambil. Ambil dulu dengan ai_review_requests, atau simpan draf tanpa requestId.",
+    "parserCategoryNameUnknown": "Kategori \"{{ name }}\" tidak ditemukan. Gunakan nama salah satu kategori Anda.",
+    "parserCategoryNameAmbiguous": "Kategori \"{{ name }}\" cocok dengan beberapa kategori ({{ candidates }}). Gunakan nama lengkap, misalnya \"Parent: Child\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga SMTP dikonfigurasi.",

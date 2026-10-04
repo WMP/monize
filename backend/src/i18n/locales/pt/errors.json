@@ -391,7 +391,9 @@
     "settingsEmpty": "Envie pelo menos uma definição a alterar.",
     "parserToolReceiptCount": "Indique de 1 a 5 e-mails para testar o analisador.",
     "parserToolInvalidSender": "Um rascunho precisa de um nome e de um a dez domínios de remetente, como shop.example.com.",
-    "parserDraftRequestNotClaimed": "Este pedido de rascunho de analisador não foi reclamado por si. Reclame-o primeiro com ai_review_requests ou guarde o rascunho sem requestId."
+    "parserDraftRequestNotClaimed": "Este pedido de rascunho de analisador não foi reclamado por si. Reclame-o primeiro com ai_review_requests ou guarde o rascunho sem requestId.",
+    "parserCategoryNameUnknown": "A categoria \"{{ name }}\" não foi encontrada. Use o nome de uma de suas categorias.",
+    "parserCategoryNameAmbiguous": "A categoria \"{{ name }}\" corresponde a várias categorias ({{ candidates }}). Use o nome completo, por exemplo \"Pai: Filho\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",

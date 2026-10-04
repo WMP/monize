@@ -81,7 +81,7 @@
       "enabledLabel": "मेलबॉक्स अपने आप पढ़ें",
       "enabledHelp": "यह केवल अपने आप पढ़ने को नियंत्रित करता है: चालू होने पर Monize हर 15 मिनट में मेलबॉक्स पढ़ता है। इसे बंद करने से मेलबॉक्स डिस्कनेक्ट नहीं होता, और अभी जाँचें इसे तब भी पढ़ता है जब यह चालू हो या बंद।",
       "aiModeLabel": "AI मोड",
-      "aiModeHelp": "जाँच के दौरान रसीदों पर आपके कॉन्फ़िगर किए AI प्रदाता का उपयोग हो सकता है या नहीं। AI से पहचानें और AI से पार्सर का ड्राफ़्ट बनाएँ किसी भी मोड में चैट में सहायक से पूछते हैं, और AI का जवाब हमेशा एक प्रस्ताव या ड्राफ़्ट होता है, जिसे आप मंज़ूर करते हैं।",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and ए आई के साथ एक प्रोफाइल तैयार करें ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
         "off": "बंद",
         "on_demand": "माँगने पर",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "जाँच रसीदों के लिए AI को कभी नहीं बुलाती।",
-        "on_demand": "जाँच AI को कभी नहीं बुलाती। आप AI से पहचानें या AI से पार्सर का ड्राफ़्ट बनाएँ से सहायक से खुद पूछते हैं।",
-        "automatic": "जाँच के दौरान ऐसी मिलान की गई रसीद के बारे में AI से पूछा जाता है जिसे कोई मंज़ूर पार्सर पूरी तरह नहीं पढ़ सका, और जिस प्रेषक का कोई पार्सर नहीं है उसके लिए पार्सर का ड्राफ़्ट बनाया जाता है।"
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or ए आई के साथ एक प्रोफाइल तैयार करें.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved प्रोफाइल could read completely, and drafts a प्रोफाइल for a sender that has none."
       },
       "autoApplyLabel": "प्रस्ताव अपने आप लागू करें",
-      "autoApplyHelp": "डिफ़ॉल्ट रूप से बंद। कोई प्रस्ताव बिना पूछे तभी लागू होता है जब ये सभी बातें सही हों: मंज़ूर प्रोफ़ाइल ने पूरा ईमेल पढ़ा, लेन-देन ऑर्डर नंबर या संदर्भ से, या ठीक राशि और प्राप्तकर्ता से एक ही उम्मीदवार के साथ मिला, और प्रस्ताव पाई-पाई जुड़ता है। बाक़ी सब आपकी मंज़ूरी का इंतज़ार करता है।",
-      "profileLimitLabel": "प्रोफ़ाइल के प्रस्तावों को दैनिक AI सीमा में गिनें",
-      "profileLimitHelp": "डिफ़ॉल्ट रूप से चालू: प्रोफ़ाइल किसी ईमेल से जो बदलाव प्रस्तावित करती है, वह किसी भी अन्य AI प्रस्ताव की तरह AI द्वारा प्रस्तावित बदलावों की दैनिक सीमा में गिना जाता है। जब सहेजे गए ईमेल का बड़ा बैच सीमा को पूरी तरह इस्तेमाल कर लेता हो, तब इसे बंद करें। केवल प्रोफ़ाइल के प्रस्तावों को छूट मिलती है; हर प्रस्ताव फिर भी आपकी मंज़ूरी का इंतज़ार करता है।"
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved प्रोफाइल read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count प्रोफाइल proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a प्रोफाइल proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from प्रोफाइल are exempt; every proposal still waits for your approval."
     },
     "status": {
       "lastPolled": "पिछली जाँच",
@@ -117,21 +117,21 @@
     }
   },
   "parsers": {
-    "heading": "प्रोफ़ाइल",
-    "description": "प्रोफ़ाइल किसी एक प्रेषक की ऑर्डर पुष्टि को उन पैटर्न से पढ़ती है जो आप लिखते या जाँचते हैं, और बताती है कि बैंक लेन-देन कैसे खोजा जाए। मंज़ूर होने के बाद वह AI के बिना चलती है।",
-    "newButton": "नया पार्सर",
-    "loading": "पार्सर लोड हो रहे हैं",
+    "heading": "प्रोफाइलs",
+    "description": "A प्रोफाइल reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "New प्रोफाइल",
+    "loading": "Loading प्रोफाइल",
     "error": {
-      "title": "पार्सर लोड नहीं हो सके",
+      "title": "The प्रोफाइल could not be loaded",
       "body": "अनुरोध विफल रहा। फिर कोशिश करें।",
       "retry": "फिर कोशिश करें"
     },
     "empty": {
-      "title": "अभी कोई पार्सर नहीं",
+      "title": "No प्रोफाइल yet",
       "body": "ऑर्डर पुष्टि भेजने वाले के लिए एक बनाएँ, या ईमेल रसीदें पेज पर सहेजे गए किसी ईमेल से उसका ड्राफ़्ट बनाएँ।"
     },
     "columns": {
-      "name": "पार्सर",
+      "name": "प्रोफाइल",
       "status": "स्थिति",
       "payee": "प्राप्तकर्ता",
       "actions": "क्रियाएँ"
@@ -153,19 +153,19 @@
       "viewJson": "JSON देखें"
     },
     "toasts": {
-      "approved": "पार्सर मंज़ूर हुआ",
-      "approveFailed": "पार्सर मंज़ूर नहीं हो सका",
-      "changedElsewhere": "यह पार्सर कहीं और बदला गया। सूची फिर से लोड कर दी गई है।",
-      "deleted": "पार्सर हटाया गया",
-      "deleteFailed": "पार्सर हटाया नहीं जा सका"
+      "approved": "प्रोफाइल approved",
+      "approveFailed": "Could not approve the प्रोफाइल",
+      "changedElsewhere": "This प्रोफाइल was changed elsewhere. The list has been reloaded.",
+      "deleted": "प्रोफाइल deleted",
+      "deleteFailed": "Could not delete the प्रोफाइल"
     },
     "deleteDialog": {
-      "title": "पार्सर हटाएँ?",
-      "message": "पार्सर {name} हटा दिया जाएगा। जो ईमेल वह पहले पढ़ चुका है, उनके नतीजे बने रहेंगे।"
+      "title": "Delete the प्रोफाइल?",
+      "message": "The प्रोफाइल {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
       "title": "{name} की परिभाषा",
-      "help": "पार्सर की परिभाषा, जैसी वह सहेजी गई है। यहाँ यह केवल पढ़ने के लिए है; बदलने के लिए संपादित करें का उपयोग करें।",
+      "help": "The प्रोफाइल definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
       "contentLabel": "परिभाषा JSON",
       "copy": "कॉपी करें",
       "copied": "JSON कॉपी हो गया",
@@ -173,22 +173,22 @@
     },
     "processOffer": {
       "title": "सहेजे गए ईमेल अभी संसाधित करें?",
-      "message": "{domains} के {count, plural, one {# सहेजे गए ईमेल} other {# सहेजे गए ईमेल}} अभी संसाधित करें? हर एक को इस प्रोफ़ाइल से फिर पढ़ा जाता है; उससे जो प्रस्ताव बनते हैं, वे ऑटो-लागू चालू न होने पर समीक्षा इनबॉक्स में इंतज़ार करते हैं।",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this प्रोफाइल again; what it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "अभी संसाधित करें",
       "later": "अभी नहीं"
     }
   },
   "editor": {
-    "createTitle": "नया पार्सर",
-    "editTitle": "पार्सर संपादित करें",
+    "createTitle": "New प्रोफाइल",
+    "editTitle": "Edit प्रोफाइल",
     "loading": "प्राप्तकर्ता और श्रेणियाँ लोड हो रही हैं",
     "lookupsError": {
       "title": "प्राप्तकर्ता और श्रेणियाँ लोड नहीं हो सकीं",
       "body": "चुनने वाले फ़ील्ड को इनकी ज़रूरत है, इसलिए संपादक अभी नहीं खुल सकता। फिर कोशिश करें।",
       "retry": "फिर कोशिश करें"
     },
-    "draftNote": "यह पार्सर एक ड्राफ़्ट है। आपके मंज़ूर करने तक यह कुछ नहीं पढ़ता।",
-    "draftAiNote": "AI ने यह पार्सर आपके नमूना ईमेल से बनाया है। इसे हर एक पर आज़माएँ और हर पैटर्न जाँचें, फिर सूची से इसे मंज़ूर करें। आपके ऐसा करने तक यह कुछ नहीं पढ़ता।",
+    "draftNote": "This प्रोफाइल is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this प्रोफाइल from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
     "identityHeading": "यह कौन-से ईमेल पढ़ता है",
     "nameLabel": "नाम",
     "payeeLabel": "प्राप्तकर्ता",
@@ -197,12 +197,12 @@
     "domainsHelp": "प्रति पंक्ति एक, अधिकतम {max}। सूचीबद्ध डोमेन का सबडोमेन भी मेल खाता है।",
     "subjectLabel": "विषय में शामिल है",
     "subjectHelp": "वैकल्पिक, प्रति पंक्ति एक, अधिकतम {max}। विषय में इनमें से कम से कम एक होना चाहिए, अक्षर के छोटे-बड़े रूप की परवाह किए बिना।",
-    "saveButton": "पार्सर सहेजें",
-    "created": "पार्सर बनाया गया",
-    "updated": "पार्सर सहेजा गया",
-    "saveFailed": "पार्सर सहेजा नहीं जा सका",
-    "conflict": "आपके इसे खोलने के बाद यह पार्सर कहीं और बदला गया। मौजूदा संस्करण देखने के लिए इसे फिर से लोड करें। यहाँ किए आपके बदलाव सहेजे नहीं गए हैं।",
-    "conflictReload": "पार्सर फिर से लोड करें",
+    "saveButton": "Save प्रोफाइल",
+    "created": "प्रोफाइल created",
+    "updated": "प्रोफाइल saved",
+    "saveFailed": "Could not save the प्रोफाइल",
+    "conflict": "This प्रोफाइल was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the प्रोफाइल",
     "patterns": {
       "sourceLabel": "पंक्तियों का स्रोत",
       "sourceHint": "नीचे के पैटर्न का मिलान ईमेल के किस रूप से किया जाए। टेक्स्ट ईमेल का टेक्स्ट हिस्सा है, जिसमें हर पंक्ति-विराम पर एक पंक्ति बनती है। HTML ईमेल का HTML हिस्सा पढ़ता है: हर ब्लॉक और हर टेबल सेल अपनी अलग पंक्ति बन जाता है, इसलिए जो उत्पाद नाम टेक्स्ट कई पंक्तियों में बाँट देता है वह पूरा रहता है। ईमेल का पंक्तियाँ व्यू ठीक वही दिखाता है जो हर स्रोत देता है।",
@@ -223,22 +223,21 @@
       "stopAtLabel": "मदें यहाँ ख़त्म होती हैं",
       "stopAtHint": "वैकल्पिक। मदें उस पहली पंक्ति से पहले ख़त्म हो जाती हैं जिसमें यह टेक्स्ट आता है।",
       "itemPatternsLabel": "मद के पैटर्न",
-      "itemPatternsHint": "{name} और या तो {amount} (पंक्ति का कुल) या {price} (इकाई मूल्य, चाहें तो {qty} के साथ) कैप्चर करना ज़रूरी है, दोनों नहीं। उदाहरण: {name} x {qty} {price}"
+      "itemPatternsHint": "{name} और या तो {amount} (पंक्ति का कुल) या {price} (इकाई मूल्य, चाहें तो {qty} के साथ) कैप्चर करना ज़रूरी है, दोनों नहीं। उदाहरण: {name} x {qty} {price}",
+      "feesLabel": "Fees patterns"
     },
     "categories": {
-      "rulesHeading": "श्रेणी नियम",
-      "rulesHelp": "जिस पहले नियम का पैटर्न किसी मद के नाम से मेल खाता है, वही उसकी श्रेणी तय करता है। पैटर्न में वही सिंटैक्स चलता है, उदाहरण के लिए {example}। अधिकतम {max} नियम।",
-      "noRules": "कोई श्रेणी नियम नहीं। हर मद को डिफ़ॉल्ट श्रेणी मिलती है।",
-      "rulePatternLabel": "नियम {number} का पैटर्न",
-      "ruleCategoryLabel": "नियम {number} की श्रेणी",
       "categoryPlaceholder": "कोई श्रेणी नहीं",
-      "removeRule": "नियम {number} हटाएँ",
-      "addRule": "नियम जोड़ें",
-      "ruleLimit": "{max} नियमों की सीमा पूरी हो गई है।",
       "defaultLabel": "डिफ़ॉल्ट श्रेणी",
       "defaultHelp": "उन मदों के लिए जिनसे कोई नियम मेल नहीं खाता।",
       "shippingLabel": "शिपिंग श्रेणी",
-      "shippingHelp": "शिपिंग पंक्ति की श्रेणी।"
+      "shippingHelp": "शिपिंग पंक्ति की श्रेणी।",
+      "heading": "Categories",
+      "help": "Type a category name and pick it from the list. The name is stored in the प्रोफाइल, and the category must exist when the प्रोफाइल is saved.",
+      "feesLabel": "Fees category",
+      "feesHelp": "The category of the fees line.",
+      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
+      "rulesInJson": "Category rules by item name are an advanced option: add them to the प्रोफाइल definition in the JSON mode."
     },
     "mode": {
       "label": "संपादन मोड",
@@ -248,9 +247,9 @@
       "jsonInvalid": "JSON अभी मान्य नहीं है, इसलिए फ़ॉर्म नहीं दिखाया जा सकता। पहले उसे ठीक करें।"
     },
     "json": {
-      "label": "पार्सर परिभाषा (JSON)",
+      "label": "प्रोफाइल definition (JSON)",
       "help": "वही परिभाषा जो फ़ॉर्म बनाता है। सहेजते समय सर्वर इसे जाँचता है, और नीचे की जाँच इसे वैसे ही पढ़ती है जैसी यह अभी है।",
-      "parseError": "यह मान्य JSON नहीं है, या JSON ऑब्जेक्ट नहीं है। पार्सर को सहेजने या जाँचने के लिए इसे ठीक करें।"
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the प्रोफाइल."
     },
     "matching": {
       "heading": "मिलान",
@@ -280,11 +279,12 @@
       "daysAfterLabel": "खरीद के कितने दिन बाद",
       "daysHint": "खरीद की तारीख़ के आसपास की खिड़की। डिफ़ॉल्ट {default}, अधिकतम {max}।",
       "toleranceLabel": "राशि की सहनसीमा",
-      "toleranceHint": "बैंक की राशि ईमेल के कुल से कितनी अलग हो सकती है। डिफ़ॉल्ट 0, अधिकतम {max}।"
+      "toleranceHint": "बैंक की राशि ईमेल के कुल से कितनी अलग हो सकती है। डिफ़ॉल्ट 0, अधिकतम {max}।",
+      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the प्रोफाइल has reference patterns), order number, amount and payee, amount and date."
     },
     "proposal": {
       "heading": "प्रस्ताव",
-      "tagLabel": "इस प्रोफ़ाइल द्वारा श्रेणी दिए गए लेन-देन में टैग जोड़ें",
+      "tagLabel": "Add a tag to the transactions this प्रोफाइल categorizes",
       "tagHelp": "इस नाम का टैग न होने पर वह बनाया जाता है। वह प्रस्ताव में दिखता है, और आपके मंज़ूर करने तक कुछ नहीं लिखा जाता।",
       "tagNameLabel": "टैग का नाम",
       "aiCategoriesLabel": "जिन मदों से कोई नियम मेल नहीं खाता, उनकी श्रेणी AI को चुनने दें",
@@ -292,7 +292,7 @@
     }
   },
   "problems": {
-    "heading": "पार्सर की परिभाषा मान्य नहीं है:",
+    "heading": "The प्रोफाइल definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "परिभाषा",
@@ -343,11 +343,14 @@
       "matchDaysAfter": "खरीद के कितने दिन बाद",
       "matchTolerance": "राशि की सहनसीमा",
       "tag": "टैग",
-      "aiCategories": "AI श्रेणियाँ"
+      "aiCategories": "AI श्रेणियाँ",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns"
     },
     "codes": {
       "not_object": "मान्य परिभाषा नहीं है",
-      "unknown_key": "ऐसी चीज़ है जो पार्सर में नहीं हो सकती",
+      "unknown_key": "is not something a प्रोफाइल can have",
       "unsupported_version": "ऐसा संस्करण है जिसे यह सर्वर नहीं पढ़ता (संस्करण 2 का उपयोग करें)",
       "invalid_type": "में गलत प्रकार का मान है",
       "empty": "ख़ाली नहीं होना चाहिए",
@@ -400,10 +403,10 @@
     "unmatched": "{count, plural, one {# उम्मीदवार} other {# उम्मीदवारों}} में से कोई लेन-देन मेल नहीं खाता।",
     "jsonInvalid": "JSON मान्य नहीं है, इसलिए अभी जाँचने के लिए कुछ नहीं है।",
     "outcome": {
-      "not_applicable": "यह पार्सर इस ईमेल को नहीं पढ़ेगा: इसकी आवश्यक पंक्तियों में से कोई भी ईमेल में नहीं है, इसलिए प्रेषक के अगले पार्सर को आज़माया जाएगा।",
-      "skip_line": "यह पार्सर इस ईमेल को अलग रख देगा: इसमें एक ऐसी पंक्ति है जिस पर यह ईमेल छोड़ देता है।",
-      "wait_line": "यह पार्सर इस ईमेल को रोके रखेगा: एक पंक्ति बताती है कि ऑर्डर अभी अंतिम नहीं है, इसलिए इसे बाद में फिर पढ़ा जाएगा।",
-      "no_html": "यह पार्सर ईमेल का HTML हिस्सा पढ़ता है, और इस ईमेल में HTML नहीं है, इसलिए इसे अपठनीय (HTML नहीं) चिह्नित किया जाएगा।"
+      "not_applicable": "This प्रोफाइल would not read this email: none of its required lines is in it, so the next प्रोफाइल for the sender would be tried.",
+      "skip_line": "This प्रोफाइल would set this email aside: a line it skips on is in it.",
+      "wait_line": "This प्रोफाइल would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This प्रोफाइल reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
       "heading": "इनसे मेल खाया",
@@ -479,7 +482,7 @@
   "state": {
     "pending": "पढ़े जाने की प्रतीक्षा में",
     "skipped": "छोड़ा गया",
-    "no_parser": "कोई पार्सर नहीं",
+    "no_parser": "No प्रोफाइल",
     "parse_failed": "पढ़ा नहीं जा सका",
     "unmatched": "कोई लेन-देन नहीं मिला",
     "ambiguous": "कई लेन-देन मेल खाते हैं",
@@ -503,19 +506,21 @@
       "all": "सभी",
       "pending": "पढ़े जाने की प्रतीक्षा में",
       "skipped": "छोड़ा गया",
-      "no_parser": "कोई पार्सर नहीं",
+      "no_parser": "No प्रोफाइल",
       "parse_failed": "पढ़ा नहीं जा सका",
       "unmatched": "कोई लेन-देन नहीं मिला",
       "ambiguous": "कई लेन-देन मेल खाते हैं",
       "review_conflict": "एक और अनुरोध खुला है",
       "review": "समीक्षा में",
-      "ignored": "अनदेखा किया गया"
+      "ignored": "अनदेखा किया गया",
+      "option": "{label} ({count})"
     },
     "domainFilter": {
       "label": "प्रेषक डोमेन",
       "all": "सभी प्रेषक",
       "option": "{domain} ({count})",
-      "help": "{domain} और उसके सबडोमेन के ईमेल दिखाए जा रहे हैं। प्रेषक के लिए एक पार्सर का मसौदा बनाने हेतु इनमें से कई चुनें।"
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one प्रोफाइल for the sender.",
+      "unknown": "The sender counts could not be loaded."
     },
     "columns": {
       "select": "चुनें",
@@ -546,9 +551,10 @@
       "reprocess": "दोबारा संसाधित करें",
       "link": "लेन-देन चुनें",
       "recognizeAi": "AI से पहचानें",
-      "draftParser": "AI से पार्सर का ड्राफ़्ट बनाएँ",
-      "createParser": "पार्सर बनाएँ",
-      "ignore": "अनदेखा करें"
+      "draftParser": "ए आई के साथ एक प्रोफाइल तैयार करें",
+      "createParser": "Create प्रोफाइल",
+      "ignore": "अनदेखा करें",
+      "approve": "Approve"
     },
     "toasts": {
       "reprocessed": "ईमेल दोबारा संसाधित हुआ",
@@ -556,7 +562,9 @@
       "ignored": "ईमेल अनदेखा किया गया",
       "ignoreFailed": "ईमेल अनदेखा नहीं किया जा सका",
       "deleted": "ईमेल हटाया गया",
-      "deleteFailed": "ईमेल हटाया नहीं जा सका"
+      "deleteFailed": "ईमेल हटाया नहीं जा सका",
+      "approved": "Proposal approved",
+      "approveFailed": "Could not approve the proposal"
     },
     "ignoreDialog": {
       "title": "इस ईमेल को अनदेखा करें?",
@@ -571,17 +579,26 @@
       "label": "चुने गए ईमेल",
       "select": "{subject} चुनें",
       "count": "{count, plural, one {# ईमेल चुना गया} other {# ईमेल चुने गए}} (अधिकतम {max})",
-      "draftButton": "AI से पार्सर का ड्राफ़्ट बनाएँ ({count})",
+      "draftButton": "ए आई के साथ एक प्रोफाइल तैयार करें ({count})",
       "clear": "चयन साफ़ करें",
-      "differentSenders": "चुने गए ईमेल अलग-अलग प्रेषकों ({domains}) के हैं। एक पार्सर एक ही प्रेषक के ईमेल पढ़ता है, इसलिए एक ही प्रेषक के ईमेल चुनें।"
+      "differentSenders": "The selected emails come from different senders ({domains}). A प्रोफाइल reads one sender's emails, so select emails from one sender.",
+      "selectAll": "Select all emails on this list (at most {max})"
     },
     "draft": {
-      "failed": "पार्सर का ड्राफ़्ट बनाना शुरू नहीं हो सका",
+      "failed": "Could not start drafting a प्रोफाइल",
       "queued": "कतार में: अनुरोध AI समीक्षा इनबॉक्स में किसी एजेंट की प्रतीक्षा कर रहा है। अभी जवाब देने के लिए कोई AI सहायक उपलब्ध नहीं है।",
       "handoffFailed": "अनुरोध कतार में है, लेकिन ईमेल चैट में नहीं खुल सके। वह AI समीक्षा इनबॉक्स में किसी एजेंट की प्रतीक्षा कर रहा है।",
       "inboxLink": "AI समीक्षा इनबॉक्स खोलें",
       "opened": "ईमेल संलग्न करके चैट खोल दी गई है। संदेश पढ़ें और भेजें दबाएँ।",
-      "chatPrompt": "{domain} के {count, plural, one {इस ऑर्डर ईमेल} other {इन # ऑर्डर ईमेल}} के लिए एक ईमेल रसीद पार्सर बनाओ। AI समीक्षा अनुरोध {requestId} को अपने हाथ में लो, email_receipt_parsers टूल से अपने पार्सर को हर संलग्न ईमेल पर आज़माओ, तब तक सुधारो जब तक हर ईमेल पूरी तरह न पढ़ा जाए, फिर उसे अनुरोध {requestId} के लिए ड्राफ़्ट के रूप में सहेजो।"
+      "chatPrompt": "{domain} के {count, plural, one {इस ऑर्डर ईमेल} other {इन # ऑर्डर ईमेल}} के लिए एक ईमेल रसीद पार्सर बनाओ। AI समीक्षा अनुरोध {requestId} को अपने हाथ में लो, email_receipt_profiles टूल से अपने पार्सर को हर संलग्न ईमेल पर आज़माओ, तब तक सुधारो जब तक हर ईमेल पूरी तरह न पढ़ा जाए, फिर उसे अनुरोध {requestId} के लिए ड्राफ़्ट के रूप में सहेजो।"
+    },
+    "guide": {
+      "heading": "How to create a प्रोफाइल",
+      "buttonName": "ए आई के साथ एक प्रोफाइल तैयार करें",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the प्रोफाइल, and you test and approve it in the प्रोफाइल."
     }
   },
   "detail": {
@@ -598,7 +615,7 @@
     "originalSent": "दुकान द्वारा भेजा गया",
     "subject": "विषय",
     "state": "स्थिति",
-    "parser": "पार्सर",
+    "parser": "प्रोफाइल",
     "noParser": "कोई नहीं",
     "structuredSource": "संरचित डेटा",
     "matchedBy": "मिलान का आधार",
@@ -618,10 +635,10 @@
     "reasons": {
       "too_large": "ईमेल आकार सीमा से बड़ा है, इसलिए उसे बिना पढ़े सहेजा गया।",
       "undecodable": "ईमेल डिकोड नहीं हो सका, इसलिए उसे बिना पढ़े सहेजा गया।",
-      "draft_failed": "AI इस प्रेषक के लिए पार्सर का ड्राफ़्ट नहीं बना सका।",
-      "parser_invalid": "इस प्रेषक का पार्सर मान्य नहीं है। इसे पार्सर सेटिंग में संपादित करें।",
-      "no_total": "पार्सर को इस ईमेल में कुल नहीं मिला।",
-      "no_items": "पार्सर को कोई मद पंक्ति नहीं मिली।",
+      "draft_failed": "The AI could not draft a प्रोफाइल for this sender.",
+      "parser_invalid": "The प्रोफाइल for this sender is not valid. Edit it in the प्रोफाइल settings.",
+      "no_total": "The प्रोफाइल found no total in this email.",
+      "no_items": "The प्रोफाइल found no line items.",
       "items_unbalanced": "मद पंक्तियों का जोड़ कुल से नहीं मिलता।",
       "items_uncategorized": "कुछ मद पंक्तियों की कोई श्रेणी नहीं है।",
       "shipping_uncategorized": "शिपिंग पंक्ति की कोई श्रेणी नहीं है।",
@@ -629,15 +646,15 @@
       "proposal_fallback": "मदवार प्रस्ताव अस्वीकार हो गया, इसलिए केवल विवरण का प्रस्ताव दिया गया है।",
       "nothing_to_propose": "यह ईमेल इस लेन-देन में कुछ नहीं जोड़ता।",
       "proposal_refused": "प्रस्ताव अस्वीकार हो गया, इसलिए कुछ भी प्रस्तावित नहीं किया गया।",
-      "skip_line": "एक ऐसी पंक्ति मिली जिस पर यह पार्सर छोड़ देता है, इसलिए ईमेल को अनदेखा कर दिया गया।",
+      "skip_line": "A line this प्रोफाइल skips on was found, so the email was ignored.",
       "wait_line": "एक पंक्ति बताती है कि ऑर्डर अभी अंतिम नहीं है, इसलिए ईमेल को बाद में फिर पढ़ा जाएगा।",
-      "no_html": "यह पार्सर ईमेल का HTML हिस्सा पढ़ता है, और इस ईमेल में HTML नहीं है।",
-      "schema_org": "किसी पार्सर की ज़रूरत नहीं पड़ी: ऑर्डर ईमेल के संरचित डेटा (schema.org) से पढ़ा गया।",
+      "no_html": "This प्रोफाइल reads the HTML part of the email, and this email has none.",
+      "schema_org": "No प्रोफाइल was needed: the order was read from the structured data (schema.org) in the email.",
       "item_amount_missing": "एक मद की कोई राशि नहीं है, और ईमेल में ऐसा कोई एकल कुल नहीं है जो उसे दिया जा सके।"
     },
     "reasonUnknown": "कारण: {reason}",
     "requestNote": "समीक्षा अनुरोध ({state}): {note}",
-    "parsedHeading": "पार्सर ने क्या पढ़ा",
+    "parsedHeading": "What the प्रोफाइल read",
     "notParsed": "इस ईमेल से अभी कुछ नहीं पढ़ा गया है।",
     "candidatesHeading": "मेल खाने वाले लेन-देन",
     "candidatesHelp": "कई लेन-देन इस ईमेल से बराबर अच्छी तरह मेल खाते हैं। वह चुनें जिसका भुगतान इस ईमेल ने किया।",
@@ -657,7 +674,7 @@
     "htmlFrameTitle": "ईमेल, जैसा उसके प्रेषक ने स्वरूपित किया",
     "structured": {
       "heading": "संरचित डेटा (schema.org)",
-      "help": "ऑर्डर या इनवॉइस, जिसे ईमेल मेल क्लाइंट के लिए मार्कअप के रूप में रखता है। इसे तभी पढ़ा जाता है जब कोई पार्सर लागू न हो या पार्सर को कुल न मिले।",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no प्रोफाइल applies or the प्रोफाइल finds no total.",
       "found": "मिला",
       "notFound": "नहीं मिला",
       "notFoundHelp": "ईमेल में ऑर्डर मार्कअप नहीं है, या उसमें न कोई कुल है और न कोई मद।",
@@ -667,13 +684,13 @@
       "unitPrice": "इकाई मूल्य"
     },
     "lines": {
-      "help": "वे पंक्तियाँ जिनसे किसी पार्सर के पैटर्न का मिलान होता है, उसी तरह क्रमांकित जैसे टेस्ट की \"इनसे मेल खाया\" सूची क्रमांकित करती है।",
+      "help": "The lines a प्रोफाइल's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
       "sourceLabel": "पंक्तियों का स्रोत",
       "sources": {
         "text": "टेक्स्ट",
         "html": "HTML"
       },
-      "noHtml": "इस ईमेल में HTML हिस्सा नहीं है, इसलिए HTML पढ़ने वाला पार्सर इसे नहीं पढ़ सकता।",
+      "noHtml": "This email has no HTML part, so a प्रोफाइल that reads HTML cannot read it.",
       "capped": "केवल पहली {max} पंक्तियाँ पढ़ी जाती हैं।",
       "empty": "कोई पंक्ति नहीं।",
       "listLabel": "ईमेल की क्रमांकित पंक्तियाँ"
@@ -756,12 +773,12 @@
       "ariaLabel": "ईमेल रसीदों के अनुभाग",
       "overview": "अवलोकन",
       "emails": "ईमेल",
-      "profiles": "प्रोफ़ाइल",
+      "profiles": "प्रोफाइलs",
       "mailbox": "मेलबॉक्स"
     },
     "demoRestricted": {
       "heading": "डेमो मोड में प्रतिबंधित",
-      "body": "डेमो मोड में मेलबॉक्स कनेक्ट करना और प्रोफ़ाइल लिखना बंद है।"
+      "body": "Connecting a mailbox and writing प्रोफाइल are disabled in demo mode."
     }
   },
   "process": {
@@ -769,8 +786,8 @@
     "buttonCount": "सभी संसाधित करें ({count})",
     "dialog": {
       "title": "{count, plural, one {# सहेजा गया ईमेल संसाधित करें?} other {# सहेजे गए ईमेल संसाधित करें?}}",
-      "message": "हर सहेजा गया ईमेल जो अभी पढ़ा नहीं गया है, या जिसे कोई नई प्रोफ़ाइल या लेन-देन बदल सकता है, फिर से पढ़ा जाता है। उससे जो प्रस्ताव बनते हैं, वे ऑटो-लागू चालू न होने पर समीक्षा इनबॉक्स में इंतज़ार करते हैं।",
-      "messageDomain": "{domain} का हर सहेजा गया ईमेल जो अभी पढ़ा नहीं गया है, या जिसे कोई नई प्रोफ़ाइल या लेन-देन बदल सकता है, फिर से पढ़ा जाता है। उससे जो प्रस्ताव बनते हैं, वे ऑटो-लागू चालू न होने पर समीक्षा इनबॉक्स में इंतज़ार करते हैं।",
+      "message": "Every stored email that has not been read yet, or that a new प्रोफाइल or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new प्रोफाइल or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "संसाधित करें"
     },
     "starting": "शुरू हो रहा है...",
@@ -825,15 +842,15 @@
       "open": "समीक्षा इनबॉक्स खोलें"
     },
     "profiles": {
-      "title": "प्रोफ़ाइल",
+      "title": "प्रोफाइलs",
       "approved": "मंज़ूर",
       "drafts": "{count, plural, one {# ड्राफ़्ट आपकी मंज़ूरी की प्रतीक्षा में है} other {# ड्राफ़्ट आपकी मंज़ूरी की प्रतीक्षा में हैं}}।",
-      "manage": "प्रोफ़ाइल खोलें"
+      "manage": "Open the प्रोफाइल"
     },
     "uncovered": {
-      "title": "बिना प्रोफ़ाइल वाले प्रेषक",
-      "help": "इन प्रेषकों के ईमेल कोई प्रोफ़ाइल नहीं पढ़ती। किसी एक के लिए प्रोफ़ाइल बनाएँ, या असिस्टेंट से उसका ड्राफ़्ट बनवाएँ।",
-      "none": "सहेजे गए ईमेल का हर प्रेषक किसी प्रोफ़ाइल से कवर है।",
+      "title": "Senders without a प्रोफाइल",
+      "help": "These senders sent emails no प्रोफाइल reads. Create a प्रोफाइल for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a प्रोफाइल.",
       "row": "{domain} ({count, plural, one {# ईमेल} other {# ईमेल}})",
       "show": "ईमेल दिखाएँ"
     }
@@ -854,9 +871,9 @@
         "action": "ईमेल खोलें"
       },
       "profile": {
-        "title": "किसी प्रेषक के लिए प्रोफ़ाइल बनाएँ",
-        "body": "प्रोफ़ाइल Monize को बताती है कि किसी एक प्रेषक की ऑर्डर पुष्टि कैसे पढ़नी है। एक लिखें, या सहेजे गए ईमेल से उसका ड्राफ़्ट बनाएँ।",
-        "action": "प्रोफ़ाइल खोलें"
+        "title": "Create a प्रोफाइल for a sender",
+        "body": "A प्रोफाइल tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the प्रोफाइल"
       },
       "review": {
         "title": "प्रस्तावों की समीक्षा करें",

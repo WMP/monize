@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Hộp thư xem xét của AI",
-    "subtitle": "Các giao dịch mà một quy tắc đã nhờ AI xem xét, các trình phân tích mà trợ lý được nhờ soạn, cùng những thay đổi trợ lý đề xuất để bạn phê duyệt."
+    "subtitle": "Các giao dịch mà một quy tắc yêu cầu IA xem xét, hồ sơ mà một trợ lý được yêu cầu soạn thảo, và các chỉnh sửa mà một trợ lý đề xuất để bạn phê duyệt."
   },
   "filter": {
     "label": "Lọc theo trạng thái",
@@ -40,13 +40,13 @@
     "manualRequest": "Yêu cầu thủ công",
     "emailReceipt": "Hóa đơn qua email: {subject} từ {sender}",
     "emailReceiptMissing": "Hóa đơn qua email (email đã bị xóa)",
-    "parserDraft": "Bản nháp trình phân tích từ {count, plural, one {# email} other {# email}} ({domain})",
+    "parserDraft": "Dự thảo hồ sơ từ {count, plural, one {# email} other {# email}} ({domain})",
     "viewEmailReceipts": "Xem hóa đơn qua email",
     "agentNote": "Ghi chú của trợ lý: {reason}",
     "dates": "Tạo ngày {created}, hết hạn ngày {expires}",
     "viewTransaction": "Xem giao dịch",
     "waitingForAgent": "Đang chờ một tác nhân AI. <link>Kết nối nhà cung cấp AI trong Cài đặt</link>, hoặc để một ứng dụng khách MCP nhận yêu cầu.",
-    "parserDraftReady": "Bản nháp trình phân tích đã sẵn sàng. <link>Thử và duyệt trong cài đặt trình phân tích</link>."
+    "parserDraftReady": "Dự thảo hồ sơ sẵn sàng. <link>Kiểm tra và phê duyệt nó trong cài đặt hồ sơ</link>."
   },
   "actions": {
     "dismiss": "Bỏ qua"

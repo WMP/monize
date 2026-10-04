@@ -391,7 +391,9 @@
     "settingsEmpty": "Hãy gửi ít nhất một cài đặt cần thay đổi.",
     "parserToolReceiptCount": "Hãy nêu 1 đến 5 email để thử trình phân tích.",
     "parserToolInvalidSender": "Một bản nháp cần có tên và từ một đến mười miền người gửi, chẳng hạn shop.example.com.",
-    "parserDraftRequestNotClaimed": "Bạn chưa nhận yêu cầu soạn trình phân tích này. Hãy nhận nó trước bằng ai_review_requests, hoặc lưu bản nháp mà không có requestId."
+    "parserDraftRequestNotClaimed": "Bạn chưa nhận yêu cầu soạn trình phân tích này. Hãy nhận nó trước bằng ai_review_requests, hoặc lưu bản nháp mà không có requestId.",
+    "parserCategoryNameUnknown": "Không tìm thấy danh mục \"{{ name }}\". Sử dụng tên của một trong các danh mục của bạn.",
+    "parserCategoryNameAmbiguous": "Danh mục \"{{ name }}\" khớp với nhiều danh mục ({{ candidates }}). Sử dụng tên đầy đủ, ví dụ \"Cha mẹ: Con\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email chưa được cấu hình. Không thể bật truy cập khẩn cấp cho đến khi SMTP được thiết lập.",

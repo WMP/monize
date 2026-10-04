@@ -391,7 +391,9 @@
     "settingsEmpty": "請至少傳送一項要變更的設定。",
     "parserToolReceiptCount": "請指定 1 至 5 封郵件來測試解析器。",
     "parserToolInvalidSender": "草稿需要名稱，以及一到十個寄件者網域，例如 shop.example.com。",
-    "parserDraftRequestNotClaimed": "此解析器草稿請求不是由您認領的。請先用 ai_review_requests 認領，或不帶 requestId 儲存草稿。"
+    "parserDraftRequestNotClaimed": "此解析器草稿請求不是由您認領的。請先用 ai_review_requests 認領，或不帶 requestId 儲存草稿。",
+    "parserCategoryNameUnknown": "找不到類別\"{{ name }}\"。請使用您的其中一個類別的名稱。",
+    "parserCategoryNameAmbiguous": "類別\"{{ name }}\"符合多個類別({{ candidates }})。請使用完整名稱，例如\"父級：子級\"。"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "未設定電子郵件。在設定 SMTP 之前，無法啟用緊急存取。",

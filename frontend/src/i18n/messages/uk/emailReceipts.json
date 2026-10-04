@@ -1,867 +1,915 @@
 {
   "settingsPage": {
-    "redirecting": "Відкриття сторінки чеків з електронної пошти...",
-    "redirectLink": "Перейти до налаштувань поштової скриньки"
+    "redirecting": "Opening the Email Receipts page...",
+    "redirectLink": "Go to the mailbox settings"
   },
   "page": {
-    "title": "Чеки з електронної пошти",
-    "subtitle": "Читайте підтвердження замовлень із поштової скриньки й перетворюйте їх на транзакції з позиціями: що підключено, що сталося з кожним листом і що чекає на вас"
+    "title": "Email Receipts",
+    "subtitle": "Read order confirmations from a mailbox and turn them into itemized transactions: what is connected, what became of each email, and what waits for you"
   },
   "mailbox": {
-    "heading": "Поштова скринька",
-    "description": "Підтвердження замовлень читаються з окремої поштової скриньки через IMAP. Monize лише читає її: він ніколи не змінює, не переміщує й не видаляє листи.",
-    "loading": "Завантаження поштової скриньки",
-    "dedicatedWarning": "Використовуйте окрему поштову скриньку. Читаються всі листи в папці, тому в ній мають бути лише підтвердження замовлень.",
-    "encryptionUnavailable": "Цей сервер не може шифрувати секрети, тому пароль або підключення поштової скриньки зберегти не можна. Попросіть адміністратора налаштувати шифрування.",
+    "heading": "Mailbox",
+    "description": "Order confirmations are read from a dedicated mailbox over IMAP. Monize only reads it: it never changes, moves or deletes a message.",
+    "loading": "Loading the mailbox",
+    "dedicatedWarning": "Use a dedicated mailbox. Every message in the folder is read, so it should hold nothing but order confirmations.",
+    "encryptionUnavailable": "This server cannot encrypt secrets, so a mailbox password or connection cannot be saved. Ask the administrator to set up encryption.",
     "error": {
-      "title": "Не вдалося завантажити поштову скриньку",
-      "body": "Запит не виконано, тому про вашу поштову скриньку поки нічого не відомо. Повторіть спробу.",
-      "retry": "Спробувати ще раз"
+      "title": "The mailbox could not be loaded",
+      "body": "The request failed, so nothing is known about your mailbox yet. Try again.",
+      "retry": "Try again"
     },
     "oauth": {
-      "heading": "Підключити обліковий запис",
-      "explanation": "Google і Microsoft 365 зазвичай не приймають звичайний пароль. Увійдіть через провайдера: ви надаєте Monize доступ до поштової скриньки й ніколи не вводите її пароль тут.",
+      "heading": "Connect an account",
+      "explanation": "Google and Microsoft 365 usually refuse a plain password. Sign in with the provider instead: you grant Monize access to the mailbox and never type its password here.",
       "connect": {
-        "google": "Підключити через Google",
-        "microsoft": "Підключити через Microsoft"
+        "google": "Connect with Google",
+        "microsoft": "Connect with Microsoft"
       },
       "providerNames": {
         "google": "Google",
         "microsoft": "Microsoft 365"
       },
-      "providersUnavailable": "Не вдалося перевірити, чи доступний вхід через Google або Microsoft. Ручна форма нижче все одно працює.",
-      "startFailed": "Не вдалося розпочати вхід",
-      "badAuthorizationUrl": "Сервер повернув адресу входу, яка не є захищеною вебсторінкою, тому її не було відкрито.",
-      "connectedAs": "Підключено до {provider} як {username}.",
-      "notConnected": "Підключення до {provider} не активне, тому поштову скриньку не читають. Підключіться знову, щоб відновити читання.",
-      "reconnect": "Підключити знову",
-      "disconnect": "Відключити",
+      "providersUnavailable": "Whether Google or Microsoft sign-in is available could not be checked. The manual form below still works.",
+      "startFailed": "Could not start the sign-in",
+      "badAuthorizationUrl": "The server returned a sign-in address that is not a secure web page, so it was not opened.",
+      "connectedAs": "Connected to {provider} as {username}.",
+      "notConnected": "The connection to {provider} is not active, so the mailbox is not being read. Connect again to resume.",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
       "disconnectDialog": {
-        "title": "Відключити поштову скриньку?",
-        "message": "Monize видалить збережений доступ до {provider} і припинить читати поштову скриньку. Уже збережені листи залишаться."
+        "title": "Disconnect the mailbox?",
+        "message": "Monize will delete its stored access to {provider} and stop reading the mailbox. Emails already stored are kept."
       },
-      "disconnected": "Поштову скриньку відключено",
-      "disconnectFailed": "Не вдалося відключити поштову скриньку",
-      "revokeNote": "Відключення не скасовує наданий вами дозвіл. Щоб його скасувати, вилучіть Monize на сторінці дозволів {provider}.",
+      "disconnected": "Mailbox disconnected",
+      "disconnectFailed": "Could not disconnect the mailbox",
+      "revokeNote": "Disconnecting does not remove the permission you granted. To withdraw it, remove Monize on the {provider} permissions page.",
       "revokeLink": {
-        "google": "Відкрити дозволи облікового запису Google",
-        "microsoft": "Відкрити дозволи застосунків Microsoft"
+        "google": "Open Google account permissions",
+        "microsoft": "Open Microsoft app permissions"
       },
-      "saveButton": "Зберегти налаштування",
-      "saved": "Налаштування поштової скриньки збережено",
-      "saveFailed": "Не вдалося зберегти налаштування поштової скриньки"
+      "saveButton": "Save settings",
+      "saved": "Mailbox settings saved",
+      "saveFailed": "Could not save the mailbox settings"
     },
     "form": {
-      "intro": "Або введіть дані будь-якої IMAP-скриньки. Більшість провайдерів потребує пароль застосунку, а не пароль від облікового запису.",
-      "hostLabel": "IMAP-сервер",
-      "portLabel": "Порт",
-      "securityLabel": "Захист з’єднання",
+      "intro": "Or enter the details of any IMAP mailbox. Most providers need an app password rather than your account password.",
+      "hostLabel": "IMAP server",
+      "portLabel": "Port",
+      "securityLabel": "Connection security",
       "securityOptions": {
-        "tls": "TLS (зазвичай порт 993)",
-        "starttls": "STARTTLS (зазвичай порт 143)"
+        "tls": "TLS (usually port 993)",
+        "starttls": "STARTTLS (usually port 143)"
       },
-      "usernameLabel": "Ім’я користувача",
-      "passwordLabel": "Пароль",
-      "passwordStoredPlaceholder": "Пароль збережено. Введіть новий, щоб замінити його.",
-      "passwordRequiredHelp": "Потрібен для нової поштової скриньки або в разі зміни сервера чи імені користувача.",
-      "passwordKeepHelp": "Залиште порожнім, щоб зберегти поточний пароль. Він більше ніколи не показується.",
-      "saveButton": "Зберегти поштову скриньку",
-      "saved": "Поштову скриньку збережено",
-      "saveFailed": "Не вдалося зберегти поштову скриньку",
+      "usernameLabel": "User name",
+      "passwordLabel": "Password",
+      "passwordStoredPlaceholder": "A password is stored. Type to replace it.",
+      "passwordRequiredHelp": "Required for a new mailbox, or when the server or user name changes.",
+      "passwordKeepHelp": "Leave blank to keep the stored password. It is never shown again.",
+      "saveButton": "Save mailbox",
+      "saved": "Mailbox saved",
+      "saveFailed": "Could not save the mailbox",
       "test": {
-        "button": "Перевірити з’єднання",
-        "ok": "{count, plural, one {З’єднання працює. У папці # повідомлення.} few {З’єднання працює. У папці # повідомлення.} many {З’єднання працює. У папці # повідомлень.} other {З’єднання працює. У папці # повідомлення.}}",
-        "error": "Не вдалося з’єднатися: {error}",
-        "failed": "Не вдалося перевірити з’єднання"
+        "button": "Test connection",
+        "ok": "{count, plural, one {The connection works. The folder holds # message.} other {The connection works. The folder holds # messages.}}",
+        "error": "The connection failed: {error}",
+        "failed": "Could not test the connection"
       }
     },
     "settings": {
-      "folderLabel": "Папка",
-      "folderHelp": "Папка для читання. Вона відкривається лише для читання.",
-      "enabledLabel": "Читати поштову скриньку автоматично",
-      "enabledHelp": "Керує лише автоматичним зчитуванням: коли ввімкнено, Monize зчитує поштову скриньку кожні 15 хвилин. Вимкнення не відключає поштову скриньку, а «Опитати зараз» зчитує її незалежно від цього параметра.",
-      "aiModeLabel": "Режим ШІ",
-      "aiModeHelp": "Чи може опитування використовувати для чеків налаштованого вами ШІ-провайдера. «Розпізнати за допомогою ШІ» і «Скласти парсер за допомогою ШІ» звертаються до асистента в чаті за будь-якого режиму, а відповідь ШІ завжди залишається пропозицією або чернеткою, яку ви схвалюєте.",
+      "folderLabel": "Folder",
+      "folderHelp": "The folder to read. It is opened read-only.",
+      "enabledLabel": "Read the mailbox automatically",
+      "enabledHelp": "Controls only the automatic reading: when on, Monize reads the mailbox every 15 minutes. Turning it off does not disconnect the mailbox, and Poll now reads it whether this is on or off.",
+      "aiModeLabel": "AI mode",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Prepare a profile with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
-        "off": "Вимкнено",
-        "on_demand": "На вимогу",
-        "automatic": "Автоматично"
+        "off": "Off",
+        "on_demand": "On demand",
+        "automatic": "Automatic"
       },
       "aiModeDescriptions": {
-        "off": "Опитування ніколи не викликає ШІ для чеків.",
-        "on_demand": "Опитування ніколи не викликає ШІ. Ви самі звертаєтеся до асистента через «Розпізнати за допомогою ШІ» або «Скласти парсер за допомогою ШІ».",
-        "automatic": "Під час опитування ШІ запитують про знайдений чек, який жоден схвалений парсер не зміг прочитати повністю, і складають парсер для відправника, у якого його немає."
+        "off": "The poll never calls the AI for receipts.",
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Prepare a profile with AI.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved profile could read completely, and drafts a profile for a sender that has none."
       },
-      "autoApplyLabel": "Застосовувати пропозиції автоматично",
-      "autoApplyHelp": "За замовчуванням вимкнено. Пропозиція застосовується без запитань лише тоді, коли виконано всі умови: схвалений профіль прочитав лист повністю, транзакцію знайдено за номером замовлення або референсом чи за точною сумою й отримувачем і кандидат один, а пропозиція сходиться до копійки. Усе інше чекає на ваше схвалення.",
-      "profileLimitLabel": "Враховувати пропозиції профілів у добовому ліміті ШІ",
-      "profileLimitHelp": "Увімкнено за замовчуванням: зміна, яку профіль пропонує за листом, враховується в добовому ліміті змін, запропонованих ШІ, як і будь-яка інша пропозиція ШІ. Вимкніть, якщо велика партія збережених листів інакше вичерпає ліміт. Звільняються лише пропозиції від профілів; кожна пропозиція все одно чекає на ваше схвалення."
+      "autoApplyLabel": "Apply proposals automatically",
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profile proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profile proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profiles are exempt; every proposal still waits for your approval."
     },
     "status": {
-      "lastPolled": "Останнє опитування",
-      "lastSuccess": "Останнє успішне опитування",
-      "never": "Ніколи",
-      "lastError": "Остання помилка: {error}",
-      "lastErrorAt": "Остання помилка ({at}): {error}",
-      "pollNow": "Опитати зараз",
-      "pollResult": "Опитування завершено: {fetched, plural, one {збережено # лист} few {збережено # листи} many {збережено # листів} other {збережено # листа}}, пропущено: {skipped}, оброблено: {processed}.",
-      "pollResultLink": "Переглянути збережені листи",
-      "pollFailed": "Не вдалося виконати опитування",
-      "deleteButton": "Видалити поштову скриньку",
+      "lastPolled": "Last poll",
+      "lastSuccess": "Last successful poll",
+      "never": "Never",
+      "lastError": "Last error: {error}",
+      "lastErrorAt": "Last error ({at}): {error}",
+      "pollNow": "Poll now",
+      "pollResult": "Poll finished: {fetched, plural, one {# email saved} other {# emails saved}}, {skipped} skipped, {processed} processed.",
+      "pollResultLink": "View the saved emails",
+      "pollFailed": "The poll failed",
+      "deleteButton": "Delete mailbox",
       "deleteDialog": {
-        "title": "Видалити поштову скриньку?",
-        "message": "Налаштування поштової скриньки та всі збережені листи буде видалено, а відкриті запити на перевірку за ними відхилено. Листи в самій поштовій скриньці не зачіпаються."
+        "title": "Delete the mailbox?",
+        "message": "The mailbox settings and every stored email will be deleted, and open review requests from them dismissed. The emails in the mailbox itself are not touched."
       },
-      "deleted": "Поштову скриньку видалено",
-      "deleteFailed": "Не вдалося видалити поштову скриньку"
+      "deleted": "Mailbox deleted",
+      "deleteFailed": "Could not delete the mailbox"
     }
   },
   "parsers": {
-    "heading": "Профілі",
-    "description": "Профіль читає підтвердження замовлень одного відправника за шаблонами, які ви пишете або перевіряєте, і визначає, як знайти банківську транзакцію. Після схвалення він працює без ШІ.",
-    "newButton": "Новий парсер",
-    "loading": "Завантаження парсерів",
+    "heading": "Profiles",
+    "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "New profile",
+    "loading": "Loading profiles",
     "error": {
-      "title": "Не вдалося завантажити парсери",
-      "body": "Запит не виконано. Повторіть спробу.",
-      "retry": "Спробувати ще раз"
+      "title": "The profiles could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "Парсерів поки немає",
-      "body": "Створіть парсер для відправника підтверджень замовлень або складіть його за збереженим листом на сторінці «Чеки з електронної пошти»."
+      "title": "No profiles yet",
+      "body": "Create one for a sender of order confirmations, or draft one from a stored email on the Email Receipts page."
     },
     "columns": {
-      "name": "Парсер",
-      "status": "Статус",
-      "payee": "Отримувач",
-      "actions": "Дії"
+      "name": "Profile",
+      "status": "Status",
+      "payee": "Payee",
+      "actions": "Actions"
     },
     "status": {
-      "draft": "Чернетка",
-      "approved": "Схвалено"
+      "draft": "Draft",
+      "approved": "Approved"
     },
     "source": {
-      "manual": "Написано вами",
-      "ai": "Складено ШІ"
+      "manual": "Written by you",
+      "ai": "Drafted by AI"
     },
-    "invalid": "Недійсний",
-    "noPayee": "Немає отримувача",
-    "payeeUnknown": "Отримувача не знайдено",
-    "payeeUnavailable": "Список отримувачів недоступний",
+    "invalid": "Invalid",
+    "noPayee": "No payee",
+    "payeeUnknown": "Payee not found",
+    "payeeUnavailable": "Payee list unavailable",
     "actions": {
-      "approve": "Схвалити",
-      "viewJson": "Переглянути JSON"
+      "approve": "Approve",
+      "viewJson": "View JSON"
     },
     "toasts": {
-      "approved": "Парсер схвалено",
-      "approveFailed": "Не вдалося схвалити парсер",
-      "changedElsewhere": "Цей парсер змінено в іншому місці. Список перезавантажено.",
-      "deleted": "Парсер видалено",
-      "deleteFailed": "Не вдалося видалити парсер"
+      "approved": "Profile approved",
+      "approveFailed": "Could not approve the profile",
+      "changedElsewhere": "This profile was changed elsewhere. The list has been reloaded.",
+      "deleted": "Profile deleted",
+      "deleteFailed": "Could not delete the profile"
     },
     "deleteDialog": {
-      "title": "Видалити парсер?",
-      "message": "Парсер {name} буде видалено. Листи, які він уже прочитав, збережуть свої результати."
+      "title": "Delete the profile?",
+      "message": "The profile {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
-      "title": "Визначення {name}",
-      "help": "Визначення парсера в тому вигляді, в якому його збережено. Тут воно лише для читання; щоб змінити, скористайтеся «Редагувати».",
-      "contentLabel": "JSON визначення",
-      "copy": "Копіювати",
-      "copied": "JSON скопійовано",
-      "copyFailed": "Не вдалося скопіювати JSON"
+      "title": "Definition of {name}",
+      "help": "The profile definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
+      "contentLabel": "Definition JSON",
+      "copy": "Copy",
+      "copied": "JSON copied",
+      "copyFailed": "Could not copy the JSON"
     },
     "processOffer": {
-      "title": "Обробити збережені листи зараз?",
-      "message": "Обробити зараз {count, plural, one {# збережений лист} few {# збережені листи} many {# збережених листів} other {# збережених листа}} від {domains}? Кожен із них буде прочитано знову за цим профілем; те, що він запропонує, чекатиме у вхідних перевірки ШІ, якщо не ввімкнено автозастосування.",
-      "confirm": "Обробити зараз",
-      "later": "Не зараз"
+      "title": "Process the stored emails now?",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process now",
+      "later": "Not now"
     }
   },
   "editor": {
-    "createTitle": "Новий парсер",
-    "editTitle": "Редагування парсера",
-    "loading": "Завантаження отримувачів і категорій",
+    "createTitle": "New profile",
+    "editTitle": "Edit profile",
+    "loading": "Loading payees and categories",
     "lookupsError": {
-      "title": "Не вдалося завантажити отримувачів і категорії",
-      "body": "Вони потрібні для вибору, тому редактор поки не може відкритися. Повторіть спробу.",
-      "retry": "Спробувати ще раз"
+      "title": "Payees and categories could not be loaded",
+      "body": "The pickers need them, so the editor cannot open yet. Try again.",
+      "retry": "Try again"
     },
-    "draftNote": "Цей парсер — чернетка. Він нічого не читає, доки ви його не схвалите.",
-    "draftAiNote": "ШІ склав цей парсер за вашими зразками листів. Перевірте його на кожному з них і звірте кожен шаблон, а потім схваліть парсер у списку. Доки ви цього не зробите, він нічого не читає.",
-    "identityHeading": "Які листи він читає",
-    "nameLabel": "Назва",
-    "payeeLabel": "Отримувач",
-    "payeePlaceholder": "Немає отримувача",
-    "domainsLabel": "Домени відправника",
-    "domainsHelp": "По одному в рядку, не більше {max}. Піддомен указаного домену теж підходить.",
-    "subjectLabel": "Тема містить",
-    "subjectHelp": "Необов’язково, по одному в рядку, не більше {max}. Тема має містити принаймні одне з них, без урахування регістру.",
-    "saveButton": "Зберегти парсер",
-    "created": "Парсер створено",
-    "updated": "Парсер збережено",
-    "saveFailed": "Не вдалося зберегти парсер",
-    "conflict": "Цей парсер змінено в іншому місці відтоді, як ви його відкрили. Перезавантажте його, щоб побачити поточну версію. Ваші правки тут не збережено.",
-    "conflictReload": "Перезавантажити парсер",
+    "draftNote": "This profile is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this profile from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "identityHeading": "Which emails it reads",
+    "nameLabel": "Name",
+    "payeeLabel": "Payee",
+    "payeePlaceholder": "No payee",
+    "domainsLabel": "Sender domains",
+    "domainsHelp": "One per line, up to {max}. A sub-domain of a listed domain also matches.",
+    "subjectLabel": "Subject contains",
+    "subjectHelp": "Optional, one per line, up to {max}. The subject must contain at least one of them, ignoring case.",
+    "saveButton": "Save profile",
+    "created": "Profile created",
+    "updated": "Profile saved",
+    "saveFailed": "Could not save the profile",
+    "conflict": "This profile was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the profile",
     "patterns": {
-      "sourceLabel": "Джерело рядків",
-      "sourceHint": "З яким поданням листа зіставляються шаблони нижче. «Текст» — це текстова частина листа, один рядок на кожен розрив рядка. «HTML» читає HTML-частину: кожен блок і кожна клітинка таблиці стає окремим рядком, тож назва товару, яку текст розбиває на кілька рядків, залишається цілою. Подання листа «Рядки» показує, що саме дає кожне джерело.",
+      "sourceLabel": "Lines source",
+      "sourceHint": "Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.",
       "sourceOptions": {
-        "text": "Текст",
+        "text": "Text",
         "html": "HTML"
       },
-      "globHelp": "Кожен шаблон зіставляється з цілим рядком листа без урахування регістру. Використовуйте {star} для будь-якого тексту та ім’я у фігурних дужках, наприклад {capture}, щоб захопити значення. У кожному полі може бути до {max} шаблонів, по одному в рядку.",
-      "orderIdLabel": "Шаблони номера замовлення",
-      "orderIdHint": "Має захоплювати {capture}. Приклад: Номер замовлення: {capture}",
-      "totalLabel": "Шаблони підсумку",
-      "amountHint": "Має захоплювати {capture}. Приклад: Разом за замовлення {capture}",
-      "shippingLabel": "Шаблони доставки",
-      "discountLabel": "Шаблони знижки",
-      "itemsHeading": "Позиції",
-      "startAfterLabel": "Позиції починаються після",
-      "startAfterHint": "Необов’язково. Позиції читаються з рядка після першого рядка, що містить цей текст.",
-      "stopAtLabel": "Позиції закінчуються на",
-      "stopAtHint": "Необов’язково. Позиції закінчуються перед першим рядком, що містить цей текст.",
-      "itemPatternsLabel": "Шаблони позицій",
-      "itemPatternsHint": "Має захоплювати {name} і або {amount} (суму рядка), або {price} (ціну за одиницю, за потреби разом із {qty}), але не обидва одразу. Приклад: {name} x {qty} {price}"
+      "globHelp": "Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.",
+      "orderIdLabel": "Order number patterns",
+      "orderIdHint": "Must capture {capture}. Example: Order number: {capture}",
+      "totalLabel": "Total patterns",
+      "amountHint": "Must capture {capture}. Example: Order total {capture}",
+      "shippingLabel": "Shipping patterns",
+      "discountLabel": "Discount patterns",
+      "feesLabel": "Шаблони комісій",
+      "itemsHeading": "Line items",
+      "startAfterLabel": "Items start after",
+      "startAfterHint": "Optional. Items are read from the line after the first line containing this text.",
+      "stopAtLabel": "Items stop at",
+      "stopAtHint": "Optional. Items end before the first line containing this text.",
+      "itemPatternsLabel": "Item patterns",
+      "itemPatternsHint": "Must capture {name} and either {amount} (the line total) or {price} (the unit price, optionally with {qty}), never both. Example: {name} x {qty} {price}"
     },
     "categories": {
-      "rulesHeading": "Правила категорій",
-      "rulesHelp": "Перше правило, шаблон якого збігся з назвою позиції, задає її категорію. Шаблони мають той самий синтаксис, наприклад {example}. Не більше {max} правил.",
-      "noRules": "Правил категорій немає. Усі позиції отримують категорію за замовчуванням.",
-      "rulePatternLabel": "Шаблон правила {number}",
-      "ruleCategoryLabel": "Категорія правила {number}",
-      "categoryPlaceholder": "Без категорії",
-      "removeRule": "Видалити правило {number}",
-      "addRule": "Додати правило",
-      "ruleLimit": "Досягнуто ліміту в {max} правил.",
-      "defaultLabel": "Категорія за замовчуванням",
-      "defaultHelp": "Застосовується до позицій, які не підійшли під жодне правило.",
-      "shippingLabel": "Категорія доставки",
-      "shippingHelp": "Категорія рядка доставки."
+      "heading": "Категорії",
+      "help": "Введіть назву категорії та виберіть її зі списку. Назва зберігається в профілі, і категорія повинна існувати при збереженні профілю.",
+      "categoryPlaceholder": "No category",
+      "defaultLabel": "Default category",
+      "defaultHelp": "Used for items that get no other category.",
+      "shippingLabel": "Shipping category",
+      "shippingHelp": "The category of the shipping line.",
+      "feesLabel": "Категорія комісій",
+      "feesHelp": "Категорія рядка комісій.",
+      "unknownCategory": "Немає категорії під названням {name}. Виберіть одну зі списку або спочатку створіть її.",
+      "rulesInJson": "Правила категорій за назвою елемента — це розширена опція: додайте їх до визначення профілю в режимі JSON."
     },
     "mode": {
-      "label": "Режим редагування",
-      "form": "Форма",
+      "label": "Editing mode",
+      "form": "Form",
       "json": "JSON",
-      "formUnavailable": "Це визначення використовує те, чого форма показати не може: записи з мітками, багаторядкові позиції або ключі, для яких у формі немає поля. Редагуйте його як JSON.",
-      "jsonInvalid": "JSON ще недійсний, тому форму показати не можна. Спершу виправте його."
+      "formUnavailable": "This definition uses something the form cannot show: labelled entries, multi-line items or keys it has no field for. Edit it as JSON.",
+      "jsonInvalid": "The JSON is not valid yet, so the form cannot be shown. Fix it first."
     },
     "json": {
-      "label": "Визначення парсера (JSON)",
-      "help": "Те саме визначення, яке будує форма. Сервер перевіряє його під час збереження, а тест нижче читає його в поточному вигляді.",
-      "parseError": "Це недійсний JSON або не об’єкт JSON. Виправте, щоб зберегти чи перевірити парсер."
+      "label": "Profile definition (JSON)",
+      "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profile."
     },
     "matching": {
-      "heading": "Зіставлення",
-      "help": "Як знаходиться банківська транзакція, яку оплатив лист. Стратегії пробуються по черзі: вирішує перша, що залишає рівно одну транзакцію, кілька означають неоднозначність, а якщо не залишилося жодної, береться наступна.",
-      "referenceLabel": "Шаблони референсу",
-      "referenceHint": "Ідентифікатор, який магазин або платіжний шлюз вносить у банківську операцію, наприклад текст виписки або призначення переказу. Має захоплювати {capture}.",
-      "strategiesLabel": "Стратегії в порядку перевірки",
-      "strategiesHelp": "Номер замовлення та референс шукають значення в описі, отримувачі або референсному номері транзакції. Сума й отримувач потребують суми та ознаки отримувача. Сума й дата потребують лише суми в межах вікна. Принаймні одна має залишатися ввімкненою.",
+      "heading": "Matching",
+      "help": "How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.",
+      "instruction": "Краще всього — номер посилання, взятий з опису банківської операції. Якщо його немає, використовуються дата та сума. За замовчуванням стратегії пробуються в такому порядку: посилання (коли профіль має шаблони посилань), номер замовлення, сума та платник, сума та дата.",
+      "referenceLabel": "Reference patterns",
+      "referenceHint": "The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.",
+      "strategiesLabel": "Strategies, in the order tried",
+      "strategiesHelp": "Order number and reference look for the value in the transaction's description, payee or reference number. Amount and payee needs the amount plus a payee signal. Amount and date needs the amount alone, within the window. At least one must stay on.",
       "strategyPosition": "{position}. {name}",
-      "moveUp": "Перемістити {name} раніше",
-      "moveDown": "Перемістити {name} пізніше",
+      "moveUp": "Move {name} earlier",
+      "moveDown": "Move {name} later",
       "strategies": {
-        "reference": "Референс",
-        "orderId": "Номер замовлення",
-        "amount_payee": "Сума й отримувач",
-        "amount_date": "Сума й дата"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       },
-      "referenceNeeded": "Стратегію референсу ввімкнено, але шаблонів референсу немає, тож вона нічого не знайде.",
-      "referenceInLabel": "Шукати референс і номер замовлення в",
-      "referenceInHint": "Значення коротші за 4 символи ніколи не шукаються.",
+      "referenceNeeded": "The reference strategy is on but there are no reference patterns, so it will find nothing.",
+      "referenceInLabel": "Look for the reference and the order number in",
+      "referenceInHint": "Values shorter than 4 characters are never looked for.",
       "referenceIn": {
-        "description": "Опис",
-        "payee": "Ім’я отримувача",
-        "referenceNumber": "Референсний номер"
+        "description": "Description",
+        "payee": "Payee name",
+        "referenceNumber": "Reference number"
       },
-      "daysBeforeLabel": "Днів до покупки",
-      "daysAfterLabel": "Днів після покупки",
-      "daysHint": "Вікно навколо дати покупки. За замовчуванням {default}, щонайбільше {max}.",
-      "toleranceLabel": "Допуск за сумою",
-      "toleranceHint": "Наскільки банківська сума може відрізнятися від підсумку листа. За замовчуванням 0, щонайбільше {max}."
+      "daysBeforeLabel": "Days before the purchase",
+      "daysAfterLabel": "Days after the purchase",
+      "daysHint": "The window around the purchase date. Default {default}, at most {max}.",
+      "toleranceLabel": "Amount tolerance",
+      "toleranceHint": "How far the bank amount may differ from the email's total. Default 0, at most {max}."
     },
     "proposal": {
-      "heading": "Пропозиція",
-      "tagLabel": "Додавати тег до транзакцій, яким цей профіль призначає категорії",
-      "tagHelp": "Тег створюється, якщо у вас немає тега з такою назвою. Він показаний у пропозиції, і нічого не записується, доки ви її не схвалите.",
-      "tagNameLabel": "Назва тега",
-      "aiCategoriesLabel": "Дозволити ШІ вибирати категорію для позицій, яких не охоплює жодне правило",
-      "aiCategoriesHelp": "Коли позиція не підпадає під жодне правило категорій і категорії за замовчуванням немає, ШІ просять обрати категорію зі списку ваших категорій. У пропозиції вибір позначено як вибір ШІ. Якщо це вимкнено, ШІ ніколи не запитують."
+      "heading": "Proposal",
+      "tagLabel": "Add a tag to the transactions this profile categorizes",
+      "tagHelp": "The tag is created when you have none by that name. It is shown on the proposal, and nothing is written until you approve it.",
+      "tagNameLabel": "Tag name",
+      "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
+      "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
+    },
+    "problems": {
+      "feesCategory": "Категорія комісій",
+      "balanceTolerance": "Допуск балансу",
+      "fees": "Шаблони комісій"
     }
   },
   "problems": {
-    "heading": "Визначення парсера недійсне:",
+    "heading": "The profile definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
-      "definition": "Визначення",
-      "line": "{field}, рядок {line}",
-      "rule": "Правило категорії {rule}, {part}",
-      "entryPart": "{field}, запис {line}, {part}",
-      "skipLine": "Рядок для пропуску {line}",
-      "recordStep": "Крок блоку {step}",
-      "recordStepPart": "Крок блоку {step}, {part}",
-      "recordAlternative": "Крок блоку {step}, варіант {alternative}"
+      "definition": "The definition",
+      "line": "{field}, line {line}",
+      "rule": "Category rule {rule}, {part}",
+      "entryPart": "{field}, entry {line}, {part}",
+      "skipLine": "Line to skip {line}",
+      "recordStep": "Record step {step}",
+      "recordStepPart": "Record step {step}, {part}",
+      "recordAlternative": "Record step {step}, alternative {alternative}"
     },
     "fields": {
-      "orderId": "Шаблони номера замовлення",
-      "total": "Шаблони підсумку",
-      "shipping": "Шаблони доставки",
-      "discount": "Шаблони знижки",
-      "itemPatterns": "Шаблони позицій",
-      "startAfter": "Позиції починаються після",
-      "stopAt": "Позиції закінчуються на",
-      "items": "Позиції",
-      "categoryRules": "Правила категорій",
-      "rulePattern": "шаблон",
-      "ruleCategory": "категорія",
-      "defaultCategory": "Категорія за замовчуванням",
-      "shippingCategory": "Категорія доставки",
-      "skipLines": "Рядки для пропуску",
-      "record": "Блок",
+      "orderId": "Order number patterns",
+      "total": "Total patterns",
+      "shipping": "Shipping patterns",
+      "discount": "Discount patterns",
+      "itemPatterns": "Item patterns",
+      "startAfter": "Items start after",
+      "stopAt": "Items stop at",
+      "items": "Line items",
+      "categoryRules": "Category rules",
+      "rulePattern": "pattern",
+      "ruleCategory": "category",
+      "defaultCategory": "Default category",
+      "shippingCategory": "Shipping category",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns",
+      "skipLines": "Lines to skip",
+      "record": "Record",
       "label": "label",
       "value": "value",
       "within": "within",
       "line": "line",
       "optional": "optional",
-      "paid": "Шаблони сплаченого",
-      "payee": "Шаблони продавця",
-      "requireLine": "Обов’язкові рядки",
-      "skipIfLine": "Рядки, через які лист пропускається",
-      "waitIfLine": "Рядки, через які лист утримується",
-      "source": "Джерело рядків",
-      "single": "Одна позиція",
-      "singleName": "Назва однієї позиції",
-      "joinWrapped": "Об’єднувати перенесені рядки",
+      "paid": "Paid patterns",
+      "payee": "Merchant patterns",
+      "requireLine": "Required lines",
+      "skipIfLine": "Lines that skip the email",
+      "waitIfLine": "Lines that hold the email",
+      "source": "Lines source",
+      "single": "Single item",
+      "singleName": "Single item name",
+      "joinWrapped": "Join wrapped lines",
       "ruleField": "field",
-      "reference": "Шаблони референсу",
-      "match": "Розділ зіставлення",
-      "matchBy": "Стратегії зіставлення",
-      "matchReferenceIn": "Поля, у яких шукається референс",
-      "matchDaysBefore": "Днів до покупки",
-      "matchDaysAfter": "Днів після покупки",
-      "matchTolerance": "Допуск за сумою",
-      "tag": "Тег",
-      "aiCategories": "Категорії від ШІ"
+      "reference": "Reference patterns",
+      "match": "The matching section",
+      "matchBy": "Matching strategies",
+      "matchReferenceIn": "Fields the reference is looked for in",
+      "matchDaysBefore": "Days before the purchase",
+      "matchDaysAfter": "Days after the purchase",
+      "matchTolerance": "Amount tolerance",
+      "tag": "Tag",
+      "aiCategories": "AI categories"
     },
     "codes": {
-      "not_object": "не є дійсним визначенням",
-      "unknown_key": "не належить до того, що може бути в парсері",
-      "unsupported_version": "належить до версії, яку цей сервер не читає (використовуйте версію 2)",
-      "invalid_type": "містить значення неправильного типу",
-      "empty": "не має бути порожнім",
-      "too_many": "містить забагато записів (не більше {max})",
-      "too_long": "задовге (не більше {max} символів)",
-      "control_character": "містить керівний символ",
-      "malformed_capture": "містить недійсне захоплення у фігурних дужках",
-      "too_many_captures": "містить забагато захоплень",
-      "duplicate_capture": "двічі використовує одне й те саме ім’я захоплення",
-      "capture_not_allowed": "використовує ім’я захоплення, яке це поле не приймає",
-      "capture_missing": "не містить захоплення, потрібного цьому полю",
-      "capture_conflict": "захоплює і суму рядка, і ціну за одиницю. Залиште щось одне.",
-      "invalid_uuid": "не є дійсною категорією",
-      "out_of_range": "має бути цілим числом від 1 до {max}",
-      "items_patterns_and_record": "містить і patterns, і record. Залиште щось одне.",
-      "items_shape_missing": "потребує patterns або record",
-      "skip_lines_need_record": "можна використовувати лише разом із record",
-      "record_name_missing": "має захоплювати {capture} в одному зі своїх кроків",
-      "items_single_conflict": "містить одну позицію поряд із patterns або record. Залиште щось одне.",
-      "join_wrapped_needs_patterns": "працює лише із шаблонами позицій",
-      "invalid_value": "містить значення, якого це поле не приймає",
-      "duplicate_entry": "двічі містить один і той самий запис",
-      "reference_field_missing": "потребує шаблонів референсу (стратегію референсу ввімкнено)",
-      "out_of_range_days": "має бути цілим числом від 0 до {max}",
-      "out_of_range_tolerance": "має бути сумою від 0.00 до {max}"
+      "not_object": "is not a valid definition",
+      "unknown_key": "is not something a profile can have",
+      "unsupported_version": "is a version this server does not read (use version 2)",
+      "invalid_type": "has the wrong kind of value",
+      "empty": "must not be empty",
+      "too_many": "has too many entries (at most {max})",
+      "too_long": "is too long (at most {max} characters)",
+      "control_character": "contains a control character",
+      "malformed_capture": "has a capture in braces that is not valid",
+      "too_many_captures": "has too many captures",
+      "duplicate_capture": "uses the same capture name twice",
+      "capture_not_allowed": "uses a capture name this field does not accept",
+      "capture_missing": "is missing a capture this field needs",
+      "capture_conflict": "captures both the line total and the unit price. Use one of them.",
+      "invalid_uuid": "is not a valid category",
+      "out_of_range": "must be a whole number from 1 to {max}",
+      "items_patterns_and_record": "has both patterns and a record. Use one of them.",
+      "items_shape_missing": "needs either patterns or a record",
+      "skip_lines_need_record": "can only be used together with a record",
+      "record_name_missing": "must capture {capture} in one of its steps",
+      "items_single_conflict": "has a single item beside patterns or a record. Use one of them.",
+      "join_wrapped_needs_patterns": "only works with item patterns",
+      "invalid_value": "has a value this field does not accept",
+      "duplicate_entry": "lists the same entry twice",
+      "reference_field_missing": "needs reference patterns (the reference strategy is on)",
+      "out_of_range_days": "must be a whole number from 0 to {max}",
+      "out_of_range_tolerance": "must be an amount from 0.00 to {max}"
     }
   },
   "test": {
-    "heading": "Перевірка на збереженому листі",
-    "help": "Читає збережений лист за шаблонами вище, збереженими чи ні, і показує, що буде знайдено та з якою транзакцією він збігся б. Нічого не записується.",
-    "loadFailed": "Не вдалося завантажити збережені листи, тому перевіряти поки нічого.",
-    "noReceipts": "Збережених листів поки немає. Спершу опитайте поштову скриньку.",
-    "receiptLabel": "Лист",
-    "choosePlaceholder": "Виберіть лист",
-    "receiptOption": "{subject} від {sender} ({date})",
-    "button": "Перевірити",
-    "failed": "Перевірка не вдалася",
-    "matchHeading": "Збіг із транзакцією",
-    "matched": "Буде прив’язано транзакцію від {date} на суму {amount} ({payee}), знайдену за критерієм: {how}.",
+    "heading": "Test against a stored email",
+    "help": "Reads a stored email with the patterns above, saved or not, and shows what would be found and which transaction it would match. Nothing is written.",
+    "loadFailed": "The stored emails could not be loaded, so there is nothing to test against yet.",
+    "noReceipts": "No emails are stored yet. Poll the mailbox first.",
+    "receiptLabel": "Email",
+    "choosePlaceholder": "Choose an email",
+    "receiptOption": "{subject} from {sender} ({date})",
+    "button": "Test",
+    "failed": "The test failed",
+    "matchHeading": "Transaction match",
+    "matched": "Would link the transaction of {date} for {amount} ({payee}), found by {how}.",
     "matchKinds": {
-      "order_id": "номер замовлення",
-      "amount_payee": "сума й отримувач",
-      "amount_only": "сума",
-      "manual": "ваш вибір",
-      "reference": "референс",
-      "amount_date": "сума й дата"
+      "order_id": "order number",
+      "amount_payee": "amount and payee",
+      "amount_only": "amount",
+      "manual": "your choice",
+      "reference": "reference",
+      "amount_date": "amount and date"
     },
-    "noPayee": "немає отримувача",
-    "ambiguous": "{count, plural, one {# транзакція підходить} few {# транзакції підходять} many {# транзакцій підходять} other {# транзакції підходять}} однаково добре, тому жодну не буде прив’язано, доки ви не виберете.",
-    "unmatched": "Жодна транзакція не збіглася з-поміж {count, plural, one {# кандидата} few {# кандидатів} many {# кандидатів} other {# кандидата}}.",
-    "jsonInvalid": "JSON недійсний, тому поки що нічого перевіряти.",
+    "noPayee": "no payee",
+    "ambiguous": "{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.",
+    "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.",
+    "jsonInvalid": "The JSON is not valid, so there is nothing to test yet.",
     "outcome": {
-      "not_applicable": "Цей парсер не читатиме цей лист: жодного з його обов’язкових рядків у листі немає, тож буде випробувано наступний парсер для цього відправника.",
-      "skip_line": "Цей парсер відкладе цей лист убік: у ньому є рядок, за яким лист пропускається.",
-      "wait_line": "Цей парсер утримає цей лист: рядок повідомляє, що замовлення ще не остаточне, тому лист буде прочитано пізніше ще раз.",
-      "no_html": "Цей парсер читає HTML-частину листа, а в цьому листі її немає, тому його буде позначено як нечитабельний (немає HTML)."
+      "not_applicable": "This profile would not read this email: none of its required lines is in it, so the next profile for the sender would be tried.",
+      "skip_line": "This profile would set this email aside: a line it skips on is in it.",
+      "wait_line": "This profile would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
-      "heading": "Збіг за",
-      "none": "З цього листа не прочитано жодного значення.",
+      "heading": "Matched by",
+      "none": "No value was read from this email.",
       "fields": {
-        "orderId": "Номер замовлення",
-        "total": "Разом",
-        "paid": "Сплачено",
-        "shipping": "Доставка",
-        "discount": "Знижка",
-        "payee": "Продавець",
-        "requireLine": "Обов’язковий рядок",
-        "skipIfLine": "Рядок пропуску",
-        "waitIfLine": "Рядок утримання",
-        "reference": "Референс"
+        "orderId": "Order number",
+        "total": "Total",
+        "paid": "Paid",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "payee": "Merchant",
+        "requireLine": "Required line",
+        "skipIfLine": "Skip line",
+        "waitIfLine": "Wait line",
+        "reference": "Reference"
       },
-      "entryLine": "запис {entry} ({pattern}), рядок {line}: {text}",
-      "entrySubject": "запис {entry} ({pattern}), тема: {text}",
-      "labelled": "запис {entry}, мітка {label} у рядку {labelLine} ({labelText}), значення {pattern} у рядку {line}: {text}",
-      "item": "Позиція {number}",
-      "itemLine": "{pattern}, рядок {line}: {text}"
+      "entryLine": "entry {entry} ({pattern}), line {line}: {text}",
+      "entrySubject": "entry {entry} ({pattern}), the subject: {text}",
+      "labelled": "entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}",
+      "item": "Item {number}",
+      "itemLine": "{pattern}, line {line}: {text}"
     },
     "trace": {
-      "heading": "Що розглядало зіставлення",
-      "window": "Транзакції з {from} по {to} ({before} дн. до покупки, {after} дн. після): розглянуто {considered, plural, one {# транзакцію} few {# транзакції} many {# транзакцій} other {# транзакції}}.",
-      "tolerance": "Сума може відрізнятися на {amount}.",
+      "heading": "What the matcher looked at",
+      "window": "Transactions from {from} to {to} ({before} days before, {after} days after the purchase): {considered, plural, one {# considered} other {# considered}}.",
+      "tolerance": "The amount may differ by {amount}.",
       "attempt": "{position}. {name}",
-      "kept": "{count, plural, =0 {не залишила жодної} one {залишила # транзакцію} few {залишила # транзакції} many {залишила # транзакцій} other {залишила # транзакції}}",
-      "decided": "Вирішила",
+      "kept": "{count, plural, =0 {kept none} one {kept # transaction} other {kept # transactions}}",
+      "decided": "Decided",
       "transaction": "{date}, {amount}, {payee}",
-      "noPayee": "немає отримувача",
+      "noPayee": "no payee",
       "strategies": {
-        "reference": "Референс",
-        "orderId": "Номер замовлення",
-        "amount_payee": "Сума й отримувач",
-        "amount_date": "Сума й дата"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       }
     }
   },
   "parsed": {
-    "notFound": "Не знайдено",
-    "noCategory": "Без категорії",
-    "unknownCategory": "Невідома категорія",
-    "categoryUnavailable": "Категорії не завантажено",
-    "noItems": "Позицій не прочитано.",
-    "orderId": "Номер замовлення",
-    "total": "Разом",
-    "shipping": "Доставка",
-    "discount": "Знижка",
+    "notFound": "Not found",
+    "noCategory": "No category",
+    "unknownCategory": "Unknown category",
+    "categoryUnavailable": "Categories not loaded",
+    "noItems": "No line items were read.",
+    "orderId": "Order number",
+    "total": "Total",
+    "shipping": "Shipping",
+    "discount": "Discount",
     "columns": {
-      "item": "Позиція",
-      "qty": "К-сть",
-      "amount": "Сума",
-      "category": "Категорія"
+      "item": "Item",
+      "qty": "Qty",
+      "amount": "Amount",
+      "category": "Category"
     },
-    "complete": "Прочитано повністю",
-    "incomplete": "Прочитано не повністю",
+    "complete": "Read completely",
+    "incomplete": "Not read completely",
     "reasons": {
-      "no_total": "У листі не вказано підсумку.",
-      "no_items": "Позицій не знайдено.",
-      "items_unbalanced": "Сума позицій не сходиться з підсумком.",
-      "items_uncategorized": "У деяких позицій немає категорії.",
-      "shipping_uncategorized": "У рядка доставки немає категорії.",
-      "item_amount_missing": "У позиції немає суми, а в листі немає єдиного підсумку, який можна було б їй призначити."
+      "no_total": "The email states no total.",
+      "no_items": "No line items were found.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "readByAi": "Прочитано ШІ",
-    "readFromStructuredData": "Прочитано зі структурованих даних",
-    "paid": "Сплачено",
-    "payee": "Продавець",
-    "reference": "Референс",
-    "categoryByAi": "ШІ"
+    "readByAi": "Read by the AI",
+    "readFromStructuredData": "Read from structured data",
+    "paid": "Paid",
+    "payee": "Merchant",
+    "reference": "Reference",
+    "categoryByAi": "AI"
   },
   "state": {
-    "pending": "Очікує прочитання",
-    "skipped": "Пропущено",
-    "no_parser": "Немає парсера",
-    "parse_failed": "Не вдалося прочитати",
-    "unmatched": "Транзакцію не знайдено",
-    "ambiguous": "Підходить кілька транзакцій",
-    "review_conflict": "Відкрито інший запит",
-    "ignored": "Ігнорується",
-    "proposed": "Очікує схвалення",
-    "applied": "Застосовано",
-    "dismissed": "Відхилено",
-    "expired": "Закінчився строк",
-    "pending_ai": "Очікує ШІ",
-    "request_missing": "Запит відсутній"
+    "pending": "Waiting to be read",
+    "skipped": "Skipped",
+    "no_parser": "No profile",
+    "parse_failed": "Could not be read",
+    "unmatched": "No transaction found",
+    "ambiguous": "Several transactions fit",
+    "review_conflict": "Another request is open",
+    "ignored": "Ignored",
+    "proposed": "Waiting for approval",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "expired": "Expired",
+    "pending_ai": "Waiting for the AI",
+    "request_missing": "Request missing"
   },
   "receipts": {
-    "loading": "Завантаження листів",
+    "loading": "Loading emails",
     "links": {
-      "reviewInbox": "Відкрити вхідні перевірки ШІ",
-      "settings": "Налаштування поштової скриньки"
+      "reviewInbox": "Open the AI review inbox",
+      "settings": "Mailbox settings"
     },
     "filter": {
-      "label": "Фільтр за станом",
-      "all": "Усі",
-      "pending": "Очікує прочитання",
-      "skipped": "Пропущено",
-      "no_parser": "Немає парсера",
-      "parse_failed": "Не вдалося прочитати",
-      "unmatched": "Транзакцію не знайдено",
-      "ambiguous": "Підходить кілька транзакцій",
-      "review_conflict": "Відкрито інший запит",
-      "review": "На перевірці",
-      "ignored": "Ігнорується"
+      "label": "Filter by state",
+      "option": "{label} ({count})",
+      "all": "All",
+      "pending": "Waiting to be read",
+      "skipped": "Skipped",
+      "no_parser": "No profile",
+      "parse_failed": "Could not be read",
+      "unmatched": "No transaction found",
+      "ambiguous": "Several transactions fit",
+      "review_conflict": "Another request is open",
+      "review": "In review",
+      "ignored": "Ignored"
     },
     "domainFilter": {
-      "label": "Домен відправника",
-      "all": "Усі відправники",
+      "label": "Sender domain",
+      "all": "All senders",
       "option": "{domain} ({count})",
-      "help": "Показано листи з домену {domain} та його піддоменів. Виберіть кілька з них, щоб скласти один парсер для відправника."
+      "unknown": "The sender counts could not be loaded.",
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
-      "select": "Вибрати",
-      "received": "Отримано",
-      "email": "Лист",
-      "transaction": "Транзакція",
-      "state": "Стан",
-      "actions": "Дії"
+      "select": "Select",
+      "received": "Received",
+      "email": "Email",
+      "transaction": "Transaction",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "guide": {
+      "heading": "How to create a profile",
+      "buttonName": "Prepare a profile with AI",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "немає отримувача",
-    "noTransaction": "Поки немає",
+    "noPayee": "no payee",
+    "noTransaction": "None yet",
     "error": {
-      "title": "Не вдалося завантажити листи",
-      "body": "Запит не виконано, тому про ваші листи поки нічого не відомо. Повторіть спробу.",
-      "retry": "Спробувати ще раз"
+      "title": "The emails could not be loaded",
+      "body": "The request failed, so nothing is known about your emails yet. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "Немає листів",
-      "body": "Підтвердження замовлень з’являться тут, щойно поштову скриньку буде прочитано.",
-      "filteredTitle": "Немає листів у цьому стані",
-      "filteredBody": "Виберіть інший стан, щоб побачити решту.",
-      "noMailboxBody": "Поштову скриньку ще не підключено. Підключіть її, щоб почати читати підтвердження замовлень.",
-      "connectButton": "Підключити поштову скриньку"
+      "title": "No emails",
+      "body": "Order confirmations appear here once the mailbox has been read.",
+      "filteredTitle": "No emails in this state",
+      "filteredBody": "Choose another state to see the rest.",
+      "noMailboxBody": "No mailbox is connected yet. Connect one to start reading order confirmations.",
+      "connectButton": "Connect a mailbox"
     },
     "actions": {
-      "view": "Переглянути",
-      "reprocess": "Обробити знову",
-      "link": "Вибрати транзакцію",
-      "recognizeAi": "Розпізнати за допомогою ШІ",
-      "draftParser": "Скласти парсер за допомогою ШІ",
-      "createParser": "Створити парсер",
-      "ignore": "Ігнорувати"
+      "view": "View",
+      "reprocess": "Reprocess",
+      "link": "Choose transaction",
+      "recognizeAi": "Recognize with AI",
+      "approve": "Approve",
+      "draftParser": "Prepare a profile with AI",
+      "createParser": "Create profile",
+      "ignore": "Ignore"
     },
     "toasts": {
-      "reprocessed": "Лист оброблено знову",
-      "reprocessFailed": "Не вдалося обробити лист знову",
-      "ignored": "Лист ігнорується",
-      "ignoreFailed": "Не вдалося проігнорувати лист",
-      "deleted": "Лист видалено",
-      "deleteFailed": "Не вдалося видалити лист"
+      "approved": "Пропозицію затверджено",
+      "approveFailed": "Не вдалося затвердити пропозицію",
+      "reprocessed": "Email reprocessed",
+      "reprocessFailed": "Could not reprocess the email",
+      "ignored": "Email ignored",
+      "ignoreFailed": "Could not ignore the email",
+      "deleted": "Email deleted",
+      "deleteFailed": "Could not delete the email"
     },
     "ignoreDialog": {
-      "title": "Ігнорувати цей лист?",
-      "message": "Лист {subject} нічого не запропонує, а його відкритий запит на перевірку буде відхилено.",
-      "confirm": "Ігнорувати"
+      "title": "Ignore this email?",
+      "message": "The email {subject} will propose nothing, and its open review request will be dismissed.",
+      "confirm": "Ignore"
     },
     "deleteDialog": {
-      "title": "Видалити цей лист?",
-      "message": "Збережений лист {subject} буде видалено, а його відкритий запит на перевірку відхилено. Повідомлення в поштовій скриньці не зачіпається, і наступне опитування не завантажить його знову."
+      "title": "Delete this email?",
+      "message": "The stored email {subject} will be deleted and its open review request dismissed. The message in the mailbox is not touched, and a later poll will not fetch it again."
     },
     "selection": {
-      "label": "Вибрані листи",
-      "select": "Вибрати: {subject}",
-      "count": "{count, plural, one {Вибрано # лист} few {Вибрано # листи} many {Вибрано # листів} other {Вибрано # листа}} (не більше {max})",
-      "draftButton": "Скласти парсер за допомогою ШІ ({count})",
-      "clear": "Скасувати вибір",
-      "differentSenders": "Вибрані листи надійшли від різних відправників ({domains}). Парсер читає листи одного відправника, тому виберіть листи від одного відправника."
+      "label": "Selected emails",
+      "select": "Select {subject}",
+      "selectAll": "Вибрати всі листи у цьому списку (максимум {max})",
+      "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
+      "draftButton": "Prepare a profile with AI ({count})",
+      "clear": "Clear selection",
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
+      "guide": {
+        "heading": "Як створити профіль",
+        "buttonName": "Підготувати профіль за допомогою ШІ",
+        "stepSender": "Виберіть відправника з хмари доменів відправників.",
+        "stepTransaction": "Дайте кожному його листу операцію, яку вона оплатила: відкрийте лист та виберіть операцію.",
+        "stepSelect": "Позначте ці листи.",
+        "stepPrepare": "Натисніть {button}. Помічник напише профіль, і ви протестуєте та затвердите його в профілях."
+      }
     },
     "draft": {
-      "failed": "Не вдалося почати складання парсера",
-      "queued": "У черзі: запит очікує на агента у вхідних перевірках ШІ. Зараз немає асистента, який міг би відповісти.",
-      "handoffFailed": "Запит поставлено в чергу, але листи не вдалося відкрити в чаті. Він очікує на агента у вхідних перевірках ШІ.",
-      "inboxLink": "Відкрити вхідні перевірки ШІ",
-      "opened": "Чат відкрито з прикріпленими листами. Прочитайте повідомлення й натисніть «Надіслати».",
-      "chatPrompt": "Склади парсер чеків електронної пошти для {count, plural, one {цього листа із замовленням} few {цих # листів із замовленнями} many {цих # листів із замовленнями} other {цих # листа із замовленням}} від {domain}. Візьми в роботу запит на перевірку ШІ {requestId}, перевір свій парсер на кожному доданому листі за допомогою інструмента email_receipt_parsers, виправляй, доки кожен лист не прочитається повністю, а потім збережи його як чернетку для запиту {requestId}."
+      "failed": "Could not start drafting a profile",
+      "queued": "Queued: the request waits in the AI review inbox for an agent. No assistant is available to answer now.",
+      "handoffFailed": "The request is queued, but the emails could not be opened in the chat. It waits in the AI review inbox for an agent.",
+      "inboxLink": "Open the AI review inbox",
+      "opened": "Opened the chat with the emails attached. Read the message and press Send.",
+      "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
+    },
+    "list": {
+      "filter": {
+        "unknown": "Не вдалося завантажити кількість відправників."
+      }
+    },
+    "row": {
+      "approve": "Затвердити",
+      "draftParser": "Підготувати профіль за допомогою ШІ",
+      "createParser": "Створити профіль"
+    },
+    "state": {
+      "filter": {
+        "option": "{label} ({count})"
+      }
     }
   },
   "detail": {
-    "title": "Чек з електронної пошти",
-    "loading": "Завантаження листа",
+    "title": "Email receipt",
+    "loading": "Loading the email",
     "error": {
-      "title": "Не вдалося завантажити лист",
-      "body": "Запит не виконано. Повторіть спробу.",
-      "retry": "Спробувати ще раз"
+      "title": "The email could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
-    "from": "Від",
-    "received": "Отримано",
-    "forwardedBy": "Переслав",
-    "originalSent": "Надіслано магазином",
-    "subject": "Тема",
-    "state": "Стан",
-    "parser": "Парсер",
-    "noParser": "Немає",
-    "structuredSource": "Структуровані дані",
-    "matchedBy": "Знайдено за",
+    "from": "From",
+    "received": "Received",
+    "forwardedBy": "Forwarded by",
+    "originalSent": "Sent by the shop",
+    "subject": "Subject",
+    "state": "State",
+    "parser": "Profile",
+    "noParser": "None",
+    "structuredSource": "Structured data",
+    "matchedBy": "Matched by",
     "matchKinds": {
-      "order_id": "Номер замовлення",
-      "amount_payee": "Сума й отримувач",
-      "amount_only": "Сума",
-      "manual": "Ваш вибір",
-      "reference": "Референс",
-      "amount_date": "Сума й дата"
+      "order_id": "Order number",
+      "amount_payee": "Amount and payee",
+      "amount_only": "Amount",
+      "manual": "Your choice",
+      "reference": "Reference",
+      "amount_date": "Amount and date"
     },
-    "transaction": "Транзакція",
+    "transaction": "Transaction",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "немає отримувача",
-    "viewTransaction": "Переглянути транзакцію",
-    "noTransaction": "Поки немає",
+    "noPayee": "no payee",
+    "viewTransaction": "View transaction",
+    "noTransaction": "None yet",
     "reasons": {
-      "too_large": "Лист перевищує обмеження за розміром, тому його збережено без прочитання.",
-      "undecodable": "Лист не вдалося декодувати, тому його збережено без прочитання.",
-      "draft_failed": "ШІ не зміг скласти парсер для цього відправника.",
-      "parser_invalid": "Парсер для цього відправника недійсний. Відредагуйте його в налаштуваннях парсерів.",
-      "no_total": "Парсер не знайшов у цьому листі підсумку.",
-      "no_items": "Парсер не знайшов позицій.",
-      "items_unbalanced": "Сума позицій не сходиться з підсумком.",
-      "items_uncategorized": "У деяких позицій немає категорії.",
-      "shipping_uncategorized": "У рядка доставки немає категорії.",
-      "amount_differs": "Прочитаний підсумок відрізняється від суми транзакції, тому пропонується лише опис.",
-      "proposal_fallback": "Пропозицію з позиціями відхилено, тому пропонується лише опис.",
-      "nothing_to_propose": "Лист нічого не додає до цієї транзакції.",
-      "proposal_refused": "Пропозицію відхилено, тому нічого не запропоновано.",
-      "skip_line": "Знайдено рядок, за яким цей парсер пропускає лист, тому лист проігноровано.",
-      "wait_line": "Рядок повідомляє, що замовлення ще не остаточне, тому лист буде прочитано пізніше ще раз.",
-      "no_html": "Цей парсер читає HTML-частину листа, а в цьому листі її немає.",
-      "schema_org": "Парсер не знадобився: замовлення прочитано зі структурованих даних (schema.org) у листі.",
-      "item_amount_missing": "У позиції немає суми, а в листі немає єдиного підсумку, який можна було б їй призначити."
+      "too_large": "The email is larger than the size limit, so it was stored without being read.",
+      "undecodable": "The email could not be decoded, so it was stored without being read.",
+      "draft_failed": "The AI could not draft a profile for this sender.",
+      "parser_invalid": "The profile for this sender is not valid. Edit it in the profile settings.",
+      "no_total": "The profile found no total in this email.",
+      "no_items": "The profile found no line items.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "amount_differs": "The parsed total differs from the transaction amount, so only a description is proposed.",
+      "proposal_fallback": "The itemized proposal was refused, so only a description is proposed.",
+      "nothing_to_propose": "The email adds nothing to this transaction.",
+      "proposal_refused": "The proposal was refused, so nothing was proposed.",
+      "skip_line": "A line this profile skips on was found, so the email was ignored.",
+      "wait_line": "A line says the order is not final yet, so the email will be read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none.",
+      "schema_org": "No profile was needed: the order was read from the structured data (schema.org) in the email.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "reasonUnknown": "Причина: {reason}",
-    "requestNote": "Запит на перевірку ({state}): {note}",
-    "parsedHeading": "Що прочитав парсер",
-    "notParsed": "З цього листа поки нічого не прочитано.",
-    "candidatesHeading": "Підхожі транзакції",
-    "candidatesHelp": "Цьому листу однаково добре підходить кілька транзакцій. Виберіть ту, яку він оплатив.",
-    "linkButton": "Прив’язати до цієї транзакції",
-    "linked": "Лист прив’язано до транзакції",
-    "linkFailed": "Не вдалося прив’язати лист",
-    "bodyHeading": "Лист",
-    "textLabel": "Текст листа",
-    "noText": "У листі немає тексту.",
+    "reasonUnknown": "Reason: {reason}",
+    "requestNote": "Review request ({state}): {note}",
+    "parsedHeading": "What the profile read",
+    "notParsed": "Nothing has been read from this email yet.",
+    "candidatesHeading": "Transactions that fit",
+    "candidatesHelp": "Several transactions fit this email equally well. Choose the one it paid for.",
+    "linkButton": "Link to this transaction",
+    "linked": "Email linked to the transaction",
+    "linkFailed": "Could not link the email",
+    "bodyHeading": "Email",
+    "textLabel": "Text of the email",
+    "noText": "The email has no text.",
     "bodyView": {
-      "label": "Показати лист як",
+      "label": "Show the email as",
       "html": "HTML",
-      "text": "Текст",
-      "lines": "Рядки"
+      "text": "Text",
+      "lines": "Lines"
     },
-    "remoteImagesNote": "Віддалені зображення не завантажуються.",
-    "htmlFrameTitle": "Лист у форматуванні відправника",
+    "remoteImagesNote": "Remote images are not loaded.",
+    "htmlFrameTitle": "The email as its sender formatted it",
     "structured": {
-      "heading": "Структуровані дані (schema.org)",
-      "help": "Замовлення або рахунок, які лист містить як розмітку для поштових клієнтів. Читається лише тоді, коли жоден парсер не підходить або парсер не знаходить підсумку.",
-      "found": "Знайдено",
-      "notFound": "Не знайдено",
-      "notFoundHelp": "У листі немає розмітки замовлення, або в ній немає ні підсумку, ні позицій.",
-      "seller": "Продавець",
-      "currency": "Валюта",
-      "orderDate": "Дата замовлення",
-      "unitPrice": "Ціна за одиницю"
+      "heading": "Structured data (schema.org)",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profile applies or the profile finds no total.",
+      "found": "Found",
+      "notFound": "Not found",
+      "notFoundHelp": "The email carries no order markup, or it states no total and no line items.",
+      "seller": "Seller",
+      "currency": "Currency",
+      "orderDate": "Order date",
+      "unitPrice": "Unit price"
     },
     "lines": {
-      "help": "Рядки, з якими зіставляються шаблони парсера, пронумеровані так само, як їх нумерує список «Збіг за» у тесті.",
-      "sourceLabel": "Джерело рядків",
+      "help": "The lines a profile's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "sourceLabel": "Lines source",
       "sources": {
-        "text": "Текст",
+        "text": "Text",
         "html": "HTML"
       },
-      "noHtml": "У цьому листі немає HTML-частини, тому парсер, який читає HTML, не може його прочитати.",
-      "capped": "Прочитано лише перші {max} рядків.",
-      "empty": "Немає рядків.",
-      "listLabel": "Пронумеровані рядки листа"
+      "noHtml": "This email has no HTML part, so a profile that reads HTML cannot read it.",
+      "capped": "Only the first {max} lines are read.",
+      "empty": "No lines.",
+      "listLabel": "Numbered lines of the email"
     }
   },
   "picker": {
-    "heading": "Виберіть транзакцію",
-    "help": "Жодну транзакцію не знайдено автоматично. Ось ваші транзакції в діапазоні дат нижче, який спочатку охоплює дні навколо покупки. Виберіть ту, яку він оплатив, або змініть дати, щоб шукати далі.",
-    "fromLabel": "Від",
-    "toLabel": "До",
-    "searchLabel": "Пошук",
-    "searchPlaceholder": "Отримувач, опис або сума",
-    "searchButton": "Знайти",
-    "loading": "Завантаження транзакцій",
-    "error": "Не вдалося завантажити транзакції.",
-    "retry": "Спробувати ще раз",
-    "empty": "У цьому періоді у вас немає транзакцій, які можна прив’язати. Щоб шукати далі, розширте дати вище.",
-    "emptySearch": "У цьому періоді немає транзакцій, що відповідають пошуку. Можна розширити дати вище.",
-    "rangeReversed": "Дата «Від» пізніша за дату «До».",
-    "rangeIncomplete": "Введіть обидві дати, щоб показати транзакції.",
+    "heading": "Choose the transaction",
+    "help": "No transaction was matched automatically. These are your transactions in the date range below, which starts as the days around the purchase. Choose the one it paid for, or change the dates to look further.",
+    "fromLabel": "From",
+    "toLabel": "To",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Payee, description or amount",
+    "searchButton": "Search",
+    "loading": "Loading transactions",
+    "error": "The transactions could not be loaded.",
+    "retry": "Try again",
+    "empty": "You have no transactions in this period that can be linked. You can widen the dates above to look further.",
+    "emptySearch": "No transaction in this period matches the search. You can widen the dates above.",
+    "rangeReversed": "The From date is after the To date.",
+    "rangeIncomplete": "Enter both dates to list transactions.",
     "row": "{date}, {amount}, {payee}",
-    "noPayee": "немає отримувача",
-    "linkButton": "Прив’язати",
-    "hasMore": "Показано лише перші {count}. Скористайтеся пошуком, щоб звузити список.",
+    "noPayee": "no payee",
+    "linkButton": "Link",
+    "hasMore": "Only the first {count} are shown. Use the search to narrow the list.",
     "ai": {
-      "heading": "Виберіть транзакцію для ШІ",
-      "help": "Ось ваші транзакції в діапазоні дат нижче, який спочатку охоплює дні навколо покупки. Виберіть ту, яку ШІ має розбити за товарами з листа, або змініть дати, щоб шукати далі.",
-      "linkButton": "Використати цю транзакцію"
+      "heading": "Choose the transaction for the AI",
+      "help": "These are your transactions in the date range below, which starts as the days around the purchase. Choose the one the AI should split by the products in the email, or change the dates to look further.",
+      "linkButton": "Use this transaction"
     }
   },
   "callback": {
-    "title": "Підключення поштової скриньки",
-    "connecting": "Завершення підключення",
+    "title": "Connecting the mailbox",
+    "connecting": "Finishing the connection",
     "toasts": {
-      "connected": "Поштову скриньку підключено"
+      "connected": "Mailbox connected"
     },
     "success": {
-      "title": "Поштову скриньку підключено",
-      "body": "Підключено як {username}. Повертаємося до налаштувань."
+      "title": "Mailbox connected",
+      "body": "Connected as {username}. Returning to the settings."
     },
     "providerError": {
-      "title": "Вхід не завершено",
-      "withDescription": "Провайдер повідомив: {error}. {description}",
-      "withoutDescription": "Провайдер повідомив: {error}."
+      "title": "The sign-in was not completed",
+      "withDescription": "The provider reported: {error}. {description}",
+      "withoutDescription": "The provider reported: {error}."
     },
     "missingParameters": {
-      "title": "Цю сторінку відкрито без результату входу",
-      "body": "Почніть спочатку з налаштувань чеків з електронної пошти та натисніть одну з кнопок «Підключити»."
+      "title": "This page was opened without a sign-in result",
+      "body": "Start again from the email receipts settings and use one of the Connect buttons."
     },
     "failed": {
-      "title": "Не вдалося підключити поштову скриньку",
-      "fallback": "Сервер відхилив підключення. Почніть спочатку з налаштувань чеків з електронної пошти."
+      "title": "The mailbox could not be connected",
+      "fallback": "The server refused the connection. Start again from the email receipts settings."
     },
-    "backLink": "Назад до налаштувань чеків з електронної пошти"
+    "backLink": "Back to the email receipts settings"
   },
   "recognize": {
-    "title": "Розпізнати за допомогою ШІ",
+    "title": "Recognize with AI",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "немає отримувача",
-    "confirmMessage": "Цей лист прив’язано до транзакції {summary}. ШІ прочитає лист і запропонує, як розбити цю транзакцію за товарами. Продовжити з цією транзакцією?",
-    "confirm": "Розпізнати за допомогою ШІ",
-    "chooseOther": "Вибрати іншу транзакцію",
-    "candidatesHeading": "Якої транзакції стосується цей лист?",
-    "candidatesHelp": "Цьому листу відповідає кілька транзакцій. Виберіть ту, яку має використати ШІ, або знайдіть іншу.",
-    "candidatesLoading": "Завантаження відповідних транзакцій",
-    "candidatesError": "Не вдалося завантажити відповідні транзакції.",
-    "retry": "Спробувати знову",
-    "useButton": "Використати цю транзакцію",
-    "searchOther": "Шукати інші транзакції",
-    "back": "Назад",
-    "failed": "Не вдалося запустити розпізнавання",
-    "queued": "У черзі: зараз немає асистента ШІ, який міг би відповісти, тому запит очікує на агента у вхідних перевірках ШІ (наприклад, через MCP).",
-    "handoffFailed": "Запит поставлено в чергу, але лист не вдалося відкрити в чаті. Він очікує на агента у вхідних перевірках ШІ (наприклад, через MCP).",
-    "inboxLink": "Відкрити вхідні перевірки ШІ",
-    "opened": "Чат відкрито з прикріпленим листом. Прочитайте повідомлення й натисніть «Надіслати».",
-    "chatPrompt": "Розпізнай товари, кількості та ціни в доданому листі із замовленням і розбий мою транзакцію від {date} ({payee}, {amount}) за товарами, указавши категорію для кожного. Візьми в роботу запит на перевірку ШІ {requestId} і надішли для нього свою пропозицію."
+    "noPayee": "no payee",
+    "confirmMessage": "This email is linked to the transaction {summary}. The AI will read the email and propose how to split this transaction by product. Continue with this transaction?",
+    "confirm": "Recognize with AI",
+    "chooseOther": "Choose another transaction",
+    "candidatesHeading": "Which transaction did the email pay for?",
+    "candidatesHelp": "Several transactions fit this email. Choose the one the AI should use, or search for another.",
+    "candidatesLoading": "Loading the transactions that fit",
+    "candidatesError": "The transactions that fit could not be loaded.",
+    "retry": "Try again",
+    "useButton": "Use this transaction",
+    "searchOther": "Search other transactions",
+    "back": "Back",
+    "failed": "Could not start the recognition",
+    "queued": "Queued: no AI assistant is available to answer now, so the request waits in the AI review inbox for an agent (for example over MCP).",
+    "handoffFailed": "The request is queued, but the email could not be opened in the chat. It waits in the AI review inbox for an agent (for example over MCP).",
+    "inboxLink": "Open the AI review inbox",
+    "opened": "Opened the chat with the email attached. Read the message and press Send.",
+    "chatPrompt": "Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it."
   },
   "hub": {
     "tabs": {
-      "ariaLabel": "Розділи чеків з електронної пошти",
-      "overview": "Огляд",
-      "emails": "Листи",
-      "profiles": "Профілі",
-      "mailbox": "Поштова скринька"
+      "ariaLabel": "Email receipts sections",
+      "overview": "Overview",
+      "emails": "Emails",
+      "profiles": "Profiles",
+      "mailbox": "Mailbox"
     },
     "demoRestricted": {
-      "heading": "Недоступно в демо-режимі",
-      "body": "Підключення поштової скриньки та створення профілів вимкнено в демо-режимі."
+      "heading": "Restricted in Demo Mode",
+      "body": "Connecting a mailbox and writing profiles are disabled in demo mode."
     }
   },
   "process": {
-    "button": "Обробити всі",
-    "buttonCount": "Обробити всі ({count})",
+    "button": "Process all",
+    "buttonCount": "Process all ({count})",
     "dialog": {
-      "title": "{count, plural, one {Обробити # збережений лист?} few {Обробити # збережені листи?} many {Обробити # збережених листів?} other {Обробити # збережених листа?}}",
-      "message": "Кожен збережений лист, який ще не прочитано або який може змінити новий профіль чи нова транзакція, буде прочитано знову. Те, що він запропонує, чекатиме у вхідних перевірки ШІ, якщо не ввімкнено автозастосування.",
-      "messageDomain": "Кожен збережений лист від {domain}, який ще не прочитано або який може змінити новий профіль чи нова транзакція, буде прочитано знову. Те, що він запропонує, чекатиме у вхідних перевірки ШІ, якщо не ввімкнено автозастосування.",
-      "confirm": "Обробити"
+      "title": "{count, plural, one {Process # stored email?} other {Process # stored emails?}}",
+      "message": "Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process"
     },
-    "starting": "Запуск...",
-    "progress": "{processed, plural, one {# лист оброблено} few {# листи оброблено} many {# листів оброблено} other {# листа оброблено}}, залишилося {remaining}.",
-    "cancel": "Скасувати",
-    "cancelling": "Скасування...",
-    "summary": "{count, plural, one {# лист оброблено.} few {# листи оброблено.} many {# листів оброблено.} other {# листа оброблено.}}",
-    "cancelledSummary": "Скасовано після {count, plural, one {# листа.} few {# листів.} many {# листів.} other {# листа.}}",
-    "outcomes": "Підсумок: {outcomes}.",
-    "passedOver": "{count, plural, one {# лист спричинив помилку й був пропущений.} few {# листи спричинили помилку й були пропущені.} many {# листів спричинили помилку й були пропущені.} other {# листа спричинили помилку й були пропущені.}}",
-    "failed": "Обробку зупинено, бо запит не вдався.",
-    "failedWithReason": "Обробку зупинено: {reason}",
+    "starting": "Starting...",
+    "progress": "{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling...",
+    "summary": "{count, plural, one {# email processed.} other {# emails processed.}}",
+    "cancelledSummary": "Cancelled after {count, plural, one {# email.} other {# emails.}}",
+    "outcomes": "They ended as: {outcomes}.",
+    "passedOver": "{count, plural, one {# email raised an error and was passed over.} other {# emails raised an error and were passed over.}}",
+    "failed": "Processing stopped because a request failed.",
+    "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Закрити"
+    "close": "Close",
+    "draft": {
+      "chatPrompt": "Створіть профіль квитанції електронної пошти для {count, plural, one {цього листа замовлення} few {цих # листів замовлення} many {цих # листів замовлення} other {цих # листів замовлення}} від {domain}. Перехопіть запит на перегляд ШІ {requestId}, протестуйте свій профіль на кожному приєднаному листі за допомогою інструменту email_receipt_parsers, виправляйте його, доки кожен не буде повністю прочитано, а потім збережіть його як чернетку для запиту {requestId}."
+    }
   },
   "overview": {
-    "loading": "Завантаження огляду...",
+    "loading": "Loading the overview...",
     "error": {
-      "title": "Не вдалося завантажити огляд",
-      "body": "Запит не вдався, тож нічого з показаного тут не слід вважати порожнім. Спробуйте ще раз.",
-      "retry": "Спробувати ще раз"
+      "title": "The overview could not be loaded",
+      "body": "The request failed, so nothing here may be taken as empty. Try again.",
+      "retry": "Try again"
     },
     "mailbox": {
-      "title": "Поштова скринька",
-      "none": "Поштову скриньку ще не підключено.",
-      "connect": "Підключити поштову скриньку",
-      "manage": "Відкрити налаштування поштової скриньки",
+      "title": "Mailbox",
+      "none": "No mailbox is connected yet.",
+      "connect": "Connect a mailbox",
+      "manage": "Open the mailbox settings",
       "state": {
-        "notConnected": "Не підключено",
-        "failing": "Останнє опитування не вдалося",
-        "off": "Опитування вимкнено",
-        "polling": "Опитується"
+        "notConnected": "Not connected",
+        "failing": "Last poll failed",
+        "off": "Polling is off",
+        "polling": "Polling"
       },
       "auth": {
-        "password": "Вхід за паролем",
-        "oauth2": "Вхід через провайдера"
+        "password": "Password login",
+        "oauth2": "Sign-in with a provider"
       },
-      "lastSuccess": "Останнє успішне опитування: {when}",
-      "neverPolled": "Успішного опитування ще не було.",
-      "lastError": "Остання помилка: {error}"
+      "lastSuccess": "Last successful poll {when}",
+      "neverPolled": "Not polled successfully yet.",
+      "lastError": "Last error: {error}"
     },
     "emails": {
-      "title": "Листи",
-      "stored": "збережено",
-      "processable": "{count, plural, one {# лист можна обробити знову} few {# листи можна обробити знову} many {# листів можна обробити знову} other {# листа можна обробити знову}}.",
-      "open": "Відкрити листи"
+      "title": "Emails",
+      "stored": "stored",
+      "processable": "{count, plural, one {# email can be processed again} other {# emails can be processed again}}.",
+      "open": "Open the emails"
     },
     "proposals": {
-      "title": "Пропозиції",
-      "waiting": "очікують на ваше схвалення",
-      "review": "Переглянути пропозиції",
-      "open": "Відкрити вхідні перевірки ШІ"
+      "title": "Proposals",
+      "waiting": "waiting for your approval",
+      "review": "Review the proposals",
+      "open": "Open the review inbox"
     },
     "profiles": {
-      "title": "Профілі",
-      "approved": "схвалено",
-      "drafts": "{count, plural, one {# чернетка очікує на ваше схвалення} few {# чернетки очікують на ваше схвалення} many {# чернеток очікують на ваше схвалення} other {# чернетки очікують на ваше схвалення}}.",
-      "manage": "Відкрити профілі"
+      "title": "Profiles",
+      "approved": "approved",
+      "drafts": "{count, plural, one {# draft waits for your approval} other {# drafts wait for your approval}}.",
+      "manage": "Open the profiles"
     },
     "uncovered": {
-      "title": "Відправники без профілю",
-      "help": "Листи цих відправників не читає жоден профіль. Створіть профіль для одного з них або попросіть асистента скласти його чернетку.",
-      "none": "Кожен відправник збережених листів охоплений профілем.",
-      "row": "{domain} ({count, plural, one {# лист} few {# листи} many {# листів} other {# листа}})",
-      "show": "Показати листи"
+      "title": "Senders without a profile",
+      "help": "These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profile.",
+      "row": "{domain} ({count, plural, one {# email} other {# emails}})",
+      "show": "Show the emails"
     }
   },
   "wizard": {
-    "heading": "Початок роботи з чеками з електронної пошти",
-    "intro": "Чотири кроки від нуля до першої пропозиції.",
-    "done": "(виконано)",
+    "heading": "Get started with email receipts",
+    "intro": "Four steps from nothing to your first proposal.",
+    "done": "(done)",
     "steps": {
       "mailbox": {
-        "title": "Підключіть поштову скриньку",
-        "body": "Використовуйте окрему поштову скриньку, яка отримує ваші підтвердження замовлень. Monize лише читає її.",
-        "action": "Підключити поштову скриньку"
+        "title": "Connect a mailbox",
+        "body": "Use a dedicated mailbox that receives your order confirmations. Monize only reads it.",
+        "action": "Connect a mailbox"
       },
       "emails": {
-        "title": "Отримайте листи",
-        "body": "Листи читаються, коли опитується поштова скринька. Опитайте її в налаштуваннях поштової скриньки, щоб побачити перші листи.",
-        "action": "Відкрити листи"
+        "title": "Fetch the emails",
+        "body": "Emails are read when the mailbox is polled. Poll it from the mailbox settings to see the first ones.",
+        "action": "Open the emails"
       },
       "profile": {
-        "title": "Створіть профіль для відправника",
-        "body": "Профіль підказує Monize, як читати підтвердження замовлень одного відправника. Напишіть його або складіть чернетку зі збереженого листа.",
-        "action": "Відкрити профілі"
+        "title": "Create a profile for a sender",
+        "body": "A profile tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profiles"
       },
       "review": {
-        "title": "Перегляньте пропозиції",
-        "body": "Кожен лист стає пропозицією щодо транзакції. Нічого не змінюється, доки ви її не схвалите.",
-        "action": "Відкрити вхідні перевірки ШІ"
+        "title": "Review the proposals",
+        "body": "Each email becomes a proposal on a transaction. Nothing is changed until you approve it.",
+        "action": "Open the review inbox"
       }
     }
   }

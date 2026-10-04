@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI 審核收件匣",
-    "subtitle": "規則請求 AI 審核的交易、已請求助理起草的解析器，以及助理提出、等待您核准的修改。"
+    "subtitle": "規則要求 AI 審查的交易、助手被要求起草的設定檔，以及助手為您批准而提議的編輯。"
   },
   "filter": {
     "label": "依狀態篩選",
@@ -40,13 +40,13 @@
     "manualRequest": "手動請求",
     "emailReceipt": "郵件收據：來自 {sender} 的 {subject}",
     "emailReceiptMissing": "郵件收據（該郵件已被刪除）",
-    "parserDraft": "來自 {count, plural, one {# 封郵件} other {# 封郵件}}的解析器草稿（{domain}）",
+    "parserDraft": "來自 {count, plural, one {# 封電子郵件} other {# 封電子郵件}} 的設定檔草稿 ({domain})",
     "viewEmailReceipts": "檢視郵件收據",
     "agentNote": "助理備註：{reason}",
     "dates": "建立於 {created}，到期於 {expires}",
     "viewTransaction": "檢視交易",
     "waitingForAgent": "正在等待 AI 代理。請<link>在設定中連接 AI 提供者</link>，或讓 MCP 用戶端來認領。",
-    "parserDraftReady": "解析器草稿已就緒。<link>在解析器設定中測試並核准</link>。"
+    "parserDraftReady": "設定檔草稿已準備好。<link>在設定檔設定中測試並核准它</link>。"
   },
   "actions": {
     "dismiss": "忽略"

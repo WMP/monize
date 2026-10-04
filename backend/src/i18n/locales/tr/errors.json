@@ -391,7 +391,9 @@
     "settingsEmpty": "Değiştirmek için en az bir ayar gönderin.",
     "parserToolReceiptCount": "Ayrıştırıcıyı denemek için 1 ile 5 arasında e-posta belirtin.",
     "parserToolInvalidSender": "Bir taslak için bir ad ve shop.example.com gibi bir ila on gönderen alan adı gerekir.",
-    "parserDraftRequestNotClaimed": "Bu ayrıştırıcı taslağı isteğini siz üstlenmediniz. Önce ai_review_requests ile üstlenin veya taslağı requestId olmadan kaydedin."
+    "parserDraftRequestNotClaimed": "Bu ayrıştırıcı taslağı isteğini siz üstlenmediniz. Önce ai_review_requests ile üstlenin veya taslağı requestId olmadan kaydedin.",
+    "parserCategoryNameUnknown": "\"{{ name }}\" kategorisi bulunamadı. Kategorilerinizden birinin adını kullanın.",
+    "parserCategoryNameAmbiguous": "\"{{ name }}\" kategorisi birkaç kategoriye ({{ candidates }}) eşleşiyor. Tam adı kullanın, örneğin \"Üst: Alt\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-posta yapılandırılmamış. SMTP kurulana kadar acil erişim etkinleştirilemiyor.",

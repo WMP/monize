@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI 审核收件箱",
-    "subtitle": "规则请求 AI 审核的交易、已请求助手起草的解析器，以及助手提出、等待您批准的修改。"
+    "subtitle": "规则要求 AI 审查的交易、助手被要求起草的配置文件以及助手为您批准而提议的编辑。"
   },
   "filter": {
     "label": "按状态筛选",
@@ -40,13 +40,13 @@
     "manualRequest": "手动请求",
     "emailReceipt": "邮件收据：来自 {sender} 的 {subject}",
     "emailReceiptMissing": "邮件收据（该邮件已被删除）",
-    "parserDraft": "来自 {count, plural, one {# 封邮件} other {# 封邮件}}的解析器草稿（{domain}）",
+    "parserDraft": "来自 {count, plural, one {# 封电子邮件} other {# 封电子邮件}} 的配置文件草稿 ({domain})",
     "viewEmailReceipts": "查看邮件收据",
     "agentNote": "助手备注：{reason}",
     "dates": "创建于 {created}，到期于 {expires}",
     "viewTransaction": "查看交易",
     "waitingForAgent": "正在等待 AI 代理。请<link>在设置中连接 AI 提供商</link>，或让 MCP 客户端来认领。",
-    "parserDraftReady": "解析器草稿已就绪。<link>在解析器设置中测试并批准</link>。"
+    "parserDraftReady": "配置文件草稿已准备就绪。<link>在配置文件设置中测试并批准它</link>。"
   },
   "actions": {
     "dismiss": "忽略"

@@ -81,7 +81,7 @@
       "enabledLabel": "De mailbox automatisch lezen",
       "enabledHelp": "Bepaalt alleen het automatisch lezen: als dit aan staat, leest Monize de mailbox elke 15 minuten. Uitzetten koppelt de mailbox niet los, en Nu ophalen leest hem ongeacht of dit aan of uit staat.",
       "aiModeLabel": "AI-modus",
-      "aiModeHelp": "Of het ophalen de AI-provider die je hebt ingesteld voor bonnen mag gebruiken. Herkennen met AI en Parser laten opstellen door AI vragen de assistent in de chat, ongeacht de modus, en een AI-antwoord is altijd een voorstel of concept dat jij goedkeurt.",
+      "aiModeHelp": "Of het ophalen de AI-provider die je hebt ingesteld voor bonnen mag gebruiken. Herkennen met AI en Profile laten opstellen door AI vragen de assistent in de chat, ongeacht de modus, en een AI-antwoord is altijd een voorstel of concept dat jij goedkeurt.",
       "aiModes": {
         "off": "Uit",
         "on_demand": "Op verzoek",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "Het ophalen roept de AI nooit aan voor bonnen.",
-        "on_demand": "Het ophalen roept de AI nooit aan. Je vraagt de assistent zelf met Herkennen met AI of Parser laten opstellen door AI.",
-        "automatic": "Bij het ophalen vraagt de AI naar een gekoppelde bon die geen enkele goedgekeurde parser volledig kon lezen, en stelt hij een parser op voor een afzender die er geen heeft."
+        "on_demand": "Het ophalen roept de AI nooit aan. Je vraagt de assistent zelf met Herkennen met AI of Profile laten opstellen door AI.",
+        "automatic": "Bij het ophalen vraagt de AI naar een gekoppelde bon die geen enkele goedgekeurde profile volledig kon lezen, en stelt hij een profile op voor een afzender die er geen heeft."
       },
       "autoApplyLabel": "Voorstellen automatisch toepassen",
-      "autoApplyHelp": "Standaard uit. Een voorstel wordt alleen zonder te vragen toegepast als dit allemaal geldt: een goedgekeurd profiel heeft de hele e-mail gelezen, de transactie is gevonden via een ordernummer, een referentie of via het exacte bedrag en de begunstigde met maar één kandidaat, en het voorstel klopt tot op de cent. Al het andere wacht op jouw goedkeuring.",
-      "profileLimitLabel": "Voorstellen van profielen meetellen voor de dagelijkse AI-limiet",
-      "profileLimitHelp": "Standaard aan: een wijziging die een profiel uit een e-mail voorstelt, telt mee voor de dagelijkse limiet van door AI voorgestelde wijzigingen, zoals elk ander AI-voorstel. Zet dit uit als een grote groep opgeslagen e-mails de limiet anders zou opmaken. Alleen voorstellen van profielen zijn uitgezonderd; elk voorstel wacht nog steeds op jouw goedkeuring."
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profiel read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profiel proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profiel proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profielen are exempt; every proposal still waits for your approval."
     },
     "status": {
       "lastPolled": "Laatst opgehaald",
@@ -117,21 +117,21 @@
     }
   },
   "parsers": {
-    "heading": "Profielen",
-    "description": "Een profiel leest de bestelbevestigingen van één afzender met patronen die je zelf schrijft of controleert en bepaalt hoe de banktransactie wordt gevonden. Eenmaal goedgekeurd werkt het zonder de AI.",
-    "newButton": "Nieuwe parser",
-    "loading": "Parsers laden",
+    "heading": "Profiels",
+    "description": "A profiel reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "Nieuwe profile",
+    "loading": "Profiles laden",
     "error": {
-      "title": "De parsers konden niet worden geladen",
+      "title": "De profiles konden niet worden geladen",
       "body": "Het verzoek is mislukt. Probeer het opnieuw.",
       "retry": "Opnieuw proberen"
     },
     "empty": {
-      "title": "Nog geen parsers",
+      "title": "Nog geen profiles",
       "body": "Maak er een voor een afzender van bestelbevestigingen, of laat er een opstellen uit een opgeslagen e-mail op de pagina E-mailbonnen."
     },
     "columns": {
-      "name": "Parser",
+      "name": "Profile",
       "status": "Status",
       "payee": "Begunstigde",
       "actions": "Acties"
@@ -153,19 +153,19 @@
       "viewJson": "JSON bekijken"
     },
     "toasts": {
-      "approved": "Parser goedgekeurd",
-      "approveFailed": "De parser kon niet worden goedgekeurd",
-      "changedElsewhere": "Deze parser is elders gewijzigd. De lijst is opnieuw geladen.",
-      "deleted": "Parser verwijderd",
-      "deleteFailed": "De parser kon niet worden verwijderd"
+      "approved": "Profile goedgekeurd",
+      "approveFailed": "De profile kon niet worden goedgekeurd",
+      "changedElsewhere": "Deze profile is elders gewijzigd. De lijst is opnieuw geladen.",
+      "deleted": "Profile verwijderd",
+      "deleteFailed": "De profile kon niet worden verwijderd"
     },
     "deleteDialog": {
-      "title": "De parser verwijderen?",
-      "message": "De parser {name} wordt verwijderd. E-mails die hij al heeft gelezen behouden hun resultaten."
+      "title": "De profile verwijderen?",
+      "message": "De profile {name} wordt verwijderd. E-mails die hij al heeft gelezen behouden hun resultaten."
     },
     "jsonDialog": {
       "title": "Definitie van {name}",
-      "help": "De parserdefinitie zoals die is opgeslagen. Hier is ze alleen-lezen; gebruik Bewerken om haar te wijzigen.",
+      "help": "De profiledefinitie zoals die is opgeslagen. Hier is ze alleen-lezen; gebruik Bewerken om haar te wijzigen.",
       "contentLabel": "Definitie-JSON",
       "copy": "Kopiëren",
       "copied": "JSON gekopieerd",
@@ -173,22 +173,22 @@
     },
     "processOffer": {
       "title": "De opgeslagen e-mails nu verwerken?",
-      "message": "{count, plural, one {De # opgeslagen e-mail} other {De # opgeslagen e-mails}} van {domains} nu verwerken? Elke e-mail wordt opnieuw gelezen met dit profiel; wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profiel again; what it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "Nu verwerken",
       "later": "Niet nu"
     }
   },
   "editor": {
-    "createTitle": "Nieuwe parser",
-    "editTitle": "Parser bewerken",
+    "createTitle": "Nieuwe profile",
+    "editTitle": "Profile bewerken",
     "loading": "Begunstigden en categorieën laden",
     "lookupsError": {
       "title": "Begunstigden en categorieën konden niet worden geladen",
       "body": "De keuzelijsten hebben ze nodig, dus de editor kan nog niet openen. Probeer het opnieuw.",
       "retry": "Opnieuw proberen"
     },
-    "draftNote": "Deze parser is een concept. Hij leest niets totdat je hem goedkeurt.",
-    "draftAiNote": "De AI heeft deze parser opgesteld uit je voorbeeld-e-mails. Test hem op elk ervan en controleer elk patroon, en keur hem daarna goed vanuit de lijst. Hij leest niets totdat je dat doet.",
+    "draftNote": "Deze profile is een concept. Hij leest niets totdat je hem goedkeurt.",
+    "draftAiNote": "De AI heeft deze profile opgesteld uit je voorbeeld-e-mails. Test hem op elk ervan en controleer elk patroon, en keur hem daarna goed vanuit de lijst. Hij leest niets totdat je dat doet.",
     "identityHeading": "Welke e-mails hij leest",
     "nameLabel": "Naam",
     "payeeLabel": "Begunstigde",
@@ -197,12 +197,12 @@
     "domainsHelp": "Eén per regel, maximaal {max}. Een subdomein van een vermeld domein komt ook overeen.",
     "subjectLabel": "Onderwerp bevat",
     "subjectHelp": "Optioneel, één per regel, maximaal {max}. Het onderwerp moet minstens één ervan bevatten, hoofdletters worden genegeerd.",
-    "saveButton": "Parser opslaan",
-    "created": "Parser aangemaakt",
-    "updated": "Parser opgeslagen",
-    "saveFailed": "De parser kon niet worden opgeslagen",
-    "conflict": "Deze parser is elders gewijzigd sinds je hem hebt geopend. Laad hem opnieuw om de huidige versie te zien. Je wijzigingen hier zijn niet opgeslagen.",
-    "conflictReload": "De parser opnieuw laden",
+    "saveButton": "Profile opslaan",
+    "created": "Profile aangemaakt",
+    "updated": "Profile opgeslagen",
+    "saveFailed": "De profile kon niet worden opgeslagen",
+    "conflict": "Deze profile is elders gewijzigd sinds je hem hebt geopend. Laad hem opnieuw om de huidige versie te zien. Je wijzigingen hier zijn niet opgeslagen.",
+    "conflictReload": "De profile opnieuw laden",
     "patterns": {
       "sourceLabel": "Bron van de regels",
       "sourceHint": "Met welke weergave van de e-mail de onderstaande patronen worden vergeleken. Tekst is het tekstdeel van de e-mail, één regel per regeleinde. HTML leest het HTML-deel: elk blok en elke tabelcel wordt een eigen regel, zodat een productnaam die de tekst over meerdere regels verdeelt heel blijft. De weergave Regels van de e-mail toont precies wat elke bron oplevert.",
@@ -223,22 +223,21 @@
       "stopAtLabel": "Artikelen stoppen bij",
       "stopAtHint": "Optioneel. Artikelen eindigen voor de eerste regel die deze tekst bevat.",
       "itemPatternsLabel": "Artikelpatronen",
-      "itemPatternsHint": "Moet {name} vastleggen en ofwel {amount} (het regeltotaal) ofwel {price} (de stukprijs, eventueel met {qty}), nooit allebei. Voorbeeld: {name} x {qty} {price}"
+      "itemPatternsHint": "Moet {name} vastleggen en ofwel {amount} (het regeltotaal) ofwel {price} (de stukprijs, eventueel met {qty}), nooit allebei. Voorbeeld: {name} x {qty} {price}",
+      "feesLabel": "Fees patterns"
     },
     "categories": {
-      "rulesHeading": "Categorieregels",
-      "rulesHelp": "De eerste regel waarvan het patroon overeenkomt, bepaalt de categorie van een artikel. Patronen gebruiken dezelfde syntaxis, bijvoorbeeld {example}. Maximaal {max} regels.",
-      "noRules": "Geen categorieregels. Elk artikel krijgt de standaardcategorie.",
-      "rulePatternLabel": "Patroon van regel {number}",
-      "ruleCategoryLabel": "Categorie van regel {number}",
       "categoryPlaceholder": "Geen categorie",
-      "removeRule": "Regel {number} verwijderen",
-      "addRule": "Een regel toevoegen",
-      "ruleLimit": "De limiet van {max} regels is bereikt.",
       "defaultLabel": "Standaardcategorie",
       "defaultHelp": "Wordt gebruikt voor artikelen waar geen enkele regel bij past.",
       "shippingLabel": "Verzendcategorie",
-      "shippingHelp": "De categorie van de verzendregel."
+      "shippingHelp": "De categorie van de verzendregel.",
+      "heading": "Categories",
+      "help": "Type a category name and pick it from the list. The name is stored in the profiel, and the category must exist when the profiel is saved.",
+      "feesLabel": "Fees category",
+      "feesHelp": "The category of the fees line.",
+      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
+      "rulesInJson": "Category rules by item name are an advanced option: add them to the profiel definition in the JSON mode."
     },
     "mode": {
       "label": "Bewerkmodus",
@@ -248,9 +247,9 @@
       "jsonInvalid": "De JSON is nog niet geldig, dus het formulier kan niet worden getoond. Herstel dit eerst."
     },
     "json": {
-      "label": "Parserdefinitie (JSON)",
+      "label": "Profiledefinitie (JSON)",
       "help": "Dezelfde definitie die het formulier opbouwt. De server controleert haar bij het opslaan en de test hieronder leest haar zoals ze nu is.",
-      "parseError": "Dit is geen geldige JSON of geen JSON-object. Herstel dit om de parser op te slaan of te testen."
+      "parseError": "Dit is geen geldige JSON of geen JSON-object. Herstel dit om de profile op te slaan of te testen."
     },
     "matching": {
       "heading": "Koppeling",
@@ -280,11 +279,12 @@
       "daysAfterLabel": "Dagen na de aankoop",
       "daysHint": "Het venster rond de aankoopdatum. Standaard {default}, maximaal {max}.",
       "toleranceLabel": "Bedragtolerantie",
-      "toleranceHint": "Hoeveel het bankbedrag mag afwijken van het totaal van de e-mail. Standaard 0, maximaal {max}."
+      "toleranceHint": "Hoeveel het bankbedrag mag afwijken van het totaal van de e-mail. Standaard 0, maximaal {max}.",
+      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the profiel has reference patterns), order number, amount and payee, amount and date."
     },
     "proposal": {
       "heading": "Voorstel",
-      "tagLabel": "Een label toevoegen aan de transacties die dit profiel categoriseert",
+      "tagLabel": "Add a tag to the transactions this profiel categorizes",
       "tagHelp": "Het label wordt aangemaakt als je er geen met die naam hebt. Het staat in het voorstel en er wordt niets geschreven totdat je het goedkeurt.",
       "tagNameLabel": "Labelnaam",
       "aiCategoriesLabel": "De AI de categorie laten kiezen van artikelen waar geen regel bij past",
@@ -292,7 +292,7 @@
     }
   },
   "problems": {
-    "heading": "De parserdefinitie is niet geldig:",
+    "heading": "De profiledefinitie is niet geldig:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "De definitie",
@@ -343,11 +343,14 @@
       "matchDaysAfter": "Dagen na de aankoop",
       "matchTolerance": "Bedragtolerantie",
       "tag": "Label",
-      "aiCategories": "AI-categorieën"
+      "aiCategories": "AI-categorieën",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns"
     },
     "codes": {
       "not_object": "is geen geldige definitie",
-      "unknown_key": "is niets wat een parser kan hebben",
+      "unknown_key": "is niets wat een profile kan hebben",
       "unsupported_version": "is een versie die deze server niet leest (gebruik versie 2)",
       "invalid_type": "heeft het verkeerde soort waarde",
       "empty": "mag niet leeg zijn",
@@ -400,10 +403,10 @@
     "unmatched": "Er komt geen transactie overeen, uit {count, plural, one {# kandidaat} other {# kandidaten}}.",
     "jsonInvalid": "De JSON is niet geldig, dus er is nog niets te testen.",
     "outcome": {
-      "not_applicable": "Deze parser zou deze e-mail niet lezen: geen van de vereiste regels komt erin voor, dus de volgende parser voor de afzender zou worden geprobeerd.",
-      "skip_line": "Deze parser zou deze e-mail opzijzetten: er staat een regel in waarop hij overslaat.",
-      "wait_line": "Deze parser zou deze e-mail vasthouden: een regel zegt dat de bestelling nog niet definitief is, dus hij wordt later opnieuw gelezen.",
-      "no_html": "Deze parser leest het HTML-deel van de e-mail en deze e-mail heeft er geen, dus hij zou worden gemarkeerd als onleesbaar (geen HTML)."
+      "not_applicable": "Deze profile zou deze e-mail niet lezen: geen van de vereiste regels komt erin voor, dus de volgende profile voor de afzender zou worden geprobeerd.",
+      "skip_line": "Deze profile zou deze e-mail opzijzetten: er staat een regel in waarop hij overslaat.",
+      "wait_line": "Deze profile zou deze e-mail vasthouden: een regel zegt dat de bestelling nog niet definitief is, dus hij wordt later opnieuw gelezen.",
+      "no_html": "Deze profile leest het HTML-deel van de e-mail en deze e-mail heeft er geen, dus hij zou worden gemarkeerd als onleesbaar (geen HTML)."
     },
     "matchedBy": {
       "heading": "Gevonden via",
@@ -479,7 +482,7 @@
   "state": {
     "pending": "Wacht om gelezen te worden",
     "skipped": "Overgeslagen",
-    "no_parser": "Geen parser",
+    "no_parser": "Geen profile",
     "parse_failed": "Kon niet worden gelezen",
     "unmatched": "Geen transactie gevonden",
     "ambiguous": "Meerdere transacties passen",
@@ -503,19 +506,21 @@
       "all": "Alle",
       "pending": "Wacht om gelezen te worden",
       "skipped": "Overgeslagen",
-      "no_parser": "Geen parser",
+      "no_parser": "Geen profile",
       "parse_failed": "Kon niet worden gelezen",
       "unmatched": "Geen transactie gevonden",
       "ambiguous": "Meerdere transacties passen",
       "review_conflict": "Er staat een ander verzoek open",
       "review": "In controle",
-      "ignored": "Genegeerd"
+      "ignored": "Genegeerd",
+      "option": "{label} ({count})"
     },
     "domainFilter": {
       "label": "Afzenderdomein",
       "all": "Alle afzenders",
       "option": "{domain} ({count})",
-      "help": "E-mails van {domain} en de bijbehorende subdomeinen worden getoond. Selecteer er meerdere om één parser voor de afzender op te stellen."
+      "help": "E-mails van {domain} en de bijbehorende subdomeinen worden getoond. Selecteer er meerdere om één profile voor de afzender op te stellen.",
+      "unknown": "The sender counts could not be loaded."
     },
     "columns": {
       "select": "Selecteren",
@@ -546,9 +551,10 @@
       "reprocess": "Opnieuw verwerken",
       "link": "Transactie kiezen",
       "recognizeAi": "Herkennen met AI",
-      "draftParser": "Parser laten opstellen door AI",
-      "createParser": "Parser maken",
-      "ignore": "Negeren"
+      "draftParser": "Profile laten opstellen door AI",
+      "createParser": "Profile maken",
+      "ignore": "Negeren",
+      "approve": "Approve"
     },
     "toasts": {
       "reprocessed": "E-mail opnieuw verwerkt",
@@ -556,7 +562,9 @@
       "ignored": "E-mail genegeerd",
       "ignoreFailed": "De e-mail kon niet worden genegeerd",
       "deleted": "E-mail verwijderd",
-      "deleteFailed": "De e-mail kon niet worden verwijderd"
+      "deleteFailed": "De e-mail kon niet worden verwijderd",
+      "approved": "Proposal approved",
+      "approveFailed": "Could not approve the proposal"
     },
     "ignoreDialog": {
       "title": "Deze e-mail negeren?",
@@ -571,17 +579,26 @@
       "label": "Geselecteerde e-mails",
       "select": "{subject} selecteren",
       "count": "{count, plural, one {# e-mail geselecteerd} other {# e-mails geselecteerd}} (maximaal {max})",
-      "draftButton": "Parser laten opstellen door AI ({count})",
+      "draftButton": "Profile laten opstellen door AI ({count})",
       "clear": "Selectie wissen",
-      "differentSenders": "De geselecteerde e-mails komen van verschillende afzenders ({domains}). Een parser leest de e-mails van één afzender, dus selecteer e-mails van één afzender."
+      "differentSenders": "De geselecteerde e-mails komen van verschillende afzenders ({domains}). Een profile leest de e-mails van één afzender, dus selecteer e-mails van één afzender.",
+      "selectAll": "Select all emails on this list (at most {max})"
     },
     "draft": {
-      "failed": "Het opstellen van een parser kon niet worden gestart",
+      "failed": "Het opstellen van een profile kon niet worden gestart",
       "queued": "In de wachtrij: het verzoek wacht in het AI-controlepostvak op een agent. Er is nu geen assistent beschikbaar om te antwoorden.",
       "handoffFailed": "Het verzoek staat in de wachtrij, maar de e-mails konden niet in de chat worden geopend. Het wacht in het AI-controlepostvak op een agent.",
       "inboxLink": "Het AI-controlepostvak openen",
       "opened": "De chat is geopend met de e-mails als bijlage. Lees het bericht en druk op Verzenden.",
-      "chatPrompt": "Maak een parser voor e-mailbonnen voor {count, plural, one {deze bestelmail} other {deze # bestelmails}} van {domain}. Claim AI-beoordelingsverzoek {requestId}, test je parser op elke bijgevoegde e-mail met de tool email_receipt_parsers, verbeter hem totdat elke e-mail volledig wordt gelezen en sla hem daarna op als concept voor verzoek {requestId}."
+      "chatPrompt": "Maak een profile voor e-mailbonnen voor {count, plural, one {deze bestelmail} other {deze # bestelmails}} van {domain}. Claim AI-beoordelingsverzoek {requestId}, test je profile op elke bijgevoegde e-mail met de tool email_receipt_profiles, verbeter hem totdat elke e-mail volledig wordt gelezen en sla hem daarna op als concept voor verzoek {requestId}."
+    },
+    "guide": {
+      "heading": "How to create a profiel",
+      "buttonName": "Een profiel met AI voorbereiden",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profiel, and you test and approve it in the profielen."
     }
   },
   "detail": {
@@ -598,7 +615,7 @@
     "originalSent": "Verzonden door de winkel",
     "subject": "Onderwerp",
     "state": "Status",
-    "parser": "Parser",
+    "parser": "Profile",
     "noParser": "Geen",
     "structuredSource": "Gestructureerde gegevens",
     "matchedBy": "Gekoppeld via",
@@ -618,10 +635,10 @@
     "reasons": {
       "too_large": "De e-mail is groter dan de groottelimiet, dus hij is opgeslagen zonder te worden gelezen.",
       "undecodable": "De e-mail kon niet worden gedecodeerd, dus hij is opgeslagen zonder te worden gelezen.",
-      "draft_failed": "De AI kon geen parser opstellen voor deze afzender.",
-      "parser_invalid": "De parser voor deze afzender is niet geldig. Bewerk hem in de parserinstellingen.",
-      "no_total": "De parser heeft in deze e-mail geen totaal gevonden.",
-      "no_items": "De parser heeft geen artikelregels gevonden.",
+      "draft_failed": "De AI kon geen profile opstellen voor deze afzender.",
+      "parser_invalid": "De profile voor deze afzender is niet geldig. Bewerk hem in de profileinstellingen.",
+      "no_total": "De profile heeft in deze e-mail geen totaal gevonden.",
+      "no_items": "De profile heeft geen artikelregels gevonden.",
       "items_unbalanced": "De artikelregels tellen niet op tot het totaal.",
       "items_uncategorized": "Sommige artikelregels hebben geen categorie.",
       "shipping_uncategorized": "De verzendregel heeft geen categorie.",
@@ -629,15 +646,15 @@
       "proposal_fallback": "Het gespecificeerde voorstel is geweigerd, dus er wordt alleen een omschrijving voorgesteld.",
       "nothing_to_propose": "De e-mail voegt niets toe aan deze transactie.",
       "proposal_refused": "Het voorstel is geweigerd, dus er is niets voorgesteld.",
-      "skip_line": "Er is een regel gevonden waarop deze parser overslaat, dus de e-mail is genegeerd.",
+      "skip_line": "Er is een regel gevonden waarop deze profile overslaat, dus de e-mail is genegeerd.",
       "wait_line": "Een regel zegt dat de bestelling nog niet definitief is, dus de e-mail wordt later opnieuw gelezen.",
-      "no_html": "Deze parser leest het HTML-deel van de e-mail en deze e-mail heeft er geen.",
-      "schema_org": "Er was geen parser nodig: de bestelling is gelezen uit de gestructureerde gegevens (schema.org) in de e-mail.",
+      "no_html": "Deze profile leest het HTML-deel van de e-mail en deze e-mail heeft er geen.",
+      "schema_org": "Er was geen profile nodig: de bestelling is gelezen uit de gestructureerde gegevens (schema.org) in de e-mail.",
       "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven."
     },
     "reasonUnknown": "Reden: {reason}",
     "requestNote": "Controleverzoek ({state}): {note}",
-    "parsedHeading": "Wat de parser heeft gelezen",
+    "parsedHeading": "Wat de profile heeft gelezen",
     "notParsed": "Er is nog niets uit deze e-mail gelezen.",
     "candidatesHeading": "Transacties die passen",
     "candidatesHelp": "Meerdere transacties passen even goed bij deze e-mail. Kies de transactie die ermee is betaald.",
@@ -657,7 +674,7 @@
     "htmlFrameTitle": "De e-mail zoals de afzender hem heeft opgemaakt",
     "structured": {
       "heading": "Gestructureerde gegevens (schema.org)",
-      "help": "Een bestelling of factuur die de e-mail meestuurt als markup voor e-mailprogramma's. Ze wordt alleen gelezen als er geen parser van toepassing is of de parser geen totaal vindt.",
+      "help": "Een bestelling of factuur die de e-mail meestuurt als markup voor e-mailprogramma's. Ze wordt alleen gelezen als er geen profile van toepassing is of de profile geen totaal vindt.",
       "found": "Gevonden",
       "notFound": "Niet gevonden",
       "notFoundHelp": "De e-mail bevat geen bestelmarkup, of die vermeldt geen totaal en geen artikelregels.",
@@ -667,13 +684,13 @@
       "unitPrice": "Stuksprijs"
     },
     "lines": {
-      "help": "De regels waarmee de patronen van een parser worden vergeleken, genummerd zoals de lijst “Gevonden via” van een test ze nummert.",
+      "help": "De regels waarmee de patronen van een profile worden vergeleken, genummerd zoals de lijst “Gevonden via” van een test ze nummert.",
       "sourceLabel": "Bron van de regels",
       "sources": {
         "text": "Tekst",
         "html": "HTML"
       },
-      "noHtml": "Deze e-mail heeft geen HTML-deel, dus een parser die HTML leest kan hem niet lezen.",
+      "noHtml": "Deze e-mail heeft geen HTML-deel, dus een profile die HTML leest kan hem niet lezen.",
       "capped": "Alleen de eerste {max} regels worden gelezen.",
       "empty": "Geen regels.",
       "listLabel": "Genummerde regels van de e-mail"
@@ -756,12 +773,12 @@
       "ariaLabel": "Onderdelen van e-mailbonnen",
       "overview": "Overzicht",
       "emails": "E-mails",
-      "profiles": "Profielen",
+      "profiles": "Profiels",
       "mailbox": "Mailbox"
     },
     "demoRestricted": {
       "heading": "Beperkt in demomodus",
-      "body": "Een mailbox koppelen en profielen schrijven zijn uitgeschakeld in de demomodus."
+      "body": "Connecting a mailbox and writing profielen are disabled in demo mode."
     }
   },
   "process": {
@@ -769,8 +786,8 @@
     "buttonCount": "Alles verwerken ({count})",
     "dialog": {
       "title": "{count, plural, one {# opgeslagen e-mail verwerken?} other {# opgeslagen e-mails verwerken?}}",
-      "message": "Elke opgeslagen e-mail die nog niet is gelezen of die een nieuw profiel of een nieuwe transactie kan veranderen, wordt opnieuw gelezen. Wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
-      "messageDomain": "Elke opgeslagen e-mail van {domain} die nog niet is gelezen of die een nieuw profiel of een nieuwe transactie kan veranderen, wordt opnieuw gelezen. Wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
+      "message": "Every stored email that has not been read yet, or that a new profiel or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profiel or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "Verwerken"
     },
     "starting": "Starten...",
@@ -825,15 +842,15 @@
       "open": "Het AI-controlepostvak openen"
     },
     "profiles": {
-      "title": "Profielen",
+      "title": "Profiels",
       "approved": "goedgekeurd",
       "drafts": "{count, plural, one {# concept wacht op jouw goedkeuring} other {# concepten wachten op jouw goedkeuring}}.",
-      "manage": "De profielen openen"
+      "manage": "Open the profielen"
     },
     "uncovered": {
-      "title": "Afzenders zonder profiel",
-      "help": "Deze afzenders stuurden e-mails die geen enkel profiel leest. Maak een profiel voor een van hen of vraag de assistent het op te stellen.",
-      "none": "Elke afzender van de opgeslagen e-mails wordt gedekt door een profiel.",
+      "title": "Senders without a profiel",
+      "help": "These senders sent emails no profiel reads. Create a profiel for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profiel.",
       "row": "{domain} ({count, plural, one {# e-mail} other {# e-mails}})",
       "show": "De e-mails tonen"
     }
@@ -854,9 +871,9 @@
         "action": "De e-mails openen"
       },
       "profile": {
-        "title": "Een profiel voor een afzender maken",
-        "body": "Een profiel vertelt Monize hoe de bestelbevestigingen van één afzender gelezen worden. Schrijf er een of stel het op uit een opgeslagen e-mail.",
-        "action": "De profielen openen"
+        "title": "Create a profiel for a sender",
+        "body": "A profiel tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profielen"
       },
       "review": {
         "title": "De voorstellen bekijken",

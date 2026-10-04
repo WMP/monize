@@ -1,867 +1,915 @@
 {
   "settingsPage": {
-    "redirecting": "Открывается страница «Чеки из электронной почты»...",
-    "redirectLink": "Перейти к настройкам почтового ящика"
+    "redirecting": "Opening the Email Receipts page...",
+    "redirectLink": "Go to the mailbox settings"
   },
   "page": {
-    "title": "Чеки из электронной почты",
-    "subtitle": "Читайте подтверждения заказов из почтового ящика и превращайте их в транзакции с позициями: что подключено, что стало с каждым письмом и что ждёт вас"
+    "title": "Email Receipts",
+    "subtitle": "Read order confirmations from a mailbox and turn them into itemized transactions: what is connected, what became of each email, and what waits for you"
   },
   "mailbox": {
-    "heading": "Почтовый ящик",
-    "description": "Подтверждения заказов читаются из отдельного почтового ящика по IMAP. Monize только читает его: он никогда не изменяет, не перемещает и не удаляет письма.",
-    "loading": "Загрузка почтового ящика",
-    "dedicatedWarning": "Используйте отдельный почтовый ящик. Читаются все письма в папке, поэтому в ней должны быть только подтверждения заказов.",
-    "encryptionUnavailable": "Этот сервер не может шифровать секреты, поэтому пароль или подключение почтового ящика сохранить нельзя. Попросите администратора настроить шифрование.",
+    "heading": "Mailbox",
+    "description": "Order confirmations are read from a dedicated mailbox over IMAP. Monize only reads it: it never changes, moves or deletes a message.",
+    "loading": "Loading the mailbox",
+    "dedicatedWarning": "Use a dedicated mailbox. Every message in the folder is read, so it should hold nothing but order confirmations.",
+    "encryptionUnavailable": "This server cannot encrypt secrets, so a mailbox password or connection cannot be saved. Ask the administrator to set up encryption.",
     "error": {
-      "title": "Не удалось загрузить почтовый ящик",
-      "body": "Запрос не выполнен, поэтому о вашем почтовом ящике пока ничего не известно. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "The mailbox could not be loaded",
+      "body": "The request failed, so nothing is known about your mailbox yet. Try again.",
+      "retry": "Try again"
     },
     "oauth": {
-      "heading": "Подключить учётную запись",
-      "explanation": "Google и Microsoft 365 обычно не принимают обычный пароль. Войдите через провайдера: вы даёте Monize доступ к почтовому ящику и никогда не вводите его пароль здесь.",
+      "heading": "Connect an account",
+      "explanation": "Google and Microsoft 365 usually refuse a plain password. Sign in with the provider instead: you grant Monize access to the mailbox and never type its password here.",
       "connect": {
-        "google": "Подключить через Google",
-        "microsoft": "Подключить через Microsoft"
+        "google": "Connect with Google",
+        "microsoft": "Connect with Microsoft"
       },
       "providerNames": {
         "google": "Google",
         "microsoft": "Microsoft 365"
       },
-      "providersUnavailable": "Не удалось проверить, доступен ли вход через Google или Microsoft. Ручная форма ниже по-прежнему работает.",
-      "startFailed": "Не удалось начать вход",
-      "badAuthorizationUrl": "Сервер вернул адрес входа, который не является защищённой веб-страницей, поэтому он не был открыт.",
-      "connectedAs": "Подключено к {provider} как {username}.",
-      "notConnected": "Подключение к {provider} не активно, поэтому почтовый ящик не читается. Подключитесь снова, чтобы возобновить.",
-      "reconnect": "Подключить заново",
-      "disconnect": "Отключить",
+      "providersUnavailable": "Whether Google or Microsoft sign-in is available could not be checked. The manual form below still works.",
+      "startFailed": "Could not start the sign-in",
+      "badAuthorizationUrl": "The server returned a sign-in address that is not a secure web page, so it was not opened.",
+      "connectedAs": "Connected to {provider} as {username}.",
+      "notConnected": "The connection to {provider} is not active, so the mailbox is not being read. Connect again to resume.",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
       "disconnectDialog": {
-        "title": "Отключить почтовый ящик?",
-        "message": "Monize удалит сохранённый доступ к {provider} и перестанет читать почтовый ящик. Уже сохранённые письма останутся."
+        "title": "Disconnect the mailbox?",
+        "message": "Monize will delete its stored access to {provider} and stop reading the mailbox. Emails already stored are kept."
       },
-      "disconnected": "Почтовый ящик отключён",
-      "disconnectFailed": "Не удалось отключить почтовый ящик",
-      "revokeNote": "Отключение не отзывает выданное вами разрешение. Чтобы отозвать его, удалите Monize на странице разрешений {provider}.",
+      "disconnected": "Mailbox disconnected",
+      "disconnectFailed": "Could not disconnect the mailbox",
+      "revokeNote": "Disconnecting does not remove the permission you granted. To withdraw it, remove Monize on the {provider} permissions page.",
       "revokeLink": {
-        "google": "Открыть разрешения аккаунта Google",
-        "microsoft": "Открыть разрешения приложений Microsoft"
+        "google": "Open Google account permissions",
+        "microsoft": "Open Microsoft app permissions"
       },
-      "saveButton": "Сохранить настройки",
-      "saved": "Настройки почтового ящика сохранены",
-      "saveFailed": "Не удалось сохранить настройки почтового ящика"
+      "saveButton": "Save settings",
+      "saved": "Mailbox settings saved",
+      "saveFailed": "Could not save the mailbox settings"
     },
     "form": {
-      "intro": "Или введите данные любого IMAP-ящика. Большинству провайдеров нужен пароль приложения, а не пароль от учётной записи.",
-      "hostLabel": "IMAP-сервер",
-      "portLabel": "Порт",
-      "securityLabel": "Защита соединения",
+      "intro": "Or enter the details of any IMAP mailbox. Most providers need an app password rather than your account password.",
+      "hostLabel": "IMAP server",
+      "portLabel": "Port",
+      "securityLabel": "Connection security",
       "securityOptions": {
-        "tls": "TLS (обычно порт 993)",
-        "starttls": "STARTTLS (обычно порт 143)"
+        "tls": "TLS (usually port 993)",
+        "starttls": "STARTTLS (usually port 143)"
       },
-      "usernameLabel": "Имя пользователя",
-      "passwordLabel": "Пароль",
-      "passwordStoredPlaceholder": "Пароль сохранён. Введите новый, чтобы заменить его.",
-      "passwordRequiredHelp": "Нужен для нового почтового ящика или при смене сервера или имени пользователя.",
-      "passwordKeepHelp": "Оставьте пустым, чтобы сохранить текущий пароль. Он больше никогда не показывается.",
-      "saveButton": "Сохранить почтовый ящик",
-      "saved": "Почтовый ящик сохранён",
-      "saveFailed": "Не удалось сохранить почтовый ящик",
+      "usernameLabel": "User name",
+      "passwordLabel": "Password",
+      "passwordStoredPlaceholder": "A password is stored. Type to replace it.",
+      "passwordRequiredHelp": "Required for a new mailbox, or when the server or user name changes.",
+      "passwordKeepHelp": "Leave blank to keep the stored password. It is never shown again.",
+      "saveButton": "Save mailbox",
+      "saved": "Mailbox saved",
+      "saveFailed": "Could not save the mailbox",
       "test": {
-        "button": "Проверить соединение",
-        "ok": "{count, plural, one {Соединение работает. В папке # сообщение.} few {Соединение работает. В папке # сообщения.} many {Соединение работает. В папке # сообщений.} other {Соединение работает. В папке # сообщения.}}",
-        "error": "Не удалось подключиться: {error}",
-        "failed": "Не удалось проверить соединение"
+        "button": "Test connection",
+        "ok": "{count, plural, one {The connection works. The folder holds # message.} other {The connection works. The folder holds # messages.}}",
+        "error": "The connection failed: {error}",
+        "failed": "Could not test the connection"
       }
     },
     "settings": {
-      "folderLabel": "Папка",
-      "folderHelp": "Папка для чтения. Она открывается только для чтения.",
-      "enabledLabel": "Читать почтовый ящик автоматически",
-      "enabledHelp": "Управляет только автоматическим чтением: когда включено, Monize читает почтовый ящик каждые 15 минут. Отключение не отсоединяет ящик, а «Опросить сейчас» читает его независимо от этого переключателя.",
-      "aiModeLabel": "Режим ИИ",
-      "aiModeHelp": "Можно ли при опросе использовать настроенного вами ИИ-провайдера для чеков. «Распознать с помощью ИИ» и «Составить парсер с помощью ИИ» обращаются к ассистенту в чате в любом режиме, а ответ ИИ всегда остаётся предложением или черновиком, который вы утверждаете.",
+      "folderLabel": "Folder",
+      "folderHelp": "The folder to read. It is opened read-only.",
+      "enabledLabel": "Read the mailbox automatically",
+      "enabledHelp": "Controls only the automatic reading: when on, Monize reads the mailbox every 15 minutes. Turning it off does not disconnect the mailbox, and Poll now reads it whether this is on or off.",
+      "aiModeLabel": "AI mode",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Prepare a profile with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
-        "off": "Выкл.",
-        "on_demand": "По запросу",
-        "automatic": "Автоматически"
+        "off": "Off",
+        "on_demand": "On demand",
+        "automatic": "Automatic"
       },
       "aiModeDescriptions": {
-        "off": "При опросе ИИ для чеков никогда не вызывается.",
-        "on_demand": "При опросе ИИ никогда не вызывается. Вы сами обращаетесь к ассистенту через «Распознать с помощью ИИ» или «Составить парсер с помощью ИИ».",
-        "automatic": "Во время опроса ИИ спрашивают о найденном чеке, который ни один утверждённый парсер не смог прочитать полностью, и составляют парсер для отправителя, у которого его нет."
+        "off": "The poll never calls the AI for receipts.",
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Prepare a profile with AI.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved profile could read completely, and drafts a profile for a sender that has none."
       },
-      "autoApplyLabel": "Применять предложения автоматически",
-      "autoApplyHelp": "По умолчанию выключено. Предложение применяется без вопросов, только если выполнены все условия: утверждённый профиль прочитал письмо целиком, транзакция найдена по номеру заказа, по референсу или по точной сумме и получателю и кандидат один, а предложение сходится до копейки. Всё остальное ждёт вашего утверждения.",
-      "profileLimitLabel": "Учитывать предложения профилей в суточном лимите ИИ",
-      "profileLimitHelp": "По умолчанию включено: изменение, которое профиль предлагает по письму, учитывается в суточном лимите изменений, предложенных ИИ, как и любое другое предложение ИИ. Выключите, если большая партия сохранённых писем иначе исчерпает лимит. Исключение составляют только предложения профилей; каждое предложение по-прежнему ждёт вашего утверждения."
+      "autoApplyLabel": "Apply proposals automatically",
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profile proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profile proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profiles are exempt; every proposal still waits for your approval."
     },
     "status": {
-      "lastPolled": "Последний опрос",
-      "lastSuccess": "Последний успешный опрос",
-      "never": "Никогда",
-      "lastError": "Последняя ошибка: {error}",
-      "lastErrorAt": "Последняя ошибка ({at}): {error}",
-      "pollNow": "Опросить сейчас",
-      "pollResult": "Опрос завершён: {fetched, plural, one {сохранено # письмо} few {сохранено # письма} many {сохранено # писем} other {сохранено # письма}}, пропущено: {skipped}, обработано: {processed}.",
-      "pollResultLink": "Посмотреть сохранённые письма",
-      "pollFailed": "Не удалось выполнить опрос",
-      "deleteButton": "Удалить почтовый ящик",
+      "lastPolled": "Last poll",
+      "lastSuccess": "Last successful poll",
+      "never": "Never",
+      "lastError": "Last error: {error}",
+      "lastErrorAt": "Last error ({at}): {error}",
+      "pollNow": "Poll now",
+      "pollResult": "Poll finished: {fetched, plural, one {# email saved} other {# emails saved}}, {skipped} skipped, {processed} processed.",
+      "pollResultLink": "View the saved emails",
+      "pollFailed": "The poll failed",
+      "deleteButton": "Delete mailbox",
       "deleteDialog": {
-        "title": "Удалить почтовый ящик?",
-        "message": "Настройки почтового ящика и все сохранённые письма будут удалены, а открытые запросы на проверку по ним отклонены. Письма в самом почтовом ящике не затрагиваются."
+        "title": "Delete the mailbox?",
+        "message": "The mailbox settings and every stored email will be deleted, and open review requests from them dismissed. The emails in the mailbox itself are not touched."
       },
-      "deleted": "Почтовый ящик удалён",
-      "deleteFailed": "Не удалось удалить почтовый ящик"
+      "deleted": "Mailbox deleted",
+      "deleteFailed": "Could not delete the mailbox"
     }
   },
   "parsers": {
-    "heading": "Профили",
-    "description": "Профиль читает подтверждения заказов одного отправителя по шаблонам, которые вы пишете или проверяете, и определяет, как находится банковская транзакция. После утверждения он работает без ИИ.",
-    "newButton": "Новый парсер",
-    "loading": "Загрузка парсеров",
+    "heading": "Profiles",
+    "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "New profile",
+    "loading": "Loading profiles",
     "error": {
-      "title": "Не удалось загрузить парсеры",
-      "body": "Запрос не выполнен. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "The profiles could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "Парсеров пока нет",
-      "body": "Создайте парсер для отправителя подтверждений заказов или составьте его по сохранённому письму на странице «Чеки из электронной почты»."
+      "title": "No profiles yet",
+      "body": "Create one for a sender of order confirmations, or draft one from a stored email on the Email Receipts page."
     },
     "columns": {
-      "name": "Парсер",
-      "status": "Статус",
-      "payee": "Получатель",
-      "actions": "Действия"
+      "name": "Profile",
+      "status": "Status",
+      "payee": "Payee",
+      "actions": "Actions"
     },
     "status": {
-      "draft": "Черновик",
-      "approved": "Утверждён"
+      "draft": "Draft",
+      "approved": "Approved"
     },
     "source": {
-      "manual": "Написан вами",
-      "ai": "Составлен ИИ"
+      "manual": "Written by you",
+      "ai": "Drafted by AI"
     },
-    "invalid": "Недопустим",
-    "noPayee": "Нет получателя",
-    "payeeUnknown": "Получатель не найден",
-    "payeeUnavailable": "Список получателей недоступен",
+    "invalid": "Invalid",
+    "noPayee": "No payee",
+    "payeeUnknown": "Payee not found",
+    "payeeUnavailable": "Payee list unavailable",
     "actions": {
-      "approve": "Утвердить",
-      "viewJson": "Показать JSON"
+      "approve": "Approve",
+      "viewJson": "View JSON"
     },
     "toasts": {
-      "approved": "Парсер утверждён",
-      "approveFailed": "Не удалось утвердить парсер",
-      "changedElsewhere": "Этот парсер был изменён в другом месте. Список перезагружен.",
-      "deleted": "Парсер удалён",
-      "deleteFailed": "Не удалось удалить парсер"
+      "approved": "Profile approved",
+      "approveFailed": "Could not approve the profile",
+      "changedElsewhere": "This profile was changed elsewhere. The list has been reloaded.",
+      "deleted": "Profile deleted",
+      "deleteFailed": "Could not delete the profile"
     },
     "deleteDialog": {
-      "title": "Удалить парсер?",
-      "message": "Парсер {name} будет удалён. Письма, которые он уже прочитал, сохранят свои результаты."
+      "title": "Delete the profile?",
+      "message": "The profile {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
-      "title": "Определение {name}",
-      "help": "Определение парсера в том виде, в каком оно сохранено. Здесь оно доступно только для чтения; чтобы изменить его, нажмите «Изменить».",
-      "contentLabel": "JSON определения",
-      "copy": "Копировать",
-      "copied": "JSON скопирован",
-      "copyFailed": "Не удалось скопировать JSON"
+      "title": "Definition of {name}",
+      "help": "The profile definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
+      "contentLabel": "Definition JSON",
+      "copy": "Copy",
+      "copied": "JSON copied",
+      "copyFailed": "Could not copy the JSON"
     },
     "processOffer": {
-      "title": "Обработать сохранённые письма сейчас?",
-      "message": "Обработать сейчас {count, plural, one {# сохранённое письмо} few {# сохранённых письма} many {# сохранённых писем} other {# сохранённого письма}} от {domains}? Каждое будет прочитано заново с этим профилем; то, что оно предложит, ждёт во входящих проверки, если не включено автоматическое применение.",
-      "confirm": "Обработать сейчас",
-      "later": "Не сейчас"
+      "title": "Process the stored emails now?",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process now",
+      "later": "Not now"
     }
   },
   "editor": {
-    "createTitle": "Новый парсер",
-    "editTitle": "Редактирование парсера",
-    "loading": "Загрузка получателей и категорий",
+    "createTitle": "New profile",
+    "editTitle": "Edit profile",
+    "loading": "Loading payees and categories",
     "lookupsError": {
-      "title": "Не удалось загрузить получателей и категории",
-      "body": "Они нужны для выбора, поэтому редактор пока не может открыться. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "Payees and categories could not be loaded",
+      "body": "The pickers need them, so the editor cannot open yet. Try again.",
+      "retry": "Try again"
     },
-    "draftNote": "Этот парсер — черновик. Он ничего не читает, пока вы его не утвердите.",
-    "draftAiNote": "ИИ составил этот парсер по вашим образцам писем. Протестируйте его на каждом из них и проверьте каждый шаблон, затем утвердите парсер в списке. Пока вы этого не сделаете, он ничего не читает.",
-    "identityHeading": "Какие письма он читает",
-    "nameLabel": "Название",
-    "payeeLabel": "Получатель",
-    "payeePlaceholder": "Нет получателя",
-    "domainsLabel": "Домены отправителя",
-    "domainsHelp": "По одному в строке, не более {max}. Поддомен указанного домена тоже подходит.",
-    "subjectLabel": "Тема содержит",
-    "subjectHelp": "Необязательно, по одному в строке, не более {max}. Тема должна содержать хотя бы одно из них, без учёта регистра.",
-    "saveButton": "Сохранить парсер",
-    "created": "Парсер создан",
-    "updated": "Парсер сохранён",
-    "saveFailed": "Не удалось сохранить парсер",
-    "conflict": "Этот парсер был изменён в другом месте с тех пор, как вы его открыли. Перезагрузите его, чтобы увидеть текущую версию. Ваши правки здесь не сохранены.",
-    "conflictReload": "Перезагрузить парсер",
+    "draftNote": "This profile is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this profile from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "identityHeading": "Which emails it reads",
+    "nameLabel": "Name",
+    "payeeLabel": "Payee",
+    "payeePlaceholder": "No payee",
+    "domainsLabel": "Sender domains",
+    "domainsHelp": "One per line, up to {max}. A sub-domain of a listed domain also matches.",
+    "subjectLabel": "Subject contains",
+    "subjectHelp": "Optional, one per line, up to {max}. The subject must contain at least one of them, ignoring case.",
+    "saveButton": "Save profile",
+    "created": "Profile created",
+    "updated": "Profile saved",
+    "saveFailed": "Could not save the profile",
+    "conflict": "This profile was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the profile",
     "patterns": {
-      "sourceLabel": "Источник строк",
-      "sourceHint": "С каким представлением письма сопоставляются шаблоны ниже. «Текст» — текстовая часть письма, по одной строке на каждый перевод строки. «HTML» читает HTML-часть: каждый блок и каждая ячейка таблицы становятся отдельной строкой, поэтому название товара, которое текст разбивает на несколько строк, остаётся целым. Вид «Строки» в письме показывает, что именно даёт каждый источник.",
+      "sourceLabel": "Lines source",
+      "sourceHint": "Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.",
       "sourceOptions": {
-        "text": "Текст",
+        "text": "Text",
         "html": "HTML"
       },
-      "globHelp": "Каждый шаблон сопоставляется с целой строкой письма без учёта регистра. Используйте {star} для любого текста и имя в фигурных скобках, например {capture}, чтобы захватить значение. В каждом поле может быть до {max} шаблонов, по одному в строке.",
-      "orderIdLabel": "Шаблоны номера заказа",
-      "orderIdHint": "Должен захватывать {capture}. Пример: Номер заказа: {capture}",
-      "totalLabel": "Шаблоны итога",
-      "amountHint": "Должен захватывать {capture}. Пример: Итого по заказу {capture}",
-      "shippingLabel": "Шаблоны доставки",
-      "discountLabel": "Шаблоны скидки",
-      "itemsHeading": "Позиции",
-      "startAfterLabel": "Позиции начинаются после",
-      "startAfterHint": "Необязательно. Позиции читаются со строки после первой строки, содержащей этот текст.",
-      "stopAtLabel": "Позиции заканчиваются на",
-      "stopAtHint": "Необязательно. Позиции заканчиваются перед первой строкой, содержащей этот текст.",
-      "itemPatternsLabel": "Шаблоны позиций",
-      "itemPatternsHint": "Должен захватывать {name} и либо {amount} (сумму строки), либо {price} (цену за единицу, при желании вместе с {qty}), но не оба сразу. Пример: {name} x {qty} {price}"
+      "globHelp": "Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.",
+      "orderIdLabel": "Order number patterns",
+      "orderIdHint": "Must capture {capture}. Example: Order number: {capture}",
+      "totalLabel": "Total patterns",
+      "amountHint": "Must capture {capture}. Example: Order total {capture}",
+      "shippingLabel": "Shipping patterns",
+      "discountLabel": "Discount patterns",
+      "feesLabel": "Шаблоны сборов",
+      "itemsHeading": "Line items",
+      "startAfterLabel": "Items start after",
+      "startAfterHint": "Optional. Items are read from the line after the first line containing this text.",
+      "stopAtLabel": "Items stop at",
+      "stopAtHint": "Optional. Items end before the first line containing this text.",
+      "itemPatternsLabel": "Item patterns",
+      "itemPatternsHint": "Must capture {name} and either {amount} (the line total) or {price} (the unit price, optionally with {qty}), never both. Example: {name} x {qty} {price}"
     },
     "categories": {
-      "rulesHeading": "Правила категорий",
-      "rulesHelp": "Первое правило, шаблон которого совпал с названием позиции, задаёт её категорию. Шаблоны используют тот же синтаксис, например {example}. Не более {max} правил.",
-      "noRules": "Правил категорий нет. Все позиции получают категорию по умолчанию.",
-      "rulePatternLabel": "Шаблон правила {number}",
-      "ruleCategoryLabel": "Категория правила {number}",
-      "categoryPlaceholder": "Без категории",
-      "removeRule": "Удалить правило {number}",
-      "addRule": "Добавить правило",
-      "ruleLimit": "Достигнут предел в {max} правил.",
-      "defaultLabel": "Категория по умолчанию",
-      "defaultHelp": "Применяется к позициям, не подошедшим ни под одно правило.",
-      "shippingLabel": "Категория доставки",
-      "shippingHelp": "Категория строки доставки."
+      "heading": "Категории",
+      "help": "Введите имя категории и выберите его из списка. Имя сохраняется в профиле, и категория должна существовать при сохранении профиля.",
+      "categoryPlaceholder": "No category",
+      "defaultLabel": "Default category",
+      "defaultHelp": "Used for items that get no other category.",
+      "shippingLabel": "Shipping category",
+      "shippingHelp": "The category of the shipping line.",
+      "feesLabel": "Категория сборов",
+      "feesHelp": "Категория строки сборов.",
+      "unknownCategory": "Нет категории с названием {name}. Выберите её из списка или создайте её сначала.",
+      "rulesInJson": "Правила категорий по названию элемента - это расширенная опция: добавьте их в определение профиля в режиме JSON."
     },
     "mode": {
-      "label": "Режим редактирования",
-      "form": "Форма",
+      "label": "Editing mode",
+      "form": "Form",
       "json": "JSON",
-      "formUnavailable": "Это определение использует то, что форма показать не может: записи с метками, многострочные позиции или ключи, для которых в ней нет поля. Измените его как JSON.",
-      "jsonInvalid": "JSON пока недопустим, поэтому форму показать нельзя. Сначала исправьте его."
+      "formUnavailable": "This definition uses something the form cannot show: labelled entries, multi-line items or keys it has no field for. Edit it as JSON.",
+      "jsonInvalid": "The JSON is not valid yet, so the form cannot be shown. Fix it first."
     },
     "json": {
-      "label": "Определение парсера (JSON)",
-      "help": "То же определение, которое строит форма. Сервер проверяет его при сохранении, а тест ниже читает его в нынешнем виде.",
-      "parseError": "Это недопустимый JSON или не объект JSON. Исправьте его, чтобы сохранить или протестировать парсер."
+      "label": "Profile definition (JSON)",
+      "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profile."
     },
     "matching": {
-      "heading": "Сопоставление",
-      "help": "Как находится банковская транзакция, оплатившая заказ из письма. Стратегии пробуются по порядку: решает первая, после которой остаётся ровно одна транзакция; несколько транзакций означают неоднозначность, а если не осталось ни одной, переходят к следующей.",
-      "referenceLabel": "Шаблоны референса",
-      "referenceHint": "Идентификатор, который магазин или платёжный шлюз вносит в банковскую операцию, например текст в выписке или назначение перевода. Должен захватывать {capture}.",
-      "strategiesLabel": "Стратегии в порядке перебора",
-      "strategiesHelp": "Номер заказа и референс ищут значение в описании, имени получателя или референс-номере транзакции. «Сумма и получатель» требует сумму и признак получателя. «Сумма и дата» требует только сумму в пределах окна. Хотя бы одна стратегия должна оставаться включённой.",
+      "heading": "Matching",
+      "help": "How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.",
+      "instruction": "Лучше всего номер ссылки, взятый из описания банковской операции. Если его нет, используются дата и сумма. По умолчанию стратегии пробуются в этом порядке: ссылка (когда профиль имеет шаблоны ссылок), номер заказа, сумма и получатель, сумма и дата.",
+      "referenceLabel": "Reference patterns",
+      "referenceHint": "The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.",
+      "strategiesLabel": "Strategies, in the order tried",
+      "strategiesHelp": "Order number and reference look for the value in the transaction's description, payee or reference number. Amount and payee needs the amount plus a payee signal. Amount and date needs the amount alone, within the window. At least one must stay on.",
       "strategyPosition": "{position}. {name}",
-      "moveUp": "Переместить «{name}» выше",
-      "moveDown": "Переместить «{name}» ниже",
+      "moveUp": "Move {name} earlier",
+      "moveDown": "Move {name} later",
       "strategies": {
-        "reference": "Референс",
-        "orderId": "Номер заказа",
-        "amount_payee": "Сумма и получатель",
-        "amount_date": "Сумма и дата"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       },
-      "referenceNeeded": "Стратегия референса включена, но шаблонов референса нет, поэтому она ничего не найдёт.",
-      "referenceInLabel": "Искать референс и номер заказа в",
-      "referenceInHint": "Значения короче 4 символов никогда не ищутся.",
+      "referenceNeeded": "The reference strategy is on but there are no reference patterns, so it will find nothing.",
+      "referenceInLabel": "Look for the reference and the order number in",
+      "referenceInHint": "Values shorter than 4 characters are never looked for.",
       "referenceIn": {
-        "description": "Описание",
-        "payee": "Имя получателя",
-        "referenceNumber": "Референс-номер"
+        "description": "Description",
+        "payee": "Payee name",
+        "referenceNumber": "Reference number"
       },
-      "daysBeforeLabel": "Дней до покупки",
-      "daysAfterLabel": "Дней после покупки",
-      "daysHint": "Окно вокруг даты покупки. По умолчанию {default}, не более {max}.",
-      "toleranceLabel": "Допуск по сумме",
-      "toleranceHint": "На сколько банковская сумма может отличаться от итога письма. По умолчанию 0, не более {max}."
+      "daysBeforeLabel": "Days before the purchase",
+      "daysAfterLabel": "Days after the purchase",
+      "daysHint": "The window around the purchase date. Default {default}, at most {max}.",
+      "toleranceLabel": "Amount tolerance",
+      "toleranceHint": "How far the bank amount may differ from the email's total. Default 0, at most {max}."
     },
     "proposal": {
-      "heading": "Предложение",
-      "tagLabel": "Добавлять тег к транзакциям, которые категоризирует этот профиль",
-      "tagHelp": "Тег создаётся, если у вас нет тега с таким именем. Он показан в предложении, и ничего не записывается, пока вы его не утвердите.",
-      "tagNameLabel": "Имя тега",
-      "aiCategoriesLabel": "Разрешить ИИ выбирать категорию позиций, которые не подходят ни под одно правило",
-      "aiCategoriesHelp": "Если позиция не подходит ни под одно правило категорий и категории по умолчанию нет, ИИ спрашивают о её категории из вашего списка категорий. В предложении выбор помечен как выбор ИИ. Если выключено, ИИ никогда не спрашивают."
+      "heading": "Proposal",
+      "tagLabel": "Add a tag to the transactions this profile categorizes",
+      "tagHelp": "The tag is created when you have none by that name. It is shown on the proposal, and nothing is written until you approve it.",
+      "tagNameLabel": "Tag name",
+      "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
+      "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
+    },
+    "problems": {
+      "feesCategory": "Категория сборов",
+      "balanceTolerance": "Допуск баланса",
+      "fees": "Шаблоны сборов"
     }
   },
   "problems": {
-    "heading": "Определение парсера недопустимо:",
+    "heading": "The profile definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
-      "definition": "Определение",
-      "line": "{field}, строка {line}",
-      "rule": "Правило категории {rule}, {part}",
-      "entryPart": "{field}, запись {line}, {part}",
-      "skipLine": "Пропускаемая строка {line}",
-      "recordStep": "Шаг записи {step}",
-      "recordStepPart": "Шаг записи {step}, {part}",
-      "recordAlternative": "Шаг записи {step}, вариант {alternative}"
+      "definition": "The definition",
+      "line": "{field}, line {line}",
+      "rule": "Category rule {rule}, {part}",
+      "entryPart": "{field}, entry {line}, {part}",
+      "skipLine": "Line to skip {line}",
+      "recordStep": "Record step {step}",
+      "recordStepPart": "Record step {step}, {part}",
+      "recordAlternative": "Record step {step}, alternative {alternative}"
     },
     "fields": {
-      "orderId": "Шаблоны номера заказа",
-      "total": "Шаблоны итога",
-      "shipping": "Шаблоны доставки",
-      "discount": "Шаблоны скидки",
-      "itemPatterns": "Шаблоны позиций",
-      "startAfter": "Позиции начинаются после",
-      "stopAt": "Позиции заканчиваются на",
-      "items": "Позиции",
-      "categoryRules": "Правила категорий",
-      "rulePattern": "шаблон",
-      "ruleCategory": "категория",
-      "defaultCategory": "Категория по умолчанию",
-      "shippingCategory": "Категория доставки",
-      "skipLines": "Пропускаемые строки",
+      "orderId": "Order number patterns",
+      "total": "Total patterns",
+      "shipping": "Shipping patterns",
+      "discount": "Discount patterns",
+      "itemPatterns": "Item patterns",
+      "startAfter": "Items start after",
+      "stopAt": "Items stop at",
+      "items": "Line items",
+      "categoryRules": "Category rules",
+      "rulePattern": "pattern",
+      "ruleCategory": "category",
+      "defaultCategory": "Default category",
+      "shippingCategory": "Shipping category",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns",
+      "skipLines": "Lines to skip",
       "record": "Record",
       "label": "label",
       "value": "value",
       "within": "within",
       "line": "line",
       "optional": "optional",
-      "paid": "Шаблоны оплаченной суммы",
-      "payee": "Шаблоны продавца",
-      "requireLine": "Обязательные строки",
-      "skipIfLine": "Строки, из-за которых письмо пропускается",
-      "waitIfLine": "Строки, из-за которых письмо откладывается",
-      "source": "Источник строк",
-      "single": "Одна позиция",
-      "singleName": "Название одной позиции",
-      "joinWrapped": "Объединять перенесённые строки",
+      "paid": "Paid patterns",
+      "payee": "Merchant patterns",
+      "requireLine": "Required lines",
+      "skipIfLine": "Lines that skip the email",
+      "waitIfLine": "Lines that hold the email",
+      "source": "Lines source",
+      "single": "Single item",
+      "singleName": "Single item name",
+      "joinWrapped": "Join wrapped lines",
       "ruleField": "field",
-      "reference": "Шаблоны референса",
-      "match": "Раздел сопоставления",
-      "matchBy": "Стратегии сопоставления",
-      "matchReferenceIn": "Поля, в которых ищется референс",
-      "matchDaysBefore": "Дней до покупки",
-      "matchDaysAfter": "Дней после покупки",
-      "matchTolerance": "Допуск по сумме",
-      "tag": "Тег",
-      "aiCategories": "Категории ИИ"
+      "reference": "Reference patterns",
+      "match": "The matching section",
+      "matchBy": "Matching strategies",
+      "matchReferenceIn": "Fields the reference is looked for in",
+      "matchDaysBefore": "Days before the purchase",
+      "matchDaysAfter": "Days after the purchase",
+      "matchTolerance": "Amount tolerance",
+      "tag": "Tag",
+      "aiCategories": "AI categories"
     },
     "codes": {
-      "not_object": "не является допустимым определением",
-      "unknown_key": "не относится к тому, что может быть у парсера",
-      "unsupported_version": "относится к версии, которую этот сервер не читает (используйте версию 2)",
-      "invalid_type": "содержит значение неверного типа",
-      "empty": "не должно быть пустым",
-      "too_many": "содержит слишком много записей (не более {max})",
-      "too_long": "слишком длинное (не более {max} символов)",
-      "control_character": "содержит управляющий символ",
-      "malformed_capture": "содержит недопустимый захват в фигурных скобках",
-      "too_many_captures": "содержит слишком много захватов",
-      "duplicate_capture": "дважды использует одно и то же имя захвата",
-      "capture_not_allowed": "использует имя захвата, которое это поле не принимает",
-      "capture_missing": "не содержит захвата, который нужен этому полю",
-      "capture_conflict": "захватывает и сумму строки, и цену за единицу. Оставьте что-то одно.",
-      "invalid_uuid": "не является допустимой категорией",
-      "out_of_range": "должно быть целым числом от 1 до {max}",
-      "items_patterns_and_record": "содержит и шаблоны, и запись. Оставьте что-то одно.",
-      "items_shape_missing": "требует либо шаблоны, либо запись",
-      "skip_lines_need_record": "можно использовать только вместе с записью",
-      "record_name_missing": "должно захватывать {capture} в одном из своих шагов",
-      "items_single_conflict": "содержит одну позицию наряду с шаблонами или записью. Оставьте что-то одно.",
-      "join_wrapped_needs_patterns": "работает только с шаблонами позиций",
-      "invalid_value": "содержит значение, которое это поле не принимает",
-      "duplicate_entry": "содержит одну и ту же запись дважды",
-      "reference_field_missing": "требует шаблонов референса (стратегия референса включена)",
-      "out_of_range_days": "должно быть целым числом от 0 до {max}",
-      "out_of_range_tolerance": "должно быть суммой от 0,00 до {max}"
+      "not_object": "is not a valid definition",
+      "unknown_key": "is not something a profile can have",
+      "unsupported_version": "is a version this server does not read (use version 2)",
+      "invalid_type": "has the wrong kind of value",
+      "empty": "must not be empty",
+      "too_many": "has too many entries (at most {max})",
+      "too_long": "is too long (at most {max} characters)",
+      "control_character": "contains a control character",
+      "malformed_capture": "has a capture in braces that is not valid",
+      "too_many_captures": "has too many captures",
+      "duplicate_capture": "uses the same capture name twice",
+      "capture_not_allowed": "uses a capture name this field does not accept",
+      "capture_missing": "is missing a capture this field needs",
+      "capture_conflict": "captures both the line total and the unit price. Use one of them.",
+      "invalid_uuid": "is not a valid category",
+      "out_of_range": "must be a whole number from 1 to {max}",
+      "items_patterns_and_record": "has both patterns and a record. Use one of them.",
+      "items_shape_missing": "needs either patterns or a record",
+      "skip_lines_need_record": "can only be used together with a record",
+      "record_name_missing": "must capture {capture} in one of its steps",
+      "items_single_conflict": "has a single item beside patterns or a record. Use one of them.",
+      "join_wrapped_needs_patterns": "only works with item patterns",
+      "invalid_value": "has a value this field does not accept",
+      "duplicate_entry": "lists the same entry twice",
+      "reference_field_missing": "needs reference patterns (the reference strategy is on)",
+      "out_of_range_days": "must be a whole number from 0 to {max}",
+      "out_of_range_tolerance": "must be an amount from 0.00 to {max}"
     }
   },
   "test": {
-    "heading": "Проверка на сохранённом письме",
-    "help": "Читает сохранённое письмо по шаблонам выше, сохранённым или нет, и показывает, что будет найдено и с какой транзакцией совпадёт. Ничего не записывается.",
-    "loadFailed": "Не удалось загрузить сохранённые письма, поэтому проверять пока не на чем.",
-    "noReceipts": "Сохранённых писем пока нет. Сначала опросите почтовый ящик.",
-    "receiptLabel": "Письмо",
-    "choosePlaceholder": "Выберите письмо",
-    "receiptOption": "{subject} от {sender} ({date})",
-    "button": "Проверить",
-    "failed": "Проверка не удалась",
-    "matchHeading": "Совпадение с транзакцией",
-    "matched": "Будет привязана транзакция от {date} на сумму {amount} ({payee}), найденная по критерию: {how}.",
+    "heading": "Test against a stored email",
+    "help": "Reads a stored email with the patterns above, saved or not, and shows what would be found and which transaction it would match. Nothing is written.",
+    "loadFailed": "The stored emails could not be loaded, so there is nothing to test against yet.",
+    "noReceipts": "No emails are stored yet. Poll the mailbox first.",
+    "receiptLabel": "Email",
+    "choosePlaceholder": "Choose an email",
+    "receiptOption": "{subject} from {sender} ({date})",
+    "button": "Test",
+    "failed": "The test failed",
+    "matchHeading": "Transaction match",
+    "matched": "Would link the transaction of {date} for {amount} ({payee}), found by {how}.",
     "matchKinds": {
-      "order_id": "номер заказа",
-      "amount_payee": "сумма и получатель",
-      "amount_only": "сумма",
-      "manual": "ваш выбор",
-      "reference": "референсу",
-      "amount_date": "сумме и дате"
+      "order_id": "order number",
+      "amount_payee": "amount and payee",
+      "amount_only": "amount",
+      "manual": "your choice",
+      "reference": "reference",
+      "amount_date": "amount and date"
     },
-    "noPayee": "нет получателя",
-    "ambiguous": "{count, plural, one {# транзакция подходит} few {# транзакции подходят} many {# транзакций подходят} other {# транзакции подходят}} одинаково хорошо, поэтому ни одна не будет привязана, пока вы не выберете.",
-    "unmatched": "Ни одна транзакция не совпала из {count, plural, one {# кандидата} few {# кандидатов} many {# кандидатов} other {# кандидата}}.",
-    "jsonInvalid": "JSON недопустим, поэтому тестировать пока нечего.",
+    "noPayee": "no payee",
+    "ambiguous": "{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.",
+    "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.",
+    "jsonInvalid": "The JSON is not valid, so there is nothing to test yet.",
     "outcome": {
-      "not_applicable": "Этот парсер не стал бы читать это письмо: в нём нет ни одной из его обязательных строк, поэтому был бы опробован следующий парсер для этого отправителя.",
-      "skip_line": "Этот парсер отложил бы это письмо в сторону: в нём есть строка, по которой он его пропускает.",
-      "wait_line": "Этот парсер задержал бы это письмо: строка сообщает, что заказ ещё не окончательный, поэтому письмо будет прочитано позже снова.",
-      "no_html": "Этот парсер читает HTML-часть письма, а в этом письме её нет, поэтому оно было бы помечено как нечитаемое (нет HTML)."
+      "not_applicable": "This profile would not read this email: none of its required lines is in it, so the next profile for the sender would be tried.",
+      "skip_line": "This profile would set this email aside: a line it skips on is in it.",
+      "wait_line": "This profile would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
-      "heading": "Найдено по",
-      "none": "Из этого письма не прочитано ни одного значения.",
+      "heading": "Matched by",
+      "none": "No value was read from this email.",
       "fields": {
-        "orderId": "Номер заказа",
-        "total": "Итого",
-        "paid": "Оплачено",
-        "shipping": "Доставка",
-        "discount": "Скидка",
-        "payee": "Продавец",
-        "requireLine": "Обязательная строка",
-        "skipIfLine": "Строка пропуска",
-        "waitIfLine": "Строка ожидания",
-        "reference": "Референс"
+        "orderId": "Order number",
+        "total": "Total",
+        "paid": "Paid",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "payee": "Merchant",
+        "requireLine": "Required line",
+        "skipIfLine": "Skip line",
+        "waitIfLine": "Wait line",
+        "reference": "Reference"
       },
-      "entryLine": "запись {entry} ({pattern}), строка {line}: {text}",
-      "entrySubject": "запись {entry} ({pattern}), тема: {text}",
-      "labelled": "запись {entry}, метка {label} в строке {labelLine} ({labelText}), значение {pattern} в строке {line}: {text}",
-      "item": "Позиция {number}",
-      "itemLine": "{pattern}, строка {line}: {text}"
+      "entryLine": "entry {entry} ({pattern}), line {line}: {text}",
+      "entrySubject": "entry {entry} ({pattern}), the subject: {text}",
+      "labelled": "entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}",
+      "item": "Item {number}",
+      "itemLine": "{pattern}, line {line}: {text}"
     },
     "trace": {
-      "heading": "Что просмотрело сопоставление",
-      "window": "Транзакции с {from} по {to} (дней до покупки: {before}, дней после покупки: {after}), рассмотрено: {considered}.",
-      "tolerance": "Сумма может отличаться на {amount}.",
+      "heading": "What the matcher looked at",
+      "window": "Transactions from {from} to {to} ({before} days before, {after} days after the purchase): {considered, plural, one {# considered} other {# considered}}.",
+      "tolerance": "The amount may differ by {amount}.",
       "attempt": "{position}. {name}",
-      "kept": "{count, plural, =0 {не оставила ни одной} one {оставила # транзакцию} few {оставила # транзакции} many {оставила # транзакций} other {оставила # транзакции}}",
-      "decided": "Решила",
+      "kept": "{count, plural, =0 {kept none} one {kept # transaction} other {kept # transactions}}",
+      "decided": "Decided",
       "transaction": "{date}, {amount}, {payee}",
-      "noPayee": "нет получателя",
+      "noPayee": "no payee",
       "strategies": {
-        "reference": "Референс",
-        "orderId": "Номер заказа",
-        "amount_payee": "Сумма и получатель",
-        "amount_date": "Сумма и дата"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       }
     }
   },
   "parsed": {
-    "notFound": "Не найдено",
-    "noCategory": "Без категории",
-    "unknownCategory": "Неизвестная категория",
-    "categoryUnavailable": "Категории не загружены",
-    "noItems": "Позиции не прочитаны.",
-    "orderId": "Номер заказа",
-    "total": "Итого",
-    "shipping": "Доставка",
-    "discount": "Скидка",
+    "notFound": "Not found",
+    "noCategory": "No category",
+    "unknownCategory": "Unknown category",
+    "categoryUnavailable": "Categories not loaded",
+    "noItems": "No line items were read.",
+    "orderId": "Order number",
+    "total": "Total",
+    "shipping": "Shipping",
+    "discount": "Discount",
     "columns": {
-      "item": "Позиция",
-      "qty": "Кол-во",
-      "amount": "Сумма",
-      "category": "Категория"
+      "item": "Item",
+      "qty": "Qty",
+      "amount": "Amount",
+      "category": "Category"
     },
-    "complete": "Прочитано полностью",
-    "incomplete": "Прочитано не полностью",
+    "complete": "Read completely",
+    "incomplete": "Not read completely",
     "reasons": {
-      "no_total": "В письме не указан итог.",
-      "no_items": "Позиции не найдены.",
-      "items_unbalanced": "Сумма позиций не сходится с итогом.",
-      "items_uncategorized": "У некоторых позиций нет категории.",
-      "shipping_uncategorized": "У строки доставки нет категории.",
-      "item_amount_missing": "У позиции нет суммы, а в письме нет единого итога, который можно ей присвоить."
+      "no_total": "The email states no total.",
+      "no_items": "No line items were found.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "readByAi": "Прочитано ИИ",
-    "readFromStructuredData": "Прочитано из структурированных данных",
-    "paid": "Оплачено",
-    "payee": "Продавец",
-    "reference": "Референс",
-    "categoryByAi": "ИИ"
+    "readByAi": "Read by the AI",
+    "readFromStructuredData": "Read from structured data",
+    "paid": "Paid",
+    "payee": "Merchant",
+    "reference": "Reference",
+    "categoryByAi": "AI"
   },
   "state": {
-    "pending": "Ожидает прочтения",
-    "skipped": "Пропущено",
-    "no_parser": "Нет парсера",
-    "parse_failed": "Не удалось прочитать",
-    "unmatched": "Транзакция не найдена",
-    "ambiguous": "Подходит несколько транзакций",
-    "review_conflict": "Открыт другой запрос",
-    "ignored": "Игнорируется",
-    "proposed": "Ожидает утверждения",
-    "applied": "Применено",
-    "dismissed": "Отклонено",
-    "expired": "Истекло",
-    "pending_ai": "Ожидает ИИ",
-    "request_missing": "Запрос отсутствует"
+    "pending": "Waiting to be read",
+    "skipped": "Skipped",
+    "no_parser": "No profile",
+    "parse_failed": "Could not be read",
+    "unmatched": "No transaction found",
+    "ambiguous": "Several transactions fit",
+    "review_conflict": "Another request is open",
+    "ignored": "Ignored",
+    "proposed": "Waiting for approval",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "expired": "Expired",
+    "pending_ai": "Waiting for the AI",
+    "request_missing": "Request missing"
   },
   "receipts": {
-    "loading": "Загрузка писем",
+    "loading": "Loading emails",
     "links": {
-      "reviewInbox": "Открыть входящие проверки ИИ",
-      "settings": "Настройки почтового ящика"
+      "reviewInbox": "Open the AI review inbox",
+      "settings": "Mailbox settings"
     },
     "filter": {
-      "label": "Фильтр по состоянию",
-      "all": "Все",
-      "pending": "Ожидает прочтения",
-      "skipped": "Пропущено",
-      "no_parser": "Нет парсера",
-      "parse_failed": "Не удалось прочитать",
-      "unmatched": "Транзакция не найдена",
-      "ambiguous": "Подходит несколько транзакций",
-      "review_conflict": "Открыт другой запрос",
-      "review": "На проверке",
-      "ignored": "Игнорируется"
+      "label": "Filter by state",
+      "option": "{label} ({count})",
+      "all": "All",
+      "pending": "Waiting to be read",
+      "skipped": "Skipped",
+      "no_parser": "No profile",
+      "parse_failed": "Could not be read",
+      "unmatched": "No transaction found",
+      "ambiguous": "Several transactions fit",
+      "review_conflict": "Another request is open",
+      "review": "In review",
+      "ignored": "Ignored"
     },
     "domainFilter": {
-      "label": "Домен отправителя",
-      "all": "Все отправители",
+      "label": "Sender domain",
+      "all": "All senders",
       "option": "{domain} ({count})",
-      "help": "Показаны письма с домена {domain} и его поддоменов. Выберите несколько из них, чтобы составить один парсер для отправителя."
+      "unknown": "The sender counts could not be loaded.",
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
-      "select": "Выбрать",
-      "received": "Получено",
-      "email": "Письмо",
-      "transaction": "Транзакция",
-      "state": "Состояние",
-      "actions": "Действия"
+      "select": "Select",
+      "received": "Received",
+      "email": "Email",
+      "transaction": "Transaction",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "guide": {
+      "heading": "How to create a profile",
+      "buttonName": "Prepare a profile with AI",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "нет получателя",
-    "noTransaction": "Пока нет",
+    "noPayee": "no payee",
+    "noTransaction": "None yet",
     "error": {
-      "title": "Не удалось загрузить письма",
-      "body": "Запрос не выполнен, поэтому о ваших письмах пока ничего не известно. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "The emails could not be loaded",
+      "body": "The request failed, so nothing is known about your emails yet. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "Нет писем",
-      "body": "Подтверждения заказов появятся здесь после того, как почтовый ящик будет прочитан.",
-      "filteredTitle": "Нет писем в этом состоянии",
-      "filteredBody": "Выберите другое состояние, чтобы увидеть остальные.",
-      "noMailboxBody": "Почтовый ящик ещё не подключён. Подключите его, чтобы начать читать подтверждения заказов.",
-      "connectButton": "Подключить почтовый ящик"
+      "title": "No emails",
+      "body": "Order confirmations appear here once the mailbox has been read.",
+      "filteredTitle": "No emails in this state",
+      "filteredBody": "Choose another state to see the rest.",
+      "noMailboxBody": "No mailbox is connected yet. Connect one to start reading order confirmations.",
+      "connectButton": "Connect a mailbox"
     },
     "actions": {
-      "view": "Открыть",
-      "reprocess": "Обработать заново",
-      "link": "Выбрать транзакцию",
-      "recognizeAi": "Распознать с помощью ИИ",
-      "draftParser": "Составить парсер с помощью ИИ",
-      "createParser": "Создать парсер",
-      "ignore": "Игнорировать"
+      "view": "View",
+      "reprocess": "Reprocess",
+      "link": "Choose transaction",
+      "recognizeAi": "Recognize with AI",
+      "approve": "Approve",
+      "draftParser": "Prepare a profile with AI",
+      "createParser": "Create profile",
+      "ignore": "Ignore"
     },
     "toasts": {
-      "reprocessed": "Письмо обработано заново",
-      "reprocessFailed": "Не удалось обработать письмо заново",
-      "ignored": "Письмо игнорируется",
-      "ignoreFailed": "Не удалось проигнорировать письмо",
-      "deleted": "Письмо удалено",
-      "deleteFailed": "Не удалось удалить письмо"
+      "approved": "Предложение одобрено",
+      "approveFailed": "Не удалось одобрить предложение",
+      "reprocessed": "Email reprocessed",
+      "reprocessFailed": "Could not reprocess the email",
+      "ignored": "Email ignored",
+      "ignoreFailed": "Could not ignore the email",
+      "deleted": "Email deleted",
+      "deleteFailed": "Could not delete the email"
     },
     "ignoreDialog": {
-      "title": "Игнорировать это письмо?",
-      "message": "Письмо {subject} ничего не предложит, а его открытый запрос на проверку будет отклонён.",
-      "confirm": "Игнорировать"
+      "title": "Ignore this email?",
+      "message": "The email {subject} will propose nothing, and its open review request will be dismissed.",
+      "confirm": "Ignore"
     },
     "deleteDialog": {
-      "title": "Удалить это письмо?",
-      "message": "Сохранённое письмо {subject} будет удалено, а его открытый запрос на проверку отклонён. Сообщение в почтовом ящике не затрагивается, и последующий опрос не загрузит его снова."
+      "title": "Delete this email?",
+      "message": "The stored email {subject} will be deleted and its open review request dismissed. The message in the mailbox is not touched, and a later poll will not fetch it again."
     },
     "selection": {
-      "label": "Выбранные письма",
-      "select": "Выбрать: {subject}",
-      "count": "{count, plural, one {Выбрано # письмо} few {Выбрано # письма} many {Выбрано # писем} other {Выбрано # письма}} (не больше {max})",
-      "draftButton": "Составить парсер с помощью ИИ ({count})",
-      "clear": "Снять выбор",
-      "differentSenders": "Выбранные письма пришли от разных отправителей ({domains}). Парсер читает письма одного отправителя, поэтому выберите письма от одного отправителя."
+      "label": "Selected emails",
+      "select": "Select {subject}",
+      "selectAll": "Выбрать все письма в этом списке (максимум {max})",
+      "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
+      "draftButton": "Prepare a profile with AI ({count})",
+      "clear": "Clear selection",
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
+      "guide": {
+        "heading": "Как создать профиль",
+        "buttonName": "Подготовить профиль с помощью ИИ",
+        "stepSender": "Выберите отправителя в облаке доменов отправителей.",
+        "stepTransaction": "Укажите для каждого его письма транзакцию, за которую оно было оплачено: откройте письмо и выберите транзакцию.",
+        "stepSelect": "Отметьте эти письма.",
+        "stepPrepare": "Нажмите {button}. Помощник напишет профиль, и вы протестируете и одобрите его в профилях."
+      }
     },
     "draft": {
-      "failed": "Не удалось начать составление парсера",
-      "queued": "В очереди: запрос ждёт агента во входящих проверках ИИ. Сейчас нет ассистента, который мог бы ответить.",
-      "handoffFailed": "Запрос в очереди, но письма не удалось открыть в чате. Он ждёт агента во входящих проверках ИИ.",
-      "inboxLink": "Открыть входящие проверки ИИ",
-      "opened": "Чат открыт с прикреплёнными письмами. Прочитайте сообщение и нажмите «Отправить».",
-      "chatPrompt": "Составь парсер чеков из электронной почты для {count, plural, one {этого письма с заказом} few {этих # писем с заказами} many {этих # писем с заказами} other {этих # писем с заказами}} от {domain}. Возьми в работу запрос на проверку ИИ {requestId}, протестируй парсер на каждом прикреплённом письме с помощью инструмента email_receipt_parsers, исправляй его, пока каждое письмо не будет прочитано полностью, затем сохрани его как черновик для запроса {requestId}."
+      "failed": "Could not start drafting a profile",
+      "queued": "Queued: the request waits in the AI review inbox for an agent. No assistant is available to answer now.",
+      "handoffFailed": "The request is queued, but the emails could not be opened in the chat. It waits in the AI review inbox for an agent.",
+      "inboxLink": "Open the AI review inbox",
+      "opened": "Opened the chat with the emails attached. Read the message and press Send.",
+      "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
+    },
+    "list": {
+      "filter": {
+        "unknown": "Не удалось загрузить количество отправителей."
+      }
+    },
+    "row": {
+      "approve": "Одобрить",
+      "draftParser": "Подготовить профиль с помощью ИИ",
+      "createParser": "Создать профиль"
+    },
+    "state": {
+      "filter": {
+        "option": "{label} ({count})"
+      }
     }
   },
   "detail": {
-    "title": "Чек из электронной почты",
-    "loading": "Загрузка письма",
+    "title": "Email receipt",
+    "loading": "Loading the email",
     "error": {
-      "title": "Не удалось загрузить письмо",
-      "body": "Запрос не выполнен. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "The email could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
-    "from": "От",
-    "received": "Получено",
-    "forwardedBy": "Переслано от",
-    "originalSent": "Отправлено магазином",
-    "subject": "Тема",
-    "state": "Состояние",
-    "parser": "Парсер",
-    "noParser": "Нет",
-    "structuredSource": "Структурированные данные",
-    "matchedBy": "Найдено по",
+    "from": "From",
+    "received": "Received",
+    "forwardedBy": "Forwarded by",
+    "originalSent": "Sent by the shop",
+    "subject": "Subject",
+    "state": "State",
+    "parser": "Profile",
+    "noParser": "None",
+    "structuredSource": "Structured data",
+    "matchedBy": "Matched by",
     "matchKinds": {
-      "order_id": "Номер заказа",
-      "amount_payee": "Сумма и получатель",
-      "amount_only": "Сумма",
-      "manual": "Ваш выбор",
-      "reference": "Референс",
-      "amount_date": "Сумма и дата"
+      "order_id": "Order number",
+      "amount_payee": "Amount and payee",
+      "amount_only": "Amount",
+      "manual": "Your choice",
+      "reference": "Reference",
+      "amount_date": "Amount and date"
     },
-    "transaction": "Транзакция",
+    "transaction": "Transaction",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "нет получателя",
-    "viewTransaction": "Открыть транзакцию",
-    "noTransaction": "Пока нет",
+    "noPayee": "no payee",
+    "viewTransaction": "View transaction",
+    "noTransaction": "None yet",
     "reasons": {
-      "too_large": "Письмо превышает ограничение по размеру, поэтому оно сохранено без прочтения.",
-      "undecodable": "Письмо не удалось декодировать, поэтому оно сохранено без прочтения.",
-      "draft_failed": "ИИ не смог составить парсер для этого отправителя.",
-      "parser_invalid": "Парсер для этого отправителя недопустим. Отредактируйте его в настройках парсеров.",
-      "no_total": "Парсер не нашёл в этом письме итог.",
-      "no_items": "Парсер не нашёл позиции.",
-      "items_unbalanced": "Сумма позиций не сходится с итогом.",
-      "items_uncategorized": "У некоторых позиций нет категории.",
-      "shipping_uncategorized": "У строки доставки нет категории.",
-      "amount_differs": "Прочитанный итог отличается от суммы транзакции, поэтому предлагается только описание.",
-      "proposal_fallback": "Предложение с позициями отклонено, поэтому предлагается только описание.",
-      "nothing_to_propose": "Письмо ничего не добавляет к этой транзакции.",
-      "proposal_refused": "Предложение отклонено, поэтому ничего не предложено.",
-      "skip_line": "Найдена строка, по которой этот парсер пропускает письма, поэтому письмо проигнорировано.",
-      "wait_line": "Строка сообщает, что заказ ещё не окончательный, поэтому письмо будет прочитано позже снова.",
-      "no_html": "Этот парсер читает HTML-часть письма, а в этом письме её нет.",
-      "schema_org": "Парсер не понадобился: заказ прочитан из структурированных данных (schema.org) в письме.",
-      "item_amount_missing": "У позиции нет суммы, а в письме нет единого итога, который можно ей присвоить."
+      "too_large": "The email is larger than the size limit, so it was stored without being read.",
+      "undecodable": "The email could not be decoded, so it was stored without being read.",
+      "draft_failed": "The AI could not draft a profile for this sender.",
+      "parser_invalid": "The profile for this sender is not valid. Edit it in the profile settings.",
+      "no_total": "The profile found no total in this email.",
+      "no_items": "The profile found no line items.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "amount_differs": "The parsed total differs from the transaction amount, so only a description is proposed.",
+      "proposal_fallback": "The itemized proposal was refused, so only a description is proposed.",
+      "nothing_to_propose": "The email adds nothing to this transaction.",
+      "proposal_refused": "The proposal was refused, so nothing was proposed.",
+      "skip_line": "A line this profile skips on was found, so the email was ignored.",
+      "wait_line": "A line says the order is not final yet, so the email will be read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none.",
+      "schema_org": "No profile was needed: the order was read from the structured data (schema.org) in the email.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "reasonUnknown": "Причина: {reason}",
-    "requestNote": "Запрос на проверку ({state}): {note}",
-    "parsedHeading": "Что прочитал парсер",
-    "notParsed": "Из этого письма пока ничего не прочитано.",
-    "candidatesHeading": "Подходящие транзакции",
-    "candidatesHelp": "Этому письму одинаково хорошо подходит несколько транзакций. Выберите ту, которую оно оплатило.",
-    "linkButton": "Привязать к этой транзакции",
-    "linked": "Письмо привязано к транзакции",
-    "linkFailed": "Не удалось привязать письмо",
-    "bodyHeading": "Письмо",
-    "textLabel": "Текст письма",
-    "noText": "В письме нет текста.",
+    "reasonUnknown": "Reason: {reason}",
+    "requestNote": "Review request ({state}): {note}",
+    "parsedHeading": "What the profile read",
+    "notParsed": "Nothing has been read from this email yet.",
+    "candidatesHeading": "Transactions that fit",
+    "candidatesHelp": "Several transactions fit this email equally well. Choose the one it paid for.",
+    "linkButton": "Link to this transaction",
+    "linked": "Email linked to the transaction",
+    "linkFailed": "Could not link the email",
+    "bodyHeading": "Email",
+    "textLabel": "Text of the email",
+    "noText": "The email has no text.",
     "bodyView": {
-      "label": "Показать письмо как",
+      "label": "Show the email as",
       "html": "HTML",
-      "text": "Текст",
-      "lines": "Строки"
+      "text": "Text",
+      "lines": "Lines"
     },
-    "remoteImagesNote": "Внешние изображения не загружаются.",
-    "htmlFrameTitle": "Письмо в том виде, в каком его оформил отправитель",
+    "remoteImagesNote": "Remote images are not loaded.",
+    "htmlFrameTitle": "The email as its sender formatted it",
     "structured": {
-      "heading": "Структурированные данные (schema.org)",
-      "help": "Заказ или счёт, который письмо содержит в виде разметки для почтовых клиентов. Он читается, только если не подошёл ни один парсер или парсер не нашёл итоговую сумму.",
-      "found": "Найдено",
-      "notFound": "Не найдено",
-      "notFoundHelp": "В письме нет разметки заказа, либо в ней не указаны ни итоговая сумма, ни позиции.",
-      "seller": "Продавец",
-      "currency": "Валюта",
-      "orderDate": "Дата заказа",
-      "unitPrice": "Цена за единицу"
+      "heading": "Structured data (schema.org)",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profile applies or the profile finds no total.",
+      "found": "Found",
+      "notFound": "Not found",
+      "notFoundHelp": "The email carries no order markup, or it states no total and no line items.",
+      "seller": "Seller",
+      "currency": "Currency",
+      "orderDate": "Order date",
+      "unitPrice": "Unit price"
     },
     "lines": {
-      "help": "Строки, с которыми сопоставляются шаблоны парсера, пронумерованные так же, как их нумерует список «Найдено по» в тесте.",
-      "sourceLabel": "Источник строк",
+      "help": "The lines a profile's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "sourceLabel": "Lines source",
       "sources": {
-        "text": "Текст",
+        "text": "Text",
         "html": "HTML"
       },
-      "noHtml": "В этом письме нет HTML-части, поэтому парсер, читающий HTML, не может его прочитать.",
-      "capped": "Читаются только первые {max} строк.",
-      "empty": "Строк нет.",
-      "listLabel": "Пронумерованные строки письма"
+      "noHtml": "This email has no HTML part, so a profile that reads HTML cannot read it.",
+      "capped": "Only the first {max} lines are read.",
+      "empty": "No lines.",
+      "listLabel": "Numbered lines of the email"
     }
   },
   "picker": {
-    "heading": "Выберите транзакцию",
-    "help": "Ни одна транзакция не найдена автоматически. Вот ваши транзакции за период ниже, который сначала охватывает дни вокруг покупки. Выберите ту, которую оно оплатило, или измените даты, чтобы искать дальше.",
-    "fromLabel": "С",
-    "toLabel": "По",
-    "searchLabel": "Поиск",
-    "searchPlaceholder": "Получатель, описание или сумма",
-    "searchButton": "Найти",
-    "loading": "Загрузка транзакций",
-    "error": "Не удалось загрузить транзакции.",
-    "retry": "Повторить",
-    "empty": "В этом периоде у вас нет транзакций, которые можно привязать. Вы можете расширить даты выше, чтобы искать дальше.",
-    "emptySearch": "В этом периоде нет транзакций, подходящих под поиск. Вы можете расширить даты выше.",
-    "rangeReversed": "Дата «С» позже даты «По».",
-    "rangeIncomplete": "Введите обе даты, чтобы показать транзакции.",
+    "heading": "Choose the transaction",
+    "help": "No transaction was matched automatically. These are your transactions in the date range below, which starts as the days around the purchase. Choose the one it paid for, or change the dates to look further.",
+    "fromLabel": "From",
+    "toLabel": "To",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Payee, description or amount",
+    "searchButton": "Search",
+    "loading": "Loading transactions",
+    "error": "The transactions could not be loaded.",
+    "retry": "Try again",
+    "empty": "You have no transactions in this period that can be linked. You can widen the dates above to look further.",
+    "emptySearch": "No transaction in this period matches the search. You can widen the dates above.",
+    "rangeReversed": "The From date is after the To date.",
+    "rangeIncomplete": "Enter both dates to list transactions.",
     "row": "{date}, {amount}, {payee}",
-    "noPayee": "нет получателя",
-    "linkButton": "Привязать",
-    "hasMore": "Показаны только первые {count}. Используйте поиск, чтобы сузить список.",
+    "noPayee": "no payee",
+    "linkButton": "Link",
+    "hasMore": "Only the first {count} are shown. Use the search to narrow the list.",
     "ai": {
-      "heading": "Выберите транзакцию для ИИ",
-      "help": "Вот ваши транзакции за период ниже, который сначала охватывает дни вокруг покупки. Выберите ту, которую ИИ должен разбить по товарам из письма, или измените даты, чтобы искать дальше.",
-      "linkButton": "Использовать эту транзакцию"
+      "heading": "Choose the transaction for the AI",
+      "help": "These are your transactions in the date range below, which starts as the days around the purchase. Choose the one the AI should split by the products in the email, or change the dates to look further.",
+      "linkButton": "Use this transaction"
     }
   },
   "callback": {
-    "title": "Подключение почтового ящика",
-    "connecting": "Завершение подключения",
+    "title": "Connecting the mailbox",
+    "connecting": "Finishing the connection",
     "toasts": {
-      "connected": "Почтовый ящик подключён"
+      "connected": "Mailbox connected"
     },
     "success": {
-      "title": "Почтовый ящик подключён",
-      "body": "Подключено как {username}. Возвращаемся к настройкам."
+      "title": "Mailbox connected",
+      "body": "Connected as {username}. Returning to the settings."
     },
     "providerError": {
-      "title": "Вход не завершён",
-      "withDescription": "Провайдер сообщил: {error}. {description}",
-      "withoutDescription": "Провайдер сообщил: {error}."
+      "title": "The sign-in was not completed",
+      "withDescription": "The provider reported: {error}. {description}",
+      "withoutDescription": "The provider reported: {error}."
     },
     "missingParameters": {
-      "title": "Эта страница открыта без результата входа",
-      "body": "Начните заново с настроек чеков из электронной почты и нажмите одну из кнопок «Подключить»."
+      "title": "This page was opened without a sign-in result",
+      "body": "Start again from the email receipts settings and use one of the Connect buttons."
     },
     "failed": {
-      "title": "Не удалось подключить почтовый ящик",
-      "fallback": "Сервер отклонил подключение. Начните заново с настроек чеков из электронной почты."
+      "title": "The mailbox could not be connected",
+      "fallback": "The server refused the connection. Start again from the email receipts settings."
     },
-    "backLink": "Назад к настройкам чеков из электронной почты"
+    "backLink": "Back to the email receipts settings"
   },
   "recognize": {
-    "title": "Распознать с помощью ИИ",
+    "title": "Recognize with AI",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "нет получателя",
-    "confirmMessage": "Это письмо привязано к транзакции {summary}. ИИ прочитает письмо и предложит, как разбить эту транзакцию по товарам. Продолжить с этой транзакцией?",
-    "confirm": "Распознать с помощью ИИ",
-    "chooseOther": "Выбрать другую транзакцию",
-    "candidatesHeading": "Какую транзакцию оплатило письмо?",
-    "candidatesHelp": "Этому письму соответствует несколько транзакций. Выберите ту, которую должен использовать ИИ, или найдите другую.",
-    "candidatesLoading": "Загрузка подходящих транзакций",
-    "candidatesError": "Не удалось загрузить подходящие транзакции.",
-    "retry": "Повторить",
-    "useButton": "Использовать эту транзакцию",
-    "searchOther": "Искать другие транзакции",
-    "back": "Назад",
-    "failed": "Не удалось запустить распознавание",
-    "queued": "В очереди: сейчас нет доступного ИИ-ассистента, который мог бы ответить, поэтому запрос ждёт агента во входящих проверках ИИ (например, через MCP).",
-    "handoffFailed": "Запрос поставлен в очередь, но письмо не удалось открыть в чате. Он ждёт агента во входящих проверках ИИ (например, через MCP).",
-    "inboxLink": "Открыть входящие проверки ИИ",
-    "opened": "Чат открыт с прикреплённым письмом. Прочитайте сообщение и нажмите «Отправить».",
-    "chatPrompt": "Распознайте товары, количество и цены в прикреплённом письме с заказом и разделите мою транзакцию от {date} ({payee}, {amount}) по товарам, указав категорию для каждого. Возьмите в работу запрос на проверку ИИ {requestId} и отправьте по нему своё предложение."
+    "noPayee": "no payee",
+    "confirmMessage": "This email is linked to the transaction {summary}. The AI will read the email and propose how to split this transaction by product. Continue with this transaction?",
+    "confirm": "Recognize with AI",
+    "chooseOther": "Choose another transaction",
+    "candidatesHeading": "Which transaction did the email pay for?",
+    "candidatesHelp": "Several transactions fit this email. Choose the one the AI should use, or search for another.",
+    "candidatesLoading": "Loading the transactions that fit",
+    "candidatesError": "The transactions that fit could not be loaded.",
+    "retry": "Try again",
+    "useButton": "Use this transaction",
+    "searchOther": "Search other transactions",
+    "back": "Back",
+    "failed": "Could not start the recognition",
+    "queued": "Queued: no AI assistant is available to answer now, so the request waits in the AI review inbox for an agent (for example over MCP).",
+    "handoffFailed": "The request is queued, but the email could not be opened in the chat. It waits in the AI review inbox for an agent (for example over MCP).",
+    "inboxLink": "Open the AI review inbox",
+    "opened": "Opened the chat with the email attached. Read the message and press Send.",
+    "chatPrompt": "Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it."
   },
   "hub": {
     "tabs": {
-      "ariaLabel": "Разделы чеков из электронной почты",
-      "overview": "Обзор",
-      "emails": "Письма",
-      "profiles": "Профили",
-      "mailbox": "Почтовый ящик"
+      "ariaLabel": "Email receipts sections",
+      "overview": "Overview",
+      "emails": "Emails",
+      "profiles": "Profiles",
+      "mailbox": "Mailbox"
     },
     "demoRestricted": {
-      "heading": "Недоступно в демо-режиме",
-      "body": "Подключение почтового ящика и написание профилей отключены в демо-режиме."
+      "heading": "Restricted in Demo Mode",
+      "body": "Connecting a mailbox and writing profiles are disabled in demo mode."
     }
   },
   "process": {
-    "button": "Обработать все",
-    "buttonCount": "Обработать все ({count})",
+    "button": "Process all",
+    "buttonCount": "Process all ({count})",
     "dialog": {
-      "title": "{count, plural, one {Обработать # сохранённое письмо?} few {Обработать # сохранённых письма?} many {Обработать # сохранённых писем?} other {Обработать # сохранённого письма?}}",
-      "message": "Каждое сохранённое письмо, которое ещё не прочитано или которое может изменить новый профиль либо новая транзакция, будет прочитано заново. То, что оно предложит, ждёт во входящих проверки, если не включено автоматическое применение.",
-      "messageDomain": "Каждое сохранённое письмо от {domain}, которое ещё не прочитано или которое может изменить новый профиль либо новая транзакция, будет прочитано заново. То, что оно предложит, ждёт во входящих проверки, если не включено автоматическое применение.",
-      "confirm": "Обработать"
+      "title": "{count, plural, one {Process # stored email?} other {Process # stored emails?}}",
+      "message": "Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process"
     },
-    "starting": "Запуск...",
-    "progress": "{processed, plural, one {Обработано # письмо} few {Обработано # письма} many {Обработано # писем} other {Обработано # письма}}, осталось: {remaining}.",
-    "cancel": "Отмена",
-    "cancelling": "Отмена...",
-    "summary": "{count, plural, one {Обработано # письмо.} few {Обработано # письма.} many {Обработано # писем.} other {Обработано # письма.}}",
-    "cancelledSummary": "Отменено после {count, plural, one {# письма.} few {# писем.} many {# писем.} other {# письма.}}",
-    "outcomes": "Результаты: {outcomes}.",
-    "passedOver": "{count, plural, one {# письмо вызвало ошибку и было пропущено.} few {# письма вызвали ошибку и были пропущены.} many {# писем вызвали ошибку и были пропущены.} other {# письма вызвали ошибку и были пропущены.}}",
-    "failed": "Обработка остановлена, потому что запрос не удался.",
-    "failedWithReason": "Обработка остановлена: {reason}",
+    "starting": "Starting...",
+    "progress": "{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling...",
+    "summary": "{count, plural, one {# email processed.} other {# emails processed.}}",
+    "cancelledSummary": "Cancelled after {count, plural, one {# email.} other {# emails.}}",
+    "outcomes": "They ended as: {outcomes}.",
+    "passedOver": "{count, plural, one {# email raised an error and was passed over.} other {# emails raised an error and were passed over.}}",
+    "failed": "Processing stopped because a request failed.",
+    "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Закрыть"
+    "close": "Close",
+    "draft": {
+      "chatPrompt": "Создайте профиль квитанции по электронной почте для {count, plural, one {этого письма о заказе} few {этих # писем о заказе} many {этих # писем о заказе} other {этих # писем о заказе}} от {domain}. Укажите запрос на рассмотрение ИИ {requestId}, протестируйте свой профиль на каждом прикреплённом письме с помощью инструмента email_receipt_parsers, исправьте его, пока каждое письмо не будет полностью прочитано, а затем сохраните его в качестве черновика для запроса {requestId}."
+    }
   },
   "overview": {
-    "loading": "Загрузка обзора...",
+    "loading": "Loading the overview...",
     "error": {
-      "title": "Не удалось загрузить обзор",
-      "body": "Запрос не удался, поэтому ничего из показанного здесь нельзя считать пустым. Повторите попытку.",
-      "retry": "Повторить"
+      "title": "The overview could not be loaded",
+      "body": "The request failed, so nothing here may be taken as empty. Try again.",
+      "retry": "Try again"
     },
     "mailbox": {
-      "title": "Почтовый ящик",
-      "none": "Почтовый ящик ещё не подключён.",
-      "connect": "Подключить почтовый ящик",
-      "manage": "Открыть настройки почтового ящика",
+      "title": "Mailbox",
+      "none": "No mailbox is connected yet.",
+      "connect": "Connect a mailbox",
+      "manage": "Open the mailbox settings",
       "state": {
-        "notConnected": "Не подключён",
-        "failing": "Последний опрос не удался",
-        "off": "Опрос выключен",
-        "polling": "Идёт опрос"
+        "notConnected": "Not connected",
+        "failing": "Last poll failed",
+        "off": "Polling is off",
+        "polling": "Polling"
       },
       "auth": {
-        "password": "Вход по паролю",
-        "oauth2": "Вход через поставщика"
+        "password": "Password login",
+        "oauth2": "Sign-in with a provider"
       },
-      "lastSuccess": "Последний успешный опрос: {when}",
-      "neverPolled": "Успешных опросов ещё не было.",
-      "lastError": "Последняя ошибка: {error}"
+      "lastSuccess": "Last successful poll {when}",
+      "neverPolled": "Not polled successfully yet.",
+      "lastError": "Last error: {error}"
     },
     "emails": {
-      "title": "Письма",
-      "stored": "сохранено",
-      "processable": "{count, plural, one {# письмо можно обработать повторно} few {# письма можно обработать повторно} many {# писем можно обработать повторно} other {# письма можно обработать повторно}}.",
-      "open": "Открыть письма"
+      "title": "Emails",
+      "stored": "stored",
+      "processable": "{count, plural, one {# email can be processed again} other {# emails can be processed again}}.",
+      "open": "Open the emails"
     },
     "proposals": {
-      "title": "Предложения",
-      "waiting": "ожидают вашего утверждения",
-      "review": "Просмотреть предложения",
-      "open": "Открыть входящие проверки ИИ"
+      "title": "Proposals",
+      "waiting": "waiting for your approval",
+      "review": "Review the proposals",
+      "open": "Open the review inbox"
     },
     "profiles": {
-      "title": "Профили",
-      "approved": "утверждено",
-      "drafts": "{count, plural, one {# черновик ждёт вашего утверждения} few {# черновика ждут вашего утверждения} many {# черновиков ждут вашего утверждения} other {# черновика ждут вашего утверждения}}.",
-      "manage": "Открыть профили"
+      "title": "Profiles",
+      "approved": "approved",
+      "drafts": "{count, plural, one {# draft waits for your approval} other {# drafts wait for your approval}}.",
+      "manage": "Open the profiles"
     },
     "uncovered": {
-      "title": "Отправители без профиля",
-      "help": "Эти отправители присылали письма, которые не читает ни один профиль. Создайте профиль для одного из них или попросите ассистента составить его.",
-      "none": "Все отправители сохранённых писем охвачены профилями.",
-      "row": "{domain} ({count, plural, one {# письмо} few {# письма} many {# писем} other {# письма}})",
-      "show": "Показать письма"
+      "title": "Senders without a profile",
+      "help": "These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profile.",
+      "row": "{domain} ({count, plural, one {# email} other {# emails}})",
+      "show": "Show the emails"
     }
   },
   "wizard": {
-    "heading": "Начало работы с чеками из электронной почты",
-    "intro": "Четыре шага от нуля до первого предложения.",
-    "done": "(готово)",
+    "heading": "Get started with email receipts",
+    "intro": "Four steps from nothing to your first proposal.",
+    "done": "(done)",
     "steps": {
       "mailbox": {
-        "title": "Подключите почтовый ящик",
-        "body": "Используйте отдельный почтовый ящик, на который приходят подтверждения заказов. Monize только читает его.",
-        "action": "Подключить почтовый ящик"
+        "title": "Connect a mailbox",
+        "body": "Use a dedicated mailbox that receives your order confirmations. Monize only reads it.",
+        "action": "Connect a mailbox"
       },
       "emails": {
-        "title": "Получите письма",
-        "body": "Письма читаются при опросе почтового ящика. Запустите опрос в настройках почтового ящика, чтобы увидеть первые из них.",
-        "action": "Открыть письма"
+        "title": "Fetch the emails",
+        "body": "Emails are read when the mailbox is polled. Poll it from the mailbox settings to see the first ones.",
+        "action": "Open the emails"
       },
       "profile": {
-        "title": "Создайте профиль для отправителя",
-        "body": "Профиль подсказывает Monize, как читать подтверждения заказов одного отправителя. Напишите его или составьте черновик по сохранённому письму.",
-        "action": "Открыть профили"
+        "title": "Create a profile for a sender",
+        "body": "A profile tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profiles"
       },
       "review": {
-        "title": "Просмотрите предложения",
-        "body": "Каждое письмо становится предложением по транзакции. Ничего не меняется, пока вы его не утвердите.",
-        "action": "Открыть входящие проверки ИИ"
+        "title": "Review the proposals",
+        "body": "Each email becomes a proposal on a transaction. Nothing is changed until you approve it.",
+        "action": "Open the review inbox"
       }
     }
   }

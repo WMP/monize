@@ -391,7 +391,9 @@
     "settingsEmpty": "Invia almeno un'impostazione da modificare.",
     "parserToolReceiptCount": "Indica da 1 a 5 email su cui provare il parser.",
     "parserToolInvalidSender": "Una bozza richiede un nome e da uno a dieci domini mittente come shop.example.com.",
-    "parserDraftRequestNotClaimed": "Questa richiesta di bozza di parser non è stata presa in carico da te. Prendila prima in carico con ai_review_requests, oppure salva la bozza senza requestId."
+    "parserDraftRequestNotClaimed": "Questa richiesta di bozza di parser non è stata presa in carico da te. Prendila prima in carico con ai_review_requests, oppure salva la bozza senza requestId.",
+    "parserCategoryNameUnknown": "La categoria \"{{ name }}\" non è stata trovata. Utilizzare il nome di una delle tue categorie.",
+    "parserCategoryNameAmbiguous": "La categoria \"{{ name }}\" corrisponde a diverse categorie ({{ candidates }}). Utilizzare il nome completo, ad esempio \"Parent: Child\"."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "L'email non è configurata. L'accesso di emergenza non può essere abilitato finché SMTP non è configurato.",

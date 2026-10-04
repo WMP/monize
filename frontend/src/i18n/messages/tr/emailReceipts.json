@@ -1,867 +1,915 @@
 {
   "settingsPage": {
-    "redirecting": "E-posta Makbuzları sayfası açılıyor...",
-    "redirectLink": "Posta kutusu ayarlarına git"
+    "redirecting": "Opening the Email Receipts page...",
+    "redirectLink": "Go to the mailbox settings"
   },
   "page": {
-    "title": "E-posta Makbuzları",
-    "subtitle": "Sipariş onaylarını bir posta kutusundan okuyun ve kalem kalem işlemlere dönüştürün: nelerin bağlı olduğu, her e-postaya ne olduğu ve sizi nelerin beklediği"
+    "title": "Email Receipts",
+    "subtitle": "Read order confirmations from a mailbox and turn them into itemized transactions: what is connected, what became of each email, and what waits for you"
   },
   "mailbox": {
-    "heading": "Posta kutusu",
-    "description": "Sipariş onayları, IMAP üzerinden ayrılmış bir posta kutusundan okunur. Monize yalnızca okur: hiçbir iletiyi değiştirmez, taşımaz veya silmez.",
-    "loading": "Posta kutusu yükleniyor",
-    "dedicatedWarning": "Ayrılmış bir posta kutusu kullanın. Klasördeki her ileti okunur, bu yüzden içinde yalnızca sipariş onayları bulunmalıdır.",
-    "encryptionUnavailable": "Bu sunucu gizli bilgileri şifreleyemiyor, bu yüzden posta kutusu parolası veya bağlantısı kaydedilemez. Yöneticiden şifrelemeyi kurmasını isteyin.",
+    "heading": "Mailbox",
+    "description": "Order confirmations are read from a dedicated mailbox over IMAP. Monize only reads it: it never changes, moves or deletes a message.",
+    "loading": "Loading the mailbox",
+    "dedicatedWarning": "Use a dedicated mailbox. Every message in the folder is read, so it should hold nothing but order confirmations.",
+    "encryptionUnavailable": "This server cannot encrypt secrets, so a mailbox password or connection cannot be saved. Ask the administrator to set up encryption.",
     "error": {
-      "title": "Posta kutusu yüklenemedi",
-      "body": "İstek başarısız oldu, bu yüzden posta kutunuz hakkında henüz bir şey bilinmiyor. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "The mailbox could not be loaded",
+      "body": "The request failed, so nothing is known about your mailbox yet. Try again.",
+      "retry": "Try again"
     },
     "oauth": {
-      "heading": "Bir hesap bağlayın",
-      "explanation": "Google ve Microsoft 365 genellikle düz bir parolayı reddeder. Bunun yerine sağlayıcıyla oturum açın: Monize posta kutusuna erişim izni verirsiniz ve parolasını burada hiç yazmazsınız.",
+      "heading": "Connect an account",
+      "explanation": "Google and Microsoft 365 usually refuse a plain password. Sign in with the provider instead: you grant Monize access to the mailbox and never type its password here.",
       "connect": {
-        "google": "Google ile bağlan",
-        "microsoft": "Microsoft ile bağlan"
+        "google": "Connect with Google",
+        "microsoft": "Connect with Microsoft"
       },
       "providerNames": {
         "google": "Google",
         "microsoft": "Microsoft 365"
       },
-      "providersUnavailable": "Google veya Microsoft ile oturum açmanın kullanılabilir olup olmadığı denetlenemedi. Aşağıdaki elle giriş formu yine de çalışır.",
-      "startFailed": "Oturum açma başlatılamadı",
-      "badAuthorizationUrl": "Sunucu, güvenli bir web sayfası olmayan bir oturum açma adresi döndürdü, bu yüzden adres açılmadı.",
-      "connectedAs": "{provider} bağlantısı kuruldu, hesap: {username}.",
-      "notConnected": "{provider} bağlantısı etkin değil, bu yüzden posta kutusu okunmuyor. Devam etmek için yeniden bağlanın.",
-      "reconnect": "Yeniden bağlan",
-      "disconnect": "Bağlantıyı kes",
+      "providersUnavailable": "Whether Google or Microsoft sign-in is available could not be checked. The manual form below still works.",
+      "startFailed": "Could not start the sign-in",
+      "badAuthorizationUrl": "The server returned a sign-in address that is not a secure web page, so it was not opened.",
+      "connectedAs": "Connected to {provider} as {username}.",
+      "notConnected": "The connection to {provider} is not active, so the mailbox is not being read. Connect again to resume.",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
       "disconnectDialog": {
-        "title": "Posta kutusunun bağlantısı kesilsin mi?",
-        "message": "Monize, {provider} için saklanan erişimi silecek ve posta kutusunu okumayı bırakacak. Zaten saklanan e-postalar korunur."
+        "title": "Disconnect the mailbox?",
+        "message": "Monize will delete its stored access to {provider} and stop reading the mailbox. Emails already stored are kept."
       },
-      "disconnected": "Posta kutusunun bağlantısı kesildi",
-      "disconnectFailed": "Posta kutusunun bağlantısı kesilemedi",
-      "revokeNote": "Bağlantıyı kesmek verdiğiniz izni kaldırmaz. İzni geri çekmek için {provider} izin sayfasında Monize uygulamasını kaldırın.",
+      "disconnected": "Mailbox disconnected",
+      "disconnectFailed": "Could not disconnect the mailbox",
+      "revokeNote": "Disconnecting does not remove the permission you granted. To withdraw it, remove Monize on the {provider} permissions page.",
       "revokeLink": {
-        "google": "Google hesap izinlerini aç",
-        "microsoft": "Microsoft uygulama izinlerini aç"
+        "google": "Open Google account permissions",
+        "microsoft": "Open Microsoft app permissions"
       },
-      "saveButton": "Ayarları kaydet",
-      "saved": "Posta kutusu ayarları kaydedildi",
-      "saveFailed": "Posta kutusu ayarları kaydedilemedi"
+      "saveButton": "Save settings",
+      "saved": "Mailbox settings saved",
+      "saveFailed": "Could not save the mailbox settings"
     },
     "form": {
-      "intro": "Ya da herhangi bir IMAP posta kutusunun bilgilerini girin. Çoğu sağlayıcı hesap parolanız yerine bir uygulama parolası ister.",
-      "hostLabel": "IMAP sunucusu",
-      "portLabel": "Bağlantı noktası",
-      "securityLabel": "Bağlantı güvenliği",
+      "intro": "Or enter the details of any IMAP mailbox. Most providers need an app password rather than your account password.",
+      "hostLabel": "IMAP server",
+      "portLabel": "Port",
+      "securityLabel": "Connection security",
       "securityOptions": {
-        "tls": "TLS (genellikle 993 numaralı bağlantı noktası)",
-        "starttls": "STARTTLS (genellikle 143 numaralı bağlantı noktası)"
+        "tls": "TLS (usually port 993)",
+        "starttls": "STARTTLS (usually port 143)"
       },
-      "usernameLabel": "Kullanıcı adı",
-      "passwordLabel": "Parola",
-      "passwordStoredPlaceholder": "Kayıtlı bir parola var. Değiştirmek için yazın.",
-      "passwordRequiredHelp": "Yeni bir posta kutusu için veya sunucu ya da kullanıcı adı değiştiğinde gereklidir.",
-      "passwordKeepHelp": "Kayıtlı parolayı korumak için boş bırakın. Bir daha asla gösterilmez.",
-      "saveButton": "Posta kutusunu kaydet",
-      "saved": "Posta kutusu kaydedildi",
-      "saveFailed": "Posta kutusu kaydedilemedi",
+      "usernameLabel": "User name",
+      "passwordLabel": "Password",
+      "passwordStoredPlaceholder": "A password is stored. Type to replace it.",
+      "passwordRequiredHelp": "Required for a new mailbox, or when the server or user name changes.",
+      "passwordKeepHelp": "Leave blank to keep the stored password. It is never shown again.",
+      "saveButton": "Save mailbox",
+      "saved": "Mailbox saved",
+      "saveFailed": "Could not save the mailbox",
       "test": {
-        "button": "Bağlantıyı sına",
-        "ok": "{count, plural, one {Bağlantı çalışıyor. Klasörde # ileti var.} other {Bağlantı çalışıyor. Klasörde # ileti var.}}",
-        "error": "Bağlantı başarısız oldu: {error}",
-        "failed": "Bağlantı sınanamadı"
+        "button": "Test connection",
+        "ok": "{count, plural, one {The connection works. The folder holds # message.} other {The connection works. The folder holds # messages.}}",
+        "error": "The connection failed: {error}",
+        "failed": "Could not test the connection"
       }
     },
     "settings": {
-      "folderLabel": "Klasör",
-      "folderHelp": "Okunacak klasör. Salt okunur olarak açılır.",
-      "enabledLabel": "Posta kutusunu otomatik oku",
-      "enabledHelp": "Yalnızca otomatik okumayı denetler: açıkken Monize posta kutusunu her 15 dakikada bir okur. Kapatmak posta kutusunun bağlantısını kesmez; Şimdi yokla, bu ayar açık da olsa kapalı da olsa posta kutusunu okur.",
-      "aiModeLabel": "Yapay zekâ modu",
-      "aiModeHelp": "Yoklamanın makbuzlarda yapılandırdığınız yapay zekâ sağlayıcısını kullanıp kullanamayacağı. Yapay zekâ ile tanı ve Yapay zekâ ile ayrıştırıcı taslağı oluştur, hangi mod seçili olursa olsun asistana sohbette sorar; yapay zekâ yanıtı her zaman onayladığınız bir öneri veya taslaktır.",
+      "folderLabel": "Folder",
+      "folderHelp": "The folder to read. It is opened read-only.",
+      "enabledLabel": "Read the mailbox automatically",
+      "enabledHelp": "Controls only the automatic reading: when on, Monize reads the mailbox every 15 minutes. Turning it off does not disconnect the mailbox, and Poll now reads it whether this is on or off.",
+      "aiModeLabel": "AI mode",
+      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Prepare a profile with AI ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
       "aiModes": {
-        "off": "Kapalı",
-        "on_demand": "İstek üzerine",
-        "automatic": "Otomatik"
+        "off": "Off",
+        "on_demand": "On demand",
+        "automatic": "Automatic"
       },
       "aiModeDescriptions": {
-        "off": "Yoklama makbuzlar için yapay zekâyı hiç çağırmaz.",
-        "on_demand": "Yoklama yapay zekâyı hiç çağırmaz. Asistana Yapay zekâ ile tanı veya Yapay zekâ ile ayrıştırıcı taslağı oluştur ile kendiniz sorarsınız.",
-        "automatic": "Yoklama sırasında, onaylı hiçbir ayrıştırıcının tamamen okuyamadığı eşleşmiş bir makbuz için yapay zekâya sorulur ve ayrıştırıcısı olmayan bir gönderen için ayrıştırıcı taslağı oluşturulur."
+        "off": "The poll never calls the AI for receipts.",
+        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Prepare a profile with AI.",
+        "automatic": "The poll asks the AI about a matched receipt that no approved profile could read completely, and drafts a profile for a sender that has none."
       },
-      "autoApplyLabel": "Önerileri otomatik uygula",
-      "autoApplyHelp": "Varsayılan olarak kapalıdır. Bir öneri, ancak şunların hepsi geçerliyse sormadan uygulanır: onaylı bir profil e-postanın tamamını okudu, işlem bir sipariş numarası veya referansla ya da tam tutar ve alıcıyla tek bir adayla bulundu ve öneri kuruşu kuruşuna tutuyor. Geri kalan her şey onayınızı bekler.",
-      "profileLimitLabel": "Profil önerilerini günlük yapay zekâ sınırına say",
-      "profileLimitHelp": "Varsayılan olarak açıktır: bir profilin bir e-postadan önerdiği düzenleme, diğer yapay zekâ önerileri gibi yapay zekânın önerdiği değişikliklerin günlük sınırına sayılır. Saklanan çok sayıda e-posta sınırı tüketecekse bunu kapatın. Yalnızca profillerden gelen öneriler muaftır; her öneri yine de onayınızı bekler."
+      "autoApplyLabel": "Apply proposals automatically",
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profile proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profile proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profiles are exempt; every proposal still waits for your approval."
     },
     "status": {
-      "lastPolled": "Son yoklama",
-      "lastSuccess": "Son başarılı yoklama",
-      "never": "Hiç",
-      "lastError": "Son hata: {error}",
-      "lastErrorAt": "Son hata ({at}): {error}",
-      "pollNow": "Şimdi yokla",
-      "pollResult": "Yoklama tamamlandı: {fetched, plural, one {# e-posta kaydedildi} other {# e-posta kaydedildi}}, atlanan: {skipped}, işlenen: {processed}.",
-      "pollResultLink": "Kaydedilen e-postaları görüntüle",
-      "pollFailed": "Yoklama başarısız oldu",
-      "deleteButton": "Posta kutusunu sil",
+      "lastPolled": "Last poll",
+      "lastSuccess": "Last successful poll",
+      "never": "Never",
+      "lastError": "Last error: {error}",
+      "lastErrorAt": "Last error ({at}): {error}",
+      "pollNow": "Poll now",
+      "pollResult": "Poll finished: {fetched, plural, one {# email saved} other {# emails saved}}, {skipped} skipped, {processed} processed.",
+      "pollResultLink": "View the saved emails",
+      "pollFailed": "The poll failed",
+      "deleteButton": "Delete mailbox",
       "deleteDialog": {
-        "title": "Posta kutusu silinsin mi?",
-        "message": "Posta kutusu ayarları ve saklanan tüm e-postalar silinecek, bunlardan gelen açık inceleme istekleri yoksayılacak. Posta kutusunun kendisindeki e-postalara dokunulmaz."
+        "title": "Delete the mailbox?",
+        "message": "The mailbox settings and every stored email will be deleted, and open review requests from them dismissed. The emails in the mailbox itself are not touched."
       },
-      "deleted": "Posta kutusu silindi",
-      "deleteFailed": "Posta kutusu silinemedi"
+      "deleted": "Mailbox deleted",
+      "deleteFailed": "Could not delete the mailbox"
     }
   },
   "parsers": {
-    "heading": "Profiller",
-    "description": "Bir profil, tek bir göndericinin sipariş onaylarını sizin yazdığınız veya incelediğiniz desenlerle okur ve banka işleminin nasıl bulunacağını belirtir. Onaylandıktan sonra yapay zekâ olmadan çalışır.",
-    "newButton": "Yeni ayrıştırıcı",
-    "loading": "Ayrıştırıcılar yükleniyor",
+    "heading": "Profiles",
+    "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
+    "newButton": "New profile",
+    "loading": "Loading profiles",
     "error": {
-      "title": "Ayrıştırıcılar yüklenemedi",
-      "body": "İstek başarısız oldu. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "The profiles could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "Henüz ayrıştırıcı yok",
-      "body": "Bir sipariş onayı göndericisi için ayrıştırıcı oluşturun veya E-posta Makbuzları sayfasında saklanan bir e-postadan taslak oluşturun."
+      "title": "No profiles yet",
+      "body": "Create one for a sender of order confirmations, or draft one from a stored email on the Email Receipts page."
     },
     "columns": {
-      "name": "Ayrıştırıcı",
-      "status": "Durum",
-      "payee": "Alıcı",
-      "actions": "Eylemler"
+      "name": "Profile",
+      "status": "Status",
+      "payee": "Payee",
+      "actions": "Actions"
     },
     "status": {
-      "draft": "Taslak",
-      "approved": "Onaylandı"
+      "draft": "Draft",
+      "approved": "Approved"
     },
     "source": {
-      "manual": "Sizin yazdığınız",
-      "ai": "Yapay zekâ taslağı"
+      "manual": "Written by you",
+      "ai": "Drafted by AI"
     },
-    "invalid": "Geçersiz",
-    "noPayee": "Alıcı yok",
-    "payeeUnknown": "Alıcı bulunamadı",
-    "payeeUnavailable": "Alıcı listesi kullanılamıyor",
+    "invalid": "Invalid",
+    "noPayee": "No payee",
+    "payeeUnknown": "Payee not found",
+    "payeeUnavailable": "Payee list unavailable",
     "actions": {
-      "approve": "Onayla",
-      "viewJson": "JSON'u görüntüle"
+      "approve": "Approve",
+      "viewJson": "View JSON"
     },
     "toasts": {
-      "approved": "Ayrıştırıcı onaylandı",
-      "approveFailed": "Ayrıştırıcı onaylanamadı",
-      "changedElsewhere": "Bu ayrıştırıcı başka bir yerde değiştirildi. Liste yeniden yüklendi.",
-      "deleted": "Ayrıştırıcı silindi",
-      "deleteFailed": "Ayrıştırıcı silinemedi"
+      "approved": "Profile approved",
+      "approveFailed": "Could not approve the profile",
+      "changedElsewhere": "This profile was changed elsewhere. The list has been reloaded.",
+      "deleted": "Profile deleted",
+      "deleteFailed": "Could not delete the profile"
     },
     "deleteDialog": {
-      "title": "Ayrıştırıcı silinsin mi?",
-      "message": "{name} ayrıştırıcısı silinecek. Daha önce okuduğu e-postalar sonuçlarını korur."
+      "title": "Delete the profile?",
+      "message": "The profile {name} will be deleted. Emails it already read keep their results."
     },
     "jsonDialog": {
-      "title": "{name} tanımı",
-      "help": "Ayrıştırıcı tanımı, saklandığı hâliyle. Burada salt okunurdur; değiştirmek için Düzenle'yi kullanın.",
-      "contentLabel": "Tanım JSON'u",
-      "copy": "Kopyala",
-      "copied": "JSON kopyalandı",
-      "copyFailed": "JSON kopyalanamadı"
+      "title": "Definition of {name}",
+      "help": "The profile definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
+      "contentLabel": "Definition JSON",
+      "copy": "Copy",
+      "copied": "JSON copied",
+      "copyFailed": "Could not copy the JSON"
     },
     "processOffer": {
-      "title": "Saklanan e-postalar şimdi işlensin mi?",
-      "message": "{domains} göndericisinden gelen {count, plural, one {# saklanan e-posta} other {# saklanan e-posta}} şimdi işlensin mi? Her biri bu profille yeniden okunur; önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
-      "confirm": "Şimdi işle",
-      "later": "Şimdi değil"
+      "title": "Process the stored emails now?",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process now",
+      "later": "Not now"
     }
   },
   "editor": {
-    "createTitle": "Yeni ayrıştırıcı",
-    "editTitle": "Ayrıştırıcıyı düzenle",
-    "loading": "Alıcılar ve kategoriler yükleniyor",
+    "createTitle": "New profile",
+    "editTitle": "Edit profile",
+    "loading": "Loading payees and categories",
     "lookupsError": {
-      "title": "Alıcılar ve kategoriler yüklenemedi",
-      "body": "Seçiciler bunlara ihtiyaç duyuyor, bu yüzden düzenleyici henüz açılamıyor. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "Payees and categories could not be loaded",
+      "body": "The pickers need them, so the editor cannot open yet. Try again.",
+      "retry": "Try again"
     },
-    "draftNote": "Bu ayrıştırıcı bir taslaktır. Siz onaylayana kadar hiçbir şey okumaz.",
-    "draftAiNote": "Yapay zekâ bu ayrıştırıcıyı örnek e-postalarınızdan oluşturdu. Her birine karşı deneyin ve her deseni denetleyin, sonra listeden onaylayın. Siz onaylayana kadar hiçbir şey okumaz.",
-    "identityHeading": "Hangi e-postaları okur",
-    "nameLabel": "Ad",
-    "payeeLabel": "Alıcı",
-    "payeePlaceholder": "Alıcı yok",
-    "domainsLabel": "Gönderen alan adları",
-    "domainsHelp": "Satır başına bir tane, en fazla {max}. Listelenen bir alan adının alt alan adı da eşleşir.",
-    "subjectLabel": "Konu şunu içerir",
-    "subjectHelp": "İsteğe bağlı, satır başına bir tane, en fazla {max}. Konu, büyük/küçük harf ayrımı yapılmadan bunlardan en az birini içermelidir.",
-    "saveButton": "Ayrıştırıcıyı kaydet",
-    "created": "Ayrıştırıcı oluşturuldu",
-    "updated": "Ayrıştırıcı kaydedildi",
-    "saveFailed": "Ayrıştırıcı kaydedilemedi",
-    "conflict": "Bu ayrıştırıcı, siz açtıktan sonra başka bir yerde değiştirildi. Güncel sürümü görmek için yeniden yükleyin. Buradaki düzenlemeleriniz kaydedilmedi.",
-    "conflictReload": "Ayrıştırıcıyı yeniden yükle",
+    "draftNote": "This profile is a draft. It reads nothing until you approve it.",
+    "draftAiNote": "The AI drafted this profile from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "identityHeading": "Which emails it reads",
+    "nameLabel": "Name",
+    "payeeLabel": "Payee",
+    "payeePlaceholder": "No payee",
+    "domainsLabel": "Sender domains",
+    "domainsHelp": "One per line, up to {max}. A sub-domain of a listed domain also matches.",
+    "subjectLabel": "Subject contains",
+    "subjectHelp": "Optional, one per line, up to {max}. The subject must contain at least one of them, ignoring case.",
+    "saveButton": "Save profile",
+    "created": "Profile created",
+    "updated": "Profile saved",
+    "saveFailed": "Could not save the profile",
+    "conflict": "This profile was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
+    "conflictReload": "Reload the profile",
     "patterns": {
-      "sourceLabel": "Satır kaynağı",
-      "sourceHint": "Aşağıdaki desenlerin e-postanın hangi görünümüyle eşleştirileceği. Metin, e-postanın metin kısmıdır ve her satır sonu yeni bir satır olur. HTML, e-postanın HTML kısmını okur: her blok ve her tablo hücresi kendi satırı olur, böylece metnin birkaç satıra böldüğü bir ürün adı bütün kalır. E-postanın Satırlar görünümü, her kaynağın tam olarak ne verdiğini gösterir.",
+      "sourceLabel": "Lines source",
+      "sourceHint": "Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.",
       "sourceOptions": {
-        "text": "Metin",
+        "text": "Text",
         "html": "HTML"
       },
-      "globHelp": "Her desen, e-postanın tek bir satırının tamamıyla büyük/küçük harf ayrımı yapılmadan eşleştirilir. Herhangi bir metin için {star}, bir değeri yakalamak için ise {capture} gibi küme parantezi içinde bir ad kullanın. Her alan en fazla {max} desen alır, satır başına bir tane.",
-      "orderIdLabel": "Sipariş numarası desenleri",
-      "orderIdHint": "{capture} değerini yakalamalıdır. Örnek: Sipariş numarası: {capture}",
-      "totalLabel": "Toplam desenleri",
-      "amountHint": "{capture} değerini yakalamalıdır. Örnek: Sipariş toplamı {capture}",
-      "shippingLabel": "Kargo desenleri",
-      "discountLabel": "İndirim desenleri",
-      "itemsHeading": "Kalemler",
-      "startAfterLabel": "Kalemler şundan sonra başlar",
-      "startAfterHint": "İsteğe bağlı. Kalemler, bu metni içeren ilk satırdan sonraki satırdan itibaren okunur.",
-      "stopAtLabel": "Kalemler şurada biter",
-      "stopAtHint": "İsteğe bağlı. Kalemler, bu metni içeren ilk satırdan önce biter.",
-      "itemPatternsLabel": "Kalem desenleri",
-      "itemPatternsHint": "{name} değerini ve ya {amount} (satır toplamı) ya da {price} (birim fiyat, isteğe bağlı olarak {qty} ile birlikte) değerini yakalamalıdır, ikisini birden değil. Örnek: {name} x {qty} {price}"
+      "globHelp": "Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.",
+      "orderIdLabel": "Order number patterns",
+      "orderIdHint": "Must capture {capture}. Example: Order number: {capture}",
+      "totalLabel": "Total patterns",
+      "amountHint": "Must capture {capture}. Example: Order total {capture}",
+      "shippingLabel": "Shipping patterns",
+      "discountLabel": "Discount patterns",
+      "feesLabel": "Ücret desenleri",
+      "itemsHeading": "Line items",
+      "startAfterLabel": "Items start after",
+      "startAfterHint": "Optional. Items are read from the line after the first line containing this text.",
+      "stopAtLabel": "Items stop at",
+      "stopAtHint": "Optional. Items end before the first line containing this text.",
+      "itemPatternsLabel": "Item patterns",
+      "itemPatternsHint": "Must capture {name} and either {amount} (the line total) or {price} (the unit price, optionally with {qty}), never both. Example: {name} x {qty} {price}"
     },
     "categories": {
-      "rulesHeading": "Kategori kuralları",
-      "rulesHelp": "Deseni bir kalemin adıyla eşleşen ilk kural onun kategorisini belirler. Desenler aynı sözdizimini kullanır, örneğin {example}. En fazla {max} kural.",
-      "noRules": "Kategori kuralı yok. Her kalem varsayılan kategoriyi alır.",
-      "rulePatternLabel": "{number}. kural deseni",
-      "ruleCategoryLabel": "{number}. kural kategorisi",
-      "categoryPlaceholder": "Kategori yok",
-      "removeRule": "{number}. kuralı kaldır",
-      "addRule": "Kural ekle",
-      "ruleLimit": "{max} kural sınırına ulaşıldı.",
-      "defaultLabel": "Varsayılan kategori",
-      "defaultHelp": "Hiçbir kuralla eşleşmeyen kalemler için kullanılır.",
-      "shippingLabel": "Kargo kategorisi",
-      "shippingHelp": "Kargo satırının kategorisi."
+      "heading": "Kategoriler",
+      "help": "Kategori adı yazın ve listeden seçin. Ad profilde saklanır ve profil kaydedildiğinde kategori var olmalıdır.",
+      "categoryPlaceholder": "No category",
+      "defaultLabel": "Default category",
+      "defaultHelp": "Used for items that get no other category.",
+      "shippingLabel": "Shipping category",
+      "shippingHelp": "The category of the shipping line.",
+      "feesLabel": "Ücret kategorisi",
+      "feesHelp": "Ücret satırının kategorisi.",
+      "unknownCategory": "{name} adında kategori yok. Listeden birini seçin veya önce oluşturun.",
+      "rulesInJson": "Öğe adına göre kategori kuralları bir gelişmiş seçenektir: bunları profil tanımına JSON modunda ekleyin."
     },
     "mode": {
-      "label": "Düzenleme modu",
+      "label": "Editing mode",
       "form": "Form",
       "json": "JSON",
-      "formUnavailable": "Bu tanım formun gösteremediği bir şey kullanıyor: etiketli girdiler, çok satırlı kalemler veya formda karşılığı olmayan anahtarlar. JSON olarak düzenleyin.",
-      "jsonInvalid": "JSON henüz geçerli değil, bu yüzden form gösterilemiyor. Önce düzeltin."
+      "formUnavailable": "This definition uses something the form cannot show: labelled entries, multi-line items or keys it has no field for. Edit it as JSON.",
+      "jsonInvalid": "The JSON is not valid yet, so the form cannot be shown. Fix it first."
     },
     "json": {
-      "label": "Ayrıştırıcı tanımı (JSON)",
-      "help": "Formun oluşturduğu tanımın aynısı. Sunucu kaydettiğinizde kontrol eder, aşağıdaki sınama da onu şu anki hâliyle okur.",
-      "parseError": "Bu geçerli bir JSON değil ya da bir JSON nesnesi değil. Ayrıştırıcıyı kaydetmek veya sınamak için düzeltin."
+      "label": "Profile definition (JSON)",
+      "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profile."
     },
     "matching": {
-      "heading": "Eşleştirme",
-      "help": "Bir e-postanın ödediği banka işleminin nasıl bulunduğu. Stratejiler sırayla denenir; tam olarak tek bir işlem bırakan ilk strateji karar verir, birden çok işlem bırakan belirsizdir, hiçbirini bırakmayan ise sonrakine geçer.",
-      "referenceLabel": "Referans desenleri",
-      "referenceHint": "Mağazanın veya ödeme geçidinin banka işlemine yazdığı tanımlayıcı; örneğin bir ekstre metni ya da havale başlığı. {capture} değerini yakalamalıdır.",
-      "strategiesLabel": "Stratejiler, denenme sırasıyla",
-      "strategiesHelp": "Sipariş numarası ve referans, değeri işlemin açıklamasında, alıcısında veya referans numarasında arar. Tutar ve alıcı, tutarın yanında bir alıcı işareti de ister. Tutar ve tarih, pencere içinde yalnızca tutarı ister. En az biri açık kalmalıdır.",
+      "heading": "Matching",
+      "help": "How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.",
+      "instruction": "En iyisi, banka işlem açıklamasından alınan bir referans numarasıdır. Yoksa tarih ve tutar kullanılır. Varsayılan olarak stratejiler şu sırayla denenir: referans (profil referans desenleri içerdiğinde), sipariş numarası, tutar ve alıcı, tutar ve tarih.",
+      "referenceLabel": "Reference patterns",
+      "referenceHint": "The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.",
+      "strategiesLabel": "Strategies, in the order tried",
+      "strategiesHelp": "Order number and reference look for the value in the transaction's description, payee or reference number. Amount and payee needs the amount plus a payee signal. Amount and date needs the amount alone, within the window. At least one must stay on.",
       "strategyPosition": "{position}. {name}",
-      "moveUp": "{name} stratejisini daha erkene taşı",
-      "moveDown": "{name} stratejisini daha geç denenecek şekilde taşı",
+      "moveUp": "Move {name} earlier",
+      "moveDown": "Move {name} later",
       "strategies": {
-        "reference": "Referans",
-        "orderId": "Sipariş numarası",
-        "amount_payee": "Tutar ve alıcı",
-        "amount_date": "Tutar ve tarih"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       },
-      "referenceNeeded": "Referans stratejisi açık ama referans deseni yok, bu yüzden hiçbir şey bulamaz.",
-      "referenceInLabel": "Referansı ve sipariş numarasını şurada ara",
-      "referenceInHint": "4 karakterden kısa değerler hiçbir zaman aranmaz.",
+      "referenceNeeded": "The reference strategy is on but there are no reference patterns, so it will find nothing.",
+      "referenceInLabel": "Look for the reference and the order number in",
+      "referenceInHint": "Values shorter than 4 characters are never looked for.",
       "referenceIn": {
-        "description": "Açıklama",
-        "payee": "Alıcı adı",
-        "referenceNumber": "Referans numarası"
+        "description": "Description",
+        "payee": "Payee name",
+        "referenceNumber": "Reference number"
       },
-      "daysBeforeLabel": "Alışverişten önceki gün sayısı",
-      "daysAfterLabel": "Alışverişten sonraki gün sayısı",
-      "daysHint": "Alışveriş tarihi çevresindeki pencere. Varsayılan {default}, en fazla {max}.",
-      "toleranceLabel": "Tutar toleransı",
-      "toleranceHint": "Banka tutarının e-postanın toplamından ne kadar farklı olabileceği. Varsayılan 0, en fazla {max}."
+      "daysBeforeLabel": "Days before the purchase",
+      "daysAfterLabel": "Days after the purchase",
+      "daysHint": "The window around the purchase date. Default {default}, at most {max}.",
+      "toleranceLabel": "Amount tolerance",
+      "toleranceHint": "How far the bank amount may differ from the email's total. Default 0, at most {max}."
     },
     "proposal": {
-      "heading": "Öneri",
-      "tagLabel": "Bu profilin kategorilere ayırdığı işlemlere etiket ekle",
-      "tagHelp": "Etiket, bu adda bir etiketiniz yoksa oluşturulur. Öneride gösterilir ve siz onaylamadan hiçbir şey yazılmaz.",
-      "tagNameLabel": "Etiket adı",
-      "aiCategoriesLabel": "Hiçbir kuralın eşleşmediği kalemlerin kategorisini yapay zekâ seçsin",
-      "aiCategoriesHelp": "Bir kalem hiçbir kategori kuralıyla eşleşmiyorsa ve varsayılan kategori yoksa, yapay zekâdan kategori listenizden bir kategori istenir. Seçim, öneride yapay zekânın seçimi olarak işaretlenir. Bu kapalıyken yapay zekâya hiç sorulmaz."
+      "heading": "Proposal",
+      "tagLabel": "Add a tag to the transactions this profile categorizes",
+      "tagHelp": "The tag is created when you have none by that name. It is shown on the proposal, and nothing is written until you approve it.",
+      "tagNameLabel": "Tag name",
+      "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
+      "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
+    },
+    "problems": {
+      "feesCategory": "Ücret kategorisi",
+      "balanceTolerance": "Denge toleransı",
+      "fees": "Ücret desenleri"
     }
   },
   "problems": {
-    "heading": "Ayrıştırıcı tanımı geçerli değil:",
+    "heading": "The profile definition is not valid:",
     "item": "{where}: {problem}",
     "paths": {
-      "definition": "Tanım",
-      "line": "{field}, {line}. satır",
-      "rule": "Kategori kuralı {rule}, {part}",
-      "entryPart": "{field}, {line}. girdi, {part}",
-      "skipLine": "Atlanacak satır {line}",
-      "recordStep": "Kayıt adımı {step}",
-      "recordStepPart": "Kayıt adımı {step}, {part}",
-      "recordAlternative": "Kayıt adımı {step}, alternatif {alternative}"
+      "definition": "The definition",
+      "line": "{field}, line {line}",
+      "rule": "Category rule {rule}, {part}",
+      "entryPart": "{field}, entry {line}, {part}",
+      "skipLine": "Line to skip {line}",
+      "recordStep": "Record step {step}",
+      "recordStepPart": "Record step {step}, {part}",
+      "recordAlternative": "Record step {step}, alternative {alternative}"
     },
     "fields": {
-      "orderId": "Sipariş numarası desenleri",
-      "total": "Toplam desenleri",
-      "shipping": "Kargo desenleri",
-      "discount": "İndirim desenleri",
-      "itemPatterns": "Kalem desenleri",
-      "startAfter": "Kalemler şundan sonra başlar",
-      "stopAt": "Kalemler şurada biter",
-      "items": "Kalemler",
-      "categoryRules": "Kategori kuralları",
-      "rulePattern": "desen",
-      "ruleCategory": "kategori",
-      "defaultCategory": "Varsayılan kategori",
-      "shippingCategory": "Kargo kategorisi",
-      "skipLines": "Atlanacak satırlar",
-      "record": "Kayıt",
+      "orderId": "Order number patterns",
+      "total": "Total patterns",
+      "shipping": "Shipping patterns",
+      "discount": "Discount patterns",
+      "itemPatterns": "Item patterns",
+      "startAfter": "Items start after",
+      "stopAt": "Items stop at",
+      "items": "Line items",
+      "categoryRules": "Category rules",
+      "rulePattern": "pattern",
+      "ruleCategory": "category",
+      "defaultCategory": "Default category",
+      "shippingCategory": "Shipping category",
+      "feesCategory": "Fees category",
+      "balanceTolerance": "Balance tolerance",
+      "fees": "Fees patterns",
+      "skipLines": "Lines to skip",
+      "record": "Record",
       "label": "label",
       "value": "value",
       "within": "within",
       "line": "line",
       "optional": "optional",
-      "paid": "Ödenen tutar desenleri",
-      "payee": "Satıcı desenleri",
-      "requireLine": "Zorunlu satırlar",
-      "skipIfLine": "E-postayı atlatan satırlar",
-      "waitIfLine": "E-postayı bekleten satırlar",
-      "source": "Satır kaynağı",
-      "single": "Tek kalem",
-      "singleName": "Tek kalem adı",
-      "joinWrapped": "Bölünmüş satırları birleştir",
+      "paid": "Paid patterns",
+      "payee": "Merchant patterns",
+      "requireLine": "Required lines",
+      "skipIfLine": "Lines that skip the email",
+      "waitIfLine": "Lines that hold the email",
+      "source": "Lines source",
+      "single": "Single item",
+      "singleName": "Single item name",
+      "joinWrapped": "Join wrapped lines",
       "ruleField": "field",
-      "reference": "Referans desenleri",
-      "match": "Eşleştirme bölümü",
-      "matchBy": "Eşleştirme stratejileri",
-      "matchReferenceIn": "Referansın aranacağı alanlar",
-      "matchDaysBefore": "Alışverişten önceki gün sayısı",
-      "matchDaysAfter": "Alışverişten sonraki gün sayısı",
-      "matchTolerance": "Tutar toleransı",
-      "tag": "Etiket",
-      "aiCategories": "Yapay zekâ kategorileri"
+      "reference": "Reference patterns",
+      "match": "The matching section",
+      "matchBy": "Matching strategies",
+      "matchReferenceIn": "Fields the reference is looked for in",
+      "matchDaysBefore": "Days before the purchase",
+      "matchDaysAfter": "Days after the purchase",
+      "matchTolerance": "Amount tolerance",
+      "tag": "Tag",
+      "aiCategories": "AI categories"
     },
     "codes": {
-      "not_object": "geçerli bir tanım değil",
-      "unknown_key": "bir ayrıştırıcıda bulunabilecek bir şey değil",
-      "unsupported_version": "bu sunucunun okumadığı bir sürüm (sürüm 2'yi kullanın)",
-      "invalid_type": "yanlış türde bir değer içeriyor",
-      "empty": "boş olmamalı",
-      "too_many": "çok fazla girdi içeriyor (en fazla {max})",
-      "too_long": "çok uzun (en fazla {max} karakter)",
-      "control_character": "bir denetim karakteri içeriyor",
-      "malformed_capture": "küme parantezi içinde geçerli olmayan bir yakalama içeriyor",
-      "too_many_captures": "çok fazla yakalama içeriyor",
-      "duplicate_capture": "aynı yakalama adını iki kez kullanıyor",
-      "capture_not_allowed": "bu alanın kabul etmediği bir yakalama adı kullanıyor",
-      "capture_missing": "bu alanın ihtiyaç duyduğu bir yakalamayı içermiyor",
-      "capture_conflict": "hem satır toplamını hem birim fiyatı yakalıyor. Birini seçin.",
-      "invalid_uuid": "geçerli bir kategori değil",
-      "out_of_range": "1 ile {max} arasında bir tam sayı olmalı",
-      "items_patterns_and_record": "hem patterns hem record içeriyor. Birini seçin.",
-      "items_shape_missing": "patterns veya record'dan birine ihtiyaç duyuyor",
-      "skip_lines_need_record": "yalnızca record ile birlikte kullanılabilir",
-      "record_name_missing": "adımlarından birinde {capture} yakalamalı",
-      "items_single_conflict": "patterns veya record'un yanında tek bir kalem içeriyor. Birini seçin.",
-      "join_wrapped_needs_patterns": "yalnızca kalem desenleriyle çalışır",
-      "invalid_value": "bu alanın kabul etmediği bir değer içeriyor",
-      "duplicate_entry": "aynı girdiyi iki kez listeliyor",
-      "reference_field_missing": "referans desenleri gerekiyor (referans stratejisi açık)",
-      "out_of_range_days": "0 ile {max} arasında bir tam sayı olmalıdır",
-      "out_of_range_tolerance": "0.00 ile {max} arasında bir tutar olmalıdır"
+      "not_object": "is not a valid definition",
+      "unknown_key": "is not something a profile can have",
+      "unsupported_version": "is a version this server does not read (use version 2)",
+      "invalid_type": "has the wrong kind of value",
+      "empty": "must not be empty",
+      "too_many": "has too many entries (at most {max})",
+      "too_long": "is too long (at most {max} characters)",
+      "control_character": "contains a control character",
+      "malformed_capture": "has a capture in braces that is not valid",
+      "too_many_captures": "has too many captures",
+      "duplicate_capture": "uses the same capture name twice",
+      "capture_not_allowed": "uses a capture name this field does not accept",
+      "capture_missing": "is missing a capture this field needs",
+      "capture_conflict": "captures both the line total and the unit price. Use one of them.",
+      "invalid_uuid": "is not a valid category",
+      "out_of_range": "must be a whole number from 1 to {max}",
+      "items_patterns_and_record": "has both patterns and a record. Use one of them.",
+      "items_shape_missing": "needs either patterns or a record",
+      "skip_lines_need_record": "can only be used together with a record",
+      "record_name_missing": "must capture {capture} in one of its steps",
+      "items_single_conflict": "has a single item beside patterns or a record. Use one of them.",
+      "join_wrapped_needs_patterns": "only works with item patterns",
+      "invalid_value": "has a value this field does not accept",
+      "duplicate_entry": "lists the same entry twice",
+      "reference_field_missing": "needs reference patterns (the reference strategy is on)",
+      "out_of_range_days": "must be a whole number from 0 to {max}",
+      "out_of_range_tolerance": "must be an amount from 0.00 to {max}"
     }
   },
   "test": {
-    "heading": "Saklanan bir e-postayla sına",
-    "help": "Saklanan bir e-postayı yukarıdaki desenlerle, kaydedilmiş olsun olmasın, okur ve nelerin bulunacağını ve hangi işlemle eşleşeceğini gösterir. Hiçbir şey yazılmaz.",
-    "loadFailed": "Saklanan e-postalar yüklenemedi, bu yüzden henüz sınanacak bir şey yok.",
-    "noReceipts": "Henüz saklanan e-posta yok. Önce posta kutusunu yoklayın.",
-    "receiptLabel": "E-posta",
-    "choosePlaceholder": "Bir e-posta seçin",
-    "receiptOption": "{subject}, gönderen: {sender} ({date})",
-    "button": "Sına",
-    "failed": "Sınama başarısız oldu",
-    "matchHeading": "İşlem eşleşmesi",
-    "matched": "{date} tarihli {amount} tutarındaki işlem ({payee}) bağlanır. Bulunma ölçütü: {how}.",
+    "heading": "Test against a stored email",
+    "help": "Reads a stored email with the patterns above, saved or not, and shows what would be found and which transaction it would match. Nothing is written.",
+    "loadFailed": "The stored emails could not be loaded, so there is nothing to test against yet.",
+    "noReceipts": "No emails are stored yet. Poll the mailbox first.",
+    "receiptLabel": "Email",
+    "choosePlaceholder": "Choose an email",
+    "receiptOption": "{subject} from {sender} ({date})",
+    "button": "Test",
+    "failed": "The test failed",
+    "matchHeading": "Transaction match",
+    "matched": "Would link the transaction of {date} for {amount} ({payee}), found by {how}.",
     "matchKinds": {
-      "order_id": "sipariş numarası",
-      "amount_payee": "tutar ve alıcı",
-      "amount_only": "tutar",
-      "manual": "sizin seçiminiz",
-      "reference": "referans",
-      "amount_date": "tutar ve tarih"
+      "order_id": "order number",
+      "amount_payee": "amount and payee",
+      "amount_only": "amount",
+      "manual": "your choice",
+      "reference": "reference",
+      "amount_date": "amount and date"
     },
-    "noPayee": "alıcı yok",
-    "ambiguous": "{count, plural, one {# işlem} other {# işlem}} eşit derecede uyuyor, bu yüzden siz seçene kadar hiçbiri bağlanmaz.",
-    "unmatched": "{count, plural, one {# aday} other {# aday}} arasında eşleşen işlem yok.",
-    "jsonInvalid": "JSON geçerli değil, bu yüzden henüz sınanacak bir şey yok.",
+    "noPayee": "no payee",
+    "ambiguous": "{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.",
+    "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.",
+    "jsonInvalid": "The JSON is not valid, so there is nothing to test yet.",
     "outcome": {
-      "not_applicable": "Bu ayrıştırıcı bu e-postayı okumaz: zorunlu satırlarından hiçbiri e-postada yok, bu yüzden gönderen için sıradaki ayrıştırıcı denenir.",
-      "skip_line": "Bu ayrıştırıcı bu e-postayı kenara ayırır: e-postada atlamasını gerektiren bir satır var.",
-      "wait_line": "Bu ayrıştırıcı bu e-postayı bekletir: bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunur.",
-      "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok, bu yüzden okunamaz olarak işaretlenir (HTML yok)."
+      "not_applicable": "This profile would not read this email: none of its required lines is in it, so the next profile for the sender would be tried.",
+      "skip_line": "This profile would set this email aside: a line it skips on is in it.",
+      "wait_line": "This profile would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
-      "heading": "Eşleşen",
-      "none": "Bu e-postadan hiçbir değer okunmadı.",
+      "heading": "Matched by",
+      "none": "No value was read from this email.",
       "fields": {
-        "orderId": "Sipariş numarası",
-        "total": "Toplam",
-        "paid": "Ödenen",
-        "shipping": "Kargo",
-        "discount": "İndirim",
-        "payee": "Satıcı",
-        "requireLine": "Zorunlu satır",
-        "skipIfLine": "Atlama satırı",
-        "waitIfLine": "Bekleme satırı",
-        "reference": "Referans"
+        "orderId": "Order number",
+        "total": "Total",
+        "paid": "Paid",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "payee": "Merchant",
+        "requireLine": "Required line",
+        "skipIfLine": "Skip line",
+        "waitIfLine": "Wait line",
+        "reference": "Reference"
       },
-      "entryLine": "girdi {entry} ({pattern}), {line}. satır: {text}",
-      "entrySubject": "girdi {entry} ({pattern}), konu: {text}",
-      "labelled": "girdi {entry}, {labelLine}. satırdaki {label} etiketi ({labelText}), {line}. satırdaki {pattern} değeri: {text}",
-      "item": "Kalem {number}",
-      "itemLine": "{pattern}, {line}. satır: {text}"
+      "entryLine": "entry {entry} ({pattern}), line {line}: {text}",
+      "entrySubject": "entry {entry} ({pattern}), the subject: {text}",
+      "labelled": "entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}",
+      "item": "Item {number}",
+      "itemLine": "{pattern}, line {line}: {text}"
     },
     "trace": {
-      "heading": "Eşleştiricinin baktığı yerler",
-      "window": "{from} ile {to} arasındaki işlemler (alışverişten {before} gün önce, {after} gün sonra): {considered, plural, one {# işlem değerlendirildi} other {# işlem değerlendirildi}}.",
-      "tolerance": "Tutar en fazla {amount} farklı olabilir.",
+      "heading": "What the matcher looked at",
+      "window": "Transactions from {from} to {to} ({before} days before, {after} days after the purchase): {considered, plural, one {# considered} other {# considered}}.",
+      "tolerance": "The amount may differ by {amount}.",
       "attempt": "{position}. {name}",
-      "kept": "{count, plural, =0 {hiçbir işlem kalmadı} one {# işlem kaldı} other {# işlem kaldı}}",
-      "decided": "Karar verdi",
+      "kept": "{count, plural, =0 {kept none} one {kept # transaction} other {kept # transactions}}",
+      "decided": "Decided",
       "transaction": "{date}, {amount}, {payee}",
-      "noPayee": "alıcı yok",
+      "noPayee": "no payee",
       "strategies": {
-        "reference": "Referans",
-        "orderId": "Sipariş numarası",
-        "amount_payee": "Tutar ve alıcı",
-        "amount_date": "Tutar ve tarih"
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
       }
     }
   },
   "parsed": {
-    "notFound": "Bulunamadı",
-    "noCategory": "Kategori yok",
-    "unknownCategory": "Bilinmeyen kategori",
-    "categoryUnavailable": "Kategoriler yüklenmedi",
-    "noItems": "Hiç kalem okunmadı.",
-    "orderId": "Sipariş numarası",
-    "total": "Toplam",
-    "shipping": "Kargo",
-    "discount": "İndirim",
+    "notFound": "Not found",
+    "noCategory": "No category",
+    "unknownCategory": "Unknown category",
+    "categoryUnavailable": "Categories not loaded",
+    "noItems": "No line items were read.",
+    "orderId": "Order number",
+    "total": "Total",
+    "shipping": "Shipping",
+    "discount": "Discount",
     "columns": {
-      "item": "Kalem",
-      "qty": "Adet",
-      "amount": "Tutar",
-      "category": "Kategori"
+      "item": "Item",
+      "qty": "Qty",
+      "amount": "Amount",
+      "category": "Category"
     },
-    "complete": "Tamamen okundu",
-    "incomplete": "Tamamen okunmadı",
+    "complete": "Read completely",
+    "incomplete": "Not read completely",
     "reasons": {
-      "no_total": "E-postada toplam belirtilmemiş.",
-      "no_items": "Hiç kalem bulunamadı.",
-      "items_unbalanced": "Kalemler toplamla tutmuyor.",
-      "items_uncategorized": "Bazı kalemlerin kategorisi yok.",
-      "shipping_uncategorized": "Kargo satırının kategorisi yok.",
-      "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
+      "no_total": "The email states no total.",
+      "no_items": "No line items were found.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "readByAi": "Yapay zekâ okudu",
-    "readFromStructuredData": "Yapılandırılmış verilerden okundu",
-    "paid": "Ödenen",
-    "payee": "Satıcı",
-    "reference": "Referans",
-    "categoryByAi": "Yapay zekâ"
+    "readByAi": "Read by the AI",
+    "readFromStructuredData": "Read from structured data",
+    "paid": "Paid",
+    "payee": "Merchant",
+    "reference": "Reference",
+    "categoryByAi": "AI"
   },
   "state": {
-    "pending": "Okunmayı bekliyor",
-    "skipped": "Atlandı",
-    "no_parser": "Ayrıştırıcı yok",
-    "parse_failed": "Okunamadı",
-    "unmatched": "İşlem bulunamadı",
-    "ambiguous": "Birden çok işlem uyuyor",
-    "review_conflict": "Başka bir istek açık",
-    "ignored": "Yoksayıldı",
-    "proposed": "Onay bekliyor",
-    "applied": "Uygulandı",
-    "dismissed": "Yoksayıldı",
-    "expired": "Süresi doldu",
-    "pending_ai": "Yapay zekâyı bekliyor",
-    "request_missing": "İstek eksik"
+    "pending": "Waiting to be read",
+    "skipped": "Skipped",
+    "no_parser": "No profile",
+    "parse_failed": "Could not be read",
+    "unmatched": "No transaction found",
+    "ambiguous": "Several transactions fit",
+    "review_conflict": "Another request is open",
+    "ignored": "Ignored",
+    "proposed": "Waiting for approval",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "expired": "Expired",
+    "pending_ai": "Waiting for the AI",
+    "request_missing": "Request missing"
   },
   "receipts": {
-    "loading": "E-postalar yükleniyor",
+    "loading": "Loading emails",
     "links": {
-      "reviewInbox": "Yapay zekâ inceleme kutusunu aç",
-      "settings": "Posta kutusu ayarları"
+      "reviewInbox": "Open the AI review inbox",
+      "settings": "Mailbox settings"
     },
     "filter": {
-      "label": "Duruma göre filtrele",
-      "all": "Tümü",
-      "pending": "Okunmayı bekliyor",
-      "skipped": "Atlandı",
-      "no_parser": "Ayrıştırıcı yok",
-      "parse_failed": "Okunamadı",
-      "unmatched": "İşlem bulunamadı",
-      "ambiguous": "Birden çok işlem uyuyor",
-      "review_conflict": "Başka bir istek açık",
-      "review": "İncelemede",
-      "ignored": "Yoksayıldı"
+      "label": "Filter by state",
+      "option": "{label} ({count})",
+      "all": "All",
+      "pending": "Waiting to be read",
+      "skipped": "Skipped",
+      "no_parser": "No profile",
+      "parse_failed": "Could not be read",
+      "unmatched": "No transaction found",
+      "ambiguous": "Several transactions fit",
+      "review_conflict": "Another request is open",
+      "review": "In review",
+      "ignored": "Ignored"
     },
     "domainFilter": {
-      "label": "Gönderen alan adı",
-      "all": "Tüm göndericiler",
+      "label": "Sender domain",
+      "all": "All senders",
       "option": "{domain} ({count})",
-      "help": "{domain} alan adından ve alt alan adlarından gelen e-postalar gösteriliyor. Gönderen için tek bir ayrıştırıcı taslağı oluşturmak üzere bunlardan birkaçını seçin."
+      "unknown": "The sender counts could not be loaded.",
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
-      "select": "Seç",
-      "received": "Alındı",
-      "email": "E-posta",
-      "transaction": "İşlem",
-      "state": "Durum",
-      "actions": "Eylemler"
+      "select": "Select",
+      "received": "Received",
+      "email": "Email",
+      "transaction": "Transaction",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "guide": {
+      "heading": "How to create a profile",
+      "buttonName": "Prepare a profile with AI",
+      "stepSender": "Choose a sender in the cloud of sender domains.",
+      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
+      "stepSelect": "Tick those emails.",
+      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "alıcı yok",
-    "noTransaction": "Henüz yok",
+    "noPayee": "no payee",
+    "noTransaction": "None yet",
     "error": {
-      "title": "E-postalar yüklenemedi",
-      "body": "İstek başarısız oldu, bu yüzden e-postalarınız hakkında henüz bir şey bilinmiyor. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "The emails could not be loaded",
+      "body": "The request failed, so nothing is known about your emails yet. Try again.",
+      "retry": "Try again"
     },
     "empty": {
-      "title": "E-posta yok",
-      "body": "Sipariş onayları, posta kutusu okunduktan sonra burada görünür.",
-      "filteredTitle": "Bu durumda e-posta yok",
-      "filteredBody": "Geri kalanları görmek için başka bir durum seçin.",
-      "noMailboxBody": "Henüz bağlı bir posta kutusu yok. Sipariş onaylarını okumaya başlamak için bir tane bağlayın.",
-      "connectButton": "Posta kutusu bağla"
+      "title": "No emails",
+      "body": "Order confirmations appear here once the mailbox has been read.",
+      "filteredTitle": "No emails in this state",
+      "filteredBody": "Choose another state to see the rest.",
+      "noMailboxBody": "No mailbox is connected yet. Connect one to start reading order confirmations.",
+      "connectButton": "Connect a mailbox"
     },
     "actions": {
-      "view": "Görüntüle",
-      "reprocess": "Yeniden işle",
-      "link": "İşlem seç",
-      "recognizeAi": "Yapay zekâ ile tanı",
-      "draftParser": "Yapay zekâ ile ayrıştırıcı taslağı oluştur",
-      "createParser": "Ayrıştırıcı oluştur",
-      "ignore": "Yoksay"
+      "view": "View",
+      "reprocess": "Reprocess",
+      "link": "Choose transaction",
+      "recognizeAi": "Recognize with AI",
+      "approve": "Approve",
+      "draftParser": "Prepare a profile with AI",
+      "createParser": "Create profile",
+      "ignore": "Ignore"
     },
     "toasts": {
-      "reprocessed": "E-posta yeniden işlendi",
-      "reprocessFailed": "E-posta yeniden işlenemedi",
-      "ignored": "E-posta yoksayıldı",
-      "ignoreFailed": "E-posta yoksayılamadı",
-      "deleted": "E-posta silindi",
-      "deleteFailed": "E-posta silinemedi"
+      "approved": "Teklif onaylandı",
+      "approveFailed": "Teklif onaylanamadı",
+      "reprocessed": "Email reprocessed",
+      "reprocessFailed": "Could not reprocess the email",
+      "ignored": "Email ignored",
+      "ignoreFailed": "Could not ignore the email",
+      "deleted": "Email deleted",
+      "deleteFailed": "Could not delete the email"
     },
     "ignoreDialog": {
-      "title": "Bu e-posta yoksayılsın mı?",
-      "message": "{subject} e-postası hiçbir şey önermeyecek ve açık inceleme isteği yoksayılacak.",
-      "confirm": "Yoksay"
+      "title": "Ignore this email?",
+      "message": "The email {subject} will propose nothing, and its open review request will be dismissed.",
+      "confirm": "Ignore"
     },
     "deleteDialog": {
-      "title": "Bu e-posta silinsin mi?",
-      "message": "Saklanan {subject} e-postası silinecek ve açık inceleme isteği yoksayılacak. Posta kutusundaki ileti değişmez ve sonraki bir yoklama onu yeniden almaz."
+      "title": "Delete this email?",
+      "message": "The stored email {subject} will be deleted and its open review request dismissed. The message in the mailbox is not touched, and a later poll will not fetch it again."
     },
     "selection": {
-      "label": "Seçilen e-postalar",
-      "select": "{subject} e-postasını seç",
-      "count": "{count, plural, one {# e-posta seçildi} other {# e-posta seçildi}} (en fazla {max})",
-      "draftButton": "Yapay zekâ ile ayrıştırıcı taslağı oluştur ({count})",
-      "clear": "Seçimi temizle",
-      "differentSenders": "Seçilen e-postalar farklı göndericilerden geliyor ({domains}). Bir ayrıştırıcı tek bir göndericinin e-postalarını okur, bu yüzden tek bir göndericinin e-postalarını seçin."
+      "label": "Selected emails",
+      "select": "Select {subject}",
+      "selectAll": "Bu listedeki tüm e-postaları seçin (en fazla {max})",
+      "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
+      "draftButton": "Prepare a profile with AI ({count})",
+      "clear": "Clear selection",
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
+      "guide": {
+        "heading": "Profil oluşturma",
+        "buttonName": "Yapay Zeka ile profil hazırla",
+        "stepSender": "Gönderici etki alanı bulutundan bir gönderici seçin.",
+        "stepTransaction": "Her bir e-postasına ödediği işlemi verin: e-postayı açın ve işlemi seçin.",
+        "stepSelect": "Bu e-postaları işaretleyin.",
+        "stepPrepare": "{button} tuşuna basın. Asistan profili yazacak ve siz onu profillerde test edip onaylayacaksınız."
+      }
     },
     "draft": {
-      "failed": "Ayrıştırıcı taslağı oluşturma başlatılamadı",
-      "queued": "Kuyruğa alındı: istek, bir ajan için yapay zekâ inceleme kutusunda bekliyor. Şu anda yanıt verebilecek bir asistan yok.",
-      "handoffFailed": "İstek kuyruğa alındı, ancak e-postalar sohbette açılamadı. Bir ajan için yapay zekâ inceleme kutusunda bekliyor.",
-      "inboxLink": "Yapay zekâ inceleme kutusunu aç",
-      "opened": "Sohbet, e-postalar ekli olarak açıldı. Mesajı okuyun ve Gönder'e basın.",
-      "chatPrompt": "{domain} alan adından gelen {count, plural, one {bu sipariş e-postası} other {bu # sipariş e-postası}} için bir e-posta makbuzu ayrıştırıcısı oluştur. {requestId} numaralı yapay zekâ inceleme isteğini üstlen, ayrıştırıcını ekli her e-postada email_receipt_parsers aracıyla dene, her biri eksiksiz okunana kadar düzelt, sonra {requestId} isteği için taslak olarak kaydet."
+      "failed": "Could not start drafting a profile",
+      "queued": "Queued: the request waits in the AI review inbox for an agent. No assistant is available to answer now.",
+      "handoffFailed": "The request is queued, but the emails could not be opened in the chat. It waits in the AI review inbox for an agent.",
+      "inboxLink": "Open the AI review inbox",
+      "opened": "Opened the chat with the emails attached. Read the message and press Send.",
+      "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
+    },
+    "list": {
+      "filter": {
+        "unknown": "Gönderici sayıları yüklenemedi."
+      }
+    },
+    "row": {
+      "approve": "Onayla",
+      "draftParser": "Yapay Zeka ile profil hazırla",
+      "createParser": "Profil oluştur"
+    },
+    "state": {
+      "filter": {
+        "option": "{label} ({count})"
+      }
     }
   },
   "detail": {
-    "title": "E-posta makbuzu",
-    "loading": "E-posta yükleniyor",
+    "title": "Email receipt",
+    "loading": "Loading the email",
     "error": {
-      "title": "E-posta yüklenemedi",
-      "body": "İstek başarısız oldu. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "The email could not be loaded",
+      "body": "The request failed. Try again.",
+      "retry": "Try again"
     },
-    "from": "Gönderen",
-    "received": "Alındı",
-    "forwardedBy": "İleten",
-    "originalSent": "Mağaza tarafından gönderildi",
-    "subject": "Konu",
-    "state": "Durum",
-    "parser": "Ayrıştırıcı",
-    "noParser": "Yok",
-    "structuredSource": "Yapılandırılmış veri",
-    "matchedBy": "Eşleşme ölçütü",
+    "from": "From",
+    "received": "Received",
+    "forwardedBy": "Forwarded by",
+    "originalSent": "Sent by the shop",
+    "subject": "Subject",
+    "state": "State",
+    "parser": "Profile",
+    "noParser": "None",
+    "structuredSource": "Structured data",
+    "matchedBy": "Matched by",
     "matchKinds": {
-      "order_id": "Sipariş numarası",
-      "amount_payee": "Tutar ve alıcı",
-      "amount_only": "Tutar",
-      "manual": "Sizin seçiminiz",
-      "reference": "Referans",
-      "amount_date": "Tutar ve tarih"
+      "order_id": "Order number",
+      "amount_payee": "Amount and payee",
+      "amount_only": "Amount",
+      "manual": "Your choice",
+      "reference": "Reference",
+      "amount_date": "Amount and date"
     },
-    "transaction": "İşlem",
+    "transaction": "Transaction",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "alıcı yok",
-    "viewTransaction": "İşlemi görüntüle",
-    "noTransaction": "Henüz yok",
+    "noPayee": "no payee",
+    "viewTransaction": "View transaction",
+    "noTransaction": "None yet",
     "reasons": {
-      "too_large": "E-posta boyut sınırından büyük, bu yüzden okunmadan saklandı.",
-      "undecodable": "E-posta çözülemedi, bu yüzden okunmadan saklandı.",
-      "draft_failed": "Yapay zekâ bu gönderen için ayrıştırıcı taslağı oluşturamadı.",
-      "parser_invalid": "Bu göndericinin ayrıştırıcısı geçerli değil. Ayrıştırıcı ayarlarında düzenleyin.",
-      "no_total": "Ayrıştırıcı bu e-postada toplam bulamadı.",
-      "no_items": "Ayrıştırıcı hiç kalem bulamadı.",
-      "items_unbalanced": "Kalemler toplamla tutmuyor.",
-      "items_uncategorized": "Bazı kalemlerin kategorisi yok.",
-      "shipping_uncategorized": "Kargo satırının kategorisi yok.",
-      "amount_differs": "Okunan toplam işlem tutarından farklı, bu yüzden yalnızca bir açıklama öneriliyor.",
-      "proposal_fallback": "Kalem kalem öneri reddedildi, bu yüzden yalnızca bir açıklama öneriliyor.",
-      "nothing_to_propose": "E-posta bu işleme bir şey eklemiyor.",
-      "proposal_refused": "Öneri reddedildi, bu yüzden hiçbir şey önerilmedi.",
-      "skip_line": "Bu ayrıştırıcının atladığı bir satır bulundu, bu yüzden e-posta yok sayıldı.",
-      "wait_line": "Bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunacak.",
-      "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok.",
-      "schema_org": "Ayrıştırıcıya gerek kalmadı: sipariş, e-postadaki yapılandırılmış verilerden (schema.org) okundu.",
-      "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
+      "too_large": "The email is larger than the size limit, so it was stored without being read.",
+      "undecodable": "The email could not be decoded, so it was stored without being read.",
+      "draft_failed": "The AI could not draft a profile for this sender.",
+      "parser_invalid": "The profile for this sender is not valid. Edit it in the profile settings.",
+      "no_total": "The profile found no total in this email.",
+      "no_items": "The profile found no line items.",
+      "items_unbalanced": "The line items do not add up to the total.",
+      "items_uncategorized": "Some line items have no category.",
+      "shipping_uncategorized": "The shipping line has no category.",
+      "amount_differs": "The parsed total differs from the transaction amount, so only a description is proposed.",
+      "proposal_fallback": "The itemized proposal was refused, so only a description is proposed.",
+      "nothing_to_propose": "The email adds nothing to this transaction.",
+      "proposal_refused": "The proposal was refused, so nothing was proposed.",
+      "skip_line": "A line this profile skips on was found, so the email was ignored.",
+      "wait_line": "A line says the order is not final yet, so the email will be read again later.",
+      "no_html": "This profile reads the HTML part of the email, and this email has none.",
+      "schema_org": "No profile was needed: the order was read from the structured data (schema.org) in the email.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "reasonUnknown": "Neden: {reason}",
-    "requestNote": "İnceleme isteği ({state}): {note}",
-    "parsedHeading": "Ayrıştırıcının okuduğu",
-    "notParsed": "Bu e-postadan henüz bir şey okunmadı.",
-    "candidatesHeading": "Uyan işlemler",
-    "candidatesHelp": "Birden çok işlem bu e-postaya eşit derecede uyuyor. E-postanın ödediği işlemi seçin.",
-    "linkButton": "Bu işleme bağla",
-    "linked": "E-posta işleme bağlandı",
-    "linkFailed": "E-posta bağlanamadı",
-    "bodyHeading": "E-posta",
-    "textLabel": "E-posta metni",
-    "noText": "E-postada metin yok.",
+    "reasonUnknown": "Reason: {reason}",
+    "requestNote": "Review request ({state}): {note}",
+    "parsedHeading": "What the profile read",
+    "notParsed": "Nothing has been read from this email yet.",
+    "candidatesHeading": "Transactions that fit",
+    "candidatesHelp": "Several transactions fit this email equally well. Choose the one it paid for.",
+    "linkButton": "Link to this transaction",
+    "linked": "Email linked to the transaction",
+    "linkFailed": "Could not link the email",
+    "bodyHeading": "Email",
+    "textLabel": "Text of the email",
+    "noText": "The email has no text.",
     "bodyView": {
-      "label": "E-postayı şu biçimde göster",
+      "label": "Show the email as",
       "html": "HTML",
-      "text": "Metin",
-      "lines": "Satırlar"
+      "text": "Text",
+      "lines": "Lines"
     },
-    "remoteImagesNote": "Uzak görseller yüklenmez.",
-    "htmlFrameTitle": "E-posta, göndericisinin biçimlendirdiği haliyle",
+    "remoteImagesNote": "Remote images are not loaded.",
+    "htmlFrameTitle": "The email as its sender formatted it",
     "structured": {
-      "heading": "Yapılandırılmış veri (schema.org)",
-      "help": "E-postanın posta istemcileri için işaretleme olarak taşıdığı bir sipariş veya fatura. Yalnızca hiçbir ayrıştırıcı uygulanmadığında ya da ayrıştırıcı toplam bulamadığında okunur.",
-      "found": "Bulundu",
-      "notFound": "Bulunamadı",
-      "notFoundHelp": "E-postada sipariş işaretlemesi yok ya da işaretlemede ne toplam ne de kalem var.",
-      "seller": "Satıcı",
-      "currency": "Para birimi",
-      "orderDate": "Sipariş tarihi",
-      "unitPrice": "Birim fiyat"
+      "heading": "Structured data (schema.org)",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profile applies or the profile finds no total.",
+      "found": "Found",
+      "notFound": "Not found",
+      "notFoundHelp": "The email carries no order markup, or it states no total and no line items.",
+      "seller": "Seller",
+      "currency": "Currency",
+      "orderDate": "Order date",
+      "unitPrice": "Unit price"
     },
     "lines": {
-      "help": "Bir ayrıştırıcının desenlerinin eşleştirildiği satırlar; testteki \"Eşleşen\" listesinin numaraladığı şekilde numaralanır.",
-      "sourceLabel": "Satır kaynağı",
+      "help": "The lines a profile's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "sourceLabel": "Lines source",
       "sources": {
-        "text": "Metin",
+        "text": "Text",
         "html": "HTML"
       },
-      "noHtml": "Bu e-postanın HTML kısmı yok, bu yüzden HTML okuyan bir ayrıştırıcı onu okuyamaz.",
-      "capped": "Yalnızca ilk {max} satır okunur.",
-      "empty": "Satır yok.",
-      "listLabel": "E-postanın numaralı satırları"
+      "noHtml": "This email has no HTML part, so a profile that reads HTML cannot read it.",
+      "capped": "Only the first {max} lines are read.",
+      "empty": "No lines.",
+      "listLabel": "Numbered lines of the email"
     }
   },
   "picker": {
-    "heading": "İşlemi seçin",
-    "help": "Hiçbir işlem otomatik olarak eşleşmedi. Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. E-postanın ödediği işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
-    "fromLabel": "Başlangıç",
-    "toLabel": "Bitiş",
-    "searchLabel": "Ara",
-    "searchPlaceholder": "Alıcı, açıklama veya tutar",
-    "searchButton": "Ara",
-    "loading": "İşlemler yükleniyor",
-    "error": "İşlemler yüklenemedi.",
-    "retry": "Yeniden dene",
-    "empty": "Bu dönemde bağlanabilecek işleminiz yok. Daha uzağa bakmak için yukarıdaki tarihleri genişletebilirsiniz.",
-    "emptySearch": "Bu dönemde aramayla eşleşen işlem yok. Yukarıdaki tarihleri genişletebilirsiniz.",
-    "rangeReversed": "Başlangıç tarihi, bitiş tarihinden sonra.",
-    "rangeIncomplete": "İşlemleri listelemek için iki tarihi de girin.",
+    "heading": "Choose the transaction",
+    "help": "No transaction was matched automatically. These are your transactions in the date range below, which starts as the days around the purchase. Choose the one it paid for, or change the dates to look further.",
+    "fromLabel": "From",
+    "toLabel": "To",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Payee, description or amount",
+    "searchButton": "Search",
+    "loading": "Loading transactions",
+    "error": "The transactions could not be loaded.",
+    "retry": "Try again",
+    "empty": "You have no transactions in this period that can be linked. You can widen the dates above to look further.",
+    "emptySearch": "No transaction in this period matches the search. You can widen the dates above.",
+    "rangeReversed": "The From date is after the To date.",
+    "rangeIncomplete": "Enter both dates to list transactions.",
     "row": "{date}, {amount}, {payee}",
-    "noPayee": "alıcı yok",
-    "linkButton": "Bağla",
-    "hasMore": "Yalnızca ilk {count} gösteriliyor. Listeyi daraltmak için aramayı kullanın.",
+    "noPayee": "no payee",
+    "linkButton": "Link",
+    "hasMore": "Only the first {count} are shown. Use the search to narrow the list.",
     "ai": {
-      "heading": "Yapay zekâ için işlemi seçin",
-      "help": "Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. Yapay zekânın e-postadaki ürünlere göre bölmesini istediğiniz işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
-      "linkButton": "Bu işlemi kullan"
+      "heading": "Choose the transaction for the AI",
+      "help": "These are your transactions in the date range below, which starts as the days around the purchase. Choose the one the AI should split by the products in the email, or change the dates to look further.",
+      "linkButton": "Use this transaction"
     }
   },
   "callback": {
-    "title": "Posta kutusu bağlanıyor",
-    "connecting": "Bağlantı tamamlanıyor",
+    "title": "Connecting the mailbox",
+    "connecting": "Finishing the connection",
     "toasts": {
-      "connected": "Posta kutusu bağlandı"
+      "connected": "Mailbox connected"
     },
     "success": {
-      "title": "Posta kutusu bağlandı",
-      "body": "{username} olarak bağlandı. Ayarlara dönülüyor."
+      "title": "Mailbox connected",
+      "body": "Connected as {username}. Returning to the settings."
     },
     "providerError": {
-      "title": "Oturum açma tamamlanmadı",
-      "withDescription": "Sağlayıcı şunu bildirdi: {error}. {description}",
-      "withoutDescription": "Sağlayıcı şunu bildirdi: {error}."
+      "title": "The sign-in was not completed",
+      "withDescription": "The provider reported: {error}. {description}",
+      "withoutDescription": "The provider reported: {error}."
     },
     "missingParameters": {
-      "title": "Bu sayfa bir oturum açma sonucu olmadan açıldı",
-      "body": "E-posta makbuzu ayarlarından yeniden başlayın ve Bağlan düğmelerinden birini kullanın."
+      "title": "This page was opened without a sign-in result",
+      "body": "Start again from the email receipts settings and use one of the Connect buttons."
     },
     "failed": {
-      "title": "Posta kutusu bağlanamadı",
-      "fallback": "Sunucu bağlantıyı reddetti. E-posta makbuzu ayarlarından yeniden başlayın."
+      "title": "The mailbox could not be connected",
+      "fallback": "The server refused the connection. Start again from the email receipts settings."
     },
-    "backLink": "E-posta makbuzu ayarlarına geri dön"
+    "backLink": "Back to the email receipts settings"
   },
   "recognize": {
-    "title": "Yapay zekâ ile tanı",
+    "title": "Recognize with AI",
     "transactionSummary": "{date}, {amount}, {payee}",
-    "noPayee": "alıcı yok",
-    "confirmMessage": "Bu e-posta {summary} işlemine bağlı. Yapay zekâ e-postayı okuyacak ve bu işlemin ürünlere göre nasıl bölüneceğini önerecek. Bu işlemle devam edilsin mi?",
-    "confirm": "Yapay zekâ ile tanı",
-    "chooseOther": "Başka bir işlem seç",
-    "candidatesHeading": "E-posta hangi işlemi ödedi?",
-    "candidatesHelp": "Bu e-postaya birden fazla işlem uyuyor. Yapay zekânın kullanacağı işlemi seçin veya başka birini arayın.",
-    "candidatesLoading": "Uyan işlemler yükleniyor",
-    "candidatesError": "Uyan işlemler yüklenemedi.",
-    "retry": "Yeniden dene",
-    "useButton": "Bu işlemi kullan",
-    "searchOther": "Diğer işlemleri ara",
-    "back": "Geri",
-    "failed": "Tanıma başlatılamadı",
-    "queued": "Kuyruğa alındı: şu anda yanıt verebilecek bir yapay zekâ asistanı yok, bu yüzden istek yapay zekâ inceleme kutusunda bir ajanı (örneğin MCP üzerinden) bekliyor.",
-    "handoffFailed": "İstek kuyruğa alındı, ancak e-posta sohbette açılamadı. Yapay zekâ inceleme kutusunda bir ajanı (örneğin MCP üzerinden) bekliyor.",
-    "inboxLink": "Yapay zekâ inceleme kutusunu aç",
-    "opened": "Sohbet, e-posta ekli olarak açıldı. Mesajı okuyun ve Gönder'e basın.",
-    "chatPrompt": "Ekteki sipariş e-postasındaki ürünleri, miktarları ve fiyatları tanı; {date} tarihli işlemimi ({payee}, {amount}) her biri için bir kategoriyle ürünlere göre böl. {requestId} numaralı yapay zekâ inceleme isteğini üstlen ve önerini onun için gönder."
+    "noPayee": "no payee",
+    "confirmMessage": "This email is linked to the transaction {summary}. The AI will read the email and propose how to split this transaction by product. Continue with this transaction?",
+    "confirm": "Recognize with AI",
+    "chooseOther": "Choose another transaction",
+    "candidatesHeading": "Which transaction did the email pay for?",
+    "candidatesHelp": "Several transactions fit this email. Choose the one the AI should use, or search for another.",
+    "candidatesLoading": "Loading the transactions that fit",
+    "candidatesError": "The transactions that fit could not be loaded.",
+    "retry": "Try again",
+    "useButton": "Use this transaction",
+    "searchOther": "Search other transactions",
+    "back": "Back",
+    "failed": "Could not start the recognition",
+    "queued": "Queued: no AI assistant is available to answer now, so the request waits in the AI review inbox for an agent (for example over MCP).",
+    "handoffFailed": "The request is queued, but the email could not be opened in the chat. It waits in the AI review inbox for an agent (for example over MCP).",
+    "inboxLink": "Open the AI review inbox",
+    "opened": "Opened the chat with the email attached. Read the message and press Send.",
+    "chatPrompt": "Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it."
   },
   "hub": {
     "tabs": {
-      "ariaLabel": "E-posta makbuzu bölümleri",
-      "overview": "Genel bakış",
-      "emails": "E-postalar",
-      "profiles": "Profiller",
-      "mailbox": "Posta kutusu"
+      "ariaLabel": "Email receipts sections",
+      "overview": "Overview",
+      "emails": "Emails",
+      "profiles": "Profiles",
+      "mailbox": "Mailbox"
     },
     "demoRestricted": {
-      "heading": "Demo Modunda Kısıtlı",
-      "body": "Demo modunda posta kutusu bağlama ve profil yazma devre dışıdır."
+      "heading": "Restricted in Demo Mode",
+      "body": "Connecting a mailbox and writing profiles are disabled in demo mode."
     }
   },
   "process": {
-    "button": "Tümünü işle",
-    "buttonCount": "Tümünü işle ({count})",
+    "button": "Process all",
+    "buttonCount": "Process all ({count})",
     "dialog": {
-      "title": "{count, plural, one {# saklanan e-posta işlensin mi?} other {# saklanan e-posta işlensin mi?}}",
-      "message": "Henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
-      "messageDomain": "{domain} göndericisinden gelen, henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
-      "confirm": "İşle"
+      "title": "{count, plural, one {Process # stored email?} other {Process # stored emails?}}",
+      "message": "Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process"
     },
-    "starting": "Başlatılıyor...",
-    "progress": "{processed, plural, one {# e-posta işlendi} other {# e-posta işlendi}}, {remaining} kaldı.",
-    "cancel": "İptal",
-    "cancelling": "İptal ediliyor...",
-    "summary": "{count, plural, one {# e-posta işlendi.} other {# e-posta işlendi.}}",
-    "cancelledSummary": "{count, plural, one {# e-postadan sonra iptal edildi.} other {# e-postadan sonra iptal edildi.}}",
-    "outcomes": "Sonuçları şöyle: {outcomes}.",
-    "passedOver": "{count, plural, one {# e-posta hata verdi ve atlandı.} other {# e-posta hata verdi ve atlandı.}}",
-    "failed": "Bir istek başarısız olduğu için işleme durduruldu.",
-    "failedWithReason": "İşleme durduruldu: {reason}",
+    "starting": "Starting...",
+    "progress": "{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling...",
+    "summary": "{count, plural, one {# email processed.} other {# emails processed.}}",
+    "cancelledSummary": "Cancelled after {count, plural, one {# email.} other {# emails.}}",
+    "outcomes": "They ended as: {outcomes}.",
+    "passedOver": "{count, plural, one {# email raised an error and was passed over.} other {# emails raised an error and were passed over.}}",
+    "failed": "Processing stopped because a request failed.",
+    "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Kapat"
+    "close": "Close",
+    "draft": {
+      "chatPrompt": "{count, plural, one {bu sipariş e-postası} other {bu # sipariş e-postası}} için {domain} adresinden bir e-posta irsaliye profili oluşturun. Yapay Zeka inceleme isteği {requestId} talebinde bulunun, profilinizi email_receipt_parsers aracı ile eklenen her e-postada test edin, her biri tamamen okunana kadar düzeltin ve ardından {requestId} isteği için taslak olarak kaydedin."
+    }
   },
   "overview": {
-    "loading": "Genel bakış yükleniyor...",
+    "loading": "Loading the overview...",
     "error": {
-      "title": "Genel bakış yüklenemedi",
-      "body": "İstek başarısız oldu, bu yüzden buradaki hiçbir şeyin boş olduğu varsayılmamalıdır. Yeniden deneyin.",
-      "retry": "Yeniden dene"
+      "title": "The overview could not be loaded",
+      "body": "The request failed, so nothing here may be taken as empty. Try again.",
+      "retry": "Try again"
     },
     "mailbox": {
-      "title": "Posta kutusu",
-      "none": "Henüz bağlı bir posta kutusu yok.",
-      "connect": "Posta kutusu bağla",
-      "manage": "Posta kutusu ayarlarını aç",
+      "title": "Mailbox",
+      "none": "No mailbox is connected yet.",
+      "connect": "Connect a mailbox",
+      "manage": "Open the mailbox settings",
       "state": {
-        "notConnected": "Bağlı değil",
-        "failing": "Son yoklama başarısız oldu",
-        "off": "Yoklama kapalı",
-        "polling": "Yoklanıyor"
+        "notConnected": "Not connected",
+        "failing": "Last poll failed",
+        "off": "Polling is off",
+        "polling": "Polling"
       },
       "auth": {
-        "password": "Parola ile giriş",
-        "oauth2": "Bir sağlayıcıyla oturum açma"
+        "password": "Password login",
+        "oauth2": "Sign-in with a provider"
       },
-      "lastSuccess": "Son başarılı yoklama: {when}",
-      "neverPolled": "Henüz başarılı bir yoklama yapılmadı.",
-      "lastError": "Son hata: {error}"
+      "lastSuccess": "Last successful poll {when}",
+      "neverPolled": "Not polled successfully yet.",
+      "lastError": "Last error: {error}"
     },
     "emails": {
-      "title": "E-postalar",
-      "stored": "saklanan",
-      "processable": "{count, plural, one {# e-posta yeniden işlenebilir} other {# e-posta yeniden işlenebilir}}.",
-      "open": "E-postaları aç"
+      "title": "Emails",
+      "stored": "stored",
+      "processable": "{count, plural, one {# email can be processed again} other {# emails can be processed again}}.",
+      "open": "Open the emails"
     },
     "proposals": {
-      "title": "Öneriler",
-      "waiting": "onayınızı bekleyen",
-      "review": "Önerileri incele",
-      "open": "İnceleme kutusunu aç"
+      "title": "Proposals",
+      "waiting": "waiting for your approval",
+      "review": "Review the proposals",
+      "open": "Open the review inbox"
     },
     "profiles": {
-      "title": "Profiller",
-      "approved": "onaylı",
-      "drafts": "{count, plural, one {# taslak onayınızı bekliyor} other {# taslak onayınızı bekliyor}}.",
-      "manage": "Profilleri aç"
+      "title": "Profiles",
+      "approved": "approved",
+      "drafts": "{count, plural, one {# draft waits for your approval} other {# drafts wait for your approval}}.",
+      "manage": "Open the profiles"
     },
     "uncovered": {
-      "title": "Profili olmayan göndericiler",
-      "help": "Bu göndericilerin e-postalarını hiçbir profil okumuyor. Birine profil oluşturun ya da asistandan taslağını hazırlamasını isteyin.",
-      "none": "Saklanan e-postaların her göndericisi bir profille karşılanıyor.",
-      "row": "{domain} ({count, plural, one {# e-posta} other {# e-posta}})",
-      "show": "E-postaları göster"
+      "title": "Senders without a profile",
+      "help": "These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profile.",
+      "row": "{domain} ({count, plural, one {# email} other {# emails}})",
+      "show": "Show the emails"
     }
   },
   "wizard": {
-    "heading": "E-posta makbuzlarıyla başlayın",
-    "intro": "Sıfırdan ilk önerinize dört adım.",
-    "done": "(tamam)",
+    "heading": "Get started with email receipts",
+    "intro": "Four steps from nothing to your first proposal.",
+    "done": "(done)",
     "steps": {
       "mailbox": {
-        "title": "Posta kutusu bağlayın",
-        "body": "Sipariş onaylarınızı alan ayrılmış bir posta kutusu kullanın. Monize onu yalnızca okur.",
-        "action": "Posta kutusu bağla"
+        "title": "Connect a mailbox",
+        "body": "Use a dedicated mailbox that receives your order confirmations. Monize only reads it.",
+        "action": "Connect a mailbox"
       },
       "emails": {
-        "title": "E-postaları getirin",
-        "body": "E-postalar, posta kutusu yoklandığında okunur. İlk e-postaları görmek için posta kutusu ayarlarından yoklayın.",
-        "action": "E-postaları aç"
+        "title": "Fetch the emails",
+        "body": "Emails are read when the mailbox is polled. Poll it from the mailbox settings to see the first ones.",
+        "action": "Open the emails"
       },
       "profile": {
-        "title": "Bir gönderici için profil oluşturun",
-        "body": "Profil, Monize'a tek bir göndericinin sipariş onaylarını nasıl okuyacağını söyler. Bir tane yazın ya da saklanan bir e-postadan taslağını hazırlayın.",
-        "action": "Profilleri aç"
+        "title": "Create a profile for a sender",
+        "body": "A profile tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profiles"
       },
       "review": {
-        "title": "Önerileri inceleyin",
-        "body": "Her e-posta, bir işlem için öneriye dönüşür. Siz onaylamadan hiçbir şey değişmez.",
-        "action": "İnceleme kutusunu aç"
+        "title": "Review the proposals",
+        "body": "Each email becomes a proposal on a transaction. Nothing is changed until you approve it.",
+        "action": "Open the review inbox"
       }
     }
   }
