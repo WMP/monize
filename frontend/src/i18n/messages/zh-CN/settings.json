@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "已关闭操作类型标签",
       "tagOperationTypeFailed": "无法更改操作类型标签"
     },
+    "profileNotes": {
+      "title": "此银行的 API 如何工作",
+      "show": "显示此银行的 API 如何工作",
+      "hide": "隐藏此银行的 API 如何工作",
+      "severity": {
+        "warning": "警告：",
+        "info": "说明："
+      }
+    },
     "account": {
       "unnamed": "未命名的银行账户",
       "linkLabel": "Monize 账户",

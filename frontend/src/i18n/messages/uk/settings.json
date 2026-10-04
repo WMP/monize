@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "Теги типу операції вимкнено",
       "tagOperationTypeFailed": "Не вдалося змінити теги типу операції"
     },
+    "profileNotes": {
+      "title": "Як працює API цього банку",
+      "show": "Показати, як працює API цього банку",
+      "hide": "Сховати, як працює API цього банку",
+      "severity": {
+        "warning": "Попередження:",
+        "info": "Примітка:"
+      }
+    },
     "account": {
       "unnamed": "Банківський рахунок без назви",
       "linkLabel": "Рахунок Monize",

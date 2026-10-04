@@ -39,6 +39,10 @@
   boot. The first S2 validator refuses digit runs of 8 or more, IBAN-like
   strings, amounts and `@`, and never echoes the value. The PKO profile
   matches the institution name "PKO Bank Polski" (Enable Banking's Poland
-  market page); confirm it against a live `GET /aspsps` answer.
+  market page); confirm it against a live `GET /aspsps` answer. The profile
+  also carries `notes` (`id`, `severity` info|warning, and `text` by locale
+  with `en` required and other supported locales optional), shown in the
+  reader's language or English in the connect dialog and on the connection
+  card.
 - **S3 is still open**: the profile version is not yet part of the plan
   fingerprint.

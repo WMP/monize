@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "fs";
 import { join, relative } from "path";
+import { SUPPORTED_LOCALE_CODES } from "../i18n/config";
 import {
   NO_BANK_OPERATION,
   operationTagLabel,
@@ -13,6 +14,8 @@ import {
   findOperationType,
   loadBankSyncProfiles,
   normalizeInstitutionName,
+  profileNotesView,
+  resolveConnectionProfile,
   resolveProfile,
   validateBankSyncProfile,
   type BankSyncProfile,
@@ -116,6 +119,23 @@ describe("the PKO BP profile", () => {
     expect(pko.operation.location).toEqual(["remittance_line"]);
   });
 
+  it("tells the reader the three things verified about how this bank's API behaves, in English and Polish", () => {
+    expect(pko.notes.map((n) => [n.id, n.severity])).toEqual([
+      ["gluedFields", "warning"],
+      ["operationCodeLine", "info"],
+      ["counterpartyOnTransfers", "info"],
+    ]);
+    for (const note of pko.notes) {
+      expect(Object.keys(note.text).sort()).toEqual(["en", "pl"]);
+    }
+    expect(pko.notes[0].text.en).toMatch(/^For card and BLIK payments/);
+    expect(pko.notes[0].text.pl).toMatch(/^Przy płatnościach kartą i BLIK/);
+    expect(Object.isFrozen(pko.notes)).toBe(true);
+    expect(Object.isFrozen(pko.notes[0].text)).toBe(true);
+    // Notes change what the reader is told, not what a row gets.
+    expect(pko.version).toBe(1);
+  });
+
   it("holds the operation-code table the code held, in the same order", () => {
     // The order is match order: an exact code before its prefix, the BLIK and
     // refund rules before the mobile payment family.
@@ -177,6 +197,10 @@ describe("the default profile", () => {
       "bank_transaction_code",
       "remittance_line",
     ]);
+  });
+
+  it("has no notes: nothing is known about a bank it was not written for", () => {
+    expect(defaultProfile.notes).toEqual([]);
   });
 
   it("labels only the codes whose own text says what they are, never a prefix family", () => {
@@ -287,6 +311,88 @@ describe("resolveProfile", () => {
   });
 });
 
+describe("resolveConnectionProfile", () => {
+  it("chooses the profile resolveProfile chooses, from the connection's own columns", () => {
+    expect(
+      resolveConnectionProfile({
+        provider: "enable_banking",
+        institutionCountry: "PL",
+        institutionName: "PKO Bank Polski",
+      }),
+    ).toBe(resolveProfile("enable_banking", "PL", "PKO Bank Polski"));
+    expect(
+      resolveConnectionProfile({
+        provider: "enable_banking",
+        institutionCountry: "PL",
+        institutionName: "Another Bank",
+      }).id,
+    ).toBe(DEFAULT_PROFILE_ID);
+  });
+});
+
+describe("profileNotesView", () => {
+  const pko = resolveProfile("enable_banking", "PL", "PKO Bank Polski");
+  const view = (lang: string) =>
+    profileNotesView(pko, lang).map((n) => [n.id, n.lang]);
+
+  it("gives a reader in Polish the Polish text, and says it is Polish", () => {
+    const [glued] = profileNotesView(pko, "pl");
+    expect(glued).toEqual({
+      id: "gluedFields",
+      severity: "warning",
+      text: pko.notes[0].text.pl,
+      lang: "pl",
+    });
+  });
+
+  it("gives a reader in a language the note lacks the English text, and says it is English", () => {
+    for (const lang of ["de", "zh-CN", "xx", "unknown"]) {
+      expect(profileNotesView(pko, lang)).toEqual(
+        pko.notes.map((n) => ({
+          id: n.id,
+          severity: n.severity,
+          text: n.text.en,
+          lang: "en",
+        })),
+      );
+    }
+  });
+
+  it("reads a regional variant as the language it is a variant of, else English", () => {
+    const note = (text: Record<string, string>) => ({
+      notes: [{ id: "x", severity: "info" as const, text }],
+    });
+    expect(
+      profileNotesView(note({ en: "Hello", "en-GB": "Hello, mate" }), "en-GB"),
+    ).toEqual([
+      { id: "x", severity: "info", text: "Hello, mate", lang: "en-GB" },
+    ]);
+    expect(profileNotesView(note({ en: "Hello" }), "en-GB")[0]).toMatchObject({
+      text: "Hello",
+      lang: "en",
+    });
+    // pt-BR is a full translation of its own, not a variant of pt: a note
+    // written in pt is not assumed to read right for it.
+    expect(
+      profileNotesView(note({ en: "Hi", pt: "Olá" }), "pt-BR")[0],
+    ).toMatchObject({ text: "Hi", lang: "en" });
+  });
+
+  it("keeps the order of the file", () => {
+    expect(view("pl")).toEqual([
+      ["gluedFields", "pl"],
+      ["operationCodeLine", "pl"],
+      ["counterpartyOnTransfers", "pl"],
+    ]);
+  });
+
+  it("is empty for a profile without notes", () => {
+    expect(
+      profileNotesView(resolveProfile("enable_banking", "PL", "X"), "pl"),
+    ).toEqual([]);
+  });
+});
+
 describe("findOperationType", () => {
   it("skips a directed type whose target the profile does not hold, rather than naming one", () => {
     const broken = {
@@ -310,6 +416,215 @@ describe("validateBankSyncProfile", () => {
     expect(Object.isFrozen(profile)).toBe(true);
     expect(Object.isFrozen(profile.types)).toBe(true);
     expect(Object.isFrozen(profile.institution)).toBe(true);
+  });
+
+  describe("notes", () => {
+    const note = (
+      id: string = "gluedFields",
+      severity: string = "info",
+      text: Record<string, unknown> = { en: "Text" },
+    ) => ({ id, severity, text });
+
+    it("are optional: a profile without them has an empty, frozen list", () => {
+      const profile = validateBankSyncProfile(valid(), "example.json");
+      expect(profile.notes).toEqual([]);
+      expect(Object.isFrozen(profile.notes)).toBe(true);
+    });
+
+    it("are accepted with either severity, in the order written, each frozen", () => {
+      const raw = valid();
+      raw.notes = [
+        note("operationCodeLine", "info", { en: "One", pl: "Jeden" }),
+        note("gluedFields", "warning"),
+      ];
+      const { notes } = validateBankSyncProfile(raw, "example.json");
+      expect(notes).toEqual([
+        {
+          id: "operationCodeLine",
+          severity: "info",
+          text: { en: "One", pl: "Jeden" },
+        },
+        { id: "gluedFields", severity: "warning", text: { en: "Text" } },
+      ]);
+      expect(Object.isFrozen(notes)).toBe(true);
+      expect(Object.isFrozen(notes[0])).toBe(true);
+      expect(Object.isFrozen(notes[0].text)).toBe(true);
+    });
+
+    it("accept an empty list, and every supported language but the pseudo-locale", () => {
+      const raw = valid();
+      raw.notes = [];
+      expect(validateBankSyncProfile(raw, "example.json").notes).toEqual([]);
+      raw.notes = [
+        note(
+          "everyLanguage",
+          "info",
+          Object.fromEntries(
+            SUPPORTED_LOCALE_CODES.filter((code) => code !== "xx").map(
+              (code) => [code, `Text in ${code}`],
+            ),
+          ),
+        ),
+      ];
+      expect(() => validateBankSyncProfile(raw, "example.json")).not.toThrow();
+    });
+
+    it("accept text of exactly 600 characters", () => {
+      const raw = valid();
+      raw.notes = [note("gluedFields", "info", { en: "a".repeat(600) })];
+      expect(() => validateBankSyncProfile(raw, "example.json")).not.toThrow();
+    });
+
+    const cases: [string, (raw: Record<string, any>) => void, RegExp][] = [
+      [
+        "a severity the format does not have",
+        (r) => (r.notes = [note("gluedFields", "error")]),
+        /notes\[0\]\.severity: must be one of info, warning/,
+      ],
+      [
+        "no severity",
+        (r) => (r.notes = [{ id: "gluedFields", text: { en: "Text" } }]),
+        /notes\[0\]\.severity: must be one of info, warning/,
+      ],
+      [
+        "an id that is not camelCase",
+        (r) => (r.notes = [note("glued Fields")]),
+        /notes\[0\]\.id: must be a note id/,
+      ],
+      [
+        "an id that is not text",
+        (r) => (r.notes = [note(5 as never)]),
+        /notes\[0\]\.id: must be a note id/,
+      ],
+      [
+        "an id repeated",
+        (r) =>
+          (r.notes = [note("gluedFields"), note("gluedFields", "warning")]),
+        /notes\[1\]\.id: repeats the id of an earlier note/,
+      ],
+      [
+        "a field the format does not have",
+        (r) => (r.notes = [{ ...note(), key: "gluedFields" }]),
+        /notes\[0\]\.key: is not a field/,
+      ],
+      [
+        "text with no English",
+        (r) => (r.notes = [note("gluedFields", "info", { pl: "Tekst" })]),
+        /notes\[0\]\.text\.en: is required/,
+      ],
+      [
+        "no text",
+        (r) => (r.notes = [{ id: "gluedFields", severity: "info" }]),
+        /notes\[0\]\.text: must be an object/,
+      ],
+      [
+        "text that is a string",
+        (r) => (r.notes = [{ ...note(), text: "Text" }]),
+        /notes\[0\]\.text: must be an object/,
+      ],
+      [
+        "a language Monize is not translated into",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "a", tlh: "b" })]),
+        /notes\[0\]\.text\.tlh: is not a language Monize is translated into/,
+      ],
+      [
+        "the pseudo-locale",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "a", xx: "b" })]),
+        /notes\[0\]\.text\.xx: is not a language Monize is translated into/,
+      ],
+      [
+        "a language that is an inherited property",
+        (r) =>
+          (r.notes = [
+            note(
+              "gluedFields",
+              "info",
+              JSON.parse('{"en":"a","__proto__":"b"}'),
+            ),
+          ]),
+        /notes\[0\]\.text\.__proto__: is not a language/,
+      ],
+      [
+        "text that is not a string",
+        (r) => (r.notes = [note("gluedFields", "info", { en: 5 })]),
+        /notes\[0\]\.text\.en: must be non-empty text/,
+      ],
+      [
+        "empty text",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "" })]),
+        /notes\[0\]\.text\.en: must be non-empty text/,
+      ],
+      [
+        "text of spaces",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "   " })]),
+        /notes\[0\]\.text\.en: must be non-empty text/,
+      ],
+      [
+        "text with space around it",
+        (r) => (r.notes = [note("gluedFields", "info", { en: " Text" })]),
+        /notes\[0\]\.text\.en: must be non-empty text/,
+      ],
+      [
+        "an optional language that is empty",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "a", pl: "" })]),
+        /notes\[0\]\.text\.pl: must be non-empty text/,
+      ],
+      [
+        "text with a line break",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "One\nTwo" })]),
+        /notes\[0\]\.text\.en: must be one line/,
+      ],
+      [
+        "text with a carriage return",
+        (r) => (r.notes = [note("gluedFields", "info", { en: "One\rTwo" })]),
+        /notes\[0\]\.text\.en: must be one line/,
+      ],
+      [
+        "text of 601 characters",
+        (r) =>
+          (r.notes = [note("gluedFields", "info", { en: "a".repeat(601) })]),
+        /notes\[0\]\.text\.en: must be at most 600 characters/,
+      ],
+      [
+        "more than 20 notes",
+        (r) =>
+          (r.notes = Array.from({ length: 21 }, (_v, i) => note(`note${i}`))),
+        /notes: must be a list of at most 20 notes/,
+      ],
+      [
+        "notes that are not a list",
+        (r) => (r.notes = {}),
+        /notes: must be a list/,
+      ],
+      [
+        "a note that is not an object",
+        (r) => (r.notes = ["gluedFields"]),
+        /notes\[0\]: must be an object/,
+      ],
+    ];
+    it.each(cases)("refuse %s", (_what, mutate, message) => {
+      const raw = valid();
+      mutate(raw);
+      expect(refusal(raw)).toMatch(message);
+    });
+
+    it("accept exactly 20 notes", () => {
+      const raw = valid();
+      raw.notes = Array.from({ length: 20 }, (_v, i) => note(`note${i}`));
+      expect(validateBankSyncProfile(raw, "example.json").notes).toHaveLength(
+        20,
+      );
+    });
+
+    it("are read by the personal-data check: a text that carries an account number is refused, naming where and never what", () => {
+      const raw = valid();
+      raw.notes = [
+        note("gluedFields", "info", { en: "Pay to 1234 5678 9012 3456" }),
+      ];
+      const message = refusal(raw);
+      expect(message).toContain("notes[0].text.en: looks like");
+      expect(message).not.toContain("1234");
+    });
   });
 
   it("accepts a prefix with a suffix, and the two operation locations in either order", () => {

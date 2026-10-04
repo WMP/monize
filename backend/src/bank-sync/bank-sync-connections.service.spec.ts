@@ -32,6 +32,7 @@ import {
   OTHER_USER_ID,
   USER_ID,
 } from "./bank-sync-testing";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import { BankSyncProviderError } from "./providers/bank-sync-provider.errors";
@@ -102,10 +103,16 @@ describe("BankSyncConnectionsService", () => {
     save: jest.fn(),
     create: jest.fn(),
   };
+  const preferenceRepo = { findOne: jest.fn() };
   const { manager, dataSource } = createScopedDbMocks([
     [BankSyncConnection, connectionRepo],
     [BankSyncAccount, accountRepo],
+    [UserPreference, preferenceRepo],
   ]);
+
+  /** The reader's stored language; none stored is the default, English. */
+  const readerSpeaks = (language: string | null) =>
+    preferenceRepo.findOne.mockResolvedValue(language ? { language } : null);
 
   const CREDS = { applicationId: "app-1", privateKeyPem: "PEM" };
 
@@ -132,6 +139,7 @@ describe("BankSyncConnectionsService", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    readerSpeaks(null);
     credentials.resolveCredentials.mockResolvedValue(CREDS);
     credentials.redirectUrl.mockReturnValue(
       "https://money.example.com/settings/bank-sync/callback",
@@ -204,6 +212,67 @@ describe("BankSyncConnectionsService", () => {
         null,
         1,
       ]);
+    });
+
+    describe("the bank's profile notes", () => {
+      const PKO = "PKO Bank Polski";
+
+      it("is null for a bank with no profile of its own: the default carries no notes", async () => {
+        provider.listInstitutions.mockResolvedValue([
+          institution({ name: "Some Other Bank" }),
+          institution({ name: PKO, country: "DE" }),
+        ]);
+        const result = await service.listInstitutions(USER_ID, "PL");
+        expect(result.map((i) => i.profile)).toEqual([null, null]);
+      });
+
+      it("names the built-in profile and its notes, in English for a reader with no language stored", async () => {
+        provider.listInstitutions.mockResolvedValue([
+          institution({ name: PKO }),
+        ]);
+        const [bank] = await service.listInstitutions(USER_ID, "PL");
+        expect(bank.profile?.id).toBe("pl/pko-bp");
+        expect(
+          bank.profile?.notes.map((n) => [n.id, n.severity, n.lang]),
+        ).toEqual([
+          ["gluedFields", "warning", "en"],
+          ["operationCodeLine", "info", "en"],
+          ["counterpartyOnTransfers", "info", "en"],
+        ]);
+        expect(bank.profile?.notes[0].text).toMatch(/^For card and BLIK/);
+      });
+
+      it("gives a reader whose language is Polish the Polish text, marked as Polish", async () => {
+        readerSpeaks("pl");
+        provider.listInstitutions.mockResolvedValue([
+          institution({ name: PKO }),
+        ]);
+        const [bank] = await service.listInstitutions(USER_ID, "PL");
+        expect(bank.profile?.notes.map((n) => n.lang)).toEqual([
+          "pl",
+          "pl",
+          "pl",
+        ]);
+        expect(bank.profile?.notes[0].text).toMatch(
+          /^Przy płatnościach kartą i BLIK/,
+        );
+        expect(preferenceRepo.findOne).toHaveBeenCalledWith({
+          where: { userId: USER_ID },
+        });
+      });
+
+      it("gives a reader whose language the note lacks the English text, marked as English", async () => {
+        readerSpeaks("de");
+        provider.listInstitutions.mockResolvedValue([
+          institution({ name: PKO }),
+        ]);
+        const [bank] = await service.listInstitutions(USER_ID, "PL");
+        expect(bank.profile?.notes.map((n) => n.lang)).toEqual([
+          "en",
+          "en",
+          "en",
+        ]);
+      });
     });
 
     it.each(["", "POL", "1A", "P"])(
@@ -1104,6 +1173,50 @@ describe("BankSyncConnectionsService", () => {
       expect(serialized).not.toMatch(
         /session-1|session-2|externalSessionId|authStateHash/,
       );
+    });
+
+    describe("the connection's profile", () => {
+      it("is the built-in profile of the bank, with its version and notes", async () => {
+        connectionRepo.find.mockResolvedValue([
+          connectionRow({ institutionName: "PKO Bank Polski" }),
+        ]);
+        accountRepo.find.mockResolvedValue([]);
+        const [view] = await service.list(USER_ID);
+        expect(view.profile).toMatchObject({ id: "pl/pko-bp", version: 1 });
+        expect(view.profile.notes.map((n) => [n.id, n.severity])).toEqual([
+          ["gluedFields", "warning"],
+          ["operationCodeLine", "info"],
+          ["counterpartyOnTransfers", "info"],
+        ]);
+        expect(view.profile.notes[0].lang).toBe("en");
+      });
+
+      it("is the default profile, with no notes, for a bank that has none", async () => {
+        connectionRepo.find.mockResolvedValue([connectionRow()]);
+        accountRepo.find.mockResolvedValue([]);
+        const [view] = await service.list(USER_ID);
+        expect(view.profile).toEqual({ id: "default", version: 1, notes: [] });
+      });
+
+      it("shows the notes in the reader's language, in the list and in getView alike", async () => {
+        readerSpeaks("pl");
+        const row = connectionRow({ institutionName: "PKO Bank Polski" });
+        connectionRepo.find.mockResolvedValue([row]);
+        connectionRepo.findOne.mockResolvedValue(row);
+        accountRepo.find.mockResolvedValue([]);
+
+        const [listed] = await service.list(USER_ID);
+        const single = await service.getView(USER_ID, CONNECTION_ID);
+
+        for (const view of [listed, single]) {
+          expect(view.profile.notes.map((n) => n.lang)).toEqual([
+            "pl",
+            "pl",
+            "pl",
+          ]);
+          expect(view.profile.notes[2].text).toMatch(/^Bank podaje nazwę/);
+        }
+      });
     });
 
     it("is empty without reading accounts when there are no connections", async () => {

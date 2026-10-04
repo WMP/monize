@@ -13,6 +13,7 @@ import { buildBankSyncCountryOptions } from '@/lib/bank-sync-countries';
 import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
 import { getErrorMessage } from '@/lib/errors';
 import type { BankInstitution, BankSyncPsuType } from '@/types/bank-sync';
+import { BankSyncProfileNotes } from './BankSyncProfileNotes';
 
 const PSU_TYPES: readonly BankSyncPsuType[] = ['personal', 'business'];
 
@@ -203,6 +204,7 @@ export function BankSyncConnectDialog({
                 {t('consentDays', { days: consentDays })}
               </p>
             )}
+            {institution.profile && <BankSyncProfileNotes notes={institution.profile.notes} />}
           </>
         )}
 

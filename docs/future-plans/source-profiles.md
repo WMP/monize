@@ -53,6 +53,8 @@ SourceProfile
                  structure    none | transfer to the account whose number
                               is in field F | split by captures (P5)
   default      the same block for rows no type matches
+  notes[]      what the reader is told about this bank: id, severity
+               info | warning, text by locale (en required, others optional)
 ```
 
 Cleanup steps are named, closed operations (no free code, no regular

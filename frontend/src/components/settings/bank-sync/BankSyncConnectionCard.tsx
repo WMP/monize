@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -23,6 +24,7 @@ import {
   type BankSyncNotifySuccessMode,
 } from '@/types/bank-sync';
 import { BankSyncAccountRow } from './BankSyncAccountRow';
+import { BankSyncProfileNotes } from './BankSyncProfileNotes';
 import { useBankSyncToast } from './useBankSyncToast';
 
 /** Consent that ends within this many days is flagged as expiring soon. */
@@ -66,12 +68,15 @@ export function BankSyncConnectionCard({
   const t = useTranslations('settings.bankSync.connection');
   const tConnect = useTranslations('settings.bankSync.connect');
   const tSync = useTranslations('settings.bankSync.sync');
+  const tNotes = useTranslations('settings.bankSync.profileNotes');
   const { formatDate } = useDateFormat();
   const notifySync = useBankSyncToast();
   // Captured once: consent is measured in days, so a clock that stands still
   // for the life of the page is exact enough, and render stays pure.
   const [now] = useState(() => Date.now());
   const syncAllHintId = useId();
+  const notesId = useId();
+  const [notesOpen, setNotesOpen] = useState(false);
   const [autoSync, setAutoSync] = useState(connection.autoSync);
   const [savingAutoSync, setSavingAutoSync] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -392,6 +397,35 @@ export function BankSyncConnectionCard({
               label: t(`notifySuccessOptions.${mode}`),
             }))}
           />
+        </div>
+      )}
+
+      {connection.profile.notes.length > 0 && (
+        <div className="mt-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-ml-3"
+            onClick={() => setNotesOpen((open) => !open)}
+            aria-expanded={notesOpen}
+            // The notes are not in the document while folded, so the button
+            // names them only while they exist.
+            aria-controls={notesOpen ? notesId : undefined}
+          >
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={`mr-1 h-4 w-4 transition-transform motion-reduce:transition-none ${
+                notesOpen ? 'rotate-180' : ''
+              }`}
+            />
+            {notesOpen ? tNotes('hide') : tNotes('show')}
+          </Button>
+          {notesOpen && (
+            <div id={notesId} className="mt-2">
+              <BankSyncProfileNotes notes={connection.profile.notes} />
+            </div>
+          )}
         </div>
       )}
 

@@ -13,6 +13,7 @@ import type {
   ImportPreviewRuleView,
 } from "../import-preview/import-preview.types";
 import type { RuleRowInput } from "../transaction-rules/transaction-rules-applier.service";
+import type { ProfileNoteView } from "./bank-sync-profiles";
 import type { RefusalReason } from "./bank-transaction-planner";
 
 /**
@@ -44,12 +45,27 @@ export interface BankSyncCredentialsTestView {
   redirectUrls: string[];
 }
 
+/** The built-in profile of a bank and what the reader is told about it. */
+export interface BankInstitutionProfileView {
+  id: string;
+  notes: ProfileNoteView[];
+}
+
+/** The profile a connection's rows are read by (docs/specs/bank-sync.md section 7b). */
+export interface BankSyncConnectionProfileView {
+  id: string;
+  version: number;
+  notes: ProfileNoteView[];
+}
+
 export interface BankInstitutionView {
   name: string;
   country: string;
   logoUrl: string | null;
   psuTypes: string[];
   maximumConsentValidityDays: number | null;
+  /** The bank's built-in profile; null when it has none and the default applies. */
+  profile: BankInstitutionProfileView | null;
 }
 
 export interface BankSyncAccountView {
@@ -107,6 +123,8 @@ export interface BankSyncConnectionView {
   tagOperationType: boolean;
   lastError: string | null;
   createdAt: string;
+  /** The profile this connection's rows are read by, with its notes in the reader's language. */
+  profile: BankSyncConnectionProfileView;
   accounts: BankSyncAccountView[];
 }
 

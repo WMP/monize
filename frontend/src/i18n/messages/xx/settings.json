@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "[XX-Operation type tags turned off-XX]",
       "tagOperationTypeFailed": "[XX-Could not change the operation type tags-XX]"
     },
+    "profileNotes": {
+      "title": "[XX-How this bank's API works-XX]",
+      "show": "[XX-Show how this bank's API works-XX]",
+      "hide": "[XX-Hide how this bank's API works-XX]",
+      "severity": {
+        "warning": "[XX-Warning:-XX]",
+        "info": "[XX-Note:-XX]"
+      }
+    },
     "account": {
       "unnamed": "[XX-Unnamed bank account-XX]",
       "linkLabel": "[XX-Monize account-XX]",

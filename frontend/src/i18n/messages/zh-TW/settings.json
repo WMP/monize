@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "已關閉操作類型標籤",
       "tagOperationTypeFailed": "無法變更操作類型標籤"
     },
+    "profileNotes": {
+      "title": "此銀行的 API 如何運作",
+      "show": "顯示此銀行的 API 如何運作",
+      "hide": "隱藏此銀行的 API 如何運作",
+      "severity": {
+        "warning": "警告：",
+        "info": "說明："
+      }
+    },
     "account": {
       "unnamed": "未命名的銀行帳戶",
       "linkLabel": "Monize 科目",

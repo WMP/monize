@@ -1,3 +1,8 @@
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALE_CODES,
+  localeBase,
+} from "../i18n/config";
 import enCommon from "../i18n/locales/en/common.json";
 import {
   BANK_SYNC_PROVIDERS,
@@ -11,7 +16,8 @@ import pkoBpProfileFile from "./profiles/pl/pko-bp.json";
  * source-profiles.md sections 3 and 4): how one bank writes what Monize reads
  * from it, as a reviewed file in the repository rather than code. Today a
  * profile says where the bank puts the operation type and which tag label each
- * known operation code gets (docs/specs/bank-sync.md section 7b); payees,
+ * known operation code gets (docs/specs/bank-sync.md section 7b), and which
+ * notes the reader is shown about how that bank's API behaves; payees,
  * descriptions and structure join in later tasks.
  *
  * **A profile never changes the duplicate key (invariant S1).** Nothing here is
@@ -77,6 +83,34 @@ export type ProfileOperationType =
   | LabelledOperationType
   | DirectedOperationType;
 
+/** How much a note matters to the reader: `warning` names a problem to act on. */
+export type ProfileNoteSeverity = "info" | "warning";
+
+const NOTE_SEVERITIES: readonly ProfileNoteSeverity[] = ["info", "warning"];
+
+/**
+ * One thing worth knowing about how a bank's API behaves, written in the file
+ * itself: a note about a Polish bank has no reason to exist in every language
+ * Monize speaks. `text.en` is required and every other language is optional; the
+ * reader gets their own language when the note has it and English otherwise.
+ */
+export interface ProfileNote {
+  /** A stable name for the note (a React key, a test); not shown. Unique in a profile. */
+  readonly id: string;
+  readonly severity: ProfileNoteSeverity;
+  /** The text by locale code: `en` always, any other supported locale optionally. */
+  readonly text: Readonly<Record<string, string>>;
+}
+
+/** A note as the reader gets it: one text, and the language it is actually in. */
+export interface ProfileNoteView {
+  id: string;
+  severity: ProfileNoteSeverity;
+  text: string;
+  /** The locale of `text`, for the `lang` attribute: not the reader's when the note lacks it. */
+  lang: string;
+}
+
 /** A validated profile. Its order is match order: the first type that matches wins. */
 export interface BankSyncProfile {
   /** `default`, or `<country>/<bank>` in lower case (`pl/pko-bp`). */
@@ -91,6 +125,8 @@ export interface BankSyncProfile {
   } | null;
   readonly operation: { readonly location: readonly OperationLocation[] };
   readonly types: readonly ProfileOperationType[];
+  /** What the reader is told about this bank; empty when the file has none. */
+  readonly notes: readonly ProfileNote[];
 }
 
 /** What a matched operation type gives a row's tag. */
@@ -169,6 +205,13 @@ const INSTITUTION_NAME = /^[\p{L}\p{N}][\p{L}\p{N} .,&'()/-]*$/u;
 const INSTITUTION_NAME_MAX_LENGTH = 100;
 const MAX_INSTITUTION_NAMES = 20;
 const MAX_TYPES = 200;
+const MAX_NOTES = 20;
+const NOTE_ID = /^[a-z][A-Za-z0-9]*$/;
+const NOTE_TEXT_MAX_LENGTH = 600;
+/** The languages a note may be written in: the supported locales, never the `xx` pseudo-locale. */
+const NOTE_LOCALES: readonly string[] = SUPPORTED_LOCALE_CODES.filter(
+  (code) => code !== "xx",
+);
 const TYPE_KEY = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
 const EXACT_CODE = TYPE_KEY;
 const PREFIX_CODE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-$/;
@@ -436,6 +479,84 @@ function validateTypes(
   return Object.freeze(types);
 }
 
+function validateNoteText(
+  value: unknown,
+  origin: string,
+  path: string,
+): Readonly<Record<string, string>> {
+  const text = expectDict(value, origin, path);
+  for (const locale of Object.keys(text)) {
+    if (!NOTE_LOCALES.includes(locale)) {
+      fail(
+        origin,
+        `${path}.${locale}`,
+        "is not a language Monize is translated into (the pseudo-locale is not one)",
+      );
+    }
+  }
+  if (text[DEFAULT_LOCALE] === undefined) {
+    fail(
+      origin,
+      `${path}.${DEFAULT_LOCALE}`,
+      "is required: English is the source",
+    );
+  }
+  const checked: Record<string, string> = {};
+  for (const [locale, line] of Object.entries(text)) {
+    const at = `${path}.${locale}`;
+    if (
+      typeof line !== "string" ||
+      line.trim() === "" ||
+      line !== line.trim()
+    ) {
+      fail(origin, at, "must be non-empty text with no space around it");
+    }
+    if (/[\r\n]/.test(line)) fail(origin, at, "must be one line");
+    if (line.length > NOTE_TEXT_MAX_LENGTH) {
+      fail(origin, at, `must be at most ${NOTE_TEXT_MAX_LENGTH} characters`);
+    }
+    checked[locale] = line;
+  }
+  return Object.freeze(checked);
+}
+
+function validateNotes(value: unknown, origin: string): readonly ProfileNote[] {
+  if (value === undefined) return Object.freeze([]);
+  if (!Array.isArray(value) || value.length > MAX_NOTES) {
+    fail(origin, "notes", `must be a list of at most ${MAX_NOTES} notes`);
+  }
+  const ids = new Set<string>();
+  const notes = value.map((item, index): ProfileNote => {
+    const path = `notes[${index}]`;
+    const note = expectDict(item, origin, path);
+    expectOnly(note, ["id", "severity", "text"], origin, path);
+    const id = expectString(
+      note.id,
+      NOTE_ID,
+      origin,
+      `${path}.id`,
+      "a note id in camelCase, such as gluedFields",
+    );
+    if (ids.has(id)) {
+      fail(origin, `${path}.id`, "repeats the id of an earlier note");
+    }
+    ids.add(id);
+    if (!NOTE_SEVERITIES.includes(note.severity as ProfileNoteSeverity)) {
+      fail(
+        origin,
+        `${path}.severity`,
+        `must be one of ${NOTE_SEVERITIES.join(", ")}`,
+      );
+    }
+    return Object.freeze({
+      id,
+      severity: note.severity as ProfileNoteSeverity,
+      text: validateNoteText(note.text, origin, `${path}.text`),
+    });
+  });
+  return Object.freeze(notes);
+}
+
 /**
  * Check one profile file and return it as a frozen profile. `origin` names the
  * file in every message. The personal-data check runs first, over the raw file:
@@ -449,7 +570,7 @@ export function validateBankSyncProfile(
   const file = expectDict(raw, origin, "profile");
   expectOnly(
     file,
-    ["id", "version", "source", "institution", "operation", "types"],
+    ["id", "version", "source", "institution", "operation", "types", "notes"],
     origin,
     "",
   );
@@ -495,6 +616,7 @@ export function validateBankSyncProfile(
     institution: institution && Object.freeze(institution),
     operation: Object.freeze(validateOperation(file.operation, origin)),
     types: validateTypes(file.types, origin),
+    notes: validateNotes(file.notes, origin),
   });
 }
 
@@ -629,7 +751,46 @@ export function resolveProfile(
   );
 }
 
+/**
+ * The profile of a connection's institution: the built-in one for that bank,
+ * else the default (docs/future-plans/source-profiles.md section 4). The one
+ * place a connection is turned into a profile, so a sync, a preview and the
+ * views a client reads all choose the same one. A sync and a preview resolve it
+ * once, from the connection as step 1 read it, and hand it down, so the writer
+ * and the preview never choose a profile themselves.
+ */
+export function resolveConnectionProfile(connection: {
+  readonly provider: string;
+  readonly institutionCountry: string;
+  readonly institutionName: string;
+}): BankSyncProfile {
+  return resolveProfile(
+    connection.provider,
+    connection.institutionCountry,
+    connection.institutionName,
+  );
+}
+
 // -- Reading a profile ---------------------------------------------------------
+
+/**
+ * The notes of the profile in the reader's language: the reader's own when the
+ * note has it, else the language it is the regional variant of (`pt-BR` reads
+ * `pt`), else English. `lang` names the language actually used.
+ */
+export function profileNotesView(
+  profile: Pick<BankSyncProfile, "notes">,
+  readerLang: string,
+): ProfileNoteView[] {
+  const candidates = [readerLang, localeBase(readerLang), DEFAULT_LOCALE];
+  return profile.notes.map(({ id, severity, text }) => {
+    const lang = candidates.find(
+      (code): code is string =>
+        code !== undefined && Object.prototype.hasOwnProperty.call(text, code),
+    ) as string;
+    return { id, severity, text: text[lang], lang };
+  });
+}
 
 function matchesCode(match: OperationMatch, code: string): boolean {
   if (match.exact !== undefined) return code === match.exact;

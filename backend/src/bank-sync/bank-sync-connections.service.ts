@@ -9,6 +9,7 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
+import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { tr } from "../i18n/translate";
 import {
   AUTH_STATE_TTL_MS,
@@ -29,6 +30,7 @@ import {
   toBankSyncException,
 } from "./bank-sync-errors";
 import {
+  toBankInstitutionProfileView,
   toBankSyncAccountView,
   toBankSyncConnectionView,
 } from "./bank-sync-views";
@@ -44,6 +46,7 @@ import type {
 import type { BankSyncCallbackDto } from "./dto/bank-sync-callback.dto";
 import type { CreateBankSyncConnectionDto } from "./dto/create-bank-sync-connection.dto";
 import { COUNTRY_CODE_PATTERN } from "./dto/list-institutions-query.dto";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import { BankSyncProviderError } from "./providers/bank-sync-provider.errors";
@@ -125,6 +128,21 @@ export class BankSyncConnectionsService {
     private readonly matcher: BankSyncMatchService,
   ) {}
 
+  /**
+   * The language a profile note is shown in: the one the bank sync service
+   * composes the user's tag labels in (`resolveUserEmailLocale`), so the notes
+   * and the tags a reader sees are in the same language.
+   */
+  private readerLanguageIn(m: EntityManager, userId: string): Promise<string> {
+    return resolveUserEmailLocale(m.getRepository(UserPreference), userId);
+  }
+
+  private readerLanguage(userId: string): Promise<string> {
+    return withScopedDb(this.dataSource, (m) =>
+      this.readerLanguageIn(m, userId),
+    );
+  }
+
   /** The banks the provider can connect to in one country. */
   async listInstitutions(
     userId: string,
@@ -140,6 +158,8 @@ export class BankSyncConnectionsService {
       credentials,
       code,
     );
+    // After the provider call, which is never made inside a transaction.
+    const readerLang = await this.readerLanguage(userId);
     return institutions.map((institution) => ({
       name: institution.name,
       country: institution.country,
@@ -147,6 +167,11 @@ export class BankSyncConnectionsService {
       psuTypes: institution.psuTypes,
       maximumConsentValidityDays: maximumValidityDays(
         institution.maximumConsentValiditySeconds,
+      ),
+      profile: toBankInstitutionProfileView(
+        BANK_SYNC_DEFAULT_PROVIDER,
+        institution,
+        readerLang,
       ),
     }));
   }
@@ -443,10 +468,12 @@ export class BankSyncConnectionsService {
         where: { userId },
         order: { createdAt: "ASC", id: "ASC" },
       });
+      const readerLang = await this.readerLanguageIn(m, userId);
       return connections.map((connection) =>
         toBankSyncConnectionView(
           connection,
           accounts.filter((account) => account.connectionId === connection.id),
+          readerLang,
         ),
       );
     });
@@ -540,7 +567,11 @@ export class BankSyncConnectionsService {
         where: { userId, connectionId },
         order: { createdAt: "ASC", id: "ASC" },
       });
-      return toBankSyncConnectionView(connection, accounts);
+      return toBankSyncConnectionView(
+        connection,
+        accounts,
+        await this.readerLanguageIn(m, userId),
+      );
     });
   }
 
@@ -799,7 +830,11 @@ export class BankSyncConnectionsService {
         order: { createdAt: "ASC", id: "ASC" },
       });
       return {
-        view: toBankSyncConnectionView(connection, accounts),
+        view: toBankSyncConnectionView(
+          connection,
+          accounts,
+          await this.readerLanguageIn(m, userId),
+        ),
         previousSessionId,
       };
     });

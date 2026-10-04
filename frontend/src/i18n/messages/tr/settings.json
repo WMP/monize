@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "İşlem türü etiketleri kapatıldı",
       "tagOperationTypeFailed": "İşlem türü etiketleri değiştirilemedi"
     },
+    "profileNotes": {
+      "title": "Bu bankanın API'si nasıl çalışır",
+      "show": "Bu bankanın API'sinin nasıl çalıştığını göster",
+      "hide": "Bu bankanın API'sinin nasıl çalıştığını gizle",
+      "severity": {
+        "warning": "Uyarı:",
+        "info": "Not:"
+      }
+    },
     "account": {
       "unnamed": "Adsız banka hesabı",
       "linkLabel": "Monize hesabı",

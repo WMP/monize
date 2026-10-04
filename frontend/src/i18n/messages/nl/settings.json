@@ -1545,6 +1545,15 @@
       "tagOperationTypeOff": "Tags voor bewerkingstype uitgeschakeld",
       "tagOperationTypeFailed": "De tags voor bewerkingstype konden niet worden gewijzigd"
     },
+    "profileNotes": {
+      "title": "Zo werkt de API van deze bank",
+      "show": "Toon hoe de API van deze bank werkt",
+      "hide": "Verberg hoe de API van deze bank werkt",
+      "severity": {
+        "warning": "Waarschuwing:",
+        "info": "Opmerking:"
+      }
+    },
     "account": {
       "unnamed": "Naamloze bankrekening",
       "linkLabel": "Monize-rekening",
