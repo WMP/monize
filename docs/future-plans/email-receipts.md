@@ -1046,6 +1046,12 @@ section 3a.
 | Unit | `parsers/email-receipt-parser-tools.service.spec.ts` | `test` writes nothing, `save_draft` writes a draft only, claim and ownership checks before the write |
 | Integration | `email-receipts-pipeline.integration.spec.ts` | A forwarded email read by the shop's parser and matched on the purchase day; draft request, claim by id, tests, draft, proposed, approve, applied; another user sees none of it |
 
+## 10a. Matching and profile follow-up (PR 1497)
+
+Done: visible effective `match`, `fees`, `joinWrapped` fallback, `balanceTolerance`, categories by name, category history, status counts and per-state sender domains, a card-dependent main action (Approve through the review inbox's `approve-batch` route), the profile creation guide, and "profile" wording in the UI (spec section 3b).
+
+Not done: after approval, attach the PDFs of the email to the transaction and link the source email. Emails keep no attachment bytes (neither the IMAP client nor `email_receipts` stores them), and the link needs a new column (for example `source_email_receipt_id` on the transaction), so it needs a migration, a fetch of the PDFs from IMAP through `shardedSegments`, and a change in `ai/actions`. It is a separate proposal.
+
 ## 11. Deliberately left for later
 
 - Receipt photos and PDF attachments (vision or OCR, then the same parser).
