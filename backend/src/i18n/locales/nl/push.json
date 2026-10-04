@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Banksynchronisatie",
       "body": "Er is nieuws over uw banksynchronisatie. Open Monize voor de details."
+    },
+    "email_receipts": {
+      "title": "E-mailkwitanties vereisen aandacht",
+      "body": "Sommige e-mails in uw kwitantiemap hebben een profiel nodig of moeten worden gecorrigeerd. Open Monize voor meer informatie."
     }
   },
   "actions": {

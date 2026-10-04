@@ -218,7 +218,10 @@
       "highcontrast": "Высокий контраст",
       "colorblind": "Для слабовидящих"
     },
-    "timezoneBrowserOption": "Использовать часовой пояс браузера (автоопределено: {tz})"
+    "timezoneBrowserOption": "Использовать часовой пояс браузера (автоопределено: {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Письма-квитанции"
+    }
   },
   "notifications": {
     "heading": "Уведомления",

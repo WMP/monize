@@ -218,7 +218,10 @@
       "highcontrast": "Độ tương phản cao",
       "colorblind": "An toàn cho người mù màu"
     },
-    "timezoneBrowserOption": "Sử dụng múi giờ trình duyệt (tự động phát hiện là {tz})"
+    "timezoneBrowserOption": "Sử dụng múi giờ trình duyệt (tự động phát hiện là {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Biên lai email"
+    }
   },
   "notifications": {
     "heading": "Thông báo",

@@ -135,5 +135,9 @@
     "importedMessage": "Transakcje zaimportowane z {institution} przez codzienną synchronizację: {imported}.",
     "importedNoneTitle": "{institution}: brak nowych transakcji",
     "importedNoneMessage": "Codzienna synchronizacja {institution} nie znalazła nowych transakcji."
+  },
+  "emailReceiptsAttention": {
+    "title": "Potwierdzenia e-maili wymagają uwagi",
+    "message": "Twoja skrzynka potwierdzeń zawiera {noParser} bez profilu i {parseFailed} których profil nie rozpoznał. Otwórz do przeglądu."
   }
 }

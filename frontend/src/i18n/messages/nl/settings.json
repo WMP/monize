@@ -218,7 +218,10 @@
       "highcontrast": "Hoog contrast",
       "colorblind": "Kleurenblindveilig"
     },
-    "timezoneBrowserOption": "Browsertijdzone gebruiken (automatisch gedetecteerd als {tz})"
+    "timezoneBrowserOption": "Browsertijdzone gebruiken (automatisch gedetecteerd als {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "E-mailkwitanties"
+    }
   },
   "notifications": {
     "heading": "Meldingen",

@@ -218,7 +218,10 @@
       "highcontrast": "Yüksek kontrast",
       "colorblind": "Renk körü uyumlu"
     },
-    "timezoneBrowserOption": "Tarayıcı saat dilimini kullan (otomatik algılandı: {tz})"
+    "timezoneBrowserOption": "Tarayıcı saat dilimini kullan (otomatik algılandı: {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "E-posta makbuzları"
+    }
   },
   "notifications": {
     "heading": "Bildirimler",

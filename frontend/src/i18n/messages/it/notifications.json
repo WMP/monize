@@ -135,5 +135,9 @@
     "importedMessage": "Transazioni importate da {institution} dalla sincronizzazione giornaliera: {imported}.",
     "importedNoneTitle": "{institution}: nessuna nuova transazione",
     "importedNoneMessage": "La sincronizzazione giornaliera di {institution} non ha trovato nuove transazioni."
+  },
+  "emailReceiptsAttention": {
+    "title": "Le ricevute email richiedono attenzione",
+    "message": "La cartella ricevute contiene {noParser} senza profilo e {parseFailed} che il loro profilo non ha riconosciuto. Apri per rivedere."
   }
 }

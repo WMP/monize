@@ -218,7 +218,10 @@
       "highcontrast": "Kontras tinggi",
       "colorblind": "Aman untuk buta warna"
     },
-    "timezoneBrowserOption": "Gunakan zona waktu browser (terdeteksi otomatis sebagai {tz})"
+    "timezoneBrowserOption": "Gunakan zona waktu browser (terdeteksi otomatis sebagai {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Tanda terima email"
+    }
   },
   "notifications": {
     "heading": "Notifikasi",

@@ -135,5 +135,9 @@
     "importedMessage": "Door de dagelijkse synchronisatie uit {institution} geïmporteerde transacties: {imported}.",
     "importedNoneTitle": "{institution}: geen nieuwe transacties",
     "importedNoneMessage": "De dagelijkse synchronisatie van {institution} vond geen nieuwe transacties."
+  },
+  "emailReceiptsAttention": {
+    "title": "E-mailkwitanties vereisen aandacht",
+    "message": "Uw kwitantiemap bevat {noParser} zonder profiel en {parseFailed} die het profiel niet herkende. Open om te controleren."
   }
 }

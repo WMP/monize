@@ -218,7 +218,10 @@
       "highcontrast": "高对比度",
       "colorblind": "色盲友好"
     },
-    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）"
+    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）",
+    "categories": {
+      "EMAIL_RECEIPTS": "电子邮件收据"
+    }
   },
   "notifications": {
     "heading": "通知",

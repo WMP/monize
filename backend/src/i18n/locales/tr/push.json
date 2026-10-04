@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Banka senkronizasyonu",
       "body": "Banka senkronizasyonunuzda yenilikler var. Ayrıntılar için Monize'i açın."
+    },
+    "email_receipts": {
+      "title": "E-posta makbuzları ilgilenilmesi gerekiyor",
+      "body": "Makbuz gelen kutunuzdaki bazı e-postalar bir profil veya düzeltme gerektirir. Detaylar için Monize'i açın."
     }
   },
   "actions": {

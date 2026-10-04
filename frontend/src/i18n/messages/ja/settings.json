@@ -218,7 +218,10 @@
       "highcontrast": "ハイコントラスト",
       "colorblind": "色覚対応"
     },
-    "timezoneBrowserOption": "ブラウザのタイムゾーンを使用（自動検出: {tz}）"
+    "timezoneBrowserOption": "ブラウザのタイムゾーンを使用（自動検出: {tz}）",
+    "categories": {
+      "EMAIL_RECEIPTS": "メール領収書"
+    }
   },
   "notifications": {
     "heading": "通知",

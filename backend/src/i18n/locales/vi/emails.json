@@ -324,6 +324,10 @@
       "importedMessage": "Các giao dịch được nhập từ {{ institution }} bởi đồng bộ hằng ngày: {{ imported }}.",
       "importedNoneTitle": "{{ institution }}: không có giao dịch mới",
       "importedNoneMessage": "Đồng bộ hằng ngày của {{ institution }} không tìm thấy giao dịch mới."
+    },
+    "emailReceiptsAttention": {
+      "title": "Biên lai email cần chú ý",
+      "message": "Hộp inbox biên lai của bạn chứa {{ noParser }} không có profil và {{ parseFailed }} mà profil của họ không nhận dạng được. Mở để xem xét."
     }
   },
   "backupOffsite": {
