@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCategoryTree, getCategorySelectOptions, buildCategoryColorMap, buildCategoryLabelMap, buildDescendantIdSet, rollupToDirectChildren, buildCategoryFilterOptions, canonicalizeCategoryFilter, resolveSelectedCategories, SpecialCategoryFilterLabels } from './categoryUtils';
+import { buildCategoryTree, getCategorySelectOptions, buildCategoryColorMap, buildCategoryLabelMap, buildDescendantIdSet, rollupToDirectChildren, buildCategoryFilterOptions, canonicalizeCategoryFilter, resolveSelectedCategories, SpecialCategoryFilterLabels, signAmountByCategory } from './categoryUtils';
 import { Category } from '@/types/category';
 
 function makeCategory(overrides: Partial<Category> & { id: string; name: string }): Category {
@@ -333,5 +333,38 @@ describe('canonicalizeCategoryFilter', () => {
       .toEqual(['expense']);
     expect(canonicalizeCategoryFilter([], [groceries])).toEqual([]);
     expect(canonicalizeCategoryFilter(['cat-1'], [])).toEqual(['cat-1']);
+  });
+});
+
+describe('signAmountByCategory', () => {
+  const expense = { isIncome: false, effectiveAutoSign: true };
+  const income = { isIncome: true, effectiveAutoSign: true };
+
+  it('makes a typed amount negative for an expense category', () => {
+    expect(signAmountByCategory(25, undefined, expense)).toBe(-25);
+  });
+
+  it('makes a typed amount positive for an income category', () => {
+    expect(signAmountByCategory(-25, undefined, income)).toBe(25);
+  });
+
+  it('treats an absent effectiveAutoSign as on', () => {
+    expect(signAmountByCategory(25, undefined, { isIncome: false } as never)).toBe(-25);
+  });
+
+  it('leaves the typed value unchanged when automatic sign is off', () => {
+    expect(signAmountByCategory(25, undefined, { isIncome: false, effectiveAutoSign: false })).toBe(25);
+    expect(signAmountByCategory(-25, undefined, { isIncome: true, effectiveAutoSign: false })).toBe(-25);
+  });
+
+  it('preserves a pure sign flip of the reference whatever the setting', () => {
+    expect(signAmountByCategory(25, -25, expense)).toBe(25);
+    expect(signAmountByCategory(-25, 25, income)).toBe(-25);
+    expect(signAmountByCategory(25, -25, { isIncome: false, effectiveAutoSign: false })).toBe(25);
+  });
+
+  it('returns the value unchanged with no category', () => {
+    expect(signAmountByCategory(25, undefined, undefined)).toBe(25);
+    expect(signAmountByCategory(-25, 10, undefined)).toBe(-25);
   });
 });

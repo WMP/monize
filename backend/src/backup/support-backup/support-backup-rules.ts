@@ -130,6 +130,7 @@ export const RULES: Record<string, TableRules> = {
     icon: keep,
     color: keep,
     is_income: keep,
+    auto_sign: keep,
     is_system: keep,
     created_at: keep,
   },
