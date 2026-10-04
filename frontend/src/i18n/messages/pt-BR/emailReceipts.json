@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Voltar às Configurações",
-    "title": "Recibos por e-mail",
-    "subtitle": "Leia confirmações de pedido de uma caixa de e-mail e transforme-as em transações detalhadas",
-    "receiptsLink": "Abrir os e-mails armazenados",
-    "demoRestricted": {
-      "heading": "Restrito no Modo de Demonstração",
-      "body": "A conexão com uma caixa de e-mail está desativada no modo de demonstração."
-    }
+    "redirecting": "Abrindo a página Recibos por e-mail...",
+    "redirectLink": "Ir para as configurações da caixa de e-mail"
   },
   "page": {
     "title": "Recibos por e-mail",
-    "subtitle": "Os e-mails de confirmação de pedido lidos da sua caixa de e-mail e o que aconteceu com cada um"
+    "subtitle": "Leia confirmações de pedido de uma caixa de e-mail e transforme-as em transações detalhadas: o que está conectado, o que aconteceu com cada e-mail e o que aguarda você"
   },
   "mailbox": {
     "heading": "Caixa de e-mail",
@@ -99,7 +93,9 @@
         "automatic": "A verificação pergunta à IA sobre um recibo correspondido que nenhum analisador aprovado conseguiu ler por completo e redige um analisador para um remetente que não tem nenhum."
       },
       "autoApplyLabel": "Aplicar propostas automaticamente",
-      "autoApplyHelp": "Desativado por padrão. Uma proposta só é aplicada sem perguntar quando todas estas condições são atendidas: um analisador aprovado leu o e-mail inteiro, a transação foi encontrada pelo número do pedido ou pelo valor e beneficiário exatos com um único candidato, e a proposta fecha até o centavo. Todo o resto aguarda a sua aprovação."
+      "autoApplyHelp": "Desativado por padrão. Uma proposta só é aplicada sem perguntar quando todas estas condições são atendidas: um perfil aprovado leu o e-mail inteiro, a transação foi encontrada por um número do pedido, por uma referência ou pelo valor e beneficiário exatos com um único candidato, e a proposta fecha até o centavo. Todo o resto aguarda a sua aprovação.",
+      "profileLimitLabel": "Contar as propostas dos perfis no limite diário de IA",
+      "profileLimitHelp": "Ativado por padrão: uma alteração que um perfil propõe a partir de um e-mail conta no limite diário de alterações propostas pela IA, como qualquer outra proposta da IA. Desative quando um grande lote de e-mails armazenados esgotaria o limite. Só as propostas dos perfis ficam isentas; toda proposta continua aguardando a sua aprovação."
     },
     "status": {
       "lastPolled": "Última verificação",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Analisadores",
-    "description": "Um analisador lê as confirmações de pedido de um remetente com padrões que você escreve ou revisa. Depois de aprovado, funciona sem a IA.",
+    "heading": "Perfis",
+    "description": "Um perfil lê as confirmações de pedido de um remetente com padrões que você escreve ou revisa e indica como a transação bancária é encontrada. Depois de aprovado, funciona sem a IA.",
     "newButton": "Novo analisador",
     "loading": "Carregando os analisadores",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Copiar",
       "copied": "JSON copiado",
       "copyFailed": "Não foi possível copiar o JSON"
+    },
+    "processOffer": {
+      "title": "Processar agora os e-mails armazenados?",
+      "message": "Processar agora {count, plural, one {o # e-mail armazenado} other {os # e-mails armazenados}} de {domains}? Cada um é lido de novo com este perfil; o que ele propuser aguarda na caixa de revisão, a menos que a aplicação automática esteja ativada.",
+      "confirm": "Processar agora",
+      "later": "Agora não"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "Definição do analisador (JSON)",
       "help": "A mesma definição que o formulário monta. O servidor a verifica ao salvar, e o teste abaixo a lê como está agora.",
       "parseError": "Isto não é um JSON válido ou não é um objeto JSON. Corrija-o para salvar ou testar o analisador."
+    },
+    "matching": {
+      "heading": "Correspondência",
+      "help": "Como a transação bancária que um e-mail pagou é encontrada. As estratégias são tentadas em ordem: a primeira que deixa exatamente uma transação decide, várias são ambíguas e nenhuma passa para a seguinte.",
+      "referenceLabel": "Padrões de referência",
+      "referenceHint": "O identificador que a loja ou o gateway de pagamento coloca na operação bancária, como um texto do extrato ou a descrição de uma transferência. Precisa capturar {capture}.",
+      "strategiesLabel": "Estratégias, na ordem em que são tentadas",
+      "strategiesHelp": "O número do pedido e a referência procuram o valor na descrição, no beneficiário ou no número de referência da transação. Valor e beneficiário precisa do valor mais um indício do beneficiário. Valor e data precisa apenas do valor, dentro da janela. Pelo menos uma precisa continuar ativada.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "Mover {name} para antes",
+      "moveDown": "Mover {name} para depois",
+      "strategies": {
+        "reference": "Referência",
+        "orderId": "Número do pedido",
+        "amount_payee": "Valor e beneficiário",
+        "amount_date": "Valor e data"
+      },
+      "referenceNeeded": "A estratégia de referência está ativada, mas não há padrões de referência, então ela não encontrará nada.",
+      "referenceInLabel": "Procurar a referência e o número do pedido em",
+      "referenceInHint": "Valores com menos de 4 caracteres nunca são procurados.",
+      "referenceIn": {
+        "description": "Descrição",
+        "payee": "Nome do beneficiário",
+        "referenceNumber": "Número de referência"
+      },
+      "daysBeforeLabel": "Dias antes da compra",
+      "daysAfterLabel": "Dias depois da compra",
+      "daysHint": "A janela em torno da data da compra. Padrão {default}, no máximo {max}.",
+      "toleranceLabel": "Tolerância do valor",
+      "toleranceHint": "Quanto o valor do banco pode diferir do total do e-mail. Padrão 0, no máximo {max}."
+    },
+    "proposal": {
+      "heading": "Proposta",
+      "tagLabel": "Adicionar uma etiqueta às transações que este perfil categoriza",
+      "tagHelp": "A etiqueta é criada se você não tiver nenhuma com esse nome. Ela aparece na proposta e nada é gravado até você aprová-la.",
+      "tagNameLabel": "Nome da etiqueta",
+      "aiCategoriesLabel": "Deixar a IA escolher a categoria dos itens que nenhuma regra cobre",
+      "aiCategoriesHelp": "Quando um item não corresponde a nenhuma regra de categoria e não há categoria padrão, a IA é consultada sobre a categoria dele a partir da sua lista de categorias. A escolha é marcada como da IA na proposta. Com isto desativado, a IA nunca é consultada."
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "Item único",
       "singleName": "Nome do item único",
       "joinWrapped": "Unir linhas quebradas",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Padrões de referência",
+      "match": "A seção de correspondência",
+      "matchBy": "Estratégias de correspondência",
+      "matchReferenceIn": "Campos em que a referência é procurada",
+      "matchDaysBefore": "Dias antes da compra",
+      "matchDaysAfter": "Dias depois da compra",
+      "matchTolerance": "Tolerância do valor",
+      "tag": "Etiqueta",
+      "aiCategories": "Categorias da IA"
     },
     "codes": {
       "not_object": "não é uma definição válida",
@@ -319,7 +368,11 @@
       "record_name_missing": "deve capturar {capture} em uma de suas etapas",
       "items_single_conflict": "tem um item único junto de padrões ou de um registro. Use apenas um deles.",
       "join_wrapped_needs_patterns": "só funciona com padrões de itens",
-      "invalid_value": "tem um valor que este campo não aceita"
+      "invalid_value": "tem um valor que este campo não aceita",
+      "duplicate_entry": "lista a mesma entrada duas vezes",
+      "reference_field_missing": "precisa de padrões de referência (a estratégia de referência está ativada)",
+      "out_of_range_days": "precisa ser um número inteiro de 0 a {max}",
+      "out_of_range_tolerance": "precisa ser um valor de 0,00 a {max}"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "número do pedido",
       "amount_payee": "valor e beneficiário",
       "amount_only": "valor",
-      "manual": "sua escolha"
+      "manual": "sua escolha",
+      "reference": "referência",
+      "amount_date": "valor e data"
     },
     "noPayee": "sem beneficiário",
     "ambiguous": "{count, plural, one {# transação corresponde} other {# transações correspondem}} igualmente bem, então nenhuma seria vinculada até você escolher.",
@@ -362,13 +417,30 @@
         "payee": "Comerciante",
         "requireLine": "Linha obrigatória",
         "skipIfLine": "Linha de exclusão",
-        "waitIfLine": "Linha de espera"
+        "waitIfLine": "Linha de espera",
+        "reference": "Referência"
       },
       "entryLine": "entrada {entry} ({pattern}), linha {line}: {text}",
       "entrySubject": "entrada {entry} ({pattern}), o assunto: {text}",
       "labelled": "entrada {entry}, rótulo {label} na linha {labelLine} ({labelText}), valor {pattern} na linha {line}: {text}",
       "item": "Item {number}",
       "itemLine": "{pattern}, linha {line}: {text}"
+    },
+    "trace": {
+      "heading": "O que o localizador de correspondências examinou",
+      "window": "Transações de {from} a {to} ({before} dias antes, {after} dias depois da compra): {considered, plural, one {# considerada} other {# consideradas}}.",
+      "tolerance": "O valor pode diferir em {amount}.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {não manteve nenhuma} one {manteve # transação} other {manteve # transações}}",
+      "decided": "Decidiu",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "sem beneficiário",
+      "strategies": {
+        "reference": "Referência",
+        "orderId": "Número do pedido",
+        "amount_payee": "Valor e beneficiário",
+        "amount_date": "Valor e data"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "Lido pela IA",
     "readFromStructuredData": "Lido a partir de dados estruturados",
     "paid": "Pago",
-    "payee": "Comerciante"
+    "payee": "Comerciante",
+    "reference": "Referência",
+    "categoryByAi": "IA"
   },
   "state": {
     "pending": "Aguardando leitura",
@@ -422,7 +496,7 @@
     "loading": "Carregando os e-mails",
     "links": {
       "reviewInbox": "Abrir a caixa de revisão de IA",
-      "settings": "Configurações da caixa de e-mail e dos analisadores"
+      "settings": "Configurações da caixa de e-mail"
     },
     "filter": {
       "label": "Filtrar por status",
@@ -532,7 +606,9 @@
       "order_id": "Número do pedido",
       "amount_payee": "Valor e beneficiário",
       "amount_only": "Valor",
-      "manual": "Sua escolha"
+      "manual": "Sua escolha",
+      "reference": "Referência",
+      "amount_date": "Valor e data"
     },
     "transaction": "Transação",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "Abrir a caixa de revisão de IA",
     "opened": "O chat foi aberto com o e-mail anexado. Leia a mensagem e clique em Enviar.",
     "chatPrompt": "Reconheça os produtos, as quantidades e os preços no e-mail de pedido anexado e divida minha transação de {date} ({payee}, {amount}) por produto, com uma categoria para cada um. Assuma a solicitação de revisão de IA {requestId} e envie sua proposta para ela."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Seções dos recibos por e-mail",
+      "overview": "Visão geral",
+      "emails": "E-mails",
+      "profiles": "Perfis",
+      "mailbox": "Caixa de e-mail"
+    },
+    "demoRestricted": {
+      "heading": "Restrito no Modo de Demonstração",
+      "body": "Conectar uma caixa de e-mail e escrever perfis estão desativados no modo de demonstração."
+    }
+  },
+  "process": {
+    "button": "Processar todos",
+    "buttonCount": "Processar todos ({count})",
+    "dialog": {
+      "title": "{count, plural, one {Processar # e-mail armazenado?} other {Processar # e-mails armazenados?}}",
+      "message": "Cada e-mail armazenado que ainda não foi lido, ou que um novo perfil ou uma nova transação pode alterar, é lido de novo. O que ele propuser aguarda na caixa de revisão, a menos que a aplicação automática esteja ativada.",
+      "messageDomain": "Cada e-mail armazenado de {domain} que ainda não foi lido, ou que um novo perfil ou uma nova transação pode alterar, é lido de novo. O que ele propuser aguarda na caixa de revisão, a menos que a aplicação automática esteja ativada.",
+      "confirm": "Processar"
+    },
+    "starting": "Iniciando...",
+    "progress": "{processed, plural, one {# e-mail processado} other {# e-mails processados}}, faltam {remaining}.",
+    "cancel": "Cancelar",
+    "cancelling": "Cancelando...",
+    "summary": "{count, plural, one {# e-mail processado.} other {# e-mails processados.}}",
+    "cancelledSummary": "Cancelado após {count, plural, one {# e-mail.} other {# e-mails.}}",
+    "outcomes": "Terminaram assim: {outcomes}.",
+    "passedOver": "{count, plural, one {# e-mail gerou um erro e foi ignorado.} other {# e-mails geraram um erro e foram ignorados.}}",
+    "failed": "O processamento parou porque uma solicitação falhou.",
+    "failedWithReason": "O processamento parou: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Fechar"
+  },
+  "overview": {
+    "loading": "Carregando a visão geral...",
+    "error": {
+      "title": "Não foi possível carregar a visão geral",
+      "body": "A solicitação falhou, então nada aqui deve ser tomado como vazio. Tente novamente.",
+      "retry": "Tentar novamente"
+    },
+    "mailbox": {
+      "title": "Caixa de e-mail",
+      "none": "Nenhuma caixa de e-mail está conectada ainda.",
+      "connect": "Conectar uma caixa de e-mail",
+      "manage": "Abrir as configurações da caixa de e-mail",
+      "state": {
+        "notConnected": "Não conectada",
+        "failing": "A última verificação falhou",
+        "off": "A verificação está desativada",
+        "polling": "Verificando"
+      },
+      "auth": {
+        "password": "Login com senha",
+        "oauth2": "Login por meio de um provedor"
+      },
+      "lastSuccess": "Última verificação bem-sucedida {when}",
+      "neverPolled": "Ainda não foi verificada com sucesso.",
+      "lastError": "Último erro: {error}"
+    },
+    "emails": {
+      "title": "E-mails",
+      "stored": "armazenados",
+      "processable": "{count, plural, one {# e-mail pode ser processado de novo} other {# e-mails podem ser processados de novo}}.",
+      "open": "Abrir os e-mails"
+    },
+    "proposals": {
+      "title": "Propostas",
+      "waiting": "aguardando a sua aprovação",
+      "review": "Revisar as propostas",
+      "open": "Abrir a caixa de revisão de IA"
+    },
+    "profiles": {
+      "title": "Perfis",
+      "approved": "aprovados",
+      "drafts": "{count, plural, one {# rascunho aguarda a sua aprovação} other {# rascunhos aguardam a sua aprovação}}.",
+      "manage": "Abrir os perfis"
+    },
+    "uncovered": {
+      "title": "Remetentes sem perfil",
+      "help": "Estes remetentes enviaram e-mails que nenhum perfil lê. Crie um perfil para um deles ou peça ao assistente que o redija.",
+      "none": "Todos os remetentes dos e-mails armazenados são cobertos por um perfil.",
+      "row": "{domain} ({count, plural, one {# e-mail} other {# e-mails}})",
+      "show": "Mostrar os e-mails"
+    }
+  },
+  "wizard": {
+    "heading": "Comece com os recibos por e-mail",
+    "intro": "Quatro passos do zero até a sua primeira proposta.",
+    "done": "(concluído)",
+    "steps": {
+      "mailbox": {
+        "title": "Conectar uma caixa de e-mail",
+        "body": "Use uma caixa de e-mail dedicada que receba as suas confirmações de pedido. O Monize apenas a lê.",
+        "action": "Conectar uma caixa de e-mail"
+      },
+      "emails": {
+        "title": "Buscar os e-mails",
+        "body": "Os e-mails são lidos quando a caixa de e-mail é verificada. Verifique-a nas configurações da caixa de e-mail para ver os primeiros.",
+        "action": "Abrir os e-mails"
+      },
+      "profile": {
+        "title": "Criar um perfil para um remetente",
+        "body": "Um perfil diz ao Monize como ler as confirmações de pedido de um remetente. Escreva um ou redija-o a partir de um e-mail armazenado.",
+        "action": "Abrir os perfis"
+      },
+      "review": {
+        "title": "Revisar as propostas",
+        "body": "Cada e-mail vira uma proposta sobre uma transação. Nada é alterado até você aprová-la.",
+        "action": "Abrir a caixa de revisão de IA"
+      }
+    }
   }
 }

@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Zurück zu den Einstellungen",
-    "title": "E-Mail-Belege",
-    "subtitle": "Bestellbestätigungen aus einem Postfach lesen und in aufgeschlüsselte Buchungen umwandeln",
-    "receiptsLink": "Gespeicherte E-Mails öffnen",
-    "demoRestricted": {
-      "heading": "Im Demomodus eingeschränkt",
-      "body": "Das Verbinden eines Postfachs ist im Demomodus deaktiviert."
-    }
+    "redirecting": "Die Seite „E-Mail-Belege“ wird geöffnet...",
+    "redirectLink": "Zu den Postfach-Einstellungen"
   },
   "page": {
     "title": "E-Mail-Belege",
-    "subtitle": "Die Bestellbestätigungen, die aus deinem Postfach gelesen wurden, und was aus jeder geworden ist"
+    "subtitle": "Lies Bestellbestätigungen aus einem Postfach und wandle sie in aufgeschlüsselte Buchungen um: was verbunden ist, was aus jeder E-Mail geworden ist und was auf dich wartet"
   },
   "mailbox": {
     "heading": "Postfach",
@@ -99,7 +93,9 @@
         "automatic": "Beim Abruf fragt die KI zu einem zugeordneten Beleg nach, den kein freigegebener Parser vollständig lesen konnte, und entwirft einen Parser für einen Absender, der noch keinen hat."
       },
       "autoApplyLabel": "Vorschläge automatisch anwenden",
-      "autoApplyHelp": "Standardmäßig aus. Ein Vorschlag wird nur dann ohne Rückfrage angewendet, wenn alles Folgende zutrifft: Ein freigegebener Parser hat die ganze E-Mail gelesen, die Buchung wurde über die Bestellnummer oder über genauen Betrag und Zahlungsempfänger mit nur einem Kandidaten gefunden, und der Vorschlag geht auf den Cent auf. Alles andere wartet auf deine Freigabe."
+      "autoApplyHelp": "Standardmäßig aus. Ein Vorschlag wird nur dann ohne Rückfrage angewendet, wenn alles Folgende zutrifft: Ein freigegebenes Profil hat die ganze E-Mail gelesen, die Buchung wurde über eine Bestellnummer, eine Referenz oder über genauen Betrag und Zahlungsempfänger mit nur einem Kandidaten gefunden, und der Vorschlag geht auf den Cent auf. Alles andere wartet auf deine Freigabe.",
+      "profileLimitLabel": "Vorschläge von Profilen auf das tägliche KI-Limit anrechnen",
+      "profileLimitHelp": "Standardmäßig an: Eine Änderung, die ein Profil aus einer E-Mail vorschlägt, wird wie jeder andere KI-Vorschlag auf das tägliche Limit KI-vorgeschlagener Änderungen angerechnet. Schalte es aus, wenn ein großer Stapel gespeicherter E-Mails das Limit sonst aufbrauchen würde. Nur Vorschläge von Profilen sind ausgenommen; jeder Vorschlag wartet weiterhin auf deine Freigabe."
     },
     "status": {
       "lastPolled": "Letzter Abruf",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Parser",
-    "description": "Ein Parser liest die Bestellbestätigungen eines Absenders anhand von Mustern, die du schreibst oder prüfst. Nach der Freigabe läuft er ohne die KI.",
+    "heading": "Profile",
+    "description": "Ein Profil liest die Bestellbestätigungen eines Absenders anhand von Mustern, die du schreibst oder prüfst, und legt fest, wie die Bankbuchung gefunden wird. Nach der Freigabe läuft es ohne die KI.",
     "newButton": "Neuer Parser",
     "loading": "Parser werden geladen",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Kopieren",
       "copied": "JSON kopiert",
       "copyFailed": "Das JSON konnte nicht kopiert werden"
+    },
+    "processOffer": {
+      "title": "Die gespeicherten E-Mails jetzt verarbeiten?",
+      "message": "{count, plural, one {Die # gespeicherte E-Mail} other {Die # gespeicherten E-Mails}} von {domains} jetzt verarbeiten? Jede wird mit diesem Profil erneut gelesen; was sie vorschlägt, wartet im Prüfungseingang, sofern die automatische Anwendung nicht aktiv ist.",
+      "confirm": "Jetzt verarbeiten",
+      "later": "Nicht jetzt"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "Parser-Definition (JSON)",
       "help": "Dieselbe Definition, die das Formular erstellt. Der Server prüft sie beim Speichern, und der Test unten liest sie so, wie sie jetzt ist.",
       "parseError": "Das ist kein gültiges JSON oder kein JSON-Objekt. Korrigiere es, um den Parser zu speichern oder zu testen."
+    },
+    "matching": {
+      "heading": "Zuordnung",
+      "help": "Wie die Bankbuchung gefunden wird, die eine E-Mail bezahlt hat. Die Strategien werden der Reihe nach versucht: Die erste, die genau eine Buchung übrig lässt, entscheidet, mehrere Buchungen sind mehrdeutig, und keine Buchung führt zur nächsten Strategie.",
+      "referenceLabel": "Referenzmuster",
+      "referenceHint": "Die Kennung, die der Shop oder das Zahlungsportal in die Bankbuchung einträgt, etwa ein Verwendungszweck oder ein Überweisungstitel. Muss {capture} erfassen.",
+      "strategiesLabel": "Strategien in der Reihenfolge, in der sie versucht werden",
+      "strategiesHelp": "Bestellnummer und Referenz suchen den Wert in der Beschreibung, im Zahlungsempfänger oder in der Referenznummer der Buchung. Betrag und Zahlungsempfänger braucht den Betrag plus einen Hinweis auf den Zahlungsempfänger. Betrag und Datum braucht nur den Betrag innerhalb des Zeitfensters. Mindestens eine Strategie muss aktiv bleiben.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "{name} nach vorn verschieben",
+      "moveDown": "{name} nach hinten verschieben",
+      "strategies": {
+        "reference": "Referenz",
+        "orderId": "Bestellnummer",
+        "amount_payee": "Betrag und Zahlungsempfänger",
+        "amount_date": "Betrag und Datum"
+      },
+      "referenceNeeded": "Die Referenzstrategie ist aktiv, aber es gibt keine Referenzmuster, daher findet sie nichts.",
+      "referenceInLabel": "Referenz und Bestellnummer suchen in",
+      "referenceInHint": "Werte mit weniger als 4 Zeichen werden nie gesucht.",
+      "referenceIn": {
+        "description": "Beschreibung",
+        "payee": "Name des Zahlungsempfängers",
+        "referenceNumber": "Referenznummer"
+      },
+      "daysBeforeLabel": "Tage vor dem Kauf",
+      "daysAfterLabel": "Tage nach dem Kauf",
+      "daysHint": "Das Zeitfenster um das Kaufdatum. Standard {default}, höchstens {max}.",
+      "toleranceLabel": "Betragstoleranz",
+      "toleranceHint": "Wie weit der Bankbetrag von der Summe der E-Mail abweichen darf. Standard 0, höchstens {max}."
+    },
+    "proposal": {
+      "heading": "Vorschlag",
+      "tagLabel": "Den Buchungen, die dieses Profil kategorisiert, einen Tag hinzufügen",
+      "tagHelp": "Der Tag wird angelegt, wenn du keinen mit diesem Namen hast. Er wird im Vorschlag angezeigt, und es wird nichts geschrieben, bevor du den Vorschlag freigibst.",
+      "tagNameLabel": "Tag-Name",
+      "aiCategoriesLabel": "Die KI die Kategorie von Positionen wählen lassen, auf die keine Regel passt",
+      "aiCategoriesHelp": "Wenn eine Position auf keine Kategorieregel passt und es keine Standardkategorie gibt, wird die KI nach ihrer Kategorie aus deiner Kategorienliste gefragt. Die Wahl wird im Vorschlag als die der KI gekennzeichnet. Ist die Option aus, wird die KI nie gefragt."
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "Einzelne Position",
       "singleName": "Name der einzelnen Position",
       "joinWrapped": "Umgebrochene Zeilen verbinden",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Referenzmuster",
+      "match": "Der Abschnitt „Zuordnung“",
+      "matchBy": "Zuordnungsstrategien",
+      "matchReferenceIn": "Felder, in denen nach der Referenz gesucht wird",
+      "matchDaysBefore": "Tage vor dem Kauf",
+      "matchDaysAfter": "Tage nach dem Kauf",
+      "matchTolerance": "Betragstoleranz",
+      "tag": "Tag",
+      "aiCategories": "KI-Kategorien"
     },
     "codes": {
       "not_object": "ist keine gültige Definition",
@@ -319,7 +368,11 @@
       "record_name_missing": "muss {capture} in einem seiner Schritte erfassen",
       "items_single_conflict": "enthält eine einzelne Position neben Mustern oder einem Datensatz. Verwende nur eines davon.",
       "join_wrapped_needs_patterns": "funktioniert nur mit Positionsmustern",
-      "invalid_value": "hat einen Wert, den dieses Feld nicht akzeptiert"
+      "invalid_value": "hat einen Wert, den dieses Feld nicht akzeptiert",
+      "duplicate_entry": "führt denselben Eintrag zweimal auf",
+      "reference_field_missing": "braucht Referenzmuster (die Referenzstrategie ist aktiv)",
+      "out_of_range_days": "muss eine ganze Zahl von 0 bis {max} sein",
+      "out_of_range_tolerance": "muss ein Betrag von 0,00 bis {max} sein"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "Bestellnummer",
       "amount_payee": "Betrag und Zahlungsempfänger",
       "amount_only": "Betrag",
-      "manual": "deine Auswahl"
+      "manual": "deine Auswahl",
+      "reference": "Referenz",
+      "amount_date": "Betrag und Datum"
     },
     "noPayee": "kein Zahlungsempfänger",
     "ambiguous": "{count, plural, one {# Buchung passt} other {# Buchungen passen}} gleich gut, daher würde keine verknüpft, bis du eine auswählst.",
@@ -362,13 +417,30 @@
         "payee": "Händler",
         "requireLine": "Erforderliche Zeile",
         "skipIfLine": "Überspringzeile",
-        "waitIfLine": "Zurückhaltezeile"
+        "waitIfLine": "Zurückhaltezeile",
+        "reference": "Referenz"
       },
       "entryLine": "Eintrag {entry} ({pattern}), Zeile {line}: {text}",
       "entrySubject": "Eintrag {entry} ({pattern}), der Betreff: {text}",
       "labelled": "Eintrag {entry}, Beschriftung {label} in Zeile {labelLine} ({labelText}), Wert {pattern} in Zeile {line}: {text}",
       "item": "Position {number}",
       "itemLine": "{pattern}, Zeile {line}: {text}"
+    },
+    "trace": {
+      "heading": "Was die Zuordnung angesehen hat",
+      "window": "Buchungen vom {from} bis {to} ({before} Tage vor, {after} Tage nach dem Kauf): {considered, plural, one {# berücksichtigt} other {# berücksichtigt}}.",
+      "tolerance": "Der Betrag darf um {amount} abweichen.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {keine übrig gelassen} one {# Buchung übrig gelassen} other {# Buchungen übrig gelassen}}",
+      "decided": "Entschieden",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "kein Zahlungsempfänger",
+      "strategies": {
+        "reference": "Referenz",
+        "orderId": "Bestellnummer",
+        "amount_payee": "Betrag und Zahlungsempfänger",
+        "amount_date": "Betrag und Datum"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "Von der KI gelesen",
     "readFromStructuredData": "Aus strukturierten Daten gelesen",
     "paid": "Bezahlt",
-    "payee": "Händler"
+    "payee": "Händler",
+    "reference": "Referenz",
+    "categoryByAi": "KI"
   },
   "state": {
     "pending": "Wartet auf das Einlesen",
@@ -422,7 +496,7 @@
     "loading": "E-Mails werden geladen",
     "links": {
       "reviewInbox": "KI-Prüfungseingang öffnen",
-      "settings": "Postfach- und Parser-Einstellungen"
+      "settings": "Postfach-Einstellungen"
     },
     "filter": {
       "label": "Nach Status filtern",
@@ -532,7 +606,9 @@
       "order_id": "Bestellnummer",
       "amount_payee": "Betrag und Zahlungsempfänger",
       "amount_only": "Betrag",
-      "manual": "Deine Auswahl"
+      "manual": "Deine Auswahl",
+      "reference": "Referenz",
+      "amount_date": "Betrag und Datum"
     },
     "transaction": "Buchung",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "KI-Prüfungseingang öffnen",
     "opened": "Der Chat wurde mit der angehängten E-Mail geöffnet. Lies die Nachricht und drücke auf Senden.",
     "chatPrompt": "Erkenne die Produkte, Mengen und Preise in der angehängten Bestell-E-Mail und teile meine Buchung vom {date} ({payee}, {amount}) nach Produkten auf, mit je einer Kategorie. Übernimm die KI-Prüfungsanfrage {requestId} und reiche deinen Vorschlag dafür ein."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Bereiche der E-Mail-Belege",
+      "overview": "Übersicht",
+      "emails": "E-Mails",
+      "profiles": "Profile",
+      "mailbox": "Postfach"
+    },
+    "demoRestricted": {
+      "heading": "Im Demomodus eingeschränkt",
+      "body": "Das Verbinden eines Postfachs und das Schreiben von Profilen sind im Demomodus deaktiviert."
+    }
+  },
+  "process": {
+    "button": "Alle verarbeiten",
+    "buttonCount": "Alle verarbeiten ({count})",
+    "dialog": {
+      "title": "{count, plural, one {# gespeicherte E-Mail verarbeiten?} other {# gespeicherte E-Mails verarbeiten?}}",
+      "message": "Jede gespeicherte E-Mail, die noch nicht gelesen wurde oder die ein neues Profil oder eine neue Buchung ändern kann, wird erneut gelesen. Was sie vorschlägt, wartet im Prüfungseingang, sofern die automatische Anwendung nicht aktiv ist.",
+      "messageDomain": "Jede gespeicherte E-Mail von {domain}, die noch nicht gelesen wurde oder die ein neues Profil oder eine neue Buchung ändern kann, wird erneut gelesen. Was sie vorschlägt, wartet im Prüfungseingang, sofern die automatische Anwendung nicht aktiv ist.",
+      "confirm": "Verarbeiten"
+    },
+    "starting": "Wird gestartet...",
+    "progress": "{processed, plural, one {# E-Mail verarbeitet} other {# E-Mails verarbeitet}}, {remaining} übrig.",
+    "cancel": "Abbrechen",
+    "cancelling": "Wird abgebrochen...",
+    "summary": "{count, plural, one {# E-Mail verarbeitet.} other {# E-Mails verarbeitet.}}",
+    "cancelledSummary": "Nach {count, plural, one {# E-Mail abgebrochen.} other {# E-Mails abgebrochen.}}",
+    "outcomes": "Sie endeten so: {outcomes}.",
+    "passedOver": "{count, plural, one {# E-Mail hat einen Fehler ausgelöst und wurde übergangen.} other {# E-Mails haben einen Fehler ausgelöst und wurden übergangen.}}",
+    "failed": "Die Verarbeitung wurde gestoppt, weil eine Anfrage fehlgeschlagen ist.",
+    "failedWithReason": "Die Verarbeitung wurde gestoppt: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Schließen"
+  },
+  "overview": {
+    "loading": "Die Übersicht wird geladen...",
+    "error": {
+      "title": "Die Übersicht konnte nicht geladen werden",
+      "body": "Die Anfrage ist fehlgeschlagen, daher darf nichts hier als leer gelten. Versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "mailbox": {
+      "title": "Postfach",
+      "none": "Es ist noch kein Postfach verbunden.",
+      "connect": "Postfach verbinden",
+      "manage": "Postfach-Einstellungen öffnen",
+      "state": {
+        "notConnected": "Nicht verbunden",
+        "failing": "Letzter Abruf fehlgeschlagen",
+        "off": "Der Abruf ist aus",
+        "polling": "Wird abgerufen"
+      },
+      "auth": {
+        "password": "Anmeldung mit Passwort",
+        "oauth2": "Anmeldung über einen Anbieter"
+      },
+      "lastSuccess": "Letzter erfolgreicher Abruf {when}",
+      "neverPolled": "Noch nicht erfolgreich abgerufen.",
+      "lastError": "Letzter Fehler: {error}"
+    },
+    "emails": {
+      "title": "E-Mails",
+      "stored": "gespeichert",
+      "processable": "{count, plural, one {# E-Mail kann erneut verarbeitet werden} other {# E-Mails können erneut verarbeitet werden}}.",
+      "open": "E-Mails öffnen"
+    },
+    "proposals": {
+      "title": "Vorschläge",
+      "waiting": "warten auf deine Freigabe",
+      "review": "Vorschläge prüfen",
+      "open": "KI-Prüfungseingang öffnen"
+    },
+    "profiles": {
+      "title": "Profile",
+      "approved": "freigegeben",
+      "drafts": "{count, plural, one {# Entwurf wartet auf deine Freigabe} other {# Entwürfe warten auf deine Freigabe}}.",
+      "manage": "Profile öffnen"
+    },
+    "uncovered": {
+      "title": "Absender ohne Profil",
+      "help": "Von diesen Absendern kamen E-Mails, die kein Profil liest. Lege für einen davon ein Profil an oder bitte den Assistenten, es zu entwerfen.",
+      "none": "Jeder Absender der gespeicherten E-Mails wird von einem Profil abgedeckt.",
+      "row": "{domain} ({count, plural, one {# E-Mail} other {# E-Mails}})",
+      "show": "E-Mails anzeigen"
+    }
+  },
+  "wizard": {
+    "heading": "Erste Schritte mit E-Mail-Belegen",
+    "intro": "Vier Schritte vom Nichts bis zum ersten Vorschlag.",
+    "done": "(erledigt)",
+    "steps": {
+      "mailbox": {
+        "title": "Postfach verbinden",
+        "body": "Verwende ein eigenes Postfach, das deine Bestellbestätigungen empfängt. Monize liest es nur.",
+        "action": "Postfach verbinden"
+      },
+      "emails": {
+        "title": "E-Mails abrufen",
+        "body": "E-Mails werden gelesen, wenn das Postfach abgerufen wird. Rufe es in den Postfach-Einstellungen ab, um die ersten zu sehen.",
+        "action": "E-Mails öffnen"
+      },
+      "profile": {
+        "title": "Ein Profil für einen Absender anlegen",
+        "body": "Ein Profil sagt Monize, wie die Bestellbestätigungen eines Absenders gelesen werden. Schreibe eines oder entwirf es aus einer gespeicherten E-Mail.",
+        "action": "Profile öffnen"
+      },
+      "review": {
+        "title": "Vorschläge prüfen",
+        "body": "Jede E-Mail wird zu einem Vorschlag für eine Buchung. Nichts wird geändert, bevor du ihn freigibst.",
+        "action": "KI-Prüfungseingang öffnen"
+      }
+    }
   }
 }
