@@ -6,7 +6,7 @@ import { EMAIL_RECEIPT_PARSER_TOOL_DESCRIPTION } from "../../email-receipts/pars
 const R1 = "30000000-0000-4000-8000-000000000001";
 const R2 = "30000000-0000-4000-8000-000000000002";
 const REQ = "30000000-0000-4000-8000-000000000009";
-const DEFINITION = { version: 1, total: ["Order total: {amount}"] };
+const DEFINITION = { version: 2, total: ["Order total: {amount}"] };
 
 describe("McpEmailReceiptParserTools", () => {
   let tool: McpEmailReceiptParserTools;
@@ -55,7 +55,7 @@ describe("McpEmailReceiptParserTools", () => {
   });
 
   it("teaches the loop: test every email, fix, then save a draft", () => {
-    expect(config.description).toMatch(/test every email/);
+    expect(config.description).toMatch(/Test every email/);
     expect(config.description).toMatch(/save_draft/);
     expect(config.description).toMatch(/approve the draft/);
   });

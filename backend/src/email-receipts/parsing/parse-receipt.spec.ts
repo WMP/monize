@@ -16,7 +16,7 @@ const CAT_PAYEE = "55555555-5555-4555-8555-555555555555";
 // A glob capture stops at the first occurrence of the literal after it, so an
 // item pattern needs a delimiter that the name never contains: here " $".
 const DEFINITION: ReceiptParserDefinition = {
-  version: 1,
+  version: 2,
   orderId: ["*order #{orderid}", "Order number: {orderid}"],
   total: ["Order total: ${amount}"],
   shipping: ["Shipping: ${amount}"],
@@ -101,6 +101,8 @@ describe("parseReceipt: the spec section 5 receipt", () => {
     expect(parsed).toEqual({
       orderId: "EX-20931",
       total: 379700,
+      paid: null,
+      payee: null,
       shipping: 49900,
       discount: 20000,
       items: [
@@ -115,9 +117,11 @@ describe("parseReceipt: the spec section 5 receipt", () => {
   });
 
   it("returns nothing but nulls for an empty definition", () => {
-    expect(parse({ version: 1 }, RECEIPT)).toEqual({
+    expect(parse({ version: 2 }, RECEIPT)).toEqual({
       orderId: null,
       total: null,
+      paid: null,
+      payee: null,
       shipping: null,
       discount: null,
       items: [],
@@ -142,13 +146,24 @@ describe("parseReceipt: the spec section 5 receipt", () => {
 
 describe("parseReceipt: the order id", () => {
   const def: ReceiptParserDefinition = {
-    version: 1,
+    version: 2,
     orderId: ["Order number: {orderid}", "*order #{orderid}"],
   };
 
-  it("prefers the subject over the body", () => {
+  it("reads the subject before the body for one entry", () => {
+    const one: ReceiptParserDefinition = {
+      version: 2,
+      orderId: ["*order #{orderid}"],
+    };
+    expect(parse(one, "Your order #BODY-1", "Your order #SUBJ-9").orderId).toBe(
+      "SUBJ-9",
+    );
+  });
+
+  it("lets an earlier entry win over a later one, subject or not", () => {
+    // Entry 0 reads the body line; entry 1 would read the subject.
     const parsed = parse(def, "Order number: BODY-1", "Your order #SUBJ-9");
-    expect(parsed.orderId).toBe("SUBJ-9");
+    expect(parsed.orderId).toBe("BODY-1");
   });
 
   it("falls back to the body lines when the subject has none", () => {
@@ -157,16 +172,16 @@ describe("parseReceipt: the order id", () => {
     );
   });
 
-  it("takes the first matching line, then the first pattern on it", () => {
+  it("tries the entries in array order, each over the whole email", () => {
     const body = "Your order #LATE-2\nOrder number: FIRST-1\nOrder number: X";
-    // Line one matches the second pattern; line two would match the first.
-    expect(parse(def, body).orderId).toBe("LATE-2");
+    // Line one matches the second entry; line two matches the first, which wins.
+    expect(parse(def, body).orderId).toBe("FIRST-1");
     expect(parse(def, "Order number: A1\nOrder number: B2").orderId).toBe("A1");
   });
 
   it("keeps only the first token of the capture (an order number has no spaces)", () => {
     const star: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       orderId: ["*order #{orderid}*"],
     };
     expect(parse(star, "Your order #12345 has shipped").orderId).toBe("12345");
@@ -175,7 +190,7 @@ describe("parseReceipt: the order id", () => {
 
   it("skips a match whose capture is empty", () => {
     const empty: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       orderId: ["Order #{orderid}", "Ref {orderid}"],
     };
     expect(parse(empty, "Order #\nRef REF-7").orderId).toBe("REF-7");
@@ -188,27 +203,37 @@ describe("parseReceipt: the order id", () => {
   });
 
   it("is null without patterns or without a match", () => {
-    expect(parse({ version: 1 }, "Order number: A1", "s").orderId).toBeNull();
+    expect(parse({ version: 2 }, "Order number: A1", "s").orderId).toBeNull();
     expect(parse(def, "nothing here", "nothing").orderId).toBeNull();
   });
 });
 
 describe("parseReceipt: total, shipping and discount", () => {
   const def: ReceiptParserDefinition = {
-    version: 1,
+    version: 2,
     total: ["Grand total: ${amount}", "Total ${amount}"],
     shipping: ["Shipping: ${amount}"],
     discount: ["Discount: ${amount}"],
   };
 
-  it("takes the first line that matches any pattern", () => {
+  it("tries the entries in array order: an earlier entry wins wherever it sits", () => {
     const body = "Total $10.00\nGrand total: $20.00";
-    expect(parse(def, body).total).toBe(100000);
+    // The first entry matches the SECOND line and still beats the first line.
+    expect(parse(def, body).total).toBe(200000);
+    const swapped: ReceiptParserDefinition = {
+      ...def,
+      total: ["Total ${amount}", "Grand total: ${amount}"],
+    };
+    expect(parse(swapped, body).total).toBe(100000);
+  });
+
+  it("takes the first line for one entry", () => {
+    expect(parse(def, "Total $10.00\nTotal $30.00").total).toBe(100000);
   });
 
   it("takes the first pattern on that line", () => {
     const both: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       total: ["Total: ${amount}", "*Total*${amount}"],
     };
     expect(parse(both, "Grand Total: $9.00").total).toBe(90000);
@@ -232,11 +257,11 @@ describe("parseReceipt: total, shipping and discount", () => {
       null,
       null,
     ]);
-    expect(parse({ version: 1 }, "Total $1.00").total).toBeNull();
+    expect(parse({ version: 2 }, "Total $1.00").total).toBeNull();
   });
 
   it("does not read a capture the pattern does not hold", () => {
-    const odd: ReceiptParserDefinition = { version: 1, total: ["Total {x}"] };
+    const odd: ReceiptParserDefinition = { version: 2, total: ["Total {x}"] };
     expect(parse(odd, "Total 5.00").total).toBeNull();
   });
 
@@ -273,7 +298,7 @@ describe("parseReceipt: the item section", () => {
     parse(def, text).items.map((item) => item.name);
 
   it("reads the whole text without markers", () => {
-    expect(names({ version: 1, items: { patterns } })).toEqual([
+    expect(names({ version: 2, items: { patterns } })).toEqual([
       "Header",
       "Alpha",
       "Beta",
@@ -285,7 +310,7 @@ describe("parseReceipt: the item section", () => {
 
   it("starts on the line after the first startAfter line, case-insensitively", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { startAfter: "ITEMS IN", patterns },
     };
     // The later repeat of the marker is a plain line and is read as an item.
@@ -294,7 +319,7 @@ describe("parseReceipt: the item section", () => {
 
   it("ends before the first stopAt line, case-insensitively", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { stopAt: "subtotal", patterns },
     };
     expect(names(def)).toEqual(["Header", "Alpha", "Beta"]);
@@ -302,7 +327,7 @@ describe("parseReceipt: the item section", () => {
 
   it("applies both bounds", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: {
         startAfter: "items in your order",
         stopAt: "Subtotal",
@@ -315,7 +340,7 @@ describe("parseReceipt: the item section", () => {
   it("looks for stopAt only after the start", () => {
     const text = "Subtotal $9.00\nStart\nAlpha $1.00\nBeta $2.00";
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { startAfter: "start", stopAt: "subtotal", patterns },
     };
     expect(names(def, text)).toEqual(["Alpha", "Beta"]);
@@ -323,7 +348,7 @@ describe("parseReceipt: the item section", () => {
 
   it("reads nothing when startAfter never appears", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { startAfter: "no such marker", patterns },
     };
     expect(names(def)).toEqual([]);
@@ -331,20 +356,20 @@ describe("parseReceipt: the item section", () => {
 
   it("reads nothing when stopAt is on the line right after the start", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { startAfter: "Start", stopAt: "Stop", patterns },
     };
     expect(names(def, "Start\nStop\nAlpha $1.00")).toEqual([]);
   });
 
   it("reads no items without an items definition", () => {
-    expect(parse({ version: 1 }, body).items).toEqual([]);
+    expect(parse({ version: 2 }, body).items).toEqual([]);
   });
 });
 
 describe("parseReceipt: item lines", () => {
   const item = (patterns: string[], line: string) =>
-    parse({ version: 1, items: { patterns } }, line).items;
+    parse({ version: 2, items: { patterns } }, line).items;
 
   it("tries the patterns in order and takes the first that reads the line", () => {
     const patterns = ["{qty} x {name} ${amount}", "{name} ${amount}"];
@@ -431,7 +456,7 @@ describe("parseReceipt: item lines", () => {
       (_, i) => `Item${i} $1.00`,
     );
     const parsed = parse(
-      { version: 1, items: { patterns: ["{name} ${amount}"] } },
+      { version: 2, items: { patterns: ["{name} ${amount}"] } },
       lines.join("\n"),
     );
     expect(parsed.items).toHaveLength(MAX_ITEMS);
@@ -441,7 +466,7 @@ describe("parseReceipt: item lines", () => {
   it("does not read past the 500 characters of an item line", () => {
     const name = "n".repeat(MAX_LINE_LENGTH + 20);
     const parsed = parse(
-      { version: 1, items: { patterns: ["{name} ${amount}"] } },
+      { version: 2, items: { patterns: ["{name} ${amount}"] } },
       `${name} $1.00`,
     );
     expect(parsed.items).toEqual([]);
@@ -450,7 +475,7 @@ describe("parseReceipt: item lines", () => {
 
 describe("parseReceipt: item categories", () => {
   const base: ReceiptParserDefinition = {
-    version: 1,
+    version: 2,
     items: { patterns: ["{name} ${amount}"] },
     categoryRules: [
       { match: "*cable*", categoryId: CAT_CABLE },
@@ -491,40 +516,40 @@ describe("parseReceipt: item categories", () => {
 
   it("leaves the category null when nothing applies", () => {
     expect(category(base, "Mug $1.00")).toBeNull();
-    expect(category({ version: 1, items: base.items }, "Mug $1.00")).toBeNull();
+    expect(category({ version: 2, items: base.items }, "Mug $1.00")).toBeNull();
   });
 });
 
 describe("parseReceipt: the shipping and discount categories", () => {
   it("categorises shipping by shippingCategoryId alone", () => {
     const withDefault = parse(
-      { version: 1, defaultCategoryId: CAT_DEFAULT },
+      { version: 2, defaultCategoryId: CAT_DEFAULT },
       "",
       "",
       CAT_PAYEE,
     );
     expect(withDefault.shippingCategoryId).toBeNull();
     expect(
-      parse({ version: 1, shippingCategoryId: CAT_SHIPPING }, "")
+      parse({ version: 2, shippingCategoryId: CAT_SHIPPING }, "")
         .shippingCategoryId,
     ).toBe(CAT_SHIPPING);
   });
 
   it("categorises the discount by the default, then the payee's default", () => {
     expect(
-      parse({ version: 1, defaultCategoryId: CAT_DEFAULT }, "", "", CAT_PAYEE)
+      parse({ version: 2, defaultCategoryId: CAT_DEFAULT }, "", "", CAT_PAYEE)
         .discountCategoryId,
     ).toBe(CAT_DEFAULT);
-    expect(parse({ version: 1 }, "", "", CAT_PAYEE).discountCategoryId).toBe(
+    expect(parse({ version: 2 }, "", "", CAT_PAYEE).discountCategoryId).toBe(
       CAT_PAYEE,
     );
-    expect(parse({ version: 1 }, "").discountCategoryId).toBeNull();
+    expect(parse({ version: 2 }, "").discountCategoryId).toBeNull();
   });
 });
 
 describe("parseReceipt: the spec section 4 completeness table", () => {
   const def: ReceiptParserDefinition = {
-    version: 1,
+    version: 2,
     total: ["Total ${amount}"],
     shipping: ["Shipping ${amount}"],
     discount: ["Discount ${amount}"],
@@ -565,13 +590,21 @@ describe("parseReceipt: the spec section 4 completeness table", () => {
       false,
       "items_unbalanced",
     ]);
-    // Shipping and discount count: 1.00 + 2.00 - 0.50 = 2.50, not 3.00.
+    // Shipping and discount count: gross 1.00 + 2.00 = 3.00 and net 2.50; 3.50 is neither.
+    expect(
+      outcome(
+        ["Pen $1.00"],
+        ["Shipping $2.00", "Discount $0.50", "Total $3.50"],
+      ),
+    ).toEqual([false, "items_unbalanced"]);
+    // A total equal to the gross (the list price) passes the balance check when no
+    // paid is stated; this definition has no category for the discount line.
     expect(
       outcome(
         ["Pen $1.00"],
         ["Shipping $2.00", "Discount $0.50", "Total $3.00"],
       ),
-    ).toEqual([false, "items_unbalanced"]);
+    ).toEqual([false, "items_uncategorized"]);
   });
 
   it("balanced but an item has no category: false, items_uncategorized", () => {
@@ -674,7 +707,7 @@ describe("parseReceipt: the spec section 4 completeness table", () => {
 describe("parseReceipt: realistic lines without a delimiter", () => {
   // The design 5.1 patterns, on the lines of the spec section 5 receipt.
   const design: ReceiptParserDefinition = {
-    version: 1,
+    version: 2,
     orderId: ["*order #{orderid}*", "Order number: {orderid}"],
     total: ["Order total: {amount}", "*Grand total*{amount}"],
     shipping: ["Shipping: {amount}"],
@@ -707,6 +740,8 @@ describe("parseReceipt: realistic lines without a delimiter", () => {
     expect(parsed).toEqual({
       orderId: "EX-20931",
       total: 379700,
+      paid: null,
+      payee: null,
       shipping: 49900,
       discount: 20000,
       items: [
@@ -729,7 +764,7 @@ describe("parseReceipt: realistic lines without a delimiter", () => {
 
   it("keeps a single-word name and a bare amount working", () => {
     const one: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       items: { patterns: ["{name} {amount}"] },
     };
     expect(parse(one, "Pen 2.50").items[0]).toMatchObject({

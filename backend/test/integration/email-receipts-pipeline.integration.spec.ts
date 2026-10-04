@@ -163,7 +163,7 @@ describe("email receipts pipeline (integration)", () => {
         name: "Shop",
         fromDomains: ["shop.example.com"],
         definition: {
-          version: 1,
+          version: 2,
           orderId: ["Order number: {orderid}"],
           total: ["Order total: {amount}"],
           shipping: ["Shipping: {amount}"],
@@ -547,7 +547,7 @@ describe("email receipts pipeline (integration)", () => {
       asBob(() =>
         parsers.test(bobId, {
           receiptId: receipt.id,
-          definition: { version: 1, total: ["Order total: {amount}"] },
+          definition: { version: 2, total: ["Order total: {amount}"] },
         } as never),
       ),
     ).rejects.toMatchObject({ status: 404 });
@@ -568,7 +568,7 @@ describe("email receipts pipeline (integration)", () => {
           name: "Shop",
           fromDomains: ["shop.example.com"],
           definition: {
-            version: 1,
+            version: 2,
             total: ["Order total: {amount}"],
             defaultCategoryId: bobCategory,
           },
@@ -1129,7 +1129,7 @@ describe("email receipts pipeline (integration)", () => {
 
   describe("drafting a parser with AI through the chat", () => {
     const DEFINITION = {
-      version: 1,
+      version: 2,
       orderId: ["Order number: {orderid}"],
       total: ["Order total: {amount}"],
       shipping: ["Shipping: {amount}"],

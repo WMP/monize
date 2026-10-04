@@ -17,11 +17,17 @@ import {
   EMAIL_RECEIPT_PARSER_MAX_SUBJECT_WORDS,
 } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
+import { EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE } from "./parser-tool.guide";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
-import { parseReceipt } from "../parsing/parse-receipt";
-import type {
-  ParsedReceipt,
-  ReceiptParserDefinition,
+import {
+  parseReceiptTraced,
+  type ReceiptOutcome,
+} from "../parsing/parse-receipt";
+import {
+  RECEIPT_PARSER_VERSION,
+  type ParsedReceipt,
+  type ReceiptParserDefinition,
+  type ReceiptTrace,
 } from "../parsing/receipt-parser.types";
 import {
   collectParserCategoryIds,
@@ -70,6 +76,8 @@ const MAX_SUBJECT_WORD_LENGTH = 100;
 export interface LlmParsedReceipt {
   orderId: string | null;
   total: number | null;
+  paid: number | null;
+  payee: string | null;
   shipping: number | null;
   discount: number | null;
   items: Array<{
@@ -88,7 +96,14 @@ export interface ParserToolTestEmail {
   /** ISO timestamp: the day the shop sent the order, or the day the email arrived. */
   effectiveDate: string;
   parsed: LlmParsedReceipt;
+  /** `read`, or the guard that stops the pipeline reading this email under the parser. */
+  outcome: ReceiptOutcome;
+  /** Which entry and which line read each value; at most 20 items are traced. */
+  trace: ReceiptTrace;
 }
+
+/** Items a `test` result traces (the rest are counted in `parsed`). */
+const TRACE_MAX_ITEMS = 20;
 
 export interface ParserToolTestResult {
   /** False when the definition failed validation; `errors` says where and why. */
@@ -105,6 +120,8 @@ export interface ParserToolCategories {
   categories: Array<{ id: string; name: string }>;
   totalCount: number;
   truncated: boolean;
+  /** The whole parser language, which the tool's description has no room for. */
+  guide: string;
 }
 
 export interface ParserToolSaveInput {
@@ -129,12 +146,15 @@ export interface ParserToolSaveResult {
   requestProposed: boolean;
 }
 
-/** A model may leave the version out; it has still written a version 1 parser. */
+/** A model may leave the version out; it has still written a parser of the current version. */
 function withVersion(definition: unknown): unknown {
   return typeof definition === "object" &&
     definition !== null &&
     !Array.isArray(definition)
-    ? { version: 1, ...(definition as Record<string, unknown>) }
+    ? {
+        version: RECEIPT_PARSER_VERSION,
+        ...(definition as Record<string, unknown>),
+      }
     : definition;
 }
 
@@ -148,6 +168,8 @@ function toLlmParsed(
   return {
     orderId: parsed.orderId,
     total: units(parsed.total),
+    paid: units(parsed.paid ?? null),
+    payee: parsed.payee ?? null,
     shipping: units(parsed.shipping),
     discount: units(parsed.discount),
     items: parsed.items.map((item) => ({
@@ -188,6 +210,7 @@ export class EmailReceiptParserToolsService {
         .map(([id, name]) => ({ id, name })),
       totalCount: all.length,
       truncated: all.length > PARSER_TOOL_MAX_CATEGORIES,
+      guide: EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE,
     };
   }
 
@@ -252,7 +275,7 @@ export class EmailReceiptParserToolsService {
       for (const id of input.receiptIds) {
         const receipt = byId.get(id);
         if (!receipt) throw receiptNotFound(id);
-        const parsed = parseReceipt(
+        const { parsed, trace, outcome } = parseReceiptTraced(
           definition,
           receipt.subject,
           receipt.bodyText,
@@ -263,6 +286,8 @@ export class EmailReceiptParserToolsService {
           subject: receipt.subject,
           effectiveDate: effectiveReceiptDate(receipt).toISOString(),
           parsed: toLlmParsed(parsed, categoryNames),
+          outcome,
+          trace: { ...trace, items: trace.items.slice(0, TRACE_MAX_ITEMS) },
         });
       }
       const unknownCategoryIds = collectParserCategoryIds(definition).filter(

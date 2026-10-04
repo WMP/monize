@@ -6,7 +6,7 @@ import {
 
 const R1 = "e0000000-0000-4000-8000-000000000001";
 const REQ = "e0000000-0000-4000-8000-000000000009";
-const DEFINITION = { version: 1, total: ["Order total: {amount}"] };
+const DEFINITION = { version: 2, total: ["Order total: {amount}"] };
 
 describe("email_receipt_parsers schema", () => {
   it.each([

@@ -15,19 +15,26 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import type { ReceiptParserLookups, ReceiptParserLookupsState } from '@/hooks/useReceiptParserLookups';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { getErrorMessage } from '@/lib/errors';
 import {
   buildParserDefinition,
   buildParserPayload,
+  definitionToFormFields,
   emptyParserForm,
+  formatDefinitionJson,
+  formCanRepresent,
+  parseDefinitionJson,
   parseValidationProblems,
   parserToForm,
   type ParserFormChange,
   type ParserFormState,
 } from '@/lib/receipt-parser-form';
-import { RECEIPT_PARSER_LIMITS, type EmailReceiptParser } from '@/types/email-receipts';
+import { RECEIPT_PARSER_LIMITS, type EmailReceiptParser, type ReceiptParserDefinition } from '@/types/email-receipts';
+
+type EditorMode = 'form' | 'json';
 
 interface ParserEditorDialogProps {
   /** The parser being edited; null writes a new one. */
@@ -123,6 +130,15 @@ function ParserEditorForm({
   const [form, setForm] = useState<ParserFormState>(() =>
     parser ? parserToForm(parser) : emptyParserForm(prefill),
   );
+  // A definition the form cannot show opens as JSON: the form would drop the rest.
+  const [mode, setMode] = useState<EditorMode>(() => (parser && !formCanRepresent(parser.definition) ? 'json' : 'form'));
+  const [jsonText, setJsonText] = useState(() =>
+    formatDefinitionJson(
+      parser && !formCanRepresent(parser.definition)
+        ? parser.definition
+        : buildParserDefinition(parser ? parserToForm(parser) : emptyParserForm(prefill)),
+    ),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<{ message: string; problems: ReturnType<typeof parseValidationProblems> } | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -135,11 +151,32 @@ function ParserEditorForm({
     [lookups.categories],
   );
   const payees = useMemo(() => [...lookups.payees], [lookups.payees]);
-  // What the test panel reads: the form as it is now, saved or not.
-  const definition = useMemo(() => buildParserDefinition(form), [form]);
+  const json = useMemo(() => parseDefinitionJson(jsonText), [jsonText]);
+  // What the test panel reads and Save sends: the form or the JSON as it is now,
+  // saved or not. The server's validator is the authority on the JSON's content.
+  const definition = useMemo<ReceiptParserDefinition | null>(() => {
+    if (mode === 'form') return buildParserDefinition(form);
+    return json.ok ? (json.definition as unknown as ReceiptParserDefinition) : null;
+  }, [mode, form, json]);
+  // The form can be shown only for JSON that parses into something it can hold.
+  const formAvailable = mode === 'form' || (json.ok && formCanRepresent(json.definition));
+  const modeNote = formAvailable ? null : json.ok ? t('mode.formUnavailable') : t('mode.jsonInvalid');
+
+  const switchMode = (next: EditorMode) => {
+    if (next === mode) return;
+    if (next === 'json') {
+      setJsonText(formatDefinitionJson(buildParserDefinition(form)));
+    } else if (json.ok && formCanRepresent(json.definition)) {
+      change(definitionToFormFields(json.definition));
+    } else {
+      return;
+    }
+    setMode(next);
+  };
 
   const handleSave = async () => {
-    const payload = buildParserPayload(form);
+    if (definition === null) return;
+    const payload = buildParserPayload(form, definition);
     setIsSaving(true);
     setSaveError(null);
     setConflict(false);
@@ -161,7 +198,7 @@ function ParserEditorForm({
     }
   };
 
-  const canSave = form.name.trim() !== '' && form.fromDomains.trim() !== '' && !conflict;
+  const canSave = form.name.trim() !== '' && form.fromDomains.trim() !== '' && definition !== null && !conflict;
 
   return (
     <form
@@ -171,6 +208,34 @@ function ParserEditorForm({
         if (canSave && !isSaving) void handleSave();
       }}
     >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div role="group" aria-label={t('mode.label')} className={SEGMENTED_GROUP_CLASS}>
+          <button
+            type="button"
+            aria-pressed={mode === 'form'}
+            aria-describedby={modeNote ? 'parser-mode-note' : undefined}
+            disabled={!formAvailable}
+            onClick={() => switchMode('form')}
+            className={`${segmentClass(mode === 'form')} disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            {t('mode.form')}
+          </button>
+          <button
+            type="button"
+            aria-pressed={mode === 'json'}
+            onClick={() => switchMode('json')}
+            className={segmentClass(mode === 'json')}
+          >
+            {t('mode.json')}
+          </button>
+        </div>
+        {modeNote && (
+          <p id="parser-mode-note" className="text-xs text-gray-500 dark:text-gray-400">
+            {modeNote}
+          </p>
+        )}
+      </div>
+
       {parser?.status === 'draft' && (
         <p
           role="note"
@@ -222,8 +287,28 @@ function ParserEditorForm({
         </div>
       </section>
 
-      <ParserPatternFields form={form} onChange={change} />
-      <ParserCategoryFields form={form} categories={lookups.categories} onChange={change} />
+      {mode === 'form' ? (
+        <>
+          <ParserPatternFields form={form} onChange={change} />
+          <ParserCategoryFields form={form} categories={lookups.categories} onChange={change} />
+        </>
+      ) : (
+        <div className="space-y-2">
+          <PatternArea
+            id="parser-json"
+            label={t('json.label')}
+            hint={t('json.help')}
+            value={jsonText}
+            rows={18}
+            onChange={setJsonText}
+          />
+          {!json.ok && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {t('json.parseError')}
+            </p>
+          )}
+        </div>
+      )}
 
       <ParserTestPanel
         definition={definition}

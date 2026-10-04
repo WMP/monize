@@ -35,7 +35,10 @@ import {
   collectParserCategoryIds,
   validateReceiptParserDefinition,
 } from "../parsing/receipt-parser.validation";
-import type { ParsedReceipt } from "../parsing/receipt-parser.types";
+import {
+  RECEIPT_PARSER_VERSION,
+  type ParsedReceipt,
+} from "../parsing/receipt-parser.types";
 import {
   buildDescription,
   buildReceiptProposal,
@@ -212,10 +215,10 @@ export class EmailReceiptAiService {
         ),
       );
     }
-    // A model that leaves the version out has still written a version 1 parser.
+    // A model that leaves the version out has still written a parser of the current version.
     const candidate =
       typeof raw === "object" && raw !== null && !Array.isArray(raw)
-        ? { version: 1, ...raw }
+        ? { version: RECEIPT_PARSER_VERSION, ...raw }
         : raw;
     const validation = validateReceiptParserDefinition(candidate);
     if (!validation.ok) {
@@ -496,7 +499,12 @@ export class EmailReceiptAiService {
           `AI reading of receipt request ${requestId}: ${notes.join(" ")}`,
         );
       }
-      if (parsed.items.length === 0 && parsed.total === null && !description) {
+      if (
+        parsed.items.length === 0 &&
+        parsed.total === null &&
+        parsed.paid === null &&
+        !description
+      ) {
         return giveBack(
           "unusable_answer",
           `The AI found nothing in the email. ${notes.join(" ")}`.trim(),

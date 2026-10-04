@@ -53,8 +53,11 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
       value: parsed.orderId ?? <span className="text-gray-500 dark:text-gray-400">{t('notFound')}</span>,
     },
     { key: 'total', label: t('total'), value: money(parsed.total) },
+    // Stated only by some emails (a card line after a promotion; a gateway's notice): shown when there is one.
+    ...(parsed.paid != null ? [{ key: 'paid', label: t('paid'), value: money(parsed.paid) }] : []),
     { key: 'shipping', label: t('shipping'), value: money(parsed.shipping) },
     { key: 'discount', label: t('discount'), value: money(parsed.discount) },
+    ...(parsed.payee ? [{ key: 'payee', label: t('payee'), value: parsed.payee }] : []),
   ];
 
   return (

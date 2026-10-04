@@ -38,6 +38,8 @@ const TX = {
 const example = (over: Partial<ParsedReceipt> = {}): ParsedReceipt => ({
   orderId: "EX-20931",
   total: 379700,
+  paid: null,
+  payee: null,
   shipping: 49900,
   discount: 20000,
   items: [
@@ -57,6 +59,8 @@ const SUMMARY = "Example Shop EX-20931: USB-C cable x2, Phone case";
 const single = (over: Partial<ParsedReceipt> = {}): ParsedReceipt => ({
   orderId: "EX-1",
   total: 125000,
+  paid: null,
+  payee: null,
   shipping: null,
   discount: null,
   items: [{ name: "Mug", qty: 1, amount: 125000, categoryId: CAT_DEFAULT }],
@@ -119,7 +123,7 @@ describe("buildReceiptProposal: the spec section 5 numerical example", () => {
 
   it("is what the parser and the builder produce together from the email text", () => {
     const def: ReceiptParserDefinition = {
-      version: 1,
+      version: 2,
       orderId: ["Order number: {orderid}"],
       total: ["Order total: ${amount}"],
       shipping: ["Shipping: ${amount}"],
@@ -567,16 +571,140 @@ describe("buildReceiptProposal: a proposal that would carry nothing", () => {
   });
 });
 
-describe("buildReceiptProposal: an internal inconsistency", () => {
-  it("throws when the split lines do not sum to the transaction", () => {
+describe("buildReceiptProposal: lines that do not sum to the transaction", () => {
+  it("proposes the description only, never splits that miss the amount", () => {
     // Claims to be complete and equal to the transaction, but its lines add up to 34.98.
     const lying = example({
       shipping: null,
       discount: null,
       shippingCategoryId: null,
     });
-    expect(() => buildReceiptProposal(lying, TX, CTX)).toThrow(
-      /split lines sum to -34.98, the transaction is -37.97/,
+    const proposal = buildReceiptProposal(lying, TX, CTX);
+    expect(proposal.kind).toBe("description_only");
+    expect(proposal.reason).toBe("amount_differs");
+    expect(proposal.input).not.toHaveProperty("splits");
+  });
+});
+
+describe("buildReceiptProposal: total and paid", () => {
+  // Item 24.99 less a 3.00 promotion: the list price is the total, the card was charged 21.99.
+  const promo = (over: Partial<ParsedReceipt> = {}): ParsedReceipt => ({
+    orderId: "GPA-1",
+    total: 249900,
+    paid: 219900,
+    payee: null,
+    shipping: null,
+    discount: 30000,
+    items: [{ name: "Game", qty: 1, amount: 249900, categoryId: CAT_DEFAULT }],
+    shippingCategoryId: null,
+    discountCategoryId: CAT_DEFAULT,
+    complete: true,
+    reason: null,
+    ...over,
+  });
+
+  it("splits into the item and the discount line when the transaction equals paid", () => {
+    const proposal = buildReceiptProposal(
+      promo(),
+      { ...TX, amount: -21.99 },
+      CTX,
     );
+    expect(proposal.kind).toBe("itemized");
+    expect(proposal.input?.splits?.map((s) => s.amount)).toEqual([-24.99, 3]);
+  });
+
+  it("refuses a transaction equal to the list price when paid is stated (amount_differs)", () => {
+    const proposal = buildReceiptProposal(
+      promo(),
+      { ...TX, amount: -24.99 },
+      CTX,
+    );
+    expect(proposal).toMatchObject({
+      kind: "description_only",
+      reason: "amount_differs",
+    });
+  });
+
+  it("with no paid, a total equal to the net is split as before", () => {
+    const proposal = buildReceiptProposal(
+      promo({ total: 219900, paid: null }),
+      { ...TX, amount: -21.99 },
+      CTX,
+    );
+    expect(proposal.kind).toBe("itemized");
+  });
+
+  it("with no paid and a total equal to the gross, the split cannot equal the transaction: description only", () => {
+    const proposal = buildReceiptProposal(
+      promo({ paid: null }),
+      { ...TX, amount: -24.99 },
+      CTX,
+    );
+    expect(proposal).toMatchObject({
+      kind: "description_only",
+      reason: "amount_differs",
+    });
+    expect(proposal.input).not.toHaveProperty("splits");
+  });
+
+  it("is one category for one item with no discount, paid or not", () => {
+    const one = promo({ discount: null, total: 249900, paid: 249900 });
+    expect(buildReceiptProposal(one, { ...TX, amount: -24.99 }, CTX).kind).toBe(
+      "single_category",
+    );
+  });
+});
+
+describe("buildReceiptProposal: the payee", () => {
+  const gateway = "payee-payu";
+  const parsedWith = (payee: string | null) => single({ payee });
+  const ctx = { ...CTX, parserPayeeId: gateway, payeeName: "PayU" };
+  const tx = { amount: -12.5, description: null as string | null };
+
+  it("proposes the merchant the email names when the transaction has no payee", () => {
+    const proposal = buildReceiptProposal(
+      parsedWith("GRUPA OLX SP. Z O.O."),
+      { ...tx, payeeId: null },
+      ctx,
+    );
+    expect(proposal.input).toMatchObject({ payeeName: "GRUPA OLX SP. Z O.O." });
+  });
+
+  it("proposes the merchant when the transaction's payee is the parser's own (the gateway)", () => {
+    const proposal = buildReceiptProposal(
+      parsedWith("Sklep Testowy"),
+      { ...tx, payeeId: gateway },
+      ctx,
+    );
+    expect(proposal.input).toMatchObject({ payeeName: "Sklep Testowy" });
+  });
+
+  it("leaves another payee alone", () => {
+    const proposal = buildReceiptProposal(
+      parsedWith("Sklep Testowy"),
+      { ...tx, payeeId: "payee-other" },
+      ctx,
+    );
+    expect(proposal.input).not.toHaveProperty("payeeName");
+  });
+
+  it("falls back to the parser payee's name only for a transaction without a payee when the email names none", () => {
+    expect(
+      buildReceiptProposal(parsedWith(null), { ...tx, payeeId: null }, ctx)
+        .input,
+    ).toMatchObject({ payeeName: "PayU" });
+    expect(
+      buildReceiptProposal(parsedWith(null), { ...tx, payeeId: gateway }, ctx)
+        .input,
+    ).not.toHaveProperty("payeeName");
+  });
+
+  it("cleans the merchant the way it cleans every email text", () => {
+    const proposal = buildReceiptProposal(
+      parsedWith("  Sklep   X "),
+      { ...tx, payeeId: null },
+      ctx,
+    );
+    expect(proposal.input).toMatchObject({ payeeName: "Sklep X" });
   });
 });

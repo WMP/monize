@@ -40,24 +40,26 @@ function subjectFits(
 }
 
 /**
- * The approved parser that reads an email from `fromDomain` with `subject`, or
- * null (design section 6; spec "no parser" branch).
+ * The approved parsers that may read an email from `fromDomain` with
+ * `subject`, best first (design section 6; spec "no parser" branch).
  *
  * A draft never reads mail. The sender's domain must equal one of the parser's
  * domains or end with "." + that domain; the parser whose best-matching domain
- * is the longest wins, so `orders.shop.com` beats `shop.com`; the subject words
- * (all lower-case substrings) must include at least one when there are any; a
- * tie on specificity goes to the older parser, then the lower id, so the choice
- * never depends on the order rows were read in.
+ * is the longest comes first, so `orders.shop.com` beats `shop.com`; the subject
+ * words (all lower-case substrings) must include at least one when there are
+ * any; a tie on specificity goes to the older parser, then the lower id, so the
+ * order never depends on the order rows were read in. A parser whose
+ * `requireLine` finds no line in the email is passed over by the caller for the
+ * next one in this list.
  */
-export function selectReceiptParser<T extends SelectableReceiptParser>(
+export function rankReceiptParsers<T extends SelectableReceiptParser>(
   parsers: readonly T[],
   fromDomain: string,
   subject: string,
-): T | null {
+): T[] {
   const sender = normalizeDomain(fromDomain);
-  if (sender === "") return null;
-  let best: { parser: T; specificity: number } | null = null;
+  if (sender === "") return [];
+  const fitting: { parser: T; specificity: number }[] = [];
   for (const parser of parsers) {
     if (parser.status !== "approved") continue;
     if (!subjectFits(subject, parser.subjectContains)) continue;
@@ -65,12 +67,20 @@ export function selectReceiptParser<T extends SelectableReceiptParser>(
       -1,
       ...parser.fromDomains.map((domain) => domainSpecificity(sender, domain)),
     );
-    if (specificity < 0) continue;
-    if (best === null || beats(parser, specificity, best)) {
-      best = { parser, specificity };
-    }
+    if (specificity >= 0) fitting.push({ parser, specificity });
   }
-  return best === null ? null : best.parser;
+  return fitting
+    .sort((a, b) => (beats(a.parser, a.specificity, b) ? -1 : 1))
+    .map((entry) => entry.parser);
+}
+
+/** The best parser for an email, or null (the head of `rankReceiptParsers`). */
+export function selectReceiptParser<T extends SelectableReceiptParser>(
+  parsers: readonly T[],
+  fromDomain: string,
+  subject: string,
+): T | null {
+  return rankReceiptParsers(parsers, fromDomain, subject)[0] ?? null;
 }
 
 function beats<T extends SelectableReceiptParser>(
